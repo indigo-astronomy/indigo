@@ -449,3 +449,19 @@ On disconnection the generated handler calls indigo_cancel_pending_handlers() be
 ---
 
 Clear skies!
+
+## Optional SDK logical devices and names
+
+Within a device block of an `sdk` hot-plug driver, `attach_if = <C expression>;` conditionally emits that logical device's allocation/attach. The expression runs in the generated plug handler with `private_data`, `name` and previously attached logical-device variables in scope. For an optional guider use `attach_if = ccd_attached && private_data->property.isHasST4Port;` so a failed master attachment cannot leave an orphan slave. Reserve sufficient free logical slots in `sdk.plug` before accepting a multi-device camera.
+
+`name_value = <C string expression>;` copies an SDK-derived logical-device name with a literal `%s` format. Use it for exact suffix placement, e.g. `private_data->guider_name`; it does not interpret user-supplied `%` characters as a format string. The ordinary `name` remains the static template/format fallback. Both attributes currently apply only to SDK hot-plug attachment; omitting them preserves existing generated output.
+
+## Completion callback naming and request guards
+
+Name a delayed callback that completes a property operation `<operation>_finalizer`, for example `guider_ra_finalizer` and `guider_dec_finalizer`. Use that name consistently in declarations, scheduling and cancellation. The generator detects `_finalizer` in `on_change` and suppresses both its default OK assignment and final property update. The initiating block must therefore explicitly set and publish BUSY (or immediate OK/ALERT); the finalizer publishes completion. Do not hide this asynchronous lifecycle behind `*_timer_callback*` names. Periodic polling callbacks remain ordinary callbacks.
+
+An optional property `on_change_request { ... }` runs in the matched bus change branch before copying requested values or dispatching the handler. Keep it short and free of SDK calls or waits. Use it when a busy guard must reject a request before altering the accepted values. It has no generated state/update epilogue; an early return must publish any required rejection itself. SDK multi-device hot-plug connection changes are serialized on the generated per-driver queue, including secondary logical connections and disconnects, so SDK lifetime and the generated shared count have a single owner.
+
+## Bounded SDK discovery retries
+
+`sdk { discovery_retries = 6; ... }` opts into up to six additional discovery attempts at 0.5-second intervals after a USB arrival cannot attach a device. The value is a nonnegative integer C expression; omission disables retry scaffolding. It is intended for SDK enumeration that becomes ready after libusb reports arrival. Successful attachment and duplicate arrivals do not reset the retry budget. The generated driver queue owns retained USB references and retry records; removal cancels that device's retry, and accepted shutdown prevents new retries, stops the queue and releases remaining records. No sleeping loop or detached timer is needed in `sdk.plug`. Other SDK drivers are unchanged until they opt in.

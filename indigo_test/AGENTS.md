@@ -4,6 +4,8 @@
 
 This directory contains the automated, hardware-free INDIGO test suite. Keep this guide focused on tests only. General repository coding rules, driver conventions, and build-system guidance live in the repository root `AGENTS.md`.
 
+For CCD fake SDK/USB integration and opt-in real-camera tests, follow the [Camera Driver Test Standard](DRIVER_TESTING_RULES.md#camera-driver-test-standard-fake-sdkusb-and-hardware).
+
 ## Test Layout
 
 - `Makefile` defines all automated test targets.

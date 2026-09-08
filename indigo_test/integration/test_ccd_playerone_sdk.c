@@ -1,0 +1,2115 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// All rights reserved.
+// Use under the INDIGO Astronomy open-source license (see LICENSE.md).
+
+#include <stdatomic.h>
+#include <time.h>
+#include <pthread.h>
+#include <dirent.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <PlayerOneCamera.h>
+#include <indigo/indigo_ccd_driver.h>
+#include <indigo_drivers/ccd_simulator/indigo_ccd_simulator.h>
+#include <indigo/indigo_usb_utils.h>
+#include <indigo_drivers/ccd_playerone/indigo_ccd_playerone.h>
+#include "simulator_test_common.h"
+
+#define CAMERAS 8
+#define PROPERTIES 80
+#define PIXEL_PROPERTY "X_PIXEL_FORMAT"
+#define ADVANCED_PROPERTY "X_ADVANCED"
+#define PRESETS_PROPERTY "X_PRESETS"
+#define SUFFIX_PROPERTY "X_CUSTOM_SUFFIX"
+#define SENSOR_PROPERTY "X_SENSOR_MODE"
+
+typedef struct {
+	POACameraProperties info;
+	POAConfigValue config[POA_EXP + 1];
+	atomic_bool visible, opened, exposing;
+	atomic_int opens, closes, frames, starts, stops, width, height, bin, left, top, format, mode;
+	atomic_int open_error, init_error, read_error, start_error, config_error;
+	atomic_int stop_error, format_error, mode_error, suffix_error, mode_count, ready_error, state_error;
+	atomic_int writes[POA_EXP + 1], reads[POA_EXP + 1];
+	atomic_int read_config_fail, write_config_fail, attribute_fail, preset_fail, sensor_fail, geometry_fail;
+} mock_camera;
+
+typedef struct {
+	char name[INDIGO_NAME_SIZE];
+	indigo_property *properties[PROPERTIES];
+	int updates[PROPERTIES];
+} observed_device;
+
+static mock_camera cameras[CAMERAS];
+static pthread_t bus_thread;
+static atomic_int wrong_bus_thread, raw_blobs, last_width, last_height;
+static atomic_int fail_register, fail_descriptor, wrong_vendor, discovery_fail, count_fail, fail_guider_attach;
+static atomic_int discovery_calls, bounded_sdk_strings;
+static atomic_int sdk_active[CAMERAS], concurrent_sdk, updates_after_detach;
+static _Thread_local int attaching_index = -1;
+static int request_revisions[CAMERAS * 2][PROPERTIES];
+static observed_device observed[CAMERAS * 2];
+static pthread_mutex_t observation_mutex = PTHREAD_MUTEX_INITIALIZER;
+static libusb_hotplug_callback_fn usb_callback;
+static int usb_devices[CAMERAS];
+static atomic_int usb_ref_balance[CAMERAS], invalid_usb_unref, usb_refs, attached, lock_count, fail_lock;
+static atomic_int sdk_after_close, blobs, bad_blob, pulse_writes, short_waits, fail_attach, fail_configs, unbalanced_unlock;
+typedef struct {
+	bool active;
+	struct timespec started;
+	double duration_ms;
+	unsigned completed;
+} pulse_measurement;
+
+static pulse_measurement pulse_measurements[CAMERAS][4];
+static pthread_mutex_t pulse_mutex = PTHREAD_MUTEX_INITIALIZER;
+static char config_folder[] = "/tmp/indigo_ccd_playerone_XXXXXX";
+
+typedef struct {
+	pthread_mutex_t mutex;
+	pthread_cond_t condition;
+	bool armed;
+	atomic_int entered;
+} test_gate;
+
+static test_gate initialization_gate = { .mutex = PTHREAD_MUTEX_INITIALIZER, .condition = PTHREAD_COND_INITIALIZER };
+static test_gate read_gate = { .mutex = PTHREAD_MUTEX_INITIALIZER, .condition = PTHREAD_COND_INITIALIZER };
+static test_gate queue_gate = { .mutex = PTHREAD_MUTEX_INITIALIZER, .condition = PTHREAD_COND_INITIALIZER };
+static atomic_int gate_timeouts, fail_queue, fast_poll, barriers;
+static indigo_device *logical[CAMERAS * 2];
+static indigo_queue *driver_queue;
+static _Atomic(indigo_timer_callback) temperature_handler;
+
+static void arm_gate(test_gate *gate) {
+	pthread_mutex_lock(&gate->mutex);
+	gate->armed = true;
+	atomic_store(&gate->entered, 0);
+	pthread_mutex_unlock(&gate->mutex);
+}
+
+static void release_gate(test_gate *gate) {
+	pthread_mutex_lock(&gate->mutex);
+	gate->armed = false;
+	pthread_cond_broadcast(&gate->condition);
+	pthread_mutex_unlock(&gate->mutex);
+}
+
+static void enter_gate(test_gate *gate) {
+	pthread_mutex_lock(&gate->mutex);
+	if (gate->armed) {
+		struct timespec deadline;
+		clock_gettime(CLOCK_REALTIME, &deadline);
+		deadline.tv_sec += 5;
+		atomic_store(&gate->entered, 1);
+		while (gate->armed) {
+			if (pthread_cond_timedwait(&gate->condition, &gate->mutex, &deadline) != 0) {
+				atomic_fetch_add(&gate_timeouts, 1);
+				gate->armed = false;
+			}
+		}
+	}
+	pthread_mutex_unlock(&gate->mutex);
+}
+
+static test_gate setup_gate = { .mutex = PTHREAD_MUTEX_INITIALIZER, .condition = PTHREAD_COND_INITIALIZER };
+
+static void block_queue(indigo_device *device) {
+	enter_gate(&queue_gate);
+}
+
+static void queue_barrier(indigo_device *device) {
+	atomic_fetch_add(&barriers, 1);
+}
+
+indigo_queue *poa_test_queue_create(indigo_device *device) {
+	if (atomic_load(&fail_queue)) {
+		return NULL;
+	}
+	driver_queue = indigo_queue_create(device);
+	return driver_queue;
+}
+
+void poa_test_execute_in(indigo_device *device, double delay, indigo_timer_callback callback) {
+	if (delay == 5) {
+		temperature_handler = callback;
+		if (atomic_load(&fast_poll)) {
+			delay = 0.01;
+		}
+	}
+	indigo_execute_handler_in(device, delay, callback);
+}
+
+const char *poa_test_config_folder(void) {
+	return config_folder;
+}
+
+static int device_index(const char *name) {
+	if (attaching_index >= 0) {
+		return attaching_index;
+	}
+	for (int i = 0; i < CAMERAS * 2; i++) {
+		if (logical[i] && !strcmp(observed[i].name, name)) {
+			return i;
+		}
+	}
+	int index = -1;
+	sscanf(name, "POA test %d", &index);
+	return index >= 0 && index < CAMERAS ? 2 * index + (strstr(name, "(guider)") != NULL) : -1;
+}
+
+static int property_index(int index, const char *name, bool create) {
+	int empty = -1;
+	for (int i = 0; i < PROPERTIES; i++) {
+		if (observed[index].properties[i] && !strcmp(observed[index].properties[i]->name, name)) {
+			return i;
+		}
+		if (!observed[index].properties[i] && empty < 0) {
+			empty = i;
+		}
+	}
+	return create ? empty : -1;
+}
+
+static indigo_result observe(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	int index = device_index(property->device);
+	if (index < 0) {
+		return INDIGO_OK;
+	}
+	if (!logical[index]) {
+		atomic_fetch_add(&updates_after_detach, 1);
+	}
+	pthread_mutex_lock(&observation_mutex);
+	int slot = property_index(index, property->name, true);
+	if (slot >= 0) {
+		indigo_release_property(observed[index].properties[slot]);
+		observed[index].properties[slot] = indigo_copy_property(NULL, property);
+		observed[index].updates[slot]++;
+	}
+	pthread_mutex_unlock(&observation_mutex);
+	return INDIGO_OK;
+}
+
+static indigo_result observe_delete(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	int index = device_index(property->device);
+	if (index < 0) {
+		return INDIGO_OK;
+	}
+	pthread_mutex_lock(&observation_mutex);
+	for (int i = 0; i < PROPERTIES; i++) {
+		indigo_property *cached = observed[index].properties[i];
+		if (cached && (!property->name[0] || !strcmp(cached->name, property->name))) {
+			indigo_release_property(cached);
+			observed[index].properties[i] = NULL;
+		}
+	}
+	pthread_mutex_unlock(&observation_mutex);
+	return INDIGO_OK;
+}
+
+static indigo_result observe_image(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->name, "CCD_IMAGE") && property->state == INDIGO_OK_STATE && property->count && property->items[0].blob.size > 0) {
+		indigo_item *item = property->items;
+		bool valid = item->blob.value != NULL;
+		if (valid && !strcmp(item->blob.format, ".raw")) {
+			indigo_raw_header header = { 0 };
+			valid = item->blob.size >= sizeof(header);
+			if (valid) {
+				memcpy(&header, item->blob.value, sizeof(header));
+				int index = device_index(property->device) / 2;
+				mock_camera *c = cameras + index;
+				int format = atomic_load(&c->format);
+				int bytes = format == POA_RAW16 ? 2 : format == POA_RGB24 ? 3 : 1;
+				unsigned signature = bytes == 2 ? INDIGO_RAW_MONO16 : bytes == 3 ? INDIGO_RAW_RGB24 : INDIGO_RAW_MONO8;
+				long length = (long)header.width * header.height * bytes;
+				valid = header.signature == signature && header.width == atomic_load(&c->width) && header.height == atomic_load(&c->height) && item->blob.size >= sizeof(header) + length;
+				if (valid) {
+					const unsigned char *pixels = (unsigned char *)item->blob.value + sizeof(header);
+					for (long i = 0; i < (long)header.width * header.height; i++) {
+						int x = (i % header.width + atomic_load(&c->left)) * atomic_load(&c->bin);
+						int y = (i / header.width + atomic_load(&c->top)) * atomic_load(&c->bin);
+						int source = y * IMAGER_WIDTH + x;
+						unsigned short mono = indigo_ccd_simulator_raw_image[source];
+						bool match = bytes == 3 ? !memcmp(pixels + 3 * i, indigo_ccd_simulator_rgb_image + 3 * source, 3) : bytes == 2 ? !memcmp(pixels + 2 * i, &mono, 2) : pixels[i] == (mono >> 8);
+						if (!match) {
+							valid = false;
+							break;
+						}
+					}
+				}
+				bool bayer = c->info.isColorCamera && (format == POA_RAW8 || format == POA_RAW16);
+				bool has_bayer = valid && memmem((char *)item->blob.value + sizeof(header) + length, item->blob.size - sizeof(header) - length, "BAYERPAT=", 9) != NULL;
+				valid = valid && bayer == has_bayer;
+				atomic_store(&last_width, header.width);
+				atomic_store(&last_height, header.height);
+			}
+			atomic_fetch_add(&raw_blobs, 1);
+		}
+
+		if (!valid) {
+			fprintf(stderr, "Invalid image contract: %s %ld bytes\n", item->blob.format, item->blob.size);
+			atomic_fetch_add(&bad_blob, 1);
+		}
+		atomic_fetch_add(&blobs, 1);
+	}
+	return observe(client, device, property, message);
+}
+
+static indigo_client test_client = { .name = "Player One camera SDK test", .version = INDIGO_VERSION_CURRENT, .define_property = observe, .update_property = observe_image, .delete_property = observe_delete };
+
+indigo_result poa_test_attach(indigo_device *device) {
+	if (atomic_exchange(&fail_attach, 0)) {
+		return INDIGO_FAILED;
+	}
+	int index = -1;
+	bool slave = device->master_device && device->master_device != device;
+	if (slave && atomic_exchange(&fail_guider_attach, 0)) {
+		return INDIGO_FAILED;
+	}
+	if (slave) {
+		for (int i = 0; i < CAMERAS; i++) {
+			if (logical[2 * i] == device->master_device) {
+				index = 2 * i + 1;
+			}
+		}
+	} else {
+		for (int i = 0; i < CAMERAS; i++) {
+			if (atomic_load(&cameras[i].visible) && !logical[2 * i]) {
+				index = 2 * i;
+				break;
+			}
+		}
+	}
+	if (index < 0) {
+		return INDIGO_FAILED;
+	}
+	logical[index] = device;
+	snprintf(observed[index].name, INDIGO_NAME_SIZE, "%s", device->name);
+	attaching_index = index;
+	indigo_result result = indigo_attach_device(device);
+	attaching_index = -1;
+	if (result == INDIGO_OK) {
+		atomic_fetch_add(&attached, 1);
+	}
+	return result;
+}
+
+indigo_result poa_test_detach(indigo_device *device) {
+	indigo_result result = indigo_detach_device(device);
+	atomic_fetch_sub(&attached, 1);
+	for (int i = 0; i < CAMERAS * 2; i++) {
+		if (logical[i] == device) {
+			logical[i] = NULL;
+		}
+	}
+	return result;
+}
+
+static indigo_property *snapshot(int index, const char *name) {
+	pthread_mutex_lock(&observation_mutex);
+	int slot = property_index(index, name, false);
+	indigo_property *copy = slot < 0 ? NULL : indigo_copy_property(NULL, observed[index].properties[slot]);
+	pthread_mutex_unlock(&observation_mutex);
+	return copy;
+}
+
+static int state(int index, const char *name) {
+	indigo_property *property = snapshot(index, name);
+	int value = property ? (int)property->state : -1;
+	indigo_release_property(property);
+	return value;
+}
+
+static bool wait_state(int index, const char *name, int expected) {
+	for (int i = 0; i < 400; i++) {
+		pthread_mutex_lock(&observation_mutex);
+		int slot = property_index(index, name, false);
+		bool ready = slot >= 0 && observed[index].properties[slot]->state == expected && observed[index].updates[slot] > request_revisions[index][slot];
+		pthread_mutex_unlock(&observation_mutex);
+		if (ready) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "device %d property %s: expected state %d, got %d\n", index, name, expected, state(index, name));
+	return false;
+}
+
+static bool wait_count(atomic_int *value, int expected) {
+	for (int i = 0; i < 400; i++) {
+		if (atomic_load(value) == expected) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "counter expected %d, got %d\n", expected, atomic_load(value));
+	return false;
+}
+
+void poa_test_usb_start(void) {
+}
+
+indigo_result poa_test_lock(indigo_device *device) {
+	if (atomic_load(&fail_lock)) {
+		return INDIGO_FAILED;
+	}
+	atomic_fetch_add(&lock_count, 1);
+	return INDIGO_OK;
+}
+
+indigo_result poa_test_unlock(indigo_device *device) {
+	if (atomic_load(&lock_count) == 0) {
+		atomic_fetch_add(&unbalanced_unlock, 1);
+		return INDIGO_FAILED;
+	}
+	atomic_fetch_sub(&lock_count, 1);
+	return INDIGO_OK;
+}
+
+int LIBUSB_CALL poa_test_usb_register(libusb_context *ctx, int events, int flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) {
+	if (atomic_load(&fail_register)) {
+		return LIBUSB_ERROR_OTHER;
+	}
+	usb_callback = callback;
+	callback(NULL, (libusb_device *)&usb_devices[0], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	return LIBUSB_SUCCESS;
+}
+
+int poa_test_usb_register_sim(libusb_context *ctx, libusb_hotplug_event events, libusb_hotplug_flag flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) {
+	return poa_test_usb_register(ctx, events, flags, vid, pid, cls, callback, data, handle);
+}
+
+void LIBUSB_CALL poa_test_usb_deregister(libusb_context *ctx, libusb_hotplug_callback_handle handle) {
+	usb_callback = NULL;
+}
+
+int poa_test_usb_deregister_poll(libusb_context *ctx, libusb_hotplug_callback_handle handle) {
+	usb_callback = NULL;
+	return LIBUSB_SUCCESS;
+}
+
+libusb_device *LIBUSB_CALL poa_test_usb_ref(libusb_device *device) {
+	atomic_fetch_add(&usb_refs, 1);
+	atomic_fetch_add(&usb_ref_balance[(int *)device - usb_devices], 1);
+	return device;
+}
+
+void LIBUSB_CALL poa_test_usb_unref(libusb_device *device) {
+	atomic_fetch_sub(&usb_refs, 1);
+	if (atomic_fetch_sub(&usb_ref_balance[(int *)device - usb_devices], 1) <= 0) {
+		atomic_fetch_add(&invalid_usb_unref, 1);
+	}
+}
+
+int LIBUSB_CALL poa_test_usb_descriptor(libusb_device *device, struct libusb_device_descriptor *descriptor) {
+	memset(descriptor, 0, sizeof(*descriptor));
+	descriptor->idVendor = atomic_load(&wrong_vendor) ? 0xffff : 0xa0a0;
+	descriptor->idProduct = 0x1001;
+	return atomic_load(&fail_descriptor) ? LIBUSB_ERROR_IO : LIBUSB_SUCCESS;
+}
+
+static void usb_event(int index, bool arrive) {
+	usb_callback(NULL, (libusb_device *)&usb_devices[index], arrive ? LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED : LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+}
+
+static const POAConfig controls[] = { POA_EXP, POA_GAIN, POA_OFFSET, POA_EGAIN, POA_USB_BANDWIDTH_LIMIT, POA_HARDWARE_BIN, POA_TEMPERATURE, POA_TARGET_TEMP, POA_COOLER, POA_COOLER_POWER, POA_FAN_POWER };
+
+int POAGetCameraCount(void) {
+	atomic_fetch_add(&discovery_calls, 1);
+	if (atomic_load(&count_fail)) {
+		return -1;
+	}
+	int count = 0;
+	for (int i = 0; i < CAMERAS; i++) {
+		count += atomic_load(&cameras[i].visible);
+	}
+	return count;
+}
+
+POAErrors POAGetCameraProperties(int index, POACameraProperties *info) {
+	if (atomic_load(&discovery_fail)) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	for (int i = 0; i < CAMERAS; i++) {
+		if (atomic_load(&cameras[i].visible) && index-- == 0) {
+			*info = cameras[i].info;
+			return POA_OK;
+		}
+	}
+	return POA_ERROR_INVALID_INDEX;
+}
+
+POAErrors POAGetCameraPropertiesByID(int id, POACameraProperties *info) {
+	for (int i = 0; i < CAMERAS; i++) {
+		if (cameras[i].info.cameraID == id && atomic_load(&cameras[i].visible)) {
+			*info = cameras[i].info;
+			return POA_OK;
+		}
+	}
+	return POA_ERROR_INVALID_ID;
+}
+
+static mock_camera *camera(int id) {
+	if (pthread_equal(pthread_self(), bus_thread)) {
+		atomic_fetch_add(&wrong_bus_thread, 1);
+	}
+	for (int i = 0; i < CAMERAS; i++) {
+		if (cameras[i].info.cameraID == id) {
+			return cameras + i;
+		}
+	}
+	return NULL;
+}
+
+typedef struct { mock_camera *camera; } sdk_call;
+
+static void sdk_leave(sdk_call *call) {
+	if (call->camera) {
+		atomic_fetch_sub(&sdk_active[call->camera - cameras], 1);
+	}
+}
+
+static sdk_call sdk_enter(int id, bool requires_open) {
+	mock_camera *c = camera(id);
+	if (c) {
+		if (atomic_fetch_add(&sdk_active[c - cameras], 1)) {
+			atomic_fetch_add(&concurrent_sdk, 1);
+		}
+		if (requires_open && !atomic_load(&c->opened)) {
+			atomic_fetch_add(&sdk_after_close, 1);
+		}
+	}
+	return (sdk_call){ c };
+}
+
+POAErrors POAOpenCamera(int id) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, false);
+	mock_camera *c = camera(id);
+	if (!c || !atomic_load(&c->visible)) {
+		return POA_ERROR_INVALID_ID;
+	}
+	if (atomic_load(&c->open_error)) {
+		return atomic_load(&c->open_error);
+	}
+	atomic_store(&c->opened, true);
+	atomic_fetch_add(&c->opens, 1);
+	return POA_OK;
+}
+
+POAErrors POAInitCamera(int id) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	return atomic_load(&camera(id)->init_error);
+}
+
+POAErrors POACloseCamera(int id) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	mock_camera *c = camera(id);
+	if (!atomic_exchange(&c->opened, false)) {
+		atomic_fetch_add(&sdk_after_close, 1);
+	}
+	atomic_fetch_add(&c->closes, 1);
+	return POA_OK;
+}
+
+POAErrors POAGetConfigsCount(int id, int *count) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	enter_gate(&initialization_gate);
+	*count = camera(id)->info.isHasCooler ? ARRAY_SIZE(controls) : 6;
+	return atomic_load(&fail_configs) ? POA_ERROR_OPERATION_FAILED : POA_OK;
+}
+
+POAErrors POAGetConfigAttributes(int id, int index, POAConfigAttributes *a) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	if (atomic_load(&camera(id)->attribute_fail) == index + 1) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	memset(a, 0, sizeof(*a));
+	a->configID = controls[index];
+	a->isWritable = a->configID != POA_EGAIN && a->configID != POA_TEMPERATURE && a->configID != POA_COOLER_POWER;
+	a->isReadable = true;
+	a->valueType = a->configID == POA_EXP || a->configID == POA_EGAIN || a->configID == POA_TEMPERATURE ? VAL_FLOAT : a->configID == POA_HARDWARE_BIN || a->configID == POA_COOLER ? VAL_BOOL : VAL_INT;
+	snprintf(a->szConfName, sizeof(a->szConfName), "CONFIG_%d", a->configID);
+	if (atomic_load(&bounded_sdk_strings) && a->configID == POA_USB_BANDWIDTH_LIMIT) {
+		memset(a->szConfName, 'C', sizeof(a->szConfName));
+	}
+	if (a->valueType == VAL_FLOAT) {
+		a->minValue.floatValue = 0.00001;
+		a->maxValue.floatValue = 7200;
+		a->defaultValue.floatValue = 0.01;
+	} else {
+		a->minValue.intValue = a->configID == POA_TARGET_TEMP ? -40 : 0;
+		a->maxValue.intValue = 100;
+		a->defaultValue.intValue = 0;
+	}
+	return POA_OK;
+}
+
+POAErrors POAGetConfig(int id, POAConfig config, POAConfigValue *value, POABool *automatic) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	atomic_fetch_add(&camera(id)->reads[config], 1);
+	if (atomic_load(&camera(id)->config_error) || atomic_load(&camera(id)->read_config_fail) == config + 1) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	*value = camera(id)->config[config];
+	*automatic = POA_FALSE;
+	return atomic_load(&camera(id)->config_error);
+}
+
+POAErrors POASetConfig(int id, POAConfig config, POAConfigValue value, POABool automatic) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	struct timespec entered;
+	clock_gettime(CLOCK_MONOTONIC, &entered);
+	mock_camera *c = camera(id);
+	if (config >= POA_GUIDE_NORTH && config <= POA_GUIDE_WEST) {
+		pthread_mutex_lock(&pulse_mutex);
+		pulse_measurement *m = &pulse_measurements[c - cameras][config - POA_GUIDE_NORTH];
+		if (value.boolValue == POA_TRUE && !m->active) {
+			m->started = entered;
+			m->active = true;
+		} else if (value.boolValue == POA_FALSE && m->active) {
+			m->duration_ms = 1000.0 * (entered.tv_sec - m->started.tv_sec) + (entered.tv_nsec - m->started.tv_nsec) / 1000000.0;
+			m->completed++;
+			m->active = false;
+		}
+		pthread_mutex_unlock(&pulse_mutex);
+	}
+	if (!atomic_load(&c->opened)) {
+		atomic_fetch_add(&sdk_after_close, 1);
+		return POA_ERROR_NOT_OPENED;
+	}
+	if (atomic_load(&c->config_error) || atomic_load(&c->write_config_fail) == config + 1) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	c->config[config] = value;
+	atomic_fetch_add(&c->writes[config], 1);
+	if (config >= POA_GUIDE_NORTH && config <= POA_GUIDE_WEST) {
+		atomic_fetch_add(&pulse_writes, 1);
+	}
+	return POA_OK;
+}
+
+POAErrors POAGetImageBin(int id, int *bin) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	if (atomic_load(&camera(id)->geometry_fail) == 1) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	*bin = atomic_load(&camera(id)->bin);
+	return POA_OK;
+}
+
+POAErrors POASetImageBin(int id, int bin) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	if (atomic_load(&camera(id)->geometry_fail) == 2) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	atomic_store(&camera(id)->bin, bin);
+	return POA_OK;
+}
+
+POAErrors POAGetImageSize(int id, int *width, int *height) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	if (atomic_load(&camera(id)->geometry_fail) == 3) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	*width = atomic_load(&camera(id)->width);
+	*height = atomic_load(&camera(id)->height);
+	return POA_OK;
+}
+
+POAErrors POASetImageSize(int id, int width, int height) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	if (atomic_load(&camera(id)->geometry_fail) == 4) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	atomic_store(&camera(id)->width, width);
+	atomic_store(&camera(id)->height, height);
+	return POA_OK;
+}
+
+POAErrors POAGetImageStartPos(int id, int *left, int *top) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	if (atomic_load(&camera(id)->geometry_fail) == 5) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	*left = atomic_load(&camera(id)->left);
+	*top = atomic_load(&camera(id)->top);
+	return POA_OK;
+}
+
+POAErrors POASetImageStartPos(int id, int left, int top) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	if (atomic_load(&camera(id)->geometry_fail) == 6) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	mock_camera *c = camera(id);
+	if (left < 0 || top < 0 || left + atomic_load(&c->width) > c->info.maxWidth / atomic_load(&c->bin) || top + atomic_load(&c->height) > c->info.maxHeight / atomic_load(&c->bin)) {
+		return POA_ERROR_OUT_OF_LIMIT;
+	}
+	atomic_store(&camera(id)->left, left);
+	atomic_store(&camera(id)->top, top);
+	return POA_OK;
+}
+
+POAErrors POASetImageFormat(int id, POAImgFormat format) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	if (atomic_load(&camera(id)->format_error)) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	atomic_store(&camera(id)->format, format);
+	return POA_OK;
+}
+
+POAErrors POAStartExposure(int id, POABool single) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	enter_gate(&setup_gate);
+	atomic_fetch_add(&camera(id)->starts, 1);
+	atomic_store(&camera(id)->exposing, true);
+	return atomic_load(&camera(id)->start_error);
+}
+
+POAErrors POAStopExposure(int id) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	atomic_fetch_add(&camera(id)->stops, 1);
+	atomic_store(&camera(id)->exposing, false);
+	return atomic_load(&camera(id)->stop_error);
+}
+
+POAErrors POAGetCameraState(int id, POACameraState *state) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	*state = atomic_load(&camera(id)->exposing) ? STATE_EXPOSING : STATE_OPENED;
+	return atomic_load(&camera(id)->state_error);
+}
+
+POAErrors POAImageReady(int id, POABool *ready) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	*ready = atomic_load(&camera(id)->exposing);
+	return atomic_load(&camera(id)->ready_error);
+}
+
+POAErrors POAGetImageData(int id, unsigned char *buffer, long size, int timeout) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	enter_gate(&read_gate);
+	mock_camera *c = camera(id);
+	if (atomic_load(&c->read_error)) {
+		return atomic_load(&c->read_error);
+	}
+	if (atomic_load(&short_waits) > 0) {
+		atomic_fetch_sub(&short_waits, 1);
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	int format = atomic_load(&c->format);
+	long bytes = atomic_load(&c->width) * atomic_load(&c->height) * (format == POA_RAW16 ? 2 : format == POA_RGB24 ? 3 : 1);
+	if (size < bytes) {
+		return POA_ERROR_SIZE_LESS;
+	}
+	for (int y = 0; y < atomic_load(&c->height); y++) {
+		for (int x = 0; x < atomic_load(&c->width); x++) {
+			int source = (y + atomic_load(&c->top)) * atomic_load(&c->bin) * IMAGER_WIDTH + (x + atomic_load(&c->left)) * atomic_load(&c->bin);
+			int destination = y * atomic_load(&c->width) + x;
+			if (format == POA_RGB24) {
+				// Player One driver receives SDK BGR byte order and publishes RGB.
+				buffer[3 * destination] = indigo_ccd_simulator_rgb_image[3 * source + 2];
+				buffer[3 * destination + 1] = indigo_ccd_simulator_rgb_image[3 * source + 1];
+				buffer[3 * destination + 2] = indigo_ccd_simulator_rgb_image[3 * source];
+			} else if (format == POA_RAW16) {
+				memcpy(buffer + 2 * destination, indigo_ccd_simulator_raw_image + source, 2);
+			} else {
+				buffer[destination] = indigo_ccd_simulator_raw_image[source] >> 8;
+			}
+		}
+	}
+	atomic_fetch_add(&c->frames, 1);
+	return POA_OK;
+}
+
+POAErrors POAGetSensorModeCount(int id, int *count) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	if (atomic_load(&camera(id)->sensor_fail) == 1) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	*count = atomic_load(&camera(id)->mode_count);
+	return POA_OK;
+}
+
+POAErrors POAGetSensorMode(int id, int *mode) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	if (atomic_load(&camera(id)->sensor_fail) == 2) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	*mode = atomic_load(&camera(id)->mode);
+	return POA_OK;
+}
+
+POAErrors POASetSensorMode(int id, int mode) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	if (atomic_load(&camera(id)->mode_error)) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	atomic_store(&camera(id)->mode, mode);
+	return POA_OK;
+}
+
+POAErrors POAGetSensorModeInfo(int id, int mode, POASensorModeInfo *info) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	if (atomic_load(&camera(id)->sensor_fail) == 3) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	memset(info, 0, sizeof(*info));
+	snprintf(info->name, sizeof(info->name), "MODE_%d", mode);
+	snprintf(info->desc, sizeof(info->desc), "Sensor mode %d", mode);
+	if (atomic_load(&bounded_sdk_strings)) {
+		memset(info->name, 'A' + mode, sizeof(info->name));
+		memset(info->desc, 'D', sizeof(info->desc));
+	}
+	return POA_OK;
+}
+
+POAErrors POASetUserCustomID(int id, const char *value, int length) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	if (atomic_load(&camera(id)->suffix_error)) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	memset(camera(id)->info.userCustomID, 0, 16);
+	memcpy(camera(id)->info.userCustomID, value, length < 16 ? length : 16);
+	return POA_OK;
+}
+
+POAErrors POAGetGainsAndOffsets(int id, int *dr, int *hcg, int *unity, int *rn, int *odr, int *ohcg, int *ounity, int *orn) {
+	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	if (atomic_load(&camera(id)->preset_fail)) {
+		return POA_ERROR_OPERATION_FAILED;
+	}
+	*dr = 0;
+	*hcg = 50;
+	*unity = 25;
+	*rn = 75;
+	*odr = 5;
+	*ohcg = 10;
+	*ounity = 15;
+	*orn = 20;
+	return POA_OK;
+}
+
+const char *POAGetSDKVersion(void) {
+	return "fake 3.10.1";
+}
+
+int POAGetAPIVersion(void) {
+	return 20260430;
+}
+
+static void remember_request(const char *device, const char *property) {
+	int index = device_index(device);
+	pthread_mutex_lock(&observation_mutex);
+	int slot = index < 0 ? -1 : property_index(index, property, false);
+	if (slot >= 0) {
+		request_revisions[index][slot] = observed[index].updates[slot];
+	}
+	pthread_mutex_unlock(&observation_mutex);
+}
+
+static indigo_result request_number(indigo_client *client, const char *device, const char *property, int count, const char **items, double *values) {
+	remember_request(device, property);
+	return indigo_change_number_property(client, device, property, count, items, values);
+}
+
+static indigo_result request_number_1(indigo_client *client, const char *device, const char *property, const char *item, double value) {
+	remember_request(device, property);
+	return indigo_change_number_property_1(client, device, property, item, value);
+}
+
+static indigo_result request_switch(indigo_client *client, const char *device, const char *property, const char *item, bool value) {
+	remember_request(device, property);
+	return indigo_change_switch_property_1(client, device, property, item, value);
+}
+
+static indigo_result request_text(indigo_client *client, const char *device, const char *property, const char *item, const char *value) {
+	remember_request(device, property);
+	return indigo_change_text_property_1(client, device, property, item, value);
+}
+
+#define indigo_change_number_property request_number
+#define indigo_change_number_property_1 request_number_1
+#define indigo_change_switch_property_1 request_switch
+#define indigo_change_text_property_1 request_text
+
+static bool set_switch(int index, const char *property, const char *item, bool value) {
+	return indigo_change_switch_property_1(&test_client, observed[index].name, property, item, value) == INDIGO_OK;
+}
+
+static bool connect_device(int index, bool connect) {
+	return set_switch(index, "CONNECTION", connect ? "CONNECTED" : "DISCONNECTED", true) && wait_state(index, "CONNECTION", INDIGO_OK_STATE);
+}
+
+static void properties_and_exposure(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	const char *names[] = { PIXEL_PROPERTY, ADVANCED_PROPERTY, PRESETS_PROPERTY, SUFFIX_PROPERTY, SENSOR_PROPERTY, "CCD_GAIN", "CCD_OFFSET", "CCD_EGAIN", "CCD_STREAMING", "CCD_STREAMING_SETTINGS" };
+	for (int i = 0; i < ARRAY_SIZE(names); i++) {
+		ASSERT_EQ_INT(INDIGO_OK_STATE, state(0, names[i]));
+	}
+	indigo_property *p = snapshot(0, PIXEL_PROPERTY);
+	ASSERT_EQ_INT(4, p->count);
+	ASSERT_STREQ("RAW 8", p->items[0].name);
+	indigo_release_property(p);
+	p = snapshot(0, "CCD_MODE");
+	ASSERT_EQ_INT(8, p->count);
+	indigo_release_property(p);
+	ASSERT_TRUE(set_switch(0, "CCD_IMAGE_FORMAT", "RAW", true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_EXPOSURE", "EXPOSURE", 0.01));
+	ASSERT_TRUE(wait_count(&blobs, 1));
+	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&bad_blob));
+	ASSERT_TRUE(set_switch(0, CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state(0, CONFIG_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(connect_device(0, false));
+	ASSERT_EQ_INT(-1, state(0, PIXEL_PROPERTY));
+}
+
+static void guider_and_sharing(void) {
+	ASSERT_TRUE(connect_device(1, true));
+	ASSERT_TRUE(connect_device(0, true));
+	int opens = atomic_load(&cameras[0].opens);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[1].name, "GUIDER_GUIDE_RA", "EAST", 20));
+	ASSERT_TRUE(wait_count(&pulse_writes, 5));
+	ASSERT_TRUE(wait_state(1, "GUIDER_GUIDE_RA", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(POA_FALSE, cameras[0].config[POA_GUIDE_EAST].boolValue);
+	ASSERT_TRUE(connect_device(0, false));
+	ASSERT_TRUE(atomic_load(&cameras[0].opened));
+	ASSERT_TRUE(connect_device(1, false));
+	ASSERT_FALSE(atomic_load(&cameras[0].opened));
+	ASSERT_EQ_INT(opens, atomic_load(&cameras[0].opens));
+}
+
+static void finite_stream(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(set_switch(0, "CCD_IMAGE_FORMAT", "RAW", true));
+	const char *items[] = { "EXPOSURE", "COUNT" };
+	double values[] = { 0.01, 3 };
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&test_client, observed[0].name, "CCD_STREAMING", 2, items, values));
+	ASSERT_TRUE(wait_count(&blobs, 3));
+	ASSERT_TRUE(wait_state(0, "CCD_STREAMING", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(3, atomic_load(&cameras[0].frames));
+}
+
+static void short_readout_retry(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	atomic_store(&short_waits, 3);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_EXPOSURE", "EXPOSURE", 0.01));
+	ASSERT_TRUE(wait_count(&blobs, 1));
+	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&short_waits));
+}
+
+static void abort_long_exposure(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(connect_device(1, true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_EXPOSURE", "EXPOSURE", 30));
+	ASSERT_TRUE(wait_count(&cameras[0].starts, 1));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[1].name, "GUIDER_GUIDE_RA", "EAST", 20));
+	ASSERT_TRUE(wait_count(&pulse_writes, 5));
+	ASSERT_TRUE(wait_state(1, "GUIDER_GUIDE_RA", INDIGO_OK_STATE));
+	ASSERT_TRUE(set_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true));
+	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(wait_state(0, "CCD_ABORT_EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&blobs));
+	ASSERT_FALSE(atomic_load(&cameras[0].exposing));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_EXPOSURE", "EXPOSURE", 0.01));
+	ASSERT_TRUE(wait_count(&blobs, 1));
+}
+
+static void failed_readout_recovers(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	atomic_store(&cameras[0].read_error, POA_ERROR_EXPOSURE_FAILED);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_EXPOSURE", "EXPOSURE", 0.01));
+	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&blobs));
+	atomic_store(&cameras[0].read_error, 0);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_EXPOSURE", "EXPOSURE", 0.01));
+	ASSERT_TRUE(wait_count(&blobs, 1));
+}
+
+static void connection_rollback(void) {
+	atomic_store(&cameras[0].open_error, POA_ERROR_ACCESS_DENIED);
+	ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
+	ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&lock_count));
+	atomic_store(&cameras[0].open_error, 0);
+	atomic_store(&cameras[0].init_error, POA_ERROR_OPERATION_FAILED);
+	ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
+	ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_ALERT_STATE));
+	ASSERT_FALSE(atomic_load(&cameras[0].opened));
+	ASSERT_EQ_INT(atomic_load(&cameras[0].opens), atomic_load(&cameras[0].closes));
+	atomic_store(&cameras[0].init_error, 0);
+	atomic_store(&fail_configs, 1);
+	ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
+	ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_ALERT_STATE));
+	ASSERT_FALSE(atomic_load(&cameras[0].opened));
+	atomic_store(&fail_configs, 0);
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(connect_device(1, true));
+	ASSERT_TRUE(connect_device(1, false));
+	ASSERT_TRUE(atomic_load(&cameras[0].opened));
+	ASSERT_TRUE(connect_device(0, false));
+}
+
+static void optional_guider_capacity_and_identity(void) {
+	cameras[1].info.cameraID = 101;
+	atomic_store(&cameras[1].visible, true);
+	usb_event(2, true); // USB order deliberately differs from SDK order.
+	ASSERT_TRUE(wait_count(&attached, 4));
+	cameras[2].info.cameraID = 201;
+	cameras[2].info.isHasST4Port = false;
+	cameras[2].info.isColorCamera = false;
+	cameras[2].info.imgFormats[0] = POA_RAW8;
+	cameras[2].info.imgFormats[1] = POA_RAW16;
+	cameras[2].info.imgFormats[2] = POA_END;
+	atomic_store(&cameras[2].visible, true);
+	usb_event(1, true);
+	ASSERT_TRUE(wait_count(&attached, 5));
+	ASSERT_TRUE(connect_device(4, true));
+	ASSERT_EQ_INT(-1, state(5, "CONNECTION"));
+	indigo_property *p = snapshot(4, PIXEL_PROPERTY);
+	ASSERT_EQ_INT(2, p->count);
+	indigo_release_property(p);
+	ASSERT_TRUE(connect_device(4, false));
+	atomic_store(&cameras[1].visible, false);
+	usb_event(1, false); // This event pointer was associated with camera 2; remove SDK-absent camera 1.
+	ASSERT_TRUE(wait_count(&attached, 3));
+	ASSERT_EQ_INT(-1, state(2, "CONNECTION"));
+	ASSERT_TRUE(connect_device(4, true));
+	atomic_store(&cameras[3].visible, true);
+	usb_event(3, true);
+	ASSERT_TRUE(wait_count(&attached, 5));
+	ASSERT_TRUE(connect_device(6, true));
+	ASSERT_TRUE(connect_device(7, true));
+	ASSERT_TRUE(connect_device(7, false));
+	ASSERT_TRUE(connect_device(6, false));
+}
+
+static void failed_attach_is_retryable(void) {
+	atomic_store(&cameras[1].visible, true);
+	atomic_store(&fail_attach, 1);
+	usb_event(1, true);
+	// Queue a second event after the failed one; SDK identity must remain available.
+	usb_event(1, true);
+	ASSERT_TRUE(wait_count(&attached, 4));
+	ASSERT_TRUE(connect_device(2, true));
+	ASSERT_TRUE(connect_device(3, true));
+}
+
+static void property_busy_guard(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_EXPOSURE", "EXPOSURE", 30));
+	ASSERT_TRUE(wait_count(&cameras[0].starts, 1));
+	ASSERT_TRUE(set_switch(0, PIXEL_PROPERTY, "RAW 16", true));
+	ASSERT_TRUE(wait_state(0, PIXEL_PROPERTY, INDIGO_ALERT_STATE));
+	indigo_property *p = snapshot(0, PIXEL_PROPERTY);
+	ASSERT_TRUE(p->items[0].sw.value);
+	indigo_release_property(p);
+	ASSERT_TRUE(set_switch(0, SENSOR_PROPERTY, "MODE_1", true));
+	ASSERT_TRUE(wait_state(0, SENSOR_PROPERTY, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&cameras[0].mode));
+	ASSERT_TRUE(set_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true));
+	ASSERT_TRUE(wait_state(0, "CCD_ABORT_EXPOSURE", INDIGO_OK_STATE));
+}
+
+static void configuration_and_suffix(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(set_switch(0, PIXEL_PROPERTY, "RAW 16", true));
+	ASSERT_TRUE(wait_state(0, PIXEL_PROPERTY, INDIGO_OK_STATE));
+	ASSERT_TRUE(set_switch(0, SENSOR_PROPERTY, "MODE_1", true));
+	ASSERT_TRUE(wait_state(0, SENSOR_PROPERTY, INDIGO_OK_STATE));
+	ASSERT_TRUE(set_switch(0, "CONFIG", "SAVE", true));
+	ASSERT_TRUE(wait_state(0, "CONFIG", INDIGO_OK_STATE));
+	ASSERT_TRUE(set_switch(0, PIXEL_PROPERTY, "RAW 8", true));
+	ASSERT_TRUE(wait_state(0, PIXEL_PROPERTY, INDIGO_OK_STATE));
+	ASSERT_TRUE(set_switch(0, "CONFIG", "LOAD", true));
+	ASSERT_TRUE(wait_state(0, PIXEL_PROPERTY, INDIGO_OK_STATE));
+	indigo_property *p = snapshot(0, PIXEL_PROPERTY);
+	ASSERT_TRUE(p->items[2].sw.value);
+	indigo_release_property(p);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&test_client, observed[0].name, SUFFIX_PROPERTY, "SUFFIX", "1234567890123456"));
+	ASSERT_TRUE(wait_state(0, SUFFIX_PROPERTY, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(0, memcmp(cameras[0].info.userCustomID, "1234567890123456", 16));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&test_client, observed[0].name, SUFFIX_PROPERTY, "SUFFIX", "12345678901234567"));
+	ASSERT_TRUE(wait_state(0, SUFFIX_PROPERTY, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(connect_device(0, false));
+	ASSERT_TRUE(connect_device(0, true));
+	p = snapshot(0, ADVANCED_PROPERTY);
+	ASSERT_EQ_INT(2, p->count);
+	indigo_release_property(p);
+}
+
+static void pulse_replacement_and_disconnect(void) {
+	ASSERT_TRUE(connect_device(1, true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[1].name, "GUIDER_GUIDE_RA", "EAST", 30000));
+	ASSERT_TRUE(wait_count(&pulse_writes, 3));
+	ASSERT_TRUE(wait_state(1, "GUIDER_GUIDE_RA", INDIGO_BUSY_STATE));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&test_client, observed[1].name, "GUIDER_GUIDE_RA", 2, (const char *[]){ "EAST", "WEST" }, (double []){ 0, 20 }));
+	ASSERT_TRUE(wait_count(&pulse_writes, 8));
+	ASSERT_TRUE(wait_state(1, "GUIDER_GUIDE_RA", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(POA_FALSE, cameras[0].config[POA_GUIDE_EAST].boolValue);
+	ASSERT_EQ_INT(POA_FALSE, cameras[0].config[POA_GUIDE_WEST].boolValue);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[1].name, "GUIDER_GUIDE_DEC", "NORTH", 30000));
+	ASSERT_TRUE(wait_count(&pulse_writes, 11));
+	ASSERT_TRUE(wait_state(1, "GUIDER_GUIDE_DEC", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(connect_device(1, false));
+	ASSERT_EQ_INT(POA_FALSE, cameras[0].config[POA_GUIDE_NORTH].boolValue);
+	ASSERT_EQ_INT(POA_FALSE, cameras[0].config[POA_GUIDE_SOUTH].boolValue);
+}
+
+static int compare_duration(const void *a, const void *b) {
+	double first = *(const double *)a, second = *(const double *)b;
+	return (first > second) - (first < second);
+}
+
+static bool measure_pulse(int direction, double requested, double *measured) {
+	const char *items[] = { "NORTH", "SOUTH", "EAST", "WEST" };
+	const char *property = direction < 2 ? "GUIDER_GUIDE_DEC" : "GUIDER_GUIDE_RA";
+	pthread_mutex_lock(&pulse_mutex);
+	unsigned expected = pulse_measurements[0][direction].completed + 1;
+	pthread_mutex_unlock(&pulse_mutex);
+	if (indigo_change_number_property_1(&test_client, observed[1].name, property, items[direction], requested) != INDIGO_OK) {
+		return false;
+	}
+	for (int i = 0; i < 400; i++) {
+		pthread_mutex_lock(&pulse_mutex);
+		pulse_measurement m = pulse_measurements[0][direction];
+		pthread_mutex_unlock(&pulse_mutex);
+		if (m.completed == expected) {
+			*measured = m.duration_ms;
+			return !m.active && wait_state(1, property, INDIGO_OK_STATE);
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timed out waiting for SDK OFF edge: %s %.0f ms\n", items[direction], requested);
+	return false;
+}
+
+static void pulse_duration_at_sdk_entry(void) {
+	ASSERT_TRUE(connect_device(1, true));
+	ASSERT_TRUE(connect_device(0, true));
+	const double durations[] = { 20, 50, 100, 250, 500 };
+	const char *directions[] = { "NORTH", "SOUTH", "EAST", "WEST" };
+	for (int load = 0; load < 2; load++) {
+		if (load) {
+			ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_EXPOSURE", "EXPOSURE", 30));
+			ASSERT_TRUE(wait_count(&cameras[0].starts, 1));
+		}
+		double measured, errors[60], sum = 0, squares = 0;
+		int count = 0;
+		ASSERT_TRUE(measure_pulse(0, 20, &measured));
+		for (int repeat = 0; repeat < 3; repeat++) {
+			for (int direction = 0; direction < 4; direction++) {
+				for (int duration = 0; duration < ARRAY_SIZE(durations); duration++) {
+					ASSERT_TRUE(measure_pulse(direction, durations[duration], &measured));
+					double error = measured - durations[duration];
+					errors[count++] = error;
+					sum += error;
+					squares += error * error;
+					printf("    pulse %s %s requested=%.0f ms measured=%.3f ms error=%+.3f ms (%+.2f%%)\n", load ? "exposure" : "idle", directions[direction], durations[duration], measured, error, 100 * error / durations[duration]);
+				}
+			}
+		}
+		qsort(errors, count, sizeof(*errors), compare_duration);
+		double mean = sum / count;
+		printf("    SDK pulse error %s: n=%d min=%+.3f mean=%+.3f median=%+.3f p95=%+.3f p99=%+.3f max=%+.3f stddev=%.3f max_abs=%.3f ms (one warm-up excluded)\n", load ? "exposure" : "idle", count, errors[0], mean, (errors[count / 2 - 1] + errors[count / 2]) / 2, errors[(int)ceil(0.95 * count) - 1], errors[(int)ceil(0.99 * count) - 1], errors[count - 1], sqrt(fmax(0, squares / count - mean * mean)), fmax(fabs(errors[0]), fabs(errors[count - 1])));
+		if (load) {
+			ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(0, "CCD_EXPOSURE"));
+			ASSERT_TRUE(set_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true));
+			ASSERT_TRUE(wait_state(0, "CCD_ABORT_EXPOSURE", INDIGO_OK_STATE));
+		}
+	}
+}
+
+static bool change_number(int index, const char *property, const char *item, double value, indigo_property_state expected) {
+	return indigo_change_number_property_1(&test_client, observed[index].name, property, item, value) == INDIGO_OK && wait_state(index, property, expected);
+}
+
+static bool change_switch(int index, const char *property, const char *item, indigo_property_state expected) {
+	return set_switch(index, property, item, true) && wait_state(index, property, expected);
+}
+
+static double number_value(int index, const char *property, const char *item) {
+	indigo_property *p = snapshot(index, property);
+	double result = NAN;
+	if (p) {
+		for (int i = 0; i < p->count; i++) {
+			if (!strcmp(p->items[i].name, item)) {
+				result = p->items[i].number.value;
+			}
+		}
+	}
+	indigo_release_property(p);
+	return result;
+}
+
+static void lifecycle_metadata_and_repetition(void) {
+	indigo_driver_info info = { 0 };
+	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_playerone(INDIGO_DRIVER_INFO, &info));
+	ASSERT_STREQ("indigo_ccd_playerone", info.name);
+	for (int cycle = 0; cycle < 3; cycle++) {
+		int first = cycle % 2;
+		ASSERT_TRUE(connect_device(first, true));
+		ASSERT_EQ_INT(INDIGO_BUSY, indigo_ccd_playerone(INDIGO_DRIVER_SHUTDOWN, NULL));
+		ASSERT_TRUE(connect_device(1 - first, true));
+		ASSERT_EQ_INT(cycle + 1, atomic_load(&cameras[0].opens));
+		ASSERT_TRUE(connect_device(first, false));
+		ASSERT_TRUE(atomic_load(&cameras[0].opened));
+		ASSERT_TRUE(connect_device(1 - first, false));
+		ASSERT_EQ_INT(cycle + 1, atomic_load(&cameras[0].closes));
+	}
+}
+
+static void published_property_contract(void) {
+	ASSERT_EQ_INT(-1, state(0, PIXEL_PROPERTY));
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(connect_device(1, true));
+	const char *required[] = { "CONNECTION", "INFO", "CONFIG", "CCD_INFO", "CCD_FRAME", "CCD_BIN", "CCD_MODE", "CCD_EXPOSURE", "CCD_ABORT_EXPOSURE", "CCD_STREAMING", "CCD_IMAGE", "CCD_IMAGE_FORMAT", "CCD_UPLOAD_MODE", "CCD_LOCAL_MODE", "CCD_FRAME_TYPE", "CCD_GAIN", "CCD_OFFSET", "CCD_EGAIN", PIXEL_PROPERTY, ADVANCED_PROPERTY, PRESETS_PROPERTY, SUFFIX_PROPERTY, SENSOR_PROPERTY };
+	for (int i = 0; i < ARRAY_SIZE(required); i++) {
+		indigo_property *p = snapshot(0, required[i]);
+		if (!p) {
+			fprintf(stderr, "Missing property %s\n", required[i]);
+		}
+		ASSERT_TRUE(p != NULL);
+		ASSERT_TRUE(p->count > 0);
+		ASSERT_FALSE(p->hidden);
+		indigo_release_property(p);
+	}
+	ASSERT_EQ_INT(-1, state(0, "POA_PIXEL_FORMAT"));
+	ASSERT_EQ_INT(-1, state(0, "CCD_COOLER"));
+	ASSERT_EQ_INT(-1, state(0, "CCD_TEMPERATURE"));
+	ASSERT_EQ_INT(640, number_value(0, "CCD_INFO", "WIDTH"));
+	ASSERT_EQ_INT(480, number_value(0, "CCD_INFO", "HEIGHT"));
+	ASSERT_TRUE(isfinite(number_value(1, "GUIDER_GUIDE_RA", "EAST")));
+	ASSERT_TRUE(isfinite(number_value(1, "GUIDER_GUIDE_DEC", "NORTH")));
+}
+
+static void image_formats_roi_and_bins(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(change_switch(0, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
+	const char *formats[] = { "RAW 8", "RAW 16", "RGB 24", "MONO 8" };
+	for (int bin = 1; bin <= 2; bin++) {
+		ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&test_client, observed[0].name, "CCD_BIN", 2, (const char *[]){ "HORIZONTAL", "VERTICAL" }, (double []){ bin, bin }));
+		ASSERT_TRUE(wait_state(0, "CCD_BIN", INDIGO_OK_STATE));
+		ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&test_client, observed[0].name, "CCD_FRAME", 4, (const char *[]){ "LEFT", "TOP", "WIDTH", "HEIGHT" }, (double []){ 16, 24, 256, 256 }));
+		ASSERT_TRUE(wait_state(0, "CCD_FRAME", INDIGO_OK_STATE));
+		for (int i = 0; i < ARRAY_SIZE(formats); i++) {
+			ASSERT_TRUE(change_switch(0, PIXEL_PROPERTY, formats[i], INDIGO_OK_STATE));
+			int before = atomic_load(&blobs);
+			ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+			ASSERT_EQ_INT(before + 1, atomic_load(&blobs));
+			ASSERT_EQ_INT(256 / bin, atomic_load(&last_width));
+			ASSERT_EQ_INT(256 / bin, atomic_load(&last_height));
+			ASSERT_EQ_INT(16 / bin, atomic_load(&cameras[0].left));
+			ASSERT_EQ_INT(24 / bin, atomic_load(&cameras[0].top));
+		}
+	}
+	ASSERT_EQ_INT(8, atomic_load(&raw_blobs));
+	ASSERT_EQ_INT(0, atomic_load(&bad_blob));
+}
+
+static void frame_types_and_exposure_units(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	const char *types[] = { "LIGHT", "BIAS", "DARK", "FLAT", "DARKFLAT" };
+	for (int i = 0; i < ARRAY_SIZE(types); i++) {
+		ASSERT_TRUE(change_switch(0, "CCD_FRAME_TYPE", types[i], INDIGO_OK_STATE));
+		ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.02, INDIGO_OK_STATE));
+		double expected = i == 1 ? 0.00001 : 0.02;
+		ASSERT_TRUE(fabs(cameras[0].config[POA_EXP].floatValue - expected) < 0.000001);
+	}
+	ASSERT_TRUE(change_switch(0, "CCD_FRAME_TYPE", "LIGHT", INDIGO_OK_STATE));
+}
+
+static void controls_and_error_recovery(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(change_number(0, "CCD_GAIN", "GAIN", 25, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(25, cameras[0].config[POA_GAIN].intValue);
+	ASSERT_TRUE(change_number(0, "CCD_OFFSET", "OFFSET", 15, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(15, cameras[0].config[POA_OFFSET].intValue);
+	const char *presets[] = { "POA_HIGHEST_DR", "POA_UNITY_GAIN", "POA_LOWEST_RN", "POA_GAIN_HCG" };
+	const int gains[] = { 0, 25, 75, 50 };
+	for (int i = 0; i < ARRAY_SIZE(presets); i++) {
+		ASSERT_TRUE(change_switch(0, PRESETS_PROPERTY, presets[i], INDIGO_OK_STATE));
+		ASSERT_EQ_INT(gains[i], cameras[0].config[POA_GAIN].intValue);
+	}
+	char item[INDIGO_NAME_SIZE];
+	snprintf(item, sizeof(item), "CONFIG_%d", POA_USB_BANDWIDTH_LIMIT);
+	ASSERT_TRUE(change_number(0, ADVANCED_PROPERTY, item, 55, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(55, cameras[0].config[POA_USB_BANDWIDTH_LIMIT].intValue);
+	snprintf(item, sizeof(item), "CONFIG_%d", POA_HARDWARE_BIN);
+	ASSERT_TRUE(change_number(0, ADVANCED_PROPERTY, item, 1, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(POA_TRUE, cameras[0].config[POA_HARDWARE_BIN].boolValue);
+	atomic_store(&cameras[0].config_error, POA_ERROR_OPERATION_FAILED);
+	ASSERT_TRUE(change_number(0, "CCD_GAIN", "GAIN", 30, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(change_number(0, "CCD_OFFSET", "OFFSET", 20, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(change_number(0, ADVANCED_PROPERTY, item, 0, INDIGO_ALERT_STATE));
+	atomic_store(&cameras[0].config_error, 0);
+	ASSERT_TRUE(change_number(0, "CCD_GAIN", "GAIN", 30, INDIGO_OK_STATE));
+	ASSERT_TRUE(change_number(0, "CCD_OFFSET", "OFFSET", 20, INDIGO_OK_STATE));
+	atomic_store(&cameras[0].mode_error, 1);
+	ASSERT_TRUE(change_switch(0, SENSOR_PROPERTY, "MODE_1", INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&cameras[0].mode));
+	atomic_store(&cameras[0].mode_error, 0);
+	ASSERT_TRUE(change_switch(0, SENSOR_PROPERTY, "MODE_1", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(1, atomic_load(&cameras[0].mode));
+}
+
+static void exposure_setup_errors(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	atomic_int *errors[] = { &cameras[0].start_error, &cameras[0].format_error, &cameras[0].stop_error, &cameras[0].config_error };
+	for (int i = 0; i < ARRAY_SIZE(errors); i++) {
+		int before = atomic_load(&blobs);
+		atomic_store(errors[i], POA_ERROR_OPERATION_FAILED);
+		ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_ALERT_STATE));
+		ASSERT_EQ_INT(before, atomic_load(&blobs));
+		atomic_store(errors[i], 0);
+		ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+		ASSERT_EQ_INT(before + 1, atomic_load(&blobs));
+	}
+}
+
+static void suffix_boundaries_and_failure(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	const char *values[] = { "", "123456789012345", "1234567890123456", "" };
+	for (int i = 0; i < ARRAY_SIZE(values); i++) {
+		ASSERT_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&test_client, observed[0].name, SUFFIX_PROPERTY, "SUFFIX", values[i]));
+		ASSERT_TRUE(wait_state(0, SUFFIX_PROPERTY, INDIGO_OK_STATE));
+		ASSERT_EQ_INT(0, memcmp(cameras[0].info.userCustomID, values[i], strlen(values[i])));
+	}
+	atomic_store(&cameras[0].suffix_error, 1);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&test_client, observed[0].name, SUFFIX_PROPERTY, "SUFFIX", "fail"));
+	ASSERT_TRUE(wait_state(0, SUFFIX_PROPERTY, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(0, cameras[0].info.userCustomID[0]);
+	atomic_store(&cameras[0].suffix_error, 0);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&test_client, observed[0].name, SUFFIX_PROPERTY, "SUFFIX", "restored"));
+	ASSERT_TRUE(wait_state(0, SUFFIX_PROPERTY, INDIGO_OK_STATE));
+}
+
+static void simultaneous_axes_and_zero(void) {
+	ASSERT_TRUE(connect_device(1, true));
+	ASSERT_TRUE(change_number(1, "GUIDER_GUIDE_DEC", "NORTH", 2000, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(change_number(1, "GUIDER_GUIDE_RA", "EAST", 20, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_state(1, "GUIDER_GUIDE_RA", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(POA_TRUE, cameras[0].config[POA_GUIDE_NORTH].boolValue);
+	ASSERT_EQ_INT(POA_FALSE, cameras[0].config[POA_GUIDE_EAST].boolValue);
+	ASSERT_TRUE(change_number(1, "GUIDER_GUIDE_DEC", "NORTH", 0, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(POA_FALSE, cameras[0].config[POA_GUIDE_NORTH].boolValue);
+	atomic_store(&cameras[0].config_error, POA_ERROR_OPERATION_FAILED);
+	ASSERT_TRUE(change_number(1, "GUIDER_GUIDE_RA", "WEST", 20, INDIGO_ALERT_STATE));
+	atomic_store(&cameras[0].config_error, 0);
+	ASSERT_TRUE(change_number(1, "GUIDER_GUIDE_RA", "WEST", 20, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_state(1, "GUIDER_GUIDE_RA", INDIGO_OK_STATE));
+}
+
+static void registration_and_global_lock_failures(void) {
+	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_playerone(INDIGO_DRIVER_SHUTDOWN, NULL));
+	atomic_store(&fail_register, 1);
+	ASSERT_EQ_INT(INDIGO_FAILED, indigo_ccd_playerone(INDIGO_DRIVER_INIT, NULL));
+	ASSERT_EQ_INT(0, atomic_load(&attached));
+	atomic_store(&fail_register, 0);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_playerone(INDIGO_DRIVER_INIT, NULL));
+	ASSERT_TRUE(wait_count(&attached, 2));
+	atomic_store(&fail_lock, 1);
+	ASSERT_TRUE(change_switch(0, "CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&lock_count));
+	atomic_store(&fail_lock, 0);
+	ASSERT_TRUE(connect_device(0, true));
+}
+
+static void stream_errors_and_active_removal(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(connect_device(1, true));
+	atomic_store(&cameras[0].read_error, POA_ERROR_EXPOSURE_FAILED);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&test_client, observed[0].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.01, -1 }));
+	ASSERT_TRUE(wait_state(0, "CCD_STREAMING", INDIGO_ALERT_STATE));
+	atomic_store(&cameras[0].read_error, 0);
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&test_client, observed[0].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 1, -1 }));
+	ASSERT_TRUE(wait_state(0, "CCD_STREAMING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(change_number(1, "GUIDER_GUIDE_RA", "EAST", 30000, INDIGO_BUSY_STATE));
+	atomic_store(&cameras[0].visible, false);
+	usb_event(0, false);
+	ASSERT_TRUE(wait_count(&attached, 0));
+	ASSERT_EQ_INT(atomic_load(&cameras[0].opens), atomic_load(&cameras[0].closes));
+	ASSERT_EQ_INT(POA_FALSE, cameras[0].config[POA_GUIDE_EAST].boolValue);
+	atomic_store(&cameras[0].visible, true);
+	usb_event(0, true);
+	ASSERT_TRUE(wait_count(&attached, 2));
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+}
+
+static void pending_frame_abort_orders(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	for (int frame_first = 0; frame_first < 2; frame_first++) {
+		int before = atomic_load(&blobs);
+		if (frame_first) {
+			arm_gate(&read_gate);
+			ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_BUSY_STATE));
+			ASSERT_TRUE(wait_count(&read_gate.entered, 1));
+		} else {
+			ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 1, INDIGO_BUSY_STATE));
+			ASSERT_TRUE(wait_count(&cameras[0].starts, 1));
+			arm_gate(&queue_gate);
+			indigo_execute_handler(logical[0], block_queue);
+			ASSERT_TRUE(wait_count(&queue_gate.entered, 1));
+		}
+		ASSERT_TRUE(set_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true));
+		release_gate(&read_gate);
+		release_gate(&queue_gate);
+		ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", frame_first ? INDIGO_OK_STATE : INDIGO_ALERT_STATE));
+		ASSERT_EQ_INT(before + frame_first, atomic_load(&blobs));
+		// A queue barrier proves abort has run before beginning the next acquisition.
+		int barrier = atomic_load(&barriers) + 1;
+		indigo_execute_handler(logical[0], queue_barrier);
+		ASSERT_TRUE(wait_count(&barriers, barrier));
+		ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+	}
+}
+
+static void temperature_polling_and_disconnect(void) {
+	// Capabilities are established at attach time; replug a cooled profile.
+	atomic_store(&cameras[0].visible, false);
+	usb_event(0, false);
+	ASSERT_TRUE(wait_count(&attached, 0));
+	cameras[0].info.isHasCooler = true;
+	cameras[0].config[POA_TEMPERATURE].floatValue = 12.5;
+	cameras[0].config[POA_COOLER_POWER].intValue = 35;
+	atomic_store(&fast_poll, 1);
+	atomic_store(&cameras[0].visible, true);
+	usb_event(0, true);
+	ASSERT_TRUE(wait_count(&attached, 2));
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(wait_state(0, "CCD_TEMPERATURE", INDIGO_OK_STATE));
+	ASSERT_TRUE(fabs(number_value(0, "CCD_TEMPERATURE", "TEMPERATURE") - 12.5) < 0.01);
+	ASSERT_TRUE(change_switch(0, "CCD_COOLER", "ON", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(POA_TRUE, cameras[0].config[POA_COOLER].boolValue);
+	ASSERT_TRUE(change_number(0, "CCD_TEMPERATURE", "TEMPERATURE", -10, INDIGO_BUSY_STATE));
+	for (int i = 0; i < 400 && cameras[0].config[POA_TARGET_TEMP].intValue != -10; i++) {
+		indigo_usleep(10000);
+	}
+	ASSERT_EQ_INT(-10, cameras[0].config[POA_TARGET_TEMP].intValue);
+	atomic_store(&cameras[0].config_error, POA_ERROR_OPERATION_FAILED);
+	ASSERT_TRUE(wait_state(0, "CCD_COOLER", INDIGO_ALERT_STATE));
+	atomic_store(&cameras[0].config_error, 0);
+	ASSERT_TRUE(change_switch(0, "CCD_COOLER", "OFF", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(POA_FALSE, cameras[0].config[POA_COOLER].boolValue);
+	ASSERT_TRUE(connect_device(0, false));
+	ASSERT_TRUE(temperature_handler != NULL);
+	int before = atomic_load(&cameras[0].reads[POA_TEMPERATURE]);
+	int barrier = atomic_load(&barriers) + 1;
+	indigo_execute_handler(logical[0], temperature_handler);
+	indigo_execute_handler(logical[0], queue_barrier);
+	ASSERT_TRUE(wait_count(&barriers, barrier));
+	ASSERT_EQ_INT(before, atomic_load(&cameras[0].reads[POA_TEMPERATURE]));
+	atomic_store(&fast_poll, 0);
+}
+
+static void duplicate_events_and_pending_shutdown(void) {
+	for (int cycle = 0; cycle < 3; cycle++) {
+		for (int i = 0; i < 16; i++) {
+			usb_event(0, true);
+		}
+		int barrier = atomic_load(&barriers) + 1;
+		indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_barrier, NULL);
+		ASSERT_TRUE(wait_count(&barriers, barrier));
+		ASSERT_EQ_INT(2, atomic_load(&attached));
+		atomic_store(&cameras[0].visible, false);
+		for (int i = 0; i < 16; i++) {
+			usb_event(0, false);
+		}
+		barrier = atomic_load(&barriers) + 1;
+		indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_barrier, NULL);
+		ASSERT_TRUE(wait_count(&barriers, barrier));
+		ASSERT_EQ_INT(0, atomic_load(&attached));
+		atomic_store(&cameras[0].visible, true);
+		usb_event(0, true);
+		ASSERT_TRUE(wait_count(&attached, 2));
+	}
+	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_playerone(INDIGO_DRIVER_SHUTDOWN, NULL));
+	atomic_store(&fail_queue, 1);
+	ASSERT_EQ_INT(INDIGO_FAILED, indigo_ccd_playerone(INDIGO_DRIVER_INIT, NULL));
+	atomic_store(&fail_queue, 0);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_playerone(INDIGO_DRIVER_INIT, NULL));
+	ASSERT_TRUE(wait_count(&attached, 2));
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+}
+
+static void readout_deadline_and_recovery(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	atomic_store(&cameras[0].read_error, POA_ERROR_TIMEOUT);
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_BUSY_STATE));
+	// Exercise the production 12-second readout deadline, without changing its clock.
+	for (int i = 0; i < 1500 && state(0, "CCD_EXPOSURE") != INDIGO_ALERT_STATE; i++) {
+		indigo_usleep(10000);
+	}
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state(0, "CCD_EXPOSURE"));
+	ASSERT_EQ_INT(0, atomic_load(&blobs));
+	atomic_store(&cameras[0].read_error, 0);
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+}
+
+static void sensor_mode_capability_rebuild(void) {
+	atomic_store(&cameras[0].mode_count, 0);
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_EQ_INT(-1, state(0, SENSOR_PROPERTY));
+	ASSERT_TRUE(connect_device(0, false));
+	atomic_store(&cameras[0].mode_count, 3);
+	ASSERT_TRUE(connect_device(0, true));
+	indigo_property *p = snapshot(0, SENSOR_PROPERTY);
+	ASSERT_TRUE(p && p->count == 3);
+	indigo_release_property(p);
+	ASSERT_TRUE(change_switch(0, SENSOR_PROPERTY, "MODE_2", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(2, atomic_load(&cameras[0].mode));
+	ASSERT_TRUE(connect_device(0, false));
+	atomic_store(&cameras[0].mode_count, 1);
+	atomic_store(&cameras[0].mode, 0);
+	ASSERT_TRUE(connect_device(0, true));
+	p = snapshot(0, SENSOR_PROPERTY);
+	ASSERT_TRUE(p && p->count == 1 && p->items[0].sw.value);
+	indigo_release_property(p);
+}
+
+static void discovery_filter_and_recovery(void) {
+	atomic_store(&cameras[1].visible, true);
+	atomic_store(&wrong_vendor, 1);
+	usb_event(1, true);
+	int barrier = atomic_load(&barriers) + 1;
+	indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_barrier, NULL);
+	ASSERT_TRUE(wait_count(&barriers, barrier));
+	ASSERT_EQ_INT(2, atomic_load(&attached));
+	atomic_store(&wrong_vendor, 0);
+	atomic_store(&fail_descriptor, 1);
+	usb_event(1, true);
+	barrier = atomic_load(&barriers) + 1;
+	indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_barrier, NULL);
+	ASSERT_TRUE(wait_count(&barriers, barrier));
+	ASSERT_EQ_INT(2, atomic_load(&attached));
+	atomic_store(&fail_descriptor, 0);
+	usb_event(1, true);
+	ASSERT_TRUE(wait_count(&attached, 4));
+	ASSERT_TRUE(connect_device(2, true));
+	ASSERT_TRUE(change_number(2, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+}
+
+static void busy_controls_preserve_sdk_values(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 30, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_count(&cameras[0].starts, 1));
+	const char *properties[] = { "CCD_GAIN", "CCD_OFFSET", "CCD_FRAME", "CCD_BIN" };
+	const char *items[] = { "GAIN", "OFFSET", "WIDTH", "HORIZONTAL" };
+	const double values[] = { 25, 15, 256, 2 };
+	for (int i = 0; i < ARRAY_SIZE(properties); i++) {
+		double before = number_value(0, properties[i], items[i]);
+		ASSERT_TRUE(change_number(0, properties[i], items[i], values[i], INDIGO_ALERT_STATE));
+		ASSERT_TRUE(number_value(0, properties[i], items[i]) == before);
+	}
+	ASSERT_EQ_INT(0, atomic_load(&cameras[0].writes[POA_GAIN]));
+	ASSERT_EQ_INT(0, atomic_load(&cameras[0].writes[POA_OFFSET]));
+	ASSERT_TRUE(change_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+}
+
+static void finite_stream_frame_count(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(change_switch(0, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
+	int before = atomic_load(&cameras[0].frames);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&test_client, observed[0].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.01, 3 }));
+	ASSERT_TRUE(wait_state(0, "CCD_STREAMING", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(before + 3, atomic_load(&cameras[0].frames));
+	ASSERT_EQ_INT(0, number_value(0, "CCD_STREAMING", "COUNT"));
+}
+
+static void initialization_read_failures(void) {
+	for (int i = 0; i < 6; i++) {
+		atomic_store(&cameras[0].read_config_fail, controls[i] + 1);
+		ASSERT_TRUE(change_switch(0, "CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
+		ASSERT_TRUE(!atomic_load(&cameras[0].opened));
+		ASSERT_EQ_INT(atomic_load(&cameras[0].opens), atomic_load(&cameras[0].closes));
+		atomic_store(&cameras[0].read_config_fail, 0);
+		ASSERT_TRUE(connect_device(0, true));
+		ASSERT_TRUE(connect_device(0, false));
+	}
+	for (int i = 1; i <= 6; i++) {
+		atomic_store(&cameras[0].attribute_fail, i);
+		ASSERT_TRUE(change_switch(0, "CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
+		atomic_store(&cameras[0].attribute_fail, 0);
+		ASSERT_TRUE(connect_device(0, true));
+		ASSERT_TRUE(connect_device(0, false));
+	}
+	atomic_store(&cameras[0].preset_fail, 1);
+	ASSERT_TRUE(change_switch(0, "CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
+	atomic_store(&cameras[0].preset_fail, 0);
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+}
+
+static void optional_mode_query_failures(void) {
+	for (int error = 1; error <= 3; error++) {
+		atomic_store(&cameras[0].sensor_fail, error);
+		ASSERT_TRUE(connect_device(0, true));
+		ASSERT_EQ_INT(-1, state(0, SENSOR_PROPERTY));
+		ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+		ASSERT_TRUE(connect_device(0, false));
+		atomic_store(&cameras[0].sensor_fail, 0);
+		ASSERT_TRUE(connect_device(0, true));
+		ASSERT_TRUE(change_switch(0, SENSOR_PROPERTY, "MODE_1", INDIGO_OK_STATE));
+		ASSERT_TRUE(connect_device(0, false));
+	}
+}
+
+static void geometry_errors_and_recovery(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&test_client, observed[0].name, "CCD_FRAME", 4, (const char *[]){ "LEFT", "TOP", "WIDTH", "HEIGHT" }, (double []){ 16, 24, 256, 256 }));
+	ASSERT_TRUE(wait_state(0, "CCD_FRAME", INDIGO_OK_STATE));
+	ASSERT_TRUE(change_number(0, "CCD_BIN", "HORIZONTAL", 2, INDIGO_OK_STATE));
+	for (int error = 1; error <= 6; error++) {
+		atomic_store(&cameras[0].bin, 1);
+		atomic_store(&cameras[0].width, 640);
+		atomic_store(&cameras[0].height, 480);
+		atomic_store(&cameras[0].left, 0);
+		atomic_store(&cameras[0].top, 0);
+		atomic_store(&cameras[0].geometry_fail, error);
+		int before = atomic_load(&blobs);
+		ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_ALERT_STATE));
+		ASSERT_EQ_INT(before, atomic_load(&blobs));
+		atomic_store(&cameras[0].geometry_fail, 0);
+		ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+		ASSERT_EQ_INT(before + 1, atomic_load(&blobs));
+	}
+	atomic_store(&cameras[0].read_error, POA_ERROR_OPERATION_FAILED);
+	atomic_store(&cameras[0].state_error, POA_ERROR_OPERATION_FAILED);
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_ALERT_STATE));
+	atomic_store(&cameras[0].read_error, 0);
+	atomic_store(&cameras[0].state_error, 0);
+#ifdef POA_SAFE_READOUT
+	atomic_store(&cameras[0].ready_error, POA_ERROR_INVALID_ID);
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_ALERT_STATE));
+	atomic_store(&cameras[0].ready_error, 0);
+#endif
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+}
+
+static void sdk_discovery_identity_and_strings(void) {
+	atomic_store(&cameras[0].visible, false);
+	usb_event(0, false);
+	ASSERT_TRUE(wait_count(&attached, 0));
+	for (int i = 0; i < 2; i++) {
+		snprintf(cameras[i].info.cameraModelName, sizeof(cameras[i].info.cameraModelName), "Identical camera [abcdefghijklmnop]");
+		memcpy(cameras[i].info.userCustomID, "abcdefghijklmnop", 16);
+		cameras[i].info.cameraID = 1000 + i;
+		atomic_store(&cameras[i].visible, true);
+	}
+	atomic_store(&discovery_fail, 1);
+	usb_event(1, true);
+	int barrier = atomic_load(&barriers) + 1;
+	indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_barrier, NULL);
+	ASSERT_TRUE(wait_count(&barriers, barrier));
+	ASSERT_EQ_INT(0, atomic_load(&attached));
+	atomic_store(&discovery_fail, 0);
+	usb_event(1, true);
+	usb_event(0, true);
+	ASSERT_TRUE(wait_count(&attached, 4));
+	ASSERT_TRUE(strcmp(observed[0].name, observed[2].name));
+	ASSERT_TRUE(strstr(observed[0].name, "#abcdefghijklmnop") != NULL);
+	ASSERT_TRUE(strstr(observed[2].name, "#abcdefghijklmnop") != NULL);
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(connect_device(2, true));
+	atomic_store(&count_fail, 1);
+	usb_event(0, false);
+	barrier = atomic_load(&barriers) + 1;
+	indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_barrier, NULL);
+	ASSERT_TRUE(wait_count(&barriers, barrier));
+	ASSERT_EQ_INT(4, atomic_load(&attached));
+	atomic_store(&count_fail, 0);
+	atomic_store(&cameras[0].visible, false);
+	usb_event(1, false);
+	ASSERT_TRUE(wait_count(&attached, 2));
+	ASSERT_TRUE(change_number(2, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+	ASSERT_TRUE(connect_device(2, false));
+	atomic_store(&cameras[1].visible, false);
+	usb_event(0, false);
+	ASSERT_TRUE(wait_count(&attached, 0));
+	memset(cameras[0].info.cameraModelName, 'M', sizeof(cameras[0].info.cameraModelName));
+	memset(cameras[0].info.sensorModelName, 'S', sizeof(cameras[0].info.sensorModelName));
+	memset(cameras[0].info.SN, 'N', sizeof(cameras[0].info.SN));
+	atomic_store(&cameras[0].visible, true);
+	usb_event(0, true);
+	ASSERT_TRUE(wait_count(&attached, 2));
+	ASSERT_TRUE(strlen(observed[0].name) < INDIGO_NAME_SIZE);
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+}
+
+static void cooler_individual_failures(void) {
+	atomic_store(&cameras[0].visible, false);
+	usb_event(0, false);
+	ASSERT_TRUE(wait_count(&attached, 0));
+	cameras[0].info.isHasCooler = true;
+	cameras[0].config[POA_TEMPERATURE].floatValue = 12.5;
+	atomic_store(&cameras[0].visible, true);
+	usb_event(0, true);
+	ASSERT_TRUE(wait_count(&attached, 2));
+	atomic_store(&fast_poll, 1);
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(wait_state(0, "CCD_TEMPERATURE", INDIGO_OK_STATE));
+	const POAConfig reads[] = { POA_TEMPERATURE, POA_COOLER, POA_COOLER_POWER, POA_TARGET_TEMP };
+	ASSERT_TRUE(change_switch(0, "CCD_COOLER", "ON", INDIGO_OK_STATE));
+	for (int i = 0; i < ARRAY_SIZE(reads); i++) {
+		remember_request(observed[0].name, "CCD_TEMPERATURE");
+		atomic_store(&cameras[0].read_config_fail, reads[i] + 1);
+		ASSERT_TRUE(wait_state(0, "CCD_TEMPERATURE", INDIGO_ALERT_STATE));
+		atomic_store(&cameras[0].read_config_fail, 0);
+		ASSERT_TRUE(change_number(0, "CCD_TEMPERATURE", "TEMPERATURE", 12.5, INDIGO_OK_STATE));
+	}
+	const POAConfig writes[] = { POA_COOLER, POA_FAN_POWER, POA_TARGET_TEMP };
+	for (int i = 0; i < ARRAY_SIZE(writes); i++) {
+		atomic_store(&cameras[0].write_config_fail, writes[i] + 1);
+		if (writes[i] == POA_TARGET_TEMP) {
+			ASSERT_TRUE(change_number(0, "CCD_TEMPERATURE", "TEMPERATURE", -10, INDIGO_ALERT_STATE));
+		} else {
+			ASSERT_TRUE(change_switch(0, "CCD_COOLER", "OFF", INDIGO_ALERT_STATE));
+		}
+		atomic_store(&cameras[0].write_config_fail, 0);
+		ASSERT_TRUE(change_switch(0, "CCD_COOLER", "ON", INDIGO_OK_STATE));
+	}
+	ASSERT_TRUE(change_switch(0, "CCD_COOLER", "OFF", INDIGO_OK_STATE));
+}
+
+static void abort_setup_wait_and_removal(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(connect_device(1, true));
+	for (int phase = 0; phase < 3; phase++) {
+		int before = atomic_load(&blobs);
+		if (phase == 0) {
+			arm_gate(&queue_gate);
+			indigo_execute_handler(logical[0], block_queue);
+			ASSERT_TRUE(wait_count(&queue_gate.entered, 1));
+		} else if (phase == 1) {
+			arm_gate(&setup_gate);
+		}
+		ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_EXPOSURE", "EXPOSURE", 30));
+		ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_BUSY_STATE));
+		if (phase == 1) {
+			ASSERT_TRUE(wait_count(&setup_gate.entered, 1));
+		}
+		ASSERT_TRUE(set_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true));
+		release_gate(&setup_gate);
+		release_gate(&queue_gate);
+		ASSERT_TRUE(wait_state(0, "CCD_ABORT_EXPOSURE", INDIGO_OK_STATE));
+		ASSERT_EQ_INT(before, atomic_load(&blobs));
+		ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+	}
+	arm_gate(&read_gate);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_EXPOSURE", "EXPOSURE", 0.01));
+	ASSERT_TRUE(wait_count(&read_gate.entered, 1));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[1].name, "GUIDER_GUIDE_RA", "EAST", 1000));
+	atomic_store(&cameras[0].visible, false);
+	usb_event(0, false);
+	release_gate(&read_gate);
+	ASSERT_TRUE(wait_count(&attached, 0));
+	ASSERT_EQ_INT(0, atomic_load(&concurrent_sdk));
+	ASSERT_EQ_INT(0, atomic_load(&sdk_after_close));
+	cameras[0].info.cameraID = 7654;
+	atomic_store(&cameras[0].visible, true);
+	usb_event(0, true);
+	ASSERT_TRUE(wait_count(&attached, 2));
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+}
+
+static void *release_queued_gate(void *unused) {
+	indigo_usleep(50000);
+	release_gate(&queue_gate);
+	return NULL;
+}
+
+static void queued_discovery_shutdown(void) {
+	arm_gate(&queue_gate);
+	indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, block_queue, NULL);
+	ASSERT_TRUE(wait_count(&queue_gate.entered, 1));
+	atomic_store(&cameras[1].visible, true);
+	usb_event(1, true);
+	// Release the queue from a helper while the public shutdown drains it.
+	pthread_t releaser;
+	ASSERT_EQ_INT(0, pthread_create(&releaser, NULL, release_queued_gate, NULL));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_playerone(INDIGO_DRIVER_SHUTDOWN, NULL));
+	pthread_join(releaser, NULL);
+	ASSERT_EQ_INT(0, atomic_load(&attached));
+	ASSERT_EQ_INT(0, atomic_load(&usb_refs));
+	atomic_store(&cameras[1].visible, false);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_playerone(INDIGO_DRIVER_INIT, NULL));
+	ASSERT_TRUE(wait_count(&attached, 2));
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+}
+
+static void discovery_retry_lifetime(void) {
+	atomic_store(&cameras[0].visible, false);
+	usb_event(0, false);
+	ASSERT_TRUE(wait_count(&attached, 0));
+	usb_event(0, true);
+	int barrier = atomic_load(&barriers) + 1;
+	indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_barrier, NULL);
+	ASSERT_TRUE(wait_count(&barriers, barrier));
+	ASSERT_EQ_INT(0, atomic_load(&attached));
+	atomic_store(&cameras[0].visible, true);
+	// No second USB arrival: the owned retry must discover the now-ready SDK.
+	ASSERT_TRUE(wait_count(&attached, 2));
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+	ASSERT_TRUE(connect_device(0, false));
+	atomic_store(&cameras[0].visible, false);
+	usb_event(0, false);
+	ASSERT_TRUE(wait_count(&attached, 0));
+	usb_event(0, true);
+	barrier = atomic_load(&barriers) + 1;
+	indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_barrier, NULL);
+	ASSERT_TRUE(wait_count(&barriers, barrier));
+	usb_event(0, false);
+	atomic_store(&cameras[0].visible, true);
+	barrier = atomic_load(&barriers) + 1;
+	indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0.7, queue_barrier, NULL);
+	ASSERT_TRUE(wait_count(&barriers, barrier));
+	ASSERT_EQ_INT(0, atomic_load(&attached));
+	ASSERT_EQ_INT(0, atomic_load(&usb_refs));
+	atomic_store(&cameras[0].visible, false);
+	int calls = atomic_load(&discovery_calls);
+	usb_event(0, true);
+	barrier = atomic_load(&barriers) + 1;
+	indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 3.6, queue_barrier, NULL);
+	ASSERT_TRUE(wait_count(&barriers, barrier));
+	ASSERT_EQ_INT(calls + 7, atomic_load(&discovery_calls));
+	ASSERT_EQ_INT(0, atomic_load(&attached));
+	ASSERT_EQ_INT(0, atomic_load(&usb_refs));
+	usb_event(0, true);
+	barrier = atomic_load(&barriers) + 1;
+	indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_barrier, NULL);
+	ASSERT_TRUE(wait_count(&barriers, barrier));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_playerone(INDIGO_DRIVER_SHUTDOWN, NULL));
+	ASSERT_EQ_INT(0, atomic_load(&usb_refs));
+	atomic_store(&cameras[0].visible, true);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_playerone(INDIGO_DRIVER_INIT, NULL));
+	ASSERT_TRUE(wait_count(&attached, 2));
+}
+
+static void partial_controls_keep_readback(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(change_number(0, "CCD_GAIN", "GAIN", 10, INDIGO_OK_STATE));
+	ASSERT_TRUE(change_number(0, "CCD_OFFSET", "OFFSET", 11, INDIGO_OK_STATE));
+	for (int axis = 0; axis < 2; axis++) {
+		POAConfig config = axis ? POA_OFFSET : POA_GAIN;
+		const char *property = axis ? "CCD_OFFSET" : "CCD_GAIN";
+		const char *item = axis ? "OFFSET" : "GAIN";
+		double accepted = number_value(0, property, item);
+		atomic_store(&cameras[0].write_config_fail, config + 1);
+		ASSERT_TRUE(change_number(0, property, item, 99, INDIGO_ALERT_STATE));
+		ASSERT_EQ_INT(accepted, number_value(0, property, item));
+		ASSERT_EQ_INT(accepted, cameras[0].config[config].intValue);
+		ASSERT_TRUE(change_switch(0, PRESETS_PROPERTY, "POA_UNITY_GAIN", INDIGO_ALERT_STATE));
+		ASSERT_EQ_INT(cameras[0].config[POA_GAIN].intValue, number_value(0, "CCD_GAIN", "GAIN"));
+		ASSERT_EQ_INT(cameras[0].config[POA_OFFSET].intValue, number_value(0, "CCD_OFFSET", "OFFSET"));
+		atomic_store(&cameras[0].write_config_fail, 0);
+		ASSERT_TRUE(change_switch(0, PRESETS_PROPERTY, "POA_LOWEST_RN", INDIGO_OK_STATE));
+	}
+	atomic_store(&cameras[0].read_config_fail, POA_EGAIN + 1);
+	ASSERT_TRUE(change_number(0, "CCD_GAIN", "GAIN", 30, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state(0, "CCD_EGAIN"));
+	atomic_store(&cameras[0].read_config_fail, 0);
+	ASSERT_TRUE(change_number(0, "CCD_GAIN", "GAIN", 31, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(0, "CCD_EGAIN"));
+	char item[32];
+	snprintf(item, sizeof(item), "CONFIG_%d", POA_USB_BANDWIDTH_LIMIT);
+	atomic_store(&cameras[0].attribute_fail, 5);
+	ASSERT_TRUE(change_number(0, ADVANCED_PROPERTY, item, 33, INDIGO_ALERT_STATE));
+	atomic_store(&cameras[0].attribute_fail, 0);
+	atomic_store(&cameras[0].write_config_fail, POA_USB_BANDWIDTH_LIMIT + 1);
+	ASSERT_TRUE(change_number(0, ADVANCED_PROPERTY, item, 34, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(cameras[0].config[POA_USB_BANDWIDTH_LIMIT].intValue, number_value(0, ADVANCED_PROPERTY, item));
+	atomic_store(&cameras[0].write_config_fail, 0);
+	ASSERT_TRUE(change_number(0, ADVANCED_PROPERTY, item, 35, INDIGO_OK_STATE));
+}
+
+static void partial_slave_attach_and_replug(void) {
+	atomic_store(&cameras[1].visible, true);
+	atomic_store(&fail_guider_attach, 1);
+	usb_event(1, true);
+	ASSERT_TRUE(wait_count(&attached, 3));
+	ASSERT_TRUE(connect_device(2, true));
+	ASSERT_EQ_INT(-1, state(3, "CONNECTION"));
+	ASSERT_TRUE(change_number(2, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+	ASSERT_TRUE(connect_device(2, false));
+	atomic_store(&cameras[1].visible, false);
+	usb_event(1, false);
+	ASSERT_TRUE(wait_count(&attached, 2));
+	atomic_store(&cameras[1].visible, true);
+	usb_event(1, true);
+	ASSERT_TRUE(wait_count(&attached, 4));
+	ASSERT_TRUE(connect_device(3, true));
+	ASSERT_TRUE(change_number(3, "GUIDER_GUIDE_DEC", "NORTH", 20, INDIGO_OK_STATE));
+}
+
+static void bin_boundaries_and_raw16_only(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	const double invalid[] = { 0, -1, 1.5, 3, 100 };
+	for (int i = 0; i < ARRAY_SIZE(invalid); i++) {
+		ASSERT_TRUE(change_number(0, "CCD_BIN", "HORIZONTAL", invalid[i], invalid[i] == 1.5 ? INDIGO_ALERT_STATE : INDIGO_OK_STATE));
+		ASSERT_EQ_INT(invalid[i] > 2 ? 2 : 1, number_value(0, "CCD_BIN", "HORIZONTAL"));
+		ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+	}
+	ASSERT_TRUE(change_number(0, "CCD_BIN", "HORIZONTAL", 1, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&test_client, observed[0].name, "CCD_FRAME", 4, (const char *[]){ "LEFT", "TOP", "WIDTH", "HEIGHT" }, (double []){ 640, 480, 256, 256 }));
+	ASSERT_TRUE(wait_state(0, "CCD_FRAME", INDIGO_OK_STATE));
+	int before = atomic_load(&blobs);
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(before, atomic_load(&blobs));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&test_client, observed[0].name, "CCD_FRAME", 4, (const char *[]){ "LEFT", "TOP", "WIDTH", "HEIGHT" }, (double []){ 0, 0, 65, 65 }));
+	ASSERT_TRUE(wait_state(0, "CCD_FRAME", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(64, number_value(0, "CCD_FRAME", "WIDTH"));
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+	ASSERT_TRUE(connect_device(0, false));
+	atomic_store(&cameras[0].visible, false);
+	usb_event(0, false);
+	ASSERT_TRUE(wait_count(&attached, 0));
+	cameras[0].info.isColorCamera = false;
+	cameras[0].info.imgFormats[0] = POA_RAW16;
+	cameras[0].info.imgFormats[1] = POA_END;
+	atomic_store(&cameras[0].visible, true);
+	usb_event(0, true);
+	ASSERT_TRUE(wait_count(&attached, 2));
+	ASSERT_TRUE(connect_device(0, true));
+	indigo_property *p = snapshot(0, PIXEL_PROPERTY);
+	ASSERT_EQ_INT(1, p->count);
+	ASSERT_TRUE(p->items[0].sw.value);
+	indigo_release_property(p);
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(POA_RAW16, atomic_load(&cameras[0].format));
+	ASSERT_EQ_INT(0, atomic_load(&bad_blob));
+}
+
+static void bounded_attribute_and_mode_strings(void) {
+	atomic_store(&bounded_sdk_strings, 1);
+	ASSERT_TRUE(connect_device(0, true));
+	indigo_property *p = snapshot(0, ADVANCED_PROPERTY);
+	ASSERT_TRUE(p != NULL && p->count == 2);
+	ASSERT_TRUE(strlen(p->items[0].name) < INDIGO_NAME_SIZE);
+	indigo_release_property(p);
+	p = snapshot(0, SENSOR_PROPERTY);
+	ASSERT_TRUE(p != NULL && p->count == 2);
+	ASSERT_TRUE(strlen(p->items[0].name) < INDIGO_NAME_SIZE);
+	ASSERT_TRUE(strlen(p->items[0].label) < INDIGO_VALUE_SIZE);
+	indigo_release_property(p);
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+	ASSERT_TRUE(connect_device(0, false));
+	atomic_store(&bounded_sdk_strings, 0);
+}
+
+static void slow_initialization_and_polling(void) {
+	atomic_store(&cameras[0].visible, false);
+	usb_event(0, false);
+	ASSERT_TRUE(wait_count(&attached, 0));
+	cameras[0].info.isHasCooler = true;
+	cameras[0].config[POA_TEMPERATURE].floatValue = 12.5;
+	atomic_store(&cameras[0].visible, true);
+	usb_event(0, true);
+	ASSERT_TRUE(wait_count(&attached, 2));
+	atomic_store(&fast_poll, 1);
+	arm_gate(&initialization_gate);
+	ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
+	ASSERT_TRUE(wait_count(&initialization_gate.entered, 1));
+	// Cross three accelerated polling intervals while SDK property discovery is held.
+	indigo_usleep(30000);
+	ASSERT_EQ_INT(0, atomic_load(&cameras[0].reads[POA_TEMPERATURE]));
+	ASSERT_EQ_INT(INDIGO_BUSY, indigo_ccd_playerone(INDIGO_DRIVER_SHUTDOWN, NULL));
+	release_gate(&initialization_gate);
+	ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_state(0, "CCD_TEMPERATURE", INDIGO_OK_STATE));
+	ASSERT_TRUE(atomic_load(&cameras[0].reads[POA_TEMPERATURE]) > 0);
+	ASSERT_TRUE(connect_device(0, false));
+	atomic_store(&fast_poll, 0);
+}
+
+static bool begin_fixture(void) {
+	memset(cameras, 0, sizeof(cameras));
+	memset(logical, 0, sizeof(logical));
+	atomic_store(&concurrent_sdk, 0);
+	atomic_store(&discovery_fail, 0);
+	atomic_store(&count_fail, 0);
+	memset(request_revisions, 0, sizeof(request_revisions));
+	atomic_store(&wrong_bus_thread, 0);
+	atomic_store(&raw_blobs, 0);
+	memset(pulse_measurements, 0, sizeof(pulse_measurements));
+	atomic_store(&blobs, 0);
+	atomic_store(&pulse_writes, 0);
+	atomic_store(&short_waits, 0);
+	atomic_store(&bad_blob, 0);
+	atomic_store(&sdk_after_close, 0);
+	for (int i = 0; i < CAMERAS; i++) {
+		mock_camera *c = cameras + i;
+		c->info.cameraID = i;
+		snprintf(c->info.cameraModelName, sizeof(c->info.cameraModelName), "POA test %d", i);
+		snprintf(c->info.sensorModelName, sizeof(c->info.sensorModelName), "IMX-test");
+		snprintf(c->info.SN, sizeof(c->info.SN), "SN-%d", i);
+		c->info.maxWidth = 640;
+		c->info.maxHeight = 480;
+		c->info.pixelSize = 3.75;
+		c->info.bitDepth = 12;
+		c->info.isHasST4Port = true;
+		c->info.isColorCamera = true;
+		c->info.bayerPattern = POA_BAYER_RG;
+		c->info.bins[0] = 1;
+		c->info.bins[1] = 2;
+		c->info.imgFormats[0] = POA_RAW8;
+		c->info.imgFormats[1] = POA_RGB24;
+		c->info.imgFormats[2] = POA_RAW16;
+		c->info.imgFormats[3] = POA_MONO8;
+		c->info.imgFormats[4] = POA_END;
+		c->config[POA_EXP].floatValue = 0.01;
+		c->config[POA_EGAIN].floatValue = 1.5;
+		c->config[POA_USB_BANDWIDTH_LIMIT].intValue = 100;
+		atomic_store(&c->mode_count, 2);
+		atomic_store(&c->bin, 1);
+		atomic_store(&c->width, 640);
+		atomic_store(&c->height, 480);
+	}
+	atomic_store(&cameras[0].visible, true);
+	return indigo_ccd_playerone(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK && wait_count(&attached, 2);
+}
+
+static void end_fixture(void) {
+	release_gate(&initialization_gate);
+	release_gate(&read_gate);
+	release_gate(&queue_gate);
+	release_gate(&setup_gate);
+	atomic_store(&fast_poll, 0);
+	atomic_store(&fail_queue, 0);
+	atomic_store(&fail_lock, 0);
+	atomic_store(&fail_register, 0);
+	atomic_store(&fail_descriptor, 0);
+	atomic_store(&wrong_vendor, 0);
+	for (int i = 0; i < CAMERAS; i++) {
+		atomic_store(&cameras[i].config_error, 0);
+		atomic_store(&cameras[i].stop_error, 0);
+		atomic_store(&cameras[i].read_config_fail, 0);
+		atomic_store(&cameras[i].write_config_fail, 0);
+	}
+	for (int i = 0; i < CAMERAS * 2; i++) {
+		indigo_property *p = snapshot(i, "CONNECTION");
+		if (p && p->items[0].sw.value) {
+			connect_device(i, false);
+		}
+		indigo_release_property(p);
+	}
+	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_playerone(INDIGO_DRIVER_SHUTDOWN, NULL));
+	ASSERT_EQ_INT(0, atomic_load(&attached));
+	ASSERT_EQ_INT(0, atomic_load(&lock_count));
+	ASSERT_EQ_INT(0, atomic_load(&sdk_after_close));
+	ASSERT_EQ_INT(0, atomic_load(&wrong_bus_thread));
+	ASSERT_EQ_INT(0, atomic_load(&concurrent_sdk));
+	ASSERT_EQ_INT(0, atomic_load(&updates_after_detach));
+	ASSERT_EQ_INT(0, atomic_load(&gate_timeouts));
+	ASSERT_EQ_INT(0, atomic_load(&bad_blob));
+	ASSERT_EQ_INT(0, atomic_load(&unbalanced_unlock));
+	ASSERT_EQ_INT(0, atomic_load(&usb_refs));
+	ASSERT_EQ_INT(0, atomic_load(&invalid_usb_unref));
+	for (int i = 0; i < CAMERAS * 2; i++) {
+		for (int j = 0; j < PROPERTIES; j++) {
+			indigo_release_property(observed[i].properties[j]);
+			observed[i].properties[j] = NULL;
+		}
+	}
+}
+
+int main(int argc, char **argv) {
+	bus_thread = pthread_self();
+	setvbuf(stdout, NULL, _IONBF, 0);
+	if (!mkdtemp(config_folder)) {
+		return 1;
+	}
+	indigo_start();
+	indigo_attach_client(&test_client);
+	const indigo_test_case tests[] = {
+		{ "CCD properties, image and configuration baseline", properties_and_exposure },
+		{ "Guider pulse and shared connection baseline", guider_and_sharing },
+		{ "Finite streaming baseline", finite_stream },
+		{ "SDK short wait returns OPERATION_FAILED before frame", short_readout_retry },
+		{ "Guiding and abort during long exposure then reacquire", abort_long_exposure },
+		{ "Readout error and subsequent acquisition", failed_readout_recovers },
+		{ "Open, Init and config failure rollback", connection_rollback },
+		{ "Optional guider, capacity and SDK identity removal", optional_guider_capacity_and_identity },
+		{ "Failed master attach is retryable without orphan guider", failed_attach_is_retryable },
+		{ "Busy guards preserve requested values", property_busy_guard },
+		{ "Configuration round trip and suffix boundaries", configuration_and_suffix },
+		{ "Pulse replacement and physical off on disconnect", pulse_replacement_and_disconnect },
+		{ "Guider pulse duration measured at fake SDK entry", pulse_duration_at_sdk_entry },
+		{ "Lifecycle metadata and shared repetitions", lifecycle_metadata_and_repetition },
+		{ "Published property contract", published_property_contract },
+		{ "Image formats ROI bins and simulator pixel fixtures", image_formats_roi_and_bins },
+		{ "Frame types and exposure units", frame_types_and_exposure_units },
+		{ "Controls and SDK error recovery", controls_and_error_recovery },
+		{ "Exposure setup errors and recovery", exposure_setup_errors },
+		{ "Suffix boundaries and write failure", suffix_boundaries_and_failure },
+		{ "Simultaneous guide axes zero and errors", simultaneous_axes_and_zero },
+		{ "Registration and global lock rollback", registration_and_global_lock_failures },
+		{ "Streaming error active removal and replug", stream_errors_and_active_removal },
+		{ "Deterministic final frame and abort ordering", pending_frame_abort_orders },
+		{ "Temperature cooler polling and disconnected tasks", temperature_polling_and_disconnect },
+		{ "Duplicate hotplug bursts and queue creation rollback", duplicate_events_and_pending_shutdown },
+		{ "Readout deadline expiry and recovery", readout_deadline_and_recovery },
+		{ "Sensor mode unavailable grow and shrink", sensor_mode_capability_rebuild },
+		{ "Discovery descriptor and vendor filters recover", discovery_filter_and_recovery },
+		{ "Busy controls preserve accepted values and SDK state", busy_controls_preserve_sdk_values },
+		{ "Finite stream frame count", finite_stream_frame_count },
+		{ "Completion initialization_read_failures", initialization_read_failures },
+		{ "Completion optional_mode_query_failures", optional_mode_query_failures },
+		{ "Completion geometry_errors_and_recovery", geometry_errors_and_recovery },
+		{ "Completion sdk_discovery_identity_and_strings", sdk_discovery_identity_and_strings },
+		{ "Completion cooler_individual_failures", cooler_individual_failures },
+		{ "Completion abort_setup_wait_and_removal", abort_setup_wait_and_removal },
+		{ "Completion queued_discovery_shutdown", queued_discovery_shutdown },
+		{ "Completion discovery_retry_lifetime", discovery_retry_lifetime },
+		{ "Completion partial_controls_keep_readback", partial_controls_keep_readback },
+		{ "Completion partial_slave_attach_and_replug", partial_slave_attach_and_replug },
+		{ "Completion bin_boundaries_and_raw16_only", bin_boundaries_and_raw16_only },
+		{ "Final bounded_attribute_and_mode_strings", bounded_attribute_and_mode_strings },
+		{ "Final slow_initialization_and_polling", slow_initialization_and_polling }
+	};
+	int result = 0, selected = 0;
+	for (int i = 0; i < ARRAY_SIZE(tests); i++) {
+		if (argc > 1 && !strstr(tests[i].name, argv[1])) {
+			continue;
+		}
+		selected++;
+		alarm(90);
+		if (!begin_fixture()) {
+			result = 1;
+			break;
+		}
+		result |= indigo_run_tests("Player One camera fake SDK", tests + i, 1);
+		int before_cleanup = indigo_test_failures;
+		end_fixture();
+		result |= indigo_test_failures != before_cleanup;
+		alarm(0);
+	}
+	if (!selected) {
+		fprintf(stderr, "No test matches the requested filter\n");
+		result = 1;
+	}
+	indigo_detach_client(&test_client);
+	indigo_stop();
+	DIR *dir = opendir(config_folder);
+	if (dir) {
+		struct dirent *entry;
+		while ((entry = readdir(dir))) {
+			if (entry->d_name[0] != '.') {
+				char path[1024];
+				snprintf(path, sizeof(path), "%s/%s", config_folder, entry->d_name);
+				unlink(path);
+			}
+		}
+		closedir(dir);
+	}
+	rmdir(config_folder);
+	return result || indigo_test_failures;
+}

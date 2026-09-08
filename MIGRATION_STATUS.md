@@ -52,7 +52,7 @@
 | ccd_ogma                 | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    | ➡️ Touptek                                               |
 | ccd_omegonpro            | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    | ➡️ Touptek                                               |
 | ccd_pentax               | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | 🚧 Unfinished & stalled                                  |
-| ccd_playerone            | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    |                                                          |
+| ccd_playerone            | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | ccd_ptp                  | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | ccd_qhy                  | 3️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | ⏰ TODO - make libqhy for Windows                        |
 | ccd_qhy2                 | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |

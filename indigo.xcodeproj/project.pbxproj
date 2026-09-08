@@ -5256,7 +5256,10 @@
 		9DFE186B2135883A00149BDE /* DMFC-Serial-Command-Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "DMFC-Serial-Command-Table.pdf"; sourceTree = "<group>"; };
 		C0DE20260908000100000001 /* indigo_wheel_playerone.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_playerone.driver; sourceTree = "<group>"; };
 		C0DE20260908000100000002 /* test_wheel_playerone_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_playerone_sdk.c; sourceTree = "<group>"; };
-		C0DE20260908000200000002 /* test_wheel_astroasis_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_astroasis_sdk.c; sourceTree = "<group>"; };
+		C0DE20260908000200000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260908000200000002 /* test_ccd_playerone_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_playerone_sdk.c; sourceTree = "<group>"; };
+		C0DE20260908000200000003 /* test_ccd_playerone_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_playerone_hw.c; sourceTree = "<group>"; };
+		C0DE20260908000200000004 /* indigo_ccd_playerone.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_ccd_playerone.driver; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -13201,7 +13204,7 @@
 				592C33AE304F6126004D5AE6 /* test_rotator_asi_sdk.c */,
 				592C3393304F46D1004D5AE6 /* test_wheel_asi_sdk.c */,
 				C0DE20260908000100000002 /* test_wheel_playerone_sdk.c */,
-				C0DE20260908000200000002 /* test_wheel_astroasis_sdk.c */,
+				C0DE20260908000200000002 /* test_ccd_playerone_sdk.c */,
 				592C3392304F4209004D5AE6 /* test_focuser_asi_sdk.c */,
 				5984A389303CDD9100D581D2 /* test_wheel_indigo_simulator.c */,
 				5984A387303CDBBE00D581D2 /* test_rotator_wa_simulator.c */,
@@ -13409,11 +13412,13 @@
 		59FFB049288D3CB900F172AC /* ccd_playerone */ = {
 			isa = PBXGroup;
 			children = (
-				59FFB04C288D3CB900F172AC /* README.md */,
 				59FFB063288D3CB900F172AC /* Makefile.inc */,
+				59FFB04C288D3CB900F172AC /* README.md */,
+				C0DE20260908000200000001 /* REFACTOR.md */,
 				59FFB062288D3CB900F172AC /* indigo_ccd_playerone.h */,
 				59FFB04A288D3CB900F172AC /* indigo_ccd_playerone.c */,
 				59FFB064288D3CB900F172AC /* indigo_ccd_playerone_main.c */,
+				C0DE20260908000200000004 /* indigo_ccd_playerone.driver */,
 				59FFB04D288D3CB900F172AC /* bin_externals */,
 			);
 			path = ccd_playerone;
@@ -13644,6 +13649,7 @@
 		9D239B3E30500558002E0722 /* hardware */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260908000200000003 /* test_ccd_playerone_hw.c */,
 				9D239B3D30500558002E0722 /* test_ccd_touptek_hw.c */,
 			);
 			path = hardware;

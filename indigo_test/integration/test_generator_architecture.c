@@ -134,6 +134,210 @@ static void unrestricted_default(void) {
 	ASSERT_TRUE(read_text(GENERATED, generated, sizeof(generated)));
 	ASSERT_TRUE(strstr(generated, "supported_architecture:") == NULL);
 	ASSERT_TRUE(strstr(generated, "INDIGO_UNSUPPORTED_ARCH") == NULL);
+	ASSERT_TRUE(strstr(generated, "sdk_discovery_retry") == NULL);
+}
+
+static void name_and_name_value_are_distinct(void) {
+	const char *orders[] = {
+		"name = \"Static name %s\";\nname_value = private_data->dynamic_name;\n",
+		"name_value = private_data->dynamic_name;\nname = \"Static name %s\";\n",
+		"name = \"Static name %s\";\n"
+	};
+	for (int i = 0; i < 3; i++) {
+		char definition[4096], generated[65536];
+		snprintf(definition, sizeof(definition), "driver architecture_test {\nlabel = \"Name parser test\";\nauthor = \"INDIGO tests\";\ncopyright = \"Copyright (c) 2026 CloudMakers\";\nversion = 1;\ndata {\nchar dynamic_name[128];\n}\nsdk {\nvid = 0xa0a0;\nplug {\nstrcpy(private_data->dynamic_name, \"Camera 100%%%% #suffix\");\n}\n}\naux {\n%s}\n}\n", orders[i]);
+		char *arguments[] = { TEST_GENERATOR, DEFINITION, NULL };
+		ASSERT_TRUE(write_text(DEFINITION, definition));
+		ASSERT_TRUE(run(arguments));
+		ASSERT_TRUE(read_text(GENERATED, generated, sizeof(generated)));
+		ASSERT_TRUE(strstr(generated, "\"Static name %s\"") != NULL);
+		const char *dynamic = "snprintf(aux->name, INDIGO_NAME_SIZE, \"%s\", private_data->dynamic_name);";
+		const char *fallback = "snprintf(aux->name, INDIGO_NAME_SIZE, \"Static name %s\", name);";
+		ASSERT_TRUE(strstr(generated, i < 2 ? dynamic : fallback) != NULL);
+		ASSERT_TRUE(strstr(generated, i < 2 ? fallback : dynamic) == NULL);
+	}
+}
+
+typedef enum { DRIVER_ATTRIBUTE, DEVICE_ATTRIBUTE, PROPERTY_ATTRIBUTE, ITEM_ATTRIBUTE, SERIAL_ATTRIBUTE, PATTERN_ATTRIBUTE, USB_ATTRIBUTE, HID_ATTRIBUTE, SDK_ATTRIBUTE } attribute_scope;
+
+typedef struct {
+	attribute_scope scope;
+	const char *declaration;
+	const char *output;
+} attribute_case;
+
+static bool check_attribute(const attribute_case *test) {
+	char definition[8192], driver_body[4096] = "", device_body[4096] = "", generated[131072], log[65536], header[16384];
+	switch (test->scope) {
+		case DRIVER_ATTRIBUTE:
+			snprintf(driver_body, sizeof(driver_body), "%s", test->declaration);
+			break;
+		case DEVICE_ATTRIBUTE:
+			snprintf(driver_body, sizeof(driver_body), "sdk { vid = 0xa0a0; }");
+			if (!strncmp(test->declaration, "additional_instances", 20)) {
+				snprintf(driver_body, sizeof(driver_body), "serial;");
+			}
+			snprintf(device_body, sizeof(device_body), "%s", test->declaration);
+			break;
+		case PROPERTY_ATTRIBUTE:
+			snprintf(driver_body, sizeof(driver_body), "serial; code { /* shared fixture code */ }");
+			snprintf(device_body, sizeof(device_body), "%s X_PROBE { %s item PROBE { value = 1; } on_change { /* probe handler body */ } }", !strncmp(test->declaration, "rule", 4) ? "switch" : "number", test->declaration);
+			break;
+		case ITEM_ATTRIBUTE:
+			snprintf(device_body, sizeof(device_body), "number X_PROBE { item PROBE { %s } }", test->declaration);
+			break;
+		case SERIAL_ATTRIBUTE:
+			snprintf(driver_body, sizeof(driver_body), "serial { %s }", test->declaration);
+			break;
+		case PATTERN_ATTRIBUTE:
+			snprintf(driver_body, sizeof(driver_body), "serial { pattern { %s } }", test->declaration);
+			break;
+		case USB_ATTRIBUTE:
+			snprintf(driver_body, sizeof(driver_body), "libusb { %s }", test->declaration);
+			break;
+		case HID_ATTRIBUTE:
+			snprintf(driver_body, sizeof(driver_body), "hid { %s }", test->declaration);
+			break;
+		case SDK_ATTRIBUTE:
+			snprintf(driver_body, sizeof(driver_body), "sdk { %s }", test->declaration);
+			break;
+	}
+	snprintf(definition, sizeof(definition), "driver architecture_test {\nlabel = \"Attribute fixture\";\nauthor = \"INDIGO tests\";\ncopyright = \"Copyright 2026 CloudMakers\";\nversion = 1;\n%s\naux {\n%s\n}\n}\n", driver_body, device_body);
+	char *arguments[] = { TEST_GENERATOR, "-v", DEFINITION, NULL };
+	if (!write_text(DEFINITION, definition) || !run(arguments) || !read_text(GENERATED, generated, sizeof(generated)) || !read_text("command.log", log, sizeof(log))) {
+		return false;
+	}
+	if (!read_text("indigo_aux_architecture_test.h", header, sizeof(header))) {
+		return false;
+	}
+	strncat(generated, header, sizeof(generated) - strlen(generated) - 1);
+	char parsed[1024];
+	snprintf(parsed, sizeof(parsed), "%s", test->declaration);
+	char *block = strchr(parsed, '{');
+	if (block) {
+		block[1] = 0;
+	}
+	const char *boolean_names[] = { "additional_instances", "asynchronous_change", "persistent", "preserve_values", "pass_through_change", "always_defined", "configurable_speed", "no_ports", "hotplug" };
+	bool boolean = false;
+	for (int i = 0; i < sizeof(boolean_names) / sizeof(boolean_names[0]); i++) {
+		if (!strncmp(parsed, boolean_names[i], strlen(boolean_names[i]))) {
+			boolean = true;
+		}
+	}
+	bool output_ok = !test->output || (test->output[0] == '!' ? strstr(generated, test->output + 1) == NULL : strstr(generated, test->output) != NULL);
+	bool trace_ok = true;
+	if (!boolean) {
+		for (char *part = strtok(parsed, ";"); part; part = strtok(NULL, ";")) {
+			while (*part == ' ') {
+				part++;
+			}
+			trace_ok = trace_ok && strstr(log, part) != NULL;
+		}
+	}
+	bool ok = trace_ok && output_ok;
+	if (!ok) {
+		fprintf(stderr, "Attribute scope=%d not preserved: %s (expected output: %s)\n", test->scope, test->declaration, test->output ? test->output : "parser trace");
+	}
+	return ok;
+}
+
+static void all_supported_attributes(void) {
+	const attribute_case cases[] = {
+		{ DRIVER_ATTRIBUTE, "author = \"Author marker\";", NULL },
+		{ DRIVER_ATTRIBUTE, "copyright = \"Copyright marker\";", "Copyright marker" },
+		{ DRIVER_ATTRIBUTE, "label = \"Label marker\";", "Label marker" },
+		{ DRIVER_ATTRIBUTE, "supported_architecture = \"defined(__aarch64__)\";", "#if defined(__aarch64__)" },
+		{ DRIVER_ATTRIBUTE, "version = 19;", "0x03000013" },
+		{ DRIVER_ATTRIBUTE, "PROBE_CONSTANT = 12345;", "12345" },
+		{ DRIVER_ATTRIBUTE, "include {\n/* marker_driver_include */\n}", "marker_driver_include" },
+		{ DRIVER_ATTRIBUTE, "define {\n/* marker_driver_define */\n}", "marker_driver_define" },
+		{ DRIVER_ATTRIBUTE, "data {\nint marker_driver_data;\n}", "marker_driver_data" },
+		{ DRIVER_ATTRIBUTE, "code {\n/* marker_driver_code */\n}", "marker_driver_code" },
+		{ DRIVER_ATTRIBUTE, "on_init {\n/* marker_driver_init */\n}", "marker_driver_init" },
+		{ DRIVER_ATTRIBUTE, "on_shutdown {\n/* marker_driver_shutdown */\n}", "marker_driver_shutdown" },
+		{ DEVICE_ATTRIBUTE, "name = \"Device marker %s\";", "Device marker %s" },
+		{ DEVICE_ATTRIBUTE, "name_value = private_data->marker_name;", "\"%s\", private_data->marker_name" },
+		{ DEVICE_ATTRIBUTE, "attach_if = private_data->marker_enabled;", "if (private_data->marker_enabled)" },
+		{ DEVICE_ATTRIBUTE, "interface = INDIGO_INTERFACE_AUX_LIGHTBOX;", "INDIGO_INTERFACE_AUX_LIGHTBOX" },
+		{ DEVICE_ATTRIBUTE, "additional_instances = true;", "ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL" },
+		{ DEVICE_ATTRIBUTE, "additional_instances = false;", "!ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL" },
+		{ DEVICE_ATTRIBUTE, "code {\n/* marker_device_code */\n}", "marker_device_code" },
+		{ DEVICE_ATTRIBUTE, "on_timer {\n/* marker_device_timer */\n}", "marker_device_timer" },
+		{ DEVICE_ATTRIBUTE, "on_attach {\n/* marker_device_attach */\n}", "marker_device_attach" },
+		{ DEVICE_ATTRIBUTE, "on_connect {\n/* marker_device_connect */\n}", "marker_device_connect" },
+		{ DEVICE_ATTRIBUTE, "on_disconnect {\n/* marker_device_disconnect */\n}", "marker_device_disconnect" },
+		{ DEVICE_ATTRIBUTE, "on_detach {\n/* marker_device_detach */\n}", "marker_device_detach" },
+		{ PROPERTY_ATTRIBUTE, "label = \"Property marker\";", "Property marker" },
+		{ PROPERTY_ATTRIBUTE, "handle = PROBE_HANDLE;", "#define PROBE_HANDLE" },
+		{ PROPERTY_ATTRIBUTE, "name = \"X_PROPERTY_MARKER\";", "X_PROPERTY_MARKER" },
+		{ PROPERTY_ATTRIBUTE, "name = PROPERTY_NAME_MARKER;", "PROPERTY_NAME_MARKER" },
+		{ PROPERTY_ATTRIBUTE, "handler = probe_custom_handler;", "static void probe_custom_handler(" },
+		{ PROPERTY_ATTRIBUTE, "handle = PROBE_HANDLE; handler = probe_custom_handler;", "INDIGO_COPY_VALUES_PROCESS_CHANGE(PROBE_HANDLE, probe_custom_handler)" },
+		{ PROPERTY_ATTRIBUTE, "handler = probe_custom_handler; handle = PROBE_HANDLE;", "INDIGO_COPY_VALUES_PROCESS_CHANGE(PROBE_HANDLE, probe_custom_handler)" },
+		{ PROPERTY_ATTRIBUTE, "asynchronous_change = true;", "INDIGO_COPY_VALUES_PROCESS_CHANGE" },
+		{ PROPERTY_ATTRIBUTE, "asynchronous_change = false;", "INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE" },
+		{ PROPERTY_ATTRIBUTE, "persistent = true;", "indigo_save_property(device, NULL, X_PROBE_PROPERTY)" },
+		{ PROPERTY_ATTRIBUTE, "persistent = false;", "!indigo_save_property(device, NULL, X_PROBE_PROPERTY)" },
+		{ PROPERTY_ATTRIBUTE, "preserve_values = true;", "INDIGO_COPY_TARGETS_PROCESS_CHANGE" },
+		{ PROPERTY_ATTRIBUTE, "preserve_values = false;", "INDIGO_COPY_VALUES_PROCESS_CHANGE" },
+		{ PROPERTY_ATTRIBUTE, "pass_through_change = true;", "!INDIGO_COPY_VALUES_PROCESS_CHANGE(X_PROBE_PROPERTY, aux_x_probe_handler);\n\t\treturn INDIGO_OK;" },
+		{ PROPERTY_ATTRIBUTE, "pass_through_change = false;", "INDIGO_COPY_VALUES_PROCESS_CHANGE(X_PROBE_PROPERTY, aux_x_probe_handler);\n\t\treturn INDIGO_OK;" },
+		{ PROPERTY_ATTRIBUTE, "hidden = true;", "X_PROBE_PROPERTY->hidden = true" },
+		{ PROPERTY_ATTRIBUTE, "perm = INDIGO_RO_PERM;", "INDIGO_RO_PERM" },
+		{ PROPERTY_ATTRIBUTE, "rule = INDIGO_ANY_OF_MANY_RULE;", "INDIGO_ANY_OF_MANY_RULE" },
+		{ PROPERTY_ATTRIBUTE, "group = \"Probe group\";", "Probe group" },
+		{ PROPERTY_ATTRIBUTE, "pointer = probe_pointer;", "probe_pointer" },
+		{ PROPERTY_ATTRIBUTE, "always_defined = true;", "!indigo_delete_property(device, X_PROBE_PROPERTY, NULL)" },
+		{ PROPERTY_ATTRIBUTE, "always_defined = false;", "indigo_delete_property(device, X_PROBE_PROPERTY, NULL)" },
+		{ PROPERTY_ATTRIBUTE, "code {\n/* marker_property_code */\n}", "marker_property_code" },
+		{ PROPERTY_ATTRIBUTE, "on_attach {\n/* marker_property_attach */\n}", "marker_property_attach" },
+		{ PROPERTY_ATTRIBUTE, "on_change_request {\n/* marker_property_request */\n}", "marker_property_request" },
+		{ PROPERTY_ATTRIBUTE, "on_change {\n/* marker_property_change */\n}", "marker_property_change" },
+		{ PROPERTY_ATTRIBUTE, "on_detach {\n/* marker_property_detach */\n}", "marker_property_detach" },
+		{ ITEM_ATTRIBUTE, "label = \"Item marker\";", "Item marker" },
+		{ ITEM_ATTRIBUTE, "handle = PROBE_ITEM_HANDLE;", "PROBE_ITEM_HANDLE" },
+		{ ITEM_ATTRIBUTE, "name = \"ITEM_MARKER\";", "ITEM_MARKER" },
+		{ ITEM_ATTRIBUTE, "name = ITEM_NAME_MARKER;", "ITEM_NAME_MARKER" },
+		{ ITEM_ATTRIBUTE, "value = 123;", "123" },
+		{ ITEM_ATTRIBUTE, "min = -12;", "-12" },
+		{ ITEM_ATTRIBUTE, "max = 345;", "345" },
+		{ ITEM_ATTRIBUTE, "step = 0.125;", "0.125" },
+		{ ITEM_ATTRIBUTE, "format = \"%.3f\";", "%.3f" },
+		{ SERIAL_ATTRIBUTE, "configurable_speed = true;", "DEVICE_BAUDRATE_PROPERTY->hidden = false" },
+		{ SERIAL_ATTRIBUTE, "configurable_speed = false;", "!DEVICE_BAUDRATE_PROPERTY->hidden = false" },
+		{ SERIAL_ATTRIBUTE, "no_ports = true;", "!DEVICE_PORTS_PROPERTY->hidden = false" },
+		{ SERIAL_ATTRIBUTE, "no_ports = false;", "DEVICE_PORTS_PROPERTY->hidden = false" },
+		{ PATTERN_ATTRIBUTE, "pid = 0x1234;", "0x1234" },
+		{ PATTERN_ATTRIBUTE, "vid = 0x5678;", "0x5678" },
+		{ PATTERN_ATTRIBUTE, "exact_match = true;", NULL },
+		{ PATTERN_ATTRIBUTE, "product = \"Product marker\";", "Product marker" },
+		{ PATTERN_ATTRIBUTE, "vendor = \"Vendor marker\";", "Vendor marker" },
+		{ PATTERN_ATTRIBUTE, "serial = \"Serial marker\";", "Serial marker" },
+		{ USB_ATTRIBUTE, "pid = 0x1234;", "0x1234" },
+		{ USB_ATTRIBUTE, "vid = 0x5678;", "0x5678" },
+		{ USB_ATTRIBUTE, "hotplug = true;", "libusb_hotplug_register_callback" },
+		{ USB_ATTRIBUTE, "hotplug = false;", "!libusb_hotplug_register_callback" },
+		{ HID_ATTRIBUTE, "pid = 0x1234;", "0x1234" },
+		{ HID_ATTRIBUTE, "vid = 0x5678;", "0x5678" },
+		{ HID_ATTRIBUTE, "hotplug = true;", "libusb_hotplug_register_callback" },
+		{ HID_ATTRIBUTE, "hotplug = false;", "!libusb_hotplug_register_callback" },
+		{ SDK_ATTRIBUTE, "pid = 0x1234;", "0x1234" },
+		{ SDK_ATTRIBUTE, "discovery_retries = 6;", "#define SDK_DISCOVERY_RETRIES (6)" },
+		{ SDK_ATTRIBUTE, "vid = 0x5678;", "0x5678" },
+		{ SDK_ATTRIBUTE, "hotplug = true;", "libusb_hotplug_register_callback" },
+		{ SDK_ATTRIBUTE, "hotplug = false;", "!libusb_hotplug_register_callback" },
+		{ SDK_ATTRIBUTE, "plug {\n/* marker_sdk_plug */\n}", "marker_sdk_plug" },
+		{ SDK_ATTRIBUTE, "unplug {\n/* marker_sdk_unplug */\n}", "marker_sdk_unplug" },
+		{ SDK_ATTRIBUTE, "unplug_match {\n/* marker_sdk_match */\n}", "marker_sdk_match" }
+	};
+	int failed = 0;
+	for (int i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		if (!check_attribute(cases + i)) {
+			failed++;
+		}
+	}
+	printf("    %zu attribute/value/block cases, %d failed\n", sizeof(cases) / sizeof(cases[0]), failed);
+	ASSERT_EQ_INT(0, failed);
 }
 
 int main(void) {
@@ -150,7 +354,9 @@ int main(void) {
 	const indigo_test_case tests[] = {
 		{ "nine platform/CPU conditions and three reverse extractions", conditions_and_reverse_extraction },
 		{ "unsupported fallback without SDK headers or linkage", unsupported_fallback },
-		{ "unrestricted default", unrestricted_default }
+		{ "unrestricted default", unrestricted_default },
+		{ "name and name_value stay distinct in either order", name_and_name_value_are_distinct },
+		{ "All supported DSL attributes and code blocks", all_supported_attributes }
 	};
 	int result = indigo_run_tests("Generator architecture", tests, sizeof(tests) / sizeof(tests[0]));
 	DIR *directory = opendir(".");

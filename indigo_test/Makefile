@@ -34,6 +34,7 @@ UNIT_TESTS = \
 INTEGRATION_TESTS = \
 	$(INTEGRATION_BUILD)/test_generator_architecture \
 	$(INTEGRATION_BUILD)/test_wheel_playerone_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_playerone_sdk \
 	$(INTEGRATION_BUILD)/test_wheel_astroasis_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_touptek_sdk \
 	$(INTEGRATION_BUILD)/test_wheel_asi_sdk \
@@ -788,3 +789,32 @@ test-generator-architecture: $(INTEGRATION_BUILD)/test_generator_architecture
 
 $(INTEGRATION_BUILD)/test_generator_architecture: integration/test_generator_architecture.c test_runner.h ../build/bin/indigo_generator Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DTEST_GENERATOR='"$(abspath ../build/bin/indigo_generator)"' -DTEST_INCLUDE='"$(abspath ../indigo_libs)"' -DTEST_CC='"$(CC)"' $< -o $@
+
+POA_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_playerone/bin_externals/libplayeronecamera/include
+POA_SDK_TEST_REPLACEMENTS = -Dindigo_queue_create=poa_test_queue_create -Dindigo_execute_handler_in=poa_test_execute_in -Dlibusb_hotplug_register_callback_sim=poa_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=poa_test_usb_deregister_poll -Dindigo_start_usb_event_handler=poa_test_usb_start -Dindigo_try_global_lock=poa_test_lock -Dindigo_global_unlock=poa_test_unlock -Dindigo_attach_device=poa_test_attach -Dindigo_detach_device=poa_test_detach -Dlibusb_hotplug_register_callback=poa_test_usb_register -Dlibusb_hotplug_deregister_callback=poa_test_usb_deregister -Dlibusb_ref_device=poa_test_usb_ref -Dlibusb_unref_device=poa_test_usb_unref -Dlibusb_get_device_descriptor=poa_test_usb_descriptor
+
+$(INTEGRATION_BUILD)/ccd_playerone_sdk_driver.o: ../indigo_drivers/ccd_playerone/indigo_ccd_playerone.c ../indigo_drivers/ccd_playerone/indigo_ccd_playerone.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(POA_SDK_TEST_INCLUDE) $(POA_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=poa_test_config_folder -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_playerone_sdk: integration/test_ccd_playerone_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_playerone_sdk_driver.o $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_image.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(POA_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_playerone_sdk_driver.o $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_image.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+
+# Physical Player One hardware is opt-in and excluded from normal integration tests.
+.PHONY: test-ccd-playerone-hw
+test-ccd-playerone-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_playerone_hw
+	$(TEST_BUILD)/hardware/test_ccd_playerone_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug)
+
+$(TEST_BUILD)/hardware/test_ccd_playerone_hw: hardware/test_ccd_playerone_hw.c ../build/drivers/indigo_ccd_playerone.a $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_playerone.a $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS) -lPlayerOneCamera
+
+# Dynamic-loader acceptance uses the shared bus and never saves user configuration.
+.PHONY: test-ccd-playerone-reload-hw
+test-ccd-playerone-reload-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw
+	$(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw --run
+
+$(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw: hardware/test_ccd_playerone_hw.c ../build/drivers/indigo_ccd_playerone.$(SOEXT) | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) -DPOA_DYNAMIC_DRIVER -DPOA_DRIVER_PATH='"$(BUILD_DRIVERS)/indigo_ccd_playerone.$(SOEXT)"' $< -o $@ $(TEST_LDFLAGS) -ldl

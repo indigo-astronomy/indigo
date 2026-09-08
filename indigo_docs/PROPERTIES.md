@@ -912,11 +912,11 @@ Source: `indigo_drivers/ccd_pentax/indigo_ccd_pentax.c`.
 
 ### ccd_playerone
 
-Custom properties: `PIXEL_FORMAT`, `POA_ADVANCED`, `POA_CUSTOM_SUFFIX`, `POA_PRESETS`, `POA_SENSOR_MODE`.
+Custom properties: `X_PIXEL_FORMAT`, `X_ADVANCED`, `X_CUSTOM_SUFFIX`, `X_PRESETS`, `X_SENSOR_MODE`.
 
 Driver-specific use of existing properties: `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_EGAIN`, `CCD_EXPOSURE`, `CCD_GAIN`, `CCD_IMAGE_FORMAT`, `CCD_MODE`, `CCD_OFFSET`, `CCD_STREAMING`, `CCD_STREAMING_SETTINGS`, `CCD_TEMPERATURE`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`.
 
-Source: `indigo_drivers/ccd_playerone/indigo_ccd_playerone.c`.
+Source: `indigo_drivers/ccd_playerone/indigo_ccd_playerone.driver`, generated `indigo_drivers/ccd_playerone/indigo_ccd_playerone.c`.
 
 ### ccd_ptp
 
