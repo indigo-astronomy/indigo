@@ -2519,21 +2519,21 @@ indigo_result indigo_mount_synscan(indigo_driver_action action, indigo_driver_in
 			last_action = action;
 			if (mount != NULL) {
 				indigo_detach_device(mount);
-				free(mount);
+				indigo_safe_free(mount);
 				mount = NULL;
 			}
 			if (guider != NULL) {
 				indigo_detach_device(guider);
-				free(guider);
+				indigo_safe_free(guider);
 				guider = NULL;
 			}
 			if (aux != NULL) {
 				indigo_detach_device(aux);
-				free(aux);
+				indigo_safe_free(aux);
 				aux = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;

@@ -2057,12 +2057,8 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			VERIFY_NOT_CONNECTED(guider_ao);
 			VERIFY_NOT_CONNECTED(bahtinov_ccd);
 			VERIFY_NOT_CONNECTED(dslr);
+			VERIFY_NOT_CONNECTED(file);
 			last_action = action;
-			if (imager_ccd != NULL) {
-				indigo_detach_device(imager_ccd);
-				free(imager_ccd);
-				imager_ccd = NULL;
-			}
 			if (imager_wheel != NULL) {
 				indigo_detach_device(imager_wheel);
 				free(imager_wheel);
@@ -2102,6 +2098,11 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 				indigo_detach_device(file);
 				free(file);
 				file = NULL;
+			}
+			if (imager_ccd != NULL) {
+				indigo_detach_device(imager_ccd);
+				free(imager_ccd);
+				imager_ccd = NULL;
 			}
 			if (private_data != NULL) {
 				pthread_mutex_destroy(&private_data->image_mutex);

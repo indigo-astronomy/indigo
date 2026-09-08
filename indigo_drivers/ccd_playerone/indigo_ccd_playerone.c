@@ -2005,6 +2005,13 @@ static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(GUIDER_DEVICE_N
 
 static indigo_device *devices[MAX_DEVICES];
 
+static indigo_result verify_devices_disconnected(void) {
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		VERIFY_NOT_CONNECTED(devices[i]);
+	}
+	return INDIGO_OK;
+}
+
 #define SDK_DISCOVERY_RETRIES (6)
 typedef struct sdk_discovery_retry {
 	libusb_device *dev;
@@ -2060,7 +2067,7 @@ static void process_sdk_retry_handler(indigo_device *device, void *data) {
 		}
 		*link = entry->next;
 		libusb_unref_device(entry->dev);
-		free(entry);
+		indigo_safe_free(entry);
 	}
 }
 
@@ -2069,7 +2076,7 @@ static void clear_sdk_discovery_retries(void) {
 		sdk_discovery_retry *entry = sdk_discovery_retries;
 		sdk_discovery_retries = entry->next;
 		libusb_unref_device(entry->dev);
-		free(entry);
+		indigo_safe_free(entry);
 	}
 }
 static void process_plug_event_handler(indigo_device *device, void *data) {
@@ -2161,7 +2168,7 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 			}
 		}
 		if (!ccd_attached) {
-			free(ccd);
+			indigo_safe_free(ccd);
 		}
 		if (ccd_attached && private_data->property.isHasST4Port) {
 		indigo_device *guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
@@ -2182,13 +2189,13 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 			}
 		}
 		if (!guider_attached) {
-			free(guider);
+			indigo_safe_free(guider);
 		}
 		}
 	}
 	update_sdk_discovery_retry(dev, discovery_eligible && !dev_ref_transferred);
 	if (!dev_ref_transferred) {
-		free(private_data);
+		indigo_safe_free(private_data);
 		libusb_unref_device(dev);
 	}
 }
@@ -2220,7 +2227,7 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 			if (unplug_result) {
 				private_data = PRIVATE_DATA;
 				indigo_detach_device(device);
-				free(device);
+				indigo_safe_free(device);
 				devices[j] = NULL;
 				bool recorded = false;
 				for (int k = 0; k < removed_count; k++) {
@@ -2237,7 +2244,7 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 	}
 	for (int k = 0; k < removed_count; k++) {
 		libusb_unref_device(removed[k]->usbdev);
-		free(removed[k]);
+		indigo_safe_free(removed[k]);
 	}
 	libusb_unref_device(dev);
 }
@@ -2300,21 +2307,26 @@ indigo_result indigo_ccd_playerone(indigo_driver_action action, indigo_driver_in
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
-			for (int i = 0; i < MAX_DEVICES; i++) {
-				VERIFY_NOT_CONNECTED(devices[i]);
+			pthread_mutex_lock(&driver_queue_mutex);
+			indigo_result shutdown_result = verify_devices_disconnected();
+			if (shutdown_result == INDIGO_OK) {
+				sdk_discovery_stopping = true;
+			}
+			pthread_mutex_unlock(&driver_queue_mutex);
+			if (shutdown_result != INDIGO_OK) {
+				return shutdown_result;
 			}
 			last_action = action;
-			pthread_mutex_lock(&driver_queue_mutex);
-			sdk_discovery_stopping = true;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+			indigo_queue_remove(driver_queue, NULL, (indigo_timer_callback)process_sdk_retry_handler);
+			indigo_queue_drain(driver_queue);
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				if (devices[i] != NULL) {
 					indigo_device *device = devices[i];
 					process_unplug_event_handler(NULL, libusb_ref_device(PRIVATE_DATA->usbdev));
 				}
 			}
-			pthread_mutex_unlock(&driver_queue_mutex);
 			indigo_queue_delete(&driver_queue);
 			clear_sdk_discovery_retries();
 			break;

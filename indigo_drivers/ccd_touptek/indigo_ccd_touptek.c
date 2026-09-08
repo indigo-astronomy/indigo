@@ -188,6 +188,7 @@ typedef struct {
 #pragma mark - Low level code
 
 static indigo_queue *driver_queue;
+static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 static _Atomic(indigo_driver_action) last_action = INDIGO_DRIVER_SHUTDOWN;
 
 #ifdef TOUPTEK
@@ -461,17 +462,21 @@ static void ccd_temperature_monitor_handler(indigo_device *device) {
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "get_Temperature() -> %08x", result);
+		CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	}
 	if (!CCD_COOLER_POWER_PROPERTY->hidden) {
 		int current_voltage = 0, max_voltage = 0;
+		bool voltage_valid = true;
 		// When cooler is OFF current_voltage is reported as the last measured when power was ON, so we set it to 0 to show correct percentage
 		if (CCD_COOLER_ON_ITEM->sw.value) {
 			result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TEC_VOLTAGE), &current_voltage);
+			voltage_valid = result >= 0;
 		} else {
 			current_voltage = 0;
 		}
 		result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TEC_VOLTAGE_MAX), &max_voltage);
-		if (result >= 0 && max_voltage > 0) {
+		if (voltage_valid && result >= 0 && max_voltage > 0) {
 			double cooler_power = (double)current_voltage / max_voltage * 100;
 			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_COOLER_POWER_ITEM->number.value = round(cooler_power);
@@ -531,6 +536,19 @@ static void ccd_setup_pull_handler(indigo_device *device) {
 		return;
 	}
 	HRESULT result = SDK_CALL(StartPullModeWithCallback)(PRIVATE_DATA->handle, pull_callback, device);
+	if (FAILED(result)) {
+		PRIVATE_DATA->mode = -1;
+		indigo_ccd_failure_cleanup(device);
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		}
+		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+		}
+		return;
+	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "StartPullModeWithCallback() -> %08x", result);
 	setup_exposure_frame(device);
 }
@@ -552,6 +570,19 @@ static void setup_exposure(indigo_device *device) {
 		if (item->sw.value) {
 			if (PRIVATE_DATA->mode != i) {
 				result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
+				if (FAILED(result)) {
+					PRIVATE_DATA->mode = -1;
+					indigo_ccd_failure_cleanup(device);
+					if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+						CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+					}
+					if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+						CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+					}
+					return;
+				}
 				// Stop joins the callback; notifications already queued belong to the old pull mode.
 				atomic_store(&PRIVATE_DATA->event_generation, (atomic_load(&PRIVATE_DATA->event_generation) + 1) & (UINTPTR_MAX >> 16));
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
@@ -848,6 +879,7 @@ static void focuser_temperature_handler(indigo_device *device) {
 
 static void ccd_connection_handler(indigo_device *device) {
 	HRESULT result;
+	bool failed_connection = false;
 	indigo_cancel_pending_handlers(device);
 	indigo_lock_master_device(device);
 	// Cancelled requests must not leave properties BUSY in the next session.
@@ -883,9 +915,17 @@ static void ccd_connection_handler(indigo_device *device) {
 				if (CCD_TEMPERATURE_PROPERTY->perm == INDIGO_RW_PERM) {
 					int value;
 					result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TEC), &value);
+					if (FAILED(result)) {
+						failed_connection = true;
+						goto disconnect;
+					}
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_TEC, ->%d) -> %08x", value, result);
 					indigo_set_switch(CCD_COOLER_PROPERTY, value ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
 					result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TECTARGET), &value);
+					if (FAILED(result)) {
+						failed_connection = true;
+						goto disconnect;
+					}
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_TECTARGET, ->%d) -> %08x", value, result);
 					PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.target = value / 10.0;
 				}
@@ -936,15 +976,27 @@ static void ccd_connection_handler(indigo_device *device) {
 			CCD_BIN_VERTICAL_ITEM->number.value =
 			CCD_BIN_VERTICAL_ITEM->number.target = binning;
 			unsigned min, max, current;
-			SDK_CALL(get_ExpTimeRange)(PRIVATE_DATA->handle, &min, &max, &current);
+			result = SDK_CALL(get_ExpTimeRange)(PRIVATE_DATA->handle, &min, &max, &current);
+			if (FAILED(result)) {
+				failed_connection = true;
+				goto disconnect;
+			}
 			CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = min / 1000000.0;
 			CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = max / 1000000.0;
 			unsigned short gain_min = 0, gain_max = 0, gain_current = 0;
 			result = SDK_CALL(put_AutoExpoEnable)(PRIVATE_DATA->handle, false);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_AutoExpoEnable(false) -> %08x", result);
 			result = SDK_CALL(get_ExpoAGainRange)(PRIVATE_DATA->handle, &gain_min, &gain_max, &gain_current);
+			if (FAILED(result)) {
+				failed_connection = true;
+				goto disconnect;
+			}
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_ExpoAGainRange(->%d, ->%d, ->%d) -> %08x", gain_min, gain_max, gain_current, result);
 			result = SDK_CALL(get_ExpoAGain)(PRIVATE_DATA->handle, &gain_current);
+			if (FAILED(result)) {
+				failed_connection = true;
+				goto disconnect;
+			}
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_ExpoAGain(->%d) -> %08x", gain_current, result);
 			CCD_GAIN_ITEM->number.min = gain_min;
 			CCD_GAIN_ITEM->number.max = gain_max;
@@ -1013,6 +1065,10 @@ static void ccd_connection_handler(indigo_device *device) {
 			result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 1);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 1) -> %08x", result);
 			result = SDK_CALL(StartPullModeWithCallback)(PRIVATE_DATA->handle, pull_callback, device);
+			if (FAILED(result)) {
+				failed_connection = true;
+				goto disconnect;
+			}
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "StartPullModeWithCallback() -> %08x", result);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -1021,6 +1077,7 @@ static void ccd_connection_handler(indigo_device *device) {
 			PRIVATE_DATA->count--;
 		}
 	} else {
+disconnect:
 		if (PRIVATE_DATA->handle) {
 			result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
 			atomic_store(&PRIVATE_DATA->event_generation, (atomic_load(&PRIVATE_DATA->event_generation) + 1) & (UINTPTR_MAX >> 16));
@@ -1060,7 +1117,10 @@ static void ccd_connection_handler(indigo_device *device) {
 			PRIVATE_DATA->handle = NULL;
 			indigo_global_unlock(device);
 		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		CONNECTION_PROPERTY->state = failed_connection ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+		if (failed_connection) {
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 	indigo_unlock_master_device(device);
@@ -1688,7 +1748,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, ccd_connection_handler, NULL);
+			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, ccd_connection_handler, &driver_queue_mutex);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
@@ -1921,7 +1981,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, guider_connection_handler, NULL);
+			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, guider_connection_handler, &driver_queue_mutex);
 		}
 		return INDIGO_OK;
 	} else if (!IS_CONNECTED || CONNECTION_PROPERTY->state != INDIGO_OK_STATE) {
@@ -2130,7 +2190,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, wheel_connection_handler, NULL);
+			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, wheel_connection_handler, &driver_queue_mutex);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
@@ -2576,7 +2636,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, focuser_connection_handler, NULL);
+			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, focuser_connection_handler, &driver_queue_mutex);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
@@ -2778,12 +2838,12 @@ static void process_unplug_event_handler(indigo_device *removed_device) {
 			if (guider) {
 				indigo_queue_remove(driver_queue, guider, NULL);
 				indigo_detach_device(guider);
-				free(guider);
+				indigo_safe_free(guider);
 				PRIVATE_DATA->guider = NULL;
 			}
 			indigo_detach_device(device);
-			free(device->private_data);
-			free(device);
+			indigo_safe_free(device->private_data);
+			indigo_safe_free(device);
 		}
 		if (removed_device) {
 			break;
@@ -2794,10 +2854,10 @@ static void process_unplug_event_handler(indigo_device *removed_device) {
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED:
-			indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0.5, process_plug_event_handler, NULL);
+			indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0.5, process_plug_event_handler, &driver_queue_mutex);
 			break;
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT:
-			indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0.5, process_unplug_event_handler, NULL);
+			indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0.5, process_unplug_event_handler, &driver_queue_mutex);
 			break;
 		default:
 			break;
@@ -2809,20 +2869,20 @@ static libusb_hotplug_callback_handle callback_handle;
 
 #pragma mark - Main code
 
-static bool devices_disconnected(void) {
+static indigo_result verify_devices_disconnected(void) {
 	for (int i = 0; i < SDK_DEF(MAX); i++) {
 		indigo_device *device = devices[i];
 		if (device) {
 			if (!IS_DISCONNECTED || PRIVATE_DATA->count > 0 || CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-				return false;
+				return INDIGO_BUSY;
 			}
 			device = PRIVATE_DATA->guider;
 			if (device && (!IS_DISCONNECTED || PRIVATE_DATA->count > 0 || CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE)) {
-				return false;
+				return INDIGO_BUSY;
 			}
 		}
 	}
-	return true;
+	return INDIGO_OK;
 }
 
 indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info) {
@@ -2863,23 +2923,16 @@ indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info)
 			return INDIGO_OK;
 		}
 		case INDIGO_DRIVER_SHUTDOWN: {
-			last_action = INDIGO_DRIVER_SHUTDOWN;
+			pthread_mutex_lock(&driver_queue_mutex);
+			indigo_result shutdown_result = verify_devices_disconnected();
+			pthread_mutex_unlock(&driver_queue_mutex);
+			if (shutdown_result != INDIGO_OK) {
+				return shutdown_result;
+			}
+			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-			// Stop discovery before inspecting the device table. An accepted connection remains BUSY/connected, so shutdown must leave it running.
-			indigo_queue_remove(driver_queue, NULL, process_plug_event_handler);
-			indigo_queue_remove(driver_queue, NULL, process_unplug_event_handler);
-			if (!devices_disconnected()) {
-				last_action = INDIGO_DRIVER_INIT;
-				int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
-				if (rc < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to restore hot-plug callback: %s", libusb_error_name(rc));
-					return INDIGO_FAILED;
-				}
-				hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
-				return INDIGO_BUSY;
-			}
-			indigo_queue_remove(driver_queue, NULL, NULL);
+			indigo_queue_drain(driver_queue);
 			for (int i = 0; i < SDK_DEF(MAX); i++) {
 				if (devices[i]) {
 					process_unplug_event_handler(devices[i]);

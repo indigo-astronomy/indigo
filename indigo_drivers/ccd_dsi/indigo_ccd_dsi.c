@@ -496,6 +496,13 @@ static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(CCD_DEVICE_NAME, c
 
 static indigo_device *devices[MAX_DEVICES];
 
+static indigo_result verify_devices_disconnected(void) {
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		VERIFY_NOT_CONNECTED(devices[i]);
+	}
+	return INDIGO_OK;
+}
+
 static void process_plug_event_handler(indigo_device *device, void *data) {
 	indigo_set_handler_max_run_time(1);
 	libusb_device *dev = (libusb_device *)data;
@@ -558,11 +565,11 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 			}
 		}
 		if (!ccd_attached) {
-			free(ccd);
+			indigo_safe_free(ccd);
 		}
 	}
 	if (!dev_ref_transferred) {
-		free(private_data);
+		indigo_safe_free(private_data);
 		libusb_unref_device(dev);
 	}
 }
@@ -579,14 +586,14 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 				dsi_set_connected_sid(private_data->dev_sid, false);
 				//- sdk.unplug
 				indigo_detach_device(device);
-				free(device);
+				indigo_safe_free(device);
 				devices[j] = NULL;
 			}
 		}
 	}
 	if (private_data != NULL) {
 		libusb_unref_device(dev);
-		free(private_data);
+		indigo_safe_free(private_data);
 	}
 	libusb_unref_device(dev);
 }
@@ -646,12 +653,16 @@ indigo_result indigo_ccd_dsi(indigo_driver_action action, indigo_driver_info *in
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
-			for (int i = 0; i < MAX_DEVICES; i++) {
-				VERIFY_NOT_CONNECTED(devices[i]);
+			pthread_mutex_lock(&driver_queue_mutex);
+			indigo_result shutdown_result = verify_devices_disconnected();
+			pthread_mutex_unlock(&driver_queue_mutex);
+			if (shutdown_result != INDIGO_OK) {
+				return shutdown_result;
 			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+			indigo_queue_drain(driver_queue);
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				if (devices[i] != NULL) {
 					indigo_device *device = devices[i];

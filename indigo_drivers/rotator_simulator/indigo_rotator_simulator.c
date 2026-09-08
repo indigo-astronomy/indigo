@@ -268,11 +268,11 @@ indigo_result indigo_rotator_simulator(indigo_driver_action action, indigo_drive
 			last_action = action;
 			if (rotator != NULL) {
 				indigo_detach_device(rotator);
-				free(rotator);
+				indigo_safe_free(rotator);
 				rotator = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;

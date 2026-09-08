@@ -398,16 +398,16 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 			last_action = action;
 			if (ao != NULL) {
 				indigo_detach_device(ao);
-				free(ao);
+				indigo_safe_free(ao);
 				ao = NULL;
 			}
 			if (guider != NULL) {
 				indigo_detach_device(guider);
-				free(guider);
+				indigo_safe_free(guider);
 				guider = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;

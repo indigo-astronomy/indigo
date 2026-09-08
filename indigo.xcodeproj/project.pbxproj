@@ -2485,6 +2485,7 @@
 		598C99E92DCFAF1C00E0D2CE /* indigo_dome_simulator.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_dome_simulator.driver; sourceTree = "<group>"; };
 		598CB77F2D6092A200B7211A /* libsvbonycam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsvbonycam.dylib; path = build/lib/libsvbonycam.dylib; sourceTree = "<group>"; };
 		598FE2862615037000E0DA21 /* dome_talon6ror_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = dome_talon6ror_simulator.ino; sourceTree = "<group>"; };
+		59910A353050AC2600FB1C2F /* test_wheel_astroasis_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_astroasis_sdk.c; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -5260,6 +5261,8 @@
 		C0DE20260908000200000002 /* test_ccd_playerone_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_playerone_sdk.c; sourceTree = "<group>"; };
 		C0DE20260908000200000003 /* test_ccd_playerone_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_playerone_hw.c; sourceTree = "<group>"; };
 		C0DE20260908000200000004 /* indigo_ccd_playerone.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_ccd_playerone.driver; sourceTree = "<group>"; };
+		C0DE20260908000300000002 /* test_ccd_sx_usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_sx_usb.c; sourceTree = "<group>"; };
+		C0DE20260908000300000001 /* ccd_test_noise.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ccd_test_noise.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -13199,6 +13202,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				59910A353050AC2600FB1C2F /* test_wheel_astroasis_sdk.c */,
 				9D239B433050481C002E0722 /* test_generator_architecture.c */,
 				9D239B36304FE0CF002E0722 /* test_ccd_touptek_sdk.c */,
 				592C33AE304F6126004D5AE6 /* test_rotator_asi_sdk.c */,
@@ -13274,6 +13278,8 @@
 				59FA7BFB301D3F5A00A35CFB /* test_rotator_simulator.c */,
 				59FA7BF4301D3B9200A35CFB /* test_ccd_simulator.c */,
 				59FA7BF2301D3A5800A35CFB /* test_bus_lifecycle.c */,
+				C0DE20260908000300000002 /* test_ccd_sx_usb.c */,
+				C0DE20260908000300000001 /* ccd_test_noise.h */,
 				59FA7BF6301D3F5A00A35CFB /* simulator_test_common.h */,
 				59FEFFC6301E6891007FB62D /* serial_simulator_test_common.h */,
 				5907ACD6301E84A90009AA99 /* test_wheel_xagyl_simulator.c */,

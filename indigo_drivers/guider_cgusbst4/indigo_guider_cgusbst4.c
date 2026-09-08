@@ -244,11 +244,11 @@ indigo_result indigo_guider_cgusbst4(indigo_driver_action action, indigo_driver_
 			last_action = action;
 			if (guider != NULL) {
 				indigo_detach_device(guider);
-				free(guider);
+				indigo_safe_free(guider);
 				guider = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;

@@ -153,11 +153,11 @@ indigo_result indigo_wheel_manual(indigo_driver_action action, indigo_driver_inf
 			last_action = action;
 			if (wheel != NULL) {
 				indigo_detach_device(wheel);
-				free(wheel);
+				indigo_safe_free(wheel);
 				wheel = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;

@@ -475,11 +475,11 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 			last_action = action;
 			if (gps != NULL) {
 				indigo_detach_device(gps);
-				free(gps);
+				indigo_safe_free(gps);
 				gps = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;

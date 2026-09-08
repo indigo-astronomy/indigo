@@ -200,6 +200,8 @@ typedef enum {
 	SX_IMAGE_DOWNLOADED
 } sx_image_result;
 
+static void sx_close(indigo_device *device);
+
 static bool sx_open(indigo_device *device) {
 	if (indigo_try_global_lock(device) != INDIGO_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
@@ -223,6 +225,7 @@ static bool sx_open(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_config_descriptor -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			if (rc >= 0) {
 				int interface = config->interface->altsetting->bInterfaceNumber;
+				libusb_free_config_descriptor(config);
 				rc = libusb_claim_interface(handle, interface);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_claim_interface(%d) -> %s", interface, rc < 0 ? libusb_error_name(rc) : "OK");
 			}
@@ -239,6 +242,9 @@ static bool sx_open(indigo_device *device) {
 		setup_data[REQ_LENGTH_L] = 0;
 		setup_data[REQ_LENGTH_H] = 0;
 		rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+		if (rc >= 0 && transferred != REQ_DATA) {
+			rc = LIBUSB_ERROR_IO;
+		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %d bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
 		indigo_usleep(1000);
 	}
@@ -252,9 +258,15 @@ static bool sx_open(indigo_device *device) {
 		setup_data[REQ_LENGTH_L] = 2;
 		setup_data[REQ_LENGTH_H] = 0;
 		rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+		if (rc >= 0 && transferred != REQ_DATA) {
+			rc = LIBUSB_ERROR_IO;
+		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %d bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
 		if (rc >=0 && transferred == REQ_DATA) {
 			rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 2, &transferred, BULK_COMMAND_TIMEOUT);
+			if (rc >= 0 && transferred != 2) {
+				rc = LIBUSB_ERROR_IO;
+			}
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %d bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
 			if (rc >=0 && transferred == 2) {
 				int result=setup_data[0] | (setup_data[1] << 8);
@@ -283,9 +295,15 @@ static bool sx_open(indigo_device *device) {
 		setup_data[REQ_LENGTH_L] = 17;
 		setup_data[REQ_LENGTH_H] = 0;
 		rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+		if (rc >= 0 && transferred != REQ_DATA) {
+			rc = LIBUSB_ERROR_IO;
+		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %d bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
 		if (rc >=0 && transferred == REQ_DATA) {
 			rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 17, &transferred, BULK_COMMAND_TIMEOUT);
+			if (rc >= 0 && transferred != 17) {
+				rc = LIBUSB_ERROR_IO;
+			}
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %d bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
 			if (rc >=0 && transferred == 17) {
 				PRIVATE_DATA->ccd_width = setup_data[2] | (setup_data[3] << 8);
@@ -312,6 +330,9 @@ static bool sx_open(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sxGetCameraParams: capabilities:%s%s%s%s", (PRIVATE_DATA->extra_caps & CAPS_GUIDER ? " GUIDER" : ""), (PRIVATE_DATA->extra_caps & CAPS_STAR2K ? " STAR2K" : ""), (PRIVATE_DATA->extra_caps & CAPS_COOLER ? " COOLER" : ""), (PRIVATE_DATA->extra_caps & CAPS_SHUTTER ? " SHUTTER" : ""));
 			}
 		}
+	}
+	if (rc < 0) {
+		sx_close(device);
 	}
 	return rc >= 0;
 }
@@ -401,7 +422,7 @@ static bool sx_start_exposure(indigo_device *device, double exposure, bool dark,
 	PRIVATE_DATA->horizontal_bin = horizontal_bin;
 	PRIVATE_DATA->vertical_bin = vertical_bin;
 	PRIVATE_DATA->exposure = exposure;
-	return rc >= 0;
+	return rc >= 0 && transferred == (exposure < 1 ? REQ_DATA + 14 : REQ_DATA);
 }
 
 static bool sx_clear_regs(indigo_device *device) {
@@ -421,14 +442,14 @@ static bool sx_clear_regs(indigo_device *device) {
 		rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %d bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
 	}
-	return rc >= 0;
+	return rc >= 0 && transferred == REQ_DATA;
 }
 
-static bool sx_download_pixels(indigo_device *device, unsigned char *pixels, unsigned long count) {
+static int sx_download_pixels(indigo_device *device, unsigned char *pixels, unsigned long count) {
 	libusb_device_handle *handle = PRIVATE_DATA->handle;
 	int transferred;
 	unsigned long read = 0;
-	int rc=0;
+	int rc = 0;
 	while (read < count && rc >= 0) {
 		int size = (int)(count - read);
 		if (size > CHUNK_SIZE) {
@@ -436,11 +457,13 @@ static bool sx_download_pixels(indigo_device *device, unsigned char *pixels, uns
 		}
 		rc = libusb_bulk_transfer(handle, BULK_IN, pixels + read, size, &transferred, BULK_DATA_TIMEOUT);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %d bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
-		if (transferred >= 0) {
+		if (rc >= 0 && transferred <= 0) {
+			rc = LIBUSB_ERROR_IO;
+		} else if (transferred > 0) {
 			read += transferred;
 		}
 	}
-	return rc >= 0;
+	return rc;
 }
 
 static sx_image_result sx_read_pixels(indigo_device *device) {
@@ -476,6 +499,9 @@ static sx_image_result sx_read_pixels(indigo_device *device) {
 				setup_data[REQ_DATA + 8] = horizontal_bin;
 				setup_data[REQ_DATA + 9] = vertical_bin / 2;
 				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
+				if (rc < 0 || transferred != REQ_DATA + 10) {
+					return SX_IMAGE_FAILED;
+				}
 			}
 			rc = sx_download_pixels(device, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, 2 * size);
 		} else {
@@ -499,6 +525,9 @@ static sx_image_result sx_read_pixels(indigo_device *device) {
 				setup_data[REQ_DATA + 8] = horizontal_bin;
 				setup_data[REQ_DATA + 9] = vertical_bin;
 				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
+				if (rc < 0 || transferred != REQ_DATA + 10) {
+					return SX_IMAGE_FAILED;
+				}
 			}
 			rc = sx_download_pixels(device, PRIVATE_DATA->even, size);
 			if (rc >= 0) {
@@ -520,6 +549,9 @@ static sx_image_result sx_read_pixels(indigo_device *device) {
 				setup_data[REQ_DATA + 8] = horizontal_bin;
 				setup_data[REQ_DATA + 9] = vertical_bin;
 				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
+				if (rc < 0 || transferred != REQ_DATA + 10) {
+					return SX_IMAGE_FAILED;
+				}
 				if (rc >= 0) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %d bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
 					unsigned char *odd = PRIVATE_DATA->odd;
@@ -534,7 +566,7 @@ static sx_image_result sx_read_pixels(indigo_device *device) {
 						for (int i = 0; i < size / 2; i += 32) {
 							even_sum += *pnt++;
 						}
-						double ratio = (double)odd_sum/(double)even_sum;
+						double ratio = even_sum ? (double)odd_sum / (double)even_sum : 1;
 						pnt = (uint16_t *)even;
 						for (int i = 0; i < size / 2; i ++) {
 							 unsigned short value = (unsigned short)(*pnt * ratio);
@@ -581,6 +613,9 @@ static sx_image_result sx_read_pixels(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sx_read_pixels: is_icx453 setup");
 			}
 			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
+			if (rc < 0 || transferred != REQ_DATA + 10) {
+				return SX_IMAGE_FAILED;
+			}
 		}
 		if (PRIVATE_DATA->is_icx453 && vertical_bin == 1) {
 			rc = sx_download_pixels(device, PRIVATE_DATA->even, 2 * size);
@@ -604,6 +639,7 @@ static sx_image_result sx_read_pixels(indigo_device *device) {
 	}
 	return rc >= 0 ? SX_IMAGE_DOWNLOADED : SX_IMAGE_FAILED;
 }
+
 
 static bool sx_abort_exposure(indigo_device *device) {
 	libusb_device_handle *handle = PRIVATE_DATA->handle;
@@ -633,7 +669,7 @@ static bool sx_abort_exposure(indigo_device *device) {
 	rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %d bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
 	indigo_usleep(1000);
-	return rc >= 0;
+	return rc >= 0 && transferred == REQ_DATA;
 }
 
 static bool sx_set_cooler(indigo_device *device, bool status, double target, double *current) {
@@ -660,6 +696,11 @@ static bool sx_set_cooler(indigo_device *device, bool status, double target, dou
 				*current = ((setup_data[1]*256)+setup_data[0]-2730)/10.0;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "cooler: %s, target: %gC, current: %gC", setup_data[2] ? "On" : "Off", target, *current);
 			}
+			if (rc >= 0 && transferred != 3) {
+				rc = LIBUSB_ERROR_IO;
+			}
+		} else if (rc >= 0) {
+			rc = LIBUSB_ERROR_IO;
 		}
 	}
 	return rc >= 0;
@@ -678,7 +719,7 @@ static bool sx_guide_relays(indigo_device *device, unsigned short relay_mask) {
 	setup_data[REQ_LENGTH_L] = 0;
 	setup_data[REQ_LENGTH_H] = 0;
 	int rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-	return rc >= 0;
+	return rc >= 0 && transferred == REQ_DATA;
 }
 
 static bool sx_flood_led(indigo_device *device, bool state) {
@@ -694,7 +735,7 @@ static bool sx_flood_led(indigo_device *device, bool state) {
 	setup_data[REQ_LENGTH_L] = 0;
 	setup_data[REQ_LENGTH_H] = 0;
 	int rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-	return rc >= 0;
+	return rc >= 0 && transferred == REQ_DATA;
 }
 
 static void sx_close(indigo_device *device) {
@@ -703,14 +744,12 @@ static void sx_close(indigo_device *device) {
 		PRIVATE_DATA->handle = NULL;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_close");
 	}
-	free(PRIVATE_DATA->buffer);
+	indigo_safe_free(PRIVATE_DATA->buffer);
 	PRIVATE_DATA->buffer = NULL;
-	if (PRIVATE_DATA->is_interlaced) {
-		free(PRIVATE_DATA->even);
-		PRIVATE_DATA->even = NULL;
-		free(PRIVATE_DATA->odd);
-		PRIVATE_DATA->odd = NULL;
-	}
+	indigo_safe_free(PRIVATE_DATA->even);
+	PRIVATE_DATA->even = NULL;
+	indigo_safe_free(PRIVATE_DATA->odd);
+	PRIVATE_DATA->odd = NULL;
 	if (PRIVATE_DATA->global_lock) {
 		indigo_global_unlock(device);
 		PRIVATE_DATA->global_lock = false;
@@ -751,7 +790,12 @@ static void ccd_clear_registers_handler(indigo_device *device) {
 	}
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
-		sx_clear_regs(device);
+		if (!sx_clear_regs(device)) {
+			PRIVATE_DATA->can_check_temperature = true;
+			indigo_ccd_failure_cleanup(device);
+			INDIGO_UPDATE_PROPERTY_STATE(CCD_EXPOSURE_PROPERTY, INDIGO_ALERT_STATE, "Register clear failed");
+			return;
+		}
 		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, 3, ccd_exposure_finalizer);
 	}
 }
@@ -785,10 +829,10 @@ static void guider_guide_dec_finalizer(indigo_device *device) {
 		return;
 	}
 	PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_NORTH | SX_GUIDE_SOUTH);
-	sx_guide_relays(device, PRIVATE_DATA->relay_mask);
+	bool ok = sx_guide_relays(device, PRIVATE_DATA->relay_mask);
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 
 static void guider_guide_ra_finalizer(indigo_device *device) {
@@ -796,10 +840,10 @@ static void guider_guide_ra_finalizer(indigo_device *device) {
 		return;
 	}
 	PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_WEST | SX_GUIDE_EAST);
-	sx_guide_relays(device, PRIVATE_DATA->relay_mask);
+	bool ok = sx_guide_relays(device, PRIVATE_DATA->relay_mask);
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
-	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 static struct {
 	int product;
@@ -901,9 +945,8 @@ static void ccd_connection_handler(indigo_device *device) {
 			indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
 			sprintf(name, "RAW 16 %dx%d", PRIVATE_DATA->ccd_width/4, PRIVATE_DATA->ccd_height/4);
 			indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
+			CCD_COOLER_PROPERTY->hidden = CCD_TEMPERATURE_PROPERTY->hidden = !(PRIVATE_DATA->extra_caps & CAPS_COOLER);
 			if (PRIVATE_DATA->extra_caps & CAPS_COOLER) {
-				CCD_COOLER_PROPERTY->hidden = false;
-				CCD_TEMPERATURE_PROPERTY->hidden = false;
 				PRIVATE_DATA->target_temperature = 0;
 				indigo_execute_handler(device, ccd_temperature_poll_handler);
 			}
@@ -1013,14 +1056,7 @@ static void ccd_frame_handler(indigo_device *device) {
 static void ccd_bin_handler(indigo_device *device) {
 	CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ccd.CCD_BIN.on_change
-	int h = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
-	int v = (int)CCD_BIN_VERTICAL_ITEM->number.value;
-	if (!(h == 1 || h == 2 || h == 4) || h != v) {
-		CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.value = h;
-		INDIGO_UPDATE_PROPERTY_STATE(CCD_BIN_PROPERTY, INDIGO_ALERT_STATE, NULL);
-	} else {
-		indigo_ccd_change_property(device, NULL, CCD_BIN_PROPERTY);
-	}
+	indigo_ccd_change_property(device, NULL, CCD_BIN_PROPERTY);
 	//- ccd.CCD_BIN.on_change
 	indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
 }
@@ -1039,7 +1075,7 @@ static void ccd_temperature_handler(indigo_device *device) {
 	CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ccd.CCD_TEMPERATURE.on_change
 	if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
-		PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
+		PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.target;
 		CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
 		if (CCD_COOLER_OFF_ITEM->sw.value) {
 			indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
@@ -1116,6 +1152,18 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(CCD_FRAME_PROPERTY, ccd_frame_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
+		//+ ccd.CCD_BIN.on_change_request
+		double h = CCD_BIN_HORIZONTAL_ITEM->number.value;
+		double v = CCD_BIN_VERTICAL_ITEM->number.value;
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, CCD_BIN_HORIZONTAL_ITEM_NAME)) { h = property->items[i].number.value; }
+			if (!strcmp(property->items[i].name, CCD_BIN_VERTICAL_ITEM_NAME)) { v = property->items[i].number.value; }
+		}
+		if (!(h == 1 || h == 2 || h == 4) || h != v) {
+			INDIGO_UPDATE_PROPERTY_STATE(CCD_BIN_PROPERTY, INDIGO_ALERT_STATE, "Unsupported binning");
+			return INDIGO_OK;
+		}
+		//- ccd.CCD_BIN.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(CCD_BIN_PROPERTY, ccd_bin_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_COOLER_PROPERTY, property)) {
@@ -1151,8 +1199,7 @@ static void guider_connection_handler(indigo_device *device) {
 		}
 		if (connection_result) {
 			//+ guider.on_connect
-			assert(PRIVATE_DATA->extra_caps & CAPS_STAR2K);
-			sx_guide_relays(device, PRIVATE_DATA->relay_mask = 0);
+			connection_result = (PRIVATE_DATA->extra_caps & CAPS_STAR2K) && sx_guide_relays(device, PRIVATE_DATA->relay_mask = 0);
 			//- guider.on_connect
 		}
 		if (connection_result) {
@@ -1171,6 +1218,7 @@ static void guider_connection_handler(indigo_device *device) {
 		//+ guider.on_disconnect
 		indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
 		indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+		sx_guide_relays(device, PRIVATE_DATA->relay_mask = 0);
 		//- guider.on_disconnect
 		if (--PRIVATE_DATA->count == 0) {
 			sx_close(device);
@@ -1185,16 +1233,20 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_DEC.on_change
 	indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
 	PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_NORTH | SX_GUIDE_SOUTH);
-	int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
+	int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.target;
 	if (duration > 0) {
 		PRIVATE_DATA->relay_mask |= SX_GUIDE_NORTH;
 	} else {
-		duration = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
+		duration = (int)GUIDER_GUIDE_SOUTH_ITEM->number.target;
 		if (duration > 0) {
 			PRIVATE_DATA->relay_mask |= SX_GUIDE_SOUTH;
 		}
 	}
-	sx_guide_relays(device, PRIVATE_DATA->relay_mask);
+	if (!sx_guide_relays(device, PRIVATE_DATA->relay_mask)) {
+		PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_NORTH | SX_GUIDE_SOUTH);
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_ALERT_STATE, "Guide command failed");
+		return;
+	}
 	if (duration > 0) {
 		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_dec_finalizer);
 	}
@@ -1206,16 +1258,20 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_RA.on_change
 	indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
 	PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_EAST | SX_GUIDE_WEST);
-	int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
+	int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.target;
 	if (duration > 0) {
 		PRIVATE_DATA->relay_mask |= SX_GUIDE_EAST;
 	} else {
-		duration = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
+		duration = (int)GUIDER_GUIDE_WEST_ITEM->number.target;
 		if (duration > 0) {
 			PRIVATE_DATA->relay_mask |= SX_GUIDE_WEST;
 		}
 	}
-	sx_guide_relays(device, PRIVATE_DATA->relay_mask);
+	if (!sx_guide_relays(device, PRIVATE_DATA->relay_mask)) {
+		PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_EAST | SX_GUIDE_WEST);
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_ALERT_STATE, "Guide command failed");
+		return;
+	}
 	if (duration > 0) {
 		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_ra_finalizer);
 	}
@@ -1254,9 +1310,23 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+		//+ guider.GUIDER_GUIDE_DEC.on_change_request
+		indigo_cancel_pending_handler(device, guider_guide_dec_handler);
+		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+		// Accept replacement and zero requests while the previous pulse is BUSY.
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		//- guider.GUIDER_GUIDE_DEC.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
+		//+ guider.GUIDER_GUIDE_RA.on_change_request
+		indigo_cancel_pending_handler(device, guider_guide_ra_handler);
+		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+		// Accept replacement and zero requests while the previous pulse is BUSY.
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		//- guider.GUIDER_GUIDE_RA.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
 		return INDIGO_OK;
 	}
@@ -1282,11 +1352,24 @@ static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(GUIDER_DEVICE_N
 
 static indigo_device *devices[MAX_DEVICES];
 
+static indigo_result verify_devices_disconnected(void) {
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		VERIFY_NOT_CONNECTED(devices[i]);
+	}
+	return INDIGO_OK;
+}
+
 static void process_plug_event_handler(indigo_device *device, void *data) {
 	indigo_set_handler_max_run_time(1);
 	libusb_device *dev = (libusb_device *)data;
 	bool dev_ref_transferred = false;
 	sx_private_data *private_data = NULL;
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		if (devices[i] && ((sx_private_data *)devices[i]->private_data)->usbdev == dev) {
+			libusb_unref_device(dev);
+			return;
+		}
+	}
 	const char *name;
 	if (sx_match(dev, &name)) {
 		private_data = indigo_safe_malloc(sizeof(sx_private_data));
@@ -1308,7 +1391,10 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 				}
 			}
 			if (!ccd_attached) {
-				free(ccd);
+				indigo_safe_free(ccd);
+				indigo_safe_free(private_data);
+				libusb_unref_device(dev);
+				return;
 			}
 			indigo_device *guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;
@@ -1328,11 +1414,11 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 				}
 			}
 			if (!guider_attached) {
-				free(guider);
+				indigo_safe_free(guider);
 			}
 	}
 	if (!dev_ref_transferred) {
-		free(private_data);
+		indigo_safe_free(private_data);
 		libusb_unref_device(dev);
 	}
 }
@@ -1346,14 +1432,14 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 			if (PRIVATE_DATA->usbdev == dev) {
 				private_data = PRIVATE_DATA;
 				indigo_detach_device(device);
-				free(device);
+				indigo_safe_free(device);
 				devices[j] = NULL;
 			}
 		}
 	}
 	if (private_data != NULL) {
 		libusb_unref_device(dev);
-		free(private_data);
+		indigo_safe_free(private_data);
 	}
 	libusb_unref_device(dev);
 }
@@ -1398,21 +1484,31 @@ indigo_result indigo_ccd_sx(indigo_driver_action action, indigo_driver_info *inf
 			driver_queue = indigo_queue_create(NULL);
 			if (driver_queue == NULL) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create driver queue");
+				last_action = INDIGO_DRIVER_SHUTDOWN;
 				return INDIGO_FAILED;
 			}
 			indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
 			indigo_start_usb_event_handler();
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SX_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			if (rc < 0) {
+				indigo_queue_delete(&driver_queue);
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
-			for (int i = 0; i < MAX_DEVICES; i++) {
-				VERIFY_NOT_CONNECTED(devices[i]);
+			pthread_mutex_lock(&driver_queue_mutex);
+			indigo_result shutdown_result = verify_devices_disconnected();
+			pthread_mutex_unlock(&driver_queue_mutex);
+			if (shutdown_result != INDIGO_OK) {
+				return shutdown_result;
 			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+			indigo_queue_drain(driver_queue);
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				if (devices[i] != NULL) {
 					indigo_device *device = devices[i];

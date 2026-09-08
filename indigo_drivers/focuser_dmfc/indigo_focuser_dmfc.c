@@ -532,11 +532,11 @@ indigo_result indigo_focuser_dmfc(indigo_driver_action action, indigo_driver_inf
 			last_action = action;
 			if (focuser != NULL) {
 				indigo_detach_device(focuser);
-				free(focuser);
+				indigo_safe_free(focuser);
 				focuser = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;

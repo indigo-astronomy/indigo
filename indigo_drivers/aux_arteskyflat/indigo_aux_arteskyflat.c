@@ -235,11 +235,11 @@ indigo_result indigo_aux_arteskyflat(indigo_driver_action action, indigo_driver_
 			last_action = action;
 			if (aux != NULL) {
 				indigo_detach_device(aux);
-				free(aux);
+				indigo_safe_free(aux);
 				aux = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;

@@ -10,7 +10,7 @@ Goal: refactor the Starlight Xpress CCD driver into a generator-friendly INDIGO 
 - Use `indigo_docs/DRIVER_GENERATOR_MIGRATION.md` for extraction rules, generator ownership, open/close helper naming, hot-plug behavior and `.driver` source ownership.
 - Use `indigo_docs/DRIVER_DEVELOPMENT_BASICS.md` and `indigo_docs/DEVELOPMENT.md` for device lifecycle, property semantics and handler queues.
 - Use `indigo_tools/indigo_generator.c` as the authoritative source for the generator's direct-libusb hot-plug and multi-logical-device behavior.
-- Use `indigo_drivers/ccd_sx/README.md` and `TESTING.md` for supported hardware and historical hardware validation. There is no CCD SX simulator or automated integration test at present; `indigo_test/integration/test_ao_sx_simulator.c` concerns the unrelated AO SX driver.
+- Use `indigo_drivers/ccd_sx/README.md` and `TESTING.md` for supported hardware and historical hardware validation. CCD SX now has `indigo_test/integration/test_ccd_sx_usb.c`, which tests the production driver against fake libusb. `test_ao_sx_simulator.c` remains a separate AO driver test.
 
 ## Current public behavior to preserve
 
@@ -121,7 +121,7 @@ Goal: refactor the Starlight Xpress CCD driver into a generator-friendly INDIGO 
      - the final logical disconnect calls `sx_close()`, releases the global lock and clears the connection state;
      - `sx_close()` closes the libusb handle and frees image buffers, while hot unplug detaches both logical devices and frees the shared data and referenced libusb device.
    - Compared this inventory with `indigo_docs/PROPERTIES.md`. The driver only modifies documented standard CCD and guider properties; no documentation update is needed unless a later step deliberately changes their public contract.
-   - Validation remains hardware-dependent: the repository records a historical successful macOS Lodestar test, while the driver README also lists Lodestar X2 and H694. There is no SX CCD simulator or automated integration coverage.
+   - Validation remains hardware-dependent: the repository records a historical successful macOS Lodestar test, while the driver README also lists Lodestar X2 and H694. Automated coverage is now provided by the fake USB suite below; the historical hardware results are unchanged.
 
 3. Reshape the hand-written driver into generator-friendly sections
    - Preserve behavior while separating driver metadata, constants, shared private data, low-level SX USB helpers, CCD handlers, guider handlers and temporary manual hot-plug support.
@@ -307,3 +307,26 @@ Goal: refactor the Starlight Xpress CCD driver into a generator-friendly INDIGO 
    - Updated `indigo_docs/PROPERTIES.md` so `X_CCD_FLOOD_LED` points to `indigo_ccd_sx.driver`, the source of truth, rather than generated C output.
    - Rebuilt the driver after cleanup. Archive, shared library and standalone executable succeeded without compiler warnings; `git diff --check` passed.
    - Residual hardware risk is intentionally recorded rather than assumed away: this migration still requires validation with supported SX hardware, including unplug during readout, reconnect, exposure modes, binning/subframes, abort, cooler, Star2K pulses and the undocumented flood-LED command. No Windows runtime validation was performed.
+
+## Fake USB acceptance (2026-09-08)
+
+`indigo_test/integration/test_ccd_sx_usb.c` has 24 named groups. Its Makefile target compiles the generated production driver with test-local libusb, discovery and queue instrumentation. Images use deterministic generated noise; there is no vendor SDK or simulator photograph dependency. All source fixes are in `indigo_ccd_sx.driver`; generated C is synchronized. Allocation/free uses INDIGO helpers.
+
+| Standard area | SX scenarios |
+| --- | --- |
+| Metadata and properties | Driver info/version, CCD interface, RAW16 handoff, mode/bin synchronization, flood LED names/items/type/permissions; cooler and streaming visibility. |
+| Open and shared ownership | Global lock, open, descriptor/claim, reset/model/parameter commands, read and short-packet failures with retry and balanced locks/handles/config descriptors. Both CCD/guider open/close orders, guider-only use, unavailable Star2K capability and rejected shutdown. |
+| Discovery | Unknown PID/descriptor failure, distinct USB paths for identical cameras, survivor acquisition, duplicate arrivals, failed master/slave attachment and replug recovery, capacity overflow/refill, queue/registration rollback and shutdown with active/queued discovery. |
+| Cooling | Cooled/uncooled profiles, Celsius-to-protocol target conversion, independent measured temperature, ON/OFF, settling, command/read/short-reply failures and recovery; slow initialization and cancellation on disconnect. SX has no cooler-power readback. |
+| Images and acquisition | Progressive, interlaced and ICX453 layout, 1/2/4 bins with short/long readout, ROI offsets/bounds, invalid bins, all five frame types, bias and milliseconds, overlap rejection, short/zero/error USB transfers, long-exposure clear sequence and clear failure, zero-signal interlaced normalization, fresh acquisition after failures/abort/reconnect. |
+| Controlled races | Barriers at exposure command and pixel read force abort before/after frame completion, disconnect and removal during readout, and guide-request coalescing while readout occupies the queue. Active exposure/pulse removal and subsequent reacquisition/guiding are exercised. USB instrumentation rejects overlapping per-handle calls, direct calls from the client thread and calls after close. |
+| Guider | Four direction masks, zero/stop, same-axis replacement/reversal, simultaneous axes with independent completion, ON/OFF failures and recovery, cancellation without closing a CCD sibling, guider-only reconnect. Normal completion must reset pulse values to zero. |
+| Timing | 80 measured pulses (20/50/100/250/500 ms, two repeats per direction in each workload), plus discarded warm-ups. Monotonic timestamps at fake USB relay ON/OFF entry; idle and during acquisition. Per-pulse signed/percentage errors and min/mean/median/p95/p99/max/stddev/max-absolute statistics, without a machine-dependent accuracy threshold. |
+
+Non-applicable standard rows: SX has no streaming implementation, gain/offset/fan/heater controls, wheel/focuser/rotator, guide-rate command, SDK callbacks/discovery ids, suffix/name writes, or driver-specific persistent settings. Its readout uses synchronous USB transfers and host scheduling, without hardware-timer polling or SDK-ready retry/watchdog logic. USB transfer failures are tested at that actual boundary. Framework codecs, upload destinations and generic persistence are excluded.
+
+Validation: all 24 groups passed in the normal build and under ASan/UBSan (test and driver instrumented; prebuilt framework/dependencies excluded). Final metadata and guide-zero assertions passed targeted reruns. The generator regression suite covers all 86 existing attribute/block cases and the new libusb lifecycle invariants. No hardware tests were repeated. This is coverage of applicable standard scenarios, not a claim of measured 100% line/branch coverage.
+
+The user approved generator changes for duplicate USB arrivals, failed-master rollback, failed queue/registration INIT rollback, and draining accepted USB events before SHUTDOWN detach/free. Shutdown also serializes its connected-device check against an in-progress attach. The generated allocation cleanup uses `indigo_safe_free()` as requested.
+
+Shutdown synchronization now uses the shared `indigo_queue_drain()` API in `indigo_timer.c`; the generator no longer emits a per-driver drain callback, condition variable or completion flag. The connected-device check remains serialized against attach.

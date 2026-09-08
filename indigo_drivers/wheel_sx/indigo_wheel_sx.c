@@ -200,6 +200,11 @@ static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(WHEEL_DEVICE_NAM
 
 static indigo_device *wheel = NULL;
 
+static indigo_result verify_devices_disconnected(void) {
+	VERIFY_NOT_CONNECTED(wheel);
+	return INDIGO_OK;
+}
+
 static void process_plug_event_handler(indigo_device *device, void *data) {
 	indigo_set_handler_max_run_time(1);
 	libusb_device *dev = (libusb_device *)data;
@@ -219,8 +224,8 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 	libusb_device *dev = (libusb_device *)data;
 	if (wheel != NULL) {
 		indigo_detach_device(wheel);
-		free(wheel->private_data);
-		free(wheel);
+		indigo_safe_free(wheel->private_data);
+		indigo_safe_free(wheel);
 		wheel = NULL;
 	}
 	if (dev != NULL) {
@@ -275,10 +280,16 @@ indigo_result indigo_wheel_sx(indigo_driver_action action, indigo_driver_info *i
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
-			VERIFY_NOT_CONNECTED(wheel);
+			pthread_mutex_lock(&driver_queue_mutex);
+			indigo_result shutdown_result = verify_devices_disconnected();
+			pthread_mutex_unlock(&driver_queue_mutex);
+			if (shutdown_result != INDIGO_OK) {
+				return shutdown_result;
+			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+			indigo_queue_drain(driver_queue);
 			process_unplug_event_handler(NULL, NULL);
 			indigo_queue_delete(&driver_queue);
 			break;
