@@ -140,6 +140,29 @@ The build system picks this up automatically: `Makefile.drv` runs `indigo_genera
 
 ---
 
+## Optional architecture restriction
+
+By default a driver has no architecture restriction; omitting this attribute leaves generated output unchanged. A driver can opt into a C preprocessor expression:
+
+```c
+supported_architecture = "!defined(__i386__)";
+```
+
+The expression guards the complete implementation, including SDK headers. On an unsupported target, the generated public entry point still provides INFO metadata and returns `INDIGO_UNSUPPORTED_ARCH` for INIT and SHUTDOWN. The public header and standalone wrapper keep their usual form. Reverse extraction preserves the expression.
+
+Use platform macros `INDIGO_LINUX`, `INDIGO_MACOS` and `INDIGO_WINDOWS` for platform conditions. For example, to restrict only the macOS build while leaving other platforms unchanged:
+
+```c
+// macOS Intel only:
+supported_architecture = "!defined(INDIGO_MACOS) || defined(__x86_64__)";
+// macOS Apple Silicon only:
+supported_architecture = "!defined(INDIGO_MACOS) || defined(__aarch64__)";
+```
+
+These are alternative examples, not two attributes to place in the same driver. Astroasis supports both macOS architectures and therefore only excludes i386. The build must provide its normal INDIGO platform macro when evaluating platform-specific expressions.
+
+---
+
 ## Approach 1: Write the `.driver` File from Scratch
 
 This is the cleanest path when you are comfortable reading the existing `.c` thoroughly before writing the definition.

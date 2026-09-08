@@ -1,0 +1,1066 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+
+#include <stdbool.h>
+#include <stdatomic.h>
+#include <pthread.h>
+#include <dirent.h>
+#include <unistd.h>
+#include <OasisFilterWheel.h>
+#include <indigo/indigo_usb_utils.h>
+#include <indigo/indigo_wheel_driver.h>
+#include <indigo_drivers/wheel_astroasis/indigo_wheel_astroasis.h>
+#include "simulator_test_common.h"
+
+#define WHEELS 12
+#define PROPERTIES 32
+#define SUFFIX_PROPERTY "X_CUSTOM_SUFFIX"
+#define RESET_PROPERTY "X_FACTORY_RESET"
+
+typedef struct {
+	atomic_bool visible, opened;
+	atomic_int position, target, slots, reads, moves, resets, writes, opens, closes, calibrations, motor, config_writes, bt_writes;
+	atomic_int version_error, model_error, config_error, bt_error, calibrate_error;
+	OFWConfig config;
+	char bluetooth_name[OFW_NAME_LEN + 1];
+	atomic_int info_error, open_error, read_error, move_error, reset_error, suffix_read_error, suffix_write_error;
+	char model[64], suffix[OFW_NAME_LEN + 1];
+} mock_wheel;
+
+typedef struct {
+	char name[INDIGO_NAME_SIZE];
+	indigo_property *properties[PROPERTIES];
+	int updates[PROPERTIES];
+} observed_wheel;
+
+static mock_wheel wheels[WHEELS];
+static observed_wheel observed[WHEELS];
+static pthread_mutex_t observation_mutex = PTHREAD_MUTEX_INITIALIZER;
+static libusb_hotplug_callback_fn usb_callback;
+static int usb_devices[WHEELS];
+static atomic_int usb_ref_balance[WHEELS], invalid_usb_unref;
+static atomic_int attached, attach_attempts, fail_attach, lock_count, fail_lock, usb_refs, sdk_after_close;
+static atomic_int enumerate_reverse, descriptor_error, descriptor_product = 0x0fe0, enumeration_error;
+static atomic_int late_updates;
+static atomic_bool accelerate_polling, hold_read, release_read;
+static atomic_int read_entered, last_probe, scan_count_override = -1;
+static char config_folder[] = "/tmp/indigo_astroasis_XXXXXX";
+
+const char *ofw_test_config_folder(void) {
+	return config_folder;
+}
+
+static int handle_index(int handle) {
+	int index = (handle - 100) / 37;
+	return handle >= 100 && (handle - 100) % 37 == 0 && index < WHEELS ? index : -1;
+}
+
+static int wheel_index(const char *name) {
+	for (int i = 0; i < WHEELS; i++) {
+		if (observed[i].name[0] && !strcmp(observed[i].name, name)) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+static int property_index(int index, const char *name, bool create) {
+	int empty = -1;
+	for (int i = 0; i < PROPERTIES; i++) {
+		if (observed[index].properties[i] && !strcmp(observed[index].properties[i]->name, name)) {
+			return i;
+		}
+		if (!observed[index].properties[i] && empty < 0) {
+			empty = i;
+		}
+	}
+	return create ? empty : -1;
+}
+
+static indigo_result observe(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	int index = wheel_index(property->device);
+	if (index < 0) {
+		return INDIGO_OK;
+	}
+	pthread_mutex_lock(&observation_mutex);
+	int slot = property_index(index, property->name, true);
+	if (slot >= 0) {
+		indigo_release_property(observed[index].properties[slot]);
+		observed[index].properties[slot] = indigo_copy_property(NULL, property);
+		observed[index].updates[slot]++;
+	}
+	pthread_mutex_unlock(&observation_mutex);
+	return INDIGO_OK;
+}
+
+static indigo_result observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	int index = wheel_index(property->device);
+	if (index >= 0 && (!strcmp(property->name, WHEEL_SLOT_PROPERTY_NAME) || !strcmp(property->name, RESET_PROPERTY) || !strcmp(property->name, SUFFIX_PROPERTY))) {
+		pthread_mutex_lock(&observation_mutex);
+		bool defined = property_index(index, property->name, false) >= 0;
+		pthread_mutex_unlock(&observation_mutex);
+		if (!defined) {
+			atomic_fetch_add(&late_updates, 1);
+		}
+	}
+	return observe(client, device, property, message);
+}
+
+static indigo_result observe_delete(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	int index = wheel_index(property->device);
+	if (index < 0) {
+		return INDIGO_OK;
+	}
+	pthread_mutex_lock(&observation_mutex);
+	for (int i = 0; i < PROPERTIES; i++) {
+		indigo_property *cached = observed[index].properties[i];
+		if (cached && (!property->name[0] || !strcmp(cached->name, property->name))) {
+			indigo_release_property(cached);
+			observed[index].properties[i] = NULL;
+		}
+	}
+	pthread_mutex_unlock(&observation_mutex);
+	return INDIGO_OK;
+}
+
+static indigo_client test_client = { .name = "Astroasis SDK test", .version = INDIGO_VERSION_CURRENT, .define_property = observe, .update_property = observe_update, .delete_property = observe_delete };
+
+static indigo_property *snapshot(int index, const char *name) {
+	pthread_mutex_lock(&observation_mutex);
+	int slot = property_index(index, name, false);
+	indigo_property *copy = slot < 0 ? NULL : indigo_copy_property(NULL, observed[index].properties[slot]);
+	pthread_mutex_unlock(&observation_mutex);
+	return copy;
+}
+
+static int state(int index, const char *name) {
+	indigo_property *property = snapshot(index, name);
+	int value = property ? (int)property->state : -1;
+	indigo_release_property(property);
+	return value;
+}
+
+static bool wait_state(int index, const char *name, int expected) {
+	for (int i = 0; i < 400; i++) {
+		if (state(index, name) == expected) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "wheel %d property %s: expected state %d, got %d\n", index, name, expected, state(index, name));
+	return false;
+}
+
+static bool wait_count(atomic_int *value, int expected) {
+	for (int i = 0; i < 400; i++) {
+		if (atomic_load(value) == expected) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "counter expected %d, got %d\n", expected, atomic_load(value));
+	return false;
+}
+
+
+static bool set_switch(int index, const char *property, const char *item, bool value) {
+	return indigo_change_switch_property_1(&test_client, observed[index].name, property, item, value) == INDIGO_OK;
+}
+
+static bool connect_wheel(int index, bool connect) {
+	if (!set_switch(index, CONNECTION_PROPERTY_NAME, connect ? CONNECTION_CONNECTED_ITEM_NAME : CONNECTION_DISCONNECTED_ITEM_NAME, true) || !wait_state(index, CONNECTION_PROPERTY_NAME, INDIGO_OK_STATE)) {
+		return false;
+	}
+	return atomic_load(&wheels[index].opened) == connect;
+}
+
+static bool set_slot(int index, double value) {
+	return indigo_change_number_property_1(&test_client, observed[index].name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, value) == INDIGO_OK;
+}
+
+static bool set_suffix(int index, const char *value) {
+	return indigo_change_text_property_1(&test_client, observed[index].name, SUFFIX_PROPERTY, "SUFFIX", value) == INDIGO_OK;
+}
+
+static double slot_value(int index) {
+	indigo_property *property = snapshot(index, WHEEL_SLOT_PROPERTY_NAME);
+	double value = property ? property->items[0].number.value : -1;
+	indigo_release_property(property);
+	return value;
+}
+
+indigo_result ofw_test_attach(indigo_device *device) {
+	atomic_fetch_add(&attach_attempts, 1);
+	if (atomic_exchange(&fail_attach, 0)) {
+		return INDIGO_FAILED;
+	}
+	int index = atomic_load(&last_probe);
+	if (index < 0) {
+		return INDIGO_FAILED;
+	}
+	snprintf(observed[index].name, INDIGO_NAME_SIZE, "%s", device->name);
+	indigo_result result = indigo_attach_device(device);
+	if (result == INDIGO_OK) {
+		atomic_fetch_add(&attached, 1);
+	}
+	return result;
+}
+
+indigo_result ofw_test_detach(indigo_device *device) {
+	int index = wheel_index(device->name);
+	indigo_result result = indigo_detach_device(device);
+	if (index >= 0) {
+		observed[index].name[0] = 0;
+	}
+	atomic_fetch_sub(&attached, 1);
+	return result;
+}
+
+void ofw_test_usb_start(void) {
+}
+
+indigo_result ofw_test_lock(indigo_device *device) {
+	if (atomic_load(&fail_lock)) {
+		return INDIGO_FAILED;
+	}
+	atomic_fetch_add(&lock_count, 1);
+	return INDIGO_OK;
+}
+
+indigo_result ofw_test_unlock(indigo_device *device) {
+	atomic_fetch_sub(&lock_count, 1);
+	return INDIGO_OK;
+}
+
+void ofw_test_poll(indigo_device *device, double delay, indigo_timer_callback callback) {
+	indigo_execute_handler_in(device, atomic_load(&accelerate_polling) ? 0.001 : delay, callback);
+}
+
+int LIBUSB_CALL ofw_test_usb_register(libusb_context *ctx, int events, int flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) {
+	usb_callback = callback;
+	callback(NULL, (libusb_device *)&usb_devices[0], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	return LIBUSB_SUCCESS;
+}
+
+int ofw_test_usb_register_sim(libusb_context *ctx, libusb_hotplug_event events, libusb_hotplug_flag flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) {
+	return ofw_test_usb_register(ctx, events, flags, vid, pid, cls, callback, data, handle);
+}
+
+void LIBUSB_CALL ofw_test_usb_deregister(libusb_context *ctx, libusb_hotplug_callback_handle handle) {
+}
+
+int ofw_test_usb_deregister_poll(libusb_context *ctx, libusb_hotplug_callback_handle handle) {
+	return LIBUSB_SUCCESS;
+}
+
+libusb_device *LIBUSB_CALL ofw_test_usb_ref(libusb_device *device) {
+	atomic_fetch_add(&usb_refs, 1);
+	atomic_fetch_add(&usb_ref_balance[(int *)device - usb_devices], 1);
+	return device;
+}
+
+void LIBUSB_CALL ofw_test_usb_unref(libusb_device *device) {
+	atomic_fetch_sub(&usb_refs, 1);
+	if (atomic_fetch_sub(&usb_ref_balance[(int *)device - usb_devices], 1) <= 0) {
+		atomic_fetch_add(&invalid_usb_unref, 1);
+	}
+}
+
+int LIBUSB_CALL ofw_test_usb_descriptor(libusb_device *device, struct libusb_device_descriptor *descriptor) {
+	memset(descriptor, 0, sizeof(*descriptor));
+	descriptor->idVendor = 0x338f;
+	descriptor->idProduct = atomic_load(&descriptor_product);
+	return atomic_load(&descriptor_error) ? LIBUSB_ERROR_IO : LIBUSB_SUCCESS;
+}
+
+static void usb_event(int index, bool arrive) {
+	usb_callback(NULL, (libusb_device *)&usb_devices[index], arrive ? LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED : LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+}
+
+AOReturn OFWScan(int *number, int *ids) {
+	*number = 0;
+	for (int n = 0; n < WHEELS; n++) {
+		int i = atomic_load(&enumerate_reverse) ? WHEELS - n - 1 : n;
+		if (atomic_load(&wheels[i].visible)) {
+			ids[(*number)++] = 100 + i * 37;
+		}
+	}
+	if (atomic_load(&scan_count_override) >= 0) {
+		*number = atomic_load(&scan_count_override);
+	}
+	return atomic_load(&enumeration_error);
+}
+
+static bool valid_open(int index) {
+	if (index < 0 || !atomic_load(&wheels[index].opened)) {
+		atomic_fetch_add(&sdk_after_close, 1);
+		return false;
+	}
+	return true;
+}
+
+AOReturn OFWOpen(int id) {
+	int index = handle_index(id);
+	if (index < 0) {
+		return AO_ERROR_INVALID_ID;
+	}
+	atomic_fetch_add(&wheels[index].opens, 1);
+	int res = atomic_load(&wheels[index].open_error);
+	if (!res) {
+		atomic_store(&wheels[index].opened, true);
+	}
+	return res;
+}
+
+AOReturn OFWClose(int id) {
+	int index = handle_index(id);
+	if (!valid_open(index)) {
+		return AO_ERROR_INVALID_ID;
+	}
+	atomic_store(&wheels[index].opened, false);
+	atomic_store(&last_probe, index);
+	atomic_fetch_add(&wheels[index].closes, 1);
+	return AO_SUCCESS;
+}
+
+AOReturn OFWGetVersion(int id, OFWVersion *version) {
+	int i = handle_index(id);
+	if (!valid_open(i)) {
+		return AO_ERROR_INVALID_ID;
+	}
+	memset(version, 0, sizeof(*version));
+	version->firmware = 0x01020000;
+	return atomic_load(&wheels[i].version_error);
+}
+
+AOReturn OFWGetProductModel(int id, char *name) {
+	int i = handle_index(id);
+	if (!valid_open(i)) {
+		return AO_ERROR_INVALID_ID;
+	}
+	snprintf(name, OFW_NAME_LEN, "%s", wheels[i].model);
+	return atomic_load(&wheels[i].model_error);
+}
+
+AOReturn OFWGetFriendlyName(int id, char *name) {
+	int i = handle_index(id);
+	if (!valid_open(i)) {
+		return AO_ERROR_INVALID_ID;
+	}
+	memcpy(name, wheels[i].suffix, OFW_NAME_LEN);
+	return atomic_load(&wheels[i].suffix_read_error);
+}
+
+AOReturn OFWSetFriendlyName(int id, char *name) {
+	int i = handle_index(id);
+	if (!valid_open(i)) {
+		return AO_ERROR_INVALID_ID;
+	}
+	atomic_fetch_add(&wheels[i].writes, 1);
+	int res = atomic_load(&wheels[i].suffix_write_error);
+	if (!res) {
+		snprintf(wheels[i].suffix, sizeof(wheels[i].suffix), "%s", name);
+	}
+	return res;
+}
+
+AOReturn OFWGetConfig(int id, OFWConfig *config) {
+	int i = handle_index(id);
+	if (!valid_open(i)) {
+		return AO_ERROR_INVALID_ID;
+	}
+	*config = wheels[i].config;
+	return atomic_load(&wheels[i].config_error);
+}
+
+AOReturn OFWSetConfig(int id, OFWConfig *config) {
+	int i = handle_index(id);
+	if (!valid_open(i)) {
+		return AO_ERROR_INVALID_ID;
+	}
+	if (config->mask != MASK_BLUETOOTH) {
+		return AO_ERROR_INVALID_PARAMETER;
+	}
+	atomic_fetch_add(&wheels[i].config_writes, 1);
+	wheels[i].config.bluetoothOn = config->bluetoothOn;
+	return AO_SUCCESS;
+}
+
+AOReturn OFWGetBluetoothName(int id, char *name) {
+	int i = handle_index(id);
+	if (!valid_open(i)) {
+		return AO_ERROR_INVALID_ID;
+	}
+	memcpy(name, wheels[i].bluetooth_name, OFW_NAME_LEN);
+	return atomic_load(&wheels[i].bt_error);
+}
+
+AOReturn OFWSetBluetoothName(int id, char *name) {
+	int i = handle_index(id);
+	if (!valid_open(i)) {
+		return AO_ERROR_INVALID_ID;
+	}
+	atomic_fetch_add(&wheels[i].bt_writes, 1);
+	snprintf(wheels[i].bluetooth_name, sizeof(wheels[i].bluetooth_name), "%s", name);
+	return AO_SUCCESS;
+}
+
+AOReturn OFWGetSlotNum(int id, int *slots) {
+	int i = handle_index(id);
+	if (!valid_open(i)) {
+		return AO_ERROR_INVALID_ID;
+	}
+	*slots = atomic_load(&wheels[i].slots);
+	return atomic_load(&wheels[i].info_error);
+}
+
+AOReturn OFWGetStatus(int id, OFWStatus *status) {
+	int i = handle_index(id);
+	if (!valid_open(i)) {
+		return AO_ERROR_INVALID_ID;
+	}
+	atomic_fetch_add(&wheels[i].reads, 1);
+	if (atomic_load(&hold_read)) {
+		atomic_store(&read_entered, 1);
+		for (int n = 0; n < 400 && !atomic_load(&release_read); n++) {
+			indigo_usleep(10000);
+		}
+	}
+	memset(status, 0, sizeof(*status));
+	status->filterPosition = atomic_load(&wheels[i].position);
+	status->filterStatus = atomic_load(&wheels[i].motor);
+	return atomic_load(&wheels[i].read_error);
+}
+
+AOReturn OFWSetPosition(int id, int position) {
+	int i = handle_index(id);
+	if (!valid_open(i)) {
+		return AO_ERROR_INVALID_ID;
+	}
+	atomic_fetch_add(&wheels[i].moves, 1);
+	int res = atomic_load(&wheels[i].move_error);
+	if (!res) {
+		atomic_store(&wheels[i].target, position);
+		atomic_store(&wheels[i].motor, STATUS_MOVING);
+	}
+	return res;
+}
+
+AOReturn OFWCalibrate(int id, int mode) {
+	int i = handle_index(id);
+	if (!valid_open(i) || mode != 0) {
+		return AO_ERROR_INVALID_PARAMETER;
+	}
+	atomic_fetch_add(&wheels[i].calibrations, 1);
+	int res = atomic_load(&wheels[i].calibrate_error);
+	if (!res) {
+		atomic_store(&wheels[i].motor, STATUS_CALIBRATING);
+	}
+	return res;
+}
+
+AOReturn OFWFactoryReset(int id) {
+	int i = handle_index(id);
+	if (!valid_open(i)) {
+		return AO_ERROR_INVALID_ID;
+	}
+	atomic_fetch_add(&wheels[i].resets, 1);
+	int res = atomic_load(&wheels[i].reset_error);
+	if (!res) {
+		wheels[i].suffix[0] = wheels[i].bluetooth_name[0] = 0;
+		wheels[i].config.bluetoothOn = 0;
+		atomic_store(&wheels[i].position, 1);
+	}
+	return res;
+}
+
+AOReturn OFWGetSDKVersion(char *version) {
+	strcpy(version, "test SDK 1.2.3");
+	return AO_SUCCESS;
+}
+
+AOReturn OFWSetLogLevel(int level) {
+	return AO_SUCCESS;
+}
+
+static void properties_and_configuration(void) {
+	indigo_driver_info info;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_wheel_astroasis(INDIGO_DRIVER_INFO, &info));
+	ASSERT_STREQ("indigo_wheel_astroasis", info.name);
+	ASSERT_STREQ("Astroasis Oasis Wheel", info.description);
+	ASSERT_EQ_INT(0x03000004, info.version);
+	const char *base[] = { INFO_PROPERTY_NAME, CONNECTION_PROPERTY_NAME, CONFIG_PROPERTY_NAME, PROFILE_PROPERTY_NAME, PROFILE_NAME_PROPERTY_NAME };
+	for (int i = 0; i < ARRAY_SIZE(base); i++) {
+		ASSERT_EQ_INT(INDIGO_OK_STATE, state(0, base[i]));
+	}
+	const char *hidden[] = { SIMULATION_PROPERTY_NAME, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORTS_PROPERTY_NAME, DEVICE_BAUDRATE_PROPERTY_NAME, AUTHENTICATION_PROPERTY_NAME, ADDITIONAL_INSTANCES_PROPERTY_NAME, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_NAME_PROPERTY_NAME, WHEEL_SLOT_OFFSET_PROPERTY_NAME, RESET_PROPERTY, SUFFIX_PROPERTY };
+	for (int i = 0; i < ARRAY_SIZE(hidden); i++) {
+		ASSERT_EQ_INT(-1, state(0, hidden[i]));
+	}
+	indigo_property *property = snapshot(0, INFO_PROPERTY_NAME);
+	ASSERT_EQ_INT(6, property->count);
+	ASSERT_EQ_INT(INDIGO_RO_PERM, property->perm);
+	bool sdk = false, model = false;
+	for (int i = 0; i < property->count; i++) {
+		sdk |= !strcmp(property->items[i].label, "SDK version") && !strcmp(property->items[i].text.value, "test SDK 1.2.3");
+		model |= !strcmp(property->items[i].text.value, "OFW test 0");
+	}
+	indigo_release_property(property);
+	ASSERT_TRUE(sdk && model);
+	ASSERT_TRUE(connect_wheel(0, true));
+	property = snapshot(0, RESET_PROPERTY);
+	ASSERT_EQ_INT(INDIGO_ANY_OF_MANY_RULE, property->rule);
+	ASSERT_EQ_INT(INDIGO_RW_PERM, property->perm);
+	ASSERT_EQ_INT(1, property->count);
+	ASSERT_STREQ("Advanced", property->group);
+	ASSERT_STREQ("Factory reset", property->label);
+	ASSERT_STREQ("RESET", property->items[0].name);
+	ASSERT_STREQ("warn_on_set:\"Confirm filter wheel factory reset?\";", property->items[0].hints);
+	ASSERT_FALSE(property->items[0].sw.value);
+	indigo_release_property(property);
+	property = snapshot(0, SUFFIX_PROPERTY);
+	ASSERT_EQ_INT(INDIGO_TEXT_VECTOR, property->type);
+	ASSERT_EQ_INT(INDIGO_RW_PERM, property->perm);
+	ASSERT_STREQ(WHEEL_ADVANCED_GROUP, property->group);
+	ASSERT_STREQ("Device name custom suffix", property->label);
+	ASSERT_EQ_INT(1, property->count);
+	ASSERT_STREQ("SUFFIX", property->items[0].name);
+	indigo_release_property(property);
+	for (int slot = 1; slot <= 5; slot++) {
+		char item[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
+		snprintf(item, sizeof(item), WHEEL_SLOT_NAME_ITEM_NAME, slot);
+		snprintf(label, sizeof(label), "Filter %d", slot);
+		ASSERT_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&test_client, observed[0].name, WHEEL_SLOT_NAME_PROPERTY_NAME, item, label));
+		snprintf(item, sizeof(item), WHEEL_SLOT_OFFSET_ITEM_NAME, slot);
+		ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, WHEEL_SLOT_OFFSET_PROPERTY_NAME, item, slot * 10));
+	}
+	property = snapshot(0, WHEEL_SLOT_NAME_PROPERTY_NAME);
+	ASSERT_EQ_INT(5, property->count);
+	ASSERT_STREQ("Filter 5", property->items[4].text.value);
+	indigo_release_property(property);
+	property = snapshot(0, WHEEL_SLOT_OFFSET_PROPERTY_NAME);
+	ASSERT_EQ_INT(5, property->count);
+	ASSERT_NEAR(50, property->items[4].number.value, 0);
+	indigo_release_property(property);
+	ASSERT_TRUE(set_switch(0, CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state(0, CONFIG_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&test_client, observed[0].name, WHEEL_SLOT_NAME_PROPERTY_NAME, "SLOT_NAME_1", "Changed"));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, WHEEL_SLOT_OFFSET_PROPERTY_NAME, "SLOT_OFFSET_1", -99));
+	ASSERT_TRUE(set_switch(0, CONFIG_PROPERTY_NAME, CONFIG_LOAD_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state(0, CONFIG_PROPERTY_NAME, INDIGO_OK_STATE));
+	property = snapshot(0, WHEEL_SLOT_NAME_PROPERTY_NAME);
+	ASSERT_STREQ("Filter 1", property->items[0].text.value);
+	indigo_release_property(property);
+	property = snapshot(0, WHEEL_SLOT_OFFSET_PROPERTY_NAME);
+	ASSERT_NEAR(10, property->items[0].number.value, 0);
+	indigo_release_property(property);
+	ASSERT_TRUE(set_switch(0, CONFIG_PROPERTY_NAME, CONFIG_REMOVE_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state(0, CONFIG_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&test_client, observed[0].name, PROFILE_NAME_PROPERTY_NAME, "NAME_1", "Test profile"));
+	ASSERT_TRUE(wait_state(0, PROFILE_NAME_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(set_switch(0, PROFILE_PROPERTY_NAME, "PROFILE_1", true));
+	ASSERT_TRUE(wait_state(0, PROFILE_PROPERTY_NAME, INDIGO_OK_STATE));
+	property = snapshot(0, PROFILE_PROPERTY_NAME);
+	ASSERT_TRUE(property->items[1].sw.value);
+	ASSERT_STREQ("Test profile", property->items[1].label);
+	indigo_release_property(property);
+	ASSERT_TRUE(connect_wheel(0, false));
+	ASSERT_EQ_INT(-1, state(0, RESET_PROPERTY));
+	ASSERT_EQ_INT(-1, state(0, SUFFIX_PROPERTY));
+}
+
+static void slot_metadata_and_limits(void) {
+	atomic_store(&wheels[0].slots, 16);
+	ASSERT_TRUE(connect_wheel(0, true));
+	indigo_property *property = snapshot(0, WHEEL_SLOT_PROPERTY_NAME);
+	ASSERT_NEAR(16, property->items[0].number.max, 0);
+	ASSERT_EQ_INT(INDIGO_RW_PERM, property->perm);
+	indigo_release_property(property);
+	property = snapshot(0, WHEEL_SLOT_NAME_PROPERTY_NAME);
+	ASSERT_EQ_INT(16, property->count);
+	indigo_release_property(property);
+	property = snapshot(0, WHEEL_SLOT_OFFSET_PROPERTY_NAME);
+	ASSERT_EQ_INT(16, property->count);
+	indigo_release_property(property);
+	char label[52];
+	memset(label, 'x', 50);
+	label[50] = 0;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&test_client, observed[0].name, WHEEL_SLOT_NAME_PROPERTY_NAME, "SLOT_NAME_16", label));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(0, WHEEL_SLOT_NAME_PROPERTY_NAME));
+	label[50] = 'x';
+	label[51] = 0;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&test_client, observed[0].name, WHEEL_SLOT_NAME_PROPERTY_NAME, "SLOT_NAME_16", label));
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state(0, WHEEL_SLOT_NAME_PROPERTY_NAME));
+	ASSERT_TRUE(set_slot(0, 16));
+	ASSERT_TRUE(wait_count(&wheels[0].moves, 1));
+	atomic_store(&wheels[0].position, 16);
+	atomic_store(&wheels[0].motor, STATUS_IDLE);
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_NEAR(16, slot_value(0), 0);
+	ASSERT_TRUE(connect_wheel(0, false));
+	atomic_store(&wheels[0].slots, 5);
+	atomic_store(&wheels[0].position, 1);
+	ASSERT_TRUE(connect_wheel(0, true));
+	property = snapshot(0, WHEEL_SLOT_NAME_PROPERTY_NAME);
+	ASSERT_EQ_INT(5, property->count);
+	indigo_release_property(property);
+}
+
+static void connection_failures(void) {
+	atomic_int *errors[] = { &wheels[0].open_error, &wheels[0].info_error, &wheels[0].read_error, &wheels[0].suffix_read_error, &wheels[0].config_error, &wheels[0].bt_error };
+	for (int i = 0; i < ARRAY_SIZE(errors); i++) {
+		atomic_store(errors[i], AO_ERROR_COMMUNICATION);
+		ASSERT_TRUE(set_switch(0, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+		ASSERT_TRUE(wait_state(0, CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		ASSERT_FALSE(atomic_load(&wheels[0].opened));
+		ASSERT_EQ_INT(0, atomic_load(&lock_count));
+		atomic_store(errors[i], 0);
+	}
+	atomic_store(&fail_lock, 1);
+	ASSERT_TRUE(set_switch(0, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state(0, CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	atomic_store(&fail_lock, 0);
+	int bad_counts[] = { 0, -1, 17, 1000 };
+	for (int i = 0; i < ARRAY_SIZE(bad_counts); i++) {
+		atomic_store(&wheels[0].slots, bad_counts[i]);
+		ASSERT_TRUE(set_switch(0, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+		ASSERT_TRUE(wait_state(0, CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		ASSERT_EQ_INT(0, atomic_load(&lock_count));
+	}
+	atomic_store(&wheels[0].slots, 16);
+	atomic_store(&wheels[0].config_error, AO_ERROR_NOT_IMPLEMENTED);
+	atomic_store(&wheels[0].bt_error, AO_ERROR_NOT_IMPLEMENTED);
+	ASSERT_TRUE(connect_wheel(0, true));
+	ASSERT_EQ_INT(-1, state(0, "X_BLUETOOTH_PROPERTY"));
+	ASSERT_EQ_INT(-1, state(0, "X_BLUETOOTH_NAME_PROPERTY"));
+	indigo_property *property = snapshot(0, WHEEL_SLOT_NAME_PROPERTY_NAME);
+	ASSERT_EQ_INT(16, property->count);
+	indigo_release_property(property);
+	ASSERT_EQ_INT(INDIGO_BUSY, indigo_wheel_astroasis(INDIGO_DRIVER_SHUTDOWN, NULL));
+	ASSERT_TRUE(connect_wheel(0, true));
+	ASSERT_TRUE(connect_wheel(0, false));
+	ASSERT_TRUE(connect_wheel(0, false));
+	atomic_store(&wheels[0].position, 0);
+	ASSERT_TRUE(set_switch(0, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state(0, CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	atomic_store(&wheels[0].motor, STATUS_MOVING);
+	atomic_store(&accelerate_polling, true);
+	ASSERT_TRUE(connect_wheel(0, true));
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(connect_wheel(0, false));
+	atomic_store(&wheels[0].position, 2);
+	atomic_store(&wheels[0].motor, STATUS_IDLE);
+	ASSERT_TRUE(connect_wheel(0, true));
+	ASSERT_NEAR(2, slot_value(0), 0);
+}
+
+static void finish_motion(int position) {
+	atomic_store(&wheels[0].position, position);
+	atomic_store(&wheels[0].motor, STATUS_IDLE);
+}
+
+static void movement(void) {
+	ASSERT_TRUE(connect_wheel(0, true));
+	ASSERT_TRUE(set_slot(0, 1));
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&wheels[0].moves));
+	double invalid[] = { 1.5, NAN };
+	for (int i = 0; i < ARRAY_SIZE(invalid); i++) {
+		ASSERT_TRUE(set_slot(0, invalid[i]));
+		ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	}
+	atomic_store(&wheels[0].move_error, AO_ERROR_COMMUNICATION);
+	ASSERT_TRUE(set_slot(0, 5));
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	atomic_store(&wheels[0].move_error, 0);
+	ASSERT_TRUE(set_slot(0, 100));
+	ASSERT_TRUE(wait_count(&wheels[0].moves, 2));
+	ASSERT_EQ_INT(5, atomic_load(&wheels[0].target));
+	ASSERT_NEAR(1, slot_value(0), 0);
+	ASSERT_TRUE(set_slot(0, 2));
+	ASSERT_EQ_INT(2, atomic_load(&wheels[0].moves));
+	finish_motion(5);
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_NEAR(5, slot_value(0), 0);
+	ASSERT_TRUE(set_slot(0, 0));
+	ASSERT_TRUE(wait_count(&wheels[0].moves, 3));
+	ASSERT_EQ_INT(1, atomic_load(&wheels[0].target));
+	finish_motion(2);
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_NEAR(2, slot_value(0), 0);
+	ASSERT_TRUE(set_slot(0, 3));
+	ASSERT_TRUE(wait_count(&wheels[0].moves, 4));
+	atomic_store(&wheels[0].read_error, AO_ERROR_COMMUNICATION);
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	atomic_store(&wheels[0].read_error, 0);
+	ASSERT_TRUE(set_slot(0, 4));
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(4, atomic_load(&wheels[0].moves));
+	finish_motion(2);
+	atomic_store(&accelerate_polling, true);
+	ASSERT_TRUE(set_slot(0, 4));
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	finish_motion(4);
+	ASSERT_TRUE(connect_wheel(0, false));
+	atomic_store(&wheels[0].motor, 99);
+	ASSERT_TRUE(set_switch(0, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state(0, CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+}
+
+static void calibration(void) {
+	ASSERT_TRUE(connect_wheel(0, true));
+	ASSERT_TRUE(set_switch(0, "X_CALIBRATE", "START", false));
+	ASSERT_TRUE(wait_state(0, "X_CALIBRATE", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&wheels[0].calibrations));
+	atomic_store(&wheels[0].calibrate_error, AO_ERROR_COMMUNICATION);
+	ASSERT_TRUE(set_switch(0, "X_CALIBRATE", "START", true));
+	ASSERT_TRUE(wait_state(0, "X_CALIBRATE", INDIGO_ALERT_STATE));
+	atomic_store(&wheels[0].calibrate_error, 0);
+	ASSERT_TRUE(set_switch(0, "X_CALIBRATE", "START", true));
+	ASSERT_TRUE(wait_count(&wheels[0].calibrations, 2));
+	ASSERT_TRUE(set_switch(0, RESET_PROPERTY, "RESET", true));
+	ASSERT_TRUE(wait_state(0, RESET_PROPERTY, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&wheels[0].resets));
+	ASSERT_TRUE(set_slot(0, 4));
+	ASSERT_EQ_INT(0, atomic_load(&wheels[0].moves));
+	finish_motion(3);
+	ASSERT_TRUE(wait_state(0, "X_CALIBRATE", INDIGO_OK_STATE));
+	ASSERT_NEAR(3, slot_value(0), 0);
+	ASSERT_TRUE(set_slot(0, 5));
+	ASSERT_TRUE(wait_count(&wheels[0].moves, 1));
+	ASSERT_TRUE(set_switch(0, "X_CALIBRATE", "START", true));
+	ASSERT_TRUE(wait_state(0, "X_CALIBRATE", INDIGO_ALERT_STATE));
+	finish_motion(5);
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(set_switch(0, "X_CALIBRATE", "START", true));
+	ASSERT_TRUE(wait_count(&wheels[0].calibrations, 3));
+	atomic_store(&wheels[0].read_error, AO_ERROR_COMMUNICATION);
+	ASSERT_TRUE(wait_state(0, "X_CALIBRATE", INDIGO_ALERT_STATE));
+	atomic_store(&wheels[0].read_error, 0);
+	finish_motion(5);
+	atomic_store(&accelerate_polling, true);
+	ASSERT_TRUE(set_switch(0, "X_CALIBRATE", "START", true));
+	ASSERT_TRUE(wait_state(0, "X_CALIBRATE", INDIGO_ALERT_STATE));
+	finish_motion(1);
+}
+
+static void suffix_and_reset(void) {
+	ASSERT_TRUE(connect_wheel(0, true));
+	const char *values[] = { "", "a", "1234567890123456789012345678901", "12345678901234567890123456789012" };
+	for (int i = 0; i < ARRAY_SIZE(values); i++) {
+		ASSERT_TRUE(set_suffix(0, values[i]));
+		ASSERT_TRUE(wait_state(0, SUFFIX_PROPERTY, INDIGO_OK_STATE));
+		ASSERT_STREQ(values[i], wheels[0].suffix);
+	}
+	ASSERT_TRUE(set_suffix(0, "123456789012345678901234567890123"));
+	ASSERT_TRUE(wait_state(0, SUFFIX_PROPERTY, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(4, atomic_load(&wheels[0].writes));
+	atomic_store(&wheels[0].suffix_write_error, AO_ERROR_COMMUNICATION);
+	ASSERT_TRUE(set_suffix(0, "bad"));
+	ASSERT_TRUE(wait_state(0, SUFFIX_PROPERTY, INDIGO_ALERT_STATE));
+	indigo_property *property = snapshot(0, SUFFIX_PROPERTY);
+	ASSERT_STREQ(values[3], property->items[0].text.value);
+	indigo_release_property(property);
+	atomic_store(&wheels[0].suffix_write_error, 0);
+	ASSERT_TRUE(connect_wheel(0, false));
+	ASSERT_TRUE(connect_wheel(0, true));
+	property = snapshot(0, SUFFIX_PROPERTY);
+	ASSERT_STREQ(values[3], property->items[0].text.value);
+	indigo_release_property(property);
+	ASSERT_TRUE(set_switch(0, RESET_PROPERTY, "RESET", false));
+	ASSERT_TRUE(wait_state(0, RESET_PROPERTY, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&wheels[0].resets));
+	atomic_store(&wheels[0].reset_error, AO_ERROR_COMMUNICATION);
+	ASSERT_TRUE(set_switch(0, RESET_PROPERTY, "RESET", true));
+	ASSERT_TRUE(wait_state(0, RESET_PROPERTY, INDIGO_ALERT_STATE));
+	atomic_store(&wheels[0].reset_error, 0);
+	ASSERT_TRUE(set_switch(0, RESET_PROPERTY, "RESET", true));
+	ASSERT_TRUE(wait_state(0, RESET_PROPERTY, INDIGO_OK_STATE));
+	ASSERT_TRUE(atomic_load(&wheels[0].opened));
+	property = snapshot(0, SUFFIX_PROPERTY);
+	ASSERT_STREQ("", property->items[0].text.value);
+	indigo_release_property(property);
+	atomic_store(&wheels[0].suffix_read_error, AO_ERROR_COMMUNICATION);
+	ASSERT_TRUE(set_switch(0, RESET_PROPERTY, "RESET", true));
+	ASSERT_TRUE(wait_state(0, RESET_PROPERTY, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state(0, SUFFIX_PROPERTY));
+	atomic_store(&wheels[0].suffix_read_error, 0);
+}
+
+static void discovery(void) {
+	atomic_store(&enumerate_reverse, true);
+	for (int i = 1; i < 5; i++) {
+		atomic_store(&wheels[i].visible, true);
+		usb_event(i, true);
+		ASSERT_TRUE(wait_count(&attached, i + 1));
+	}
+	ASSERT_TRUE(connect_wheel(4, true));
+	ASSERT_TRUE(connect_wheel(0, true));
+	atomic_store(&wheels[5].visible, true);
+	usb_event(5, true);
+	ASSERT_TRUE(wait_count(&usb_refs, 5));
+	ASSERT_EQ_INT(5, atomic_load(&attached));
+	atomic_store(&wheels[4].visible, false);
+	usb_event(4, false);
+	ASSERT_TRUE(wait_count(&attached, 4));
+	usb_event(5, true);
+	ASSERT_TRUE(wait_count(&attached, 5));
+	ASSERT_TRUE(connect_wheel(0, false));
+	for (int i = 0; i < 6; i++) {
+		atomic_store(&wheels[i].visible, false);
+	}
+	usb_event(0, false);
+	ASSERT_TRUE(wait_count(&attached, 0));
+	ASSERT_TRUE(wait_count(&usb_refs, 0));
+	atomic_store(&wheels[1].visible, true);
+	atomic_store(&wheels[2].visible, true);
+	usb_event(1, true);
+	ASSERT_TRUE(wait_count(&attached, 1));
+	usb_event(2, true);
+	ASSERT_TRUE(wait_count(&attached, 2));
+	ASSERT_TRUE(connect_wheel(1, true));
+	ASSERT_TRUE(connect_wheel(2, true));
+	atomic_store(&enumeration_error, AO_ERROR_COMMUNICATION);
+	usb_event(1, false);
+	ASSERT_TRUE(wait_count(&usb_refs, 2));
+	ASSERT_EQ_INT(2, atomic_load(&attached));
+	atomic_store(&enumeration_error, 0);
+	atomic_store(&scan_count_override, OFW_MAX_NUM + 1);
+	usb_event(1, false);
+	ASSERT_TRUE(wait_count(&usb_refs, 2));
+	ASSERT_EQ_INT(2, atomic_load(&attached));
+	atomic_store(&scan_count_override, -1);
+	atomic_store(&wheels[1].visible, false);
+	usb_event(1, false);
+	ASSERT_TRUE(wait_count(&attached, 1));
+	ASSERT_TRUE(atomic_load(&wheels[2].opened));
+}
+
+static void teardown(void) {
+	ASSERT_TRUE(connect_wheel(0, true));
+	ASSERT_TRUE(set_slot(0, 5));
+	ASSERT_TRUE(wait_count(&wheels[0].moves, 1));
+	ASSERT_TRUE(connect_wheel(0, false));
+	int reads = atomic_load(&wheels[0].reads);
+	indigo_usleep(600000);
+	ASSERT_EQ_INT(reads, atomic_load(&wheels[0].reads));
+	finish_motion(5);
+	ASSERT_TRUE(connect_wheel(0, true));
+	atomic_store(&hold_read, true);
+	ASSERT_TRUE(set_switch(0, "X_CALIBRATE", "START", true));
+	ASSERT_TRUE(wait_count(&read_entered, 1));
+	ASSERT_TRUE(set_switch(0, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true));
+	indigo_usleep(30000);
+	ASSERT_TRUE(atomic_load(&wheels[0].opened));
+	atomic_store(&release_read, true);
+	ASSERT_TRUE(wait_state(0, CONNECTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_FALSE(atomic_load(&wheels[0].opened));
+	ASSERT_TRUE(set_suffix(0, "ignored"));
+	ASSERT_EQ_INT(0, atomic_load(&wheels[0].writes));
+	atomic_store(&hold_read, false);
+	finish_motion(1);
+	ASSERT_TRUE(connect_wheel(0, true));
+	ASSERT_TRUE(set_switch(0, "X_CALIBRATE", "START", true));
+	ASSERT_TRUE(wait_count(&wheels[0].calibrations, 2));
+	atomic_store(&wheels[0].visible, false);
+	usb_event(0, false);
+	ASSERT_TRUE(wait_count(&attached, 0));
+}
+
+static void discovery_failures_and_replug(void) {
+	atomic_store(&wheels[0].visible, false);
+	usb_event(0, false);
+	ASSERT_TRUE(wait_count(&attached, 0));
+	atomic_store(&wheels[1].visible, true);
+	atomic_int *errors[] = { &wheels[1].open_error, &wheels[1].version_error, &wheels[1].model_error, &wheels[1].suffix_read_error };
+	for (int i = 0; i < ARRAY_SIZE(errors); i++) {
+		int opens = atomic_load(&wheels[1].opens);
+		atomic_store(errors[i], AO_ERROR_COMMUNICATION);
+		usb_event(1, true);
+		ASSERT_TRUE(wait_count(&wheels[1].opens, opens + 1));
+		ASSERT_TRUE(wait_count(&usb_refs, 0));
+		ASSERT_FALSE(atomic_load(&wheels[1].opened));
+		ASSERT_EQ_INT(0, atomic_load(&attached));
+		atomic_store(errors[i], 0);
+	}
+	atomic_store(&fail_attach, 1);
+	usb_event(1, true);
+	ASSERT_TRUE(wait_count(&attach_attempts, 2));
+	ASSERT_TRUE(wait_count(&usb_refs, 0));
+	ASSERT_EQ_INT(0, atomic_load(&attached));
+	memset(wheels[1].suffix, 's', OFW_NAME_LEN);
+	usb_event(1, true);
+	ASSERT_TRUE(wait_count(&attached, 1));
+	ASSERT_EQ_INT(strlen("Oasis Filter Wheel #") + OFW_NAME_LEN, strlen(observed[1].name));
+	ASSERT_TRUE(connect_wheel(1, true));
+	ASSERT_TRUE(connect_wheel(1, false));
+	usb_event(1, true);
+	ASSERT_TRUE(wait_count(&usb_refs, 1));
+	ASSERT_EQ_INT(1, atomic_load(&attached));
+	atomic_store(&wheels[2].visible, true);
+	atomic_store(&descriptor_error, 1);
+	usb_event(2, true);
+	ASSERT_TRUE(wait_count(&usb_refs, 1));
+	ASSERT_EQ_INT(1, atomic_load(&attached));
+	atomic_store(&descriptor_error, 0);
+	atomic_store(&descriptor_product, 0xffff);
+	usb_event(2, true);
+	ASSERT_TRUE(wait_count(&usb_refs, 1));
+	ASSERT_EQ_INT(1, atomic_load(&attached));
+	atomic_store(&descriptor_product, 0x0fe0);
+	atomic_store(&enumeration_error, AO_ERROR_COMMUNICATION);
+	usb_event(2, true);
+	ASSERT_TRUE(wait_count(&usb_refs, 1));
+	ASSERT_EQ_INT(1, atomic_load(&attached));
+	atomic_store(&enumeration_error, 0);
+	atomic_store(&scan_count_override, OFW_MAX_NUM + 1);
+	usb_event(2, true);
+	ASSERT_TRUE(wait_count(&usb_refs, 1));
+	ASSERT_EQ_INT(1, atomic_load(&attached));
+	atomic_store(&scan_count_override, -1);
+	atomic_store(&wheels[1].visible, false);
+	usb_event(1, false);
+	ASSERT_TRUE(wait_count(&attached, 0));
+	usb_event(2, true);
+	ASSERT_TRUE(wait_count(&attached, 1));
+	ASSERT_TRUE(connect_wheel(2, true));
+	ASSERT_TRUE(connect_wheel(2, false));
+}
+
+static void initialization_and_invalid_completion(void) {
+	int modes[] = { STATUS_MOVING, STATUS_CALIBRATING, STATUS_BENCHMARKING };
+	for (int i = 0; i < ARRAY_SIZE(modes); i++) {
+		atomic_store(&wheels[0].motor, modes[i]);
+		atomic_store(&wheels[0].position, 0);
+		ASSERT_TRUE(connect_wheel(0, true));
+		ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(0, WHEEL_SLOT_PROPERTY_NAME));
+		finish_motion(2);
+		ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
+		ASSERT_NEAR(2, slot_value(0), 0);
+		ASSERT_TRUE(connect_wheel(0, false));
+	}
+	ASSERT_TRUE(connect_wheel(0, true));
+	ASSERT_TRUE(set_switch(0, "X_CALIBRATE", "START", true));
+	ASSERT_TRUE(wait_count(&wheels[0].calibrations, 1));
+	finish_motion(0);
+	ASSERT_TRUE(wait_state(0, "X_CALIBRATE", INDIGO_ALERT_STATE));
+	ASSERT_NEAR(2, slot_value(0), 0);
+	finish_motion(3);
+	ASSERT_TRUE(set_slot(0, 2));
+	ASSERT_TRUE(wait_count(&wheels[0].moves, 1));
+	finish_motion(99);
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_NEAR(3, slot_value(0), 0);
+	finish_motion(3);
+	ASSERT_TRUE(set_switch(0, "X_BLUETOOTH_PROPERTY", "ENABLED", true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&test_client, observed[0].name, "X_BLUETOOTH_NAME_PROPERTY", "BLUETOOTH_NAME", "ignored"));
+	ASSERT_EQ_INT(0, atomic_load(&wheels[0].config_writes));
+	ASSERT_EQ_INT(0, atomic_load(&wheels[0].bt_writes));
+	ASSERT_EQ_INT(-1, state(0, "X_BLUETOOTH_PROPERTY"));
+	ASSERT_EQ_INT(-1, state(0, "X_BLUETOOTH_NAME_PROPERTY"));
+}
+
+static bool begin_fixture(void) {
+	memset(wheels, 0, sizeof(wheels));
+	memset(observed, 0, sizeof(observed));
+	atomic_store(&attached, 0);
+	atomic_store(&attach_attempts, 0);
+	atomic_store(&fail_attach, 0);
+	atomic_store(&lock_count, 0);
+	atomic_store(&fail_lock, 0);
+	atomic_store(&usb_refs, 0);
+	atomic_store(&invalid_usb_unref, 0);
+	atomic_store(&sdk_after_close, 0);
+	atomic_store(&enumerate_reverse, 0);
+	atomic_store(&descriptor_error, 0);
+	atomic_store(&descriptor_product, 0x0fe0);
+	atomic_store(&enumeration_error, 0);
+	atomic_store(&scan_count_override, -1);
+	atomic_store(&late_updates, 0);
+	atomic_store(&accelerate_polling, false);
+	atomic_store(&hold_read, false);
+	atomic_store(&release_read, false);
+	atomic_store(&read_entered, 0);
+	for (int i = 0; i < WHEELS; i++) {
+		atomic_store(&wheels[i].slots, 5);
+		atomic_store(&wheels[i].position, 1);
+		atomic_store(&usb_ref_balance[i], 0);
+		snprintf(wheels[i].model, sizeof(wheels[i].model), "OFW test %d", i);
+	}
+	atomic_store(&wheels[0].visible, true);
+	return indigo_wheel_astroasis(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK && indigo_wheel_astroasis(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK && wait_count(&attached, 1);
+}
+
+static void end_fixture(void) {
+	atomic_store(&release_read, true);
+	for (int i = 0; i < WHEELS; i++) {
+		if (atomic_load(&wheels[i].opened)) {
+			connect_wheel(i, false);
+		}
+	}
+	ASSERT_EQ_INT(INDIGO_OK, indigo_wheel_astroasis(INDIGO_DRIVER_SHUTDOWN, NULL));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_wheel_astroasis(INDIGO_DRIVER_SHUTDOWN, NULL));
+	ASSERT_EQ_INT(0, atomic_load(&attached));
+	ASSERT_EQ_INT(0, atomic_load(&usb_refs));
+	ASSERT_EQ_INT(0, atomic_load(&invalid_usb_unref));
+	for (int i = 0; i < WHEELS; i++) {
+		ASSERT_EQ_INT(0, atomic_load(&usb_ref_balance[i]));
+	}
+	ASSERT_EQ_INT(0, atomic_load(&lock_count));
+	ASSERT_EQ_INT(0, atomic_load(&sdk_after_close));
+	ASSERT_EQ_INT(0, atomic_load(&late_updates));
+	for (int i = 0; i < WHEELS; i++) {
+		for (int j = 0; j < PROPERTIES; j++) {
+			indigo_release_property(observed[i].properties[j]);
+			observed[i].properties[j] = NULL;
+		}
+	}
+}
+
+int main(void) {
+	if (!mkdtemp(config_folder)) {
+		return 1;
+	}
+	indigo_start();
+	indigo_attach_client(&test_client);
+	const indigo_test_case tests[] = {
+		{ "properties and configuration", properties_and_configuration },
+		{ "slot metadata and filter-name limits", slot_metadata_and_limits },
+		{ "connection failures and optional Bluetooth", connection_failures },
+		{ "movement states and failures", movement },
+		{ "calibration and conflicting requests", calibration },
+		{ "suffix boundaries and reset readback", suffix_and_reset },
+		{ "SDK discovery identity and capacity", discovery },
+		{ "disconnect cancels delayed and active work", teardown },
+		{ "probe failures, retry, filtering and replug", discovery_failures_and_replug },
+		{ "initialization states, invalid completion and hidden requests", initialization_and_invalid_completion }
+	};
+	int result = 0;
+	for (int i = 0; i < ARRAY_SIZE(tests); i++) {
+		if (!begin_fixture()) {
+			result = 1;
+			break;
+		}
+		result |= indigo_run_tests("Astroasis SDK integration", tests + i, 1);
+		end_fixture();
+	}
+	indigo_detach_client(&test_client);
+	indigo_stop();
+	DIR *dir = opendir(config_folder);
+	if (dir) {
+		struct dirent *entry;
+		while ((entry = readdir(dir))) {
+			if (entry->d_name[0] != '.') {
+				char path[1024];
+				snprintf(path, sizeof(path), "%s/%s", config_folder, entry->d_name);
+				unlink(path);
+			}
+		}
+		closedir(dir);
+	}
+	rmdir(config_folder);
+	return result || indigo_test_failures ? 1 : 0;
+}

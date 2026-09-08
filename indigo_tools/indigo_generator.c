@@ -99,7 +99,7 @@ typedef struct definition_type {
 } definition_type;
 
 typedef struct driver_type {
-	char name[64], label[256], author[256], copyright[256];
+	char name[64], label[256], author[256], copyright[256], supported_architecture[256];
 	int version;
 	bool virtual;
 	definition_type *definions;
@@ -1013,6 +1013,9 @@ bool parse_driver_block(void) {
 			continue;
 		}
 		if (parse_string_attribute("label", driver.label, sizeof(driver.label))) {
+			continue;
+		}
+		if (parse_string_attribute("supported_architecture", driver.supported_architecture, sizeof(driver.supported_architecture))) {
 			continue;
 		}
 		if (parse_int_attribute("version", &driver.version)) {
@@ -2274,6 +2277,10 @@ void write_c_source(void) {
 		}
 		write_line("");
 	}
+	if (*driver.supported_architecture) {
+		write_line("// supported_architecture: %s", driver.supported_architecture);
+		write_line("#if %s", driver.supported_architecture);
+	}
 	write_c_include_section();
 	write_c_define_section();
 	write_c_property_definition_section();
@@ -2288,6 +2295,16 @@ void write_c_source(void) {
 		write_c_hotplug_section();
 	}
 	write_c_main_section();
+	if (*driver.supported_architecture) {
+		write_line("#else");
+		write_line("#include \"indigo_%s_%s.h\"", driver.devices->type, driver.name);
+		write_line("");
+		write_line("indigo_result indigo_%s_%s(indigo_driver_action action, indigo_driver_info *info) {", driver.devices->type, driver.name);
+		write_line("\tSET_DRIVER_INFO(info, \"%s\", __FUNCTION__, 0x%08X, false, INDIGO_DRIVER_SHUTDOWN);", driver.label, 0x03000000 + driver.version);
+		write_line("\treturn action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;");
+		write_line("}");
+		write_line("#endif");
+	}
 }
 
 #pragma mark - parse c code
@@ -2385,6 +2402,9 @@ void read_c_source(void) {
 	double d1;
 	while (fgets(line, sizeof(line), stdin)) {
 		line[strcspn(line, "\n")] = 0;
+		if (sscanf(line, "// supported_architecture: %255[^\n]", driver.supported_architecture) == 1) {
+			continue;
+		}
 		if ((s0 = strstr(line, "//* "))) {
 			memmove(s0, s0 + 4, strlen(s0 + 4) + 1);
 		}
@@ -2722,6 +2742,9 @@ void write_definition_source(void) {
 	write_line("\tauthor = \"%s\";", driver.author);
 	write_line("\tcopyright = \"%s\";", driver.copyright);
 	write_line("\tversion = %d;", driver.version);
+	if (*driver.supported_architecture) {
+		write_line("\tsupported_architecture = \"%s\";", driver.supported_architecture);
+	}
 	if (driver.serial) {
 		write_line("\tserial {");
 		if (driver.serial->configurable_speed || driver.serial->patterns) {

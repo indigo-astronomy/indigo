@@ -1,0 +1,406 @@
+// Copyright (C) 2016-2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Refactored by OpenAI Codex, 2026.
+
+// version history
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
+driver astroasis {
+	label = "Astroasis Oasis Wheel";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
+	copyright = "Copyright (C) 2016-2026 Rumen G. Bogdanovski";
+	version = 4;
+	supported_architecture = "!defined(__i386__)";
+	include {
+		#include <OasisFilterWheel.h>
+	}
+	define {
+		#define OPERATION_POLLS 240
+	}
+	data {
+		int dev_id, count, slot_count;
+		int current_slot, target_slot, polls;
+		char model[OFW_NAME_LEN + 1];
+		char custom_suffix[OFW_NAME_LEN + 1];
+		char bluetooth_name[OFW_NAME_LEN + 1];
+		OFWConfig config;
+	}
+	code {
+		static bool astroasis_open(indigo_device *device) {
+			if (PRIVATE_DATA->count > 0) {
+				PRIVATE_DATA->count++;
+				return true;
+			}
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				return false;
+			}
+			int res = OFWOpen(PRIVATE_DATA->dev_id);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
+			if (res != AO_SUCCESS) {
+				indigo_global_unlock(device);
+				return false;
+			}
+			PRIVATE_DATA->count++;
+			return true;
+		}
+
+		static void astroasis_close(indigo_device *device) {
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
+				int res = OFWClose(PRIVATE_DATA->dev_id);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+				indigo_global_unlock(device);
+			}
+		}
+
+		static bool astroasis_status(indigo_device *device, OFWStatus *status) {
+			int res = OFWGetStatus(PRIVATE_DATA->dev_id, status);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWGetStatus(%d) = %d", PRIVATE_DATA->dev_id, res);
+			return res == AO_SUCCESS && status->filterStatus >= STATUS_IDLE && status->filterStatus <= STATUS_BENCHMARKING && status->filterPosition >= 0 && status->filterPosition <= PRIVATE_DATA->slot_count && (status->filterStatus != STATUS_IDLE || status->filterPosition > 0);
+		}
+
+		static bool astroasis_idle(indigo_device *device) {
+			OFWStatus status = { 0 };
+			if (!astroasis_status(device, &status) || status.filterStatus != STATUS_IDLE) {
+				return false;
+			}
+			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot = status.filterPosition;
+			return true;
+		}
+
+		static bool astroasis_read_names(indigo_device *device) {
+			char suffix[OFW_NAME_LEN + 1] = { 0 };
+			if (OFWGetFriendlyName(PRIVATE_DATA->dev_id, suffix) != AO_SUCCESS) {
+				X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+				return false;
+			}
+			suffix[OFW_NAME_LEN] = 0;
+			INDIGO_COPY_VALUE(X_CUSTOM_SUFFIX_ITEM->text.value, suffix);
+			snprintf(PRIVATE_DATA->custom_suffix, sizeof(PRIVATE_DATA->custom_suffix), "%s", suffix);
+			X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
+			OFWConfig config = { 0 };
+			int res = OFWGetConfig(PRIVATE_DATA->dev_id, &config);
+			X_BLUETOOTH_PROPERTY->state = res == AO_SUCCESS ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			if (res == AO_SUCCESS) {
+				PRIVATE_DATA->config = config;
+				indigo_set_switch(X_BLUETOOTH_PROPERTY, config.bluetoothOn ? X_BLUETOOTH_ON_ITEM : X_BLUETOOTH_OFF_ITEM, true);
+			} else if (res != AO_ERROR_NOT_IMPLEMENTED) {
+				return false;
+			}
+			char name[OFW_NAME_LEN + 1] = { 0 };
+			res = OFWGetBluetoothName(PRIVATE_DATA->dev_id, name);
+			name[OFW_NAME_LEN] = 0;
+			X_BLUETOOTH_NAME_PROPERTY->state = res == AO_SUCCESS ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			if (res == AO_SUCCESS) {
+				snprintf(PRIVATE_DATA->bluetooth_name, sizeof(PRIVATE_DATA->bluetooth_name), "%s", name);
+				INDIGO_COPY_VALUE(X_BLUETOOTH_NAME_ITEM->text.value, name);
+			}
+			return res == AO_SUCCESS || res == AO_ERROR_NOT_IMPLEMENTED;
+		}
+	}
+	sdk {
+		hotplug = true;
+		vid = 0x338f;
+		pid = 0x0fe0;
+		plug {
+			plug_result = false;
+			bool duplicate = false;
+			for (int slot = 0; slot < MAX_DEVICES; slot++) {
+				if (devices[slot] && ((astroasis_private_data *)devices[slot]->private_data)->usbdev == dev) {
+					duplicate = true;
+					break;
+				}
+			}
+			int number = 0, ids[OFW_MAX_NUM] = { 0 };
+			if (!duplicate && OFWScan(&number, ids) == AO_SUCCESS && number >= 0 && number <= OFW_MAX_NUM) {
+				for (int index = 0; index < number; index++) {
+					bool attached = false;
+					for (int slot = 0; slot < MAX_DEVICES; slot++) {
+						if (devices[slot] && ((astroasis_private_data *)devices[slot]->private_data)->dev_id == ids[index]) {
+							attached = true;
+							break;
+						}
+					}
+					if (attached || OFWOpen(ids[index]) != AO_SUCCESS) {
+						continue;
+					}
+					OFWVersion version = { 0 };
+					char model[OFW_NAME_LEN + 1] = { 0 }, suffix[OFW_NAME_LEN + 1] = { 0 };
+					plug_result = OFWGetVersion(ids[index], &version) == AO_SUCCESS && OFWGetProductModel(ids[index], model) == AO_SUCCESS && OFWGetFriendlyName(ids[index], suffix) == AO_SUCCESS;
+					int res = OFWClose(ids[index]);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWClose(%d) after probe = %d", ids[index], res);
+					if (plug_result) {
+						model[OFW_NAME_LEN] = suffix[OFW_NAME_LEN] = 0;
+						private_data->dev_id = ids[index];
+						snprintf(private_data->model, sizeof(private_data->model), "%s", model);
+						snprintf(private_data->custom_suffix, sizeof(private_data->custom_suffix), "%s", suffix);
+						snprintf(name, INDIGO_NAME_SIZE, "Oasis Filter Wheel%s%s", suffix[0] ? " #" : "", suffix);
+						indigo_make_name_unique(name, "%d", ids[index]);
+						break;
+					}
+				}
+			}
+		}
+		unplug_match {
+			int number = 0, ids[OFW_MAX_NUM] = { 0 };
+			unplug_result = OFWScan(&number, ids) == AO_SUCCESS && number >= 0 && number <= OFW_MAX_NUM;
+			if (unplug_result) {
+				for (int index = 0; index < number; index++) {
+					if (ids[index] == private_data->dev_id) {
+						unplug_result = false;
+						break;
+					}
+				}
+			}
+		}
+	}
+	on_init {
+		char version[OFW_VERSION_LEN + 1] = { 0 };
+		if (OFWGetSDKVersion(version) == AO_SUCCESS) {
+			version[OFW_VERSION_LEN] = 0;
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Oasis Filter Wheel SDK version: %s", version);
+		}
+		OFWSetLogLevel(indigo_get_log_level() >= INDIGO_LOG_DEBUG ? AO_LOG_LEVEL_DEBUG : AO_LOG_LEVEL_QUIET);
+	}
+	wheel {
+		name = "%s";
+		code {
+			static void wheel_operation_finalizer(indigo_device *device) {
+				if (!IS_CONNECTED) {
+					return;
+				}
+				OFWStatus status = { 0 };
+				bool valid = astroasis_status(device, &status);
+				if (valid && status.filterStatus != STATUS_IDLE && --PRIVATE_DATA->polls > 0) {
+					indigo_execute_handler_in(device, 0.5, wheel_operation_finalizer);
+					return;
+				}
+				bool success = valid && status.filterStatus == STATUS_IDLE && (PRIVATE_DATA->target_slot == 0 || status.filterPosition == PRIVATE_DATA->target_slot);
+				if (valid && status.filterStatus == STATUS_IDLE) {
+					WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot = status.filterPosition;
+				}
+				WHEEL_SLOT_PROPERTY->state = success ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				if (success) {
+					WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot;
+				}
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, success ? NULL : "Positioning failed or timed out");
+				if (X_CALIBRATE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					X_CALIBRATE_START_ITEM->sw.value = false;
+					X_CALIBRATE_PROPERTY->state = success ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_CALIBRATE_PROPERTY, success ? "Calibration finished" : "Calibration failed or timed out");
+				}
+			}
+		}
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			char version[OFW_VERSION_LEN + 1] = { 0 };
+			if (OFWGetSDKVersion(version) == AO_SUCCESS) {
+				version[OFW_VERSION_LEN] = 0;
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, version);
+			}
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
+		}
+		on_connect {
+			int slots = 0;
+			connection_result = OFWGetSlotNum(PRIVATE_DATA->dev_id, &slots) == AO_SUCCESS && slots > 0 && slots <= WHEEL_SLOT_NAME_PROPERTY->allocated_count && slots <= WHEEL_SLOT_OFFSET_PROPERTY->allocated_count;
+			OFWStatus status = { 0 };
+			if (connection_result) {
+				PRIVATE_DATA->slot_count = slots;
+				connection_result = astroasis_status(device, &status) && astroasis_read_names(device);
+			}
+			if (connection_result) {
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = slots;
+				X_CALIBRATE_START_ITEM->sw.value = X_FACTORY_RESET_ITEM->sw.value = false;
+				X_CALIBRATE_PROPERTY->state = X_FACTORY_RESET_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->target_slot = 0;
+				if (status.filterPosition > 0) {
+					WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot = status.filterPosition;
+				}
+				if (status.filterStatus != STATUS_IDLE) {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+					PRIVATE_DATA->polls = OPERATION_POLLS;
+					indigo_execute_handler_in(device, 0.5, wheel_operation_finalizer);
+				}
+			} else {
+				astroasis_close(device);
+			}
+		}
+		inherited WHEEL_SLOT {
+			on_change {
+				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+				double target = WHEEL_SLOT_ITEM->number.value;
+				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+				if (!isfinite(target) || target != floor(target) || target < 1 || target > PRIVATE_DATA->slot_count || X_CALIBRATE_PROPERTY->state == INDIGO_BUSY_STATE || X_FACTORY_RESET_PROPERTY->state == INDIGO_BUSY_STATE || !astroasis_idle(device)) {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else if (target != PRIVATE_DATA->current_slot) {
+					int res = OFWSetPosition(PRIVATE_DATA->dev_id, (int)target);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWSetPosition(%d, %d) = %d", PRIVATE_DATA->dev_id, (int)target, res);
+					if (res != AO_SUCCESS) {
+						WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+					} else {
+						PRIVATE_DATA->target_slot = (int)target;
+						PRIVATE_DATA->polls = OPERATION_POLLS;
+						WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+						indigo_execute_handler_in(device, 0.5, wheel_operation_finalizer);
+						return;
+					}
+				}
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+			}
+		}
+		switch X_CALIBRATE {
+			name = "X_CALIBRATE";
+			group = "Advanced";
+			label = "Calibrate filter wheel";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				X_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
+				if (X_CALIBRATE_START_ITEM->sw.value) {
+					X_CALIBRATE_START_ITEM->sw.value = false;
+					if (WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE || X_FACTORY_RESET_PROPERTY->state == INDIGO_BUSY_STATE || !astroasis_idle(device)) {
+						X_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
+					} else {
+						int res = OFWCalibrate(PRIVATE_DATA->dev_id, 0);
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWCalibrate(%d, 0) = %d", PRIVATE_DATA->dev_id, res);
+						if (res != AO_SUCCESS) {
+							X_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
+						} else {
+							PRIVATE_DATA->target_slot = 0;
+							PRIVATE_DATA->polls = OPERATION_POLLS;
+							WHEEL_SLOT_PROPERTY->state = X_CALIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
+							indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+							indigo_update_property(device, X_CALIBRATE_PROPERTY, "Calibration started");
+							indigo_execute_handler_in(device, 0.5, wheel_operation_finalizer);
+							return;
+						}
+					}
+				}
+				indigo_update_property(device, X_CALIBRATE_PROPERTY, NULL);
+			}
+			item X_CALIBRATE_START {
+				name = "START";
+				label = "Start";
+				value = false;
+			}
+		}
+		text X_CUSTOM_SUFFIX {
+			name = "X_CUSTOM_SUFFIX";
+			group = WHEEL_ADVANCED_GROUP;
+			label = "Device name custom suffix";
+			on_change {
+				if (strlen(X_CUSTOM_SUFFIX_ITEM->text.value) > OFW_NAME_LEN || OFWSetFriendlyName(PRIVATE_DATA->dev_id, X_CUSTOM_SUFFIX_ITEM->text.value) != AO_SUCCESS) {
+					INDIGO_COPY_VALUE(X_CUSTOM_SUFFIX_ITEM->text.value, PRIVATE_DATA->custom_suffix);
+					X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					snprintf(PRIVATE_DATA->custom_suffix, sizeof(PRIVATE_DATA->custom_suffix), "%s", X_CUSTOM_SUFFIX_ITEM->text.value);
+					indigo_send_message(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix will be used on replug");
+				}
+			}
+			item X_CUSTOM_SUFFIX {
+				name = "SUFFIX";
+				label = "Suffix";
+				value = PRIVATE_DATA->custom_suffix;
+			}
+		}
+		switch X_BLUETOOTH {
+			name = "X_BLUETOOTH_PROPERTY";
+			group = "Advanced";
+			label = "Bluetooth";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			hidden = true;
+			on_change {
+				OFWConfig config = PRIVATE_DATA->config;
+				config.mask = MASK_BLUETOOTH;
+				config.bluetoothOn = X_BLUETOOTH_ON_ITEM->sw.value;
+				if (OFWSetConfig(PRIVATE_DATA->dev_id, &config) != AO_SUCCESS) {
+					indigo_set_switch(X_BLUETOOTH_PROPERTY, PRIVATE_DATA->config.bluetoothOn ? X_BLUETOOTH_ON_ITEM : X_BLUETOOTH_OFF_ITEM, true);
+					X_BLUETOOTH_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					PRIVATE_DATA->config = config;
+				}
+			}
+			item X_BLUETOOTH_ON {
+				name = "ENABLED";
+				label = "Enabled";
+				value = false;
+			}
+			item X_BLUETOOTH_OFF {
+				name = "DISABLED";
+				label = "Disabled";
+				value = true;
+			}
+		}
+		text X_BLUETOOTH_NAME {
+			name = "X_BLUETOOTH_NAME_PROPERTY";
+			group = "Advanced";
+			label = "Bluetooth name";
+			hidden = true;
+			on_change {
+				if (strlen(X_BLUETOOTH_NAME_ITEM->text.value) > OFW_NAME_LEN || OFWSetBluetoothName(PRIVATE_DATA->dev_id, X_BLUETOOTH_NAME_ITEM->text.value) != AO_SUCCESS) {
+					INDIGO_COPY_VALUE(X_BLUETOOTH_NAME_ITEM->text.value, PRIVATE_DATA->bluetooth_name);
+					X_BLUETOOTH_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					snprintf(PRIVATE_DATA->bluetooth_name, sizeof(PRIVATE_DATA->bluetooth_name), "%s", X_BLUETOOTH_NAME_ITEM->text.value);
+				}
+			}
+			item X_BLUETOOTH_NAME {
+				name = "BLUETOOTH_NAME";
+				label = "Bluetooth name";
+				value = "";
+			}
+		}
+		switch X_FACTORY_RESET {
+			name = "X_FACTORY_RESET";
+			group = "Advanced";
+			label = "Factory reset";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_attach {
+				INDIGO_COPY_VALUE(X_FACTORY_RESET_ITEM->hints, "warn_on_set:\"Confirm filter wheel factory reset?\";");
+			}
+			on_change {
+				if (X_FACTORY_RESET_ITEM->sw.value) {
+					X_FACTORY_RESET_ITEM->sw.value = false;
+					if (WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE || X_CALIBRATE_PROPERTY->state == INDIGO_BUSY_STATE || !astroasis_idle(device) || OFWFactoryReset(PRIVATE_DATA->dev_id) != AO_SUCCESS) {
+						X_FACTORY_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+					} else {
+						OFWStatus status = { 0 };
+						bool names_valid = astroasis_read_names(device);
+						bool position_valid = astroasis_status(device, &status) && status.filterStatus == STATUS_IDLE;
+						if (position_valid) {
+							WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot = status.filterPosition;
+						}
+						WHEEL_SLOT_PROPERTY->state = position_valid ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+						indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+						indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
+						if (!names_valid || !position_valid) {
+							X_FACTORY_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+						}
+					}
+				}
+			}
+			item X_FACTORY_RESET {
+				name = "RESET";
+				label = "Reset";
+				value = false;
+			}
+		}
+	}
+}

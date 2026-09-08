@@ -1410,11 +1410,11 @@ Source: `indigo_drivers/wheel_asi/indigo_wheel_asi.c`.
 
 ### wheel_astroasis
 
-Custom properties: `X_BLUETOOTH_PROPERTY`, `X_BLUETOOTH_NAME_PROPERTY`, `X_CALIBRATE`, `X_CUSTOM_SUFFIX`, `X_FACTORY_RESET`.
+Custom properties: `X_CALIBRATE` (switch, `START`; asynchronous calibration), `X_CUSTOM_SUFFIX` (text, `SUFFIX`; up to 32 bytes submitted to the SDK, applied to the device name on replug), `X_FACTORY_RESET` (switch, `RESET`; confirmation hint, remains connected and refreshes state after reset). All are connected-only. `X_BLUETOOTH_PROPERTY` (`ENABLED`, `DISABLED`) and `X_BLUETOOTH_NAME_PROPERTY` (`BLUETOOTH_NAME`) remain hidden pending firmware support.
 
-Driver-specific use of existing properties: `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+Driver-specific use of existing properties: `INFO` has six items and labels the SDK version; `WHEEL_SLOT` uses one-based SDK positions and checked asynchronous completion. `WHEEL_SLOT_NAME` and `WHEEL_SLOT_OFFSET` counts follow the validated SDK slot count; their values/configuration remain inherited INDIGO properties.
 
-Source: `indigo_drivers/wheel_astroasis/indigo_wheel_astroasis.c`.
+Source: `indigo_drivers/wheel_astroasis/indigo_wheel_astroasis.driver` and generated `indigo_drivers/wheel_astroasis/indigo_wheel_astroasis.c`.
 
 ### wheel_atik
 

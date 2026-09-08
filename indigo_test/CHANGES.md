@@ -2,6 +2,65 @@
 
 This document records the automated test suite added under `indigo_test/` and the remaining follow-up work. The suite is intentionally hardware-free: it links against the built INDIGO library and simulator driver archives, then exercises public APIs through unit and in-process integration tests.
 
+## Astroasis wheel generator migration (2026-09-08)
+
+Added `integration/test_wheel_astroasis_sdk.c` and the normal integration target
+`build/integration/test_wheel_astroasis_sdk`. The generated driver is compiled
+separately against Oasis SDK/libusb stubs, with real bus, queue and wheel/base
+handlers. Configuration is redirected by a test-local framework object to a
+fresh temporary directory; the fixture removes it without changing HOME.
+
+Ten fixture-isolated groups cover:
+
+- public metadata, inherited properties/configuration/profile roundtrip,
+  custom-property visibility and factory-reset confirmation hint;
+- five/16-slot counts, allocation bounds, 50/51-byte filter-name limits,
+  one-based positioning and actual bus clamping;
+- global-lock/open/required-read failures, optional Bluetooth NOT_IMPLEMENTED,
+  repeated connect/disconnect and shutdown rejection while connected;
+- movement start/read failures, BUSY suppression, fractional/NaN requests,
+  wrong-target/invalid status, timeout and checked recovery;
+- calibration no-op/start/read errors, completion/timeout and competing
+  movement/reset requests;
+- suffix lengths 0/1/31/32/33, failed-write rollback, reconnect readback,
+  reset no-op/failure/success/readback failure while remaining connected;
+- default five-device capacity and recovery, independent USB/SDK ordering,
+  multiple removals, failed/inconclusive scans and USB reference balance;
+- probe open/version/model/suffix failures, attach retry, duplicate events,
+  descriptor/product filtering, full-length naming and replacement SDK IDs;
+- disconnect/unplug during operation and held SDK work, cancelled polling,
+  no late property updates and balanced SDK/global-lock ownership;
+- moving/calibrating/benchmarking initialization, invalid completion,
+  and ignored direct requests to hidden Bluetooth properties.
+
+All ten groups passed normally and with AddressSanitizer/UndefinedBehaviorSanitizer.
+Instrumentation covers the test, generated driver and test-local base/framework
+objects; the shared INDIGO library and vendor SDK are not instrumented (the
+vendor SDK is replaced by stubs). The timeout cases accelerate callback dispatch
+while retaining the production 240-poll budget. Existing ASI (5 cases) and Player
+One (12 cases) SDK suites passed as regressions.
+
+Added `integration/test_generator_architecture.c`, runnable with
+`make -C indigo_test test-generator-architecture`, for the user-approved optional
+`supported_architecture` attribute. The C test uses `test_runner.h` and is also
+part of the normal integration suite. It creates a minimal synthetic AUX driver in
+a temporary directory, independently of production drivers and SDKs. An intentionally
+missing SDK header verifies that the fallback excludes implementation includes.
+It verifies nine platform/CPU combinations
+(including Intel-only and Apple-Silicon-only macOS examples), reverse extraction
+for three expressions, a compiled/executed unsupported INFO/INIT/SHUTDOWN fallback
+without SDK linkage, and omission of the attribute. Generation without the new
+attribute was also compared with the prior generator for six existing drivers;
+all C/header/main outputs were byte-identical.
+
+Hardware remains unavailable. SDK readiness on initial USB arrival, actual
+name payload limits and operation/reset timing remain unverified. Probe failure
+is retryable on a subsequent arrival event; no new automatic discovery retry is
+claimed. Bluetooth stays hidden and its activation/write/readback hardware
+matrix is deferred in `wheel_astroasis/REFACTOR.md`; the normal public bus cannot
+exercise its dormant setters while the properties are undefined. Normal teardown
+tests do not establish arbitrary concurrent hot-plug/shutdown safety.
+
 ## Player One wheel generator migration (2026-09-08)
 
 Added `integration/test_wheel_playerone_sdk.c` and the normal integration target
