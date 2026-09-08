@@ -472,8 +472,11 @@ static void mount_timer_callback(indigo_device *device) {
 static void mount_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		if (PRIVATE_DATA->count++ == 0) {
+		if (PRIVATE_DATA->count == 0) {
 			connection_result = nexstaraux_open(device);
+		}
+		if (connection_result) {
+			PRIVATE_DATA->count++;
 		}
 		if (connection_result) {
 			//+ mount.on_connect
@@ -497,7 +500,7 @@ static void mount_connection_handler(indigo_device *device) {
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
-			if (--PRIVATE_DATA->count == 0) {
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
 				nexstaraux_close(device);
 			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -787,8 +790,11 @@ static indigo_result mount_detach(indigo_device *device) {
 static void guider_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		if (PRIVATE_DATA->count++ == 0) {
+		if (PRIVATE_DATA->count == 0) {
 			connection_result = nexstaraux_open(device->master_device);
+		}
+		if (connection_result) {
+			PRIVATE_DATA->count++;
 		}
 		if (connection_result) {
 			//+ guider.on_connect
@@ -804,7 +810,7 @@ static void guider_connection_handler(indigo_device *device) {
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
-			if (--PRIVATE_DATA->count == 0) {
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
 				nexstaraux_close(device);
 			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;

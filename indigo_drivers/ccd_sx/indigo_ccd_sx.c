@@ -880,8 +880,11 @@ static bool sx_match(libusb_device *dev, const char **name) {
 static void ccd_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		if (PRIVATE_DATA->count++ == 0) {
+		if (PRIVATE_DATA->count == 0) {
 			connection_result = sx_open(device);
+		}
+		if (connection_result) {
+			PRIVATE_DATA->count++;
 		}
 		if (connection_result) {
 			//+ ccd.on_connect
@@ -916,7 +919,7 @@ static void ccd_connection_handler(indigo_device *device) {
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s", device->name);
-			if (--PRIVATE_DATA->count == 0) {
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
 				sx_close(device);
 			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1140,8 +1143,11 @@ static indigo_result ccd_detach(indigo_device *device) {
 static void guider_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		if (PRIVATE_DATA->count++ == 0) {
+		if (PRIVATE_DATA->count == 0) {
 			connection_result = sx_open(device->master_device);
+		}
+		if (connection_result) {
+			PRIVATE_DATA->count++;
 		}
 		if (connection_result) {
 			//+ guider.on_connect
@@ -1154,7 +1160,7 @@ static void guider_connection_handler(indigo_device *device) {
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s", device->name);
-			if (--PRIVATE_DATA->count == 0) {
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
 				sx_close(device);
 			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;

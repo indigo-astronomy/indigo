@@ -387,8 +387,11 @@ static void aux_timer_callback(indigo_device *device) {
 static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		if (PRIVATE_DATA->count++ == 0) {
+		if (PRIVATE_DATA->count == 0) {
 			connection_result = upb3_open(device);
+		}
+		if (connection_result) {
+			PRIVATE_DATA->count++;
 		}
 		if (connection_result) {
 			//+ aux.on_connect
@@ -482,7 +485,7 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
-			if (--PRIVATE_DATA->count == 0) {
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
 				upb3_close(device);
 			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -911,8 +914,11 @@ static void focuser_timer_callback(indigo_device *device) {
 static void focuser_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		if (PRIVATE_DATA->count++ == 0) {
+		if (PRIVATE_DATA->count == 0) {
 			connection_result = upb3_open(device->master_device);
+		}
+		if (connection_result) {
+			PRIVATE_DATA->count++;
 		}
 		if (connection_result) {
 			//+ focuser.on_connect
@@ -943,7 +949,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
-			if (--PRIVATE_DATA->count == 0) {
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
 				upb3_close(device);
 			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
