@@ -1,4 +1,4 @@
-// Copyright (c) 2025 CloudMakers, s. r. o.
+// Copyright (c) 2025-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -79,7 +79,7 @@ typedef struct hid_type {
 typedef struct sdk_type {
 	bool hotplug;
 	char pid[128],vid[128];
-	code_type *plug, *unplug;
+	code_type *plug, *unplug, *unplug_match;
 } sdk_type;
 
 typedef struct pattern_type {
@@ -899,6 +899,9 @@ bool parse_sdk_block(driver_type *driver) {
 			if (parse_code_block("plug", &sdk->plug)) {
 				continue;
 			}
+			if (parse_code_block("unplug_match", &sdk->unplug_match)) {
+				continue;
+			}
 			if (parse_code_block("unplug", &sdk->unplug)) {
 				continue;
 			}
@@ -1430,6 +1433,9 @@ void write_c_low_level_code_section(void) {
 		if (driver_uses_hotplug()) {
 			write_line("static indigo_queue *driver_queue = NULL;");
 			write_line("static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;");
+			if (driver.sdk && driver.sdk->unplug_match) {
+				write_line("static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;");
+			}
 			write_line("");
 		}
 		write_c_code_blocks(driver.code, 0, "code");
@@ -1964,10 +1970,23 @@ void write_c_hotplug_section(void) {
 	write_line("\tlibusb_device *dev = (libusb_device *)data;");
 	if (driver.libusb || driver.sdk) {
 		write_line("\t%s_private_data *private_data = NULL;", driver.name);
+		if (driver.sdk && driver.sdk->unplug_match) {
+			write_line("\t%s_private_data *removed[MAX_DEVICES];", driver.name);
+			write_line("\tint removed_count = 0;");
+		}
 		write_line("\tfor (int j = MAX_DEVICES - 1; j >= 0; j--) {");
 		write_line("\t\tif (devices[j] != NULL) {");
 		write_line("\t\t\tindigo_device *device = devices[j];");
-		write_line("\t\t\tif (PRIVATE_DATA->usbdev == dev) {");
+		if (driver.sdk && driver.sdk->unplug_match) {
+			write_line("\t\t\tprivate_data = PRIVATE_DATA;");
+			write_line("\t\t\tbool unplug_result = private_data->usbdev == dev;");
+			write_line("\t\t\tif (last_action != INDIGO_DRIVER_SHUTDOWN) {");
+			write_c_code_blocks(driver.sdk->unplug_match, 4, "sdk.unplug_match");
+			write_line("\t\t\t}");
+			write_line("\t\t\tif (unplug_result) {");
+		} else {
+			write_line("\t\t\tif (PRIVATE_DATA->usbdev == dev) {");
+		}
 		write_line("\t\t\t\tprivate_data = PRIVATE_DATA;");
 		if (driver.sdk) {
 			write_c_code_blocks(driver.sdk->unplug, 4, "sdk.unplug");
@@ -1975,13 +1994,32 @@ void write_c_hotplug_section(void) {
 		write_line("\t\t\t\tindigo_detach_device(device);");
 		write_line("\t\t\t\tfree(device);");
 		write_line("\t\t\t\tdevices[j] = NULL;");
+		if (driver.sdk && driver.sdk->unplug_match) {
+			write_line("\t\t\t\tbool recorded = false;");
+			write_line("\t\t\t\tfor (int k = 0; k < removed_count; k++) {");
+			write_line("\t\t\t\t\tif (removed[k] == private_data) {");
+			write_line("\t\t\t\t\t\trecorded = true;");
+			write_line("\t\t\t\t\t\tbreak;");
+			write_line("\t\t\t\t\t}");
+			write_line("\t\t\t\t}");
+			write_line("\t\t\t\tif (!recorded) {");
+			write_line("\t\t\t\t\tremoved[removed_count++] = private_data;");
+			write_line("\t\t\t\t}");
+		}
 		write_line("\t\t\t}");
 		write_line("\t\t}");
 		write_line("\t}");
-		write_line("\tif (private_data != NULL) {");
-		write_line("\t\tlibusb_unref_device(dev);");
-		write_line("\t\tfree(private_data);");
-		write_line("\t}");
+		if (driver.sdk && driver.sdk->unplug_match) {
+			write_line("\tfor (int k = 0; k < removed_count; k++) {");
+			write_line("\t\tlibusb_unref_device(removed[k]->usbdev);");
+			write_line("\t\tfree(removed[k]);");
+			write_line("\t}");
+		} else {
+			write_line("\tif (private_data != NULL) {");
+			write_line("\t\tlibusb_unref_device(dev);");
+			write_line("\t\tfree(private_data);");
+			write_line("\t}");
+		}
 	} else if (driver.hid) {
 		for (device_type *device = driver.devices->next; device; device = device->next) {
 			write_line("\tif (%s == NULL) {", device->type);
@@ -2035,7 +2073,9 @@ void write_c_main_section(void) {
 //	write_line("// %s driver entry point", driver.label);
 	write_line("");
 	write_line("indigo_result indigo_%s_%s(indigo_driver_action action, indigo_driver_info *info) {", driver.devices->type, driver.name);
-	write_line("\tstatic indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;");
+	if (!(driver.sdk && driver.sdk->unplug_match)) {
+		write_line("\tstatic indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;");
+	}
 	if (driver.virtual || driver.serial) {
 		write_line("\tstatic %s_private_data *private_data = NULL;", driver.name);
 		for (device_type *device = driver.devices; device; device = device->next) {
@@ -2734,6 +2774,13 @@ void write_definition_source(void) {
 		if (driver.sdk->plug) {
 			write_line("\t\tplug {");
 			for (code_type *code = driver.sdk->plug; code; code = code->next) {
+				write_code_block(code, 3);
+			}
+			write_line("\t\t}");
+		}
+		if (driver.sdk->unplug_match) {
+			write_line("\t\tunplug_match {");
+			for (code_type *code = driver.sdk->unplug_match; code; code = code->next) {
 				write_code_block(code, 3);
 			}
 			write_line("\t\t}");

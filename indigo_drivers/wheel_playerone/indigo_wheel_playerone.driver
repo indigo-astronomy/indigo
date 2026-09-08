@@ -1,0 +1,298 @@
+// Copyright (C) 2023-2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Refactored by OpenAI Codex (2026).
+
+// version history
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
+driver playerone {
+	label = "Player One Filter Wheel";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
+	copyright = "Copyright (C) 2023-2026 Rumen G. Bogdanovski";
+	version = 10;
+	include {
+		#include <PlayerOnePW.h>
+	}
+	define {
+		#define PONE_VENDOR_ID                  0xa0a0
+	}
+	data {
+		int dev_handle;
+		char model[64];
+		char custom_suffix[MAX_NAME_LEN + 1];
+		int current_slot, target_slot, slot_count;
+		int initialization_polls;
+		int count;
+	}
+	code {
+		static void split_device_name(const char *name, char *model, char *suffix) {
+			snprintf(model, 64, "%s", name);
+			suffix[0] = 0;
+			char *start = strchr(model, '[');
+			char *end = strrchr(model, ']');
+			if (start == NULL || end == NULL || end < start || end[1] != 0 || end - start - 1 > MAX_NAME_LEN) {
+				return;
+			}
+			*end = 0;
+			snprintf(suffix, MAX_NAME_LEN + 1, "%s", start + 1);
+			*start = 0;
+			while (start > model && start[-1] == ' ') {
+				*--start = 0;
+			}
+		}
+
+		static bool playerone_open(indigo_device *device) {
+			if (PRIVATE_DATA->count > 0) {
+				PRIVATE_DATA->count++;
+				return true;
+			}
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				return false;
+			}
+			int res = POAOpenPW(PRIVATE_DATA->dev_handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAOpenPW(%d) = %d", PRIVATE_DATA->dev_handle, res);
+			if (res != PW_OK) {
+				indigo_global_unlock(device);
+				return false;
+			}
+			PRIVATE_DATA->count++;
+			return true;
+		}
+
+		static void playerone_close(indigo_device *device) {
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
+				int res = POAClosePW(PRIVATE_DATA->dev_handle);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAClosePW(%d) = %d", PRIVATE_DATA->dev_handle, res);
+				indigo_global_unlock(device);
+			}
+		}
+	}
+	sdk {
+		hotplug = true;
+		vid = PONE_VENDOR_ID;
+		pid = 0xf001;
+		unplug_match {
+			int count = POAGetPWCount();
+			unplug_result = count >= 0;
+			for (int index = 0; index < count; index++) {
+				PWProperties info = { 0 };
+				if (POAGetPWProperties(index, &info) != PW_OK || info.Handle == private_data->dev_handle) {
+					unplug_result = false;
+					break;
+				}
+			}
+		}
+		plug {
+			plug_result = false;
+			bool duplicate = false;
+			for (int slot = 0; slot < MAX_DEVICES; slot++) {
+				if (devices[slot] != NULL && ((playerone_private_data *)devices[slot]->private_data)->usbdev == dev) {
+					duplicate = true;
+					break;
+				}
+			}
+			int count = duplicate ? 0 : POAGetPWCount();
+			for (int index = 0; index < count; index++) {
+				PWProperties info = { 0 };
+				int res = POAGetPWProperties(index, &info);
+				if (res != PW_OK || info.Handle < 0) {
+					continue;
+				}
+				bool attached = false;
+				for (int slot = 0; slot < MAX_DEVICES; slot++) {
+					if (devices[slot] != NULL && ((playerone_private_data *)devices[slot]->private_data)->dev_handle == info.Handle) {
+						attached = true;
+						break;
+					}
+				}
+				if (!attached) {
+					info.Name[sizeof(info.Name) - 1] = 0;
+					private_data->dev_handle = info.Handle;
+					split_device_name(info.Name, private_data->model, private_data->custom_suffix);
+					if (private_data->custom_suffix[0]) {
+						snprintf(name, INDIGO_NAME_SIZE, "%.*s #%s", INDIGO_NAME_SIZE - MAX_NAME_LEN - 3, private_data->model, private_data->custom_suffix);
+					} else {
+						snprintf(name, INDIGO_NAME_SIZE, "%s", private_data->model);
+					}
+					indigo_make_name_unique(name, "%d", info.Handle);
+					plug_result = true;
+					break;
+				}
+			}
+		}
+	}
+	on_init {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Player One filter wheel SDK v. %s", POAGetPWSDKVer());
+	}
+	wheel {
+		name = "%s";
+		code {
+			static void wheel_move_finalizer(indigo_device *device) {
+				if (!IS_CONNECTED) {
+					return;
+				}
+				int position = -1;
+				int res = POAGetCurrentPosition(PRIVATE_DATA->dev_handle, &position);
+				if (res == PW_ERROR_IS_MOVING) {
+					if (PRIVATE_DATA->target_slot == 0 && --PRIVATE_DATA->initialization_polls == 0) {
+						WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Initial positioning timed out after 15 seconds");
+					} else {
+						indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+					}
+					return;
+				}
+				if (res != PW_OK || position < 0 || position >= PRIVATE_DATA->slot_count) {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Failed to read filter position (%d)", res);
+					return;
+				}
+				PRIVATE_DATA->current_slot = position + 1;
+				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+				if (PRIVATE_DATA->target_slot == 0) {
+					WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->target_slot = PRIVATE_DATA->current_slot;
+				}
+				WHEEL_SLOT_PROPERTY->state = PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+			}
+		}
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, POAGetPWSDKVer());
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
+		}
+		on_connect {
+			PWProperties info = { 0 };
+			int res = POAGetPWPropertiesByHandle(PRIVATE_DATA->dev_handle, &info);
+			connection_result = res == PW_OK && info.Handle == PRIVATE_DATA->dev_handle && info.PositionCount > 0 && info.PositionCount <= WHEEL_SLOT_NAME_PROPERTY->allocated_count && info.PositionCount <= WHEEL_SLOT_OFFSET_PROPERTY->allocated_count;
+			int position = -1;
+			if (connection_result) {
+				res = POAGetCurrentPosition(PRIVATE_DATA->dev_handle, &position);
+				connection_result = res == PW_ERROR_IS_MOVING || (res == PW_OK && position >= 0 && position < info.PositionCount);
+			}
+			if (connection_result) {
+				char suffix[MAX_NAME_LEN + 1] = { 0 };
+				connection_result = POAGetPWCustomName(PRIVATE_DATA->dev_handle, suffix, sizeof(suffix)) == PW_OK;
+				suffix[MAX_NAME_LEN] = 0;
+				if (connection_result) {
+					snprintf(PRIVATE_DATA->custom_suffix, sizeof(PRIVATE_DATA->custom_suffix), "%s", suffix);
+					INDIGO_COPY_VALUE(X_CUSTOM_SUFFIX_ITEM->text.value, suffix);
+					X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
+				}
+			}
+			if (connection_result) {
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count = info.PositionCount;
+				X_RESET_ITEM->sw.value = false;
+				X_RESET_PROPERTY->state = INDIGO_OK_STATE;
+				if (res == PW_ERROR_IS_MOVING) {
+					PRIVATE_DATA->target_slot = 0;
+					PRIVATE_DATA->initialization_polls = 30;
+					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+				} else {
+					WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot = PRIVATE_DATA->target_slot = position + 1;
+					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+				}
+			} else {
+				playerone_close(device);
+			}
+		}
+		inherited WHEEL_SLOT {
+			on_change {
+				double target = WHEEL_SLOT_ITEM->number.value;
+				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+				if (!isfinite(target) || target != floor(target) || target < 1 || target > PRIVATE_DATA->slot_count || X_RESET_PROPERTY->state == INDIGO_BUSY_STATE) {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Invalid slot or wheel reset in progress");
+				} else if (target == PRIVATE_DATA->current_slot) {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+				} else {
+					int res = POAGotoPosition(PRIVATE_DATA->dev_handle, (int)target - 1);
+					if (res != PW_OK) {
+						WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Set filter failed (%d)", res);
+					} else {
+						PRIVATE_DATA->target_slot = (int)target;
+						indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+						indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+					}
+				}
+			}
+		}
+		switch X_RESET {
+			name = "X_RESET";
+			group = WHEEL_ADVANCED_GROUP;
+			label = "Reset filter wheel";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			on_change {
+				if (X_RESET_ITEM->sw.value) {
+					X_RESET_ITEM->sw.value = false;
+					if (WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE) {
+						X_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, X_RESET_PROPERTY, "Wheel is busy");
+						return;
+					}
+					int res = POAResetPW(PRIVATE_DATA->dev_handle);
+					if (res != PW_OK) {
+						X_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+					} else {
+						indigo_update_property(device, X_RESET_PROPERTY, "Filter wheel reset successful, disconnecting...");
+						indigo_change_switch_property_1(NULL, device->name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
+						return;
+					}
+				}
+			}
+			item X_RESET {
+				name = "RESET";
+				label = "Reset";
+				value = false;
+			}
+		}
+		text X_CUSTOM_SUFFIX {
+			name = "X_CUSTOM_SUFFIX";
+			group = WHEEL_MAIN_GROUP;
+			label = "Device name custom suffix";
+			on_change {
+				size_t length = strlen(X_CUSTOM_SUFFIX_ITEM->text.value);
+				if (length > MAX_NAME_LEN) {
+					X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+					INDIGO_COPY_VALUE(X_CUSTOM_SUFFIX_ITEM->text.value, PRIVATE_DATA->custom_suffix);
+					indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Custom suffix is too long");
+					return;
+				}
+				int res = POASetPWCustomName(PRIVATE_DATA->dev_handle, X_CUSTOM_SUFFIX_ITEM->text.value, (int)length);
+				if (res != PW_OK) {
+					X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+					INDIGO_COPY_VALUE(X_CUSTOM_SUFFIX_ITEM->text.value, PRIVATE_DATA->custom_suffix);
+				} else {
+					snprintf(PRIVATE_DATA->custom_suffix, sizeof(PRIVATE_DATA->custom_suffix), "%s", X_CUSTOM_SUFFIX_ITEM->text.value);
+					indigo_send_message(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix will be used on replug");
+				}
+			}
+			item X_CUSTOM_SUFFIX {
+				name = "SUFFIX";
+				label = "Suffix";
+				value = PRIVATE_DATA->custom_suffix;
+			}
+		}
+	}
+}

@@ -24,6 +24,8 @@ Read the relevant documentation before changing behavior:
 
 The properties reference is maintained in `indigo_docs/PROPERTIES.md`. Keep this file up to date when changing source code. Whenever a property is added to or removed from any driver or framework code, update `indigo_docs/PROPERTIES.md` in the same change. Source files for documented property sections are listed in `indigo_docs/PROPERTIES.md` at the end of each section; use those per-section source notes as the authoritative mapping.
 
+Driver-specific custom property names must start with `X_`. When implementing, refactoring or reviewing driver properties, check this prefix in `.driver` declarations and `indigo_init_*_property()` names. Standard INDIGO properties retain their standard names.
+
 Always look for:
 - indigo_init_*_property() function calls
 - indigo_init_*_item() function calls
@@ -65,6 +67,7 @@ Some drivers are generated from `.driver` files by `indigo_generator`.
 
 - If a `.driver` source exists for a generated `.c` file, edit the generator input rather than hand-editing generated output unless the task explicitly requires otherwise.
 - Keep generated output and checked-in generated files synchronized when the repository convention expects both.
+- During refactoring, use generator defaults unless the user explicitly requests an override. In particular, never override `MAX_DEVICES` with `#undef` / `#define` to preserve a legacy capacity; check that no such override is introduced.
 - Review `indigo_docs/DRIVER_GENERATOR_MIGRATION.md` before migrating or creating generated drivers.
 - Treat the `.driver` file as the source of truth once migration starts. Check in the `.driver` file together with the regenerated `.c`, `.h`, and `_main.c` files, and add the `.driver` file to project files such as Xcode groups when relevant.
 - When reverse-extracting a `.driver` file from an annotated C driver, run `indigo_generator -c <target>.driver`, where `<target>.driver` is the new generator source file to create. Do not pass the existing `.c` file as the `-c` argument; the generator treats that argument as the output path and can overwrite the hand-written source. If unsure, run the extraction in a temporary directory first and inspect the result before touching repository files.

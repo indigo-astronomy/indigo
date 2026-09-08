@@ -32,6 +32,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_token \
 	$(UNIT_BUILD)/test_raw_image
 INTEGRATION_TESTS = \
+	$(INTEGRATION_BUILD)/test_wheel_playerone_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_touptek_sdk \
 	$(INTEGRATION_BUILD)/test_wheel_asi_sdk \
 	$(INTEGRATION_BUILD)/test_focuser_asi_sdk \
@@ -697,6 +698,21 @@ $(INTEGRATION_BUILD)/wheel_asi_sdk_driver.o: ../indigo_drivers/wheel_asi/indigo_
 
 $(INTEGRATION_BUILD)/test_wheel_asi_sdk: integration/test_wheel_asi_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_asi_sdk_driver.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(EFW_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/wheel_asi_sdk_driver.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+PW_SDK_TEST_INCLUDE = -I../indigo_drivers/wheel_playerone/bin_externals/libPlayerOnePW/include
+PW_SDK_TEST_REPLACEMENTS = -Dindigo_execute_handler_in=pw_test_poll -Dlibusb_hotplug_register_callback_sim=pw_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=pw_test_usb_deregister_poll -Dindigo_start_usb_event_handler=pw_test_usb_start -Dindigo_try_global_lock=pw_test_lock -Dindigo_global_unlock=pw_test_unlock -Dindigo_attach_device=pw_test_attach -Dindigo_detach_device=pw_test_detach -Dlibusb_hotplug_register_callback=pw_test_usb_register -Dlibusb_hotplug_deregister_callback=pw_test_usb_deregister -Dlibusb_ref_device=pw_test_usb_ref -Dlibusb_unref_device=pw_test_usb_unref -Dlibusb_get_device_descriptor=pw_test_usb_descriptor
+
+$(INTEGRATION_BUILD)/wheel_playerone_sdk_driver.o: ../indigo_drivers/wheel_playerone/indigo_wheel_playerone.c ../indigo_drivers/wheel_playerone/indigo_wheel_playerone.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(PW_SDK_TEST_INCLUDE) $(PW_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/wheel_playerone_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=pw_test_config_folder -c $< -o $@
+
+$(INTEGRATION_BUILD)/wheel_playerone_sdk_base.o: ../indigo_libs/indigo_wheel_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_wheel_playerone_sdk: integration/test_wheel_playerone_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_playerone_sdk_driver.o $(INTEGRATION_BUILD)/wheel_playerone_sdk_framework.o $(INTEGRATION_BUILD)/wheel_playerone_sdk_base.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(PW_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/wheel_playerone_sdk_driver.o $(INTEGRATION_BUILD)/wheel_playerone_sdk_framework.o $(INTEGRATION_BUILD)/wheel_playerone_sdk_base.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
 CAA_SDK_TEST_INCLUDE = -I../indigo_drivers/rotator_asi/bin_externals/libCAA/include
 CAA_SDK_TEST_REPLACEMENTS = -Dindigo_rotator_change_property=caa_test_base_change -Dlibusb_hotplug_register_callback_sim=caa_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=caa_test_usb_deregister_poll -Dindigo_save_property=caa_test_save -Dindigo_start_usb_event_handler=caa_test_usb_start -Dindigo_try_global_lock=caa_test_lock -Dindigo_global_unlock=caa_test_unlock -Dindigo_attach_device=caa_test_attach -Dindigo_detach_device=caa_test_detach -Dlibusb_hotplug_register_callback=caa_test_usb_register -Dlibusb_hotplug_deregister_callback=caa_test_usb_deregister -Dlibusb_ref_device=caa_test_usb_ref -Dlibusb_unref_device=caa_test_usb_unref -Dlibusb_get_device_descriptor=caa_test_usb_descriptor

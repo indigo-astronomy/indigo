@@ -2,6 +2,54 @@
 
 This document records the automated test suite added under `indigo_test/` and the remaining follow-up work. The suite is intentionally hardware-free: it links against the built INDIGO library and simulator driver archives, then exercises public APIs through unit and in-process integration tests.
 
+## Player One wheel generator migration (2026-09-08)
+
+Added `integration/test_wheel_playerone_sdk.c` and the normal integration target
+`build/integration/test_wheel_playerone_sdk`. The generated driver is compiled
+as a separate object against Player One SDK/libusb stubs. Tests use public driver
+entry points and bus requests, a mutex-protected multi-wheel property cache,
+and real wheel/device base handlers. A test-local framework object redirects
+configuration files to a temporary directory without changing HOME; files are
+removed after the run.
+
+Twelve test cases cover:
+
+- all exposed properties (`INFO`, `CONNECTION`, `CONFIG`, `PROFILE`,
+  `PROFILE_NAME`, `WHEEL_SLOT`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`,
+  `X_RESET`, `X_CUSTOM_SUFFIX`) and hidden/disconnected property visibility;
+- slot names and offsets, configuration save/load/remove, profile naming and
+  selection, five/16-slot metadata and the 50-byte filter-name boundary;
+- repeated lifecycle requests, global-lock/open/metadata/position/suffix errors,
+  invalid slot counts, asynchronous initial motion, bounded timeout and reconnect;
+- first/last slots, bus range clamping, fractional/NaN rejection, BUSY request
+  suppression, SDK movement/read failures, invalid and wrong-target replies;
+- reset false-switch no-op, rejection during movement, failure, successful
+  completion before disconnect/property deletion, and reconnect;
+- empty/one/24-byte suffixes, 25-byte rejection, failed writes, reconnect/replug
+  and full-length attached names;
+- default five-wheel capacity, handles above 23, reverse connection order, reordered enumeration
+  of attached wheels, duplicate USB arrival, capacity/retry, descriptor/enumeration
+  errors, failed attach retry and malformed SDK names;
+- disconnect and unplug during movement, including a held SDK read proving close
+  waits for running work, cancelled polling and ignored disconnected requests;
+- reversed USB/SDK arrival order, inconclusive SDK enumeration on removal,
+  several removals in one USB event and separate per-USB-pointer reference balance;
+- balanced SDK close/global locks and USB references during fixture teardown.
+
+Verification: all 12 cases passed in the universal macOS build and in a native
+AddressSanitizer/UndefinedBehaviorSanitizer build. The existing ASI wheel SDK
+suite (5 cases) and timer/queue suite (86 cases) also passed. Sanitizers cover the
+test, driver and test-local base/framework objects; the shared INDIGO library
+itself is not rebuilt with instrumentation. The initialization-timeout test
+accelerates delayed dispatch while retaining the production poll count.
+
+Physical hardware is unavailable. Real SDK readiness and physical reset behavior
+remain deferred. The optional `sdk.unplug_match` generator block is used only
+by Player One; SDK-handle presence determines removal even if USB and SDK
+arrival order differ. No new shutdown synchronization is introduced. No claim
+is made that the stubs establish real SDK readiness timing or that arbitrary
+simultaneous hot-plug/shutdown races are covered. Test outputs were cleaned.
+
 ## ToupTek guide coalescing and connection serialization (2026-09-08)
 
 Added two hardware-free cases to `test_ccd_touptek_sdk.c`: queued full-vector guide replacements on both axes must issue exactly one SDK pulse per axis (DRV-067), and an immediately due temperature task must survive held camera initialization and run after connection completes (DRV-068 false-positive check). The guide test reproduced duplicated commands before the fix. The temperature test uses the real queue/master-mutex path and shortens only the first monitoring deadline, avoiding a five-second sleep.

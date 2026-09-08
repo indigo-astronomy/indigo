@@ -1456,11 +1456,11 @@ Source: `indigo_drivers/wheel_optec/indigo_wheel_optec.c`.
 
 ### wheel_playerone
 
-Custom properties: `POA_CUSTOM_SUFFIX`, `POA_RESET`.
+Custom properties: `X_CUSTOM_SUFFIX` (connected-only text, item `SUFFIX`, up to 24 bytes), `X_RESET` (connected-only switch, item `RESET`; successful reset disconnects the wheel).
 
-Driver-specific use of existing properties: `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+Driver-specific use of existing properties: `INFO` (six items, SDK version in firmware revision), `WHEEL_SLOT` (one-based positions and SDK slot-count maximum), `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET` (counts from the SDK).
 
-Source: `indigo_drivers/wheel_playerone/indigo_wheel_playerone.c`.
+Source: `indigo_drivers/wheel_playerone/indigo_wheel_playerone.driver`, generated `indigo_drivers/wheel_playerone/indigo_wheel_playerone.c`.
 
 ### wheel_qhy
 

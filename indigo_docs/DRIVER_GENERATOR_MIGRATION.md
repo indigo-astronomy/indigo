@@ -102,6 +102,28 @@ that driver queue, and generated `CONNECTION` handling for hot-plug devices uses
 the same queue. This serializes SDK enumeration, attach/detach and open/close
 operations across all instances of one generated driver.
 
+For SDKs whose enumeration order is independent of libusb arrival order, an
+optional `sdk.unplug_match` block selects removal by SDK identity. It runs for
+each attached logical device on a removal event with `device`, `private_data`,
+`dev` (the event's USB pointer) and `bool unplug_result`. The initial result is
+USB-pointer equality; assign it from a checked SDK presence query instead:
+
+```c
+unplug_match {
+    unplug_result = vendor_device_is_absent(private_data->sdk_id);
+}
+```
+
+The block must only determine presence, without detaching/freeing devices or
+releasing USB references. Treat failed/incomplete enumeration as inconclusive,
+not proof that a device is absent. Existing `unplug` cleanup runs after a match.
+Multiple matched physical devices are allowed; generated cleanup frees each
+shared private-data allocation and its retained USB reference exactly once.
+The event reference is released separately. For drivers opting into this block,
+shutdown uses the existing `last_action` to bypass SDK presence checks and
+releases each device's stored USB reference. This option does not change
+queue scheduling or shutdown synchronization. Drivers without this block retain their existing generated output.
+
 The `<device_type>` keyword matches the device's INDIGO class (`aux`, `wheel`, `focuser`, `ccd`, `mount`, `guider`, `rotator`, `dome`, `gps`, etc.).
 
 Running the generator with a `.driver` file produces:

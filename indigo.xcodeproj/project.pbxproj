@@ -4825,6 +4825,7 @@
 		9D239B36304FE0CF002E0722 /* test_ccd_touptek_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_touptek_sdk.c; sourceTree = "<group>"; };
 		9D239B37304FEC2A002E0722 /* indigo_ccd_touptek_vendors.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_touptek_vendors.h; sourceTree = "<group>"; };
 		9D239B3D30500558002E0722 /* test_ccd_touptek_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_touptek_hw.c; sourceTree = "<group>"; };
+		9D239B403050234B002E0722 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		9D2696E422A56BD8008BE82C /* focuser_steeldrive2_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = focuser_steeldrive2_simulator.ino; sourceTree = "<group>"; };
 		9D2696E522A56BD8008BE82C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D285A572B61373500B2642A /* Sequencer.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Sequencer.md; sourceTree = "<group>"; };
@@ -5250,6 +5251,8 @@
 		9DFE1866213586AB00149BDE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DFE1868213586AB00149BDE /* indigo_focuser_dmfc_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_dmfc_main.c; sourceTree = "<group>"; };
 		9DFE186B2135883A00149BDE /* DMFC-Serial-Command-Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "DMFC-Serial-Command-Table.pdf"; sourceTree = "<group>"; };
+		C0DE20260908000100000001 /* indigo_wheel_playerone.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_playerone.driver; sourceTree = "<group>"; };
+		C0DE20260908000100000002 /* test_wheel_playerone_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_playerone_sdk.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -8670,9 +8673,11 @@
 			isa = PBXGroup;
 			children = (
 				59A413192971E54C00F0A80B /* README.md */,
+				9D239B403050234B002E0722 /* REFACTOR.md */,
 				59A4132C2971E54C00F0A80B /* indigo_wheel_playerone.h */,
 				59A413172971E54C00F0A80B /* indigo_wheel_playerone.c */,
 				59A413182971E54C00F0A80B /* indigo_wheel_playerone_main.c */,
+				C0DE20260908000100000001 /* indigo_wheel_playerone.driver */,
 				59A4132D2971E54C00F0A80B /* Makefile.inc */,
 				59A4131A2971E54C00F0A80B /* bin_externals */,
 			);
@@ -13190,6 +13195,7 @@
 				9D239B36304FE0CF002E0722 /* test_ccd_touptek_sdk.c */,
 				592C33AE304F6126004D5AE6 /* test_rotator_asi_sdk.c */,
 				592C3393304F46D1004D5AE6 /* test_wheel_asi_sdk.c */,
+				C0DE20260908000100000002 /* test_wheel_playerone_sdk.c */,
 				592C3392304F4209004D5AE6 /* test_focuser_asi_sdk.c */,
 				5984A389303CDD9100D581D2 /* test_wheel_indigo_simulator.c */,
 				5984A387303CDBBE00D581D2 /* test_rotator_wa_simulator.c */,
