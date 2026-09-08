@@ -1,10 +1,74 @@
 # INDIGO Test Suite Changes
 
+## ToupTek shared hot-plug shutdown (2026-09-08)
+
+The hand-written ToupTek/OEM lifecycle now follows the generated SDK sequence: connection and discovery handlers share the driver task mutex with disconnected-device verification; rejected shutdown preserves the existing callback registration; accepted shutdown deregisters, drains queued events, then detaches and deletes the queue. SDK-id discovery and multi-class camera/guider/wheel/focuser teardown remain driver-specific. The fake SDK lifecycle test asserts no deregistration/re-registration on rejection. Its pending-shutdown test verifies all 64 accepted notifications execute (96 SDK enumerations), followed by clean detach and successful reinitialization. Targeted lifecycle, pending-shutdown and hot-plug/partial-attach/active-removal tests passed without hardware.
+
+## All generated hot-plug transports drain before detach (2026-09-08)
+
+The generator now shares SHUTDOWN emission across libusb, SDK and HID transports. The architecture regression covers all three plus SDK discovery retries: serialized connected-device verification, rejection before deregistration, queue drain before detach/delete, and retry cancellation without holding the task mutex. The PlayerOne fake SDK queued-shutdown scenario also detects any detach while its blocked queue callback is unfinished. Validation passed: the generator suite (including 86 DSL cases and four hot-plug variants), the three targeted PlayerOne fake SDK scenarios, and full root `make all` for macOS x86_64/arm64. Hardware tests were not run.
+
+## Shared handler-queue drain (2026-09-08)
+
+`indigo_queue_drain()` waits for both pending and running tasks, including delayed and callback-enqueued work, without canceling tasks. Producers/recurring tasks must be stopped first and the caller must own the queue lifetime. Calls from the worker or with NULL return false. Queue notifications broadcast to wake the worker and all drain/remove waiters.
+
+The timer unit suite covers an empty/reusable queue, a blocked running callback, delayed and callback-enqueued tasks, two concurrent drain callers, self-call rejection and wakeup after removal of pending tasks. The generator emits a single drain call after USB deregistration and before detach/delete; its regression test rejects the old generated condition variable/callback. The existing SX pending-discovery and rejected-shutdown tests exercise the integration. No hardware tests are used. Validation passed: complete timer unit suite, generator regression suite, SX pending-discovery shutdown and shared-lifecycle/rejected-shutdown scenarios, and the macOS SX driver build.
+
+## SX complete applicable-standard fake USB suite (2026-09-08)
+
+The SX target now contains 24 named groups covering the applicable CCD and guider standard scenarios. The coverage/N/A matrix and validation details are in `../indigo_drivers/ccd_sx/REFACTOR.md`. Normal and ASan/UBSan runs passed all 24 groups; final metadata and zero-valued guide completion assertions passed narrow reruns. The suite includes 80 monotonic USB ON/OFF pulse samples with discarded warm-ups, both idle and during acquisition. Hardware tests were not run.
+
+Regressions fixed in the SX `.driver` include failed-open resource rollback, config-descriptor and ICX453 buffer cleanup, incomplete control packets, propagation of read/clear errors, zero-signal interlaced normalization, invalid-bin preservation, target/readback separation, unavailable cooling, and guider replacement/coalescing/error/stop handling. C is regenerated, not hand-edited. User-approved generator fixes cover duplicate arrivals, failed master attach, INIT rollback and SHUTDOWN synchronization/draining. Emitted cleanup uses INDIGO allocation helpers.
+
+The generator test retains its 86 attribute/value/block checks and adds libusb lifecycle invariants; SX's fake tests execute those generated paths with actual failures and controlled concurrency. Configuration codecs and image containers remain framework responsibilities.
+
+## CCD cooling and fake-boundary extensions (2026-09-08)
+
+The camera standard explicitly requires cooler ON/OFF, separate target/measured temperatures and unit conversion, supported power readback, polling/settling, individual read/write failures and recovery, unsupported capability profiles and disconnect cleanup. Apply only controls the driver implements: SX does not report cooler power; the simulator has no SDK communication errors to inject. Hardware tests were not repeated. Altair remains covered as the shared ToupTek implementation, without a separate OEM target as requested.
+
+- Player One: existing cooler polling, individual SDK failure and slow-initialization cases remain; added exact Bayer mapping and continuous SDK acquisition argument assertions.
+- ToupTek: independent measured temperature, target conversion, temperature and both power-read failures, recovery and settling; failed initialization reads and acquisition setup, Bayer mapping, ROI/bin noise payloads, multiple-camera identity and capacity recovery.
+- SX: new fake USB target covers cooled/uncooled profiles, target conversion, measured temperature, settling, ON/OFF, command/read/short-reply failure recovery, shared guiding, progressive/interlaced/ICX453 readout, ROI/bin/shutter and transfer failure recovery. Regressions exposed lost targets during polling, visible unsupported cooling controls, short cooling replies accepted as success and pixel read failures treated as success. Fixes live in `ccd_sx/indigo_ccd_sx.driver`; C is regenerated.
+- CCD simulator: added RAW geometry/bin, streaming/abort/reconnect, cooler target/settling/power, camera simulation modes and file-camera generated-noise inputs. Shutdown now detaches slave devices before freeing their master.
+
+Fake image data uses coordinate-addressable deterministic noise from `integration/ccd_test_noise.h`; no simulator image arrays are linked into fake SDK tests. New files are included in Xcode. ToupTek framework encoding/video/upload matrices were removed from the driver suite. The earlier audit below is a historical snapshot, not the current implementation inventory; these additions do not claim exhaustive branch coverage.
+
+Validation: Player One 45/45, ToupTek 28/28, SX 5/5 and CCD simulator 16/16 normal tests pass. The final ToupTek power/initial cooler-read assertions and simulator per-property revision waits passed narrow reruns. Simulator cooling/shutdown also passes ASan/UBSan (test and driver instrumentation; prebuilt dependencies excluded). SX, ToupTek and simulator driver builds pass. Repeated SX generation produces identical C/header/main files; Xcode project lint and whitespace checks pass. No hardware tests ran.
+
+## CCD fake-boundary coverage audit (2026-09-08)
+
+Static coverage audit of the current working tree against the camera standard and its referenced guider/shared-lifecycle requirements. This is a scenario-coverage check, not a line/branch coverage measurement or a new passing test run. No driver or hardware tests were executed and no production code was changed.
+
+| CCD driver with an existing test | Test boundary | Full fake SDK/USB coverage established? |
+| --- | --- | --- |
+| `ccd_playerone` | Production driver with fake POA SDK/USB, 44 named cases; separate hardware harness | No: concrete argument/metadata assertions are missing as listed below. |
+| `ccd_touptek` | Production driver with fake Toupcam SDK/USB, 25 named groups; separate hardware harness | No: geometry, failure injection and discovery-profile coverage remain incomplete. |
+| `ccd_altair` | Real Altair SDK selected by the shared ToupTek hardware harness | No: there is no Altair fake SDK build/test target. Shared source does not validate the OEM build. |
+| `ccd_simulator` | Direct public-bus tests of the simulator and its logical devices | Not applicable to fake SDK/USB: this driver has neither boundary. Its direct tests are compliance/smoke coverage, not full driver-behavior coverage. |
+
+Concrete missing assertions and scenarios:
+
+- Player One: `POAStartExposure` ignores its `single` argument (`integration/test_ccd_playerone_sdk.c:661`). Assert `POA_FALSE` for both single INDIGO exposure and streaming, preserving the continuous-mode workaround used by the production driver (`../indigo_drivers/ccd_playerone/indigo_ccd_playerone.driver:409`). No physical Saturn-C is needed for this assertion.
+- Player One: the RAW observer checks only the presence of `BAYERPAT=` (`integration/test_ccd_playerone_sdk.c:239`); fixture initialization selects only `POA_BAYER_RG` (`:1960`). Check the actual handed-off BGGR/GRBG/GBRG/RGGB mapping and unsupported-pattern behavior. Existing RGB pixel checks and mono/no-Bayer cases do not establish that mapping.
+- ToupTek: `Toupcam_PullImageV2` always returns 16×16 pixels from the beginning of the simulator fixture (`integration/test_ccd_touptek_sdk.c:1749`). The observer also expects 16×16 (`:282`). ROI/bin tests check outgoing options (`:971`) but do not validate the corresponding delivered geometry, ROI pixel mapping or Bayer value (`Toupcam_get_RawFormat` returns FourCC zero). This is driver raw-handoff coverage, not an encoder test.
+- ToupTek: several relevant SDK reads/start/stop calls cannot fail in the fake: `Toupcam_get_Option` (`:488`), `Toupcam_StartPullModeWithCallback` (`:1774`), `Toupcam_Stop` (`:1782`), exposure/gain range reads and temperature reads near the end of the file. Add targeted failures with untouched output and assertions for the actual driver error/cleanup branches; existing write/trigger/pull failure tests do not cover these paths. This also limits wheel/cooler readback-failure coverage.
+- ToupTek: enumeration is limited to three fixed physical records with ids `0`, `1`, `2` (`integration/test_ccd_touptek_sdk.c:461`): one camera, a wheel and a focuser. Combined-interface and duplicate-event tests exist, but two independent cameras with identical names, reordered enumeration/nontrivial ids, survivor acquisition and capacity overflow are not established by this fixture.
+- Altair: `Makefile:780` links its hardware object and real SDK; the fake target builds only the ToupTek variant. Provide an OEM-specific fake boundary/build before claiming automated fake coverage for Altair. Other OEM variants have no driver-specific test target in this inventory.
+- CCD simulator: `integration/test_ccd_simulator.c` checks metadata, public properties and representative logical-device actions/short exposures. Driver-specific image generation, streaming/abort races and error paths are not comprehensively covered by these checks; do not invent a vendor SDK solely to test a simulator.
+
+The existing fake suites cover substantial lifecycle, controls, acquisition and race behavior. The gaps above are sufficient to reject a full-coverage claim; counts of named cases or earlier successful runs do not close them. CCD SX has no dedicated automated CCD test; `test_ao_sx_simulator.c` exercises AO/guider, so SX is outside the tested-CCD inventory. Framework codec/upload tests still present in the ToupTek suite do not count toward the missing driver coverage.
+
+## Driver test scope by class (2026-09-08)
+
+The same driver-only scope now includes AO corrections/reset/limits/shared guider ownership and GPS parsing/fix lifecycle/source selection/reader cleanup, with separate hardware acceptance. AO steps are distinguished from guider pulse durations. No implementation or hardware tests were run for this documentation update.
+
+`DRIVER_TESTING_RULES.md` now defines shared driver-only scope and separate fake SDK/protocol and real-hardware acceptance for mounts, wheels, focusers, rotators and guiders. Camera pulse scenarios and SDK-entry timing measurements moved into the guider standard, referenced by camera and mount sections. Framework behavior and optical/electrical performance measurements are outside driver acceptance. These are coverage requirements, not claims of newly implemented tests. This documentation-only change runs no driver or hardware tests.
+
 ## Player One final plan audit (2026-09-08)
 
 `test_ccd_playerone_sdk` now has 44 named fixture-isolated cases. The added groups cover required initialization/attribute/preset read failures with untouched outputs, optional mode failures, geometry failures, SDK identity and bounded strings, individual cooler failures, partial control writes/readback, partial guider attachment, before-handler/setup/readout aborts, queued shutdown, bounded discovery retries, invalid/aligned ROI/bin behavior and RAW16-only capability, and slow initialization crossing accelerated polling intervals. All camera SDK calls are checked for overlapping access and use after close; fixture cleanup failures affect the executable's exit code and an unmatched filter fails.
 
-Images use the shared CCD simulator fixtures. RAW pixels and Bayer metadata are checked. Framework codec, container and upload-destination tests were removed; the suite now contains 44 driver-focused cases. The modified frame-type/exposure-unit, finite-stream-count and RAW/ROI/bin cases passed after scope reduction; hardware tests were not repeated. Timing retains 120 measured guide pulses without a machine-dependent error threshold. Normal, safe-readout and ASan/UBSan validation passes; final test-only additions are rerun narrowly in each configuration.
+At that checkpoint images used the shared CCD simulator fixtures; the current fake tests use generated noise. RAW pixels and Bayer metadata are checked. Framework codec, container and upload-destination tests were removed; the suite now contains 44 driver-focused cases. The modified frame-type/exposure-unit, finite-stream-count and RAW/ROI/bin cases passed after scope reduction; hardware tests were not repeated. Timing retains 120 measured guide pulses without a machine-dependent error threshold. Normal, safe-readout and ASan/UBSan validation passes; final test-only additions are rerun narrowly in each configuration.
 
 The generator suite now checks 86 attribute/value/block cases, including opt-in `discovery_retries`. The Player One integration test verifies late SDK visibility without another arrival, six-retry exhaustion, removal cancellation, and pending-retry shutdown cleanup. Reference-driver regeneration changes only the already approved registration/queue rollback paths. Hardware test modes `--acceptance` and `--suffix` isolate physical interruption and flash/name acceptance; `test-ccd-playerone-reload-hw` uses a shared bus and actual dynamic driver unload/reload, excluding configuration SAVE to avoid user settings. These modes remain outside normal integration tests and use existing Xcode-referenced source files.
 
@@ -12,7 +76,7 @@ The earlier gap lists below are historical checkpoints. The final migration matr
 
 ## Camera test standard and generator parsing (2026-09-08)
 
-Camera fake SDK/USB and hardware scenarios now live in `DRIVER_TESTING_RULES.md`; root and test `AGENTS.md` contain references only. The standard includes the CCD simulator RAW/RGB fixtures and defines guider timing at SDK entry.
+Camera fake SDK/USB and hardware scenarios now live in `DRIVER_TESTING_RULES.md`; root and test `AGENTS.md` contain references only. The standard now requires generated noise for fake images and defines guider timing at SDK entry.
 
 The generator architecture suite checks all supported named DSL attributes and code blocks with 85 table cases, including true/false settings, generated behavior and parser traces. Separate fixtures check `name`/`name_value` in either order and `name` alone. Tests exposed `handler` being consumed as `handle`; the user-approved fix parses `handler` first. Both declaration orders now have regression coverage. The prefix matching implementation remains unchanged.
 

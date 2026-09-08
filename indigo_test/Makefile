@@ -35,6 +35,7 @@ INTEGRATION_TESTS = \
 	$(INTEGRATION_BUILD)/test_generator_architecture \
 	$(INTEGRATION_BUILD)/test_wheel_playerone_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_playerone_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_sx_usb \
 	$(INTEGRATION_BUILD)/test_wheel_astroasis_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_touptek_sdk \
 	$(INTEGRATION_BUILD)/test_wheel_asi_sdk \
@@ -273,8 +274,11 @@ $(UNIT_BUILD)/test_timer: unit/test_timer.c test_runner.h | $(UNIT_BUILD)
 $(INTEGRATION_BUILD)/test_bus_lifecycle: integration/test_bus_lifecycle.c test_runner.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_ccd_simulator: integration/test_ccd_simulator.c integration/simulator_test_common.h test_runner.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $< $(CCD_SIMULATOR_TEST_LDFLAGS)
+$(INTEGRATION_BUILD)/ccd_simulator_test_driver.o: ../indigo_drivers/ccd_simulator/indigo_ccd_simulator.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Dindigo_set_timer=sim_test_set_timer -Dindigo_reschedule_timer=sim_test_reschedule_timer -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_simulator: integration/test_ccd_simulator.c integration/simulator_test_common.h integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_simulator_test_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(INTEGRATION_BUILD)/ccd_simulator_test_driver.o $(CCD_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_dome_simulator: integration/test_dome_simulator.c integration/simulator_test_common.h test_runner.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_SIMULATOR_TEST_LDFLAGS)
@@ -748,8 +752,6 @@ TOUPTEK_SDK_TEST_REPLACEMENTS = -Dindigo_execute_handler_with_data=touptek_test_
 $(INTEGRATION_BUILD)/ccd_touptek_sdk_driver.o: ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.h ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(TOUPTEK_SDK_TEST_INCLUDE) $(TOUPTEK_SDK_TEST_REPLACEMENTS) -c $< -o $@
 
-$(INTEGRATION_BUILD)/ccd_touptek_sdk_image.o: ../indigo_drivers/ccd_simulator/indigo_ccd_simulator_data.c ../indigo_drivers/ccd_simulator/indigo_ccd_simulator_mono.h ../indigo_drivers/ccd_simulator/indigo_ccd_simulator_rgb.h $(wildcard ../indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_*.h) Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 # Compile the framework property dispatcher separately so only its config-path lookup is replaced.
 # All CONFIG serialization/parsing and base driver behavior remain real; no user HOME override.
@@ -761,8 +763,8 @@ endif
 $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=touptek_test_config_folder -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_ccd_touptek_sdk: integration/test_ccd_touptek_sdk.c test_runner.h $(INTEGRATION_BUILD)/ccd_touptek_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_image.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o
-	$(CC) $(TEST_CFLAGS) $(TOUPTEK_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_touptek_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_image.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+$(INTEGRATION_BUILD)/test_ccd_touptek_sdk: integration/test_ccd_touptek_sdk.c integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_touptek_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o
+	$(CC) $(TEST_CFLAGS) $(TOUPTEK_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_touptek_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
 
 # Physical hardware is opt-in, deliberately excluded from test/test-integration.
 HW_DRIVER ?= touptek
@@ -799,8 +801,8 @@ $(INTEGRATION_BUILD)/ccd_playerone_sdk_driver.o: ../indigo_drivers/ccd_playerone
 $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=poa_test_config_folder -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_ccd_playerone_sdk: integration/test_ccd_playerone_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_playerone_sdk_driver.o $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_image.o | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(POA_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_playerone_sdk_driver.o $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_image.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+$(INTEGRATION_BUILD)/test_ccd_playerone_sdk: integration/test_ccd_playerone_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_playerone_sdk_driver.o $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(POA_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_playerone_sdk_driver.o $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
 
 
 # Physical Player One hardware is opt-in and excluded from normal integration tests.
@@ -818,3 +820,12 @@ test-ccd-playerone-reload-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_playeron
 
 $(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw: hardware/test_ccd_playerone_hw.c ../build/drivers/indigo_ccd_playerone.$(SOEXT) | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) -DPOA_DYNAMIC_DRIVER -DPOA_DRIVER_PATH='"$(BUILD_DRIVERS)/indigo_ccd_playerone.$(SOEXT)"' $< -o $@ $(TEST_LDFLAGS) -ldl
+
+# Native SX command/transfer emulation; production driver is compiled separately.
+SX_USB_TEST_REPLACEMENTS = -Dlibusb_open=sx_test_open -Dlibusb_close=sx_test_close -Dlibusb_kernel_driver_active=sx_test_kernel -Dlibusb_claim_interface=sx_test_claim -Dlibusb_get_config_descriptor=sx_test_config -Dlibusb_free_config_descriptor=sx_test_free_config -Dlibusb_bulk_transfer=sx_test_bulk -Dlibusb_ref_device=sx_test_ref -Dlibusb_unref_device=sx_test_unref -Dlibusb_get_device_descriptor=sx_test_descriptor -Dindigo_get_usb_path=sx_test_path -Dindigo_start_usb_event_handler=sx_test_usb_start -Dlibusb_hotplug_register_callback=sx_test_register -Dlibusb_hotplug_register_callback_sim=sx_test_register_sim -Dlibusb_hotplug_deregister_callback=sx_test_deregister -Dlibusb_hotplug_deregister_callback_poll=sx_test_deregister_poll -Dindigo_try_global_lock=sx_test_lock -Dindigo_global_unlock=sx_test_unlock -Dindigo_execute_handler_in=sx_test_execute_in -Dindigo_attach_device=sx_test_attach -Dindigo_detach_device=sx_test_detach -Dindigo_queue_create=sx_test_queue_create -Dindigo_execute_priority_handler_in=sx_test_execute_priority
+
+$(INTEGRATION_BUILD)/ccd_sx_usb_driver.o: ../indigo_drivers/ccd_sx/indigo_ccd_sx.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(SX_USB_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_sx_usb: integration/test_ccd_sx_usb.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_sx_usb_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/ccd_sx_usb_driver.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)

@@ -340,6 +340,80 @@ static void all_supported_attributes(void) {
 	ASSERT_EQ_INT(0, failed);
 }
 
+static void libusb_lifecycle_guards(void) {
+	const char *definition = "driver architecture_test {\nlabel = \"USB test\";\nauthor = \"INDIGO tests\";\ncopyright = \"INDIGO tests\";\nversion = 1;\nlibusb { hotplug = true; vid = 0x1278; }\nccd { name = \"%s\"; }\nguider { name = \"%s (guider)\"; }\n}\n";
+	ASSERT_TRUE(write_text(DEFINITION, definition));
+	char *arguments[] = { TEST_GENERATOR, DEFINITION, NULL };
+	ASSERT_TRUE(run(arguments));
+	char generated[65536];
+	ASSERT_TRUE(read_text("indigo_ccd_architecture_test.c", generated, sizeof(generated)));
+	char *duplicate_guard = strstr(generated, "->usbdev == dev");
+	char *allocation = strstr(generated, "private_data = indigo_safe_malloc");
+	ASSERT_TRUE(duplicate_guard && allocation && duplicate_guard < allocation);
+	char *master_failure = strstr(generated, "if (!ccd_attached)");
+	char *slave_allocation = strstr(generated, "indigo_device *guider =");
+	ASSERT_TRUE(master_failure && slave_allocation && master_failure < slave_allocation);
+	char *failure_return = strstr(master_failure, "return;");
+	ASSERT_TRUE(failure_return && failure_return < slave_allocation);
+	ASSERT_TRUE(strstr(generated, "indigo_safe_free(private_data)") != NULL);
+	ASSERT_TRUE(strstr(generated, "\n\t\tfree(") == NULL);
+	char *queue_failure = strstr(generated, "if (driver_queue == NULL)");
+	char *registration = strstr(generated, "int rc = libusb_hotplug_register_callback");
+	ASSERT_TRUE(queue_failure && registration);
+	ASSERT_TRUE(strstr(queue_failure, "last_action = INDIGO_DRIVER_SHUTDOWN;") < registration);
+	ASSERT_TRUE(strstr(registration, "if (rc < 0)") != NULL);
+	ASSERT_TRUE(strstr(registration, "indigo_queue_delete(&driver_queue);") != NULL);
+	ASSERT_TRUE(strstr(registration, "return INDIGO_FAILED;") != NULL);
+	char *shutdown = strstr(generated, "case INDIGO_DRIVER_SHUTDOWN:");
+	ASSERT_TRUE(shutdown != NULL);
+	char *deregister = strstr(shutdown, "libusb_hotplug_deregister_callback(NULL");
+	char *barrier = strstr(shutdown, "indigo_queue_drain(driver_queue)");
+	char *detach = strstr(shutdown, "process_unplug_event_handler(NULL");
+	char *destroy = strstr(shutdown, "indigo_queue_delete(&driver_queue)");
+	ASSERT_TRUE(deregister && barrier && detach && destroy && deregister < barrier && barrier < detach && detach < destroy);
+	ASSERT_TRUE(strstr(generated, "driver_queue_drained") == NULL);
+	ASSERT_TRUE(strstr(generated, "driver_queue_barrier") == NULL);
+}
+
+
+static void all_hotplug_shutdown_guards(void) {
+	const char *transports[] = { "libusb { vid = 1; }", "sdk { vid = 1; }", "sdk { vid = 1; discovery_retries = 3; }", "hid { vid = 1; }" };
+	for (unsigned i = 0; i < sizeof(transports) / sizeof(transports[0]); i++) {
+		char definition[2048];
+		snprintf(definition, sizeof(definition), "driver architecture_test {\nlabel = \"Shutdown test\";\nauthor = \"INDIGO tests\";\ncopyright = \"INDIGO tests\";\nversion = 1;\n%s\nccd { name = \"Camera\"; }\nguider { name = \"Guider\"; }\n}\n", transports[i]);
+		ASSERT_TRUE(write_text(DEFINITION, definition));
+		char *arguments[] = { TEST_GENERATOR, DEFINITION, NULL };
+		ASSERT_TRUE(run(arguments));
+		char generated[65536];
+		ASSERT_TRUE(read_text("indigo_ccd_architecture_test.c", generated, sizeof(generated)));
+		char *shutdown = strstr(generated, "case INDIGO_DRIVER_SHUTDOWN:");
+		ASSERT_TRUE(shutdown != NULL);
+		char *lock = strstr(shutdown, "pthread_mutex_lock(&driver_queue_mutex)");
+		char *verify = strstr(shutdown, "verify_devices_disconnected()");
+		char *unlock = strstr(shutdown, "pthread_mutex_unlock(&driver_queue_mutex)");
+		char *reject = strstr(shutdown, "return shutdown_result;");
+		char *deregister = strstr(shutdown, "libusb_hotplug_deregister_callback(NULL");
+		char *drain = strstr(shutdown, "indigo_queue_drain(driver_queue)");
+		char *detach = strstr(shutdown, "process_unplug_event_handler(NULL");
+		char *destroy = strstr(shutdown, "indigo_queue_delete(&driver_queue)");
+		ASSERT_TRUE(lock && verify && unlock && reject && deregister && drain && detach && destroy);
+		ASSERT_TRUE(lock < verify && verify < unlock && unlock < reject && reject < deregister && deregister < drain && drain < detach && detach < destroy);
+		if (i == 2) {
+			char *stop = strstr(shutdown, "sdk_discovery_stopping = true;");
+			char *cancel = strstr(shutdown, "indigo_queue_remove(driver_queue, NULL, (indigo_timer_callback)process_sdk_retry_handler)");
+			char *clear = strstr(shutdown, "clear_sdk_discovery_retries()");
+			ASSERT_TRUE(stop && cancel && clear);
+			ASSERT_TRUE(verify < stop && stop < unlock && deregister < cancel && cancel < drain && destroy < clear);
+			ASSERT_TRUE(strstr(shutdown, "if (shutdown_result == INDIGO_OK)") < stop);
+		}
+		if (i == 3) {
+			ASSERT_TRUE(strstr(generated, "VERIFY_NOT_CONNECTED(ccd)") != NULL);
+			ASSERT_TRUE(strstr(generated, "VERIFY_NOT_CONNECTED(guider)") != NULL);
+		}
+	}
+}
+
+
 int main(void) {
 	char folder[] = "/tmp/indigo_architecture_XXXXXX";
 	char original[PATH_MAX];
@@ -356,7 +430,9 @@ int main(void) {
 		{ "unsupported fallback without SDK headers or linkage", unsupported_fallback },
 		{ "unrestricted default", unrestricted_default },
 		{ "name and name_value stay distinct in either order", name_and_name_value_are_distinct },
-		{ "All supported DSL attributes and code blocks", all_supported_attributes }
+		{ "All supported DSL attributes and code blocks", all_supported_attributes },
+		{ "USB duplicate, attachment and initialization rollback guards", libusb_lifecycle_guards },
+		{ "All hotplug transports drain before detach", all_hotplug_shutdown_guards }
 	};
 	int result = indigo_run_tests("Generator architecture", tests, sizeof(tests) / sizeof(tests[0]));
 	DIR *directory = opendir(".");

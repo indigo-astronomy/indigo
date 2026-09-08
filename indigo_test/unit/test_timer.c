@@ -8,6 +8,7 @@
 #include <limits.h>
 #include <pthread.h>
 #include <stdint.h>
+#include <stdatomic.h>
 #include <string.h>
 
 #if !defined(INDIGO_WINDOWS)
@@ -2535,9 +2536,90 @@ static void randomized_queue_churn_survives_producers_and_removal(void) {
 	destroy_state();
 }
 
+typedef struct {
+	indigo_queue *queue;
+	atomic_int entered, release, waiters_started, waiters_done, completed, failures;
+} drain_test_context;
+
+static bool drain_test_wait(atomic_int *value, int expected) {
+	for (int i = 0; i < 5000; i++) {
+		if (atomic_load(value) == expected) { return true; }
+		indigo_usleep(1000);
+	}
+	return false;
+}
+
+static void drain_test_followup(indigo_device *device, void *data) {
+	drain_test_context *context = data;
+	atomic_fetch_add(&context->completed, 1);
+}
+
+static void drain_test_blocked(indigo_device *device, void *data) {
+	drain_test_context *context = data;
+	if (indigo_queue_drain(context->queue)) { atomic_fetch_add(&context->failures, 1); }
+	atomic_store(&context->entered, 1);
+	if (!drain_test_wait(&context->release, 1)) { atomic_fetch_add(&context->failures, 1); }
+	indigo_queue_add_with_data(context->queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0.02, drain_test_followup, context, NULL);
+	atomic_fetch_add(&context->completed, 1);
+}
+
+static void *drain_test_waiter(void *data) {
+	drain_test_context *context = data;
+	atomic_fetch_add(&context->waiters_started, 1);
+	if (!indigo_queue_drain(context->queue)) { atomic_fetch_add(&context->failures, 1); }
+	atomic_fetch_add(&context->waiters_done, 1);
+	return NULL;
+}
+
+static void queue_drain_waits_for_running_pending_and_followup_tasks(void) {
+	drain_test_context context = { 0 };
+	context.queue = indigo_queue_create(NULL);
+	ASSERT_TRUE(context.queue != NULL);
+	ASSERT_TRUE(!indigo_queue_drain(NULL));
+	ASSERT_TRUE(indigo_queue_drain(context.queue));
+	indigo_queue_add_with_data(context.queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, drain_test_blocked, &context, NULL);
+	ASSERT_TRUE(drain_test_wait(&context.entered, 1));
+	indigo_queue_add_with_data(context.queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0.03, drain_test_followup, &context, NULL);
+	pthread_t waiters[2];
+	for (int i = 0; i < 2; i++) { ASSERT_EQ_INT(0, pthread_create(waiters + i, NULL, drain_test_waiter, &context)); }
+	bool started = drain_test_wait(&context.waiters_started, 2);
+	bool still_waiting = atomic_load(&context.waiters_done) == 0;
+	atomic_store(&context.release, 1);
+	for (int i = 0; i < 2; i++) { pthread_join(waiters[i], NULL); }
+	int completed = atomic_load(&context.completed);
+	indigo_queue_add_with_data(context.queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, drain_test_followup, &context, NULL);
+	bool reusable = indigo_queue_drain(context.queue);
+	indigo_queue_delete(&context.queue);
+	ASSERT_TRUE(started && still_waiting && reusable);
+	ASSERT_EQ_INT(3, completed);
+	ASSERT_EQ_INT(4, atomic_load(&context.completed));
+	ASSERT_EQ_INT(2, atomic_load(&context.waiters_done));
+	ASSERT_EQ_INT(0, atomic_load(&context.failures));
+}
+
+static void queue_drain_wakes_all_waiters_when_pending_tasks_are_removed(void) {
+	drain_test_context context = { 0 };
+	context.queue = indigo_queue_create(NULL);
+	ASSERT_TRUE(context.queue != NULL);
+	indigo_queue_add_with_data(context.queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 1, drain_test_followup, &context, NULL);
+	pthread_t waiters[2];
+	for (int i = 0; i < 2; i++) { ASSERT_EQ_INT(0, pthread_create(waiters + i, NULL, drain_test_waiter, &context)); }
+	bool started = drain_test_wait(&context.waiters_started, 2);
+	indigo_queue_remove(context.queue, NULL, NULL);
+	bool finished = drain_test_wait(&context.waiters_done, 2);
+	for (int i = 0; i < 2; i++) { pthread_join(waiters[i], NULL); }
+	indigo_queue_delete(&context.queue);
+	ASSERT_TRUE(started && finished);
+	ASSERT_EQ_INT(0, atomic_load(&context.completed));
+	ASSERT_EQ_INT(0, atomic_load(&context.failures));
+}
+
+
 int main(void) {
 	indigo_set_log_level(INDIGO_LOG_PLAIN);
 	const indigo_test_case tests[] = {
+		{ "queue_drain_waits_for_running_pending_and_followup_tasks", queue_drain_waits_for_running_pending_and_followup_tasks },
+		{ "queue_drain_wakes_all_waiters_when_pending_tasks_are_removed", queue_drain_wakes_all_waiters_when_pending_tasks_are_removed },
 		{ "delay_to_time_handles_zero_and_orders_positive_delays", delay_to_time_handles_zero_and_orders_positive_delays },
 		{ "delay_to_time_normalizes_larger_fractional_delays", delay_to_time_normalizes_larger_fractional_delays },
 		{ "negative_delay_runs_promptly_and_uses_normalized_time", negative_delay_runs_promptly_and_uses_normalized_time },

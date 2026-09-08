@@ -7,6 +7,9 @@
 #include <indigo_drivers/ccd_simulator/indigo_ccd_simulator.h>
 
 #include "simulator_test_common.h"
+#include "ccd_test_noise.h"
+#include <stdatomic.h>
+#include <unistd.h>
 
 static const char *ccd_imager_connected_properties[] = {
 	CCD_INFO_PROPERTY_NAME,
@@ -500,8 +503,253 @@ static void ccd_ao_passes_compliance_checks(void) {
 	stop_connected_simulator(&ccd_ao_simulator);
 }
 
-int main(void) {
+static bool sim_fast_temperature;
+static indigo_timer **sim_temperature_timer;
+
+bool sim_test_set_timer(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer) {
+	if (sim_fast_temperature && !strcmp(device->name, CCD_SIMULATOR_IMAGER_CAMERA_NAME) && delay == 5) {
+		sim_temperature_timer = timer;
+		delay = 0.05;
+	}
+	return indigo_set_timer(device, delay, callback, timer);
+}
+
+bool sim_test_reschedule_timer(indigo_device *device, double delay, indigo_timer **timer) {
+	return indigo_reschedule_timer(device, sim_fast_temperature && timer == sim_temperature_timer ? 0.05 : delay, timer);
+}
+
+// Extra scenarios observe the production simulator, never its built-in image arrays.
+static atomic_int sim_frames, sim_bad_frames;
+static const char *sim_properties[] = { "BAHTINOV_SETTINGS", "CCD_ABORT_EXPOSURE", "CCD_BIN", "CCD_COOLER", "CCD_EXPOSURE", "CCD_FRAME", "CCD_IMAGE_FORMAT", "CCD_STREAMING", "CCD_TEMPERATURE", "CCD_UPLOAD_MODE", "CONNECTION", "DSLR_APERTURE", "DSLR_ISO", "DSLR_PROGRAM", "DSLR_SHUTTER", "GUIDER_MODE", "SIMULATION_SETUP" };
+static atomic_int sim_revisions[ARRAY_SIZE(sim_properties)];
+
+static int sim_property_index(const char *name) {
+	for (int i = 0; i < ARRAY_SIZE(sim_properties); i++) {
+		if (!strcmp(name, sim_properties[i])) { return i; }
+	}
+	return -1;
+}
+static atomic_uint sim_width, sim_height, sim_signature;
+static atomic_bool sim_check_noise;
+static char sim_raw_path[] = "/tmp/indigo_ccd_noise_XXXXXX";
+
+static indigo_result sim_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, context.driver_case->device_name)) {
+		if (!strcmp(property->name, "CCD_IMAGE") && property->state == INDIGO_OK_STATE && property->count && property->items[0].blob.size) {
+			indigo_item *item = property->items;
+			indigo_raw_header header = { 0 };
+			bool valid = item->blob.value && !strcmp(item->blob.format, ".raw") && item->blob.size >= sizeof(header);
+			if (valid) {
+				memcpy(&header, item->blob.value, sizeof(header));
+				int bytes = header.signature == INDIGO_RAW_MONO8 ? 1 : header.signature == INDIGO_RAW_MONO16 ? 2 : header.signature == INDIGO_RAW_RGB24 ? 3 : header.signature == INDIGO_RAW_RGB48 ? 6 : 0;
+				size_t length = (size_t)header.width * header.height * bytes;
+				valid = bytes && header.width && header.height && item->blob.size >= sizeof(header) + length;
+				if (valid && atomic_load(&sim_check_noise)) {
+					const unsigned char *pixels = (unsigned char *)item->blob.value + sizeof(header);
+					for (size_t i = 0; i < length; i++) {
+						if (pixels[i] != (ccd_test_noise(i, 0) >> 8)) { valid = false; break; }
+					}
+				}
+			}
+			atomic_store(&sim_width, header.width);
+			atomic_store(&sim_height, header.height);
+			atomic_store(&sim_signature, header.signature);
+			if (!valid) { atomic_fetch_add(&sim_bad_frames, 1); }
+			atomic_fetch_add(&sim_frames, 1);
+		}
+	}
+	indigo_result result = simulator_client_update_property(client, device, property, message);
+	int index = sim_property_index(property->name);
+	if (index >= 0 && !strcmp(property->device, context.driver_case->device_name)) { atomic_fetch_add(&sim_revisions[index], 1); }
+	return result;
+}
+
+#define SIM_CHECK(condition) do { if (!(condition)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #condition); indigo_test_failures++; goto cleanup; } } while (0)
+
+static bool sim_wait_revision(const char *property, indigo_property_state state, int before) {
+	for (int i = 0; i < 800; i++) {
+		indigo_property *p = find_cached_property(property);
+		if (atomic_load(&sim_revisions[sim_property_index(property)]) > before && p && p->state == state) { return true; }
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Simulator timeout: %s state %d\n", property, state);
+	return false;
+}
+
+static bool sim_number(const char *property, int count, const char **items, const double *values, indigo_property_state state) {
+	int before = atomic_load(&sim_revisions[sim_property_index(property)]);
+	return indigo_change_number_property(&simulator_test_client, context.driver_case->device_name, property, count, items, values) == INDIGO_OK && sim_wait_revision(property, state, before);
+}
+
+static bool sim_switch(const char *property, const char *item, indigo_property_state state) {
+	int before = atomic_load(&sim_revisions[sim_property_index(property)]);
+	return indigo_change_switch_property_1(&simulator_test_client, context.driver_case->device_name, property, item, true) == INDIGO_OK && sim_wait_revision(property, state, before);
+}
+
+static bool sim_expose(void) {
+	int before = atomic_load(&sim_frames);
+	return sim_number("CCD_EXPOSURE", 1, (const char *[]){ "EXPOSURE" }, (double []){ 0.03 }, INDIGO_OK_STATE) && atomic_load(&sim_frames) == before + 1 && !atomic_load(&sim_bad_frames);
+}
+
+static void sim_begin(const simulator_driver_case *driver) {
+	atomic_store(&sim_frames, 0);
+	atomic_store(&sim_bad_frames, 0);
+	atomic_store(&sim_check_noise, false);
+	simulator_test_client.update_property = sim_update;
+	start_connected_simulator(driver);
+	sim_switch("CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE);
+	sim_switch("CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE);
+}
+
+static void sim_end(const simulator_driver_case *driver) {
+	if (context.connected && ((find_cached_property("CCD_EXPOSURE") && find_cached_property("CCD_EXPOSURE")->state == INDIGO_BUSY_STATE) || (find_cached_property("CCD_STREAMING") && find_cached_property("CCD_STREAMING")->state == INDIGO_BUSY_STATE))) { sim_switch("CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE); }
+	stop_connected_simulator(driver);
+	sim_fast_temperature = false;
+	simulator_test_client.update_property = simulator_client_update_property;
+}
+
+static void simulator_raw_geometry_and_bins(void) {
+	sim_begin(&ccd_imager_simulator);
+	SIM_CHECK(sim_expose());
+	SIM_CHECK(atomic_load(&sim_width) == IMAGER_WIDTH && atomic_load(&sim_height) == IMAGER_HEIGHT);
+	for (int bin = 1; bin <= 4; bin *= 2) {
+		SIM_CHECK(sim_number("CCD_BIN", 2, (const char *[]){ "HORIZONTAL", "VERTICAL" }, (double []){ bin, bin }, INDIGO_OK_STATE));
+		SIM_CHECK(sim_number("CCD_FRAME", 4, (const char *[]){ "LEFT", "TOP", "WIDTH", "HEIGHT" }, (double []){ 16, 24, 128, 96 }, INDIGO_OK_STATE));
+		SIM_CHECK(sim_expose());
+		SIM_CHECK(atomic_load(&sim_width) == 128 / bin && atomic_load(&sim_height) == 96 / bin);
+	}
+	SIM_CHECK(sim_number("CCD_BIN", 2, (const char *[]){ "HORIZONTAL", "VERTICAL" }, (double []){ 3, 3 }, INDIGO_ALERT_STATE));
+	SIM_CHECK(cached_number_value("CCD_BIN", "HORIZONTAL") == 4);
+	SIM_CHECK(sim_number("CCD_BIN", 2, (const char *[]){ "HORIZONTAL", "VERTICAL" }, (double []){ 1, 2 }, INDIGO_ALERT_STATE));
+	SIM_CHECK(sim_expose());
+cleanup:
+	sim_end(&ccd_imager_simulator);
+}
+
+static void simulator_stream_abort_and_reconnect(void) {
+	sim_begin(&ccd_imager_simulator);
+	SIM_CHECK(sim_number("CCD_FRAME", 2, (const char *[]){ "WIDTH", "HEIGHT" }, (double []){ 64, 64 }, INDIGO_OK_STATE));
+	SIM_CHECK(sim_number("CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.02, 3 }, INDIGO_OK_STATE));
+	SIM_CHECK(atomic_load(&sim_frames) == 3 && !atomic_load(&sim_bad_frames));
+	SIM_CHECK(sim_number("CCD_EXPOSURE", 1, (const char *[]){ "EXPOSURE" }, (double []){ 2 }, INDIGO_BUSY_STATE));
+	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, context.driver_case->device_name, "CCD_EXPOSURE", "EXPOSURE", 0.01) == INDIGO_OK);
+	SIM_CHECK(cached_number_value("CCD_EXPOSURE", "EXPOSURE") > 0.01);
+	SIM_CHECK(sim_switch("CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
+	SIM_CHECK(sim_expose());
+	SIM_CHECK(sim_number("CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.02, -1 }, INDIGO_BUSY_STATE));
+	int before = atomic_load(&sim_frames);
+	for (int i = 0; i < 200 && atomic_load(&sim_frames) == before; i++) { indigo_usleep(10000); }
+	SIM_CHECK(atomic_load(&sim_frames) > before);
+	SIM_CHECK(sim_switch("CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
+	SIM_CHECK(sim_expose());
+	SIM_CHECK(sim_number("CCD_EXPOSURE", 1, (const char *[]){ "EXPOSURE" }, (double []){ 1 }, INDIGO_BUSY_STATE));
+	SIM_CHECK(sim_switch("CONNECTION", "DISCONNECTED", INDIGO_OK_STATE));
+	SIM_CHECK(sim_switch("CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+	SIM_CHECK(sim_expose());
+cleanup:
+	sim_end(&ccd_imager_simulator);
+}
+
+static void simulator_cooling_target_and_polling(void) {
+	sim_fast_temperature = true;
+	sim_begin(&ccd_imager_simulator);
+	SIM_CHECK(sim_switch("CCD_COOLER", "ON", INDIGO_OK_STATE));
+	SIM_CHECK(sim_number("CCD_TEMPERATURE", 1, (const char *[]){ "TEMPERATURE" }, (double []){ 24 }, INDIGO_BUSY_STATE));
+	SIM_CHECK(wait_for_number_item_value("CCD_TEMPERATURE", "TEMPERATURE", 24, 0.01));
+	SIM_CHECK(wait_for_property_state("CCD_TEMPERATURE", INDIGO_OK_STATE));
+	SIM_CHECK(cached_number_value("CCD_COOLER_POWER", "POWER") == 20);
+	SIM_CHECK(sim_number("CCD_TEMPERATURE", 1, (const char *[]){ "TEMPERATURE" }, (double []){ 25 }, INDIGO_BUSY_STATE));
+	SIM_CHECK(wait_for_number_item_value("CCD_TEMPERATURE", "TEMPERATURE", 25, 0.01));
+	SIM_CHECK(sim_switch("CCD_COOLER", "OFF", INDIGO_OK_STATE));
+	SIM_CHECK(sim_switch("CONNECTION", "DISCONNECTED", INDIGO_OK_STATE));
+	SIM_CHECK(sim_switch("CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+	SIM_CHECK(sim_expose());
+cleanup:
+	sim_end(&ccd_imager_simulator);
+}
+
+static void simulator_camera_modes_and_settings(void) {
+	const simulator_driver_case *drivers[] = { &ccd_guider_camera_simulator, &ccd_bahtinov_simulator, &ccd_dslr_simulator };
+	for (int i = 0; i < 3; i++) {
+		sim_begin(drivers[i]);
+		if (i == 0) {
+			SIM_CHECK(sim_number("SIMULATION_SETUP", 1, (const char *[]){ "J2000" }, (double []){ 1950 }, INDIGO_OK_STATE));
+			SIM_CHECK(cached_number_value("SIMULATION_SETUP", "J2000") == 2000);
+			const char *modes[] = { "STARS", "FLIPPED_STARS", "SUN", "ECLIPSE" };
+			for (int mode = 0; mode < 4; mode++) {
+				SIM_CHECK(sim_switch("GUIDER_MODE", modes[mode], INDIGO_OK_STATE));
+				SIM_CHECK(sim_expose());
+			}
+		} else if (i == 1) {
+			SIM_CHECK(sim_number("BAHTINOV_SETTINGS", 1, (const char *[]){ "ROTATION" }, (double []){ 90 }, INDIGO_OK_STATE));
+			SIM_CHECK(sim_expose());
+			SIM_CHECK(atomic_load(&sim_signature) == INDIGO_RAW_MONO8);
+		} else {
+			SIM_CHECK(sim_switch("DSLR_PROGRAM", "M", INDIGO_OK_STATE));
+			SIM_CHECK(sim_switch("DSLR_SHUTTER", "0.1", INDIGO_OK_STATE));
+			SIM_CHECK(sim_switch("DSLR_APERTURE", "28", INDIGO_OK_STATE));
+			SIM_CHECK(sim_switch("DSLR_ISO", "400", INDIGO_OK_STATE));
+			SIM_CHECK(sim_expose());
+			SIM_CHECK(atomic_load(&sim_signature) == INDIGO_RAW_RGB24);
+		}
+		sim_end(drivers[i]);
+	}
+	return;
+cleanup:
+	sim_end(context.driver_case);
+}
+
+static void simulator_file_noise_formats_and_failure(void) {
+	const unsigned signatures[] = { INDIGO_RAW_MONO8, INDIGO_RAW_MONO16, INDIGO_RAW_RGB24, INDIGO_RAW_RGB48 };
+	const int bytes[] = { 1, 2, 3, 6 };
+	reset_simulator_context(&ccd_file_simulator);
+	simulator_test_client.update_property = sim_update;
+	indigo_start();
+	indigo_attach_client(&simulator_test_client);
+	indigo_ccd_simulator(INDIGO_DRIVER_INIT, NULL);
+	enumerate_simulator_device();
+	int fd = mkstemp(sim_raw_path);
+	SIM_CHECK(fd >= 0);
+	close(fd);
+	SIM_CHECK(indigo_change_text_property_1(&simulator_test_client, ccd_file_simulator.device_name, "FILE_NAME", "PATH", "/nonexistent/indigo-noise.raw") == INDIGO_OK);
+	SIM_CHECK(sim_switch("CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
+	SIM_CHECK(indigo_change_text_property_1(&simulator_test_client, ccd_file_simulator.device_name, "FILE_NAME", "PATH", sim_raw_path) == INDIGO_OK);
+	for (int format = 0; format < 4; format++) {
+		FILE *file = fopen(sim_raw_path, "wb");
+		SIM_CHECK(file != NULL);
+		indigo_raw_header header = { signatures[format], 64, 48 };
+		bool written = fwrite(&header, sizeof(header), 1, file) == 1;
+		for (int i = 0; i < 64 * 48 * bytes[format]; i++) { written = (fputc(ccd_test_noise(i, 0) >> 8, file) != EOF) && written; }
+		written = fclose(file) == 0 && written;
+		SIM_CHECK(written);
+		SIM_CHECK(sim_switch("CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+		SIM_CHECK(sim_switch("CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
+		SIM_CHECK(sim_switch("CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE));
+		atomic_store(&sim_check_noise, true);
+		atomic_store(&sim_bad_frames, 0);
+		SIM_CHECK(sim_expose());
+		SIM_CHECK(atomic_load(&sim_signature) == signatures[format] && atomic_load(&sim_width) == 64 && atomic_load(&sim_height) == 48);
+		SIM_CHECK(sim_switch("CONNECTION", "DISCONNECTED", INDIGO_OK_STATE));
+	}
+cleanup:
+	atomic_store(&sim_check_noise, false);
+	if (context.connected) { sim_switch("CONNECTION", "DISCONNECTED", INDIGO_OK_STATE); }
+	indigo_ccd_simulator(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_detach_client(&simulator_test_client);
+	indigo_stop();
+	release_cached_properties();
+	unlink(sim_raw_path);
+	simulator_test_client.update_property = simulator_client_update_property;
+}
+
+int main(int argc, char **argv) {
+	setvbuf(stdout, NULL, _IONBF, 0);
 	const indigo_test_case tests[] = {
+		{ "simulator_raw_geometry_and_bins", simulator_raw_geometry_and_bins },
+		{ "simulator_stream_abort_and_reconnect", simulator_stream_abort_and_reconnect },
+		{ "simulator_cooling_target_and_polling", simulator_cooling_target_and_polling },
+		{ "simulator_camera_modes_and_settings", simulator_camera_modes_and_settings },
+		{ "simulator_file_noise_formats_and_failure", simulator_file_noise_formats_and_failure },
 		{ "driver_info_reports_simulator_metadata", driver_info_reports_simulator_metadata },
 		{ "simulator_initializes_enumerates_connects_disconnects_and_shuts_down", simulator_initializes_enumerates_connects_disconnects_and_shuts_down },
 		{ "ccd_imager_passes_compliance_checks", ccd_imager_passes_compliance_checks },
@@ -514,5 +762,12 @@ int main(void) {
 		{ "ccd_dslr_passes_compliance_checks", ccd_dslr_passes_compliance_checks },
 		{ "ccd_file_camera_passes_compliance_checks", ccd_file_camera_passes_compliance_checks }
 	};
-	return indigo_run_tests("CCD simulator integration tests", tests, ARRAY_SIZE(tests));
+	int result = 0, matched = 0;
+	for (int i = 0; i < ARRAY_SIZE(tests); i++) {
+		if (argc < 2 || strstr(tests[i].name, argv[1])) {
+			matched++;
+			result |= indigo_run_tests("CCD simulator integration tests", tests + i, 1);
+		}
+	}
+	return matched ? result : 1;
 }

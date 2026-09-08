@@ -10,7 +10,9 @@
 #include <stdio.h>
 #include <PlayerOneCamera.h>
 #include <indigo/indigo_ccd_driver.h>
-#include <indigo_drivers/ccd_simulator/indigo_ccd_simulator.h>
+#include "ccd_test_noise.h"
+
+#define IMAGER_WIDTH 1600
 #include <indigo/indigo_usb_utils.h>
 #include <indigo_drivers/ccd_playerone/indigo_ccd_playerone.h>
 #include "simulator_test_common.h"
@@ -42,6 +44,7 @@ typedef struct {
 
 static mock_camera cameras[CAMERAS];
 static pthread_t bus_thread;
+static atomic_int wrong_single_mode;
 static atomic_int wrong_bus_thread, raw_blobs, last_width, last_height;
 static atomic_int fail_register, fail_descriptor, wrong_vendor, discovery_fail, count_fail, fail_guider_attach;
 static atomic_int discovery_calls, bounded_sdk_strings;
@@ -76,6 +79,8 @@ static test_gate initialization_gate = { .mutex = PTHREAD_MUTEX_INITIALIZER, .co
 static test_gate read_gate = { .mutex = PTHREAD_MUTEX_INITIALIZER, .condition = PTHREAD_COND_INITIALIZER };
 static test_gate queue_gate = { .mutex = PTHREAD_MUTEX_INITIALIZER, .condition = PTHREAD_COND_INITIALIZER };
 static atomic_int gate_timeouts, fail_queue, fast_poll, barriers;
+static atomic_bool shutdown_work_pending;
+static atomic_int premature_shutdown_detach;
 static indigo_device *logical[CAMERAS * 2];
 static indigo_queue *driver_queue;
 static _Atomic(indigo_timer_callback) temperature_handler;
@@ -228,17 +233,22 @@ static indigo_result observe_image(indigo_client *client, indigo_device *device,
 						int x = (i % header.width + atomic_load(&c->left)) * atomic_load(&c->bin);
 						int y = (i / header.width + atomic_load(&c->top)) * atomic_load(&c->bin);
 						int source = y * IMAGER_WIDTH + x;
-						unsigned short mono = indigo_ccd_simulator_raw_image[source];
-						bool match = bytes == 3 ? !memcmp(pixels + 3 * i, indigo_ccd_simulator_rgb_image + 3 * source, 3) : bytes == 2 ? !memcmp(pixels + 2 * i, &mono, 2) : pixels[i] == (mono >> 8);
+						unsigned short mono = ccd_test_noise(source, 0);
+						bool match = bytes == 3 ? (pixels[3 * i] == (ccd_test_noise(source, 1) >> 8) && pixels[3 * i + 1] == (ccd_test_noise(source, 2) >> 8) && pixels[3 * i + 2] == (ccd_test_noise(source, 3) >> 8)) : bytes == 2 ? !memcmp(pixels + 2 * i, &mono, 2) : pixels[i] == (mono >> 8);
 						if (!match) {
 							valid = false;
 							break;
 						}
 					}
 				}
-				bool bayer = c->info.isColorCamera && (format == POA_RAW8 || format == POA_RAW16);
+				const char *patterns[] = { "RGGB", "BGGR", "GRBG", "GBRG" };
+				bool known_pattern = c->info.bayerPattern >= POA_BAYER_RG && c->info.bayerPattern <= POA_BAYER_GB;
+				bool bayer = c->info.isColorCamera && known_pattern && (format == POA_RAW8 || format == POA_RAW16);
 				bool has_bayer = valid && memmem((char *)item->blob.value + sizeof(header) + length, item->blob.size - sizeof(header) - length, "BAYERPAT=", 9) != NULL;
 				valid = valid && bayer == has_bayer;
+				if (valid && bayer) {
+					valid = memmem((char *)item->blob.value + sizeof(header) + length, item->blob.size - sizeof(header) - length, patterns[c->info.bayerPattern], 4) != NULL;
+				}
 				atomic_store(&last_width, header.width);
 				atomic_store(&last_height, header.height);
 			}
@@ -294,6 +304,9 @@ indigo_result poa_test_attach(indigo_device *device) {
 }
 
 indigo_result poa_test_detach(indigo_device *device) {
+	if (atomic_load(&shutdown_work_pending)) {
+		atomic_fetch_add(&premature_shutdown_detach, 1);
+	}
 	indigo_result result = indigo_detach_device(device);
 	atomic_fetch_sub(&attached, 1);
 	for (int i = 0; i < CAMERAS * 2; i++) {
@@ -659,6 +672,9 @@ POAErrors POASetImageFormat(int id, POAImgFormat format) {
 }
 
 POAErrors POAStartExposure(int id, POABool single) {
+	if (single != POA_FALSE) {
+		atomic_fetch_add(&wrong_single_mode, 1);
+	}
 	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
 	enter_gate(&setup_gate);
 	atomic_fetch_add(&camera(id)->starts, 1);
@@ -707,13 +723,14 @@ POAErrors POAGetImageData(int id, unsigned char *buffer, long size, int timeout)
 			int destination = y * atomic_load(&c->width) + x;
 			if (format == POA_RGB24) {
 				// Player One driver receives SDK BGR byte order and publishes RGB.
-				buffer[3 * destination] = indigo_ccd_simulator_rgb_image[3 * source + 2];
-				buffer[3 * destination + 1] = indigo_ccd_simulator_rgb_image[3 * source + 1];
-				buffer[3 * destination + 2] = indigo_ccd_simulator_rgb_image[3 * source];
+				buffer[3 * destination] = (ccd_test_noise(source, 3) >> 8);
+				buffer[3 * destination + 1] = (ccd_test_noise(source, 2) >> 8);
+				buffer[3 * destination + 2] = (ccd_test_noise(source, 1) >> 8);
 			} else if (format == POA_RAW16) {
-				memcpy(buffer + 2 * destination, indigo_ccd_simulator_raw_image + source, 2);
+				uint16_t pixel = ccd_test_noise(source, 0);
+				memcpy(buffer + 2 * destination, &pixel, 2);
 			} else {
-				buffer[destination] = indigo_ccd_simulator_raw_image[source] >> 8;
+				buffer[destination] = ccd_test_noise(source, 0) >> 8;
 			}
 		}
 	}
@@ -1725,9 +1742,16 @@ static void *release_queued_gate(void *unused) {
 	return NULL;
 }
 
+static void shutdown_queue_work(indigo_device *device) {
+	enter_gate(&queue_gate);
+	atomic_store(&shutdown_work_pending, false);
+}
+
 static void queued_discovery_shutdown(void) {
+	atomic_store(&shutdown_work_pending, true);
+	atomic_store(&premature_shutdown_detach, 0);
 	arm_gate(&queue_gate);
-	indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, block_queue, NULL);
+	indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, shutdown_queue_work, NULL);
 	ASSERT_TRUE(wait_count(&queue_gate.entered, 1));
 	atomic_store(&cameras[1].visible, true);
 	usb_event(1, true);
@@ -1736,6 +1760,8 @@ static void queued_discovery_shutdown(void) {
 	ASSERT_EQ_INT(0, pthread_create(&releaser, NULL, release_queued_gate, NULL));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_playerone(INDIGO_DRIVER_SHUTDOWN, NULL));
 	pthread_join(releaser, NULL);
+	ASSERT_TRUE(!atomic_load(&shutdown_work_pending));
+	ASSERT_EQ_INT(0, atomic_load(&premature_shutdown_detach));
 	ASSERT_EQ_INT(0, atomic_load(&attached));
 	ASSERT_EQ_INT(0, atomic_load(&usb_refs));
 	atomic_store(&cameras[1].visible, false);
@@ -2005,6 +2031,7 @@ static void end_fixture(void) {
 	ASSERT_EQ_INT(0, atomic_load(&attached));
 	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	ASSERT_EQ_INT(0, atomic_load(&sdk_after_close));
+	ASSERT_EQ_INT(0, atomic_load(&wrong_single_mode));
 	ASSERT_EQ_INT(0, atomic_load(&wrong_bus_thread));
 	ASSERT_EQ_INT(0, atomic_load(&concurrent_sdk));
 	ASSERT_EQ_INT(0, atomic_load(&updates_after_detach));
@@ -2021,6 +2048,29 @@ static void end_fixture(void) {
 	}
 }
 
+static void bayer_mapping_and_exposure_mode(void) {
+	for (int pattern = 0; pattern < 5; pattern++) {
+		atomic_store(&cameras[0].visible, false);
+		usb_event(0, false);
+		ASSERT_TRUE(wait_count(&attached, 0));
+		cameras[0].info.bayerPattern = pattern < 4 ? (POABayerPattern)pattern : (POABayerPattern)99;
+		atomic_store(&cameras[0].visible, true);
+		usb_event(0, true);
+		ASSERT_TRUE(wait_count(&attached, 2));
+		ASSERT_TRUE(connect_device(0, true));
+		ASSERT_TRUE(change_switch(0, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
+		int before = atomic_load(&raw_blobs);
+		ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+		ASSERT_EQ_INT(before + 1, atomic_load(&raw_blobs));
+		ASSERT_EQ_INT(0, atomic_load(&bad_blob));
+		ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&test_client, observed[0].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.01, 2 }));
+		ASSERT_TRUE(wait_state(0, "CCD_STREAMING", INDIGO_OK_STATE));
+		ASSERT_EQ_INT(before + 3, atomic_load(&raw_blobs));
+		ASSERT_EQ_INT(0, atomic_load(&wrong_single_mode));
+		ASSERT_TRUE(connect_device(0, false));
+	}
+}
+
 int main(int argc, char **argv) {
 	bus_thread = pthread_self();
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -2030,6 +2080,7 @@ int main(int argc, char **argv) {
 	indigo_start();
 	indigo_attach_client(&test_client);
 	const indigo_test_case tests[] = {
+		{ "Bayer mapping and continuous SDK exposure mode", bayer_mapping_and_exposure_mode },
 		{ "CCD properties, image and configuration baseline", properties_and_exposure },
 		{ "Guider pulse and shared connection baseline", guider_and_sharing },
 		{ "Finite streaming baseline", finite_stream },
@@ -2045,7 +2096,7 @@ int main(int argc, char **argv) {
 		{ "Guider pulse duration measured at fake SDK entry", pulse_duration_at_sdk_entry },
 		{ "Lifecycle metadata and shared repetitions", lifecycle_metadata_and_repetition },
 		{ "Published property contract", published_property_contract },
-		{ "Image formats ROI bins and simulator pixel fixtures", image_formats_roi_and_bins },
+		{ "Image formats ROI bins and generated noise pixels", image_formats_roi_and_bins },
 		{ "Frame types and exposure units", frame_types_and_exposure_units },
 		{ "Controls and SDK error recovery", controls_and_error_recovery },
 		{ "Exposure setup errors and recovery", exposure_setup_errors },

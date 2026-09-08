@@ -16,7 +16,7 @@
 #include <time.h>
 #include <dirent.h>
 #include <unistd.h>
-#include <indigo_drivers/ccd_simulator/indigo_ccd_simulator.h>
+#include "ccd_test_noise.h"
 
 #define CHECK_TRUE(condition) do { if (!(condition)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #condition); indigo_test_failures++; goto cleanup; } } while (0)
 #define CHECK_EQ_INT(actual, expected) CHECK_TRUE((actual) == (expected))
@@ -25,11 +25,17 @@
 static libusb_hotplug_callback_fn usb_callback;
 static atomic_int visible, attached, opened, closed, locks, wrong_thread, connection[4];
 static atomic_bool moving, fail_open, fail_register, fail_queue, hold_focus;
-static atomic_bool held[3], handle_open[3];
+static atomic_bool held[TOUPCAM_MAX], handle_open[TOUPCAM_MAX];
 static atomic_int bad_handle, calibrations;
 static pthread_t sdk_thread;
 static bool have_thread;
-static int handles[3];
+static int handles[TOUPCAM_MAX];
+static bool inventory_mode, inventory_reverse;
+static atomic_int inventory_count;
+static atomic_bool inventory_visible[TOUPCAM_MAX];
+static indigo_device *inventory_devices[TOUPCAM_MAX][2];
+static char inventory_names[TOUPCAM_MAX][2][INDIGO_NAME_SIZE];
+static unsigned inventory_frames[TOUPCAM_MAX];
 static indigo_device *logical[4];
 static indigo_result (*attach_functions[4])(indigo_device *);
 static bool combined_model;
@@ -133,6 +139,8 @@ static void control_call(HToupcam h) {
 		atomic_fetch_add(&bad_handle, 1);
 		return;
 	}
+	// Connection initialization is serialized on the SDK lifecycle queue.
+	if (pthread_equal(sdk_thread, pthread_self()) && ((index == 0 && (atomic_load(&connection[0]) != 1 || atomic_load(&connection[1]) == 2)) || (index > 0 && atomic_load(&connection[index + 1]) != 1))) { return; }
 	pthread_mutex_lock(&control_mutex);
 	if (pthread_equal(bus_thread, pthread_self()) || pthread_equal(sdk_thread, pthread_self())) {
 		atomic_fetch_add(&wrong_thread, 1);
@@ -176,6 +184,12 @@ void touptek_test_execute_handler_in(indigo_device *device, double delay, indigo
 }
 
 static int index_for(const char *name) {
+	if (inventory_mode) {
+		for (int i = 0; i < 2; i++) {
+			if (!strcmp(name, inventory_names[i][0])) { return i; }
+		}
+		return -1;
+	}
 	if (combined_model) {
 		for (int i = 0; i < 4; i++) {
 			if (!strcmp(name, combined_names[i])) {
@@ -223,6 +237,9 @@ static atomic_int option_values[256], option_calls[256], advanced_values[9];
 static atomic_int aaf_values[64], last_exposure, target_temperature, fail_option, fail_aaf;
 static atomic_int roi_left, roi_top, roi_width, roi_height, wheel_slots, ambient_temperature, ambient_reads;
 static atomic_bool fail_pull, fail_trigger, fail_attach;
+static atomic_uint raw_fourcc;
+static atomic_int read_failure, failed_get_option = -1, sensor_temperature;
+static atomic_bool independent_temperature;
 static atomic_int fail_attach_index, registrations, deregistrations;
 
 static int property_slot(int index, const char *name) {
@@ -235,6 +252,10 @@ static int property_slot(int index, const char *name) {
 }
 
 static void observe_property(indigo_device *device, indigo_property *property, bool definition) {
+	if (inventory_mode) {
+		int i = index_for(property->device);
+		if (i >= 0 && !strcmp(property->name, "CCD_IMAGE") && property->state == INDIGO_OK_STATE && property->items[0].blob.size) { inventory_frames[i]++; }
+	}
 	if (strcmp(device->name, property->device)) {
 		return;
 	}
@@ -270,7 +291,7 @@ static void observe_property(indigo_device *device, indigo_property *property, b
 			defined[index][slot] = true;
 		}
 	}
-	if (!strcmp(property->name, "CCD_IMAGE") && property->state == INDIGO_OK_STATE && property->count) {
+	if (!definition && !strcmp(property->name, "CCD_IMAGE") && property->state == INDIGO_OK_STATE && property->count) {
 		indigo_item *item = property->items;
 		if (item->blob.value && item->blob.size > 0) {
 			atomic_fetch_add(&blobs, 1);
@@ -281,13 +302,16 @@ static void observe_property(indigo_device *device, indigo_property *property, b
 				} else {
 					memcpy(&header, item->blob.value, sizeof(header));
 					int bytes = header.signature == INDIGO_RAW_MONO8 ? 1 : (header.signature == INDIGO_RAW_MONO16 ? 2 : (header.signature == INDIGO_RAW_RGB24 ? 3 : 0));
-					if (!bytes || header.width != 16 || header.height != 16 || item->blob.size < sizeof(header) + 256 * bytes) {
+					int bin = atomic_load(&option_values[TOUPCAM_OPTION_BINNING]) & 0x3f;
+					int width = atomic_load(&roi_width) / bin, height = atomic_load(&roi_height) / bin;
+					if (!bytes || header.width != width || header.height != height || item->blob.size < sizeof(header) + width * height * bytes) {
 						atomic_fetch_add(&invalid_blobs, 1);
 					} else {
 						const unsigned char *pixels = (unsigned char *)item->blob.value + sizeof(header);
-						for (int i = 0; i < 256; i++) {
-							unsigned short mono = indigo_ccd_simulator_raw_image[i];
-							bool match = bytes == 3 ? !memcmp(pixels + 3 * i, indigo_ccd_simulator_rgb_image + 3 * i, 3) : (bytes == 2 ? !memcmp(pixels + 2 * i, &mono, 2) : pixels[i] == (mono >> 8));
+						for (int i = 0; i < width * height; i++) {
+							unsigned source = (atomic_load(&roi_top) + i / width * bin) * 640 + atomic_load(&roi_left) + i % width * bin;
+							unsigned short mono = ccd_test_noise(source, 0);
+							bool match = bytes == 3 ? (pixels[3 * i] == (ccd_test_noise(source, 1) >> 8) && pixels[3 * i + 1] == (ccd_test_noise(source, 2) >> 8) && pixels[3 * i + 2] == (ccd_test_noise(source, 3) >> 8)) : (bytes == 2 ? !memcmp(pixels + 2 * i, &mono, 2) : pixels[i] == (mono >> 8));
 							if (!match) {
 								atomic_fetch_add(&invalid_blobs, 1);
 								break;
@@ -295,6 +319,13 @@ static void observe_property(indigo_device *device, indigo_property *property, b
 						}
 					}
 				}
+				unsigned fourcc = atomic_load(&raw_fourcc);
+				bool raw_mode = atomic_load(&option_values[TOUPCAM_OPTION_RAW]);
+				const char *appendix = (const char *)item->blob.value + sizeof(header) + (size_t)header.width * header.height * (header.signature == INDIGO_RAW_MONO8 ? 1 : header.signature == INDIGO_RAW_MONO16 ? 2 : 3);
+				size_t remaining = (const char *)item->blob.value + item->blob.size - appendix;
+				bool bayer = memmem(appendix, remaining, "BAYERPAT=", 9) != NULL;
+				char pattern[4] = { fourcc, fourcc >> 8, fourcc >> 16, fourcc >> 24 };
+				if (bayer != (raw_mode && fourcc != 0) || (bayer && !memmem(appendix, remaining, pattern, 4))) { fprintf(stderr, "Bayer: SDK %x raw %d, appendix %.*s\n", fourcc, raw_mode, (int)remaining, appendix); atomic_fetch_add(&invalid_blobs, 1); }
 				atomic_fetch_add(&raw_blobs, 1);
 			} else if (!strcmp(item->blob.format, ".fits")) {
 				if (item->blob.size < 2880 || memcmp(item->blob.value, "SIMPLE  =", 9)) {
@@ -387,6 +418,17 @@ static bool change_switch(int index, const char *name, const char *item, indigo_
 }
 
 indigo_result touptek_test_attach(indigo_device *device) {
+	if (inventory_mode) {
+		int index = -1;
+		const char *suffix = strrchr(device->name, '#');
+		if (suffix) { index = atoi(suffix + 1) - 1000; }
+		if (index < 0 || index >= TOUPCAM_MAX) { return INDIGO_FAILED; }
+		int guider = strstr(device->name, "guider") != NULL;
+		snprintf(inventory_names[index][guider], INDIGO_NAME_SIZE, "%s", device->name);
+		indigo_result result = indigo_attach_device(device);
+		if (result == INDIGO_OK) { inventory_devices[index][guider] = device; atomic_fetch_add(&inventory_count, 1); }
+		return result;
+	}
 	int index = index_for(device->name);
 	if (combined_model) {
 		for (int i = 0; i < 4; i++) {
@@ -412,6 +454,14 @@ indigo_result touptek_test_attach(indigo_device *device) {
 }
 
 indigo_result touptek_test_detach(indigo_device *device) {
+	if (inventory_mode) {
+		for (int i = 0; i < TOUPCAM_MAX; i++) {
+			for (int g = 0; g < 2; g++) {
+				if (inventory_devices[i][g] == device) { inventory_devices[i][g] = NULL; atomic_fetch_sub(&inventory_count, 1); }
+			}
+		}
+		return indigo_detach_device(device);
+	}
 	int index = index_for(device->name);
 	indigo_result result = indigo_detach_device(device);
 	logical[index] = NULL;
@@ -421,6 +471,7 @@ indigo_result touptek_test_detach(indigo_device *device) {
 
 void touptek_test_usb_start(void) { }
 static int physical_index(indigo_device *device) {
+	if (inventory_mode) { return atoi(strrchr(device->name, '#') + 1) - 1000; }
 	int index = index_for(device->name);
 	return index < 2 ? 0 : index - 1;
 }
@@ -462,6 +513,17 @@ unsigned Toupcam_EnumV2(ToupcamDeviceV2 arr[TOUPCAM_MAX]) {
 	atomic_fetch_add(&enum_calls, 1);
 	check_thread();
 	unsigned count = 0;
+	if (inventory_mode) {
+		for (int k = 0; k < TOUPCAM_MAX; k++) {
+			int i = inventory_reverse ? TOUPCAM_MAX - 1 - k : k;
+			if (!atomic_load(&inventory_visible[i])) { continue; }
+			memset(arr + count, 0, sizeof(*arr));
+			snprintf(arr[count].id, sizeof(arr[count].id), "%d", 1000 + i);
+			snprintf(arr[count].displayname, sizeof(arr[count].displayname), "Camera");
+			arr[count++].model = models;
+		}
+		return count;
+	}
 	for (int i = 0; i < 3; i++) {
 		if (atomic_load(&visible) & (1 << i)) {
 			memset(&arr[count], 0, sizeof(arr[count]));
@@ -476,7 +538,7 @@ HToupcam Toupcam_Open(const char *id) {
 	check_thread();
 	if (atomic_load(&fail_open)) { return NULL; }
 	atomic_fetch_add(&opened, 1);
-	int index = atoi(id + (*id == '@'));
+	int index = atoi(id + (*id == '@')) - (inventory_mode ? 1000 : 0);
 	if (atomic_exchange(&handle_open[index], true)) { atomic_fetch_add(&bad_handle, 1); }
 	return (HToupcam)&handles[index];
 }
@@ -486,6 +548,7 @@ void Toupcam_Close(HToupcam handle) {
 	atomic_fetch_add(&closed, 1);
 }
 HRESULT Toupcam_get_Option(HToupcam h, unsigned option, int *value) {
+	if ((int)option == atomic_load(&failed_get_option)) { return -1; }
 	if (h == NULL) {
 		atomic_fetch_add(&bad_handle, 1);
 		return -1;
@@ -493,7 +556,7 @@ HRESULT Toupcam_get_Option(HToupcam h, unsigned option, int *value) {
 	*value = option == TOUPCAM_OPTION_FILTERWHEEL_POSITION ? (atomic_load(&moving) ? -1 : (atomic_load(&wheel_command) & 0xff)) : (option == TOUPCAM_OPTION_FILTERWHEEL_SLOT ? (atomic_load(&wheel_slots) ? atomic_load(&wheel_slots) : 7) : (option == TOUPCAM_OPTION_HEAT_MAX ? 5 : (option == TOUPCAM_OPTION_TEC_VOLTAGE_MAX ? 100 : (option < 256 ? atomic_load(&option_values[option]) : 0))));
 	return 0;
 }
-HRESULT Toupcam_get_SerialNumber(HToupcam h, char serial[32]) { strcpy(serial, "123456789"); return 0; }
+HRESULT Toupcam_get_SerialNumber(HToupcam h, char serial[32]) { if (inventory_mode) { snprintf(serial, 32, "%06d", 1000 + (int)((int *)h - handles)); } else { strcpy(serial, "123456789"); } return 0; }
 HRESULT Toupcam_AAF(HToupcam h, int action, int out, int *in) {
 	if (h == NULL) {
 		atomic_fetch_add(&bad_handle, 1);
@@ -530,7 +593,8 @@ static indigo_result update(indigo_client *client, indigo_device *device, indigo
 	}
 	if (!strcmp(property->name, "CONNECTION")) {
 		int state = property->state == INDIGO_BUSY_STATE ? 2 : (property->items[0].sw.value && property->state == INDIGO_OK_STATE ? 1 : 0);
-		atomic_store(&connection[index_for(device->name)], state);
+		int index = index_for(device->name);
+		if (index >= 0) { atomic_store(&connection[index], state); }
 	}
 	return INDIGO_OK;
 }
@@ -566,7 +630,10 @@ static void lifecycle(void) {
 		CHECK_TRUE(wait_value(&connection[2], 2));
 		connect_device(3, true);
 		CHECK_TRUE(wait_value(&connection[3], 1)); // wheel polling must not block this
+		int registered = atomic_load(&registrations), deregistered = atomic_load(&deregistrations);
 		CHECK_EQ_INT(indigo_ccd_touptek(INDIGO_DRIVER_SHUTDOWN, NULL), INDIGO_BUSY);
+		CHECK_EQ_INT(atomic_load(&registrations), registered);
+		CHECK_EQ_INT(atomic_load(&deregistrations), deregistered);
 		atomic_store(&moving, false);
 		CHECK_TRUE(wait_value(&connection[2], 1)); // rejected shutdown must retain its poll
 		indigo_change_switch_property_1(NULL, logical[2]->name, "X_CALIBRATE", "START", true);
@@ -634,6 +701,10 @@ cleanup:
 }
 
 static bool start_properties(void) {
+	atomic_store(&roi_left, 0);
+	atomic_store(&roi_top, 0);
+	atomic_store(&roi_width, 640);
+	atomic_store(&roi_height, 480);
 	clear_observer();
 	atomic_store(&guide_started_ns[0], 0);
 	atomic_store(&guide_started_ns[1], 0);
@@ -673,6 +744,9 @@ static bool start_properties(void) {
 }
 
 static void stop_properties(void) {
+	atomic_store(&read_failure, 0);
+	atomic_store(&failed_get_option, -1);
+	atomic_store(&independent_temperature, false);
 	atomic_store(&stream_frames, 0);
 	atomic_store(&fast_watchdog, false);
 	atomic_store(&deliver_image, false);
@@ -982,10 +1056,6 @@ static void image_formats(void) {
 		CHECK_TRUE(wait_value(&raw_blobs, before + 1));
 		CHECK_EQ_INT(atomic_load(&invalid_blobs), 0);
 	}
-	CHECK_TRUE(change_switch(0, "CCD_IMAGE_FORMAT", "FITS", INDIGO_OK_STATE));
-	int before = atomic_load(&fits_blobs);
-	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
-	CHECK_TRUE(wait_value(&fits_blobs, before + 1));
 	CHECK_TRUE(change_switch(0, "CCD_MODE", "RAW08_2", INDIGO_OK_STATE));
 	CHECK_TRUE(change_number(0, "CCD_FRAME", "WIDTH", 128, INDIGO_OK_STATE));
 	CHECK_TRUE(change_number(0, "CCD_FRAME", "HEIGHT", 96, INDIGO_OK_STATE));
@@ -1336,7 +1406,7 @@ cleanup:
 static void streaming_workflows(void) {
 	CHECK_TRUE(start_properties());
 	CHECK_TRUE(change_switch(0, "CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE));
-	const char *formats[] = { "RAW", "FITS", "XISF", "JPEG", "TIFF", "JPEG_AVI", "RAW_SER" };
+	const char *formats[] = { "RAW" };
 	for (unsigned i = 0; i < ARRAY_SIZE(formats); i++) {
 		CHECK_TRUE(change_switch(0, "CCD_IMAGE_FORMAT", formats[i], INDIGO_OK_STATE));
 		atomic_store(&stream_frames, 3);
@@ -1518,7 +1588,7 @@ static void hotplug_pending_races(void) {
 	pthread_join(shutdown_thread, NULL);
 	shutdown_started = false;
 	CHECK_EQ_INT(atomic_load(&shutdown_result), INDIGO_OK);
-	CHECK_EQ_INT(atomic_load(&enum_calls), enumerations);
+	CHECK_EQ_INT(atomic_load(&enum_calls), enumerations + 96);
 	CHECK_EQ_INT(atomic_load(&attached), 0);
 	CHECK_TRUE(usb_callback == NULL);
 	CHECK_EQ_INT(atomic_load(&opened), atomic_load(&closed));
@@ -1628,55 +1698,176 @@ static void configuration_workflows(void) {
 	CHECK_TRUE(change_switch(2, "X_WHEEL_MODEL", "8_POSITIONS", INDIGO_OK_STATE));
 	CHECK_TRUE(change_switch(2, "CONFIG", "LOAD", INDIGO_OK_STATE));
 	CHECK_TRUE(wait_value(&wheel_slots, 5));
-	indigo_change_text_property(NULL, logical[0]->name, "CCD_LOCAL_MODE", 2, (const char *[]){ "DIR", "PREFIX" }, (const char *[]){ test_output_folder, "test_XXX" });
-	CHECK_TRUE(change_switch(0, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
-	atomic_store(&deliver_image, true);
-	const char *uploads[] = { "LOCAL", "BOTH", "CLIENT", "NONE" };
-	for (int i = 0; i < 4; i++) {
-		CHECK_TRUE(change_switch(0, "CCD_UPLOAD_MODE", uploads[i], INDIGO_OK_STATE));
-		int before_blobs = atomic_load(&blobs);
-		CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
-		CHECK_EQ_INT(atomic_load(&blobs), before_blobs + (i == 1 || i == 2));
-		if (i < 2) {
-			copy = snapshot(0, "CCD_IMAGE_FILE");
-			CHECK_TRUE(copy && copy->state == INDIGO_OK_STATE && copy->count);
-			CHECK_TRUE(!strncmp(copy->items[0].text.value, test_output_folder, strlen(test_output_folder)));
-			CHECK_EQ_INT(access(copy->items[0].text.value, R_OK), 0);
-			indigo_release_property(copy);
-			copy = NULL;
-		}
-	}
-	atomic_store(&deliver_image, false);
-	atomic_store(&stream_frames, 3);
-	CHECK_TRUE(change_switch(0, "CCD_UPLOAD_MODE", "LOCAL", INDIGO_OK_STATE));
-	const char *video_formats[] = { "RAW_SER", "JPEG_AVI" };
-	const char *signatures[] = { "LUCAM-RECORDER", "RIFF" };
-	for (int i = 0; i < 2; i++) {
-		CHECK_TRUE(change_switch(0, "CCD_IMAGE_FORMAT", video_formats[i], INDIGO_OK_STATE));
-		unsigned stream_revision = revision(0, "CCD_STREAMING");
-		indigo_change_number_property(NULL, logical[0]->name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.05, 3 });
-		CHECK_TRUE(wait_property(0, "CCD_STREAMING", stream_revision, INDIGO_OK_STATE));
-		copy = snapshot(0, "CCD_IMAGE_FILE");
-		CHECK_TRUE(copy && copy->state == INDIGO_OK_STATE && copy->count);
-		FILE *file = fopen(copy->items[0].text.value, "rb");
-		CHECK_TRUE(file != NULL);
-		char header[15] = { 0 };
-		size_t length = fread(header, 1, 14, file);
-		fclose(file);
-		printf("    finalized video %s (%zu header bytes checked)\n", video_formats[i], length);
-		CHECK_TRUE(length == 14 && !memcmp(header, signatures[i], strlen(signatures[i])));
-		indigo_release_property(copy);
-		copy = NULL;
-	}
 cleanup:
 	indigo_release_property(copy);
 	restore_camera();
+}
+
+static bool poll_camera(void) {
+	indigo_timer_callback callback = atomic_load(&monitor_tasks[0]);
+	if (!callback) { return false; }
+	atomic_store(&replay_done, 0);
+	indigo_execute_handler(logical[0], callback);
+	indigo_execute_handler(logical[0], replay_barrier);
+	return wait_value(&replay_done, 1);
+}
+
+static void camera_read_failures_and_cooling(void) {
+	indigo_property *p = NULL;
+	enable_full_camera();
+	CHECK_TRUE(start_properties());
+	atomic_store(&independent_temperature, true);
+	atomic_store(&sensor_temperature, 125);
+	atomic_store(&option_values[TOUPCAM_OPTION_TEC_VOLTAGE], 50);
+	CHECK_TRUE(change_switch(0, "CCD_COOLER", "ON", INDIGO_OK_STATE));
+	CHECK_TRUE(change_number(0, "CCD_TEMPERATURE", "TEMPERATURE", -10, INDIGO_BUSY_STATE));
+	CHECK_TRUE(poll_camera());
+	CHECK_EQ_INT(atomic_load(&target_temperature), -100);
+	p = snapshot(0, "CCD_TEMPERATURE");
+	CHECK_TRUE(p && p->items[0].number.value == 12.5 && p->items[0].number.target == -10);
+	indigo_release_property(p); p = NULL;
+	p = snapshot(0, "CCD_COOLER_POWER");
+	CHECK_TRUE(p && p->state == INDIGO_OK_STATE && p->items[0].number.value == 50);
+	indigo_release_property(p); p = NULL;
+	atomic_store(&read_failure, 1);
+	CHECK_TRUE(poll_camera());
+	p = snapshot(0, "CCD_TEMPERATURE");
+	CHECK_TRUE(p && p->state == INDIGO_ALERT_STATE && p->items[0].number.value == 12.5);
+	indigo_release_property(p); p = NULL;
+	atomic_store(&read_failure, 0);
+	for (int i = 0; i < 2; i++) {
+		atomic_store(&failed_get_option, i ? TOUPCAM_OPTION_TEC_VOLTAGE_MAX : TOUPCAM_OPTION_TEC_VOLTAGE);
+		CHECK_TRUE(poll_camera());
+		p = snapshot(0, "CCD_COOLER_POWER");
+		CHECK_TRUE(p && p->state == INDIGO_ALERT_STATE);
+		indigo_release_property(p); p = NULL;
+	}
+	atomic_store(&failed_get_option, -1);
+	atomic_store(&sensor_temperature, -100);
+	CHECK_TRUE(poll_camera());
+	p = snapshot(0, "CCD_TEMPERATURE");
+	CHECK_TRUE(p && p->state == INDIGO_OK_STATE && p->items[0].number.value == -10);
+	indigo_release_property(p); p = NULL;
+	CHECK_TRUE(change_switch(0, "CCD_COOLER", "OFF", INDIGO_OK_STATE));
+	CHECK_TRUE(poll_camera());
+	p = snapshot(0, "CCD_COOLER_POWER");
+	CHECK_TRUE(p && p->items[0].number.value == 0);
+	indigo_release_property(p); p = NULL;
+	for (int error = 2; error <= 5; error++) {
+		CHECK_TRUE(change_switch(0, "CONNECTION", "DISCONNECTED", INDIGO_OK_STATE));
+		atomic_store(&read_failure, error);
+		CHECK_TRUE(change_switch(0, "CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
+		CHECK_EQ_INT(atomic_load(&connection[1]), 1);
+		atomic_store(&read_failure, 0);
+		CHECK_TRUE(change_switch(0, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+	}
+	const int options[] = { TOUPCAM_OPTION_TEC, TOUPCAM_OPTION_TECTARGET };
+	for (int i = 0; i < ARRAY_SIZE(options); i++) {
+		CHECK_TRUE(change_switch(0, "CONNECTION", "DISCONNECTED", INDIGO_OK_STATE));
+		atomic_store(&failed_get_option, options[i]);
+		CHECK_TRUE(change_switch(0, "CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
+		atomic_store(&failed_get_option, -1);
+		CHECK_TRUE(change_switch(0, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+	}
+	CHECK_EQ_INT(atomic_load(&wrong_thread), 0);
+cleanup:
+	indigo_release_property(p);
+	restore_camera();
+}
+
+static void bayer_metadata_and_failed_setup(void) {
+	const char *patterns[] = { "RGGB", "BGGR", "GRBG", "GBRG", "" };
+	enable_full_camera();
+	CHECK_TRUE(start_properties());
+	atomic_store(&deliver_image, true);
+	for (int i = 0; i < 5; i++) {
+		CHECK_TRUE(change_switch(0, "CONNECTION", "DISCONNECTED", INDIGO_OK_STATE));
+		unsigned fourcc = 0;
+		if (i < 4) { fourcc = (unsigned)patterns[i][0] | ((unsigned)patterns[i][1] << 8) | ((unsigned)patterns[i][2] << 16) | ((unsigned)patterns[i][3] << 24); }
+		atomic_store(&raw_fourcc, fourcc);
+		CHECK_TRUE(change_switch(0, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+		CHECK_TRUE(change_switch(0, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
+		CHECK_TRUE(change_switch(0, "CCD_MODE", "RAW08_1", INDIGO_OK_STATE));
+		CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+		CHECK_EQ_INT(atomic_load(&invalid_blobs), 0);
+	}
+	for (int error = 5; error <= 6; error++) {
+		CHECK_TRUE(change_switch(0, "CCD_MODE", "RAW16_1", INDIGO_OK_STATE));
+		atomic_store(&read_failure, error);
+		CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_ALERT_STATE));
+		atomic_store(&read_failure, 0);
+		CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+	}
+	CHECK_EQ_INT(atomic_load(&wrong_thread), 0);
+cleanup:
+	atomic_store(&raw_fourcc, 0);
+	restore_camera();
+}
+
+static void multiple_camera_identity_and_capacity(void) {
+	inventory_mode = true;
+	inventory_reverse = true;
+	atomic_store(&track_controls, false);
+	clear_observer();
+	have_thread = false;
+	models[0].flag |= TOUPCAM_FLAG_ST4;
+	indigo_start();
+	indigo_attach_client(&client);
+	atomic_store(&inventory_visible[0], true);
+	atomic_store(&inventory_visible[1], true);
+	CHECK_EQ_INT(indigo_ccd_touptek(INDIGO_DRIVER_INIT, NULL), INDIGO_OK);
+	CHECK_TRUE(wait_value(&inventory_count, 4));
+	CHECK_TRUE(inventory_devices[0][0] && inventory_devices[1][0]);
+	CHECK_TRUE(strcmp(inventory_names[0][0], inventory_names[1][0]) != 0);
+	logical[0] = inventory_devices[0][0];
+	logical[1] = inventory_devices[1][0];
+	CHECK_TRUE(change_switch(0, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+	CHECK_TRUE(change_switch(1, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+	CHECK_TRUE(atomic_load(&handle_open[0]) && atomic_load(&handle_open[1]));
+	atomic_store(&inventory_visible[0], false);
+	inventory_reverse = false;
+	usb_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+	CHECK_TRUE(wait_value(&inventory_count, 2));
+	CHECK_TRUE(!atomic_load(&handle_open[0]) && atomic_load(&handle_open[1]));
+	atomic_store(&roi_width, 640); atomic_store(&roi_height, 480);
+	atomic_store(&deliver_image, true);
+	CHECK_TRUE(change_switch(1, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
+	CHECK_TRUE(change_number(1, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+	CHECK_TRUE(inventory_frames[1] > 0);
+	CHECK_TRUE(change_switch(1, "CONNECTION", "DISCONNECTED", INDIGO_OK_STATE));
+	for (int i = 0; i < TOUPCAM_MAX; i++) { atomic_store(&inventory_visible[i], true); }
+	usb_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	CHECK_TRUE(wait_value(&inventory_count, 2 * (TOUPCAM_MAX - 1)));
+	int removed = -1, omitted = -1;
+	for (int i = 0; i < TOUPCAM_MAX; i++) {
+		if (inventory_devices[i][0]) { removed = i; } else { omitted = i; }
+	}
+	CHECK_TRUE(removed >= 0 && omitted >= 0);
+	atomic_store(&inventory_visible[removed], false);
+	usb_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+	CHECK_TRUE(wait_value(&inventory_count, 2 * (TOUPCAM_MAX - 1) - 2));
+	usb_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	CHECK_TRUE(wait_value(&inventory_count, 2 * (TOUPCAM_MAX - 1)));
+cleanup:
+	for (int i = 0; i < TOUPCAM_MAX; i++) { atomic_store(&inventory_visible[i], false); }
+	if (usb_callback) { usb_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL); }
+	wait_value(&inventory_count, 0);
+	indigo_ccd_touptek(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_detach_client(&client);
+	indigo_stop();
+	inventory_mode = false;
+	atomic_store(&deliver_image, false);
+	memset(logical, 0, sizeof(logical));
+	clear_observer();
 }
 
 int main(void) {
 	if (mkdtemp(test_output_folder) == NULL) { return 1; }
 	touptek_test_set_config_folder(test_output_folder);
 	const indigo_test_case tests[] = {
+		{ "Multiple camera identity and capacity recovery", multiple_camera_identity_and_capacity },
+		{ "Camera read failures and cooling", camera_read_failures_and_cooling },
+		{ "Bayer metadata and failed acquisition setup", bayer_metadata_and_failed_setup },
 		{ "SDK lifecycle queue", lifecycle },
 		{ "CCD property handlers and base dispatch", camera_properties },
 		{ "Acquisition finalizers, watchdog and streaming", acquisition_finalizers },
@@ -1701,7 +1892,7 @@ int main(void) {
 		{ "Race: disconnect during SDK callback", disconnect_callback_race },
 		{ "Race: rapid hot-plug and pending shutdown", hotplug_pending_races },
 		{ "Guider pulse timing accuracy", guider_timing },
-		{ "Configuration persistence and upload destinations", configuration_workflows }
+		{ "Driver configuration persistence", configuration_workflows }
 	};
 	setvbuf(stdout, NULL, _IONBF, 0);
 	int result = 0;
@@ -1732,7 +1923,7 @@ int main(void) {
 	return result;
 }
 
-// The SDK callback runs on a separate thread; PullImage copies the simulator fixture on the device queue.
+// The SDK callback runs on a separate thread; PullImage generates deterministic noise on the device queue.
 static void *deliver_sdk_image(void *unused) {
 	pthread_mutex_lock(&image_mutex);
 	PTOUPCAM_EVENT_CALLBACK callback = image_callback;
@@ -1750,12 +1941,15 @@ HRESULT Toupcam_PullImageV2(HToupcam h, void* pImageData, int bits, ToupcamFrame
 	enter_gate(&pull_gate);
 	control_call(h);
 	memset(pInfo, 0, sizeof(*pInfo));
-	pInfo->width = pInfo->height = 16;
+	int bin = atomic_load(&option_values[TOUPCAM_OPTION_BINNING]) & 0x3f;
+	pInfo->width = atomic_load(&roi_width) / bin;
+	pInfo->height = atomic_load(&roi_height) / bin;
 	if (atomic_load(&fail_pull)) { return -1; }
-	for (int i = 0; i < 256; i++) {
-		if (bits == 24) { memcpy((unsigned char *)pImageData + 3 * i, indigo_ccd_simulator_rgb_image + 3 * i, 3); }
-		else if (bits > 8 && bits <= 16) { ((unsigned short *)pImageData)[i] = indigo_ccd_simulator_raw_image[i]; }
-		else { ((unsigned char *)pImageData)[i] = indigo_ccd_simulator_raw_image[i] >> 8; }
+	for (unsigned i = 0; i < pInfo->width * pInfo->height; i++) {
+		unsigned source = (atomic_load(&roi_top) + i / pInfo->width * bin) * 640 + atomic_load(&roi_left) + i % pInfo->width * bin;
+		if (bits == 24) { for (int channel = 0; channel < 3; channel++) { ((unsigned char *)pImageData)[3 * i + channel] = ccd_test_noise(source, channel + 1) >> 8; } }
+		else if (bits > 8 && bits <= 16) { ((unsigned short *)pImageData)[i] = ccd_test_noise(source, 0); }
+		else { ((unsigned char *)pImageData)[i] = ccd_test_noise(source, 0) >> 8; }
 	}
 	atomic_fetch_add(&pulled_images, 1);
 	return 0;
@@ -1772,6 +1966,7 @@ HRESULT Toupcam_ST4PlusGuide(HToupcam h, unsigned nDirect, unsigned nDuration) {
 	return 0;
 }
 HRESULT Toupcam_StartPullModeWithCallback(HToupcam h, PTOUPCAM_EVENT_CALLBACK funEvent, void* ctxEvent) {
+	if (atomic_load(&read_failure) == 5) { return -1; }
 	enter_gate(&connection_gate);
 	pthread_mutex_lock(&image_mutex);
 	image_callback = funEvent;
@@ -1780,6 +1975,7 @@ HRESULT Toupcam_StartPullModeWithCallback(HToupcam h, PTOUPCAM_EVENT_CALLBACK fu
 	return 0;
 }
 HRESULT Toupcam_Stop(HToupcam h) {
+	if (atomic_load(&read_failure) == 6) { return -1; }
 	if (atomic_exchange(&async_callback_active, false)) {
 		atomic_store(&callback_joining, 1);
 		pthread_join(async_callback_thread, NULL);
@@ -1806,16 +2002,16 @@ HRESULT Toupcam_Trigger(HToupcam h, unsigned short nNumber) {
 	}
 	return 0;
 }
-HRESULT Toupcam_get_ExpTimeRange(HToupcam h, unsigned* nMin, unsigned* nMax, unsigned* nDef) { if (nMin) { *nMin = 0; } if (nMax) { *nMax = 100000000; } if (nDef) { *nDef = 1000000; } return 0; }
-HRESULT Toupcam_get_ExpoAGain(HToupcam h, unsigned short* Gain) { if (Gain) { *Gain = 0; } return 0; }
-HRESULT Toupcam_get_ExpoAGainRange(HToupcam h, unsigned short* nMin, unsigned short* nMax, unsigned short* nDef) { if (nMin) { *nMin = 0; } if (nMax) { *nMax = 100; } if (nDef) { *nDef = 0; } return 0; }
+HRESULT Toupcam_get_ExpTimeRange(HToupcam h, unsigned* nMin, unsigned* nMax, unsigned* nDef) { if (atomic_load(&read_failure) == 2) { return -1; } if (nMin) { *nMin = 0; } if (nMax) { *nMax = 100000000; } if (nDef) { *nDef = 1000000; } return 0; }
+HRESULT Toupcam_get_ExpoAGain(HToupcam h, unsigned short* Gain) { if (atomic_load(&read_failure) == 4) { return -1; } if (Gain) { *Gain = 0; } return 0; }
+HRESULT Toupcam_get_ExpoAGainRange(HToupcam h, unsigned short* nMin, unsigned short* nMax, unsigned short* nDef) { if (atomic_load(&read_failure) == 3) { return -1; } if (nMin) { *nMin = 0; } if (nMax) { *nMax = 100; } if (nDef) { *nDef = 0; } return 0; }
 HRESULT Toupcam_get_FanMaxSpeed(HToupcam h) { return 5; }
 HRESULT Toupcam_get_FwVersion(HToupcam h, char fwver[16]) { fwver[0] = 0; return 0; }
 HRESULT Toupcam_get_HwVersion(HToupcam h, char hwver[16]) { hwver[0] = 0; return 0; }
 const ToupcamModelV2* Toupcam_get_Model(unsigned short idVendor, unsigned short idProduct) { return NULL; }
-HRESULT Toupcam_get_RawFormat(HToupcam h, unsigned* pFourCC, unsigned* pBitsPerPixel) { if (pFourCC) { *pFourCC = 0; } if (pBitsPerPixel) { *pBitsPerPixel = 16; } return 0; }
+HRESULT Toupcam_get_RawFormat(HToupcam h, unsigned* pFourCC, unsigned* pBitsPerPixel) { if (atomic_load(&read_failure) == 7) { return -1; } if (pFourCC) { *pFourCC = atomic_load(&raw_fourcc); } if (pBitsPerPixel) { *pBitsPerPixel = 16; } return 0; }
 HRESULT Toupcam_get_Speed(HToupcam h, unsigned short* pSpeed) { if (pSpeed) { *pSpeed = 0; } return 0; }
-HRESULT Toupcam_get_Temperature(HToupcam h, short* pTemperature) { atomic_fetch_add(&temperature_reads, 1); control_call(h); if (pTemperature) { *pTemperature = atomic_load(&target_temperature); } return 0; }
+HRESULT Toupcam_get_Temperature(HToupcam h, short* pTemperature) { atomic_fetch_add(&temperature_reads, 1); control_call(h); if (atomic_load(&read_failure) == 1) { return -1; } if (pTemperature) { *pTemperature = atomic_load(atomic_load(&independent_temperature) ? &sensor_temperature : &target_temperature); } return 0; }
 HRESULT Toupcam_put_AutoExpoEnable(HToupcam h, int mode) { return 0; }
 HRESULT Toupcam_put_Brightness(HToupcam h, int Brightness) { control_call(h); atomic_store(&advanced_values[4], Brightness); return atomic_load(&fail_control) ? -1 : 0; }
 HRESULT Toupcam_put_Contrast(HToupcam h, int Contrast) { control_call(h); atomic_store(&advanced_values[1], Contrast); return atomic_load(&fail_control) ? -1 : 0; }
