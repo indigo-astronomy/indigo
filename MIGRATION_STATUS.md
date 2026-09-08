@@ -38,33 +38,34 @@
 | aux_wbplusv3             | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | aux_wbprov3              | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | aux_wcv4ec               | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
-| ccd_altair               | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    |                                                          |
+| ccd_altair               | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    | ➡️ Touptek                                               |
 | ccd_apogee               | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | ⏰ TODO - make boost_regex and libapogee for Windows     |
 | ccd_asi                  | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    |                                                          |
 | ccd_atik                 | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
-| ccd_bresser              | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    | ➡️ Touptek                                               |
+| ccd_baccam               | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    | ➡️ Touptek                                               |
+| ccd_bresser              | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    | ➡️ Touptek                                               |
 | ccd_dsi                  | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | ccd_fli                  | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | ccd_iidc                 | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | ⏰ TODO - make libdc1394 for Windows                     |
 | ccd_mallin               | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    | ➡️ Touptek                                               |
 | ccd_mi                   | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | ⛔ Unix and Windows SDKs are not compatible              |
-| ccd_ogma                 | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    | ➡️ Touptek                                               |
-| ccd_omegonpro            | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    | ➡️ Touptek                                               |
+| ccd_ogma                 | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    | ➡️ Touptek                                               |
+| ccd_omegonpro            | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    | ➡️ Touptek                                               |
 | ccd_pentax               | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | 🚧 Unfinished & stalled                                  |
 | ccd_playerone            | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    |                                                          |
 | ccd_ptp                  | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | ccd_qhy                  | 3️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | ⏰ TODO - make libqhy for Windows                        |
 | ccd_qhy2                 | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | ccd_qsi                  | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | ⏰ TODO - find SDK for windows                           |
-| ccd_rising               | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    | ➡️ Touptek                                               |
+| ccd_rising               | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    | ➡️ Touptek                                               |
 | ccd_sbig                 | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | ⏰ TODO - find SDK for windows                           |
 | ccd_simulator            | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ⛔ N/A   |                                                          |
 | ccd_ssag                 | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
-| ccd_ssg                  | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    | ➡️ Touptek                                               |
+| ccd_ssg                  | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    | ➡️ Touptek                                               |
 | ccd_svb                  | 3️⃣  | ✅ No    | ❌ No    | ❌ No    | ✅ HW    |                                                          |
-| ccd_svb2                 | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    | ➡️ Touptek                                               |
+| ccd_svb2                 | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    | ➡️ Touptek                                               |
 | ccd_sx                   | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
-| ccd_touptek              | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    |                                                          |
+| ccd_touptek              | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    |                                                          |
 | ccd_uvc                  | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | ⛔ libuvc is Unix only                                   |
 | dome_baader              | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | dome_beaver              | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    |                                                          |

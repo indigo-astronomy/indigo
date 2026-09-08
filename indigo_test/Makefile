@@ -32,6 +32,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_token \
 	$(UNIT_BUILD)/test_raw_image
 INTEGRATION_TESTS = \
+	$(INTEGRATION_BUILD)/test_ccd_touptek_sdk \
 	$(INTEGRATION_BUILD)/test_wheel_asi_sdk \
 	$(INTEGRATION_BUILD)/test_focuser_asi_sdk \
 	$(INTEGRATION_BUILD)/test_rotator_asi_sdk \
@@ -705,3 +706,45 @@ $(INTEGRATION_BUILD)/rotator_asi_sdk_driver.o: ../indigo_drivers/rotator_asi/ind
 
 $(INTEGRATION_BUILD)/test_rotator_asi_sdk: integration/test_rotator_asi_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_asi_sdk_driver.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(CAA_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/rotator_asi_sdk_driver.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+# ToupTek SDK regression: real driver with SDK/USB lifecycle replacements, no hardware.
+TOUPTEK_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_touptek/bin_externals/libtoupcam/include
+TOUPTEK_SDK_TEST_REPLACEMENTS = -Dindigo_execute_handler_with_data=touptek_test_execute_handler_with_data -Dindigo_execute_handler_in=touptek_test_execute_handler_in -Dindigo_queue_create=touptek_test_queue_create -Dlibusb_hotplug_register_callback_sim=touptek_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=touptek_test_usb_deregister_poll -Dindigo_start_usb_event_handler=touptek_test_usb_start -Dindigo_try_global_lock=touptek_test_lock -Dindigo_global_unlock=touptek_test_unlock -Dindigo_attach_device=touptek_test_attach -Dindigo_detach_device=touptek_test_detach -Dlibusb_hotplug_register_callback=touptek_test_usb_register -Dlibusb_hotplug_deregister_callback=touptek_test_usb_deregister -Dlibusb_get_device_list=touptek_test_usb_list -Dlibusb_free_device_list=touptek_test_usb_free
+
+$(INTEGRATION_BUILD)/ccd_touptek_sdk_driver.o: ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.h ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(TOUPTEK_SDK_TEST_INCLUDE) $(TOUPTEK_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/ccd_touptek_sdk_image.o: ../indigo_drivers/ccd_simulator/indigo_ccd_simulator_data.c ../indigo_drivers/ccd_simulator/indigo_ccd_simulator_mono.h ../indigo_drivers/ccd_simulator/indigo_ccd_simulator_rgb.h $(wildcard ../indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_*.h) Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
+
+# Compile the framework property dispatcher separately so only its config-path lookup is replaced.
+# All CONFIG serialization/parsing and base driver behavior remain real; no user HOME override.
+TOUPTEK_SDK_TEST_LDFLAGS = $(filter-out -lindigo,$(TEST_LDFLAGS)) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(BUILD_LIB)/libraw.a -lhidapi -lusb-1.0 -lz -lstdc++ -ldl
+ifneq ($(OS_DETECTED),Darwin)
+TOUPTEK_SDK_TEST_LDFLAGS += -ldns_sd -lavahi-client -lavahi-common
+endif
+
+$(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=touptek_test_config_folder -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_touptek_sdk: integration/test_ccd_touptek_sdk.c test_runner.h $(INTEGRATION_BUILD)/ccd_touptek_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_image.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o
+	$(CC) $(TEST_CFLAGS) $(TOUPTEK_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_touptek_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_image.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+# Physical hardware is opt-in, deliberately excluded from test/test-integration.
+HW_DRIVER ?= touptek
+HW_HOTPLUG ?= 0
+.PHONY: test-ccd-touptek-hw
+test-ccd-touptek-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_touptek_hw
+	INDIGO_TEST_DRIVER=$(HW_DRIVER) $(TEST_BUILD)/hardware/test_ccd_touptek_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug)
+
+$(TEST_BUILD)/hardware:
+	mkdir -p $@
+
+$(TEST_BUILD)/hardware/ccd_touptek_hw_driver.o: ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.h ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $(TOUPTEK_SDK_TEST_INCLUDE) -c $< -o $@
+
+$(TEST_BUILD)/hardware/test_ccd_touptek_hw: hardware/test_ccd_touptek_hw.c test_runner.h $(TEST_BUILD)/hardware/ccd_touptek_hw_driver.o $(TEST_BUILD)/hardware/ccd_altair_hw_driver.o
+	$(CC) $(TEST_CFLAGS) $< $(TEST_BUILD)/hardware/ccd_touptek_hw_driver.o $(TEST_BUILD)/hardware/ccd_altair_hw_driver.o -o $@ $(TEST_LDFLAGS) -ltoupcam -laltaircam -lusb-1.0
+
+$(TEST_BUILD)/hardware/ccd_altair_hw_driver.o: ../indigo_drivers/ccd_altair/indigo_ccd_altair.c ../indigo_drivers/ccd_altair/indigo_ccd_altair.h ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.h ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) -I../indigo_drivers/ccd_altair/bin_externals/libaltaircam/include -c $< -o $@

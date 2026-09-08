@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2025 CloudMakers, s. r. o.
+// Copyright (c) 2018-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -20,10 +20,6 @@
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 // 2.0 refactoring by Rumen G. Bogdanovski <rumenastro@gmail.com>
 // 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
-
-/** INDIGO ToupTek CCD & filter wheel driver main
- \file indigo_ccd_touptek_main.c
- */
 
 #include <stdio.h>
 #include <stdlib.h>

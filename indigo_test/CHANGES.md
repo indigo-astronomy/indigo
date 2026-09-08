@@ -2,6 +2,65 @@
 
 This document records the automated test suite added under `indigo_test/` and the remaining follow-up work. The suite is intentionally hardware-free: it links against the built INDIGO library and simulator driver archives, then exercises public APIs through unit and in-process integration tests.
 
+## ToupTek guide coalescing and connection serialization (2026-09-08)
+
+Added two hardware-free cases to `test_ccd_touptek_sdk.c`: queued full-vector guide replacements on both axes must issue exactly one SDK pulse per axis (DRV-067), and an immediately due temperature task must survive held camera initialization and run after connection completes (DRV-068 false-positive check). The guide test reproduced duplicated commands before the fix. The temperature test uses the real queue/master-mutex path and shortens only the first monitoring deadline, avoiding a five-second sleep.
+
+Validation: native arm64 SDK suite 25/25 passed, including both new scenarios; universal ToupTek production build passed. No Rosetta or hardware run. Test build artifacts cleaned.
+
+## ToupTek review regressions (2026-09-08)
+
+Extended `integration/test_ccd_touptek_sdk.c` for DRV-061–DRV-066: opposite-direction replacement and zero-vector cancellation on both guide axes; replay of actual recurring callbacks after disconnect; stale ERROR/NOFRAMETIMEOUT callbacks during acquisition setup followed by successful same-mode exposures; combined camera/ST4/wheel/focuser discovery; manual relative motion after switching out of automatic compensation while still moving; and all-off CONFIG followed by SAVE on CCD, wheel and focuser. The guide, focuser-transition and CONFIG tests reproduced failures before their respective fixes. The recurring-task test deliberately replays the survivor task after disconnect; it does not force the queue's internal cancellation interleaving. Combined flags are synthetic and do not establish support for untested physical hardware.
+
+Validation: native arm64 23/23 SDK scenarios and 86/86 timer/queue cases passed. Native AddressSanitizer passed the three existing races and all three new standalone scenarios (prebuilt libraries uninstrumented; leak detection disabled). No Rosetta or hardware execution. Test artifacts cleaned with `make -C indigo_test test-clean`.
+
+## ToupTek SDK queues and finalizers (2026-09-08)
+
+`integration/test_ccd_touptek_sdk.c` builds as `build/integration/test_ccd_touptek_sdk`, with separately compiled production driver, simulator image fixture and framework dispatcher objects. Twenty-five hardware-free scenarios use public bus requests, the real handler queues and SDK/USB replacements. The observer, test cases and config-path replacement are consolidated into `test_ccd_touptek_sdk.c`; no auxiliary ToupTek test source/header files are needed. After consolidation, the universal binary rebuilt without warnings and the configuration persistence/upload scenario passed.
+
+Coverage:
+
+- Lifecycle: CCD+guider connection in both orders, shared handle ownership, wheel/focuser teardown, queue/thread affinity, failed Open/queue creation/registration, unload/reload, rejected shutdown and callback re-registration, duplicate arrival, partial attach rollback and unplug during active acquisition, guiding and wheel initialization.
+- Properties: enumerate all four logical devices, validate published vectors/items and round-trip passive writable properties through the real base/driver dispatch. Dedicated scenarios cover active workflows. CCD coverage includes all nine advanced controls, gain, offset, fan, heater, cooler, temperature, LED, conversion gain, all advertised RAW depths and RGB8, ROI, binning policies and frame types. Tests preserve gain fall-through versus offset early return.
+- Acquisition: exposure completion, admission while BUSY, abort, watchdog, Trigger/PullImage failures, obsolete Stop notifications, reconnect/recovery, finite/infinite streaming, all seven image formats and SDK error/no-frame/no-packet events. The image callback runs on a separate thread. RAW pixels are compared with a 16 × 16 sample from `ccd_simulator/indigo_ccd_simulator_data.c`; FITS headers are checked. Local SER/AVI files are finalized and their signatures checked.
+- Guider: all four directions, SDK direction/duration arguments, replacement while BUSY, all-zero cancellation, subsequent requests, reconnect and pulse completion timing.
+- Wheel: 5/7/8-slot models, endpoint requests, calibration, SDK errors and cancellation. Focuser: absolute/relative motion, sync, limits, backlash, reverse, beep, abort, automatic/manual property permissions, actual temperature compensation and fallback to the internal sensor.
+- Persistence/output: real CONFIG SAVE/LOAD for all logical devices, restored CCD/wheel settings, CLIENT/LOCAL/BOTH/NONE upload modes and temporary image/video files. The separately compiled framework dispatcher redirects only its config-directory lookup; serialization and parsing remain real. The test does not change HOME or use the user's config directory.
+
+Three additional deterministic race scenarios close the previously deferred step 6 cases:
+
+- Final frame versus abort: test-only gates force both orders on a one-frame stream. Abort first produces no frame and the standard finite-stream ALERT state; frame first delivers exactly one frame, completes streaming and reports ALERT for the now-inapplicable abort. Both orders allow a subsequent successful exposure.
+- Disconnect inside the real SDK callback: pause its enqueue call after capturing the old generation, start disconnect, and assert SDK Stop is waiting to join that callback. Release it, verify no stale frame is pulled/published and the guider remains connected, then reconnect the CCD and acquire a new image.
+- Rapid hot-plug/pending shutdown: eight full reconnect cycles with 1,024 alternating arrival/removal notifications, followed by shutdown with 64 explicitly pending USB events. Assert cancellation without further enumeration, balanced handles/global locks, no attached devices, and successful reload/connect/disconnect/shutdown.
+
+The synchronization gates exist only in the harness and have 10-second deadlines. The production callback enqueue API is redirected through a gate that delegates to the real API; no production queue implementation or driver logic is modified.
+
+Guider timing uses `CLOCK_MONOTONIC` at the fake SDK ST4 command and at the matching zero-valued OK property update. Each run measures 20 pulses: EAST/WEST/NORTH/SOUTH at 20, 50, 100, 250 and 500 ms. Output includes each measured duration and signed error, plus mean signed error, mean absolute error, p95 absolute error and maximum absolute error. A broad -5 to +250 ms completion bound catches gross regressions; these measurements characterize software completion latency, not electrical ST4 signal duration or an accuracy guarantee under arbitrary system load.
+
+Only watchdog waits of at least 25 seconds are shortened by the test hook, while their original duration is checked. Guiding and normal completion delays are not accelerated. Injected SDK/queue errors and watchdog log messages are expected. `INDIGO_TEST_FILTER` selects cases by a substring of their displayed title.
+
+Initial validation: the universal test binary compiled without compiler warnings; the full native macOS arm64 run passed all 17 scenarios. Its 20 pulse samples measured mean +3.703 ms, mean absolute 3.703 ms, p95 absolute 5.048 ms and maximum absolute 5.066 ms. The full x86_64/Rosetta run also passed all 17 scenarios: mean +2.947 ms, mean absolute 2.947 ms, p95 absolute 5.048 ms and maximum absolute 5.063 ms. Both runs exited 0; `git diff --check` passed. Test build artifacts were removed with `make -C indigo_test test-clean`.
+
+Race-extension validation: the full 20-scenario suite passed on native macOS arm64 and x86_64/Rosetta, both exiting 0. All three new race cases passed without gate timeouts. The universal build emitted no warnings; `git diff --check` passed and `make -C indigo_test test-clean` removed build artifacts. Repeat guiding mean errors were +3.443 ms (arm64) and +3.899 ms (Rosetta).
+
+The tests retain current behavior: reverse-motion SDK failure is reported as OK by the driver; after cancelling a guide pulse by disconnect, the reconnect test submits both axis items to replace the retained direction value. The fake SDK cannot validate real USB transport, vendor SDK races, electrical timing, physical Intel hardware or sustained multi-camera load. Those remain hardware validation work.
+
+## Opt-in ToupTek physical camera test (2026-09-08)
+
+`hardware/test_ccd_touptek_hw.c` is deliberately outside the hardware-free integration suite. Run it only with `make -C indigo_test test-ccd-touptek-hw`; this target builds `build/hardware/test_ccd_touptek_hw` and invokes it with `--run`. Direct execution without `--run` exits 2 before initializing INDIGO or USB. Neither `make test` nor `test-integration` builds or runs this executable. Set `INDIGO_TEST_DEVICE` to an exact discovered camera name if multiple cameras are attached; otherwise exactly one camera with its matching guider is required.
+
+The test compiles the production driver separately and links real INDIGO, libtoupcam and libusb, with no SDK/USB replacements. It connects the guider before the camera, acquires three 0.1-second RAW exposures, aborts a 5-second exposure, captures a five-frame stream, aborts an indefinite stream after at least three frames, sends 100 ms pulses in all four directions, verifies guider operation after CCD disconnect, closes the shared handle, reconnects camera first and acquires another image. RAW signatures, dimensions, payload sizes and frame counts are checked. Only CCD_IMAGE updates count as new frames; reconnect property definitions are metadata. Cleanup disconnects both logical devices and shuts down the driver. The test does not save configuration or image files, but it does operate the physical ST4 outputs.
+
+Native arm64 validation passed on Touptek GPCMOS01200KMB (camera suffix 04E69B): 12 valid RAW frames at 1280 × 960, 1,228,812 bytes each, including the post-reconnect frame. Both camera and guider disconnected and driver shutdown succeeded. The sandbox could see USB inventory but the SDK could not enumerate the camera; the successful run used explicitly approved execution outside the sandbox. Rosetta was not run. Compilation/linking succeeded; the linker reported that the bundled SDK targets macOS 11.0 while the repository build flags target 10.10. `make -n test` confirmed absence of the hardware executable, direct execution without `--run` returned 2, and `git diff --check` passed. Build artifacts were removed with `make -C indigo_test test-clean`.
+
+Step 7 extension: `HW_DRIVER=altair` selects the real Altair SDK; `HW_HOTPLUG=1` additionally requires operator-assisted cable removal/reconnection during streaming (180-second deadlines per phase). The test verifies deletion of camera/guider properties, rediscovers the same devices and captures a new image plus guiding pulse after replug. All normal hardware runs now also verify complete driver unload/reload and a new exposure in the same process. The executable remains excluded from default tests.
+
+Altair ALTAIRGP224C #E61F50 passed the native physical hot-plug run with 1280 × 960 RGB RAW payloads (3,686,412 bytes), then passed a separate native run including the newly added SDK unload/reload check. Both exited 0. No Rosetta run was performed. The earlier ToupTek run preceded the additional unload/reload check; no physical ToupTek cable-removal test is claimed.
+
+Step 7 software verification: all 20 native SDK cases and all 86 native timer/queue cases passed. The three deterministic SDK race cases also passed under AddressSanitizer with instrumented driver/harness/framework dispatcher/image fixture; prebuilt libraries are not fully instrumented. All eleven branded drivers compiled and linked for arm64/x86_64. Full initialization-call comparison against the refactor baseline found no public schema changes. `git diff --check` passed; test and ASan artifacts were cleaned.
+
+Physical wheel/focuser hardware, simultaneous multiple physical cameras, Linux/Windows toolchains and native Intel hardware remain unverified. Hardware ST4 electrical pulse duration is not measured.
+
 ## Goals
 
 - Provide repeatable tests that run without physical astronomy hardware.

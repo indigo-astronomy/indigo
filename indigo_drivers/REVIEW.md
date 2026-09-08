@@ -114,7 +114,24 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-057 | Medium | `wheel_asi/indigo_wheel_asi.driver:176` | Related to DRV-041/045/046: calibration finalizer initializes pos=0 and ignores EFWGetPosition error. An error without an output write becomes slot 1 and successful Calibration finished, even though physical completion was never confirmed. Reproduced with EFW_ERROR_REMOVED. Check SDK status before interpreting -1/motion or publishing completion; publish ALERT on read failure. | Closed (fixed and verified, 2026-09-07) |
 | DRV-058 | Medium | `wheel_asi/indigo_wheel_asi.driver:248`; `wheel_asi/indigo_wheel_asi.c:212` | Incomplete asynchronous calibration completion: START=false is accepted and dispatch sets X_CALIBRATE BUSY, but handler neither updates it nor schedules completion. Disconnect during active calibration also cancels its finalizer without resetting X_CALIBRATE state/switch; reconnect redefines that same BUSY property and further changes are blocked. START=false remaining BUSY across reconnect reproduced; interrupted-calibration variant checked statically. Complete no-op requests and reset interrupted calibration state during lifecycle cleanup. | Closed (fixed and verified, 2026-09-07) |
 
+| DRV-059 | Medium | `ccd_touptek/indigo_ccd_touptek.c:1151`, `ccd_touptek/indigo_ccd_touptek.c:1911`, `ccd_touptek/indigo_ccd_touptek.c:2341` | Existing disconnect close guards skip Close for a CCD without a guider, and for standalone wheel/focuser devices whose private camera pointer refers to themselves: their own gp_bits remains 1 until after the guard. These paths can retain the SDK handle/global lock after ordinary disconnect. | Closed (fixed in step 2; SDK replacement validation, hardware pending) |
+| DRV-060 | Medium | `ccd_touptek/indigo_ccd_touptek.c:1789`, `ccd_touptek/indigo_ccd_touptek.c:1894` | Wheel calibration and connection initialization wait in unbounded one-second polling loops while SDK position is -1. Moving these bodies unchanged onto a persistent lifecycle/device queue can prevent queued disconnect/removal from progressing. Preserve the operation sequence but provide cancellable delayed completion when migrating these paths. | Closed (fixed in step 2; SDK replacement validation, hardware pending) |
+
 ## Finding Summaries
+
+### DRV-059 and DRV-060 — step 2 resolution (2026-09-08)
+
+DRV-059: corrected the CCD-only and standalone wheel/focuser Close guards without replacing shared CCD/guider `gp_bits` accounting. Removal now clears the freed guider pointer before CCD detach. The SDK replacement lifecycle test checks balanced Open/Close and global-lock ownership for both CCD/guider orders and each standalone class.
+
+DRV-060: wheel connection and calibration now use handler + finalizer pairs with `indigo_execute_handler_in()` on the device queue. The original SDK commands and one-second completion interval remain; no handler sleeps or waits in a loop. Tests exercise another device connecting while wheel initialization is unfinished, cancellation of an active calibration, shutdown rejection/resumption and unplug during wheel initialization. Physical SDK/device behavior remains pending. Folder review baseline is unchanged.
+
+### DRV-059 and DRV-060 — ToupTek step 1 baseline
+
+Recorded 2026-09-08 at `30e667c8cd0b57c0aa0feb285ae79a651ce3dd2c` during the requested partial-refactor inventory. This is a focused baseline investigation, not a full incremental folder review; the folder's Last reviewed commit is unchanged. No production fixes or runtime reproduction were performed.
+
+For DRV-059, discovery assigns `private_data->camera = camera` for standalone wheel/focuser devices (2828, 2856), while their connection callbacks set their own `gp_bits = 1`. Disconnect tests `PRIVATE_DATA->camera->gp_bits == 0` before resetting that same marker, skipping Close on the first successful disconnect. CCD-only disconnect separately requires a non-NULL guider in its close guard. Keep this distinct from the already fixed Stop(NULL) issue DRV-030. Address only the narrow ownership correction needed for safe lifecycle teardown; do not replace the whole connection model as incidental cleanup.
+
+For DRV-060, both loops can continue indefinitely if the SDK keeps returning the moving sentinel; the existing code does not check removal between iterations. This is especially relevant when one shared driver queue will own connections for all physical devices. The migration must avoid blocking that queue indefinitely without changing the requested slot/calibration operation or property completion semantics.
 
 ### DRV-001 (Closed — fixed)
 
