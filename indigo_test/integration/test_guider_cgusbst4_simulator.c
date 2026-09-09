@@ -1,0 +1,95 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// All rights reserved.
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+#include <errno.h>
+#include <indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.h>
+#include "serial_simulator_test_common.h"
+static external_serial_simulator simulator;
+static const simulator_driver_case guider = { "CG-USB-ST4 Adapter", "indigo_guider_cgusbst4", "CG-USB-ST4 Adapter", indigo_guider_cgusbst4, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+
+static bool event(const char *kind, int direction, int duration) {
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.events", simulator.ready_file);
+	for (int retry = 0; retry < 100; retry++) {
+		FILE *file = fopen(path, "r");
+		if (file) {
+			char name[16];
+			int d, ms;
+			double timestamp;
+			while (fscanf(file, "%15s %d %d %lf", name, &d, &ms, &timestamp) == 4) {
+				if (!strcmp(name, kind) && direction == d && duration == ms) { fclose(file); return true; }
+			}
+			fclose(file);
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+static void stop(void) {
+	if (context.connected) { disconnect_serial_device(&guider); }
+	indigo_result result = indigo_guider_cgusbst4(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_detach_client(&simulator_test_client);
+	indigo_result stopped = indigo_stop();
+	release_cached_properties();
+	ASSERT_EQ_INT(INDIGO_OK, result);
+	ASSERT_EQ_INT(INDIGO_OK, stopped);
+}
+
+static void directions(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&guider, simulator.port));
+	assert_device_interface(INDIGO_INTERFACE_GUIDER);
+	const char *items[] = { "NORTH", "SOUTH", "EAST", "WEST" };
+	for (int i = 0; i < 4; i++) {
+		const char *property = i < 2 ? GUIDER_GUIDE_DEC_PROPERTY_NAME : GUIDER_GUIDE_RA_PROPERTY_NAME;
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, guider.device_name, property, items[i], 100));
+		SERIAL_CHECK_TRUE(event("ON", i, 100));
+		SERIAL_CHECK_TRUE(event("OFF", i, 0));
+		SERIAL_CHECK_TRUE(wait_for_property_state(property, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(property, items[i], 0, .01));
+	}
+cleanup:
+	stop();
+}
+
+static void identity_failure(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&guider));
+	SERIAL_CHECK_TRUE(!connect_serial_device(&guider, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	stop();
+}
+
+static void reconnect(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&guider, simulator.port));
+	disconnect_serial_device(&guider);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_serial_device(&guider, simulator.port));
+cleanup:
+	stop();
+}
+
+int main(void) {
+	const indigo_test_case tests[] = { { "indigo_dialect_directions", directions }, { "phd2_dialect_directions", directions }, { "wrong_identity", identity_failure }, { "silent_identity", identity_failure }, { "reconnect", reconnect } };
+	const char *profiles[] = { "indigo", "phd2", "wrong-identity", "silent", "indigo" };
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	int failures = 0;
+	for (int i = 0; i < ARRAY_SIZE(tests); i++) {
+		const char *args[] = { "--profile", profiles[i], NULL };
+		if (!start_external_serial_simulator_with_args(&simulator, "build/integration/guider_cgusbst4_simulator", args)) { return 1; }
+		fflush(NULL);
+		pid_t child = fork();
+		if (child == 0) { alarm(20); _exit(indigo_run_tests("CG-USB-ST4 PTY", tests + i, 1)); }
+		int status = 0;
+		pid_t waited;
+		do { waited = waitpid(child, &status, 0); } while (waited < 0 && errno == EINTR);
+		char path[PATH_MAX];
+		snprintf(path, sizeof(path), "%s.events", simulator.ready_file);
+		unlink(path);
+		stop_external_serial_simulator(&simulator);
+		if (child < 0 || waited < 0 || !WIFEXITED(status) || WEXITSTATUS(status)) { failures++; printf("FAIL %s (status %d)\n", tests[i].name, status); }
+	}
+	printf("CG-USB-ST4: %d failing scenarios\n", failures);
+	return failures ? 1 : 0;
+}

@@ -1,0 +1,114 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// All rights reserved.
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+#include <string.h>
+#include <time.h>
+#include "guider_asi_fake_sdk.h"
+atomic_int asi_present = 1, asi_attached, asi_opened, asi_closed, asi_invalid_io;
+atomic_int asi_fail_open, asi_fail_on, asi_fail_off, asi_fail_products, asi_fail_register;
+atomic_int asi_relays;
+double asi_on_time[4], asi_off_time[4];
+static libusb_hotplug_callback_fn hotplug;
+static bool opened;
+static int usb_token;
+
+static double now(void) {
+	struct timespec t;
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	return t.tv_sec + t.tv_nsec / 1e9;
+}
+
+int USB2ST4GetNum(void) { return asi_present; }
+
+int USB2ST4GetProductIDs(int *ids) {
+	if (atomic_exchange(&asi_fail_products, 0)) { return 0; }
+	if (ids) { ids[0] = 0x100; }
+	return 1;
+}
+
+USB2ST4_ERROR_CODE USB2ST4GetID(int index, int *id) {
+	if (index != 0 || !asi_present) { return USB2ST4_ERROR_INVALID_INDEX; }
+	*id = 7;
+	return USB2ST4_SUCCESS;
+}
+
+USB2ST4_ERROR_CODE USB2ST4IsOpened(int id) {
+	if (id != 7) { return USB2ST4_ERROR_INVALID_ID; }
+	if (!asi_present) { return USB2ST4_ERROR_REMOVED; }
+	return opened ? USB2ST4_SUCCESS : USB2ST4_ERROR_CLOSED;
+}
+
+USB2ST4_ERROR_CODE USB2ST4Open(int id) {
+	if (id != 7) { return USB2ST4_ERROR_INVALID_ID; }
+	if (!asi_present) { return USB2ST4_ERROR_REMOVED; }
+	if (atomic_exchange(&asi_fail_open, 0)) { return USB2ST4_ERROR_GENERAL_ERROR; }
+	opened = true;
+	asi_opened++;
+	return USB2ST4_SUCCESS;
+}
+
+USB2ST4_ERROR_CODE USB2ST4Close(int id) {
+	if (id != 7) { return USB2ST4_ERROR_INVALID_ID; }
+	opened = false;
+	asi_closed++;
+	return USB2ST4_SUCCESS;
+}
+
+USB2ST4_ERROR_CODE USB2ST4PulseGuide(int id, USB2ST4_DIRECTION direction, bool set) {
+	USB2ST4_ERROR_CODE result = USB2ST4IsOpened(id);
+	if (result) { asi_invalid_io++; return result; }
+	if (direction < USB2ST4_NORTH || direction > USB2ST4_WEST) { return USB2ST4_ERROR_INVALID_VALUE; }
+	if (atomic_exchange(set ? &asi_fail_on : &asi_fail_off, 0)) { return USB2ST4_ERROR_GENERAL_ERROR; }
+	int bit = 1 << direction;
+	if (set) {
+		asi_on_time[direction] = now();
+		atomic_fetch_or(&asi_relays, bit);
+	} else {
+		if (asi_relays & bit) { asi_off_time[direction] = now(); }
+		atomic_fetch_and(&asi_relays, ~bit);
+	}
+	return USB2ST4_SUCCESS;
+}
+
+void asi_test_usb_start(void) { }
+
+int LIBUSB_CALL asi_test_usb_descriptor(libusb_device *device, struct libusb_device_descriptor *descriptor) {
+	memset(descriptor, 0, sizeof(*descriptor));
+	descriptor->idVendor = 0x03c3;
+	descriptor->idProduct = 0x100;
+	return 0;
+}
+
+void asi_fake_arrival(void) {
+	if (hotplug) { hotplug(NULL, (libusb_device *)&usb_token, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL); }
+}
+
+void asi_fake_removal(void) {
+	asi_present = 0;
+	if (hotplug) { hotplug(NULL, (libusb_device *)&usb_token, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL); }
+}
+
+int LIBUSB_CALL asi_test_usb_register(libusb_context *ctx, int events, int flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) {
+	if (atomic_exchange(&asi_fail_register, 0)) { return LIBUSB_ERROR_OTHER; }
+	hotplug = callback;
+	*handle = 1;
+	if (flags & LIBUSB_HOTPLUG_ENUMERATE) { asi_fake_arrival(); }
+	return 0;
+}
+
+void LIBUSB_CALL asi_test_usb_deregister(libusb_context *ctx, libusb_hotplug_callback_handle handle) {
+	hotplug = NULL;
+}
+
+indigo_result asi_test_attach(indigo_device *device) {
+	indigo_result result = indigo_attach_device(device);
+	if (result == INDIGO_OK) { asi_attached++; }
+	return result;
+}
+
+indigo_result asi_test_detach(indigo_device *device) {
+	indigo_result result = indigo_detach_device(device);
+	if (result == INDIGO_OK) { asi_attached--; }
+	return result;
+}

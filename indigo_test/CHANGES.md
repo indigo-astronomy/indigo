@@ -16,7 +16,7 @@ The inventory merges the earlier CCD and non-CCD audits and incorporates their r
 - **No tests**: no dedicated automated driver target was found in `indigo_test/`; coverage is not established.
 - **Shared**: a ToupTek OEM wrapper follows the shared implementation's coverage. Per the agreed scope, no separate OEM audit is required; this does not claim its vendor binary was tested by the fake ToupTek build.
 
-Inventory: 150 modules — 2 Complete, 35 Partial, 55 Not audited, 48 No tests, 10 Shared.
+Inventory: 150 modules — 2 Complete, 36 Partial, 55 Not audited, 47 No tests, 10 Shared.
 
 | Driver | Implementation | Automated test boundary | Coverage status | Recorded validation / remaining work |
 | --- | --- | --- | --- | --- |
@@ -133,8 +133,8 @@ Inventory: 150 modules — 2 Complete, 35 Partial, 55 Not audited, 48 No tests, 
 | `gps_gpsd` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `gps_nmea` | Generated | PTY/protocol simulator, Fake transport | Partial | New fake transport covers short/malformed/checksum/oversized-token input, finite numeric validation, all eight source selections, fix transitions, DOP/satellite counts, coordinate/time conversion, UTC rollover, open/read loss and reconnect. PTY baseline also passes; remaining mixed-source/partial-input audit in progress. |
 | `gps_simulator` | Generated | Direct bus | Partial | Metadata/properties and no-fix → 2D → 3D, coordinate/time/DOP output, advanced visibility, polling cancellation and reconnect reset pass. No transport/parser/failure injection boundary exists in this simulator. Full applicable-standard audit is not recorded as complete. |
-| `guider_asi` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `guider_cgusbst4` | Generated | Fake transport | Partial | New fake transport: lifecycle, four directions, delayed reset and command error pass; replacement/timing audit in progress |
+| `guider_asi` | Hand-written | Vendor-header-based fake SDK | Partial | 3/9 scenarios pass; six failures reproduce DRV-090–DRV-094. macOS runs supported x86_64 driver via Rosetta. Multi-device and full timing coverage remain. |
+| `guider_cgusbst4` | Generated | PTY protocol simulator + existing fake transport | Partial | PTY: 4/5 scenarios pass. Explicit INDIGO dialect works; numeric PHD2 dialect rejects emitted commands (DRV-095, protocol confirmation needed). Replacement/timing audit remains. |
 | `guider_gpusb` | Generated | Fake USB/SDK | Partial | New fake SDK: lifecycle failures, four directions, cross-axis pulses, reversal, zero stop and active removal pass; failed-replacement preservation and single-write zero-stop regressions pass; timing/capacity audit pending |
 | `mount_asi` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `mount_ioptron` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
@@ -663,3 +663,9 @@ Added standalone PTY simulators for `aux_cloudwatcher` and `aux_mgbox`, and a lo
 [Protocol sources, exact targets, fixture assumptions and remaining coverage](AUX_PROTOCOL_TESTS.md) distinguish manufacturer documentation from supplementary driver/existing simulator information. The existing Dragonfly Perl simulator was consulted for undocumented reply forms. Tests intentionally report current failures rather than treating bugs as expected passes.
 
 Validation on macOS arm64: universal arm64/x86_64 test builds succeeded; 15 ordinary scenarios ran (9 pass, 6 fail). Four additional selected driver-instrumented AddressSanitizer scenarios reproduce CloudWatcher timeout underflow, Dragonfly UDP overflow and both MGBox truncated-message crashes. The framework library remains uninstrumented. See open `DRV-085`–`DRV-089` in `indigo_drivers/REVIEW.md`. These are partial coverage results, not hardware validation or full-standard completion.
+
+## Guider simulator/SDK follow-up (2026-09-09)
+
+Added `test_guider_asi_sdk` against the bundled vendor SDK contract and a standalone `guider_cgusbst4_simulator` with real-PTY integration tests. Re-ran the existing GPUSB fake SDK suite. New files are referenced in Xcode. Production `.c`/`.driver` sources and the generator were not changed.
+
+[Protocol evidence, simulator profiles, run commands and remaining coverage](GUIDER_PROTOCOL_TESTS.md). ASI: 3/9 pass, six failing scenarios reproduce five bugs. CG-USB-ST4: 4/5 pass; remaining scenario establishes a dialect discrepancy pending manufacturer confirmation. GPUSB: all four existing groups pass. Findings `DRV-090`–`DRV-095` are Open in `indigo_drivers/REVIEW.md`; the folder's reviewed range was updated without advancing its baseline. macOS ASI validation uses x86_64/Rosetta because the driver does not implement the native arm64 branch.

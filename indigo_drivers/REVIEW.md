@@ -122,6 +122,13 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-088 | High | `aux_mgbox/indigo_aux_mgbox.c:204` | Truncated checksummed NMEA sentences dereference missing fields in GPS and weather parsing. | Open |
 | DRV-089 | High | `aux_mgbox/indigo_aux_mgbox.c:195` | Pointer handles are tested as integer descriptors; failed open and last disconnect do not complete correctly. | Open |
 
+| DRV-090 | High | `guider_asi/indigo_guider_asi.c:266` | SDK pulse start/stop errors are ignored in property state and completion. | Open |
+| DRV-091 | High | `guider_asi/indigo_guider_asi.c:273` | Reversing a running pulse enables the opposite relay without disabling the original direction. | Open |
+| DRV-092 | High | `guider_asi/indigo_guider_asi.c:259` | A zero-duration replacement cancels the stop timer but never switches off the active relay. | Open |
+| DRV-093 | Medium | `guider_asi/indigo_guider_asi.c:522` | Failed hot-plug registration leaves INIT recorded as successful, so retry skips registration. | Open |
+| DRV-094 | High | `guider_asi/indigo_guider_asi.c:472` | An already scheduled arrival callback can attach a device after SHUTDOWN returns. | Open |
+| DRV-095 | Medium | `guider_cgusbst4/indigo_guider_cgusbst4.driver:110` | Direction encoding differs from upstream PHD2 (letters versus digits); device-protocol compatibility needs confirmation. | Open (protocol confirmation needed) |
+
 ## Finding Summaries
 
 ### DRV-001 (Closed — fixed)
@@ -890,6 +897,32 @@ In `aag_command()`, a 15-second timeout with zero bytes leaves `index == 0`; the
 
 `mgbox_open()` tests the pointer returned by `indigo_uni_open_serial_with_speed()` with `>= 0` (line 431), and `data_refresh_callback()` uses the same comparison in its loop (line 195). A NULL handle therefore still takes the success/reader path. Last close first clears the handle and then waits for that reader (lines 473–475), which does not exit on a cleared pointer. The real-PTY `normal` and `gps_readings` cases pass their data assertions but fail disconnect/shutdown, leaving the driver attached. The nonexistent-port case fails to reach a disconnected ALERT state within the bounded wait. Source and compiled-driver tests agree; no production fix was applied.
 
+### DRV-090 (Open)
+
+The vendor's `USB2ST4_Conv.h` documents error returns for ON and OFF operations. The driver logs failed ON calls but still marks the axis BUSY and schedules successful completion; timer callbacks ignore OFF errors entirely. `start_failure` and `stop_failure` in `test_guider_asi_sdk` inject `USB2ST4_ERROR_GENERAL_ERROR` at the documented SDK boundary. Neither reaches ALERT. In the OFF case the fake SDK retains the asserted relay, while the driver reports completion and clears its private relay state. Confirmed with the unchanged x86_64 driver under Rosetta; no driver fix applied.
+
+### DRV-091 (Open)
+
+The RA replacement branch cancels the old timer, then enables WEST without first disabling EAST. The SDK documents independent per-direction ON/OFF calls, not implicit interlocking. The `reversal` scenario starts EAST for 500 ms and replaces it with WEST for 100 ms: the fake SDK records both bits (12) instead of WEST alone (8). The DEC branch follows the same pattern; the runtime reproducer currently exercises RA. No driver fix applied.
+
+### DRV-092 (Open)
+
+An all-zero RA request cancels the previous completion timer at line 259 and enters neither positive-duration branch. No OFF call or replacement completion is scheduled, and the old private relay flag leaves the property BUSY. The `zero_stop` scenario starts EAST for 500 ms, sends zero and observes the output still asserted after the bounded two-second wait. This is cancellation of a valid active operation, not generic framework numeric validation. No driver fix applied.
+
+### DRV-093 (Open)
+
+`last_action` is set to INIT before hot-plug registration succeeds. After a simulated registration error, a second INIT returns OK through the repeated-action shortcut without registering a callback or discovering the present device. `registration_failure_retry` deliberately retries INIT directly, without an intervening SHUTDOWN that would conceal the problem. No driver fix applied.
+
+### DRV-094 (Open)
+
+Hot-plug arrival schedules `process_plug_event` on an untracked 0.5-second timer. SHUTDOWN unregisters the USB callback and removes the current device array but does not cancel or join already scheduled work. `shutdown_pending_arrival` performs INIT followed immediately by SHUTDOWN; after 800 ms the previously scheduled callback has attached one device. The bus cannot stop because that device remains attached. The test uses the real framework timer, not a replacement scheduler. No driver fix applied.
+
+### DRV-095 (Open — protocol confirmation needed)
+
+The standalone PTY simulator exposes an independently sourced compatibility discrepancy: upstream PHD2 `src/scope_GC_USBST4.cpp` at commit `c406cf2b2de51cbb7e3ed76165c9accf33edad2d`, lines 108–117, sends `:Mg0`, `:Mg1`, `:Mg2`, `:Mg3` for NORTH/SOUTH/EAST/WEST; INDIGO sends `:Mgn`, `:Mgs`, `:Mge`, `:Mgw`. The PHD2-dialect test rejects the letter command even though INDIGO later reports successful timer completion. The explicitly labelled INDIGO-dialect scenario passes all four directions over real I/O.
+
+This is **not yet proof of a hardware bug**: the manufacturer's historical product/protocol page was unavailable, and firmware may accept both encodings. The simulator does not silently treat INDIGO as the protocol authority. Manufacturer documentation or a device trace is needed to resolve dialect support; no hardware test or driver change was made.
+
 ## Review Focus
 
 - Driver lifecycle: `INDIGO_DRIVER_INIT`, `INDIGO_DRIVER_SHUTDOWN`, and `INDIGO_DRIVER_INFO`.
@@ -933,3 +966,5 @@ In `aag_command()`, a 15-second timeout with zero bytes leaves `index == 0`; the
 | `84298256404b3aee1028d29ce152233ffd8afe2e` | working tree | 2026-09-09 | Follow-up over the changed driver definitions and corresponding generated handlers for redundant framework validation, BUSY guards, cancellation and property updates; recorded and closed `DRV-083` and `DRV-084`. Relevant regressions and the complete project build passed. Folder baseline unchanged. |
 
 | `e29626f7da814e4b756c496c6b7bc6ab98328baa` | working tree | 2026-09-09 | Scoped protocol-documentation and runtime review of `aux_cloudwatcher`, `aux_dragonfly` and `aux_mgbox` only. Added standalone PTY/UDP tests; recorded open `DRV-085`–`DRV-089`, including driver-instrumented ASan reproducers. Production drivers unchanged; folder baseline not advanced. |
+
+| `f8713fa21` | working tree | 2026-09-09 | Scoped guider pass: unchanged ASI driver with vendor-header-based fake SDK on x86_64/Rosetta; CG-USB-ST4 standalone PTY and explicit PHD2/INDIGO dialect profiles; existing GPUSB fake SDK regression suite. Recorded `DRV-090`–`DRV-094` as reproduced bugs and `DRV-095` as an unresolved protocol discrepancy. No production source changes; folder baseline unchanged. |

@@ -31,7 +31,9 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_timer \
 	$(UNIT_BUILD)/test_token \
 	$(UNIT_BUILD)/test_raw_image
-INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_aux_cloudwatcher_simulator \
+INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_guider_asi_sdk \
+	$(INTEGRATION_BUILD)/test_guider_cgusbst4_simulator \
+	$(INTEGRATION_BUILD)/test_aux_cloudwatcher_simulator \
 	$(INTEGRATION_BUILD)/test_aux_mgbox_simulator \
 	$(INTEGRATION_BUILD)/test_aux_skyalert_transport \
 	$(INTEGRATION_BUILD)/test_aux_sqm_transport \
@@ -998,3 +1000,26 @@ $(INTEGRATION_BUILD)/test_aux_mgbox_simulator_asan: integration/test_aux_mgbox_s
 # Instrument the unchanged driver itself, not only the test executable.
 $(INTEGRATION_BUILD)/test_aux_dragonfly_simulator_asan: integration/test_aux_dragonfly_simulator.c ../indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.c integration/aux_test_isolation.h $(INTEGRATION_BUILD)/aux_dragonfly_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.c $(TEST_LDFLAGS)
+
+# The production ASI USB-ST4 implementation excludes macOS arm64. Test its
+# supported x86_64 branch unchanged (Rosetta is required on Apple Silicon).
+ASI_ST4_TEST_CFLAGS = $(TEST_CFLAGS)
+ASI_ST4_TEST_LDFLAGS = $(TEST_LDFLAGS)
+ifeq ($(OS_DETECTED),Darwin)
+ASI_ST4_TEST_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch x86_64
+ASI_ST4_TEST_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch x86_64
+endif
+ASI_ST4_INCLUDE = -I../indigo_drivers/guider_asi/bin_externals/libusb2st4conv/include
+ASI_ST4_REPLACEMENTS = -Dindigo_start_usb_event_handler=asi_test_usb_start -Dlibusb_hotplug_register_callback=asi_test_usb_register -Dlibusb_hotplug_deregister_callback=asi_test_usb_deregister -Dlibusb_get_device_descriptor=asi_test_usb_descriptor -Dindigo_attach_device=asi_test_attach -Dindigo_detach_device=asi_test_detach
+
+$(INTEGRATION_BUILD)/guider_asi_sdk_driver.o: ../indigo_drivers/guider_asi/indigo_guider_asi.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(ASI_ST4_TEST_CFLAGS) $(ASI_ST4_INCLUDE) $(ASI_ST4_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_guider_asi_sdk: integration/test_guider_asi_sdk.c integration/guider_asi_fake_sdk.c integration/guider_asi_fake_sdk.h integration/simulator_test_common.h integration/serial_simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/guider_asi_sdk_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(ASI_ST4_TEST_CFLAGS) $(ASI_ST4_INCLUDE) $< integration/guider_asi_fake_sdk.c $(INTEGRATION_BUILD)/guider_asi_sdk_driver.o -o $@ $(ASI_ST4_TEST_LDFLAGS) -lusb-1.0
+
+$(INTEGRATION_BUILD)/guider_cgusbst4_simulator: ../indigo_drivers/guider_cgusbst4/guider_cgusbst4_simulator/guider_cgusbst4_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
+$(INTEGRATION_BUILD)/test_guider_cgusbst4_simulator: integration/test_guider_cgusbst4_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/guider_cgusbst4_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $< $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a -o $@ $(TEST_LDFLAGS)

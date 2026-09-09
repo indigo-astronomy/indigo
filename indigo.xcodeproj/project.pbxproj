@@ -2496,6 +2496,7 @@
 		59910A363051619300FB1C2F /* aux_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_dragonfly_simulator.c; sourceTree = "<group>"; };
 		59910A38305161AC00FB1C2F /* aux_mgbox_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_mgbox_simulator.c; sourceTree = "<group>"; };
 		59910A3A305161C300FB1C2F /* aux_cloudwatcher_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_cloudwatcher_simulator.c; sourceTree = "<group>"; };
+		59910A3C305193A900FB1C2F /* guider_cgusbst4_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = guider_cgusbst4_simulator.c; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -5287,6 +5288,11 @@
 		E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_usb_outputs.c; sourceTree = "<group>"; };
 		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
 		FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_simulator_common.h; sourceTree = "<group>"; };
+		495A566C181A324158DFFE61 /* guider_asi_fake_sdk.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = guider_asi_fake_sdk.h; sourceTree = "<group>"; };
+		18D7D7F83C442B03B36C6AD3 /* guider_asi_fake_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = guider_asi_fake_sdk.c; sourceTree = "<group>"; };
+		6690353AF13CB11838BACF0D /* test_guider_asi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_guider_asi_sdk.c; sourceTree = "<group>"; };
+		0CA600C37EE2C1F0D8525286 /* test_guider_cgusbst4_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_guider_cgusbst4_simulator.c; sourceTree = "<group>"; };
+		AE40B795C70DAF4681031572 /* GUIDER_PROTOCOL_TESTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDER_PROTOCOL_TESTS.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -6452,6 +6458,7 @@
 				59FA7BE4301D2E9700A35CFB /* AGENTS.md */,
 				59FA7C0B301DCEA000A35CFB /* DRIVER_TESTING_RULES.md */,
 				960DE6F8A0B4DE3F515D5727 /* AUX_PROTOCOL_TESTS.md */,
+				AE40B795C70DAF4681031572 /* GUIDER_PROTOCOL_TESTS.md */,
 				59FA7BE5301D34C300A35CFB /* CHANGES.md */,
 				59FA7BEA301D360C00A35CFB /* Makefile */,
 				59FA7BEB301D360C00A35CFB /* test_runner.h */,
@@ -8271,6 +8278,14 @@
 				59910A3A305161C300FB1C2F /* aux_cloudwatcher_simulator.c */,
 			);
 			path = aux_cloudwatcher_simulator;
+			sourceTree = "<group>";
+		};
+		59910A3D305193A900FB1C2F /* guider_cgusbst4_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59910A3C305193A900FB1C2F /* guider_cgusbst4_simulator.c */,
+			);
+			path = guider_cgusbst4_simulator;
 			sourceTree = "<group>";
 		};
 		5992F7B01E1EC84B0035242E /* ccd_fli */ = {
@@ -13349,6 +13364,10 @@
 				C8683D8A00D36FB4420DE7FD /* test_aux_dragonfly_simulator.c */,
 				9B2B121EFA1F4F77BCDD8053 /* test_aux_mgbox_simulator.c */,
 				2D7262A5A6EB6D2BF8614DCA /* aux_test_isolation.h */,
+				495A566C181A324158DFFE61 /* guider_asi_fake_sdk.h */,
+				18D7D7F83C442B03B36C6AD3 /* guider_asi_fake_sdk.c */,
+				6690353AF13CB11838BACF0D /* test_guider_asi_sdk.c */,
+				0CA600C37EE2C1F0D8525286 /* test_guider_cgusbst4_simulator.c */,
 				59FA7BF6301D3F5A00A35CFB /* simulator_test_common.h */,
 				59FEFFC6301E6891007FB62D /* serial_simulator_test_common.h */,
 				5907ACD6301E84A90009AA99 /* test_wheel_xagyl_simulator.c */,
@@ -14873,6 +14892,7 @@
 				9DAD523921258801002FCC79 /* indigo_guider_cgusbst4.c */,
 				9DAD523821258801002FCC79 /* indigo_guider_cgusbst4_main.c */,
 				59E9D55D2DBD48E000D1534A /* indigo_guider_cgusbst4.driver */,
+				59910A3D305193A900FB1C2F /* guider_cgusbst4_simulator */,
 			);
 			path = guider_cgusbst4;
 			sourceTree = "<group>";
