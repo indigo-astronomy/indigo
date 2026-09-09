@@ -22,7 +22,7 @@ driver sx {
 	label = "Starlight Xpress Filter Wheel";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 4;
+	version = 5;
 	hid {
 		hotplug = true;
 		vid = SX_VENDOR_ID;
@@ -34,7 +34,7 @@ driver sx {
 		#define SX_PRODUCT_ID	0x0920
 	}
 	data {
-		int current_slot, target_slot;
+		int current_slot, target_slot, motion_polls;
 		int count;
 	}
 	code {
@@ -47,16 +47,23 @@ driver sx {
 			if (indigo_uni_read(PRIVATE_DATA->handle, buf, 2) != 2) {
 				return false;
 			}
-			PRIVATE_DATA->current_slot = buf[0];
-			PRIVATE_DATA->count = buf[1];
+			int count = (unsigned char)buf[1];
+			int slot = (unsigned char)buf[0];
+			if (count < 1 || count > WHEEL_SLOT_NAME_PROPERTY->allocated_count || slot > count) {
+				return false;
+			}
+			PRIVATE_DATA->current_slot = slot;
+			PRIVATE_DATA->count = count;
 			return true;
 		}
 
 		static bool sx_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_uni_open_hid(SX_VENDOR_ID, SX_PRODUCT_ID, INDIGO_LOG_DEBUG | BINARY_LOG);
 			if (PRIVATE_DATA->handle != NULL) {
-				sx_message(device, 0, 0);
-				return true;
+				if (sx_message(device, 0, 0) && PRIVATE_DATA->current_slot > 0) {
+					return true;
+				}
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 			return false;
 		}
@@ -71,13 +78,22 @@ driver sx {
 		name = "SX Filter Wheel";
 		code {
 			static void wheel_move_finalizer(indigo_device *device) {
-				sx_message(device, 0, 0);
-				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-				if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
-					INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+				if (!sx_message(device, 0, 0)) {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+					if (PRIVATE_DATA->current_slot > 0) {
+						WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+					}
+					if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
+						WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+					} else if (--PRIVATE_DATA->motion_polls <= 0) {
+						WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+					} else {
+						WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+					}
 				}
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 			}
 		}
 		// on_timer { }
@@ -90,16 +106,22 @@ driver sx {
 		// on_attach { }
 		// on_detach { }
 		inherited WHEEL_SLOT {
+			preserve_values = true;
 			on_change {
-				if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
-					INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+				double requested = WHEEL_SLOT_ITEM->number.target;
+				if (requested == PRIVATE_DATA->current_slot) {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
-					PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
-					sx_message(device, 0x80 + PRIVATE_DATA->target_slot, 0);
-					WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+					PRIVATE_DATA->target_slot = requested;
+					if (sx_message(device, 0x80 + PRIVATE_DATA->target_slot, 0)) {
+						PRIVATE_DATA->motion_polls = 120;
+						WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+					} else {
+						WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
 				}
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 			}
 			// on_attach { }
 			// on_detach { }
