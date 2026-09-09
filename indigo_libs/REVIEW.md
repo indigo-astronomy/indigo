@@ -21,6 +21,7 @@ Core INDIGO library code, including the bus, timers, protocol adapters, base dri
 | LIB-004 | Medium | `indigo_timer.c:253` | The child reset dropped the live registry without clearing inherited public timer slots or device timer lists. The child fork handler now discards inherited timers by clearing both forms of ownership before resetting the registry. | Closed (fixed) |
 | LIB-005 | Medium | `indigo_timer.c:578` | `indigo_reschedule_timer_with_callback()` changed only the callback pointer. It now explicitly discards a prior data payload and changes the timer to the plain callback form before dispatch. | Closed (fixed) |
 | LIB-006 | Medium | `indigo_timer.c:753` | Queue dispatch initialized priority selection to `-1`. Runnable negative-priority tasks were never dequeued, leaving the worker in a busy loop. Selection now initializes from the first due task, so the complete signed `int` priority domain is supported. | Closed (fixed) |
+| LIB-007 | Medium | `indigo_bus.c:indigo_property_copy_values`, `indigo_property_copy_targets` | Range comparisons did not reject NaN. | Closed (fixed) |
 
 ## Finding Summaries
 
@@ -115,6 +116,12 @@ priorities. A regression test submits three negative-priority tasks while a
 barrier task holds the worker and verifies execution in descending priority
 order.
 
+### LIB-007 (Closed — fixed)
+
+Range comparisons did not reject NaN. Both copy helpers now handle non-finite requests centrally: they retain the affected item's accepted value/target and continue copying other valid items. Finite values retain existing min/max clamping. This replaces redundant driver input validation.
+
+Validation: NaN/infinity preservation, valid sibling copying and finite clamping unit tests pass.
+
 ## Review Focus
 
 - Memory ownership, allocation, copying, and release paths.
@@ -133,3 +140,4 @@ order.
 | `017ba602857378e4aed489c065c76eacae15924c` | `017ba602857378e4aed489c065c76eacae15924c` | 2026-08-01 | Focused baseline review of timer queue dispatch and selected property helper ownership paths; recorded `LIB-001`. |
 | `d9b39b84e3780dca0c9e7cbb901b63a62586b106` | `afdd54618e5520c4983598c33b662c022962df7c` | 2026-08-18 | Requested review of the last two commits touching shared INDIGO names; recorded `LIB-002`. |
 | `3bf23ba0f062b98ce881c0026da973125d517b8b` | `3fe6337a09e4847d2688389c57c9d533b1cfb387` | 2026-09-04 | Focused deep review of timer/queue reimplementation and its three follow-up review commits. Recorded `LIB-003` through `LIB-006`; this does not advance the subtree-wide review marker. |
+| `84298256404b3aee1028d29ce152233ffd8afe2e` | working tree | 2026-09-09 | Focused review of non-finite numeric input in `indigo_property_copy_values()` and `indigo_property_copy_targets()`; recorded and closed `LIB-007`. Preservation of accepted values/targets, valid sibling copying and finite clamping are covered by passing unit tests; the full unit suite passed. No full-subtree review or baseline advancement. |

@@ -1731,6 +1731,9 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 							indigo_set_text_item_value(property_item, indigo_get_text_item_value(other_item));
 							break;
 						case INDIGO_NUMBER_VECTOR:
+							if (!isfinite(other_item->number.value)) {
+								break;
+							}
 							property_item->number.target = property_item->number.value = other_item->number.value;
 							if (property_item->number.value < property_item->number.min) {
 								property_item->number.target = property_item->number.value = property_item->number.min;
@@ -1773,6 +1776,9 @@ void indigo_property_copy_targets(indigo_property *property, indigo_property *ot
 				for (int j = 0; j < property->count; j++) {
 					indigo_item *property_item = &property->items[j];
 					if (!strcmp(property_item->name, other_item->name)) {
+						if (!isfinite(other_item->number.value)) {
+							break;
+						}
 						property_item->number.target = other_item->number.value;
 						if (property_item->number.target < property_item->number.min) {
 							property_item->number.target = property_item->number.min;
