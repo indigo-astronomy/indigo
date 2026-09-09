@@ -2501,6 +2501,8 @@
 		59910A3A305161C300FB1C2F /* aux_cloudwatcher_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_cloudwatcher_simulator.c; sourceTree = "<group>"; };
 		59910A3C305193A900FB1C2F /* guider_cgusbst4_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = guider_cgusbst4_simulator.c; sourceTree = "<group>"; };
 		59910A3E3051D26800FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		59910A3F3051FD6200FB1C2F /* indigo_focuser_prodigy.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_prodigy.driver; sourceTree = "<group>"; };
+		59910A403051FD6200FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -13857,9 +13859,11 @@
 			isa = PBXGroup;
 			children = (
 				9D3E906F28995B140093C9EB /* README.md */,
+				59910A403051FD6200FB1C2F /* REFACTOR.md */,
 				9D3E907128995B140093C9EB /* indigo_focuser_prodigy.h */,
 				9D3E906D28995B140093C9EB /* indigo_focuser_prodigy.c */,
 				9D3E906E28995B140093C9EB /* indigo_focuser_prodigy_main.c */,
+				59910A3F3051FD6200FB1C2F /* indigo_focuser_prodigy.driver */,
 				9D3E907028995B140093C9EB /* ProdigyMF-Serial-Command-Table.pdf */,
 				9D3E906C28995B140093C9EB /* 99-indigo_focuser_prodigy.rules */,
 				9D3E907228995B140093C9EB /* focuser_prodigy_simulator */,

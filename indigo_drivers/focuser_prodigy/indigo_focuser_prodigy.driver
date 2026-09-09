@@ -1,0 +1,544 @@
+// Copyright (c) 2022-2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Refactored by OpenAI Codex, 2026.
+
+driver prodigy {
+	label = "PegasusAstro Prodigy Microfocuser";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2022-2026 CloudMakers, s. r. o.";
+	version = 3;
+	serial;
+	include {
+		#include <stdarg.h>
+		#include <errno.h>
+		#include <math.h>
+		#include <ctype.h>
+	}
+	data {
+		char response[128];
+		int position, moving, speed, backlash, last_position, stalled, reboot_attempts;
+		bool active, parking, uncertain, rebooting;
+		bool outlets[4];
+	}
+	code {
+		static bool prodigy_command(indigo_device *device, bool reply, const char *command, ...) {
+			long result = indigo_uni_discard(PRIVATE_DATA->handle);
+			if (result >= 0) {
+				va_list args;
+				va_start(args, command);
+				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
+				va_end(args);
+			}
+			if (result <= 0) {
+				return false;
+			}
+			if (!reply) {
+				return true;
+			}
+			// Keep the terminator to distinguish a complete line from timeout/truncation.
+			long count = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r", INDIGO_DELAY(1), INDIGO_DELAY(0.1));
+			if (count <= 1 || PRIVATE_DATA->response[count - 1] != '\n' || (long)strlen(PRIVATE_DATA->response) != count) {
+				return false;
+			}
+			PRIVATE_DATA->response[count - 1] = 0;
+			return true;
+		}
+
+		static bool prodigy_number(const char *text, double min, double max, double *value, bool integer) {
+			if (!text || !*text || isspace((unsigned char)*text)) {
+				return false;
+			}
+			char *end;
+			errno = 0;
+			*value = strtod(text, &end);
+			return !errno && !*end && isfinite(*value) && *value >= min && *value <= max && (!integer || floor(*value) == *value);
+		}
+
+		static bool prodigy_version(const char *text) {
+			const char *dot = strchr(text, '.');
+			return dot && dot != text && dot[1] && strspn(text, "0123456789") == (size_t)(dot - text) && strspn(dot + 1, "0123456789") == strlen(dot + 1);
+		}
+
+		static bool prodigy_echo(indigo_device *device, const char *command, const char *reply) {
+			return prodigy_command(device, true, "%s", command) && !strcmp(PRIVATE_DATA->response, reply ? reply : command);
+		}
+
+		static bool prodigy_set(indigo_device *device, char command, int value) {
+			double actual;
+			return prodigy_command(device, true, "%c:%d", command, value) && PRIVATE_DATA->response[0] == command && PRIVATE_DATA->response[1] == ':' && prodigy_number(PRIVATE_DATA->response + 2, value, value, &actual, true);
+		}
+
+		static bool prodigy_status(indigo_device *device) {
+			double position, moving;
+			if (!prodigy_command(device, true, "P") || !prodigy_number(PRIVATE_DATA->response, -999999, 999999, &position, true) || !prodigy_command(device, true, "I") || !prodigy_number(PRIVATE_DATA->response, 0, 1, &moving, true)) {
+				return false;
+			}
+			PRIVATE_DATA->position = (int)position;
+			PRIVATE_DATA->moving = (int)moving;
+			return true;
+		}
+
+		static bool prodigy_ports(indigo_device *device) {
+			if (!prodigy_command(device, true, "D") || strlen(PRIVATE_DATA->response) != 9 || PRIVATE_DATA->response[0] != 'D') {
+				return false;
+			}
+			for (int i = 0; i < 4; i++) {
+				if (PRIVATE_DATA->response[2 * i + 1] != ':' || (PRIVATE_DATA->response[2 * i + 2] != '0' && PRIVATE_DATA->response[2 * i + 2] != '1')) {
+					return false;
+				}
+			}
+			for (int i = 0; i < 4; i++) {
+				PRIVATE_DATA->outlets[i] = PRIVATE_DATA->response[2 * i + 2] == '1';
+			}
+			return true;
+		}
+
+		static bool prodigy_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle && prodigy_echo(device, "#", "OK_PRDG")) {
+				PRIVATE_DATA->uncertain = PRIVATE_DATA->rebooting = false;
+				return true;
+			}
+			indigo_uni_close(&PRIVATE_DATA->handle);
+			return false;
+		}
+
+		static void prodigy_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+	}
+	focuser {
+		name = "Pegasus Prodigy Focuser";
+		additional_instances = true;
+		code {
+			static void prodigy_motion_state(indigo_device *device, indigo_property_state state) {
+				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->position;
+				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = state;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				if (PRIVATE_DATA->parking) {
+					X_FOCUSER_PARK_PROPERTY->state = state;
+					indigo_update_property(device, X_FOCUSER_PARK_PROPERTY, NULL);
+					if (state != INDIGO_BUSY_STATE) {
+						PRIVATE_DATA->parking = false;
+					}
+				}
+			}
+
+			static void motion_finalizer(indigo_device *device) {
+				if (!IS_CONNECTED || !PRIVATE_DATA->active) {
+					return;
+				}
+				if (!prodigy_status(device) || (PRIVATE_DATA->moving && ++PRIVATE_DATA->stalled >= 100) || (!PRIVATE_DATA->moving && PRIVATE_DATA->position != (int)FOCUSER_POSITION_ITEM->number.target)) {
+					PRIVATE_DATA->active = false;
+					PRIVATE_DATA->uncertain = true;
+					prodigy_echo(device, "H", "0");
+					prodigy_motion_state(device, INDIGO_ALERT_STATE);
+					return;
+				}
+				if (PRIVATE_DATA->last_position != PRIVATE_DATA->position) {
+					PRIVATE_DATA->last_position = PRIVATE_DATA->position;
+					PRIVATE_DATA->stalled = 0;
+				}
+				PRIVATE_DATA->active = PRIVATE_DATA->moving != 0;
+				prodigy_motion_state(device, PRIVATE_DATA->active ? INDIGO_BUSY_STATE : INDIGO_OK_STATE);
+				if (PRIVATE_DATA->active) {
+					indigo_execute_handler_in(device, 0.1, motion_finalizer);
+				}
+			}
+
+			static bool prodigy_start(indigo_device *device, int target, bool relative, bool park) {
+				if (PRIVATE_DATA->active || PRIVATE_DATA->moving || PRIVATE_DATA->uncertain || PRIVATE_DATA->rebooting) {
+					return false;
+				}
+				if (park && (FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value > 0 || FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value < 0)) {
+					return false;
+				}
+				target = (int)fmax(FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value, fmin(FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value, target));
+				FOCUSER_POSITION_ITEM->number.target = target;
+				if (!park && target == PRIVATE_DATA->position) {
+					prodigy_motion_state(device, INDIGO_OK_STATE);
+					return true;
+				}
+				bool accepted = park ? prodigy_echo(device, "Z", "Z:1") : prodigy_set(device, relative ? 'G' : 'M', relative ? target - PRIVATE_DATA->position : target);
+				if (!accepted) {
+					PRIVATE_DATA->uncertain = true;
+					prodigy_echo(device, "H", "0");
+					return false;
+				}
+				PRIVATE_DATA->active = true;
+				PRIVATE_DATA->parking = park;
+				PRIVATE_DATA->stalled = 0;
+				PRIVATE_DATA->last_position = PRIVATE_DATA->position;
+				prodigy_motion_state(device, INDIGO_BUSY_STATE);
+				return true;
+			}
+
+			static void prodigy_ranges(indigo_device *device) {
+				FOCUSER_POSITION_ITEM->number.min = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+				FOCUSER_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+				FOCUSER_STEPS_ITEM->number.max = FOCUSER_POSITION_ITEM->number.max - FOCUSER_POSITION_ITEM->number.min;
+				if (IS_CONNECTED) {
+					indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				}
+			}
+		}
+		on_connect {
+			connection_result = prodigy_command(device, true, "A");
+			char *fields[10], *cursor = PRIVATE_DATA->response;
+			for (int i = 0; i < 10 && connection_result; i++) {
+				fields[i] = cursor;
+				char *colon = strchr(cursor, ':');
+				connection_result = i == 9 ? colon == NULL : colon != NULL;
+				if (colon) {
+					*colon = 0;
+					cursor = colon + 1;
+				}
+			}
+			double values[8] = { 0 };
+			if (connection_result) {
+				connection_result = !strcmp(fields[0], "OK_PRDG") && prodigy_version(fields[1]);
+				for (int i = 2; i < 10 && connection_result; i++) {
+					double min = i == 3 ? -100 : i == 4 ? -999999 : 0;
+					double max = i == 3 ? 100 : i == 4 ? 999999 : i == 9 ? 9999 : 1;
+					connection_result = prodigy_number(fields[i], min, max, values + i - 2, i != 3);
+				}
+			}
+			if (connection_result) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Prodigy Microfocuser");
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, fields[1]);
+				FOCUSER_TEMPERATURE_ITEM->number.value = values[1];
+				PRIVATE_DATA->position = (int)values[2];
+				PRIVATE_DATA->moving = (int)values[3];
+				PRIVATE_DATA->backlash = (int)values[7];
+				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = PRIVATE_DATA->backlash;
+				double speed = 0;
+				connection_result = prodigy_command(device, true, "B") && !strncmp(PRIVATE_DATA->response, "B:", 2) && prodigy_number(PRIVATE_DATA->response + 2, 100, 1000, &speed, true);
+				if (connection_result) {
+					PRIVATE_DATA->speed = (int)speed;
+					FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = speed;
+					FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+					prodigy_ranges(device);
+					prodigy_motion_state(device, PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE);
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+				}
+			}
+		}
+		on_disconnect {
+			if (PRIVATE_DATA->active || PRIVATE_DATA->moving || PRIVATE_DATA->uncertain) {
+				PRIVATE_DATA->uncertain = !(prodigy_echo(device, "H", "0") && prodigy_status(device) && !PRIVATE_DATA->moving);
+			}
+			PRIVATE_DATA->active = PRIVATE_DATA->parking = false;
+		}
+		on_timer {
+			if (!PRIVATE_DATA->rebooting) {
+				double temperature;
+				if (prodigy_command(device, true, "T") && prodigy_number(PRIVATE_DATA->response, -100, 100, &temperature, false)) {
+					FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
+					FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+				if (!PRIVATE_DATA->active && (PRIVATE_DATA->moving || (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE))) {
+					if (prodigy_status(device)) {
+						FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+						prodigy_motion_state(device, PRIVATE_DATA->uncertain ? INDIGO_ALERT_STATE : PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE);
+					} else {
+						prodigy_motion_state(device, INDIGO_ALERT_STATE);
+					}
+				}
+			}
+			indigo_execute_handler_in(device, 1, focuser_timer_callback);
+		}
+		inherited FOCUSER_TEMPERATURE { hidden = false; }
+		inherited FOCUSER_ON_POSITION_SET { hidden = false; }
+		inherited FOCUSER_SPEED {
+			on_attach { FOCUSER_SPEED_ITEM->number.min = 100; FOCUSER_SPEED_ITEM->number.max = 1000; FOCUSER_SPEED_ITEM->number.step = 1; }
+			on_change {
+				int value = (int)FOCUSER_SPEED_ITEM->number.value;
+				double readback;
+				if (!PRIVATE_DATA->rebooting && prodigy_set(device, 'S', value) && prodigy_command(device, true, "B") && !strncmp(PRIVATE_DATA->response, "B:", 2) && prodigy_number(PRIVATE_DATA->response + 2, 100, 1000, &readback, true) && readback == value) {
+					PRIVATE_DATA->speed = value;
+				} else {
+					FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = PRIVATE_DATA->speed;
+			}
+		}
+		inherited FOCUSER_BACKLASH {
+			hidden = false;
+			on_attach { FOCUSER_BACKLASH_ITEM->number.min = 0; FOCUSER_BACKLASH_ITEM->number.max = 9999; FOCUSER_BACKLASH_ITEM->number.step = 1; }
+			on_change {
+				if (!PRIVATE_DATA->rebooting && prodigy_set(device, 'C', (int)FOCUSER_BACKLASH_ITEM->number.value)) {
+					PRIVATE_DATA->backlash = (int)FOCUSER_BACKLASH_ITEM->number.value;
+				} else {
+					FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = PRIVATE_DATA->backlash;
+			}
+		}
+		inherited FOCUSER_LIMITS {
+			hidden = false;
+			preserve_values = true;
+			on_attach {
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = -999999;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 999999;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = -999999;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = 999999;
+			}
+			on_change {
+				if (PRIVATE_DATA->active || PRIVATE_DATA->moving || FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target >= FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target) {
+					FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
+					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+					prodigy_ranges(device);
+				}
+			}
+		}
+		inherited FOCUSER_POSITION {
+			preserve_values = true;
+			on_attach { FOCUSER_POSITION_ITEM->number.min = -999999; FOCUSER_POSITION_ITEM->number.max = 999999; FOCUSER_POSITION_ITEM->number.step = 1; }
+			on_change_request {
+				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Another motion is pending");
+					return INDIGO_OK;
+				}
+			}
+			on_change {
+				if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
+					int target = (int)FOCUSER_POSITION_ITEM->number.target;
+					bool ok = !PRIVATE_DATA->rebooting && !PRIVATE_DATA->uncertain && prodigy_set(device, 'W', target) && prodigy_status(device) && PRIVATE_DATA->position == target && !PRIVATE_DATA->moving;
+					PRIVATE_DATA->uncertain = !ok;
+					prodigy_motion_state(device, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
+				} else if (!prodigy_start(device, (int)FOCUSER_POSITION_ITEM->number.target, false, false)) {
+					prodigy_motion_state(device, INDIGO_ALERT_STATE);
+				} else if (PRIVATE_DATA->active) {
+					indigo_execute_handler_in(device, 0.1, motion_finalizer);
+				}
+			}
+		}
+		inherited FOCUSER_STEPS {
+			on_attach { FOCUSER_STEPS_ITEM->number.min = 0; FOCUSER_STEPS_ITEM->number.max = 1999998; FOCUSER_STEPS_ITEM->number.step = 1; }
+			on_change_request {
+				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Another motion is pending");
+					return INDIGO_OK;
+				}
+			}
+			on_change {
+				int target = PRIVATE_DATA->position + (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1);
+				if (!prodigy_start(device, target, true, false)) {
+					prodigy_motion_state(device, INDIGO_ALERT_STATE);
+				} else if (PRIVATE_DATA->active) {
+					indigo_execute_handler_in(device, 0.1, motion_finalizer);
+				}
+			}
+		}
+		inherited FOCUSER_ABORT_MOTION {
+			on_change {
+				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+				if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+					if (!PRIVATE_DATA->rebooting && prodigy_echo(device, "H", "0") && prodigy_status(device) && !PRIVATE_DATA->moving) {
+						indigo_cancel_pending_handler(device, motion_finalizer);
+						PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
+						if (PRIVATE_DATA->parking) {
+							PRIVATE_DATA->parking = false;
+							X_FOCUSER_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+							indigo_update_property(device, X_FOCUSER_PARK_PROPERTY, "Park aborted");
+						}
+						FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+						prodigy_motion_state(device, INDIGO_OK_STATE);
+					} else {
+						PRIVATE_DATA->uncertain = true;
+						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+				FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+				indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+			}
+		}
+		switch X_FOCUSER_PARK {
+			name = "X_FOCUSER_PARK";
+			group = FOCUSER_MAIN_GROUP;
+			label = "Park";
+			perm = INDIGO_RW_PERM;
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change_request {
+				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_update_property(device, X_FOCUSER_PARK_PROPERTY, "Another motion is pending");
+					return INDIGO_OK;
+				}
+			}
+			on_change {
+				bool requested = X_FOCUSER_PARK_ITEM->sw.value;
+				X_FOCUSER_PARK_ITEM->sw.value = false;
+				if (!requested) {
+					X_FOCUSER_PARK_PROPERTY->state = INDIGO_OK_STATE;
+				} else if (!prodigy_start(device, 0, false, true)) {
+					X_FOCUSER_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					indigo_execute_handler_in(device, 0.1, motion_finalizer);
+				}
+				X_FOCUSER_PARK_ITEM->sw.value = false;
+				indigo_update_property(device, X_FOCUSER_PARK_PROPERTY, NULL);
+			}
+			item X_FOCUSER_PARK { name = "PARK"; label = "Park"; value = false; }
+		}
+	}
+	aux {
+		name = "Pegasus Prodigy Powerbox";
+		interface = INDIGO_INTERFACE_AUX_POWERBOX;
+		code {
+			static void prodigy_publish_ports(indigo_device *device) {
+				AUX_POWER_OUTLET_1_ITEM->sw.value = PRIVATE_DATA->outlets[0];
+				AUX_POWER_OUTLET_2_ITEM->sw.value = PRIVATE_DATA->outlets[1];
+				AUX_USB_PORT_1_ITEM->sw.value = PRIVATE_DATA->outlets[2];
+				AUX_USB_PORT_2_ITEM->sw.value = PRIVATE_DATA->outlets[3];
+				indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+				indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
+			}
+
+			static void reboot_finalizer(indigo_device *device) {
+				if (!IS_CONNECTED || !PRIVATE_DATA->rebooting) {
+					return;
+				}
+				if (prodigy_echo(device, "#", "OK_PRDG") && prodigy_ports(device)) {
+					PRIVATE_DATA->rebooting = false;
+					X_AUX_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
+					prodigy_publish_ports(device);
+				} else if (++PRIVATE_DATA->reboot_attempts >= 10) {
+					PRIVATE_DATA->rebooting = false;
+					PRIVATE_DATA->uncertain = true;
+					X_AUX_REBOOT_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					indigo_execute_handler_in(device, 0.5, reboot_finalizer);
+					return;
+				}
+				indigo_update_property(device, X_AUX_REBOOT_PROPERTY, NULL);
+			}
+		}
+		on_connect {
+			connection_result = !PRIVATE_DATA->rebooting && prodigy_ports(device);
+			if (connection_result) {
+				prodigy_publish_ports(device);
+			}
+		}
+		on_disconnect {
+			PRIVATE_DATA->rebooting = false;
+		}
+		text AUX_OUTLET_NAMES {
+			name = AUX_OUTLET_NAMES_PROPERTY_NAME;
+			group = "Powerbox";
+			label = "Outlet names";
+			perm = INDIGO_RW_PERM;
+			persistent = true;
+			always_defined = true;
+			on_change {
+				INDIGO_COPY_VALUE(AUX_POWER_OUTLET_1_ITEM->label, AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
+				INDIGO_COPY_VALUE(AUX_POWER_OUTLET_2_ITEM->label, AUX_POWER_OUTLET_NAME_2_ITEM->text.value);
+				INDIGO_COPY_VALUE(AUX_USB_PORT_1_ITEM->label, AUX_USB_PORT_NAME_1_ITEM->text.value);
+				INDIGO_COPY_VALUE(AUX_USB_PORT_2_ITEM->label, AUX_USB_PORT_NAME_2_ITEM->text.value);
+				if (IS_CONNECTED) {
+					indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+					indigo_delete_property(device, AUX_USB_PORT_PROPERTY, NULL);
+					indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+					indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
+				}
+			}
+			item AUX_POWER_OUTLET_NAME_1 { name = AUX_POWER_OUTLET_NAME_1_ITEM_NAME; label = "Outlet #1"; value = "Outlet #1"; }
+			item AUX_POWER_OUTLET_NAME_2 { name = AUX_POWER_OUTLET_NAME_2_ITEM_NAME; label = "Outlet #2"; value = "Outlet #2"; }
+			item AUX_USB_PORT_NAME_1 { name = AUX_USB_PORT_NAME_1_ITEM_NAME; label = "Port #1"; value = "Port #1"; }
+			item AUX_USB_PORT_NAME_2 { name = AUX_USB_PORT_NAME_2_ITEM_NAME; label = "Port #2"; value = "Port #2"; }
+		}
+		switch AUX_POWER_OUTLET {
+			name = AUX_POWER_OUTLET_PROPERTY_NAME;
+			group = "Powerbox";
+			label = "Power outlets";
+			perm = INDIGO_RW_PERM;
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				bool first = AUX_POWER_OUTLET_1_ITEM->sw.value, second = AUX_POWER_OUTLET_2_ITEM->sw.value;
+				bool ok = !PRIVATE_DATA->rebooting && prodigy_set(device, 'X', first) && prodigy_set(device, 'Y', second);
+				if (!PRIVATE_DATA->rebooting && prodigy_ports(device)) {
+					ok = ok && PRIVATE_DATA->outlets[0] == first && PRIVATE_DATA->outlets[1] == second;
+				} else {
+					ok = false;
+				}
+				if (!ok) {
+					AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				AUX_POWER_OUTLET_1_ITEM->sw.value = PRIVATE_DATA->outlets[0];
+				AUX_POWER_OUTLET_2_ITEM->sw.value = PRIVATE_DATA->outlets[1];
+			}
+			item AUX_POWER_OUTLET_1 { name = AUX_POWER_OUTLET_1_ITEM_NAME; label = "Outlet #1"; value = false; }
+			item AUX_POWER_OUTLET_2 { name = AUX_POWER_OUTLET_2_ITEM_NAME; label = "Outlet #2"; value = false; }
+		}
+		switch AUX_USB_PORT {
+			name = AUX_USB_PORT_PROPERTY_NAME;
+			group = "Powerbox";
+			label = "USB ports";
+			perm = INDIGO_RW_PERM;
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				bool first = AUX_USB_PORT_1_ITEM->sw.value, second = AUX_USB_PORT_2_ITEM->sw.value;
+				bool ok = !PRIVATE_DATA->rebooting && prodigy_set(device, 'U', first) && prodigy_set(device, 'J', second);
+				if (!PRIVATE_DATA->rebooting && prodigy_ports(device)) {
+					ok = ok && PRIVATE_DATA->outlets[2] == first && PRIVATE_DATA->outlets[3] == second;
+				} else {
+					ok = false;
+				}
+				if (!ok) {
+					AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				AUX_USB_PORT_1_ITEM->sw.value = PRIVATE_DATA->outlets[2];
+				AUX_USB_PORT_2_ITEM->sw.value = PRIVATE_DATA->outlets[3];
+			}
+			item AUX_USB_PORT_1 { name = AUX_USB_PORT_1_ITEM_NAME; label = "Port #1"; value = false; }
+			item AUX_USB_PORT_2 { name = AUX_USB_PORT_2_ITEM_NAME; label = "Port #2"; value = false; }
+		}
+		switch X_AUX_REBOOT {
+			name = "X_AUX_REBOOT";
+			group = "Powerbox";
+			label = "Reboot";
+			perm = INDIGO_RW_PERM;
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				X_AUX_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
+				if (X_AUX_REBOOT_ITEM->sw.value) {
+					if (!PRIVATE_DATA->active && !PRIVATE_DATA->moving && !PRIVATE_DATA->uncertain && prodigy_command(device, false, "Q")) {
+						PRIVATE_DATA->rebooting = true;
+						PRIVATE_DATA->reboot_attempts = 0;
+						X_AUX_REBOOT_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_execute_handler_in(device, 1, reboot_finalizer);
+					} else {
+						X_AUX_REBOOT_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+				X_AUX_REBOOT_ITEM->sw.value = false;
+				indigo_update_property(device, X_AUX_REBOOT_PROPERTY, NULL);
+			}
+			item X_AUX_REBOOT { name = "REBOOT"; label = "Reboot"; value = false; }
+		}
+	}
+}

@@ -54,6 +54,8 @@ Always look for:
 ## C and C++ Conventions
 
 - Never add platform-dependent code to drivers. Use the portable INDIGO APIs, including `indigo_uni_io` for serial data and CTS/RTS control; keep OS-specific implementation in the shared I/O layer.
+- Prefer variadic command helpers for formatted device commands, following the `dmfc_command` pattern: accept a format string and arguments, forward the `va_list` through `indigo_uni_vprintf()` or `indigo_uni_vtprintf()`, and format command parameters at the send point instead of building temporary command strings at each call site. Keep protocol-specific reply requirements explicit.
+- When refactoring serial drivers, prefer `indigo_uni_discard()` for discarding pending input and `indigo_uni_read_section2()` for delimited replies instead of custom drain/read loops. Set explicit first-byte and inter-byte timeouts, reserve space for the terminating NUL, and validate complete reply termination and payload according to the device protocol. Use a custom reader only when a documented protocol requirement cannot be expressed through these APIs.
 - Store the device response/read buffer in the driver private data and reuse it across serialized transactions instead of allocating a separate response array in each helper. Before a nested command reuses that buffer, copy any still-needed decoded values into local scalars or operation state.
 - Prefer C-compatible and portable APIs; the project builds across Linux, macOS, and Windows.
 - Use `static` for file-local functions and globals.

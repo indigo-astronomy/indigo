@@ -788,3 +788,40 @@ Non-applicable: speed, backlash, reversal, automatic compensation, arbitrary Cel
 Reproduce from `indigo_test`: `make build/integration/test_focuser_efa_simulator build/integration/test_focuser_efa_simulator_asan`, then run `./build/integration/test_focuser_efa_simulator`. `EFA_TEST_FILTER` selects name substrings. Targeted ASan filters: `init_`, `poll_`, `calibration_abort`, `calibration_read_failure`, `disconnect`, `instances` (23 distinct cases). `calibration_timeout` intentionally waits for the real deadline and is part of the ordinary full suite. Baseline bad-checksum acceptance and ASan response-buffer overflow were reproduced before migration. The two direct protocol scenarios also probe CTS on the PTY before data exchange: unsupported line status must not latch a data-I/O error. Final validation is recorded in REFACTOR.md.
 
 Final EFA result: 55/55 ordinary and 23/23 targeted driver-instrumented ASan scenarios passed on macOS arm64, including the real calibration deadline. Universal library/driver/test builds and strict O0/O2 driver warning checks for arm64/x86_64 passed. Generation is reproducible and Xcode/Windows project structure validated; Linux, Windows execution and electrical CTS/RTS remain unverified. See REFACTOR.md for intermediate regressions and hardware assumptions.
+
+## Prodigy generated migration (2026-09-09)
+
+Production DSL uses generated master/slave queues and shared serial lifetime, private receive buffer, preferred uniform I/O, motion/park finalizer and reboot finalizer. Protocol fixtures follow the bundled one-page Prodigy serial command table: the second power output is boolean, speed is read via B, and Z is encoder-zero motion. Simulator movement uses shared serial_motion independently of polling. Test parents own PTYs, isolated journals/fault files, forked scenarios and watchdogs; public bus helpers use fresh property revisions and explicitly await momentary-switch reset after the framework's initial BUSY request.
+
+| Applicable behavior | Scenarios |
+| --- | --- |
+| Independent simulator wire/elapsed-time movement/second power output | protocol |
+| Interface/model/settings/visibility, split transport and dotted firmware version | capabilities, split, firmware_minor |
+| GOTO/SYNC/relative signs, measured versus target, zero/no-op, boundaries/local limits | movement, limits |
+| Overlap in both motion entry directions and park rejection while busy | overlap |
+| Abort idle/moving, stop failure and subsequent recovery | abort, stop_failure |
+| Encoder-zero park, BUSY/completion, stop and failure | park, park_abort, park_failure |
+| Rejected/ignored start, stalled motion, read/bad-state failure, transport loss | start_failure, ignored_start, stalled_motion, motion_read_failure, motion_badstate, transport_loss |
+| SYNC/settings rejection/readback and value preservation | sync_failure, speed_failure, speed_readback, backlash_failure |
+| Bad position/status, partial/overlong/silent replies, invalid temperature and recovery | poll_bad_position, poll_bad_state, poll_partial, poll_overlong, poll_silent, poll_temperature_nan |
+| External signed position and negative/zero temperature | external |
+| Four independent port controls, partial writes, malformed readback and labels before connection | powerbox, power_first_failure, power_second_failure, usb_first_failure, usb_second_failure, ports_read_failure, labels |
+| Slave-first connection, no second descriptor/open, peer-preserving rollback and either disconnect order | shared, shared_failure |
+| Reboot BUSY/reset/completion, timeout and rejection during motion | reboot, reboot_timeout, reboot_busy |
+| Disconnect during motion/read/park/reboot, no later traffic and reconnect | disconnect_motion, disconnect_read, disconnect_park, disconnect_reboot |
+| Separate ports/state and peer operation across base disconnect | instances |
+| Identity, aggregate/status shape, oversized/missing replies, speed and port initialization, descriptor rollback/retry | init_identity, init_status, init_short, init_overlong, init_silent, init_speed, init_ports |
+
+53 ordinary scenarios. Targeted ASan filters: init_, poll_, shared, disconnect, instances, transport_loss, park_abort, reboot_timeout (23 distinct scenarios). Build `make -C indigo_test build/integration/test_focuser_prodigy_simulator build/integration/test_focuser_prodigy_simulator_asan`; run from indigo_test, using PRODIGY_TEST_FILTER for substrings. The direct protocol test uses read_section2 and explicitly validates its retained terminator. Final outcomes are recorded in driver REFACTOR.md. Baseline original smoke passed; init_identity fails on original C/header because it accepts OK_OTHER.
+
+No reverse/automatic compensation support is invented. Local limits are software-only; physical direction/encoder travel, port power and firmware reboot timing need hardware. Generic range validation/config persistence and focus quality are outside driver acceptance. Windows project structure is validated, not Windows execution.
+
+## Lacerta and iOptron preferred-I/O follow-up (2026-09-09)
+
+Both production DSLs now use shared private receive buffers, indigo_uni_discard, indigo_uni_printf and indigo_uni_read_section2 instead of custom byte/drain loops. Complete CR/# termination and existing protocol validation remain required; missing/truncated/NUL replies fail. Lacerta retains bounded asynchronous D/M/p frame skipping. Both versions advance from 0x03000005 to 0x03000006. Existing full simulator suites and targeted ASan parser/initialization/lifecycle/readback cases are rerun; final results are recorded in their REFACTOR.md files. No simulator/protocol capability change or framework validation duplication.
+
+Follow-up refinement: all three command helpers are variadic, forwarding through uni_vprintf/uni_vtprintf. iOptron readback failures reproduced the shared uni_discard serial implementation incorrectly flushing TX as well as RX; fixed it to the documented input-only operation (TCIFLUSH/PURGE_RXCLEAR). The zero/reverse/abort readback scenarios verify commands survive an immediate following query. Prodigy FOCUSER_POSITION now uses preserve_values so generated BUSY requests retain the measured coordinate. Full suites and selected ASan are rerun with these final behaviors.
+
+Final preferred-I/O follow-up results: Lacerta 43/43 ordinary + 19/19 ASan; iOptron 40/40 ordinary + 20/20 ASan. Both pass strict O0/O2 arm64/x86_64 warning checks and reproduce generated output exactly. Lacerta also passes normal and ASan motion_poll_failure after its warning-only local-initialization refinement.
+
+Final Prodigy acceptance: 53/53 ordinary simulator cases and 23/23 targeted ASan cases pass with variadic I/O, input-only discard and measured-position preservation. Strict universal warning checks, reproducible generation and project validation pass. Full results, intermediate failures/fixes and remaining hardware/platform limits are recorded in REFACTOR.md.

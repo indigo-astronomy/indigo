@@ -415,7 +415,7 @@ $(INTEGRATION_BUILD)/focuser_optec_simulator: ../indigo_drivers/focuser_optec/fo
 $(INTEGRATION_BUILD)/focuser_primaluce_simulator: ../indigo_drivers/focuser_primaluce/focuser_primaluce_simulator/focuser_primaluce_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/focuser_prodigy_simulator: ../indigo_drivers/focuser_prodigy/focuser_prodigy_simulator/focuser_prodigy_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/focuser_prodigy_simulator: ../indigo_drivers/focuser_prodigy/focuser_prodigy_simulator/focuser_prodigy_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/focuser_robofocus_simulator: ../indigo_drivers/focuser_robofocus/focuser_robofocus_simulator/focuser_robofocus_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -649,7 +649,10 @@ $(INTEGRATION_BUILD)/test_focuser_optec_simulator: integration/test_focuser_opte
 $(INTEGRATION_BUILD)/test_focuser_primaluce_simulator: integration/test_focuser_primaluce_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_primaluce_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_PRIMALUCE_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_prodigy_simulator: integration/test_focuser_prodigy_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_prodigy_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_focuser_prodigy_simulator_asan: integration/test_focuser_prodigy_simulator.c ../indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_prodigy_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.c $(TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_prodigy_simulator: integration/test_focuser_prodigy_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_prodigy_simulator $(BUILD_DRIVERS)/indigo_focuser_prodigy.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_PRODIGY_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_robofocus_simulator: integration/test_focuser_robofocus_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_robofocus_simulator | $(INTEGRATION_BUILD)

@@ -138,6 +138,8 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 
 | DRV-103 | High | `focuser_efa/indigo_focuser_efa.driver:56` | Legacy reply length overflowed a 16-byte stack buffer and checksum was ignored. Both reproduced; bounded validated frames fix the transport. | Fixed |
 | DRV-104 | Medium | `focuser_efa/indigo_focuser_efa.driver:224` | Temperature parsing lacked shape/NC validation and simulator encoded an unrealistic sample. Explicit signed formats and NC handling preserve valid readings. | Fixed |
+| DRV-105 | High | `focuser_prodigy/indigo_focuser_prodigy.driver` | Legacy logical connections overwrite the shared handle and initialize the same mutex twice. Generated master queue/reference ownership and transactional rollback preserve peer sessions. | Fixed |
+| DRV-106 | Medium | `focuser_prodigy/indigo_focuser_prodigy.driver` | Legacy accepts arbitrary OK_ identities and ignores malformed/failed command replies; second power outlet incorrectly decodes 2 instead of documented boolean 1. Validated transport/ACK/readback and simulator fixtures correct these paths. | Fixed |
 
 ## Finding Summaries
 
@@ -1038,3 +1040,12 @@ Baseline efa_command reads packet-provided count+1 bytes into a 16-byte response
 ### DRV-104 (Fixed — 2026-09-09)
 
 The old temperature path reads fixed offsets without validating reply length or the documented 7F7F absent-sensor marker. The old simulator emits 00 50 01, which becomes 1280.0625 C under that parser. The PDF itself disagrees between its three-byte prose and two-byte example; the driver now explicitly accepts address + big-endian signed sixteenths, plus a documented legacy two-byte little-endian compatibility form. It rejects NC/impossible temperature and retains the last valid value. Positive/negative/zero/NC/recovery fixtures cover both shapes. Physical firmware formats still need hardware validation; no claim that a PTY resolves the document's ambiguity.
+
+
+### DRV-105 (Fixed — 2026-09-09)
+
+The original focuser and auxiliary connection handlers unconditionally reopen and overwrite one shared handle before consulting its count, and both attach paths initialize the same mutex. Generated ownership now opens on the first successful logical connection, increments only successful opens, rolls back failed initialization, and closes after the last logical disconnect. Shared queue cancellation retains the other device's pending work. Simulator tests exercise slave-first connection, descriptor count, failed slave initialization while the focuser remains usable, either disconnect order and independent instances. Folder review baseline is unchanged.
+
+### DRV-106 (Fixed — 2026-09-09)
+
+The supplied one-page command table requires OK_PRDG identity, matching command echoes, H=0, Z=Z:1, and four D booleans. Legacy prefix matching accepts OK_OTHER (reproduced with original C/header); power/USB/park handlers report success despite rejected replies, and outlet 2 is decoded as 2. The DSL validates complete delimited responses, numeric fields and acknowledgements, uses actual B speed readback, and confirms power/USB state after writes. Fault tests cover malformed/partial/overlong/silent replies, ACK/partial writes and recovery. Park completes only at zero/idle, with abort and stalled-motion handling. PTY tests do not validate physical encoder travel or firmware reboot timing.

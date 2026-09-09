@@ -21,7 +21,9 @@
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
 
-#define COMMAND_LENGTH 64
+#include "../../../indigo_test/simulator_common/serial_motion.h"
+
+#define COMMAND_LENGTH 256
 
 typedef struct {
 	bool headless;
@@ -39,8 +41,11 @@ static const char *simulator_name = "focuser_prodigy";
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
 static int position = 50;
-static int target = 50;
-static int moving_polls = 0;
+static serial_motion motion;
+static bool stalled;
+static const char *profile = "normal";
+static FILE *events;
+static double reboot_until;
 static int speed = 400;
 static int backlash = 100;
 static double temperature = 22.4;
@@ -77,6 +82,8 @@ static bool parse_args(int argc, char *argv[]) {
 			options.trace = false;
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
+		} else if (!strcmp(argv[i], "--profile") && i + 1 < argc) {
+			profile = argv[++i];
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -92,36 +99,98 @@ static bool parse_args(int argc, char *argv[]) {
 }
 
 static void send_line(const char *line) {
+	serial_simulator_trace_line(false, "TX", line);
 	if (options.trace) {
 		fprintf(stderr, "-> %s\n", line);
+	}
+	if (!strcmp(profile, "split") && strlen(line) > 1) {
+		serial_simulator_write_all(serial_fd, line, 1);
+		usleep(20000);
+		line++;
 	}
 	serial_simulator_write_all(serial_fd, line, strlen(line));
 	serial_simulator_write_all(serial_fd, "\n", 1);
 }
 
-static void start_motion(int new_target) {
-	target = new_target;
-	moving_polls = 1;
+static void start_motion(int target) {
+	serial_motion_start(&motion, target, 100000);
 }
 
 static bool is_moving(void) {
-	return moving_polls > 0;
+	return motion.duration > 0;
 }
 
 static void handle_command(const char *command) {
-	char response[COMMAND_LENGTH] = { 0 };
+	char response[COMMAND_LENGTH] = { 0 }, action[256] = { 0 }, key[64];
+	position = (int)(stalled ? motion.position : serial_motion_update(&motion));
+	if (events) {
+		fprintf(events, "%s\n", command);
+		fflush(events);
+	}
+	const char *fault = getenv("INDIGO_PRODIGY_FAULT");
+	FILE *file = fault ? fopen(fault, "r") : NULL;
+	if (file) {
+		if (fscanf(file, "%63s %255[^\n]", key, action) != 2 || strcmp(key, command)) {
+			action[0] = 0;
+		} else {
+			unlink(fault);
+		}
+		fclose(file);
+	}
+	if (!strncmp(profile, "init_", 5) && command[0] == profile[5]) {
+		strcpy(action, profile + 7);
+		profile = "normal";
+	}
+	if (!strcmp(action, "close")) {
+		running = 0;
+		return;
+	}
+	if (!strcmp(action, "silent") || serial_motion_time() < reboot_until) {
+		return;
+	}
+	if (!strcmp(action, "overlong")) {
+		memset(response, '9', sizeof(response) - 1);
+		send_line(response);
+		return;
+	}
+	if (!strcmp(action, "partial")) {
+		serial_simulator_write_all(serial_fd, "123", 3);
+		return;
+	}
+	if (!strncmp(action, "reply=", 6)) {
+		send_line(action + 6);
+		return;
+	}
+	if (!strncmp(action, "position=", 9)) {
+		serial_motion_sync(&motion, atoi(action + 9));
+		position = (int)motion.position;
+	}
+	if (!strncmp(action, "temp=", 5)) {
+		temperature = atof(action + 5);
+	}
+	if (!strcmp(action, "reject")) {
+		send_line("ERR");
+		return;
+	}
+	if (!strcmp(action, "ignore")) {
+		send_line(command);
+		return;
+	}
+	stalled = !strcmp(action, "stall") || stalled;
 
 	if (options.trace) {
 		fprintf(stderr, "<- %s\n", command);
 	}
-
 	if (!strcmp(command, "#")) {
 		send_line("OK_PRDG");
 	} else if (!strcmp(command, "A")) {
-		snprintf(response, sizeof(response), "OK_PRDG:1.4:1:%.1f:%d:%d:0:0:0:%d", temperature, position, is_moving() ? 1 : 0, backlash);
+		snprintf(response, sizeof(response), "OK_PRDG:%s:1:%.1f:%d:%d:0:0:0:%d", !strcmp(profile, "firmware_minor") ? "1.10" : "1.4", temperature, position, is_moving() ? 1 : 0, backlash);
 		send_line(response);
 	} else if (!strcmp(command, "D")) {
-		snprintf(response, sizeof(response), "D:%d:%d:%d:%d", power_1 ? 1 : 0, power_2 ? 2 : 0, usb_1 ? 1 : 0, usb_2 ? 1 : 0);
+		snprintf(response, sizeof(response), "D:%d:%d:%d:%d", power_1 ? 1 : 0, power_2 ? 1 : 0, usb_1 ? 1 : 0, usb_2 ? 1 : 0);
+		send_line(response);
+	} else if (!strcmp(command, "B")) {
+		snprintf(response, sizeof(response), "B:%d", speed);
 		send_line(response);
 	} else if (!strncmp(command, "S:", 2)) {
 		speed = atoi(command + 2);
@@ -134,12 +203,16 @@ static void handle_command(const char *command) {
 		start_motion(atoi(command + 2));
 		send_line(command);
 	} else if (!strncmp(command, "W:", 2)) {
-		position = target = atoi(command + 2);
-		moving_polls = 0;
+		serial_motion_sync(&motion, atoi(command + 2));
+		stalled = false;
 		send_line(command);
 	} else if (!strcmp(command, "H")) {
-		target = position;
-		moving_polls = 0;
+		if (!stalled) {
+			serial_motion_stop(&motion);
+		} else {
+			serial_motion_sync(&motion, motion.position);
+		}
+		stalled = false;
 		send_line("0");
 	} else if (!strncmp(command, "C:", 2)) {
 		backlash = atoi(command + 2);
@@ -148,25 +221,12 @@ static void handle_command(const char *command) {
 		snprintf(response, sizeof(response), "%.1f", temperature);
 		send_line(response);
 	} else if (!strcmp(command, "P")) {
-		if (!is_moving()) {
-			position = target;
-		}
 		snprintf(response, sizeof(response), "%d", position);
 		send_line(response);
 	} else if (!strcmp(command, "I")) {
-		if (moving_polls > 0) {
-			moving_polls--;
-			if (moving_polls == 0) {
-				position = target;
-			}
-			send_line("1");
-		} else {
-			position = target;
-			send_line("0");
-		}
+		send_line(is_moving() ? "1" : "0");
 	} else if (!strcmp(command, "Z")) {
-		position = target = 0;
-		moving_polls = 0;
+		start_motion(0);
 		send_line("Z:1");
 	} else if (!strncmp(command, "U:", 2)) {
 		usb_1 = atoi(command + 2) != 0;
@@ -181,15 +241,17 @@ static void handle_command(const char *command) {
 		power_2 = atoi(command + 2) != 0;
 		send_line(command);
 	} else if (!strcmp(command, "Q")) {
-		/* Reboot command has no response in the driver. */
+		reboot_until = serial_motion_time() + (!strcmp(action, "rebootstall") ? 60 : 0.7);
 	}
 }
 
 static void run_protocol_loop(void) {
 	char buffer[COMMAND_LENGTH] = { 0 };
 	size_t length = 0;
-
 	while (running) {
+		if (!stalled) {
+			serial_motion_update(&motion);
+		}
 		char c = '\0';
 		ssize_t bytes_read = read(serial_fd, &c, 1);
 		if (bytes_read < 0) {
@@ -229,13 +291,14 @@ static void run_protocol_loop(void) {
 
 int main(int argc, char *argv[]) {
 	char port[256] = { 0 };
-
 	if (!parse_args(argc, argv)) {
 		return 1;
 	}
+	serial_motion_sync(&motion, !strcmp(profile, "alternate") ? 500 : 50);
+	const char *journal = getenv("INDIGO_PRODIGY_EVENTS");
+	events = journal ? fopen(journal, "w") : NULL;
 	signal(SIGTERM, signal_handler);
 	signal(SIGINT, signal_handler);
-
 	serial_fd = serial_simulator_open_pty(port, sizeof(port));
 	if (serial_fd < 0) {
 		return 1;
@@ -247,8 +310,10 @@ int main(int argc, char *argv[]) {
 	if (!options.headless) {
 		printf("PegasusAstro Prodigy Microfocuser simulator ready on %s\n", port);
 	}
-
 	run_protocol_loop();
+	if (events) {
+		fclose(events);
+	}
 	if (serial_fd >= 0) {
 		close(serial_fd);
 	}

@@ -115,9 +115,9 @@ static int discard_data(indigo_uni_handle *handle) {
 		return -1;
 	}
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	return tcflush(handle->fd, TCIOFLUSH);
+	return tcflush(handle->fd, TCIFLUSH);
 #elif defined(INDIGO_WINDOWS)
-	return PurgeComm(handle->com, PURGE_RXCLEAR | PURGE_TXCLEAR) ? 0 : -1;
+	return PurgeComm(handle->com, PURGE_RXCLEAR) ? 0 : -1;
 #else
 #pragma message ("TODO: discard_data()")
 #endif

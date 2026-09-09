@@ -1,9 +1,9 @@
-// Copyright (c) 2022-2025 CloudMakers, s. r. o.
+// Copyright (c) 2022-2026 CloudMakers, s. r. o.
 // All rights reserved.
-//
-// You can use this software under the terms of 'INDIGO Astronomy
+
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-//
+
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,19 +16,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// version history
-// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
-
-/** INDIGO PegasusAstro Prodigy Microfocuser driver
- \file indigo_focuser_prodigy.h
- */
+// This file generated from indigo_focuser_prodigy.driver
 
 #ifndef focuser_prodigy_h
 #define focuser_prodigy_h
 
 #include <indigo/indigo_driver.h>
-#include <indigo/indigo_focuser_driver.h>
-#include <indigo/indigo_aux_driver.h>
 
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
@@ -44,14 +37,10 @@
 extern "C" {
 #endif
 
-/** Register Prodigy Microfocuser driver
- */
-
 INDIGO_EXTERN indigo_result indigo_focuser_prodigy(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* focuser_prodigy_h */
-
+#endif

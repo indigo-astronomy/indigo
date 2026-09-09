@@ -1206,11 +1206,11 @@ Source: `indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c`.
 
 ### focuser_prodigy
 
-Custom properties: `AUX_OUTLET_NAMES`, `X_AUX_REBOOT`, `X_FOCUSER_PARK`.
+Custom properties: `X_AUX_REBOOT.REBOOT` (powerbox reboot with delayed identity/readback confirmation), `X_FOCUSER_PARK.PARK` (encoder-zero movement with delayed completion and abort). Both switches reset after the request and are connect-scoped.
 
-Driver-specific use of existing properties: `AUX_POWER_OUTLET`, `AUX_USB_PORT`, `FOCUSER_BACKLASH`, `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`.
+Driver-specific standard properties: `AUX_OUTLET_NAMES` (persistent, available before connection), `AUX_POWER_OUTLET`, `AUX_USB_PORT` (two channels each, powerbox-only interface); `FOCUSER_SPEED` (100–1000, controller readback), `FOCUSER_BACKLASH` (0–9999), `FOCUSER_LIMITS` (local software limits, default -999999–999999), `FOCUSER_ON_POSITION_SET` (GOTO/SYNC), `FOCUSER_TEMPERATURE`, measured `FOCUSER_POSITION`, `FOCUSER_STEPS` and `FOCUSER_ABORT_MOTION`. Inward relative commands retain positive device offsets. Reverse and automatic compensation are unsupported/hidden. The two logical devices share the focuser's serial port and transport lifetime; either can connect first.
 
-Source: `indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.c`.
+Source: `indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.driver`.
 
 ### focuser_qhy
 
