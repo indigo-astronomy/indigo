@@ -28,6 +28,7 @@
 
 //+ include
 
+#include <stdarg.h>
 #include <ctype.h>
 #include <errno.h>
 
@@ -41,17 +42,24 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_focuser_lacerta"
 #define DRIVER_LABEL         "LACERTA Motorfocus Focuser"
 #define FOCUSER_DEVICE_NAME  "LACERTA Motorfocus"
 #define PRIVATE_DATA         ((lacerta_private_data *)device->private_data)
+
+//+ define
+
+#define RESPONSE             (PRIVATE_DATA->response)
+
+//- define
 
 #pragma mark - Private data definition
 
 typedef struct {
 	indigo_uni_handle *handle;
 	//+ data
+	char response[96];
 	int maximum, capability_maximum;
 	int last_position, stalled;
 	bool moving, motion_uncertain, reverse;
@@ -68,72 +76,54 @@ static double lacerta_now(void) {
 	return (double)time.tv_sec + time.tv_usec / 1000000.0;
 }
 
-static bool lacerta_command(indigo_device *device, const char *command, char *response, int capacity, char expected) {
-	if (!PRIVATE_DATA->handle) {
+static bool lacerta_command(indigo_device *device, char expected, const char *command, ...) {
+	long result = indigo_uni_discard(PRIVATE_DATA->handle);
+	if (result >= 0) {
+		va_list args;
+		va_start(args, command);
+		result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
+		va_end(args);
+	}
+	if (result <= 0) {
 		return false;
 	}
-	// Drain only a bounded amount of stale asynchronous completion/debug data.
-	char stale[512];
-	for (int i = 0; indigo_uni_wait_for_data(PRIVATE_DATA->handle, 0) > 0; i++) {
-		if (i == 4 || indigo_uni_read_available(PRIVATE_DATA->handle, stale, sizeof(stale)) <= 0) {
-			return false;
-		}
-	}
-	long length = (long)strlen(command);
-	if (indigo_uni_write(PRIVATE_DATA->handle, command, length) != length) {
-		return false;
-	}
-	if (!response) {
+	if (!expected) {
 		return true;
 	}
-	int used = 0;
-	bool overflow = false;
 	double deadline = lacerta_now() + 2;
-	for (int bytes = 0; bytes < 2048; bytes++) {
+	for (int frames = 0; frames < 16; frames++) {
 		double remaining = deadline - lacerta_now();
-		if (remaining <= 0 || indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(remaining)) <= 0) {
+		if (remaining <= 0) {
 			return false;
 		}
-		char byte;
-		if (indigo_uni_read_available(PRIVATE_DATA->handle, &byte, 1) != 1) {
+		long count = indigo_uni_read_section2(PRIVATE_DATA->handle, RESPONSE, sizeof(PRIVATE_DATA->response) - 1, "\r", "\n", INDIGO_DELAY(remaining), INDIGO_DELAY(0.1));
+		if (count <= 0 || RESPONSE[count - 1] != '\r' || (long)strlen(RESPONSE) != count) {
 			return false;
 		}
-		if (byte == '\r') {
-			if (overflow) {
-				return false;
-			}
-			response[used] = 0;
-			if (used && response[0] == expected) {
-				return used > 1;
-			}
-			if (used && response[0] != 'D' && response[0] != 'M' && response[0] != 'p') {
-				return false;
-			}
-			used = 0;
-		} else if (byte != '\n') {
-			if (!byte || used + 1 >= capacity) {
-				overflow = true;
-			} else if (!overflow) {
-				response[used++] = byte;
-			}
+		RESPONSE[count - 1] = 0;
+		if (RESPONSE[0] == expected) {
+			return count > 2;
+		}
+		if (count > 1 && RESPONSE[0] != 'D' && RESPONSE[0] != 'M' && RESPONSE[0] != 'p') {
+			return false;
 		}
 	}
 	return false;
 }
 
 static bool lacerta_open(indigo_device *device) {
-	char response[96], tail;
+	char tail;
 	int major, minor, revision;
 	PRIVATE_DATA->capability_maximum = 250000;
 	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG);
 	if (!PRIVATE_DATA->handle) {
 		return false;
 	}
-	if (lacerta_command(device, ": i #", response, sizeof(response), 'i') && (!strcmp(response, "i FMC") || !strcmp(response, "i MFOC"))) {
-		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, response + 2);
-		if (lacerta_command(device, ": v #", response, sizeof(response), 'v') && sscanf(response, "v%2d.%2d.%6d%c", &major, &minor, &revision, &tail) == 3 && major >= 1 && major <= 3 && minor >= 0 && revision >= 0) {
+	if (lacerta_command(device, 'i', ": i #") && (!strcmp(RESPONSE, "i FMC") || !strcmp(RESPONSE, "i MFOC"))) {
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, RESPONSE + 2);
+		if (lacerta_command(device, 'v', ": v #") && sscanf(RESPONSE, "v%2d.%2d.%6d%c", &major, &minor, &revision, &tail) == 3 && major >= 1 && major <= 3 && minor >= 0 && revision >= 0) {
 			PRIVATE_DATA->capability_maximum = major == 1 ? 65535 : 250000;
-			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 1);
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, RESPONSE + 1);
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			return true;
 		}
@@ -147,14 +137,14 @@ static void lacerta_close(indigo_device *device) {
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
-static bool lacerta_number(indigo_device *device, const char *command, char expected, double minimum, double maximum, double *value) {
-	char response[96], *end;
-	if (!lacerta_command(device, command, response, sizeof(response), expected) || !isspace((unsigned char)response[1])) {
+static bool lacerta_number(indigo_device *device, double minimum, double maximum, double *value) {
+	char *end;
+	if (!isspace((unsigned char)RESPONSE[1])) {
 		return false;
 	}
 	errno = 0;
-	*value = strtod(response + 1, &end);
-	if (end == response + 1 || errno || !isfinite(*value) || *value < minimum || *value > maximum) {
+	*value = strtod(RESPONSE + 1, &end);
+	if (end == RESPONSE + 1 || errno || !isfinite(*value) || *value < minimum || *value > maximum) {
 		return false;
 	}
 	while (isspace((unsigned char)*end)) {
@@ -163,9 +153,9 @@ static bool lacerta_number(indigo_device *device, const char *command, char expe
 	return !*end;
 }
 
-static bool lacerta_integer(indigo_device *device, const char *command, char expected, int minimum, int maximum, int *value) {
+static bool lacerta_integer(indigo_device *device, int minimum, int maximum, int *value) {
 	double number;
-	if (!lacerta_number(device, command, expected, minimum, maximum, &number) || floor(number) != number) {
+	if (!lacerta_number(device, minimum, maximum, &number) || floor(number) != number) {
 		return false;
 	}
 	*value = (int)number;
@@ -180,12 +170,12 @@ static void lacerta_motion_state(indigo_device *device, indigo_property_state st
 
 static bool lacerta_halt(indigo_device *device) {
 	int stopped;
-	return lacerta_integer(device, ": H #", 'H', 0, 1, &stopped) && stopped == 1;
+	return (lacerta_command(device, 'H', ": H #") && lacerta_integer(device, 0, 1, &stopped)) && stopped == 1;
 }
 
 static void motion_finalizer(indigo_device *device) {
-	int position;
-	if (!lacerta_integer(device, ": q #", 'p', 0, PRIVATE_DATA->maximum, &position)) {
+	int position = 0;
+	if (!(lacerta_command(device, 'p', ": q #") && lacerta_integer(device, 0, PRIVATE_DATA->maximum, &position))) {
 		PRIVATE_DATA->moving = false;
 		PRIVATE_DATA->motion_uncertain = !lacerta_halt(device);
 		lacerta_motion_state(device, INDIGO_ALERT_STATE);
@@ -221,9 +211,7 @@ static void lacerta_start_motion(indigo_device *device, int position) {
 		lacerta_motion_state(device, INDIGO_OK_STATE);
 		return;
 	}
-	char command[32];
-	snprintf(command, sizeof(command), ": M %d#", position);
-	if (!lacerta_command(device, command, NULL, 0, 0)) {
+	if (!lacerta_command(device, 0, ": M %d#", position)) {
 		PRIVATE_DATA->motion_uncertain = true;
 		lacerta_motion_state(device, INDIGO_ALERT_STATE);
 		return;
@@ -243,7 +231,7 @@ static void lacerta_limits(indigo_device *device, int maximum) {
 
 static void lacerta_temperature(indigo_device *device) {
 	double temperature;
-	if (lacerta_number(device, ": t #", 't', -100, 100, &temperature) && temperature != 99.9 && temperature >= FOCUSER_TEMPERATURE_ITEM->number.min && temperature <= FOCUSER_TEMPERATURE_ITEM->number.max) {
+	if ((lacerta_command(device, 't', ": t #") && lacerta_number(device, -100, 100, &temperature)) && temperature != 99.9 && temperature >= FOCUSER_TEMPERATURE_ITEM->number.min && temperature <= FOCUSER_TEMPERATURE_ITEM->number.max) {
 		FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
@@ -263,8 +251,8 @@ static void focuser_timer_callback(indigo_device *device) {
 	//+ focuser.on_timer
 	lacerta_temperature(device);
 	if (!PRIVATE_DATA->moving && FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
-		int position;
-		if (lacerta_integer(device, ": q #", 'p', 0, PRIVATE_DATA->maximum, &position)) {
+		int position = 0;
+		if ((lacerta_command(device, 'p', ": q #") && lacerta_integer(device, 0, PRIVATE_DATA->maximum, &position))) {
 			if (position != (int)FOCUSER_POSITION_ITEM->number.value) {
 				FOCUSER_POSITION_ITEM->number.value = position;
 				if (!PRIVATE_DATA->motion_uncertain) {
@@ -287,7 +275,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ focuser.on_connect
 			int reverse = 0, position = 0, backlash = 0, maximum = 0;
-			connection_result = lacerta_integer(device, ": r #", 'r', 0, 1, &reverse) && lacerta_integer(device, ": g #", 'g', 300, PRIVATE_DATA->capability_maximum, &maximum) && lacerta_integer(device, ": q #", 'p', 0, maximum, &position) && lacerta_integer(device, ": b #", 'b', 0, 255, &backlash);
+			connection_result = (lacerta_command(device, 'r', ": r #") && lacerta_integer(device, 0, 1, &reverse)) && (lacerta_command(device, 'g', ": g #") && lacerta_integer(device, 300, PRIVATE_DATA->capability_maximum, &maximum)) && (lacerta_command(device, 'p', ": q #") && lacerta_integer(device, 0, maximum, &position)) && (lacerta_command(device, 'b', ": b #") && lacerta_integer(device, 0, 255, &backlash));
 			if (connection_result) {
 				PRIVATE_DATA->reverse = reverse;
 				indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, reverse ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
@@ -334,10 +322,8 @@ static void focuser_position_handler(indigo_device *device) {
 	if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
 		lacerta_start_motion(device, position);
 	} else {
-		char command[32];
 		int actual;
-		snprintf(command, sizeof(command), ": P %d#", position);
-		if (IS_CONNECTED && !PRIVATE_DATA->motion_uncertain && lacerta_integer(device, command, 'p', 0, PRIVATE_DATA->maximum, &actual) && actual == position) {
+		if (IS_CONNECTED && !PRIVATE_DATA->motion_uncertain && (lacerta_command(device, 'p', ": P %d#", position) && lacerta_integer(device, 0, PRIVATE_DATA->maximum, &actual)) && actual == position) {
 			FOCUSER_POSITION_ITEM->number.value = actual;
 			lacerta_motion_state(device, INDIGO_OK_STATE);
 		} else {
@@ -367,8 +353,8 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		if (lacerta_halt(device)) {
 			indigo_cancel_pending_handler(device, motion_finalizer);
 			PRIVATE_DATA->moving = PRIVATE_DATA->motion_uncertain = false;
-			int position;
-			if (lacerta_integer(device, ": q #", 'p', 0, PRIVATE_DATA->maximum, &position)) {
+			int position = 0;
+			if ((lacerta_command(device, 'p', ": q #") && lacerta_integer(device, 0, PRIVATE_DATA->maximum, &position))) {
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
 				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 				lacerta_motion_state(device, INDIGO_OK_STATE);
@@ -391,10 +377,8 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 static void focuser_backlash_handler(indigo_device *device) {
 	FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_BACKLASH.on_change
-	char command[32];
 	int actual, requested = (int)FOCUSER_BACKLASH_ITEM->number.target;
-	snprintf(command, sizeof(command), ": B %d#", requested);
-	if (IS_CONNECTED && !PRIVATE_DATA->moving && lacerta_integer(device, command, 'b', 0, 255, &actual) && actual == requested) {
+	if (IS_CONNECTED && !PRIVATE_DATA->moving && (lacerta_command(device, 'b', ": B %d#", requested) && lacerta_integer(device, 0, 255, &actual)) && actual == requested) {
 		FOCUSER_BACKLASH_ITEM->number.value = actual;
 	} else {
 		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -407,7 +391,7 @@ static void focuser_reverse_motion_handler(indigo_device *device) {
 	FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_REVERSE_MOTION.on_change
 	int actual, requested = FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? 1 : 0;
-	if (IS_CONNECTED && !PRIVATE_DATA->moving && lacerta_integer(device, requested ? ": R 1#" : ": R 0#", 'r', 0, 1, &actual) && actual == requested) {
+	if (IS_CONNECTED && !PRIVATE_DATA->moving && (lacerta_command(device, 'r', requested ? ": R 1#" : ": R 0#") && lacerta_integer(device, 0, 1, &actual)) && actual == requested) {
 		PRIVATE_DATA->reverse = actual;
 	} else {
 		indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reverse ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
@@ -420,10 +404,8 @@ static void focuser_reverse_motion_handler(indigo_device *device) {
 static void focuser_limits_handler(indigo_device *device) {
 	FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_LIMITS.on_change
-	char command[32];
 	int actual, requested = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
-	snprintf(command, sizeof(command), ": G %d#", requested);
-	if (IS_CONNECTED && !PRIVATE_DATA->moving && requested >= FOCUSER_POSITION_ITEM->number.value && lacerta_integer(device, command, 'g', 300, PRIVATE_DATA->capability_maximum, &actual) && actual == requested) {
+	if (IS_CONNECTED && !PRIVATE_DATA->moving && requested >= FOCUSER_POSITION_ITEM->number.value && (lacerta_command(device, 'g', ": G %d#", requested) && lacerta_integer(device, 300, PRIVATE_DATA->capability_maximum, &actual)) && actual == requested) {
 		lacerta_limits(device, actual);
 		indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);

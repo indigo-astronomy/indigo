@@ -194,3 +194,20 @@ Reproduced three `-Wconditional-uninitialized` warnings for `position`, `backlas
 Initialized all four local readback variables in the authoritative `.driver` and regenerated C/header/main. Required query validation and failure rollback are unchanged; zero initialization does not permit a failed query to connect. This is a warning-only correction, so version remains `0x03000005`.
 
 Validation: universal production build passed. Strict syntax checks for arm64/x86_64 at both `-O0` and `-O2`, including `-Wconditional-uninitialized -Wunreachable-code -Wcomma -Wall -Wextra -Wconversion -Wshorten-64-to-32 -Werror`, passed without warnings. Six targeted simulator cases passed (`normal` and all five `init_` cases, including rollback/retry). `git diff --check` passed; test artifacts were removed with `make -C indigo_test test-clean`. Use the expanded warning flags for subsequent Lacerta checks.
+
+
+## Follow-up: preferred uniform I/O (2026-09-09)
+
+User requested replacing custom wait_for_data/read_available drain/read loops. Version raised from 0x03000005 to 0x03000006. The DSL now uses indigo_uni_discard, indigo_uni_printf and indigo_uni_read_section2 with explicit first/inter-byte timeouts. The 96-byte response buffer is shared in private data; helpers decode before subsequent commands reuse it. Terminator is retained for completeness checks, embedded NUL and truncated replies are rejected, and capacity minus one reserves the API's trailing NUL. No platform or generator changes.
+
+Lacerta retains the protocol-specific bounded loop that skips asynchronous D/M/p frames while waiting for the expected CR-terminated reply. It checks the two-second deadline between frames; inter-byte timeout bounds an individual slow frame.
+
+Validation pending: regenerate, universal build, full simulator suite, targeted ASan and strict warnings; results will be appended here.
+
+Shared-I/O regression found during iOptron verification: indigo_uni_discard is documented to discard input, but its serial implementation used TCIOFLUSH / PURGE_RXCLEAR|PURGE_TXCLEAR, dropping pending output too. A readback query could therefore erase the preceding write-only Z/R/Q command. Corrected the shared implementation to TCIFLUSH / PURGE_RXCLEAR, preserving transmitted commands without adding platform code or timing sleeps to drivers. Existing zero/reverse/abort readback tests reproduce the defect; full suites are rerun with the corrected library.
+
+User-directed variadic command pattern applied: command helpers accept format strings/arguments and use va_start/va_end with uni_vprintf (or uni_vtprintf for Prodigy newline termination). Numeric motion/settings arguments are formatted at send time. Repository rule added to AGENTS.md. Full tests are rerun on this final transport form plus the input-only discard fix.
+
+Final variadic transport build checkpoint: all three drivers compile under strict O0/O2 arm64/x86_64 flags. Lacerta required explicit zero initialization of decoded position locals after separating command and response parsing; failed queries still return before publication. This warning-only refinement is separately smoke-tested after the full-suite run. The corrected input-only discard restores iOptron zero/reverse/abort readback regression cases.
+
+Preferred-I/O follow-up final results: 43/43 full simulator scenarios and 19/19 targeted ASan scenarios pass with variadic transport and input-only discard. Strict O0/O2 arm64/x86_64 checks pass; after the warning-only local initialization change, the normal scenario and ASan motion_poll_failure are rerun separately. Existing API/Windows/generator/queues/simulator-test status columns remain correct; the MIGRATION_STATUS Comment is untouched. Hardware and Windows/Linux runtime gaps are unchanged.
