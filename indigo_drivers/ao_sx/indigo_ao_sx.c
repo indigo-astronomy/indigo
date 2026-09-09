@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_ao_sx"
 #define DRIVER_LABEL         "StarlightXpress AO"
 #define AO_DEVICE_NAME       "SX AO"
@@ -56,6 +56,7 @@ typedef struct {
 //+ code
 
 static bool sx_command(indigo_device *device, char *command, int response, ...) {
+	memset(PRIVATE_DATA->response, 0, sizeof(PRIVATE_DATA->response));
 	long result = indigo_uni_discard(PRIVATE_DATA->handle);
 	if (result >= 0) {
 		va_list args;
@@ -66,7 +67,7 @@ static bool sx_command(indigo_device *device, char *command, int response, ...) 
 			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, response, "", "", INDIGO_DELAY((*command == 'K' || *command == 'R') ? 15 : 1));
 		}
 	}
-	return result > 0;
+	return response > 0 ? result == response : result > 0;
 }
 
 static bool sx_open(indigo_device *device) {
@@ -109,10 +110,14 @@ static void ao_connection_handler(indigo_device *device) {
 			//+ ao.on_connect
 			if (sx_command(device, "L", 1)) {
 				AO_GUIDE_DEC_PROPERTY->state = AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-				if (PRIVATE_DATA->response[0] & 0x05)
+				if (PRIVATE_DATA->response[0] & 0x05) {
 					AO_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
-				if (PRIVATE_DATA->response[0] & 0x0A)
+				}
+				if (PRIVATE_DATA->response[0] & 0x0A) {
 					AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			} else {
+				connection_result = false;
 			}
 			//- ao.on_connect
 		}
@@ -141,15 +146,16 @@ static void ao_connection_handler(indigo_device *device) {
 static void ao_guide_dec_handler(indigo_device *device) {
 	AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ao.AO_GUIDE_DEC.on_change
+	bool command_result = true;
 	if (AO_GUIDE_NORTH_ITEM->number.value > 0) {
-		sx_command(device, "GN%05d", 1, (int)AO_GUIDE_NORTH_ITEM->number.value);
+		command_result = sx_command(device, "GN%05d", 1, (int)AO_GUIDE_NORTH_ITEM->number.value);
 	} else if (AO_GUIDE_SOUTH_ITEM->number.value > 0) {
-		sx_command(device, "GS%05d", 1, (int)AO_GUIDE_SOUTH_ITEM->number.value);
+		command_result = sx_command(device, "GS%05d", 1, (int)AO_GUIDE_SOUTH_ITEM->number.value);
 	}
-	AO_GUIDE_NORTH_ITEM->number.value = AO_GUIDE_SOUTH_ITEM->number.value = 0;
-	if (PRIVATE_DATA->response[0] != 'G') {
+	if (!command_result || ((AO_GUIDE_NORTH_ITEM->number.value > 0 || AO_GUIDE_SOUTH_ITEM->number.value > 0) && PRIVATE_DATA->response[0] != 'G')) {
 		AO_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	AO_GUIDE_NORTH_ITEM->number.value = AO_GUIDE_SOUTH_ITEM->number.value = 0;
 	//- ao.AO_GUIDE_DEC.on_change
 	indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
 }
@@ -157,15 +163,16 @@ static void ao_guide_dec_handler(indigo_device *device) {
 static void ao_guide_ra_handler(indigo_device *device) {
 	AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ao.AO_GUIDE_RA.on_change
+	bool command_result = true;
 	if (AO_GUIDE_WEST_ITEM->number.value > 0) {
-		sx_command(device, "GW%05d", 1, (int)AO_GUIDE_WEST_ITEM->number.value);
+		command_result = sx_command(device, "GW%05d", 1, (int)AO_GUIDE_WEST_ITEM->number.value);
 	} else if (AO_GUIDE_EAST_ITEM->number.value > 0) {
-		sx_command(device, "GT%05d", 1, (int)AO_GUIDE_EAST_ITEM->number.value);
+		command_result = sx_command(device, "GT%05d", 1, (int)AO_GUIDE_EAST_ITEM->number.value);
 	}
-	AO_GUIDE_WEST_ITEM->number.value = AO_GUIDE_EAST_ITEM->number.value = 0;
-	if (PRIVATE_DATA->response[0] != 'G') {
+	if (!command_result || ((AO_GUIDE_WEST_ITEM->number.value > 0 || AO_GUIDE_EAST_ITEM->number.value > 0) && PRIVATE_DATA->response[0] != 'G')) {
 		AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	AO_GUIDE_WEST_ITEM->number.value = AO_GUIDE_EAST_ITEM->number.value = 0;
 	//- ao.AO_GUIDE_RA.on_change
 	indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
 }
@@ -173,19 +180,16 @@ static void ao_guide_ra_handler(indigo_device *device) {
 static void ao_reset_handler(indigo_device *device) {
 	AO_RESET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ao.AO_RESET.on_change
-	if (AO_CENTER_ITEM->sw.value) {
-		sx_command(device, "K", 1);
-		INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
-		INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
-	} else if (AO_UNJAM_ITEM->sw.value) {
-		sx_command(device, "R", 1);
-		INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
-		INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+	bool requested = AO_CENTER_ITEM->sw.value || AO_UNJAM_ITEM->sw.value;
+	if (requested) {
+		if (sx_command(device, AO_CENTER_ITEM->sw.value ? "K" : "R", 1) && PRIVATE_DATA->response[0] == 'K') {
+			INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+		} else {
+			AO_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
 	AO_CENTER_ITEM->sw.value = AO_UNJAM_ITEM->sw.value = false;
-	if (PRIVATE_DATA->response[0] != 'K') {
-		AO_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
 	//- ao.AO_RESET.on_change
 	indigo_update_property(device, AO_RESET_PROPERTY, NULL);
 }
@@ -285,15 +289,16 @@ static void guider_connection_handler(indigo_device *device) {
 static void guider_guide_dec_handler(indigo_device *device) {
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_DEC.on_change
+	bool command_result = true;
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
-		sx_command(device, "MN%05d", 1, (int)GUIDER_GUIDE_NORTH_ITEM->number.value / 10);
+		command_result = sx_command(device, "MN%05d", 1, (int)GUIDER_GUIDE_NORTH_ITEM->number.value / 10);
 	} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
-		sx_command(device, "MS%05d", 1, (int)GUIDER_GUIDE_SOUTH_ITEM->number.value / 10);
+		command_result = sx_command(device, "MS%05d", 1, (int)GUIDER_GUIDE_SOUTH_ITEM->number.value / 10);
 	}
-	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-	if (PRIVATE_DATA->response[0] != 'M') {
+	if (!command_result || ((GUIDER_GUIDE_NORTH_ITEM->number.value > 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) && PRIVATE_DATA->response[0] != 'M')) {
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	//- guider.GUIDER_GUIDE_DEC.on_change
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 }
@@ -301,15 +306,16 @@ static void guider_guide_dec_handler(indigo_device *device) {
 static void guider_guide_ra_handler(indigo_device *device) {
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_RA.on_change
-	if (AO_GUIDE_WEST_ITEM->number.value > 0) {
-		sx_command(device, "MW%05d", 1, (int)AO_GUIDE_WEST_ITEM->number.value);
-	} else if (AO_GUIDE_EAST_ITEM->number.value > 0) {
-		sx_command(device, "MT%05d", 1, (int)AO_GUIDE_EAST_ITEM->number.value);
+	bool command_result = true;
+	if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
+		command_result = sx_command(device, "MW%05d", 1, (int)GUIDER_GUIDE_WEST_ITEM->number.value / 10);
+	} else if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
+		command_result = sx_command(device, "MT%05d", 1, (int)GUIDER_GUIDE_EAST_ITEM->number.value / 10);
 	}
-	AO_GUIDE_WEST_ITEM->number.value = AO_GUIDE_EAST_ITEM->number.value = 0;
-	if (PRIVATE_DATA->response[0] != 'M') {
-		AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (!command_result || ((GUIDER_GUIDE_WEST_ITEM->number.value > 0 || GUIDER_GUIDE_EAST_ITEM->number.value > 0) && PRIVATE_DATA->response[0] != 'M')) {
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	//- guider.GUIDER_GUIDE_RA.on_change
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 }
