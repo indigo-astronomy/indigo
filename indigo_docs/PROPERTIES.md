@@ -766,11 +766,15 @@ Source: `indigo_drivers/aux_joystick/indigo_aux_joystick.c`.
 
 ### aux_mgbox
 
-Custom properties: `AUX_DEW_THRESHOLD`, `AUX_DEW_WARNING`, `AUX_GPIO_OUTLETS`, `AUX_OUTLET_NAMES`, `AUX_OUTLET_PULSE_LENGTHS`, `X_REBOOT_DEVICE`, `X_REBOOT_GPS`, `X_SEND_GPS_DATA_TO_MOUNT`, `X_SEND_WEATHER_DATA_TO_MOUNT`, `X_WEATHER_CALIBRATION`.
+Custom properties: `X_REBOOT_DEVICE`, `X_REBOOT_GPS`, `X_SEND_GPS_DATA_TO_MOUNT`, `X_SEND_WEATHER_DATA_TO_MOUNT`, `X_WEATHER_CALIBRATION`.
 
-Driver-specific use of existing properties: `AUX_WEATHER`, `GEOGRAPHIC_COORDINATES`, `GPS_ADVANCED`, `UTC_TIME`.
+Driver-specific use of standard properties: `AUX_DEW_THRESHOLD`, `AUX_DEW_WARNING`, `AUX_WEATHER`, `AUX_GPIO_OUTLETS`, `AUX_OUTLET_NAMES`, `AUX_OUTLET_PULSE_LENGTHS`, `GEOGRAPHIC_COORDINATES`, `GPS_ADVANCED`, `GPS_ADVANCED_STATUS`, `GPS_STATUS`, `UTC_TIME`.
 
-Source: `indigo_drivers/aux_mgbox/indigo_aux_mgbox.c`.
+`MGBox Weather` combines Weather and Powerbox. Powerbox owns `AUX_OUTLET_NAMES`, `AUX_GPIO_OUTLETS` and `AUX_OUTLET_PULSE_LENGTHS`; their existing names/items remain unchanged. Outlet names and dew threshold are always defined and saved by CONFIG. Other driver properties are connection-dependent. Both INFO vectors have six items; GPS coordinates have three and UTC one. Advanced GPS status follows the inherited advanced-selection control.
+
+The AUX master owns the visible port and baud settings, including GPS-first connections. A pulse remains BUSY until its configured duration expires, then resets the switch; another pulse is excluded while BUSY. Calibration and mount forwarding remain BUSY until matching readback or timeout (approximately five seconds after command dispatch); failure reports ALERT. Reboots use a two-second completion delay, and conflicting operations or controls addressed to a disconnected logical device are rejected. Disconnect cancels pending local completion handlers; it does not abort a physical pulse already sent to the device.
+
+Source: `indigo_drivers/aux_mgbox/indigo_aux_mgbox.driver` (generated implementation: `indigo_aux_mgbox.c`).
 
 ### aux_ppb
 

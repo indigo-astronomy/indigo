@@ -975,7 +975,7 @@ $(INTEGRATION_BUILD)/test_aux_cloudwatcher_simulator: integration/test_aux_cloud
 $(INTEGRATION_BUILD)/aux_mgbox_simulator: ../indigo_drivers/aux_mgbox/aux_mgbox_simulator/aux_mgbox_simulator.c simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/test_aux_mgbox_simulator: integration/test_aux_mgbox_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_mgbox_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_aux_mgbox_simulator: integration/test_aux_mgbox_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_mgbox_simulator $(BUILD_DRIVERS)/indigo_aux_mgbox.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_aux_mgbox.a $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/aux_dragonfly_simulator: ../indigo_drivers/aux_dragonfly/aux_dragonfly_simulator/aux_dragonfly_simulator.c simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)

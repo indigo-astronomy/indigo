@@ -3,10 +3,178 @@
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 #include <indigo_drivers/aux_mgbox/indigo_aux_mgbox.h>
+#include <indigo/indigo_uni_io.h>
+#include <time.h>
 #include "serial_simulator_test_common.h"
 #include "aux_test_isolation.h"
 
 static const simulator_driver_case primary = { "MGBox Weather", "indigo_aux_mgbox", "MGBox Weather", indigo_aux_mgbox, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static external_serial_simulator secondary_simulator;
+static char event_path[] = "/tmp/indigo-mgbox-events.XXXXXX";
+
+static atomic_bool watch_calibration;
+static atomic_int premature_calibration_completions;
+
+static indigo_result mgbox_observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (atomic_load(&watch_calibration) && !strcmp(property->name, "X_WEATHER_CALIBRATION") && property->state == INDIGO_OK_STATE) {
+		const double expected[] = { 1.5, -2.5, 4.5 };
+		for (int i = 0; i < property->count && i < 3; i++) {
+			if (fabs(property->items[i].number.value - expected[i]) > .01) {
+				atomic_fetch_add(&premature_calibration_completions, 1);
+			}
+		}
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static int event_count(const char *kind, const char *prefix, double *last_time) {
+	FILE *file = fopen(event_path, "r");
+	if (!file) {
+		return -1;
+	}
+	int count = 0;
+	char line[1024], event_kind[32], value[768];
+	double timestamp;
+	while (fgets(line, sizeof(line), file)) {
+		if (strchr(line, '\n') && sscanf(line, "%lf %31s %767[^\n]", &timestamp, event_kind, value) == 3 && !strcmp(kind, event_kind) && !strncmp(value, prefix, strlen(prefix))) {
+			count++;
+			if (last_time) {
+				*last_time = timestamp;
+			}
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+static bool wait_events(const char *kind, const char *prefix, int expected, double *last_time) {
+	for (int i = 0; i < 100; i++) {
+		int count = event_count(kind, prefix, last_time);
+		if (count >= expected) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	fprintf(stderr, "Missing MGBox event: %s %s (expected %d)\n", kind, prefix, expected);
+	return false;
+}
+
+static bool wait_powerbox_labels(const char *label) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *outlet = find_cached_item(AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME);
+		indigo_item *length = find_cached_item(AUX_OUTLET_PULSE_LENGTHS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME);
+		if (outlet && length && !strcmp(outlet->label, label) && !strcmp(length->label, label)) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	return false;
+}
+
+static bool wait_powerbox_reset(double started) {
+	for (int i = 0; i < 500; i++) {
+		indigo_property *property = find_cached_property(AUX_GPIO_OUTLETS_PROPERTY_NAME);
+		indigo_item *item = find_cached_item(AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME);
+		if (property && item && !item->sw.value && property->state == INDIGO_OK_STATE) {
+			struct timespec now;
+			clock_gettime(CLOCK_MONOTONIC, &now);
+			// Allow 50 ms for observing events and the UI on different processes.
+			return now.tv_sec + now.tv_nsec / 1e9 - started >= 1.45;
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+// Independent PTY checks validate model capabilities and physical pulse timing
+// in the simulator before relying on its public-bus driver scenarios.
+static void simulator_profile(const char *expected_model, bool weather, bool has_gps, bool pulse) {
+	indigo_uni_handle *handle = indigo_uni_open_serial_with_speed(aux_simulator.port, 38400, INDIGO_LOG_ERROR);
+	char line[512], identity[80];
+	double started = 0, ended = 0;
+	SERIAL_CHECK_TRUE(handle != NULL);
+	SERIAL_CHECK_EQ_INT(12, indigo_uni_write(handle, ":devicetype*", 12));
+	SERIAL_CHECK_TRUE(indigo_uni_read_section(handle, line, sizeof(line), "\n", "\r\n", INDIGO_DELAY(2)) > 0);
+	snprintf(identity, sizeof(identity), "$LOG: Device Type: %s*", expected_model);
+	SERIAL_CHECK_TRUE(!strncmp(line, identity, strlen(identity)));
+	SERIAL_CHECK_EQ_INT(12, indigo_uni_write(handle, ":pulse,1500*", 12));
+	if (pulse) {
+		SERIAL_CHECK_TRUE(wait_events("PULSE_ON", "1500*", 1, &started));
+		SERIAL_CHECK_TRUE(wait_events("PULSE_OFF", "0", 1, &ended));
+		// Simulator expiration is sampled by the common 0.5 s stream tick.
+		SERIAL_CHECK_TRUE(ended - started >= 1.5 && ended - started < 2.2);
+	} else {
+		SERIAL_CHECK_TRUE(wait_events("REJECT", ":pulse,1500*", 1, NULL));
+		SERIAL_CHECK_EQ_INT(0, event_count("PULSE_ON", "", NULL));
+	}
+	if (weather) {
+		SERIAL_CHECK_TRUE(wait_events("TX", "PXDR,", 1, NULL));
+	} else {
+		SERIAL_CHECK_EQ_INT(0, event_count("TX", "PXDR", NULL));
+	}
+	if (has_gps) {
+		SERIAL_CHECK_TRUE(event_count("TX", "GPRMC,", NULL) > 0);
+		SERIAL_CHECK_TRUE(event_count("TX", "GPGGA,", NULL) > 0);
+	} else {
+		SERIAL_CHECK_EQ_INT(0, event_count("TX", "GP", NULL));
+	}
+	SERIAL_CHECK_EQ_INT(1, event_count("RX", ":pulse,1500*", NULL));
+cleanup:
+	if (handle) {
+		indigo_uni_close(&handle);
+	}
+}
+
+static void simulator_mgpbox(void) {
+	simulator_profile("MGPBox", true, true, true);
+}
+
+static void simulator_pbox(void) {
+	simulator_profile("PBox", false, false, true);
+}
+
+static void simulator_mbox(void) {
+	simulator_profile("MBox", true, false, false);
+}
+
+static void powerbox_pulse(void) {
+	double started = 0, ended = 0;
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	assert_device_interface(INDIGO_INTERFACE_AUX_GPIO);
+	SERIAL_CHECK_TRUE(find_cached_item(AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_GPIO_OUTLET_NAME_1_ITEM_NAME) != NULL);
+	SERIAL_CHECK_TRUE(find_cached_item(AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME) != NULL);
+	SERIAL_CHECK_TRUE(find_cached_item(AUX_OUTLET_PULSE_LENGTHS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME) != NULL);
+	SERIAL_CHECK_EQ_INT(indigo_change_text_property_1(&simulator_test_client, primary.device_name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_GPIO_OUTLET_NAME_1_ITEM_NAME, "Mount power"), INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_powerbox_labels("Mount power"));
+	SERIAL_CHECK_EQ_INT(indigo_change_number_property_1(&simulator_test_client, primary.device_name, AUX_OUTLET_PULSE_LENGTHS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, 1500), INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_OUTLET_PULSE_LENGTHS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, 1500, .01));
+	SERIAL_CHECK_EQ_INT(0, event_count("RX", ":pulse,", NULL));
+	SERIAL_CHECK_EQ_INT(indigo_change_switch_property_1(&simulator_test_client, primary.device_name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, true), INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_events("PULSE_ON", "1500*", 1, &started));
+	SERIAL_CHECK_TRUE(wait_powerbox_reset(started));
+	SERIAL_CHECK_TRUE(wait_events("PULSE_OFF", "0", 1, &ended));
+	SERIAL_CHECK_TRUE(ended - started >= 1.5 && ended - started < 2.2);
+	SERIAL_CHECK_EQ_INT(1, event_count("RX", ":pulse,1500*", NULL));
+	SERIAL_CHECK_EQ_INT(1, event_count("RX", ":pulse,", NULL));
+	printf("Powerbox labels, pulse command/duration and switch reset passed; checking disconnect/shutdown\n");
+cleanup:
+	aux_stop(&primary);
+}
+
+static void powerbox_unavailable(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_EQ_INT(indigo_change_switch_property_1(&simulator_test_client, primary.device_name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, true), INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_GPIO_OUTLETS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	indigo_item *outlet = find_cached_item(AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME);
+	SERIAL_CHECK_TRUE(outlet && !outlet->sw.value);
+	// Wait through two simulator stream ticks to catch an incorrectly queued pulse.
+	SERIAL_CHECK_TRUE(wait_events("TX", "PXDR,", event_count("TX", "PXDR,", NULL) + 2, NULL));
+	SERIAL_CHECK_EQ_INT(0, event_count("RX", ":pulse,", NULL));
+	SERIAL_CHECK_EQ_INT(0, event_count("PULSE_ON", "", NULL));
+	printf("Model without Powerbox rejected pulse without a wire command; checking disconnect/shutdown\n");
+cleanup:
+	aux_stop(&primary);
+}
 
 static void normal(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
@@ -21,19 +189,80 @@ cleanup:
 	aux_stop(&primary);
 }
 
-static void rejected_connection(void) {
-	SERIAL_CHECK_TRUE(bring_up_serial_driver(&primary));
-	SERIAL_CHECK_TRUE(!connect_serial_device(&primary, aux_simulator.port));
-	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+static const simulator_driver_case gps = { "MGBox GPS", "indigo_aux_mgbox", "MGBox GPS", indigo_aux_mgbox, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+
+static void pbox_rejects_gps(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&gps));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, primary.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, aux_simulator.port));
+	SERIAL_CHECK_TRUE(aux_reject(&gps, aux_simulator.port));
+	SERIAL_CHECK_TRUE(event_count("TX", "LOG: Device Type: PBox", NULL) > 0);
 	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_EQ_INT(0, event_count("TX", "GP", NULL));
+	printf("PBox GPS rejection passed; checking shutdown\n");
+cleanup:
+	aux_stop(&gps);
+}
+
+static void shared_connections(bool gps_first) {
+	const simulator_driver_case *first = gps_first ? &gps : &primary;
+	const simulator_driver_case *second = gps_first ? &primary : &gps;
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(first));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, primary.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, aux_simulator.port));
+	SERIAL_CHECK_TRUE(connect_serial_device(first, aux_simulator.port));
+	SERIAL_CHECK_TRUE(connect_serial_device(second, aux_simulator.port));
+	SERIAL_CHECK_EQ_INT(1, event_count("RX", ":devicetype*", NULL));
+	disconnect_serial_device(first);
+	SERIAL_CHECK_TRUE(!context.connected);
+	reset_simulator_context(second);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_item *connected = find_cached_item(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	SERIAL_CHECK_TRUE(connected && connected->sw.value);
+	if (second == &gps) {
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48, .0001));
+	} else {
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME, 31.8, .01));
+	}
+	SERIAL_CHECK_TRUE(connect_serial_device(first, aux_simulator.port));
+	SERIAL_CHECK_EQ_INT(1, event_count("RX", ":devicetype*", NULL));
+cleanup:
+	disconnect_serial_device(first);
+	disconnect_serial_device(second);
+	aux_stop(second);
+}
+
+static void shared_aux_first(void) {
+	shared_connections(false);
+}
+
+static void shared_gps_first(void) {
+	shared_connections(true);
+}
+
+static void reconnect_after_failure(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&primary));
+	SERIAL_CHECK_TRUE(aux_reject(&primary, "/dev/indigo-nonexistent-aux-test"));
+	for (int i = 0; i < 3; i++) {
+		SERIAL_CHECK_TRUE(connect_serial_device(&primary, aux_simulator.port));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME, 31.8, .01));
+		disconnect_serial_device(&primary);
+		SERIAL_CHECK_TRUE(!context.connected);
+	}
+	SERIAL_CHECK_EQ_INT(3, event_count("RX", ":devicetype*", NULL));
 cleanup:
 	aux_stop(&primary);
 }
 
-static const simulator_driver_case gps = { "MGBox GPS", "indigo_aux_mgbox", "MGBox GPS", indigo_aux_mgbox, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static void silent_identification(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&primary));
+	SERIAL_CHECK_TRUE(aux_reject(&primary, aux_simulator.port));
+	SERIAL_CHECK_EQ_INT(3, event_count("RX", ":devicetype*", NULL));
+cleanup:
+	aux_stop(&primary);
+}
 
 static void gps_readings(void) {
-	SERIAL_CHECK_TRUE(start_serial_driver(&gps, aux_simulator.port));
+	SERIAL_CHECK_TRUE(start_shared_serial_device(&gps, primary.device_name, aux_simulator.port));
 	assert_device_interface(INDIGO_INTERFACE_GPS);
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48, .0001));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 17, .0001));
@@ -51,13 +280,281 @@ cleanup:
 	aux_stop(&primary);
 }
 
+static bool wait_light(const char *item_name, indigo_property_state state) {
+	for (int i = 0; i < 150; i++) {
+		indigo_item *item = find_cached_item(GPS_STATUS_PROPERTY_NAME, item_name);
+		if (item && item->light.value == state) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static void aux_settings(void) {
+	const char *items[] = { AUX_WEATHER_TEMPERATURE_ITEM_NAME, AUX_WEATHER_HUMIDITY_ITEM_NAME, AUX_WEATHER_PRESSURE_ITEM_NAME };
+	const double values[] = { 1.5, -2.5, 4.5 };
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	atomic_store(&watch_calibration, true);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, primary.device_name, "X_WEATHER_CALIBRATION", 3, items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state("X_WEATHER_CALIBRATION", INDIGO_OK_STATE));
+	for (int i = 0; i < 3; i++) {
+		SERIAL_CHECK_TRUE(wait_for_number_item_value("X_WEATHER_CALIBRATION", items[i], values[i], .01));
+	}
+	SERIAL_CHECK_EQ_INT(1, event_count("RX", ":calt,15*", NULL));
+	SERIAL_CHECK_EQ_INT(1, event_count("RX", ":calh,-25*", NULL));
+	SERIAL_CHECK_EQ_INT(1, event_count("RX", ":calp,45*", NULL));
+	SERIAL_CHECK_EQ_INT(0, atomic_load(&premature_calibration_completions));
+	atomic_store(&watch_calibration, false);
+	for (int enabled = 0; enabled < 2; enabled++) {
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primary.device_name, "X_SEND_WEATHER_DATA_TO_MOUNT", "ENABLED", enabled));
+		SERIAL_CHECK_TRUE(aux_wait_switch("X_SEND_WEATHER_DATA_TO_MOUNT", "ENABLED", enabled));
+	}
+	SERIAL_CHECK_EQ_INT(1, event_count("RX", ":mm,0*", NULL));
+	SERIAL_CHECK_EQ_INT(1, event_count("RX", ":mm,1*", NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primary.device_name, "X_REBOOT_DEVICE", "REBOOT", true));
+	SERIAL_CHECK_TRUE(wait_events("RX", ":reboot*", 1, NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primary.device_name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_GPIO_OUTLETS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(aux_wait_switch("X_REBOOT_DEVICE", "REBOOT", false));
+	SERIAL_CHECK_EQ_INT(0, event_count("RX", ":pulse,", NULL));
+cleanup:
+	aux_stop(&primary);
+}
+
+static void gps_settings(void) {
+	SERIAL_CHECK_TRUE(start_shared_serial_device(&gps, primary.device_name, aux_simulator.port));
+	for (int enabled = 1; enabled >= 0; enabled--) {
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, gps.device_name, "X_SEND_GPS_DATA_TO_MOUNT", "ENABLED", enabled));
+		SERIAL_CHECK_TRUE(aux_wait_switch("X_SEND_GPS_DATA_TO_MOUNT", "ENABLED", enabled));
+	}
+	SERIAL_CHECK_EQ_INT(1, event_count("RX", ":mg,0*", NULL));
+	SERIAL_CHECK_EQ_INT(1, event_count("RX", ":mg,1*", NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, gps.device_name, GPS_ADVANCED_PROPERTY_NAME, GPS_ADVANCED_ENABLED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GPS_ADVANCED_STATUS_PROPERTY_NAME, GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM_NAME, 8, .01));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GPS_ADVANCED_STATUS_PROPERTY_NAME, GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM_NAME, 12, .01));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GPS_ADVANCED_STATUS_PROPERTY_NAME, GPS_ADVANCED_STATUS_PDOP_ITEM_NAME, 1.8, .01));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, gps.device_name, GPS_ADVANCED_PROPERTY_NAME, GPS_ADVANCED_DISABLED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(find_cached_property(GPS_ADVANCED_STATUS_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, gps.device_name, "X_REBOOT_GPS", "REBOOT", true));
+	SERIAL_CHECK_TRUE(wait_events("RX", ":rebootgps*", 1, NULL));
+	SERIAL_CHECK_TRUE(aux_wait_switch("X_REBOOT_GPS", "REBOOT", false));
+	SERIAL_CHECK_TRUE(wait_light(GPS_STATUS_3D_FIX_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	aux_stop(&gps);
+}
+
+static void readback_timeout(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, primary.device_name, "X_WEATHER_CALIBRATION", AUX_WEATHER_PRESSURE_ITEM_NAME, 2.5));
+	SERIAL_CHECK_TRUE(wait_for_property_state("X_WEATHER_CALIBRATION", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primary.device_name, "X_SEND_WEATHER_DATA_TO_MOUNT", "ENABLED", true));
+	SERIAL_CHECK_TRUE(wait_for_property_state("X_SEND_WEATHER_DATA_TO_MOUNT", INDIGO_ALERT_STATE));
+cleanup:
+	aux_stop(&primary);
+}
+
+static void gps_readback_timeout(void) {
+	SERIAL_CHECK_TRUE(start_shared_serial_device(&gps, primary.device_name, aux_simulator.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, gps.device_name, "X_SEND_GPS_DATA_TO_MOUNT", "ENABLED", true));
+	SERIAL_CHECK_TRUE(wait_for_property_state("X_SEND_GPS_DATA_TO_MOUNT", INDIGO_ALERT_STATE));
+cleanup:
+	aux_stop(&gps);
+}
+
+static void pulse_overlap(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, primary.device_name, AUX_OUTLET_PULSE_LENGTHS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, 1500));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primary.device_name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_events("PULSE_ON", "1500*", 1, NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primary.device_name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primary.device_name, "X_REBOOT_DEVICE", "REBOOT", true));
+	SERIAL_CHECK_TRUE(wait_for_property_state("X_REBOOT_DEVICE", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(aux_wait_switch(AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, false));
+	SERIAL_CHECK_EQ_INT(1, event_count("RX", ":pulse,", NULL));
+	SERIAL_CHECK_EQ_INT(0, event_count("RX", ":reboot*", NULL));
+cleanup:
+	aux_stop(&primary);
+}
+
+static void pulse_disconnect(void) {
+	struct timespec start, end;
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, primary.device_name, AUX_OUTLET_PULSE_LENGTHS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, 10000));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primary.device_name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_events("PULSE_ON", "10000*", 1, NULL));
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	disconnect_serial_device(&primary);
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(end.tv_sec - start.tv_sec + (end.tv_nsec - start.tv_nsec) / 1e9 < 3);
+	SERIAL_CHECK_TRUE(connect_serial_device(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(aux_wait_switch(AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, false));
+cleanup:
+	aux_stop(&primary);
+}
+
+static void reboot_disconnect(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primary.device_name, "X_REBOOT_DEVICE", "REBOOT", true));
+	SERIAL_CHECK_TRUE(wait_events("RX", ":reboot*", 1, NULL));
+	SERIAL_CHECK_TRUE(find_cached_property("X_REBOOT_DEVICE")->state == INDIGO_BUSY_STATE);
+	disconnect_serial_device(&primary);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_serial_device(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(aux_wait_switch("X_REBOOT_DEVICE", "REBOOT", false));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME, 31.8, .01));
+cleanup:
+	aux_stop(&primary);
+}
+
+static void transport_loss(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primary.device_name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_events("PULSE_ON", "", 1, NULL));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_GPIO_OUTLETS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	aux_stop(&primary);
+}
+
+static void gps_fix_transitions(void) {
+	SERIAL_CHECK_TRUE(start_shared_serial_device(&gps, primary.device_name, aux_simulator.port));
+	SERIAL_CHECK_TRUE(wait_light(GPS_STATUS_3D_FIX_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_light(GPS_STATUS_NO_FIX_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(UTC_TIME_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_light(GPS_STATUS_2D_FIX_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_light(GPS_STATUS_3D_FIX_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	aux_stop(&gps);
+}
+
+static void gps_southern(void) {
+	SERIAL_CHECK_TRUE(start_shared_serial_device(&gps, primary.device_name, aux_simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, -33.85, .0001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, -151.2, .0001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, -12, .01));
+	indigo_item *utc = find_cached_item(UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME);
+	SERIAL_CHECK_TRUE(utc && !strcmp(utc->text.value, "2026-12-31T23:59:59"));
+	bool rollover = false;
+	for (int i = 0; i < 60; i++) {
+		utc = find_cached_item(UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME);
+		if (utc && !strcmp(utc->text.value, "2027-01-01T00:00:00")) {
+			rollover = true;
+			break;
+		}
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(rollover);
+cleanup:
+	aux_stop(&gps);
+}
+
+static void failed_secondary(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	reset_simulator_context(&gps);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(aux_reject(&gps, aux_simulator.port));
+	reset_simulator_context(&primary);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME, 31.8, .01));
+	SERIAL_CHECK_EQ_INT(1, event_count("RX", ":devicetype*", NULL));
+cleanup:
+	disconnect_serial_device(&gps);
+	disconnect_serial_device(&primary);
+	aux_stop(&primary);
+}
+
+static void instances(void) {
+	static const simulator_driver_case second = { "MGBox Weather #2", "indigo_aux_mgbox", "MGBox Weather #2", indigo_aux_mgbox, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+	static const simulator_driver_case second_gps = { "MGBox GPS #2", "indigo_aux_mgbox", "MGBox GPS #2", indigo_aux_mgbox, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&primary));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, primary.device_name, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 1));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 1, .01));
+	SERIAL_CHECK_TRUE(connect_serial_device(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(connect_serial_device(&second, secondary_simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME, 20, .01));
+	SERIAL_CHECK_TRUE(connect_serial_device(&second_gps, NULL));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 49, .0001));
+	disconnect_serial_device(&second);
+	SERIAL_CHECK_TRUE(connect_serial_device(&gps, NULL));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48, .0001));
+	disconnect_serial_device(&primary);
+	reset_simulator_context(&second_gps);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 49, .0001));
+cleanup:
+	disconnect_serial_device(&second_gps);
+	disconnect_serial_device(&second);
+	disconnect_serial_device(&gps);
+	disconnect_serial_device(&primary);
+	indigo_change_number_property_1(&simulator_test_client, primary.device_name, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 0);
+	aux_stop(&primary);
+}
+
 int main(void) {
+	simulator_test_client.update_property = mgbox_observe_update;
+	int fd = mkstemp(event_path);
+	if (fd < 0) {
+		perror("MGBox event journal");
+		return 1;
+	}
+	close(fd);
+	if (setenv("INDIGO_MGBOX_SIMULATOR_EVENTS", event_path, 1)) {
+		unlink(event_path);
+		return 1;
+	}
+	const char *filter = getenv("AUX_TEST_FILTER");
+	if (!filter || strstr("instances", filter)) {
+		unsetenv("INDIGO_MGBOX_SIMULATOR_EVENTS");
+		const char *args[] = { "--profile", "alternate", NULL };
+		if (!start_external_serial_simulator_with_args(&secondary_simulator, "build/integration/aux_mgbox_simulator", args)) {
+			unlink(event_path);
+			return 1;
+		}
+		setenv("INDIGO_MGBOX_SIMULATOR_EVENTS", event_path, 1);
+	}
 	const aux_simulated_case tests[] = {
+		{ "aux_settings", aux_settings, "normal" },
+		{ "gps_settings", gps_settings, "normal" },
+		{ "readback_timeout", readback_timeout, "no-cal-reply" },
+		{ "gps_readback_timeout", gps_readback_timeout, "no-cal-reply" },
+		{ "pulse_overlap", pulse_overlap, "normal" },
+		{ "pulse_disconnect", pulse_disconnect, "normal" },
+		{ "reboot_disconnect", reboot_disconnect, "normal" },
+		{ "transport_loss", transport_loss, "drop-after-pulse" },
+		{ "gps_fix_transitions", gps_fix_transitions, "gps-fix" },
+		{ "gps_southern", gps_southern, "southern" },
+		{ "failed_secondary", failed_secondary, "mbox" },
+		{ "instances", instances, "normal" },
+		{ "simulator_mgpbox", simulator_mgpbox, "normal" },
+		{ "simulator_pbox", simulator_pbox, "pbox" },
+		{ "simulator_mbox", simulator_mbox, "mbox" },
+		{ "powerbox_mgpbox", powerbox_pulse, "normal" },
+		{ "powerbox_pbox", powerbox_pulse, "pbox" },
+		{ "powerbox_unavailable", powerbox_unavailable, "mbox" },
+		{ "pbox_rejects_gps", pbox_rejects_gps, "pbox" },
+		{ "shared_aux_first", shared_aux_first, "normal" },
+		{ "shared_gps_first", shared_gps_first, "normal" },
+		{ "reconnect_after_failure", reconnect_after_failure, "normal" },
+		{ "silent_identification", silent_identification, "silent" },
 		{ "normal", normal, "normal" },
 		{ "gps_readings", gps_readings, "normal" },
 		{ "short_weather", normal, "short-weather" },
+		{ "parser_weather", normal, "parser-faults" },
+		{ "parser_gps", gps_readings, "parser-faults" },
+		{ "split_weather", normal, "split" },
+		{ "split_gps", gps_readings, "split" },
 		{ "short_gps", gps_readings, "short-gps" },
 		{ "invalid_port", invalid_port, "normal" },
 	};
-	return run_aux_simulated("mgbox", "build/integration/aux_mgbox_simulator", tests, ARRAY_SIZE(tests));
+	int result = run_aux_simulated("mgbox", "build/integration/aux_mgbox_simulator", tests, ARRAY_SIZE(tests));
+	stop_external_serial_simulator(&secondary_simulator);
+	unsetenv("INDIGO_MGBOX_SIMULATOR_EVENTS");
+	unlink(event_path);
+	return result;
 }

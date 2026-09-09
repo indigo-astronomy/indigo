@@ -119,8 +119,8 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-085 | Medium | `aux_cloudwatcher/indigo_aux_cloudwatcher.c:719` | Low-resolution humidity uses the temperature coefficient and reports negative humidity for valid sensor data. | Open |
 | DRV-086 | High | `aux_cloudwatcher/indigo_aux_cloudwatcher.c:376` | A serial timeout before the first reply byte writes response[-1]. | Open |
 | DRV-087 | High | `aux_dragonfly/shared/dragonfly_shared.c:121` | A full-size UDP reply writes the terminator one byte past the response buffer. | Open |
-| DRV-088 | High | `aux_mgbox/indigo_aux_mgbox.c:204` | Truncated checksummed NMEA sentences dereference missing fields in GPS and weather parsing. | Open |
-| DRV-089 | High | `aux_mgbox/indigo_aux_mgbox.c:195` | Pointer handles are tested as integer descriptors; failed open and last disconnect do not complete correctly. | Open |
+| DRV-088 | High | `aux_mgbox/indigo_aux_mgbox.c:204` | Truncated checksummed NMEA sentences dereference missing fields in GPS and weather parsing. | Closed (fixed) |
+| DRV-089 | High | `aux_mgbox/indigo_aux_mgbox.c:195` | Pointer handles are tested as integer descriptors; failed open and last disconnect do not complete correctly. | Closed (fixed) |
 | DRV-090 | High | `guider_asi/indigo_guider_asi.c:266` | SDK pulse start/stop errors are ignored in property state and completion. | Open |
 | DRV-091 | High | `guider_asi/indigo_guider_asi.c:273` | Reversing a running pulse enables the opposite relay without disabling the original direction. | Open |
 | DRV-092 | High | `guider_asi/indigo_guider_asi.c:259` | A zero-duration replacement cancels the stop timer but never switches off the active relay. | Open |
@@ -890,13 +890,17 @@ In `aag_command()`, a 15-second timeout with zero bytes leaves `index == 0`; the
 
 `lunatico_command()` reads up to `max` UDP bytes and then writes `response[index] = '\0'`. A 100-byte datagram fills the 100-byte array used during connection and writes one byte beyond it. `AUX_TEST_FILTER=oversized ./build/integration/test_aux_dragonfly_simulator_asan` reproduces the stack-buffer-overflow at `shared/dragonfly_shared.c:121` using a separate loopback UDP simulator. The non-instrumented executable survives the same case; ASan is necessary to expose the corruption. Production code intentionally remains unchanged.
 
-### DRV-088 (Open)
+### DRV-088 (Closed — fixed)
 
-`parse()` accepts a checksummed sentence without validating its field count. The GPS RMC handler immediately reads `tokens[1]`/`tokens[9]` (line 204), and the weather XDR handler reads `tokens[2]` and other missing fields (line 345). The standalone simulator sends truncated `GPRMC` or `PXDR` sentences with correctly computed checksums. Both `short_gps` and `short_weather` crash in the normal build; the ASan build confirms NULL reads in the conversion calls. This concerns malformed device replies, not framework property input validation. Production code intentionally remains unchanged.
+`parse()` accepts a checksummed sentence without validating its field count. The GPS RMC handler immediately reads `tokens[1]`/`tokens[9]` (line 204), and the weather XDR handler reads `tokens[2]` and other missing fields (line 345). The standalone simulator sends truncated `GPRMC` or `PXDR` sentences with correctly computed checksums. Both `short_gps` and `short_weather` crash in the normal build; the ASan build confirms NULL reads in the conversion calls. This concerns malformed device replies, not framework property input validation.
 
-### DRV-089 (Open)
+Fixed in the 2026-09-09 working tree, generated version `0x0300000A`: `aux_mgbox/indigo_aux_mgbox.driver:74` bounds tokenization and checksum parsing; `:148` checks required fields before conversion and `:308` bounds per-instance framing. Both original short-message reproducers and expanded malformed/split-frame recovery scenarios pass, including six selected driver-instrumented ASan parser scenarios. The final ordinary suite passes all 32 scenarios. See `aux_mgbox/REFACTOR.md`; folder review baseline is unchanged.
 
-`mgbox_open()` tests the pointer returned by `indigo_uni_open_serial_with_speed()` with `>= 0` (line 431), and `data_refresh_callback()` uses the same comparison in its loop (line 195). A NULL handle therefore still takes the success/reader path. Last close first clears the handle and then waits for that reader (lines 473–475), which does not exit on a cleared pointer. The real-PTY `normal` and `gps_readings` cases pass their data assertions but fail disconnect/shutdown, leaving the driver attached. The nonexistent-port case fails to reach a disconnected ALERT state within the bounded wait. Source and compiled-driver tests agree; no production fix was applied.
+### DRV-089 (Closed — fixed)
+
+`mgbox_open()` tests the pointer returned by `indigo_uni_open_serial_with_speed()` with `>= 0` (line 431), and `data_refresh_callback()` uses the same comparison in its loop (line 195). A NULL handle therefore still takes the success/reader path. Last close first clears the handle and then waits for that reader (lines 473–475), which does not exit on a cleared pointer. The real-PTY `normal` and `gps_readings` cases pass their data assertions but fail disconnect/shutdown, leaving the driver attached. The nonexistent-port case fails to reach a disconnected ALERT state within the bounded wait. Source and compiled-driver tests agreed at the baseline.
+
+Fixed in the 2026-09-09 working tree, generated version `0x0300000A`: `aux_mgbox/indigo_aux_mgbox.driver:351` implements transactional pointer-handle acquisition and `:394` closes the acquired handle; generated connection handlers own shared references and rollback. Bounded reads and callbacks on the master queue replace the independent reader. Invalid port, silent identification, three reconnect cycles, both shared orders, secondary rejection with the primary active, pulse/reboot disconnect and two independent instances pass. ASan also passes both pending-operation disconnect scenarios and instance isolation. The final ordinary suite passes all 32 scenarios; no hardware/TCP validation or folder-wide review is claimed.
 
 ### DRV-090 (Open)
 

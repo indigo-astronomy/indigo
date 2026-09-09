@@ -44,7 +44,7 @@ Inventory: 150 modules — 2 Complete, 36 Partial, 55 Not audited, 47 No tests, 
 | `aux_flipflat` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `aux_geoptikflat` | Generated | Fake transport | Partial | New fake transport: handshake rollback, reconnect, brightness/light commands and error recovery pass; remaining audit pending |
 | `aux_joystick` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `aux_mgbox` | Hand-written | PTY protocol simulator | Partial | 5 scenarios run: weather/GPS data assertions pass but both teardown cases fail; truncated weather/GPS replies crash; invalid-port handling fails (DRV-088, DRV-089). Shared connections and other controls remain. |
+| `aux_mgbox` | Generated | PTY protocol simulator | Partial | All 32 scenarios pass on native macOS arm64; nine selected driver-instrumented ASan scenarios pass. Weather/GPS/Powerbox, readback/timeouts, shared/additional instances, parser recovery and pending-operation teardown covered. Physical hardware, TCP bridges and other-platform execution remain unverified. |
 | `aux_ppb` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `aux_rpio` | Hand-written | None | No tests | `indigo_linux_drivers/`. No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `aux_rts` | Generated | Fake transport | Partial | New fake RTS: duration/start/stop/abort and start failure pass; completion/abort stop failures and explicit retry also pass; remaining audit pending |
@@ -664,8 +664,33 @@ Added standalone PTY simulators for `aux_cloudwatcher` and `aux_mgbox`, and a lo
 
 Validation on macOS arm64: universal arm64/x86_64 test builds succeeded; 15 ordinary scenarios ran (9 pass, 6 fail). Four additional selected driver-instrumented AddressSanitizer scenarios reproduce CloudWatcher timeout underflow, Dragonfly UDP overflow and both MGBox truncated-message crashes. The framework library remains uninstrumented. See open `DRV-085`–`DRV-089` in `indigo_drivers/REVIEW.md`. These are partial coverage results, not hardware validation or full-standard completion.
 
+## MGBox migration preparation (2026-09-09)
+
+Rebuilt the unchanged `aux_mgbox` driver and existing PTY suite for macOS arm64/x86_64, then reran all five scenarios on native arm64. All five failed: Weather/calibration and GPS data assertions passed but disconnect/shutdown failed; both truncated-message scenarios crashed with SIGSEGV; invalid-port rejection and teardown failed. This reconfirms existing `DRV-088`/`DRV-089`; no production or test behavior was changed in this preparation step.
+
+The migration sequence is recorded in `../indigo_drivers/aux_mgbox/REFACTOR.md`. The user identified missing PBox coverage: the simulator currently accepts pulse commands and stores a deadline, but there are no pulse command/duration/reset assertions and it always identifies as MGPBox. Planned coverage includes standalone PBox/model capability profiles, observable pulse commands, both shared connection orders, parser recovery, fix/advanced GPS status, forwarding, reboot, reconnect and pending-operation teardown. These remain planned, not implemented or passing. No new ASan, TCP or hardware run was performed.
+
+## MGBox Step 2: Powerbox simulator coverage (2026-09-09)
+
+Implemented the Powerbox subset of the preparation plan: `pbox` and `mbox` profiles alongside normal MGPBox, an optional flushed event journal, three independent PTY simulator checks and four public-bus driver scenarios. Powerbox tests cover outlet-label propagation, changing pulse length without activating the outlet, one exact `:pulse,1500*` command, timed completion and switch reset, rejection on MBox without a wire pulse, and PBox GPS-connection rejection. The manual confirms the MGPBox pulse command/units; standalone model capabilities and identity reply spelling remain explicitly supplementary fixtures. See [protocol details](AUX_PROTOCOL_TESTS.md) and `../indigo_drivers/aux_mgbox/REFACTOR.md` for the result table.
+
+Universal macOS arm64/x86_64 build passed. Full native arm64 execution: 12 scenarios, 3 independent simulator checks pass and 9 driver scenarios fail. Powerbox label/pulse/reset and MBox no-pulse assertions pass, followed by the existing failed disconnect. PBox GPS rejection also cannot complete its connection rollback. The five original failure scenarios remain unchanged. No expected-failure masking, production driver fixes or generator changes were introduced. Added the driver archive as a narrow test prerequisite so future changes relink automatically.
+
+After tightening the reset check to reject completion before the pulse duration (50 ms observation tolerance), rebuilt and reran the three `powerbox_` scenarios. Their control assertions passed again; all three still failed only at teardown. Shared connections, overlapping pulses and pending-operation cleanup, parser recovery/fix transitions, reboot/forwarding and TCP remain deferred to subsequent migration steps. No ASan or hardware validation was performed in this step; `DRV-088`/`DRV-089` remain Open.
+
 ## Guider simulator/SDK follow-up (2026-09-09)
 
 Added `test_guider_asi_sdk` against the bundled vendor SDK contract and a standalone `guider_cgusbst4_simulator` with real-PTY integration tests. Re-ran the existing GPUSB fake SDK suite. New files are referenced in Xcode. Production `.c`/`.driver` sources and the generator were not changed.
 
 [Protocol evidence, simulator profiles, run commands and remaining coverage](GUIDER_PROTOCOL_TESTS.md). ASI: 3/9 pass, six failing scenarios reproduce five bugs. CG-USB-ST4: 4/5 pass; remaining scenario establishes a dialect discrepancy pending manufacturer confirmation. GPUSB: all four existing groups pass. Findings `DRV-090`–`DRV-095` are Open in `indigo_drivers/REVIEW.md`; the folder's reviewed range was updated without advancing its baseline. macOS ASI validation uses x86_64/Rosetta because the driver does not implement the native arm64 branch.
+
+
+## MGBox Steps 3–8: generated migration acceptance (2026-09-09)
+
+Migrated production code to `indigo_aux_mgbox.driver`, regenerated C/header/main, and raised the version from `0x03000004` to `0x0300000A`. Intermediate lifetime fixes reduced the 12-case failures to the two parser crashes; bounded parsing then passed all 18 cases. Generated queue/lifecycle migration passed those 18 and subsequently 29 expanded cases. The final archive-linked native arm64 run passes all 32 scenarios.
+
+New coverage includes both shared connection orders using the AUX master's port, rollback of failed GPS capability detection, invalid-port recovery and three reconnect cycles, silent identification, independent additional-instance PTYs, all calibration targets and no premature OK on stale readback, weather/GPS forwarding in both directions, missing-reply ALERT, both reboot controls, pulse overlap/conflicting reboot, disconnect during pulse/reboot, transport EOF, GPS fix loss/2D/3D recovery, advanced satellites/DOP visibility, signed coordinates/negative altitude, UTC year rollover and fragmented frames. Parser faults include truncated RMC/GGA/GSA/GSV/XDR/CAL/LOG, non-finite numbers, malformed/incorrect checksums, excess tokens and overlong input, followed by valid recovery data. Independent model and Powerbox pulse checks from Step 2 remain in the suite.
+
+Final universal macOS production/test/ASan builds passed. Nine native arm64 ASan scenarios passed: `short_weather`, `short_gps`, `parser_weather`, `parser_gps`, `split_weather`, `split_gps`, `pulse_disconnect`, `reboot_disconnect` and `instances`. The driver/test are instrumented; the existing framework is not. The complete 32-case ordinary run and every selected ASan command exited 0. `DRV-088`/`DRV-089` are closed with this scoped evidence; review baselines are unchanged.
+
+The simulator's physical pulse duration uses its 0.5-second tick and does not prove hardware timing. Reboot completion is the driver's two-second settling delay, not device acknowledgement. Standalone model fixtures retain the documented provenance limits. TCP bridges, real hardware/firmware variants, Linux/Windows and x86_64 execution remain deferred; this is not full GPS standard or hardware acceptance. Migration details and final cleanup/checks are in `../indigo_drivers/aux_mgbox/REFACTOR.md`.

@@ -1,0 +1,870 @@
+// Copyright (c) 2020-2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// version history
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// 3.0 generated-driver migration by OpenAI Codex, 2026
+
+// Astromi.ch MGBox driver definition
+driver mgbox {
+	label = "Astromi.ch MGBox";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
+	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
+	version = 10;
+	serial { configurable_speed = true; }
+	include {
+		#include <math.h>
+		#include <ctype.h>
+		#include <errno.h>
+	}
+	define {
+		#define SETTINGS_GROUP "Settings"
+		#define WEATHER_GROUP "Weather"
+		#define SWITCH_GROUP "Switch Control"
+	}
+	data {
+		indigo_device *aux_device;
+		indigo_device *gps_device;
+		char firmware[INDIGO_VALUE_SIZE];
+		char device_type[INDIGO_VALUE_SIZE];
+		char input[512];
+		size_t input_length;
+		bool input_overflow;
+		bool transport_failed;
+		int gps_fix;
+		bool position_valid, time_valid;
+		bool calibration_pending;
+		bool weather_forwarding_pending, gps_forwarding_pending;
+		bool weather_forwarding, gps_forwarding;
+		bool rebooting, gps_rebooting;
+		unsigned cal_sequence, weather_sequence, gps_sequence;
+		unsigned cal_after, weather_after, gps_after;
+		int cal_target[3];
+		int cal_attempts, weather_attempts, gps_attempts;
+	}
+	code {
+		static bool mgbox_number(const char *text, double min, double max, double *value) {
+			if (!text || !*text) {
+				return false;
+			}
+			char *end;
+			errno = 0;
+			*value = strtod(text, &end);
+			return !errno && *end == 0 && isfinite(*value) && *value >= min && *value <= max;
+		}
+
+		static int mgbox_parse(char *buffer, char **tokens, int capacity) {
+			int offset;
+			if (!strncmp(buffer, "$GP", 3)) {
+				offset = 3;
+			} else if (!strncmp(buffer, "$P", 2)) {
+				offset = 2;
+			} else if (!strncmp(buffer, "$LOG:", 5)) {
+				offset = 1;
+			} else {
+				return 0;
+			}
+			char *checksum = strchr(buffer, '*');
+			if (checksum) {
+				if (strlen(checksum + 1) != 2 || !isxdigit((unsigned char)checksum[1]) || !isxdigit((unsigned char)checksum[2])) {
+					return 0;
+				}
+				unsigned long expected = strtoul(checksum + 1, NULL, 16), actual = 0;
+				for (char *p = buffer + 1; p < checksum; p++) {
+					actual ^= (unsigned char)*p;
+				}
+				if (actual != expected) {
+					return 0;
+				}
+				*checksum = 0;
+			}
+			int count = 0;
+			char *next = buffer + offset;
+			while (next) {
+				if (count == capacity) {
+					return 0;
+				}
+				tokens[count++] = next;
+				next = strchr(next, ',');
+				if (next) {
+					*next++ = 0;
+				}
+			}
+			return count;
+		}
+
+		static void mgbox_update(indigo_device *device, indigo_property *property) {
+			if (IS_CONNECTED) {
+				indigo_update_property(device, property, NULL);
+			}
+		}
+
+		static void mgbox_gps_status(indigo_device *device, int fix) {
+			PRIVATE_DATA->gps_fix = fix;
+			GPS_STATUS_NO_FIX_ITEM->light.value = fix == 1 ? INDIGO_ALERT_STATE : INDIGO_IDLE_STATE;
+			GPS_STATUS_2D_FIX_ITEM->light.value = fix == 2 ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
+			GPS_STATUS_3D_FIX_ITEM->light.value = fix == 3 ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+			GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+			if (fix == 1) {
+				PRIVATE_DATA->position_valid = PRIVATE_DATA->time_valid = false;
+			}
+			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = fix == 3 && PRIVATE_DATA->position_valid ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
+			GPS_UTC_TIME_PROPERTY->state = fix == 3 && PRIVATE_DATA->time_valid ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
+			mgbox_update(device, GPS_STATUS_PROPERTY);
+			mgbox_update(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY);
+			mgbox_update(device, GPS_UTC_TIME_PROPERTY);
+		}
+
+		static bool mgbox_coordinate(const char *text, const char *hemisphere, bool latitude, double *value) {
+			double coordinate;
+			if (!mgbox_number(text, 0, latitude ? 9000 : 18000, &coordinate) || strlen(hemisphere) != 1 || !strchr(latitude ? "NS" : "EW", *hemisphere) || fmod(coordinate, 100) >= 60) {
+				return false;
+			}
+			*value = round((floor(coordinate / 100) + fmod(coordinate, 100) / 60) * 10000) / 10000;
+			if (*hemisphere == 'S' || *hemisphere == 'W') {
+				*value = -*value;
+			}
+			return true;
+		}
+
+		static void mgbox_process_line(indigo_device *device, char *buffer) {
+			char *tokens[64];
+			int count = mgbox_parse(buffer, tokens, 64);
+			if (!count) {
+				return;
+			}
+			device = PRIVATE_DATA->aux_device;
+			if (!strncmp(tokens[0], "LOG: Device Type: ", 18)) {
+				const char *model = tokens[0] + 18;
+				if (!strcmp(model, "MBox") || !strcmp(model, "MGBox") || !strcmp(model, "MGPBox") || !strcmp(model, "PBox")) {
+					INDIGO_COPY_VALUE(PRIVATE_DATA->device_type, model);
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, model);
+					mgbox_update(device, INFO_PROPERTY);
+					device = PRIVATE_DATA->gps_device;
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, model);
+					mgbox_update(device, INFO_PROPERTY);
+				}
+				return;
+			}
+			if (!strncmp(tokens[0], "LOG:", 4)) {
+				if (IS_CONNECTED) {
+					indigo_send_message(device, IDLE_PROPERTY, "%s", tokens[0] + 4);
+				}
+				return;
+			}
+			if (!strcmp(tokens[0], "XDR")) {
+				double pressure, temperature, humidity, dewpoint;
+				if (count < 18 || strcmp(tokens[1], "P") || strcmp(tokens[5], "C") || strcmp(tokens[9], "H") || strcmp(tokens[13], "C") || !*tokens[17] || !mgbox_number(tokens[2], 0, 1000000, &pressure) || !mgbox_number(tokens[6], -200, 80, &temperature) || !mgbox_number(tokens[10], 0, 100, &humidity) || !mgbox_number(tokens[14], -200, 80, &dewpoint)) {
+					return;
+				}
+				AUX_WEATHER_PRESSURE_ITEM->number.value = pressure / 100;
+				AUX_WEATHER_TEMPERATURE_ITEM->number.value = temperature;
+				AUX_WEATHER_HUMIDITY_ITEM->number.value = humidity;
+				AUX_WEATHER_DEWPOINT_ITEM->number.value = dewpoint;
+				AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
+				mgbox_update(device, AUX_WEATHER_PROPERTY);
+				AUX_DEW_WARNING_SENSOR_1_ITEM->light.value = temperature - AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value <= dewpoint ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+				AUX_DEW_WARNING_PROPERTY->state = INDIGO_OK_STATE;
+				mgbox_update(device, AUX_DEW_WARNING_PROPERTY);
+				if (strcmp(PRIVATE_DATA->firmware, tokens[17])) {
+					INDIGO_COPY_VALUE(PRIVATE_DATA->firmware, tokens[17]);
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, tokens[17]);
+					mgbox_update(device, INFO_PROPERTY);
+					device = PRIVATE_DATA->gps_device;
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, tokens[17]);
+					mgbox_update(device, INFO_PROPERTY);
+				}
+				return;
+			}
+			if (!strcmp(tokens[0], "CAL")) {
+				double pressure, temperature, humidity, forwarding;
+				if (count < 7 || count % 2 != 1 || strcmp(tokens[1], "P") || strcmp(tokens[3], "T") || strcmp(tokens[5], "H") || !mgbox_number(tokens[2], -9990, 9990, &pressure) || !mgbox_number(tokens[4], -2000, 2000, &temperature) || !mgbox_number(tokens[6], -990, 990, &humidity)) {
+					return;
+				}
+				for (int i = 7; i + 1 < count; i += 2) {
+					if ((!strcmp(tokens[i], "MM") || !strcmp(tokens[i], "MG")) && (!mgbox_number(tokens[i + 1], 0, 1, &forwarding) || floor(forwarding) != forwarding)) {
+						return;
+					}
+				}
+				X_CALIBRATION_PRESSURE_ITEM->number.value = pressure / 10;
+				X_CALIBRATION_TEMPERATURE_ITEM->number.value = temperature / 10;
+				X_CALIBRATION_HUMIDIDTY_ITEM->number.value = humidity / 10;
+				PRIVATE_DATA->cal_sequence++;
+				if (!PRIVATE_DATA->calibration_pending && X_CALIBRATION_PROPERTY->state != INDIGO_BUSY_STATE) {
+					X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				mgbox_update(device, X_CALIBRATION_PROPERTY);
+				for (int i = 7; i + 1 < count; i += 2) {
+					if (!strcmp(tokens[i], "MM")) {
+						PRIVATE_DATA->weather_forwarding = atoi(tokens[i + 1]);
+						PRIVATE_DATA->weather_sequence++;
+						if (!PRIVATE_DATA->weather_forwarding_pending && X_SEND_WEATHER_MOUNT_PROPERTY->state != INDIGO_BUSY_STATE) {
+							X_SEND_WEATHER_MOUNT_ITEM->sw.value = PRIVATE_DATA->weather_forwarding;
+							X_SEND_WEATHER_MOUNT_PROPERTY->state = INDIGO_OK_STATE;
+							mgbox_update(device, X_SEND_WEATHER_MOUNT_PROPERTY);
+						}
+					} else if (!strcmp(tokens[i], "MG")) {
+						device = PRIVATE_DATA->gps_device;
+						PRIVATE_DATA->gps_forwarding = atoi(tokens[i + 1]);
+						PRIVATE_DATA->gps_sequence++;
+						if (!PRIVATE_DATA->gps_forwarding_pending && X_SEND_GPS_MOUNT_PROPERTY->state != INDIGO_BUSY_STATE) {
+							X_SEND_GPS_MOUNT_ITEM->sw.value = PRIVATE_DATA->gps_forwarding;
+							X_SEND_GPS_MOUNT_PROPERTY->state = INDIGO_OK_STATE;
+							mgbox_update(device, X_SEND_GPS_MOUNT_PROPERTY);
+						}
+						device = PRIVATE_DATA->aux_device;
+					}
+				}
+				return;
+			}
+			device = PRIVATE_DATA->gps_device;
+			if (!strcmp(tokens[0], "RMC")) {
+				if (count >= 3 && !strcmp(tokens[2], "V")) {
+					mgbox_gps_status(device, 1);
+					return;
+				}
+				double lat, lon, utc, date_value;
+				if (count < 10 || strcmp(tokens[2], "A") || !mgbox_coordinate(tokens[3], tokens[4], true, &lat) || !mgbox_coordinate(tokens[5], tokens[6], false, &lon) || !mgbox_number(tokens[1], 0, 235959.999, &utc) || !mgbox_number(tokens[9], 10100, 311299, &date_value) || floor(date_value) != date_value) {
+					return;
+				}
+				int time = (int)utc, date = (int)date_value, month = date / 100 % 100, day = date / 10000;
+				int year = 2000 + date % 100;
+				int days[] = { 31, 28 + (year % 4 == 0), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+				if (time / 100 % 100 >= 60 || time % 100 >= 60 || month < 1 || month > 12 || day < 1 || day > days[month - 1]) {
+					return;
+				}
+				snprintf(GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE, "%04d-%02d-%02dT%02d:%02d:%02d", year, month, day, time / 10000, time / 100 % 100, time % 100);
+				GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+				GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
+				PRIVATE_DATA->position_valid = PRIVATE_DATA->time_valid = true;
+				mgbox_gps_status(device, PRIVATE_DATA->gps_fix >= 2 ? PRIVATE_DATA->gps_fix : 3);
+			} else if (!strcmp(tokens[0], "GGA")) {
+				double quality, lat, lon, elevation, satellites;
+				if (count < 7 || !mgbox_number(tokens[6], 0, 8, &quality) || floor(quality) != quality) {
+					return;
+				}
+				if (quality == 0) {
+					mgbox_gps_status(device, 1);
+					return;
+				}
+				if (count < 11 || strcmp(tokens[10], "M") || !mgbox_coordinate(tokens[2], tokens[3], true, &lat) || !mgbox_coordinate(tokens[4], tokens[5], false, &lon) || !mgbox_number(tokens[9], -1000, 100000, &elevation) || !mgbox_number(tokens[7], 0, 99, &satellites) || floor(satellites) != satellites) {
+					return;
+				}
+				GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+				GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
+				GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = round(elevation);
+				GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = satellites;
+				GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->position_valid = true;
+				mgbox_gps_status(device, PRIVATE_DATA->gps_fix >= 2 ? PRIVATE_DATA->gps_fix : 3);
+			} else if (!strcmp(tokens[0], "GSA")) {
+				double fix, pdop, hdop, vdop;
+				if (count < 3 || !mgbox_number(tokens[2], 1, 3, &fix) || floor(fix) != fix) {
+					return;
+				}
+				if (fix == 1) {
+					mgbox_gps_status(device, 1);
+					return;
+				}
+				if (count < 18 || !mgbox_number(tokens[15], 0, 999, &pdop) || !mgbox_number(tokens[16], 0, 999, &hdop) || !mgbox_number(tokens[17], 0, 999, &vdop)) {
+					return;
+				}
+				GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = pdop;
+				GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = hdop;
+				GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = vdop;
+				GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+				mgbox_gps_status(device, (int)fix);
+			} else if (!strcmp(tokens[0], "GSV")) {
+				double satellites;
+				if (count < 4 || !mgbox_number(tokens[3], 0, 99, &satellites) || floor(satellites) != satellites) {
+					return;
+				}
+				GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = satellites;
+				GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
+				mgbox_update(device, GPS_ADVANCED_STATUS_PROPERTY);
+			}
+		}
+
+		static bool mgbox_read(indigo_device *device, double timeout) {
+			int ready = indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(timeout));
+			if (ready <= 0) {
+				return ready == 0;
+			}
+			char input[512];
+			long size = indigo_uni_read_available(PRIVATE_DATA->handle, input, sizeof(input));
+			if (size <= 0) {
+				return false;
+			}
+			for (long i = 0; i < size; i++) {
+				char c = input[i];
+				if (c == '$') {
+					PRIVATE_DATA->input_length = 0;
+					PRIVATE_DATA->input_overflow = false;
+				}
+				if (c == '\n') {
+					if (!PRIVATE_DATA->input_overflow && PRIVATE_DATA->input_length) {
+						PRIVATE_DATA->input[PRIVATE_DATA->input_length] = 0;
+						mgbox_process_line(device, PRIVATE_DATA->input);
+					}
+					PRIVATE_DATA->input_length = 0;
+					PRIVATE_DATA->input_overflow = false;
+				} else if (c != '\r') {
+					if (!c || PRIVATE_DATA->input_length + 1 >= sizeof(PRIVATE_DATA->input)) {
+						PRIVATE_DATA->input_overflow = true;
+					} else if (!PRIVATE_DATA->input_overflow) {
+						PRIVATE_DATA->input[PRIVATE_DATA->input_length++] = c;
+					}
+				}
+			}
+			return true;
+		}
+
+		static bool mgbox_command(indigo_device *device, const char *command) {
+			if (!PRIVATE_DATA->handle || PRIVATE_DATA->transport_failed) {
+				return false;
+			}
+			// The device requires at least half a second between commands.
+			indigo_usleep(500000);
+			return indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) == (long)strlen(command);
+		}
+
+		static bool mgbox_open(indigo_device *device) {
+			PRIVATE_DATA->input_length = 0;
+			PRIVATE_DATA->input_overflow = false;
+			PRIVATE_DATA->transport_failed = false;
+			PRIVATE_DATA->firmware[0] = PRIVATE_DATA->device_type[0] = 0;
+			PRIVATE_DATA->gps_fix = 1;
+			PRIVATE_DATA->position_valid = PRIVATE_DATA->time_valid = false;
+			PRIVATE_DATA->calibration_pending = false;
+			PRIVATE_DATA->weather_forwarding_pending = PRIVATE_DATA->gps_forwarding_pending = false;
+			PRIVATE_DATA->rebooting = PRIVATE_DATA->gps_rebooting = false;
+			PRIVATE_DATA->cal_sequence = PRIVATE_DATA->weather_sequence = PRIVATE_DATA->gps_sequence = 0;
+			if (indigo_uni_is_url(DEVICE_PORT_ITEM->text.value, "mgbox")) {
+				PRIVATE_DATA->handle = indigo_uni_client_tcp_socket(DEVICE_PORT_ITEM->text.value, 9999, INDIGO_LOG_DEBUG);
+				if (PRIVATE_DATA->handle) {
+					indigo_uni_set_socket_write_timeout(PRIVATE_DATA->handle, INDIGO_DELAY(2));
+				}
+			} else {
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
+			}
+			if (!PRIVATE_DATA->handle) {
+				return false;
+			}
+			indigo_usleep(1000000);
+			for (int retry = 0; retry < 3; retry++) {
+				if (!mgbox_command(device, ":devicetype*")) {
+					break;
+				}
+				for (int i = 0; i < 25; i++) {
+					if (!mgbox_read(device, 0.1)) {
+						PRIVATE_DATA->transport_failed = true;
+						break;
+					}
+					if (*PRIVATE_DATA->device_type) {
+						return true;
+					}
+				}
+			}
+			indigo_uni_close(&PRIVATE_DATA->handle);
+			PRIVATE_DATA->input_length = 0;
+			PRIVATE_DATA->firmware[0] = PRIVATE_DATA->device_type[0] = 0;
+			return false;
+		}
+
+		static void mgbox_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+			PRIVATE_DATA->input_length = 0;
+			PRIVATE_DATA->input_overflow = false;
+			PRIVATE_DATA->firmware[0] = PRIVATE_DATA->device_type[0] = 0;
+		}
+
+		static void mgbox_poll(indigo_device *device) {
+			if (!PRIVATE_DATA->transport_failed && !mgbox_read(device, 0)) {
+				PRIVATE_DATA->transport_failed = true;
+				device = PRIVATE_DATA->aux_device;
+				AUX_WEATHER_PROPERTY->state = AUX_DEW_WARNING_PROPERTY->state = INDIGO_ALERT_STATE;
+				mgbox_update(device, AUX_WEATHER_PROPERTY);
+				mgbox_update(device, AUX_DEW_WARNING_PROPERTY);
+				device = PRIVATE_DATA->gps_device;
+				GPS_STATUS_PROPERTY->state = GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = GPS_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+				mgbox_update(device, GPS_STATUS_PROPERTY);
+				mgbox_update(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY);
+				mgbox_update(device, GPS_UTC_TIME_PROPERTY);
+			}
+		}
+
+		static void pulse_finalizer(indigo_device *device) {
+			AUX_GPIO_OUTLET_1_ITEM->sw.value = false;
+			AUX_GPIO_OUTLET_PROPERTY->state = PRIVATE_DATA->transport_failed ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+		}
+
+		static void calibration_finalizer(indigo_device *device) {
+			bool confirmed = PRIVATE_DATA->cal_sequence > PRIVATE_DATA->cal_after;
+			for (int i = 0; i < 3; i++) {
+				confirmed = confirmed && fabs(X_CALIBRATION_PROPERTY->items[i].number.value * 10 - PRIVATE_DATA->cal_target[i]) < 0.01;
+			}
+			if (!confirmed && !PRIVATE_DATA->transport_failed && --PRIVATE_DATA->cal_attempts > 0) {
+				indigo_execute_handler_in(device, 0.1, calibration_finalizer);
+				return;
+			}
+			PRIVATE_DATA->calibration_pending = false;
+			X_CALIBRATION_PROPERTY->state = confirmed && !PRIVATE_DATA->transport_failed ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_CALIBRATION_PROPERTY, NULL);
+		}
+
+		static void weather_forwarding_finalizer(indigo_device *device) {
+			bool confirmed = PRIVATE_DATA->weather_sequence > PRIVATE_DATA->weather_after && X_SEND_WEATHER_MOUNT_ITEM->sw.value == PRIVATE_DATA->weather_forwarding;
+			if (!confirmed && !PRIVATE_DATA->transport_failed && --PRIVATE_DATA->weather_attempts > 0) {
+				indigo_execute_handler_in(device, 0.1, weather_forwarding_finalizer);
+				return;
+			}
+			PRIVATE_DATA->weather_forwarding_pending = false;
+			X_SEND_WEATHER_MOUNT_ITEM->sw.value = PRIVATE_DATA->weather_forwarding;
+			X_SEND_WEATHER_MOUNT_PROPERTY->state = confirmed && !PRIVATE_DATA->transport_failed ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_SEND_WEATHER_MOUNT_PROPERTY, NULL);
+		}
+
+		static void gps_forwarding_finalizer(indigo_device *device) {
+			bool confirmed = PRIVATE_DATA->gps_sequence > PRIVATE_DATA->gps_after && X_SEND_GPS_MOUNT_ITEM->sw.value == PRIVATE_DATA->gps_forwarding;
+			if (!confirmed && !PRIVATE_DATA->transport_failed && --PRIVATE_DATA->gps_attempts > 0) {
+				indigo_execute_handler_in(device, 0.1, gps_forwarding_finalizer);
+				return;
+			}
+			PRIVATE_DATA->gps_forwarding_pending = false;
+			X_SEND_GPS_MOUNT_ITEM->sw.value = PRIVATE_DATA->gps_forwarding;
+			X_SEND_GPS_MOUNT_PROPERTY->state = confirmed && !PRIVATE_DATA->transport_failed ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
+		}
+
+		static void reboot_finalizer(indigo_device *device) {
+			PRIVATE_DATA->rebooting = false;
+			X_REBOOT_ITEM->sw.value = false;
+			X_REBOOT_PROPERTY->state = PRIVATE_DATA->transport_failed ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			indigo_update_property(device, X_REBOOT_PROPERTY, NULL);
+		}
+
+		static void gps_reboot_finalizer(indigo_device *device) {
+			PRIVATE_DATA->gps_rebooting = false;
+			X_REBOOT_GPS_ITEM->sw.value = false;
+			X_REBOOT_GPS_PROPERTY->state = PRIVATE_DATA->transport_failed ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			indigo_update_property(device, X_REBOOT_GPS_PROPERTY, NULL);
+		}
+
+		static void mgbox_reset_gps(indigo_device *device) {
+			PRIVATE_DATA->gps_fix = 1;
+			PRIVATE_DATA->position_valid = PRIVATE_DATA->time_valid = false;
+			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = GPS_UTC_TIME_PROPERTY->state = GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+			GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
+			GPS_STATUS_NO_FIX_ITEM->light.value = GPS_STATUS_2D_FIX_ITEM->light.value = GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			INDIGO_COPY_VALUE(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00");
+		}
+	}
+	aux {
+		name = "MGBox Weather";
+		interface = INDIGO_INTERFACE_AUX_WEATHER | INDIGO_INTERFACE_AUX_GPIO;
+		additional_instances = true;
+		on_attach {
+			PRIVATE_DATA->aux_device = device;
+			INFO_PROPERTY->count = 6;
+			INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, "38400");
+		}
+		on_timer {
+			mgbox_poll(device);
+			if (!PRIVATE_DATA->transport_failed) {
+				indigo_execute_handler_in(device, 0.1, aux_timer_callback);
+			}
+		}
+		on_connect {
+			AUX_WEATHER_PROPERTY->state = AUX_DEW_WARNING_PROPERTY->state = INDIGO_BUSY_STATE;
+			X_CALIBRATION_PROPERTY->state = X_SEND_WEATHER_MOUNT_PROPERTY->state = X_REBOOT_PROPERTY->state = AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type);
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
+			if (strchr(PRIVATE_DATA->device_type, 'M')) {
+				connection_result = mgbox_command(device, ":calget*");
+			}
+		}
+		on_disconnect {
+			PRIVATE_DATA->calibration_pending = PRIVATE_DATA->weather_forwarding_pending = PRIVATE_DATA->rebooting = false;
+			X_CALIBRATION_PROPERTY->state = X_SEND_WEATHER_MOUNT_PROPERTY->state = X_REBOOT_PROPERTY->state = AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+			AUX_GPIO_OUTLET_1_ITEM->sw.value = X_REBOOT_ITEM->sw.value = false;
+		}
+		switch AUX_GPIO_OUTLET {
+			name = AUX_GPIO_OUTLETS_PROPERTY_NAME;
+			group = SWITCH_GROUP;
+			label = "Switch outlet";
+			perm = INDIGO_RW_PERM;
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				if (!IS_CONNECTED || !strchr(PRIVATE_DATA->device_type, 'P') || PRIVATE_DATA->rebooting) {
+					AUX_GPIO_OUTLET_1_ITEM->sw.value = false;
+					AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, "Pulse unavailable for this model or during reboot");
+					return;
+				}
+				if (AUX_GPIO_OUTLET_1_ITEM->sw.value) {
+					char command[64];
+					snprintf(command, sizeof(command), ":pulse,%d*", (int)AUX_OUTLET_PULSE_LENGTHS_1_ITEM->number.target);
+					if (!mgbox_command(device, command)) {
+						AUX_GPIO_OUTLET_1_ITEM->sw.value = false;
+						AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+						return;
+					}
+					indigo_execute_handler_in(device, AUX_OUTLET_PULSE_LENGTHS_1_ITEM->number.target / 1000, pulse_finalizer);
+				} else {
+					pulse_finalizer(device);
+				}
+			}
+			item AUX_GPIO_OUTLET_1 {
+				name = AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME;
+				label = "Pulse switch";
+				value = false;
+			}
+		}
+		text AUX_OUTLET_NAMES {
+			name = AUX_OUTLET_NAMES_PROPERTY_NAME;
+			group = SETTINGS_GROUP;
+			label = "Switch name";
+			perm = INDIGO_RW_PERM;
+			always_defined = true;
+			persistent = true;
+			on_change {
+				if (IS_CONNECTED) {
+					indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+					indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+				}
+				snprintf(AUX_GPIO_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_1_ITEM->text.value);
+				snprintf(AUX_OUTLET_PULSE_LENGTHS_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_1_ITEM->text.value);
+				if (IS_CONNECTED) {
+					indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+					indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+				}
+			}
+			item AUX_OUTLET_NAME_1 {
+				name = AUX_GPIO_OUTLET_NAME_1_ITEM_NAME;
+				label = "Switch name";
+				value = "Pulse switch";
+			}
+		}
+		number AUX_OUTLET_PULSE_LENGTHS {
+			name = AUX_OUTLET_PULSE_LENGTHS_PROPERTY_NAME;
+			group = SWITCH_GROUP;
+			label = "Switch pulse length (ms)";
+			perm = INDIGO_RW_PERM;
+			on_change {
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_1 {
+				name = AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME;
+				label = "Pulse switch";
+				value = 1000;
+				min = 1;
+				max = 10000;
+				step = 100;
+			}
+		}
+		number AUX_DEW_THRESHOLD {
+			name = AUX_DEW_THRESHOLD_PROPERTY_NAME;
+			group = SETTINGS_GROUP;
+			label = "Dew warning threshold";
+			perm = INDIGO_RW_PERM;
+			always_defined = true;
+			persistent = true;
+			on_change {
+			}
+			item AUX_DEW_THRESHOLD_SENSOR_1 {
+				name = AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME;
+				label = "Temperature difference (°C)";
+				value = 2;
+				min = 0;
+				max = 9;
+				step = 0;
+			}
+		}
+		light AUX_DEW_WARNING {
+			name = AUX_DEW_WARNING_PROPERTY_NAME;
+			group = WEATHER_GROUP;
+			label = "Dew warning";
+			item AUX_DEW_WARNING_SENSOR_1 {
+				name = AUX_DEW_WARNING_SENSOR_1_ITEM_NAME;
+				label = "Dew warning";
+				value = INDIGO_IDLE_STATE;
+			}
+		}
+		number X_CALIBRATION {
+			name = "X_WEATHER_CALIBRATION";
+			group = SETTINGS_GROUP;
+			label = "Weather calibration factors";
+			perm = INDIGO_RW_PERM;
+			preserve_values = true;
+			on_change {
+				if (!IS_CONNECTED || PRIVATE_DATA->rebooting || !strchr(PRIVATE_DATA->device_type, 'M')) {
+					X_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_CALIBRATION_PROPERTY, NULL);
+					return;
+				}
+				PRIVATE_DATA->calibration_pending = true;
+				PRIVATE_DATA->cal_after = PRIVATE_DATA->cal_sequence;
+				PRIVATE_DATA->cal_attempts = 50;
+				const char *commands[] = { ":calt,%d*", ":calh,%d*", ":calp,%d*" };
+				for (int i = 0; i < 3; i++) {
+					PRIVATE_DATA->cal_target[i] = (int)(X_CALIBRATION_PROPERTY->items[i].number.target * 10);
+				}
+				for (int i = 0; i < 3; i++) {
+					char command[64];
+					snprintf(command, sizeof(command), commands[i], PRIVATE_DATA->cal_target[i]);
+					if (!mgbox_command(device, command)) {
+						PRIVATE_DATA->calibration_pending = false;
+						X_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, X_CALIBRATION_PROPERTY, NULL);
+						return;
+					}
+				}
+				indigo_execute_handler_in(device, 0.1, calibration_finalizer);
+			}
+			item X_CALIBRATION_TEMPERATURE {
+				name = AUX_WEATHER_TEMPERATURE_ITEM_NAME;
+				label = "Temperature (°C)";
+				value = 0;
+				min = -200;
+				max = 200;
+				step = 0;
+			}
+			item X_CALIBRATION_HUMIDIDTY {
+				name = AUX_WEATHER_HUMIDITY_ITEM_NAME;
+				label = "Relative Humidity (%)";
+				value = 0;
+				min = -99;
+				max = 99;
+				step = 0;
+			}
+			item X_CALIBRATION_PRESSURE {
+				name = AUX_WEATHER_PRESSURE_ITEM_NAME;
+				label = "Atmospheric Pressure (Pa)";
+				value = 0;
+				min = -999;
+				max = 999;
+				step = 0;
+			}
+		}
+		number AUX_WEATHER {
+			name = AUX_WEATHER_PROPERTY_NAME;
+			group = WEATHER_GROUP;
+			label = "Weather conditions";
+			perm = INDIGO_RO_PERM;
+			item AUX_WEATHER_TEMPERATURE {
+				name = AUX_WEATHER_TEMPERATURE_ITEM_NAME;
+				label = "Ambient temperature (°C)";
+				value = 0;
+				min = -200;
+				max = 80;
+				step = 0;
+				format = "%.1f";
+			}
+			item AUX_WEATHER_DEWPOINT {
+				name = AUX_WEATHER_DEWPOINT_ITEM_NAME;
+				label = "Dewpoint (°C)";
+				value = 0;
+				min = -200;
+				max = 80;
+				step = 1;
+				format = "%.1f";
+			}
+			item AUX_WEATHER_HUMIDITY {
+				name = AUX_WEATHER_HUMIDITY_ITEM_NAME;
+				label = "Relative humidity (%)";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 0;
+				format = "%.1f";
+			}
+			item AUX_WEATHER_PRESSURE {
+				name = AUX_WEATHER_PRESSURE_ITEM_NAME;
+				label = "Atmospheric Pressure (hPa)";
+				value = 0;
+				min = 0;
+				max = 10000;
+				step = 0;
+				format = "%.2f";
+			}
+		}
+		switch X_SEND_WEATHER_MOUNT {
+			name = "X_SEND_WEATHER_DATA_TO_MOUNT";
+			group = SETTINGS_GROUP;
+			label = "Send weather data to mount";
+			perm = INDIGO_RW_PERM;
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				if (!IS_CONNECTED || PRIVATE_DATA->rebooting || !strchr(PRIVATE_DATA->device_type, 'M')) {
+					X_SEND_WEATHER_MOUNT_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_SEND_WEATHER_MOUNT_PROPERTY, NULL);
+					return;
+				}
+				PRIVATE_DATA->weather_after = PRIVATE_DATA->weather_sequence;
+				PRIVATE_DATA->weather_attempts = 50;
+				PRIVATE_DATA->weather_forwarding_pending = true;
+				if (mgbox_command(device, X_SEND_WEATHER_MOUNT_ITEM->sw.value ? ":mm,1*" : ":mm,0*")) {
+					indigo_execute_handler_in(device, 0.1, weather_forwarding_finalizer);
+				} else {
+					PRIVATE_DATA->weather_forwarding_pending = false;
+					X_SEND_WEATHER_MOUNT_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_SEND_WEATHER_MOUNT_PROPERTY, NULL);
+				}
+			}
+			item X_SEND_WEATHER_MOUNT {
+				name = "ENABLED";
+				label = "Enable";
+				value = false;
+			}
+		}
+		switch X_REBOOT {
+			name = "X_REBOOT_DEVICE";
+			group = SETTINGS_GROUP;
+			label = "Reboot device";
+			perm = INDIGO_RW_PERM;
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				if (!IS_CONNECTED || AUX_GPIO_OUTLET_PROPERTY->state == INDIGO_BUSY_STATE || X_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE || X_SEND_WEATHER_MOUNT_PROPERTY->state == INDIGO_BUSY_STATE || X_REBOOT_GPS_PROPERTY->state == INDIGO_BUSY_STATE || X_SEND_GPS_MOUNT_PROPERTY->state == INDIGO_BUSY_STATE) {
+					X_REBOOT_ITEM->sw.value = false;
+					X_REBOOT_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_REBOOT_PROPERTY, "Another device operation is unfinished");
+					return;
+				}
+				if (!X_REBOOT_ITEM->sw.value) {
+					reboot_finalizer(device);
+				} else if (mgbox_command(device, ":reboot*")) {
+					PRIVATE_DATA->rebooting = true;
+					indigo_execute_handler_in(device, 2, reboot_finalizer);
+				} else {
+					X_REBOOT_ITEM->sw.value = false;
+					X_REBOOT_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_REBOOT_PROPERTY, NULL);
+				}
+			}
+			item X_REBOOT {
+				name = "REBOOT";
+				label = "Reboot!";
+				value = false;
+			}
+		}
+	}
+	gps {
+		name = "MGBox GPS";
+		on_attach {
+			PRIVATE_DATA->gps_device = device;
+			INFO_PROPERTY->count = 6;
+		}
+		on_timer {
+			mgbox_poll(device);
+			if (!PRIVATE_DATA->transport_failed) {
+				indigo_execute_handler_in(device, 0.1, gps_timer_callback);
+			}
+		}
+		on_connect {
+			connection_result = strchr(PRIVATE_DATA->device_type, 'G') != NULL;
+			if (connection_result) {
+				mgbox_reset_gps(device);
+				X_SEND_GPS_MOUNT_PROPERTY->state = X_REBOOT_GPS_PROPERTY->state = INDIGO_OK_STATE;
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type);
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
+				connection_result = mgbox_command(device, ":calget*");
+			}
+		}
+		on_disconnect {
+			PRIVATE_DATA->gps_forwarding_pending = PRIVATE_DATA->gps_rebooting = false;
+			X_SEND_GPS_MOUNT_PROPERTY->state = X_REBOOT_GPS_PROPERTY->state = INDIGO_OK_STATE;
+			X_REBOOT_GPS_ITEM->sw.value = false;
+		}
+		inherited GPS_ADVANCED { hidden = false; }
+		inherited GPS_GEOGRAPHIC_COORDINATES {
+			hidden = false;
+			on_attach {
+				GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;
+			}
+		}
+		inherited GPS_UTC_TIME {
+			hidden = false;
+			on_attach {
+				GPS_UTC_TIME_PROPERTY->count = 1;
+			}
+		}
+		switch X_SEND_GPS_MOUNT {
+			name = "X_SEND_GPS_DATA_TO_MOUNT";
+			group = SETTINGS_GROUP;
+			label = "Send GPS data to mount";
+			perm = INDIGO_RW_PERM;
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				if (!IS_CONNECTED || PRIVATE_DATA->rebooting || PRIVATE_DATA->gps_rebooting) {
+					X_SEND_GPS_MOUNT_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
+					return;
+				}
+				PRIVATE_DATA->gps_after = PRIVATE_DATA->gps_sequence;
+				PRIVATE_DATA->gps_attempts = 50;
+				PRIVATE_DATA->gps_forwarding_pending = true;
+				if (mgbox_command(device, X_SEND_GPS_MOUNT_ITEM->sw.value ? ":mg,1*" : ":mg,0*")) {
+					indigo_execute_handler_in(device, 0.1, gps_forwarding_finalizer);
+				} else {
+					PRIVATE_DATA->gps_forwarding_pending = false;
+					X_SEND_GPS_MOUNT_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
+				}
+			}
+			item X_SEND_GPS_MOUNT {
+				name = "ENABLED";
+				label = "Enable";
+				value = false;
+			}
+		}
+		switch X_REBOOT_GPS {
+			name = "X_REBOOT_GPS";
+			group = SETTINGS_GROUP;
+			label = "Reboot GPS";
+			perm = INDIGO_RW_PERM;
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				if (!IS_CONNECTED || PRIVATE_DATA->rebooting || PRIVATE_DATA->gps_forwarding_pending) {
+					X_REBOOT_GPS_ITEM->sw.value = false;
+					X_REBOOT_GPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_REBOOT_GPS_PROPERTY, "Another GPS operation is unfinished");
+					return;
+				}
+				if (!X_REBOOT_GPS_ITEM->sw.value) {
+					gps_reboot_finalizer(device);
+				} else if (mgbox_command(device, ":rebootgps*")) {
+					PRIVATE_DATA->gps_rebooting = true;
+					mgbox_reset_gps(device);
+					indigo_execute_handler_in(device, 2, gps_reboot_finalizer);
+				} else {
+					X_REBOOT_GPS_ITEM->sw.value = false;
+					X_REBOOT_GPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_REBOOT_GPS_PROPERTY, NULL);
+				}
+			}
+			item X_REBOOT_GPS {
+				name = "REBOOT";
+				label = "Reboot!";
+				value = false;
+			}
+		}
+	}
+}
