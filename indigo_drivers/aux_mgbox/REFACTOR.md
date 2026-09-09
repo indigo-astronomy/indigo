@@ -218,3 +218,8 @@ Validation: universal x86_64/arm64 production build passed. Both architectures p
 Removed the property-level `on_attach` blocks for `AUX_DEW_WARNING` and `AUX_WEATHER` from the authoritative `.driver` and regenerated C/header/main. Both properties are connection-dependent; `aux.on_connect` still sets them to BUSY before publication, and valid weather input supplies their subsequent state. The attach assignments duplicated this initialization without affecting the public behavior. Version remains `0x0300000A`.
 
 Validation: universal x86_64/arm64 production/test builds passed, as did strict syntax checks for both architectures with `-Wconversion`, `-Wshorten-64-to-32` and `-Werror`. The native arm64 `normal` simulator scenario passed data/control assertions and disconnect/shutdown. Confirmed the two generated attach blocks are absent and connection initialization remains. `git diff --check` passed; `make -C indigo_test test-clean` removed test artifacts. No full-suite or ASan rerun was needed for this redundant-initialization removal.
+
+
+## Follow-up: migration status tracking (2026-09-09)
+
+Updated the `aux_mgbox` row in root `MIGRATION_STATUS.md` to generated code, async queues, simulator retesting and available automated tests, with the recorded 32-scenario/nine-ASan evidence and hardware/TCP/Windows-runtime limitations. Preserved the existing Windows support designation; no new Windows validation is claimed. Added a repository-wide rule in `AGENTS.md` requiring this status update after every completed driver migration, consistent with its `REFACTOR.md`. This documentation-only follow-up was checked with `git diff --check`; no build or simulator rerun was needed.
