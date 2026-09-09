@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000018
+#define DRIVER_VERSION       0x03000019
 #define DRIVER_NAME          "indigo_aux_upb"
 #define DRIVER_LABEL         "PegasusAstro Ultimate Powerbox"
 #define AUX_DEVICE_NAME      "Ultimate Powerbox"
@@ -225,7 +225,7 @@ static bool upb_open(indigo_device *device) {
 				ok = true;
 			}
 		}
-		if (upb_command(device, "PV")) {
+		if (ok && upb_command(device, "PV")) {
 			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			upb_command(device, "PL:1");
@@ -709,7 +709,7 @@ static void aux_connection_handler(indigo_device *device) {
 					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, atoi(token) == 0 ? AUX_DEW_CONTROL_MANUAL_ITEM : AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'PA' response");
-					indigo_uni_close(&PRIVATE_DATA->handle);
+					connection_result = false;
 				}
 			}
 			upb_command(device, "PU:1");
@@ -881,7 +881,6 @@ static void aux_outlet_names_handler(indigo_device *device) {
 		indigo_define_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
 		indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
 		indigo_define_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
-		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 	}
 	//- aux.AUX_OUTLET_NAMES.on_change
 	indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
@@ -1312,7 +1311,7 @@ static void focuser_connection_handler(indigo_device *device) {
 					FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'SA' response");
-					indigo_uni_close(&PRIVATE_DATA->handle);
+					connection_result = false;
 				}
 			}
 			if (upb_command(device, "SS")) {
@@ -1409,7 +1408,7 @@ static void focuser_position_handler(indigo_device *device) {
 		if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
 			position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
 		}
-		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+		FOCUSER_POSITION_ITEM->number.target = position;
 		if (upb_command(device, "SM:%d", position)) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;

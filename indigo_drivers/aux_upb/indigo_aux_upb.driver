@@ -26,7 +26,7 @@ driver upb {
 	label = "PegasusAstro Ultimate Powerbox";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 24;
+	version = 25;
 	serial {
 		pattern {
 			product = "UPB";
@@ -74,7 +74,7 @@ driver upb {
 						ok = true;
 					}
 				}
-				if (upb_command(device, "PV")) {
+				if (ok && upb_command(device, "PV")) {
 					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 					upb_command(device, "PL:1");
@@ -542,7 +542,7 @@ driver upb {
 					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, atoi(token) == 0 ? AUX_DEW_CONTROL_MANUAL_ITEM : AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'PA' response");
-					indigo_uni_close(&PRIVATE_DATA->handle);
+					connection_result = false;
 				}
 			}
 			upb_command(device, "PU:1");
@@ -671,7 +671,6 @@ driver upb {
 					indigo_define_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
 					indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
 					indigo_define_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
-					indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 				}
 			}
 			item AUX_POWER_OUTLET_NAME_1 {
@@ -1195,7 +1194,7 @@ driver upb {
 					FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'SA' response");
-					indigo_uni_close(&PRIVATE_DATA->handle);
+					connection_result = false;
 				}
 			}
 			if (upb_command(device, "SS")) {
@@ -1290,7 +1289,7 @@ driver upb {
 					if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
 						position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
 					}
-					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+					FOCUSER_POSITION_ITEM->number.target = position;
 					if (upb_command(device, "SM:%d", position)) {
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 						FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
