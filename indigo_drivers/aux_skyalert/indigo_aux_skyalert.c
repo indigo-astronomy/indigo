@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_aux_skyalert"
 #define DRIVER_LABEL         "Interactive Astronomy SkyAlert"
 #define AUX_DEVICE_NAME      "Interactive Astronomy SkyAlert"
@@ -68,39 +68,34 @@ typedef struct {
 
 //+ code
 
-static double skyalert_read_value(indigo_device *device) {
-	if (indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\r", "\r", INDIGO_DELAY(1))) {
-		return indigo_atod(PRIVATE_DATA->response);
-	}
-	return -1;
+static bool skyalert_read_value(indigo_device *device, double *value) {
+	return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\r", "\r", INDIGO_DELAY(1)) > 0 && sscanf(PRIVATE_DATA->response, "%lf", value) == 1 && isfinite(*value);
 }
 
 static bool skyalert_read_record(indigo_device *device) {
-	long result = indigo_uni_discard(PRIVATE_DATA->handle);
-	if (result >= 0) {
-		result = indigo_uni_printf(PRIVATE_DATA->handle, "send\r");
-	}
-	if (result > 0) {
-		result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\r", "\r", INDIGO_DELAY(1));
-	}
-	if (result && !strcmp(PRIVATE_DATA->response, "Data")) {
-		AUX_WEATHER_TEMPERATURE_ITEM->number.value = skyalert_read_value(device);
-		AUX_WEATHER_SKY_TEMPERATURE_ITEM->number.value = skyalert_read_value(device);
-		AUX_WEATHER_RAIN_ITEM->number.value = skyalert_read_value(device);
-		AUX_INFO_SKY_BRIGHTNESS_ITEM->number.value = skyalert_read_value(device);
-		AUX_WEATHER_HUMIDITY_ITEM->number.value = skyalert_read_value(device);
-		AUX_WEATHER_WIND_SPEED_ITEM->number.value = skyalert_read_value(device);
-		AUX_INFO_POWER_ITEM->number.value = skyalert_read_value(device);
-		if (indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\r", "\r", INDIGO_DELAY(1))) {
-			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
-		}
-		AUX_WEATHER_PRESSURE_ITEM->number.value = skyalert_read_value(device);
-		return true;
-	} else {
-		AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
-		AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 || indigo_uni_printf(PRIVATE_DATA->handle, "send\r") <= 0 || indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\r", "\r", INDIGO_DELAY(1)) <= 0 || strcmp(PRIVATE_DATA->response, "Data")) {
 		return false;
 	}
+	double values[8];
+	for (int i = 0; i < 7; i++) {
+		if (!skyalert_read_value(device, values + i)) {
+			return false;
+		}
+	}
+	char firmware[sizeof(PRIVATE_DATA->response)];
+	if (indigo_uni_read_section(PRIVATE_DATA->handle, firmware, sizeof(firmware), "\r", "\r", INDIGO_DELAY(1)) <= 0 || !skyalert_read_value(device, values + 7)) {
+		return false;
+	}
+	AUX_WEATHER_TEMPERATURE_ITEM->number.value = values[0];
+	AUX_WEATHER_SKY_TEMPERATURE_ITEM->number.value = values[1];
+	AUX_WEATHER_RAIN_ITEM->number.value = values[2];
+	AUX_INFO_SKY_BRIGHTNESS_ITEM->number.value = values[3];
+	AUX_WEATHER_HUMIDITY_ITEM->number.value = values[4];
+	AUX_WEATHER_WIND_SPEED_ITEM->number.value = values[5];
+	AUX_INFO_POWER_ITEM->number.value = values[6];
+	AUX_WEATHER_PRESSURE_ITEM->number.value = values[7] / 100;
+	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+	return true;
 }
 
 static bool skyalert_open(indigo_device *device) {
