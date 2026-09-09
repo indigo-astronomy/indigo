@@ -26,15 +26,15 @@ driver rts {
 	label = "RTS-on-COM shutter release";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 8;
+	version = 9;
 	serial;
 	code {
-		static void rts_on(indigo_device *device) {
-			indigo_uni_set_rts(PRIVATE_DATA->handle, true);
+		static bool rts_on(indigo_device *device) {
+			return indigo_uni_set_rts(PRIVATE_DATA->handle, true) == 0;
 		}
 
-		static void rts_off(indigo_device *device) {
-			indigo_uni_set_rts(PRIVATE_DATA->handle, false);
+		static bool rts_off(indigo_device *device) {
+			return indigo_uni_set_rts(PRIVATE_DATA->handle, false) == 0;
 		}
 
 		static bool rts_open(indigo_device *device) {
@@ -55,8 +55,7 @@ driver rts {
 				CCD_EXPOSURE_ITEM->number.value--;
 				if (CCD_EXPOSURE_ITEM->number.value <= 0) {
 					CCD_EXPOSURE_ITEM->number.value = 0;
-					CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-					rts_off(device);
+					CCD_EXPOSURE_PROPERTY->state = rts_off(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				}
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 				if (CCD_EXPOSURE_ITEM->number.value > 0) {
@@ -77,13 +76,14 @@ driver rts {
 			label = "Abort exposure";
 			rule = INDIGO_ANY_OF_MANY_RULE;
 			on_change {
-				if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+				if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
 					indigo_cancel_pending_handler(device, aux_timer_callback);
-					rts_off(device);
+					if (!rts_off(device)) {
+						CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
 					INDIGO_UPDATE_PROPERTY_STATE(CCD_EXPOSURE_PROPERTY, INDIGO_ALERT_STATE, NULL);
 				}
 				CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
-				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			item CCD_ABORT_EXPOSURE {
 				name = CCD_ABORT_EXPOSURE_ITEM_NAME;
@@ -96,10 +96,12 @@ driver rts {
 			group = AUX_MAIN_GROUP;
 			label = "Start exposure";
 			on_change {
-				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-				rts_on(device);
-				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+				if (rts_on(device)) {
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+				} else {
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
 			}
 			item CCD_EXPOSURE {
 				name = CCD_EXPOSURE_ITEM_NAME;

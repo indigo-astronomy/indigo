@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_aux_rts"
 #define DRIVER_LABEL         "RTS-on-COM shutter release"
 #define AUX_DEVICE_NAME      "RTS-on-COM shutter"
@@ -59,12 +59,12 @@ typedef struct {
 
 //+ code
 
-static void rts_on(indigo_device *device) {
-	indigo_uni_set_rts(PRIVATE_DATA->handle, true);
+static bool rts_on(indigo_device *device) {
+	return indigo_uni_set_rts(PRIVATE_DATA->handle, true) == 0;
 }
 
-static void rts_off(indigo_device *device) {
-	indigo_uni_set_rts(PRIVATE_DATA->handle, false);
+static bool rts_off(indigo_device *device) {
+	return indigo_uni_set_rts(PRIVATE_DATA->handle, false) == 0;
 }
 
 static bool rts_open(indigo_device *device) {
@@ -89,8 +89,7 @@ static void aux_timer_callback(indigo_device *device) {
 		CCD_EXPOSURE_ITEM->number.value--;
 		if (CCD_EXPOSURE_ITEM->number.value <= 0) {
 			CCD_EXPOSURE_ITEM->number.value = 0;
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-			rts_off(device);
+			CCD_EXPOSURE_PROPERTY->state = rts_off(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (CCD_EXPOSURE_ITEM->number.value > 0) {
@@ -138,23 +137,27 @@ static void aux_connection_handler(indigo_device *device) {
 static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.CCD_ABORT_EXPOSURE.on_change
-	if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+	if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
 		indigo_cancel_pending_handler(device, aux_timer_callback);
-		rts_off(device);
+		if (!rts_off(device)) {
+			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		INDIGO_UPDATE_PROPERTY_STATE(CCD_EXPOSURE_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
 	CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
-	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	//- aux.CCD_ABORT_EXPOSURE.on_change
 	indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 }
 
 static void aux_ccd_exposure_handler(indigo_device *device) {
+	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.CCD_EXPOSURE.on_change
-	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-	rts_on(device);
-	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+	if (rts_on(device)) {
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+	} else {
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- aux.CCD_EXPOSURE.on_change
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 }
