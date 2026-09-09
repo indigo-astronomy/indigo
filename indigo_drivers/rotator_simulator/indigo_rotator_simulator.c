@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_rotator_simulator"
 #define DRIVER_LABEL         "Field Rotator Simulator"
 #define ROTATOR_DEVICE_NAME  "Field Rotator Simulator"
@@ -141,6 +141,11 @@ static void rotator_connection_handler(indigo_device *device) {
 		indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 	} else {
 		indigo_cancel_pending_handlers(device);
+		//+ rotator.on_disconnect
+		PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+		simulator_update_rotator_position(device);
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		//- rotator.on_disconnect
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
