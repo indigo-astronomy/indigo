@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_focuser_fcusb"
 #define DRIVER_LABEL         "Shoestring FCUSB focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -96,6 +96,16 @@ static void fcusb_debug(const char *message) {
 
 //- code
 
+//+ focuser.code
+
+static void focuser_motion_finalizer(indigo_device *device) {
+	bool ok = libfcusb_stop(PRIVATE_DATA->device_context);
+	FOCUSER_STEPS_ITEM->number.value = 0;
+	INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
+}
+
+//- focuser.code
+
 #pragma mark - High level code (focuser)
 
 static void focuser_connection_handler(indigo_device *device) {
@@ -122,55 +132,34 @@ static void focuser_connection_handler(indigo_device *device) {
 }
 
 static void focuser_abort_motion_handler(indigo_device *device) {
-	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
-	if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_cancel_pending_handler(device, focuser_motion_finalizer);
+	if (!libfcusb_stop(PRIVATE_DATA->device_context)) {
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-	//- focuser.FOCUSER_ABORT_MOTION.on_change
+	INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+	//- focuser.FOCUSER_ABORT_MOTION.on_change
 }
 
 static void focuser_steps_handler(indigo_device *device) {
-	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_STEPS.on_change
-	if (FOCUSER_STEPS_ITEM->number.value > 0) {
-		libfcusb_set_power(PRIVATE_DATA->device_context, FOCUSER_SPEED_ITEM->number.value);
-		if (X_FOCUSER_FREQUENCY_1_ITEM->sw.value)
-			libfcusb_set_frequency(PRIVATE_DATA->device_context, 1);
-		else if (X_FOCUSER_FREQUENCY_4_ITEM->sw.value)
-			libfcusb_set_frequency(PRIVATE_DATA->device_context, 4);
-		else if (X_FOCUSER_FREQUENCY_16_ITEM->sw.value)
-			libfcusb_set_frequency(PRIVATE_DATA->device_context, 16);
-		if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-			libfcusb_move_in(PRIVATE_DATA->device_context);
-		} else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
-			libfcusb_move_out(PRIVATE_DATA->device_context);
-		}
-		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
-		int delay = FOCUSER_STEPS_ITEM->number.target;
-		while (delay > 0) {
-			if (FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
-				break;
-			}
-			indigo_usleep(1000);
-			delay--;
-		}
-		libfcusb_stop(PRIVATE_DATA->device_context);
-		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		}
+	int frequency = X_FOCUSER_FREQUENCY_16_ITEM->sw.value ? 16 : (X_FOCUSER_FREQUENCY_4_ITEM->sw.value ? 4 : 1);
+	bool ok = FOCUSER_STEPS_ITEM->number.value > 0 && libfcusb_set_power(PRIVATE_DATA->device_context, FOCUSER_SPEED_ITEM->number.value) && libfcusb_set_frequency(PRIVATE_DATA->device_context, frequency);
+	if (ok) {
+		ok = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? libfcusb_move_in(PRIVATE_DATA->device_context) : libfcusb_move_out(PRIVATE_DATA->device_context);
+	}
+	if (ok) {
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, FOCUSER_STEPS_ITEM->number.value / 1000.0, focuser_motion_finalizer);
 	} else {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	//- focuser.FOCUSER_STEPS.on_change
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-}
-
-static void focuser_x_focuser_frequency_handler(indigo_device *device) {
-	X_FOCUSER_FREQUENCY_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
+	//- focuser.FOCUSER_STEPS.on_change
 }
 
 #pragma mark - Device API (focuser)
@@ -216,13 +205,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_FOCUSER_FREQUENCY_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_FREQUENCY_PROPERTY, focuser_x_focuser_frequency_handler);
+		indigo_property_copy_values(X_FOCUSER_FREQUENCY_PROPERTY, property, false);
+		X_FOCUSER_FREQUENCY_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
