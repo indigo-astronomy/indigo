@@ -129,6 +129,9 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-095 | Medium | `guider_cgusbst4/indigo_guider_cgusbst4.driver:110` | Direction encoding differs from upstream PHD2 (letters versus digits); device-protocol compatibility needs confirmation. | Open (protocol confirmation needed) |
 | DRV-096 | High | `focuser_lunatico/shared/lunatico_shared.c:336` | A full-size serial/UDP reply overflows the response terminator; reproduced through rotator_lunatico with ASan. | Open |
 | DRV-097 | Medium | `focuser_lunatico/shared/lunatico_shared.c:1543` | Rejected rotator GOTO never publishes ALERT and idle polling reports OK instead. | Open |
+| DRV-098 | High | `focuser_lacerta/indigo_focuser_lacerta.c:88` | Full response writes its terminator beyond the buffer; ASan reproduced. | Fixed |
+| DRV-099 | High | `focuser_lacerta/indigo_focuser_lacerta.c:59` | Missing/malformed identity and transaction failures are accepted or block connection. | Fixed |
+| DRV-100 | Medium | `focuser_lacerta/indigo_focuser_lacerta.c:153` | No-op motion remains BUSY; abort/completion ownership needs correction. | Fixed |
 
 ## Finding Summaries
 
@@ -938,6 +941,19 @@ Reproduction from `indigo_test/`: compile `integration/test_rotator_lunatico_sim
 
 `focuser_lunatico/shared/lunatico_shared.c:1543–1547`: after a rejected `!step goto`, the rotator handler sets `ROTATOR_POSITION` to ALERT internally but never publishes that state. It unconditionally schedules `rotator_timer_callback()`, whose idle readback replaces ALERT with OK at line 1365. Clients see BUSY followed by OK although the device rejected the requested move. The supplied `goto_failure` case fails waiting for ALERT in both serial and isolated UDP runs, with the driver logging `lunatico_goto_position(...) failed`. Publish the command failure and avoid treating a subsequent idle poll as successful completion of the rejected move. No production source change applied.
 
+### DRV-098 (Fixed — 2026-09-09)
+
+Baseline `focuser_lacerta/indigo_focuser_lacerta.c:88` writes a terminator after allowing a full-size reply. The new `overlong_identity` simulator case reproduces a stack-buffer-overflow in `lacerta_command` with the unchanged production driver instrumented by ASan. Handwritten transport version `0x02000002` passes the reproducer; repeat against final generated source before closing.
+
+### DRV-099 (Fixed — 2026-09-09)
+
+Baseline `focuser_lacerta/indigo_focuser_lacerta.c:59` ignores write failure and can return true after the expected reply never arrived. Connection accepts unknown/truncated identity; silent identification does not reach bounded disconnected ALERT. `unknown_identity`, `short_identity` and `silent_identity` reproduce these failures. Initial numeric readback and setting/poll error handling also require validation during migration.
+
+### DRV-100 (Fixed — 2026-09-09)
+
+Baseline `focuser_lacerta/indigo_focuser_lacerta.c:153` changes motion state only when the measured position changes. `noop` reproduces a request for the current position stuck BUSY. Abort also leaves the old target and does not finalize motion state; add abort/restart and stalled/read-failure regressions as part of the scoped migration.
+
+
 ### Lunatico simulator validation — 2026-09-09
 
 Scoped execution of the existing working-tree `integration/test_rotator_lunatico_simulator.c` at `eed97b62e6a07c28d6629ca0508770ceb89dde08`. The driver archive was up to date; serial and UDP test build targets succeeded. No driver/shared-source changes exist between the recorded folder baseline and this commit in the inspected Lunatico paths. This is a focused validation, not a complete folder review.
@@ -996,3 +1012,5 @@ Scoped execution of the existing working-tree `integration/test_rotator_lunatico
 | `f8713fa21` | working tree | 2026-09-09 | Scoped guider pass: unchanged ASI driver with vendor-header-based fake SDK on x86_64/Rosetta; CG-USB-ST4 standalone PTY and explicit PHD2/INDIGO dialect profiles; existing GPUSB fake SDK regression suite. Recorded `DRV-090`–`DRV-094` as reproduced bugs and `DRV-095` as an unresolved protocol discrepancy. No production source changes; folder baseline unchanged. |
 
 | `017ba602857378e4aed489c065c76eacae15924c` | `eed97b62e6a07c28d6629ca0508770ceb89dde08` + working-tree tests | 2026-09-09 | Scoped rotator_lunatico serial/UDP simulator execution and shared-source failure analysis. Recorded DRV-096 and DRV-097, secondary attachment/test timing failures, and an unresolved SIGSEGV. Driver sources unchanged; folder baseline not advanced. |
+
+LACERTA migration disposition (scoped; folder review baseline unchanged): DRV-098 is fixed by bounded framing in `focuser_lacerta/indigo_focuser_lacerta.driver:43`; final overlong identity/poll cases pass with the production driver instrumented by ASan. DRV-099 is fixed by validated bounded transactions, transactional identity open (`:97`) and explicit post-open initialization rollback (`:233`); all nine identity/initialization rejection cases pass, including descriptor-count checks and retry for one-shot faults. DRV-100 is fixed by explicit no-op completion (`:185`), queue-owned motion finalization and abort (`:329`); no-op, relative, overlap, abort/restart, failed stop and stalled/poll-failure scenarios pass. Final suite: 43/43; targeted ASan: 19/19. Earlier paragraphs preserve reproduction history. No full-folder review or baseline advancement is implied.

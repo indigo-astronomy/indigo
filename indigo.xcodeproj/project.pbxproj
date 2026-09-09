@@ -1458,6 +1458,8 @@
 		5932DD3624B20C8D00B90A6A /* ASICamera2 Software Development Kit.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = "ASICamera2 Software Development Kit.pdf"; path = "doc/ASICamera2 Software Development Kit.pdf"; sourceTree = "<group>"; };
 		5934587E2C8A0C210049421C /* focuser_lacerta_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = focuser_lacerta_simulator.c; sourceTree = "<group>"; };
 		593458802C8A0C210049421C /* indigo_focuser_lacerta_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_lacerta_main.c; sourceTree = "<group>"; };
+		C0DE20260909000400000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260909000400000002 /* indigo_focuser_lacerta.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_lacerta.driver; sourceTree = "<group>"; };
 		593458812C8A0C210049421C /* indigo_focuser_lacerta.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_lacerta.c; sourceTree = "<group>"; };
 		593458822C8A0C210049421C /* indigo_focuser_lacerta.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_lacerta.h; sourceTree = "<group>"; };
 		593458832C8A0C210049421C /* Lacerta_Mfoc-Fmc_API_2024.xlsx */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Lacerta_Mfoc-Fmc_API_2024.xlsx"; sourceTree = "<group>"; };
@@ -6560,6 +6562,8 @@
 			isa = PBXGroup;
 			children = (
 				593458842C8A0C210049421C /* README.md */,
+				C0DE20260909000400000001 /* REFACTOR.md */,
+				C0DE20260909000400000002 /* indigo_focuser_lacerta.driver */,
 				593458822C8A0C210049421C /* indigo_focuser_lacerta.h */,
 				593458812C8A0C210049421C /* indigo_focuser_lacerta.c */,
 				593458802C8A0C210049421C /* indigo_focuser_lacerta_main.c */,

@@ -100,6 +100,9 @@ Some drivers are generated from `.driver` files by `indigo_generator`.
 
 For CCD, mount, wheel, focuser, rotator, guider, AO and GPS validation, follow the shared scope and class standards in [Driver Testing Rules](indigo_test/DRIVER_TESTING_RULES.md).
 
+- Every driver refactoring must include full applicable test coverage of its supported capabilities and driver-specific behavior, using the class standard as the acceptance checklist. Cover protocol commands and readback, property transitions, failure/recovery paths, lifecycle and concurrency; a smoke test alone is not completion. Record the scenario-to-test mapping and justify non-applicable cases or hardware-only gaps in `indigo_test/CHANGES.md` and the driver's `REFACTOR.md`.
+- Audit the simulator as part of each refactoring against the supplied manufacturer protocol documentation (including bundled XLSX documents). For serial simulators with motion, use `indigo_test/simulator_common/serial_motion.h` unless a documented protocol requirement cannot be represented by it. Validate elapsed-time motion, stop and sync through the simulator protocol; do not count testing the shared helper itself as driver coverage.
+
 ## Repository Hygiene
 
 - Keep changes scoped to the requested behavior.

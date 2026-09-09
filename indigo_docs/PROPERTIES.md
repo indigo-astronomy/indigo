@@ -1124,9 +1124,11 @@ Source: `indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.c`.
 
 ### focuser_lacerta
 
-Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+Driver-specific use of existing properties: `FOCUSER_POSITION`, `FOCUSER_STEPS`, `FOCUSER_ABORT_MOTION`, `FOCUSER_BACKLASH`, `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`. Focuser controls are defined after connection. `FOCUSER_SPEED`, `FOCUSER_MODE` and `FOCUSER_COMPENSATION` remain hidden.
 
-Source: `indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.c`.
+Backlash is 0–255 integer steps. Minimum position is fixed at zero; the configurable maximum is 300–65535 for firmware v1 and 300–250000 for v2/v3. Position and relative-step ranges follow the device maximum. SYNC updates coordinates without movement. Temperature NC (99.9) reports ALERT without replacing the last valid reading. Motion completion and abort publish measured position and final state; failed setting readback preserves the last confirmed value.
+
+Source: `indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.driver`.
 
 ### focuser_lakeside
 

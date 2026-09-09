@@ -111,7 +111,7 @@ Inventory: 150 modules — 2 Complete, 36 Partial, 55 Not audited, 47 No tests, 
 | `focuser_fli` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `focuser_focusdreampro` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `focuser_ioptron` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
-| `focuser_lacerta` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_lacerta` | Generated | PTY/protocol simulator | Applicable matrix implemented | 43 scenarios; final migration validation below. Hardware and other-platform execution remain separate. |
 | `focuser_lakeside` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `focuser_lunatico` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `focuser_mjkzz` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
@@ -694,3 +694,45 @@ New coverage includes both shared connection orders using the AUX master's port,
 Final universal macOS production/test/ASan builds passed. Nine native arm64 ASan scenarios passed: `short_weather`, `short_gps`, `parser_weather`, `parser_gps`, `split_weather`, `split_gps`, `pulse_disconnect`, `reboot_disconnect` and `instances`. The driver/test are instrumented; the existing framework is not. The complete 32-case ordinary run and every selected ASan command exited 0. `DRV-088`/`DRV-089` are closed with this scoped evidence; review baselines are unchanged.
 
 The simulator's physical pulse duration uses its 0.5-second tick and does not prove hardware timing. Reboot completion is the driver's two-second settling delay, not device acknowledgement. Standalone model fixtures retain the documented provenance limits. TCP bridges, real hardware/firmware variants, Linux/Windows and x86_64 execution remain deferred; this is not full GPS standard or hardware acceptance. Migration details and final cleanup/checks are in `../indigo_drivers/aux_mgbox/REFACTOR.md`.
+
+
+## LACERTA migration preparation and simulator motion (2026-09-09)
+
+Primary protocol source: `indigo_drivers/focuser_lacerta/Lacerta_Mfoc-Fmc_API_2024.xlsx`, sheet `Munka1` (backlash/debug rows 5–12, limits 17–18, halt/identity/motion 19–22, query/SYNC/reversal 25–29, temperature NC 32, firmware 35 and 46–49). The workbook is read directly; legacy driver/simulator framing remains supplementary evidence.
+
+The unchanged API 2 production driver's existing smoke test passed after a universal macOS rebuild. Replaced the host simulator's background thread/mutex with shared elapsed-time `serial_motion` at 1000 steps/s (minimum nonzero duration 0.5 s). Added header dependencies and an archive prerequisite for reliable integration relinking.
+
+| Coverage | Named test / status |
+| --- | --- |
+| Entire currently implemented simulator command subset, MFOC/FMC identity and selected firmware, settings write/readback, temperature, motion progression without queries, stop, SYNC during motion, no-op, both travel limits and short-move completion | `lacerta_simulator_mfoc_protocol`, `lacerta_simulator_fmc_protocol`; direct fixture validation, not production-driver compliance. |
+| Production driver enumeration/connect, SYNC, backlash, reverse, maximum limit, absolute GOTO and normal cleanup | `lacerta_focuser_passes_serial_compliance_checks`; existing smoke coverage. |
+| Debug/interleaved completion messages, split/short/overlong/malformed replies, initial query/write/poll/stop failures and recovery | Planned Step 1–3 regressions in `focuser_lacerta/REFACTOR.md`; not yet covered. |
+| Production relative directions/reversal, no-op, actual limit boundaries, abort/new move, overlapping properties and externally changed position | Planned Step 3–4; not yet covered. |
+| Firmware v1 range and temperature NC semantics, rollback/reconnect, pending-operation teardown and independent instances | Planned Step 2–6; not yet covered. |
+
+Full applicable focuser coverage is an acceptance requirement for the migration. The three current cases alone do not meet it. Shared helper internals and generic framework validation are not duplicated in driver tests. Real FMC/MFOC timing, Linux/Windows and x86_64 runtime remain unverified.
+
+Validation of this simulator change: macOS universal simulator/test builds and strict simulator syntax checks passed; both direct protocol cases and the unchanged production smoke case passed on native arm64. A CR-trimming error in the first direct-test observer was corrected before the successful rerun. Standalone simulator build passed. Test artifacts were cleaned; ASan and full production regression coverage remain planned.
+
+
+## LACERTA generated migration: final coverage (2026-09-09)
+
+This supersedes the preparation coverage gaps above. Tests exercise the production driver through public bus requests with real handler queues. Fresh property revisions distinguish completion from cached OK. Each named scenario gets its own simulator and watchdog; the parent reaps both PTYs in the instance case. The unchanged generator emits the authoritative DSL's C/header/main.
+
+| Applicable focuser/common standard area | Named scenarios |
+| --- | --- |
+| Independent protocol fixture, MFOC/FMC commands, timed movement and asynchronous completion | `simulator_mfoc`, `simulator_fmc` |
+| Interface, connection battery, visible/hidden properties, metadata, firmware v1/v2/v3 ranges, setting readback and SYNC without M | `normal`, `capabilities_mfoc`, `capabilities_fmc`, `capabilities_mfoc2`, `debug`, `split` |
+| Absolute/relative moves, direction and reversal combinations, target/measurement, zero/no-op, both clipped boundaries, overlapping POSITION/STEPS in both orders | `normal`, `noop`, `relative`, `overlap` |
+| Abort active/idle, stopped readback, switch reset, restart, rejected stop, lost transport, poll failure and stalled movement | `abort`, `stop_failure`, `transport_loss`, `motion_poll_failure`, `stalled_motion` |
+| Backlash/reversal/limits/SYNC failure and recovery; settings conflicts during movement | `backlash_failure`, `limits_failure`, `reverse_failure`, `sync_failure`, `settings_during_motion` |
+| Malformed, short, overlong, missing, unterminated and flooding replies with bounded recovery | `poll_malformed`, `poll_short`, `poll_overlong`, `poll_silent`, `poll_partial`, `poll_flood` |
+| Temperature NC at connection/runtime, invalid response, recovery, external hand-controller position | `sensor_absent`, `temperature`, `external_position` |
+| Failed open/initialization and descriptor rollback, invalid port, repeat reconnect and device setting persistence | `init_version`, `init_reverse`, `init_limits`, `init_position`, `init_backlash`, `unknown_identity`, `short_identity`, `overlong_identity`, `silent_identity`, `reconnect` |
+| Disconnect during motion/read, no commands while closed, independent ports/position/temperature and surviving peer | `disconnect_motion`, `disconnect_read`, `instances` |
+
+Speed, automatic mode, temperature compensation, motor current, beep/heater and home are not exposed by this driver and are non-applicable. Generic range validation/configuration storage is framework scope. M has no immediate protocol acknowledgement: transport loss and ignored movement are tested through actual polling, without inventing an ACK. Deterministic partial OS writes are not directly injected by a PTY; production checks the full write count. Hardware motor timing, mechanical safety/travel and physical sensor behavior require the small-travel hardware acceptance described in the class standard. No claim of exhaustive C branch coverage or hardware certification is made.
+
+Reproduce from `indigo_test`: `make build/integration/test_focuser_lacerta_simulator build/integration/test_focuser_lacerta_simulator_asan`, then `./build/integration/test_focuser_lacerta_simulator`. `LACERTA_TEST_FILTER` selects scenario-name substrings, including `identity`, `init_`, `disconnect`, `instances` and `poll_` for targeted ASan. ASan instruments the driver and test executable; the framework library is the normal build.
+
+Final result: 43/43 ordinary scenarios and 19/19 targeted ASan scenarios passed on macOS arm64. Universal driver/test build and strict driver warning checks passed for arm64/x86_64. See driver `REFACTOR.md` for intermediate failures, fixes and platform limits.

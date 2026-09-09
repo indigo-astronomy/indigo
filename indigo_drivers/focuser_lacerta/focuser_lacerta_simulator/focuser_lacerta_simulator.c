@@ -20,356 +20,265 @@
 //
 // This simulator was refactored by a Codex agent.
 
-#include <pthread.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
-#include <errno.h>
 #include <stdarg.h>
 #include <signal.h>
-#include <limits.h>
-
+#include <sys/select.h>
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
+#include "../../../indigo_test/simulator_common/serial_motion.h"
 
-// ----------------------------------------------------------------- options
-
-typedef struct {
-	bool headless;
-	bool trace;
-	const char *ready_file;
-	const char *model;
-	const char *firmware;
-} simulator_options;
-
-static simulator_options options = {
-	.headless = false,
-	.trace = true,
-	.ready_file = NULL,
-	.model = "MFOC",
-	.firmware = "3.1.123"
-};
-
-static const char *simulator_name = "focuser_lacerta";
-
-static void usage(const char *name) {
-	printf("LACERTA Motorfocus focuser simulator\n");
-	printf("Usage: %s [OPTIONS]\n", name);
-	printf("  --headless              Disable terminal-oriented output\n");
-	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
-	printf("  --trace                 Log protocol requests and replies\n");
-	printf("  --model <MFOC|FMC>      Select simulated model, default is MFOC\n");
-	printf("  --firmware <version>    Set reported firmware version\n");
-	printf("  -h, --help              Show this help and exit\n");
-}
-
-static bool parse_args(int argc, char *argv[]) {
-	for (int i = 1; i < argc; i++) {
-		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
-			usage(argv[0]);
-			exit(0);
-		} else if (!strcmp(argv[i], "--headless")) {
-			options.headless = true;
-			options.trace = false;
-		} else if (!strcmp(argv[i], "--trace")) {
-			options.trace = true;
-		} else if (!strcmp(argv[i], "--ready-file")) {
-			if (++i == argc) {
-				fprintf(stderr, "--ready-file requires a path\n");
-				return false;
-			}
-			options.ready_file = argv[i];
-		} else if (!strcmp(argv[i], "--model")) {
-			if (++i == argc) {
-				fprintf(stderr, "--model requires MFOC or FMC\n");
-				return false;
-			}
-			if (strcmp(argv[i], "MFOC") && strcmp(argv[i], "FMC")) {
-				fprintf(stderr, "Unknown model '%s'\n", argv[i]);
-				return false;
-			}
-			options.model = argv[i];
-		} else if (!strcmp(argv[i], "--firmware")) {
-			if (++i == argc) {
-				fprintf(stderr, "--firmware requires a version\n");
-				return false;
-			}
-			options.firmware = argv[i];
-		} else {
-			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
-			return false;
-		}
-	}
-	return true;
-}
-
-// ----------------------------------------------------------------- state
-
+static const char *profile = "normal", *model = "MFOC", *firmware = "3.1.123", *ready_file;
+static const char *fault_file;
+static FILE *events;
+static bool trace, headless, motion_active, injected;
 static volatile sig_atomic_t running = 1;
-static int serial_fd = -1;
-static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-static int position = 0;
-static int target = 0;
-static int direction = 0;
-static int backlash = 3;
-static int max_position = 250000;
+static int serial_fd = -1, backlash = 3, direction, maximum = 250000;
 static double temperature = 23.5;
+static serial_motion motion;
 
-static void signal_handler(int sig) {
-	(void)sig;
-	running = 0;
-	if (serial_fd >= 0) {
-		close(serial_fd);
-		serial_fd = -1;
+static void event(const char *kind, const char *value) {
+	if (events) {
+		fprintf(events, "%.6f %s %s\n", serial_motion_time(), kind, value);
+		fflush(events);
 	}
 }
 
-static void *background(void *arg) {
-	(void)arg;
-	while (running) {
-		pthread_mutex_lock(&state_mutex);
-		if (target < position) {
-			position--;
-		} else if (target > position) {
-			position++;
-		}
-		pthread_mutex_unlock(&state_mutex);
-		usleep(1000);
-	}
-	return NULL;
-}
-
-// ----------------------------------------------------------------- protocol
-
-static int sim_read_byte(int fd, char *byte) {
-	while (running) {
-		ssize_t count = read(fd, byte, 1);
-		if (count == 1) {
-			return 0;
-		}
-		if (count < 0) {
-			if (errno == EINTR) {
-				continue;
-			}
-			if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EIO) {
-				usleep(500);
-				continue;
-			}
-			return -1;
-		}
-		usleep(500);
-	}
-	return -1;
-}
-
-static int sim_read_command(int fd, char *buffer, size_t length) {
-	char byte = '\0';
-	size_t used = 0;
-
-	while (running && used + 1 < length) {
-		if (sim_read_byte(fd, &byte) < 0) {
-			return -1;
-		}
-		if (byte == ':') {
-			used = 0;
-		}
-		buffer[used++] = byte;
-		if (byte == '#') {
-			buffer[used] = '\0';
-			serial_simulator_trace_line(options.trace, "->", buffer);
-			return (int)used;
-		}
-	}
-
-	buffer[0] = '\0';
-	return -1;
-}
-
-static bool sim_printf(int fd, const char *format, ...) {
-	char buffer[160];
+static bool reply(const char *format, ...) {
+	char buffer[256];
 	va_list args;
 	va_start(args, format);
 	int length = vsnprintf(buffer, sizeof(buffer), format, args);
 	va_end(args);
-
 	if (length < 0 || length >= (int)sizeof(buffer)) {
 		return false;
 	}
-	serial_simulator_trace_line(options.trace, "<-", buffer);
-	return serial_simulator_write_all(fd, buffer, (size_t)length);
-}
-
-static void handle_set_position(int fd, const char *command) {
-	int value = atoi(command + 4);
-	pthread_mutex_lock(&state_mutex);
-	target = position = value;
-	pthread_mutex_unlock(&state_mutex);
-	sim_printf(fd, "p %d\r", value);
-}
-
-static void handle_set_max_position(int fd, const char *command) {
-	int value = atoi(command + 4);
-	pthread_mutex_lock(&state_mutex);
-	max_position = value;
-	pthread_mutex_unlock(&state_mutex);
-	sim_printf(fd, "g %d\r", value);
-}
-
-static void handle_get_max_position(int fd) {
-	pthread_mutex_lock(&state_mutex);
-	int value = max_position;
-	pthread_mutex_unlock(&state_mutex);
-	sim_printf(fd, "g %d\r", value);
-}
-
-static void handle_set_reverse(int fd, const char *command) {
-	int value = atoi(command + 4) != 0 ? 1 : 0;
-	pthread_mutex_lock(&state_mutex);
-	direction = value;
-	pthread_mutex_unlock(&state_mutex);
-	sim_printf(fd, "r %d\r", value);
-}
-
-static void handle_get_reverse(int fd) {
-	pthread_mutex_lock(&state_mutex);
-	int value = direction;
-	pthread_mutex_unlock(&state_mutex);
-	sim_printf(fd, "r %d\r", value);
-}
-
-static void handle_get_position(int fd) {
-	pthread_mutex_lock(&state_mutex);
-	int value = position;
-	pthread_mutex_unlock(&state_mutex);
-	sim_printf(fd, "p %d\r", value);
-}
-
-static void handle_move_absolute(const char *command) {
-	int value = atoi(command + 4);
-	pthread_mutex_lock(&state_mutex);
-	if (value < 0) {
-		target = 0;
-	} else if (value > max_position) {
-		target = max_position;
-	} else {
-		target = value;
+	event("TX", buffer);
+	serial_simulator_trace_line(trace, "<-", buffer);
+	if (!strcmp(profile, "split") && length > 2) {
+		serial_simulator_write_all(serial_fd, buffer, (size_t)length / 2);
+		usleep(10000);
+		return serial_simulator_write_all(serial_fd, buffer + length / 2, (size_t)(length - length / 2));
 	}
-	pthread_mutex_unlock(&state_mutex);
+	return serial_simulator_write_all(serial_fd, buffer, (size_t)length);
 }
 
-static void handle_halt(int fd) {
-	pthread_mutex_lock(&state_mutex);
-	target = position;
-	pthread_mutex_unlock(&state_mutex);
-	sim_printf(fd, "H 1\r");
+static void stop_signal(int signal) {
+	(void)signal;
+	running = 0;
 }
 
-static void handle_temperature(int fd) {
-	pthread_mutex_lock(&state_mutex);
-	double value = temperature;
-	pthread_mutex_unlock(&state_mutex);
-	sim_printf(fd, "t %g\r", value);
-}
-
-static void handle_set_backlash(int fd, const char *command) {
-	int value = atoi(command + 4);
-	pthread_mutex_lock(&state_mutex);
-	backlash = value;
-	pthread_mutex_unlock(&state_mutex);
-	sim_printf(fd, "b %d\r", value);
-}
-
-static void handle_get_backlash(int fd) {
-	pthread_mutex_lock(&state_mutex);
-	int value = backlash;
-	pthread_mutex_unlock(&state_mutex);
-	sim_printf(fd, "b %d\r", value);
-}
-
-static void dispatch_command(int fd, const char *command) {
-	if (!strcmp(command, ": i #")) {
-		sim_printf(fd, "i %s\r", options.model);
-	} else if (!strcmp(command, ": v #")) {
-		sim_printf(fd, "v%s\r", options.firmware);
-	} else if (!strncmp(command, ": P ", 4)) {
-		handle_set_position(fd, command);
-	} else if (!strncmp(command, ": G ", 4)) {
-		handle_set_max_position(fd, command);
-	} else if (!strcmp(command, ": g #")) {
-		handle_get_max_position(fd);
-	} else if (!strncmp(command, ": R ", 4)) {
-		handle_set_reverse(fd, command);
-	} else if (!strcmp(command, ": r #")) {
-		handle_get_reverse(fd);
-	} else if (!strcmp(command, ": q #")) {
-		handle_get_position(fd);
-	} else if (!strncmp(command, ": M ", 4)) {
-		handle_move_absolute(command);
-	} else if (!strcmp(command, ": H #")) {
-		handle_halt(fd);
-	} else if (!strcmp(command, ": t #")) {
-		handle_temperature(fd);
-	} else if (!strncmp(command, ": B ", 4)) {
-		handle_set_backlash(fd, command);
-	} else if (!strcmp(command, ": b #")) {
-		handle_get_backlash(fd);
-	} else {
-		serial_simulator_trace_line(options.trace, "??", command);
+static void update_motion(void) {
+	int position = (int)serial_motion_update(&motion);
+	if (motion_active && motion.duration == 0) {
+		motion_active = false;
+		reply("M %d\r", position);
+		reply("p %d\r", position);
+		event("DONE", "motion");
 	}
 }
 
-// ----------------------------------------------------------------- main
-
-int main(int argc, char *argv[]) {
-	pthread_t thread;
-	char command[80];
-	char port[128];
-
-	if (!parse_args(argc, argv)) {
-		usage(argv[0]);
-		return 1;
-	}
-
-	signal(SIGTERM, signal_handler);
-	signal(SIGINT, signal_handler);
-
-	serial_fd = serial_simulator_open_pty(port, sizeof(port));
-	if (serial_fd < 0) {
-		return 1;
-	}
-
-	if (options.ready_file != NULL && !serial_simulator_write_ready_file(options.ready_file, simulator_name, port)) {
-		close(serial_fd);
-		serial_fd = -1;
-		return 1;
-	}
-
-	if (!options.headless) {
-		printf("LACERTA Motorfocus focuser simulator is running on %s\n", port);
-		fflush(stdout);
-	}
-
-	if (pthread_create(&thread, NULL, background, NULL) != 0) {
-		perror("pthread_create");
-		close(serial_fd);
-		serial_fd = -1;
-		return 1;
-	}
-
-	while (running) {
-		if (sim_read_command(serial_fd, command, sizeof(command)) > 0) {
-			dispatch_command(serial_fd, command);
+static bool inject(char command) {
+	char action[64] = "", key[32] = { 0 };
+	FILE *file = fault_file ? fopen(fault_file, "r") : NULL;
+	if (file) {
+		if (fscanf(file, "%31s %63s", key, action) != 2) {
+			*action = 0;
+		}
+		fclose(file);
+		if (!strcmp(key, "external")) {
+			serial_motion_sync(&motion, atoi(action));
+			motion_active = false;
+			unlink(fault_file);
+			return false;
+		}
+		if (!strcmp(key, "temperature")) {
+			temperature = atof(action);
+			unlink(fault_file);
+			return false;
+		}
+		if (key[0] != command || key[1]) {
+			*action = 0;
 		} else {
-			usleep(1000);
+			unlink(fault_file);
 		}
 	}
-
-	if (serial_fd >= 0) {
-		close(serial_fd);
-		serial_fd = -1;
+	if (!injected && !strncmp(profile, "init_", 5) && command == profile[5]) {
+		injected = true;
+		snprintf(action, sizeof(action), "%s", profile + 7);
 	}
-	pthread_join(thread, NULL);
+	if (!*action) {
+		return false;
+	}
+	event("FAULT", action);
+	char response = command == 'q' || command == 'P' ? 'p' : command == 'H' ? 'H' : (char)tolower((unsigned char)command);
+	if (!strcmp(action, "silent")) {
+		return true;
+	} else if (!strcmp(action, "close")) {
+		running = 0;
+		return true;
+	} else if (!strcmp(action, "overlong")) {
+		char buffer[160];
+		memset(buffer, '7', sizeof(buffer));
+		buffer[0] = response;
+		buffer[1] = ' ';
+		buffer[158] = '\r';
+		buffer[159] = 0;
+		reply("%s", buffer);
+	} else if (!strcmp(action, "short")) {
+		reply("%c\r", response);
+	} else if (!strcmp(action, "mismatch")) {
+		reply("%c 2\r", response);
+	} else if (!strcmp(action, "reject")) {
+		reply("%c 0\r", command);
+	} else if (!strcmp(action, "partial")) {
+		reply("%c 12", response);
+	} else if (!strcmp(action, "flood")) {
+		for (int i = 0; i < 150; i++) {
+			reply("D ignored\r");
+		}
+	} else {
+		reply("%c invalid\r", response);
+	}
+	return true;
+}
+
+static void dispatch(const char *text) {
+	char command;
+	int value = 0;
+	if (sscanf(text, ": %c %d", &command, &value) < 1) {
+		return;
+	}
+	event("RX", text);
+	serial_simulator_trace_line(trace, "->", text);
+	if (inject(command)) {
+		return;
+	}
+	if (!strcmp(profile, "debug")) {
+		reply("D : %c command received\r", command);
+		reply("D : %c command execution\r", command);
+	}
+	switch (command) {
+		case 'i': reply("i %s\r", !strcmp(profile, "unknown") ? "OTHER" : model); break;
+		case 'v': reply("v%s\r", firmware); break;
+		case 'q': reply("p %d\r", (int)serial_motion_update(&motion)); break;
+		case 't': reply("t %g\r", temperature); break;
+		case 'P':
+			if (value >= 0 && value <= maximum) {
+				serial_motion_sync(&motion, value);
+				motion_active = false;
+			}
+			reply("p %d\r", (int)serial_motion_update(&motion));
+			break;
+		case 'M':
+			serial_motion_start(&motion, value < 0 ? 0 : value > maximum ? maximum : value, 1000);
+			motion_active = true;
+			break;
+		case 'H':
+			serial_motion_stop(&motion);
+			motion_active = false;
+			reply("H 1\r");
+			break;
+		case 'B':
+			if (value >= 0 && value <= 255) {
+				backlash = value;
+			}
+			// Fall through to the readback.
+		case 'b': reply("b %d\r", backlash); break;
+		case 'R':
+			if (value == 0 || value == 1) {
+				direction = value;
+			}
+		case 'r': reply("r %d\r", direction); break;
+		case 'G':
+			if (value >= 300 && value <= (*firmware == '1' ? 65535 : 250000)) {
+				maximum = value;
+			}
+		case 'g': reply("g %d\r", maximum); break;
+		default: reply("D unknown command\r%c 0\r", command); break;
+	}
+}
+
+int main(int argc, char **argv) {
+	for (int i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--headless")) {
+			headless = true;
+		} else if (!strcmp(argv[i], "--trace")) {
+			trace = true;
+		} else if (i + 1 < argc && !strcmp(argv[i], "--ready-file")) {
+			ready_file = argv[++i];
+		} else if (i + 1 < argc && !strcmp(argv[i], "--profile")) {
+			profile = argv[++i];
+		} else if (i + 1 < argc && !strcmp(argv[i], "--model")) {
+			model = argv[++i];
+		} else if (i + 1 < argc && !strcmp(argv[i], "--firmware")) {
+			firmware = argv[++i];
+		} else {
+			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile NAME] [--model MFOC|FMC] [--firmware VERSION]\n", argv[0]);
+			return 1;
+		}
+	}
+	if (!strcmp(profile, "fmc")) {
+		model = "FMC";
+		firmware = "1.1.123";
+	} else if (!strcmp(profile, "mfoc2")) {
+		firmware = "2.1.123";
+	}
+	maximum = *firmware == '1' ? 65535 : 250000;
+	if (!strcmp(profile, "nc")) {
+		temperature = 99.9;
+	} else if (!strcmp(profile, "alternate")) {
+		temperature = -5;
+		serial_motion_sync(&motion, 500);
+	}
+	const char *event_path = getenv("INDIGO_LACERTA_EVENTS");
+	events = event_path ? fopen(event_path, "w") : NULL;
+	fault_file = getenv("INDIGO_LACERTA_FAULT");
+	char port[128], command[128];
+	size_t used = 0;
+	signal(SIGTERM, stop_signal);
+	signal(SIGINT, stop_signal);
+	serial_fd = serial_simulator_open_pty(port, sizeof(port));
+	if (serial_fd < 0 || (ready_file && !serial_simulator_write_ready_file(ready_file, "focuser_lacerta", port))) {
+		return 1;
+	}
+	if (!headless) {
+		printf("LACERTA simulator on %s\n", port);
+		fflush(stdout);
+	}
+	while (running) {
+		update_motion();
+		fd_set fds;
+		FD_ZERO(&fds);
+		FD_SET(serial_fd, &fds);
+		struct timeval timeout = { 0, 10000 };
+		if (select(serial_fd + 1, &fds, NULL, NULL, &timeout) <= 0) {
+			continue;
+		}
+		char byte;
+		if (read(serial_fd, &byte, 1) != 1) {
+			usleep(10000);
+			continue;
+		}
+		if (byte == ':') {
+			used = 0;
+		}
+		if (used + 1 < sizeof(command)) {
+			command[used++] = byte;
+		}
+		if (byte == '#') {
+			command[used] = 0;
+			dispatch(command);
+			used = 0;
+		}
+	}
+	close(serial_fd);
+	if (events) {
+		fclose(events);
+	}
 	return 0;
 }

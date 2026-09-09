@@ -49,7 +49,7 @@
 | ccd_dsi                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ❌ No  |                                                         |
 | ccd_fli                 | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
 | ccd_iidc                | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⏰ TODO - make libdc1394 for Windows                    |
-| ccd_mallin              | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ✅ HW  | ❌ No  | ➡️ Touptek                                              |
+| ccd_mallin              | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ❌ No  | ➡️ Touptek                                              |
 | ccd_mi                  | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⛔ Unix and Windows SDKs are not compatible             |
 | ccd_ogma                | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ❌ No  | ➡️ Touptek                                              |
 | ccd_omegonpro           | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ❌ No  | ➡️ Touptek                                              |
@@ -88,7 +88,7 @@
 | focuser_fli             | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
 | focuser_focusdreampro   | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
 | focuser_ioptron         | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
-| focuser_lacerta         | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
+| focuser_lacerta         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | focuser_lakeside        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
 | focuser_lunatico        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
 | focuser_mjkzz           | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |

@@ -388,8 +388,8 @@ $(INTEGRATION_BUILD)/focuser_qhy_simulator: ../indigo_drivers/focuser_qhy/focuse
 $(INTEGRATION_BUILD)/focuser_optecfl_simulator: ../indigo_drivers/focuser_optecfl/focuser_optecfl_simulator/focuser_optecfl_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
 
-$(INTEGRATION_BUILD)/focuser_lacerta_simulator: ../indigo_drivers/focuser_lacerta/focuser_lacerta_simulator/focuser_lacerta_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+$(INTEGRATION_BUILD)/focuser_lacerta_simulator: ../indigo_drivers/focuser_lacerta/focuser_lacerta_simulator/focuser_lacerta_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/focuser_lakeside_simulator: ../indigo_drivers/focuser_lakeside/focuser_lakeside_simulator/focuser_lakeside_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
@@ -613,8 +613,11 @@ $(INTEGRATION_BUILD)/test_focuser_qhy_simulator: integration/test_focuser_qhy_si
 $(INTEGRATION_BUILD)/test_focuser_optecfl_simulator: integration/test_focuser_optecfl_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_optecfl_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_OPTECFL_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_lacerta_simulator: integration/test_focuser_lacerta_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_lacerta_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_focuser_lacerta_simulator: integration/test_focuser_lacerta_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_lacerta_simulator $(BUILD_DRIVERS)/indigo_focuser_lacerta.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_LACERTA_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_lacerta_simulator_asan: integration/test_focuser_lacerta_simulator.c ../indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_lacerta_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.c $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_lakeside_simulator: integration/test_focuser_lakeside_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_lakeside_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_LAKESIDE_SIMULATOR_TEST_LDFLAGS)

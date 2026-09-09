@@ -1,0 +1,409 @@
+// Copyright (c) 2024-2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Refactored by OpenAI Codex, 2026.
+
+driver lacerta {
+	label = "LACERTA Motorfocus Focuser";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2024-2026 CloudMakers, s. r. o.";
+	version = 5;
+	serial;
+	include {
+		#include <ctype.h>
+		#include <errno.h>
+	}
+	data {
+		int maximum, capability_maximum;
+		int last_position, stalled;
+		bool moving, motion_uncertain, reverse;
+	}
+	code {
+		static double lacerta_now(void) {
+			struct timeval time;
+			gettimeofday(&time, NULL);
+			return (double)time.tv_sec + time.tv_usec / 1000000.0;
+		}
+
+		static bool lacerta_command(indigo_device *device, const char *command, char *response, int capacity, char expected) {
+			if (!PRIVATE_DATA->handle) {
+				return false;
+			}
+			// Drain only a bounded amount of stale asynchronous completion/debug data.
+			char stale[512];
+			for (int i = 0; indigo_uni_wait_for_data(PRIVATE_DATA->handle, 0) > 0; i++) {
+				if (i == 4 || indigo_uni_read_available(PRIVATE_DATA->handle, stale, sizeof(stale)) <= 0) {
+					return false;
+				}
+			}
+			long length = (long)strlen(command);
+			if (indigo_uni_write(PRIVATE_DATA->handle, command, length) != length) {
+				return false;
+			}
+			if (!response) {
+				return true;
+			}
+			int used = 0;
+			bool overflow = false;
+			double deadline = lacerta_now() + 2;
+			for (int bytes = 0; bytes < 2048; bytes++) {
+				double remaining = deadline - lacerta_now();
+				if (remaining <= 0 || indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(remaining)) <= 0) {
+					return false;
+				}
+				char byte;
+				if (indigo_uni_read_available(PRIVATE_DATA->handle, &byte, 1) != 1) {
+					return false;
+				}
+				if (byte == '\r') {
+					if (overflow) {
+						return false;
+					}
+					response[used] = 0;
+					if (used && response[0] == expected) {
+						return used > 1;
+					}
+					if (used && response[0] != 'D' && response[0] != 'M' && response[0] != 'p') {
+						return false;
+					}
+					used = 0;
+				} else if (byte != '\n') {
+					if (!byte || used + 1 >= capacity) {
+						overflow = true;
+					} else if (!overflow) {
+						response[used++] = byte;
+					}
+				}
+			}
+			return false;
+		}
+
+		static bool lacerta_open(indigo_device *device) {
+			char response[96], tail;
+			int major, minor, revision;
+			PRIVATE_DATA->capability_maximum = 250000;
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG);
+			if (!PRIVATE_DATA->handle) {
+				return false;
+			}
+			if (lacerta_command(device, ": i #", response, sizeof(response), 'i') && (!strcmp(response, "i FMC") || !strcmp(response, "i MFOC"))) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, response + 2);
+				if (lacerta_command(device, ": v #", response, sizeof(response), 'v') && sscanf(response, "v%2d.%2d.%6d%c", &major, &minor, &revision, &tail) == 3 && major >= 1 && major <= 3 && minor >= 0 && revision >= 0) {
+					PRIVATE_DATA->capability_maximum = major == 1 ? 65535 : 250000;
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 1);
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+					return true;
+				}
+			}
+			indigo_uni_close(&PRIVATE_DATA->handle);
+			PRIVATE_DATA->capability_maximum = 250000;
+			return false;
+		}
+
+		static void lacerta_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+
+		static bool lacerta_number(indigo_device *device, const char *command, char expected, double minimum, double maximum, double *value) {
+			char response[96], *end;
+			if (!lacerta_command(device, command, response, sizeof(response), expected) || !isspace((unsigned char)response[1])) {
+				return false;
+			}
+			errno = 0;
+			*value = strtod(response + 1, &end);
+			if (end == response + 1 || errno || !isfinite(*value) || *value < minimum || *value > maximum) {
+				return false;
+			}
+			while (isspace((unsigned char)*end)) {
+				end++;
+			}
+			return !*end;
+		}
+
+		static bool lacerta_integer(indigo_device *device, const char *command, char expected, int minimum, int maximum, int *value) {
+			double number;
+			if (!lacerta_number(device, command, expected, minimum, maximum, &number) || floor(number) != number) {
+				return false;
+			}
+			*value = (int)number;
+			return true;
+		}
+
+		static void lacerta_motion_state(indigo_device *device, indigo_property_state state) {
+			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = state;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		}
+
+		static bool lacerta_halt(indigo_device *device) {
+			int stopped;
+			return lacerta_integer(device, ": H #", 'H', 0, 1, &stopped) && stopped == 1;
+		}
+
+		static void motion_finalizer(indigo_device *device) {
+			int position;
+			if (!lacerta_integer(device, ": q #", 'p', 0, PRIVATE_DATA->maximum, &position)) {
+				PRIVATE_DATA->moving = false;
+				PRIVATE_DATA->motion_uncertain = !lacerta_halt(device);
+				lacerta_motion_state(device, INDIGO_ALERT_STATE);
+				return;
+			}
+			if (position != PRIVATE_DATA->last_position) {
+				PRIVATE_DATA->last_position = position;
+				PRIVATE_DATA->stalled = 0;
+			}
+			FOCUSER_POSITION_ITEM->number.value = position;
+			if (position == (int)FOCUSER_POSITION_ITEM->number.target) {
+				PRIVATE_DATA->moving = false;
+				lacerta_motion_state(device, INDIGO_OK_STATE);
+			} else if (++PRIVATE_DATA->stalled >= 100) {
+				// No progress for about ten seconds: stop before releasing the operation.
+				PRIVATE_DATA->moving = false;
+				PRIVATE_DATA->motion_uncertain = !lacerta_halt(device);
+				lacerta_motion_state(device, INDIGO_ALERT_STATE);
+			} else {
+				lacerta_motion_state(device, INDIGO_BUSY_STATE);
+				indigo_execute_handler_in(device, 0.1, motion_finalizer);
+			}
+		}
+
+		static void lacerta_start_motion(indigo_device *device, int position) {
+			if (!IS_CONNECTED || PRIVATE_DATA->motion_uncertain) {
+				lacerta_motion_state(device, INDIGO_ALERT_STATE);
+				return;
+			}
+			position = position < 0 ? 0 : position > PRIVATE_DATA->maximum ? PRIVATE_DATA->maximum : position;
+			FOCUSER_POSITION_ITEM->number.target = position;
+			if (position == (int)FOCUSER_POSITION_ITEM->number.value) {
+				lacerta_motion_state(device, INDIGO_OK_STATE);
+				return;
+			}
+			char command[32];
+			snprintf(command, sizeof(command), ": M %d#", position);
+			if (!lacerta_command(device, command, NULL, 0, 0)) {
+				PRIVATE_DATA->motion_uncertain = true;
+				lacerta_motion_state(device, INDIGO_ALERT_STATE);
+				return;
+			}
+			PRIVATE_DATA->last_position = (int)FOCUSER_POSITION_ITEM->number.value;
+			PRIVATE_DATA->stalled = 0;
+			PRIVATE_DATA->moving = true;
+			lacerta_motion_state(device, INDIGO_BUSY_STATE);
+		}
+
+		static void lacerta_limits(indigo_device *device, int maximum) {
+			PRIVATE_DATA->maximum = maximum;
+			FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = maximum;
+			FOCUSER_POSITION_ITEM->number.max = maximum;
+			FOCUSER_STEPS_ITEM->number.max = maximum;
+		}
+
+		static void lacerta_temperature(indigo_device *device) {
+			double temperature;
+			if (lacerta_number(device, ": t #", 't', -100, 100, &temperature) && temperature != 99.9 && temperature >= FOCUSER_TEMPERATURE_ITEM->number.min && temperature <= FOCUSER_TEMPERATURE_ITEM->number.max) {
+				FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+		}
+	}
+	focuser {
+		name = "LACERTA Motorfocus";
+		additional_instances = true;
+		on_attach {
+			INFO_PROPERTY->count = 6;
+		}
+		on_connect {
+			int reverse = 0, position = 0, backlash = 0, maximum = 0;
+			connection_result = lacerta_integer(device, ": r #", 'r', 0, 1, &reverse) && lacerta_integer(device, ": g #", 'g', 300, PRIVATE_DATA->capability_maximum, &maximum) && lacerta_integer(device, ": q #", 'p', 0, maximum, &position) && lacerta_integer(device, ": b #", 'b', 0, 255, &backlash);
+			if (connection_result) {
+				PRIVATE_DATA->reverse = reverse;
+				indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, reverse ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = backlash;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = PRIVATE_DATA->capability_maximum;
+				lacerta_limits(device, maximum);
+				PRIVATE_DATA->moving = PRIVATE_DATA->motion_uncertain = false;
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			} else {
+				// Single-device generated connection failure does not close a successful open.
+				lacerta_close(device);
+			}
+		}
+		on_disconnect {
+			if (PRIVATE_DATA->moving || PRIVATE_DATA->motion_uncertain) {
+				lacerta_halt(device);
+			}
+			PRIVATE_DATA->moving = PRIVATE_DATA->motion_uncertain = false;
+			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+		}
+		on_timer {
+			lacerta_temperature(device);
+			if (!PRIVATE_DATA->moving && FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
+				int position;
+				if (lacerta_integer(device, ": q #", 'p', 0, PRIVATE_DATA->maximum, &position)) {
+					if (position != (int)FOCUSER_POSITION_ITEM->number.value) {
+						FOCUSER_POSITION_ITEM->number.value = position;
+						if (!PRIVATE_DATA->motion_uncertain) {
+							FOCUSER_POSITION_ITEM->number.target = position;
+						}
+						indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					}
+				} else {
+					lacerta_motion_state(device, INDIGO_ALERT_STATE);
+				}
+			}
+			indigo_execute_handler_in(device, 1, focuser_timer_callback);
+		}
+		inherited FOCUSER_SPEED { hidden = true; }
+		inherited FOCUSER_TEMPERATURE { hidden = false; }
+		inherited FOCUSER_ON_POSITION_SET { hidden = false; }
+		inherited FOCUSER_POSITION {
+			preserve_values = true;
+			on_attach {
+				FOCUSER_POSITION_ITEM->number.min = 0;
+				FOCUSER_POSITION_ITEM->number.max = 250000;
+			}
+			on_change_request {
+				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "A relative move is unfinished");
+					return INDIGO_OK;
+				}
+			}
+			on_change {
+				int position = (int)FOCUSER_POSITION_ITEM->number.target;
+				if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
+					lacerta_start_motion(device, position);
+				} else {
+					char command[32];
+					int actual;
+					snprintf(command, sizeof(command), ": P %d#", position);
+					if (IS_CONNECTED && !PRIVATE_DATA->motion_uncertain && lacerta_integer(device, command, 'p', 0, PRIVATE_DATA->maximum, &actual) && actual == position) {
+						FOCUSER_POSITION_ITEM->number.value = actual;
+						lacerta_motion_state(device, INDIGO_OK_STATE);
+					} else {
+						lacerta_motion_state(device, INDIGO_ALERT_STATE);
+					}
+				}
+				if (PRIVATE_DATA->moving) {
+					indigo_execute_handler_in(device, 0.1, motion_finalizer);
+				}
+			}
+		}
+		inherited FOCUSER_STEPS {
+			on_attach {
+				FOCUSER_STEPS_ITEM->number.max = 250000;
+			}
+			on_change_request {
+				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "An absolute move is unfinished");
+					return INDIGO_OK;
+				}
+			}
+			on_change {
+				int direction = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ^ FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? -1 : 1;
+				int target = (int)FOCUSER_POSITION_ITEM->number.value + direction * (int)FOCUSER_STEPS_ITEM->number.value;
+				lacerta_start_motion(device, target);
+				if (PRIVATE_DATA->moving) {
+					indigo_execute_handler_in(device, 0.1, motion_finalizer);
+				}
+			}
+		}
+		inherited FOCUSER_ABORT_MOTION {
+			on_change {
+				if (FOCUSER_ABORT_MOTION_ITEM->sw.value && IS_CONNECTED) {
+					if (lacerta_halt(device)) {
+						indigo_cancel_pending_handler(device, motion_finalizer);
+						PRIVATE_DATA->moving = PRIVATE_DATA->motion_uncertain = false;
+						int position;
+						if (lacerta_integer(device, ": q #", 'p', 0, PRIVATE_DATA->maximum, &position)) {
+							FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+							FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+							lacerta_motion_state(device, INDIGO_OK_STATE);
+						} else {
+							PRIVATE_DATA->motion_uncertain = true;
+							FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+							lacerta_motion_state(device, INDIGO_ALERT_STATE);
+						}
+					} else {
+						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				} else {
+					FOCUSER_ABORT_MOTION_PROPERTY->state = IS_CONNECTED ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				}
+				FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+				indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+			}
+		}
+		inherited FOCUSER_BACKLASH {
+			hidden = false;
+			preserve_values = true;
+			on_attach {
+				FOCUSER_BACKLASH_ITEM->number.max = 255;
+				FOCUSER_BACKLASH_ITEM->number.step = 1;
+			}
+			on_change {
+				char command[32];
+				int actual, requested = (int)FOCUSER_BACKLASH_ITEM->number.target;
+				snprintf(command, sizeof(command), ": B %d#", requested);
+				if (IS_CONNECTED && !PRIVATE_DATA->moving && lacerta_integer(device, command, 'b', 0, 255, &actual) && actual == requested) {
+					FOCUSER_BACKLASH_ITEM->number.value = actual;
+				} else {
+					FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_REVERSE_MOTION {
+			hidden = false;
+			on_change {
+				int actual, requested = FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? 1 : 0;
+				if (IS_CONNECTED && !PRIVATE_DATA->moving && lacerta_integer(device, requested ? ": R 1#" : ": R 0#", 'r', 0, 1, &actual) && actual == requested) {
+					PRIVATE_DATA->reverse = actual;
+				} else {
+					indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reverse ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_LIMITS {
+			hidden = false;
+			preserve_values = true;
+			on_attach {
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = 0;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 300;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = 250000;
+			}
+			on_change {
+				char command[32];
+				int actual, requested = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+				snprintf(command, sizeof(command), ": G %d#", requested);
+				if (IS_CONNECTED && !PRIVATE_DATA->moving && requested >= FOCUSER_POSITION_ITEM->number.value && lacerta_integer(device, command, 'g', 300, PRIVATE_DATA->capability_maximum, &actual) && actual == requested) {
+					lacerta_limits(device, actual);
+					indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				} else {
+					FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+	}
+}
