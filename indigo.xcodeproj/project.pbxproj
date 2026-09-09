@@ -5293,6 +5293,8 @@
 		C0DE20260909000400000002 /* indigo_focuser_lacerta.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_lacerta.driver; sourceTree = "<group>"; };
 		C0DE20260909000500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260909000500000002 /* indigo_focuser_ioptron.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_ioptron.driver; sourceTree = "<group>"; };
+		C0DE20260909000600000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260909000600000002 /* indigo_focuser_efa.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_efa.driver; sourceTree = "<group>"; };
 		C69535F5A30EBCFF42E1200F /* test_gps_nmea_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_nmea_transport.c; sourceTree = "<group>"; };
 		C8683D8A00D36FB4420DE7FD /* test_aux_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_dragonfly_simulator.c; sourceTree = "<group>"; };
 		E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_usb_outputs.c; sourceTree = "<group>"; };
@@ -6673,9 +6675,11 @@
 			isa = PBXGroup;
 			children = (
 				59413560232404C800ED5FF4 /* README.md */,
+				C0DE20260909000600000001 /* REFACTOR.md */,
 				59413561232404D100ED5FF4 /* indigo_focuser_efa.h */,
 				59413564232404D700ED5FF4 /* indigo_focuser_efa.c */,
 				59413563232404D700ED5FF4 /* indigo_focuser_efa_main.c */,
+				C0DE20260909000600000002 /* indigo_focuser_efa.driver */,
 				5941355F2324040700ED5FF4 /* PlaneWave EFA Communication Protocols.pdf */,
 				59BD04C62B9E43610002A137 /* 99-indigo_focuser_efa.rules */,
 				594135672324071E00ED5FF4 /* focuser_efa_simulator */,

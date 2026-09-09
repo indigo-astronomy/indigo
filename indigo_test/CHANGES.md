@@ -105,7 +105,7 @@ Inventory: 150 modules — 2 Complete, 36 Partial, 55 Not audited, 47 No tests, 
 | `focuser_astromechanics` | Generated | PTY/protocol simulator | Partial | Host simulator models elapsed movement; measured progress, completion and pending disconnect pass; error matrix in progress |
 | `focuser_dmfc` | Generated | PTY/protocol simulator | Partial | Host simulator models elapsed movement; measured progress, completion, abort and pending disconnect pass; remaining audit pending |
 | `focuser_dsd` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
-| `focuser_efa` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_efa` | Generated | PTY/protocol simulator | Applicable matrix implemented | 55 named cases; PlaneWave/Celestron, binary framing, calibration, queued lifecycle. See migration results below. |
 | `focuser_fc3` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `focuser_fcusb` | Generated | Fake USB/SDK | Partial | New fake SDK: lifecycle, failed INIT/attach/open, power/frequency/direction, timed completion, abort, stop error and active removal pass; remaining coverage audit in progress |
 | `focuser_fli` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
@@ -762,3 +762,29 @@ Non-applicable: arbitrary position SYNC, speed, backlash, configurable limits, a
 Reproduce from `indigo_test`: `make build/integration/test_focuser_ioptron_simulator build/integration/test_focuser_ioptron_simulator_asan`; run `./build/integration/test_focuser_ioptron_simulator`. `IOPTRON_TEST_FILTER` selects scenario-name substrings, e.g. `readback_failure`, `init_`, `poll_`, `instances`, `disconnect` for ASan. Baseline original smoke passed; new `init_status` and `poll_badflag` failed on the handwritten driver and pass after migration. Final totals are recorded in driver REFACTOR.md after the full run.
 
 Final iOptron result: 40/40 ordinary and 20/20 targeted driver-instrumented ASan scenarios passed on macOS arm64. Universal build and expanded O0/O2 strict warning checks passed for both architectures. Test artifacts were cleaned. See driver REFACTOR.md for exact commands and platform/protocol limitations.
+
+
+## EFA generated migration (2026-09-09)
+
+Authoritative `.driver` with real generated queues, handler + finalizer motion/calibration, portable serial I/O and a shared serial_motion simulator. Primary PlaneWave protocol is the bundled PDF (pages 1–7); Celestron extensions and two-byte temperature compatibility have explicit provenance limitations in driver REFACTOR.md. Public-bus tests use fresh property revisions, parent-owned PTYs, descriptor rollback checks and a watchdog. The calibration timeout case allows 220 seconds to validate the actual 180-second driver deadline, without test-only timing hooks.
+
+| Applicable common/focuser standard | Named scenarios |
+| --- | --- |
+| Independent binary simulator protocol, model firmware, position, elapsed-time motion without polling, stop, SYNC, fan/temperature and calibration | `simulator_efa`, `simulator_celestron` |
+| Interface, connect-scoped model properties, INFO, ranges/permissions, unsupported hidden controls, GOTO/SYNC, fan writes/readback and BUSY/completion | `normal`, `celestron`, `split`, `echo`, `uncalibrated_efa`, `uncalibrated_celestron` |
+| No-op/zero relative, inward/outward, coordinate units, both boundaries and external signed position | `movement_efa`, `movement_celestron`, `limits`, `external_position` |
+| Positive/negative coarse slew, stop/fine transition and measured final target | `long_move` |
+| Abort idle/moving on both models, actual stopped target, reset switch and fresh movement | `abort_efa`, `abort_celestron` |
+| Duplicate/cross-property movement both orders, changed limits while busy, calibration versus motion | `overlap`, `calibration_abort` |
+| Positive/negative/zero temperature, NC and recovery; three-byte and legacy two-byte shape | `temperature`, `temperature_legacy` |
+| Checksum/short/overlong/partial/missing/source/destination/command errors with bounded recovery and preserved measurement | `poll_checksum`, `poll_short`, `poll_overlong`, `poll_partial`, `poll_silent`, `poll_wrongsrc`, `poll_wrongdst`, `poll_wrongcmd` |
+| Fan/SYNC/stop/start rejection, transport loss, motion read errors, invalid motion state and stall recovery | `fans_failure`, `sync_failure`, `stop_failure`, `start_failure`, `transport_loss`, `motion_read_failure`, `motion_badstate`, `stalled_motion` |
+| Celestron calibration success, start/controller/read/limit failure, abort, real deadline and subsequent calibration/motion | `calibration`, `calibration_start_failure`, `calibration_failed`, `calibration_read_failure`, `calibration_limits_failure`, `calibration_abort`, `calibration_timeout` |
+| Disconnect during motion/read/calibration, no traffic after close, reconnect and independent EFA/Celestron ports/metadata/position | `disconnect_motion`, `disconnect_read`, `disconnect_calibration`, `instances` |
+| Unknown model, bad initial checksum/length/silent identity, required position/fan/calibration/stopdetect/limits initialization and descriptor rollback/retry | `unknown_identity`, `init_checksum`, `init_overlong`, `init_short`, `init_silent`, `init_position`, `init_fans`, `init_calibration`, `init_stopdetect`, `init_celestron_limits` |
+
+Non-applicable: speed, backlash, reversal, automatic compensation, arbitrary Celestron SYNC and AUX-port transport are not exposed. Local software limit changes do not invent a hardware minimum command. Generic request validation/configuration persistence is framework scope. PTYs do not force partial OS writes (exact count is checked) and cannot validate electrical CTS/RTS; unsupported modem-line fallback is exercised. Actual hardware variants, mechanical calibration/travel and Linux/Windows/x86_64 execution remain separate acceptance. ASan instruments production driver C and test, with a normal framework library.
+
+Reproduce from `indigo_test`: `make build/integration/test_focuser_efa_simulator build/integration/test_focuser_efa_simulator_asan`, then run `./build/integration/test_focuser_efa_simulator`. `EFA_TEST_FILTER` selects name substrings. Targeted ASan filters: `init_`, `poll_`, `calibration_abort`, `calibration_read_failure`, `disconnect`, `instances` (23 distinct cases). `calibration_timeout` intentionally waits for the real deadline and is part of the ordinary full suite. Baseline bad-checksum acceptance and ASan response-buffer overflow were reproduced before migration. The two direct protocol scenarios also probe CTS on the PTY before data exchange: unsupported line status must not latch a data-I/O error. Final validation is recorded in REFACTOR.md.
+
+Final EFA result: 55/55 ordinary and 23/23 targeted driver-instrumented ASan scenarios passed on macOS arm64, including the real calibration deadline. Universal library/driver/test builds and strict O0/O2 driver warning checks for arm64/x86_64 passed. Generation is reproducible and Xcode/Windows project structure validated; Linux, Windows execution and electrical CTS/RTS remain unverified. See REFACTOR.md for intermediate regressions and hardware assumptions.

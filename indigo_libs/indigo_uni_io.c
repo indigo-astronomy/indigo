@@ -825,6 +825,28 @@ int indigo_uni_set_cts(indigo_uni_handle *handle, bool state) {
 #endif
 	return 0;
 }
+
+int indigo_uni_get_cts(indigo_uni_handle *handle) {
+	if (handle == NULL || handle->type != INDIGO_COM_HANDLE) {
+		return -1;
+	}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	int status = 0;
+	if (ioctl(handle->fd, TIOCMGET, &status) < 0) {
+		return -1;
+	}
+	return (status & TIOCM_CTS) != 0;
+#elif defined(INDIGO_WINDOWS)
+	DWORD status = 0;
+	if (!GetCommModemStatus(handle->com, &status)) {
+		return -1;
+	}
+	return (status & MS_CTS_ON) != 0;
+#else
+	return -1;
+#endif
+}
+
 #endif
 
 bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max_host, char *message, int max_message) {

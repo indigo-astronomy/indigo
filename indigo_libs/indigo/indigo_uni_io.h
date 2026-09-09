@@ -183,6 +183,12 @@ INDIGO_EXTERN int indigo_uni_set_rts(indigo_uni_handle *handle, bool state);
 
 INDIGO_EXTERN int indigo_uni_set_cts(indigo_uni_handle *handle, bool state);
 
+/** Read CTS: 1 when asserted, 0 when clear, -1 on an invalid/unsupported handle or I/O error.
+ *  Does not latch errors on the data handle, so unsupported modem-line probes do not prevent subsequent I/O.
+ */
+
+INDIGO_EXTERN int indigo_uni_get_cts(indigo_uni_handle *handle);
+
 #endif
 
 /** Perform passive UDP discovery

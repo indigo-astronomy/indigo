@@ -82,12 +82,12 @@
 | focuser_astromechanics  | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | focuser_dmfc            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | focuser_dsd             | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ✅ HW  | ✅ Yes |                                                         |
-| focuser_efa             | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
+| focuser_efa             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | focuser_fc3             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes |                                                         |
 | focuser_fcusb           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
 | focuser_fli             | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
 | focuser_focusdreampro   | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
-| focuser_ioptron         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes | 40 PTY scenarios + 20 targeted ASan; hardware wire assumptions and Windows/Linux execution unverified. |
+| focuser_ioptron         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | focuser_lacerta         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | focuser_lakeside        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
 | focuser_lunatico        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |

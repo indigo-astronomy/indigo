@@ -367,8 +367,8 @@ $(INTEGRATION_BUILD)/wheel_optec_simulator: ../indigo_drivers/wheel_optec/wheel_
 $(INTEGRATION_BUILD)/focuser_fc3_simulator: ../indigo_drivers/focuser_fc3/focuser_fc3_simulator/focuser_fc3_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
 
-$(INTEGRATION_BUILD)/focuser_efa_simulator: ../indigo_drivers/focuser_efa/focuser_efa_simulator/focuser_efa_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $<
+$(INTEGRATION_BUILD)/focuser_efa_simulator: ../indigo_drivers/focuser_efa/focuser_efa_simulator/focuser_efa_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/focuser_dmfc_simulator: ../indigo_drivers/focuser_dmfc/focuser_dmfc_simulator/focuser_dmfc_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
@@ -592,8 +592,11 @@ $(INTEGRATION_BUILD)/test_wheel_optec_simulator: integration/test_wheel_optec_si
 $(INTEGRATION_BUILD)/test_focuser_fc3_simulator: integration/test_focuser_fc3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_fc3_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_FC3_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_efa_simulator: integration/test_focuser_efa_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_efa_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_focuser_efa_simulator: integration/test_focuser_efa_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_efa_simulator $(BUILD_DRIVERS)/indigo_focuser_efa.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_EFA_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_efa_simulator_asan: integration/test_focuser_efa_simulator.c ../indigo_drivers/focuser_efa/indigo_focuser_efa.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_efa_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_efa/indigo_focuser_efa.c $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_dmfc_simulator: integration/test_focuser_dmfc_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_dmfc_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_DMFC_SIMULATOR_TEST_LDFLAGS)

@@ -136,6 +136,9 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-101 | High | `focuser_ioptron/indigo_focuser_ioptron.driver:86` | Legacy status parser accepted invalid moving flags and connection did not require a valid initial status. Reproduced by init_status and poll_badflag. | Fixed |
 | DRV-102 | Medium | `focuser_ioptron/indigo_focuser_ioptron.driver:318` | Legacy custom ZERO_SYNC lacked the mandatory X_ prefix; generated property is X_FOCUSER_ZERO_SYNC. | Fixed |
 
+| DRV-103 | High | `focuser_efa/indigo_focuser_efa.driver:56` | Legacy reply length overflowed a 16-byte stack buffer and checksum was ignored. Both reproduced; bounded validated frames fix the transport. | Fixed |
+| DRV-104 | Medium | `focuser_efa/indigo_focuser_efa.driver:224` | Temperature parsing lacked shape/NC validation and simulator encoded an unrealistic sample. Explicit signed formats and NC handling preserve valid readings. | Fixed |
+
 ## Finding Summaries
 
 ### DRV-001 (Closed — fixed)
@@ -1026,3 +1029,12 @@ Against baseline `2509190db7f4697427ea463a27b0f683c637f09e`, the new `init_statu
 ### DRV-102 (Fixed — 2026-09-09)
 
 Baseline property allocation used literal `ZERO_SYNC` despite its X_FOCUSER_ZERO_SYNC C macro. The DSL now declares wire name `X_FOCUSER_ZERO_SYNC` with the same SYNC item, connected lifetime and reset-after-request semantics. README and PROPERTIES document the client-visible rename. Normal/model capability tests assert the new property and absence of the old name.
+
+
+### DRV-103 (Fixed — 2026-09-09)
+
+Baseline efa_command reads packet-provided count+1 bytes into a 16-byte response buffer. `init_overlong` with the unchanged driver instrumented by ASan reproduces a 201-byte stack-buffer-overflow through indigo_read; `init_checksum` reproduces connection accepting a bad checksum. The DSL now bounds frames, verifies checksum/source/destination/command, skips only exact echoes and checks payload/ACK semantics. Both reproducers and initial/poll variants pass after migration, including ASan. No generator implementation or folder review baseline was changed.
+
+### DRV-104 (Fixed — 2026-09-09)
+
+The old temperature path reads fixed offsets without validating reply length or the documented 7F7F absent-sensor marker. The old simulator emits 00 50 01, which becomes 1280.0625 C under that parser. The PDF itself disagrees between its three-byte prose and two-byte example; the driver now explicitly accepts address + big-endian signed sixteenths, plus a documented legacy two-byte little-endian compatibility form. It rejects NC/impossible temperature and retains the last valid value. Positive/negative/zero/NC/recovery fixtures cover both shapes. Physical firmware formats still need hardware validation; no claim that a PTY resolves the document's ambiguity.

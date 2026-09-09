@@ -1080,11 +1080,11 @@ Source: `indigo_drivers/focuser_dsd/indigo_focuser_dsd.c`.
 
 ### focuser_efa
 
-Custom properties: `X_FOCUSER_CALIBRATION`, `X_FOCUSER_FANS`.
+Custom properties: `X_FOCUSER_CALIBRATION` (Celestron, momentary `CALIBRATE`), `X_FOCUSER_FANS` (PlaneWave, `OFF`/`ON`). Both are connect-scoped and selected by detected model.
 
-Driver-specific use of existing properties: `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+Driver-specific use of existing properties: `FOCUSER_POSITION`, `FOCUSER_STEPS`, `FOCUSER_ABORT_MOTION`, `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_TEMPERATURE`. Speed, reversal, backlash and automatic compensation remain hidden. PlaneWave exposes integer travel within local software limits (default 0–3799422), coordinate SYNC, fans and temperature. Both local limit endpoints are writable and update motion metadata; limits do not program undocumented hardware minimum commands. Celestron limits are read-only calibrated device values, updated after calibration; SYNC/fan/temperature are hidden. Position and steps report measured motion, with scheduled completion and abort. Temperature accepts address plus big-endian signed sixteenths or the legacy two-byte little-endian form; 7F7F/no sensor and invalid responses report ALERT without replacing the last valid value.
 
-Source: `indigo_drivers/focuser_efa/indigo_focuser_efa.c`.
+Source: `indigo_drivers/focuser_efa/indigo_focuser_efa.driver`.
 
 ### focuser_fc3
 
