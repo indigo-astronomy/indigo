@@ -26,7 +26,7 @@ driver geoptikflat {
 	label = "Geoptik flat field generato";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2021-2026 Rumen G. Bogdanovski";
-	version = 5;
+	version = 6;
 	serial;
 	data {
 		char response[16];
@@ -56,9 +56,8 @@ driver geoptikflat {
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						return true;
 					}
-				} else {
-					indigo_uni_close(&PRIVATE_DATA->handle);
 				}
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 			return false;
 		}
