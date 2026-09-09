@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_guider_gpusb"
 #define DRIVER_LABEL         "Shoestring GPUSB guider"
 #define GUIDER_DEVICE_NAME   "%s"
@@ -82,18 +82,18 @@ static void gpusb_debug(const char *message) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libgpusb: %s\n", message);
 }
 
-static void guider_guide_dec_finish_handler(indigo_device *device) {
+static void guider_guide_dec_finalizer(indigo_device *device) {
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
-	libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
-	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+	bool ok = libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
+	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 
-static void guider_guide_ra_finish_handler(indigo_device *device) {
-	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+static void guider_guide_ra_finalizer(indigo_device *device) {
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
-	libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
-	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+	bool ok = libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
+	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 
 //- code
@@ -122,47 +122,57 @@ static void guider_connection_handler(indigo_device *device) {
 }
 
 static void guider_guide_dec_handler(indigo_device *device) {
-	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_DEC.on_change
-	PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
+	int requested_mask = PRIVATE_DATA->relay_mask & ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
 	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 	if (duration > 0) {
-		PRIVATE_DATA->relay_mask |= GPUSB_DEC_NORTH;
+		requested_mask |= GPUSB_DEC_NORTH;
 	} else {
 		duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 		if (duration > 0) {
-			PRIVATE_DATA->relay_mask |= GPUSB_DEC_SOUTH;
+			requested_mask |= GPUSB_DEC_SOUTH;
 		}
 	}
-	libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
-	if (duration > 0) {
-		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_BUSY_STATE, NULL);
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_dec_finish_handler);
+	if (!libgpusb_set(PRIVATE_DATA->device_context, requested_mask)) {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	} else {
+		PRIVATE_DATA->relay_mask = requested_mask;
+		indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+		if (duration > 0) {
+			INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_dec_finalizer);
+		} else {
+			INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 	}
 	//- guider.GUIDER_GUIDE_DEC.on_change
-	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 }
 
 static void guider_guide_ra_handler(indigo_device *device) {
-	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_RA.on_change
-	PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
+	int requested_mask = PRIVATE_DATA->relay_mask & ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
 	int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 	if (duration > 0) {
-		PRIVATE_DATA->relay_mask |= GPUSB_RA_EAST;
+		requested_mask |= GPUSB_RA_EAST;
 	} else {
 		duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 		if (duration > 0) {
-			PRIVATE_DATA->relay_mask |= GPUSB_RA_WEST;
+			requested_mask |= GPUSB_RA_WEST;
 		}
 	}
-	libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
-	if (duration > 0) {
-		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_BUSY_STATE, NULL);
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_ra_finish_handler);
+	if (!libgpusb_set(PRIVATE_DATA->device_context, requested_mask)) {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	} else {
+		PRIVATE_DATA->relay_mask = requested_mask;
+		indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+		if (duration > 0) {
+			INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_ra_finalizer);
+		} else {
+			INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 	}
 	//- guider.GUIDER_GUIDE_RA.on_change
-	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 }
 
 #pragma mark - Device API (guider)
@@ -192,9 +202,21 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+		//+ guider.GUIDER_GUIDE_DEC.on_change_request
+		indigo_cancel_pending_handler(device, guider_guide_dec_handler);
+		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		//- guider.GUIDER_GUIDE_DEC.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
+		//+ guider.GUIDER_GUIDE_RA.on_change_request
+		indigo_cancel_pending_handler(device, guider_guide_ra_handler);
+		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		//- guider.GUIDER_GUIDE_RA.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
 		return INDIGO_OK;
 	}
