@@ -48,7 +48,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000000
+#define DRIVER_VERSION       0x03000001
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -585,7 +585,7 @@ static bool synscan_wait_axis_stopped(indigo_device *device, synscan_axis axis, 
 
 static bool synscan_slew_axis_to_steps(indigo_device *device, synscan_axis axis, long target) {
 	long current = 0;
-	if (!synscan_axis_long_query(device, 'j', axis, &current)) {
+	if (!synscan_stop_axis_and_wait(device, axis, NULL) || !synscan_axis_long_query(device, 'j', axis, &current)) {
 		return false;
 	}
 	long delta = target - current;
@@ -597,8 +597,7 @@ static bool synscan_slew_axis_to_steps(indigo_device *device, synscan_axis axis,
 	bool high_speed = delta > synscan_low_speed_goto_margin(device, axis);
 	long ramp = high_speed ? SYNSCAN_HIGH_SPEED_GOTO_RAMP : SYNSCAN_LOW_SPEED_GOTO_RAMP;
 	long slowdown = delta > ramp ? ramp : delta;
-	return synscan_stop_axis_and_wait(device, axis, NULL)
-		&& synscan_set_axis_mode(device, axis, high_speed ? 0 : 2, direction)
+	return synscan_set_axis_mode(device, axis, high_speed ? 0 : 2, direction)
 		&& synscan_axis_setting(device, 'H', axis, delta)
 		&& synscan_axis_setting(device, 'M', axis, slowdown)
 		&& synscan_axis_command(device, 'J', axis);
@@ -1069,7 +1068,7 @@ static void synscan_ppec_training_timer(indigo_device *device) {
 		MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, "Failed to read PPEC training state.");
 	} else if ((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_IN_PPEC_TRAINING) || (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_IN_PPEC_TRAINING)) {
-		indigo_set_timer(device, 1, synscan_ppec_training_timer, NULL);
+		indigo_execute_handler_in(device, 1, synscan_ppec_training_timer);
 	} else {
 		indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
 		MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_OK_STATE;
@@ -1880,7 +1879,7 @@ static void mount_pec_training_handler(indigo_device *device) {
 	if (!ok) {
 		MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else if (MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value) {
-		indigo_set_timer(device, 1, synscan_ppec_training_timer, NULL);
+		indigo_execute_handler_in(device, 1, synscan_ppec_training_timer);
 	}
 	//- mount.MOUNT_PEC_TRAINING.on_change
 	indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
