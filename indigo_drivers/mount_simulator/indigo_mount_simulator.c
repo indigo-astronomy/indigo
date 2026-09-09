@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -24,7 +24,7 @@
  \file indigo_mount_simulator.c
  */
 
-#define DRIVER_VERSION 0x0300000A
+#define DRIVER_VERSION 0x0300000B
 #define DRIVER_NAME "indigo_mount_simulator"
 
 #include <stdlib.h>
@@ -247,6 +247,21 @@ static void mount_connect_callback(indigo_device *device) {
 		indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->move_timer);
+		PRIVATE_DATA->slew_in_progress = PRIVATE_DATA->parking = PRIVATE_DATA->going_home = false;
+		if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+			MOUNT_HOME_ITEM->sw.value = false;
+			MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+		MOUNT_MOTION_EAST_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = false;
+		MOUNT_RAW_COORDINATES_RA_ITEM->number.target = MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
+		MOUNT_RAW_COORDINATES_DEC_ITEM->number.target = MOUNT_RAW_COORDINATES_DEC_ITEM->number.value;
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 	}
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -500,9 +515,14 @@ static indigo_result guider_attach(indigo_device *device) {
 
 static void guider_connect_callback(indigo_device *device) {
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->ra_guider_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->dec_guider_timer);
+		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+		GUIDER_GUIDE_RA_PROPERTY->state = GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -513,6 +533,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property)) {
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -520,7 +543,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
-		indigo_cancel_timer(device, &PRIVATE_DATA->dec_guider_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->dec_guider_timer);
+		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
@@ -538,7 +563,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
-		indigo_cancel_timer(device, &PRIVATE_DATA->ra_guider_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->ra_guider_timer);
+		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
@@ -629,17 +656,17 @@ indigo_result indigo_mount_simulator(indigo_driver_action action, indigo_driver_
 			last_action = action;
 			if (mount != NULL) {
 				indigo_detach_device(mount);
-				free(mount);
+				indigo_safe_free(mount);
 				mount = NULL;
 			}
 			if (mount_guider != NULL) {
 				indigo_detach_device(mount_guider);
-				free(mount_guider);
+				indigo_safe_free(mount_guider);
 				mount_guider = NULL;
 			}
 			if (private_data != NULL) {
 				pthread_mutex_destroy(&private_data->position_mutex);
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
