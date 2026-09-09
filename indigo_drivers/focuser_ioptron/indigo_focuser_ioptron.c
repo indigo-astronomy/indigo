@@ -25,6 +25,13 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
+
+//+ include
+
+#include <stdarg.h>
+
+//- include
+
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_focuser_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -33,11 +40,17 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_focuser_ioptron"
 #define DRIVER_LABEL         "iOptron iEAF Focuser"
 #define FOCUSER_DEVICE_NAME  "iOptron iEAF"
 #define PRIVATE_DATA         ((ioptron_private_data *)device->private_data)
+
+//+ define
+
+#define RESPONSE             (PRIVATE_DATA->response)
+
+//- define
 
 #pragma mark - Property definitions
 
@@ -53,6 +66,7 @@ typedef struct {
 	indigo_uni_handle *handle;
 	indigo_property *x_focuser_zero_sync_property;
 	//+ data
+	char response[32];
 	int position, temperature, last_position, stalled;
 	bool reversed, moving, active, uncertain;
 	//- data
@@ -62,47 +76,26 @@ typedef struct {
 
 //+ code
 
-static double ioptron_now(void) {
-	struct timeval time;
-	gettimeofday(&time, NULL);
-	return (double)time.tv_sec + time.tv_usec / 1000000.0;
-}
-
-static bool ioptron_command(indigo_device *device, const char *command, char *response, int capacity) {
-	if (!PRIVATE_DATA->handle) {
+static bool ioptron_command(indigo_device *device, bool reply, const char *command, ...) {
+	long result = indigo_uni_discard(PRIVATE_DATA->handle);
+	if (result >= 0) {
+		va_list args;
+		va_start(args, command);
+		result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
+		va_end(args);
+	}
+	if (result <= 0) {
 		return false;
 	}
-	char stale[128];
-	for (int i = 0; indigo_uni_wait_for_data(PRIVATE_DATA->handle, 0) > 0; i++) {
-		if (i == 4 || indigo_uni_read_available(PRIVATE_DATA->handle, stale, sizeof(stale)) <= 0) {
-			return false;
-		}
-	}
-	long length = (long)strlen(command);
-	if (indigo_uni_write(PRIVATE_DATA->handle, command, length) != length) {
-		return false;
-	}
-	if (!response) {
+	if (!reply) {
 		return true;
 	}
-	double deadline = ioptron_now() + 1;
-	int used = 0;
-	while (used + 1 < capacity) {
-		double remaining = deadline - ioptron_now();
-		char byte;
-		if (remaining <= 0 || indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(remaining)) <= 0 || indigo_uni_read_available(PRIVATE_DATA->handle, &byte, 1) != 1) {
-			return false;
-		}
-		if (byte == '#') {
-			response[used] = 0;
-			return true;
-		}
-		if (!byte) {
-			return false;
-		}
-		response[used++] = byte;
+	long count = indigo_uni_read_section2(PRIVATE_DATA->handle, RESPONSE, sizeof(PRIVATE_DATA->response) - 1, "#", "", INDIGO_DELAY(1), INDIGO_DELAY(0.1));
+	if (count <= 1 || RESPONSE[count - 1] != '#' || (long)strlen(RESPONSE) != count) {
+		return false;
 	}
-	return false;
+	RESPONSE[count - 1] = 0;
+	return true;
 }
 
 static bool ioptron_field(const char *text, int count, int *value) {
@@ -117,9 +110,8 @@ static bool ioptron_field(const char *text, int count, int *value) {
 }
 
 static bool ioptron_status(indigo_device *device) {
-	char response[32];
 	int position = 0, moving = 0, temperature = 0, direction = 0;
-	if (!ioptron_command(device, ":FI#", response, sizeof(response)) || strlen(response) != 14 || !ioptron_field(response, 7, &position) || !ioptron_field(response + 7, 1, &moving) || !ioptron_field(response + 8, 5, &temperature) || !ioptron_field(response + 13, 1, &direction) || position > 99999 || moving > 1 || direction > 1) {
+	if (!ioptron_command(device, true, ":FI#") || strlen(RESPONSE) != 14 || !ioptron_field(RESPONSE, 7, &position) || !ioptron_field(RESPONSE + 7, 1, &moving) || !ioptron_field(RESPONSE + 8, 5, &temperature) || !ioptron_field(RESPONSE + 13, 1, &direction) || position > 99999 || moving > 1 || direction > 1) {
 		return false;
 	}
 	PRIVATE_DATA->position = position;
@@ -136,9 +128,8 @@ static bool ioptron_open(indigo_device *device) {
 	}
 	// Preserve the hardware's legacy USB startup settling interval, on the handler queue.
 	indigo_sleep(2);
-	char response[32];
 	int position = 0, model = 0, firmware = 0;
-	if (ioptron_command(device, ":DeviceInfo#", response, sizeof(response)) && strlen(response) == 12 && ioptron_field(response, 6, &position) && ioptron_field(response + 6, 2, &model) && ioptron_field(response + 8, 4, &firmware) && position <= 99999 && (model == 2 || model == 3)) {
+	if (ioptron_command(device, true, ":DeviceInfo#") && strlen(RESPONSE) == 12 && ioptron_field(RESPONSE, 6, &position) && ioptron_field(RESPONSE + 6, 2, &model) && ioptron_field(RESPONSE + 8, 4, &firmware) && position <= 99999 && (model == 2 || model == 3)) {
 		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, model == 2 ? "iEAF" : "iAFS");
 		snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%04d", firmware);
 		return true;
@@ -189,7 +180,7 @@ static void motion_finalizer(indigo_device *device) {
 	if (!ioptron_status(device)) {
 		PRIVATE_DATA->active = false;
 		PRIVATE_DATA->uncertain = true;
-		ioptron_command(device, ":FQ#", NULL, 0);
+		ioptron_command(device, false, ":FQ#");
 		ioptron_read_error(device);
 		return;
 	}
@@ -200,7 +191,7 @@ static void motion_finalizer(indigo_device *device) {
 	} else if (PRIVATE_DATA->position == PRIVATE_DATA->last_position && ++PRIVATE_DATA->stalled >= 100) {
 		PRIVATE_DATA->active = false;
 		PRIVATE_DATA->uncertain = true;
-		ioptron_command(device, ":FQ#", NULL, 0);
+		ioptron_command(device, false, ":FQ#");
 		ioptron_motion_state(device, INDIGO_ALERT_STATE);
 	} else {
 		if (PRIVATE_DATA->position != PRIVATE_DATA->last_position) {
@@ -223,9 +214,7 @@ static void ioptron_start_motion(indigo_device *device, int target) {
 		ioptron_motion_state(device, INDIGO_OK_STATE);
 		return;
 	}
-	char command[32];
-	snprintf(command, sizeof(command), ":FM%7d#", target);
-	if (!ioptron_command(device, command, NULL, 0)) {
+	if (!ioptron_command(device, false, ":FM%7d#", target)) {
 		PRIVATE_DATA->uncertain = true;
 		ioptron_motion_state(device, INDIGO_ALERT_STATE);
 		return;
@@ -292,7 +281,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		indigo_cancel_pending_handlers(device);
 		//+ focuser.on_disconnect
 		if (PRIVATE_DATA->active || PRIVATE_DATA->moving || PRIVATE_DATA->uncertain) {
-			ioptron_command(device, ":FQ#", NULL, 0);
+			ioptron_command(device, false, ":FQ#");
 		}
 		PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->moving = false;
 		//- focuser.on_disconnect
@@ -329,7 +318,7 @@ static void focuser_reverse_motion_handler(indigo_device *device) {
 	bool requested = FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
 	bool result = IS_CONNECTED && !PRIVATE_DATA->active && !PRIVATE_DATA->moving && !PRIVATE_DATA->uncertain && ioptron_status(device);
 	if (result && requested != PRIVATE_DATA->reversed) {
-		result = ioptron_command(device, ":FR#", NULL, 0) && ioptron_status(device) && PRIVATE_DATA->reversed == requested;
+		result = ioptron_command(device, false, ":FR#") && ioptron_status(device) && PRIVATE_DATA->reversed == requested;
 	}
 	indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reversed ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
 	if (!result) {
@@ -343,7 +332,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
-		if (IS_CONNECTED && ioptron_command(device, ":FQ#", NULL, 0) && ioptron_status(device) && !PRIVATE_DATA->moving) {
+		if (IS_CONNECTED && ioptron_command(device, false, ":FQ#") && ioptron_status(device) && !PRIVATE_DATA->moving) {
 			indigo_cancel_pending_handler(device, motion_finalizer);
 			PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
 			ioptron_publish(device);
@@ -363,7 +352,7 @@ static void focuser_x_focuser_zero_sync_handler(indigo_device *device) {
 	//+ focuser.X_FOCUSER_ZERO_SYNC.on_change
 	if (X_FOCUSER_ZERO_SYNC_ITEM->sw.value) {
 		if (IS_CONNECTED && !PRIVATE_DATA->active && !PRIVATE_DATA->moving && !PRIVATE_DATA->uncertain) {
-			if (ioptron_command(device, ":FZ#", NULL, 0) && ioptron_status(device)) {
+			if (ioptron_command(device, false, ":FZ#") && ioptron_status(device)) {
 				ioptron_publish(device);
 				if (PRIVATE_DATA->moving || PRIVATE_DATA->position != 0) {
 					X_FOCUSER_ZERO_SYNC_PROPERTY->state = INDIGO_ALERT_STATE;

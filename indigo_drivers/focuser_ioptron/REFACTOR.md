@@ -66,3 +66,22 @@ done
 ```
 
 Final hygiene: `git diff --check` passed; `make -C indigo_test test-clean` removed the test build tree. Test parents reaped their PTYs/simulators; task-owned temporary logs were removed. No commit was created.
+
+
+## Follow-up: preferred uniform I/O (2026-09-09)
+
+User requested replacing custom wait_for_data/read_available drain/read loops. Version raised from 0x03000005 to 0x03000006. The DSL now uses indigo_uni_discard, indigo_uni_printf and indigo_uni_read_section2 with explicit first/inter-byte timeouts. The 32-byte response buffer is shared in private data; helpers decode before subsequent commands reuse it. Terminator is retained for completeness checks, embedded NUL and truncated replies are rejected, and capacity minus one reserves the API's trailing NUL. No platform or generator changes.
+
+iOptron retains exact fixed-width identity/status validation after stripping the # terminator; write-only commands remain write-only.
+
+Validation pending: regenerate, universal build, full simulator suite, targeted ASan and strict warnings; results will be appended here.
+
+Shared-I/O regression found during iOptron verification: indigo_uni_discard is documented to discard input, but its serial implementation used TCIOFLUSH / PURGE_RXCLEAR|PURGE_TXCLEAR, dropping pending output too. A readback query could therefore erase the preceding write-only Z/R/Q command. Corrected the shared implementation to TCIFLUSH / PURGE_RXCLEAR, preserving transmitted commands without adding platform code or timing sleeps to drivers. Existing zero/reverse/abort readback tests reproduce the defect; full suites are rerun with the corrected library.
+
+User-directed variadic command pattern applied: command helpers accept format strings/arguments and use va_start/va_end with uni_vprintf (or uni_vtprintf for Prodigy newline termination). Numeric motion/settings arguments are formatted at send time. Repository rule added to AGENTS.md. Full tests are rerun on this final transport form plus the input-only discard fix.
+
+Final variadic transport build checkpoint: all three drivers compile under strict O0/O2 arm64/x86_64 flags. Lacerta required explicit zero initialization of decoded position locals after separating command and response parsing; failed queries still return before publication. This warning-only refinement is separately smoke-tested after the full-suite run. The corrected input-only discard restores iOptron zero/reverse/abort readback regression cases.
+
+Targeted ASan on the final variadic/input-only-discard implementation: 20/20 scenarios pass (readback_failure, init_, poll_, instances, disconnect), including all previously failing write-only-command/readback cases. Full ordinary suite remains in progress; strict compilation and reproducible generation pass.
+
+Preferred-I/O follow-up complete: full 40/40 simulator scenarios and targeted 20/20 ASan pass on the final variadic transport and shared input-only discard implementation. Strict O0/O2 arm64/x86_64 checks and byte-identical regeneration pass. Version 0x03000006 is higher than pre-follow-up 0x03000005. Existing MIGRATION_STATUS status columns remain correct and Comment is preserved. Hardware/Windows/Linux runtime limits remain unchanged.
