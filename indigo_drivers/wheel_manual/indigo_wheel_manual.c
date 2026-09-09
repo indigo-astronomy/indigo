@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_wheel_manual"
 #define DRIVER_LABEL         "Manual filter wheel"
 #define WHEEL_DEVICE_NAME    "Manual filter wheel"
@@ -68,11 +68,7 @@ static void wheel_connection_handler(indigo_device *device) {
 static void wheel_slot_handler(indigo_device *device) {
 	WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ wheel.WHEEL_SLOT.on_change
-	if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
-		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		indigo_send_message(device, IDLE_PROPERTY, "Select filter '%s'", WHEEL_SLOT_NAME_PROPERTY->items[(int)WHEEL_SLOT_ITEM->number.value - 1].text.value);
-	}
+	indigo_send_message(device, IDLE_PROPERTY, "Select filter '%s'", WHEEL_SLOT_NAME_PROPERTY->items[(int)WHEEL_SLOT_ITEM->number.value - 1].text.value);
 	//- wheel.WHEEL_SLOT.on_change
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
