@@ -17,6 +17,7 @@
 #include <signal.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
+#include "../../../indigo_test/simulator_common/serial_motion.h"
 
 typedef struct {
 	bool headless;
@@ -33,6 +34,8 @@ static simulator_options options = {
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
 
+static serial_motion focus_motion = { .position = 18075, .target = 18075 };
+static serial_motion rotate_motion;
 static int focuser_position = 18075;
 static int focuser_target = 18075;
 static int rotator_position = 0;
@@ -166,13 +169,13 @@ static int extract_int_after(const char *command, const char *needle, int fallba
 	return atoi(start + strlen(needle));
 }
 
-static void complete_motion(void) {
-	focuser_position = focuser_target;
-	rotator_position = rotator_target;
+static void update_motion(void) {
+	focuser_position = (int)serial_motion_update(&focus_motion);
+	rotator_position = (int)serial_motion_update(&rotate_motion);
 }
 
 static void send_state(int handle) {
-	complete_motion();
+	update_motion();
 	sim_printf(handle,
 		"{\"res\":{\"get\":{"
 		"\"MODNAME\":\"SESTOSENSO2\",\"SN\":\"SESTOSENSO20716\","
@@ -181,17 +184,18 @@ static void send_state(int handle) {
 		"\"WIFISTA\":{\"SSID\":\"MySSID\",\"PWD\":\"MyPassword\"},"
 		"\"EXT_T\":\"22.50\",\"VIN_12V\":\"13.98\",\"VIN_USB\":\"5.20\",\"DIMLEDS\":\"%s\",\"ARCO\":1,\"CALRESTART\":{\"MOT1\":0,\"MOT2\":0},"
 		"\"MOT1\":{\"ABS_POS\":%d,\"ABS_POS_STEP\":%d,\"SPEED\":%d,\"BKLASH\":%d,"
-		"\"STATUS\":{\"MST\":\"stop\"},\"NTC_T\":\"37.12\",\"ERROR\":\"\",\"CALRESTART\":0,"
+		"\"STATUS\":{\"MST\":\"%s\"},\"NTC_T\":\"37.12\",\"ERROR\":\"\",\"CALRESTART\":0,"
 		"\"FnRUN_ACC\":1,\"FnRUN_DEC\":1,\"FnRUN_SPD\":2,\"FnRUN_CURR_ACC\":7,\"FnRUN_CURR_DEC\":7,\"FnRUN_CURR_SPD\":7,\"FnRUN_CURR_HOLD\":3,"
 		"\"HOLDCURR_STATUS\":%d},"
 		"\"RUNPRESET_L\":{\"M1ACC\":10},\"RUNPRESET_M\":{\"M1SPD\":6},\"RUNPRESET_S\":{\"M1DEC\":1},"
 		"\"RUNPRESET_1\":{\"M1HOLD\":3},\"RUNPRESET_2\":{\"M1CSPD\":5},\"RUNPRESET_3\":{\"M1CDEC\":7},"
-		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"STATUS\":{\"MST\":\"stop\"},\"ERROR\":\"\",\"CALRESTART\":0,\"CAL_STATUS\":\"stop\"}"
+		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"STATUS\":{\"MST\":\"%s\"},\"ERROR\":\"\",\"CALRESTART\":0,\"CAL_STATUS\":\"stop\"}"
 		"}}}\n",
-		wifi_status, led_status, focuser_position, focuser_position, speed, backlash, hold_current, rotator_position, rotator_position);
+		wifi_status, led_status, focuser_position, focuser_position, speed, backlash, focus_motion.duration > 0 ? "move" : "stop", hold_current, rotator_position, rotator_position, rotate_motion.duration > 0 ? "move" : "stop");
 }
 
 static void dispatch_command(int handle, const char *command) {
+	update_motion();
 	if (strstr(command, "\"MODNAME\"") != NULL) {
 		sim_printf(handle, "{\"res\":{\"get\":{\"MODNAME\":\"SESTOSENSO2\"}}}\n");
 	} else if (strstr(command, "\"SWVERS\"") != NULL) {
@@ -222,19 +226,24 @@ static void dispatch_command(int handle, const char *command) {
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"RUNPRESET\":\"done\"},\"get\":{\"MOT1\":{\"FnRUN_ACC\":1,\"FnRUN_DEC\":1,\"FnRUN_SPD\":2,\"FnRUN_CURR_ACC\":7,\"FnRUN_CURR_DEC\":7,\"FnRUN_CURR_SPD\":7,\"FnRUN_CURR_HOLD\":3,\"HOLDCURR_STATUS\":%d}}}}\n", hold_current);
 	} else if (strstr(command, "\"MOVE_ABS\"") != NULL && strstr(command, "\"MOT1\"") != NULL) {
 		focuser_target = extract_int_after(command, "\"STEP\":", focuser_target);
+		serial_motion_start(&focus_motion, focuser_target, 1000);
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"STEP\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"GOTO\"") != NULL && strstr(command, "\"MOT1\"") != NULL) {
 		focuser_target = extract_int_after(command, "\"GOTO\":", focuser_target);
+		serial_motion_start(&focus_motion, focuser_target, 1000);
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"GOTO\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"MOT_STOP\"") != NULL && strstr(command, "\"MOT1\"") != NULL) {
+		serial_motion_stop(&focus_motion);
 		focuser_target = focuser_position;
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"ARCO\"") != NULL) {
 		sim_printf(handle, "{\"res\":{\"set\":{\"ARCO\":\"done\"}}}\n");
 	} else if (strstr(command, "\"MOVE_ABS\"") != NULL && strstr(command, "\"MOT2\"") != NULL) {
 		rotator_target = extract_int_after(command, "\"DEG\":", rotator_target);
+		serial_motion_start(&rotate_motion, rotator_target, 90);
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT2\":{\"STEP\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"MOT_STOP\"") != NULL && strstr(command, "\"MOT2\"") != NULL) {
+		serial_motion_stop(&rotate_motion);
 		rotator_target = rotator_position;
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT2\":{\"MOT_STOP\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"CAL_STATUS\"") != NULL) {
