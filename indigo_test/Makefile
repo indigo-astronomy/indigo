@@ -1023,3 +1023,21 @@ $(INTEGRATION_BUILD)/guider_cgusbst4_simulator: ../indigo_drivers/guider_cgusbst
 
 $(INTEGRATION_BUILD)/test_guider_cgusbst4_simulator: integration/test_guider_cgusbst4_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/guider_cgusbst4_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a -o $@ $(TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/rotator_lunatico_simulator: ../indigo_drivers/rotator_lunatico/rotator_lunatico_simulator/rotator_lunatico_simulator.c simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
+
+$(INTEGRATION_BUILD)/rotator_lunatico_udp_simulator: ../indigo_drivers/rotator_lunatico/rotator_lunatico_simulator/rotator_lunatico_simulator.c simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -DSIM_UDP=1 -o $@ $< -lm
+
+ROTATOR_LUNATICO_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_rotator_lunatico.a $(TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_rotator_lunatico_simulator: integration/test_rotator_lunatico_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_lunatico_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(ROTATOR_LUNATICO_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_rotator_lunatico_udp_simulator: integration/test_rotator_lunatico_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_lunatico_udp_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -DLUNATICO_SIMULATOR='"build/integration/rotator_lunatico_udp_simulator"' -o $@ $< $(ROTATOR_LUNATICO_TEST_LDFLAGS)
+
+.PHONY: test-rotator-lunatico-udp
+test-rotator-lunatico-udp: $(INTEGRATION_BUILD)/test_rotator_lunatico_udp_simulator
+	./$(INTEGRATION_BUILD)/test_rotator_lunatico_udp_simulator

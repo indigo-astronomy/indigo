@@ -121,13 +121,14 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-087 | High | `aux_dragonfly/shared/dragonfly_shared.c:121` | A full-size UDP reply writes the terminator one byte past the response buffer. | Open |
 | DRV-088 | High | `aux_mgbox/indigo_aux_mgbox.c:204` | Truncated checksummed NMEA sentences dereference missing fields in GPS and weather parsing. | Open |
 | DRV-089 | High | `aux_mgbox/indigo_aux_mgbox.c:195` | Pointer handles are tested as integer descriptors; failed open and last disconnect do not complete correctly. | Open |
-
 | DRV-090 | High | `guider_asi/indigo_guider_asi.c:266` | SDK pulse start/stop errors are ignored in property state and completion. | Open |
 | DRV-091 | High | `guider_asi/indigo_guider_asi.c:273` | Reversing a running pulse enables the opposite relay without disabling the original direction. | Open |
 | DRV-092 | High | `guider_asi/indigo_guider_asi.c:259` | A zero-duration replacement cancels the stop timer but never switches off the active relay. | Open |
 | DRV-093 | Medium | `guider_asi/indigo_guider_asi.c:522` | Failed hot-plug registration leaves INIT recorded as successful, so retry skips registration. | Open |
 | DRV-094 | High | `guider_asi/indigo_guider_asi.c:472` | An already scheduled arrival callback can attach a device after SHUTDOWN returns. | Open |
 | DRV-095 | Medium | `guider_cgusbst4/indigo_guider_cgusbst4.driver:110` | Direction encoding differs from upstream PHD2 (letters versus digits); device-protocol compatibility needs confirmation. | Open (protocol confirmation needed) |
+| DRV-096 | High | `focuser_lunatico/shared/lunatico_shared.c:336` | A full-size serial/UDP reply overflows the response terminator; reproduced through rotator_lunatico with ASan. | Open |
+| DRV-097 | Medium | `focuser_lunatico/shared/lunatico_shared.c:1543` | Rejected rotator GOTO never publishes ALERT and idle polling reports OK instead. | Open |
 
 ## Finding Summaries
 
@@ -923,6 +924,27 @@ The standalone PTY simulator exposes an independently sourced compatibility disc
 
 This is **not yet proof of a hardware bug**: the manufacturer's historical product/protocol page was unavailable, and firmware may accept both encodings. The simulator does not silently treat INDIGO as the protocol authority. Manufacturer documentation or a device trace is needed to resolve dialect support; no hardware test or driver change was made.
 
+### DRV-096 (Open)
+
+`focuser_lunatico/shared/lunatico_shared.c:336`, included by `rotator_lunatico/indigo_rotator_lunatico.c:35`: `lunatico_command()` allows `index == max` and then writes `response[index] = '\0'`. A 100-byte reply overflows the 100-byte response in `lunatico_check_port()` (line 375). The serial loop admits all 100 bytes; the UDP branch also reads `LUNATICO_CMD_LEN` without reserving terminator space or respecting a smaller caller capacity. The unchanged `oversized` scenario passes without instrumentation but fails with a one-byte stack-buffer-overflow when both the test and production driver translation unit are compiled with AddressSanitizer. The ASan stack identifies `lunatico_command`, `lunatico_open` and `handle_rotator_connect_property`; the affected stack object is `response` at line 375. Reserve one byte for termination and reject truncated/oversized replies. No production source change applied.
+
+Reproduction from `indigo_test/`: compile `integration/test_rotator_lunatico_simulator.c` together with `../indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.c`, using the normal include/library paths, `-fsanitize=address -fno-omit-frame-pointer -g -O1`, and link `libindigo` instead of the uninstrumented driver archive; run with `AUX_TEST_FILTER=oversized`. Reproduced on macOS arm64, 2026-09-09.
+
+### DRV-097 (Open)
+
+`focuser_lunatico/shared/lunatico_shared.c:1543–1547`: after a rejected `!step goto`, the rotator handler sets `ROTATOR_POSITION` to ALERT internally but never publishes that state. It unconditionally schedules `rotator_timer_callback()`, whose idle readback replaces ALERT with OK at line 1365. Clients see BUSY followed by OK although the device rejected the requested move. The supplied `goto_failure` case fails waiting for ALERT in both serial and isolated UDP runs, with the driver logging `lunatico_goto_position(...) failed`. Publish the command failure and avoid treating a subsequent idle poll as successful completion of the rejected move. No production source change applied.
+
+### Lunatico simulator validation — 2026-09-09
+
+Scoped execution of the existing working-tree `integration/test_rotator_lunatico_simulator.c` at `eed97b62e6a07c28d6629ca0508770ceb89dde08`. The driver archive was up to date; serial and UDP test build targets succeeded. No driver/shared-source changes exist between the recorded folder baseline and this commit in the inspected Lunatico paths. This is a focused validation, not a complete folder review.
+
+- Serial: 6/11 scenarios passed; `exp_rotator`, `third_rotator`, `exp_focuser`, `third_powerbox` and `goto_failure` failed.
+- Isolated loopback UDP: 6/11 scenarios passed, with the same five failing scenario names. `exp_focuser` terminated with SIGSEGV in this run; its exact crash cause remains unresolved.
+- Both normal runs passed `main_rotator`, `abort`, `read_failure`, `wrong_model`, `silent` and `oversized`. ASan reveals the hidden memory error in `oversized` (DRV-096).
+- A temporary diagnostic copy inserted a 500 ms delay before connection to allow asynchronous attachment: `exp_focuser` then passed, while `exp_rotator` connected but timed out waiting for the 20-degree readback. This is timing evidence only, not a permanent test fix or proof of the SIGSEGV cause. A separate ASan `exp_focuser` run failed at startup without reproducing that crash. The diagnostic copy and binaries were removed after validation.
+- The first UDP attempt was blocked by sandbox bind restrictions; an initial permitted run overlapped the serial suite and encountered the driver's global lock. Only the subsequent isolated UDP run is used for the counts above.
+- Secondary-device failures require care: test `start()` at lines 21–29 requests asynchronous device creation/reconfiguration and immediately enumerates/connects the target. `connect_serial_device()` only sets the simulator endpoint when `DEVICE_PORT` is already defined. The observed failures attempt `auto://` (one serial run also selected an automatically enumerated system port), not the simulator endpoint. These failures do not establish that the secondary motion or powerbox protocols are broken. Driver configuration returns OK before asynchronous attachment completes (`lunatico_shared.c:1008–1027`); test readiness and concurrent configuration need further investigation. No physical-device acceptance was performed.
+
 ## Review Focus
 
 - Driver lifecycle: `INDIGO_DRIVER_INIT`, `INDIGO_DRIVER_SHUTDOWN`, and `INDIGO_DRIVER_INFO`.
@@ -968,3 +990,5 @@ This is **not yet proof of a hardware bug**: the manufacturer's historical produ
 | `e29626f7da814e4b756c496c6b7bc6ab98328baa` | working tree | 2026-09-09 | Scoped protocol-documentation and runtime review of `aux_cloudwatcher`, `aux_dragonfly` and `aux_mgbox` only. Added standalone PTY/UDP tests; recorded open `DRV-085`–`DRV-089`, including driver-instrumented ASan reproducers. Production drivers unchanged; folder baseline not advanced. |
 
 | `f8713fa21` | working tree | 2026-09-09 | Scoped guider pass: unchanged ASI driver with vendor-header-based fake SDK on x86_64/Rosetta; CG-USB-ST4 standalone PTY and explicit PHD2/INDIGO dialect profiles; existing GPUSB fake SDK regression suite. Recorded `DRV-090`–`DRV-094` as reproduced bugs and `DRV-095` as an unresolved protocol discrepancy. No production source changes; folder baseline unchanged. |
+
+| `017ba602857378e4aed489c065c76eacae15924c` | `eed97b62e6a07c28d6629ca0508770ceb89dde08` + working-tree tests | 2026-09-09 | Scoped rotator_lunatico serial/UDP simulator execution and shared-source failure analysis. Recorded DRV-096 and DRV-097, secondary attachment/test timing failures, and an unresolved SIGSEGV. Driver sources unchanged; folder baseline not advanced. |
