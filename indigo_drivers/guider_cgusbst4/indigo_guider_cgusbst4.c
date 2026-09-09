@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_guider_cgusbst4"
 #define DRIVER_LABEL         "CG-USB-ST4 Adapter"
 #define GUIDER_DEVICE_NAME   "CG-USB-ST4 Adapter"
@@ -87,13 +87,13 @@ static void cgusbst4_close(indigo_device *device) {
 	}
 }
 
-static void guider_guide_dec_finish_handler(indigo_device *device) {
+static void guider_guide_dec_finalizer(indigo_device *device) {
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
 }
 
-static void guider_guide_ra_finish_handler(indigo_device *device) {
-	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+static void guider_guide_ra_finalizer(indigo_device *device) {
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
 }
 
@@ -123,43 +123,47 @@ static void guider_connection_handler(indigo_device *device) {
 }
 
 static void guider_guide_dec_handler(indigo_device *device) {
-	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_DEC.on_change
 	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
-	if (duration > 0) {
-		cgusbst4_command(device, ":Mgn%4d#", 0, (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
-	} else {
+	char direction = 'n';
+	if (duration <= 0) {
 		duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+		direction = 's';
+	}
+	if (duration > 0 && !cgusbst4_command(device, ":Mg%c%4d#", 0, direction, duration)) {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	} else {
+		indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
 		if (duration > 0) {
-			cgusbst4_command(device, ":Mgs%4d#", 0, (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
+			INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_dec_finalizer);
+		} else {
+			guider_guide_dec_finalizer(device);
 		}
 	}
-	if (duration > 0) {
-		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_BUSY_STATE, NULL);
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_dec_finish_handler);
-	}
 	//- guider.GUIDER_GUIDE_DEC.on_change
-	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 }
 
 static void guider_guide_ra_handler(indigo_device *device) {
-	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_RA.on_change
 	int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
-	if (duration > 0) {
-		cgusbst4_command(device, ":Mge%4d#", 0, (int)GUIDER_GUIDE_EAST_ITEM->number.value);
-	} else {
+	char direction = 'e';
+	if (duration <= 0) {
 		duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+		direction = 'w';
+	}
+	if (duration > 0 && !cgusbst4_command(device, ":Mg%c%4d#", 0, direction, duration)) {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	} else {
+		indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
 		if (duration > 0) {
-			cgusbst4_command(device, ":Mgw%4d#", 0, (int)GUIDER_GUIDE_WEST_ITEM->number.value);
+			INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_ra_finalizer);
+		} else {
+			guider_guide_ra_finalizer(device);
 		}
 	}
-	if (duration > 0) {
-		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_BUSY_STATE, NULL);
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_ra_finish_handler);
-	}
 	//- guider.GUIDER_GUIDE_RA.on_change
-	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 }
 
 #pragma mark - Device API (guider)
@@ -192,9 +196,21 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+		//+ guider.GUIDER_GUIDE_DEC.on_change_request
+		indigo_cancel_pending_handler(device, guider_guide_dec_handler);
+		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		//- guider.GUIDER_GUIDE_DEC.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
+		//+ guider.GUIDER_GUIDE_RA.on_change_request
+		indigo_cancel_pending_handler(device, guider_guide_ra_handler);
+		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		//- guider.GUIDER_GUIDE_RA.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
 		return INDIGO_OK;
 	}
