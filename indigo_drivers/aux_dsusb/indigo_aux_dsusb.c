@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_aux_dsusb"
 #define DRIVER_LABEL         "Shoestring DSUSB shutter release"
 #define AUX_DEVICE_NAME      "%s"
@@ -99,6 +99,22 @@ static void dsusb_debug(const char *message) {
 
 //- code
 
+//+ aux.code
+
+static void aux_timer_callback(indigo_device *device);
+
+static void aux_focus_finalizer(indigo_device *device) {
+	if (libdsusb_start(PRIVATE_DATA->device_context)) {
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+	} else {
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+}
+
+//- aux.code
+
 #pragma mark - High level code (aux)
 
 static void aux_timer_callback(indigo_device *device) {
@@ -110,8 +126,7 @@ static void aux_timer_callback(indigo_device *device) {
 		CCD_EXPOSURE_ITEM->number.value--;
 		if (CCD_EXPOSURE_ITEM->number.value <= 0) {
 			CCD_EXPOSURE_ITEM->number.value = 0;
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-			libdsusb_stop(PRIVATE_DATA->device_context);
+			CCD_EXPOSURE_PROPERTY->state = libdsusb_stop(PRIVATE_DATA->device_context) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (CCD_EXPOSURE_ITEM->number.value > 0) {
@@ -159,36 +174,35 @@ static void aux_connection_handler(indigo_device *device) {
 }
 
 static void aux_ccd_abort_exposure_handler(indigo_device *device) {
-	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.CCD_ABORT_EXPOSURE.on_change
-	if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+	if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
 		indigo_cancel_pending_handler(device, aux_timer_callback);
-		libdsusb_stop(PRIVATE_DATA->device_context);
+		indigo_cancel_pending_handler(device, aux_focus_finalizer);
+		if (!libdsusb_stop(PRIVATE_DATA->device_context)) {
+			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		INDIGO_UPDATE_PROPERTY_STATE(CCD_EXPOSURE_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
 	CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
-	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-	//- aux.CCD_ABORT_EXPOSURE.on_change
 	indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+	//- aux.CCD_ABORT_EXPOSURE.on_change
 }
 
 static void aux_ccd_exposure_handler(indigo_device *device) {
 	//+ aux.CCD_EXPOSURE.on_change
-	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 	if (X_CONFIG_FOCUS_ITEM->sw.value) {
-		libdsusb_focus(PRIVATE_DATA->device_context);
-		indigo_usleep(1000000);
+		if (libdsusb_focus(PRIVATE_DATA->device_context)) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_execute_handler_in(device, 1, aux_focus_finalizer);
+		} else {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+	} else {
+		aux_focus_finalizer(device);
 	}
-	libdsusb_start(PRIVATE_DATA->device_context);
-	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
 	//- aux.CCD_EXPOSURE.on_change
-	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-}
-
-static void aux_x_config_handler(indigo_device *device) {
-	X_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, X_CONFIG_PROPERTY, NULL);
 }
 
 #pragma mark - Device API (aux)
@@ -243,7 +257,9 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, aux_ccd_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_CONFIG_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_CONFIG_PROPERTY, aux_x_config_handler);
+		indigo_property_copy_values(X_CONFIG_PROPERTY, property, false);
+		X_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_CONFIG_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {

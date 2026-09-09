@@ -26,7 +26,7 @@ driver dsusb {
 	label = "Shoestring DSUSB shutter release";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 11;
+	version = 12;
 	libusb {
 		hotplug = true;
 		vid = DSUSB_VID;
@@ -60,13 +60,25 @@ driver dsusb {
 	aux {
 		name = "%s";
 		interface = INDIGO_INTERFACE_AUX_SHUTTER;
+		code {
+			static void aux_timer_callback(indigo_device *device);
+
+			static void aux_focus_finalizer(indigo_device *device) {
+				if (libdsusb_start(PRIVATE_DATA->device_context)) {
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+				} else {
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			}
+		}
 		on_timer {
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				CCD_EXPOSURE_ITEM->number.value--;
 				if (CCD_EXPOSURE_ITEM->number.value <= 0) {
 					CCD_EXPOSURE_ITEM->number.value = 0;
-					CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-					libdsusb_stop(PRIVATE_DATA->device_context);
+					CCD_EXPOSURE_PROPERTY->state = libdsusb_stop(PRIVATE_DATA->device_context) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				}
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 				if (CCD_EXPOSURE_ITEM->number.value > 0) {
@@ -87,13 +99,17 @@ driver dsusb {
 			label = "Abort exposure";
 			rule = INDIGO_ANY_OF_MANY_RULE;
 			on_change {
-				if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+				if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
 					indigo_cancel_pending_handler(device, aux_timer_callback);
-					libdsusb_stop(PRIVATE_DATA->device_context);
+					indigo_cancel_pending_handler(device, aux_focus_finalizer);
+					if (!libdsusb_stop(PRIVATE_DATA->device_context)) {
+						CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
 					INDIGO_UPDATE_PROPERTY_STATE(CCD_EXPOSURE_PROPERTY, INDIGO_ALERT_STATE, NULL);
 				}
 				CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
-				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			}
 			item CCD_ABORT_EXPOSURE {
 				name = CCD_ABORT_EXPOSURE_ITEM_NAME;
@@ -106,14 +122,17 @@ driver dsusb {
 			group = AUX_MAIN_GROUP;
 			label = "Start exposure";
 			on_change {
-				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 				if (X_CONFIG_FOCUS_ITEM->sw.value) {
-					libdsusb_focus(PRIVATE_DATA->device_context);
-					indigo_usleep(1000000);
+					if (libdsusb_focus(PRIVATE_DATA->device_context)) {
+						CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_execute_handler_in(device, 1, aux_focus_finalizer);
+					} else {
+						CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				} else {
+					aux_focus_finalizer(device);
 				}
-				libdsusb_start(PRIVATE_DATA->device_context);
-				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
 			}
 			item CCD_EXPOSURE {
 				name = CCD_EXPOSURE_ITEM_NAME;
@@ -124,6 +143,7 @@ driver dsusb {
 			}
 		}
 		switch X_CONFIG {
+			on_change { }
 			name = "X_CONFIG";
 			group = AUX_MAIN_GROUP;
 			label = "Configure";
