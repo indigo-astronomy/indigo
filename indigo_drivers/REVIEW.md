@@ -133,6 +133,9 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-099 | High | `focuser_lacerta/indigo_focuser_lacerta.c:59` | Missing/malformed identity and transaction failures are accepted or block connection. | Fixed |
 | DRV-100 | Medium | `focuser_lacerta/indigo_focuser_lacerta.c:153` | No-op motion remains BUSY; abort/completion ownership needs correction. | Fixed |
 
+| DRV-101 | High | `focuser_ioptron/indigo_focuser_ioptron.driver:86` | Legacy status parser accepted invalid moving flags and connection did not require a valid initial status. Reproduced by init_status and poll_badflag. | Fixed |
+| DRV-102 | Medium | `focuser_ioptron/indigo_focuser_ioptron.driver:318` | Legacy custom ZERO_SYNC lacked the mandatory X_ prefix; generated property is X_FOCUSER_ZERO_SYNC. | Fixed |
+
 ## Finding Summaries
 
 ### DRV-001 (Closed — fixed)
@@ -1014,3 +1017,12 @@ Scoped execution of the existing working-tree `integration/test_rotator_lunatico
 | `017ba602857378e4aed489c065c76eacae15924c` | `eed97b62e6a07c28d6629ca0508770ceb89dde08` + working-tree tests | 2026-09-09 | Scoped rotator_lunatico serial/UDP simulator execution and shared-source failure analysis. Recorded DRV-096 and DRV-097, secondary attachment/test timing failures, and an unresolved SIGSEGV. Driver sources unchanged; folder baseline not advanced. |
 
 LACERTA migration disposition (scoped; folder review baseline unchanged): DRV-098 is fixed by bounded framing in `focuser_lacerta/indigo_focuser_lacerta.driver:43`; final overlong identity/poll cases pass with the production driver instrumented by ASan. DRV-099 is fixed by validated bounded transactions, transactional identity open (`:97`) and explicit post-open initialization rollback (`:233`); all nine identity/initialization rejection cases pass, including descriptor-count checks and retry for one-shot faults. DRV-100 is fixed by explicit no-op completion (`:185`), queue-owned motion finalization and abort (`:329`); no-op, relative, overlap, abort/restart, failed stop and stalled/poll-failure scenarios pass. Final suite: 43/43; targeted ASan: 19/19. Earlier paragraphs preserve reproduction history. No full-folder review or baseline advancement is implied.
+
+
+### DRV-101 (Fixed — 2026-09-09)
+
+Against baseline `2509190db7f4697427ea463a27b0f683c637f09e`, the new `init_status` test reproduced a successful connection with invalid FI initialization; `poll_badflag` reproduced acceptance of moving=2. The authoritative DSL validates exact framing, field widths/digits, coordinate range and 0/1 flags, requires successful status initialization and explicitly closes on post-open failure. Both reproductions pass after the generated transition, with descriptor rollback/retry coverage. Additional malformed and lost-reply cases are documented in test CHANGES.md. This is a scoped disposition; folder review baseline is unchanged.
+
+### DRV-102 (Fixed — 2026-09-09)
+
+Baseline property allocation used literal `ZERO_SYNC` despite its X_FOCUSER_ZERO_SYNC C macro. The DSL now declares wire name `X_FOCUSER_ZERO_SYNC` with the same SYNC item, connected lifetime and reset-after-request semantics. README and PROPERTIES document the client-visible rename. Normal/model capability tests assert the new property and absence of the old name.

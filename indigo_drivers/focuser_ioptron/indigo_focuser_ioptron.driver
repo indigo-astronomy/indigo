@@ -1,0 +1,351 @@
+// Copyright (c) 2024-2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Refactored by OpenAI Codex, 2026.
+
+driver ioptron {
+	label = "iOptron iEAF Focuser";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2024-2026 CloudMakers, s. r. o.";
+	version = 5;
+	serial;
+	data {
+		int position, temperature, last_position, stalled;
+		bool reversed, moving, active, uncertain;
+	}
+	code {
+		static double ioptron_now(void) {
+			struct timeval time;
+			gettimeofday(&time, NULL);
+			return (double)time.tv_sec + time.tv_usec / 1000000.0;
+		}
+
+		static bool ioptron_command(indigo_device *device, const char *command, char *response, int capacity) {
+			if (!PRIVATE_DATA->handle) {
+				return false;
+			}
+			char stale[128];
+			for (int i = 0; indigo_uni_wait_for_data(PRIVATE_DATA->handle, 0) > 0; i++) {
+				if (i == 4 || indigo_uni_read_available(PRIVATE_DATA->handle, stale, sizeof(stale)) <= 0) {
+					return false;
+				}
+			}
+			long length = (long)strlen(command);
+			if (indigo_uni_write(PRIVATE_DATA->handle, command, length) != length) {
+				return false;
+			}
+			if (!response) {
+				return true;
+			}
+			double deadline = ioptron_now() + 1;
+			int used = 0;
+			while (used + 1 < capacity) {
+				double remaining = deadline - ioptron_now();
+				char byte;
+				if (remaining <= 0 || indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(remaining)) <= 0 || indigo_uni_read_available(PRIVATE_DATA->handle, &byte, 1) != 1) {
+					return false;
+				}
+				if (byte == '#') {
+					response[used] = 0;
+					return true;
+				}
+				if (!byte) {
+					return false;
+				}
+				response[used++] = byte;
+			}
+			return false;
+		}
+
+		static bool ioptron_field(const char *text, int count, int *value) {
+			*value = 0;
+			for (int i = 0; i < count; i++) {
+				if (text[i] < '0' || text[i] > '9') {
+					return false;
+				}
+				*value = *value * 10 + text[i] - '0';
+			}
+			return true;
+		}
+
+		static bool ioptron_status(indigo_device *device) {
+			char response[32];
+			int position = 0, moving = 0, temperature = 0, direction = 0;
+			if (!ioptron_command(device, ":FI#", response, sizeof(response)) || strlen(response) != 14 || !ioptron_field(response, 7, &position) || !ioptron_field(response + 7, 1, &moving) || !ioptron_field(response + 8, 5, &temperature) || !ioptron_field(response + 13, 1, &direction) || position > 99999 || moving > 1 || direction > 1) {
+				return false;
+			}
+			PRIVATE_DATA->position = position;
+			PRIVATE_DATA->moving = moving;
+			PRIVATE_DATA->temperature = temperature;
+			PRIVATE_DATA->reversed = direction == 0;
+			return true;
+		}
+
+		static bool ioptron_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
+			if (!PRIVATE_DATA->handle) {
+				return false;
+			}
+			// Preserve the hardware's legacy USB startup settling interval, on the handler queue.
+			indigo_sleep(2);
+			char response[32];
+			int position = 0, model = 0, firmware = 0;
+			if (ioptron_command(device, ":DeviceInfo#", response, sizeof(response)) && strlen(response) == 12 && ioptron_field(response, 6, &position) && ioptron_field(response + 6, 2, &model) && ioptron_field(response + 8, 4, &firmware) && position <= 99999 && (model == 2 || model == 3)) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, model == 2 ? "iEAF" : "iAFS");
+				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%04d", firmware);
+				return true;
+			}
+			indigo_uni_close(&PRIVATE_DATA->handle);
+			return false;
+		}
+
+		static void ioptron_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+
+		static void ioptron_motion_state(indigo_device *device, indigo_property_state state) {
+			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = state;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		}
+
+		static void ioptron_publish(indigo_device *device) {
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->position;
+			if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain) {
+				FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+			}
+			double temperature = PRIVATE_DATA->temperature / 100.0 - 273.15;
+			if (temperature >= FOCUSER_TEMPERATURE_ITEM->number.min && temperature <= FOCUSER_TEMPERATURE_ITEM->number.max) {
+				FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+			indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reversed ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		}
+
+		static void ioptron_read_error(indigo_device *device) {
+			ioptron_motion_state(device, INDIGO_ALERT_STATE);
+			FOCUSER_TEMPERATURE_PROPERTY->state = FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		}
+
+		static void motion_finalizer(indigo_device *device) {
+			if (!IS_CONNECTED || !PRIVATE_DATA->active) {
+				return;
+			}
+			if (!ioptron_status(device)) {
+				PRIVATE_DATA->active = false;
+				PRIVATE_DATA->uncertain = true;
+				ioptron_command(device, ":FQ#", NULL, 0);
+				ioptron_read_error(device);
+				return;
+			}
+			ioptron_publish(device);
+			if (!PRIVATE_DATA->moving) {
+				PRIVATE_DATA->active = false;
+				ioptron_motion_state(device, PRIVATE_DATA->position == (int)FOCUSER_POSITION_ITEM->number.target ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
+			} else if (PRIVATE_DATA->position == PRIVATE_DATA->last_position && ++PRIVATE_DATA->stalled >= 100) {
+				PRIVATE_DATA->active = false;
+				PRIVATE_DATA->uncertain = true;
+				ioptron_command(device, ":FQ#", NULL, 0);
+				ioptron_motion_state(device, INDIGO_ALERT_STATE);
+			} else {
+				if (PRIVATE_DATA->position != PRIVATE_DATA->last_position) {
+					PRIVATE_DATA->last_position = PRIVATE_DATA->position;
+					PRIVATE_DATA->stalled = 0;
+				}
+				ioptron_motion_state(device, INDIGO_BUSY_STATE);
+				indigo_execute_handler_in(device, 0.1, motion_finalizer);
+			}
+		}
+
+		static void ioptron_start_motion(indigo_device *device, int target) {
+			if (!IS_CONNECTED || PRIVATE_DATA->moving || PRIVATE_DATA->uncertain) {
+				ioptron_motion_state(device, INDIGO_ALERT_STATE);
+				return;
+			}
+			target = target < 0 ? 0 : target > 99999 ? 99999 : target;
+			FOCUSER_POSITION_ITEM->number.target = target;
+			if (target == PRIVATE_DATA->position) {
+				ioptron_motion_state(device, INDIGO_OK_STATE);
+				return;
+			}
+			char command[32];
+			snprintf(command, sizeof(command), ":FM%7d#", target);
+			if (!ioptron_command(device, command, NULL, 0)) {
+				PRIVATE_DATA->uncertain = true;
+				ioptron_motion_state(device, INDIGO_ALERT_STATE);
+				return;
+			}
+			PRIVATE_DATA->active = true;
+			PRIVATE_DATA->last_position = PRIVATE_DATA->position;
+			PRIVATE_DATA->stalled = 0;
+			ioptron_motion_state(device, INDIGO_BUSY_STATE);
+		}
+	}
+	focuser {
+		name = "iOptron iEAF";
+		additional_instances = true;
+		on_attach {
+			INFO_PROPERTY->count = 6;
+		}
+		on_connect {
+			connection_result = ioptron_status(device);
+			if (connection_result) {
+				PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
+				ioptron_publish(device);
+				ioptron_motion_state(device, PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+			} else {
+				// Single-device generated connection failure does not close a successful open.
+				ioptron_close(device);
+			}
+		}
+		on_disconnect {
+			if (PRIVATE_DATA->active || PRIVATE_DATA->moving || PRIVATE_DATA->uncertain) {
+				ioptron_command(device, ":FQ#", NULL, 0);
+			}
+			PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->moving = false;
+		}
+		on_timer {
+			if (!PRIVATE_DATA->active && (PRIVATE_DATA->moving || (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE))) {
+				if (ioptron_status(device)) {
+					if (!PRIVATE_DATA->moving) {
+						PRIVATE_DATA->uncertain = false;
+					}
+					ioptron_publish(device);
+					ioptron_motion_state(device, PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE);
+				} else {
+					ioptron_read_error(device);
+				}
+			}
+			indigo_execute_handler_in(device, 1, focuser_timer_callback);
+		}
+		inherited FOCUSER_SPEED { hidden = true; }
+		inherited FOCUSER_TEMPERATURE { hidden = false; }
+		inherited FOCUSER_POSITION {
+			preserve_values = true;
+			on_attach {
+				FOCUSER_POSITION_ITEM->number.min = 0;
+				FOCUSER_POSITION_ITEM->number.max = 99999;
+				FOCUSER_POSITION_ITEM->number.step = 1;
+			}
+			on_change_request {
+				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_ZERO_SYNC_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Motion already in progress");
+					return INDIGO_OK;
+				}
+			}
+			on_change {
+				ioptron_start_motion(device, (int)FOCUSER_POSITION_ITEM->number.target);
+				if (PRIVATE_DATA->active) {
+					indigo_execute_handler_in(device, 0.1, motion_finalizer);
+				}
+			}
+		}
+		inherited FOCUSER_STEPS {
+			on_attach {
+				FOCUSER_STEPS_ITEM->number.min = 0;
+				FOCUSER_STEPS_ITEM->number.max = 99999;
+				FOCUSER_STEPS_ITEM->number.step = 1;
+			}
+			on_change_request {
+				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_ZERO_SYNC_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Motion already in progress");
+					return INDIGO_OK;
+				}
+			}
+			on_change {
+				int delta = (int)FOCUSER_STEPS_ITEM->number.value;
+				ioptron_start_motion(device, PRIVATE_DATA->position + (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -delta : delta));
+				if (PRIVATE_DATA->active) {
+					indigo_execute_handler_in(device, 0.1, motion_finalizer);
+				}
+			}
+		}
+		inherited FOCUSER_REVERSE_MOTION {
+			hidden = false;
+			on_change {
+				bool requested = FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
+				bool result = IS_CONNECTED && !PRIVATE_DATA->active && !PRIVATE_DATA->moving && !PRIVATE_DATA->uncertain && ioptron_status(device);
+				if (result && requested != PRIVATE_DATA->reversed) {
+					result = ioptron_command(device, ":FR#", NULL, 0) && ioptron_status(device) && PRIVATE_DATA->reversed == requested;
+				}
+				indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reversed ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+				if (!result) {
+					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_ABORT_MOTION {
+			on_change {
+				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+				if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+					if (IS_CONNECTED && ioptron_command(device, ":FQ#", NULL, 0) && ioptron_status(device) && !PRIVATE_DATA->moving) {
+						indigo_cancel_pending_handler(device, motion_finalizer);
+						PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
+						ioptron_publish(device);
+						ioptron_motion_state(device, INDIGO_OK_STATE);
+					} else {
+						PRIVATE_DATA->uncertain = true;
+						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+				FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+				indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+			}
+		}
+		switch X_FOCUSER_ZERO_SYNC {
+			name = "X_FOCUSER_ZERO_SYNC";
+			group = FOCUSER_MAIN_GROUP;
+			label = "Sync position";
+			perm = INDIGO_RW_PERM;
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				if (X_FOCUSER_ZERO_SYNC_ITEM->sw.value) {
+					if (IS_CONNECTED && !PRIVATE_DATA->active && !PRIVATE_DATA->moving && !PRIVATE_DATA->uncertain) {
+						if (ioptron_command(device, ":FZ#", NULL, 0) && ioptron_status(device)) {
+							ioptron_publish(device);
+							if (PRIVATE_DATA->moving || PRIVATE_DATA->position != 0) {
+								X_FOCUSER_ZERO_SYNC_PROPERTY->state = INDIGO_ALERT_STATE;
+							} else {
+								ioptron_motion_state(device, INDIGO_OK_STATE);
+							}
+						} else {
+							PRIVATE_DATA->uncertain = true;
+							X_FOCUSER_ZERO_SYNC_PROPERTY->state = INDIGO_ALERT_STATE;
+						}
+					} else {
+						X_FOCUSER_ZERO_SYNC_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+				X_FOCUSER_ZERO_SYNC_ITEM->sw.value = false;
+			}
+			item X_FOCUSER_ZERO_SYNC {
+				name = "SYNC";
+				label = "Sync to 0";
+				value = false;
+			}
+		}
+	}
+}

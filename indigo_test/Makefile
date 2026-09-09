@@ -379,8 +379,8 @@ $(INTEGRATION_BUILD)/focuser_dsd_simulator: ../indigo_drivers/focuser_dsd/focuse
 $(INTEGRATION_BUILD)/focuser_focusdreampro_simulator: ../indigo_drivers/focuser_focusdreampro/focuser_focusdreampro_simulator/focuser_focusdreampro_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/focuser_ioptron_simulator: ../indigo_drivers/focuser_ioptron/focuser_ioptron_simulator/focuser_ioptron_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $<
+$(INTEGRATION_BUILD)/focuser_ioptron_simulator: ../indigo_drivers/focuser_ioptron/focuser_ioptron_simulator/focuser_ioptron_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/focuser_qhy_simulator: ../indigo_drivers/focuser_qhy/focuser_qhy_simulator/focuser_qhy_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
@@ -604,8 +604,11 @@ $(INTEGRATION_BUILD)/test_focuser_dsd_simulator: integration/test_focuser_dsd_si
 $(INTEGRATION_BUILD)/test_focuser_focusdreampro_simulator: integration/test_focuser_focusdreampro_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_focusdreampro_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_FOCUSDREAMPRO_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_ioptron_simulator: integration/test_focuser_ioptron_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_ioptron_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_focuser_ioptron_simulator: integration/test_focuser_ioptron_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_ioptron_simulator $(BUILD_DRIVERS)/indigo_focuser_ioptron.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_IOPTRON_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_ioptron_simulator_asan: integration/test_focuser_ioptron_simulator.c ../indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_ioptron_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.c $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_qhy_simulator: integration/test_focuser_qhy_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_qhy_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_QHY_SIMULATOR_TEST_LDFLAGS)

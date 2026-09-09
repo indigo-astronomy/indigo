@@ -6,213 +6,246 @@
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 
+// Refactored by OpenAI Codex, 2026.
+
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
-#include <errno.h>
 #include <stdarg.h>
 #include <signal.h>
-
+#include <sys/select.h>
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
+#include "../../../indigo_test/simulator_common/serial_motion.h"
 
-typedef struct {
-	bool headless;
-	bool trace;
-	const char *ready_file;
-} simulator_options;
-
-static simulator_options options = {
-	.headless = false,
-	.trace = true,
-	.ready_file = NULL
-};
-
+static const char *profile = "normal", *ready_file;
+static int model = 2;
+static const char *fault_file;
+static FILE *events;
+static bool trace, headless, motion_active, injected, failed_read, frozen;
 static volatile sig_atomic_t running = 1;
-static int serial_fd = -1;
-
-static int position = 1000;
-static int target_position = 1000;
-static int moving_reports = 0;
-static int reversed = 0;
+static int serial_fd = -1, direction = 1;
 static int temperature = 29465;
+static serial_motion motion;
 
-static void usage(const char *name) {
-	printf("iOptron iEAF focuser simulator\n");
-	printf("Usage: %s [OPTIONS]\n", name);
-	printf("  --headless              Disable interactive output suitable for terminals\n");
-	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
-	printf("  --trace                 Log protocol requests and replies\n");
-	printf("  -h, --help              Show this help and exit\n");
-}
-
-static void signal_handler(int sig) {
-	(void)sig;
-	running = 0;
-	if (serial_fd >= 0) {
-		close(serial_fd);
-		serial_fd = -1;
+static void event(const char *kind, const char *value) {
+	if (events) {
+		fprintf(events, "%.6f %s %s\n", serial_motion_time(), kind, value);
+		fflush(events);
 	}
 }
 
-static bool parse_args(int argc, char *argv[]) {
-	for (int i = 1; i < argc; i++) {
-		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
-			usage(argv[0]);
-			exit(0);
-		} else if (!strcmp(argv[i], "--headless")) {
-			options.headless = true;
-			options.trace = false;
-		} else if (!strcmp(argv[i], "--trace")) {
-			options.trace = true;
-		} else if (!strcmp(argv[i], "--ready-file")) {
-			if (++i == argc) {
-				fprintf(stderr, "--ready-file requires a path\n");
-				return false;
-			}
-			options.ready_file = argv[i];
-		} else {
-			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
+static bool reply(const char *format, ...) {
+	char buffer[256];
+	va_list args;
+	va_start(args, format);
+	int length = vsnprintf(buffer, sizeof(buffer), format, args);
+	va_end(args);
+	if (length < 0 || length >= (int)sizeof(buffer)) {
+		return false;
+	}
+	event("TX", buffer);
+	serial_simulator_trace_line(trace, "<-", buffer);
+	if (!strcmp(profile, "split") && length > 2) {
+		serial_simulator_write_all(serial_fd, buffer, (size_t)length / 2);
+		usleep(10000);
+		return serial_simulator_write_all(serial_fd, buffer + length / 2, (size_t)(length - length / 2));
+	}
+	return serial_simulator_write_all(serial_fd, buffer, (size_t)length);
+}
+
+static void stop_signal(int signal) {
+	(void)signal;
+	running = 0;
+}
+
+static void update_motion(void) {
+	if (frozen) {
+		return;
+	}
+	int position = (int)serial_motion_update(&motion);
+	if (motion_active && motion.duration == 0) {
+		motion_active = false;
+		(void)position;
+		event("DONE", "motion");
+	}
+}
+
+static bool inject(char command) {
+	if (command == 'I' && failed_read) {
+		failed_read = false;
+		reply("invalid#");
+		return true;
+	}
+	char action[64] = "", key[32] = { 0 };
+	FILE *file = fault_file ? fopen(fault_file, "r") : NULL;
+	if (file) {
+		if (fscanf(file, "%31s %63s", key, action) != 2) {
+			*action = 0;
+		}
+		fclose(file);
+		if (!strcmp(key, "external")) {
+			serial_motion_sync(&motion, atoi(action));
+			motion_active = false;
+			unlink(fault_file);
 			return false;
 		}
+		if (!strcmp(key, "temperature")) {
+			temperature = atoi(action);
+			unlink(fault_file);
+			return false;
+		}
+		if (key[0] != command || key[1]) {
+			*action = 0;
+		} else {
+			unlink(fault_file);
+		}
+	}
+	if (!injected && !strncmp(profile, "init_", 5) && command == profile[5]) {
+		injected = true;
+		snprintf(action, sizeof(action), "%s", profile + 7);
+	}
+	if (!*action) {
+		return false;
+	}
+	event("FAULT", action);
+	if (!strcmp(action, "readfail")) {
+		failed_read = true;
+		return false;
+	} else if (!strcmp(action, "stall")) {
+		frozen = true;
+		return true;
+	} else if (!strcmp(action, "silent") || !strcmp(action, "ignore")) {
+		return true;
+	} else if (!strcmp(action, "close")) {
+		running = 0;
+		return true;
+	} else if (!strcmp(action, "overlong")) {
+		char buffer[160];
+		memset(buffer, '7', sizeof(buffer));
+		buffer[158] = '#';
+		buffer[159] = 0;
+		reply("%s", buffer);
+	} else if (!strcmp(action, "short")) {
+		reply("1#");
+	} else if (!strcmp(action, "partial")) {
+		reply("0001000");
+	} else if (!strcmp(action, "badflag")) {
+		reply("00010002294651#");
+	} else if (!strcmp(action, "baddir")) {
+		reply("00010000294652#");
+	} else if (!strcmp(action, "badpos")) {
+		reply("99999990294651#");
+	} else if (!strcmp(action, "trailing")) {
+		reply("00010000294651x#");
+	} else {
+		reply("invalid#");
 	}
 	return true;
 }
 
-static int sim_read_command(int handle, char *buffer, int length) {
-	char c = '\0';
-	int total_bytes = 0;
-	bool in_frame = false;
-
-	while (running && total_bytes < length - 1) {
-		ssize_t bytes_read = read(handle, &c, 1);
-		if (bytes_read < 0) {
-			if (errno == EINTR) {
-				continue;
-			}
-			if (errno == EAGAIN || errno == EWOULDBLOCK) {
-				return 0;
-			}
-			if (errno == EIO) {
-				return 0;
-			}
-			return -1;
-		}
-		if (bytes_read == 0) {
-			return 0;
-		}
-		if (!in_frame) {
-			if (c != ':') {
-				continue;
-			}
-			in_frame = true;
-		}
-		buffer[total_bytes++] = c;
-		if (c == '#') {
+static void dispatch(const char *text) {
+	char command = !strcmp(text, ":DeviceInfo#") ? 'D' : text[2];
+	event("RX", text);
+	serial_simulator_trace_line(trace, "->", text);
+	if (inject(command)) {
+		return;
+	}
+	int position = frozen ? (int)motion.position : (int)serial_motion_update(&motion);
+	switch (command) {
+		case 'D': reply("%06d%02d%04d#", position, !strcmp(profile, "unknown") ? 9 : model, 4); break;
+		case 'I': reply("%07d%d%05d%d#", position, frozen || motion.duration > 0, temperature, direction); break;
+		case 'M': {
+			int value = atoi(text + 3);
+			serial_motion_start(&motion, value < 0 ? 0 : value > 99999 ? 99999 : value, 5000);
+			motion_active = true;
 			break;
 		}
-	}
-	buffer[total_bytes] = '\0';
-	if (*buffer) {
-		serial_simulator_trace_line(options.trace, "->", buffer);
-	}
-	return total_bytes;
-}
-
-static bool sim_printf(int handle, const char *format, ...) {
-	char buffer[128];
-	va_list args;
-
-	va_start(args, format);
-	int length = vsnprintf(buffer, sizeof(buffer), format, args);
-	va_end(args);
-
-	if (length < 0) {
-		return false;
-	}
-	if ((size_t)length >= sizeof(buffer)) {
-		length = (int)sizeof(buffer) - 1;
-	}
-
-	if (options.trace) {
-		fprintf(stderr, "<- %s", buffer);
-	}
-	return serial_simulator_write_all(handle, buffer, (size_t)length);
-}
-
-static void dispatch_command(int handle, const char *command) {
-	if (!strcmp(command, ":DeviceInfo#")) {
-		sim_printf(handle, "%06d%02d%04d#", position, 2, 4);
-	} else if (!strcmp(command, ":FI#")) {
-		int moving = moving_reports > 0 ? 1 : 0;
-		if (moving_reports > 0) {
-			moving_reports--;
-			if (moving_reports == 0) {
-				position = target_position;
+		case 'Q':
+			if (frozen) {
+				serial_motion_sync(&motion, motion.position);
+			} else {
+				serial_motion_stop(&motion);
 			}
-		}
-		sim_printf(handle, "%07d%d%05d%d#", position, moving, temperature, reversed ? 0 : 1);
-	} else if (!strncmp(command, ":FM", 3)) {
-		target_position = atoi(command + 3);
-		if (target_position < 0) {
-			target_position = 0;
-		} else if (target_position > 99999) {
-			target_position = 99999;
-		}
-		moving_reports = 1;
-	} else if (!strcmp(command, ":FR#")) {
-		reversed = !reversed;
-	} else if (!strcmp(command, ":FZ#")) {
-		position = target_position = 0;
-		moving_reports = 0;
-	} else if (!strcmp(command, ":FQ#")) {
-		target_position = position;
-		moving_reports = 0;
+			frozen = motion_active = false;
+			break;
+		case 'Z': serial_motion_sync(&motion, 0); motion_active = false; break;
+		case 'R': direction = !direction; break;
 	}
 }
 
-int main(int argc, char *argv[]) {
-	char port[128];
-	char buffer[128];
-
-	if (!parse_args(argc, argv)) {
-		return 1;
+int main(int argc, char **argv) {
+	for (int i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--headless")) {
+			headless = true;
+		} else if (!strcmp(argv[i], "--trace")) {
+			trace = true;
+		} else if (i + 1 < argc && !strcmp(argv[i], "--ready-file")) {
+			ready_file = argv[++i];
+		} else if (i + 1 < argc && !strcmp(argv[i], "--profile")) {
+			profile = argv[++i];
+		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
+			printf("Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile NAME]\n", argv[0]);
+			return 0;
+		} else {
+			fprintf(stderr, "Unknown/incomplete option: %s\n", argv[i]);
+			return 1;
+		}
 	}
-
-	signal(SIGINT, signal_handler);
-	signal(SIGTERM, signal_handler);
-
+	serial_motion_sync(&motion, 1000);
+	if (!strcmp(profile, "iafs") || !strcmp(profile, "alternate")) {
+		model = 3;
+	}
+	if (!strcmp(profile, "alternate")) {
+		temperature = 26815;
+		serial_motion_sync(&motion, 500);
+	}
+	const char *event_path = getenv("INDIGO_IOPTRON_EVENTS");
+	events = event_path ? fopen(event_path, "w") : NULL;
+	fault_file = getenv("INDIGO_IOPTRON_FAULT");
+	char port[128], command[128];
+	size_t used = 0;
+	signal(SIGTERM, stop_signal);
+	signal(SIGINT, stop_signal);
 	serial_fd = serial_simulator_open_pty(port, sizeof(port));
-	if (serial_fd < 0) {
+	if (serial_fd < 0 || (ready_file && !serial_simulator_write_ready_file(ready_file, "focuser_ioptron", port))) {
 		return 1;
 	}
-
-	if (options.ready_file != NULL && !serial_simulator_write_ready_file(options.ready_file, "focuser_ioptron_simulator", port)) {
-		close(serial_fd);
-		return 1;
-	}
-
-	if (!options.headless) {
-		printf("iOptron iEAF focuser simulator is listening on %s\n", port);
+	if (!headless) {
+		printf("IOPTRON simulator on %s\n", port);
 		fflush(stdout);
 	}
-
 	while (running) {
-		int bytes = sim_read_command(serial_fd, buffer, sizeof(buffer));
-		if (bytes < 0) {
-			break;
+		update_motion();
+		fd_set fds;
+		FD_ZERO(&fds);
+		FD_SET(serial_fd, &fds);
+		struct timeval timeout = { 0, 10000 };
+		if (select(serial_fd + 1, &fds, NULL, NULL, &timeout) <= 0) {
+			continue;
 		}
-		if (bytes > 0) {
-			dispatch_command(serial_fd, buffer);
-		} else {
-			usleep(1000);
+		char byte;
+		if (read(serial_fd, &byte, 1) != 1) {
+			usleep(10000);
+			continue;
+		}
+		if (byte == ':') {
+			used = 0;
+		}
+		if (used + 1 < sizeof(command)) {
+			command[used++] = byte;
+		}
+		if (byte == '#') {
+			command[used] = 0;
+			dispatch(command);
+			used = 0;
 		}
 	}
-
-	if (serial_fd >= 0) {
-		close(serial_fd);
+	close(serial_fd);
+	if (events) {
+		fclose(events);
 	}
 	return 0;
 }

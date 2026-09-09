@@ -33,4 +33,8 @@
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="indigo_focuser_ioptron.driver" />
+    <None Include="REFACTOR.md" />
+  </ItemGroup>
 </Project>

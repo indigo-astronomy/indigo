@@ -1116,11 +1116,11 @@ Source: `indigo_drivers/focuser_focusdreampro/indigo_focuser_focusdreampro.c`.
 
 ### focuser_ioptron
 
-Custom properties: `ZERO_SYNC`.
+Custom properties: `X_FOCUSER_ZERO_SYNC` (`SYNC`, momentary zero-coordinate synchronization). This replaces the legacy `ZERO_SYNC` name; clients must use the prefixed name. Defined only while connected.
 
-Driver-specific use of existing properties: `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+Driver-specific use of existing properties: `FOCUSER_POSITION`, `FOCUSER_STEPS` (integer steps, 0–99999), `FOCUSER_ABORT_MOTION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`. Speed, arbitrary coordinate SYNC, backlash, configurable limits and automatic compensation remain hidden/unsupported. Relative travel follows the coordinate direction; reversal toggles the hardware mapping. Temperature converts Kelvin hundredths to Celsius and preserves the last valid reading on invalid temperature. Motion reports measured position independently of target; abort and zero confirm stopped position through device readback.
 
-Source: `indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.c`.
+Source: `indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.driver`.
 
 ### focuser_lacerta
 

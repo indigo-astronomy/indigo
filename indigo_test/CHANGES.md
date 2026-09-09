@@ -110,7 +110,7 @@ Inventory: 150 modules — 2 Complete, 36 Partial, 55 Not audited, 47 No tests, 
 | `focuser_fcusb` | Generated | Fake USB/SDK | Partial | New fake SDK: lifecycle, failed INIT/attach/open, power/frequency/direction, timed completion, abort, stop error and active removal pass; remaining coverage audit in progress |
 | `focuser_fli` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `focuser_focusdreampro` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
-| `focuser_ioptron` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_ioptron` | Generated | PTY/protocol simulator | Applicable matrix implemented | 40 named scenarios; migration validation below. Hardware wire assumptions remain explicit. |
 | `focuser_lacerta` | Generated | PTY/protocol simulator | Applicable matrix implemented | 43 scenarios; final migration validation below. Hardware and other-platform execution remain separate. |
 | `focuser_lakeside` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `focuser_lunatico` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
@@ -736,3 +736,29 @@ Speed, automatic mode, temperature compensation, motor current, beep/heater and 
 Reproduce from `indigo_test`: `make build/integration/test_focuser_lacerta_simulator build/integration/test_focuser_lacerta_simulator_asan`, then `./build/integration/test_focuser_lacerta_simulator`. `LACERTA_TEST_FILTER` selects scenario-name substrings, including `identity`, `init_`, `disconnect`, `instances` and `poll_` for targeted ASan. ASan instruments the driver and test executable; the framework library is the normal build.
 
 Final result: 43/43 ordinary scenarios and 19/19 targeted ASan scenarios passed on macOS arm64. Universal driver/test build and strict driver warning checks passed for arm64/x86_64. See driver `REFACTOR.md` for intermediate failures, fixes and platform limits.
+
+
+## iOptron focuser generated migration (2026-09-09)
+
+Production `indigo_focuser_ioptron.driver` replaces handwritten lifecycle/timers with generated handler queues. Simulator motion now uses shared serial_motion and advances without queries. Protocol provenance and hardware assumptions are in driver REFACTOR.md: manufacturer manual documents functions but no independent wire specification was available. Fixed-width identity/status and direction polarity follow the existing implementation. Tests use public bus requests, actual production queues and isolated parent-owned PTYs; fresh revisions distinguish completion from cached OK. The custom property is now X_FOCUSER_ZERO_SYNC, replacing ZERO_SYNC.
+
+| Applicable common/focuser matrix | Named tests |
+| --- | --- |
+| Independent simulator command grammar, model 2/3, status, reversal, timed progress, halt, zero during motion, no-op, completed short move without polling | `simulator_ieaf`, `simulator_iafs` |
+| Interface, connect-scoped properties/custom rename, hidden unsupported controls, metadata/ranges, absolute GOTO, wire command and BUSY/completion | `normal`, `iafs`, `split` |
+| Relative inward/outward in both reversal states, zero/no-op, lower/upper clipping, external coordinate changes | `movement` |
+| Zero coordinate update without FM, momentary switch reset/false request, fresh move | `zero` |
+| Abort moving/idle, actual stopped target, switch reset, fresh move | `abort` |
+| Duplicate and cross-property POSITION/STEPS requests both orders, zero/reverse while moving, pending zero versus new move | `overlap`, `pending_control` |
+| Ignored commands and lost readback with recovery; avoid toggling reversal twice after lost reply | `zero_failure`, `reverse_failure`, `stop_failure`, `zero_readback_failure`, `reverse_readback_failure`, `abort_readback_failure` |
+| Ignored move, transport loss, moving read failure, bounded stalled-motion handling and restart | `start_failure`, `transport_loss`, `motion_read_failure`, `stalled_motion` |
+| Malformed, short, overlong, unterminated, silent, invalid movement/direction, impossible position, trailing data; bounded failure and recovery | `poll_malformed`, `poll_short`, `poll_overlong`, `poll_partial`, `poll_silent`, `poll_badflag`, `poll_baddir`, `poll_badpos`, `poll_trailing` |
+| Kelvin-to-Celsius conversion, negative/invalid temperature and recovery without overwriting confirmed values | `temperature` |
+| Invalid port, reconnect, pending motion/read disconnect, no traffic after close and peer-independent ports/model/position/temperature | `reconnect`, `disconnect_motion`, `disconnect_read`, `instances` |
+| Unknown identity, short/overlong/partial/silent identity, required initial status failure, descriptor rollback and successful retry | `unknown_identity`, `init_identity_short`, `init_identity_overlong`, `init_identity_partial`, `init_identity_silent`, `init_status` |
+
+Non-applicable: arbitrary position SYNC, speed, backlash, configurable limits, automatic mode/compensation, beep/heater/current/home are not exposed. Relative sign remains coordinate-relative irrespective of physical reversal, matching the legacy driver. Generic input validation/configuration storage is framework scope. PTYs cannot deterministically force partial OS writes; the driver checks exact write length. No ACK is invented for write-only commands. The driver/test ASan executable uses the normal framework library. No physical travel/timing, Linux/Windows or x86_64 runtime claim is made. Hardware acceptance is the class-standard small-travel move, reverse, zero, abort/settings/reconnect check; validate documented wire assumptions on each available model.
+
+Reproduce from `indigo_test`: `make build/integration/test_focuser_ioptron_simulator build/integration/test_focuser_ioptron_simulator_asan`; run `./build/integration/test_focuser_ioptron_simulator`. `IOPTRON_TEST_FILTER` selects scenario-name substrings, e.g. `readback_failure`, `init_`, `poll_`, `instances`, `disconnect` for ASan. Baseline original smoke passed; new `init_status` and `poll_badflag` failed on the handwritten driver and pass after migration. Final totals are recorded in driver REFACTOR.md after the full run.
+
+Final iOptron result: 40/40 ordinary and 20/20 targeted driver-instrumented ASan scenarios passed on macOS arm64. Universal build and expanded O0/O2 strict warning checks passed for both architectures. Test artifacts were cleaned. See driver REFACTOR.md for exact commands and platform/protocol limitations.
