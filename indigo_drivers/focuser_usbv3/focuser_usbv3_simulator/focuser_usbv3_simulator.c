@@ -20,6 +20,7 @@
 #include <unistd.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
+#include "../../../indigo_test/simulator_common/serial_motion.h"
 
 #define COMMAND_LENGTH 6
 
@@ -39,6 +40,7 @@ static const char *simulator_name = "focuser_usbv3";
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
 static int position = 1000;
+static serial_motion motion = { .position = 1000, .target = 1000 };
 static int target_position = 1000;
 static int max_position = 65535;
 static int direction = 0;
@@ -114,6 +116,7 @@ static void clamp_position(void) {
 }
 
 static void handle_command(const char *command) {
+	position = (int)serial_motion_update(&motion);
 	char response[128] = { 0 };
 
 	if (options.trace) {
@@ -126,8 +129,7 @@ static void handle_command(const char *command) {
 		snprintf(response, sizeof(response), "C=%d-%d-%d-%d-%d-%d-%d", direction, stepmode, speed, steps_per_degree, threshold, firmware, max_position);
 		send_line(response);
 	} else if (!strcmp(command, "FPOSRO")) {
-		if (moving) {
-			position = target_position;
+		if (moving && motion.duration == 0) {
 			moving = false;
 			send_line("*");
 		}
@@ -168,10 +170,12 @@ static void handle_command(const char *command) {
 	} else if (!strncmp(command, "O", 1)) {
 		target_position = position + parse_suffix(command);
 		clamp_position();
+		serial_motion_start(&motion, target_position, 1000);
 		moving = true;
 	} else if (!strncmp(command, "I", 1)) {
 		target_position = position - parse_suffix(command);
 		clamp_position();
+		serial_motion_start(&motion, target_position, 1000);
 		moving = true;
 	} else if (!strncmp(command, "M", 1)) {
 		max_position = parse_suffix(command);
@@ -180,8 +184,10 @@ static void handle_command(const char *command) {
 		}
 		clamp_position();
 	} else if (!strcmp(command, "FQUITx")) {
+		serial_motion_stop(&motion);
 		target_position = position;
 		moving = false;
+		send_line("*");
 	}
 }
 

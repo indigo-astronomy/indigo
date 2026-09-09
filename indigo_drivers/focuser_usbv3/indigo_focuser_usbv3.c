@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_focuser_usbv3"
 #define DRIVER_LABEL         "USB_Focus v3 Focuser"
 #define FOCUSER_DEVICE_NAME  "USB_Focus v3"
@@ -58,6 +58,7 @@ typedef struct {
 	char response[128];
 	bool moving;
 	bool abort;
+	int motion_polls;
 	//- data
 } usbv3_private_data;
 
@@ -96,6 +97,53 @@ static void usbv3_close(indigo_device *device) {
 }
 
 //- code
+
+//+ focuser.code
+
+static void focuser_motion_finalizer(indigo_device *device) {
+	int position;
+	if (!usbv3_command(device, "FPOSRO", true) || sscanf(PRIVATE_DATA->response, "P=%d", &position) != 1 || position < 0 || position > 65535) {
+		PRIVATE_DATA->moving = false;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		FOCUSER_POSITION_ITEM->number.value = position;
+		if (!PRIVATE_DATA->moving) {
+			FOCUSER_POSITION_PROPERTY->state = PRIVATE_DATA->abort ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			FOCUSER_POSITION_ITEM->number.target = position;
+		} else if (--PRIVATE_DATA->motion_polls <= 0) {
+			usbv3_command(device, "FQUITx", false);
+			PRIVATE_DATA->moving = false;
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_execute_handler_in(device, 0.1, focuser_motion_finalizer);
+		}
+	}
+	FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state;
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+}
+
+static void usbv3_start_motion(indigo_device *device, int steps) {
+	indigo_cancel_pending_handler(device, focuser_motion_finalizer);
+	PRIVATE_DATA->abort = false;
+	PRIVATE_DATA->moving = false;
+	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	if (steps != 0) {
+		if (usbv3_command(device, "%c%05u", false, steps > 0 ? 'O' : 'I', abs(steps))) {
+			PRIVATE_DATA->moving = true;
+			PRIVATE_DATA->motion_polls = 600;
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		} else {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	}
+	FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state;
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+}
+
+//- focuser.code
 
 #pragma mark - High level code (focuser)
 
@@ -218,102 +266,59 @@ static void focuser_speed_handler(indigo_device *device) {
 }
 
 static void focuser_steps_handler(indigo_device *device) {
-	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_STEPS.on_change
-	PRIVATE_DATA->abort = false;
-	int steps = (int)FOCUSER_STEPS_ITEM->number.target;
 	int position = (int)FOCUSER_POSITION_ITEM->number.value;
-	if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ^ FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value) {
-		int max = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
-		if (position + steps > max) {
-			steps = max - position;
-		}
-		if (steps > 0) {
-			usbv3_command(device, "O%05u", false, steps);
-		}
-	} else {
-		int min = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
-		if (position - steps < min) {
-			steps = position - min;
-		}
-		if (steps > 0) {
-			usbv3_command(device, "I%05u", false, steps);
-		}
+	int steps = (int)FOCUSER_STEPS_ITEM->number.target;
+	if (!(FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ^ FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value)) {
+		steps = -steps;
 	}
-	if (steps > 0) {
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		PRIVATE_DATA->moving = true;
-		int value;
-		while (PRIVATE_DATA->moving) {
-			if (PRIVATE_DATA->abort) {
-				usbv3_command(device, "FQUITx", false);
-			}
-			usbv3_command(device, "FPOSRO", true);
-			if (sscanf(PRIVATE_DATA->response, "P=%d", &value) == 1) {
-				if (position != value) {
-					FOCUSER_POSITION_ITEM->number.value = position = value;
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-				}
-			}
-		}
-		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_OK_STATE, NULL);
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+	int target = position + steps;
+	int min = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+	int max = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+	if (target < min) {
+		target = min;
+	} else if (target > max) {
+		target = max;
+	}
+	FOCUSER_POSITION_ITEM->number.target = target;
+	steps = target - position;
+	usbv3_start_motion(device, steps);
+	if (PRIVATE_DATA->moving) {
+		indigo_execute_handler_in(device, 0.1, focuser_motion_finalizer);
 	}
 	//- focuser.FOCUSER_STEPS.on_change
-	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 }
 
 static void focuser_position_handler(indigo_device *device) {
-	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_POSITION.on_change
-	PRIVATE_DATA->abort = false;
+	int position = (int)FOCUSER_POSITION_ITEM->number.value;
 	int target = (int)FOCUSER_POSITION_ITEM->number.target;
 	int min = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
 	int max = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
 	if (target < min) {
 		target = min;
-	}
-	if (target > max) {
+	} else if (target > max) {
 		target = max;
 	}
-	int position = (int)FOCUSER_POSITION_ITEM->number.value;
-	int steps =  FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value ? target - position : position - target;
-	if (steps > 0) {
-		usbv3_command(device, "O%05u", false, steps);
-	} else if (steps < 0) {
-		usbv3_command(device, "I%05u", false, -steps);
-	}
-	if (steps != 0) {
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		PRIVATE_DATA->moving = true;
-		int value;
-		while (PRIVATE_DATA->moving) {
-			if (PRIVATE_DATA->abort) {
-				usbv3_command(device, "FQUITx", false);
-			}
-			usbv3_command(device, "FPOSRO", true);
-			if (sscanf(PRIVATE_DATA->response, "P=%d", &value) == 1) {
-				if (position != value) {
-					FOCUSER_POSITION_ITEM->number.value = position = value;
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-				}
-			}
-		}
-		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_OK_STATE, NULL);
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	FOCUSER_POSITION_ITEM->number.target = target;
+	int steps = FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value ? target - position : position - target;
+	usbv3_start_motion(device, steps);
+	if (PRIVATE_DATA->moving) {
+		indigo_execute_handler_in(device, 0.1, focuser_motion_finalizer);
 	}
 	//- focuser.FOCUSER_POSITION.on_change
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 }
 
 static void focuser_abort_motion_handler(indigo_device *device) {
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
-	PRIVATE_DATA->abort = true;
+	if (PRIVATE_DATA->moving) {
+		if (usbv3_command(device, "FQUITx", false)) {
+			PRIVATE_DATA->abort = true;
+		} else {
+			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	}
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	//- focuser.FOCUSER_ABORT_MOTION.on_change
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
@@ -417,7 +422,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_LIMITS_PROPERTY, focuser_limits_handler);
