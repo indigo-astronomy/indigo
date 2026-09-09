@@ -17,6 +17,7 @@
 #include <signal.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
+#include "../../../indigo_test/simulator_common/serial_motion.h"
 
 // ----------------------------------------------------------------- options
 
@@ -49,6 +50,7 @@ static int serial_fd = -1;
 static int motor_mode = 0;
 static double temperature = 22.4;
 static int position = 50;
+static serial_motion motion = { .position = 50, .target = 50 };
 static int moving_status = 0;
 static int led_status = 0;
 static int reverse = 0;
@@ -155,6 +157,8 @@ static bool sim_printf(int handle, const char *format, ...) {
 }
 
 static void dispatch_command(int handle, const char *command) {
+	position = (int)serial_motion_update(&motion);
+	moving_status = motion.duration > 0;
 	if (!strcmp(command, "#")) {
 		sim_printf(handle, "OK_DMFCN\n");
 	} else if (!strcmp(command, "V")) {
@@ -168,14 +172,13 @@ static void dispatch_command(int handle, const char *command) {
 	} else if (!strcmp(command, "I")) {
 		sim_printf(handle, "%d\n", moving_status);
 	} else if (!strncmp(command, "G:", 2)) {
-		position += atoi(command + 2);
-		moving_status = 0;
+		serial_motion_start(&motion, position + atoi(command + 2), 1000);
 	} else if (!strncmp(command, "M:", 2)) {
-		position = atoi(command + 2);
-		moving_status = 0;
+		serial_motion_start(&motion, atoi(command + 2), 1000);
 	} else if (!strncmp(command, "W:", 2)) {
-		position = atoi(command + 2);
+		serial_motion_sync(&motion, position = atoi(command + 2));
 	} else if (!strcmp(command, "H")) {
+		serial_motion_stop(&motion);
 		moving_status = 0;
 	} else if (!strncmp(command, "S:", 2)) {
 		speed = atoi(command + 2);
