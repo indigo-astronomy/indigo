@@ -26,19 +26,25 @@ driver simulator {
 	label = "Dome Simulator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2017-2026 CloudMakers, s. r. o.";
-	version = 6;
+	version = 7;
 	// include { }
 	// define { }
 	data {
 		double target_position, current_position;
 	}
-	// code { }
+	code {
+		static void dome_shutter_finalizer(indigo_device *device) {
+			DOME_STATE_OPEN_ITEM->light.value = DOME_SHUTTER_OPENED_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+			indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
+	}
 	// on_init { }
 	// on_shutdown { }
 	dome {
 		name = DRIVER_LABEL;
 		additional_instances = true;
-		// code { }
+
 		on_timer {
 			if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE) {
 				if (DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -66,7 +72,7 @@ driver simulator {
 					indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 					indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 					INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
-					indigo_set_timer(device, 0.1, dome_timer_callback, NULL);
+					indigo_execute_handler_in(device, 0.1, dome_timer_callback);
 				} else if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value && fabs(PRIVATE_DATA->current_position - PRIVATE_DATA->target_position) > 1e-6) {
 					DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 					double dif = fmod(PRIVATE_DATA->current_position - PRIVATE_DATA->target_position + 360.0, 360.0);
@@ -80,7 +86,7 @@ driver simulator {
 					indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 					indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 					INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
-					indigo_set_timer(device, 0.1, dome_timer_callback, NULL);
+					indigo_execute_handler_in(device, 0.1, dome_timer_callback);
 				} else {
 					DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 					DOME_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
@@ -93,9 +99,22 @@ driver simulator {
 						INDIGO_UPDATE_PROPERTY_STATE(DOME_PARK_PROPERTY, INDIGO_OK_STATE, NULL);
 					}
 				}
-			}		}
+			}
+		}
 		// on_connect { }
-		// on_disconnect { }
+		on_disconnect {
+			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = PRIVATE_DATA->current_position;
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
+			if (DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+				indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
+				DOME_PARK_PROPERTY->state = DOME_STATE_PARK_ITEM->light.value = INDIGO_ALERT_STATE;
+			}
+			if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
+				DOME_SHUTTER_PROPERTY->state = DOME_STATE_OPEN_ITEM->light.value = INDIGO_ALERT_STATE;
+			}
+		}
 		// on_attach { }
 		// on_detach { }
 		inherited DOME_SPEED {
@@ -125,8 +144,8 @@ driver simulator {
 					}
 					INDIGO_UPDATE_PROPERTY_STATE(DOME_DIRECTION_PROPERTY, INDIGO_OK_STATE, NULL);
 					INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
-					INDIGO_UPDATE_PROPERTY_STATE(DOME_HORIZONTAL_COORDINATES_PROPERTY, INDIGO_BUSY_STATE, NULL);
-					indigo_set_timer(device, 0.5, dome_timer_callback, NULL);
+					DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_execute_handler_in(device, 0.5, dome_timer_callback);
 				}
 			}
 			on_attach {
@@ -158,7 +177,7 @@ driver simulator {
 					DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 					indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 					DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_set_timer(device, 0.5, dome_timer_callback, NULL);
+					indigo_execute_handler_in(device, 0.5, dome_timer_callback);
 				}
 			}
 			// on_attach { }
@@ -182,10 +201,8 @@ driver simulator {
 			on_change {
 				DOME_STATE_OPEN_ITEM->light.value = INDIGO_BUSY_STATE;
 				indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
-				indigo_usleep(INDIGO_DELAY(6));
-				indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
-				DOME_STATE_OPEN_ITEM->light.value = DOME_SHUTTER_OPENED_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
-				indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
+				INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_BUSY_STATE, NULL);
+				indigo_execute_handler_in(device, 6, dome_shutter_finalizer);
 			}
 			// on_attach { }
 			// on_detach { }
@@ -197,11 +214,9 @@ driver simulator {
 					DOME_STATE_SLEW_ITEM->light.value = DOME_STATE_PARK_ITEM->light.value = INDIGO_BUSY_STATE;
 					indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 					if (PRIVATE_DATA->current_position > 180) {
-						DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_CLOCKWISE_ITEM, true);
 						DOME_STEPS_ITEM->number.value = 360 - PRIVATE_DATA->current_position;
 					} else if (PRIVATE_DATA->current_position < 180) {
-						DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM, true);
 						DOME_STEPS_ITEM->number.value = PRIVATE_DATA->current_position;
 					}
@@ -209,7 +224,7 @@ driver simulator {
 					INDIGO_UPDATE_PROPERTY_STATE(DOME_DIRECTION_PROPERTY, INDIGO_OK_STATE, NULL);
 					INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
 					INDIGO_UPDATE_PROPERTY_STATE(DOME_HORIZONTAL_COORDINATES_PROPERTY, INDIGO_BUSY_STATE, NULL);
-					indigo_set_timer(device, 0.5, dome_timer_callback, NULL);
+					indigo_execute_handler_in(device, 0.5, dome_timer_callback);
 				} else {
 					DOME_STATE_SLEW_ITEM->light.value = DOME_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
 					indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
