@@ -80,9 +80,41 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static void elapsed_motion_and_disconnect(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, WHEEL_INDIGO_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&indigo_wheel, simulator.port));
+	indigo_change_number_property_1(&simulator_test_client, indigo_wheel.device_name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 7);
+	SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(650000);
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(WHEEL_SLOT_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 1, 0));
+	indigo_change_number_property_1(&simulator_test_client, indigo_wheel.device_name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 2);
+	SERIAL_CHECK_TRUE(find_cached_item(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME)->number.target == 7);
+	struct timespec before, after;
+	clock_gettime(CLOCK_MONOTONIC, &before);
+	disconnect_serial_device(&indigo_wheel);
+	clock_gettime(CLOCK_MONOTONIC, &after);
+	double elapsed = after.tv_sec - before.tv_sec + (after.tv_nsec - before.tv_nsec) / 1e9;
+	SERIAL_CHECK_TRUE(elapsed < 1);
+	int updates = context.update_count;
+	indigo_usleep(600000);
+	SERIAL_CHECK_EQ_INT(updates, context.update_count);
+	SERIAL_CHECK_TRUE(connect_serial_device(&indigo_wheel, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 1, 0));
+	indigo_change_number_property_1(&simulator_test_client, indigo_wheel.device_name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 2);
+	SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 2, 0));
+cleanup:
+	stop_serial_driver(&indigo_wheel);
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
+	alarm(30);
 	const indigo_test_case tests[] = {
-		{ "indigo_wheel_passes_serial_compliance_checks", indigo_wheel_passes_serial_compliance_checks }
+		{ "indigo_wheel_passes_serial_compliance_checks", indigo_wheel_passes_serial_compliance_checks },
+		{ "elapsed motion, busy overlap and disconnect", elapsed_motion_and_disconnect }
 	};
 	return indigo_run_tests("Pegasus Indigo wheel serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }

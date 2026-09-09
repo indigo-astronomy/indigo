@@ -1,0 +1,217 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// All rights reserved.
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+
+#include <stdatomic.h>
+#include <stdarg.h>
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_uni_io.h>
+#include "serial_simulator_test_common.h"
+
+extern indigo_result TEST_ENTRY(indigo_driver_action, indigo_driver_info *);
+static const simulator_driver_case driver = { TEST_NAME, "test", TEST_NAME, TEST_ENTRY, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static atomic_int opens, closes, writes, invalid_io, fail_open, fail_write, fail_read, fail_rts, bad_reply;
+static atomic_bool rts;
+static atomic_int brightness;
+static char command[80];
+static const char *fail_command;
+static indigo_uni_handle handle;
+
+indigo_uni_handle *output_open(const char *port, int level) {
+	if (atomic_exchange(&fail_open, 0)) {
+		return NULL;
+	}
+	atomic_fetch_add(&opens, 1);
+	return &handle;
+}
+
+void output_close(indigo_uni_handle **port) {
+	if (*port) {
+		atomic_fetch_add(&closes, 1);
+		*port = NULL;
+	}
+}
+
+long output_discard(indigo_uni_handle *port) {
+	if (port != &handle || opens == closes) {
+		atomic_fetch_add(&invalid_io, 1);
+		return -1;
+	}
+	return 0;
+}
+
+long output_write(indigo_uni_handle *port, const char *format, va_list args) {
+	if (output_discard(port) < 0 || atomic_exchange(&fail_write, 0)) {
+		return -1;
+	}
+	int size = vsnprintf(command, sizeof(command), format, args);
+	if (fail_command && !strcmp(command, fail_command)) {
+		fail_command = NULL;
+		return -1;
+	}
+	if (TEST_KIND == 2 && !strncmp(command, ">B", 2)) {
+		atomic_store(&brightness, atoi(command + 2));
+	}
+	atomic_fetch_add(&writes, 1);
+	return size;
+}
+
+long output_write_line(indigo_uni_handle *port, const char *format, va_list args, char *terminator) {
+	if (TEST_KIND == 2 && strcmp(terminator, "\r")) {
+		atomic_fetch_add(&invalid_io, 1);
+		return -1;
+	}
+	return output_write(port, format, args);
+}
+
+long output_read(indigo_uni_handle *port, char *buffer, long length, const char *terminators, const char *ignore, long timeout) {
+	if (output_discard(port) < 0 || atomic_exchange(&fail_read, 0)) {
+		return -1;
+	}
+	const char *reply = atomic_exchange(&bad_reply, 0) ? "!invalid" : (TEST_KIND == 1 ? "A" : "*V1.0");
+	long size = strlen(reply);
+	if (size >= length) {
+		size = length - 1;
+	}
+	memcpy(buffer, reply, size);
+	buffer[size] = 0;
+	return size;
+}
+
+int output_rts(indigo_uni_handle *port, bool state) {
+	if (output_discard(port) < 0 || atomic_exchange(&fail_rts, 0)) {
+		return -1;
+	}
+	atomic_store(&rts, state);
+	atomic_fetch_add(&writes, 1);
+	return 0;
+}
+
+static bool wait_write(int before) {
+	for (int i = 0; i < 2000; i++) {
+		if (writes > before) {
+			return true;
+		}
+		indigo_usleep(1000);
+	}
+	return false;
+}
+
+static void connect_failure_and_recovery(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&driver));
+	atomic_store(&fail_open, 1);
+	SERIAL_CHECK_TRUE(!connect_serial_device(&driver, "fake-output"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+#if TEST_KIND == 2
+	fail_command = ">VOOO";
+	SERIAL_CHECK_TRUE(!connect_serial_device(&driver, "fake-output"));
+	SERIAL_CHECK_EQ_INT(opens, closes);
+#endif
+	SERIAL_CHECK_TRUE(connect_serial_device(&driver, "fake-output"));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, TEST_ENTRY(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_EQ_INT(1, opens - closes);
+cleanup:
+	stop_serial_driver(&driver);
+	ASSERT_EQ_INT(opens, closes);
+	ASSERT_EQ_INT(0, invalid_io);
+}
+
+static void output_commands_and_failures(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&driver, "fake-output"));
+	assert_device_interface(TEST_KIND == 1 ? INDIGO_INTERFACE_GUIDER : (TEST_KIND == 2 ? INDIGO_INTERFACE_AUX_LIGHTBOX : INDIGO_INTERFACE_AUX_SHUTTER));
+#if TEST_KIND == 1
+	const char *properties[] = { "GUIDER_GUIDE_RA", "GUIDER_GUIDE_RA", "GUIDER_GUIDE_DEC", "GUIDER_GUIDE_DEC" };
+	const char *items[] = { "EAST", "WEST", "NORTH", "SOUTH" };
+	const char *commands[] = { ":Mge 100#", ":Mgw 100#", ":Mgn 100#", ":Mgs 100#" };
+	for (int i = 0; i < 4; i++) {
+		int before = writes;
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, TEST_NAME, properties[i], items[i], 100));
+		SERIAL_CHECK_TRUE(wait_for_property_state(properties[i], INDIGO_BUSY_STATE));
+		SERIAL_CHECK_TRUE(wait_write(before));
+		SERIAL_CHECK_TRUE(strcmp(command, commands[i]) == 0);
+		SERIAL_CHECK_TRUE(wait_for_property_state(properties[i], INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(properties[i], items[i], 0, 0));
+	}
+	atomic_store(&fail_write, 1);
+	indigo_change_number_property_1(&simulator_test_client, TEST_NAME, "GUIDER_GUIDE_RA", "EAST", 100);
+	SERIAL_CHECK_TRUE(wait_for_property_state("GUIDER_GUIDE_RA", INDIGO_ALERT_STATE));
+#elif TEST_KIND == 2
+	for (int level = 0; level <= 100; level += 50) {
+		int before = writes;
+		indigo_change_number_property_1(&simulator_test_client, TEST_NAME, "AUX_LIGHT_INTENSITY", "LIGHT_INTENSITY", level);
+		SERIAL_CHECK_TRUE(wait_write(before));
+		char expected[16];
+		snprintf(expected, sizeof(expected), ">B%03d", 255 * level / 100);
+		SERIAL_CHECK_TRUE(strcmp(command, expected) == 0);
+		SERIAL_CHECK_TRUE(wait_for_property_state("AUX_LIGHT_INTENSITY", INDIGO_OK_STATE));
+	}
+	for (int failure = 0; failure < 2; failure++) {
+		if (failure == 0) {
+			atomic_store(&fail_write, 1);
+		} else {
+			atomic_store(&bad_reply, 1);
+		}
+		indigo_change_number_property_1(&simulator_test_client, TEST_NAME, "AUX_LIGHT_INTENSITY", "LIGHT_INTENSITY", 25);
+		SERIAL_CHECK_TRUE(wait_for_property_state("AUX_LIGHT_INTENSITY", INDIGO_ALERT_STATE));
+		indigo_change_number_property_1(&simulator_test_client, TEST_NAME, "AUX_LIGHT_INTENSITY", "LIGHT_INTENSITY", 75);
+		SERIAL_CHECK_TRUE(wait_for_property_state("AUX_LIGHT_INTENSITY", INDIGO_OK_STATE));
+	}
+	indigo_change_switch_property_1(&simulator_test_client, TEST_NAME, "AUX_LIGHT_SWITCH", "ON", true);
+	SERIAL_CHECK_TRUE(wait_for_property_state("AUX_LIGHT_SWITCH", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!strcmp(command, ">LOOO"));
+	atomic_store(&fail_read, 1);
+	indigo_change_switch_property_1(&simulator_test_client, TEST_NAME, "AUX_LIGHT_SWITCH", "ON", true);
+	SERIAL_CHECK_TRUE(wait_for_property_state("AUX_LIGHT_SWITCH", INDIGO_ALERT_STATE));
+	indigo_change_switch_property_1(&simulator_test_client, TEST_NAME, "AUX_LIGHT_SWITCH", "OFF", true);
+	SERIAL_CHECK_TRUE(wait_for_property_state("AUX_LIGHT_SWITCH", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!strcmp(command, ">DOOO"));
+	disconnect_serial_device(&driver);
+	atomic_store(&brightness, 0);
+	SERIAL_CHECK_TRUE(connect_serial_device(&driver, "fake-output"));
+	SERIAL_CHECK_EQ_INT(191, brightness);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value("AUX_LIGHT_INTENSITY", "LIGHT_INTENSITY", 75, 0));
+	SERIAL_CHECK_TRUE(!strcmp(command, ">DOOO"));
+#else
+	int before = writes;
+	indigo_change_number_property_1(&simulator_test_client, TEST_NAME, "CCD_EXPOSURE", "EXPOSURE", 0.2);
+	SERIAL_CHECK_TRUE(wait_for_property_state("CCD_EXPOSURE", INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_write(before));
+	SERIAL_CHECK_TRUE(rts);
+	SERIAL_CHECK_TRUE(wait_for_property_state("CCD_EXPOSURE", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!rts);
+	indigo_change_number_property_1(&simulator_test_client, TEST_NAME, "CCD_EXPOSURE", "EXPOSURE", 10);
+	SERIAL_CHECK_TRUE(wait_for_property_state("CCD_EXPOSURE", INDIGO_BUSY_STATE));
+	indigo_change_switch_property_1(&simulator_test_client, TEST_NAME, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true);
+	SERIAL_CHECK_TRUE(wait_for_property_state("CCD_EXPOSURE", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(!rts);
+	before = writes;
+	indigo_change_number_property_1(&simulator_test_client, TEST_NAME, "CCD_EXPOSURE", "EXPOSURE", 0.2);
+	SERIAL_CHECK_TRUE(wait_write(before));
+	atomic_store(&fail_rts, 1);
+	SERIAL_CHECK_TRUE(wait_for_property_state("CCD_EXPOSURE", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(rts);
+	atomic_store(&fail_rts, 1);
+	indigo_change_switch_property_1(&simulator_test_client, TEST_NAME, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true);
+	SERIAL_CHECK_TRUE(wait_for_property_state("CCD_ABORT_EXPOSURE", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(rts);
+	indigo_change_switch_property_1(&simulator_test_client, TEST_NAME, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true);
+	SERIAL_CHECK_TRUE(wait_for_property_state("CCD_ABORT_EXPOSURE", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!rts);
+	atomic_store(&fail_rts, 1);
+	indigo_change_number_property_1(&simulator_test_client, TEST_NAME, "CCD_EXPOSURE", "EXPOSURE", 0.2);
+	SERIAL_CHECK_TRUE(wait_for_property_state("CCD_EXPOSURE", INDIGO_ALERT_STATE));
+#endif
+cleanup:
+	stop_serial_driver(&driver);
+	ASSERT_EQ_INT(opens, closes);
+	ASSERT_EQ_INT(0, invalid_io);
+}
+
+int main(void) {
+	const indigo_test_case tests[] = {
+		{ "open rollback, reconnect and shutdown rejection", connect_failure_and_recovery },
+		{ "command mapping, completion and transport errors", output_commands_and_failures }
+	};
+	return indigo_run_tests(TEST_NAME, tests, ARRAY_SIZE(tests));
+}

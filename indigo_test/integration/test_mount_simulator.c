@@ -6,7 +6,7 @@
 
 #include <indigo_drivers/mount_simulator/indigo_mount_simulator.h>
 
-#include "simulator_test_common.h"
+#include "serial_simulator_test_common.h"
 
 static const char *hidden_mount_base_properties[] = {
 	DEVICE_PORT_PROPERTY_NAME,
@@ -360,8 +360,49 @@ static void mount_passes_mount_compliance_checks(void) {
 	stop_connected_simulator(&mount_simulator);
 }
 
+static void guider_pending_disconnect_and_replacement(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_guider_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_guider_simulator, NULL));
+	indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 2000);
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 100);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 0, 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 300);
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	disconnect_serial_device(&mount_guider_simulator);
+	int updates = context.update_count;
+	indigo_usleep(500000);
+	SERIAL_CHECK_EQ_INT(updates, context.update_count);
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_guider_simulator, NULL));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0));
+	assert_guide_pulse_resets(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME);
+cleanup:
+	stop_serial_driver(&mount_guider_simulator);
+}
+
+static void mount_manual_motion_disconnect(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_usleep(100000);
+	disconnect_serial_device(&mount_simulator);
+	int updates = context.update_count;
+	indigo_usleep(700000);
+	SERIAL_CHECK_EQ_INT(updates, context.update_count);
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	SERIAL_CHECK_TRUE(!find_cached_item(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME)->sw.value);
+cleanup:
+	stop_serial_driver(&mount_simulator);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
+		{ "guider_pending_disconnect_and_replacement", guider_pending_disconnect_and_replacement },
+		{ "mount_manual_motion_disconnect", mount_manual_motion_disconnect },
 		{ "driver_info_reports_simulator_metadata", driver_info_reports_simulator_metadata },
 		{ "mount_exposes_expected_properties", mount_exposes_expected_properties },
 		{ "mount_passes_mount_compliance_checks", mount_passes_mount_compliance_checks },

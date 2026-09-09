@@ -13,6 +13,7 @@ This file indexes folder-level automatic code review notes. Use it to find the r
 | `indigo_optional_drivers/` | `indigo_optional_drivers/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Optional drivers with extra dependencies. Open findings in folder file. |
 | `indigo_server/` | `indigo_server/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Server executables, runtime behavior, and web resources. All recorded findings resolved (see folder file). |
 | `indigo_tools/` | `indigo_tools/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Command-line tools. Open findings recorded. |
+| `indigo_test/` | `indigo_test/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Automated tests and harness. Scoped findings closed; initial folder baseline retained. |
 | `indigo_tests/` | `indigo_tests/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Legacy/manual compliance scripts. Open findings recorded. |
 | `indigo_docs/` | `indigo_docs/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Developer and user documentation. Open findings recorded. |
 | `indigo_examples/` | `indigo_examples/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Examples and sample clients/drivers. Open findings recorded. |

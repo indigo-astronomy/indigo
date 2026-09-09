@@ -1,0 +1,138 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// All rights reserved.
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+#include <stdatomic.h>
+#include <indigo/indigo_uni_io.h>
+#include <indigo_drivers/gps_nmea/indigo_gps_nmea.h>
+#include "serial_simulator_test_common.h"
+
+static const simulator_driver_case driver = { "NMEA GPS", "indigo_gps_nmea", "NMEA GPS", indigo_gps_nmea, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static indigo_uni_handle handle;
+static pthread_mutex_t input_mutex = PTHREAD_MUTEX_INITIALIZER;
+static char input[128];
+static atomic_int opens, closes, reads, invalid_io, fail_open, fail_read;
+
+indigo_uni_handle *nmea_test_open(const char *port, const char *config, int level) {
+	if (atomic_exchange(&fail_open, 0)) {
+		return NULL;
+	}
+	atomic_fetch_add(&opens, 1);
+	return &handle;
+}
+
+void nmea_test_close(indigo_uni_handle **port) {
+	if (*port) {
+		atomic_fetch_add(&closes, 1);
+		*port = NULL;
+	}
+}
+
+long nmea_test_read(indigo_uni_handle *port, char *buffer, long length, const char *terminators, const char *ignore, long timeout) {
+	if (port != &handle || opens == closes) {
+		atomic_fetch_add(&invalid_io, 1);
+		return -1;
+	}
+	if (atomic_exchange(&fail_read, 0)) {
+		return -1;
+	}
+	indigo_usleep(1000);
+	pthread_mutex_lock(&input_mutex);
+	snprintf(buffer, length, "%s", input[0] ? input : "$GPXYZ");
+	input[0] = 0;
+	pthread_mutex_unlock(&input_mutex);
+	atomic_fetch_add(&reads, 1);
+	return strlen(buffer);
+}
+
+static bool sentence(const char *value) {
+	pthread_mutex_lock(&input_mutex);
+	int before = reads;
+	snprintf(input, sizeof(input), "%s", value);
+	pthread_mutex_unlock(&input_mutex);
+	for (int i = 0; i < 2000; i++) {
+		if (reads >= before + 2) {
+			return true;
+		}
+		indigo_usleep(1000);
+	}
+	return false;
+}
+
+static void malformed_input_and_recovery(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&driver, "fake"));
+	const char *invalid[] = { "$", "$G", "$GPRMC", "$GPRMC,1", "$GPRMC,123519,A,NaN,N,01131.000,E,0,0,090926", "$GPRMC,126099,A,4807.038,N,01131.000,E,0,0,090926", "$GPRMC,123519,A,4867.038,N,01131.000,E,0,0,090926", "$GPGGA", "$GPGSA,A", "$GPGSV,1", "$GPRMC,123519,A,4807.038,N,01131.000,E,0,0,230394*00", "$GPXYZ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,," };
+	for (int i = 0; i < ARRAY_SIZE(invalid); i++) {
+		SERIAL_CHECK_TRUE(sentence(invalid[i]));
+		SERIAL_CHECK_TRUE(context.connected);
+		SERIAL_CHECK_EQ_INT(opens - 1, closes);
+	}
+	SERIAL_CHECK_TRUE(sentence("$GPRMC,123519,A,4807.038,S,01131.000,W,0,0,090926"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, -48.1173, 0.0001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, -11.5167, 0.0001));
+	SERIAL_CHECK_TRUE(wait_for_property_state(UTC_TIME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME)->text.value, "2026-09-09T12:35:19"));
+	atomic_store(&fail_read, 1);
+	SERIAL_CHECK_TRUE(wait_for_simulator_connection_state(false));
+	SERIAL_CHECK_EQ_INT(opens, closes);
+	SERIAL_CHECK_TRUE(connect_serial_device(&driver, "fake"));
+	SERIAL_CHECK_TRUE(sentence("$GPGGA,123520,4807.038,N,01131.000,E,1,8,0.9,545.4,M,46.9,M,,"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, 545, 0));
+cleanup:
+	stop_serial_driver(&driver);
+	ASSERT_EQ_INT(opens, closes);
+	ASSERT_EQ_INT(0, invalid_io);
+}
+
+static void open_rollback(void) {
+	atomic_store(&fail_open, 1);
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&driver));
+	SERIAL_CHECK_TRUE(!connect_serial_device(&driver, "fake"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&driver, "fake"));
+cleanup:
+	stop_serial_driver(&driver);
+	ASSERT_EQ_INT(opens, closes);
+}
+
+static void constellation_and_fix_states(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&driver, "fake"));
+	indigo_change_switch_property_1(&simulator_test_client, driver.device_name, GPS_ADVANCED_PROPERTY_NAME, GPS_ADVANCED_ENABLED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(find_cached_property("GPS_ADVANCED_STATUS") != NULL);
+	SERIAL_CHECK_TRUE(sentence("$GPGSA,A,3,04,05,,,,,,,,,,,1.8,1.0,1.5"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(UTC_TIME_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	const char *systems[] = { "GPS", "GALILEO", "GLONASS", "BEIDOU", "NAVIC", "QZSS", "MULTIPLE", "AUTO" };
+	const char talkers[] = { 'P', 'A', 'L', 'B', 'I', 'Q', 'N', 'P' };
+	for (int i = 0; i < ARRAY_SIZE(systems); i++) {
+		indigo_change_switch_property_1(&simulator_test_client, driver.device_name, "X_GPS_SELECTED_SYSTEM", systems[i], true);
+		SERIAL_CHECK_TRUE(wait_for_property_state("X_GPS_SELECTED_SYSTEM", INDIGO_OK_STATE));
+		char line[128];
+		snprintf(line, sizeof(line), "$G%cRMC,235959,A,4807.038,N,01131.000,E,0,0,090926", talkers[i]);
+		SERIAL_CHECK_TRUE(sentence(line));
+		SERIAL_CHECK_TRUE(wait_for_property_state(UTC_TIME_PROPERTY_NAME, INDIGO_OK_STATE));
+		for (int fix = 1; fix <= 3; fix++) {
+			snprintf(line, sizeof(line), "$G%cGSA,A,%d,04,05,,,,,,,,,,,1.8,1.0,1.5", talkers[i], fix);
+			SERIAL_CHECK_TRUE(sentence(line));
+			const char *name = fix == 1 ? GPS_STATUS_NO_FIX_ITEM_NAME : (fix == 2 ? GPS_STATUS_2D_FIX_ITEM_NAME : GPS_STATUS_3D_FIX_ITEM_NAME);
+			indigo_item *item = find_cached_item(GPS_STATUS_PROPERTY_NAME, name);
+			SERIAL_CHECK_TRUE(item != NULL);
+			SERIAL_CHECK_EQ_INT(fix == 1 ? INDIGO_ALERT_STATE : (fix == 2 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE), item->light.value);
+		}
+		snprintf(line, sizeof(line), "$G%cGSV,1,1,%02d", talkers[i], i + 4);
+		SERIAL_CHECK_TRUE(sentence(line));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value("GPS_ADVANCED_STATUS", GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM_NAME, i + 4, 0));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value("GPS_ADVANCED_STATUS", GPS_ADVANCED_STATUS_PDOP_ITEM_NAME, 1.8, 0.001));
+	}
+	SERIAL_CHECK_TRUE(sentence("$GPRMC,000000,A,4807.038,N,01131.000,E,0,0,100926"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME)->text.value, "2026-09-10T00:00:00"));
+cleanup:
+	stop_serial_driver(&driver);
+	ASSERT_EQ_INT(opens, closes);
+}
+
+int main(void) {
+	setvbuf(stdout, NULL, _IONBF, 0);
+	alarm(35);
+	const indigo_test_case tests[] = { { "Malformed framing, checksum, token bounds, coordinate/time mapping and read-loss recovery", malformed_input_and_recovery }, { "Open failure and reconnect", open_rollback }, { "Constellation selection, fix transitions, DOP, satellites and UTC rollover", constellation_and_fix_states } };
+	return indigo_run_tests("NMEA fake transport", tests, ARRAY_SIZE(tests));
+}

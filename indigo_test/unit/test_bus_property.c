@@ -5,6 +5,7 @@
 // open-source license' (see LICENSE.md).
 
 #include <string.h>
+#include <math.h>
 
 #include <indigo/indigo_bus.h>
 
@@ -291,12 +292,61 @@ static void resized_properties_preserve_items_for_all_vector_types(void) {
 	}
 }
 
+static void numeric_copy_ignores_nonfinite_inputs(void) {
+	indigo_property *property = init_test_property(TEST_NUMBER_PROPERTY, 2);
+	indigo_property *input = init_test_property(TEST_NUMBER_PROPERTY, 2);
+	ASSERT_TRUE(property != NULL && input != NULL);
+	init_test_items(property);
+	init_test_items(input);
+	const double invalid[] = { NAN, INFINITY, -INFINITY };
+	for (int targets_only = 0; targets_only < 2; targets_only++) {
+		for (int i = 0; i < (int)(sizeof(invalid) / sizeof(invalid[0])); i++) {
+			property->items[0].number.value = 42;
+			property->items[0].number.target = 50;
+			property->items[1].number.value = 84;
+			input->items[0].number.value = invalid[i];
+			input->items[1].number.value = 12.5;
+			if (targets_only) {
+				indigo_property_copy_targets(property, input, false);
+			} else {
+				indigo_property_copy_values(property, input, false);
+			}
+			ASSERT_TRUE(property->items[0].number.value == 42);
+			ASSERT_TRUE(property->items[0].number.target == 50);
+			ASSERT_TRUE(property->items[1].number.value == (targets_only ? 84 : 12.5));
+			ASSERT_TRUE(property->items[1].number.target == 12.5);
+		}
+	}
+	indigo_release_property(input);
+	indigo_release_property(property);
+}
+
+static void numeric_copy_still_clamps_finite_inputs(void) {
+	indigo_property *property = init_test_property(TEST_NUMBER_PROPERTY, 2);
+	indigo_property *input = init_test_property(TEST_NUMBER_PROPERTY, 2);
+	ASSERT_TRUE(property != NULL && input != NULL);
+	init_test_items(property);
+	init_test_items(input);
+	input->items[0].number.value = -20;
+	input->items[1].number.value = 200;
+	indigo_property_copy_targets(property, input, false);
+	ASSERT_TRUE(property->items[0].number.value == 42 && property->items[0].number.target == -10);
+	ASSERT_TRUE(property->items[1].number.value == 84 && property->items[1].number.target == 100);
+	indigo_property_copy_values(property, input, false);
+	ASSERT_TRUE(property->items[0].number.value == -10 && property->items[0].number.target == -10);
+	ASSERT_TRUE(property->items[1].number.value == 100 && property->items[1].number.target == 100);
+	indigo_release_property(input);
+	indigo_release_property(property);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "properties_are_initialized_for_all_vector_types", properties_are_initialized_for_all_vector_types },
 		{ "property_matching_works_for_all_vector_types", property_matching_works_for_all_vector_types },
 		{ "copied_properties_are_independent_for_all_vector_types", copied_properties_are_independent_for_all_vector_types },
-		{ "resized_properties_preserve_items_for_all_vector_types", resized_properties_preserve_items_for_all_vector_types }
+		{ "resized_properties_preserve_items_for_all_vector_types", resized_properties_preserve_items_for_all_vector_types },
+		{ "numeric_copy_ignores_nonfinite_inputs", numeric_copy_ignores_nonfinite_inputs },
+		{ "numeric_copy_still_clamps_finite_inputs", numeric_copy_still_clamps_finite_inputs }
 	};
 	return indigo_run_tests("bus property unit tests", tests, (int)(sizeof(tests) / sizeof(tests[0])));
 }

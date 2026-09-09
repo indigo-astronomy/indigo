@@ -1,0 +1,133 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// All rights reserved.
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+#include <stdatomic.h>
+#include <stdarg.h>
+#include <indigo/indigo_uni_io.h>
+#include <indigo_drivers/aux_skyalert/indigo_aux_skyalert.h>
+#include "serial_simulator_test_common.h"
+
+static const simulator_driver_case skyalert = { "Interactive Astronomy SkyAlert", "indigo_aux_skyalert", "Interactive Astronomy SkyAlert", indigo_aux_skyalert, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static indigo_uni_handle handle;
+static atomic_int opens, closes, invalid_io, fail_open, fail_write, index_read, failed_index = -1, failure_mode;
+static const char *record[] = { "Data", "20.3", "-12.5", "1008", "751", "66.3", "415", "1", "1.8m", "101791.83" };
+
+indigo_uni_handle *skyalert_test_open(const char *port, int speed, int level) {
+	if (speed != 115200) {
+		invalid_io++;
+	}
+	if (atomic_exchange(&fail_open, 0)) {
+		return NULL;
+	}
+	opens++;
+	return &handle;
+}
+
+void skyalert_test_close(indigo_uni_handle **port) {
+	if (*port) {
+		closes++;
+		*port = NULL;
+	}
+}
+
+long skyalert_test_discard(indigo_uni_handle *port) {
+	if (port != &handle || opens == closes) {
+		invalid_io++;
+		return -1;
+	}
+	return 0;
+}
+
+long skyalert_test_printf(indigo_uni_handle *port, const char *format, ...) {
+	if (skyalert_test_discard(port) < 0 || strcmp(format, "send\r")) {
+		invalid_io++;
+		return -1;
+	}
+	index_read = 0;
+	return atomic_exchange(&fail_write, 0) ? -1 : 5;
+}
+
+long skyalert_test_read(indigo_uni_handle *port, char *buffer, long length, const char *terminators, const char *ignore, long timeout) {
+	if (skyalert_test_discard(port) < 0) {
+		return -1;
+	}
+	if (strcmp(terminators, "\r") || strcmp(ignore, "\r")) {
+		invalid_io++;
+	}
+	int index = atomic_fetch_add(&index_read, 1);
+	if (index >= ARRAY_SIZE(record)) {
+		invalid_io++;
+		return -1;
+	}
+	if (index == failed_index) {
+		if (failure_mode == 1) {
+			return -1;
+		}
+		if (failure_mode == 2) {
+			buffer[0] = 0;
+			return 0;
+		}
+		return snprintf(buffer, length, "%s", failure_mode == 3 ? "NaN" : "bad");
+	}
+	return snprintf(buffer, length, "%s", record[index]);
+}
+
+static void record_fields_and_lifecycle(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&skyalert, "fake"));
+	const char *items[] = { AUX_WEATHER_TEMPERATURE_ITEM_NAME, AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME, AUX_WEATHER_RAIN_ITEM_NAME, AUX_WEATHER_HUMIDITY_ITEM_NAME, AUX_WEATHER_WIND_SPEED_ITEM_NAME, AUX_WEATHER_PRESSURE_ITEM_NAME };
+	const double expected[] = { 20.3, -12.5, 1008, 66.3, 415, 1017.9183 };
+	for (int i = 0; i < ARRAY_SIZE(items); i++) {
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, items[i], expected[i], 0.001));
+	}
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_INFO_PROPERTY_NAME, AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, 751, 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_INFO_PROPERTY_NAME, AUX_INFO_POWER_ITEM_NAME, 1, 0));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME)->text.value, "1.8m"));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_aux_skyalert(INDIGO_DRIVER_SHUTDOWN, NULL));
+	disconnect_serial_device(&skyalert);
+	SERIAL_CHECK_EQ_INT(opens, closes);
+	SERIAL_CHECK_TRUE(connect_serial_device(&skyalert, "fake"));
+cleanup:
+	stop_serial_driver(&skyalert);
+	ASSERT_EQ_INT(opens, closes);
+	ASSERT_EQ_INT(0, invalid_io);
+}
+
+static void partial_record_and_error_recovery(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&skyalert));
+	indigo_change_text_property_1_raw(&simulator_test_client, skyalert.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, "fake");
+	for (int index = -2; index < ARRAY_SIZE(record); index++) {
+		fail_open = index == -2;
+		fail_write = index == -1;
+		failed_index = index;
+		failure_mode = 1;
+		indigo_change_switch_property_1(&simulator_test_client, skyalert.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
+		SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_EQ_INT(opens, closes);
+	}
+	for (int mode = 2; mode <= 4; mode++) {
+		failed_index = 1;
+		failure_mode = mode;
+		indigo_change_switch_property_1(&simulator_test_client, skyalert.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
+		SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_EQ_INT(opens, closes);
+	}
+	failed_index = -1;
+	SERIAL_CHECK_TRUE(connect_serial_device(&skyalert, "fake"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME, 20.3, 0.001));
+cleanup:
+	failed_index = -1;
+	stop_serial_driver(&skyalert);
+	ASSERT_EQ_INT(opens, closes);
+	ASSERT_EQ_INT(0, invalid_io);
+}
+
+int main(void) {
+	alarm(40);
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	const indigo_test_case tests[] = {
+		{ "record units, firmware and reconnect", record_fields_and_lifecycle },
+		{ "open/write and every record read failure", partial_record_and_error_recovery }
+	};
+	return indigo_run_tests("SkyAlert fake transport", tests, ARRAY_SIZE(tests));
+}

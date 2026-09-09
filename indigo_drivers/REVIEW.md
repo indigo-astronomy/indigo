@@ -13,30 +13,6 @@ Portable INDIGO drivers and agents under `indigo_drivers/`, including generated 
 
 For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor subtrees named `externals` or `bin_externals` were intentionally excluded. The pass covered 490 C-family source/header files in 136 remaining top-level driver and agent directories.
 
-## Focused Review Notes
-
-2026-09-07 DRV-055–058 implemented in wheel_asi.driver and regenerated: required initialization reads/slot capacity checked before use, failed initialization closes the SDK handle, motion/calibration polling reports read errors without consuming outputs, no-op calibration requests complete, disconnect resets calibration state, and reconnect polls an already-moving wheel. An idle wheel at an unexpected target reports ALERT instead of polling forever. Five permanent public-bus SDK-stub test groups passed, including failed initialization/oversized SDK slot count, polling/calibration errors and recovery, no-op calibration, interrupted calibration/reconnect, normal motion and hot-plug retries. Fresh x86_64/arm64 production build/link passed. Generator unchanged; no hardware test or folder baseline advancement.
-
-2026-09-07 focused cross-review: compared current wheel_asi definition and generated code with focuser_asi findings DRV-039 through DRV-050 (DRV-051 already fixed). A temporary public-bus SDK-stub harness reproduced successful connection despite failed position read, motion polling incrementing stale cached state to slot 5/OK without any successful read, calibration announcing slot 1/OK after failed read, and START=false leaving calibration BUSY across disconnect/reconnect. Recorded DRV-055 through DRV-058. EFWGetProperty failure and use of uninitialized info.slotNum were checked statically, not exercised with uninitialized counts. SDK documents -1 for a moving wheel; successful -1 readings must remain BUSY, not be interpreted as slot 0. CONFIG delegates to the base wheel driver, motion code is inline with finalizer ownership, calibration-command failure resets its switch, and SDK reservations are already fixed. Focuser temperature/compensation/backlash/abort-specific findings do not directly apply. Temporary harness removed; no production changes or folder baseline advancement.
-
-2026-09-07 focused SDK/HIDAPI inventory requested by the user: scanned symbol/string evidence in 163 checked-in SDK libraries, including 32 macOS libraries. `nm` confirms additional embedded HIDAPI definitions in libCAA.a (rotator_asi), libUSB2ST4Conv.a (guider_asi), and libPlayerOnePW.dylib (wheel_playerone). macOS x86_64 disassembly (`otool -arch x86_64 -tvV`) shows a persistent `_hid_mgr`, initialized once and scheduled on `CFRunLoopGetCurrent()`; enumeration pumps the calling thread's run loop and reuses that manager. Their hot-plug callbacks dispatch through indigo_set_timer, whose current implementation creates a new callback thread per firing (indigo_libs/indigo_timer.c:307). Recorded potential stale enumeration findings DRV-052 through DRV-054; hardware reproduction remains outstanding. This is distinct from the early connected_ids reservation bug DRV-051. Astroasis focuser/wheel, FCUSB, GPUSB, DSUSB and Atik wheel macOS SDK archives reference external HIDAPI symbols rather than defining their own implementation; repository HIDAPI creates a fresh manager per enumeration (indigo_libs/externals/hidapi/mac/hid.c:688). No comparable embedded-symbol evidence in the other scanned libraries; absence of symbols/strings does not exclude stripped or renamed implementations. No SDK/driver changes and no folder baseline advancement.
-
-2026-09-07 DRV-051 fix: wheel_asi now checks SDK IDs against the generated attached-device array. Removed connected_ids reservations, their initialization, and the now-unnecessary sdk.unplug block. The default five-device capacity and generator are unchanged. A public-driver SDK-stub regression covers failed attach retry and capacity exhaustion followed by slot release and retry. Universal x86_64/arm64 production compile/link passed. The regression fails on the original driver at failed-attach retry and passes with the fix. No physical EFW hardware was tested; folder baseline unchanged.
-
-2026-09-07 focused follow-up on the two early returns in focuser_motion_ready: disconnected requests now publish ALERT for POSITION/STEPS, and the active-polling branch explicitly republishes BUSY without terminating the existing motion. The supplied review overstated reconnect persistence: indigo_focuser_change_property resets POSITION/STEPS to OK during disconnect (indigo_libs/indigo_focuser_driver.c:184). The existing finalizer owns completion of active motion; assigning a terminal state merely because another request is rejected would be incorrect.
-
-2026-09-07 merged follow-up with the supplied Claude review: fixed DRV-041 through DRV-047 and recorded/fixed DRV-048 through DRV-050 below. Motion polling terminates on read error; new motion requests verify SDK state, and automatic compensation can recover on subsequent valid readings. Abort resets its switch on all paths and waits for confirmed stop. Initialization failure closes the single-device SDK handle explicitly because the current generator does not do that on on_connect failure. Limits/readback use confirmed values, and SDK attach eligibility comes from the generated devices array instead of early ID reservations. The driver uses the generator default capacity of five devices as requested; no custom sdk.unplug block is needed after removing the ID reservations. Generator source unchanged. Universal production build/link and six public-bus SDK-stub regression groups passed. No folder-wide baseline advancement.
-
-2026-09-07 follow-up logical review through `109506ce0`, scoped to the current focuser_asi definition/generated C and relevant SDK/bus/queue contracts. Recorded DRV-041 through DRV-047. A temporary SDK-stub harness reproduced stale motion limits, abort completion without stop confirmation, automatic compensation remaining blocked after a transient move failure, and a removed-device temperature error becoming IDLE while discarding the compensation baseline. Remaining findings are static. No production code or generator changes; folder baseline unchanged.
-
-2026-09-07 focused `focuser_asi` refactoring verification against `wheel_asi`: reviewed the driver definition, generated C/header/main, and incremental changes from the recorded baseline through `a35e4ce49483ac2f3cba7b69c20372c2f93a63f3` plus working-tree changes. The SDK hot-plug/open/close structure follows the wheel pattern. Regenerating in a temporary directory reproduced all three generated files byte-for-byte. Fresh x86_64 and arm64 compilation and linking of the archive, dynamic library and standalone executable with `Makefile.drv` passed; vendor SDK deployment-target warnings remain. No EAF hardware or dedicated EAF simulator test was run. Recorded DRV-039 and DRV-040; did not advance the folder baseline. The working-tree `_finalizer` comments fix premature completion for six properties, but omit both motion properties. That verification pass left production sources unchanged. In the subsequent user-requested implementation, all eight property callback wrappers were removed and their SDK operations moved directly into on_change. Motion handlers now keep both motion properties BUSY until the polling finalizer confirms stop, reject overlapping moves, validate targets, and publish SDK failures; abort failure retains polling. EAF_BEEP persistence now uses generator metadata and CONFIG falls through to the base driver. Fresh universal build/link and a temporary SDK-stub behavioral harness passed; DRV-039 and DRV-040 are closed in the working tree. Hardware validation remains outstanding.
-
-2026-08-31 hot-plug SDK serialization pass: reviewed active `indigo_drivers/` hot-plug implementations using `libusb_hotplug_register_callback()` or vendor hot-plug callbacks, excluding `externals`, `bin_externals`, and disabled `#ifdef HOTPLUG` QHY code. This was a focused static review for races where a hot-plug enumeration/open/close path serializes access with a driver-global mutex but the normal connect/open/close path calls the same vendor SDK without that mutex. This pass did not advance `Last reviewed commit`.
-
-2026-09-01 deep focused `mount_lx200` pass: reviewed the incremental production diff, the new host-side LX200 simulator, the LX200/OnStep integration test, and the hand-written multi-device connection lifecycle for mount, guider, focuser, and AUX logical devices. This pass did not advance `Last reviewed commit`.
-
-2026-09-01 deep focused `mount_synscan` pass: reviewed the incremental production diff, the refactored host-side SynScan simulator, the SynScan mount/guider integration test, UDP/serial protocol framing, and the hand-written shared mount/guider connection and pulse-guiding lifecycle. This pass did not advance `Last reviewed commit`.
-
 ## Coverage Manifest
 
 | Group | Directories |
@@ -113,25 +89,34 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-056 | Medium | `wheel_asi/indigo_wheel_asi.driver:160` | Related to DRV-048/046: move finalizer ignores EFWGetPosition failure, increments cached current_slot, and compares this fabricated position to the target. Repeated failed reads can falsely finish with OK or continue polling indefinitely if the target is already below the stale value. Reproduced fabricated slot 5/OK with all reads failing. Use a local SDK result, preserve confirmed position on failure, and terminate/report ALERT. | Closed (fixed and verified, 2026-09-07) |
 | DRV-057 | Medium | `wheel_asi/indigo_wheel_asi.driver:176` | Related to DRV-041/045/046: calibration finalizer initializes pos=0 and ignores EFWGetPosition error. An error without an output write becomes slot 1 and successful Calibration finished, even though physical completion was never confirmed. Reproduced with EFW_ERROR_REMOVED. Check SDK status before interpreting -1/motion or publishing completion; publish ALERT on read failure. | Closed (fixed and verified, 2026-09-07) |
 | DRV-058 | Medium | `wheel_asi/indigo_wheel_asi.driver:248`; `wheel_asi/indigo_wheel_asi.c:212` | Incomplete asynchronous calibration completion: START=false is accepted and dispatch sets X_CALIBRATE BUSY, but handler neither updates it nor schedules completion. Disconnect during active calibration also cancels its finalizer without resetting X_CALIBRATE state/switch; reconnect redefines that same BUSY property and further changes are blocked. START=false remaining BUSY across reconnect reproduced; interrupted-calibration variant checked statically. Complete no-op requests and reset interrupted calibration state during lifecycle cleanup. | Closed (fixed and verified, 2026-09-07) |
-
 | DRV-059 | Medium | `ccd_touptek/indigo_ccd_touptek.c:1151`, `ccd_touptek/indigo_ccd_touptek.c:1911`, `ccd_touptek/indigo_ccd_touptek.c:2341` | Existing disconnect close guards skip Close for a CCD without a guider, and for standalone wheel/focuser devices whose private camera pointer refers to themselves: their own gp_bits remains 1 until after the guard. These paths can retain the SDK handle/global lock after ordinary disconnect. | Closed (fixed in step 2; SDK replacement validation, hardware pending) |
 | DRV-060 | Medium | `ccd_touptek/indigo_ccd_touptek.c:1789`, `ccd_touptek/indigo_ccd_touptek.c:1894` | Wheel calibration and connection initialization wait in unbounded one-second polling loops while SDK position is -1. Moving these bodies unchanged onto a persistent lifecycle/device queue can prevent queued disconnect/removal from progressing. Preserve the operation sequence but provide cancellable delayed completion when migrating these paths. | Closed (fixed in step 2; SDK replacement validation, hardware pending) |
+| DRV-061 | High | `guider_cgusbst4/indigo_guider_cgusbst4.driver` | RA completion cleared WEST twice and left EAST nonzero; completion helpers lacked `_finalizer`, causing the generated OK epilogue to prematurely finish pulses. | Closed (fixed) |
+| DRV-062 | Medium | `aux_geoptikflat/indigo_aux_geoptikflat.driver` | Successful ping followed by failed firmware query leaked the serial handle. | Closed (fixed) |
+| DRV-063 | Medium | `aux_rts/indigo_aux_rts.driver` | RTS control errors were ignored and exposures reported success when the output failed. | Closed (fixed) |
+| DRV-064 | Withdrawn | `wheel_manual/indigo_wheel_manual.driver` | The proposed NaN/fractional/range checks duplicated the framework input contract. | Closed (withdrawn) |
+| DRV-065 | High | `focuser_astromechanics/indigo_focuser_astromechanics.driver` | Motion readback overwrote the requested target before comparing it, so any first reply was treated as completion. | Closed (fixed) |
+| DRV-066 | High | `focuser_usbv3/indigo_focuser_usbv3.driver` | Both move handlers blocked the queue in unbounded read loops and ignored command/read failures. | Closed (fixed) |
+| DRV-067 | High | `mount_synscan/indigo_mount_synscan.driver` | An already-at-target slew skipped stopping an actively tracking axis, so HOME could wait indefinitely. | Closed (fixed) |
+| DRV-068 | High | `aux_dsusb/indigo_aux_dsusb.driver` | Start/focus/stop errors were ignored, focus blocked the queue and the configuration switch had no change handler. | Closed (fixed) |
+| DRV-069 | High | `focuser_fcusb/indigo_focuser_fcusb.driver` | Timed motion blocked the queue and ignored SDK errors; frequency changes had no handler. | Closed (fixed) |
+| DRV-070 | High | `guider_gpusb/indigo_guider_gpusb.driver` | RA completion cleared WEST twice; missing finalizer convention caused premature OK and SDK failures were ignored. | Closed (fixed) |
+| DRV-071 | High | `wheel_sx/indigo_wheel_sx.driver`, `wheel_atik/indigo_wheel_atik.driver` | Move/poll errors were ignored and motion could poll indefinitely; invalid slot/count readback was accepted. | Closed (fixed) |
+| DRV-072 | High | `aux_upb/indigo_aux_upb.driver` | A GOTO published its target as measured position before motor readback; abort consequently reported the unvisited target. | Closed (fixed) |
+| DRV-073 | Medium | `rotator_simulator/indigo_rotator_simulator.driver` | Disconnect canceled the timer but retained an unfinished target; the generated reconnect timer resumed the old move. | Closed (fixed) |
+| DRV-074 | High | `polaralign_simulator/indigo_polaralign_simulator.c` | Offset changes never assigned the private motion targets, so only zero/no-op tests passed. | Closed (fixed) |
+| DRV-075 | High | `dome_simulator/indigo_dome_simulator.driver` | Legacy untracked motion timers survived generated queue teardown; shutter handling blocked the queue for six seconds. | Closed (fixed) |
+| DRV-076 | High | `gps_nmea/indigo_gps_nmea.driver` | NMEA parsing ran on an uninitialized buffer after read failure, unbounded comma splitting could overrun the token array and short known sentences dereferenced missing fields. | Closed (fixed) |
+| DRV-077 | Medium | `mount_synscan/indigo_mount_synscan.driver` | PPEC training used untracked timers outside the generated queue, allowing post-disconnect transport access. | Closed (fixed) |
+| DRV-078 | High | `mount_simulator/indigo_mount_simulator.c` | Mount disconnect did not cancel the manual-motion timer; guider timers were canceled on connect instead of disconnect. | Closed (fixed) |
+| DRV-079 | High | `ao_sx/indigo_ao_sx.driver` | Guider RA used AO property macros and omitted the 10 ms duration conversion. | Closed (fixed) |
+| DRV-080 | High | `wheel_indigo/indigo_wheel_indigo.driver` | Slot motion slept/polled inside the handler for up to 30 seconds, blocking queued disconnect. | Closed (fixed) |
+| DRV-081 | High | `aux_sqm/indigo_aux_sqm.driver` | A truncated `r` sensor record passes NULL from `strtok_r` into `indigo_atod` and crashes (fake transport exit 139). | Closed (fixed) |
+| DRV-082 | High | `aux_skyalert/indigo_aux_skyalert.driver` | Negative read results were treated as success and a partial record still connected. | Closed (fixed) |
+| DRV-083 | Medium | `wheel_sx`, `wheel_atik`, `wheel_indigo`, `aux_dsusb`, `focuser_fcusb`, `aux_upb`, `dome_simulator`, `focuser_astromechanics` `.driver` files | User review identified duplicated framework BUSY/input guards and redundant generator-owned updates. | Closed (fixed) |
+| DRV-084 | High | `guider_gpusb/indigo_guider_gpusb.driver` | Replacement canceled the old stop before the SDK accepted the new pulse; failure could leave a relay on. | Closed (fixed) |
 
 ## Finding Summaries
-
-### DRV-059 and DRV-060 — step 2 resolution (2026-09-08)
-
-DRV-059: corrected the CCD-only and standalone wheel/focuser Close guards without replacing shared CCD/guider `gp_bits` accounting. Removal now clears the freed guider pointer before CCD detach. The SDK replacement lifecycle test checks balanced Open/Close and global-lock ownership for both CCD/guider orders and each standalone class.
-
-DRV-060: wheel connection and calibration now use handler + finalizer pairs with `indigo_execute_handler_in()` on the device queue. The original SDK commands and one-second completion interval remain; no handler sleeps or waits in a loop. Tests exercise another device connecting while wheel initialization is unfinished, cancellation of an active calibration, shutdown rejection/resumption and unplug during wheel initialization. Physical SDK/device behavior remains pending. Folder review baseline is unchanged.
-
-### DRV-059 and DRV-060 — ToupTek step 1 baseline
-
-Recorded 2026-09-08 at `30e667c8cd0b57c0aa0feb285ae79a651ce3dd2c` during the requested partial-refactor inventory. This is a focused baseline investigation, not a full incremental folder review; the folder's Last reviewed commit is unchanged. No production fixes or runtime reproduction were performed.
-
-For DRV-059, discovery assigns `private_data->camera = camera` for standalone wheel/focuser devices (2828, 2856), while their connection callbacks set their own `gp_bits = 1`. Disconnect tests `PRIVATE_DATA->camera->gp_bits == 0` before resetting that same marker, skipping Close on the first successful disconnect. CCD-only disconnect separately requires a non-NULL guider in its close guard. Keep this distinct from the already fixed Stop(NULL) issue DRV-030. Address only the narrow ownership correction needed for safe lifecycle teardown; do not replace the whole connection model as incidental cleanup.
-
-For DRV-060, both loops can continue indefinitely if the SDK keeps returning the moving sentinel; the existing code does not check removal between iterations. This is especially relevant when one shared driver queue will own connections for all physical devices. The migration must avoid blocking that queue indefinitely without changing the requested slot/calibration operation or property completion semantics.
 
 ### DRV-001 (Closed — fixed)
 
@@ -607,6 +592,278 @@ four connect-failure and disconnect paths use `if (--PRIVATE_DATA->device_count 
 closing. `asi_close()` is now always called with `device->master_device` for a correct port
 name in the disconnect log.
 
+### DRV-039 (Closed — fixed)
+
+POSITION and STEPS on_change blocks merely queue another callback without a `_finalizer` marker, so generated handlers set and publish OK before issuing EAFMove. Neither callback restores BUSY, and the old dispatch logic that marked both motion properties BUSY and rejected overlapping absolute moves is gone. Clients can treat a still-moving focuser as finished; automatic compensation can also pass its position-state guard during a relative move. Move command setup into on_change, preserve both motion states and validation, and let the actual motion finalizer publish completion, as wheel_asi does.
+
+Resolution: Moved SDK operations from callback wrappers directly into `on_change`. Both motion properties remain BUSY until the motion finalizer confirms completion; command failures are published and abort failure retains polling. The temporary SDK-stub behavioral harness and universal production build passed.
+
+2026-09-07 focused cross-review: compared current wheel_asi definition and generated code with focuser_asi findings DRV-039 through DRV-050 (DRV-051 already fixed). A temporary public-bus SDK-stub harness reproduced successful connection despite failed position read, motion polling incrementing stale cached state to slot 5/OK without any successful read, calibration announcing slot 1/OK after failed read, and START=false leaving calibration BUSY across disconnect/reconnect. Recorded DRV-055 through DRV-058. EFWGetProperty failure and use of uninitialized info.slotNum were checked statically, not exercised with uninitialized counts. SDK documents -1 for a moving wheel; successful -1 readings must remain BUSY, not be interpreted as slot 0. CONFIG delegates to the base wheel driver, motion code is inline with finalizer ownership, calibration-command failure resets its switch, and SDK reservations are already fixed. Focuser temperature/compensation/backlash/abort-specific findings do not directly apply. Temporary harness removed; no production changes or folder baseline advancement.
+
+2026-09-07 focused `focuser_asi` refactoring verification against `wheel_asi`: reviewed the driver definition, generated C/header/main, and incremental changes from the recorded baseline through `a35e4ce49483ac2f3cba7b69c20372c2f93a63f3` plus working-tree changes. The SDK hot-plug/open/close structure follows the wheel pattern. Regenerating in a temporary directory reproduced all three generated files byte-for-byte. Fresh x86_64 and arm64 compilation and linking of the archive, dynamic library and standalone executable with `Makefile.drv` passed; vendor SDK deployment-target warnings remain. No EAF hardware or dedicated EAF simulator test was run. Recorded DRV-039 and DRV-040; did not advance the folder baseline. The working-tree `_finalizer` comments fix premature completion for six properties, but omit both motion properties. That verification pass left production sources unchanged. In the subsequent user-requested implementation, all eight property callback wrappers were removed and their SDK operations moved directly into on_change. Motion handlers now keep both motion properties BUSY until the polling finalizer confirms stop, reject overlapping moves, validate targets, and publish SDK failures; abort failure retains polling. EAF_BEEP persistence now uses generator metadata and CONFIG falls through to the base driver. Fresh universal build/link and a temporary SDK-stub behavioral harness passed; DRV-039 and DRV-040 are closed in the working tree. Hardware validation remains outstanding.
+
+2026-09-07 follow-up: on the two early returns in focuser_motion_ready: disconnected requests now publish ALERT for POSITION/STEPS, and the active-polling branch explicitly republishes BUSY without terminating the existing motion. The supplied review overstated reconnect persistence: indigo_focuser_change_property resets POSITION/STEPS to OK during disconnect (indigo_libs/indigo_focuser_driver.c:184). The existing finalizer owns completion of active motion; assigning a terminal state merely because another request is rejected would be incorrect.
+
+### DRV-040 (Closed — fixed)
+
+The inherited CONFIG block intercepts every configuration request and returns before indigo_focuser_change_property. It only saves EAF_BEEP: LOAD/REMOVE become no-ops, standard focuser properties are not saved, and base-driver save-file finalization and switch reset are skipped despite an OK update. Use persistent metadata for EAF_BEEP and base CONFIG handling, or preserve synchronous pass-through to the base handler.
+
+Resolution: Marked EAF_BEEP persistent in generator metadata and removed the CONFIG interception so requests reach the base focuser handler. The SDK-stub behavioral harness and universal build passed.
+
+### DRV-041 (Closed — fixed)
+
+After EAFStop succeeds, abort cancels polling, clears moving and publishes OK without EAFIsMoving confirmation. The SDK distinguishes EAFStop from EAFStopAndWait, and documents that hand-controller movement cannot be stopped by EAFStop. Keep completion polling until the motor is confirmed stopped; do not accept new motion based only on stop-command success.
+
+Resolution: Abort now retains completion polling until the SDK confirms the motor has stopped. New motion checks SDK state before proceeding. Public-bus SDK-stub regressions passed.
+
+2026-09-07 merged follow-up with the supplied Claude review: fixed DRV-041 through DRV-047 and recorded/fixed DRV-048 through DRV-050 below. Motion polling terminates on read error; new motion requests verify SDK state, and automatic compensation can recover on subsequent valid readings. Abort resets its switch on all paths and waits for confirmed stop. Initialization failure closes the single-device SDK handle explicitly because the current generator does not do that on on_connect failure. Limits/readback use confirmed values, and SDK attach eligibility comes from the generated devices array instead of early ID reservations. The driver uses the generator default capacity of five devices as requested; no custom sdk.unplug block is needed after removing the ID reservations. Generator source unchanged. Universal production build/link and six public-bus SDK-stub regression groups passed. No folder-wide baseline advancement.
+
+2026-09-07 follow-up logical review through `109506ce0`, scoped to the current focuser_asi definition/generated C and relevant SDK/bus/queue contracts. Recorded DRV-041 through DRV-047. A temporary SDK-stub harness reproduced stale motion limits, abort completion without stop confirmation, automatic compensation remaining blocked after a transient move failure, and a removed-device temperature error becoming IDLE while discarding the compensation baseline. Remaining findings are static. No production code or generator changes; folder baseline unchanged.
+
+### DRV-042 (Closed — fixed)
+
+A failed compensation EAFMove sets position ALERT and returns without polling/recovery. Every later compensation call requires position OK, so one transient error disables further automatic attempts until another action clears the state. Distinguish recoverable command failure from an active move and define a recovery path.
+
+Resolution: Automatic compensation can retry after subsequent valid readings instead of remaining disabled by a transient move failure. Public-bus SDK-stub regressions passed.
+
+### DRV-043 (Closed — fixed)
+
+FOCUSER_LIMITS updates the hardware maximum and its own value, but POSITION/STEPS maximums remain the attach-time info.MaxStep. Relative/automatic clamping and absolute validation use those stale maximums. A lowered limit still permits commands the SDK rejects; a raised limit can remain inaccessible. Refresh movement ranges from the effective hardware limit on connect and after setting it.
+
+Resolution: Movement ranges now follow the effective hardware maximum on connection and after a limit change. Public-bus SDK-stub regressions passed.
+
+### DRV-044 (Closed — fixed)
+
+Connect-time required reads only log failures and never clear connection_result. The generated connection handler therefore reports success with stale/zero position or maximum data after EAFOpen succeeded but initialization failed. EAFStepRange failure explicitly overwrites the limit range with zero. Fail or explicitly degrade initialization rather than publishing valid-looking data.
+
+Resolution: Required initialization read failures now fail connection, and the single-device SDK handle is explicitly closed on failed initialization. Public-bus SDK-stub regressions passed.
+
+### DRV-045 (Closed — fixed)
+
+temp starts at -273, so SDK errors that do not write the output, including EAF_ERROR_REMOVED, are reported as an absent sensor/IDLE instead of ALERT. The same failure resets prev_temp even in AUTO, discarding uncompensated temperature change when readings recover. Interpret SDK status before its output and preserve the last valid compensation baseline on transient errors.
+
+Resolution: Temperature processing now checks the SDK status before reading its output and preserves the compensation baseline on transient errors. Public-bus SDK-stub regressions passed.
+
+### DRV-046 (Closed — fixed)
+
+After successful SetMaxStep/SetBacklash, a failed GetMaxStep/GetBacklash only logs an error. The generated handler leaves the property OK and publishes the requested cached value as if readback succeeded. Mark readback failure ALERT and preserve a distinction between requested and confirmed settings.
+
+Resolution: Failed settings readback now reports ALERT instead of presenting the requested setting as confirmed. Public-bus SDK-stub regressions passed.
+
+### DRV-047 (Closed — fixed)
+
+SDK ID reservation occurs before generated attach finds a free slot or succeeds. Failure frees private_data without clearing connected_ids, and unplug cannot clear it because no devices entry exists. The rejected focuser stays skipped on replug. The generated capacity is five rather than the ten listed in REFACTOR.md, making this reachable with a sixth EAF. Fixed by detecting IDs among attached devices; the generator default capacity of five is retained as requested.
+
+Resolution: Removed early SDK ID reservations and detect duplicate IDs among successfully attached devices. The generator default capacity of five is retained; failed attach no longer reserves an unattached ID. Public-bus SDK-stub regressions passed.
+
+### DRV-048 (Closed — fixed)
+
+Supplied Claude finding: polling kept rescheduling every 0.5 seconds on SDK errors while the cached moving flag blocked later requests. Error completion now stops the loop and clears the polling flag; SDK preflight prevents treating that flag as proof the motor stopped.
+
+Resolution: Motion read errors terminate polling and clear the polling flag. New requests check SDK state so clearing that flag does not claim the physical motor stopped. Public-bus SDK-stub regressions passed.
+
+### DRV-049 (Closed — fixed)
+
+Supplied Claude finding: EAFStop failure returned before resetting the momentary abort switch. The switch now resets before the SDK operation on both paths.
+
+Resolution: Reset the momentary abort switch before the SDK operation, covering both success and failure. Public-bus SDK-stub regressions passed.
+
+### DRV-050 (Closed — fixed)
+
+Public-bus regression testing found that coefficient/threshold changes had no driver branch and the base focuser handler did not accept them. Added the generator's empty on_change block so requested compensation settings are copied and acknowledged.
+
+Resolution: Added an empty `on_change` block to accept and acknowledge compensation coefficient and threshold changes through the generator. Public-bus SDK-stub regressions passed.
+
+### DRV-051 (Closed — fixed)
+
+Focused follow-up confirms the same stale SDK ID reservation as DRV-047: connected_ids is set in sdk.plug before generated attach finds a slot or succeeds. Failed attach/capacity exhaustion frees private_data without releasing the reservation; sdk.unplug cannot clear it because no attached device entry exists. Replug continues skipping the ID until driver reinitialization. Use the actually attached devices to detect duplicate SDK IDs, as in the corrected focuser_asi.
+
+Resolution: Removed `connected_ids` reservations, their initialization and the obsolete `sdk.unplug` block. Duplicate detection uses attached devices. The failed-attach retry and capacity exhaustion/release regression failed before the fix and passed afterward; the universal production build passed.
+
+2026-09-07 focused SDK/HIDAPI inventory requested by the user: scanned symbol/string evidence in 163 checked-in SDK libraries, including 32 macOS libraries. `nm` confirms additional embedded HIDAPI definitions in libCAA.a (rotator_asi), libUSB2ST4Conv.a (guider_asi), and libPlayerOnePW.dylib (wheel_playerone). macOS x86_64 disassembly (`otool -arch x86_64 -tvV`) shows a persistent `_hid_mgr`, initialized once and scheduled on `CFRunLoopGetCurrent()`; enumeration pumps the calling thread's run loop and reuses that manager. Their hot-plug callbacks dispatch through indigo_set_timer, whose current implementation creates a new callback thread per firing (indigo_libs/indigo_timer.c:307). Recorded potential stale enumeration findings DRV-052 through DRV-054; hardware reproduction remains outstanding. This is distinct from the early connected_ids reservation bug DRV-051. Astroasis focuser/wheel, FCUSB, GPUSB, DSUSB and Atik wheel macOS SDK archives reference external HIDAPI symbols rather than defining their own implementation; repository HIDAPI creates a fresh manager per enumeration (indigo_libs/externals/hidapi/mac/hid.c:688). No comparable embedded-symbol evidence in the other scanned libraries; absence of symbols/strings does not exclude stripped or renamed implementations. No SDK/driver changes and no folder baseline advancement.
+
+2026-09-07 DRV-051 fix: wheel_asi now checks SDK IDs against the generated attached-device array. Removed connected_ids reservations, their initialization, and the now-unnecessary sdk.unplug block. The default five-device capacity and generator are unchanged. A public-driver SDK-stub regression covers failed attach retry and capacity exhaustion followed by slot release and retry. Universal x86_64/arm64 production compile/link passed. The regression fails on the original driver at failed-attach retry and passes with the fix. No physical EFW hardware was tested; folder baseline unchanged.
+
+### DRV-055 (Closed — fixed)
+
+Same initialization problem as DRV-044: EFWGetProperty status is ignored and uninitialized info.slotNum is copied to property counts/max; EFWGetPosition status is also ignored and connection_result remains true. Invalid counts can exceed allocated item arrays. Failed position read reporting successful connection reproduced; uninitialized counts checked statically. Honor required SDK read results before consuming outputs and close/release the SDK handle when initialization fails.
+
+Resolution: Check required SDK initialization reads and slot capacity before consuming outputs, and close the SDK handle on failed initialization. The permanent SDK-stub suite covers initialization errors and oversized slot counts; the universal production build passed.
+
+2026-09-07 DRV-055–058 implemented in wheel_asi.driver and regenerated: required initialization reads/slot capacity checked before use, failed initialization closes the SDK handle, motion/calibration polling reports read errors without consuming outputs, no-op calibration requests complete, disconnect resets calibration state, and reconnect polls an already-moving wheel. An idle wheel at an unexpected target reports ALERT instead of polling forever. Five permanent public-bus SDK-stub test groups passed, including failed initialization/oversized SDK slot count, polling/calibration errors and recovery, no-op calibration, interrupted calibration/reconnect, normal motion and hot-plug retries. Fresh x86_64/arm64 production build/link passed. Generator unchanged; no hardware test or folder baseline advancement.
+
+### DRV-056 (Closed — fixed)
+
+Related to DRV-048/046: move finalizer ignores EFWGetPosition failure, increments cached current_slot, and compares this fabricated position to the target. Repeated failed reads can falsely finish with OK or continue polling indefinitely if the target is already below the stale value. Reproduced fabricated slot 5/OK with all reads failing. Use a local SDK result, preserve confirmed position on failure, and terminate/report ALERT.
+
+Resolution: Motion polling now checks SDK status and uses confirmed position instead of incrementing cached state. Read errors terminate with ALERT; moving sentinel -1 stays BUSY and an idle wheel at an unexpected position reports ALERT. The permanent SDK-stub suite and universal production build passed.
+
+### DRV-057 (Closed — fixed)
+
+Related to DRV-041/045/046: calibration finalizer initializes pos=0 and ignores EFWGetPosition error. An error without an output write becomes slot 1 and successful Calibration finished, even though physical completion was never confirmed. Reproduced with EFW_ERROR_REMOVED. Check SDK status before interpreting -1/motion or publishing completion; publish ALERT on read failure.
+
+Resolution: Calibration polling checks SDK status before interpreting the position or moving sentinel. Read failure reports ALERT instead of fabricating successful slot 1 completion. The permanent SDK-stub suite and universal production build passed.
+
+### DRV-058 (Closed — fixed)
+
+Incomplete asynchronous calibration completion: START=false is accepted and dispatch sets X_CALIBRATE BUSY, but handler neither updates it nor schedules completion. Disconnect during active calibration also cancels its finalizer without resetting X_CALIBRATE state/switch; reconnect redefines that same BUSY property and further changes are blocked. START=false remaining BUSY across reconnect reproduced; interrupted-calibration variant checked statically. Complete no-op requests and reset interrupted calibration state during lifecycle cleanup.
+
+Resolution: No-op calibration requests complete, disconnect resets the calibration state and switch, and reconnect polls an already-moving wheel. The permanent SDK-stub suite covers no-op and interrupted calibration/reconnect; the universal production build passed.
+
+### DRV-059 (Closed — fixed)
+
+Existing disconnect close guards skip Close for a CCD without a guider, and for standalone wheel/focuser devices whose private camera pointer refers to themselves: their own gp_bits remains 1 until after the guard. These paths can retain the SDK handle/global lock after ordinary disconnect.
+
+Resolution: Corrected the CCD-only and standalone wheel/focuser Close guards while retaining shared CCD/guider `gp_bits` accounting. Removal clears the freed guider pointer before CCD detach. The SDK replacement lifecycle test checks balanced Open/Close and global-lock ownership for both CCD/guider orders and each standalone class. Physical validation remains pending.
+
+### DRV-060 (Closed — fixed)
+
+Wheel calibration and connection initialization wait in unbounded one-second polling loops while SDK position is -1. Moving these bodies unchanged onto a persistent lifecycle/device queue can prevent queued disconnect/removal from progressing. Preserve the operation sequence but provide cancellable delayed completion when migrating these paths.
+
+Resolution: Replaced unbounded initialization and calibration loops with handler/finalizer pairs scheduled through `indigo_execute_handler_in()` on the device queue. SDK commands and the one-second polling interval are preserved. SDK replacement tests cover another device connecting during initialization, calibration cancellation, rejected/resumed shutdown and unplug during initialization. Physical validation remains pending.
+
+### DRV-061 (Closed — fixed)
+
+RA completion cleared WEST twice and left EAST nonzero; completion helpers lacked `_finalizer`, causing the generated OK epilogue to prematurely finish pulses. Corrected names/axis reset, cancellation of replaced completions and transport error propagation; four-direction transport tests pass.
+
+### DRV-062 (Closed — fixed)
+
+Successful ping followed by failed firmware query leaked the serial handle. The handle is now closed on either handshake failure.
+
+Validation: test passes).
+
+### DRV-063 (Closed — fixed)
+
+RTS control errors were ignored and exposures reported success when the output failed. The driver now propagates start/stop and abort errors and allows abort to retry a failed stop even after exposure becomes ALERT. Fake RTS failure/recovery regressions validate these paths.
+
+### DRV-064 (Closed — withdrawn)
+
+The proposed NaN/fractional/range checks duplicated the framework input contract. Removed the checks, associated driver tests and unnecessary value-preservation scaffolding following user review.
+
+Validation: manual selection remains covered.
+
+### DRV-065 (Closed — fixed)
+
+Motion readback overwrote the requested target before comparing it, so any first reply was treated as completion. Replaced blocking loops with bounded queue finalizers, separate measured/target values and validated connection/poll readback.
+
+Validation: measured progress, abort where supported and pending disconnect tests pass.
+
+### DRV-066 (Closed — fixed)
+
+Both move handlers blocked the queue in unbounded read loops and ignored command/read failures. The handlers now use bounded asynchronous polling, queued abort, failure states and cancelable completion callbacks.
+
+Validation: measured progress, abort where supported and pending disconnect tests pass.
+
+### DRV-067 (Closed — fixed)
+
+An already-at-target slew skipped stopping an actively tracking axis, so HOME could wait indefinitely. The axis is now stopped before reading position and calculating the delta. Full SynScan simulator suite passes, with isolated park storage.
+
+### DRV-068 (Closed — fixed)
+
+Start/focus/stop errors were ignored, focus blocked the queue and the configuration switch had no change handler. Added error propagation, cancellable focus completion, busy-request rejection and configuration acceptance. Fake SDK lifecycle and exposure/error tests pass.
+
+### DRV-069 (Closed — fixed)
+
+Timed motion blocked the queue and ignored SDK errors; frequency changes had no handler. Added cancellable timed completion, queued abort, error propagation and frequency acceptance. Fake SDK lifecycle and motion/error tests pass.
+
+### DRV-070 (Closed — fixed)
+
+RA completion cleared WEST twice; missing finalizer convention caused premature OK and SDK failures were ignored. Corrected finalizers, axis reset, replacement cancellation and failure propagation. Four-direction fake SDK tests pass.
+
+### DRV-071 (Closed — fixed)
+
+Move/poll errors were ignored and motion could poll indefinitely; invalid slot/count readback was accepted. Added checked commands/readback, bounded completion and target/readback separation. Fake USB/SDK lifecycle and move-failure tests pass.
+
+### DRV-072 (Closed — fixed)
+
+A GOTO published its target as measured position before motor readback; abort consequently reported the unvisited target. The target is now separate from measured position. An unknown handshake identity is rejected, and generated connection rollback owns the shared handle after malformed initial status.
+
+Validation: measured motion, abort, unknown identity and malformed focuser status tests pass.
+
+### DRV-073 (Closed — fixed)
+
+Disconnect canceled the timer but retained an unfinished target; the generated reconnect timer resumed the old move. Disconnect now freezes the target at the measured position.
+
+Validation: full rotator simulator suite including pending disconnect/reconnect passes.
+
+### DRV-074 (Closed — fixed)
+
+Offset changes never assigned the private motion targets, so only zero/no-op tests passed. The handler now assigns the motion targets, cancels replaced motion and synchronizes abort/disconnect with the timer without duplicating framework input validation. This simulator has no `.driver` source.
+
+Validation: nonzero dual-axis movement, abort, pending disconnect/reconnect and fresh move tests pass.
+
+### DRV-075 (Closed — fixed)
+
+Legacy untracked motion timers survived generated queue teardown; shutter handling blocked the queue for six seconds. Motion and shutter completion now use cancellable queue callbacks, and disconnect freezes unfinished movement.
+
+Validation: full dome simulator suite including pending rotation/shutter disconnect passes.
+
+### DRV-076 (Closed — fixed)
+
+NMEA parsing ran on an uninitialized buffer after read failure, unbounded comma splitting could overrun the token array and short known sentences dereferenced missing fields. Malformed/checksum-rejected sentences disconnected the receiver. Parsing now bounds and validates framing/numbers before dispatch, ignores malformed input and safely queues disconnect after a read failure. Continuous TIME-priority reads also starved settings; reads now requeue at normal priority so pending commands can run.
+
+Validation: malformed input, constellation/fix transitions, coordinate/time mapping, validity and transport recovery tests pass.
+
+### DRV-077 (Closed — fixed)
+
+PPEC training used untracked timers outside the generated queue, allowing post-disconnect transport access. Training polls now run on the owned queue so disconnect cancels them.
+
+Validation: PEC training disconnect/reconnect test passes.
+
+### DRV-078 (Closed — fixed)
+
+Mount disconnect did not cancel the manual-motion timer; guider timers were canceled on connect instead of disconnect. Reversed replacement pulses retained the opposite value. Disconnect now cancels owned timers synchronously and clears movement. Guide replacement clears the replaced axis before copying a request, and duplicate guider connection requests are ignored. This simulator has no `.driver` source.
+
+Validation: full mount simulator suite plus pending manual-motion/guider disconnect and replacement tests pass.
+
+### DRV-079 (Closed — fixed)
+
+Guider RA used AO property macros and omitted the 10 ms duration conversion. Failed writes/reads reused stale acknowledgements, short firmware replies were accepted and failed initial status did not roll back connection. The handlers now use guider properties, require exact reply lengths, clear response storage and propagate command/reset errors. Failed initial status uses generated cleanup.
+
+Validation: fake command/error/rollback/quantization tests, both shared connection orders and PTY AO/guider checks pass.
+
+### DRV-080 (Closed — fixed)
+
+Slot motion slept/polled inside the handler for up to 30 seconds, blocking queued disconnect. Failed WI initialization still connected. Motion now uses cancelable bounded queue polling with measured/target separation and checked initialization, preserving lost-echo retry semantics. Host wheel movement now depends on elapsed time rather than query count and survives PTY disconnect. Input validation and redundant cancellation removed per user review.
+
+Validation: elapsed motion/disconnect/reconnect and fake initialization/lost-response/timeout recovery groups pass.
+
+### DRV-081 (Closed — fixed)
+
+A truncated `r` sensor record passes NULL from `strtok_r` into `indigo_atod` and crashes (fake transport exit 139). The complete record is now parsed into temporary values before publishing; malformed/failed reads retain previous measurements with ALERT.
+
+Validation: all malformed-record, read/write, measurement conversion and reconnect groups pass.
+
+### DRV-082 (Closed — fixed)
+
+Negative read results were treated as success and a partial record still connected. The complete record is now staged and failed reads are rejected before publishing. Protocol simulator pressure is in Pa while the property is labelled hPa; the readback is now converted.
+
+Validation: fake record/failure/unit tests and PTY suite pass.
+
+### DRV-083 (Closed — fixed)
+
+User review identified duplicated framework BUSY/input guards and redundant generator-owned updates. Removed added same-property BUSY blocks, wheel start cancellation/input guards, UPB outlet-name update, dome coordinate update/direction OK assignments and absolute focuser input clamping. Inspected generated property prologues/epilogues without changing the generator.
+
+Validation: simplified wheel/DSUSB/FCUSB and UPB/dome/focuser regression tests pass.
+
+Reviewed the complete current `.driver` diff and corresponding generated handler blocks for duplicate own-property OK/update code, framework BUSY guards and cancellation. This is a focused working-tree audit, not a new whole-folder commit baseline.
+
+Remaining cancellation has a specific purpose:
+
+- DSUSB abort cancels the pending focus-to-exposure transition and old countdown. Removing cancellation was tested: the SDK reopened the shutter one second after abort. The strengthened test also starts a new exposure after abort to detect an old countdown consuming it. The `_finalizer` reference requires one explicit abort OK initialization and one final update; its error branch now assigns only ALERT.
+- FCUSB abort cancels a delayed stop that otherwise belongs to the old movement. It must not stop a subsequent move.
+- CGUSB/GPUSB guide replacement deliberately accepts replacement while an axis is active; it cancels the old handler/completion. GPUSB now preserves the previous stop on failed replacement.
+- Astromechanics/USBv3 share one motion finalizer between separate POSITION and STEPS request paths. Their individual property macros do not provide a shared guard before both handlers can be queued, so a replacement cancels the prior scheduled poll. These are not the wheel's single-property start case.
+- Hand-written mount/polar-align simulator timer cancellation is tied to abort, replacement or disconnect. Generated disconnect already cancels queued handlers; no extra cancel-all was added to those `.driver` disconnect blocks.
+
+Own-property updates retained outside generated completion are asynchronous start/completion or early-return/custom-message cases. Updates to another property (for example AO reset clearing axis alerts) are not generated by that handler and remain explicit.
+
+### DRV-084 (Closed — fixed)
+
+Replacement canceled the old stop before the SDK accepted the new pulse; failure could leave a relay on. Zero-duration handling also called SDK stop twice (regression observed two calls instead of one). The relay mask is now committed and the old completion canceled only after SDK success. Zero completion is published without a second SDK write.
+
+Validation: fake replacement failure and single-write zero-stop regressions pass.
+
 ## Review Focus
 
 - Driver lifecycle: `INDIGO_DRIVER_INIT`, `INDIGO_DRIVER_SHUTDOWN`, and `INDIGO_DRIVER_INFO`.
@@ -637,6 +894,14 @@ name in the disconnect log.
 | `017ba602857378e4aed489c065c76eacae15924c` | `1e82d6187` + working tree | 2026-09-01 | Deep focused review of `mount_ioptron` generated driver, generator source, simulator, and integration coverage; recorded `DRV-031` as a generator-template lifecycle bug exposed by `mount_ioptron`, plus `DRV-032` and `DRV-033` as iOptron-specific findings. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
 | `017ba602857378e4aed489c065c76eacae15924c` | HEAD + working tree | 2026-09-01 | Deep focused review of `mount_lx200`, including the incremental tracking-mode diff, hand-written shared connection lifecycle, new host-side simulator, and LX200 integration coverage; recorded `DRV-034` and `DRV-035`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
 | `017ba602857378e4aed489c065c76eacae15924c` | HEAD + working tree | 2026-09-01 | Deep focused review of `mount_synscan`, including the incremental driver/protocol diff, refactored host-side simulator, mount/guider integration coverage, UDP endpoint parsing, and pulse-guiding lifecycle; recorded `DRV-036` and `DRV-037`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
+| `017ba602857378e4aed489c065c76eacae15924c` | `a35e4ce49483ac2f3cba7b69c20372c2f93a63f3` + working tree | 2026-09-07 | Focused `focuser_asi` definition/generated-output review and subsequent fixes; recorded and closed `DRV-039` and `DRV-040`. Generator reproduction, universal build and SDK-stub checks recorded in the finding summaries. Folder baseline unchanged. |
+| Not recorded | `109506ce0` + working tree | 2026-09-07 | Focused `focuser_asi` lifecycle, motion, settings and SDK-error review, followed by fixes and six public-bus SDK-stub regression groups; recorded and closed `DRV-041` through `DRV-050`. The exact starting revision was not recorded. Folder baseline unchanged. |
+| Not recorded | working tree | 2026-09-07 | Focused `wheel_asi` SDK-ID reservation review; recorded and closed `DRV-051`. Failed-attach/capacity retry regression and universal build passed. Exact revision bounds were not recorded; folder baseline unchanged. |
+| Not recorded | working tree | 2026-09-07 | Focused bundled SDK/HIDAPI inventory and static run-loop analysis; recorded `DRV-052` through `DRV-054`, which remain open pending reproduction. Exact revision bounds were not recorded; folder baseline unchanged. |
+| Not recorded | working tree | 2026-09-07 | Focused `wheel_asi` comparison with the focuser findings, followed by initialization, motion and calibration fixes; recorded and closed `DRV-055` through `DRV-058`. Five permanent SDK-stub groups and universal build passed. Exact revision bounds were not recorded; folder baseline unchanged. |
+| `30e667c8cd0b57c0aa0feb285ae79a651ce3dd2c` | working tree | 2026-09-08 | Focused ToupTek migration inventory and step 2 resolution of `DRV-059` and `DRV-060`: shared SDK-close ownership and cancellable wheel initialization/calibration. SDK replacement validation recorded in the finding summaries; physical validation remains pending. Folder baseline unchanged. |
 | HEAD / pre-build working tree | working tree after `make all` | 2026-09-08 | Focused generator-impact review: build regenerated 54 additional C files; 51 contain only generated `free()` to `indigo_safe_free()` substitutions, while `aux_dsusb`, `focuser_fcusb`, and `guider_gpusb` also receive the approved libusb lifecycle fixes already generated and tested in `ccd_sx`. Compared every build-induced diff and verified custom annotated blocks unchanged; no header/main or unrelated source changes were produced by the build. Full macOS x86_64/arm64 build passed; warnings concern vendor SDK deployment targets. No additional regression found in this delta. Hardware tests were not repeated. Folder baseline unchanged. |
 | HEAD | working tree | 2026-09-08 | Follow-up on the SDK/HID omission documented as TOOLS-009: all 13 generated hot-plug drivers now contain the shared queue drain before detach (4 libusb, 7 SDK, 2 HID), including ccd_dsi and both HID wheels. Custom driver blocks preserved; this focused pass does not cover hand-written hot-plug implementations or advance the folder baseline. |
 | HEAD | working tree | 2026-09-08 | Focused ToupTek follow-up: aligned hand-written shutdown with the generated SDK lifecycle, including shared queue task mutex, rejection before deregistration, and drain before detach. Preserved SDK-id enumeration and camera/guider/wheel/focuser cleanup. Fake SDK lifecycle, pending-event and hot-plug rollback/removal scenarios passed. Folder baseline unchanged. |
+| `84298256404b3aee1028d29ce152233ffd8afe2e` | working tree | 2026-09-09 | Scoped non-CCD generated-driver and simulator review during hardware-free coverage work; recorded `DRV-061` through `DRV-082`. Fixes and available fake SDK/USB/transport or simulator validation are recorded per finding. `DRV-064` was withdrawn after user review. This covers the named drivers and paths only, not the complete non-CCD inventory; folder baseline unchanged. |
+| `84298256404b3aee1028d29ce152233ffd8afe2e` | working tree | 2026-09-09 | Follow-up over the changed driver definitions and corresponding generated handlers for redundant framework validation, BUSY guards, cancellation and property updates; recorded and closed `DRV-083` and `DRV-084`. Relevant regressions and the complete project build passed. Folder baseline unchanged. |

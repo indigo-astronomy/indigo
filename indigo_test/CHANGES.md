@@ -1,5 +1,176 @@
 # INDIGO Test Suite Changes
 
+## Framework input validation (2026-09-09)
+
+Removed generic finite/fractional/range guards and matching invalid-request cases added to wheel drivers, plus finalizer cancellation made redundant by their BUSY guards. `indigo_property_copy_values()` and `indigo_property_copy_targets()` own numeric input handling. New unit cases cover NaN/both infinities preserving accepted values/targets, valid sibling items, and unchanged finite min/max clamping. Driver tests retain device/SDK reply validation and operational conflicts.
+
+## Driver test coverage status (2026-09-09)
+
+One current inventory for **all driver modules** in `indigo_drivers/`, `indigo_linux_drivers/`, `indigo_mac_drivers/` and `indigo_optional_drivers/`, including agents, CCD/OEM variants, generated and hand-written drivers, and simulator drivers. Each source module has one row, sorted by driver ID; its logical devices belong to that row. Host-side protocol simulators are test boundaries, not additional driver modules. Platform-specific locations are noted in the final column.
+
+The inventory merges the earlier CCD and non-CCD audits and incorporates their recorded follow-up results. Coverage refers to applicable driver-owned scenarios in `DRIVER_TESTING_RULES.md`, not line/branch percentages, framework codecs or hardware acceptance. This documentation update inspected the source inventory and test targets; it did not run tests or complete the pending behavior audits. Passing test groups establish only the scenarios described, not full coverage.
+
+- **Complete**: applicable driver-owned coverage was explicitly recorded as complete, with passing validation.
+- **Partial**: concrete scenarios and successful validation are recorded, but remaining gaps or completion of the full standard audit are still outstanding.
+- **Not audited**: an automated test exists, but its coverage has not been assessed against the complete applicable standard in this audit. This does not mean there are no tests.
+- **No tests**: no dedicated automated driver target was found in `indigo_test/`; coverage is not established.
+- **Shared**: a ToupTek OEM wrapper follows the shared implementation's coverage. Per the agreed scope, no separate OEM audit is required; this does not claim its vendor binary was tested by the fake ToupTek build.
+
+Inventory: 150 modules — 2 Complete, 32 Partial, 55 Not audited, 51 No tests, 10 Shared.
+
+| Driver | Implementation | Automated test boundary | Coverage status | Recorded validation / remaining work |
+| --- | --- | --- | --- | --- |
+| `agent_alpaca` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `agent_astap` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `agent_astrometry` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `agent_auxiliary` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `agent_config` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `agent_guider` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `agent_imager` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `agent_mount` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `agent_scripting` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `agent_snoop` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `agent_solver` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `agent_test` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ao_sx` | Generated | PTY/protocol simulator, Fake transport | Partial | New fake transport reproduces and verifies guider RA mapping, 10 ms units, stale/short reply and initialization rollback fixes. Both connection orders, sibling survival, last-close ownership, guider error recovery and sub-10-ms quantization pass; controlled queue/disconnect, physical limit responses and CENTER/UNJAM profiles also pass. Full applicable-standard audit is not recorded as complete. |
+| `aux_arteskyflat` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `aux_asiair` | Hand-written | None | No tests | `indigo_linux_drivers/`. No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `aux_astromechanics` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `aux_cloudwatcher` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `aux_dragonfly` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `aux_dsusb` | Generated | Fake USB/SDK | Partial | New fake SDK: lifecycle, failed INIT/attach/open, timed exposure, focus abort, stop error and active removal pass; remaining coverage audit in progress |
+| `aux_fbc` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `aux_flatmaster` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `aux_flipflat` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `aux_geoptikflat` | Generated | Fake transport | Partial | New fake transport: handshake rollback, reconnect, brightness/light commands and error recovery pass; remaining audit pending |
+| `aux_joystick` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `aux_mgbox` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `aux_ppb` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `aux_rpio` | Hand-written | None | No tests | `indigo_linux_drivers/`. No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `aux_rts` | Generated | Fake transport | Partial | New fake RTS: duration/start/stop/abort and start failure pass; completion/abort stop failures and explicit retry also pass; remaining audit pending |
+| `aux_skyalert` | Generated | PTY/protocol simulator, Fake transport | Partial | New fake transport covers every record field/read failure, empty/malformed numbers, open/write errors, pressure units and reconnect; both fake groups and PTY validation pass. No mechanical motion or writable controls. Full applicable-standard audit is not recorded as complete. |
+| `aux_sqm` | Generated | PTY/protocol simulator, Fake transport | Partial | PTY plus new fake transport: all sensor fields/units, malformed/truncated records, read/write failures, failed initialization, resource balance and recovery pass. No writable device controls or mechanical motion. Full applicable-standard audit is not recorded as complete. |
+| `aux_svbpowerbox` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `aux_uch` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `aux_upb` | Generated | PTY/protocol simulator | Partial | Added UPB/UPB2 host protocol simulator with elapsed movement. UPB2 controls, shared focuser progress/abort/reconnect, bad identity and malformed focuser initialization pass; USB-hub v1 and full fault/control matrix pending. |
+| `aux_upb3` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `aux_usbdp` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `aux_wbplusv3` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `aux_wbprov3` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `aux_wcv4ec` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `ccd_altair` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. An opt-in real-SDK hardware harness also exists. |
+| `ccd_andor` | Hand-written | None | No tests | `indigo_optional_drivers/`. No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_apogee` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_asi` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_atik` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_atik2` | Hand-written | None | No tests | `indigo_mac_drivers/`. No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_baccam` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
+| `ccd_bresser` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
+| `ccd_dsi` | Generated | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_fli` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_iidc` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_mallin` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
+| `ccd_meade` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
+| `ccd_mi` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_ogma` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
+| `ccd_omegonpro` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
+| `ccd_pentax` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_playerone` | Generated | Fake SDK/USB | Partial | 45/45 fake SDK groups passed. The earlier continuous-acquisition argument and Bayer mapping gaps are closed; cooling faults, lifecycle/races and discovery retries are covered. No remaining concrete gap is recorded in this inventory, but a final complete-standard matrix is not established here. |
+| `ccd_ptp` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_qhy` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_qhy2` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_qsi` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_rising` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
+| `ccd_rpi` | Hand-written | None | No tests | `indigo_optional_drivers/`. No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_sbig` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_simulator` | Simulator | Direct bus | Partial | 16/16 direct integration groups passed, including logical devices, RAW geometry/bin, streaming/abort/reconnect, cooling, simulation modes and generated-noise file-camera input. Cooling/shutdown sanitizer checks passed. No SDK/USB boundary exists; a final complete-standard matrix is not established here. |
+| `ccd_ssag` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_ssg` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
+| `ccd_svb` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_svb2` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
+| `ccd_sx` | Generated | Fake USB/SDK | Complete | 24/24 applicable CCD/guider groups passed normally and with ASan/UBSan, including cooling, readout profiles, transport faults, hot-plug/queue cleanup and SDK-entry guide timing. Coverage/N/A matrix: `../indigo_drivers/ccd_sx/REFACTOR.md`. |
+| `ccd_touptek` | Hand-written | Fake SDK/USB | Partial | 28/28 fake SDK groups passed; later targeted shutdown/lifecycle checks also passed. Earlier ROI/bin/noise geometry, Bayer, initialization/read failures, cooling and multi-camera/capacity gaps were addressed. Complete-standard matrix not established here. |
+| `ccd_uvc` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `dome_baader` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `dome_beaver` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `dome_dragonfly` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `dome_nexdome` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `dome_nexdome3` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `dome_simulator` | Generated | Direct bus | Partial | Metadata, GOTO, park/unpark, shutter open/close, abort and pending rotation/shutter disconnect/reconnect pass; relative direction/wrap and parked-rejection assertions also pass. |
+| `dome_skyroof` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `dome_talon6ror` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_asi` | Generated | Fake SDK/USB | Partial | Ten fake SDK groups recorded: initialization/lock cleanup, limits/settings/readback, motion/sync/abort, compensation recovery and attach/capacity retry. Full current-standard coverage audit remains unfinished. |
+| `focuser_askar` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_astroasis` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `focuser_astromechanics` | Generated | PTY/protocol simulator | Partial | Host simulator models elapsed movement; measured progress, completion and pending disconnect pass; error matrix in progress |
+| `focuser_dmfc` | Generated | PTY/protocol simulator | Partial | Host simulator models elapsed movement; measured progress, completion, abort and pending disconnect pass; remaining audit pending |
+| `focuser_dsd` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_efa` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_fc3` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_fcusb` | Generated | Fake USB/SDK | Partial | New fake SDK: lifecycle, failed INIT/attach/open, power/frequency/direction, timed completion, abort, stop error and active removal pass; remaining coverage audit in progress |
+| `focuser_fli` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `focuser_focusdreampro` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_ioptron` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_lacerta` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_lakeside` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_lunatico` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `focuser_mjkzz` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_mjkzz_bt` | Hand-written | None | No tests | `indigo_mac_drivers/`. No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `focuser_moonlite` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_mypro2` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_nfocus` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_nstep` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_optec` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_optecfl` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_primaluce` | Generated | PTY/protocol simulator | Partial | Host simulator models elapsed focuser/rotator movement; focuser progress/abort tests pass; remaining shared-device/control audit pending |
+| `focuser_prodigy` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_qhy` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_robofocus` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_steeldrive2` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_usbv3` | Generated | PTY/protocol simulator | Partial | Host simulator models elapsed movement; bounded driver motion, measured progress, abort and pending disconnect pass; error matrix in progress |
+| `focuser_wemacro` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_wemacro_bt` | Hand-written | None | No tests | `indigo_mac_drivers/`. No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `gps_gpsd` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `gps_nmea` | Generated | PTY/protocol simulator, Fake transport | Partial | New fake transport covers short/malformed/checksum/oversized-token input, finite numeric validation, all eight source selections, fix transitions, DOP/satellite counts, coordinate/time conversion, UTC rollover, open/read loss and reconnect. PTY baseline also passes; remaining mixed-source/partial-input audit in progress. |
+| `gps_simulator` | Generated | Direct bus | Partial | Metadata/properties and no-fix → 2D → 3D, coordinate/time/DOP output, advanced visibility, polling cancellation and reconnect reset pass. No transport/parser/failure injection boundary exists in this simulator. Full applicable-standard audit is not recorded as complete. |
+| `guider_asi` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `guider_cgusbst4` | Generated | Fake transport | Partial | New fake transport: lifecycle, four directions, delayed reset and command error pass; replacement/timing audit in progress |
+| `guider_gpusb` | Generated | Fake USB/SDK | Partial | New fake SDK: lifecycle failures, four directions, cross-axis pulses, reversal, zero stop and active removal pass; failed-replacement preservation and single-write zero-stop regressions pass; timing/capacity audit pending |
+| `mount_asi` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `mount_ioptron` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `mount_lx200` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `mount_mxhd` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `mount_nexstar` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `mount_nexstaraux` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `mount_pmc8` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `mount_rainbow` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `mount_simulator` | Simulator | Direct bus | Partial | Existing full simulator suite and new pending manual-motion/guider disconnect, reconnect and pulse reversal tests pass after timer cleanup fixes; remaining shared-order/motion audit pending. |
+| `mount_starbook` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `mount_synscan` | Generated | PTY/protocol simulator | Partial | Full existing serial/UDP suite passes after zero-delta HOME fix and isolated park storage; standard coverage audit pending |
+| `mount_temma` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `polaralign_simulator` | Simulator | Direct bus | Partial | Metadata/properties, dual-axis nonzero movement, abort, pending disconnect/reconnect and fresh move pass; configured travel-limit and reset-during-motion assertions also pass. |
+| `rotator_asi` | Generated | Fake SDK/USB | Partial | 11 fake SDK groups passed. Explicit gaps remain: executing-handler/disconnect overlap, queued hot-plug shutdown, queue/registration failures, invalid discovery counts and commands racing initial delayed reads. |
+| `rotator_falcon` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `rotator_lunatico` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `rotator_optec` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `rotator_simulator` | Generated | Direct bus | Partial | Metadata/visibility, normal/reversed mapping, SYNC, shortest-path wrap, progress/completion, abort, pending disconnect/reconnect and fresh motion pass. No SDK/transport or additional device controls exist. |
+| `rotator_wa` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `system_ascol` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `wheel_asi` | Generated | Fake SDK/USB | Partial | Five fake SDK groups passed: attach/capacity retry, ordinary movement, required initialization/slot-count errors, motion/calibration errors and interrupted calibration/reconnect. Full current-standard coverage audit remains unfinished. |
+| `wheel_astroasis` | Generated | Fake SDK/USB | Partial | Ten fake SDK groups passed. Normal teardown does not establish concurrent hot-plug/shutdown coverage; hidden Bluetooth setters are outside normal public-bus coverage. Full current-standard audit remains unfinished. |
+| `wheel_atik` | Generated | Fake USB/SDK | Partial | New fake SDK/HID: lifecycle failures, slot movement, command/read errors, pending removal and reconnect pass; remaining capability/identity audit pending |
+| `wheel_fli` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `wheel_indigo` | Generated | PTY/protocol simulator, Fake transport | Partial | Elapsed mechanical simulator, measured/target separation, BUSY conflict, pending disconnect/reconnect and fresh move pass. Fake transport covers initialization, lost echo, malformed poll and bounded timeout; all three fake transport groups and simplified PTY tests pass. |
+| `wheel_manual` | Generated | Direct bus | Complete | Applicable driver-owned coverage complete: metadata, eight-slot capability, all slot selections, custom-name prompt, reconnect pass. No transport, physical motion, calibration or shared handle exists. |
+| `wheel_mi` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `wheel_optec` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `wheel_playerone` | Generated | Fake SDK/USB | Partial | 12 fake SDK groups passed normally and with sanitizers. Arbitrary concurrent hot-plug/shutdown coverage is not established; full current-standard audit remains unfinished. |
+| `wheel_qhy` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `wheel_quantum` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `wheel_sx` | Generated | Fake USB/SDK | Partial | New fake HID: lifecycle failures, slot movement, command/read errors, pending removal and reconnect pass; remaining capability/identity audit pending |
+| `wheel_trutek` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `wheel_xagyl` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+
 ## ToupTek shared hot-plug shutdown (2026-09-08)
 
 The hand-written ToupTek/OEM lifecycle now follows the generated SDK sequence: connection and discovery handlers share the driver task mutex with disconnected-device verification; rejected shutdown preserves the existing callback registration; accepted shutdown deregisters, drains queued events, then detaches and deletes the queue. SDK-id discovery and multi-class camera/guider/wheel/focuser teardown remain driver-specific. The fake SDK lifecycle test asserts no deregistration/re-registration on rejection. Its pending-shutdown test verifies all 64 accepted notifications execute (96 SDK enumerations), followed by clean detach and successful reinitialization. Targeted lifecycle, pending-shutdown and hot-plug/partial-attach/active-removal tests passed without hardware.
@@ -31,32 +202,9 @@ The camera standard explicitly requires cooler ON/OFF, separate target/measured 
 - SX: new fake USB target covers cooled/uncooled profiles, target conversion, measured temperature, settling, ON/OFF, command/read/short-reply failure recovery, shared guiding, progressive/interlaced/ICX453 readout, ROI/bin/shutter and transfer failure recovery. Regressions exposed lost targets during polling, visible unsupported cooling controls, short cooling replies accepted as success and pixel read failures treated as success. Fixes live in `ccd_sx/indigo_ccd_sx.driver`; C is regenerated.
 - CCD simulator: added RAW geometry/bin, streaming/abort/reconnect, cooler target/settling/power, camera simulation modes and file-camera generated-noise inputs. Shutdown now detaches slave devices before freeing their master.
 
-Fake image data uses coordinate-addressable deterministic noise from `integration/ccd_test_noise.h`; no simulator image arrays are linked into fake SDK tests. New files are included in Xcode. ToupTek framework encoding/video/upload matrices were removed from the driver suite. The earlier audit below is a historical snapshot, not the current implementation inventory; these additions do not claim exhaustive branch coverage.
+Fake image data uses coordinate-addressable deterministic noise from `integration/ccd_test_noise.h`; no simulator image arrays are linked into fake SDK tests. New files are included in Xcode. ToupTek framework encoding/video/upload matrices were removed from the driver suite. The unified Driver test coverage status table above incorporates these additions and supersedes the initial CCD gap list; these additions do not claim exhaustive branch coverage.
 
 Validation: Player One 45/45, ToupTek 28/28, SX 5/5 and CCD simulator 16/16 normal tests pass. The final ToupTek power/initial cooler-read assertions and simulator per-property revision waits passed narrow reruns. Simulator cooling/shutdown also passes ASan/UBSan (test and driver instrumentation; prebuilt dependencies excluded). SX, ToupTek and simulator driver builds pass. Repeated SX generation produces identical C/header/main files; Xcode project lint and whitespace checks pass. No hardware tests ran.
-
-## CCD fake-boundary coverage audit (2026-09-08)
-
-Static coverage audit of the current working tree against the camera standard and its referenced guider/shared-lifecycle requirements. This is a scenario-coverage check, not a line/branch coverage measurement or a new passing test run. No driver or hardware tests were executed and no production code was changed.
-
-| CCD driver with an existing test | Test boundary | Full fake SDK/USB coverage established? |
-| --- | --- | --- |
-| `ccd_playerone` | Production driver with fake POA SDK/USB, 44 named cases; separate hardware harness | No: concrete argument/metadata assertions are missing as listed below. |
-| `ccd_touptek` | Production driver with fake Toupcam SDK/USB, 25 named groups; separate hardware harness | No: geometry, failure injection and discovery-profile coverage remain incomplete. |
-| `ccd_altair` | Real Altair SDK selected by the shared ToupTek hardware harness | No: there is no Altair fake SDK build/test target. Shared source does not validate the OEM build. |
-| `ccd_simulator` | Direct public-bus tests of the simulator and its logical devices | Not applicable to fake SDK/USB: this driver has neither boundary. Its direct tests are compliance/smoke coverage, not full driver-behavior coverage. |
-
-Concrete missing assertions and scenarios:
-
-- Player One: `POAStartExposure` ignores its `single` argument (`integration/test_ccd_playerone_sdk.c:661`). Assert `POA_FALSE` for both single INDIGO exposure and streaming, preserving the continuous-mode workaround used by the production driver (`../indigo_drivers/ccd_playerone/indigo_ccd_playerone.driver:409`). No physical Saturn-C is needed for this assertion.
-- Player One: the RAW observer checks only the presence of `BAYERPAT=` (`integration/test_ccd_playerone_sdk.c:239`); fixture initialization selects only `POA_BAYER_RG` (`:1960`). Check the actual handed-off BGGR/GRBG/GBRG/RGGB mapping and unsupported-pattern behavior. Existing RGB pixel checks and mono/no-Bayer cases do not establish that mapping.
-- ToupTek: `Toupcam_PullImageV2` always returns 16×16 pixels from the beginning of the simulator fixture (`integration/test_ccd_touptek_sdk.c:1749`). The observer also expects 16×16 (`:282`). ROI/bin tests check outgoing options (`:971`) but do not validate the corresponding delivered geometry, ROI pixel mapping or Bayer value (`Toupcam_get_RawFormat` returns FourCC zero). This is driver raw-handoff coverage, not an encoder test.
-- ToupTek: several relevant SDK reads/start/stop calls cannot fail in the fake: `Toupcam_get_Option` (`:488`), `Toupcam_StartPullModeWithCallback` (`:1774`), `Toupcam_Stop` (`:1782`), exposure/gain range reads and temperature reads near the end of the file. Add targeted failures with untouched output and assertions for the actual driver error/cleanup branches; existing write/trigger/pull failure tests do not cover these paths. This also limits wheel/cooler readback-failure coverage.
-- ToupTek: enumeration is limited to three fixed physical records with ids `0`, `1`, `2` (`integration/test_ccd_touptek_sdk.c:461`): one camera, a wheel and a focuser. Combined-interface and duplicate-event tests exist, but two independent cameras with identical names, reordered enumeration/nontrivial ids, survivor acquisition and capacity overflow are not established by this fixture.
-- Altair: `Makefile:780` links its hardware object and real SDK; the fake target builds only the ToupTek variant. Provide an OEM-specific fake boundary/build before claiming automated fake coverage for Altair. Other OEM variants have no driver-specific test target in this inventory.
-- CCD simulator: `integration/test_ccd_simulator.c` checks metadata, public properties and representative logical-device actions/short exposures. Driver-specific image generation, streaming/abort races and error paths are not comprehensively covered by these checks; do not invent a vendor SDK solely to test a simulator.
-
-The existing fake suites cover substantial lifecycle, controls, acquisition and race behavior. The gaps above are sufficient to reject a full-coverage claim; counts of named cases or earlier successful runs do not close them. CCD SX has no dedicated automated CCD test; `test_ao_sx_simulator.c` exercises AO/guider, so SX is outside the tested-CCD inventory. Framework codec/upload tests still present in the ToupTek suite do not count toward the missing driver coverage.
 
 ## Driver test scope by class (2026-09-08)
 

@@ -6,7 +6,7 @@
 
 #include <indigo_drivers/rotator_simulator/indigo_rotator_simulator.h>
 
-#include "simulator_test_common.h"
+#include "serial_simulator_test_common.h"
 
 static const char *rotator_connected_properties[] = {
 	ROTATOR_ABORT_MOTION_PROPERTY_NAME,
@@ -184,13 +184,47 @@ static void simulator_moves_across_zero_by_shortest_path(void) {
 	stop_connected_simulator(&rotator_simulator);
 }
 
+static void simulator_disconnect_cancels_motion(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&rotator_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&rotator_simulator, NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_rotator_simulator(INDIGO_DRIVER_SHUTDOWN, NULL));
+	indigo_change_number_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 150);
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	bool progress = false;
+	for (int i = 0; i < 200; i++) {
+		double position = cached_number_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
+		if (position > 0 && position < 150) {
+			progress = true;
+			break;
+		}
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(progress);
+	disconnect_serial_device(&rotator_simulator);
+	int updates = context.update_count;
+	indigo_usleep(250000);
+	SERIAL_CHECK_EQ_INT(updates, context.update_count);
+	SERIAL_CHECK_TRUE(connect_serial_device(&rotator_simulator, NULL));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	double stopped = cached_number_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(stopped < 150);
+	indigo_usleep(250000);
+	SERIAL_CHECK_TRUE(cached_number_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME) == stopped);
+	assert_rotator_moves_to(stopped + 2);
+	indigo_change_switch_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	stop_serial_driver(&rotator_simulator);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "driver_info_reports_simulator_metadata", driver_info_reports_simulator_metadata },
 		{ "simulator_exposes_expected_properties", simulator_exposes_expected_properties },
 		{ "simulator_passes_rotator_compliance_checks", simulator_passes_rotator_compliance_checks },
 		{ "simulator_maps_reversed_direction_positions", simulator_maps_reversed_direction_positions },
-		{ "simulator_moves_across_zero_by_shortest_path", simulator_moves_across_zero_by_shortest_path }
+		{ "simulator_moves_across_zero_by_shortest_path", simulator_moves_across_zero_by_shortest_path },
+		{ "simulator_disconnect_cancels_motion", simulator_disconnect_cancels_motion }
 	};
 	return indigo_run_tests("rotator simulator integration tests", tests, ARRAY_SIZE(tests));
 }

@@ -386,6 +386,17 @@ static void all_hotplug_shutdown_guards(void) {
 		ASSERT_TRUE(run(arguments));
 		char generated[65536];
 		ASSERT_TRUE(read_text("indigo_ccd_architecture_test.c", generated, sizeof(generated)));
+		char *queue_failure = strstr(generated, "if (driver_queue == NULL)");
+		char *registration = strstr(generated, "int rc = libusb_hotplug_register_callback");
+		ASSERT_TRUE(queue_failure && registration);
+		char *queue_rollback = strstr(queue_failure, "last_action = INDIGO_DRIVER_SHUTDOWN;");
+		char *register_failure = strstr(registration, "if (rc < 0)");
+		ASSERT_TRUE(queue_rollback && queue_rollback < registration && register_failure);
+		char *register_cleanup = strstr(register_failure, "indigo_queue_delete(&driver_queue);");
+		char *register_rollback = strstr(register_failure, "last_action = INDIGO_DRIVER_SHUTDOWN;");
+		char *register_return = strstr(register_failure, "return INDIGO_FAILED;");
+		ASSERT_TRUE(register_cleanup && register_rollback && register_return);
+		ASSERT_TRUE(register_cleanup < register_rollback && register_rollback < register_return);
 		char *shutdown = strstr(generated, "case INDIGO_DRIVER_SHUTDOWN:");
 		ASSERT_TRUE(shutdown != NULL);
 		char *lock = strstr(shutdown, "pthread_mutex_lock(&driver_queue_mutex)");

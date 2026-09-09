@@ -1,0 +1,136 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// All rights reserved.
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+#include <stdatomic.h>
+#include <indigo/indigo_uni_io.h>
+#include <indigo_drivers/aux_sqm/indigo_aux_sqm.h>
+#include "serial_simulator_test_common.h"
+
+static const simulator_driver_case sqm = { "Unihedron SQM", "indigo_aux_sqm", "Unihedron SQM", indigo_aux_sqm, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static indigo_uni_handle handle;
+static atomic_int opens, closes, reads, invalid_io, fail_open, fail_write, fail_read, bad_handshake;
+static const char *reading = "r,20.70m,22921Hz,20c,0.125s,39.4C";
+static char command[4];
+indigo_uni_handle *sqm_test_open(const char *port, int speed, int level) {
+	if (speed != 115200) {
+		invalid_io++;
+	}
+	if (atomic_exchange(&fail_open, 0)) {
+		return NULL;
+	}
+	opens++;
+	return &handle;
+}
+
+void sqm_test_close(indigo_uni_handle **port) {
+	if (*port) {
+		closes++;
+		*port = NULL;
+	}
+}
+
+long sqm_test_discard(indigo_uni_handle *port) {
+	if (port != &handle || opens == closes) {
+		invalid_io++;
+		return -1;
+	}
+	return 0;
+}
+
+long sqm_test_write(indigo_uni_handle *port, const void *buffer, long length) {
+	if (sqm_test_discard(port) < 0 || length != 2) {
+		invalid_io++;
+		return -1;
+	}
+	memcpy(command, buffer, length);
+	command[length] = 0;
+	if (!strcmp(command, "rx") && atomic_exchange(&fail_write, 0)) {
+		return -1;
+	}
+	return length;
+}
+
+long sqm_test_read(indigo_uni_handle *port, char *buffer, long length, const char *terminators, const char *ignore, long timeout) {
+	if (sqm_test_discard(port) < 0) {
+		return -1;
+	}
+	if (strcmp(terminators, "\n") || strcmp(ignore, "\r\n")) {
+		invalid_io++;
+	}
+	if (!strcmp(command, "ix")) {
+		return snprintf(buffer, length, "%s", atomic_exchange(&bad_handshake, 0) ? "bad" : "i,00000002,00000003,00000001,00000413");
+	}
+	reads++;
+	if (atomic_exchange(&fail_read, 0)) {
+		return -1;
+	}
+	return snprintf(buffer, length, "%s", reading);
+}
+
+static void records_and_transport_recovery(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&sqm, "fake"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME, 39.4, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, 20.7, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_INFO_PROPERTY_NAME, "X_AUX_SENSOR_FREQUENCY", 22921, 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_INFO_PROPERTY_NAME, "X_AUX_SENSOR_COUNTS", 20, 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_INFO_PROPERTY_NAME, "X_AUX_SENSOR_PERIOD", 0.125, 0));
+	const char *malformed[] = { "r", "r,21m,1Hz,2c", "x,21m,1Hz,2c,3s,4C", "r,NaNm,1Hz,2c,3s,4C", "r,21m,1Hz,2c,3s,bad" };
+	for (int i = 0; i < ARRAY_SIZE(malformed) + 2; i++) {
+		disconnect_serial_device(&sqm);
+		if (i < ARRAY_SIZE(malformed)) {
+			reading = malformed[i];
+		} else if (i == ARRAY_SIZE(malformed)) {
+			fail_write = 1;
+		} else {
+			fail_read = 1;
+		}
+		SERIAL_CHECK_TRUE(connect_serial_device(&sqm, "fake"));
+		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_INFO_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, 20.7, 0.001));
+		disconnect_serial_device(&sqm);
+		reading = "r,20.70m,22921Hz,20c,0.125s,39.4C";
+		SERIAL_CHECK_TRUE(connect_serial_device(&sqm, "fake"));
+		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_OK_STATE));
+	}
+	disconnect_serial_device(&sqm);
+	reading = "r, 21.00m,0000000001Hz,0000000002c,0000000.250s,-10.0C";
+	SERIAL_CHECK_TRUE(connect_serial_device(&sqm, "fake"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME, -10, 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_OK_STATE));
+	disconnect_serial_device(&sqm);
+	int before = reads;
+	int updates = context.update_count;
+	indigo_usleep(100000);
+	SERIAL_CHECK_EQ_INT(before, reads);
+	SERIAL_CHECK_EQ_INT(updates, context.update_count);
+cleanup:
+	stop_serial_driver(&sqm);
+	ASSERT_EQ_INT(opens, closes);
+	ASSERT_EQ_INT(0, invalid_io);
+}
+
+static void failed_initialization(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&sqm));
+	fail_open = 1;
+	SERIAL_CHECK_TRUE(!connect_serial_device(&sqm, "fake"));
+	bad_handshake = 1;
+	SERIAL_CHECK_TRUE(!connect_serial_device(&sqm, "fake"));
+	SERIAL_CHECK_EQ_INT(opens, closes);
+	SERIAL_CHECK_TRUE(connect_serial_device(&sqm, "fake"));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_aux_sqm(INDIGO_DRIVER_SHUTDOWN, NULL));
+cleanup:
+	stop_serial_driver(&sqm);
+	ASSERT_EQ_INT(opens, closes);
+}
+
+int main(void) {
+	alarm(40);
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	const indigo_test_case tests[] = {
+		{ "sensor fields, malformed records, I/O and recovery", records_and_transport_recovery },
+		{ "open/handshake rollback and reconnect", failed_initialization }
+	};
+	return indigo_run_tests("SQM fake transport", tests, ARRAY_SIZE(tests));
+}

@@ -1,0 +1,160 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// All rights reserved.
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+#include <stdatomic.h>
+#include <stdarg.h>
+#include <indigo/indigo_uni_io.h>
+#include <indigo_drivers/wheel_indigo/indigo_wheel_indigo.h>
+#include "serial_simulator_test_common.h"
+
+static const simulator_driver_case wheel = { "Pegasus Indigo", "indigo_wheel_indigo", "Pegasus Indigo Filter Wheel", indigo_wheel_indigo, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static indigo_uni_handle handle;
+static atomic_int opens, closes, invalid_io, fail_open, fail_write, fail_read, bad_reply, moving, polls, slot = 1;
+static char command[64];
+static const char *bad_command;
+
+indigo_uni_handle *wheel_test_open(const char *port, int speed, int level) {
+	if (speed != 9600) {
+		invalid_io++;
+	}
+	if (atomic_exchange(&fail_open, 0)) {
+		return NULL;
+	}
+	opens++;
+	return &handle;
+}
+
+void wheel_test_close(indigo_uni_handle **port) {
+	if (*port) {
+		closes++;
+		*port = NULL;
+	}
+}
+
+long wheel_test_discard(indigo_uni_handle *port) {
+	if (port != &handle || opens == closes) {
+		invalid_io++;
+		return -1;
+	}
+	return 0;
+}
+
+long wheel_test_write(indigo_uni_handle *port, const char *format, va_list args, char *terminator) {
+	if (wheel_test_discard(port) < 0 || strcmp(terminator, "\n")) {
+		invalid_io++;
+		return -1;
+	}
+	int size = vsnprintf(command, sizeof(command), format, args);
+	if (atomic_exchange(&fail_write, 0)) {
+		return -1;
+	}
+	if (!strncmp(command, "WM:", 3)) {
+		slot = atoi(command + 3);
+	} else if (!strcmp(command, "WI")) {
+		slot = 1;
+	}
+	return size;
+}
+
+long wheel_test_read(indigo_uni_handle *port, char *buffer, long length, const char *terminators, const char *ignore, long timeout) {
+	if (wheel_test_discard(port) < 0 || atomic_exchange(&fail_read, 0)) {
+		return -1;
+	}
+	if (strcmp(terminators, "\n") || strcmp(ignore, "\r\n")) {
+		invalid_io++;
+	}
+	if ((!bad_command || !strcmp(command, bad_command)) && atomic_exchange(&bad_reply, 0)) {
+		return snprintf(buffer, length, "malformed");
+	}
+	if (!strcmp(command, "W#")) {
+		return snprintf(buffer, length, "FW_OK");
+	}
+	if (!strcmp(command, "WV")) {
+		return snprintf(buffer, length, "WV:1.1");
+	}
+	if (!strcmp(command, "WF")) {
+		polls++;
+		return snprintf(buffer, length, "WF:%d", moving ? -1 : slot);
+	}
+	return snprintf(buffer, length, "%s", !strcmp(command, "WI") ? "WI:1" : command);
+}
+
+static void initialization_and_recovery(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&wheel));
+	fail_open = 1;
+	SERIAL_CHECK_TRUE(!connect_serial_device(&wheel, "fake"));
+	const char *commands[] = { "W#", "WI" };
+	for (int i = 0; i < ARRAY_SIZE(commands); i++) {
+		bad_command = commands[i];
+		bad_reply = 1;
+		SERIAL_CHECK_TRUE(!connect_serial_device(&wheel, "fake"));
+		SERIAL_CHECK_EQ_INT(opens, closes);
+	}
+	SERIAL_CHECK_TRUE(connect_serial_device(&wheel, "fake"));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_wheel_indigo(INDIGO_DRIVER_SHUTDOWN, NULL));
+cleanup:
+	bad_command = NULL;
+	bad_reply = 0;
+	stop_serial_driver(&wheel);
+	ASSERT_EQ_INT(opens, closes);
+	ASSERT_EQ_INT(0, invalid_io);
+}
+
+static void lost_echo_and_poll_recovery(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&wheel, "fake"));
+	for (int mode = 0; mode < 3; mode++) {
+		if (mode == 0) {
+			fail_read = 1;
+		} else {
+			bad_command = mode == 1 ? "WM:3" : "WF";
+			bad_reply = 1;
+		}
+		indigo_change_number_property_1(&simulator_test_client, wheel.device_name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, mode + 2);
+		SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, mode + 2, 0));
+		SERIAL_CHECK_EQ_INT(mode + 2, slot);
+	}
+cleanup:
+	bad_command = NULL;
+	bad_reply = 0;
+	fail_read = 0;
+	stop_serial_driver(&wheel);
+	ASSERT_EQ_INT(opens, closes);
+	ASSERT_EQ_INT(0, invalid_io);
+}
+
+static void failed_write_timeout_and_recovery(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&wheel, "fake"));
+	fail_write = 1;
+	int before = polls;
+	indigo_change_number_property_1(&simulator_test_client, wheel.device_name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 7);
+	for (int i = 0; i < 350; i++) {
+		if (find_cached_property(WHEEL_SLOT_PROPERTY_NAME)->state == INDIGO_ALERT_STATE) {
+			break;
+		}
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(WHEEL_SLOT_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(polls > before);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 1, 0));
+	indigo_change_number_property_1(&simulator_test_client, wheel.device_name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 7);
+	SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 7, 0));
+cleanup:
+	fail_write = 0;
+	stop_serial_driver(&wheel);
+	ASSERT_EQ_INT(opens, closes);
+	ASSERT_EQ_INT(0, invalid_io);
+}
+
+int main(void) {
+	alarm(65);
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	const indigo_test_case tests[] = {
+		{ "handshake/reset rollback and reconnect", initialization_and_recovery },
+		{ "lost echo and malformed poll recovery", lost_echo_and_poll_recovery },
+		{ "failed write, bounded timeout and fresh move", failed_write_timeout_and_recovery }
+	};
+	return indigo_run_tests("Pegasus Indigo fake transport", tests, ARRAY_SIZE(tests));
+}

@@ -7,6 +7,7 @@
 #ifndef simulator_test_common_h
 #define simulator_test_common_h
 
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,7 +42,7 @@ typedef struct {
 typedef struct {
 	const simulator_driver_case *driver_case;
 	int define_count;
-	int update_count;
+	atomic_int update_count;
 	int defined_property_count;
 	char defined_properties[MAX_DEFINED_PROPERTIES][INDIGO_NAME_SIZE];
 	indigo_property *cached_properties[MAX_DEFINED_PROPERTIES];
@@ -343,9 +344,9 @@ static indigo_result simulator_client_define_property(indigo_client *client, ind
 static indigo_result simulator_client_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (context.driver_case != NULL && !strcmp(property->device, context.driver_case->device_name)) {
 		cache_property_update(property);
+		context.update_count++;
 	}
 	if (context.driver_case != NULL && !strcmp(property->device, context.driver_case->device_name) && !strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
-		context.update_count++;
 		context.last_connection_state = property->state;
 		for (int i = 0; i < property->count; i++) {
 			if (!strcmp(property->items[i].name, CONNECTION_CONNECTED_ITEM_NAME)) {
@@ -409,6 +410,7 @@ static bool wait_for_simulator_connection_state(bool connected) {
 static void enumerate_simulator_device(void) {
 	indigo_property *selector = indigo_init_text_property(NULL, context.driver_case->device_name, "", "", "", INDIGO_OK_STATE, INDIGO_RO_PERM, 0);
 	ASSERT_TRUE(selector != NULL);
+	selector->type = 0;
 	ASSERT_EQ_INT(INDIGO_OK, indigo_enumerate_properties(&simulator_test_client, selector));
 	indigo_release_property(selector);
 }

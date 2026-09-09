@@ -357,6 +357,7 @@ The following simulators implement this contract. This list should grow as more 
 | Simulator | Device class | Status |
 | --- | --- | --- |
 | `indigo_drivers/rotator_falcon/rotator_falcon2_simulator/rotator_falcon2_simulator.c` | Rotator | Implements the split runtime/state/protocol structure, `--headless`, `--ready-file`, `--trace`, `--model`, `--device-id`, and `--firmware`. |
+| `indigo_drivers/aux_upb/aux_upb_simulator/aux_upb_simulator.c` | AUX and focuser | Host PTY simulator, `--headless`, `--ready-file`, `--trace`, `--model upb|upb2`; elapsed-time focuser motion, stop and sync. |
 | `indigo_drivers/aux_upb3/aux_upb3_simulator/aux_upb3_simulator.c` | AUX and focuser | Implements the split runtime/state/protocol structure, `--headless`, `--ready-file`, `--trace`, `--model`, `--device-id`, and `--firmware`. |
 | `indigo_drivers/focuser_fc3/focuser_fc3_simulator/focuser_fc3_simulator.c` | Focuser | Implements the split runtime/state/protocol structure for FocusCube 3, `--headless`, `--ready-file`, `--trace`, `--model`, `--device-id`, and `--firmware`. |
 | `indigo_drivers/focuser_qhy/focuser_qhy_simulator/focuser_qhy_simulator.c` | Focuser | Implements the split runtime/state/protocol structure for QHY Q-Focuser, `--headless`, `--ready-file`, `--trace`, `--model`, `--firmware`, `--board-version`, and `--no-out-temp`. |
@@ -391,7 +392,6 @@ When a candidate is refactored into a host-side pseudo-terminal simulator, add t
 | `indigo_drivers/aux_ppb/aux_ppb_simulator/aux_ppb_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
 | `indigo_drivers/aux_skyalert/aux_skyalert_simulator/aux_skyalert_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
 | `indigo_drivers/aux_sqm/aux_sqm_simulator/aux_sqm_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/aux_upb/aux_upb_simulator/aux_upb_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
 | `indigo_drivers/aux_usbdp/aux_usbdp_simulator/aux_usbdp_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
 | `indigo_drivers/dome_baader/dome_baader_simulator/dome_baader_simulator.ino` | Dome | Arduino sketch; candidate for future host-side serial simulator refactor. |
 | `indigo_drivers/dome_nexdome/dome_nexdome_simulator/dome_nexdome_simulator.ino` | Dome | Arduino sketch; candidate for future host-side serial simulator refactor. |

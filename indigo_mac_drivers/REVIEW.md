@@ -36,69 +36,50 @@ For the 2026-08-01 scoped baseline pass, build products and SDK/vendor subtrees 
 
 ## Finding Summaries
 
-### MACDRV-007 (Closed — fixed)
+### MACDRV-001 (Closed — fixed)
 
-`DRIVER_NAME` in `indigo_focuser_mjkzz_bt.m` was defined as `"indigo_ccd_mjkzz_bt"`
-— a CCD prefix — while the driver implements a focuser, registers via
-`indigo_focuser_attach()`, and uses `FOCUSER_MJKZZ_BT_NAME` as its public device
-name. The wrong prefix propagated into all `INDIGO_DRIVER_*` log macros, the
-metadata reported by `SET_DRIVER_INFO`, and the name passed to
-`indigo_focuser_attach()`.
+All three connection handlers in `indigo_ccd_atik2.c` (CCD line 176, guider line
+358, wheel line 476) follow the pattern: when `device_count++ == 0`, acquire the
+global lock, then call `libatik_open()`. On failure the outer `else` branch only
+decremented `device_count`, leaving the lock permanently held.
 
-Fixed by changing the definition to `"indigo_focuser_mjkzz_bt"`.
+The fix adds `indigo_global_unlock(device)` immediately inside the `else` arm of
+the `libatik_open()` call, within the `device_count++ == 0` block. The global lock
+is now released as soon as the failed open is detected, before control reaches the
+shared failure branch. The `result = 0` → `result = false` change is also applied
+for type consistency.
 
-### MACDRV-006 (Closed — fixed)
+### MACDRV-002 (Closed — fixed)
 
-Both Bluetooth focuser drivers parsed the characteristic notification payload
-without first checking its length:
+All three detach handlers in `indigo_ccd_atik2.c` (`ccd_detach` line 308,
+`guider_detach` line 433, `wheel_detach` line 531) called `indigo_global_unlock()`
+whenever `device == device->master_device`, independent of `device_count`. The
+disconnect path already calls `indigo_global_unlock()` when `device_count` reaches
+0. If the master CCD device is detached while the guider or wheel sibling is still
+connected, the unlock fires early. If all devices were disconnected first, detach
+unlocks a second time.
 
-- **MJKZZ** (`indigo_focuser_mjkzz_bt.m`): cast `characteristic.value.bytes`
-  directly to `mjkzz_message *` and read all 8 fields (including `ucMSG[0..3]`
-  and `ucSUM`) before any length validation. A short or empty notification —
-  possible during Bluetooth re-pairing or firmware quirks — would read past the
-  buffer and crash the driver.
+The fix removes the `if (device == device->master_device) { indigo_global_unlock(device); }`
+block from all three detach handlers. The shared disconnect path exclusively owns
+the global lock lifecycle: lock acquired on first connection (`device_count == 0`),
+released when the last sibling disconnects (`device_count == 0` again).
 
-- **WeMacro** (`indigo_focuser_wemacro_bt.m`): read `buffer[2]` (and logged
-  `buffer[0]`, `buffer[1]`, `buffer[2]`) without checking length. Any notification
-  shorter than 3 bytes would go out-of-bounds.
+### MACDRV-003 (Closed — fixed)
 
-The fix adds a length guard at the top of each `didUpdateValueForCharacteristic:`
-callback. MJKZZ returns early if `characteristic.value.length < sizeof(mjkzz_message)`
-(8 bytes); WeMacro returns early if `characteristic.value.length < 3`. All byte
-access occurs after the guard.
+In `hotplug_callback` (`LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED` branch), the code
+allocated `atik_private_data`, called `libusb_ref_device()`, and malloc'd one or
+more `indigo_device` objects before searching the fixed `devices[MAX_DEVICES]`
+array for a free slot. If the table was full the search loop fell through silently:
+the allocated objects were leaked and the `libusb_ref_device()` reference was never
+balanced.
 
-### MACDRV-008 (Closed — fixed)
+The fix introduces a `slot_found` boolean checked after each slot-search loop:
 
-`focuser_attach` in `indigo_focuser_wemacro_bt.m` allocates three custom properties
-(`X_RAIL_CONFIG_PROPERTY`, `X_RAIL_SHUTTER_PROPERTY`, `X_RAIL_EXECUTE_PROPERTY`) in
-sequence after a successful `indigo_focuser_attach()`. Each `NULL` check returned
-`INDIGO_FAILED` immediately, leaking any earlier property already allocated and
-leaving the base attach resources unreleased.
-
-The fix replaces the inline `return INDIGO_FAILED` guards with `goto fail`. The
-shared `fail:` label releases `X_RAIL_CONFIG_PROPERTY` and `X_RAIL_SHUTTER_PROPERTY`
-(both calls are safe when the pointer is `NULL`) and calls `indigo_focuser_detach(device)`
-to undo the base attach. `X_RAIL_EXECUTE_PROPERTY` needs no explicit release on this
-path because if it is `NULL` the allocation failed and the pointer was never set;
-if it was already set the `goto` would not be taken.
-
-### MACDRV-005 (Closed — fixed)
-
-Both Bluetooth focuser drivers called `CFBridgingRetain(peripheral)` in two
-places each (`centralManagerDidUpdateState` and `didDiscoverPeripheral`) before
-assigning to the ivar (`stackrail` / `hc08`). Under ARC, assigning a `CBPeripheral *`
-to a strong ivar already retains the object; the explicit `CFBridgingRetain` added a
-second, unbalanced retain.
-
-MJKZZ had no release path at all — every peripheral assignment leaked.
-WeMacro's `centralManagerDidUpdateState` attempted `CFBridgingRelease((__bridge void *)hc08)`,
-but only after `hc08 = nil`, making the `if (hc08)` guard permanently false and
-the release unreachable.
-
-The fix removes all four `CFBridgingRetain(peripheral)` calls (two per file) and
-deletes the dead `if (hc08) CFBridgingRelease(...)` block in WeMacro. The
-peripheral is now managed exclusively by ARC: retained when assigned to the ivar,
-released when the ivar is set to `nil` or the delegate deallocates.
+- **CCD (master)**: if no slot, logs an error, `free(device)`, `free(private_data)`,
+  `libusb_unref_device(dev)`, then `break`s out of the switch case — no further
+  allocation is attempted for guider or wheel.
+- **Guider / wheel**: if no slot, logs an error and `free(device)` only — `private_data`
+  and the USB reference belong to the already-placed CCD slot.
 
 ### MACDRV-004 (Closed — fixed)
 
@@ -120,22 +101,69 @@ The method:
 in both drivers, ensuring all resources are released and no callbacks can fire
 after shutdown completes.
 
-### MACDRV-003 (Closed — fixed)
+### MACDRV-005 (Closed — fixed)
 
-In `hotplug_callback` (`LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED` branch), the code
-allocated `atik_private_data`, called `libusb_ref_device()`, and malloc'd one or
-more `indigo_device` objects before searching the fixed `devices[MAX_DEVICES]`
-array for a free slot. If the table was full the search loop fell through silently:
-the allocated objects were leaked and the `libusb_ref_device()` reference was never
-balanced.
+Both Bluetooth focuser drivers called `CFBridgingRetain(peripheral)` in two
+places each (`centralManagerDidUpdateState` and `didDiscoverPeripheral`) before
+assigning to the ivar (`stackrail` / `hc08`). Under ARC, assigning a `CBPeripheral *`
+to a strong ivar already retains the object; the explicit `CFBridgingRetain` added a
+second, unbalanced retain.
 
-The fix introduces a `slot_found` boolean checked after each slot-search loop:
+MJKZZ had no release path at all — every peripheral assignment leaked.
+WeMacro's `centralManagerDidUpdateState` attempted `CFBridgingRelease((__bridge void *)hc08)`,
+but only after `hc08 = nil`, making the `if (hc08)` guard permanently false and
+the release unreachable.
 
-- **CCD (master)**: if no slot, logs an error, `free(device)`, `free(private_data)`,
-  `libusb_unref_device(dev)`, then `break`s out of the switch case — no further
-  allocation is attempted for guider or wheel.
-- **Guider / wheel**: if no slot, logs an error and `free(device)` only — `private_data`
-  and the USB reference belong to the already-placed CCD slot.
+The fix removes all four `CFBridgingRetain(peripheral)` calls (two per file) and
+deletes the dead `if (hc08) CFBridgingRelease(...)` block in WeMacro. The
+peripheral is now managed exclusively by ARC: retained when assigned to the ivar,
+released when the ivar is set to `nil` or the delegate deallocates.
+
+### MACDRV-006 (Closed — fixed)
+
+Both Bluetooth focuser drivers parsed the characteristic notification payload
+without first checking its length:
+
+- **MJKZZ** (`indigo_focuser_mjkzz_bt.m`): cast `characteristic.value.bytes`
+  directly to `mjkzz_message *` and read all 8 fields (including `ucMSG[0..3]`
+  and `ucSUM`) before any length validation. A short or empty notification —
+  possible during Bluetooth re-pairing or firmware quirks — would read past the
+  buffer and crash the driver.
+
+- **WeMacro** (`indigo_focuser_wemacro_bt.m`): read `buffer[2]` (and logged
+  `buffer[0]`, `buffer[1]`, `buffer[2]`) without checking length. Any notification
+  shorter than 3 bytes would go out-of-bounds.
+
+The fix adds a length guard at the top of each `didUpdateValueForCharacteristic:`
+callback. MJKZZ returns early if `characteristic.value.length < sizeof(mjkzz_message)`
+(8 bytes); WeMacro returns early if `characteristic.value.length < 3`. All byte
+access occurs after the guard.
+
+### MACDRV-007 (Closed — fixed)
+
+`DRIVER_NAME` in `indigo_focuser_mjkzz_bt.m` was defined as `"indigo_ccd_mjkzz_bt"`
+— a CCD prefix — while the driver implements a focuser, registers via
+`indigo_focuser_attach()`, and uses `FOCUSER_MJKZZ_BT_NAME` as its public device
+name. The wrong prefix propagated into all `INDIGO_DRIVER_*` log macros, the
+metadata reported by `SET_DRIVER_INFO`, and the name passed to
+`indigo_focuser_attach()`.
+
+Fixed by changing the definition to `"indigo_focuser_mjkzz_bt"`.
+
+### MACDRV-008 (Closed — fixed)
+
+`focuser_attach` in `indigo_focuser_wemacro_bt.m` allocates three custom properties
+(`X_RAIL_CONFIG_PROPERTY`, `X_RAIL_SHUTTER_PROPERTY`, `X_RAIL_EXECUTE_PROPERTY`) in
+sequence after a successful `indigo_focuser_attach()`. Each `NULL` check returned
+`INDIGO_FAILED` immediately, leaking any earlier property already allocated and
+leaving the base attach resources unreleased.
+
+The fix replaces the inline `return INDIGO_FAILED` guards with `goto fail`. The
+shared `fail:` label releases `X_RAIL_CONFIG_PROPERTY` and `X_RAIL_SHUTTER_PROPERTY`
+(both calls are safe when the pointer is `NULL`) and calls `indigo_focuser_detach(device)`
+to undo the base attach. `X_RAIL_EXECUTE_PROPERTY` needs no explicit release on this
+path because if it is `NULL` the allocation failed and the pointer was never set;
+if it was already set the `goto` would not be taken.
 
 ### MACDRV-009 (Closed — fixed)
 
@@ -151,34 +179,6 @@ is always tracked. `indigo_cancel_timer(device, &PRIVATE_DATA->wheel_timer)` is
 called at the start of the wheel disconnect path (`CONNECTION_DISCONNECTED_ITEM`
 branch), before `libatik_close`, ensuring any pending callback is cancelled before
 the device context is torn down.
-
-### MACDRV-002 (Closed — fixed)
-
-All three detach handlers in `indigo_ccd_atik2.c` (`ccd_detach` line 308,
-`guider_detach` line 433, `wheel_detach` line 531) called `indigo_global_unlock()`
-whenever `device == device->master_device`, independent of `device_count`. The
-disconnect path already calls `indigo_global_unlock()` when `device_count` reaches
-0. If the master CCD device is detached while the guider or wheel sibling is still
-connected, the unlock fires early. If all devices were disconnected first, detach
-unlocks a second time.
-
-The fix removes the `if (device == device->master_device) { indigo_global_unlock(device); }`
-block from all three detach handlers. The shared disconnect path exclusively owns
-the global lock lifecycle: lock acquired on first connection (`device_count == 0`),
-released when the last sibling disconnects (`device_count == 0` again).
-
-### MACDRV-001 (Closed — fixed)
-
-All three connection handlers in `indigo_ccd_atik2.c` (CCD line 176, guider line
-358, wheel line 476) follow the pattern: when `device_count++ == 0`, acquire the
-global lock, then call `libatik_open()`. On failure the outer `else` branch only
-decremented `device_count`, leaving the lock permanently held.
-
-The fix adds `indigo_global_unlock(device)` immediately inside the `else` arm of
-the `libatik_open()` call, within the `device_count++ == 0` block. The global lock
-is now released as soon as the failed open is detected, before control reaches the
-shared failure branch. The `result = 0` → `result = false` change is also applied
-for type consistency.
 
 ## Review Focus
 

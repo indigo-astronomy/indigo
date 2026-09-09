@@ -20,21 +20,21 @@
 | aux_astromechanics      | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | aux_cloudwatcher        | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ❌ No  |                                                         |
 | aux_dragonfly           | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
-| aux_dsusb               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ❌ No  |                                                         |
+| aux_dsusb               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
 | aux_fbc                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
 | aux_flatmaster          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | aux_flipflat            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| aux_geoptikflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ❌ No  |                                                         |
+| aux_geoptikflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | aux_joystick            | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
 | aux_mgbox               | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
 | aux_ppb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | aux_rpio                | 2️⃣ | ⛔ N/A | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⛔ RPi only                                             |
-| aux_rts                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ❌ No  |                                                         |
+| aux_rts                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes |                                                         |
 | aux_skyalert            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | aux_sqm                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | aux_svbpowerbox         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
 | aux_uch                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| aux_upb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ❌ No  |                                                         |
+| aux_upb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
 | aux_upb3                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | aux_usbdp               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | aux_wbplusv3            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
@@ -84,7 +84,7 @@
 | focuser_dsd             | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ✅ HW  | ✅ Yes |                                                         |
 | focuser_efa             | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
 | focuser_fc3             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes |                                                         |
-| focuser_fcusb           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ❌ No  |                                                         |
+| focuser_fcusb           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
 | focuser_fli             | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
 | focuser_focusdreampro   | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
 | focuser_ioptron         | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
@@ -111,8 +111,8 @@
 | gps_nmea                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes |                                                         |
 | gps_simulator           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ⛔ N/A | ✅ Yes |                                                         |
 | guider_asi              | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⏰ TODO - find SDK for windows                          |
-| guider_cgusbst4         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ❌ No  |                                                         |
-| guider_gpusb            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ❌ No  |                                                         |
+| guider_cgusbst4         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes |                                                         |
+| guider_gpusb            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
 | mount_asi               | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ❌ No  | ❌ No  |                                                         |
 | mount_ioptron           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | mount_lx200             | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
@@ -134,16 +134,16 @@
 | system_ascol            | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
 | wheel_asi               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
 | wheel_astroasis         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| wheel_atik              | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ❌ No  | ❌ No  | ⏰ TODO - make libatik for Windows                      |
+| wheel_atik              | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes | ⏰ TODO - make libatik for Windows                      |
 | wheel_fli               | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
 | wheel_indigo            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| wheel_manual            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ❌ No  |                                                         |
+| wheel_manual            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes |                                                         |
 | wheel_mi                | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⛔ Unix and Windows SDKs are not compatible             |
 | wheel_optec             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |                                                         |
 | wheel_playerone         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
 | wheel_qhy               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |                                                         |
 | wheel_quantum           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |                                                         |
-| wheel_sx                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ⏰ TODO - make hidapi for Windows                       |
+| wheel_sx                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ⏰ TODO - make hidapi for Windows                       |
 | wheel_trutek            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |                                                         |
 | wheel_xagyl             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |                                                         |
 

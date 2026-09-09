@@ -6,7 +6,7 @@
 
 #include <indigo_drivers/dome_simulator/indigo_dome_simulator.h>
 
-#include "simulator_test_common.h"
+#include "serial_simulator_test_common.h"
 
 static const char *dome_connected_properties[] = {
 	DOME_STATE_PROPERTY_NAME,
@@ -155,11 +155,64 @@ static void simulator_passes_dome_compliance_checks(void) {
 	stop_connected_simulator(&dome_simulator);
 }
 
+static void simulator_pending_disconnect(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&dome_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&dome_simulator, NULL));
+	indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_change_number_property_1(&simulator_test_client, dome_simulator.device_name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 120);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_SHUTTER_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	struct timespec before, after;
+	clock_gettime(CLOCK_MONOTONIC, &before);
+	disconnect_serial_device(&dome_simulator);
+	clock_gettime(CLOCK_MONOTONIC, &after);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(after.tv_sec - before.tv_sec + (after.tv_nsec - before.tv_nsec) / 1e9 < 2);
+	int updates = context.update_count;
+	indigo_usleep(600000);
+	SERIAL_CHECK_EQ_INT(updates, context.update_count);
+	SERIAL_CHECK_TRUE(connect_serial_device(&dome_simulator, NULL));
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	double stopped = cached_number_value(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME);
+	SERIAL_CHECK_TRUE(stopped < 120);
+	indigo_usleep(600000);
+	SERIAL_CHECK_TRUE(cached_number_value(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME) == stopped);
+	indigo_change_number_property_1(&simulator_test_client, dome_simulator.device_name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, stopped + 2);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	stop_serial_driver(&dome_simulator);
+}
+
+static void simulator_relative_wrap_and_park_guard(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&dome_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&dome_simulator, NULL));
+	indigo_change_number_property_1(&simulator_test_client, dome_simulator.device_name, DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 2);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	const char *directions[] = { DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM_NAME, DOME_DIRECTION_MOVE_CLOCKWISE_ITEM_NAME };
+	double steps[] = { 2, 4 }, expected[] = { 358, 2 };
+	for (int i = 0; i < 2; i++) {
+		indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_DIRECTION_PROPERTY_NAME, directions[i], true);
+		indigo_change_number_property_1(&simulator_test_client, dome_simulator.device_name, DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, steps[i]);
+		SERIAL_CHECK_TRUE(wait_for_property_state(DOME_STEPS_PROPERTY_NAME, INDIGO_BUSY_STATE));
+		SERIAL_CHECK_TRUE(wait_for_property_state(DOME_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, expected[i], 0.001));
+	}
+cleanup:
+	stop_serial_driver(&dome_simulator);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "driver_info_reports_simulator_metadata", driver_info_reports_simulator_metadata },
 		{ "simulator_exposes_expected_properties", simulator_exposes_expected_properties },
-		{ "simulator_passes_dome_compliance_checks", simulator_passes_dome_compliance_checks }
+		{ "simulator_passes_dome_compliance_checks", simulator_passes_dome_compliance_checks },
+		{ "simulator_pending_disconnect", simulator_pending_disconnect },
+		{ "simulator_relative_wrap_and_park_guard", simulator_relative_wrap_and_park_guard }
 	};
 	return indigo_run_tests("dome simulator integration tests", tests, ARRAY_SIZE(tests));
 }

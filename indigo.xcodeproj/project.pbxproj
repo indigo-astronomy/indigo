@@ -1169,6 +1169,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0E2DAEC5555FF3DF5BFBE8E0 /* test_ao_sx_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ao_sx_transport.c; sourceTree = "<group>"; };
+		4EB4B98B4C569BFBD5A4A6D3 /* test_aux_upb_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_upb_simulator.c; sourceTree = "<group>"; };
+		5560F867DB1B8995E921356D /* test_wheel_indigo_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_indigo_transport.c; sourceTree = "<group>"; };
 		59019E091DE0AC7400CCB3ED /* indigo_client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_client.c; sourceTree = "<group>"; tabWidth = 2; wrapsLines = 0; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59019E0A1DE0AC7400CCB3ED /* indigo_client.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_client.h; sourceTree = "<group>"; };
 		5903564325AB0C02001DC5DB /* solver_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = solver_test; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -4796,6 +4799,10 @@
 		59FFB062288D3CB900F172AC /* indigo_ccd_playerone.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_playerone.h; sourceTree = "<group>"; };
 		59FFB063288D3CB900F172AC /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59FFB064288D3CB900F172AC /* indigo_ccd_playerone_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_playerone_main.c; sourceTree = "<group>"; };
+		7330D4CDFA32AB370C17EF61 /* test_serial_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_serial_outputs.c; sourceTree = "<group>"; };
+		8C1FC871C19C3024C359D9DF /* test_aux_skyalert_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_skyalert_transport.c; sourceTree = "<group>"; };
+		911ED5BCFB940CD89E832EBB /* test_focuser_motion.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_motion.c; sourceTree = "<group>"; };
+		9664C6C95BD6AB4220114A5E /* test_wheel_manual.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_manual.c; sourceTree = "<group>"; };
 		9D035EBE299E695E00226FC7 /* NYX101.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = NYX101.pdf; sourceTree = "<group>"; };
 		9D0829312C198614002166E1 /* bressercam.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bressercam.h; sourceTree = "<group>"; };
 		9D0829332C198614002166E1 /* libbressercam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libbressercam.so; sourceTree = "<group>"; };
@@ -5261,8 +5268,13 @@
 		C0DE20260908000200000002 /* test_ccd_playerone_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_playerone_sdk.c; sourceTree = "<group>"; };
 		C0DE20260908000200000003 /* test_ccd_playerone_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_playerone_hw.c; sourceTree = "<group>"; };
 		C0DE20260908000200000004 /* indigo_ccd_playerone.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_ccd_playerone.driver; sourceTree = "<group>"; };
-		C0DE20260908000300000002 /* test_ccd_sx_usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_sx_usb.c; sourceTree = "<group>"; };
 		C0DE20260908000300000001 /* ccd_test_noise.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ccd_test_noise.h; sourceTree = "<group>"; };
+		C0DE20260908000300000002 /* test_ccd_sx_usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_sx_usb.c; sourceTree = "<group>"; };
+		C0DE20260909000100000001 /* serial_motion.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = serial_motion.h; sourceTree = "<group>"; };
+		C0DE20260909000200000001 /* aux_upb_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_upb_simulator.c; sourceTree = "<group>"; };
+		C69535F5A30EBCFF42E1200F /* test_gps_nmea_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_nmea_transport.c; sourceTree = "<group>"; };
+		E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_usb_outputs.c; sourceTree = "<group>"; };
+		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -13278,6 +13290,16 @@
 				59FA7BFB301D3F5A00A35CFB /* test_rotator_simulator.c */,
 				59FA7BF4301D3B9200A35CFB /* test_ccd_simulator.c */,
 				59FA7BF2301D3A5800A35CFB /* test_bus_lifecycle.c */,
+				7330D4CDFA32AB370C17EF61 /* test_serial_outputs.c */,
+				9664C6C95BD6AB4220114A5E /* test_wheel_manual.c */,
+				911ED5BCFB940CD89E832EBB /* test_focuser_motion.c */,
+				E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */,
+				4EB4B98B4C569BFBD5A4A6D3 /* test_aux_upb_simulator.c */,
+				C69535F5A30EBCFF42E1200F /* test_gps_nmea_transport.c */,
+				0E2DAEC5555FF3DF5BFBE8E0 /* test_ao_sx_transport.c */,
+				5560F867DB1B8995E921356D /* test_wheel_indigo_transport.c */,
+				F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */,
+				8C1FC871C19C3024C359D9DF /* test_aux_skyalert_transport.c */,
 				C0DE20260908000300000002 /* test_ccd_sx_usb.c */,
 				C0DE20260908000300000001 /* ccd_test_noise.h */,
 				59FA7BF6301D3F5A00A35CFB /* simulator_test_common.h */,
@@ -13410,6 +13432,7 @@
 		59FEFFD0301E7005007FB62D /* simulator_common */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260909000100000001 /* serial_motion.h */,
 				59FEFFCF301E7005007FB62D /* serial_simulator_common.h */,
 			);
 			path = simulator_common;
@@ -14168,6 +14191,7 @@
 		9D69408C2180BA1800AB112C /* aux_upb_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260909000200000001 /* aux_upb_simulator.c */,
 				9D69408D2180BA1800AB112C /* aux_upb_simulator.ino */,
 			);
 			path = aux_upb_simulator;

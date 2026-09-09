@@ -7,6 +7,13 @@
 #include <indigo_drivers/mount_synscan/indigo_mount_synscan.h>
 
 #include "serial_simulator_test_common.h"
+#include <dirent.h>
+
+static char park_folder[] = "/tmp/indigo-synscan-park-XXXXXX";
+
+const char *synscan_test_config_folder(void) {
+	return park_folder;
+}
 
 #ifndef MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE
 #define MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE "build/integration/mount_synscan_simulator"
@@ -275,16 +282,7 @@ static void synscan_mount_parks_after_axis_status_initialized_reply(void) {
 		0
 	};
 	external_serial_simulator simulator = { 0 };
-	char old_home[PATH_MAX] = { 0 };
-	const char *old_home_value = getenv("HOME");
-	bool home_changed = false;
-
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
-	if (old_home_value != NULL) {
-		snprintf(old_home, sizeof(old_home), "%s", old_home_value);
-	}
-	SERIAL_CHECK_TRUE(setenv("HOME", simulator.directory, 1) == 0);
-	home_changed = true;
 	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
 
@@ -298,13 +296,6 @@ static void synscan_mount_parks_after_axis_status_initialized_reply(void) {
 cleanup:
 	if (context.connected) {
 		stop_serial_driver(&synscan_mount);
-	}
-	if (home_changed) {
-		if (*old_home) {
-			setenv("HOME", old_home, 1);
-		} else {
-			unsetenv("HOME");
-		}
 	}
 	stop_external_serial_simulator(&simulator);
 }
@@ -644,8 +635,32 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static void synscan_pec_training_disconnect(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_PEC_TRAINING_PROPERTY_NAME, MOUNT_PEC_TRAINIG_STARTED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PEC_TRAINING_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_usleep(1100000);
+	disconnect_serial_device(&synscan_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	int updates = context.update_count;
+	indigo_usleep(1500000);
+	SERIAL_CHECK_EQ_INT(updates, context.update_count);
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_mount, simulator.port));
+	indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_PEC_TRAINING_PROPERTY_NAME, MOUNT_PEC_TRAINIG_STOPPED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PEC_TRAINING_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	stop_serial_driver(&synscan_mount);
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
+	if (mkdtemp(park_folder) == NULL) {
+		return 1;
+	}
 	const indigo_test_case tests[] = {
+		{ "synscan_pec_training_disconnect", synscan_pec_training_disconnect },
 		{ "synscan_mount_passes_serial_compliance_checks", synscan_mount_passes_serial_compliance_checks },
 		{ "synscan_mount_parks_after_axis_status_initialized_reply", synscan_mount_parks_after_axis_status_initialized_reply },
 		{ "synscan_mount_hides_autohome_without_both_home_indexers", synscan_mount_hides_autohome_without_both_home_indexers },
@@ -662,5 +677,16 @@ int main(void) {
 		{ "synscan_mount_connects_with_explicit_udp_url", synscan_mount_connects_with_explicit_udp_url },
 		{ "synscan_mount_connects_with_udp_autodetection", synscan_mount_connects_with_udp_autodetection }
 	};
-	return indigo_run_tests("SynScan EQ8 serial/UDP simulator integration tests", tests, ARRAY_SIZE(tests));
+	int result = 0;
+	const char *filter = getenv("INDIGO_TEST_FILTER");
+	for (int i = 0; i < ARRAY_SIZE(tests); i++) {
+		if (filter == NULL || strstr(tests[i].name, filter)) {
+			result |= indigo_run_tests("SynScan EQ8", tests + i, 1);
+		}
+	}
+	char park_path[PATH_MAX];
+	snprintf(park_path, sizeof(park_path), "%s/synscan-EQ8.park", park_folder);
+	unlink(park_path);
+	rmdir(park_folder);
+	return result;
 }
