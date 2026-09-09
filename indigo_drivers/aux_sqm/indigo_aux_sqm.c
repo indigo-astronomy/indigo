@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000013
 #define DRIVER_NAME          "indigo_aux_sqm"
 #define DRIVER_LABEL         "Unihedron SQM"
 #define AUX_DEVICE_NAME      "Unihedron SQM"
@@ -113,25 +113,17 @@ static void aux_timer_callback(indigo_device *device) {
 		return;
 	}
 	//+ aux.on_timer
-	char *pnt;
-	if (sqm_command(device, "rx")) {
-		char *tok = strtok_r(PRIVATE_DATA->response, ",", &pnt);
-		if (tok == NULL) {
-			AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
-			AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (*tok == 'r') {
-			AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
-			AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = indigo_aux_sky_bortle(AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value);
-			X_AUX_SENSOR_FREQUENCY_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
-			X_AUX_SENSOR_COUNTS_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
-			X_AUX_SENSOR_PERIOD_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
-			AUX_WEATHER_SKY_TEMPERATURE_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
-			AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
-			AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
-		}
+	double brightness, frequency, counts, period, temperature;
+	if (sqm_command(device, "rx") && sscanf(PRIVATE_DATA->response, "r,%lfm,%lfHz,%lfc,%lfs,%lfC", &brightness, &frequency, &counts, &period, &temperature) == 5 && isfinite(brightness) && isfinite(frequency) && isfinite(counts) && isfinite(period) && isfinite(temperature)) {
+		AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = brightness;
+		AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = indigo_aux_sky_bortle(brightness);
+		X_AUX_SENSOR_FREQUENCY_ITEM->number.value = frequency;
+		X_AUX_SENSOR_COUNTS_ITEM->number.value = counts;
+		X_AUX_SENSOR_PERIOD_ITEM->number.value = period;
+		AUX_WEATHER_SKY_TEMPERATURE_ITEM->number.value = temperature;
+		AUX_INFO_PROPERTY->state = AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
-		AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
+		AUX_INFO_PROPERTY->state = AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
 	indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
