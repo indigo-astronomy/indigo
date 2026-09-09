@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_wheel_atik"
 #define DRIVER_LABEL         "Atik Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Atik Filter Wheel"
@@ -59,7 +59,7 @@
 typedef struct {
 	indigo_uni_handle *handle;
 	//+ data
-	int slot_count, current_slot, target_slot;
+	int slot_count, current_slot, target_slot, motion_polls;
 	//- data
 } atik_private_data;
 
@@ -69,6 +69,16 @@ static indigo_queue *driver_queue = NULL;
 static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //+ code
+
+static bool atik_query(indigo_device *device) {
+	int count, slot;
+	if (!libatik_wheel_query((hid_device *)PRIVATE_DATA->handle->hid_device, &count, &slot) || count < 1 || count > 9 || slot < 0 || slot > count) {
+		return false;
+	}
+	PRIVATE_DATA->slot_count = count;
+	PRIVATE_DATA->current_slot = slot;
+	return true;
+}
 
 static bool atik_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_hid(ATIK_VENDOR_ID, ATIK_PRODUC_ID, INDIGO_LOG_DEBUG | BINARY_LOG);
@@ -84,13 +94,22 @@ static void atik_close(indigo_device *device) {
 //+ wheel.code
 
 static void wheel_move_finalizer(indigo_device *device) {
-	libatik_wheel_query((hid_device *)PRIVATE_DATA->handle->hid_device, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
-	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
-		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+	if (!atik_query(device)) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
-		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+		if (PRIVATE_DATA->current_slot > 0) {
+			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+		}
+		if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+		} else if (--PRIVATE_DATA->motion_polls <= 0) {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+		}
 	}
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
 
 //- wheel.code
@@ -105,8 +124,10 @@ static void wheel_connection_handler(indigo_device *device) {
 			//+ wheel.on_connect
 			connection_result = false;
 			for (int i = 0; i < 10; i++) {
-				libatik_wheel_query((hid_device *)PRIVATE_DATA->handle->hid_device, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
-				if (PRIVATE_DATA->slot_count > 0 && PRIVATE_DATA->slot_count <= 9) {
+				if (!atik_query(device)) {
+					break;
+				}
+				if (PRIVATE_DATA->current_slot > 0) {
 					connection_result = true;
 					break;
 				}
@@ -137,15 +158,20 @@ static void wheel_connection_handler(indigo_device *device) {
 
 static void wheel_slot_handler(indigo_device *device) {
 	//+ wheel.WHEEL_SLOT.on_change
-	if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
-		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+	double requested = WHEEL_SLOT_ITEM->number.target;
+	if (requested == PRIVATE_DATA->current_slot) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
-		libatik_wheel_set((hid_device *)PRIVATE_DATA->handle->hid_device, PRIVATE_DATA->target_slot);
-		libatik_wheel_query((hid_device *)PRIVATE_DATA->handle->hid_device, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
-		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+		PRIVATE_DATA->target_slot = requested;
+		if (libatik_wheel_set((hid_device *)PRIVATE_DATA->handle->hid_device, PRIVATE_DATA->target_slot)) {
+			PRIVATE_DATA->motion_polls = 120;
+			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+		} else {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	//- wheel.WHEEL_SLOT.on_change
 }
 
@@ -175,7 +201,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
 		return INDIGO_OK;
 	}
 	return indigo_wheel_change_property(device, client, property);
@@ -213,7 +239,13 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 		wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 		snprintf(wheel->name, INDIGO_NAME_SIZE, "%s #%s", "Atik Filter Wheel", usb_path);
 		wheel->private_data = private_data;
-		indigo_attach_device(wheel);
+		if (indigo_attach_device(wheel) != INDIGO_OK) {
+			indigo_safe_free(wheel->private_data);
+			indigo_safe_free(wheel);
+			wheel = NULL;
+			libusb_unref_device(dev);
+			return;
+		}
 	}
 	libusb_unref_device(dev);
 }
@@ -269,12 +301,18 @@ indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info 
 			driver_queue = indigo_queue_create(NULL);
 			if (driver_queue == NULL) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create driver queue");
+				last_action = INDIGO_DRIVER_SHUTDOWN;
 				return INDIGO_FAILED;
 			}
 			indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
 			indigo_start_usb_event_handler();
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ATIK_VENDOR_ID, ATIK_PRODUC_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			if (rc < 0) {
+				indigo_queue_delete(&driver_queue);
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
