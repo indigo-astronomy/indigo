@@ -1170,7 +1170,11 @@
 
 /* Begin PBXFileReference section */
 		0E2DAEC5555FF3DF5BFBE8E0 /* test_ao_sx_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ao_sx_transport.c; sourceTree = "<group>"; };
+		2D7262A5A6EB6D2BF8614DCA /* aux_test_isolation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_test_isolation.h; sourceTree = "<group>"; };
+		30C50F83B71C53EA7F53B386 /* test_aux_cloudwatcher_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_cloudwatcher_simulator.c; sourceTree = "<group>"; };
+		4C8E9528A919F2519EEA4E91 /* aux_dragonfly_simulator/aux_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_dragonfly_simulator/aux_dragonfly_simulator.c; sourceTree = "<group>"; };
 		4EB4B98B4C569BFBD5A4A6D3 /* test_aux_upb_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_upb_simulator.c; sourceTree = "<group>"; };
+		543383E8449CF052349990E3 /* aux_cloudwatcher_simulator/aux_cloudwatcher_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_cloudwatcher_simulator/aux_cloudwatcher_simulator.c; sourceTree = "<group>"; };
 		5560F867DB1B8995E921356D /* test_wheel_indigo_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_indigo_transport.c; sourceTree = "<group>"; };
 		59019E091DE0AC7400CCB3ED /* indigo_client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_client.c; sourceTree = "<group>"; tabWidth = 2; wrapsLines = 0; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59019E0A1DE0AC7400CCB3ED /* indigo_client.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_client.h; sourceTree = "<group>"; };
@@ -2489,6 +2493,9 @@
 		598CB77F2D6092A200B7211A /* libsvbonycam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsvbonycam.dylib; path = build/lib/libsvbonycam.dylib; sourceTree = "<group>"; };
 		598FE2862615037000E0DA21 /* dome_talon6ror_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = dome_talon6ror_simulator.ino; sourceTree = "<group>"; };
 		59910A353050AC2600FB1C2F /* test_wheel_astroasis_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_astroasis_sdk.c; sourceTree = "<group>"; };
+		59910A363051619300FB1C2F /* aux_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_dragonfly_simulator.c; sourceTree = "<group>"; };
+		59910A38305161AC00FB1C2F /* aux_mgbox_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_mgbox_simulator.c; sourceTree = "<group>"; };
+		59910A3A305161C300FB1C2F /* aux_cloudwatcher_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_cloudwatcher_simulator.c; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -4802,7 +4809,9 @@
 		7330D4CDFA32AB370C17EF61 /* test_serial_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_serial_outputs.c; sourceTree = "<group>"; };
 		8C1FC871C19C3024C359D9DF /* test_aux_skyalert_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_skyalert_transport.c; sourceTree = "<group>"; };
 		911ED5BCFB940CD89E832EBB /* test_focuser_motion.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_motion.c; sourceTree = "<group>"; };
+		960DE6F8A0B4DE3F515D5727 /* AUX_PROTOCOL_TESTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AUX_PROTOCOL_TESTS.md; sourceTree = "<group>"; };
 		9664C6C95BD6AB4220114A5E /* test_wheel_manual.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_manual.c; sourceTree = "<group>"; };
+		9B2B121EFA1F4F77BCDD8053 /* test_aux_mgbox_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_mgbox_simulator.c; sourceTree = "<group>"; };
 		9D035EBE299E695E00226FC7 /* NYX101.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = NYX101.pdf; sourceTree = "<group>"; };
 		9D0829312C198614002166E1 /* bressercam.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bressercam.h; sourceTree = "<group>"; };
 		9D0829332C198614002166E1 /* libbressercam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libbressercam.so; sourceTree = "<group>"; };
@@ -5273,8 +5282,11 @@
 		C0DE20260909000100000001 /* serial_motion.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = serial_motion.h; sourceTree = "<group>"; };
 		C0DE20260909000200000001 /* aux_upb_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_upb_simulator.c; sourceTree = "<group>"; };
 		C69535F5A30EBCFF42E1200F /* test_gps_nmea_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_nmea_transport.c; sourceTree = "<group>"; };
+		C8683D8A00D36FB4420DE7FD /* test_aux_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_dragonfly_simulator.c; sourceTree = "<group>"; };
+		C8C5AB005058845B38795F93 /* aux_mgbox_simulator/aux_mgbox_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_mgbox_simulator/aux_mgbox_simulator.c; sourceTree = "<group>"; };
 		E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_usb_outputs.c; sourceTree = "<group>"; };
 		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
+		FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_simulator_common.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -6280,9 +6292,11 @@
 			children = (
 				591F328F24211EB000D1D64B /* README.md */,
 				591F329224211EB000D1D64B /* indigo_aux_dragonfly.h */,
+				4C8E9528A919F2519EEA4E91 /* aux_dragonfly_simulator/aux_dragonfly_simulator.c */,
 				591F328924211EB000D1D64B /* indigo_aux_dragonfly.c */,
 				591F329024211EB000D1D64B /* indigo_aux_dragonfly_main.c */,
 				591F329124211EB000D1D64B /* Makefile.inc */,
+				59910A373051619300FB1C2F /* aux_dragonfly_simulator */,
 				591F328D24211EB000D1D64B /* shared */,
 				591F328A24211EB000D1D64B /* relio_simulator */,
 			);
@@ -6437,6 +6451,7 @@
 				59FEFFCE301E7005007FB62D /* REVIEW.md */,
 				59FA7BE4301D2E9700A35CFB /* AGENTS.md */,
 				59FA7C0B301DCEA000A35CFB /* DRIVER_TESTING_RULES.md */,
+				960DE6F8A0B4DE3F515D5727 /* AUX_PROTOCOL_TESTS.md */,
 				59FA7BE5301D34C300A35CFB /* CHANGES.md */,
 				59FA7BEA301D360C00A35CFB /* Makefile */,
 				59FA7BEB301D360C00A35CFB /* test_runner.h */,
@@ -8232,6 +8247,30 @@
 				598FE2862615037000E0DA21 /* dome_talon6ror_simulator.ino */,
 			);
 			path = dome_talon6ror_simulator;
+			sourceTree = "<group>";
+		};
+		59910A373051619300FB1C2F /* aux_dragonfly_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59910A363051619300FB1C2F /* aux_dragonfly_simulator.c */,
+			);
+			path = aux_dragonfly_simulator;
+			sourceTree = "<group>";
+		};
+		59910A39305161AC00FB1C2F /* aux_mgbox_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59910A38305161AC00FB1C2F /* aux_mgbox_simulator.c */,
+			);
+			path = aux_mgbox_simulator;
+			sourceTree = "<group>";
+		};
+		59910A3B305161C300FB1C2F /* aux_cloudwatcher_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59910A3A305161C300FB1C2F /* aux_cloudwatcher_simulator.c */,
+			);
+			path = aux_cloudwatcher_simulator;
 			sourceTree = "<group>";
 		};
 		5992F7B01E1EC84B0035242E /* ccd_fli */ = {
@@ -10218,8 +10257,10 @@
 		59C565002464A13A00344C0C /* aux_mgbox */ = {
 			isa = PBXGroup;
 			children = (
+				59910A39305161AC00FB1C2F /* aux_mgbox_simulator */,
 				59C565022464A13A00344C0C /* README.md */,
 				59C565032464A13A00344C0C /* indigo_aux_mgbox.h */,
+				C8C5AB005058845B38795F93 /* aux_mgbox_simulator/aux_mgbox_simulator.c */,
 				59C565012464A13A00344C0C /* indigo_aux_mgbox.c */,
 				59C565042464A13A00344C0C /* indigo_aux_mgbox_main.c */,
 				59C565052464A13A00344C0C /* doc */,
@@ -13186,8 +13227,10 @@
 			children = (
 				59F7E5E82457616400EF273A /* README.md */,
 				59F7E5E92457616400EF273A /* indigo_aux_cloudwatcher.h */,
+				543383E8449CF052349990E3 /* aux_cloudwatcher_simulator/aux_cloudwatcher_simulator.c */,
 				59F7E5E62457616400EF273A /* indigo_aux_cloudwatcher.c */,
 				59F7E5E72457616400EF273A /* indigo_aux_cloudwatcher_main.c */,
+				59910A3B305161C300FB1C2F /* aux_cloudwatcher_simulator */,
 			);
 			path = aux_cloudwatcher;
 			sourceTree = "<group>";
@@ -13302,6 +13345,10 @@
 				8C1FC871C19C3024C359D9DF /* test_aux_skyalert_transport.c */,
 				C0DE20260908000300000002 /* test_ccd_sx_usb.c */,
 				C0DE20260908000300000001 /* ccd_test_noise.h */,
+				30C50F83B71C53EA7F53B386 /* test_aux_cloudwatcher_simulator.c */,
+				C8683D8A00D36FB4420DE7FD /* test_aux_dragonfly_simulator.c */,
+				9B2B121EFA1F4F77BCDD8053 /* test_aux_mgbox_simulator.c */,
+				2D7262A5A6EB6D2BF8614DCA /* aux_test_isolation.h */,
 				59FA7BF6301D3F5A00A35CFB /* simulator_test_common.h */,
 				59FEFFC6301E6891007FB62D /* serial_simulator_test_common.h */,
 				5907ACD6301E84A90009AA99 /* test_wheel_xagyl_simulator.c */,
@@ -13433,6 +13480,7 @@
 			isa = PBXGroup;
 			children = (
 				C0DE20260909000100000001 /* serial_motion.h */,
+				FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */,
 				59FEFFCF301E7005007FB62D /* serial_simulator_common.h */,
 			);
 			path = simulator_common;

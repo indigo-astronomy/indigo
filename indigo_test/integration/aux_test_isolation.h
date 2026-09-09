@@ -1,0 +1,74 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// Use under the INDIGO Astronomy open-source license (see LICENSE.md).
+#ifndef AUX_TEST_ISOLATION_H
+#define AUX_TEST_ISOLATION_H
+#include <errno.h>
+// Parent owns the simulator and removes it even if the unchanged driver crashes
+// or hangs during child teardown. Real driver I/O, queues and timers are used.
+static external_serial_simulator aux_simulator;
+
+static bool aux_wait_switch(const char *property, const char *name, bool value) {
+	for (int i = 0; i < 100; i++) {
+		indigo_property *p = find_cached_property(property);
+		indigo_item *item = find_cached_item(property, name);
+		if (p && item && p->state == INDIGO_OK_STATE && item->sw.value == value) { return true; }
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static bool aux_reject(const simulator_driver_case *driver, const char *port) {
+	indigo_change_text_property_1_raw(&simulator_test_client, driver->device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, port);
+	indigo_change_switch_property_1(&simulator_test_client, driver->device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
+	for (int i = 0; i < 210; i++) {
+		if (context.last_connection_state == INDIGO_ALERT_STATE && !context.connected) { return true; }
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static void aux_stop(const simulator_driver_case *driver) {
+	bool disconnected = !context.connected;
+	if (!disconnected) {
+		indigo_change_switch_property_1(&simulator_test_client, driver->device_name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
+		disconnected = wait_for_simulator_connection_state(false);
+	}
+	indigo_result shutdown = driver->entry(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_detach_client(&simulator_test_client);
+	indigo_result stopped = indigo_stop();
+	release_cached_properties();
+	ASSERT_TRUE(disconnected);
+	ASSERT_EQ_INT(INDIGO_OK, shutdown);
+	ASSERT_EQ_INT(INDIGO_OK, stopped);
+}
+
+typedef struct { const char *name; void (*run)(void); const char *profile; } aux_simulated_case;
+static int run_aux_simulated(const char *suite, const char *executable, const aux_simulated_case *tests, int count) {
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	int failures = 0;
+	const char *filter = getenv("AUX_TEST_FILTER");
+	for (int i = 0; i < count; i++) {
+		if (filter && !strstr(tests[i].name, filter)) { continue; }
+		const char *args[] = { "--profile", tests[i].profile, NULL };
+		if (!start_external_serial_simulator_with_args(&aux_simulator, executable, args)) { fprintf(stderr, "Simulator startup failed\n"); return 1; }
+		fflush(NULL);
+		pid_t child = fork();
+		if (child == 0) {
+			alarm(35);
+			indigo_test_case test = { tests[i].name, tests[i].run };
+			_exit(indigo_run_tests(suite, &test, 1));
+		}
+		int status = 0;
+		if (child > 0) {
+			while (waitpid(child, &status, 0) < 0) { if (errno != EINTR) { status = -1; break; } }
+		}
+		stop_external_serial_simulator(&aux_simulator);
+		if (child < 0 || status == -1 || !WIFEXITED(status) || WEXITSTATUS(status)) {
+			failures++;
+			printf("FAIL: %s (exit=%d, signal=%d)\n", tests[i].name, WIFEXITED(status) ? WEXITSTATUS(status) : -1, WIFSIGNALED(status) ? WTERMSIG(status) : 0);
+		}
+	}
+	printf("%s: %d failing scenarios\n", suite, failures);
+	return failures ? 1 : 0;
+}
+#endif

@@ -1,0 +1,89 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// Use under the INDIGO Astronomy open-source license (see LICENSE.md).
+#ifndef AUX_SIMULATOR_COMMON_H
+#define AUX_SIMULATOR_COMMON_H
+#include "serial_simulator_common.h"
+#include <signal.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <time.h>
+static volatile sig_atomic_t sim_running = 1;
+static const char *sim_profile = "normal";
+static int sim_fd = -1;
+static bool sim_trace;
+static struct sockaddr_in sim_peer;
+static socklen_t sim_peer_size;
+static void sim_signal(int sig) { sim_running = 0; }
+
+static double sim_time(void) {
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return now.tv_sec + now.tv_nsec / 1e9;
+}
+
+static void sim_send(const char *data, size_t size) {
+	if (SIM_UDP) {
+		sendto(sim_fd, data, size, 0, (struct sockaddr *)&sim_peer, sim_peer_size);
+	} else {
+		serial_simulator_write_all(sim_fd, data, size);
+	}
+}
+
+static void sim_dispatch(const char *command);
+static int sim_main(int argc, char **argv) {
+	const char *ready = NULL;
+	for (int i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--headless")) { continue; }
+		if (!strcmp(argv[i], "--trace")) { sim_trace = true; continue; }
+		if (!strcmp(argv[i], "--ready-file") && i + 1 < argc) { ready = argv[++i]; continue; }
+		if (!strcmp(argv[i], "--profile") && i + 1 < argc) { sim_profile = argv[++i]; continue; }
+		fprintf(stderr, "Usage: %s --headless --ready-file PATH [--profile NAME] [--trace]\n", argv[0]);
+		return 1;
+	}
+	signal(SIGTERM, sim_signal);
+	signal(SIGINT, sim_signal);
+	signal(SIGPIPE, SIG_IGN);
+	char port[128];
+	if (SIM_UDP) {
+		sim_fd = socket(AF_INET, SOCK_DGRAM, 0);
+		struct sockaddr_in address = { .sin_family = AF_INET, .sin_addr.s_addr = htonl(INADDR_LOOPBACK), .sin_port = 0 };
+		if (sim_fd < 0 || bind(sim_fd, (struct sockaddr *)&address, sizeof(address))) { perror("simulator bind"); return 1; }
+		socklen_t size = sizeof(address);
+		getsockname(sim_fd, (struct sockaddr *)&address, &size);
+		snprintf(port, sizeof(port), "udp://127.0.0.1:%u", ntohs(address.sin_port));
+	} else {
+		sim_fd = serial_simulator_open_pty(port, sizeof(port));
+	}
+	if (sim_fd < 0) { return 1; }
+	if (ready && !serial_simulator_write_ready_file(ready, SIM_NAME, port)) { close(sim_fd); return 1; }
+	char command[1024];
+	size_t used = 0;
+	double next = sim_time() + .5;
+	while (sim_running) {
+		fd_set set;
+		FD_ZERO(&set);
+		FD_SET(sim_fd, &set);
+		struct timeval timeout = { .tv_usec = 50000 };
+		if (select(sim_fd + 1, &set, NULL, NULL, &timeout) > 0) {
+			char data[1024];
+			sim_peer_size = sizeof(sim_peer);
+			ssize_t size = SIM_UDP ? recvfrom(sim_fd, data, sizeof(data), 0, (struct sockaddr *)&sim_peer, &sim_peer_size) : read(sim_fd, data, sizeof(data));
+			for (ssize_t i = 0; i < size; i++) {
+				if (used + 1 >= sizeof(command)) { used = 0; }
+				command[used++] = data[i];
+				if (data[i] == SIM_TERMINATOR) {
+					command[used] = 0;
+					serial_simulator_trace_line(sim_trace, "->", command);
+					sim_dispatch(command);
+					used = 0;
+				}
+			}
+			if (size <= 0) { usleep(1000); }
+		}
+		if (sim_time() >= next) { sim_dispatch(NULL); next = sim_time() + .5; }
+	}
+	close(sim_fd);
+	return 0;
+}
+#endif

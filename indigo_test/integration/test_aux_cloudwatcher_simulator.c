@@ -1,0 +1,58 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// All rights reserved.
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+#include <indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.h>
+#include "serial_simulator_test_common.h"
+#include "aux_test_isolation.h"
+
+static const simulator_driver_case primary = { "AAG CloudWatcher", "indigo_aux_cloudwatcher", "AAG CloudWatcher", indigo_aux_cloudwatcher, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+
+static void normal(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	assert_device_interface(INDIGO_INTERFACE_AUX);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_PRESSURE_ITEM_NAME, 1000, .01));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_WIND_SPEED_ITEM_NAME, (36 * .84 + 3) / 3.6, .01));
+	SERIAL_CHECK_EQ_INT(indigo_change_switch_property_1(&simulator_test_client, primary.device_name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, true), INDIGO_OK);
+	SERIAL_CHECK_TRUE(aux_wait_switch(AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, true));
+	printf("Data and control assertions passed; checking disconnect/shutdown\n");
+cleanup:
+	aux_stop(&primary);
+}
+
+static void humidity_conversion(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_OK_STATE));
+	printf("Humidity: expected 44, received %g\n", cached_number_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_HUMIDITY_ITEM_NAME));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_HUMIDITY_ITEM_NAME) - 44) < .01);
+cleanup:
+	aux_stop(&primary);
+}
+
+static void rejected_connection(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&primary));
+	SERIAL_CHECK_TRUE(aux_reject(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(!context.connected);
+cleanup:
+	aux_stop(&primary);
+}
+
+static void relay_error(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_EQ_INT(indigo_change_switch_property_1(&simulator_test_client, primary.device_name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, true), INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_GPIO_OUTLETS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	aux_stop(&primary);
+}
+
+int main(void) {
+	const aux_simulated_case tests[] = {
+		{ "normal", normal, "normal" },
+		{ "humidity_conversion", humidity_conversion, "normal" },
+		{ "wrong_identity", rejected_connection, "wrong-identity" },
+		{ "relay_error", relay_error, "relay-error" },
+		{ "timeout", rejected_connection, "timeout" },
+	};
+	return run_aux_simulated("cloudwatcher", "build/integration/aux_cloudwatcher_simulator", tests, ARRAY_SIZE(tests));
+}

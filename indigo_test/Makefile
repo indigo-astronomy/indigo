@@ -31,7 +31,9 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_timer \
 	$(UNIT_BUILD)/test_token \
 	$(UNIT_BUILD)/test_raw_image
-INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_aux_skyalert_transport \
+INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_aux_cloudwatcher_simulator \
+	$(INTEGRATION_BUILD)/test_aux_mgbox_simulator \
+	$(INTEGRATION_BUILD)/test_aux_skyalert_transport \
 	$(INTEGRATION_BUILD)/test_aux_sqm_transport \
 	$(INTEGRATION_BUILD)/test_wheel_indigo_transport \
 	$(INTEGRATION_BUILD)/test_ao_sx_transport \
@@ -961,3 +963,38 @@ $(INTEGRATION_BUILD)/aux_skyalert_transport.o: ../indigo_drivers/aux_skyalert/in
 
 $(INTEGRATION_BUILD)/test_aux_skyalert_transport: integration/test_aux_skyalert_transport.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_skyalert_transport.o Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/aux_skyalert_transport.o -o $@ $(TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/aux_cloudwatcher_simulator: ../indigo_drivers/aux_cloudwatcher/aux_cloudwatcher_simulator/aux_cloudwatcher_simulator.c simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
+$(INTEGRATION_BUILD)/test_aux_cloudwatcher_simulator: integration/test_aux_cloudwatcher_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_cloudwatcher_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_aux_cloudwatcher.a $(TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/aux_mgbox_simulator: ../indigo_drivers/aux_mgbox/aux_mgbox_simulator/aux_mgbox_simulator.c simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
+$(INTEGRATION_BUILD)/test_aux_mgbox_simulator: integration/test_aux_mgbox_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_mgbox_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_aux_mgbox.a $(TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/aux_dragonfly_simulator: ../indigo_drivers/aux_dragonfly/aux_dragonfly_simulator/aux_dragonfly_simulator.c simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
+$(INTEGRATION_BUILD)/test_aux_dragonfly_simulator: integration/test_aux_dragonfly_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_dragonfly_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_aux_dragonfly.a $(TEST_LDFLAGS)
+
+# Opt-in: the Dragonfly protocol uses a loopback UDP socket.
+.PHONY: test-aux-dragonfly-simulator
+test-aux-dragonfly-simulator: $(INTEGRATION_BUILD)/test_aux_dragonfly_simulator
+	./$(INTEGRATION_BUILD)/test_aux_dragonfly_simulator
+
+# Instrument the unchanged driver itself, not only the test executable.
+$(INTEGRATION_BUILD)/test_aux_cloudwatcher_simulator_asan: integration/test_aux_cloudwatcher_simulator.c ../indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.c integration/aux_test_isolation.h $(INTEGRATION_BUILD)/aux_cloudwatcher_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.c $(TEST_LDFLAGS)
+
+# Instrument the unchanged driver itself, not only the test executable.
+$(INTEGRATION_BUILD)/test_aux_mgbox_simulator_asan: integration/test_aux_mgbox_simulator.c ../indigo_drivers/aux_mgbox/indigo_aux_mgbox.c integration/aux_test_isolation.h $(INTEGRATION_BUILD)/aux_mgbox_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_mgbox/indigo_aux_mgbox.c $(TEST_LDFLAGS)
+
+# Instrument the unchanged driver itself, not only the test executable.
+$(INTEGRATION_BUILD)/test_aux_dragonfly_simulator_asan: integration/test_aux_dragonfly_simulator.c ../indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.c integration/aux_test_isolation.h $(INTEGRATION_BUILD)/aux_dragonfly_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.c $(TEST_LDFLAGS)

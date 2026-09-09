@@ -11,12 +11,12 @@ One current inventory for **all driver modules** in `indigo_drivers/`, `indigo_l
 The inventory merges the earlier CCD and non-CCD audits and incorporates their recorded follow-up results. Coverage refers to applicable driver-owned scenarios in `DRIVER_TESTING_RULES.md`, not line/branch percentages, framework codecs or hardware acceptance. This documentation update inspected the source inventory and test targets; it did not run tests or complete the pending behavior audits. Passing test groups establish only the scenarios described, not full coverage.
 
 - **Complete**: applicable driver-owned coverage was explicitly recorded as complete, with passing validation.
-- **Partial**: concrete scenarios and successful validation are recorded, but remaining gaps or completion of the full standard audit are still outstanding.
+- **Partial**: concrete scenarios and their validation results are recorded, but failures, remaining gaps or completion of the full standard audit are still outstanding.
 - **Not audited**: an automated test exists, but its coverage has not been assessed against the complete applicable standard in this audit. This does not mean there are no tests.
 - **No tests**: no dedicated automated driver target was found in `indigo_test/`; coverage is not established.
 - **Shared**: a ToupTek OEM wrapper follows the shared implementation's coverage. Per the agreed scope, no separate OEM audit is required; this does not claim its vendor binary was tested by the fake ToupTek build.
 
-Inventory: 150 modules — 2 Complete, 32 Partial, 55 Not audited, 51 No tests, 10 Shared.
+Inventory: 150 modules — 2 Complete, 35 Partial, 55 Not audited, 48 No tests, 10 Shared.
 
 | Driver | Implementation | Automated test boundary | Coverage status | Recorded validation / remaining work |
 | --- | --- | --- | --- | --- |
@@ -36,15 +36,15 @@ Inventory: 150 modules — 2 Complete, 32 Partial, 55 Not audited, 51 No tests, 
 | `aux_arteskyflat` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `aux_asiair` | Hand-written | None | No tests | `indigo_linux_drivers/`. No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `aux_astromechanics` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
-| `aux_cloudwatcher` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `aux_dragonfly` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `aux_cloudwatcher` | Hand-written | PTY protocol simulator | Partial | 4/5 ordinary scenarios pass; documented humidity conversion fails (DRV-085). ASan exposes timeout buffer underflow (DRV-086). Remaining firmware/heater cases listed in AUX_PROTOCOL_TESTS.md. |
+| `aux_dragonfly` | Hand-written | UDP protocol simulator (opt-in) | Partial | 5/5 ordinary scenarios pass, including eight sensors/relays and a timed pulse. ASan exposes oversized-reply overflow (DRV-087). Authentication and additional fault cases remain. |
 | `aux_dsusb` | Generated | Fake USB/SDK | Partial | New fake SDK: lifecycle, failed INIT/attach/open, timed exposure, focus abort, stop error and active removal pass; remaining coverage audit in progress |
 | `aux_fbc` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `aux_flatmaster` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `aux_flipflat` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `aux_geoptikflat` | Generated | Fake transport | Partial | New fake transport: handshake rollback, reconnect, brightness/light commands and error recovery pass; remaining audit pending |
 | `aux_joystick` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `aux_mgbox` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `aux_mgbox` | Hand-written | PTY protocol simulator | Partial | 5 scenarios run: weather/GPS data assertions pass but both teardown cases fail; truncated weather/GPS replies crash; invalid-port handling fails (DRV-088, DRV-089). Shared connections and other controls remain. |
 | `aux_ppb` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `aux_rpio` | Hand-written | None | No tests | `indigo_linux_drivers/`. No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `aux_rts` | Generated | Fake transport | Partial | New fake RTS: duration/start/stop/abort and start failure pass; completion/abort stop failures and explicit retry also pass; remaining audit pending |
@@ -655,3 +655,11 @@ Validation: `make -C indigo_test build/integration/test_rotator_asi_sdk` compile
 Remaining coverage: forced overlap of an already executing device handler with disconnect, shutdown with queued/in-flight hot-plug work, USB callback registration/queue allocation failures, invalid startup product-count responses, and vendor timing/physical USB-to-SDK identity. The connection helper waits for the initial delayed SDK read before issuing ordinary command assertions; commands racing that initial read are not covered. No physical CAA, Linux execution, x86_64 execution or full-suite run was performed in this step. Hardware validation remains refactoring Step 9.
 
 Player One follow-up validation (2026-09-08): all 13 cases also passed with `POA_SAFE_READOUT=1` in an isolated build tree and with arm64 AddressSanitizer/UndefinedBehaviorSanitizer. The test, driver and test-local framework objects were instrumented; bundled static dependencies were not. After finalizer naming changes, pulse error was idle mean +1.928 ms / max +5.060 ms and exposure mean +2.684 ms / max +5.054 ms. Physical streaming unplug/replug, reacquisition, guider command and subsequent unload/reload passed separately (TESTING.md); electrical ST4 output remains unmeasured.
+
+## AUX serial/network protocol tests (2026-09-09)
+
+Added standalone PTY simulators for `aux_cloudwatcher` and `aux_mgbox`, and a loopback UDP simulator for `aux_dragonfly`, with public-bus tests linked to unchanged production drivers. New sources and the protocol coverage note are included in Xcode. Serial suites are in `test-integration`; `test-aux-dragonfly-simulator` is opt-in. No Linux-only or system-HID driver was included, and no production driver or generator was changed.
+
+[Protocol sources, exact targets, fixture assumptions and remaining coverage](AUX_PROTOCOL_TESTS.md) distinguish manufacturer documentation from supplementary driver/existing simulator information. The existing Dragonfly Perl simulator was consulted for undocumented reply forms. Tests intentionally report current failures rather than treating bugs as expected passes.
+
+Validation on macOS arm64: universal arm64/x86_64 test builds succeeded; 15 ordinary scenarios ran (9 pass, 6 fail). Four additional selected driver-instrumented AddressSanitizer scenarios reproduce CloudWatcher timeout underflow, Dragonfly UDP overflow and both MGBox truncated-message crashes. The framework library remains uninstrumented. See open `DRV-085`–`DRV-089` in `indigo_drivers/REVIEW.md`. These are partial coverage results, not hardware validation or full-standard completion.

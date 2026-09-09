@@ -116,6 +116,12 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-083 | Medium | `wheel_sx`, `wheel_atik`, `wheel_indigo`, `aux_dsusb`, `focuser_fcusb`, `aux_upb`, `dome_simulator`, `focuser_astromechanics` `.driver` files | User review identified duplicated framework BUSY/input guards and redundant generator-owned updates. | Closed (fixed) |
 | DRV-084 | High | `guider_gpusb/indigo_guider_gpusb.driver` | Replacement canceled the old stop before the SDK accepted the new pulse; failure could leave a relay on. | Closed (fixed) |
 
+| DRV-085 | Medium | `aux_cloudwatcher/indigo_aux_cloudwatcher.c:719` | Low-resolution humidity uses the temperature coefficient and reports negative humidity for valid sensor data. | Open |
+| DRV-086 | High | `aux_cloudwatcher/indigo_aux_cloudwatcher.c:376` | A serial timeout before the first reply byte writes response[-1]. | Open |
+| DRV-087 | High | `aux_dragonfly/shared/dragonfly_shared.c:121` | A full-size UDP reply writes the terminator one byte past the response buffer. | Open |
+| DRV-088 | High | `aux_mgbox/indigo_aux_mgbox.c:204` | Truncated checksummed NMEA sentences dereference missing fields in GPS and weather parsing. | Open |
+| DRV-089 | High | `aux_mgbox/indigo_aux_mgbox.c:195` | Pointer handles are tested as integer descriptors; failed open and last disconnect do not complete correctly. | Open |
+
 ## Finding Summaries
 
 ### DRV-001 (Closed — fixed)
@@ -864,6 +870,26 @@ Replacement canceled the old stop before the SDK accepted the new pulse; failure
 
 Validation: fake replacement failure and single-write zero-stop regressions pass.
 
+### DRV-085 (Open)
+
+The manufacturer's CloudWatcher protocol v1.3 specifies `RH = raw * 1.25 - 6` for `!h` replies. The driver instead uses `(raw * 1.7572) / 100 - 6`. The protocol simulator returns `!h 40`: the bus publishes **-5.29712%** instead of **44%**. Reproduced by `test_aux_cloudwatcher_simulator`, scenario `humidity_conversion`. This also feeds the driver's dewpoint and humidity warning calculations. Production code intentionally remains unchanged.
+
+### DRV-086 (Open)
+
+In `aag_command()`, a 15-second timeout with zero bytes leaves `index == 0`; the failure branch writes `response[index - 1]`. `AUX_TEST_FILTER=timeout ./build/integration/test_aux_cloudwatcher_simulator_asan` reproduces a one-byte stack-buffer-underflow through a silent real PTY. The ordinary build can reject the connection while silently corrupting memory, so its passing timeout scenario is not evidence of memory safety. Production code intentionally remains unchanged.
+
+### DRV-087 (Open)
+
+`lunatico_command()` reads up to `max` UDP bytes and then writes `response[index] = '\0'`. A 100-byte datagram fills the 100-byte array used during connection and writes one byte beyond it. `AUX_TEST_FILTER=oversized ./build/integration/test_aux_dragonfly_simulator_asan` reproduces the stack-buffer-overflow at `shared/dragonfly_shared.c:121` using a separate loopback UDP simulator. The non-instrumented executable survives the same case; ASan is necessary to expose the corruption. Production code intentionally remains unchanged.
+
+### DRV-088 (Open)
+
+`parse()` accepts a checksummed sentence without validating its field count. The GPS RMC handler immediately reads `tokens[1]`/`tokens[9]` (line 204), and the weather XDR handler reads `tokens[2]` and other missing fields (line 345). The standalone simulator sends truncated `GPRMC` or `PXDR` sentences with correctly computed checksums. Both `short_gps` and `short_weather` crash in the normal build; the ASan build confirms NULL reads in the conversion calls. This concerns malformed device replies, not framework property input validation. Production code intentionally remains unchanged.
+
+### DRV-089 (Open)
+
+`mgbox_open()` tests the pointer returned by `indigo_uni_open_serial_with_speed()` with `>= 0` (line 431), and `data_refresh_callback()` uses the same comparison in its loop (line 195). A NULL handle therefore still takes the success/reader path. Last close first clears the handle and then waits for that reader (lines 473–475), which does not exit on a cleared pointer. The real-PTY `normal` and `gps_readings` cases pass their data assertions but fail disconnect/shutdown, leaving the driver attached. The nonexistent-port case fails to reach a disconnected ALERT state within the bounded wait. Source and compiled-driver tests agree; no production fix was applied.
+
 ## Review Focus
 
 - Driver lifecycle: `INDIGO_DRIVER_INIT`, `INDIGO_DRIVER_SHUTDOWN`, and `INDIGO_DRIVER_INFO`.
@@ -905,3 +931,5 @@ Validation: fake replacement failure and single-write zero-stop regressions pass
 | HEAD | working tree | 2026-09-08 | Focused ToupTek follow-up: aligned hand-written shutdown with the generated SDK lifecycle, including shared queue task mutex, rejection before deregistration, and drain before detach. Preserved SDK-id enumeration and camera/guider/wheel/focuser cleanup. Fake SDK lifecycle, pending-event and hot-plug rollback/removal scenarios passed. Folder baseline unchanged. |
 | `84298256404b3aee1028d29ce152233ffd8afe2e` | working tree | 2026-09-09 | Scoped non-CCD generated-driver and simulator review during hardware-free coverage work; recorded `DRV-061` through `DRV-082`. Fixes and available fake SDK/USB/transport or simulator validation are recorded per finding. `DRV-064` was withdrawn after user review. This covers the named drivers and paths only, not the complete non-CCD inventory; folder baseline unchanged. |
 | `84298256404b3aee1028d29ce152233ffd8afe2e` | working tree | 2026-09-09 | Follow-up over the changed driver definitions and corresponding generated handlers for redundant framework validation, BUSY guards, cancellation and property updates; recorded and closed `DRV-083` and `DRV-084`. Relevant regressions and the complete project build passed. Folder baseline unchanged. |
+
+| `e29626f7da814e4b756c496c6b7bc6ab98328baa` | working tree | 2026-09-09 | Scoped protocol-documentation and runtime review of `aux_cloudwatcher`, `aux_dragonfly` and `aux_mgbox` only. Added standalone PTY/UDP tests; recorded open `DRV-085`–`DRV-089`, including driver-instrumented ASan reproducers. Production drivers unchanged; folder baseline not advanced. |
