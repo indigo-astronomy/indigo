@@ -22,12 +22,13 @@ driver astromechanics {
 	label = "ASTROMECHANICS Focuser";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 3;
+	version = 4;
 	serial;
 	// include { }
 	// define { }
 	data {
 		char response[16];
+		int motion_polls;
 	}
 	code {
 		static bool astromechanics_command(indigo_device *device, char *command, int response, ...) {
@@ -58,11 +59,55 @@ driver astromechanics {
 	focuser {
 		name = "ASTROMECHANICS Focuser";
 		additional_instances = true;
-		// code { }
+		code {
+			static bool astromechanics_position(indigo_device *device, int *position) {
+				if (!astromechanics_command(device, "P#", 16)) {
+					return false;
+				}
+				char tail;
+				return sscanf(PRIVATE_DATA->response, "%d%c", position, &tail) == 1 && *position >= 0 && *position <= 9999;
+			}
+
+			static void focuser_motion_finalizer(indigo_device *device) {
+				int position;
+				if (!astromechanics_position(device, &position)) {
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					FOCUSER_POSITION_ITEM->number.value = position;
+					if (position == (int)FOCUSER_POSITION_ITEM->number.target) {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+					} else if (--PRIVATE_DATA->motion_polls <= 0) {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					} else {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_execute_handler_in(device, 0.1, focuser_motion_finalizer);
+					}
+				}
+				FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			}
+
+			static void astromechanics_start_motion(indigo_device *device, int position) {
+				indigo_cancel_pending_handler(device, focuser_motion_finalizer);
+				FOCUSER_POSITION_ITEM->number.target = position;
+				if (astromechanics_command(device, "M%04d#", 0, position)) {
+					PRIVATE_DATA->motion_polls = 100;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				} else {
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			}
+		}
 		// on_timer { }
 		on_connect {
-			if (astromechanics_command(device, "P#", 16)) {
-				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(PRIVATE_DATA->response);
+			int position;
+			connection_result = astromechanics_position(device, &position);
+			if (connection_result) {
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
 			}
 		}
 		// on_disconnect { }
@@ -94,39 +139,17 @@ driver astromechanics {
 		}
 		inherited FOCUSER_STEPS {
 			on_change {
-				int position;
-				INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-				if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-					position = (int)FOCUSER_POSITION_ITEM->number.value - (int)FOCUSER_STEPS_ITEM->number.value;
-					if (position < 0) {
-						position = 0;
-					}
-				} else {
-					position = (int)FOCUSER_POSITION_ITEM->number.value + (int)FOCUSER_STEPS_ITEM->number.value;
-					if (position > 9999) {
-						position = 9999;
-					}
+				int direction = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1;
+				int position = (int)FOCUSER_POSITION_ITEM->number.value + direction * (int)FOCUSER_STEPS_ITEM->number.value;
+				if (position < 0) {
+					position = 0;
+				} else if (position > 9999) {
+					position = 9999;
 				}
-				if (astromechanics_command(device, "M%04d#", 0, position)) {
-					for (int i = 0; i < 50; i++) {
-						if (astromechanics_command(device, "P#", 16)) {
-							FOCUSER_POSITION_ITEM->number.value = position = atoi(PRIVATE_DATA->response);
-							if (FOCUSER_POSITION_ITEM->number.value == position) {
-								break;
-							} else {
-								indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-							}
-						} else {
-							FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-							break;
-						}
-						indigo_usleep(100000);
-					}
-				} else {
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+				astromechanics_start_motion(device, position);
+				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_execute_handler_in(device, 0.1, focuser_motion_finalizer);
 				}
-				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state;
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
 			on_attach {
 				FOCUSER_STEPS_ITEM->number.min = 0;
@@ -137,31 +160,10 @@ driver astromechanics {
 		}
 		inherited FOCUSER_POSITION {
 			on_change {
-				int position;
-				position = (int)FOCUSER_POSITION_ITEM->number.target;
-				if (position < 0) {
-					position = 0;
-				} else if (position > 9999) {
-					position = 9999;
-				}
-				FOCUSER_POSITION_ITEM->number.target = position;
-				if (astromechanics_command(device, "M%04d#", 0, position)) {
-					for (int i = 0; i < 50; i++) {
-						if (astromechanics_command(device, "P#", 16)) {
-							FOCUSER_POSITION_ITEM->number.value = position = atoi(PRIVATE_DATA->response);
-							if (FOCUSER_POSITION_ITEM->number.value == position) {
-								break;
-							} else {
-								indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-							}
-						} else {
-							FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-							break;
-						}
-						indigo_usleep(100000);
-					}
-				} else {
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				int position = (int)FOCUSER_POSITION_ITEM->number.target;
+				astromechanics_start_motion(device, position);
+				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_execute_handler_in(device, 0.1, focuser_motion_finalizer);
 				}
 			}
 			on_attach {

@@ -20,6 +20,7 @@
 #include <unistd.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
+#include "../../../indigo_test/simulator_common/serial_motion.h"
 
 #define COMMAND_LENGTH 32
 
@@ -39,6 +40,7 @@ static const char *simulator_name = "focuser_astromechanics";
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
 static int position = 0;
+static serial_motion motion;
 static int aperture = 0;
 
 static void usage(const char *name) {
@@ -101,6 +103,7 @@ static void write_response(const char *response) {
 }
 
 static void handle_command(const char *command) {
+	position = (int)serial_motion_update(&motion);
 	char response[COMMAND_LENGTH] = { 0 };
 
 	if (options.trace) {
@@ -111,7 +114,7 @@ static void handle_command(const char *command) {
 		snprintf(response, sizeof(response), "%04d#\n", position);
 		write_response(response);
 	} else if (command[0] == 'M') {
-		position = clamp_int(atoi(command + 1), 0, 9999);
+		serial_motion_start(&motion, clamp_int(atoi(command + 1), 0, 9999), 1000);
 	} else if (command[0] == 'A') {
 		aperture = clamp_int(atoi(command + 1), 0, 50);
 	} else if (!strcmp(command, "V")) {
