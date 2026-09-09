@@ -23,7 +23,7 @@
  \file indigo_polaralign_simulator.c
  */
 
-#define DRIVER_VERSION 0x03000001
+#define DRIVER_VERSION 0x03000002
 #define DRIVER_NAME    "indigo_polaralign_simulator"
 
 #include <stdlib.h>
@@ -109,6 +109,9 @@ static void polaralign_connect_callback(indigo_device *device) {
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->motion_timer);
+		PRIVATE_DATA->target_altitude = POLARALIGN_OFFSET_ALT_ITEM->number.target = PRIVATE_DATA->current_altitude;
+		PRIVATE_DATA->target_azimuth = POLARALIGN_OFFSET_AZ_ITEM->number.target = PRIVATE_DATA->current_azimuth;
+		POLARALIGN_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_polaralign_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -128,6 +131,7 @@ static indigo_result polaralign_change_property(indigo_device *device, indigo_cl
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(POLARALIGN_OFFSET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- POLARALIGN_OFFSET
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->motion_timer);
 		indigo_property_copy_values(POLARALIGN_OFFSET_PROPERTY, property, false);
 		double target_alt = POLARALIGN_OFFSET_ALT_ITEM->number.target;
 		double target_az  = POLARALIGN_OFFSET_AZ_ITEM->number.target;
@@ -147,6 +151,8 @@ static indigo_result polaralign_change_property(indigo_device *device, indigo_cl
 				indigo_update_property(device, POLARALIGN_OFFSET_PROPERTY, "Azimuth target (%.2f) is beyond limits [%.2f, %.2f]", target_az, POLARALIGN_LIMITS_MIN_POSITION_AZ_ITEM->number.value, POLARALIGN_LIMITS_MAX_POSITION_AZ_ITEM->number.value);
 			return INDIGO_OK;
 		}
+		PRIVATE_DATA->target_altitude = target_alt;
+		PRIVATE_DATA->target_azimuth = target_az;
 		/* Restore current readout so movement starts from the actual position. */
 		POLARALIGN_OFFSET_ALT_ITEM->number.value = PRIVATE_DATA->current_altitude;
 		POLARALIGN_OFFSET_AZ_ITEM->number.value  = PRIVATE_DATA->current_azimuth;
@@ -192,6 +198,9 @@ static indigo_result polaralign_change_property(indigo_device *device, indigo_cl
 		// -------------------------------------------------------------------------------- POLARALIGN_ABORT_MOTION
 		indigo_property_copy_values(POLARALIGN_ABORT_MOTION_PROPERTY, property, false);
 		if (POLARALIGN_ABORT_MOTION_ITEM->sw.value && POLARALIGN_OFFSET_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->motion_timer);
+			PRIVATE_DATA->target_altitude = POLARALIGN_OFFSET_ALT_ITEM->number.target = PRIVATE_DATA->current_altitude;
+			PRIVATE_DATA->target_azimuth = POLARALIGN_OFFSET_AZ_ITEM->number.target = PRIVATE_DATA->current_azimuth;
 			POLARALIGN_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, POLARALIGN_OFFSET_PROPERTY, NULL);
 		}
@@ -250,11 +259,11 @@ indigo_result indigo_polaralign_simulator(indigo_driver_action action, indigo_dr
 			last_action = action;
 			if (polaralign_device != NULL) {
 				indigo_detach_device(polaralign_device);
-				free(polaralign_device);
+				indigo_safe_free(polaralign_device);
 				polaralign_device = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
