@@ -2086,7 +2086,15 @@ void write_c_hotplug_section(void) {
 			if (device != driver.devices) {
 				write_line("\t\t%s->master_device = %s;", device->type, driver.devices->type);
 			}
-			write_line("\t\tindigo_attach_device(%s);", device->type);
+			write_line("\t\tif (indigo_attach_device(%s) != INDIGO_OK) {", device->type);
+			write_line("\t\t\tindigo_safe_free(%s->private_data);", device->type);
+			write_line("\t\t\tindigo_safe_free(%s);", device->type);
+			write_line("\t\t\t%s = NULL;", device->type);
+			if (device == driver.devices) {
+				write_line("\t\t\tlibusb_unref_device(dev);");
+				write_line("\t\t\treturn;");
+			}
+			write_line("\t\t}");
 		}
 		write_line("\t}");
 	}
@@ -2331,12 +2339,18 @@ void write_c_main_section(void) {
 				write_line("\t\t\tdriver_queue = indigo_queue_create(NULL);");
 				write_line("\t\t\tif (driver_queue == NULL) {");
 				write_line("\t\t\t\tINDIGO_DRIVER_ERROR(DRIVER_NAME, \"Failed to create driver queue\");");
+				write_line("\t\t\t\tlast_action = INDIGO_DRIVER_SHUTDOWN;");
 				write_line("\t\t\t\treturn INDIGO_FAILED;");
 				write_line("\t\t\t}");
 				write_line("\t\t\tindigo_queue_set_name(driver_queue, \"Queue \" DRIVER_LABEL);");
 				write_line("\t\t\tindigo_start_usb_event_handler();");
 				write_line("\t\t\tint rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, %s, %s, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);", *driver.hid->vid ? driver.hid->vid : "LIBUSB_HOTPLUG_MATCH_ANY", *driver.hid->pid ? driver.hid->pid : "LIBUSB_HOTPLUG_MATCH_ANY");
 			write_line("\t\t\tINDIGO_DRIVER_DEBUG(DRIVER_NAME, \"libusb_hotplug_register_callback ->  %%s\", rc < 0 ? libusb_error_name(rc) : \"OK\");");
+			write_line("\t\t\tif (rc < 0) {");
+			write_line("\t\t\t\tindigo_queue_delete(&driver_queue);");
+			write_line("\t\t\t\tlast_action = INDIGO_DRIVER_SHUTDOWN;");
+			write_line("\t\t\t\treturn INDIGO_FAILED;");
+			write_line("\t\t\t}");
 		} else {
 			// TBD
 		}

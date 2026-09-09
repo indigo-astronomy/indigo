@@ -41,7 +41,20 @@ Generated build output under `indigo_tools/Debug*/` was excluded.
 | TOOLS-006 | Medium | `indigo_generator.c:123`, `indigo_generator.c:1035`, `indigo_generator.c:2152`, `indigo_generator.c:2162`, `indigo_generator.c:2724`, `indigo_generator.c:2737`, `indigo_generator.c:2741`, `indigo_generator.c:2745`, `indigo_generator.c:2751`, `indigo_generator.c:2765`, `indigo_generator.c:2766` | The generator assumes allocations, reallocations, file redirects, and path copies always succeed. `allocate()` immediately `memset()`s a possibly NULL allocation, `realloc()` results overwrite the only pointer, `freopen()` results are ignored, and `strcpy(source_file, definition_file)` can overflow `PATH_MAX`. Failures can crash the generator, read from the wrong stream, or emit partial files. Add checked allocation helpers, temporary pointers for `realloc()`, bounded path copies, and explicit `freopen()` error handling before generating output. | Open |
 | TOOLS-007 | Medium | `fix_fits.c:58`, `fix_fits.c:63`, `fix_fits.c:74`, `fix_xisf.c:67`, `fix_xisf.c:75`, `fix_xisf.c:90`, `fix_xisf.c:97` | The repair tools read whole files and then inspect or rewrite fixed offsets without first proving the file is large enough, and they do not check write results. A small input can make `fix_fits` read past the loaded buffer at offset 5760, while `fix_xisf` can rewrite from `data + 2880` even when the file is shorter. Validate minimum sizes before fixed-offset access and check every `fwrite()`/`fputc()` result before reporting success. | Open |
 | TOOLS-008 | Low | `indigo_tools/Makefile:33`, `indigo_tools/Makefile:35`, `indigo_tools/Makefile:42`, `indigo_tools/Makefile:48` | The tools build target produces `indigo_drivers`, `indigo_driver_metadata`, and `indigo_scan_drivers`, but `install`, `uninstall`, and `clean` omit some of those binaries. This can leave stale build artifacts and makes packaging behavior differ from `all`. Decide which helper tools are intentionally private; then either exclude them from `all` or handle them consistently in install/uninstall/clean rules. | Open |
-| TOOLS-009 | High | `indigo_generator.c:2363` | SDK and HID SHUTDOWN templates detached devices before queued hot-plug work finished; the first drain fix covered only direct libusb. All three transports now share serialized disconnected-device verification and deregister/drain/detach/delete emission; SDK retries stop and cancel before drain. | Resolved in working tree |
+| TOOLS-009 | High | `indigo_generator.c:2363` | SDK and HID SHUTDOWN templates detached devices before queued hot-plug work finished; the first drain fix covered only direct libusb. | Closed (fixed) |
+| TOOLS-010 | High | `indigo_generator.c` HID INIT/arrival emission | HID templates ignored hot-plug registration and attach failures and retained INIT after queue creation failed. | Closed (fixed) |
+
+## Finding Summaries
+
+### TOOLS-009 (Closed — fixed)
+
+SDK and HID SHUTDOWN templates detached devices before queued hot-plug work finished; the first drain fix covered only direct libusb. All three transports now share serialized disconnected-device verification and deregister/drain/detach/delete emission; SDK retries stop and cancel before drain.
+
+### TOOLS-010 (Closed — fixed)
+
+HID templates ignored hot-plug registration and attach failures and retained INIT after queue creation failed. Fake USB tests for SX/Atik reproduced the failures. Added retryable queue/registration rollback and failed-attach allocation cleanup; generated outputs rebuilt.
+
+Validation: all four scenario groups pass for both SX and Atik.
 
 ## Review Focus
 
@@ -58,3 +71,4 @@ Generated build output under `indigo_tools/Debug*/` was excluded.
 | Repository start | `017ba602857378e4aed489c065c76eacae15924c` | 2026-08-01 | Baseline review of all checked-in `indigo_tools` sources, excluding generated build output. |
 | HEAD | working tree | 2026-09-08 | Focused review of the approved generator delta: INDIGO free helpers, direct-libusb duplicate arrival rejection, master attach failure cleanup, retryable INIT rollback, and SHUTDOWN queue drain through the shared timer API. Full root `make all` passed for macOS x86_64/arm64. No additional regression found in this delta; existing unrelated findings and folder baseline remain unchanged. |
 | HEAD | working tree | 2026-09-08 | Follow-up across every generated hot-plug transport after identifying the omitted SDK/HID branches (TOOLS-009). Unified SHUTDOWN emission; generator regression covers libusb, SDK, SDK retries and HID. Fake SDK checks drain-before-detach, discovery retry lifetime and rejected shutdown. Folder baseline unchanged. |
+| `84298256404b3aee1028d29ce152233ffd8afe2e` | working tree | 2026-09-09 | Focused HID generator INIT/arrival rollback review exposed by the SX/Atik fake USB tests; recorded and closed `TOOLS-010`. Queue/registration retry and failed-attach cleanup were verified by all four scenario groups for each wheel, with regenerated output and production build checks. Folder baseline unchanged. |
