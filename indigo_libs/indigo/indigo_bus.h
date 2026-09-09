@@ -76,6 +76,10 @@ extern "C" {
 typedef struct indigo_client indigo_client;
 typedef struct indigo_device indigo_device;
 
+/** Timer and background callback function prototype.
+ */
+typedef void (*indigo_timer_callback)(indigo_device *device);
+
 /** Device interface (value should be used for INFO_DEVICE_INTERFACE_ITEM->text.value)
  */
 typedef enum {
@@ -571,6 +575,18 @@ INDIGO_EXTERN indigo_result indigo_change_property(indigo_client *client, indigo
 /** Broadcast enableBLOB request.
  */
 INDIGO_EXTERN indigo_result indigo_enable_blob(indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode);
+
+/** Schedule short background work without acquiring the device/master mutex.
+ * Callbacks must not perform hardware I/O or block. Call after indigo_start(),
+ * stop producers and cancel before releasing callback resources or stopping the bus.
+ */
+INDIGO_EXTERN bool indigo_execute_background_handler_in(indigo_device *device, double delay, indigo_timer_callback handler);
+
+/** Cancel background work; NULL matches every callback for the device.
+ * Stop recurring producers first. Waits for matching running work, except when called
+ * from the background worker itself. Do not hold a lock needed by the callback.
+ */
+INDIGO_EXTERN void indigo_cancel_background_handler(indigo_device *device, indigo_timer_callback handler);
 
 /** Stop bus operation.
  Call has no effect if bus is already stopped.

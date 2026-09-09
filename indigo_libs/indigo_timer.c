@@ -520,6 +520,19 @@ static indigo_timer *create_timer_object(indigo_device *device, double delay, in
 	return timer;
 }
 
+double indigo_monotonic_time(void) {
+#if defined(INDIGO_WINDOWS)
+	LARGE_INTEGER counter, frequency;
+	QueryPerformanceCounter(&counter);
+	QueryPerformanceFrequency(&frequency);
+	return (double)counter.QuadPart / frequency.QuadPart;
+#else
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return now.tv_sec + now.tv_nsec / 1e9;
+#endif
+}
+
 struct timespec indigo_delay_to_time(double delay) {
 	struct timespec time = { 0, 0 };
 	if (delay == 0) {

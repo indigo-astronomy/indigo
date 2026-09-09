@@ -63,6 +63,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_guider_asi_sdk \
 	$(INTEGRATION_BUILD)/test_focuser_asi_sdk \
 	$(INTEGRATION_BUILD)/test_rotator_asi_sdk \
 	$(INTEGRATION_BUILD)/test_bus_lifecycle \
+	$(INTEGRATION_BUILD)/test_ccd_countdown \
 	$(INTEGRATION_BUILD)/test_ccd_simulator \
 	$(INTEGRATION_BUILD)/test_dome_simulator \
 	$(INTEGRATION_BUILD)/test_dome_baader_simulator \
@@ -290,6 +291,9 @@ $(UNIT_BUILD)/test_protocol_xml: unit/test_protocol_xml.c test_runner.h | $(UNIT
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_timer: unit/test_timer.c test_runner.h | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_ccd_countdown: integration/test_ccd_countdown.c test_runner.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_bus_lifecycle: integration/test_bus_lifecycle.c test_runner.h | $(INTEGRATION_BUILD)

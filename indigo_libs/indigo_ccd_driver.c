@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -81,47 +81,54 @@ static double get_time_hd() {
 	return (double)(now.tv_sec) + now.tv_usec/1e6;
 }
 
-static void schedule_countdown_task(indigo_device *device, double delay);
+static void countdown_task_callback(indigo_device *device);
 
-static void countdown_task_callback(indigo_device *device) {
-	const double step = 0.25;
-	if (CCD_CONTEXT->countdown_canceled) {
-		return;
-	}
-	double now = get_time_hd();
-	if (CCD_CONTEXT->countdown_enabled && CCD_CONTEXT->countdown_endtime >= now && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_EXPOSURE_ITEM->number.value >= 1) {
-		//indigo_error("%lf - %lf = %lf (%f)", CCD_CONTEXT->countdown_endtime, now, CCD_CONTEXT->countdown_endtime - now, ceil(CCD_CONTEXT->countdown_endtime - now));
-		double last_reported = CCD_EXPOSURE_ITEM->number.value;
-		double time_left = CCD_CONTEXT->countdown_endtime - now;
-		CCD_EXPOSURE_ITEM->number.value = ceil(time_left);
-		if (time_left <= step) {
-			CCD_EXPOSURE_ITEM->number.value = 0;
+// Replacement/cancellation drains old work before starting another countdown.
+static void schedule_countdown_task(indigo_device *device, double delay) {
+	if (!CCD_CONTEXT->countdown_canceled && CCD_CONTEXT->countdown_enabled && CCD_CONTEXT->countdown_endtime > 0) {
+		indigo_cancel_background_handler(device, countdown_task_callback);
+		if (!indigo_execute_background_handler_in(device, delay, countdown_task_callback)) {
 			CCD_CONTEXT->countdown_endtime = 0;
+			indigo_error("Failed to schedule countdown for %s", device->name);
 		}
-		if (last_reported != CCD_EXPOSURE_ITEM->number.value) {
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		}
-	}
-	if (CCD_CONTEXT->countdown_enabled && CCD_CONTEXT->countdown_endtime > 0 && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		schedule_countdown_task(device, step);
 	}
 }
 
-static void schedule_countdown_task(indigo_device *device, double delay) {
-	if (!CCD_CONTEXT->countdown_canceled) {
-		indigo_cancel_pending_handler(device, countdown_task_callback);
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_LOW, delay, countdown_task_callback);
+static void countdown_task_callback(indigo_device *device) {
+	const double step = 0.25;
+	if (CCD_CONTEXT->countdown_canceled || !CCD_CONTEXT->countdown_enabled || CCD_CONTEXT->countdown_endtime <= 0) {
+		return;
 	}
+	if (CCD_EXPOSURE_PROPERTY->state != INDIGO_BUSY_STATE || CCD_EXPOSURE_ITEM->number.value <= 0) {
+		CCD_CONTEXT->countdown_endtime = 0;
+		return;
+	}
+	double last_reported = CCD_EXPOSURE_ITEM->number.value;
+	double time_left = CCD_CONTEXT->countdown_endtime - indigo_monotonic_time();
+	CCD_EXPOSURE_ITEM->number.value = ceil(time_left);
+	if (time_left <= step) {
+		CCD_EXPOSURE_ITEM->number.value = 0;
+		CCD_CONTEXT->countdown_endtime = 0;
+	}
+	if (last_reported != CCD_EXPOSURE_ITEM->number.value) {
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+	}
+	schedule_countdown_task(device, step);
+}
+
+static void stop_countdown(indigo_device *device) {
+	CCD_CONTEXT->countdown_endtime = 0;
+	indigo_cancel_background_handler(device, countdown_task_callback);
 }
 
 void indigo_ccd_suspend_countdown(indigo_device *device) {
 	CCD_CONTEXT->countdown_enabled = false;
-	CCD_CONTEXT->countdown_endtime = 0;
-	indigo_cancel_pending_handler(device, countdown_task_callback);
+	stop_countdown(device);
 }
 
 void indigo_ccd_resume_countdown(indigo_device *device) {
-	CCD_CONTEXT->countdown_endtime = get_time_hd() + CCD_EXPOSURE_ITEM->number.value;
+	stop_countdown(device);
+	CCD_CONTEXT->countdown_endtime = indigo_monotonic_time() + CCD_EXPOSURE_ITEM->number.value;
 	CCD_CONTEXT->countdown_enabled = true;
 	schedule_countdown_task(device, 0);
 }
@@ -465,6 +472,7 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 
 indigo_result indigo_ccd_exposure_setup(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		stop_countdown(device);
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 			if (CCD_IMAGE_FILE_PROPERTY->state != INDIGO_BUSY_STATE) {
 				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -478,7 +486,7 @@ indigo_result indigo_ccd_exposure_setup(indigo_device *device) {
 			}
 		}
 		if (CCD_EXPOSURE_ITEM->number.value >= 1) {
-			CCD_CONTEXT->countdown_endtime = get_time_hd() + CCD_EXPOSURE_ITEM->number.target;
+			CCD_CONTEXT->countdown_endtime = indigo_monotonic_time() + CCD_EXPOSURE_ITEM->number.target;
 			schedule_countdown_task(device, 0);
 		}
 	}
@@ -510,7 +518,7 @@ indigo_result indigo_ccd_abort_exposure_cleanup(indigo_device *device) {
 	indigo_ccd_failure_cleanup(device);
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-		CCD_CONTEXT->countdown_endtime = 0;
+		stop_countdown(device);
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -575,12 +583,10 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_JPEG_STRETCH_PRESETS_PROPERTY, NULL);
 			indigo_define_property(device, CCD_RBI_FLUSH_ENABLE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_RBI_FLUSH_PROPERTY, NULL);
+			stop_countdown(device);
 			CCD_CONTEXT->countdown_enabled = true;
-			CCD_CONTEXT->countdown_endtime = 0;
 		} else {
-			CCD_CONTEXT->countdown_enabled = false;
-			CCD_CONTEXT->countdown_endtime = 0;
-			indigo_cancel_pending_handler(device, countdown_task_callback);
+			indigo_ccd_suspend_countdown(device);
 			CCD_STREAMING_COUNT_ITEM->number.value = 0;
 			CCD_EXPOSURE_ITEM->number.value = 0;
 			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
@@ -958,7 +964,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 indigo_result indigo_ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	CCD_CONTEXT->countdown_canceled = true;
-	indigo_cancel_pending_handler(device, countdown_task_callback);
+	stop_countdown(device);
 	indigo_release_property(CCD_INFO_PROPERTY);
 	indigo_release_property(CCD_LENS_PROPERTY);
 	indigo_release_property(CCD_UPLOAD_MODE_PROPERTY);

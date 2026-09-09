@@ -1,0 +1,144 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+
+#include <stdatomic.h>
+#include <indigo/indigo_ccd_driver.h>
+#include "../test_runner.h"
+
+#define CHECK(condition) do { if (!(condition)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #condition); indigo_test_failures++; goto cleanup; } } while (0)
+
+static atomic_int background_calls;
+static atomic_bool snapshot_ready, snapshot_zero;
+
+static void background_probe(indigo_device *device) {
+	atomic_fetch_add(&background_calls, 1);
+}
+
+static void countdown_snapshot(indigo_device *device) {
+	atomic_store(&snapshot_zero, CCD_EXPOSURE_ITEM->number.value == 0 && CCD_CONTEXT->countdown_endtime == 0);
+	atomic_store(&snapshot_ready, true);
+}
+
+static void expire_countdown(indigo_device *device) {
+	CCD_CONTEXT->countdown_endtime = indigo_monotonic_time() - 1;
+}
+
+static void driver_sets_zero(indigo_device *device) {
+	CCD_EXPOSURE_ITEM->number.value = 0;
+}
+
+static void subsecond_setup(indigo_device *device) {
+	CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = 0.1;
+	indigo_ccd_exposure_setup(device);
+	atomic_store(&snapshot_zero, CCD_CONTEXT->countdown_endtime == 0 && CCD_EXPOSURE_ITEM->number.value == 0.1);
+	atomic_store(&snapshot_ready, true);
+}
+
+static void start_countdown(indigo_device *device, double duration) {
+	indigo_ccd_suspend_countdown(device);
+	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+	CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = duration;
+	indigo_ccd_resume_countdown(device);
+}
+
+static bool wait_for_zero(indigo_device *device) {
+	for (int i = 0; i < 200; i++) {
+		atomic_store(&snapshot_ready, false);
+		if (!indigo_execute_background_handler_in(device, 0, countdown_snapshot)) {
+			return false;
+		}
+		for (int j = 0; j < 200 && !atomic_load(&snapshot_ready); j++) {
+			indigo_usleep(1000);
+		}
+		if (!atomic_load(&snapshot_ready)) {
+			return false;
+		}
+		if (atomic_load(&snapshot_zero)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+static void shared_queue_isolation_and_countdown_lifecycle(void) {
+	indigo_device cameras[2] = { { 0 }, { 0 } };
+	bool attached[2] = { false, false };
+	bool locked = false;
+	indigo_device *device = cameras;
+	CHECK(indigo_start() == INDIGO_OK);
+	for (int i = 0; i < 2; i++) {
+		snprintf(cameras[i].name, sizeof(cameras[i].name), "Countdown Test %d", i);
+		CHECK(indigo_ccd_attach(cameras + i, "countdown_test", 0x0001) == INDIGO_OK);
+		attached[i] = true;
+	}
+	start_countdown(cameras, 1);
+	start_countdown(cameras + 1, 1);
+	// Background countdown does not acquire even the first camera's device mutex.
+	pthread_mutex_lock(&DEVICE_CONTEXT->device_mutex);
+	locked = true;
+	CHECK(wait_for_zero(cameras + 1));
+	CHECK(wait_for_zero(cameras));
+	atomic_store(&background_calls, 0);
+	CHECK(indigo_execute_background_handler_in(device, 0, background_probe));
+	for (int i = 0; i < 100 && atomic_load(&background_calls) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	CHECK(atomic_load(&background_calls) == 1);
+	pthread_mutex_unlock(&DEVICE_CONTEXT->device_mutex);
+	locked = false;
+	CHECK(wait_for_zero(device));
+	pthread_mutex_lock(&DEVICE_CONTEXT->device_mutex);
+	bool unchanged = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_EXPOSURE_ITEM->number.target == 1;
+	pthread_mutex_unlock(&DEVICE_CONTEXT->device_mutex);
+	CHECK(unchanged);
+	start_countdown(device, 30);
+	CHECK(indigo_execute_background_handler_in(device, 0, expire_countdown));
+	CHECK(wait_for_zero(device));
+	start_countdown(device, 30);
+	CHECK(indigo_execute_background_handler_in(device, 0, driver_sets_zero));
+	CHECK(wait_for_zero(device));
+	start_countdown(device, 30);
+	pthread_mutex_lock(&DEVICE_CONTEXT->device_mutex);
+	indigo_ccd_suspend_countdown(device);
+	bool stopped = CCD_CONTEXT->countdown_endtime == 0 && !CCD_CONTEXT->countdown_enabled;
+	pthread_mutex_unlock(&DEVICE_CONTEXT->device_mutex);
+	CHECK(stopped);
+	start_countdown(device, 1);
+	CHECK(wait_for_zero(device));
+	// A subsecond replacement must not inherit the previous exposure's deadline.
+	start_countdown(device, 30);
+	atomic_store(&snapshot_ready, false);
+	CHECK(indigo_execute_background_handler_in(device, 0, subsecond_setup));
+	for (int i = 0; i < 200 && !atomic_load(&snapshot_ready); i++) {
+		indigo_usleep(1000);
+	}
+	CHECK(atomic_load(&snapshot_ready) && atomic_load(&snapshot_zero));
+	// Pending countdown is canceled before CCD properties and context are freed.
+	start_countdown(device, 30);
+	CHECK(indigo_ccd_detach(device) == INDIGO_OK);
+	attached[0] = false;
+	start_countdown(cameras + 1, 1);
+	CHECK(wait_for_zero(cameras + 1));
+cleanup:
+	if (locked) {
+		pthread_mutex_unlock(&DEVICE_CONTEXT->device_mutex);
+	}
+	for (int i = 0; i < 2; i++) {
+		if (attached[i]) {
+			indigo_ccd_detach(cameras + i);
+		}
+	}
+	indigo_stop();
+}
+
+int main(void) {
+	const indigo_test_case tests[] = {
+		{ "shared_queue_isolation_and_countdown_lifecycle", shared_queue_isolation_and_countdown_lifecycle },
+		{ "shared_queue_recreated_after_bus_restart", shared_queue_isolation_and_countdown_lifecycle }
+	};
+	return indigo_run_tests("CCD countdown integration tests", tests, sizeof(tests) / sizeof(tests[0]));
+}

@@ -22,6 +22,8 @@ Core INDIGO library code, including the bus, timers, protocol adapters, base dri
 | LIB-005 | Medium | `indigo_timer.c:578` | `indigo_reschedule_timer_with_callback()` changed only the callback pointer. It now explicitly discards a prior data payload and changes the timer to the plain callback form before dispatch. | Closed (fixed) |
 | LIB-006 | Medium | `indigo_timer.c:753` | Queue dispatch initialized priority selection to `-1`. Runnable negative-priority tasks were never dequeued, leaving the worker in a busy loop. Selection now initializes from the first due task, so the complete signed `int` priority domain is supported. | Closed (fixed) |
 | LIB-007 | Medium | `indigo_bus.c:indigo_property_copy_values`, `indigo_property_copy_targets` | Range comparisons did not reject NaN. | Closed (fixed) |
+| LIB-008 | Medium | `indigo_ccd_driver.c:92` | A countdown callback arriving after `countdown_endtime` skips the value update and deadline reset, but keeps rescheduling while exposure remains BUSY. The displayed remainder can stay positive during readout. LOW priority can aggravate delays; increasing priority alone does not fix the expired-deadline path. | Closed (fixed) |
+| LIB-009 | Low | `indigo_ccd_driver.c:78` | Countdown deadlines and remaining time use `gettimeofday()`. A wall-clock adjustment can increase the displayed remainder or move the countdown past its deadline independently of elapsed exposure time. | Closed (fixed) |
 
 ## Finding Summaries
 
@@ -122,7 +124,23 @@ Range comparisons did not reject NaN. Both copy helpers now handle non-finite re
 
 Validation: NaN/infinity preservation, valid sibling copying and finite clamping unit tests pass.
 
+### LIB-008 (Closed — countdown termination)
+
+The update guard requires both `countdown_endtime >= now` and a displayed value of at least 1, while the rescheduling guard requires neither. Consequently an expired deadline, or a driver setting value to 0 while retaining BUSY for image readout, leaves a recurring task with no useful update. DSI's `ccd_exposure_finalizer` explicitly sets value to 0 before readout and can retain BUSY while polling (`ccd_dsi/indigo_ccd_dsi.driver:219`). Countdown termination must handle elapsed deadlines and a driver-supplied zero without changing exposure state to OK; only the driver knows when acquisition/readout has completed.
+
+Priority analysis: LOW is -5, normal immediate handlers use 0, and `indigo_execute_handler_in()` uses TIME (10). Selection considers only due tasks, so a future exposure finalizer does not prevent countdown updates. Selection has no priority aging, and callback execution is synchronous on a single queue worker with the device/master mutex. Sustained due higher-priority work can starve countdown; a running callback or held task mutex can delay it regardless of priority. Changing countdown priority alone cannot repair its termination conditions.
+
+Proposed correction: reject inactive/canceled/non-BUSY countdowns, terminate on a driver-supplied zero, compute remaining time without excluding elapsed deadlines, clear the deadline before publishing zero, and reschedule only an active positive countdown. Preserve the current <=0.25 s zero-display tolerance in the minimal fix. Keep LOW initially; consider priority tuning only with measured queue contention. Keep countdown on the existing serialized queue rather than introducing another property writer. Preserve suspend/resume behavior used by FLI RBI flushing and SBIG exposure coordination.
+
+### LIB-009 (Closed — wall-clock dependence)
+
+Use a portable elapsed-time clock consistently for countdown start, resume and callback calculations. `indigo_delay_to_time(0)` exposes the scheduler's clock domain, but the scheduler currently falls back to realtime where CLOCK_MONOTONIC is unavailable, including its Windows implementation. It is not an unconditional portable monotonic-clock fix. Do not globally replace `get_time_hd()` without auditing its image timing/FPS callers. Clock portability can be a separate shared-layer change from the minimal countdown termination correction.
+
+Resolution (2026-09-09): countdown now runs on the shared background queue defined in `indigo_bus.c` and owned by bus start/stop. The final implementation deliberately preserves the original direct property-update model, with no new mutexes, device locks or device registry. It terminates on elapsed deadlines or a driver-supplied zero and cancels old countdown work on replacement, suspension and detach. It preserves BUSY and target. `indigo_monotonic_time()` uses POSIX CLOCK_MONOTONIC or Windows QueryPerformanceCounter; image timing is unchanged. Dedicated countdown and CCD simulator validation is recorded in `indigo_test/CHANGES.md`. No Windows/hardware execution or comprehensive race-freedom claim; shared callbacks must remain short. No subtree baseline advancement.
+
 ## Review Focus
+
+Focused countdown inspection at `48442826a` (2026-09-09): `LIB-008` follows directly from the expired-deadline guard at line 92 and rescheduling guard at line 105. For example, with value 1, deadline 100 and callback time 100.1, the value stays 1 and another callback is scheduled. This remains true until exposure leaves BUSY or another path clears/disables the countdown. Queue dispatch correctly accepts negative priorities after `279fbd064`; sustained higher-priority ready work can still starve LOW tasks, and running handlers cannot be preempted. No hardware reproduction or full-subtree review; the baseline is unchanged.
 
 - Memory ownership, allocation, copying, and release paths.
 - Timer, queue, async, and callback lifetime behavior.
@@ -141,3 +159,4 @@ Validation: NaN/infinity preservation, valid sibling copying and finite clamping
 | `d9b39b84e3780dca0c9e7cbb901b63a62586b106` | `afdd54618e5520c4983598c33b662c022962df7c` | 2026-08-18 | Requested review of the last two commits touching shared INDIGO names; recorded `LIB-002`. |
 | `3bf23ba0f062b98ce881c0026da973125d517b8b` | `3fe6337a09e4847d2688389c57c9d533b1cfb387` | 2026-09-04 | Focused deep review of timer/queue reimplementation and its three follow-up review commits. Recorded `LIB-003` through `LIB-006`; this does not advance the subtree-wide review marker. |
 | `84298256404b3aee1028d29ce152233ffd8afe2e` | working tree | 2026-09-09 | Focused review of non-finite numeric input in `indigo_property_copy_values()` and `indigo_property_copy_targets()`; recorded and closed `LIB-007`. Preservation of accepted values/targets, valid sibling copying and finite clamping are covered by passing unit tests; the full unit suite passed. No full-subtree review or baseline advancement. |
+| `017ba602857378e4aed489c065c76eacae15924c` | `48442826a` | 2026-09-09 | Focused countdown and scheduling analysis; recorded LIB-008 and LIB-009. Existing timer unit suite passed during the initial investigation, including negative-priority and future-priority ordering cases; no dedicated countdown runtime reproduction or hardware validation. No full-subtree review or baseline advancement. |

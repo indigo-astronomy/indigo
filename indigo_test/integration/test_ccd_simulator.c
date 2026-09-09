@@ -520,6 +520,7 @@ bool sim_test_reschedule_timer(indigo_device *device, double delay, indigo_timer
 
 // Extra scenarios observe the production simulator, never its built-in image arrays.
 static atomic_int sim_frames, sim_bad_frames;
+static atomic_int sim_countdown_ticks;
 static const char *sim_properties[] = { "BAHTINOV_SETTINGS", "CCD_ABORT_EXPOSURE", "CCD_BIN", "CCD_COOLER", "CCD_EXPOSURE", "CCD_FRAME", "CCD_IMAGE_FORMAT", "CCD_STREAMING", "CCD_TEMPERATURE", "CCD_UPLOAD_MODE", "CONNECTION", "DSLR_APERTURE", "DSLR_ISO", "DSLR_PROGRAM", "DSLR_SHUTTER", "GUIDER_MODE", "SIMULATION_SETUP" };
 static atomic_int sim_revisions[ARRAY_SIZE(sim_properties)];
 
@@ -535,6 +536,9 @@ static char sim_raw_path[] = "/tmp/indigo_ccd_noise_XXXXXX";
 
 static indigo_result sim_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, context.driver_case->device_name)) {
+		if (!strcmp(property->name, "CCD_EXPOSURE") && property->state == INDIGO_BUSY_STATE && property->items[0].number.value > 0 && property->items[0].number.value < property->items[0].number.target) {
+			atomic_fetch_add(&sim_countdown_ticks, 1);
+		}
 		if (!strcmp(property->name, "CCD_IMAGE") && property->state == INDIGO_OK_STATE && property->count && property->items[0].blob.size) {
 			indigo_item *item = property->items;
 			indigo_raw_header header = { 0 };
@@ -650,6 +654,27 @@ cleanup:
 	sim_end(&ccd_imager_simulator);
 }
 
+static void simulator_countdown_progress_abort_and_restart(void) {
+	sim_begin(&ccd_imager_simulator);
+	atomic_store(&sim_countdown_ticks, 0);
+	SIM_CHECK(sim_number("CCD_EXPOSURE", 1, (const char *[]){ "EXPOSURE" }, (double []){ 3 }, INDIGO_BUSY_STATE));
+	for (int i = 0; i < 250 && atomic_load(&sim_countdown_ticks) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	SIM_CHECK(atomic_load(&sim_countdown_ticks) > 0);
+	SIM_CHECK(wait_for_property_state("CCD_EXPOSURE", INDIGO_OK_STATE));
+	SIM_CHECK(cached_number_value("CCD_EXPOSURE", "EXPOSURE") == 0);
+	atomic_store(&sim_countdown_ticks, 0);
+	SIM_CHECK(sim_number("CCD_EXPOSURE", 1, (const char *[]){ "EXPOSURE" }, (double []){ 3 }, INDIGO_BUSY_STATE));
+	SIM_CHECK(sim_switch("CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
+	SIM_CHECK(sim_expose());
+	SIM_CHECK(sim_switch("CONNECTION", "DISCONNECTED", INDIGO_OK_STATE));
+	SIM_CHECK(sim_switch("CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+	SIM_CHECK(sim_expose());
+cleanup:
+	sim_end(&ccd_imager_simulator);
+}
+
 static void simulator_cooling_target_and_polling(void) {
 	sim_fast_temperature = true;
 	sim_begin(&ccd_imager_simulator);
@@ -745,6 +770,7 @@ cleanup:
 int main(int argc, char **argv) {
 	setvbuf(stdout, NULL, _IONBF, 0);
 	const indigo_test_case tests[] = {
+		{ "simulator_countdown_progress_abort_and_restart", simulator_countdown_progress_abort_and_restart },
 		{ "simulator_raw_geometry_and_bins", simulator_raw_geometry_and_bins },
 		{ "simulator_stream_abort_and_reconnect", simulator_stream_abort_and_reconnect },
 		{ "simulator_cooling_target_and_polling", simulator_cooling_target_and_polling },

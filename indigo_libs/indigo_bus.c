@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -48,6 +48,9 @@
 #include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_token.h>
 #include <indigo/indigo_session.h>
+#if !defined(INDIGO_CLIENT)
+#include <indigo/indigo_timer.h>
+#endif
 
 #define MAX_DEVICES 256
 #define MAX_CLIENTS 256
@@ -470,6 +473,26 @@ static void clear_previous_state(indigo_property *property) {
 	property->do_update = false;
 }
 
+#if !defined(INDIGO_CLIENT)
+static indigo_queue *indigo_background_queue;
+
+bool indigo_execute_background_handler_in(indigo_device *device, double delay, indigo_timer_callback handler) {
+	assert(device != NULL);
+	assert(handler != NULL);
+	if (indigo_background_queue == NULL) {
+		return false;
+	}
+	indigo_queue_add(indigo_background_queue, device, INDIGO_TASK_PRIORITY_NORMAL, delay, handler, NULL);
+	return true;
+}
+
+void indigo_cancel_background_handler(indigo_device *device, indigo_timer_callback handler) {
+	assert(device != NULL);
+	indigo_queue_remove(indigo_background_queue, device, handler);
+}
+
+#endif
+
 indigo_result indigo_start() {
 	for (int i = 1; i < indigo_main_argc; i++) {
 		if (!strcmp(indigo_main_argv[i], "-v") || !strcmp(indigo_main_argv[i], "--enable-info")) {
@@ -486,6 +509,15 @@ indigo_result indigo_start() {
 	pthread_mutex_lock(&device_mutex);
 	pthread_mutex_lock(&client_mutex);
 	if (!is_started) {
+#if !defined(INDIGO_CLIENT)
+		indigo_background_queue = indigo_queue_create(NULL);
+		if (indigo_background_queue == NULL) {
+			pthread_mutex_unlock(&client_mutex);
+			pthread_mutex_unlock(&device_mutex);
+			return INDIGO_FAILED;
+		}
+		indigo_queue_set_name(indigo_background_queue, "Background");
+#endif
 		memset(devices, 0, MAX_DEVICES * sizeof(indigo_device *));
 		memset(clients, 0, MAX_CLIENTS * sizeof(indigo_client *));
 		memset(blobs, 0, MAX_BLOBS * sizeof(indigo_property *));
@@ -1058,6 +1090,9 @@ indigo_result indigo_stop() {
 			}
 		}
 		pthread_mutex_unlock(&device_mutex);
+#if !defined(INDIGO_CLIENT)
+		indigo_queue_delete(&indigo_background_queue);
+#endif
 		is_started = false;
 	}
 	return INDIGO_OK;

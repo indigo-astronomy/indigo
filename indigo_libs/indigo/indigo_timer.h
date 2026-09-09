@@ -45,9 +45,8 @@
 extern "C" {
 #endif
 
-/** Timer callback function prototype.
+/** Timer callback with user data.
  */
-typedef void (*indigo_timer_callback)(indigo_device *device);
 typedef void (*indigo_timer_with_data_callback)(indigo_device *device, void *timer_data);
 
 /** Timer structure.
@@ -121,6 +120,10 @@ typedef struct indigo_queue {
 	bool running;
 	bool self_delete_requested;
 } indigo_queue;
+
+/** Elapsed-time clock in seconds, unaffected by wall-clock adjustments.
+ */
+INDIGO_EXTERN double indigo_monotonic_time(void);
 
 /** Translate delay into absolute time.
  */

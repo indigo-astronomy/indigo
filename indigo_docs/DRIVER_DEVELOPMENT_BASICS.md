@@ -502,6 +502,14 @@ static indigo_result wheel_change_property(indigo_device *device,
 
 This is the recommended pattern for all new drivers and is exactly what the driver code generator emits. Because everything for one device runs on a single queue, the connection handler can safely call *indigo_cancel_pending_handlers()* on disconnect to discard any still queued polling before it closes the hardware.
 
+#### Shared background work
+
+`indigo_execute_background_handler_in(device, delay, callback)` schedules short, non-I/O work on the shared framework background queue. It returns false when the queue is unavailable. The queue is defined in `indigo_bus.c` and created/destroyed by `indigo_start()`/`indigo_stop()`. Tasks retain their original logical device and do not acquire the device/master mutex. Callbacks must not block or perform hardware I/O: one slow callback delays every user of this queue. Use the ordinary device queue for hardware work.
+
+Call `indigo_cancel_background_handler(device, callback)` after stopping a recurring producer; pass NULL to cancel all background callbacks for the device. Cancellation waits for matching running work except when invoked by that worker itself. Derived detach handlers must cancel before freeing callback-owned resources. Base detach also cancels remaining background tasks before freeing the base context. Submit only while the bus is running and the device/callback resources remain valid.
+
+CCD countdown uses this queue without additional mutexes or device locks. It keeps the existing exposure property updates and suspend/resume model, calculates elapsed time with `indigo_monotonic_time()`, and terminates at zero even if its callback arrives after the deadline. A driver-supplied zero also terminates countdown. Countdown never changes the exposure state to OK; readout completion remains the driver's responsibility.
+
 #### Handler Priorities
 
 Because the queue is serialized, an ordinary long running task would delay everything queued after it. That is unacceptable for operations that are time critical - a guiding pulse must fire on time, an **abort** must be honored immediately even while a slew handler is queued. INDIGO 3.0 therefore lets a task be submitted with a **priority**: higher priority tasks are pulled from the queue ahead of lower priority ones. The predefined levels are defined in [indigo_timer.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_timer.h):

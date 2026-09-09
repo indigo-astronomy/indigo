@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -1060,6 +1060,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
 			}
 		}
 	}
+	indigo_cancel_background_handler(device, NULL);
 	indigo_queue_delete(&DEVICE_CONTEXT->queue);
 	indigo_cancel_all_timers(device);
 	indigo_release_property(CONNECTION_PROPERTY);
