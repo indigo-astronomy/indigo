@@ -2456,6 +2456,14 @@ indigo_result indigo_agent_mount(indigo_driver_action action, indigo_driver_info
 
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
+			if (agent_device != NULL && agent_client != NULL) {
+				indigo_device *device = agent_device;
+				if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_change_switch_property_1(agent_client, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true);
+				}
+				// Keep the client alive until the aborted handler has finished.
+				indigo_cancel_pending_handlers(device);
+			}
 			if (agent_client != NULL) {
 				indigo_detach_client(agent_client);
 				free(agent_client);

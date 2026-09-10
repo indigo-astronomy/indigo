@@ -1299,14 +1299,41 @@ static void coupled_abort(void) {
 }
 
 static void shutdown_active(void) {
-	CHECK(select_peer(0, true, false));
-	CHECK(sw(AGENT, START, "SLEW", true, INDIGO_BUSY_STATE));
-	CHECK(wait_request(0, "MOUNT_EQUATORIAL_COORDINATES", 0));
-	// A stuck detach must not stall the suite or leave threads in the parent.
-	alarm(5);
+	for (int i = 0; i < ARRAY_SIZE(operations); i++) {
+		if (!strcmp(operations[i].item, "TRACK_ON") || !strcmp(operations[i].item, "TRACK_OFF")) {
+			continue;
+		}
+		CHECK(select_peer(0, true, false));
+		CHECK(select_peer(1, true, false));
+		CHECK(select_peer(2, false, false));
+		CHECK(sw(AGENT, FEATURES, "ENABLE_DOME_SLAVING", true, INDIGO_OK_STATE));
+		CHECK(sw(AGENT, FEATURES, "ENABLE_FIELD_DEROTATION", true, INDIGO_OK_STATE));
+		int n = requests(operations[i].peer, operations[i].property);
+		int aborts[] = { requests(0, "MOUNT_ABORT_MOTION"), requests(1, "DOME_ABORT_MOTION"), requests(2, "ROTATOR_ABORT_MOTION") };
+		fprintf(stderr, "Shutdown during %s\n", operations[i].item);
+		CHECK(sw(AGENT, START, operations[i].item, true, INDIGO_BUSY_STATE));
+		CHECK(wait_request(operations[i].peer, operations[i].property, n));
+		alarm(5);
+		CHECK(indigo_agent_mount(INDIGO_DRIVER_SHUTDOWN, NULL) == INDIGO_OK);
+		agent_started = false;
+		alarm(45);
+		CHECK(requests(0, "MOUNT_ABORT_MOTION") == aborts[0] + 1);
+		CHECK(requests(1, "DOME_ABORT_MOTION") == aborts[1] + 1);
+		CHECK(requests(2, "ROTATOR_ABORT_MOTION") == aborts[2] + 1);
+		CHECK(indigo_agent_mount(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
+		agent_started = true;
+		indigo_property *p = snapshot(AGENT, START);
+		CHECK(p);
+		bool busy = p->state == INDIGO_BUSY_STATE;
+		indigo_release_property(p);
+		CHECK(!busy);
+	}
+	int aborts[] = { requests(0, "MOUNT_ABORT_MOTION"), requests(1, "DOME_ABORT_MOTION"), requests(2, "ROTATOR_ABORT_MOTION") };
 	CHECK(indigo_agent_mount(INDIGO_DRIVER_SHUTDOWN, NULL) == INDIGO_OK);
 	agent_started = false;
-	alarm(45);
+	CHECK(requests(0, "MOUNT_ABORT_MOTION") == aborts[0]);
+	CHECK(requests(1, "DOME_ABORT_MOTION") == aborts[1]);
+	CHECK(requests(2, "ROTATOR_ABORT_MOTION") == aborts[2]);
 }
 
 static void shutdown_server(void) {
