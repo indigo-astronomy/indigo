@@ -1,4 +1,4 @@
-// Copyright (c) 2022-2025 CloudMakers, s. r. o.
+// Copyright (c) 2022-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -16,6 +16,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// Refactored by OpenAI Codex (2026).
+
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 // 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -24,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x03000007
+#define DRIVER_VERSION 0x03000008
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -256,6 +258,9 @@ static void load_configuration(indigo_device *device) {
 				client->version = INDIGO_VERSION_CURRENT;
 				clear_restore_properties(device);
 				indigo_xml_parse(NULL, client);
+				if (!has_restore_properties(device)) {
+					DEVICE_PRIVATE_DATA->failure = true;
+				}
 				indigo_uni_close(&handle);
 				free(context);
 				free(client);
@@ -263,6 +268,8 @@ static void load_configuration(indigo_device *device) {
 				indigo_usleep(500000);
 				process_restore_properties(device);
 				strncpy(AGENT_CONFIG_LAST_CONFIG_NAME_ITEM->text.value, item->name, INDIGO_NAME_SIZE);
+			} else {
+				DEVICE_PRIVATE_DATA->failure = true;
 			}
 			item->sw.value = false;
 		}

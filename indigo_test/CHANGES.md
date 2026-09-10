@@ -1266,3 +1266,86 @@ Validation: `stale capability`, missing devices/capabilities, legacy/modern succ
 Expanded `unpark failure` and added `unpark failure legacy`, each with eight scenarios: immediate rejected slew, immediate rejected sync, delayed mount failure, delayed dome failure, abort, dome disconnect, accelerated unpark timeout and successful recovery. Both peers start parked; no mount/dome/rotator mode or coordinate commands may follow failure. Success waits for both peers, checks that mount completion alone does not start coordinates, then completes all commanded motion. The fixture waits for the rotator position request before publishing completion. Existing timeout and coupled-abort cases now explicitly recover unpark before their subsequent slew checks.
 
 Validation: the full Mount Agent suite passed 59/59 cases including cleanup after the final changes, and both new matrices passed five additional repeated runs. Production agent and test executable built for macOS arm64/x86_64; tests ran on arm64 using scripted peers without hardware or sockets. The unpark timeout uses the existing sleep-acceleration seam. Version remains unchanged per user instruction. Test artifacts removed with `make -C indigo_test test-clean`.
+
+## 2026-09-10 — Configuration Agent complete behavioral suite
+
+Added `integration/test_agent_config.c`, included in `INTEGRATION_TESTS`, plus the focused `test-agent-config` target. The 55 independently isolated cases exercise the real Configuration Agent and framework via public bus entry points and a synchronous test peer router. Files are confined to a unique temporary root and removed by the parent even when a child assertion/watchdog fails. Each child starts INDIGO after fork and cleans up the bus and properties; the deadlock regression is intentionally killed by its watchdog. Test-only symbol substitutions isolate configuration paths, shorten only agent sleeps, observe client detach, and inject `indigo_save_property` failure. Production sources are compiled as separate objects, never included into a test source.
+
+### Scenario-to-test mapping
+
+All names below are exact executable filters. Failing behavioral requirements are retained as failures and recorded only as findings in `indigo_drivers/REVIEW.md`; this table maps their coverage.
+
+| Case | Coverage/result |
+| --- | --- |
+| `related_failure` | Passes; related failure. |
+| `driver_unload_new` | Fails; see DRV-168 in the driver review. |
+| `empty_selection_roundtrip` | Passes; empty selection roundtrip. |
+| `delayed_profile` | Passes; delayed profile. |
+| `busy_then_ok` | Passes; busy then ok. |
+| `shutdown_active` | Passes; shutdown active. |
+| `save_write_failure` | Fails; see DRV-162 in the driver review. |
+| `selection_alert_masked` | Fails; see DRV-167 in the driver review. |
+| `empty_load` | Fails; see DRV-163 in the driver review. |
+| `concurrent_remove` | Fails; see DRV-161 in the driver review. |
+| `save_path_separator` | Fails; see DRV-164 in the driver review. |
+| `discovery_compaction` | Passes; discovery compaction. |
+| `agent_capacity_reuse` | Passes; agent capacity reuse. |
+| `long_related_list` | Passes; long related list. |
+| `filter_prefix_consistency` | Fails; see DRV-165 in the driver review. |
+| `all_filter_classes` | Passes; all filter classes. |
+| `xml_escaping` | Passes; xml escaping. |
+| `setup_restart` | Passes; setup restart. |
+| `setup_save_failure` | Fails; see DRV-166 in the driver review. |
+| `nondefault_port_load` | Fails; see DRV-151 in the driver review. |
+| `shutdown_idle_reinitialize` | Passes; shutdown idle reinitialize. |
+| `direct_restore_capacity` | Fails; see DRV-159 in the driver review. |
+| `lifecycle` | Passes; lifecycle. |
+| `schema` | Passes; schema. |
+| `discovery` | Passes; discovery. |
+| `remote_ignored` | Passes; remote ignored. |
+| `deletion` | Passes; deletion. |
+| `save_roundtrip` | Passes; save roundtrip. |
+| `overwrite` | Passes; overwrite. |
+| `save_empty_and_failure` | Passes; save empty and failure. |
+| `remove_roundtrip` | Passes; remove roundtrip. |
+| `setup_persistence` | Passes; setup persistence. |
+| `autosave` | Passes; autosave. |
+| `driver_unload_policy` | Passes; driver unload policy. |
+| `repeated_load` | Passes; repeated load. |
+| `missing_profile` | Passes; missing profile. |
+| `selection_failure` | Passes; selection failure. |
+| `busy_guard` | Passes; busy guard. |
+| `missing_file` | Passes after DRV-148 fix; see driver review validation. |
+| `malformed_file` | Passes after DRV-148 fix; see driver review validation. |
+| `scan_suffix` | Fails; see DRV-149 in the driver review. |
+| `alternate_folder_remove` | Fails; see DRV-150 in the driver review. |
+| `port_namespace` | Fails; see DRV-151 in the driver review. |
+| `deselection_timeout` | Fails; see DRV-152 in the driver review. |
+| `restore_busy_timeout` | Fails; see DRV-153 in the driver review. |
+| `profile_rejection` | Fails; see DRV-154 in the driver review. |
+| `driver_rejection` | Fails; see DRV-155 in the driver review. |
+| `absent_agent` | Fails; see DRV-156 in the driver review. |
+| `server_disappearance` | Fails; see DRV-157 in the driver review. |
+| `profile_no_selection` | Fails; see DRV-158 in the driver review. |
+| `capacity_restore` | Fails; see DRV-159 in the driver review. |
+| `autosave_reentrant` | Fails; see DRV-160 in the driver review. |
+| `concurrent_save` | Fails; see DRV-161 in the driver review. |
+| `startup_scan` | Passes; startup scan. |
+| `enumeration_filter` | Passes; enumeration filter. |
+
+### Reproduce and interpret
+
+```sh
+make -C indigo_test test-agent-config
+indigo_test/build/integration/test_agent_config save_roundtrip
+INDIGO_CONFIG_REALTIME=1 indigo_test/build/integration/test_agent_config missing_profile
+make -C indigo_test TEST_BUILD=build/config-asan CONFIG_TEST_FLAGS=-fsanitize=address build/config-asan/integration/test_agent_config
+indigo_test/build/config-asan/integration/test_agent_config
+make -C indigo_test test-clean
+```
+
+A substring selects cases; no matching case returns 2. Full execution returns 1 today: **30 pass, 25 fail**, mapping to 21 open driver findings. The normal integration target deliberately surfaces the same regressions. Universal macOS arm64/x86_64 build and arm64 execution were verified, including AddressSanitizer. Original-wait checks passed roundtrip and missing-profile recovery; the original-wait BUSY timeout case reproduces its recorded failure.
+
+For clang coverage, use a separate `TEST_BUILD=build/config-coverage`, native architecture `CFLAGS`/`LDFLAGS` (same platform/library flags as Makefile.inc, retaining only the host architecture), and `CONFIG_TEST_FLAGS="-fprofile-instr-generate -fcoverage-mapping"`. Set `LLVM_PROFILE_FILE` to an absolute path under that build directory containing `%p.profraw`, run the executable, merge profiles with `llvm-profdata merge -sparse`, and report the agent source with `llvm-cov report`. Measured agent coverage: **100% functions, 97.04% lines, 95.56% regions, 87.47% branches**. Untested guards are described in the driver review; no claim of 100% branch coverage or production correctness is made.
+
+The CCD/mount/wheel/focuser/rotator/guider/AO/GPS class matrices are not applicable to this service-configuration agent. Device selections, profiles and server commands are modeled without real hardware or dynamic driver loading. No simulator motion/protocol audit or manufacturer document is applicable. Real device persistence, external transports, OOM, exhaustive concurrent interleavings and Linux/Windows execution remain outside this hardware-free suite. No new production properties, driver refactor or migration status change is involved.

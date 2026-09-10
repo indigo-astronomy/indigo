@@ -67,6 +67,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_guider_asi_sdk \
 	$(INTEGRATION_BUILD)/test_agent_imager \
 	$(INTEGRATION_BUILD)/test_agent_guider \
 	$(INTEGRATION_BUILD)/test_agent_mount \
+	$(INTEGRATION_BUILD)/test_agent_config \
 	$(INTEGRATION_BUILD)/test_ccd_simulator \
 	$(INTEGRATION_BUILD)/test_dome_simulator \
 	$(INTEGRATION_BUILD)/test_dome_baader_simulator \
@@ -1111,3 +1112,17 @@ $(INTEGRATION_BUILD)/test_agent_mount: integration/test_agent_mount.c test_runne
 .PHONY: test-agent-mount
 test-agent-mount: check-lib $(INTEGRATION_BUILD)/test_agent_mount
 	$(INTEGRATION_BUILD)/test_agent_mount
+
+# Public-bus Configuration Agent tests; isolated files and bounded scripted waits.
+$(INTEGRATION_BUILD)/agent_config_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(CONFIG_TEST_FLAGS) -Dindigo_uni_config_folder=config_test_folder -c $< -o $@
+
+$(INTEGRATION_BUILD)/agent_config_driver.o: ../indigo_drivers/agent_config/indigo_agent_config.c ../indigo_drivers/agent_config/indigo_agent_config.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(CONFIG_TEST_FLAGS) -Dindigo_uni_config_folder=config_test_folder -Dgetenv=config_test_getenv -Dindigo_detach_client=config_test_detach -Dindigo_save_property=config_test_save -Dindigo_usleep=config_test_sleep -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_agent_config: integration/test_agent_config.c test_runner.h $(INTEGRATION_BUILD)/agent_config_framework.o $(INTEGRATION_BUILD)/agent_config_driver.o $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(CONFIG_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_config_framework.o $(INTEGRATION_BUILD)/agent_config_driver.o -o $@ $(LDFLAGS) $(CONFIG_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+
+.PHONY: test-agent-config
+test-agent-config: check-lib $(INTEGRATION_BUILD)/test_agent_config
+	$(INTEGRATION_BUILD)/test_agent_config
