@@ -2056,7 +2056,7 @@ static bool guide(indigo_device *device) {
 		if (reported_delay_time > 0) {
 			AGENT_GUIDER_STATS_DELAY_ITEM->number.value = reported_delay_time;
 			indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-			while (reported_delay_time > 0) {
+			while (reported_delay_time > 0 && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 				if (reported_delay_time < floor(AGENT_GUIDER_STATS_DELAY_ITEM->number.value)) {
 					double c = ceil(reported_delay_time);
 					if (AGENT_GUIDER_STATS_DELAY_ITEM->number.value > c) {

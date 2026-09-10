@@ -955,12 +955,45 @@ static void dec_modes(void) {
 
 static void guiding_delay_abort(void) {
 	ASSERT_TRUE(configured_guiding());
+	const double delays[] = { 4, 0.5 };
+	for (int i = 0; i < ARRAY_SIZE(delays); i++) {
+		ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "DELAY", delays[i]));
+		ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+		ASSERT_TRUE(wait_value(AGENT, "AGENT_GUIDER_STATS", "DELAY", delays[i], 10));
+		int requests = camera_requests;
+		double before = indigo_monotonic_time();
+		ASSERT_TRUE(abort_running());
+		ASSERT_TRUE(indigo_monotonic_time() - before < 1.5);
+		ASSERT_EQ_INT(0, value(AGENT, "AGENT_GUIDER_STATS", "DELAY"));
+		ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_DONE, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+		ASSERT_EQ_INT(INDIGO_OK_STATE, state(AGENT, "AGENT_START_PROCESS"));
+		ASSERT_EQ_INT(0, value(AGENT, "AGENT_START_PROCESS", "GUIDING"));
+		ASSERT_EQ_INT(requests, camera_requests);
+	}
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "DELAY", 0));
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(3));
+	ASSERT_TRUE(abort_running());
+}
+
+static void guiding_delay_shutdown(void) {
+	ASSERT_TRUE(configured_guiding());
 	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "DELAY", 4));
 	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
 	ASSERT_TRUE(wait_value(AGENT, "AGENT_GUIDER_STATS", "DELAY", 4, 10));
+	int requests = camera_requests;
 	double before = indigo_monotonic_time();
-	ASSERT_TRUE(abort_running());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_guider(INDIGO_DRIVER_SHUTDOWN, NULL));
+	agent_started = false;
 	ASSERT_TRUE(indigo_monotonic_time() - before < 1.5);
+	ASSERT_EQ_INT(requests, camera_requests);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_guider(INDIGO_DRIVER_INIT, NULL));
+	agent_started = true;
+	ASSERT_TRUE(configured_guiding());
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "DELAY", 0));
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(3));
+	ASSERT_TRUE(abort_running());
 }
 
 static void calibration_and_guiding(void) {
@@ -1736,6 +1769,7 @@ static const indigo_test_case tests[] = {
 	{ "correction response", correction_response },
 	{ "dec modes", dec_modes },
 	{ "guiding delay abort", guiding_delay_abort },
+	{ "guiding delay shutdown", guiding_delay_shutdown },
 	{ "calibration and guiding", calibration_and_guiding },
 	{ "calibration no motion", calibration_no_motion },
 	{ "star loss fail", star_loss_fail },

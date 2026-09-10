@@ -1,5 +1,13 @@
 # INDIGO Test Suite Changes
 
+## Guider Agent delay abort fix — DRV-131 (2026-09-10)
+
+The inter-frame guiding delay loop now checks `AGENT_ABORT_PROCESS` before each existing sleep interval. Abort exits the delay, clears its published value and follows normal guiding completion without starting another exposure. Countdown behavior and the existing 200 ms/10 ms sleep intervals are unchanged. Version remains `0x0300002C` until the combined change is complete; no properties were added or removed. The reverted DRV-130 work remains deferred and was not reapplied.
+
+The suite now contains 78 cases. Strengthened `guiding delay abort` checks both 4-second and 0.5-second delays, completion within 1.5 seconds, zero remaining delay, OK/DONE, a cleared start switch, no further exposure request and restart. New `guiding delay shutdown` checks bounded shutdown during a 4-second delay, no extra exposure and successful guiding after driver reinitialization.
+
+Validation: driver build passed; `guiding delay` passed 2/2, `correction response` passed 1/1, and `shutdown active` passed 1/1, including cleanup. The full suite and AddressSanitizer were not rerun for this loop-condition-only fix. DRV-130, DRV-132 and DRV-133 remain open. Test artifacts were removed with `make -C indigo_test test-clean`.
+
 ## Guider Agent calibration speed fix — DRV-129 (2026-09-10)
 
 Calibration now divides measured north/west drift by `(i + 1) * step`, including the pulse just completed. `last_count` stores an actual pulse count; south/east return loops use `< last_count`, preserving equal outward/return pulse counts. East speed and the backlash one-step tolerance therefore also use the correct count. This removes the 12.5 px/s overestimate for a 10 px/s model and the zero denominator when RA calibration finishes after one pulse. Version stays `0x0300002C` until the combined DRV-124–DRV-133 change is complete; no properties were added or removed.
@@ -91,7 +99,7 @@ The final `make -C indigo_test test-agent-guider` run completed **53/64 cases su
 | DRV-128 (subsequently fixed) | Adaptive step reduction and bounds are corrected; see the focused calibration validation above. |
 | DRV-129 (subsequently fixed) | Calibration uses completed pulse counts; see the focused speed validation above. |
 | DRV-130 | RA-only dither fails the requested magnitude assertion |
-| DRV-131 | Guiding delay prevents completion within the 1.5-second abort bound |
+| DRV-131 (subsequently fixed) | Guiding delay now responds to abort; see the focused delay validation above. |
 | DRV-132 | A guide-pulse ALERT does not terminate the guiding process |
 | DRV-133 | Drift/correction statistics remain stale when measured drift returns to exactly zero |
 
@@ -133,7 +141,7 @@ Inventory: 150 modules — 2 Complete, 37 Partial, 55 Not audited, 46 No tests, 
 | `agent_astrometry` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_auxiliary` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_config` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `agent_guider` | Hand-written | Production agent/filter + CCD simulator and deterministic image/pulse boundary | Partial | 77 mapped integration cases; DRV-124/DRV-125 regressions pass normally and under AddressSanitizer; focused DRV-126–DRV-129 preview/calibration regressions pass; DRV-130–DRV-133 remain open. See the Guider Agent integration coverage section for validation and remaining acceptance work. |
+| `agent_guider` | Hand-written | Production agent/filter + CCD simulator and deterministic image/pulse boundary | Partial | 78 mapped integration cases; DRV-124/DRV-125 regressions pass normally and under AddressSanitizer; focused DRV-126–DRV-129 and DRV-131 regressions pass; DRV-130, DRV-132 and DRV-133 remain open. See the Guider Agent integration coverage section for validation and remaining acceptance work. |
 | `agent_imager` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_mount` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_scripting` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
