@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x0300000B
+#define DRIVER_VERSION 0x0300000C
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -247,6 +247,8 @@ static void load_configuration(indigo_device *device) {
 		}
 		AGENT_CONFIG_LOAD_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, "Can't deselect active devices before loading new configuration");
+		AGENT_CONFIG_LAST_CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
 		return;
 	}
 	indigo_sleep(1);
