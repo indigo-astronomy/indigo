@@ -20,7 +20,7 @@
 // version history
 // 3.0 by Makoto Kasahara
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_mount_mxhd"
 
 #include "indigo_mount_mxhd.h"

@@ -23,7 +23,7 @@
  \file indigo_agent_astap.c
  */
 
-#define DRIVER_VERSION 0x0200000A
+#define DRIVER_VERSION 0x0200000B
 #define DRIVER_NAME	"indigo_agent_astap"
 
 #include <stdio.h>

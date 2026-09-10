@@ -24,7 +24,7 @@
  \file indigo_mount_rainbow.c
  */
 
-#define DRIVER_VERSION 0x0200000E
+#define DRIVER_VERSION 0x0200000F
 #define DRIVER_NAME	"indigo_mount_rainbow"
 
 #include <stdlib.h>

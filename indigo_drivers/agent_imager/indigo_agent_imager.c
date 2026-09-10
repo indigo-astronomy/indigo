@@ -25,7 +25,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x03000039
+#define DRIVER_VERSION 0x0300003A
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>

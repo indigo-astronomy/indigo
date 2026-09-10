@@ -25,7 +25,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x03000016
+#define DRIVER_VERSION 0x03000017
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>

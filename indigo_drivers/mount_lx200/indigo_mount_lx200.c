@@ -25,7 +25,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x03000032
+#define DRIVER_VERSION 0x03000033
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #define NYX_BASE64_THRESHOLD_VERSION "1.32.0"

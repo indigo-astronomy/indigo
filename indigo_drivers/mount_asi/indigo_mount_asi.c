@@ -25,7 +25,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x0300001C
+#define DRIVER_VERSION 0x0300001D
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>

@@ -35,7 +35,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002F
+#define DRIVER_VERSION       0x03000030
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
