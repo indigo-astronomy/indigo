@@ -765,16 +765,6 @@ driver synscan {
 			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 		}
 
-		static long synscan_fraction_to_steps(long zero, long total, double fraction) {
-			while (fraction < -0.5) {
-				fraction += 1.0;
-			}
-			while (fraction > 0.5) {
-				fraction -= 1.0;
-			}
-			return zero + lrint(fraction * total);
-		}
-
 		static long synscan_position_to_steps(long zero, long total, double position) {
 			if (position > 0.75) {
 				position -= 1.0;
