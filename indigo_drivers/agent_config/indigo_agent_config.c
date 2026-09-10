@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x0300000E
+#define DRIVER_VERSION 0x0300000F
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -325,6 +325,32 @@ static void process_configuration_property(indigo_device *device) {
 					}
 				}
 				indigo_change_property(agent_client, copy); // it expects this call is actually synchronous on a local bus
+				bool restored = false;
+				for (int k = 0; k < 20; k++) {
+					pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
+					bool rejected = AGENT_CONFIG_DRIVERS_PROPERTY->state == INDIGO_ALERT_STATE;
+					restored = AGENT_CONFIG_DRIVERS_PROPERTY->state == INDIGO_OK_STATE;
+					for (int j = 0; restored && j < copy->count; j++) {
+						bool matched = false;
+						for (int l = 0; l < AGENT_CONFIG_DRIVERS_PROPERTY->count; l++) {
+							indigo_item *current = AGENT_CONFIG_DRIVERS_PROPERTY->items + l;
+							if (!strcmp(current->name, copy->items[j].name)) {
+								matched = current->sw.value == copy->items[j].sw.value;
+								break;
+							}
+						}
+						restored = matched;
+					}
+					pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
+					if (restored || rejected) {
+						break;
+					}
+					indigo_usleep(500000);
+				}
+				if (!restored) {
+					DEVICE_PRIVATE_DATA->failure = true;
+					indigo_send_message(device, ALERT_PROPERTY, "Driver selection failed");
+				}
 				indigo_release_property(copy);
 			} else if (!strcmp(property->name, AGENT_CONFIG_PROFILES_PROPERTY_NAME)) {
 				for (int j = 0; j < property->count; j++) {
@@ -672,6 +698,7 @@ static void update_drivers(indigo_device *device, indigo_property *property) {
 	indigo_delete_property(device, AGENT_CONFIG_DRIVERS_PROPERTY, NULL);
 	AGENT_CONFIG_DRIVERS_PROPERTY = indigo_resize_property(AGENT_CONFIG_DRIVERS_PROPERTY, property->count);
 	memcpy(AGENT_CONFIG_DRIVERS_PROPERTY->items, property->items, property->count * sizeof(indigo_item));
+	AGENT_CONFIG_DRIVERS_PROPERTY->state = property->state;
 	strcpy(DEVICE_PRIVATE_DATA->server, property->device);
 	indigo_define_property(device, AGENT_CONFIG_DRIVERS_PROPERTY, NULL);
 	AGENT_CONFIG_LAST_CONFIG_PROPERTY->state = INDIGO_IDLE_STATE;

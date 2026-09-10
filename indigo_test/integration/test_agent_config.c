@@ -610,6 +610,8 @@ static void driver_rejection(void) {
 	ASSERT_TRUE(text_change(SAVE, "reject", INDIGO_OK_STATE));
 	reject_driver = true;
 	ASSERT_TRUE(load("reject", INDIGO_ALERT_STATE));
+	reject_driver = false;
+	ASSERT_TRUE(load("reject", INDIGO_OK_STATE));
 }
 
 static void absent_agent(void) {
