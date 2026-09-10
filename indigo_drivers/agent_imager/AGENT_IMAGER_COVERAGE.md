@@ -100,3 +100,7 @@ The expanded external-shutter routing case failed before the fix and passes afte
 ## DRV-115 follow-up
 
 The camera-disconnect regression failed before the fix and passes afterward for preview, exposure batch and streaming, with bounded completion, cleared start switch, reconnection and successful acquisition in each case. Preview preserves its existing completion state and retry timing; failed batches publish ALERT. Retry exhaustion, streaming failure and abort/reacquire also pass (four focused cases). Prior full-suite totals and coverage measurements remain historical.
+
+## DRV-117 follow-up
+
+PRE_DELAY and POST_DELAY tests now each cover one/two frames and zero/nonzero delay, resume, abort and reacquisition. Controlled TRIGGER instances execute delays and their breakpoints while continuing to suppress dithering. Both delay cases, both capture-breakpoint cases, both dither cases and the two-agent barrier pass (seven focused cases). Prior full-suite totals and coverage measurements remain historical.

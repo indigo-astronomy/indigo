@@ -1346,50 +1346,54 @@ static bool exposure_batch(indigo_device *device) {
 					}
 				}
 			}
-			if (!is_controlled_instance) {
-				if (remaining_exposures != 0) {
-					if (DEVICE_PRIVATE_DATA->light_frame) {
-						if (AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value >= 0 && AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM->sw.value && (remaining_exposures > 1 || remaining_exposures == -1 || (remaining_exposures == 1 && AGENT_IMAGER_DITHER_AFTER_BATCH_FEATURE_ITEM->sw.value))) {
-							if (AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value > 0) {
-								AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value--;
-							} else {
-								AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM->number.target;
-								if (!do_dither(device)) {
-									return false;
-								}
-							}
+			if (remaining_exposures != 0) {
+				if (!is_controlled_instance && DEVICE_PRIVATE_DATA->light_frame) {
+					if (AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value >= 0 && AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM->sw.value && (remaining_exposures > 1 || remaining_exposures == -1 || (remaining_exposures == 1 && AGENT_IMAGER_DITHER_AFTER_BATCH_FEATURE_ITEM->sw.value))) {
+						if (AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value > 0) {
+							AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value--;
 						} else {
 							AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM->number.target;
-						}
-					}
-					check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_PRE_DELAY_ITEM);
-					double remaining_delay_time = AGENT_IMAGER_BATCH_DELAY_ITEM->number.target;
-					AGENT_IMAGER_STATS_DELAY_ITEM->number.value = remaining_delay_time;
-					AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_WAITING;
-					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-					while (remaining_delay_time > 0) {
-						wait_for_resume(device);
-						if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-							return false;
-						}
-						if (remaining_delay_time < floor(AGENT_IMAGER_STATS_DELAY_ITEM->number.value)) {
-							double c = ceil(remaining_delay_time);
-							if (AGENT_IMAGER_STATS_DELAY_ITEM->number.value > c) {
-								AGENT_IMAGER_STATS_DELAY_ITEM->number.value = c;
-								indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+							if (!do_dither(device)) {
+								return false;
 							}
 						}
-						if (remaining_delay_time > 1) {
-							remaining_delay_time -= 0.2;
-							indigo_usleep(200000);
-						} else {
-							remaining_delay_time -= 0.01;
-							indigo_usleep(10000);
+					} else {
+						AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM->number.target;
+					}
+				}
+				check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_PRE_DELAY_ITEM);
+				if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+					return false;
+				}
+				double remaining_delay_time = AGENT_IMAGER_BATCH_DELAY_ITEM->number.target;
+				AGENT_IMAGER_STATS_DELAY_ITEM->number.value = remaining_delay_time;
+				AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_WAITING;
+				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+				while (remaining_delay_time > 0) {
+					wait_for_resume(device);
+					if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+						return false;
+					}
+					if (remaining_delay_time < floor(AGENT_IMAGER_STATS_DELAY_ITEM->number.value)) {
+						double c = ceil(remaining_delay_time);
+						if (AGENT_IMAGER_STATS_DELAY_ITEM->number.value > c) {
+							AGENT_IMAGER_STATS_DELAY_ITEM->number.value = c;
+							indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 						}
 					}
-					AGENT_IMAGER_STATS_DELAY_ITEM->number.value = 0;
-					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-					check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_DELAY_ITEM);
+					if (remaining_delay_time > 1) {
+						remaining_delay_time -= 0.2;
+						indigo_usleep(200000);
+					} else {
+						remaining_delay_time -= 0.01;
+						indigo_usleep(10000);
+					}
+				}
+				AGENT_IMAGER_STATS_DELAY_ITEM->number.value = 0;
+				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+				check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_DELAY_ITEM);
+				if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+					return false;
 				}
 			}
 			break;

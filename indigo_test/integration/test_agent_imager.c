@@ -536,10 +536,9 @@ static void stars_statistics_and_format_restoration(void) {
 	ASSERT_EQ_INT(0, value(AGENT, "AGENT_IMAGER_SELECTION", "X"));
 }
 
-static void breakpoint_case(const char *point) {
-	ASSERT_TRUE(connect_camera());
-	ASSERT_TRUE(batch(2));
-	ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_BATCH", "DELAY", 0.01));
+static void breakpoint_case(const char *point, int count, double delay) {
+	ASSERT_TRUE(batch(count));
+	ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_BATCH", "DELAY", delay));
 	const char *points[] = { point };
 	for (int action = 0; action < 2; action++) {
 		for (int i = 0; i < ARRAY_SIZE(points); i++) {
@@ -566,27 +565,39 @@ static void breakpoint_case(const char *point) {
 }
 
 static void breakpoint_pre_batch(void) {
-	breakpoint_case("PRE_BATCH");
+	ASSERT_TRUE(connect_camera());
+	breakpoint_case("PRE_BATCH", 2, 0.01);
 }
 
 static void breakpoint_pre_capture(void) {
-	breakpoint_case("PRE_CAPTURE");
+	ASSERT_TRUE(connect_camera());
+	breakpoint_case("PRE_CAPTURE", 2, 0.01);
 }
 
 static void breakpoint_post_capture(void) {
-	breakpoint_case("POST_CAPTURE");
+	ASSERT_TRUE(connect_camera());
+	breakpoint_case("POST_CAPTURE", 2, 0.01);
 }
 
 static void breakpoint_pre_delay(void) {
-	breakpoint_case("PRE_DELAY");
+	ASSERT_TRUE(connect_camera());
+	for (int count = 1; count <= 2; count++) {
+		breakpoint_case("PRE_DELAY", count, 0);
+		breakpoint_case("PRE_DELAY", count, 0.01);
+	}
 }
 
 static void breakpoint_post_delay(void) {
-	breakpoint_case("POST_DELAY");
+	ASSERT_TRUE(connect_camera());
+	for (int count = 1; count <= 2; count++) {
+		breakpoint_case("POST_DELAY", count, 0);
+		breakpoint_case("POST_DELAY", count, 0.01);
+	}
 }
 
 static void breakpoint_post_batch(void) {
-	breakpoint_case("POST_BATCH");
+	ASSERT_TRUE(connect_camera());
+	breakpoint_case("POST_BATCH", 2, 0.01);
 }
 
 static void pause_resume_and_busy_guards(void) {
