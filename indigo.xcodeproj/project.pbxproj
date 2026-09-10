@@ -2503,6 +2503,11 @@
 		59910A3E3051D26800FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59910A3F3051FD6200FB1C2F /* indigo_focuser_prodigy.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_prodigy.driver; sourceTree = "<group>"; };
 		59910A403051FD6200FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		59910A59305289D700FB1C2F /* abort_queue_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = abort_queue_test_common.h; sourceTree = "<group>"; };
+		59910A5A305289D700FB1C2F /* test_agent_imager.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_imager.c; sourceTree = "<group>"; };
+		59910A5B305289D700FB1C2F /* test_ccd_countdown.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_countdown.c; sourceTree = "<group>"; };
+		59910A5C305289D700FB1C2F /* test_rotator_lunatico_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_rotator_lunatico_simulator.c; sourceTree = "<group>"; };
+		59910A5D30528A8200FB1C2F /* AGENT_IMAGER_COVERAGE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENT_IMAGER_COVERAGE.md; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -13286,6 +13291,10 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				59910A59305289D700FB1C2F /* abort_queue_test_common.h */,
+				59910A5A305289D700FB1C2F /* test_agent_imager.c */,
+				59910A5B305289D700FB1C2F /* test_ccd_countdown.c */,
+				59910A5C305289D700FB1C2F /* test_rotator_lunatico_simulator.c */,
 				59910A353050AC2600FB1C2F /* test_wheel_astroasis_sdk.c */,
 				9D239B433050481C002E0722 /* test_generator_architecture.c */,
 				9D239B36304FE0CF002E0722 /* test_ccd_touptek_sdk.c */,
@@ -14859,6 +14868,7 @@
 			isa = PBXGroup;
 			children = (
 				9DA451CB21908CBC00818B58 /* README.md */,
+				59910A5D30528A8200FB1C2F /* AGENT_IMAGER_COVERAGE.md */,
 				9DA451CD21908CBC00818B58 /* indigo_agent_imager.h */,
 				9DA451CC21908CBC00818B58 /* indigo_agent_imager.c */,
 			);
