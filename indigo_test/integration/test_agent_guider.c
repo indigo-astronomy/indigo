@@ -1709,11 +1709,38 @@ static void zero_drift_statistics(void) {
 	move_image(2, 2);
 	ASSERT_TRUE(frames(6));
 	ASSERT_TRUE(fabs(value(AGENT, "AGENT_GUIDER_STATS", "DRIFT_RA")) > 1);
+	double rmse = value(AGENT, "AGENT_GUIDER_STATS", "RMSE_RA_ST");
 	move_image(0, 0);
 	ASSERT_TRUE(frames(10));
+	pthread_mutex_lock(&motion_mutex);
+	unsigned commands = ra_commands + dec_commands;
+	pthread_mutex_unlock(&motion_mutex);
+	ASSERT_TRUE(frames(20));
 	ASSERT_TRUE(abort_running());
+	const char *items[] = { "DRIFT_RA", "DRIFT_DEC", "DRIFT_RA_S", "DRIFT_DEC_S", "CORR_RA", "CORR_DEC" };
+	for (int i = 0; i < ARRAY_SIZE(items); i++) {
+		ASSERT_NEAR(0, value(AGENT, "AGENT_GUIDER_STATS", items[i]), 0.001);
+	}
+	ASSERT_TRUE(value(AGENT, "AGENT_GUIDER_STATS", "RMSE_RA_ST") < rmse);
+	pthread_mutex_lock(&motion_mutex);
+	unsigned final_commands = ra_commands + dec_commands;
+	pthread_mutex_unlock(&motion_mutex);
+	ASSERT_EQ_INT(commands, final_commands);
+}
+
+static void zero_drift_ppec_learning(void) {
+	ASSERT_TRUE(configured_guiding());
+	ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_CORRECTION_MODE_RA", "PPEC", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "PPEC_PERIOD_RA", 10));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "PPEC_PERIOD_FIXED", 1));
+	freeze_motion = true;
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(3));
+	double learning = value(AGENT, "AGENT_GUIDER_STATS", "PPEC_LEARNING");
+	ASSERT_TRUE(frames(30));
+	ASSERT_TRUE(value(AGENT, "AGENT_GUIDER_STATS", "PPEC_LEARNING") > learning);
 	ASSERT_NEAR(0, value(AGENT, "AGENT_GUIDER_STATS", "DRIFT_RA"), 0.001);
-	ASSERT_NEAR(0, value(AGENT, "AGENT_GUIDER_STATS", "CORR_RA"), 0.001);
+	ASSERT_TRUE(abort_running());
 }
 
 static void donuts_include_region(void) {
@@ -1870,6 +1897,7 @@ static const indigo_test_case tests[] = {
 	{ "logging algorithms", logging_algorithms },
 	{ "calibration reset recovery", calibration_reset_recovery },
 	{ "zero drift statistics", zero_drift_statistics },
+	{ "zero drift PPEC learning", zero_drift_ppec_learning },
 	{ "related mount coordination", related_mount_coordination },
 	{ "multistar weighted", multistar_weighted },
 	{ "calibration ra only", calibration_ra_only },

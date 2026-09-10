@@ -24,7 +24,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0300002C
+#define DRIVER_VERSION 0x0300002D
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -1816,261 +1816,258 @@ static bool guide(indigo_device *device) {
 			AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = 0;
 			indigo_update_property(device, AGENT_GUIDER_RESET_PPEC_PROPERTY, "Predictive PEC model reset");
 		}
-		if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y) {
-			double angle = -PI * get_rotation_angle(device) / 180;
-			double sin_angle = sin(angle);
-			double cos_angle = cos(angle);
-			double pix_scale_x = CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.value * 3600;
-			double pix_scale_y = CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM->number.value * 3600;
-			double min_error = AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value;
-			double min_pulse = AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM->number.value;
-			double max_pulse = AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value;
-			double drift_ra = DEVICE_PRIVATE_DATA->drift_x * cos_angle + DEVICE_PRIVATE_DATA->drift_y * sin_angle;
-			double drift_dec = DEVICE_PRIVATE_DATA->drift_x * sin_angle - DEVICE_PRIVATE_DATA->drift_y * cos_angle;
-			double drift_ra_s = DEVICE_PRIVATE_DATA->drift_x * cos_angle * pix_scale_x + DEVICE_PRIVATE_DATA->drift_y * sin_angle * pix_scale_y;
-			double drift_dec_s = DEVICE_PRIVATE_DATA->drift_x * sin_angle * pix_scale_x - DEVICE_PRIVATE_DATA->drift_y * cos_angle * pix_scale_y;
-			double avg_drift_ra = DEVICE_PRIVATE_DATA->avg_drift_x * cos_angle + DEVICE_PRIVATE_DATA->avg_drift_y * sin_angle;
-			double avg_drift_dec = DEVICE_PRIVATE_DATA->avg_drift_x * sin_angle - DEVICE_PRIVATE_DATA->avg_drift_y * cos_angle;
-			AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = round(1000 * drift_ra) / 1000;
-			AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = round(1000 * drift_dec) / 1000;
-			AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = round(1000 * drift_ra_s) / 1000;
-			AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = round(1000 * drift_dec_s) / 1000;
-			/* Always feed linear-trend history so the trend is built from every frame,
-			   regardless of whether the drift is above the correction threshold. */
-			if (AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM->sw.value) {
-				indigo_guider_linear_trend_push(drift_ra, &DEVICE_PRIVATE_DATA->trend_ra);
-			}
-			if (AGENT_GUIDER_CORRECTION_MODE_DEC_LINEAR_TREND_ITEM->sw.value) {
-				indigo_guider_linear_trend_push(drift_dec, &DEVICE_PRIVATE_DATA->trend_dec);
-			}
-			if (AGENT_GUIDER_CORRECTION_MODE_DEC_RESIST_SWITCH_ITEM->sw.value) {
-				indigo_guider_resist_switch_push(drift_dec, &DEVICE_PRIVATE_DATA->resist_switch_dec);
-			}
-			double correction_ra = 0, correction_dec = 0;
-			double max_safe_correction = AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value * SAFE_RADIUS_FACTOR;
-			/* learning progress and measured period are meaningful only while Predictive PEC drives RA */
-			AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = 0;
-			AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = 0;
+		double angle = -PI * get_rotation_angle(device) / 180;
+		double sin_angle = sin(angle);
+		double cos_angle = cos(angle);
+		double pix_scale_x = CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.value * 3600;
+		double pix_scale_y = CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM->number.value * 3600;
+		double min_error = AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value;
+		double min_pulse = AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM->number.value;
+		double max_pulse = AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value;
+		double drift_ra = DEVICE_PRIVATE_DATA->drift_x * cos_angle + DEVICE_PRIVATE_DATA->drift_y * sin_angle;
+		double drift_dec = DEVICE_PRIVATE_DATA->drift_x * sin_angle - DEVICE_PRIVATE_DATA->drift_y * cos_angle;
+		double drift_ra_s = DEVICE_PRIVATE_DATA->drift_x * cos_angle * pix_scale_x + DEVICE_PRIVATE_DATA->drift_y * sin_angle * pix_scale_y;
+		double drift_dec_s = DEVICE_PRIVATE_DATA->drift_x * sin_angle * pix_scale_x - DEVICE_PRIVATE_DATA->drift_y * cos_angle * pix_scale_y;
+		double avg_drift_ra = DEVICE_PRIVATE_DATA->avg_drift_x * cos_angle + DEVICE_PRIVATE_DATA->avg_drift_y * sin_angle;
+		double avg_drift_dec = DEVICE_PRIVATE_DATA->avg_drift_x * sin_angle - DEVICE_PRIVATE_DATA->avg_drift_y * cos_angle;
+		AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = round(1000 * drift_ra) / 1000;
+		AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = round(1000 * drift_dec) / 1000;
+		AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = round(1000 * drift_ra_s) / 1000;
+		AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = round(1000 * drift_dec_s) / 1000;
+		/* Always feed linear-trend history so the trend is built from every frame,
+		   regardless of whether the drift is above the correction threshold. */
+		if (AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM->sw.value) {
+			indigo_guider_linear_trend_push(drift_ra, &DEVICE_PRIVATE_DATA->trend_ra);
+		}
+		if (AGENT_GUIDER_CORRECTION_MODE_DEC_LINEAR_TREND_ITEM->sw.value) {
+			indigo_guider_linear_trend_push(drift_dec, &DEVICE_PRIVATE_DATA->trend_dec);
+		}
+		if (AGENT_GUIDER_CORRECTION_MODE_DEC_RESIST_SWITCH_ITEM->sw.value) {
+			indigo_guider_resist_switch_push(drift_dec, &DEVICE_PRIVATE_DATA->resist_switch_dec);
+		}
+		double correction_ra = 0, correction_dec = 0;
+		double max_safe_correction = AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value * SAFE_RADIUS_FACTOR;
+		/* learning progress and measured period are meaningful only while Predictive PEC drives RA */
+		AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = 0;
+		AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = 0;
 
-			// RA correction
-			if (AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM->sw.value) {
-				correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_ra, avg_drift_ra);
-			} else if (AGENT_GUIDER_CORRECTION_MODE_RA_HYSTERESIS_ITEM->sw.value) {
-				correction_ra = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_ra);
-			} else if (AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM->sw.value) {
-				correction_ra = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->trend_ra);
-			} else if (AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM->sw.value && DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
-				/* With period 0 the worm period is estimated online from the default;
-				   with a fixed period > 0 the estimate is still refined (allowed to drift)
-				   unless the fixed-period item is set, in which case it is held constant.
-				 */
-				double period = AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM->number.value;
-				bool period_fixed = AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM->number.value > 0.5;
-				indigo_gp_guider_set_parameters(
-					DEVICE_PRIVATE_DATA->ppec_ra,
-					AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM->number.value / 100,
-					AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM->number.value / 100,
-					min_error,
-					period <= 0 || !period_fixed,
-					period
-				);
-				double time_step = AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value;
-				correction_ra = indigo_gp_guider_response(DEVICE_PRIVATE_DATA->ppec_ra, drift_ra, AGENT_GUIDER_STATS_SNR_ITEM->number.value, time_step);
-				AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = 100.0 * indigo_gp_guider_get_learning_progress(DEVICE_PRIVATE_DATA->ppec_ra);
-					AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = indigo_gp_guider_get_period_length(DEVICE_PRIVATE_DATA->ppec_ra);
-			} else {
-				// should not happen, but just a safety measure fallback to PI if no RA correction mode is selected
-				correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_ra, avg_drift_ra);
+		// RA correction
+		if (AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM->sw.value) {
+			correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_ra, avg_drift_ra);
+		} else if (AGENT_GUIDER_CORRECTION_MODE_RA_HYSTERESIS_ITEM->sw.value) {
+			correction_ra = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_ra);
+		} else if (AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM->sw.value) {
+			correction_ra = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->trend_ra);
+		} else if (AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM->sw.value && DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
+			/* With period 0 the worm period is estimated online from the default;
+			   with a fixed period > 0 the estimate is still refined (allowed to drift)
+			   unless the fixed-period item is set, in which case it is held constant.
+			 */
+			double period = AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM->number.value;
+			bool period_fixed = AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM->number.value > 0.5;
+			indigo_gp_guider_set_parameters(
+				DEVICE_PRIVATE_DATA->ppec_ra,
+				AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM->number.value / 100,
+				AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM->number.value / 100,
+				min_error,
+				period <= 0 || !period_fixed,
+				period
+			);
+			double time_step = AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value;
+			correction_ra = indigo_gp_guider_response(DEVICE_PRIVATE_DATA->ppec_ra, drift_ra, AGENT_GUIDER_STATS_SNR_ITEM->number.value, time_step);
+			AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = 100.0 * indigo_gp_guider_get_learning_progress(DEVICE_PRIVATE_DATA->ppec_ra);
+				AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = indigo_gp_guider_get_period_length(DEVICE_PRIVATE_DATA->ppec_ra);
+		} else {
+			// should not happen, but just a safety measure fallback to PI if no RA correction mode is selected
+			correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_ra, avg_drift_ra);
 
+		}
+		if (correction_ra != 0) {
+			/* Limit correction_ra, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
+			if ((AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) && (fabs(correction_ra) > max_safe_correction)) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA correction = %.4fpx will lose stars with radius = %.2fpx, reduced RA correction = %.4fpx", correction_ra, AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value, copysign(1.0, correction_ra) * max_safe_correction);
+				correction_ra = copysign(1.0, correction_ra) * max_safe_correction;
 			}
-			if (correction_ra != 0) {
-				/* Limit correction_ra, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
-				if ((AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) && (fabs(correction_ra) > max_safe_correction)) {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA correction = %.4fpx will lose stars with radius = %.2fpx, reduced RA correction = %.4fpx", correction_ra, AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value, copysign(1.0, correction_ra) * max_safe_correction);
-					correction_ra = copysign(1.0, correction_ra) * max_safe_correction;
-				}
-				double cos_dec = (DEVICE_PRIVATE_DATA->cos_dec > MIN_COS_DEC) ? DEVICE_PRIVATE_DATA->cos_dec : MIN_COS_DEC;
-				correction_ra = correction_ra / (AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value * cos_dec);
-				if (correction_ra > max_pulse) {
-					correction_ra = max_pulse;
-				} else if (correction_ra < -max_pulse) {
-					correction_ra = -max_pulse;
-				} else if (fabs(correction_ra) < min_pulse) {
-					correction_ra = 0;
-				}
-			}
-
-			// Dec correction
-			if (AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM->sw.value) {
-				correction_dec = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_dec, avg_drift_dec);
-			} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_HYSTERESIS_ITEM->sw.value) {
-				correction_dec = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM->number.value / 100, min_error, drift_dec, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_dec);
-			} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_RESIST_SWITCH_ITEM->sw.value) {
-				correction_dec = indigo_guider_resist_switch_response(AGENT_GUIDER_SETTINGS_RESIST_SWITCH_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_RESIST_SWITCH_FAST_THRSH_DEC_ITEM->number.value, min_error, &DEVICE_PRIVATE_DATA->resist_switch_dec);
-			} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_LINEAR_TREND_ITEM->sw.value) {
-				correction_dec = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM->number.value / 100, min_error, drift_dec, &DEVICE_PRIVATE_DATA->trend_dec);
-			} else {
-				// should not happen, but just a safety measure fallback to PI if no Dec correction mode is selected
-				correction_dec = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_dec, avg_drift_dec);
-			}
-			if (correction_dec != 0) {
-				/* Limit correction_dec, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
-				if ((AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) && (fabs(correction_dec) > max_safe_correction)) {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dec correction = %.4fpx will lose stars with radius = %.2fpx, reduced Dec correction = %.4fpx", correction_dec, AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value, copysign(1.0, correction_dec) * max_safe_correction);
-					correction_dec = copysign(1.0, correction_dec) * max_safe_correction;
-				}
-				correction_dec = correction_dec / get_dec_speed(device);
-				if (correction_dec > max_pulse) {
-					correction_dec = max_pulse;
-				} else if (correction_dec < -max_pulse) {
-					correction_dec = -max_pulse;
-				} else if (fabs(correction_dec) < min_pulse) {
-					correction_dec = 0;
-				}
-			}
-			if (AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value) {
-				correction_dec = 0;
-			} else if (AGENT_GUIDER_DEC_MODE_NORTH_ITEM->sw.value && correction_dec < 0) {
-				correction_dec = 0;
-			} else if (AGENT_GUIDER_DEC_MODE_SOUTH_ITEM->sw.value && correction_dec > 0) {
-				correction_dec = 0;
-			}
-
-			AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = round(1000 * correction_ra) / 1000;
-			AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = round(1000 * correction_dec) / 1000;
-			/* Apply DEC backlash. It is after AGENT_GUIDER_STATS_CORR_DEC_ITEM asignment, so that it will not show on the correction graph. */
-			if (AGENT_GUIDER_APPLY_DEC_BACKLASH_ENABLED_ITEM->sw.value) {
-				if ((prev_correction_dec <= 0 && correction_dec <= 0) || (prev_correction_dec >= 0 && correction_dec >= 0)) {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "(-) No Dec backlash applied: prev_correction_dec = %.3fs, correction_dec = %.3fs", prev_correction_dec, correction_dec);
-				} else {
-					double backlash = fabs(AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "(+) Dec backlash appled: prev_correction_dec = %.3fs, correction_dec = %.3fs, backlash = %.3fs", prev_correction_dec, correction_dec, backlash);
-					/* apply backlash only if correction_dec != 0 (+0 or -0 are excluded too) */
-					if (correction_dec > 0) {
-						correction_dec += backlash;
-					} else if (correction_dec < 0) {
-						correction_dec -= backlash;
-					}
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "(+) correction_dec + backlash = %.3fs", correction_dec);
-				}
-			}
-			/* save current dec correction as previous dec correction only if it will be applied */
-			/* It is saved regardless if BL is apllied or not because we need to be able to turn BL on and off any time */
-			if (fabs(correction_dec) > 0) {
-				prev_correction_dec = correction_dec;
-			}
-			if (pulse_guide(device, correction_ra, correction_dec) != INDIGO_OK_STATE) {
-				if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-					break;
-				}
-				if (AGENT_GUIDER_CONTINUE_ON_GUIDING_ERROR_ITEM->sw.value) {
-					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-					for (int i = 0; i < 10 && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++) {
-						indigo_usleep(100000);
-					}
-					// Measure a fresh frame before attempting another correction.
-					continue;
-				}
-				AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-				break;
-			}
-			/* Snapshot once so both the branch selection and the settle check below
-			   see the same value within a single frame iteration. Fixes race with the timer-thread
-			   property handler that sets DITHERING concurrently.
-			*/
-			int dithering_active = IS_DITHERING;
-			if (dithering_active == 0) {
-				DEVICE_PRIVATE_DATA->rmse_ra_sum += drift_ra * drift_ra;
-				DEVICE_PRIVATE_DATA->rmse_dec_sum += drift_dec * drift_dec;
-				DEVICE_PRIVATE_DATA->rmse_ra_s_sum += drift_ra_s * drift_ra_s;
-				DEVICE_PRIVATE_DATA->rmse_dec_s_sum += drift_dec_s * drift_dec_s;
-				DEVICE_PRIVATE_DATA->rmse_count++;
-				/* Feed the correction-response ring buffers with this frame's residual, in pixels and
-				   arcsec (dithering frames are intentional offsets, so they are excluded). */
-				DEVICE_PRIVATE_DATA->corr_resp_ra[DEVICE_PRIVATE_DATA->corr_resp_head] = drift_ra;
-				DEVICE_PRIVATE_DATA->corr_resp_dec[DEVICE_PRIVATE_DATA->corr_resp_head] = drift_dec;
-				DEVICE_PRIVATE_DATA->corr_resp_ra_s[DEVICE_PRIVATE_DATA->corr_resp_head] = drift_ra_s;
-				DEVICE_PRIVATE_DATA->corr_resp_dec_s[DEVICE_PRIVATE_DATA->corr_resp_head] = drift_dec_s;
-				DEVICE_PRIVATE_DATA->corr_resp_head = (DEVICE_PRIVATE_DATA->corr_resp_head + 1) % INDIGO_CORR_RESPONSE_WINDOW;
-				if (DEVICE_PRIVATE_DATA->corr_resp_count < INDIGO_CORR_RESPONSE_WINDOW) {
-					DEVICE_PRIVATE_DATA->corr_resp_count++;
-				}
-			} else {
-				DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = DEVICE_PRIVATE_DATA->rmse_ra_s_sum = DEVICE_PRIVATE_DATA->rmse_dec_s_sum = 0;
-				/* We use RMSE moving average during dithering over the last AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM frames to determine
-				   when it settles.
-				   NB: We need a moving average because the first frames after dithering starts have large deviations and it will take
-				   a lot of frames for RMSE to drop below the threshold. Way more than the timeout.
-				*/
-				if (DEVICE_PRIVATE_DATA->rmse_count > (unsigned long)AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value) {
-					DEVICE_PRIVATE_DATA->rmse_count = 0;
-				}
-				if (DEVICE_PRIVATE_DATA->rmse_count < AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value) {
-					DEVICE_PRIVATE_DATA->rmse_count++;
-				}
-				int count = (int)DEVICE_PRIVATE_DATA->rmse_count;
-				if (count > MAX_STACK) {
-					count = MAX_STACK;
-				}
-				for (int i = 0; i < count; i++) {
-					double drift_ra_i =  DEVICE_PRIVATE_DATA->stack_x[i] * cos_angle + DEVICE_PRIVATE_DATA->stack_y[i] * sin_angle;
-					double drift_dec_i = DEVICE_PRIVATE_DATA->stack_x[i] * sin_angle - DEVICE_PRIVATE_DATA->stack_y[i] * cos_angle;
-					DEVICE_PRIVATE_DATA->rmse_ra_sum += drift_ra_i * drift_ra_i;
-					DEVICE_PRIVATE_DATA->rmse_dec_sum += drift_dec_i * drift_dec_i;
-					double drift_ra_s_i = DEVICE_PRIVATE_DATA->stack_x[i] * cos_angle * pix_scale_x + DEVICE_PRIVATE_DATA->stack_y[i] * sin_angle * pix_scale_y;
-					double drift_dec_s_i = DEVICE_PRIVATE_DATA->stack_x[i] * sin_angle * pix_scale_x - DEVICE_PRIVATE_DATA->stack_y[i] * cos_angle * pix_scale_y;
-					DEVICE_PRIVATE_DATA->rmse_ra_s_sum += drift_ra_s_i * drift_ra_s_i;
-					DEVICE_PRIVATE_DATA->rmse_dec_s_sum += drift_dec_s_i * drift_dec_s_i;
-				}
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering frames in stack = %lu, stack size = %d", DEVICE_PRIVATE_DATA->rmse_count, (int)AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value);
-			}
-
-			double rmse_ra = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
-			double rmse_dec = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
-			if (dithering_active != 0) { /* During dithering, RMSE values are used to determine when it settles. Do not show them to the user. */
-				bool dithering_finished = false;
-				if (AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value) {
-					if (DEVICE_PRIVATE_DATA->rmse_ra_threshold > 0 && DEVICE_PRIVATE_DATA->rmse_dec_threshold > 0) {
-						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value && rmse_ra < DEVICE_PRIVATE_DATA->rmse_ra_threshold && rmse_dec < DEVICE_PRIVATE_DATA->rmse_dec_threshold;
-					} else {
-						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value;
-					}
-				} else {
-					if (DEVICE_PRIVATE_DATA->rmse_ra_threshold > 0) {
-						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value && rmse_ra < DEVICE_PRIVATE_DATA->rmse_ra_threshold;
-					} else {
-						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value;
-					}
-				}
-				if (dithering_finished) {
-					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
-				} else {
-					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = fmax(rmse_ra, rmse_dec);
-				}
-			} else { /* Not dithering, just update RMSE values as usual. */
-				/* Long-term (session-cumulative) RMSE in pixels and arcsec. */
-				AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = rmse_ra;
-				AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = rmse_dec;
-				AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_s_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
-				AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_s_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
-				/* Short-term RMSE: sliding-window RMSE over the last (up to INDIGO_CORR_RESPONSE_WINDOW)
-				   non-dithering residuals held in the correction-response ring buffers (unfiltered), in
-				   pixels and arcsec. More sensitive to recent guiding changes than the session-cumulative
-				   RMSE above. */
-				AGENT_GUIDER_STATS_RMSE_RA_ST_ITEM->number.value = round(1000 * indigo_rmse(DEVICE_PRIVATE_DATA->corr_resp_ra, DEVICE_PRIVATE_DATA->corr_resp_count)) / 1000;
-				AGENT_GUIDER_STATS_RMSE_DEC_ST_ITEM->number.value = round(1000 * indigo_rmse(DEVICE_PRIVATE_DATA->corr_resp_dec, DEVICE_PRIVATE_DATA->corr_resp_count)) / 1000;
-				AGENT_GUIDER_STATS_RMSE_RA_S_ST_ITEM->number.value = round(1000 * indigo_rmse(DEVICE_PRIVATE_DATA->corr_resp_ra_s, DEVICE_PRIVATE_DATA->corr_resp_count)) / 1000;
-				AGENT_GUIDER_STATS_RMSE_DEC_S_ST_ITEM->number.value = round(1000 * indigo_rmse(DEVICE_PRIVATE_DATA->corr_resp_dec_s, DEVICE_PRIVATE_DATA->corr_resp_count)) / 1000;
-				/* Correction response: robust lag-1 autocorrelation of the residual. Published
-				   once at least INDIGO_CORR_RESPONSE_MIN samples are collected; 0 until then. */
-				bool corr_ra_ok = false, corr_dec_ok = false;
-				double corr_resp_ra = indigo_guider_correction_response(DEVICE_PRIVATE_DATA->corr_resp_ra, DEVICE_PRIVATE_DATA->corr_resp_count, DEVICE_PRIVATE_DATA->corr_resp_head, &corr_ra_ok);
-				double corr_resp_dec = indigo_guider_correction_response(DEVICE_PRIVATE_DATA->corr_resp_dec, DEVICE_PRIVATE_DATA->corr_resp_count, DEVICE_PRIVATE_DATA->corr_resp_head, &corr_dec_ok);
-				AGENT_GUIDER_STATS_CORR_RESPONSE_RA_ITEM->number.value = corr_ra_ok ? round(1000 * corr_resp_ra) / 1000 : 0;
-				AGENT_GUIDER_STATS_CORR_RESPONSE_DEC_ITEM->number.value = corr_dec_ok ? round(1000 * corr_resp_dec) / 1000 : 0;
+			double cos_dec = (DEVICE_PRIVATE_DATA->cos_dec > MIN_COS_DEC) ? DEVICE_PRIVATE_DATA->cos_dec : MIN_COS_DEC;
+			correction_ra = correction_ra / (AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value * cos_dec);
+			if (correction_ra > max_pulse) {
+				correction_ra = max_pulse;
+			} else if (correction_ra < -max_pulse) {
+				correction_ra = -max_pulse;
+			} else if (fabs(correction_ra) < min_pulse) {
+				correction_ra = 0;
 			}
 		}
 
+		// Dec correction
+		if (AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM->sw.value) {
+			correction_dec = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_dec, avg_drift_dec);
+		} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_HYSTERESIS_ITEM->sw.value) {
+			correction_dec = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM->number.value / 100, min_error, drift_dec, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_dec);
+		} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_RESIST_SWITCH_ITEM->sw.value) {
+			correction_dec = indigo_guider_resist_switch_response(AGENT_GUIDER_SETTINGS_RESIST_SWITCH_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_RESIST_SWITCH_FAST_THRSH_DEC_ITEM->number.value, min_error, &DEVICE_PRIVATE_DATA->resist_switch_dec);
+		} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_LINEAR_TREND_ITEM->sw.value) {
+			correction_dec = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM->number.value / 100, min_error, drift_dec, &DEVICE_PRIVATE_DATA->trend_dec);
+		} else {
+			// should not happen, but just a safety measure fallback to PI if no Dec correction mode is selected
+			correction_dec = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_dec, avg_drift_dec);
+		}
+		if (correction_dec != 0) {
+			/* Limit correction_dec, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
+			if ((AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) && (fabs(correction_dec) > max_safe_correction)) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dec correction = %.4fpx will lose stars with radius = %.2fpx, reduced Dec correction = %.4fpx", correction_dec, AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value, copysign(1.0, correction_dec) * max_safe_correction);
+				correction_dec = copysign(1.0, correction_dec) * max_safe_correction;
+			}
+			correction_dec = correction_dec / get_dec_speed(device);
+			if (correction_dec > max_pulse) {
+				correction_dec = max_pulse;
+			} else if (correction_dec < -max_pulse) {
+				correction_dec = -max_pulse;
+			} else if (fabs(correction_dec) < min_pulse) {
+				correction_dec = 0;
+			}
+		}
+		if (AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value) {
+			correction_dec = 0;
+		} else if (AGENT_GUIDER_DEC_MODE_NORTH_ITEM->sw.value && correction_dec < 0) {
+			correction_dec = 0;
+		} else if (AGENT_GUIDER_DEC_MODE_SOUTH_ITEM->sw.value && correction_dec > 0) {
+			correction_dec = 0;
+		}
+
+		AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = round(1000 * correction_ra) / 1000;
+		AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = round(1000 * correction_dec) / 1000;
+		/* Apply DEC backlash. It is after AGENT_GUIDER_STATS_CORR_DEC_ITEM asignment, so that it will not show on the correction graph. */
+		if (AGENT_GUIDER_APPLY_DEC_BACKLASH_ENABLED_ITEM->sw.value) {
+			if ((prev_correction_dec <= 0 && correction_dec <= 0) || (prev_correction_dec >= 0 && correction_dec >= 0)) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "(-) No Dec backlash applied: prev_correction_dec = %.3fs, correction_dec = %.3fs", prev_correction_dec, correction_dec);
+			} else {
+				double backlash = fabs(AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "(+) Dec backlash appled: prev_correction_dec = %.3fs, correction_dec = %.3fs, backlash = %.3fs", prev_correction_dec, correction_dec, backlash);
+				/* apply backlash only if correction_dec != 0 (+0 or -0 are excluded too) */
+				if (correction_dec > 0) {
+					correction_dec += backlash;
+				} else if (correction_dec < 0) {
+					correction_dec -= backlash;
+				}
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "(+) correction_dec + backlash = %.3fs", correction_dec);
+			}
+		}
+		/* save current dec correction as previous dec correction only if it will be applied */
+		/* It is saved regardless if BL is apllied or not because we need to be able to turn BL on and off any time */
+		if (fabs(correction_dec) > 0) {
+			prev_correction_dec = correction_dec;
+		}
+		if (pulse_guide(device, correction_ra, correction_dec) != INDIGO_OK_STATE) {
+			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+				break;
+			}
+			if (AGENT_GUIDER_CONTINUE_ON_GUIDING_ERROR_ITEM->sw.value) {
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+				for (int i = 0; i < 10 && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++) {
+					indigo_usleep(100000);
+				}
+				// Measure a fresh frame before attempting another correction.
+				continue;
+			}
+			AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			break;
+		}
+		/* Snapshot once so both the branch selection and the settle check below
+		   see the same value within a single frame iteration. Fixes race with the timer-thread
+		   property handler that sets DITHERING concurrently.
+		*/
+		int dithering_active = IS_DITHERING;
+		if (dithering_active == 0) {
+			DEVICE_PRIVATE_DATA->rmse_ra_sum += drift_ra * drift_ra;
+			DEVICE_PRIVATE_DATA->rmse_dec_sum += drift_dec * drift_dec;
+			DEVICE_PRIVATE_DATA->rmse_ra_s_sum += drift_ra_s * drift_ra_s;
+			DEVICE_PRIVATE_DATA->rmse_dec_s_sum += drift_dec_s * drift_dec_s;
+			DEVICE_PRIVATE_DATA->rmse_count++;
+			/* Feed the correction-response ring buffers with this frame's residual, in pixels and
+			   arcsec (dithering frames are intentional offsets, so they are excluded). */
+			DEVICE_PRIVATE_DATA->corr_resp_ra[DEVICE_PRIVATE_DATA->corr_resp_head] = drift_ra;
+			DEVICE_PRIVATE_DATA->corr_resp_dec[DEVICE_PRIVATE_DATA->corr_resp_head] = drift_dec;
+			DEVICE_PRIVATE_DATA->corr_resp_ra_s[DEVICE_PRIVATE_DATA->corr_resp_head] = drift_ra_s;
+			DEVICE_PRIVATE_DATA->corr_resp_dec_s[DEVICE_PRIVATE_DATA->corr_resp_head] = drift_dec_s;
+			DEVICE_PRIVATE_DATA->corr_resp_head = (DEVICE_PRIVATE_DATA->corr_resp_head + 1) % INDIGO_CORR_RESPONSE_WINDOW;
+			if (DEVICE_PRIVATE_DATA->corr_resp_count < INDIGO_CORR_RESPONSE_WINDOW) {
+				DEVICE_PRIVATE_DATA->corr_resp_count++;
+			}
+		} else {
+			DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = DEVICE_PRIVATE_DATA->rmse_ra_s_sum = DEVICE_PRIVATE_DATA->rmse_dec_s_sum = 0;
+			/* We use RMSE moving average during dithering over the last AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM frames to determine
+			   when it settles.
+			   NB: We need a moving average because the first frames after dithering starts have large deviations and it will take
+			   a lot of frames for RMSE to drop below the threshold. Way more than the timeout.
+			*/
+			if (DEVICE_PRIVATE_DATA->rmse_count > (unsigned long)AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value) {
+				DEVICE_PRIVATE_DATA->rmse_count = 0;
+			}
+			if (DEVICE_PRIVATE_DATA->rmse_count < AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value) {
+				DEVICE_PRIVATE_DATA->rmse_count++;
+			}
+			int count = (int)DEVICE_PRIVATE_DATA->rmse_count;
+			if (count > MAX_STACK) {
+				count = MAX_STACK;
+			}
+			for (int i = 0; i < count; i++) {
+				double drift_ra_i =  DEVICE_PRIVATE_DATA->stack_x[i] * cos_angle + DEVICE_PRIVATE_DATA->stack_y[i] * sin_angle;
+				double drift_dec_i = DEVICE_PRIVATE_DATA->stack_x[i] * sin_angle - DEVICE_PRIVATE_DATA->stack_y[i] * cos_angle;
+				DEVICE_PRIVATE_DATA->rmse_ra_sum += drift_ra_i * drift_ra_i;
+				DEVICE_PRIVATE_DATA->rmse_dec_sum += drift_dec_i * drift_dec_i;
+				double drift_ra_s_i = DEVICE_PRIVATE_DATA->stack_x[i] * cos_angle * pix_scale_x + DEVICE_PRIVATE_DATA->stack_y[i] * sin_angle * pix_scale_y;
+				double drift_dec_s_i = DEVICE_PRIVATE_DATA->stack_x[i] * sin_angle * pix_scale_x - DEVICE_PRIVATE_DATA->stack_y[i] * cos_angle * pix_scale_y;
+				DEVICE_PRIVATE_DATA->rmse_ra_s_sum += drift_ra_s_i * drift_ra_s_i;
+				DEVICE_PRIVATE_DATA->rmse_dec_s_sum += drift_dec_s_i * drift_dec_s_i;
+			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering frames in stack = %lu, stack size = %d", DEVICE_PRIVATE_DATA->rmse_count, (int)AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value);
+		}
+
+		double rmse_ra = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
+		double rmse_dec = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
+		if (dithering_active != 0) { /* During dithering, RMSE values are used to determine when it settles. Do not show them to the user. */
+			bool dithering_finished = false;
+			if (AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value) {
+				if (DEVICE_PRIVATE_DATA->rmse_ra_threshold > 0 && DEVICE_PRIVATE_DATA->rmse_dec_threshold > 0) {
+					dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value && rmse_ra < DEVICE_PRIVATE_DATA->rmse_ra_threshold && rmse_dec < DEVICE_PRIVATE_DATA->rmse_dec_threshold;
+				} else {
+					dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value;
+				}
+			} else {
+				if (DEVICE_PRIVATE_DATA->rmse_ra_threshold > 0) {
+					dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value && rmse_ra < DEVICE_PRIVATE_DATA->rmse_ra_threshold;
+				} else {
+					dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value;
+				}
+			}
+			if (dithering_finished) {
+				AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
+			} else {
+				AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = fmax(rmse_ra, rmse_dec);
+			}
+		} else { /* Not dithering, just update RMSE values as usual. */
+			/* Long-term (session-cumulative) RMSE in pixels and arcsec. */
+			AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = rmse_ra;
+			AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = rmse_dec;
+			AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_s_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
+			AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_s_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
+			/* Short-term RMSE: sliding-window RMSE over the last (up to INDIGO_CORR_RESPONSE_WINDOW)
+			   non-dithering residuals held in the correction-response ring buffers (unfiltered), in
+			   pixels and arcsec. More sensitive to recent guiding changes than the session-cumulative
+			   RMSE above. */
+			AGENT_GUIDER_STATS_RMSE_RA_ST_ITEM->number.value = round(1000 * indigo_rmse(DEVICE_PRIVATE_DATA->corr_resp_ra, DEVICE_PRIVATE_DATA->corr_resp_count)) / 1000;
+			AGENT_GUIDER_STATS_RMSE_DEC_ST_ITEM->number.value = round(1000 * indigo_rmse(DEVICE_PRIVATE_DATA->corr_resp_dec, DEVICE_PRIVATE_DATA->corr_resp_count)) / 1000;
+			AGENT_GUIDER_STATS_RMSE_RA_S_ST_ITEM->number.value = round(1000 * indigo_rmse(DEVICE_PRIVATE_DATA->corr_resp_ra_s, DEVICE_PRIVATE_DATA->corr_resp_count)) / 1000;
+			AGENT_GUIDER_STATS_RMSE_DEC_S_ST_ITEM->number.value = round(1000 * indigo_rmse(DEVICE_PRIVATE_DATA->corr_resp_dec_s, DEVICE_PRIVATE_DATA->corr_resp_count)) / 1000;
+			/* Correction response: robust lag-1 autocorrelation of the residual. Published
+			   once at least INDIGO_CORR_RESPONSE_MIN samples are collected; 0 until then. */
+			bool corr_ra_ok = false, corr_dec_ok = false;
+			double corr_resp_ra = indigo_guider_correction_response(DEVICE_PRIVATE_DATA->corr_resp_ra, DEVICE_PRIVATE_DATA->corr_resp_count, DEVICE_PRIVATE_DATA->corr_resp_head, &corr_ra_ok);
+			double corr_resp_dec = indigo_guider_correction_response(DEVICE_PRIVATE_DATA->corr_resp_dec, DEVICE_PRIVATE_DATA->corr_resp_count, DEVICE_PRIVATE_DATA->corr_resp_head, &corr_dec_ok);
+			AGENT_GUIDER_STATS_CORR_RESPONSE_RA_ITEM->number.value = corr_ra_ok ? round(1000 * corr_resp_ra) / 1000 : 0;
+			AGENT_GUIDER_STATS_CORR_RESPONSE_DEC_ITEM->number.value = corr_dec_ok ? round(1000 * corr_resp_dec) / 1000 : 0;
+		}
 		double reported_delay_time = AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.target;
 		if (reported_delay_time > 0) {
 			AGENT_GUIDER_STATS_DELAY_ITEM->number.value = reported_delay_time;
