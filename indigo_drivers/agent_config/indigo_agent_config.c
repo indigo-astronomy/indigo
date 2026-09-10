@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x0300000C
+#define DRIVER_VERSION 0x0300000D
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -384,9 +384,10 @@ static void process_configuration_property(indigo_device *device) {
 					}
 				}
 				// wait up to 10s if agent property is busy
+				bool done = false;
 				for (int k = 0; k < 20; k++) {
 					indigo_usleep(500000);
-					bool done = true;
+					done = true;
 					pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 					for (int j = 0; j < MAX_AGENTS; j++) {
 						indigo_property *agent = agent = DEVICE_PRIVATE_DATA->agents[j];
@@ -406,6 +407,10 @@ static void process_configuration_property(indigo_device *device) {
 					if (done) {
 						break;
 					}
+				}
+				if (!done) {
+					DEVICE_PRIVATE_DATA->failure = true;
+					indigo_send_message(device, ALERT_PROPERTY, "Timed out restoring '%s'", property->name);
 				}
 			}
 			indigo_release_property(property);

@@ -1321,7 +1321,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `alternate_folder_remove` | Passes after DRV-150 fix; see driver review validation. |
 | `port_namespace` | Passes after DRV-151 fix; see driver review validation. |
 | `deselection_timeout` | Passes after DRV-152 fix; see driver review validation. |
-| `restore_busy_timeout` | Fails; see DRV-153 in the driver review. |
+| `restore_busy_timeout` | Passes after DRV-153 fix; see driver review validation. |
 | `profile_rejection` | Fails; see DRV-154 in the driver review. |
 | `driver_rejection` | Fails; see DRV-155 in the driver review. |
 | `absent_agent` | Fails; see DRV-156 in the driver review. |
