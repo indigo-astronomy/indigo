@@ -941,8 +941,57 @@ static void lx200_positive_zero(void) {
 
 static void lx200_truncated_command(void) {
 	CHECK(start_server());
-	exchange(":Sr05:30");
+	CHECK(num(AGENT, "AGENT_LX200_CONFIGURATION", "EPOCH", 2000));
+	exchange(":Sr02:15#:Sd-10*30#:MS#");
+	CHECK(!strcmp(lx_output, "110"));
+	const char *partial[] = { ":", ":GVP", ":Sr05:30", ":Sd+20*15", ":MS", ":CM" };
+	for (int error = 0; error >= -1; error--) {
+		lx_read_error = error;
+		for (int i = 0; i < ARRAY_SIZE(partial); i++) {
+			unsigned rev = revision(AGENT, TARGET);
+			int closes = socket_closes;
+			exchange(partial[i]);
+			CHECK(!*lx_output);
+			CHECK(socket_closes == closes + 1);
+			CHECK(revision(AGENT, TARGET) == rev);
+			exchange(":MS#");
+			CHECK(!strcmp(lx_output, "0"));
+			CHECK(value(AGENT, TARGET, "RA") == 2.25);
+			CHECK(value(AGENT, TARGET, "DEC") == -10.5);
+		}
+	}
+	lx_read_error = 0;
+	exchange(":GVP#:Sr05:30");
+	CHECK(!strcmp(lx_output, "indigo#"));
+	exchange(":MS#");
+	CHECK(value(AGENT, TARGET, "RA") == 2.25);
+}
+
+static void lx200_command_length(void) {
+	CHECK(start_server());
+	CHECK(num(AGENT, "AGENT_LX200_CONFIGURATION", "EPOCH", 2000));
+	exchange(":Sr02:15#:Sd-10*30#:MS#");
+	CHECK(!strcmp(lx_output, "110"));
+	char command[256];
+	for (int length = 127; length <= 129; length++) {
+		command[0] = ':';
+		memset(command + 1, 'x', length);
+		strcpy(command + length + 1, "#:GVP#");
+		int closes = socket_closes;
+		exchange(command);
+		CHECK(!strcmp(lx_output, length <= 128 ? "indigo#" : ""));
+		CHECK(socket_closes == closes + 1);
+	}
+	// An oversized setter must not change coordinates or dispatch its suffix.
+	strcpy(command, ":Sr05:30");
+	memset(command + 8, ' ', 130);
+	strcpy(command + 138, "#:GVP#");
+	exchange(command);
 	CHECK(!*lx_output);
+	exchange(":GVP#:MS#");
+	CHECK(!strcmp(lx_output, "indigo#0"));
+	CHECK(value(AGENT, TARGET, "RA") == 2.25);
+	CHECK(value(AGENT, TARGET, "DEC") == -10.5);
 }
 
 static void lx200_bind_failure(void) {
@@ -1557,6 +1606,7 @@ static const indigo_test_case tests[] = {
 	{ "lx200 ack", lx200_ack },
 	{ "lx200 positive zero", lx200_positive_zero },
 	{ "lx200 truncated command", lx200_truncated_command },
+	{ "lx200 command length", lx200_command_length },
 	{ "lx200 bind failure", lx200_bind_failure },
 	{ "lx200 idle stop", lx200_idle_stop },
 	{ "related agents", related_agents },

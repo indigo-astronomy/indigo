@@ -741,6 +741,7 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 			continue;
 		} else if (*buffer_in == ':') {
 			int i = 0;
+			bool command_complete = false;
 			while (i < sizeof(buffer_in)) {
 				result = indigo_uni_read_available(data->handle, buffer_in + i, 1);
 				if (result <= 0) {
@@ -748,12 +749,12 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 				}
 				if (buffer_in[i] == '#') {
 					buffer_in[i] = 0;
+					command_complete = true;
 					break;
 				}
 				i++;
 			}
-			buffer_in[sizeof(buffer_in) - 1] = '\0';
-			if (result == -1) {
+			if (!command_complete) {
 				break;
 			}
 			if (strcmp(buffer_in, "GVP") == 0) {
