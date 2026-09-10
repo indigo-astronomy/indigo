@@ -200,8 +200,9 @@ static indigo_result (*guider_change)(indigo_device *, indigo_client *, indigo_p
 static pthread_mutex_t motion_mutex = PTHREAD_MUTEX_INITIALIZER;
 static double offset_x, offset_y;
 static _Atomic double motion_scale = 0.01;
+static _Atomic double east_motion_factor = 1;
 static double pulse_ra, pulse_dec, maximum_pulse;
-static unsigned ra_commands, dec_commands;
+static unsigned ra_commands, dec_commands, east_commands;
 
 static void synthetic_frame(indigo_device *device) {
 	int bin = CCD_BIN_HORIZONTAL_ITEM->number.value;
@@ -300,8 +301,11 @@ static indigo_result guider_spy(indigo_device *device, indigo_client *sender, in
 		if (ra) {
 			ra_commands++;
 			pulse_ra = positive - negative;
+			if (pulse_ra < 0) {
+				east_commands++;
+			}
 			if (synthetic && !freeze_motion && !pulse_failure) {
-				offset_x += pulse_ra * motion_scale;
+				offset_x += pulse_ra * motion_scale * (pulse_ra < 0 ? east_motion_factor : 1);
 			}
 		} else {
 			dec_commands++;
@@ -803,6 +807,37 @@ static void calibration_speed_accuracy(void) {
 	}
 	ASSERT_NEAR(10, fabs(value(AGENT, "AGENT_GUIDER_SETTINGS", "SPEED_RA")), 0.2);
 	ASSERT_NEAR(10, fabs(value(AGENT, "AGENT_GUIDER_SETTINGS", "SPEED_DEC")), 0.2);
+	ASSERT_NEAR(0, value(AGENT, "AGENT_GUIDER_SETTINGS", "BACKLASH"), 0.05);
+}
+
+static void calibration_single_pulse_speed(void) {
+	ASSERT_TRUE(model_camera());
+	motion_scale = 0.04;
+	ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_DEC_MODE", "NONE", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT", 1));
+	ASSERT_TRUE(run("CALIBRATION", INDIGO_OK_STATE));
+	ASSERT_NEAR(40, value(AGENT, "AGENT_GUIDER_SETTINGS", "SPEED_RA"), 0.2);
+	pthread_mutex_lock(&motion_mutex);
+	unsigned east = east_commands, ra = ra_commands, dec = dec_commands;
+	pthread_mutex_unlock(&motion_mutex);
+	ASSERT_EQ_INT(1, east);
+	ASSERT_EQ_INT(3, ra); // One backlash-clear pulse, one west pulse and one east pulse.
+	ASSERT_EQ_INT(0, dec);
+}
+
+static void calibration_directional_speed(void) {
+	ASSERT_TRUE(model_camera());
+	east_motion_factor = 2;
+	ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_DEC_MODE", "NONE", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT", 10));
+	ASSERT_TRUE(run("CALIBRATION", INDIGO_OK_STATE));
+	// West travels at 10 px/s and east at 20 px/s; report their mean.
+	ASSERT_NEAR(15, value(AGENT, "AGENT_GUIDER_SETTINGS", "SPEED_RA"), 0.2);
+	pthread_mutex_lock(&motion_mutex);
+	unsigned east = east_commands, ra = ra_commands;
+	pthread_mutex_unlock(&motion_mutex);
+	ASSERT_TRUE(east > 1);
+	ASSERT_EQ_INT(2, ra - 2 * east); // Two backlash-clear pulses precede equally long west/east legs.
 }
 
 static void calibration_abort(void) {
@@ -1743,6 +1778,8 @@ static const indigo_test_case tests[] = {
 	{ "calibration adaptive minimum", calibration_adaptive_minimum },
 	{ "calibration adaptive maximum", calibration_adaptive_maximum },
 	{ "calibration speed accuracy", calibration_speed_accuracy },
+	{ "calibration single pulse speed", calibration_single_pulse_speed },
+	{ "calibration directional speed", calibration_directional_speed },
 	{ "calibration abort", calibration_abort },
 	{ "dither strategies", dither_strategies },
 	{ "dither RA projection preserves magnitude", dither_ra_projection },

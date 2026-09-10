@@ -1371,7 +1371,7 @@ static bool guide_and_capture_frame(indigo_device *device, double ra, double dec
 
 static bool calibrate(indigo_device *device) {
 	double last_drift = 0, dec_angle = 0;
-	int last_count = 0;
+	int last_count = 0; // Number of completed pulses in the preceding outward leg.
 	DEVICE_PRIVATE_DATA->silence_warnings = false;
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ST_ITEM->number.value = AGENT_GUIDER_STATS_SNR_ITEM->number.value = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = 0;
@@ -1491,9 +1491,9 @@ static bool calibrate(indigo_device *device) {
 							last_drift = DEVICE_PRIVATE_DATA->drift;
 							dec_angle = atan2(-AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value);
 							AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.target = round(180 * dec_angle / PI);
-							AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.target = round(1000 * last_drift / (i * AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) / 1000;
+							last_count = i + 1;
+							AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.target = round(1000 * last_drift / (last_count * AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) / 1000;
 							indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
-							last_count = i;
 							if (AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value == 0) {
 								indigo_send_message(device, IDLE_PROPERTY, "DEC speed is 0 px/\"");
 								DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
@@ -1514,7 +1514,7 @@ static bool calibrate(indigo_device *device) {
 				if (!guide_and_capture_frame(device, 0, 0, "Moving south")) {
 					break;
 				}
-				for (int i = 0; i <= last_count; i++) {
+				for (int i = 0; i < last_count; i++) {
 					if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						break;
@@ -1573,9 +1573,9 @@ static bool calibrate(indigo_device *device) {
 						} else {
 							AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.target = round(180 * atan2(sin(ra_angle), cos(ra_angle)) / PI);
 						}
-						AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.target = round(1000 * last_drift / (i * AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) / 1000;
+						last_count = i + 1;
+						AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.target = round(1000 * last_drift / (last_count * AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) / 1000;
 						indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
-						last_count = i;
 						if (fabs(AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value) < 0.1) {
 							indigo_send_message(device, ALERT_PROPERTY, "RA drift speed is too slow");
 							DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
@@ -1592,7 +1592,7 @@ static bool calibrate(indigo_device *device) {
 				if (!guide_and_capture_frame(device, 0, 0, "Moving east")) {
 					break;
 				}
-				for (int i = 0; i <= last_count; i++) {
+				for (int i = 0; i < last_count; i++) {
 					if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						break;
