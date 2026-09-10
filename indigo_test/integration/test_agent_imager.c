@@ -871,6 +871,7 @@ static void configuration_reload(void) {
 	ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_BATCH", "COUNT", 7));
 	ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_FOCUS", "ITERATIVE_INITIAL", 27));
 	ASSERT_TRUE(sw(AGENT, "AGENT_IMAGER_FOCUS_FAILURE", "STOP", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(sw(AGENT, "AGENT_IMAGER_FOCUS_ESTIMATOR", "RMS_CONTRAST", true, INDIGO_OK_STATE));
 	ASSERT_TRUE(indigo_agent_imager(INDIGO_DRIVER_SHUTDOWN, NULL) == INDIGO_OK);
 	agent_started = false;
 	ASSERT_TRUE(indigo_agent_imager(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
@@ -879,6 +880,12 @@ static void configuration_reload(void) {
 	ASSERT_EQ_INT(7, value(AGENT, "AGENT_IMAGER_BATCH", "COUNT"));
 	ASSERT_EQ_INT(27, value(AGENT, "AGENT_IMAGER_FOCUS", "ITERATIVE_INITIAL"));
 	ASSERT_EQ_INT(1, value(AGENT, "AGENT_IMAGER_FOCUS_FAILURE", "STOP"));
+	ASSERT_EQ_INT(1, value(AGENT, "AGENT_IMAGER_FOCUS_ESTIMATOR", "RMS_CONTRAST"));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_IMAGER_FOCUS_ESTIMATOR", "U_CURVE"));
+	ASSERT_TRUE(connect_camera());
+	ASSERT_TRUE(run("PREVIEW_1", INDIGO_OK_STATE));
+	ASSERT_TRUE(value(AGENT, "AGENT_IMAGER_STATS", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM_NAME) > 0);
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_IMAGER_STATS", "MAX_STARS_TO_USE"));
 }
 
 static void shutdown_while_paused(void) {
@@ -1136,8 +1143,20 @@ static void autofocus_failure_policies_and_repeat(void) {
 static void default_preview_estimator(void) {
 	ASSERT_TRUE(connect_camera());
 	ASSERT_EQ_INT(1, value(AGENT, "AGENT_IMAGER_FOCUS_ESTIMATOR", "U_CURVE"));
+	ASSERT_TRUE(sw(AGENT, "AGENT_IMAGER_STARS", "REFRESH", true, INDIGO_OK_STATE));
+	indigo_property *stars = snapshot(AGENT, "AGENT_IMAGER_STARS");
+	ASSERT_TRUE(stars && stars->count > 1);
+	char star[INDIGO_NAME_SIZE];
+	strcpy(star, stars->items[1].name);
+	indigo_release_property(stars);
+	ASSERT_TRUE(sw(AGENT, "AGENT_IMAGER_STARS", star, true, INDIGO_OK_STATE));
 	ASSERT_TRUE(run("PREVIEW_1", INDIGO_OK_STATE));
 	ASSERT_TRUE(value(AGENT, "AGENT_IMAGER_STATS", "HFD") > 0);
+	ASSERT_TRUE(connect_focuser());
+	ASSERT_TRUE(num(FOCUSER, "FOCUSER_POSITION", "POSITION", 60));
+	ASSERT_TRUE(run("FOCUSING", INDIGO_OK_STATE));
+	ASSERT_TRUE(fabs(value(FOCUSER, "FOCUSER_POSITION", "POSITION")) <= 20);
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_START_PROCESS", "FOCUSING"));
 }
 
 static const indigo_test_case tests[] = {

@@ -108,3 +108,7 @@ PRE_DELAY and POST_DELAY tests now each cover one/two frames and zero/nonzero de
 ## DRV-118 follow-up
 
 POST_BATCH now checks pending abort before reporting batch success. Its expanded regression failed before the fix and passes afterward for one/two frames, normal resume, abort while the breakpoint remains enabled, terminal states and cleared switches, no additional requests/images and successful subsequent batch. All six breakpoint cases, two-agent barrier and general abort/reacquire pass (eight focused cases). Prior full-suite totals and coverage measurements remain historical.
+
+## DRV-119 follow-up
+
+The default-estimator regression now selects a detected star without changing the estimator before asserting HFD, then tests default U-Curve autofocus convergence. The corrected regression fails without default-flag initialization and passes with it. Configuration reload verifies a saved non-default RMS estimator and actual RMS preview. Explicit autofocus estimators and Bahtinov preview/focus also pass (four focused cases). Prior full-suite totals and coverage measurements remain historical.

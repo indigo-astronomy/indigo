@@ -2580,6 +2580,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM, AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM_NAME, "U-Curve (HFD)", true);
+		DEVICE_PRIVATE_DATA->use_hfd_estimator = true;
+		DEVICE_PRIVATE_DATA->use_ucurve_focusing = true;
 		indigo_init_switch_item(AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM, AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM_NAME, "Iterative (HFD/Peak)", false);
 		indigo_init_switch_item(AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM, AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM_NAME, "Iterative (RMS/contrast)", false);
 		indigo_init_switch_item(AGENT_IMAGER_FOCUS_ESTIMATOR_BAHTINOV_ITEM, AGENT_IMAGER_FOCUS_ESTIMATOR_BAHTINOV_ITEM_NAME, "Iterative (Bahtinov)", false);
