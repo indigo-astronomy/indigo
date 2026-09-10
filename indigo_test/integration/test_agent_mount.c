@@ -1205,9 +1205,62 @@ static void instances(void) {
 
 static void stale_capability(void) {
 	CHECK(select_peer(0, true, false));
+	CHECK(select_peer(1, true, false));
+	CHECK(attach_peer(4, true, false));
+	indigo_delete_property(&peers[4].device, prop(4, "MOUNT_HOME"), NULL);
 	CHECK(value(AGENT, AGENT_MOUNT_FEATURES_PROPERTY_NAME, "HOME") == 1);
-	indigo_delete_property(&peers[0].device, prop(0, "MOUNT_HOME"), NULL);
-	CHECK(value(AGENT, AGENT_MOUNT_FEATURES_PROPERTY_NAME, "HOME") == 0);
+	struct {
+		int peer;
+		const char *property;
+		const char *feature;
+		const char *operation;
+	} cases[] = {
+		{ 0, "MOUNT_HOME", "HOME", "HOME" },
+		{ 0, "MOUNT_PARK", "PARK", "UNPARK" },
+		{ 0, "MOUNT_TRACKING", "TRACK", "TRACK_ON" },
+		{ 1, "DOME_PARK", "PARK", "DOME_UNPARK" },
+		{ 1, "DOME_SHUTTER", "OPEN", "DOME_OPEN" }
+	};
+	for (int i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		int index = cases[i].peer;
+		const char *features = index ? AGENT_DOME_FEATURES_PROPERTY_NAME : AGENT_MOUNT_FEATURES_PROPERTY_NAME;
+		indigo_property *p = prop(index, cases[i].property);
+		CHECK(value(AGENT, features, cases[i].feature) == 1);
+		int before = requests(index, p->name);
+		indigo_delete_property(&peers[index].device, p, NULL);
+		CHECK(value(AGENT, features, cases[i].feature) == 0);
+		CHECK(sw(AGENT, START, cases[i].operation, true, INDIGO_ALERT_STATE));
+		CHECK(requests(index, p->name) == before);
+		indigo_define_property(&peers[index].device, p, NULL);
+		CHECK(value(AGENT, features, cases[i].feature) == 1);
+		CHECK(operation(cases[i].operation, index, p->name, INDIGO_OK_STATE));
+	}
+	indigo_property *mode = prop(0, "MOUNT_ON_COORDINATES_SET");
+	indigo_delete_property(&peers[0].device, mode, NULL);
+	CHECK(value(AGENT, AGENT_MOUNT_FEATURES_PROPERTY_NAME, "SLEW") == 0);
+	CHECK(value(AGENT, AGENT_MOUNT_FEATURES_PROPERTY_NAME, "SYNC") == 0);
+	int before = requests(0, "MOUNT_EQUATORIAL_COORDINATES");
+	CHECK(sw(AGENT, START, "SLEW", true, INDIGO_ALERT_STATE));
+	CHECK(sw(AGENT, START, "SYNC", true, INDIGO_ALERT_STATE));
+	CHECK(requests(0, "MOUNT_EQUATORIAL_COORDINATES") == before);
+	indigo_define_property(&peers[0].device, mode, NULL);
+	CHECK(value(AGENT, AGENT_MOUNT_FEATURES_PROPERTY_NAME, "SLEW") == 1);
+	CHECK(value(AGENT, AGENT_MOUNT_FEATURES_PROPERTY_NAME, "SYNC") == 1);
+	CHECK(operation("SYNC", 0, "MOUNT_EQUATORIAL_COORDINATES", INDIGO_OK_STATE));
+	mode = prop(1, "DOME_ON_COORDINATES_SET");
+	indigo_property *coordinates = prop(1, "DOME_HORIZONTAL_COORDINATES");
+	for (int reverse = 0; reverse < 2; reverse++) {
+		indigo_delete_property(&peers[1].device, reverse ? coordinates : mode, NULL);
+		CHECK(value(AGENT, AGENT_DOME_FEATURES_PROPERTY_NAME, "SLEW") == 1);
+		CHECK(value(AGENT, AGENT_DOME_FEATURES_PROPERTY_NAME, "SYNC") == reverse);
+		indigo_delete_property(&peers[1].device, reverse ? mode : coordinates, NULL);
+		CHECK(value(AGENT, AGENT_DOME_FEATURES_PROPERTY_NAME, "SLEW") == 0);
+		CHECK(value(AGENT, AGENT_DOME_FEATURES_PROPERTY_NAME, "SYNC") == 0);
+		indigo_define_property(&peers[1].device, reverse ? mode : coordinates, NULL);
+		CHECK(value(AGENT, AGENT_DOME_FEATURES_PROPERTY_NAME, "SLEW") == 1);
+		indigo_define_property(&peers[1].device, reverse ? coordinates : mode, NULL);
+		CHECK(value(AGENT, AGENT_DOME_FEATURES_PROPERTY_NAME, "SYNC") == 1);
+	}
 }
 
 static void process_deselection(void) {
