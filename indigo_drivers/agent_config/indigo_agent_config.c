@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x03000018
+#define DRIVER_VERSION 0x03000019
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -886,7 +886,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 			update_drivers(agent_device, property);
 		} else if (!strcmp(property->name, PROFILE_PROPERTY_NAME)) {
 			add_profile(agent_device, property);
-		} else if (!strncmp(property->name, "FILTER_", 6) && strstr(property->name, "_LIST")) {
+		} else if (!strncmp(property->name, "FILTER_", 7) && strstr(property->name, "_LIST")) {
 			add_device(agent_device, property);
 		}
 	}
@@ -922,7 +922,7 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 			indigo_define_property(agent_device, AGENT_CONFIG_PROFILES_PROPERTY, NULL);
 			pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 		}
-		if (*property->name == 0 || (!strncmp(property->name, "FILTER_", 6) && strstr(property->name, "_LIST"))) {
+		if (*property->name == 0 || (!strncmp(property->name, "FILTER_", 7) && strstr(property->name, "_LIST"))) {
 			pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 			for (int i = 0; i < MAX_AGENTS; i++) {
 				indigo_property *agent = AGENT_CONFIG_AGENTS_PROPERTIES[i];

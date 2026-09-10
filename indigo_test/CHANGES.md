@@ -1291,7 +1291,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `discovery_compaction` | Passes; discovery compaction. |
 | `agent_capacity_reuse` | Passes; agent capacity reuse. |
 | `long_related_list` | Passes; long related list. |
-| `filter_prefix_consistency` | Fails; see DRV-165 in the driver review. |
+| `filter_prefix_consistency` | Passes after DRV-165 fix; see driver review validation. |
 | `all_filter_classes` | Passes; all filter classes. |
 | `xml_escaping` | Passes; xml escaping. |
 | `setup_restart` | Passes; setup restart. |
