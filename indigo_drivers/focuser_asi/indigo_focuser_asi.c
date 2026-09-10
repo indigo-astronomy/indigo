@@ -118,6 +118,9 @@ static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //+ code
 
+static void focuser_position_handler(indigo_device *device);
+static void focuser_steps_handler(indigo_device *device);
+
 static void split_device_name(const char *full_name, char *model, char *suffix) {
 	snprintf(model, 64, "%s", full_name);
 	suffix[0] = 0;
@@ -633,6 +636,12 @@ static void focuser_steps_handler(indigo_device *device) {
 
 static void focuser_abort_motion_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
+	indigo_cancel_pending_handler(device, focuser_position_handler);
+	indigo_cancel_pending_handler(device, focuser_steps_handler);
+	if (!PRIVATE_DATA->moving && (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	}
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	int res = EAFStop(PRIVATE_DATA->dev_id);
 	if (res != EAF_SUCCESS) {
@@ -794,7 +803,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_COMPENSATION_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);

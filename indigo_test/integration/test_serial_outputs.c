@@ -8,6 +8,7 @@
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_uni_io.h>
 #include "serial_simulator_test_common.h"
+#include "abort_queue_test_common.h"
 
 extern indigo_result TEST_ENTRY(indigo_driver_action, indigo_driver_info *);
 static const simulator_driver_case driver = { TEST_NAME, "test", TEST_NAME, TEST_ENTRY, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
@@ -208,8 +209,22 @@ cleanup:
 	ASSERT_EQ_INT(0, invalid_io);
 }
 
+#if TEST_KIND == 3
+static void queued_abort(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&driver, "fake-output"));
+	SERIAL_CHECK_TRUE(check_queued_abort(TEST_NAME, "CCD_EXPOSURE", "EXPOSURE", 30, false, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", false));
+	SERIAL_CHECK_TRUE(check_queued_abort(TEST_NAME, "CCD_EXPOSURE", "EXPOSURE", 30, false, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true));
+cleanup:
+	stop_serial_driver(&driver);
+}
+#endif
+
 int main(void) {
 	const indigo_test_case tests[] = {
+
+#if TEST_KIND == 3
+		{ "queued exposure abort and false abort", queued_abort },
+#endif
 		{ "open rollback, reconnect and shutdown rejection", connect_failure_and_recovery },
 		{ "command mapping, completion and transport errors", output_commands_and_failures }
 	};

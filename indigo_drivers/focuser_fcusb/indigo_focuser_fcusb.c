@@ -77,6 +77,8 @@ static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //+ code
 
+static void focuser_steps_handler(indigo_device *device);
+
 static bool fcusb_match(libusb_device *dev, const char **name) {
 	return libfcusb_focuser(dev, name);
 }
@@ -133,6 +135,7 @@ static void focuser_connection_handler(indigo_device *device) {
 
 static void focuser_abort_motion_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
+	indigo_cancel_pending_handler(device, focuser_steps_handler);
 	indigo_cancel_pending_handler(device, focuser_motion_finalizer);
 	if (!libfcusb_stop(PRIVATE_DATA->device_context)) {
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -205,7 +208,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);

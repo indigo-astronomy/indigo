@@ -465,3 +465,9 @@ An optional property `on_change_request { ... }` runs in the matched bus change 
 ## Bounded SDK discovery retries
 
 `sdk { discovery_retries = 6; ... }` opts into up to six additional discovery attempts at 0.5-second intervals after a USB arrival cannot attach a device. The value is a nonnegative integer C expression; omission disables retry scaffolding. It is intended for SDK enumeration that becomes ready after libusb reports arrival. Successful attachment and duplicate arrivals do not reset the retry budget. The generated driver queue owns retained USB references and retry records; removal cancels that device's retry, and accepted shutdown prevents new retries, stops the queue and releases remaining records. No sleeping loop or detached timer is needed in `sdk.plug`. Other SDK drivers are unchanged until they opt in.
+
+## Abort handler priority
+
+Generated asynchronous handlers for `CCD_ABORT_EXPOSURE`, `FOCUSER_ABORT_MOTION`, `ROTATOR_ABORT_MOTION`, `MOUNT_ABORT_MOTION`, `DOME_ABORT_MOTION` and `POLARALIGN_ABORT_MOTION` use `INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE`, which queues them at `INDIGO_TASK_PRIORITY_URGENT`. The normal value-copy, BUSY guard and immediate BUSY publication are retained. Explicit synchronous handlers (`asynchronous_change = false`) remain synchronous; empty acceptance-only handlers are unchanged. Guiding retains its existing TIME dispatch and ordinary handlers retain NORMAL dispatch. Priority orders ready queued work; it cannot interrupt a running handler or SDK call.
+
+An urgent abort can overtake a queued start whose property is already BUSY. Abort implementations cancel the associated pending start handlers as well as their delayed completion callbacks and settle the affected properties even when the hardware start has not run. This cancellation belongs to the driver because the generator does not know which operations a particular abort stops.

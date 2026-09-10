@@ -78,6 +78,9 @@ driver playerone {
 		char camera_name[INDIGO_NAME_SIZE], guider_name[INDIGO_NAME_SIZE];
 	}
 	code {
+		static void ccd_exposure_handler(indigo_device *device);
+		static void ccd_streaming_handler(indigo_device *device);
+
 		static void acquisition_finalizer(indigo_device *device);
 
 		static int get_pixel_depth(indigo_device *device) {
@@ -1095,9 +1098,15 @@ driver playerone {
 		inherited CCD_ABORT_EXPOSURE {
 			on_change {
 				if (CCD_ABORT_EXPOSURE_ITEM->sw.value && (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)) {
+					indigo_cancel_pending_handler(device, ccd_exposure_handler);
+					indigo_cancel_pending_handler(device, ccd_streaming_handler);
 					CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-					acquisition_finish(device, false, true); // acquisition_finalizer is canceled
+					if (PRIVATE_DATA->acquisition_active) {
+						acquisition_finish(device, false, true); // acquisition_finalizer is canceled
+					} else {
+						indigo_ccd_abort_exposure_cleanup(device);
+					}
 				} else {
 					CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 				}

@@ -1783,7 +1783,9 @@ void write_c_change_property(device_type *device) {
 					write_line("\t\t%s->state = INDIGO_OK_STATE;", property->handle);
 					write_line("\t\tindigo_update_property(device, %s, NULL);", property->handle);
 				} else if (property->asynchronous_change) {
-						if (property->preserve_values) {
+						if (!strcmp(property->id, "CCD_ABORT_EXPOSURE") || !strcmp(property->id, "FOCUSER_ABORT_MOTION") || !strcmp(property->id, "ROTATOR_ABORT_MOTION") || !strcmp(property->id, "MOUNT_ABORT_MOTION") || !strcmp(property->id, "DOME_ABORT_MOTION") || !strcmp(property->id, "POLARALIGN_ABORT_MOTION")) {
+							write_line("\t\tINDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(%s, %s);", property->handle, property->handler);
+						} else if (property->preserve_values) {
 							write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
 						} else if (!strncmp(property->id, "MOUNT_MOTION", 12)) {
 							write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(%s, %s);", property->handle, property->handler);

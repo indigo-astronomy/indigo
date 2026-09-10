@@ -7,6 +7,7 @@
 #include <indigo_drivers/focuser_efa/indigo_focuser_efa.h>
 
 #include "serial_simulator_test_common.h"
+#include "abort_queue_test_common.h"
 #include <indigo/indigo_uni_io.h>
 #include <errno.h>
 #include <stdatomic.h>
@@ -617,9 +618,17 @@ cleanup:
 	indigo_uni_close(&handle);
 }
 
+static void queued_abort(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(check_queued_abort(efa_focuser.device_name, "X_FOCUSER_CALIBRATION", "CALIBRATE", 0, true, "FOCUSER_ABORT_MOTION", "ABORT_MOTION", true));
+cleanup:
+	driver_stop();
+}
+
 int main(void) {
 	simulator_test_client.update_property = observe_update;
 	const efa_test tests[] = {
+		{ "queued_abort", queued_abort, "celestron" },
 		{ "simulator_efa", simulator_protocol, "normal" },
 		{ "simulator_celestron", simulator_protocol, "celestron" },
 		{ "normal", capabilities, "normal" },

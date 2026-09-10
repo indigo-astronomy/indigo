@@ -45,6 +45,9 @@ driver upb {
 		char response[128];
 	}
 	code {
+		static void focuser_position_handler(indigo_device *device);
+		static void focuser_steps_handler(indigo_device *device);
+
 		static bool upb_command(indigo_device *device, char *command, ...) {
 			long result = indigo_uni_discard(PRIVATE_DATA->handle);
 			if (result >= 0) {
@@ -1308,6 +1311,8 @@ driver upb {
 		inherited FOCUSER_ABORT_MOTION {
 			on_change {
 				if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+					indigo_cancel_pending_handler(device, focuser_position_handler);
+					indigo_cancel_pending_handler(device, focuser_steps_handler);
 					FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 					if (upb_command(device, "SH")) {
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;

@@ -7,6 +7,7 @@
 #include <indigo_drivers/mount_synscan/indigo_mount_synscan.h>
 
 #include "serial_simulator_test_common.h"
+#include "abort_queue_test_common.h"
 #include <dirent.h>
 
 static char park_folder[] = "/tmp/indigo-synscan-park-XXXXXX";
@@ -264,6 +265,9 @@ static void synscan_mount_passes_serial_compliance_checks(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+
+	SERIAL_CHECK_TRUE(check_queued_abort(synscan_mount.device_name, "MOUNT_PARK", "PARKED", 0, true, "MOUNT_ABORT_MOTION", "ABORT_MOTION", true));
+	SERIAL_CHECK_TRUE(check_queued_abort(synscan_mount.device_name, "MOUNT_HOME", "HOME", 0, true, "MOUNT_ABORT_MOTION", "ABORT_MOTION", true));
 
 cleanup:
 	if (context.connected) {

@@ -154,6 +154,9 @@ static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 //+ code
 
+static void ccd_exposure_handler(indigo_device *device);
+static void ccd_streaming_handler(indigo_device *device);
+
 static void acquisition_finalizer(indigo_device *device);
 
 static int get_pixel_depth(indigo_device *device) {
@@ -1145,9 +1148,15 @@ static void ccd_streaming_handler(indigo_device *device) {
 static void ccd_abort_exposure_handler(indigo_device *device) {
 	//+ ccd.CCD_ABORT_EXPOSURE.on_change
 	if (CCD_ABORT_EXPOSURE_ITEM->sw.value && (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		indigo_cancel_pending_handler(device, ccd_exposure_handler);
+		indigo_cancel_pending_handler(device, ccd_streaming_handler);
 		CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-		acquisition_finish(device, false, true); // acquisition_finalizer is canceled
+		if (PRIVATE_DATA->acquisition_active) {
+			acquisition_finish(device, false, true); // acquisition_finalizer is canceled
+		} else {
+			indigo_ccd_abort_exposure_cleanup(device);
+		}
 	} else {
 		CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -1718,7 +1727,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_STREAMING_PROPERTY, ccd_streaming_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, ccd_abort_exposure_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, ccd_abort_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_COOLER_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_COOLER_PROPERTY, ccd_cooler_handler);

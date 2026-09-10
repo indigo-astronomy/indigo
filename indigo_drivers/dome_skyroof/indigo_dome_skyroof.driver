@@ -30,6 +30,8 @@ driver skyroof {
 		char response[128];
 	}
 	code {
+		static void dome_shutter_handler(indigo_device *device);
+
 		static bool skyroof_write(indigo_device *device, char *command)	{
 			return indigo_uni_printf(PRIVATE_DATA->handle, "%s\r", command) > 0;
 		}
@@ -108,14 +110,20 @@ driver skyroof {
 		}
 		inherited DOME_ABORT_MOTION {
 			on_change {
+				DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 				DOME_ABORT_MOTION_ITEM->sw.value = false;
 				if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_cancel_pending_handler(device, dome_shutter_handler);
 					if (skyroof_write(device, "Stop#") && skyroof_read(device) && !strcmp(PRIVATE_DATA->response, "0#")) {
 						DOME_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_cancel_pending_handler(device, dome_shutter_finalizer);
+						indigo_execute_handler_in(device, 0, dome_shutter_finalizer);
 					} else {
 						DOME_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+						INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, NULL);
 					}
 				}
+				indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 			}
 			// on_attach { }
 			// on_detach { }

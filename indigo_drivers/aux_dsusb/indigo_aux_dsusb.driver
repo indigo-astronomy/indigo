@@ -38,6 +38,8 @@ driver dsusb {
 		libdsusb_device_context *device_context;
 	}
 	code {
+		static void aux_ccd_exposure_handler(indigo_device *device);
+
 		static bool dsusb_match(libusb_device *dev, const char **name) {
 			return libdsusb_shutter(dev, name);
 		}
@@ -101,6 +103,7 @@ driver dsusb {
 			on_change {
 				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 				if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
+					indigo_cancel_pending_handler(device, aux_ccd_exposure_handler);
 					indigo_cancel_pending_handler(device, aux_timer_callback);
 					indigo_cancel_pending_handler(device, aux_focus_finalizer);
 					if (!libdsusb_stop(PRIVATE_DATA->device_context)) {

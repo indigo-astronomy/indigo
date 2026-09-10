@@ -7,6 +7,7 @@
 #include <indigo_drivers/dome_simulator/indigo_dome_simulator.h>
 
 #include "serial_simulator_test_common.h"
+#include "abort_queue_test_common.h"
 
 static const char *dome_connected_properties[] = {
 	DOME_STATE_PROPERTY_NAME,
@@ -206,8 +207,17 @@ cleanup:
 	stop_serial_driver(&dome_simulator);
 }
 
+static void simulator_queued_abort(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&dome_simulator, NULL));
+	SERIAL_CHECK_TRUE(check_queued_abort(dome_simulator.device_name, "DOME_STEPS", "STEPS", 90, false, "DOME_ABORT_MOTION", "ABORT_MOTION", true));
+	SERIAL_CHECK_TRUE(check_queued_abort(dome_simulator.device_name, "DOME_PARK", "PARKED", 0, true, "DOME_ABORT_MOTION", "ABORT_MOTION", true));
+cleanup:
+	stop_serial_driver(&dome_simulator);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
+		{ "simulator_queued_abort", simulator_queued_abort },
 		{ "driver_info_reports_simulator_metadata", driver_info_reports_simulator_metadata },
 		{ "simulator_exposes_expected_properties", simulator_exposes_expected_properties },
 		{ "simulator_passes_dome_compliance_checks", simulator_passes_dome_compliance_checks },

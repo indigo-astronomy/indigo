@@ -101,6 +101,10 @@ typedef struct {
 
 //+ code
 
+static void focuser_position_handler(indigo_device *device);
+static void focuser_steps_handler(indigo_device *device);
+static void focuser_x_focuser_park_handler(indigo_device *device);
+
 static bool prodigy_command(indigo_device *device, bool reply, const char *command, ...) {
 	long result = indigo_uni_discard(PRIVATE_DATA->handle);
 	if (result >= 0) {
@@ -484,6 +488,16 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+		indigo_cancel_pending_handler(device, focuser_position_handler);
+		indigo_cancel_pending_handler(device, focuser_steps_handler);
+		if (!PRIVATE_DATA->active && (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)) {
+			prodigy_motion_state(device, INDIGO_ALERT_STATE);
+		}
+		indigo_cancel_pending_handler(device, focuser_x_focuser_park_handler);
+		if (X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE && !PRIVATE_DATA->parking) {
+			X_FOCUSER_PARK_ITEM->sw.value = false;
+			INDIGO_UPDATE_PROPERTY_STATE(X_FOCUSER_PARK_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		}
 		if (!PRIVATE_DATA->rebooting && prodigy_echo(device, "H", "0") && prodigy_status(device) && !PRIVATE_DATA->moving) {
 			indigo_cancel_pending_handler(device, motion_finalizer);
 			PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
@@ -610,7 +624,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_FOCUSER_PARK_PROPERTY, property)) {
 		//+ focuser.X_FOCUSER_PARK.on_change_request

@@ -1744,6 +1744,48 @@ static void queue_executes_runnable_tasks_by_priority(void) {
 	destroy_state();
 }
 
+static void urgent_abort_callback(indigo_device *device) {
+	int marker = 3;
+	queue_data_callback(device, &marker);
+}
+
+static void abort_dispatch_overtakes_ready_normal_and_time_tasks(void) {
+	reset_state();
+	indigo_device_context context = { 0 };
+	indigo_device test_device = make_test_device(&context);
+	indigo_device *device = &test_device;
+	context.queue = indigo_queue_create(device);
+	indigo_property *abort_property = indigo_init_switch_property(NULL, device->name, "CCD_ABORT_EXPOSURE", "Test", "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+	indigo_property *property = indigo_init_switch_property(NULL, device->name, "CCD_ABORT_EXPOSURE", "Test", "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+	indigo_init_switch_item(abort_property->items, "ABORT_EXPOSURE", "Abort", false);
+	indigo_init_switch_item(property->items, "ABORT_EXPOSURE", "Abort", true);
+	int normal = 1, time = 2;
+	indigo_queue_add(context.queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_barrier_callback, NULL);
+	ASSERT_TRUE(wait_for_flag(&state.callback_started));
+	indigo_queue_add_with_data(context.queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_callback_a, &normal, NULL);
+	indigo_queue_add_with_data(context.queue, device, INDIGO_TASK_PRIORITY_TIME, 0, queue_callback_b, &time, NULL);
+	INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(abort_property, urgent_abort_callback);
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, abort_property->state);
+	ASSERT_TRUE(abort_property->items->sw.value);
+	property->items->sw.value = false;
+	INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(abort_property, urgent_abort_callback);
+	ASSERT_TRUE(abort_property->items->sw.value);
+	pthread_mutex_lock(&state.mutex);
+	state.callback_finished = true;
+	pthread_cond_broadcast(&state.cond);
+	pthread_mutex_unlock(&state.mutex);
+	ASSERT_TRUE(indigo_queue_drain(context.queue));
+	ASSERT_EQ_INT(3, state.sequence_count);
+	ASSERT_EQ_INT(3, state.sequence[0]);
+	ASSERT_EQ_INT(2, state.sequence[1]);
+	ASSERT_EQ_INT(1, state.sequence[2]);
+	indigo_queue_delete(&context.queue);
+	indigo_release_property(property);
+	indigo_release_property(abort_property);
+	destroy_test_device(&context);
+	destroy_state();
+}
+
 static void queue_executes_negative_priority_tasks_by_priority(void) {
 	reset_state();
 	indigo_device_context context = { 0 };
@@ -2677,6 +2719,7 @@ int main(void) {
 		{ "queue_asap_task_runs_promptly", queue_asap_task_runs_promptly },
 		{ "queue_delayed_task_does_not_run_before_due_time", queue_delayed_task_does_not_run_before_due_time },
 		{ "queue_executes_runnable_tasks_by_priority", queue_executes_runnable_tasks_by_priority },
+		{ "abort_dispatch_overtakes_ready_normal_and_time_tasks", abort_dispatch_overtakes_ready_normal_and_time_tasks },
 		{ "queue_executes_negative_priority_tasks_by_priority", queue_executes_negative_priority_tasks_by_priority },
 		{ "queue_future_high_priority_task_does_not_block_due_low_priority_task", queue_future_high_priority_task_does_not_block_due_low_priority_task },
 		{ "queue_add_initializes_data_as_null_and_uses_plain_callback", queue_add_initializes_data_as_null_and_uses_plain_callback },

@@ -425,6 +425,32 @@ static void all_hotplug_shutdown_guards(void) {
 }
 
 
+static void abort_dispatch_uses_urgent_priority(void) {
+	const char *names[] = { "CCD_ABORT_EXPOSURE", "FOCUSER_ABORT_MOTION", "ROTATOR_ABORT_MOTION", "MOUNT_ABORT_MOTION", "DOME_ABORT_MOTION", "POLARALIGN_ABORT_MOTION" };
+	for (int synchronous = 0; synchronous < 2; synchronous++) {
+		char definition[8192] = "driver architecture_test { version = 1; aux {\n";
+		for (int i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+			char property[512];
+			snprintf(property, sizeof(property), "switch %s { asynchronous_change = %s; item ABORT { } on_change { indigo_send_message(device, \"abort\"); } }\n", names[i], synchronous ? "false" : "true");
+			strcat(definition, property);
+		}
+		strcat(definition, "switch X_NORMAL { item NORMAL { } on_change { indigo_send_message(device, \"normal\"); } }\nswitch GUIDER_GUIDE_RA { item EAST { } on_change { indigo_send_message(device, \"guide\"); } }\n} }\n");
+		ASSERT_TRUE(write_text(DEFINITION, definition));
+		char *arguments[] = { TEST_GENERATOR, DEFINITION, NULL };
+		ASSERT_TRUE(run(arguments));
+		char generated[65536];
+		ASSERT_TRUE(read_text(GENERATED, generated, sizeof(generated)));
+		for (int i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+			char expected[256];
+			snprintf(expected, sizeof(expected), "INDIGO_COPY_VALUES_PROCESS_%s_CHANGE(%s_PROPERTY,", synchronous ? "SYNC" : "URGENT", names[i]);
+			ASSERT_TRUE(strstr(generated, expected) != NULL);
+		}
+		ASSERT_TRUE(strstr(generated, "INDIGO_COPY_VALUES_PROCESS_CHANGE(X_NORMAL_PROPERTY,") != NULL);
+		ASSERT_TRUE(strstr(generated, "INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_RA_PROPERTY,") != NULL);
+	}
+}
+
+
 int main(void) {
 	char folder[] = "/tmp/indigo_architecture_XXXXXX";
 	char original[PATH_MAX];
@@ -437,6 +463,7 @@ int main(void) {
 		return 1;
 	}
 	const indigo_test_case tests[] = {
+		{ "Abort priority and unchanged synchronous, normal and guiding dispatch", abort_dispatch_uses_urgent_priority },
 		{ "nine platform/CPU conditions and three reverse extractions", conditions_and_reverse_extraction },
 		{ "unsupported fallback without SDK headers or linkage", unsupported_fallback },
 		{ "unrestricted default", unrestricted_default },

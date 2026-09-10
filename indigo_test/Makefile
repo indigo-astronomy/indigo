@@ -305,7 +305,7 @@ $(INTEGRATION_BUILD)/ccd_simulator_test_driver.o: ../indigo_drivers/ccd_simulato
 $(INTEGRATION_BUILD)/test_ccd_simulator: integration/test_ccd_simulator.c integration/simulator_test_common.h integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_simulator_test_driver.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(INTEGRATION_BUILD)/ccd_simulator_test_driver.o $(CCD_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_dome_simulator: integration/test_dome_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h $(BUILD_DRIVERS)/indigo_dome_simulator.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_dome_simulator: integration/test_dome_simulator.c integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h integration/serial_simulator_test_common.h $(BUILD_DRIVERS)/indigo_dome_simulator.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_gps_simulator: integration/test_gps_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h $(BUILD_DRIVERS)/indigo_gps_simulator.a | $(INTEGRATION_BUILD)
@@ -500,7 +500,7 @@ $(INTEGRATION_BUILD)/test_dome_nexdome_simulator: integration/test_dome_nexdome_
 $(INTEGRATION_BUILD)/test_dome_nexdome3_simulator: integration/test_dome_nexdome3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/dome_nexdome3_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_NEXDOME3_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_dome_skyroof_simulator: integration/test_dome_skyroof_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/dome_skyroof_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_dome_skyroof_simulator: integration/test_dome_skyroof_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/dome_skyroof_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_SKYROOF_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_dome_talon6ror_simulator: integration/test_dome_talon6ror_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/dome_talon6ror_simulator | $(INTEGRATION_BUILD)
@@ -509,7 +509,7 @@ $(INTEGRATION_BUILD)/test_dome_talon6ror_simulator: integration/test_dome_talon6
 $(INTEGRATION_BUILD)/test_gps_nmea_simulator: integration/test_gps_nmea_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/gps_nmea_simulator $(BUILD_DRIVERS)/indigo_gps_nmea.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(GPS_NMEA_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_mount_ioptron_simulator: integration/test_mount_ioptron_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_ioptron_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_ioptron_simulator: integration/test_mount_ioptron_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_ioptron_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_IOPTRON_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/mount_lx200_simulator: ../indigo_drivers/mount_lx200/mount_lx200_simulator/mount_lx200_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -527,13 +527,13 @@ $(INTEGRATION_BUILD)/test_mount_nexstar_simulator: integration/test_mount_nexsta
 $(INTEGRATION_BUILD)/mount_nexstaraux_simulator: ../indigo_drivers/mount_nexstaraux/mount_nexstaraux_simulator/mount_nexstaraux_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/test_mount_nexstaraux_simulator: integration/test_mount_nexstaraux_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstaraux_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_nexstaraux_simulator: integration/test_mount_nexstaraux_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstaraux_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_NEXSTARAUX_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/mount_pmc8_simulator: ../indigo_drivers/mount_pmc8/mount_pmc8_simulator/mount_pmc8_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/test_mount_pmc8_simulator: integration/test_mount_pmc8_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_pmc8_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_pmc8_simulator: integration/test_mount_pmc8_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_pmc8_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_PMC8_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/mount_rainbow_simulator: ../indigo_drivers/mount_rainbow/mount_rainbow_simulator/mount_rainbow_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -596,10 +596,10 @@ $(INTEGRATION_BUILD)/test_wheel_optec_simulator: integration/test_wheel_optec_si
 $(INTEGRATION_BUILD)/test_focuser_fc3_simulator: integration/test_focuser_fc3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_fc3_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_FC3_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_efa_simulator: integration/test_focuser_efa_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_efa_simulator $(BUILD_DRIVERS)/indigo_focuser_efa.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_focuser_efa_simulator: integration/test_focuser_efa_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_efa_simulator $(BUILD_DRIVERS)/indigo_focuser_efa.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_EFA_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_efa_simulator_asan: integration/test_focuser_efa_simulator.c ../indigo_drivers/focuser_efa/indigo_focuser_efa.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_efa_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_focuser_efa_simulator_asan: integration/test_focuser_efa_simulator.c ../indigo_drivers/focuser_efa/indigo_focuser_efa.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_efa_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_efa/indigo_focuser_efa.c $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_dmfc_simulator: integration/test_focuser_dmfc_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_dmfc_simulator | $(INTEGRATION_BUILD)
@@ -653,10 +653,10 @@ $(INTEGRATION_BUILD)/test_focuser_optec_simulator: integration/test_focuser_opte
 $(INTEGRATION_BUILD)/test_focuser_primaluce_simulator: integration/test_focuser_primaluce_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_primaluce_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_PRIMALUCE_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_prodigy_simulator_asan: integration/test_focuser_prodigy_simulator.c ../indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_prodigy_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_focuser_prodigy_simulator_asan: integration/test_focuser_prodigy_simulator.c ../indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_prodigy_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.c $(TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_prodigy_simulator: integration/test_focuser_prodigy_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_prodigy_simulator $(BUILD_DRIVERS)/indigo_focuser_prodigy.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_focuser_prodigy_simulator: integration/test_focuser_prodigy_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_prodigy_simulator $(BUILD_DRIVERS)/indigo_focuser_prodigy.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_PRODIGY_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_robofocus_simulator: integration/test_focuser_robofocus_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_robofocus_simulator | $(INTEGRATION_BUILD)
@@ -701,7 +701,7 @@ $(INTEGRATION_BUILD)/test_aux_flipflat_simulator: integration/test_aux_flipflat_
 $(INTEGRATION_BUILD)/test_ao_sx_simulator: integration/test_ao_sx_simulator.c $(BUILD_DRIVERS)/indigo_ao_sx.a integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ao_sx_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AO_SX_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_mount_synscan_simulator: integration/test_mount_synscan_simulator.c $(INTEGRATION_BUILD)/mount_synscan_test_driver.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_synscan_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_synscan_simulator: integration/test_mount_synscan_simulator.c $(INTEGRATION_BUILD)/mount_synscan_test_driver.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_synscan_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_SYNSCAN_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_aux_upb3_simulator: integration/test_aux_upb3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_upb3_simulator | $(INTEGRATION_BUILD)
@@ -872,19 +872,19 @@ OUTPUT_TRANSPORT_REPLACEMENTS = -Dindigo_uni_open_serial=output_open -Dindigo_un
 $(INTEGRATION_BUILD)/guider_cgusbst4_transport.o: ../indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.c | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(OUTPUT_TRANSPORT_REPLACEMENTS) -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_guider_cgusbst4_transport: integration/test_serial_outputs.c $(INTEGRATION_BUILD)/guider_cgusbst4_transport.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_guider_cgusbst4_transport: integration/test_serial_outputs.c $(INTEGRATION_BUILD)/guider_cgusbst4_transport.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DTEST_KIND=1 -DTEST_ENTRY=indigo_guider_cgusbst4 -DTEST_NAME='"CG-USB-ST4 Adapter"' $< $(INTEGRATION_BUILD)/guider_cgusbst4_transport.o -o $@ $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/aux_geoptikflat_transport.o: ../indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.c | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(OUTPUT_TRANSPORT_REPLACEMENTS) -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_aux_geoptikflat_transport: integration/test_serial_outputs.c $(INTEGRATION_BUILD)/aux_geoptikflat_transport.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_aux_geoptikflat_transport: integration/test_serial_outputs.c $(INTEGRATION_BUILD)/aux_geoptikflat_transport.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DTEST_KIND=2 -DTEST_ENTRY=indigo_aux_geoptikflat -DTEST_NAME='"Geoptik Flat Generator"' $< $(INTEGRATION_BUILD)/aux_geoptikflat_transport.o -o $@ $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/aux_rts_transport.o: ../indigo_drivers/aux_rts/indigo_aux_rts.c | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(OUTPUT_TRANSPORT_REPLACEMENTS) -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_aux_rts_transport: integration/test_serial_outputs.c $(INTEGRATION_BUILD)/aux_rts_transport.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_aux_rts_transport: integration/test_serial_outputs.c $(INTEGRATION_BUILD)/aux_rts_transport.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DTEST_KIND=3 -DTEST_ENTRY=indigo_aux_rts -DTEST_NAME='"RTS-on-COM shutter"' $< $(INTEGRATION_BUILD)/aux_rts_transport.o -o $@ $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_wheel_manual: integration/test_wheel_manual.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_wheel_manual.a | $(INTEGRATION_BUILD)
@@ -919,31 +919,31 @@ USB_OUTPUT_REPLACEMENTS = -Dindigo_queue_create=output_queue_create -Dindigo_att
 $(INTEGRATION_BUILD)/aux_dsusb_usb_output.o: ../indigo_drivers/aux_dsusb/indigo_aux_dsusb.c | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $(USB_OUTPUT_REPLACEMENTS) -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_aux_dsusb_usb: integration/test_usb_outputs.c $(INTEGRATION_BUILD)/aux_dsusb_usb_output.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_aux_dsusb_usb: integration/test_usb_outputs.c $(INTEGRATION_BUILD)/aux_dsusb_usb_output.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) -DTEST_KIND=1 -DTEST_ENTRY=indigo_aux_dsusb -DTEST_NAME='"DSUSB test"' $< $(INTEGRATION_BUILD)/aux_dsusb_usb_output.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
 $(INTEGRATION_BUILD)/focuser_fcusb_usb_output.o: ../indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.c | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $(USB_OUTPUT_REPLACEMENTS) -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_focuser_fcusb_usb: integration/test_usb_outputs.c $(INTEGRATION_BUILD)/focuser_fcusb_usb_output.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_focuser_fcusb_usb: integration/test_usb_outputs.c $(INTEGRATION_BUILD)/focuser_fcusb_usb_output.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) -DTEST_KIND=2 -DTEST_ENTRY=indigo_focuser_fcusb -DTEST_NAME='"FCUSB test"' $< $(INTEGRATION_BUILD)/focuser_fcusb_usb_output.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
 $(INTEGRATION_BUILD)/guider_gpusb_usb_output.o: ../indigo_drivers/guider_gpusb/indigo_guider_gpusb.c | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $(USB_OUTPUT_REPLACEMENTS) -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_guider_gpusb_usb: integration/test_usb_outputs.c $(INTEGRATION_BUILD)/guider_gpusb_usb_output.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_guider_gpusb_usb: integration/test_usb_outputs.c $(INTEGRATION_BUILD)/guider_gpusb_usb_output.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) -DTEST_KIND=3 -DTEST_ENTRY=indigo_guider_gpusb -DTEST_NAME='"GPUSB test"' $< $(INTEGRATION_BUILD)/guider_gpusb_usb_output.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
 $(INTEGRATION_BUILD)/wheel_sx_usb_output.o: ../indigo_drivers/wheel_sx/indigo_wheel_sx.c | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $(USB_OUTPUT_REPLACEMENTS) -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_wheel_sx_usb: integration/test_usb_outputs.c $(INTEGRATION_BUILD)/wheel_sx_usb_output.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_wheel_sx_usb: integration/test_usb_outputs.c $(INTEGRATION_BUILD)/wheel_sx_usb_output.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) -DTEST_KIND=4 -DTEST_ENTRY=indigo_wheel_sx -DTEST_NAME='"SX Filter Wheel #1"' $< $(INTEGRATION_BUILD)/wheel_sx_usb_output.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
 $(INTEGRATION_BUILD)/wheel_atik_usb_output.o: ../indigo_drivers/wheel_atik/indigo_wheel_atik.c | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $(USB_OUTPUT_REPLACEMENTS) -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_wheel_atik_usb: integration/test_usb_outputs.c $(INTEGRATION_BUILD)/wheel_atik_usb_output.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_wheel_atik_usb: integration/test_usb_outputs.c $(INTEGRATION_BUILD)/wheel_atik_usb_output.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) -DTEST_KIND=5 -DTEST_ENTRY=indigo_wheel_atik -DTEST_NAME='"Atik Filter Wheel #1"' $< $(INTEGRATION_BUILD)/wheel_atik_usb_output.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
 $(INTEGRATION_BUILD)/aux_upb_simulator: ../indigo_drivers/aux_upb/aux_upb_simulator/aux_upb_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)

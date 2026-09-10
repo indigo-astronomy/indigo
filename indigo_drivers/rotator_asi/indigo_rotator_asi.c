@@ -97,6 +97,9 @@ static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //+ code
 
+static void rotator_position_handler(indigo_device *device);
+static void rotator_relative_move_handler(indigo_device *device);
+
 static int caa_products[100];
 static int caa_id_count = 0;
 
@@ -444,6 +447,8 @@ static void rotator_relative_move_handler(indigo_device *device) {
 
 static void rotator_abort_motion_handler(indigo_device *device) {
 	//+ rotator.ROTATOR_ABORT_MOTION.on_change
+	indigo_cancel_pending_handler(device, rotator_position_handler);
+	indigo_cancel_pending_handler(device, rotator_relative_move_handler);
 	ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
 	int res = CAAStop(PRIVATE_DATA->dev_id);
 	indigo_cancel_pending_handler(device, rotator_move_finalizer);
@@ -577,7 +582,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ROTATOR_RELATIVE_MOVE_PROPERTY, rotator_relative_move_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_ABORT_MOTION_PROPERTY, rotator_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(ROTATOR_ABORT_MOTION_PROPERTY, rotator_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CAA_BEEP_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CAA_BEEP_PROPERTY, rotator_caa_beep_handler);

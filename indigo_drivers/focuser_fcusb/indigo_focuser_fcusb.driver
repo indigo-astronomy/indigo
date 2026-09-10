@@ -38,6 +38,8 @@ driver fcusb {
 		libfcusb_device_context *device_context;
 	}
 	code {
+		static void focuser_steps_handler(indigo_device *device);
+
 		static bool fcusb_match(libusb_device *dev, const char **name) {
 			return libfcusb_focuser(dev, name);
 		}
@@ -75,6 +77,7 @@ driver fcusb {
 		}
 		inherited FOCUSER_ABORT_MOTION {
 			on_change {
+				indigo_cancel_pending_handler(device, focuser_steps_handler);
 				indigo_cancel_pending_handler(device, focuser_motion_finalizer);
 				if (!libfcusb_stop(PRIVATE_DATA->device_context)) {
 					FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;

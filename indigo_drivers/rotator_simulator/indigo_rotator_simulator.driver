@@ -35,6 +35,8 @@ driver simulator {
 		double target_position, current_position;
 	}
 	code {
+		static void rotator_position_handler(indigo_device *device);
+
 		static double simulator_normalize_position(double position) {
 			position = fmod(position, 360);
 			if (position < 0) {
@@ -133,6 +135,7 @@ driver simulator {
 		inherited ROTATOR_ABORT_MOTION {
 			on_change {
 				if (ROTATOR_ABORT_MOTION_ITEM->sw.value && ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_cancel_pending_handler(device, rotator_position_handler);
 					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 					PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 					simulator_update_rotator_position(device);

@@ -1049,3 +1049,47 @@ The original focuser and auxiliary connection handlers unconditionally reopen an
 ### DRV-106 (Fixed — 2026-09-09)
 
 The supplied one-page command table requires OK_PRDG identity, matching command echoes, H=0, Z=Z:1, and four D booleans. Legacy prefix matching accepts OK_OTHER (reproduced with original C/header); power/USB/park handlers report success despite rejected replies, and outlet 2 is decoded as 2. The DSL validates complete delimited responses, numeric fields and acknowledgements, uses actual B speed readback, and confirms power/USB state after writes. Fault tests cover malformed/partial/overlong/silent replies, ACK/partial writes and recovery. Park completes only at zero/idle, with abort and stalled-motion handling. PTY tests do not validate physical encoder travel or firmware reboot timing.
+
+## Focused Player One abort latency investigation (2026-09-09)
+
+Target: `94e1ef2bb`; inspected Player One acquisition/abort code and Imager Agent abort routing against the recorded baseline. No subtree review-marker advancement.
+
+- The generated `ccd_change_property()` uses ordinary `INDIGO_COPY_VALUES_PROCESS_CHANGE` for `CCD_ABORT_EXPOSURE` (`ccd_playerone/indigo_ccd_playerone.c:1720`). This schedules NORMAL priority, while acquisition finalizers use `indigo_execute_handler_in()` (TIME priority). Higher abort priority would reduce waiting behind ready tasks, but cannot preempt a running callback.
+- The macro sets abort BUSY before notifying clients and enqueueing the handler. `acquisition_finalizer()` checks that state on entry (`ccd_playerone/indigo_ccd_playerone.driver:338`), so priority alone does not explain four or five additional delivered streaming frames after the driver has accepted an abort.
+- An in-flight finalizer does not recheck abort after SDK read or before synchronous `indigo_process_image()` (`.driver:360`, `.driver:384`). Hardware runs in continuous SDK mode even for single INDIGO exposures (`.driver:409`). Sensor acquisition can therefore continue during readout/image processing until `POAStopExposure()` is reached. This is a plausible latency contributor, not a measured explanation of the user report.
+- Existing fake-SDK tests filtered by `abort` passed: long exposure/guiding abort and reacquire, deterministic frame-before-abort versus abort-before-frame ordering, and setup/wait/removal abort coverage. The ordering test permits one delivered frame when abort arrives during readout; it does not reproduce a network client, short-exposure series controller or physical SDK timing. The reporting user's acquisition mode/client are unknown.
+
+Next diagnosis should distinguish request receipt, abort BUSY publication, finalizer entry/exit, SDK stop, and terminal property publication. A generator priority change would need a separately approved concrete proposal; no generator or production driver changes were made for this investigation.
+
+## Working-tree abort change self-review (2026-09-10)
+
+Scope: requested review of this task's uncommitted changes relative to `94e1ef2bb`, including all 25 `.driver` inputs and their generated C. This does not advance the subtree baseline. Build/runtime scenario mapping belongs to `indigo_test/CHANGES.md`.
+
+- DRV-107, P1, fixed in draft: URGENT abort overtook NORMAL operation starts, allowing motion/exposure to start after abort completed. All 27 affected abort branches now cancel the associated pending starts. Example: `ccd_sx/indigo_ccd_sx.driver`, `CCD_ABORT_EXPOSURE.on_change`.
+- DRV-108, P2, fixed in draft: the initial cancellation prologues bypassed existing abort-switch/BUSY guards. Cancellation now follows each existing abort condition; DSUSB and RTS barrier tests explicitly verify false abort preservation. Example: `aux_dsusb/indigo_aux_dsusb.driver`, `CCD_ABORT_EXPOSURE.on_change`.
+- DRV-109, P1, fixed in draft: a canceled start never schedules its completion callback, so abort paths relying solely on that callback left BUSY properties unresolved. Explicit settlement or a scheduled existing completion path covers pending acquisition, shutter, relative dome motion, calibration, park/home and focuser motion. Pending motion is settled before a potentially failing stop where no finalizer exists. Example: `dome_skyroof/indigo_dome_skyroof.driver`, `DOME_ABORT_MOTION.on_change`.
+
+Per-driver cancellation/settlement audit:
+
+| Drivers | Checked path |
+| --- | --- |
+| aux_dsusb, aux_rts, mount_synscan AUX | Abort switch guard; pending exposure, shutter timers/finalizers and exposure terminal publication. |
+| ccd_dsi, ccd_sx | Exposure BUSY guard includes queued starts; existing hardware stop and CCD cleanup remain paired. |
+| ccd_playerone | Exposure/streaming guard; active acquisition finish versus cleanup before SDK start. |
+| aux_upb, aux_upb3, focuser_dmfc, focuser_fc3 | Existing switch guard and periodic hardware motion readback; stop success terminal updates preserved. |
+| focuser_efa, focuser_prodigy, focuser_ioptron, focuser_lacerta | Existing guard; pending motion settled even if stop fails; EFA calibration and Prodigy park cannot remain BUSY without a finalizer. |
+| focuser_asi, rotator_asi | Existing unconditional stop; pending start cancellation and motion-status completion; ASI focuser pending properties settled before stop failure. |
+| focuser_fcusb | Existing unconditional stop and motion-finalizer cancellation; steps terminal update preserved. |
+| focuser_primaluce focuser/rotator | Pending properties settled independently of a not-yet-scheduled movement finalizer. |
+| focuser_usbv3 | Moving flag controls hardware stop, not start cancellation; queued motion terminated without altering idle completed properties. |
+| dome_simulator | Guard includes horizontal, relative and park BUSY; existing timer cleanup invoked after canceling pending starts/timer. |
+| dome_skyroof | Shutter BUSY guard; existing finalizer scheduled even when start never ran; explicit abort publication because the finalizer reference suppresses generator epilogue. |
+| mount_ioptron | Existing abort switch guard; pending park/home properties and switches settled; existing motion/coordinate stop updates retained. |
+| mount_nexstaraux | Existing switch guard; pending coordinates and park settled independently of the slewing flag; manual axes settled before a failed stop. |
+| mount_pmc8 | Existing unconditional stop; pending park flag/property and manual-axis states settled. |
+| mount_synscan mount | Existing unconditional stop; pending park/home and coordinate/manual-axis properties settled before state-light refresh. |
+| rotator_simulator | Existing abort/BUSY guard; pending position canceled and target reset to current position. |
+
+Generated-diff normalization confirmed that all other generated function bodies are unchanged: differences are abort dispatch, abort bodies and start-handler forward declarations. Regeneration is reproducible. DSL and generated C versions are unchanged by user instruction. No new locks, properties or refactoring notices were introduced. Existing running SDK/transport calls remain non-preemptible; the original physical Player One latency report is not reproduced by these hardware-free checks.
+
+Validation result: 23/24 complete integration suites passed; the remaining focuser_ioptron suite passed 39/40 in concurrent runs and its unchanged, non-abort `overlap` scenario passed in isolation. This timing-sensitive test result is retained as a validation limitation, not declared fixed. New queue-barrier abort tests, generator/timer tests, final targeted reruns and all affected builds passed; details are in `indigo_test/CHANGES.md`.

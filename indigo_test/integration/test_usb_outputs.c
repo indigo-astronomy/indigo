@@ -12,6 +12,7 @@
 #include <libgpusb.h>
 #include <libatik.h>
 #include "serial_simulator_test_common.h"
+#include "abort_queue_test_common.h"
 
 extern indigo_result TEST_ENTRY(indigo_driver_action, indigo_driver_info *);
 static const simulator_driver_case driver = { TEST_NAME, "USB output", TEST_NAME, TEST_ENTRY, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
@@ -401,9 +402,23 @@ cleanup:
 	ASSERT_EQ_INT(0, invalid_io);
 }
 
+#if TEST_KIND == 1
+static void queued_abort(void) {
+	SERIAL_CHECK_TRUE(start_output());
+	SERIAL_CHECK_TRUE(check_queued_abort(TEST_NAME, "CCD_EXPOSURE", "EXPOSURE", 30, false, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", false));
+	SERIAL_CHECK_TRUE(check_queued_abort(TEST_NAME, "CCD_EXPOSURE", "EXPOSURE", 30, false, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true));
+cleanup:
+	stop_serial_driver(&driver);
+}
+#endif
+
 int main(void) {
 	setvbuf(stdout, NULL, _IONBF, 0);
 	alarm(60);
-	const indigo_test_case tests[] = { { "discovery, duplicate, connection rollback, active removal and reload", lifecycle }, { "output mapping, delayed completion and errors", operations }, { "initialization and attach rollback", init_rollback }, { "settings, abort, stop/read errors and removal during operation", interruption } };
+	const indigo_test_case tests[] = {
+#if TEST_KIND == 1
+		{ "queued exposure abort and false abort", queued_abort },
+#endif
+		{ "discovery, duplicate, connection rollback, active removal and reload", lifecycle }, { "output mapping, delayed completion and errors", operations }, { "initialization and attach rollback", init_rollback }, { "settings, abort, stop/read errors and removal during operation", interruption } };
 	return indigo_run_tests(TEST_NAME, tests, ARRAY_SIZE(tests));
 }

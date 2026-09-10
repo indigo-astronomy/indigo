@@ -39,6 +39,9 @@ driver lacerta {
 		bool moving, motion_uncertain, reverse;
 	}
 	code {
+		static void focuser_position_handler(indigo_device *device);
+		static void focuser_steps_handler(indigo_device *device);
+
 		static double lacerta_now(void) {
 			struct timeval time;
 			gettimeofday(&time, NULL);
@@ -312,6 +315,11 @@ driver lacerta {
 		inherited FOCUSER_ABORT_MOTION {
 			on_change {
 				if (FOCUSER_ABORT_MOTION_ITEM->sw.value && IS_CONNECTED) {
+					indigo_cancel_pending_handler(device, focuser_position_handler);
+					indigo_cancel_pending_handler(device, focuser_steps_handler);
+					if (!PRIVATE_DATA->moving && (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)) {
+						lacerta_motion_state(device, INDIGO_ALERT_STATE);
+					}
 					if (lacerta_halt(device)) {
 						indigo_cancel_pending_handler(device, motion_finalizer);
 						PRIVATE_DATA->moving = PRIVATE_DATA->motion_uncertain = false;

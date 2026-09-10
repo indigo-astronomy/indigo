@@ -59,6 +59,8 @@ typedef struct {
 
 //+ code
 
+static void aux_ccd_exposure_handler(indigo_device *device);
+
 static bool rts_on(indigo_device *device) {
 	return indigo_uni_set_rts(PRIVATE_DATA->handle, true) == 0;
 }
@@ -138,6 +140,7 @@ static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.CCD_ABORT_EXPOSURE.on_change
 	if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
+		indigo_cancel_pending_handler(device, aux_ccd_exposure_handler);
 		indigo_cancel_pending_handler(device, aux_timer_callback);
 		if (!rts_off(device)) {
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -206,7 +209,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, aux_ccd_abort_exposure_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, aux_ccd_abort_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, aux_ccd_exposure_handler);

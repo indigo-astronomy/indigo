@@ -66,6 +66,9 @@ typedef struct {
 
 //+ code
 
+static void focuser_position_handler(indigo_device *device);
+static void focuser_steps_handler(indigo_device *device);
+
 static bool usbv3_command(indigo_device *device, char *command, int response, ...) {
 	va_list args;
 	va_start(args, response);
@@ -312,12 +315,17 @@ static void focuser_position_handler(indigo_device *device) {
 static void focuser_abort_motion_handler(indigo_device *device) {
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
+	indigo_cancel_pending_handler(device, focuser_position_handler);
+	indigo_cancel_pending_handler(device, focuser_steps_handler);
 	if (PRIVATE_DATA->moving) {
 		if (usbv3_command(device, "FQUITx", false)) {
 			PRIVATE_DATA->abort = true;
 		} else {
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+	} else if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	//- focuser.FOCUSER_ABORT_MOTION.on_change
@@ -422,7 +430,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_LIMITS_PROPERTY, focuser_limits_handler);

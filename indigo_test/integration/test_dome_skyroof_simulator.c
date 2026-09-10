@@ -7,6 +7,7 @@
 #include <indigo_drivers/dome_skyroof/indigo_dome_skyroof.h>
 
 #include "serial_simulator_test_common.h"
+#include "abort_queue_test_common.h"
 
 #ifndef DOME_SKYROOF_SIMULATOR_EXECUTABLE
 #define DOME_SKYROOF_SIMULATOR_EXECUTABLE "build/integration/dome_skyroof_simulator"
@@ -33,6 +34,7 @@ static void skyroof_passes_serial_compliance_checks(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&skyroof_case, simulator.port));
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
 
+	SERIAL_CHECK_TRUE(check_queued_abort(skyroof_case.device_name, "DOME_SHUTTER", "OPENED", 0, true, "DOME_ABORT_MOTION", "ABORT_MOTION", true));
 	assert_device_interface(INDIGO_INTERFACE_DOME);
 	assert_property_has_item(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME);
 	assert_property_has_item(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME);

@@ -1356,6 +1356,34 @@ static void stream_errors_and_active_removal(void) {
 	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
 }
 
+static atomic_bool abort_priority_observed;
+static atomic_bool abort_priority_probe_finished;
+
+static void abort_priority_probe(indigo_device *device) {
+	atomic_store(&abort_priority_observed, CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_OK_STATE && CCD_EXPOSURE_PROPERTY->state == INDIGO_ALERT_STATE);
+	atomic_store(&abort_priority_probe_finished, true);
+}
+
+static void abort_overtakes_ready_time_handler(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 30, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_count(&cameras[0].starts, 1));
+	arm_gate(&queue_gate);
+	indigo_execute_handler(logical[0], block_queue);
+	ASSERT_TRUE(wait_count(&queue_gate.entered, 1));
+	atomic_store(&abort_priority_observed, false);
+	atomic_store(&abort_priority_probe_finished, false);
+	indigo_execute_handler_in(logical[0], 0, abort_priority_probe);
+	ASSERT_TRUE(set_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true));
+	release_gate(&queue_gate);
+	for (int i = 0; i < 200 && !atomic_load(&abort_priority_probe_finished); i++) {
+		indigo_usleep(10000);
+	}
+	ASSERT_TRUE(atomic_load(&abort_priority_probe_finished));
+	ASSERT_TRUE(atomic_load(&abort_priority_observed));
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+}
+
 static void pending_frame_abort_orders(void) {
 	ASSERT_TRUE(connect_device(0, true));
 	for (int frame_first = 0; frame_first < 2; frame_first++) {
@@ -1699,6 +1727,7 @@ static void abort_setup_wait_and_removal(void) {
 	ASSERT_TRUE(connect_device(1, true));
 	for (int phase = 0; phase < 3; phase++) {
 		int before = atomic_load(&blobs);
+		int starts_before = atomic_load(&cameras[0].starts);
 		if (phase == 0) {
 			arm_gate(&queue_gate);
 			indigo_execute_handler(logical[0], block_queue);
@@ -1716,6 +1745,9 @@ static void abort_setup_wait_and_removal(void) {
 		release_gate(&queue_gate);
 		ASSERT_TRUE(wait_state(0, "CCD_ABORT_EXPOSURE", INDIGO_OK_STATE));
 		ASSERT_EQ_INT(before, atomic_load(&blobs));
+		if (phase == 0) {
+			ASSERT_EQ_INT(starts_before, atomic_load(&cameras[0].starts));
+		}
 		ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
 	}
 	arm_gate(&read_gate);
@@ -2104,6 +2136,7 @@ int main(int argc, char **argv) {
 		{ "Simultaneous guide axes zero and errors", simultaneous_axes_and_zero },
 		{ "Registration and global lock rollback", registration_and_global_lock_failures },
 		{ "Streaming error active removal and replug", stream_errors_and_active_removal },
+		{ "Urgent abort overtakes a ready TIME handler", abort_overtakes_ready_time_handler },
 		{ "Deterministic final frame and abort ordering", pending_frame_abort_orders },
 		{ "Temperature cooler polling and disconnected tasks", temperature_polling_and_disconnect },
 		{ "Duplicate hotplug bursts and queue creation rollback", duplicate_events_and_pending_shutdown },

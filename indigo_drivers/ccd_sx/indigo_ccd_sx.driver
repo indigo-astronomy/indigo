@@ -153,6 +153,8 @@ driver sx {
 		bool can_check_temperature;
 	}
 	code {
+		static void ccd_exposure_handler(indigo_device *device);
+
 		typedef enum {
 			SX_IMAGE_FAILED,
 			SX_IMAGE_DOWNLOADED
@@ -962,6 +964,7 @@ driver sx {
 		inherited CCD_ABORT_EXPOSURE {
 			on_change {
 				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_cancel_pending_handler(device, ccd_exposure_handler);
 					indigo_cancel_pending_handler(device, ccd_clear_registers_handler);
 					indigo_cancel_pending_handler(device, ccd_exposure_finalizer);
 					sx_abort_exposure(device);

@@ -99,6 +99,9 @@ driver asi {
 		}
 	}
 	code {
+		static void rotator_position_handler(indigo_device *device);
+		static void rotator_relative_move_handler(indigo_device *device);
+
 		static int caa_products[100];
 		static int caa_id_count = 0;
 
@@ -448,6 +451,8 @@ driver asi {
 		}
 		inherited ROTATOR_ABORT_MOTION {
 			on_change {
+				indigo_cancel_pending_handler(device, rotator_position_handler);
+				indigo_cancel_pending_handler(device, rotator_relative_move_handler);
 				ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
 				int res = CAAStop(PRIVATE_DATA->dev_id);
 				indigo_cancel_pending_handler(device, rotator_move_finalizer);

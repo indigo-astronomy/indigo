@@ -82,6 +82,8 @@ driver dsi {
 		bool can_check_temperature;
 	}
 	code {
+		static void ccd_exposure_handler(indigo_device *device);
+
 		typedef enum {
 			DSI_IMAGE_FAILED,
 			DSI_IMAGE_PENDING,
@@ -357,6 +359,7 @@ driver dsi {
 		inherited CCD_ABORT_EXPOSURE {
 			on_change {
 				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_cancel_pending_handler(device, ccd_exposure_handler);
 					indigo_cancel_pending_handler(device, ccd_exposure_finalizer);
 					dsi_camera_abort_exposure(device);
 				}

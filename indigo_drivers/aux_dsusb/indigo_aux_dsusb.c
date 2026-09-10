@@ -81,6 +81,8 @@ static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //+ code
 
+static void aux_ccd_exposure_handler(indigo_device *device);
+
 static bool dsusb_match(libusb_device *dev, const char **name) {
 	return libdsusb_shutter(dev, name);
 }
@@ -177,6 +179,7 @@ static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 	//+ aux.CCD_ABORT_EXPOSURE.on_change
 	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
+		indigo_cancel_pending_handler(device, aux_ccd_exposure_handler);
 		indigo_cancel_pending_handler(device, aux_timer_callback);
 		indigo_cancel_pending_handler(device, aux_focus_finalizer);
 		if (!libdsusb_stop(PRIVATE_DATA->device_context)) {
@@ -251,7 +254,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, aux_ccd_abort_exposure_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, aux_ccd_abort_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, aux_ccd_exposure_handler);

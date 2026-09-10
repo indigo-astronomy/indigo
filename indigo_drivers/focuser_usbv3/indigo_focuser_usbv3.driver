@@ -40,6 +40,9 @@ driver usbv3 {
 		int motion_polls;
 	}
 	code {
+		static void focuser_position_handler(indigo_device *device);
+		static void focuser_steps_handler(indigo_device *device);
+
 		static bool usbv3_command(indigo_device *device, char *command, int response, ...) {
 			va_list args;
 			va_start(args, response);
@@ -280,12 +283,17 @@ driver usbv3 {
 		}
 		inherited FOCUSER_ABORT_MOTION {
 			on_change {
+				indigo_cancel_pending_handler(device, focuser_position_handler);
+				indigo_cancel_pending_handler(device, focuser_steps_handler);
 				if (PRIVATE_DATA->moving) {
 					if (usbv3_command(device, "FQUITx", false)) {
 						PRIVATE_DATA->abort = true;
 					} else {
 						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
+				} else if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+					INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
+					INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
 				}
 				FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 			}

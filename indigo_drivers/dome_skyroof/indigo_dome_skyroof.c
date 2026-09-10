@@ -63,6 +63,8 @@ typedef struct {
 
 //+ code
 
+static void dome_shutter_handler(indigo_device *device);
+
 static bool skyroof_write(indigo_device *device, char *command)	{
 	return indigo_uni_printf(PRIVATE_DATA->handle, "%s\r", command) > 0;
 }
@@ -159,18 +161,22 @@ static void dome_shutter_handler(indigo_device *device) {
 }
 
 static void dome_abort_motion_handler(indigo_device *device) {
-	DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ dome.DOME_ABORT_MOTION.on_change
+	DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	DOME_ABORT_MOTION_ITEM->sw.value = false;
 	if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_cancel_pending_handler(device, dome_shutter_handler);
 		if (skyroof_write(device, "Stop#") && skyroof_read(device) && !strcmp(PRIVATE_DATA->response, "0#")) {
 			DOME_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_cancel_pending_handler(device, dome_shutter_finalizer);
+			indigo_execute_handler_in(device, 0, dome_shutter_finalizer);
 		} else {
 			DOME_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		}
 	}
-	//- dome.DOME_ABORT_MOTION.on_change
 	indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
+	//- dome.DOME_ABORT_MOTION.on_change
 }
 
 static void dome_heater_control_handler(indigo_device *device) {
@@ -233,7 +239,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_SHUTTER_PROPERTY, dome_shutter_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_ABORT_MOTION_PROPERTY, dome_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(DOME_ABORT_MOTION_PROPERTY, dome_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(HEATER_CONTROL_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(HEATER_CONTROL_PROPERTY, dome_heater_control_handler);

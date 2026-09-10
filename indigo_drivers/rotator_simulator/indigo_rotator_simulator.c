@@ -58,6 +58,8 @@ typedef struct {
 
 //+ code
 
+static void rotator_position_handler(indigo_device *device);
+
 static double simulator_normalize_position(double position) {
 	position = fmod(position, 360);
 	if (position < 0) {
@@ -182,6 +184,7 @@ static void rotator_abort_motion_handler(indigo_device *device) {
 	ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ rotator.ROTATOR_ABORT_MOTION.on_change
 	if (ROTATOR_ABORT_MOTION_ITEM->sw.value && ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_cancel_pending_handler(device, rotator_position_handler);
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 		simulator_update_rotator_position(device);
@@ -227,7 +230,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_DIRECTION_PROPERTY, rotator_direction_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_ABORT_MOTION_PROPERTY, rotator_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(ROTATOR_ABORT_MOTION_PROPERTY, rotator_abort_motion_handler);
 		return INDIGO_OK;
 	}
 	return indigo_rotator_change_property(device, client, property);

@@ -128,6 +128,11 @@ typedef struct {
 
 //+ code
 
+static void mount_equatorial_coordinates_handler(indigo_device *device);
+static void mount_motion_dec_handler(indigo_device *device);
+static void mount_motion_ra_handler(indigo_device *device);
+static void mount_park_handler(indigo_device *device);
+
 static bool pmc8_validate_handle(indigo_device *device) {
 	return PRIVATE_DATA->handle != NULL;
 }
@@ -762,6 +767,21 @@ static void mount_park_handler(indigo_device *device) {
 static void mount_abort_motion_handler(indigo_device *device) {
 	MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_ABORT_MOTION.on_change
+	indigo_cancel_pending_handler(device, mount_equatorial_coordinates_handler);
+	indigo_cancel_pending_handler(device, mount_motion_ra_handler);
+	if (MOUNT_MOTION_RA_PROPERTY->state == INDIGO_BUSY_STATE) {
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	}
+	indigo_cancel_pending_handler(device, mount_motion_dec_handler);
+	if (MOUNT_MOTION_DEC_PROPERTY->state == INDIGO_BUSY_STATE) {
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	}
+	indigo_cancel_pending_handler(device, mount_park_handler);
+	if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+		PRIVATE_DATA->park = false;
+		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_PARK_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	}
 	if (pmc8_move(device, 0, 0, 0) && pmc8_move(device, 1, 0, 0)) {
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
@@ -939,7 +959,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PARK_PROPERTY, mount_park_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_ABORT_MOTION_PROPERTY, mount_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(MOUNT_ABORT_MOTION_PROPERTY, mount_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_DEC_PROPERTY, mount_motion_dec_handler);

@@ -7,6 +7,7 @@
 #include <indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.h>
 
 #include "serial_simulator_test_common.h"
+#include "abort_queue_test_common.h"
 #include <indigo/indigo_uni_io.h>
 #include <errno.h>
 #include <stdatomic.h>
@@ -665,9 +666,20 @@ cleanup:
 	driver_stop();
 }
 
+static void queued_abort(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(check_queued_abort(prodigy_focuser.device_name, "X_FOCUSER_PARK", "PARK", 0, true, "FOCUSER_ABORT_MOTION", "ABORT_MOTION", true));
+	SERIAL_CHECK_TRUE(fault("H", "reject"));
+	SERIAL_CHECK_TRUE(check_queued_abort(prodigy_focuser.device_name, "FOCUSER_POSITION", "POSITION", 900000, false, "FOCUSER_ABORT_MOTION", "ABORT_MOTION", true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	driver_stop();
+}
+
 int main(void) {
 	simulator_test_client.update_property = observe_update;
 	const prodigy_test cases[] = {
+		{ "queued_abort", queued_abort, "normal" },
 		{ "protocol", protocol, "normal" },
 		{ "init_ports", rejected_aux, "init_D_reply=D:0:2:0:0" },
 		{ "transport_loss", transport_loss, "normal" },

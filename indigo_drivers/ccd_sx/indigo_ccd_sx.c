@@ -195,6 +195,8 @@ static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //+ code
 
+static void ccd_exposure_handler(indigo_device *device);
+
 typedef enum {
 	SX_IMAGE_FAILED,
 	SX_IMAGE_DOWNLOADED
@@ -1022,6 +1024,7 @@ static void ccd_exposure_handler(indigo_device *device) {
 static void ccd_abort_exposure_handler(indigo_device *device) {
 	//+ ccd.CCD_ABORT_EXPOSURE.on_change
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_cancel_pending_handler(device, ccd_exposure_handler);
 		indigo_cancel_pending_handler(device, ccd_clear_registers_handler);
 		indigo_cancel_pending_handler(device, ccd_exposure_finalizer);
 		sx_abort_exposure(device);
@@ -1146,7 +1149,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, ccd_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, ccd_abort_exposure_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, ccd_abort_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(CCD_FRAME_PROPERTY, ccd_frame_handler);

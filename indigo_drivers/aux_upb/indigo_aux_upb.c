@@ -196,6 +196,9 @@ typedef struct {
 
 //+ code
 
+static void focuser_position_handler(indigo_device *device);
+static void focuser_steps_handler(indigo_device *device);
+
 static bool upb_command(indigo_device *device, char *command, ...) {
 	long result = indigo_uni_discard(PRIVATE_DATA->handle);
 	if (result >= 0) {
@@ -1430,6 +1433,8 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
 	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+		indigo_cancel_pending_handler(device, focuser_position_handler);
+		indigo_cancel_pending_handler(device, focuser_steps_handler);
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		if (upb_command(device, "SH")) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1521,7 +1526,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);

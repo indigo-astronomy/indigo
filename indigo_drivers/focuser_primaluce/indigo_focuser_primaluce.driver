@@ -45,6 +45,10 @@ driver primaluce {
 		bool is_sestosenso_3;
 	}
 	code {
+		static void focuser_position_handler(indigo_device *device);
+		static void focuser_steps_handler(indigo_device *device);
+		static void rotator_position_handler(indigo_device *device);
+
 		static char *GET_MODNAME[] = { "res", "get", "MODNAME", NULL };
 		static char *GET_SN[] = { "res", "get", "SN", NULL };
 		static char *GET_SWAPP[] = { "res", "get", "SWVERS", "SWAPP", NULL };
@@ -1366,6 +1370,14 @@ driver primaluce {
 		}
 		inherited FOCUSER_ABORT_MOTION {
 			on_change {
+				indigo_cancel_pending_handler(device, focuser_position_handler);
+				indigo_cancel_pending_handler(device, focuser_steps_handler);
+				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
+				}
+				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+					INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
+				}
 				if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"\"}}}}")) {
 					INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, NULL);
 					return;
@@ -1484,6 +1496,10 @@ driver primaluce {
 		}
 		inherited ROTATOR_ABORT_MOTION {
 			on_change {
+				indigo_cancel_pending_handler(device, rotator_position_handler);
+				if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
+				}
 				ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
 				if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT2\":{\"MOT_STOP\":\"\"}}}}")) {
 					ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;

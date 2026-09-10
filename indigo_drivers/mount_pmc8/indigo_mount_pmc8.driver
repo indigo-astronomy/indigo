@@ -63,6 +63,11 @@ driver pmc8 {
 		char response[128];
 	}
 	code {
+		static void mount_equatorial_coordinates_handler(indigo_device *device);
+		static void mount_motion_dec_handler(indigo_device *device);
+		static void mount_motion_ra_handler(indigo_device *device);
+		static void mount_park_handler(indigo_device *device);
+
 		static bool pmc8_validate_handle(indigo_device *device) {
 			return PRIVATE_DATA->handle != NULL;
 		}
@@ -687,6 +692,21 @@ driver pmc8 {
 		}
 		inherited MOUNT_ABORT_MOTION {
 			on_change {
+				indigo_cancel_pending_handler(device, mount_equatorial_coordinates_handler);
+				indigo_cancel_pending_handler(device, mount_motion_ra_handler);
+				if (MOUNT_MOTION_RA_PROPERTY->state == INDIGO_BUSY_STATE) {
+					INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);
+				}
+				indigo_cancel_pending_handler(device, mount_motion_dec_handler);
+				if (MOUNT_MOTION_DEC_PROPERTY->state == INDIGO_BUSY_STATE) {
+					INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
+				}
+				indigo_cancel_pending_handler(device, mount_park_handler);
+				if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+					PRIVATE_DATA->park = false;
+					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+					INDIGO_UPDATE_PROPERTY_STATE(MOUNT_PARK_PROPERTY, INDIGO_ALERT_STATE, NULL);
+				}
 				if (pmc8_move(device, 0, 0, 0) && pmc8_move(device, 1, 0, 0)) {
 					MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 				} else {

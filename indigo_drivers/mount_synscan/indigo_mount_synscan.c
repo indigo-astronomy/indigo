@@ -231,6 +231,13 @@ typedef struct {
 
 //+ code
 
+static void aux_ccd_exposure_handler(indigo_device *device);
+static void mount_equatorial_coordinates_handler(indigo_device *device);
+static void mount_home_handler(indigo_device *device);
+static void mount_motion_dec_handler(indigo_device *device);
+static void mount_motion_ra_handler(indigo_device *device);
+static void mount_park_handler(indigo_device *device);
+
 static const char hex_digits[] = "0123456789ABCDEF";
 
 typedef enum {
@@ -1810,6 +1817,19 @@ static void mount_motion_dec_handler(indigo_device *device) {
 static void mount_abort_motion_handler(indigo_device *device) {
 	MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_ABORT_MOTION.on_change
+	indigo_cancel_pending_handler(device, mount_equatorial_coordinates_handler);
+	indigo_cancel_pending_handler(device, mount_motion_ra_handler);
+	indigo_cancel_pending_handler(device, mount_motion_dec_handler);
+	indigo_cancel_pending_handler(device, mount_park_handler);
+	if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_set_switch(MOUNT_PARK_PROPERTY, PRIVATE_DATA->parked ? MOUNT_PARK_PARKED_ITEM : MOUNT_PARK_UNPARKED_ITEM, true);
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_PARK_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	}
+	indigo_cancel_pending_handler(device, mount_home_handler);
+	if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+		MOUNT_HOME_ITEM->sw.value = false;
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_HOME_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	}
 	PRIVATE_DATA->abort_motion = true;
 	synscan_axis_command(device, 'L', SYNSCAN_AXIS_RA);
 	synscan_axis_command(device, 'L', SYNSCAN_AXIS_DEC);
@@ -1819,6 +1839,15 @@ static void mount_abort_motion_handler(indigo_device *device) {
 	PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
 	PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_IDLE;
 	PRIVATE_DATA->homed = false;
+	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	}
+	if (MOUNT_MOTION_RA_PROPERTY->state == INDIGO_BUSY_STATE) {
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	}
+	if (MOUNT_MOTION_DEC_PROPERTY->state == INDIGO_BUSY_STATE) {
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	}
 	synscan_update_mount_state(device);
 	//- mount.MOUNT_ABORT_MOTION.on_change
 	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
@@ -2063,7 +2092,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_DEC_PROPERTY, mount_motion_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_ABORT_MOTION_PROPERTY, mount_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(MOUNT_ABORT_MOTION_PROPERTY, mount_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_POLARSCOPE_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_POLARSCOPE_PROPERTY, mount_polarscope_handler);
@@ -2381,6 +2410,7 @@ static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.CCD_ABORT_EXPOSURE.on_change
 	if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_cancel_pending_handler(device, aux_ccd_exposure_handler);
 		indigo_cancel_pending_handler(device, aux_timer_callback);
 		synscan_set_snap_port(device, false);
 		INDIGO_UPDATE_PROPERTY_STATE(CCD_EXPOSURE_PROPERTY, INDIGO_ALERT_STATE, NULL);
@@ -2451,7 +2481,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, aux_ccd_abort_exposure_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, aux_ccd_abort_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, aux_ccd_exposure_handler);

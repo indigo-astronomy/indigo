@@ -7,6 +7,7 @@
 #include <indigo_drivers/mount_nexstaraux/indigo_mount_nexstaraux.h>
 
 #include "serial_simulator_test_common.h"
+#include "abort_queue_test_common.h"
 
 #ifndef MOUNT_NEXSTARAUX_SIMULATOR_EXECUTABLE
 #define MOUNT_NEXSTARAUX_SIMULATOR_EXECUTABLE "build/integration/mount_nexstaraux_simulator"
@@ -53,6 +54,8 @@ static void nexstaraux_mount_passes_tcp_compliance_checks(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstaraux_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+
+	SERIAL_CHECK_TRUE(check_queued_abort(nexstaraux_mount.device_name, "MOUNT_PARK", "PARKED", 0, true, "MOUNT_ABORT_MOTION", "ABORT_MOTION", true));
 
 cleanup:
 	if (context.connected) {

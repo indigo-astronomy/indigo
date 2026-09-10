@@ -92,6 +92,9 @@ driver asi {
 		}
 	}
 	code {
+		static void focuser_position_handler(indigo_device *device);
+		static void focuser_steps_handler(indigo_device *device);
+
 		static void split_device_name(const char *full_name, char *model, char *suffix) {
 			snprintf(model, 64, "%s", full_name);
 			suffix[0] = 0;
@@ -685,6 +688,12 @@ driver asi {
 		}
 		inherited FOCUSER_ABORT_MOTION {
 			on_change {
+				indigo_cancel_pending_handler(device, focuser_position_handler);
+				indigo_cancel_pending_handler(device, focuser_steps_handler);
+				if (!PRIVATE_DATA->moving && (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)) {
+					INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
+					INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
+				}
 				FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 				int res = EAFStop(PRIVATE_DATA->dev_id);
 				if (res != EAF_SUCCESS) {

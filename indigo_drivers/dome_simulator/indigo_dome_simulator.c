@@ -51,6 +51,10 @@ typedef struct {
 
 //+ code
 
+static void dome_horizontal_coordinates_handler(indigo_device *device);
+static void dome_park_handler(indigo_device *device);
+static void dome_steps_handler(indigo_device *device);
+
 static void dome_shutter_finalizer(indigo_device *device) {
 	DOME_STATE_OPEN_ITEM->light.value = DOME_SHUTTER_OPENED_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 	indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
@@ -204,12 +208,15 @@ static void dome_steps_handler(indigo_device *device) {
 static void dome_abort_motion_handler(indigo_device *device) {
 	DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ dome.DOME_ABORT_MOTION.on_change
-	if (DOME_ABORT_MOTION_ITEM->sw.value && DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+	if (DOME_ABORT_MOTION_ITEM->sw.value && (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE || DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		indigo_cancel_pending_handler(device, dome_horizontal_coordinates_handler);
+		indigo_cancel_pending_handler(device, dome_steps_handler);
+		indigo_cancel_pending_handler(device, dome_park_handler);
+		indigo_cancel_pending_handler(device, dome_timer_callback);
 		DOME_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
 		indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
-		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+		dome_timer_callback(device);
 	}
 	DOME_ABORT_MOTION_ITEM->sw.value = false;
 	//- dome.DOME_ABORT_MOTION.on_change
@@ -301,7 +308,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_STEPS_PROPERTY, dome_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_ABORT_MOTION_PROPERTY, dome_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(DOME_ABORT_MOTION_PROPERTY, dome_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_SHUTTER_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_SHUTTER_PROPERTY, dome_shutter_handler);
