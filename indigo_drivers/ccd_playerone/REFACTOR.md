@@ -256,3 +256,11 @@ The user confirmed that only Mars-C II is available. Cooled/other models, OEM/Sa
 Scope correction: driver tests exclude framework encoders, video-container validation and upload-destination matrices. The reduced 44-case suite retains SDK pixel formats and RAW handoff assertions. The modified frame-type/exposure-unit, finite-stream-count and RAW/ROI/bin cases passed after this reduction. Hardware tests were not repeated.
 
 The current fake SDK suite has 45 cases. Image inputs use generated noise, with exact Bayer-pattern mapping and continuous SDK exposure-mode assertions. All 45 normal fake SDK cases pass after this extension; hardware tests were not repeated.
+
+## Shared exposure countdown follow-up
+
+Ordinary exposures now call indigo_ccd_exposure_setup(), which owns image/file BUSY setup and the shared background countdown. acquisition_finalizer retains its monotonic readout deadline and SDK polling but publishes intermediate remaining time only for streaming, rounded upward to whole seconds. Subsecond exposure requests and the continuous-SDK Saturn workaround are preserved. No driver version, generator implementation or locks changed.
+
+The new fake-SDK case `Shared countdown progresses with blocked device queue` deliberately blocks the camera queue during a 2.2-second exposure and verifies that the shared countdown still advances to an integral remaining value. It then verifies frame completion and a subsequent 0.01-second exposure. Physical camera validation was not repeated for this change.
+
+Validation: the new blocked-device-queue countdown regression fails against the HEAD driver without this change and passes with it. The complete fake-SDK rerun passes all 48 test bodies, but its exit status remains failure because cleanup of Final slow_initialization_and_polling records a gate timeout. That same cleanup failure reproduces against the unchanged HEAD driver in isolation. The first full run additionally saw a cooler failure-state assertion; its isolated rerun and the second full run pass. All abort-filtered cases pass. Cleanup failures now identify their case in the test output. No full-suite success or hardware validation is claimed.

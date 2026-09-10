@@ -2124,6 +2124,31 @@ static void bayer_mapping_and_exposure_mode(void) {
 	}
 }
 
+static void shared_countdown_with_blocked_device_queue(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 2.2, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_count(&cameras[0].starts, 1));
+	arm_gate(&queue_gate);
+	indigo_execute_handler(logical[0], block_queue);
+	ASSERT_TRUE(wait_count(&queue_gate.entered, 1));
+	bool progressed = false;
+	double deadline = indigo_monotonic_time() + 3;
+	while (indigo_monotonic_time() < deadline) {
+		double remaining = number_value(0, "CCD_EXPOSURE", "EXPOSURE");
+		if (remaining >= 0 && remaining <= 1 && remaining == ceil(remaining)) {
+			progressed = true;
+			break;
+		}
+		indigo_usleep(10000);
+	}
+	release_gate(&queue_gate);
+	ASSERT_TRUE(progressed);
+	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(1, atomic_load(&blobs));
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_count(&blobs, 2));
+}
+
 int main(int argc, char **argv) {
 	bus_thread = pthread_self();
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -2138,6 +2163,7 @@ int main(int argc, char **argv) {
 		{ "Guider pulse and shared connection baseline", guider_and_sharing },
 		{ "Finite streaming baseline", finite_stream },
 		{ "SDK short wait returns OPERATION_FAILED before frame", short_readout_retry },
+		{ "Shared countdown progresses with blocked device queue", shared_countdown_with_blocked_device_queue },
 		{ "Guiding and abort during long exposure then reacquire", abort_long_exposure },
 		{ "Readout error and subsequent acquisition", failed_readout_recovers },
 		{ "Open, Init and config failure rollback", connection_rollback },
@@ -2195,7 +2221,10 @@ int main(int argc, char **argv) {
 		result |= indigo_run_tests("Player One camera fake SDK", tests + i, 1);
 		int before_cleanup = indigo_test_failures;
 		end_fixture();
-		result |= indigo_test_failures != before_cleanup;
+		if (indigo_test_failures != before_cleanup) {
+			fprintf(stderr, "Cleanup failed for %s\n", tests[i].name);
+			result = 1;
+		}
 		alarm(0);
 	}
 	if (!selected) {

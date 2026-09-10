@@ -347,8 +347,8 @@ driver playerone {
 			indigo_property *property = PRIVATE_DATA->streaming ? CCD_STREAMING_PROPERTY : CCD_EXPOSURE_PROPERTY;
 			indigo_item *item = PRIVATE_DATA->streaming ? CCD_STREAMING_EXPOSURE_ITEM : CCD_EXPOSURE_ITEM;
 			if (remaining > 0) {
-				if (ceil(remaining) != ceil(item->number.value)) {
-					item->number.value = remaining;
+				if (PRIVATE_DATA->streaming && ceil(remaining) != ceil(item->number.value)) {
+					item->number.value = ceil(remaining);
 					indigo_update_property(device, property, NULL);
 				}
 				indigo_execute_handler_in(device, fmin(remaining, 1), acquisition_finalizer);
@@ -1060,14 +1060,7 @@ driver playerone {
 				indigo_use_shortest_exposure_if_bias(device);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-				if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-				}
-				if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-					CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-				}
+				indigo_ccd_exposure_setup(device);
 				acquisition_start(device, false); // acquisition_finalizer owns completion
 			}
 		}
