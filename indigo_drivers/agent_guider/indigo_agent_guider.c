@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2025 CloudMakers, s. r. o.
+// Copyright (c) 2019-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -724,8 +724,29 @@ static bool capture_frame(indigo_device *device) {
 		}
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->last_image_mutex);
 		indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
-		if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
-			indigo_send_message(device, ALERT_PROPERTY, "RAW image not received");
+		if (header == NULL || DEVICE_PRIVATE_DATA->last_image_size < (long)sizeof(indigo_raw_header)) {
+			indigo_send_message(device, ALERT_PROPERTY, "Incomplete RAW image header");
+			return false;
+		}
+		size_t bytes_per_pixel;
+		switch (header->signature) {
+			case INDIGO_RAW_MONO8: bytes_per_pixel = 1; break;
+			case INDIGO_RAW_MONO16: bytes_per_pixel = 2; break;
+			case INDIGO_RAW_RGB24: bytes_per_pixel = 3; break;
+			case INDIGO_RAW_RGB48: bytes_per_pixel = 6; break;
+			default:
+				indigo_send_message(device, ALERT_PROPERTY, "RAW image not received");
+				return false;
+		}
+		// Image analysis uses signed int dimensions/offsets; Bayer metadata uses an int length.
+		// Bound both the pixels and the complete BLOB before multiplying or inspecting metadata.
+		if (header->width == 0 || header->height == 0 || header->width > INT_MAX / bytes_per_pixel || header->height > INT_MAX / bytes_per_pixel / header->width || DEVICE_PRIVATE_DATA->last_image_size > INT_MAX) {
+			indigo_send_message(device, ALERT_PROPERTY, "Invalid RAW image dimensions or size");
+			return false;
+		}
+		size_t pixel_bytes = (size_t)header->width * header->height * bytes_per_pixel;
+		if (pixel_bytes > (size_t)DEVICE_PRIVATE_DATA->last_image_size - sizeof(indigo_raw_header)) {
+			indigo_send_message(device, ALERT_PROPERTY, "Incomplete RAW image pixels");
 			return false;
 		}
 		DEVICE_PRIVATE_DATA->last_width = header->width;

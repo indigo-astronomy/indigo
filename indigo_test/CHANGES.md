@@ -1,5 +1,13 @@
 # INDIGO Test Suite Changes
 
+## Guider Agent RAW validation fix — DRV-124 (2026-09-10)
+
+The driver rejects incomplete RAW headers before reading their fields, unsupported signatures, zero/oversized dimensions and incomplete pixel payloads before Bayer processing or image analysis. Division checks precede multiplication; pixel offsets and total BLOB size must fit the signed-int limits used by image-analysis and Bayer-metadata helpers. Valid trailing metadata remains supported. No property definitions changed. Per user instruction, the agent stays at version `0x0300002C` until DRV-133 is fixed; DRV-124–DRV-133 will be recorded as one combined change.
+
+The suite now contains 66 cases. `truncated raw` checks 1-byte, 4-byte and header-minus-one lengths plus recovery. New `raw dimensions and recovery` covers zero width/height, `UINT32_MAX` width and a 65536 × 65536 product. New `raw payload formats and recovery` checks a payload one byte short for MONO8/MONO16/RGB24/RGB48, then successful guiding with each complete format; complete mono fixtures include a Bayer trailer. `invalid raw` retains the unsupported-signature regression.
+
+Validation: the driver builds with `Makefile.drv`; all four RAW-filtered integration cases pass normally and with AddressSanitizer (`TEST_BUILD=build/drv124-asan`, `GUIDER_TEST_FLAGS='-fsanitize=address -fno-omit-frame-pointer -O1'`). These checks include clean teardown and recovery. The entire agent suite was not rerun for this focused fix; the earlier 64-case results below are historical and DRV-125–DRV-133 remain open. Test build artifacts were removed with `make -C indigo_test test-clean`.
+
 ## Guider Agent integration coverage (2026-09-10)
 
 `integration/test_agent_guider.c` adds 64 independently isolated cases, registered in the normal integration suite and available through `make -C indigo_test test-agent-guider`. To run a subset after building, pass a case-name substring to `indigo_test/build/integration/test_agent_guider`, for example `'calibration'` or `'live dec'`. A missing match returns 2. Failed assertions, child signals/timeouts and teardown failures return nonzero; known production failures are not skipped or accepted as passes.
@@ -36,7 +44,7 @@ The final `make -C indigo_test test-agent-guider` run completed **53/64 cases su
 
 | Open production finding already recorded in `../indigo_drivers/REVIEW.md` | Regression / observed failure |
 | --- | --- |
-| DRV-124 | `truncated raw`: the four-byte RAW BLOB does not terminate cleanly (normal watchdog); AddressSanitizer reports an out-of-bounds header read in `capture_frame()` |
+| DRV-124 (subsequently fixed) | Original `truncated raw` failure is resolved by the RAW validation fix; see the focused RAW validation results above. |
 | DRV-125 | `shutdown active`: normal execution can pass, but AddressSanitizer reports use-after-free in `indigo_restore_switch_state()` after filter-client teardown |
 | DRV-126 | Both single-preview status cases publish IDLE rather than OK/ALERT |
 | DRV-127 | Continuous-preview abort and camera-disconnection cases publish incorrect terminal status |
@@ -85,7 +93,7 @@ Inventory: 150 modules — 2 Complete, 37 Partial, 55 Not audited, 46 No tests, 
 | `agent_astrometry` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_auxiliary` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_config` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `agent_guider` | Hand-written | Production agent/filter + CCD simulator and deterministic image/pulse boundary | Partial | 64 mapped integration cases; normal and AddressSanitizer regressions reproduce open DRV-124–DRV-133. See the Guider Agent integration coverage section for validation and remaining acceptance work. |
+| `agent_guider` | Hand-written | Production agent/filter + CCD simulator and deterministic image/pulse boundary | Partial | 66 mapped integration cases; DRV-124 fixed with 4/4 RAW cases passing normally and under AddressSanitizer; DRV-125–DRV-133 remain open. See the Guider Agent integration coverage section for validation and remaining acceptance work. |
 | `agent_imager` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_mount` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_scripting` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |

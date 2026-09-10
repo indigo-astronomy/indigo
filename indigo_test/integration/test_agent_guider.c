@@ -191,6 +191,10 @@ static bool txt(const char *device, const char *name, const char *item, const ch
 // Synthetic frames and pulse observations replace only the camera/guider boundary.
 // The production agent, bus, filter, image analysis and timers remain in use.
 static atomic_bool synthetic, extended_image, blank_image, invalid_image, short_image, pulse_failure, freeze_motion;
+enum { RAW_COMPLETE, RAW_ZERO_WIDTH, RAW_ZERO_HEIGHT, RAW_LARGE_DIMENSION, RAW_PIXEL_OVERFLOW, RAW_SHORT_PIXELS };
+static atomic_uint raw_format;
+static atomic_int raw_fault;
+static atomic_int short_image_size = 4;
 static indigo_timer *synthetic_timer, *failure_timer;
 static indigo_result (*guider_change)(indigo_device *, indigo_client *, indigo_property *);
 static pthread_mutex_t motion_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -226,12 +230,50 @@ static void synthetic_frame(indigo_device *device) {
 	if (invalid_image || short_image) {
 		indigo_raw_header header = { .signature = invalid_image ? 0 : INDIGO_RAW_MONO16, .width = width, .height = height };
 		CCD_IMAGE_ITEM->blob.value = &header;
-		CCD_IMAGE_ITEM->blob.size = short_image ? 4 : sizeof(header);
+		CCD_IMAGE_ITEM->blob.size = short_image ? short_image_size : sizeof(header);
 		strcpy(CCD_IMAGE_ITEM->blob.format, ".raw");
 		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		CCD_IMAGE_ITEM->blob.value = NULL;
 		CCD_IMAGE_ITEM->blob.size = 0;
+	} else if (raw_format) {
+		unsigned format = raw_format;
+		int bytes = format == INDIGO_RAW_MONO8 ? 1 : format == INDIGO_RAW_MONO16 ? 2 : format == INDIGO_RAW_RGB24 ? 3 : 6;
+		size_t size = sizeof(indigo_raw_header) + (size_t)width * height * bytes;
+		// Preserve a legitimate metadata trailer after complete mono images.
+		const char trailer[] = "BAYERPAT=RGGB";
+		bool bayer = raw_fault == RAW_COMPLETE && bytes <= 2;
+		indigo_raw_header *raw = indigo_safe_malloc(size + sizeof(trailer));
+		*raw = (indigo_raw_header){ .signature = format, .width = width, .height = height };
+		unsigned char *data = (unsigned char *)(raw + 1);
+		for (int i = 0; i < width * height; i++) {
+			for (int channel = 0; channel < (bytes >= 3 ? 3 : 1); channel++) {
+				if (bytes == 1 || bytes == 3) {
+					data[i * bytes + channel] = pixels[i] >> 8;
+				} else {
+					((uint16_t *)data)[i * (bytes / 2) + channel] = pixels[i];
+				}
+			}
+		}
+		if (bayer) {
+			memcpy((char *)raw + size, trailer, sizeof(trailer));
+			size += sizeof(trailer);
+		}
+		switch (raw_fault) {
+			case RAW_ZERO_WIDTH: raw->width = 0; break;
+			case RAW_ZERO_HEIGHT: raw->height = 0; break;
+			case RAW_LARGE_DIMENSION: raw->width = UINT32_MAX; break;
+			case RAW_PIXEL_OVERFLOW: raw->width = raw->height = 65536; break;
+			case RAW_SHORT_PIXELS: size--; break;
+		}
+		CCD_IMAGE_ITEM->blob.value = raw;
+		CCD_IMAGE_ITEM->blob.size = size;
+		strcpy(CCD_IMAGE_ITEM->blob.format, ".raw");
+		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		CCD_IMAGE_ITEM->blob.value = NULL;
+		CCD_IMAGE_ITEM->blob.size = 0;
+		indigo_safe_free(raw);
 	} else {
 		indigo_process_image(device, buffer, width, height, 16, true, true, NULL, false);
 	}
@@ -869,7 +911,43 @@ static void invalid_raw(void) {
 static void truncated_raw(void) {
 	ASSERT_TRUE(configured_guiding());
 	short_image = true;
-	ASSERT_TRUE(run("GUIDING", INDIGO_ALERT_STATE));
+	const int sizes[] = { 1, 4, sizeof(indigo_raw_header) - 1 };
+	for (int i = 0; i < ARRAY_SIZE(sizes); i++) {
+		short_image_size = sizes[i];
+		ASSERT_TRUE(run("GUIDING", INDIGO_ALERT_STATE));
+	}
+	short_image = false;
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(3));
+	ASSERT_TRUE(abort_running());
+}
+
+static void raw_dimensions(void) {
+	ASSERT_TRUE(configured_guiding());
+	raw_format = INDIGO_RAW_MONO16;
+	for (int fault = RAW_ZERO_WIDTH; fault <= RAW_PIXEL_OVERFLOW; fault++) {
+		raw_fault = fault;
+		ASSERT_TRUE(run("GUIDING", INDIGO_ALERT_STATE));
+		ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_FAILED, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	}
+	raw_fault = RAW_COMPLETE;
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(3));
+	ASSERT_TRUE(abort_running());
+}
+
+static void raw_payload_formats(void) {
+	ASSERT_TRUE(configured_guiding());
+	const unsigned formats[] = { INDIGO_RAW_MONO8, INDIGO_RAW_MONO16, INDIGO_RAW_RGB24, INDIGO_RAW_RGB48 };
+	for (int i = 0; i < ARRAY_SIZE(formats); i++) {
+		raw_format = formats[i];
+		raw_fault = RAW_SHORT_PIXELS;
+		ASSERT_TRUE(run("GUIDING", INDIGO_ALERT_STATE));
+		raw_fault = RAW_COMPLETE;
+		ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+		ASSERT_TRUE(frames(3));
+		ASSERT_TRUE(abort_running());
+	}
 }
 
 static void pulse_error(void) {
@@ -1447,6 +1525,8 @@ static const indigo_test_case tests[] = {
 	{ "exposure failure guiding", exposure_failure_guiding },
 	{ "invalid raw", invalid_raw },
 	{ "truncated raw", truncated_raw },
+	{ "raw dimensions and recovery", raw_dimensions },
+	{ "raw payload formats and recovery", raw_payload_formats },
 	{ "pulse error", pulse_error },
 	{ "camera disconnect", camera_disconnect },
 	{ "dither abort", dither_abort },
@@ -1496,7 +1576,7 @@ int main(int argc, char **argv) {
 		}
 		pid_t child = fork();
 		if (child == 0) {
-			alarm(strstr(tests[i].name, "truncated raw") ? 10 : 120);
+			alarm(120);
 			bool ready = setup();
 			int status = ready ? indigo_run_tests("Guider Agent integration", tests + i, 1) : 1;
 			cleanup();
