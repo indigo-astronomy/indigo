@@ -488,6 +488,9 @@ static void save_config(indigo_device *device) {
 }
 
 static bool validate_related_agent(indigo_device *device, indigo_property *info_property, int mask) {
+	if (!strncmp(info_property->device, "Imager Agent", 12)) {
+		return true;
+	}
 	if (!strncmp(info_property->device, "Auxiliary Agent", 15)) {
 		return true;
 	}
