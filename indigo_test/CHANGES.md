@@ -1183,3 +1183,15 @@ reply directly from the production ACK branch fixes it; `lx200 ack`,
 LX200 worker and a scripted portable transport, without sockets. Built macOS
 arm64/x86_64 and executed on arm64. Version remains `0x03000016`; DRV-137 is
 closed in the driver review. Removed build artifacts with `test-clean`.
+
+
+### DRV-138 fixed — LX200 zero-degree declination sign (2026-09-10)
+
+Expanded `lx200 positive zero` to 12 full/minute-only Sd inputs covering signed
+subdegree coordinates, seconds-only offsets, signed nonzero degrees and zero.
+The test checks exact success replies and numerical target declination after MS.
+It fails before the fix and passes after both parser branches recognize the
+explicit minus prefix for -00 while retaining +00 as positive. `LX200 protocol`
+and `lx200 input matrix` also pass (3/3 targeted cases). Built macOS arm64/x86_64
+and executed hardware-free on arm64. Version remains `0x03000016` per the user;
+DRV-138 is closed. Removed generated test artifacts with `test-clean`.

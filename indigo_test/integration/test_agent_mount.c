@@ -924,13 +924,19 @@ static void lx200_ack(void) {
 static void lx200_positive_zero(void) {
 	CHECK(start_server());
 	CHECK(num(AGENT, "AGENT_LX200_CONFIGURATION", "EPOCH", 2000));
-	exchange(":Sr05:00#:Sd+00*30:00#:MS#");
-	CHECK(!strcmp(lx_output, "110"));
-	indigo_property *p = snapshot(AGENT, TARGET);
-	CHECK(p);
-	double dec = indigo_get_item(p, "DEC")->number.target;
-	indigo_release_property(p);
-	CHECK(dec == 0.5);
+	const char *coordinates[] = { "+00*30:00", "-00*30:00", "+00*30", "-00*30", "+00*00:30", "-00*00:30", "+12*30:00", "-12*30:00", "+12*30", "-12*30", "+00*00:00", "-00*00:00" };
+	const double expected[] = { 0.5, -0.5, 0.5, -0.5, 1.0 / 120, -1.0 / 120, 12.5, -12.5, 12.5, -12.5, 0, 0 };
+	for (int i = 0; i < ARRAY_SIZE(coordinates); i++) {
+		char command[128];
+		snprintf(command, sizeof(command), ":Sr05:00#:Sd%s#:MS#", coordinates[i]);
+		exchange(command);
+		CHECK(!strcmp(lx_output, "110"));
+		indigo_property *p = snapshot(AGENT, TARGET);
+		CHECK(p);
+		double dec = indigo_get_item(p, "DEC")->number.target;
+		indigo_release_property(p);
+		CHECK(fabs(dec - expected[i]) < 1e-10);
+	}
 }
 
 static void lx200_truncated_command(void) {

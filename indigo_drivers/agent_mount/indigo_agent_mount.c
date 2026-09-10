@@ -785,10 +785,10 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 				double s = 0;
 				char c;
 				if (sscanf(buffer_in + 2, "%d%c%d%c%lf", &d, &c, &m, &c, &s) == 5) {
-					DEVICE_PRIVATE_DATA->mount_requested_dec = d > 0 ? d + m/60.0 + s/3600.0 : d - m/60.0 - s/3600.0;
+					DEVICE_PRIVATE_DATA->mount_requested_dec = d < 0 || buffer_in[2] == '-' ? d - m / 60.0 - s / 3600.0 : d + m / 60.0 + s / 3600.0;
 					strcpy(buffer_out, "1");
 				} else if (sscanf(buffer_in + 2, "%d%c%d", &d, &c, &m) == 3) {
-					DEVICE_PRIVATE_DATA->mount_requested_dec = d > 0 ? d + m/60.0 : d - m/60.0;
+					DEVICE_PRIVATE_DATA->mount_requested_dec = d < 0 || buffer_in[2] == '-' ? d - m / 60.0 : d + m / 60.0;
 					strcpy(buffer_out, "1");
 				} else {
 					strcpy(buffer_out, "0");

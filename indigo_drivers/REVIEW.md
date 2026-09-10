@@ -168,7 +168,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-135 | Medium | `agent_mount/indigo_agent_mount.c:1094` | Negative imager OBJCTDEC now converts the fractional declination to minutes before truncating to an integer. Expanded `negative fits` covers -12.5, -12.125, -0.125 and -90 degrees, including nonzero seconds and a negative subdegree sign. | Closed (fixed) |
 | DRV-136 | Medium | `agent_mount/indigo_agent_mount.c:1105`, `agent_mount/indigo_agent_mount.c:1156` | Guider OBJCTDEC and imager SITELAT/SITELONG now format the sign from the original coordinate separately from the absolute integer degrees, preserving negative subdegree values. Expanded regressions cover negative/positive subdegree and multi-degree coordinates, zero and nonzero seconds, including both site axes. | Closed (fixed) |
 | DRV-137 | Medium | `agent_mount/indigo_agent_mount.c:738` | LX200 ACK byte 0x06 now writes its single-byte P reply immediately through indigo_uni_write, instead of leaving it in the output buffer handled only by colon commands. Expanded ACK regression covers single/repeated ACKs and ACKs interleaved with identification, separators and unknown commands. All three targeted LX200 cases pass. | Closed (fixed) |
-| DRV-138 | Medium | `agent_mount/indigo_agent_mount.c:788` | LX200 Sd chooses the sign with `d > 0`; positive declinations beginning with +00 are decoded as negative. `:Sd+00*30:00#` followed by MS sets a -0.5 degree target. Reproduced by `lx200 positive zero`. | Open |
+| DRV-138 | Medium | `agent_mount/indigo_agent_mount.c:788` | LX200 Sd now recognizes a negative degree value or an explicit minus prefix, preserving -00 while decoding +00 as positive in both full and minute-only formats. Expanded `lx200 positive zero` passes 12 signed-coordinate fixtures; the protocol and input-matrix cases also pass. | Closed (fixed) |
 | DRV-139 | Medium | `agent_mount/indigo_agent_mount.c:745` | EOF inside an LX200 command only breaks the inner read loop; dispatch is skipped for -1 but not for EOF (0), and complete # termination is not required. A truncated `:Sr05:30` is accepted with reply 1. Reproduced by `lx200 truncated command`. | Open |
 | DRV-140 | Medium | `agent_mount/indigo_agent_mount.c:774` | LX200 Sr/Sd accepts out-of-protocol hour, degree and minute fields and responds with success. Requests for RA 25h, DEC +91 degrees or 75 minutes all return 1. This is parsing of transport input, before public bus numeric validation. Reproduced by `lx200 invalid coordinates`. | Open |
 | DRV-141 | Medium | `agent_mount/indigo_agent_mount.c:888` | Starting LX200 publishes OK before opening the listener and unconditionally publishes STOPPED/OK after the open routine returns, including bind/open failure. Reproduced by `lx200 bind failure` with a failing socket boundary. | Open |
@@ -1229,3 +1229,15 @@ and an ACK following an unknown command, with exact expected response bytes.
 macOS arm64/x86_64 and executed hardware-free on arm64 through the scripted
 transport boundary. Version remains `0x03000016` as requested. DRV-138 onward
 remain separate open findings.
+
+### DRV-138 fix validation — 2026-09-10
+
+Both Sd parsing branches now distinguish an explicit -00 prefix from +00 instead
+of classifying every zero-degree value as negative. The expanded regression failed
+before the fix and passes afterward for 12 inputs: signed subdegree values in full
+and minute-only formats, seconds-only offsets, nonzero degrees and zero. It checks
+both the success replies and published target declination at epoch 2000.
+`LX200 protocol` and `lx200 input matrix` also pass (3/3 targeted cases). Built
+macOS arm64/x86_64 and executed on arm64 using the scripted transport boundary.
+Version remains `0x03000016` as requested; framing and numeric validation findings
+DRV-139/140 remain separate and open.
