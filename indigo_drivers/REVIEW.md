@@ -165,7 +165,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-132 | Medium | `agent_guider/indigo_agent_guider.c:1226` | Pulse completion now requires OK from each requested axis; ALERT or remaining BUSY after the existing timeout propagates failure. Unused-axis states are ignored, abort interrupts the completion wait, and calibration marks failure without launching subsequent guiding. CONTINUE keeps guiding active after a pulse error, pauses briefly and computes the next correction from a fresh frame; FAIL terminates. Transient RA/DEC recovery tests verify successful corrections without restarting guiding. Combined fix version is now `0x0300002D`. | Closed (fixed) |
 | DRV-133 | Medium | `agent_guider/indigo_agent_guider.c:1819` | Every accepted guiding frame now updates drift/correction statistics, correction histories and PPEC, including exact zero drift. Regression checks cover displacement returning to zero, decreasing short-term RMSE, no unnecessary PI pulses and PPEC learning on zero drift. Driver version is `0x0300002D` for the combined fixes; deferred DRV-130 remains open. | Closed (fixed) |
 | DRV-134 | Medium | `agent_mount/indigo_agent_mount.c:1485` | Dome deselection now clears shutter flags, horizontal-coordinate state, all dome state lights and capabilities, and resets `dome_state_defined` to false so a reselected legacy dome can report park/shutter completion. Version `0x03000017`; all three dome-reselection regressions pass, including modern state reporting, plus legacy/modern operation matrices, selection orders and slaving. | Closed (fixed) |
-| DRV-135 | Medium | `agent_mount/indigo_agent_mount.c:1094` | Negative imager OBJCTDEC minutes are computed after truncating declination to an integer, making the minutes always zero. A reported -12.5 degrees produces `'-12 00 00'` instead of `'-12 30 00'`. Reproduced by `negative fits`. | Open |
+| DRV-135 | Medium | `agent_mount/indigo_agent_mount.c:1094` | Negative imager OBJCTDEC now converts the fractional declination to minutes before truncating to an integer. Expanded `negative fits` covers -12.5, -12.125, -0.125 and -90 degrees, including nonzero seconds and a negative subdegree sign. | Closed (fixed) |
 | DRV-136 | Medium | `agent_mount/indigo_agent_mount.c:1105`, `agent_mount/indigo_agent_mount.c:1156` | Formatting signed coordinates using `(int)value` loses the minus sign for values between -1 and 0. Guider OBJCTDEC and imager SITELAT/SITELONG can therefore describe the opposite side of the equator/meridian. Reproduced with -0.5 degrees by `negative zero fits` and `negative site fits`. | Open |
 | DRV-137 | Medium | `agent_mount/indigo_agent_mount.c:737` | LX200 ACK byte 0x06 sets the reply to P, but the write is inside the colon-command branch at line 872. The client receives no ACK reply. Reproduced through the unchanged worker with `lx200 ack`. | Open |
 | DRV-138 | Medium | `agent_mount/indigo_agent_mount.c:788` | LX200 Sd chooses the sign with `d > 0`; positive declinations beginning with +00 are decoded as negative. `:Sd+00*30:00#` followed by MS sets a -0.5 degree target. Reproduced by `lx200 positive zero`. | Open |
@@ -1186,3 +1186,16 @@ each), `selection orders` and `slaving`. Compilation covered macOS arm64/x86_64;
 execution was hardware-free on arm64. The original 54-case coverage/results above
 remain the pre-fix baseline; the entire suite was not rerun for this scoped fix.
 DRV-135–DRV-147 remain open, including individual-property deletion (DRV-146).
+
+### DRV-135 fix validation — 2026-09-10
+
+The imager's negative OBJCTDEC minute expression now multiplies by 60 before
+integer truncation, matching the positive-coordinate path. The expanded
+`negative fits` regression passes four exact fixtures: -12.5, -12.125, -0.125
+and -90 degrees. `related agents` passes its positive FITS, coordinate-forwarding
+and related-process checks on an isolated retry. The initial pre-fix regression
+run and first related-agent run hit the child watchdog during setup, consistent
+with the unresolved timing observation above; neither produced a new numerical
+assertion result. Compilation succeeded for macOS arm64/x86_64; execution was on
+arm64. Version remains `0x03000016` at the user's request, with the version bump
+deferred until the final fix. DRV-136 is separate and remains open.

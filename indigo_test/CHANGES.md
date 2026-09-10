@@ -1139,3 +1139,16 @@ production source for macOS arm64/x86_64; ran on arm64. No property/item schema
 changed. DRV-134 is closed in `../indigo_drivers/REVIEW.md`; the other findings and
 the pre-fix full-suite coverage measurements above are unchanged. Test artifacts
 were removed with `make -C indigo_test test-clean`.
+
+### DRV-135 fixed — negative imager FITS declination (2026-09-10)
+
+Expanded `negative fits` with exact expected strings for -12.5, -12.125, -0.125
+and -90 degrees, checking fractional minutes, nonzero seconds, negative subdegree
+sign and the pole. All four fixtures pass after moving minute conversion before
+integer truncation in the production imager OBJCTDEC formatting. `related agents`
+also passes on an isolated retry. Two earlier invocations (pre-fix `negative fits`
+and the initial `related agents` check) hit the existing setup watchdog issue;
+no new root cause is claimed. Built macOS arm64/x86_64 and executed on arm64.
+The user requested deferring the version bump until the last fix, so the driver
+stays at `0x03000016`. DRV-135 is closed; DRV-136's guider/site sign issue remains
+open. Test artifacts were removed with `make -C indigo_test test-clean`.

@@ -1091,7 +1091,7 @@ static void handle_mount_change(indigo_device *device) {
 		}
 		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTRA", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_ra), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 3600)) % 60);
 		if (DEVICE_PRIVATE_DATA->mount_dec < 0) {
-			indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTDEC", "'-%d %02d %02d'", (int)(-DEVICE_PRIVATE_DATA->mount_dec), ((int)(-DEVICE_PRIVATE_DATA->mount_dec) * 60) % 60, ((int)(-DEVICE_PRIVATE_DATA->mount_dec * 3600)) % 60);
+			indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTDEC", "'-%d %02d %02d'", (int)(-DEVICE_PRIVATE_DATA->mount_dec), ((int)(-DEVICE_PRIVATE_DATA->mount_dec * 60)) % 60, ((int)(-DEVICE_PRIVATE_DATA->mount_dec * 3600)) % 60);
 		} else {
 			indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTDEC", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(DEVICE_PRIVATE_DATA->mount_dec * 60)) % 60, ((int)(DEVICE_PRIVATE_DATA->mount_dec * 3600)) % 60);
 		}

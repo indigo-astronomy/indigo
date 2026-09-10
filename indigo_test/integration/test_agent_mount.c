@@ -974,8 +974,12 @@ static void related_agents(void) {
 static void negative_fits(void) {
 	CHECK(select_peer(0, false, false));
 	CHECK(select_peer(5, false, false));
-	emit_number(0, "MOUNT_EQUATORIAL_COORDINATES", "DEC", -12.5);
-	CHECK(!strcmp(header_value(5, "OBJCTDEC"), "'-12 30 00'"));
+	const double declinations[] = { -12.5, -12.125, -0.125, -90 };
+	const char *expected[] = { "'-12 30 00'", "'-12 07 30'", "'-0 07 30'", "'-90 00 00'" };
+	for (int i = 0; i < ARRAY_SIZE(declinations); i++) {
+		emit_number(0, "MOUNT_EQUATORIAL_COORDINATES", "DEC", declinations[i]);
+		CHECK(!strcmp(header_value(5, "OBJCTDEC"), expected[i]));
+	}
 }
 
 static void negative_zero_fits(void) {
