@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x03000008
+#define DRIVER_VERSION 0x03000009
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -119,7 +119,8 @@ static void save_config(indigo_device *device) {
 }
 
 static bool configuration_filter(const char *name) {
-	return strstr(name, EXTENSION) != NULL;
+	size_t length = strlen(name);
+	return length > strlen(EXTENSION) && !strcmp(name + length - strlen(EXTENSION), EXTENSION);
 }
 
 static void populate_list(indigo_device *device) {
@@ -128,10 +129,7 @@ static void populate_list(indigo_device *device) {
 	if (count >= 0) {
 		AGENT_CONFIG_LOAD_PROPERTY = indigo_resize_property(AGENT_CONFIG_LOAD_PROPERTY, count);
 		for (int i = 0; i < count; i++) {
-			char *ext = strstr(list[i], EXTENSION);
-			if (ext) {
-				*ext = 0;
-			}
+			list[i][strlen(list[i]) - strlen(EXTENSION)] = 0;
 			indigo_init_switch_item(AGENT_CONFIG_LOAD_PROPERTY->items + i, list[i], list[i], false);
 			free(list[i]);
 		}

@@ -553,9 +553,11 @@ static void malformed_file(void) {
 static void scan_suffix(void) {
 	ASSERT_TRUE(fixture("real.saved", ""));
 	ASSERT_TRUE(fixture("backup.saved.bak", ""));
+	ASSERT_TRUE(fixture("embedded.saved.name.saved", ""));
 	ASSERT_TRUE(fixture("unrelated.config", ""));
 	refresh();
 	ASSERT_TRUE(has_item(LOAD, "real", NULL, 0));
+	ASSERT_TRUE(has_item(LOAD, "embedded.saved.name", NULL, 0));
 	ASSERT_FALSE(has_item(LOAD, "backup", NULL, -1));
 	ASSERT_FALSE(has_item(LOAD, "unrelated.config", NULL, -1));
 }
