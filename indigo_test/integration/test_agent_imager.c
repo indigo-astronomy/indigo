@@ -859,13 +859,22 @@ static void shutdown_while_paused(void) {
 
 static void camera_disconnect_and_recover(void) {
 	ASSERT_TRUE(connect_camera());
-	ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_BATCH", "EXPOSURE", 1));
-	ASSERT_TRUE(run("PREVIEW", INDIGO_BUSY_STATE));
-	ASSERT_TRUE(wait_state(CAMERA, "CCD_EXPOSURE", 0, INDIGO_BUSY_STATE));
-	ASSERT_TRUE(sw(CAMERA, "CONNECTION", "DISCONNECTED", true, INDIGO_OK_STATE));
-	ASSERT_TRUE(wait_state(AGENT, "AGENT_START_PROCESS", 0, -1));
-	ASSERT_TRUE(connect_camera());
-	ASSERT_TRUE(run("PREVIEW_1", INDIGO_OK_STATE));
+	const char *modes[] = { "PREVIEW", "EXPOSURE", "STREAMING" };
+	for (int i = 0; i < ARRAY_SIZE(modes); i++) {
+		ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_BATCH", "EXPOSURE", 2));
+		const char *property = i == 2 ? "CCD_STREAMING" : "CCD_EXPOSURE";
+		unsigned exposure = revision(CAMERA, property);
+		ASSERT_TRUE(run(modes[i], INDIGO_BUSY_STATE));
+		ASSERT_TRUE(wait_state(CAMERA, property, exposure, INDIGO_BUSY_STATE));
+		unsigned process = revision(AGENT, "AGENT_START_PROCESS");
+		ASSERT_TRUE(sw(CAMERA, "CONNECTION", "DISCONNECTED", true, INDIGO_OK_STATE));
+		ASSERT_TRUE(wait_state(AGENT, "AGENT_START_PROCESS", process, i == 0 ? INDIGO_OK_STATE : INDIGO_ALERT_STATE));
+		ASSERT_EQ_INT(0, value(AGENT, "AGENT_START_PROCESS", modes[i]));
+		ASSERT_TRUE(connect_camera());
+		unsigned images = blobs(CAMERA);
+		ASSERT_TRUE(run(i == 2 ? "STREAMING" : "PREVIEW_1", INDIGO_OK_STATE));
+		ASSERT_EQ_INT(images + 1, blobs(CAMERA));
+	}
 }
 
 static void selection_regions_binning_and_subframe(void) {

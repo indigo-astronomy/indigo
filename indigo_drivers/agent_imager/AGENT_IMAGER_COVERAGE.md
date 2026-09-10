@@ -96,3 +96,7 @@ The streaming-failure regression failed before the fix and passes afterward for 
 ## DRV-114 follow-up
 
 The expanded external-shutter routing case failed before the fix and passes afterward for preview and exposure batch. It checks camera/shutter abort request counts, shutter terminal state and switch reset, reacquisition, and camera-only abort after shutter deselection. General abort/reacquire and two-agent barrier cases also pass (three focused cases). The shutter is a public-bus test peer; no physical shutter validation or new full-suite coverage measurement is claimed.
+
+## DRV-115 follow-up
+
+The camera-disconnect regression failed before the fix and passes afterward for preview, exposure batch and streaming, with bounded completion, cleared start switch, reconnection and successful acquisition in each case. Preview preserves its existing completion state and retry timing; failed batches publish ALERT. Retry exhaustion, streaming failure and abort/reacquire also pass (four focused cases). Prior full-suite totals and coverage measurements remain historical.

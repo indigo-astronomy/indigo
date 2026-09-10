@@ -3738,7 +3738,12 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 	if (device == FILTER_CLIENT_CONTEXT->device) {
 		if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME) || *property->name == 0) {
 			DEVICE_PRIVATE_DATA->has_camera = false;
-		} else if (!strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME) || *property->name == 0) {
+			DEVICE_PRIVATE_DATA->exposure_state = INDIGO_ALERT_STATE;
+		}
+		if (!strcmp(property->name, CCD_STREAMING_PROPERTY_NAME) || *property->name == 0) {
+			DEVICE_PRIVATE_DATA->streaming_state = INDIGO_ALERT_STATE;
+		}
+		if (!strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME) || *property->name == 0) {
 			*CLIENT_PRIVATE_DATA->current_folder = 0;
 			update_disk_usage(FILTER_CLIENT_CONTEXT->device);
 		}
