@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x03000017
+#define DRIVER_VERSION 0x03000018
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -105,6 +105,10 @@ static void replace_spaces(char *str) {
 		if (isspace(*str)) *str = '_';
 		str++;
 	}
+}
+
+static bool configuration_name_valid(const char *name) {
+	return *name && strcmp(name, ".") && strcmp(name, "..") && !strpbrk(name, "/\\:");
 }
 
 static void save_config(indigo_device *device) {
@@ -565,7 +569,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(AGENT_CONFIG_SAVE_PROPERTY, property, false);
-		if (*AGENT_CONFIG_SAVE_NAME_ITEM->text.value) {
+		if (configuration_name_valid(AGENT_CONFIG_SAVE_NAME_ITEM->text.value)) {
 			replace_spaces(AGENT_CONFIG_SAVE_NAME_ITEM->text.value);
 			if (AGENT_CONFIG_SETUP_AUTOSAVE_ITEM->sw.value) {
 				for (int i = 0; i < MAX_AGENTS; i++) {
@@ -665,7 +669,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_property_copy_values(AGENT_CONFIG_DELETE_PROPERTY, property, false);
 		replace_spaces(AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
-		if (strchr(AGENT_CONFIG_DELETE_NAME_ITEM->text.value, '/')) {
+		if (!configuration_name_valid(AGENT_CONFIG_DELETE_NAME_ITEM->text.value)) {
 			indigo_send_message(device, ALERT_PROPERTY, "Invalid configuration name '%s'", AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
 			AGENT_CONFIG_DELETE_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {

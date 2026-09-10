@@ -771,7 +771,14 @@ static void concurrent_remove(void) {
 }
 
 static void save_path_separator(void) {
-	ASSERT_TRUE(text_change(SAVE, "../outside", INDIGO_ALERT_STATE));
+	const char *names[] = { "../outside", "..\\outside", "/absolute", "C:outside", "a/b", "a\\b", ".", ".." };
+	for (int i = 0; i < ARRAY_SIZE(names); i++) {
+		ASSERT_TRUE(text_change(SAVE, names[i], INDIGO_ALERT_STATE));
+		ASSERT_TRUE(text_change(REMOVE, names[i], INDIGO_ALERT_STATE));
+	}
+	ASSERT_FALSE(exists("../outside.saved"));
+	ASSERT_TRUE(text_change(SAVE, "night..sky", INDIGO_OK_STATE));
+	ASSERT_TRUE(text_change(REMOVE, "night..sky", INDIGO_OK_STATE));
 }
 
 static void discovery_compaction(void) {

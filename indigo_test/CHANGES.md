@@ -1287,7 +1287,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `selection_alert_masked` | Fails; see DRV-167 in the driver review. |
 | `empty_load` | Passes after DRV-163 fix; see driver review validation. |
 | `concurrent_remove` | Passes after DRV-161 fix; see driver review validation. |
-| `save_path_separator` | Fails; see DRV-164 in the driver review. |
+| `save_path_separator` | Passes after DRV-164 fix; see driver review validation. |
 | `discovery_compaction` | Passes; discovery compaction. |
 | `agent_capacity_reuse` | Passes; agent capacity reuse. |
 | `long_related_list` | Passes; long related list. |
