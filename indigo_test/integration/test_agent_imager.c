@@ -597,7 +597,32 @@ static void breakpoint_post_delay(void) {
 
 static void breakpoint_post_batch(void) {
 	ASSERT_TRUE(connect_camera());
-	breakpoint_case("POST_BATCH", 2, 0.01);
+	for (int count = 1; count <= 2; count++) {
+		ASSERT_TRUE(batch(count));
+		ASSERT_TRUE(sw(AGENT, "AGENT_IMAGER_BREAKPOINT", "POST_BATCH", true, INDIGO_OK_STATE));
+		for (int action = 0; action < 2; action++) {
+			unsigned paused = revision(AGENT, "AGENT_PAUSE_PROCESS");
+			unsigned started = revision(AGENT, "AGENT_START_PROCESS");
+			int requested = atomic_load(&camera_requests);
+			unsigned images = blobs(CAMERA);
+			ASSERT_TRUE(run("EXPOSURE", INDIGO_BUSY_STATE));
+			ASSERT_TRUE(wait_state(AGENT, "AGENT_PAUSE_PROCESS", paused, INDIGO_BUSY_STATE));
+			ASSERT_EQ_INT(requested + count, atomic_load(&camera_requests));
+			ASSERT_EQ_INT(images + count, blobs(CAMERA));
+			if (action == 0) {
+				ASSERT_TRUE(sw(AGENT, "AGENT_PAUSE_PROCESS", "PAUSE", false, INDIGO_OK_STATE));
+				ASSERT_TRUE(wait_state(AGENT, "AGENT_START_PROCESS", started, INDIGO_OK_STATE));
+			} else {
+				ASSERT_TRUE(abort_running());
+				ASSERT_TRUE(wait_state(AGENT, "AGENT_START_PROCESS", started, INDIGO_ALERT_STATE));
+			}
+			ASSERT_EQ_INT(0, value(AGENT, "AGENT_START_PROCESS", "EXPOSURE"));
+			ASSERT_EQ_INT(requested + count, atomic_load(&camera_requests));
+			ASSERT_EQ_INT(images + count, blobs(CAMERA));
+		}
+		ASSERT_TRUE(sw(AGENT, "AGENT_IMAGER_BREAKPOINT", "POST_BATCH", false, INDIGO_OK_STATE));
+		ASSERT_TRUE(run("EXPOSURE", INDIGO_OK_STATE));
+	}
 }
 
 static void pause_resume_and_busy_guards(void) {

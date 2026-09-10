@@ -104,3 +104,7 @@ The camera-disconnect regression failed before the fix and passes afterward for 
 ## DRV-117 follow-up
 
 PRE_DELAY and POST_DELAY tests now each cover one/two frames and zero/nonzero delay, resume, abort and reacquisition. Controlled TRIGGER instances execute delays and their breakpoints while continuing to suppress dithering. Both delay cases, both capture-breakpoint cases, both dither cases and the two-agent barrier pass (seven focused cases). Prior full-suite totals and coverage measurements remain historical.
+
+## DRV-118 follow-up
+
+POST_BATCH now checks pending abort before reporting batch success. Its expanded regression failed before the fix and passes afterward for one/two frames, normal resume, abort while the breakpoint remains enabled, terminal states and cleared switches, no additional requests/images and successful subsequent batch. All six breakpoint cases, two-agent barrier and general abort/reacquire pass (eight focused cases). Prior full-suite totals and coverage measurements remain historical.

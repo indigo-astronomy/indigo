@@ -1403,7 +1403,7 @@ static bool exposure_batch(indigo_device *device) {
 		}
 	}
 	check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_BATCH_ITEM);
-	return true;
+	return AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE;
 }
 
 static void exposure_batch_process(indigo_device *device) {
