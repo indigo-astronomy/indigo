@@ -16,6 +16,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// Configuration serialization refactored by OpenAI Codex (2026).
+
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
@@ -338,6 +340,7 @@ indigo_result indigo_save_property(indigo_device *device, indigo_uni_handle **fi
 		INDIGO_DEBUG(indigo_debug("Config file is locked, property '%s.%s' not saved", device->name, property->name));
 		return INDIGO_FAILED;
 	}
+	indigo_result result = INDIGO_OK;
 	if (!property->hidden && property->perm != INDIGO_RO_PERM) {
 		char b1[32];
 		if (file_handle == NULL) {
@@ -367,28 +370,46 @@ indigo_result indigo_save_property(indigo_device *device, indigo_uni_handle **fi
 		}
 		switch (property->type) {
 			case INDIGO_TEXT_VECTOR:
-				indigo_uni_printf(handle, "<newTextVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
+				if (indigo_uni_printf(handle, "<newTextVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]) <= 0) {
+					result = INDIGO_FAILED;
+				}
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = &property->items[i];
-					indigo_uni_printf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, indigo_xml_escape_b(5, indigo_get_text_item_value(item)));
+					if (indigo_uni_printf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, indigo_xml_escape_b(5, indigo_get_text_item_value(item))) <= 0) {
+						result = INDIGO_FAILED;
+					}
 				}
-				indigo_uni_printf(handle, "</newTextVector>\n");
+				if (indigo_uni_printf(handle, "</newTextVector>\n") <= 0) {
+					result = INDIGO_FAILED;
+				}
 				break;
 			case INDIGO_NUMBER_VECTOR:
-				indigo_uni_printf(handle, "<newNumberVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
+				if (indigo_uni_printf(handle, "<newNumberVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]) <= 0) {
+					result = INDIGO_FAILED;
+				}
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = &property->items[i];
-					indigo_uni_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", item->name, indigo_dtoa(item->number.value, b1));
+					if (indigo_uni_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", item->name, indigo_dtoa(item->number.value, b1)) <= 0) {
+						result = INDIGO_FAILED;
+					}
 				}
-				indigo_uni_printf(handle, "</newNumberVector>\n");
+				if (indigo_uni_printf(handle, "</newNumberVector>\n") <= 0) {
+					result = INDIGO_FAILED;
+				}
 				break;
 			case INDIGO_SWITCH_VECTOR:
-				indigo_uni_printf(handle, "<newSwitchVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
+				if (indigo_uni_printf(handle, "<newSwitchVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]) <= 0) {
+					result = INDIGO_FAILED;
+				}
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = &property->items[i];
-					indigo_uni_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->sw.value ? "On" : "Off");
+					if (indigo_uni_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->sw.value ? "On" : "Off") <= 0) {
+						result = INDIGO_FAILED;
+					}
 				}
-				indigo_uni_printf(handle, "</newSwitchVector>\n");
+				if (indigo_uni_printf(handle, "</newSwitchVector>\n") <= 0) {
+					result = INDIGO_FAILED;
+				}
 				break;
 			default:
 				break;
@@ -397,7 +418,7 @@ indigo_result indigo_save_property(indigo_device *device, indigo_uni_handle **fi
 	if (DEVICE_CONTEXT) {
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 	}
-	return INDIGO_OK;
+	return result;
 }
 
 indigo_result indigo_save_property_items(indigo_device*device, indigo_uni_handle *file_handle, indigo_property *property, const int count, const char **items) {

@@ -1283,7 +1283,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `delayed_profile` | Passes; delayed profile. |
 | `busy_then_ok` | Passes; busy then ok. |
 | `shutdown_active` | Passes; shutdown active. |
-| `save_write_failure` | Fails; see DRV-162 in the driver review. |
+| `save_write_failure` | Passes after DRV-162 fix; see driver review validation. |
 | `selection_alert_masked` | Fails; see DRV-167 in the driver review. |
 | `empty_load` | Fails; see DRV-163 in the driver review. |
 | `concurrent_remove` | Passes after DRV-161 fix; see driver review validation. |
@@ -1351,3 +1351,5 @@ For clang coverage, use a separate `TEST_BUILD=build/config-coverage`, native ar
 The CCD/mount/wheel/focuser/rotator/guider/AO/GPS class matrices are not applicable to this service-configuration agent. Device selections, profiles and server commands are modeled without real hardware or dynamic driver loading. No simulator motion/protocol audit or manufacturer document is applicable. Real device persistence, external transports, OOM, exhaustive concurrent interleavings and Linux/Windows execution remain outside this hardware-free suite. No new production properties, driver refactor or migration status change is involved.
 
 DRV-159 adds `restore_queue_overflow` (bounded overflow reports ALERT, subsequent load recovers) and extends `direct_restore_capacity` to 64 sequential requests. Both pass with the queue fix.
+
+DRV-162 extends `save_write_failure` with real failed descriptor writes and failed replacement, checks preservation of the old snapshot and temporary-file cleanup, then verifies retry. The shared serialization/I/O changes also passed all unit tests.

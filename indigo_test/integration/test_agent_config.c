@@ -31,7 +31,11 @@ static indigo_client client;
 static char test_root[128], config_folder[256];
 static bool bus_started, client_attached, agent_started;
 static atomic_bool hold_load, load_waiting;
-static bool fail_save;
+static bool fail_save, fail_write, fail_replace;
+
+bool config_test_replace(const char *source, const char *destination) {
+	return !fail_replace && indigo_uni_replace_file(source, destination);
+}
 static atomic_bool client_detached;
 static atomic_int late_commands;
 static void (*sleep_hook)(void);
@@ -45,6 +49,10 @@ indigo_result config_test_detach(indigo_client *client) {
 indigo_result config_test_save(indigo_device *device, indigo_uni_handle **handle, indigo_property *property) {
 	if (fail_save && handle) {
 		return INDIGO_FAILED;
+	}
+	if (fail_write && handle && *handle) {
+		close((*handle)->fd);
+		(*handle)->fd = -1;
 	}
 	return indigo_save_property(device, handle, property);
 }
@@ -704,8 +712,26 @@ static void enumeration_filter(void) {
 
 static void save_write_failure(void) {
 	populate();
+	ASSERT_TRUE(text_change(SAVE, "write_error", INDIGO_OK_STATE));
+	choose(profile, 0);
 	fail_save = true;
 	ASSERT_TRUE(text_change(SAVE, "write_error", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(file_contains("write_error.saved", "Night"));
+	ASSERT_FALSE(exists("write_error.saved.tmp"));
+	fail_save = false;
+	fail_write = true;
+	ASSERT_TRUE(text_change(SAVE, "write_error", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(file_contains("write_error.saved", "Night"));
+	ASSERT_FALSE(exists("write_error.saved.tmp"));
+	fail_write = false;
+	fail_replace = true;
+	ASSERT_TRUE(text_change(SAVE, "write_error", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(file_contains("write_error.saved", "Night"));
+	ASSERT_FALSE(exists("write_error.saved.tmp"));
+	fail_replace = false;
+	ASSERT_TRUE(text_change(SAVE, "write_error", INDIGO_OK_STATE));
+	ASSERT_TRUE(file_contains("write_error.saved", "Default"));
+	ASSERT_TRUE(load("write_error", INDIGO_OK_STATE));
 }
 
 static void selection_alert_masked(void) {

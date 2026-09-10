@@ -1118,7 +1118,7 @@ $(INTEGRATION_BUILD)/agent_config_framework.o: ../indigo_libs/indigo_driver.c Ma
 	$(CC) $(TEST_CFLAGS) $(CONFIG_TEST_FLAGS) -Dindigo_uni_config_folder=config_test_folder -c $< -o $@
 
 $(INTEGRATION_BUILD)/agent_config_driver.o: ../indigo_drivers/agent_config/indigo_agent_config.c ../indigo_drivers/agent_config/indigo_agent_config.h Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(CONFIG_TEST_FLAGS) -Dindigo_uni_config_folder=config_test_folder -Dgetenv=config_test_getenv -Dindigo_detach_client=config_test_detach -Dindigo_save_property=config_test_save -Dindigo_usleep=config_test_sleep -c $< -o $@
+	$(CC) $(TEST_CFLAGS) $(CONFIG_TEST_FLAGS) -Dindigo_uni_config_folder=config_test_folder -Dgetenv=config_test_getenv -Dindigo_uni_replace_file=config_test_replace -Dindigo_detach_client=config_test_detach -Dindigo_save_property=config_test_save -Dindigo_usleep=config_test_sleep -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_agent_config: integration/test_agent_config.c test_runner.h $(INTEGRATION_BUILD)/agent_config_framework.o $(INTEGRATION_BUILD)/agent_config_driver.o $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(CONFIG_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_config_framework.o $(INTEGRATION_BUILD)/agent_config_driver.o -o $@ $(LDFLAGS) $(CONFIG_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)

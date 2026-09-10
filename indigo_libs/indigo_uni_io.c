@@ -1937,6 +1937,29 @@ const char *indigo_uni_config_folder(void) {
 	return config_folder;
 }
 
+bool indigo_uni_sync_file(indigo_uni_handle *handle) {
+	if (!handle || handle->type != INDIGO_FILE_HANDLE) {
+		return false;
+	}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	return fsync(handle->fd) == 0;
+#elif defined(INDIGO_WINDOWS)
+	return _commit(handle->fd) == 0;
+#else
+	return false;
+#endif
+}
+
+bool indigo_uni_replace_file(const char *temporary_path, const char *destination_path) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	return rename(temporary_path, destination_path) == 0;
+#elif defined(INDIGO_WINDOWS)
+	return MoveFileExA(temporary_path, destination_path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+#else
+	return false;
+#endif
+}
+
 bool indigo_uni_mkdir(const char *path) {
 	char temp[PATH_MAX];
 	snprintf(temp, sizeof(temp), "%s", path);

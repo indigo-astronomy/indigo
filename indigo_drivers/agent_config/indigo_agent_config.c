@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x03000015
+#define DRIVER_VERSION 0x03000016
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -586,28 +586,38 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					indigo_release_property(agent);
 				}
 			}
-			indigo_uni_handle *handle = indigo_open_config_file(AGENT_CONFIG_SAVE_NAME_ITEM->text.value, 0, true, EXTENSION);
+			char path[1024], temporary_path[1032], suffix[32];
+			configuration_suffix(suffix, sizeof(suffix));
+			int length = snprintf(path, sizeof(path), "%s%c%s%s", indigo_uni_config_folder(), INDIGO_PATH_SEPATATOR, AGENT_CONFIG_SAVE_NAME_ITEM->text.value, suffix);
+			snprintf(temporary_path, sizeof(temporary_path), "%s.tmp", path);
+			indigo_uni_handle *handle = length >= 0 && length < sizeof(path) && indigo_uni_mkdir(indigo_uni_config_folder()) ? indigo_uni_create_file(temporary_path, INDIGO_LOG_TRACE) : NULL;
+			bool saved = handle != NULL;
 			if (handle != NULL) {
 				pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 				AGENT_CONFIG_DRIVERS_PROPERTY->perm = INDIGO_RW_PERM;
-				indigo_save_property(device, &handle, AGENT_CONFIG_DRIVERS_PROPERTY);
+				saved = indigo_save_property(device, &handle, AGENT_CONFIG_DRIVERS_PROPERTY) == INDIGO_OK && saved;
 				AGENT_CONFIG_DRIVERS_PROPERTY->perm = INDIGO_RO_PERM;
 				AGENT_CONFIG_PROFILES_PROPERTY->perm = INDIGO_RW_PERM;
-				indigo_save_property(device, &handle, AGENT_CONFIG_PROFILES_PROPERTY);
+				saved = indigo_save_property(device, &handle, AGENT_CONFIG_PROFILES_PROPERTY) == INDIGO_OK && saved;
 				AGENT_CONFIG_PROFILES_PROPERTY->perm = INDIGO_RO_PERM;
 				for (int i = 0; i < MAX_AGENTS; i++) {
 					indigo_property *agent = DEVICE_PRIVATE_DATA->agents[i];
 					if (agent) {
 						agent->perm = INDIGO_RW_PERM;
-						indigo_save_property(device, &handle, agent);
+						saved = indigo_save_property(device, &handle, agent) == INDIGO_OK && saved;
 						agent->perm = INDIGO_RO_PERM;
 					}
 				}
 				pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
+				saved = indigo_uni_sync_file(handle) && saved;
 				indigo_uni_close(&handle);
+				saved = saved && indigo_uni_replace_file(temporary_path, path);
+			}
+			if (saved) {
 				indigo_send_message(device, OK_PROPERTY, "Active configuration saved as '%s'", AGENT_CONFIG_SAVE_NAME_ITEM->text.value);
 				AGENT_CONFIG_SAVE_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
+				indigo_uni_remove(temporary_path);
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to save active configuration as '%s'", AGENT_CONFIG_SAVE_NAME_ITEM->text.value);
 				AGENT_CONFIG_SAVE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}

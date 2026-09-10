@@ -320,6 +320,15 @@ INDIGO_EXTERN void indigo_uni_kill_socket(indigo_uni_handle *handle);
  */
 INDIGO_EXTERN void indigo_uni_close(indigo_uni_handle **handle);
 
+/** Synchronize a regular file before publishing its contents.
+ */
+INDIGO_EXTERN bool indigo_uni_sync_file(indigo_uni_handle *handle);
+
+/** Replace a destination with a completed temporary file on the same filesystem.
+ * Failure leaves the existing destination intact.
+ */
+INDIGO_EXTERN bool indigo_uni_replace_file(const char *temporary_path, const char *destination_path);
+
 /** Home folder (~/)
  */
 
