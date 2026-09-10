@@ -166,7 +166,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-133 | Medium | `agent_guider/indigo_agent_guider.c:1819` | Every accepted guiding frame now updates drift/correction statistics, correction histories and PPEC, including exact zero drift. Regression checks cover displacement returning to zero, decreasing short-term RMSE, no unnecessary PI pulses and PPEC learning on zero drift. Driver version is `0x0300002D` for the combined fixes; deferred DRV-130 remains open. | Closed (fixed) |
 | DRV-134 | Medium | `agent_mount/indigo_agent_mount.c:1485` | Dome deselection now clears shutter flags, horizontal-coordinate state, all dome state lights and capabilities, and resets `dome_state_defined` to false so a reselected legacy dome can report park/shutter completion. Version `0x03000017`; all three dome-reselection regressions pass, including modern state reporting, plus legacy/modern operation matrices, selection orders and slaving. | Closed (fixed) |
 | DRV-135 | Medium | `agent_mount/indigo_agent_mount.c:1094` | Negative imager OBJCTDEC now converts the fractional declination to minutes before truncating to an integer. Expanded `negative fits` covers -12.5, -12.125, -0.125 and -90 degrees, including nonzero seconds and a negative subdegree sign. | Closed (fixed) |
-| DRV-136 | Medium | `agent_mount/indigo_agent_mount.c:1105`, `agent_mount/indigo_agent_mount.c:1156` | Formatting signed coordinates using `(int)value` loses the minus sign for values between -1 and 0. Guider OBJCTDEC and imager SITELAT/SITELONG can therefore describe the opposite side of the equator/meridian. Reproduced with -0.5 degrees by `negative zero fits` and `negative site fits`. | Open |
+| DRV-136 | Medium | `agent_mount/indigo_agent_mount.c:1105`, `agent_mount/indigo_agent_mount.c:1156` | Guider OBJCTDEC and imager SITELAT/SITELONG now format the sign from the original coordinate separately from the absolute integer degrees, preserving negative subdegree values. Expanded regressions cover negative/positive subdegree and multi-degree coordinates, zero and nonzero seconds, including both site axes. | Closed (fixed) |
 | DRV-137 | Medium | `agent_mount/indigo_agent_mount.c:737` | LX200 ACK byte 0x06 sets the reply to P, but the write is inside the colon-command branch at line 872. The client receives no ACK reply. Reproduced through the unchanged worker with `lx200 ack`. | Open |
 | DRV-138 | Medium | `agent_mount/indigo_agent_mount.c:788` | LX200 Sd chooses the sign with `d > 0`; positive declinations beginning with +00 are decoded as negative. `:Sd+00*30:00#` followed by MS sets a -0.5 degree target. Reproduced by `lx200 positive zero`. | Open |
 | DRV-139 | Medium | `agent_mount/indigo_agent_mount.c:745` | EOF inside an LX200 command only breaks the inner read loop; dispatch is skipped for -1 but not for EOF (0), and complete # termination is not required. A truncated `:Sr05:30` is accepted with reply 1. Reproduced by `lx200 truncated command`. | Open |
@@ -1199,3 +1199,22 @@ with the unresolved timing observation above; neither produced a new numerical
 assertion result. Compilation succeeded for macOS arm64/x86_64; execution was on
 arm64. Version remains `0x03000016` at the user's request, with the version bump
 deferred until the final fix. DRV-136 is separate and remains open.
+
+### DRV-136 fix validation — 2026-09-10
+
+Guider OBJCTDEC and imager SITELAT/SITELONG now derive a separate minus prefix
+from the original coordinate and format absolute integer degrees. This preserves
+negative subdegree values without changing positive values or zero. The two
+expanded regressions check -0.5, -0.125, -12.125, 0, 0.125 and 12.125 degrees for
+each affected field, including seconds and forwarded numeric guider declination.
+The expanded site regression failed before the change. Afterward, all three
+FITS cases and all three related-agent cases pass (6/6), including DRV-135's
+imager regression. Built macOS arm64/x86_64 and executed on arm64.
+
+The initial guider runs hit the previously noted setup watchdog. The test peer
+selection helper now waits for a same-priority queue marker after the filter's
+reverse-relation/enumeration task, before emitting coordinate updates. The filter
+publishes list OK before that task finishes; the new wait serializes this test
+setup without changing production queue or filter behavior. Both affected test
+groups pass with this synchronization. This is not a general concurrency audit.
+Version remains `0x03000016`, with the bump deferred until the last fix as requested.

@@ -1152,3 +1152,22 @@ no new root cause is claimed. Built macOS arm64/x86_64 and executed on arm64.
 The user requested deferring the version bump until the last fix, so the driver
 stays at `0x03000016`. DRV-135 is closed; DRV-136's guider/site sign issue remains
 open. Test artifacts were removed with `make -C indigo_test test-clean`.
+
+### DRV-136 fixed — signs in guider/site FITS headers (2026-09-10)
+
+Expanded `negative zero fits` to check six signed/zero declinations and unchanged
+numeric guider-coordinate forwarding. Expanded `negative site fits` to check
+both SITELAT and SITELONG for -0.5, -0.125, -12.125, 0, 0.125 and 12.125 degrees.
+All expected strings are fixed fixtures, including nonzero seconds. The site
+regression failed before the production change. Separating the sign from absolute
+integer degrees fixes negative subdegree formatting in all three affected headers.
+
+The initial guider runs hit the known setup watchdog. Related-peer selection now
+waits for a marker queued with the same priority after the filter's asynchronous
+reverse-relation/enumeration task. It no longer treats list OK as proof that
+initial enumeration has finished. The production bus, queues and filter remain
+unchanged. After this synchronization, the `fits` group passes 3/3 and the
+`related` group passes 3/3, covering DRV-135, DRV-136 and related-agent filters and
+coordinate/FITS propagation. Built macOS arm64/x86_64, executed on arm64, and
+removed test artifacts with `make -C indigo_test test-clean`. Version stays at
+`0x03000016` per the user's instruction; DRV-136 is closed in the driver review.

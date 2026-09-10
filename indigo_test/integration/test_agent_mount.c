@@ -27,6 +27,8 @@ typedef struct {
 static observation cache[2048];
 static pthread_mutex_t cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_client client;
+static _Atomic(indigo_device *) observed_agent;
+static atomic_bool related_enumeration_ready;
 static char config_folder[] = "/tmp/indigo_mount_test_XXXXXX";
 // Each case forks before starting INDIGO threads and isolates configuration writes.
 static bool bus_started, client_attached, agent_started;
@@ -65,6 +67,9 @@ static indigo_result observe(indigo_property *property) {
 }
 
 static indigo_result defined(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, AGENT)) {
+		observed_agent = device;
+	}
 	return observe(property);
 }
 
@@ -362,11 +367,25 @@ static bool attach_peer(int index, bool modern, bool limited) {
 	return true;
 }
 
+static void related_enumeration_finished(indigo_device *device) {
+	related_enumeration_ready = true;
+}
+
 static bool select_peer(int index, bool modern, bool limited) {
 	if (!peers[index].attached) {
 		REQUIRE(attach_peer(index, modern, limited));
 	}
 	REQUIRE(sw(AGENT, index < 5 ? lists[index] : "FILTER_RELATED_AGENT_LIST", peer_names[index], true, INDIGO_OK_STATE));
+	if (index >= 5) {
+		// The list reaches OK before the filter's queued reverse relation and enumeration finish.
+		related_enumeration_ready = false;
+		indigo_execute_handler_in(observed_agent, 0, related_enumeration_finished);
+		double deadline = indigo_monotonic_time() + 5;
+		while (!related_enumeration_ready && indigo_monotonic_time() < deadline) {
+			indigo_usleep(1000);
+		}
+		REQUIRE(related_enumeration_ready);
+	}
 	return true;
 }
 
@@ -985,8 +1004,13 @@ static void negative_fits(void) {
 static void negative_zero_fits(void) {
 	CHECK(select_peer(0, false, false));
 	CHECK(select_peer(6, false, false));
-	emit_number(0, "MOUNT_EQUATORIAL_COORDINATES", "DEC", -0.5);
-	CHECK(!strcmp(header_value(6, "OBJCTDEC"), "'-0 30 00'"));
+	const double declinations[] = { -0.5, -0.125, -12.125, 0, 0.125, 12.125 };
+	const char *expected[] = { "'-0 30 00'", "'-0 07 30'", "'-12 07 30'", "'0 00 00'", "'0 07 30'", "'12 07 30'" };
+	for (int i = 0; i < ARRAY_SIZE(declinations); i++) {
+		emit_number(0, "MOUNT_EQUATORIAL_COORDINATES", "DEC", declinations[i]);
+		CHECK(!strcmp(header_value(6, "OBJCTDEC"), expected[i]));
+		CHECK(value(peer_names[6], "AGENT_GUIDER_MOUNT_COORDINATES", "DEC") == declinations[i]);
+	}
 }
 
 static void limits(void) {
@@ -1309,8 +1333,14 @@ static void related_invalid_filter(void) {
 
 static void negative_site_fits(void) {
 	CHECK(select_peer(5, false, false));
-	CHECK(num(AGENT, "GEOGRAPHIC_COORDINATES", "LATITUDE", -0.5));
-	CHECK(!strcmp(header_value(5, "SITELAT"), "'-0 30 00'"));
+	const double coordinates[] = { -0.5, -0.125, -12.125, 0, 0.125, 12.125 };
+	const char *expected[] = { "'-0 30 00'", "'-0 07 30'", "'-12 07 30'", "'0 00 00'", "'0 07 30'", "'12 07 30'" };
+	for (int i = 0; i < ARRAY_SIZE(coordinates); i++) {
+		CHECK(num(AGENT, "GEOGRAPHIC_COORDINATES", "LATITUDE", coordinates[i]));
+		CHECK(!strcmp(header_value(5, "SITELAT"), expected[i]));
+		CHECK(num(AGENT, "GEOGRAPHIC_COORDINATES", "LONGITUDE", coordinates[i]));
+		CHECK(!strcmp(header_value(5, "SITELONG"), expected[i]));
+	}
 }
 
 static void lx200_invalid_coordinates(void) {
