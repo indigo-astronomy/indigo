@@ -441,7 +441,7 @@ static const char *lx_input;
 static size_t lx_offset;
 static char lx_output[8192];
 static long lx_read_error;
-static atomic_int socket_closes;
+static atomic_int socket_closes, listener_exits;
 
 void mount_test_server(int *port, indigo_uni_handle **handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int, void *), void *callback_data, int level) {
 	lx_worker = worker;
@@ -462,6 +462,7 @@ void mount_test_server(int *port, indigo_uni_handle **handle, void (*worker)(ind
 		indigo_usleep(1000);
 	}
 	*handle = NULL;
+	listener_exits++;
 }
 
 void mount_test_close(indigo_uni_handle **handle) {
@@ -1309,12 +1310,23 @@ static void shutdown_active(void) {
 }
 
 static void shutdown_server(void) {
-	CHECK(start_server());
-	alarm(5);
-	CHECK(indigo_agent_mount(INDIGO_DRIVER_SHUTDOWN, NULL) == INDIGO_OK);
-	agent_started = false;
-	alarm(45);
-	CHECK(!server_open);
+	for (int cycle = 0; cycle < 3; cycle++) {
+		CHECK(start_server());
+		exchange(":GVP#");
+		CHECK(!strcmp(lx_output, "indigo#"));
+		int closes = socket_closes;
+		int exits = listener_exits;
+		alarm(5);
+		CHECK(indigo_agent_mount(INDIGO_DRIVER_SHUTDOWN, NULL) == INDIGO_OK);
+		agent_started = false;
+		alarm(45);
+		CHECK(!server_open);
+		CHECK(socket_closes == closes + 1);
+		CHECK(listener_exits == exits + 1);
+		CHECK(indigo_agent_mount(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
+		agent_started = true;
+		CHECK(value(AGENT, "AGENT_LX200_SERVER", "STOPPED") == 1);
+	}
 }
 
 static void all_false_start(void) {

@@ -2325,9 +2325,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_cancel_pending_handlers(device);
+	// Release the blocking listener before waiting for its timer callback.
+	stop_lx200_server(device);
 	indigo_cancel_all_timers(device);
 	save_config(device);
-	stop_lx200_server(device);
 	indigo_release_property(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
 	indigo_release_property(AGENT_SITE_DATA_SOURCE_PROPERTY);
 	indigo_release_property(AGENT_SET_HOST_TIME_PROPERTY);

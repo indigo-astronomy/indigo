@@ -1228,3 +1228,9 @@ Validation: nine selected LX200 cases (startup, invalid coordinates, coordinate 
 Expanded `lx200 idle stop` covers repeated STOPPED requests before any listener exists, STOPPED after failed startup, a successful restart/query/normal stop and repeated STOPPED after listener closure. It verifies STOPPED/OK, cleared STARTED and no extra socket closes. The regression failed on the original NULL-handle no-op and passes with explicit completion.
 
 Validation: idle stop plus all nine previously selected LX200 cases passed (10/10), including cleanup. Production Mount Agent and test executable built for macOS arm64/x86_64; tests executed on arm64 with scripted I/O, without hardware or sockets. Version remains 0x03000016 as requested. Test artifacts removed with `make -C indigo_test test-clean`. Shutdown ordering (DRV-143) is outside this fix.
+
+### DRV-143 — close LX200 listener before waiting for timers (2026-09-10)
+
+Expanded `shutdown server` repeats three server start/query/shutdown/reinitialization cycles under a five-second shutdown watchdog. The scripted transport now counts listener returns; assertions require exactly one listener close and completion of the blocking listener before shutdown returns, followed by clean STOPPED state after reinitialization. The pre-fix ordering timed out with SIGALRM; the fixed ordering passes.
+
+Validation: all eleven selected LX200 cases plus `feature persistence` and `persistent features` passed (13/13), including cleanup. Production agent/test executable built for macOS arm64/x86_64; execution was on arm64 with scripted I/O and no actual sockets/hardware. Coverage is for an established listener, not concurrent socket opening or live worker-connection lifetime. Version remains 0x03000016 per user instruction. Test artifacts removed with `make -C indigo_test test-clean`. DRV-144 active-motion shutdown is outside this fix.
