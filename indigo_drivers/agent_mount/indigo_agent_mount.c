@@ -720,6 +720,56 @@ static void home_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
+static bool lx200_parse_coordinates(const char *text, bool declination, double *value) {
+	bool negative = false;
+	if (declination) {
+		if (*text != '+' && *text != '-') {
+			return false;
+		}
+		negative = *text++ == '-';
+	}
+	if (strlen(text) < 5 || strspn(text, "0123456789") != 2 || text[2] != (declination ? '*' : ':') || strspn(text + 3, "0123456789") != 2) {
+		return false;
+	}
+	int major = (text[0] - '0') * 10 + text[1] - '0';
+	int minutes = (text[3] - '0') * 10 + text[4] - '0';
+	if (major > (declination ? 90 : 23) || minutes >= 60) {
+		return false;
+	}
+	text += 5;
+	bool seconds = *text == ':';
+	double component = minutes;
+	if (seconds) {
+		text++;
+		if (strspn(text, "0123456789") != 2) {
+			return false;
+		}
+		component = (text[0] - '0') * 10 + text[1] - '0';
+		text += 2;
+	}
+	// Meade short RA uses decimal minutes; retain fractional-second precision too.
+	if (*text == '.' && (!declination || seconds)) {
+		text++;
+		if (*text < '0' || *text > '9') {
+			return false;
+		}
+		double scale = 0.1;
+		while (*text >= '0' && *text <= '9') {
+			component += (*text++ - '0') * scale;
+			scale *= 0.1;
+		}
+	}
+	if (*text || component >= 60) {
+		return false;
+	}
+	double coordinate = major + (seconds ? minutes / 60.0 + component / 3600.0 : component / 60.0);
+	if ((declination && major == 90 && (minutes != 0 || component != 0)) || (!declination && coordinate >= 24)) {
+		return false;
+	}
+	*value = negative ? -coordinate : coordinate;
+	return true;
+}
+
 static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 	indigo_rename_thread("LX200 worker");
 	indigo_device *device = data->data;
@@ -770,31 +820,9 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 				indigo_j2k_to_eq(AGENT_LX200_CONFIGURATION_EPOCH_ITEM->number.value, &ra, &dec);
 				indigo_dtos_r(dec, "%+03d*%02d'%02d#", buffer_out, sizeof(buffer_out));
 			} else if (strncmp(buffer_in, "Sr", 2) == 0) {
-				int h = 0, m = 0;
-				double s = 0;
-				char c;
-				if (sscanf(buffer_in + 2, "%d%c%d%c%lf", &h, &c, &m, &c, &s) == 5) {
-					DEVICE_PRIVATE_DATA->mount_requested_ra = h + m/60.0 + s/3600.0;
-					strcpy(buffer_out, "1");
-				} else if (sscanf(buffer_in + 2, "%d%c%d", &h, &c, &m) == 3) {
-					DEVICE_PRIVATE_DATA->mount_requested_ra = h + m/60.0;
-					strcpy(buffer_out, "1");
-				} else {
-					strcpy(buffer_out, "0");
-				}
+				strcpy(buffer_out, lx200_parse_coordinates(buffer_in + 2, false, &DEVICE_PRIVATE_DATA->mount_requested_ra) ? "1" : "0");
 			} else if (strncmp(buffer_in, "Sd", 2) == 0) {
-				int d = 0, m = 0;
-				double s = 0;
-				char c;
-				if (sscanf(buffer_in + 2, "%d%c%d%c%lf", &d, &c, &m, &c, &s) == 5) {
-					DEVICE_PRIVATE_DATA->mount_requested_dec = d < 0 || buffer_in[2] == '-' ? d - m / 60.0 - s / 3600.0 : d + m / 60.0 + s / 3600.0;
-					strcpy(buffer_out, "1");
-				} else if (sscanf(buffer_in + 2, "%d%c%d", &d, &c, &m) == 3) {
-					DEVICE_PRIVATE_DATA->mount_requested_dec = d < 0 || buffer_in[2] == '-' ? d - m / 60.0 : d + m / 60.0;
-					strcpy(buffer_out, "1");
-				} else {
-					strcpy(buffer_out, "0");
-				}
+				strcpy(buffer_out, lx200_parse_coordinates(buffer_in + 2, true, &DEVICE_PRIVATE_DATA->mount_requested_dec) ? "1" : "0");
 			} else if (strncmp(buffer_in, "MS", 2) == 0) {
 				double ra = DEVICE_PRIVATE_DATA->mount_requested_ra;
 				double dec = DEVICE_PRIVATE_DATA->mount_requested_dec;
