@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x03000016
+#define DRIVER_VERSION 0x03000017
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -638,6 +638,15 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_CONFIG_LOAD_PROPERTY, property)) {
 		if (AGENT_CONFIG_LOAD_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_CONFIG_LOAD_PROPERTY, property, false);
+			bool selected = false;
+			for (int i = 0; i < AGENT_CONFIG_LOAD_PROPERTY->count; i++) {
+				selected = selected || AGENT_CONFIG_LOAD_PROPERTY->items[i].sw.value;
+			}
+			if (!selected) {
+				AGENT_CONFIG_LOAD_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
+				return INDIGO_OK;
+			}
 			AGENT_CONFIG_LOAD_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
 			AGENT_CONFIG_LAST_CONFIG_PROPERTY->state = INDIGO_BUSY_STATE;

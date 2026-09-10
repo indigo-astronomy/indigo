@@ -1285,7 +1285,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `shutdown_active` | Passes; shutdown active. |
 | `save_write_failure` | Passes after DRV-162 fix; see driver review validation. |
 | `selection_alert_masked` | Fails; see DRV-167 in the driver review. |
-| `empty_load` | Fails; see DRV-163 in the driver review. |
+| `empty_load` | Passes after DRV-163 fix; see driver review validation. |
 | `concurrent_remove` | Passes after DRV-161 fix; see driver review validation. |
 | `save_path_separator` | Fails; see DRV-164 in the driver review. |
 | `discovery_compaction` | Passes; discovery compaction. |
