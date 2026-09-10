@@ -164,7 +164,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-131 | Medium | `agent_guider/indigo_agent_guider.c:2059` | The inter-frame delay checks abort on each existing sleep iteration, then clears delay and follows normal guiding finalization. Four focused cases pass, including abort during 4 s/0.5 s delays, shutdown during delay, no subsequent exposure and restart. Combined fix version is now `0x0300002D`. | Closed (fixed) |
 | DRV-132 | Medium | `agent_guider/indigo_agent_guider.c:1226` | Pulse completion now requires OK from each requested axis; ALERT or remaining BUSY after the existing timeout propagates failure. Unused-axis states are ignored, abort interrupts the completion wait, and calibration marks failure without launching subsequent guiding. CONTINUE keeps guiding active after a pulse error, pauses briefly and computes the next correction from a fresh frame; FAIL terminates. Transient RA/DEC recovery tests verify successful corrections without restarting guiding. Combined fix version is now `0x0300002D`. | Closed (fixed) |
 | DRV-133 | Medium | `agent_guider/indigo_agent_guider.c:1819` | Every accepted guiding frame now updates drift/correction statistics, correction histories and PPEC, including exact zero drift. Regression checks cover displacement returning to zero, decreasing short-term RMSE, no unnecessary PI pulses and PPEC learning on zero drift. Driver version is `0x0300002D` for the combined fixes; deferred DRV-130 remains open. | Closed (fixed) |
-| DRV-134 | Medium | `agent_mount/indigo_agent_mount.c:1486` | Dome deselection sets `dome_state_defined = true` and leaves shutter flags and the OPEN light unchanged. A subsequently selected legacy dome without DOME_STATE never updates park/shutter state through its legacy properties, so completed operations wait until timeout; OPEN may still describe the previously selected dome. Reproduced by `dome reselection` and `dome reselection legacy` in `integration/test_agent_mount.c`. | Open |
+| DRV-134 | Medium | `agent_mount/indigo_agent_mount.c:1485` | Dome deselection now clears shutter flags, horizontal-coordinate state, all dome state lights and capabilities, and resets `dome_state_defined` to false so a reselected legacy dome can report park/shutter completion. Version `0x03000017`; all three dome-reselection regressions pass, including modern state reporting, plus legacy/modern operation matrices, selection orders and slaving. | Closed (fixed) |
 | DRV-135 | Medium | `agent_mount/indigo_agent_mount.c:1094` | Negative imager OBJCTDEC minutes are computed after truncating declination to an integer, making the minutes always zero. A reported -12.5 degrees produces `'-12 00 00'` instead of `'-12 30 00'`. Reproduced by `negative fits`. | Open |
 | DRV-136 | Medium | `agent_mount/indigo_agent_mount.c:1105`, `agent_mount/indigo_agent_mount.c:1156` | Formatting signed coordinates using `(int)value` loses the minus sign for values between -1 and 0. Guider OBJCTDEC and imager SITELAT/SITELONG can therefore describe the opposite side of the equator/meridian. Reproduced with -0.5 degrees by `negative zero fits` and `negative site fits`. | Open |
 | DRV-137 | Medium | `agent_mount/indigo_agent_mount.c:737` | LX200 ACK byte 0x06 sets the reply to P, but the write is inside the colon-command branch at line 872. The client receives no ACK reply. Reproduced through the unchanged worker with `lx200 ack`. | Open |
@@ -1172,3 +1172,17 @@ termination in `negative fits`; an immediate isolated rerun reached the expected
 DRV-135 assertion without a sanitizer diagnostic. No separate root cause was
 established. Treat this as an unresolved timing observation, not a confirmed memory
 finding or proof that all concurrency interleavings are safe.
+
+### DRV-134 fix validation — 2026-09-10
+
+Mount Agent version increased from `0x03000016` to `0x03000017`. Deselection
+clears the previous dome's state and capability flags; a subsequent DOME_STATE
+definition selects modern reporting, otherwise legacy properties remain active.
+The two original regressions failed before the fix (0/2), and the expanded
+reselection checks pass afterward (3/3). They verify cleared lights/capabilities,
+restored OPEN state on reselection and subsequent close/park/unpark/open operations.
+Four additional cases pass: `legacy success`, `modern success` (11 operations
+each), `selection orders` and `slaving`. Compilation covered macOS arm64/x86_64;
+execution was hardware-free on arm64. The original 54-case coverage/results above
+remain the pre-fix baseline; the entire suite was not rerun for this scoped fix.
+DRV-135–DRV-147 remain open, including individual-property deletion (DRV-146).

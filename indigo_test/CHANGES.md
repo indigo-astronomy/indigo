@@ -1120,3 +1120,22 @@ per-process `LLVM_PROFILE_FILE` pattern, merge with `llvm-profdata`, and use
 `llvm-cov report` restricted to `indigo_drivers/agent_mount/indigo_agent_mount.c`.
 For sanitizers use `MOUNT_TEST_FLAGS='-O1 -fsanitize=address,undefined -fno-omit-frame-pointer'`
 in a different TEST_BUILD. Use `make -C indigo_test test-clean` after validation.
+
+
+### DRV-134 fixed — Mount Agent `0x03000017` (2026-09-10)
+
+Expanded `dome reselection` to check that every dome state light and capability is
+cleared on deselection, OPEN is restored from the reselected device and all four
+park/shutter operations complete afterward. Added `dome reselection modern` with
+the same assertions using DOME_STATE. Retained the original minimal legacy
+reselection regression. The suite now contains 55 registered cases.
+
+Before the production fix, the two original cases failed (0/2). After resetting
+dome state discovery and stale shutter/coordinate/light/capability state, all
+three reselection cases pass. `legacy success`, `modern success`, `selection orders`
+and `slaving` also pass (seven registered cases overall, including both full
+11-operation success matrices). Built the unchanged test framework and updated
+production source for macOS arm64/x86_64; ran on arm64. No property/item schema
+changed. DRV-134 is closed in `../indigo_drivers/REVIEW.md`; the other findings and
+the pre-fix full-suite coverage measurements above are unchanged. Test artifacts
+were removed with `make -C indigo_test test-clean`.

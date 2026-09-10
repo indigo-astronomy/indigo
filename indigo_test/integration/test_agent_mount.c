@@ -826,14 +826,31 @@ static void lx200_protocol(void) {
 	CHECK(sw(AGENT, "AGENT_LX200_SERVER", "STOPPED", true, INDIGO_OK_STATE));
 	CHECK(!server_open);
 }
-static void dome_reselection(void) {
-	CHECK(select_peer(1, false, false));
+static void check_dome_reselection(bool modern) {
+	CHECK(select_peer(1, modern, false));
 	CHECK(operation("DOME_OPEN", 1, "DOME_SHUTTER", INDIGO_OK_STATE));
 	CHECK(sw(AGENT, lists[1], "NONE", true, INDIGO_OK_STATE));
 	CHECK(value(AGENT, "AGENT_DOME_STATE", "OPEN") == INDIGO_IDLE_STATE);
-	CHECK(select_peer(1, false, false));
+	CHECK(value(AGENT, "AGENT_DOME_STATE", "PARK") == INDIGO_IDLE_STATE);
+	CHECK(value(AGENT, "AGENT_DOME_STATE", "SLEW") == INDIGO_IDLE_STATE);
+	const char *features[] = { "SLEW", "SYNC", "PARK", "OPEN" };
+	for (int i = 0; i < ARRAY_SIZE(features); i++) {
+		CHECK(value(AGENT, AGENT_DOME_FEATURES_PROPERTY_NAME, features[i]) == 0);
+	}
+	CHECK(select_peer(1, modern, false));
+	CHECK(value(AGENT, "AGENT_DOME_STATE", "OPEN") == INDIGO_OK_STATE);
 	CHECK(operation("DOME_CLOSE", 1, "DOME_SHUTTER", INDIGO_OK_STATE));
 	CHECK(operation("DOME_PARK", 1, "DOME_PARK", INDIGO_OK_STATE));
+	CHECK(operation("DOME_UNPARK", 1, "DOME_PARK", INDIGO_OK_STATE));
+	CHECK(operation("DOME_OPEN", 1, "DOME_SHUTTER", INDIGO_OK_STATE));
+}
+
+static void dome_reselection(void) {
+	check_dome_reselection(false);
+}
+
+static void dome_reselection_modern(void) {
+	check_dome_reselection(true);
 }
 
 static void dome_reselection_legacy(void) {
@@ -1464,6 +1481,7 @@ static const indigo_test_case tests[] = {
 	{ "lx200 input matrix", lx200_input_matrix },
 
 	{ "dome reselection", dome_reselection },
+	{ "dome reselection modern", dome_reselection_modern },
 	{ "dome reselection legacy", dome_reselection_legacy },
 	{ "feature persistence", feature_persistence },
 	{ "persistent features", persistent_features },

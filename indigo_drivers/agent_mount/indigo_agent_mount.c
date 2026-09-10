@@ -1483,10 +1483,12 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			CLIENT_PRIVATE_DATA->selected_dome_index = 0;
 			CLIENT_PRIVATE_DATA->dome_latitude = CLIENT_PRIVATE_DATA->dome_longitude = CLIENT_PRIVATE_DATA->dome_elevation = 0;
 			CLIENT_PRIVATE_DATA->dome_parking = CLIENT_PRIVATE_DATA->dome_parked = CLIENT_PRIVATE_DATA->dome_unparked = false;
-			CLIENT_PRIVATE_DATA->dome_state_defined = true;
-			AGENT_DOME_STATE_SLEW_ITEM->light.value = AGENT_DOME_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
+			CLIENT_PRIVATE_DATA->dome_opened = CLIENT_PRIVATE_DATA->dome_closed = CLIENT_PRIVATE_DATA->dome_shutter_moving = false;
+			CLIENT_PRIVATE_DATA->dome_state_defined = false;
+			CLIENT_PRIVATE_DATA->dome_horizontal_coordinates_state = INDIGO_IDLE_STATE;
+			AGENT_DOME_STATE_SLEW_ITEM->light.value = AGENT_DOME_STATE_PARK_ITEM->light.value = AGENT_DOME_STATE_OPEN_ITEM->light.value = INDIGO_IDLE_STATE;
 			indigo_update_property(device, AGENT_DOME_STATE_PROPERTY, NULL);
-			AGENT_DOME_FEATURES_CAN_PARK_ITEM->sw.value = AGENT_DOME_FEATURES_CAN_OPEN_ITEM->sw.value = false;
+			AGENT_DOME_FEATURES_CAN_SLEW_ITEM->sw.value = AGENT_DOME_FEATURES_CAN_SYNC_ITEM->sw.value = AGENT_DOME_FEATURES_CAN_PARK_ITEM->sw.value = AGENT_DOME_FEATURES_CAN_OPEN_ITEM->sw.value = false;
 			indigo_update_property(device, AGENT_DOME_FEATURES_PROPERTY, NULL);
 			/* No dome - no slave */
 			AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_IDLE_STATE;
