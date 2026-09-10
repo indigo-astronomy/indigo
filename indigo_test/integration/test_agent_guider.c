@@ -192,6 +192,9 @@ static bool txt(const char *device, const char *name, const char *item, const ch
 // The production agent, bus, filter, image analysis and timers remain in use.
 static atomic_bool synthetic, extended_image, blank_image, invalid_image, short_image, pulse_failure, freeze_motion;
 enum { RAW_COMPLETE, RAW_ZERO_WIDTH, RAW_ZERO_HEIGHT, RAW_LARGE_DIMENSION, RAW_PIXEL_OVERFLOW, RAW_SHORT_PIXELS };
+static atomic_bool pulse_timeout;
+static atomic_int pulse_fault_axes = 3;
+static atomic_bool pulse_fault_once;
 static atomic_uint raw_format;
 static atomic_int raw_fault;
 static atomic_int short_image_size = 4;
@@ -289,6 +292,10 @@ static indigo_result guider_spy(indigo_device *device, indigo_client *sender, in
 	if (!strcmp(property->name, "GUIDER_GUIDE_RA") || !strcmp(property->name, "GUIDER_GUIDE_DEC")) {
 		double positive = 0, negative = 0;
 		bool ra = !strcmp(property->name, "GUIDER_GUIDE_RA");
+		bool fault = (pulse_failure || pulse_timeout || pulse_fault_once) && (pulse_fault_axes & (ra ? 1 : 2));
+		if (fault) {
+			pulse_fault_once = false;
+		}
 		for (int i = 0; i < property->count; i++) {
 			if (!strcmp(property->items[i].name, ra ? "WEST" : "NORTH")) {
 				positive = property->items[i].number.value;
@@ -304,20 +311,20 @@ static indigo_result guider_spy(indigo_device *device, indigo_client *sender, in
 			if (pulse_ra < 0) {
 				east_commands++;
 			}
-			if (synthetic && !freeze_motion && !pulse_failure) {
+			if (synthetic && !freeze_motion && !fault) {
 				offset_x += pulse_ra * motion_scale * (pulse_ra < 0 ? east_motion_factor : 1);
 			}
 		} else {
 			dec_commands++;
 			pulse_dec = positive - negative;
-			if (synthetic && !freeze_motion && !pulse_failure) {
+			if (synthetic && !freeze_motion && !fault) {
 				offset_y -= pulse_dec * motion_scale;
 			}
 		}
 		pthread_mutex_unlock(&motion_mutex);
-		if (pulse_failure) {
+		if (fault) {
 			indigo_property *reply = indigo_copy_property(NULL, property);
-			reply->state = INDIGO_ALERT_STATE;
+			reply->state = pulse_timeout ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE;
 			indigo_update_property(device, reply, "Injected guide pulse failure");
 			indigo_release_property(reply);
 			return INDIGO_OK;
@@ -1114,14 +1121,126 @@ static void raw_payload_formats(void) {
 	}
 }
 
-static void pulse_error(void) {
+static void pulse_guiding_failure(int axis, bool timeout) {
 	ASSERT_TRUE(configured_guiding());
+	ASSERT_TRUE(sw(AGENT, "AGENT_PROCESS_FEATURES", "FAIL_ON_GUIDING_ERROR", true, INDIGO_OK_STATE));
 	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
 	ASSERT_TRUE(frames(3));
 	unsigned before = revision(AGENT, "AGENT_START_PROCESS");
-	pulse_failure = true;
-	move_image(3, 3);
+	pulse_fault_axes = axis;
+	pulse_timeout = timeout;
+	pulse_failure = !timeout;
+	move_image(axis == 1 ? 3 : 0, axis == 2 ? 3 : 0);
+	double start = indigo_monotonic_time();
 	ASSERT_TRUE(wait_state(AGENT, "AGENT_START_PROCESS", before, INDIGO_ALERT_STATE));
+	if (timeout) {
+		ASSERT_TRUE(indigo_monotonic_time() - start >= 9);
+	}
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_FAILED, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_START_PROCESS", "GUIDING"));
+	pulse_failure = pulse_timeout = false;
+	// A stale error on an unused DEC axis must not prevent fresh RA guiding.
+	if (axis == 2) {
+		ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_DEC_MODE", "NONE", true, INDIGO_OK_STATE));
+	}
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(3));
+	move_image(6, axis == 2 ? 3 : 0);
+	ASSERT_TRUE(frames(8));
+	ASSERT_TRUE(abort_running());
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(AGENT, "AGENT_START_PROCESS"));
+}
+
+static void pulse_error(void) {
+	pulse_guiding_failure(1, false);
+}
+
+static void pulse_dec_error(void) {
+	pulse_guiding_failure(2, false);
+}
+
+static void pulse_completion_timeout(void) {
+	pulse_guiding_failure(1, true);
+}
+
+static void pulse_transient_recovery(int axis) {
+	ASSERT_TRUE(configured_guiding());
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(3));
+	unsigned process_revision = revision(AGENT, "AGENT_START_PROCESS");
+	const char *property = axis == 1 ? "GUIDER_GUIDE_RA" : "GUIDER_GUIDE_DEC";
+	unsigned before = revision(GUIDER, property);
+	pulse_fault_axes = axis;
+	pulse_fault_once = true;
+	move_image(axis == 1 ? 3 : 0, axis == 2 ? 3 : 0);
+	ASSERT_TRUE(wait_state(GUIDER, property, before, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(AGENT, "AGENT_START_PROCESS"));
+	before = revision(GUIDER, property);
+	ASSERT_TRUE(wait_state(GUIDER, property, before, INDIGO_OK_STATE));
+	ASSERT_TRUE(frames(12));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(AGENT, "AGENT_START_PROCESS"));
+	ASSERT_EQ_INT(process_revision, revision(AGENT, "AGENT_START_PROCESS"));
+	pthread_mutex_lock(&motion_mutex);
+	double residual = axis == 1 ? offset_x : offset_y;
+	pthread_mutex_unlock(&motion_mutex);
+	ASSERT_TRUE(fabs(residual) < 1);
+	ASSERT_TRUE(abort_running());
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(AGENT, "AGENT_START_PROCESS"));
+}
+
+static void pulse_transient_ra(void) {
+	pulse_transient_recovery(1);
+}
+
+static void pulse_transient_dec(void) {
+	pulse_transient_recovery(2);
+}
+
+static void pulse_timeout_abort(void) {
+	ASSERT_TRUE(configured_guiding());
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(3));
+	pulse_fault_axes = 1;
+	pulse_timeout = true;
+	unsigned before = revision(GUIDER, "GUIDER_GUIDE_RA");
+	move_image(3, 0);
+	ASSERT_TRUE(wait_state(GUIDER, "GUIDER_GUIDE_RA", before, INDIGO_BUSY_STATE));
+	double start = indigo_monotonic_time();
+	ASSERT_TRUE(abort_running());
+	ASSERT_TRUE(indigo_monotonic_time() - start < 1.5);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(AGENT, "AGENT_START_PROCESS"));
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_DONE, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	pulse_timeout = false;
+}
+
+static void pulse_calibration_failure(int axis, bool guide_after) {
+	ASSERT_TRUE(model_camera());
+	if (axis == 1) {
+		ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_DEC_MODE", "NONE", true, INDIGO_OK_STATE));
+	}
+	pulse_fault_axes = axis;
+	pulse_failure = true;
+	ASSERT_TRUE(run(guide_after ? "CALIBRATION_AND_GUIDING" : "CALIBRATION", INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_FAILED, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	pthread_mutex_lock(&motion_mutex);
+	unsigned count = ra_commands + dec_commands;
+	pthread_mutex_unlock(&motion_mutex);
+	ASSERT_EQ_INT(1, count);
+	pulse_failure = false;
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT", 10));
+	ASSERT_TRUE(run("CALIBRATION", INDIGO_OK_STATE));
+}
+
+static void pulse_calibration_ra(void) {
+	pulse_calibration_failure(1, false);
+}
+
+static void pulse_calibration_dec(void) {
+	pulse_calibration_failure(2, false);
+}
+
+static void pulse_calibration_and_guiding(void) {
+	pulse_calibration_failure(1, true);
 }
 
 static void camera_disconnect(void) {
@@ -1781,6 +1900,14 @@ static const indigo_test_case tests[] = {
 	{ "raw dimensions and recovery", raw_dimensions },
 	{ "raw payload formats and recovery", raw_payload_formats },
 	{ "pulse error", pulse_error },
+	{ "pulse transient RA recovery", pulse_transient_ra },
+	{ "pulse transient DEC recovery", pulse_transient_dec },
+	{ "pulse DEC error", pulse_dec_error },
+	{ "pulse completion timeout", pulse_completion_timeout },
+	{ "pulse timeout abort", pulse_timeout_abort },
+	{ "pulse calibration RA failure", pulse_calibration_ra },
+	{ "pulse calibration DEC failure", pulse_calibration_dec },
+	{ "pulse calibration and guiding failure", pulse_calibration_and_guiding },
 	{ "camera disconnect", camera_disconnect },
 	{ "dither abort", dither_abort },
 	{ "dither timeout", dither_timeout },

@@ -1,5 +1,13 @@
 # INDIGO Test Suite Changes
 
+## Guider Agent pulse failure propagation fix — DRV-132 (2026-09-10)
+
+`pulse_guide()` now checks completion for the axes commanded by the current operation. Non-OK replies, including BUSY after the existing ten-second completion timeout, return ALERT instead of unconditional OK. Stale states on unused axes do not block a correction. Abort interrupts the completion polling loop and uses normal aborted-process finalization without a pulse-failure message; the nominal pulse-duration wait remains unchanged. Calibration marks a failed pulse as a failed phase, and `calibrate()` returns its actual terminal success state so CALIBRATION_AND_GUIDING cannot proceed after calibration failure. No properties were added or removed; version stays `0x0300002C`. Deferred DRV-130 was not changed.
+
+Eight new cases bring the suite to 86. `pulse transient RA recovery` and `pulse transient DEC recovery` inject one rejected correction under the default CONTINUE policy, verify the same guiding process stays BUSY, and confirm successful subsequent pulses reduce the residual below one pixel. Failed corrections skip settling/statistical success processing; a short abort-aware pause precedes a fresh exposure and correction. The explicit FAIL policy still terminates on pulse errors. `pulse DEC error` complements the existing RA `pulse error`, checking ALERT/FAILED and subsequent RA guiding despite a stale error on unused DEC. `pulse completion timeout` verifies prolonged BUSY fails after the existing wait and a fresh operation can recover. `pulse timeout abort` checks abort completes within 1.5 seconds for the short test pulse and publishes OK/DONE. `pulse calibration RA failure`, `pulse calibration DEC failure`, and `pulse calibration and guiding failure` verify failure after exactly one rejected command and successful subsequent calibration. The fake boundary selects faulty axes and either publishes ALERT or leaves BUSY; normal pulse behavior is unchanged.
+
+Validation: driver build passed. After adding CONTINUE recovery, all eleven pulse-filtered cases and all three star-loss policy cases passed, including cleanup. The earlier validation also passed `correction response` and `calibration and guiding`. Normal pulse thresholds, single-pulse calibration and successful guiding remain covered. The full suite and AddressSanitizer were not rerun for this status/control-flow fix. DRV-130 and DRV-133 remain open. Test artifacts were removed with `make -C indigo_test test-clean`.
+
 ## Guider Agent delay abort fix — DRV-131 (2026-09-10)
 
 The inter-frame guiding delay loop now checks `AGENT_ABORT_PROCESS` before each existing sleep interval. Abort exits the delay, clears its published value and follows normal guiding completion without starting another exposure. Countdown behavior and the existing 200 ms/10 ms sleep intervals are unchanged. Version remains `0x0300002C` until the combined change is complete; no properties were added or removed. The reverted DRV-130 work remains deferred and was not reapplied.
@@ -100,7 +108,7 @@ The final `make -C indigo_test test-agent-guider` run completed **53/64 cases su
 | DRV-129 (subsequently fixed) | Calibration uses completed pulse counts; see the focused speed validation above. |
 | DRV-130 | RA-only dither fails the requested magnitude assertion |
 | DRV-131 (subsequently fixed) | Guiding delay now responds to abort; see the focused delay validation above. |
-| DRV-132 | A guide-pulse ALERT does not terminate the guiding process |
+| DRV-132 (subsequently fixed) | Pulse failures and timeout now propagate to guiding/calibration; see the focused validation above. |
 | DRV-133 | Drift/correction statistics remain stale when measured drift returns to exactly zero |
 
 Sanitizer reproduction (uses a separate build directory to prevent mixing instrumented and ordinary objects):
@@ -141,7 +149,7 @@ Inventory: 150 modules — 2 Complete, 37 Partial, 55 Not audited, 46 No tests, 
 | `agent_astrometry` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_auxiliary` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_config` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `agent_guider` | Hand-written | Production agent/filter + CCD simulator and deterministic image/pulse boundary | Partial | 78 mapped integration cases; DRV-124/DRV-125 regressions pass normally and under AddressSanitizer; focused DRV-126–DRV-129 and DRV-131 regressions pass; DRV-130, DRV-132 and DRV-133 remain open. See the Guider Agent integration coverage section for validation and remaining acceptance work. |
+| `agent_guider` | Hand-written | Production agent/filter + CCD simulator and deterministic image/pulse boundary | Partial | 86 mapped integration cases; DRV-124/DRV-125 regressions pass normally and under AddressSanitizer; focused DRV-126–DRV-129 and DRV-131/DRV-132 regressions pass; DRV-130 and DRV-133 remain open. See the Guider Agent integration coverage section for validation and remaining acceptance work. |
 | `agent_imager` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_mount` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_scripting` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |

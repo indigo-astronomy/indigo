@@ -1239,9 +1239,16 @@ static indigo_property_state pulse_guide(indigo_device *device, double ra, doubl
 	}
 	if (ra_duration || dec_duration) {
 		indigo_usleep(ra_duration > dec_duration ? (unsigned)ra_duration : (unsigned)dec_duration);
-		for (int i = 0; i < 200 && (DEVICE_PRIVATE_DATA->guide_ra_state == INDIGO_BUSY_STATE || DEVICE_PRIVATE_DATA->guide_dec_state == INDIGO_BUSY_STATE); i++) {
+		for (int i = 0; i < 200 && ((ra && DEVICE_PRIVATE_DATA->guide_ra_state == INDIGO_BUSY_STATE) || (dec && DEVICE_PRIVATE_DATA->guide_dec_state == INDIGO_BUSY_STATE)) && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++) {
 			indigo_usleep(50000);
 		}
+	}
+	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		return INDIGO_ALERT_STATE;
+	}
+	if ((ra && DEVICE_PRIVATE_DATA->guide_ra_state != INDIGO_OK_STATE) || (dec && DEVICE_PRIVATE_DATA->guide_dec_state != INDIGO_OK_STATE)) {
+		indigo_send_message(device, ALERT_PROPERTY, "Guide pulse failed or timed out");
+		return INDIGO_ALERT_STATE;
 	}
 	return INDIGO_OK_STATE;
 }
@@ -1327,6 +1334,7 @@ static void change_step(indigo_device *device, double q) {
 static bool guide_and_capture_frame(indigo_device *device, double ra, double dec, char *message) {
 	write_log_record(device);
 	if ((ra != 0 || dec != 0) && pulse_guide(device, ra, dec) != INDIGO_OK_STATE) {
+		DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 		return false;
 	}
 	if (!capture_and_process_frame(device)) {
@@ -1653,7 +1661,7 @@ static bool calibrate(indigo_device *device) {
 	}
 	indigo_restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 	indigo_restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
-	bool result = true;
+	bool result = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE;
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
@@ -1952,6 +1960,17 @@ static bool guide(indigo_device *device) {
 				prev_correction_dec = correction_dec;
 			}
 			if (pulse_guide(device, correction_ra, correction_dec) != INDIGO_OK_STATE) {
+				if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+					break;
+				}
+				if (AGENT_GUIDER_CONTINUE_ON_GUIDING_ERROR_ITEM->sw.value) {
+					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+					for (int i = 0; i < 10 && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++) {
+						indigo_usleep(100000);
+					}
+					// Measure a fresh frame before attempting another correction.
+					continue;
+				}
 				AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				break;
 			}
