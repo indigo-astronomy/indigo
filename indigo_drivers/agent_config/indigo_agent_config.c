@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x03000014
+#define DRIVER_VERSION 0x03000015
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -559,6 +559,11 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_CONFIG_SETUP_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_CONFIG_SAVE_PROPERTY, property)) {
+		if (AGENT_CONFIG_LOAD_PROPERTY->state == INDIGO_BUSY_STATE) {
+			AGENT_CONFIG_SAVE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AGENT_CONFIG_SAVE_PROPERTY, "Configuration load is in progress");
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(AGENT_CONFIG_SAVE_PROPERTY, property, false);
 		if (*AGENT_CONFIG_SAVE_NAME_ITEM->text.value) {
 			replace_spaces(AGENT_CONFIG_SAVE_NAME_ITEM->text.value);
@@ -634,6 +639,11 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_CONFIG_DELETE_PROPERTY, property)) {
+		if (AGENT_CONFIG_LOAD_PROPERTY->state == INDIGO_BUSY_STATE) {
+			AGENT_CONFIG_DELETE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AGENT_CONFIG_DELETE_PROPERTY, "Configuration load is in progress");
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(AGENT_CONFIG_DELETE_PROPERTY, property, false);
 		replace_spaces(AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
 		if (strchr(AGENT_CONFIG_DELETE_NAME_ITEM->text.value, '/')) {

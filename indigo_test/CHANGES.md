@@ -1286,7 +1286,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `save_write_failure` | Fails; see DRV-162 in the driver review. |
 | `selection_alert_masked` | Fails; see DRV-167 in the driver review. |
 | `empty_load` | Fails; see DRV-163 in the driver review. |
-| `concurrent_remove` | Fails; see DRV-161 in the driver review. |
+| `concurrent_remove` | Passes after DRV-161 fix; see driver review validation. |
 | `save_path_separator` | Fails; see DRV-164 in the driver review. |
 | `discovery_compaction` | Passes; discovery compaction. |
 | `agent_capacity_reuse` | Passes; agent capacity reuse. |
@@ -1329,7 +1329,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `profile_no_selection` | Passes after DRV-158 fix; see driver review validation. |
 | `capacity_restore` | Passes after DRV-159 fix; see driver review validation. |
 | `autosave_reentrant` | Passes after DRV-160 fix; see driver review validation. |
-| `concurrent_save` | Fails; see DRV-161 in the driver review. |
+| `concurrent_save` | Passes after DRV-161 fix; see driver review validation. |
 | `startup_scan` | Passes; startup scan. |
 | `enumeration_filter` | Passes; enumeration filter. |
 

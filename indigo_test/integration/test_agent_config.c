@@ -679,7 +679,8 @@ static void concurrent_save(void) {
 		indigo_usleep(1000);
 	}
 	ASSERT_TRUE(load_waiting);
-	ASSERT_TRUE(text_change(SAVE, "second", INDIGO_OK_STATE));
+	ASSERT_TRUE(text_change(SAVE, "second", INDIGO_ALERT_STATE));
+	ASSERT_FALSE(exists("second.saved"));
 	hold_load = false;
 	ASSERT_TRUE(wait_state(LOAD, INDIGO_OK_STATE));
 	ASSERT_TRUE(has_item(LAST, "NAME", "first", -1));
@@ -735,10 +736,12 @@ static void concurrent_remove(void) {
 		indigo_usleep(1000);
 	}
 	ASSERT_TRUE(load_waiting);
-	ASSERT_TRUE(text_change(REMOVE, "first", INDIGO_OK_STATE));
+	ASSERT_TRUE(text_change(REMOVE, "first", INDIGO_ALERT_STATE));
 	hold_load = false;
 	ASSERT_TRUE(wait_state(LOAD, -1));
-	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state(LOAD));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(LOAD));
+	ASSERT_TRUE(exists("first.saved"));
+	ASSERT_TRUE(has_item(LAST, "NAME", "first", -1));
 }
 
 static void save_path_separator(void) {
