@@ -177,7 +177,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-144 | High | `agent_mount/indigo_agent_mount.c:2459` | SHUTDOWN now requests the existing agent ABORT for a BUSY process and cancels/joins handlers before detaching the internal client. Expanded `shutdown active` passes nine operation/shutdown/reinitialization cycles, verifies abort forwarding to mount/dome/rotator and no unsolicited abort on idle shutdown. | Closed (fixed) |
 | DRV-145 | Medium | `agent_mount/indigo_agent_mount.c:2206`, `agent_imager/indigo_agent_imager.c:3013`, `agent_guider/indigo_agent_guider.c:2835`, `../indigo_libs/indigo_platesolver.c:1048` | Empty AGENT_START_PROCESS requests now complete directly with OK in Mount, Imager, Guider and the shared platesolver (ASTAP/Astrometry). Previously Imager with camera/focuser and Guider with camera/guider stayed BUSY without an operation; incomplete selections produced misleading missing-device errors. Platesolver instead started an unintended exposure. Empty requests now schedule no work, and BUSY requests preserve the active selection. | Closed (fixed) |
 | DRV-146 | Medium | `agent_mount/indigo_agent_mount.c:2360`, `agent_mount/indigo_agent_mount.c:2453` | Capability discovery retained mount/dome feature flags after deletion of the selected device’s supporting property. Removing MOUNT_HOME left HOME advertised and defeated the unsupported-operation guard. Definitions and deletions now recompute capabilities from live filter cache entries and publish changes, preserving alternative dome slew sources. Expanded `stale capability` covers deletion, rejection without commands and restoration. | Closed (fixed) |
-| DRV-147 | High | `agent_mount/indigo_agent_mount.c:315` | Slew/sync sends mount/dome unpark commands and immediately continues to mode and coordinate commands without waiting for successful unpark. Even an immediate ALERT response from unpark does not prevent coordinates being commanded. Reproduced by `unpark failure` with both devices initially parked and rejected unpark requests. | Open |
+| DRV-147 | High | `agent_mount/indigo_agent_mount.c:308`, `agent_mount/indigo_agent_mount.c:332` | Slew/sync sent unpark requests and immediately continued to mode/coordinate commands, even after an immediate unpark ALERT. The shared path now waits for successful required mount/dome unpark before commanding mount, dome or rotator coordinates; failure, abort, lost device/capability or timeout ends START with ALERT. | Closed (fixed) |
 
 ## Finding Summaries
 
@@ -1305,3 +1305,32 @@ Eleven selected cases passed across Mount, Imager and Guider suites, including t
 Mount Agent now derives feature flags from the selected devices' cached property definitions on definition/deletion notifications. Deleted source entries are excluded even while the filter is still announcing deletion of their agent clones. Ordinary status updates no longer set capability flags. The common calculation preserves dome SLEW while either DOME_ON_COORDINATES_SET/GOTO or DOME_HORIZONTAL_COORDINATES remains and publishes feature changes immediately, including restoration.
 
 Expanded `stale capability` checks mount HOME/PARK/TRACK and dome PARK/OPEN removal, unsupported-operation ALERT with no peer command, restored flags and successful operations after redefinition; mount SLEW/SYNC loss and restoration; both deletion/restoration orders for the dome's two slew sources; and isolation from an unselected peer's deletion. Twelve selected integration cases passed, including missing devices/capabilities, legacy/modern success, three dome reselection cases, process deselection, legacy dome slew, active shutdown and empty start. Agent and test executable built for macOS arm64/x86_64; hardware-free execution was on arm64. Version remains 0x03000016 per user instruction; test artifacts removed. Review baseline unchanged.
+
+### DRV-147 fix validation — 2026-09-10
+
+The common slew/sync path now waits for required unpark completion before sending any coordinate-mode or coordinate commands to the mount, coupled dome or rotator. It skips unpark when already unparked or when parking is unsupported, waits for both required devices, and rejects ALERT, abort, deselection, removed parking capability or the existing-style bounded 180,000 × 1 ms wait limit. Failure clears SLEW/SYNC and finishes START with ALERT; an abort request is acknowledged. Coordinate geometry is calculated after waiting. Sync retains its existing mount/rotator scope.
+
+Modern and legacy `unpark failure` matrices cover immediate rejected slew and sync, delayed mount/dome failure, abort, dome disconnect, accelerated timeout and successful recovery with the mount completing before the dome. Assertions forbid mode/coordinate commands on failure and while the dome remains pending, including rotator commands. Existing operation-timeout and coupled-abort tests now explicitly complete unpark recovery before testing subsequent slew behavior. The new success fixture waits for the rotator movement request before publishing completion, avoiding an early-completion race.
+
+The full Mount Agent executable passed 59/59 cases after the final changes; both new matrix cases also passed five repeated runs. Production agent/test builds passed for macOS arm64/x86_64; execution used scripted hardware-free peers on arm64. Test artifacts removed. Version remains 0x03000016 per user instruction; review baseline unchanged.
+
+### Deferred driver versions finalized — 2026-09-10
+
+After completion of DRV-134–DRV-147, the user authorized the deferred version increments, including the caller-buffer formatting changes and shared platesolver fix. Earlier validation notes describe the versions at the time of each fix.
+
+| Driver | Previous | Updated |
+| --- | --- | --- |
+| `agent_mount` | `0x03000016` | `0x03000017` |
+| `agent_imager` | `0x03000039` | `0x0300003A` |
+| `agent_guider` | `0x0300002D` | `0x0300002E` |
+| `agent_scripting` | `0x0300000A` | `0x0300000B` |
+| `agent_astap` | `0x0200000A` | `0x0200000B` |
+| `agent_astrometry` | `0x02000015` | `0x02000016` |
+| `mount_asi` | `0x0300001C` | `0x0300001D` |
+| `mount_ioptron` | `0x0300002F` | `0x03000030` |
+| `mount_lx200` | `0x03000032` | `0x03000033` |
+| `mount_mxhd` | `0x0001` | `0x0002` |
+| `mount_rainbow` | `0x0200000E` | `0x0200000F` |
+
+iOptron version was updated in the `.driver` source (47 → 48) and regenerated; the generated diff changes only DRIVER_VERSION. All eleven driver builds passed for macOS arm64/x86_64.
+The regenerated iOptron driver passed all three serial simulator cases on arm64; test artifacts were removed.

@@ -1299,6 +1299,7 @@ static void operation_timeouts(void) {
 		fast_wait = false;
 		complete(operations[i].peer, operations[i].property, INDIGO_ALERT_STATE);
 	}
+	CHECK(operation("UNPARK", 0, "MOUNT_PARK", INDIGO_OK_STATE));
 	CHECK(operation("SLEW", 0, "MOUNT_EQUATORIAL_COORDINATES", INDIGO_OK_STATE));
 }
 
@@ -1337,6 +1338,12 @@ static void coupled_abort(void) {
 	CHECK(sw(AGENT, FEATURES, "ENABLE_FIELD_DEROTATION", true, INDIGO_OK_STATE));
 	const char *items[] = { "PARK", "UNPARK", "SLEW" };
 	for (int i = 0; i < 3; i++) {
+		if (i == 2) {
+			// Complete recovery from the preceding aborted unpark before testing slew abort.
+			immediate = true;
+			CHECK(sw(AGENT, START, "UNPARK", true, INDIGO_OK_STATE));
+			immediate = false;
+		}
 		const char *target = i == 2 ? "MOUNT_EQUATORIAL_COORDINATES" : "MOUNT_PARK";
 		int n = requests(0, target);
 		int a[] = { requests(0, "MOUNT_ABORT_MOTION"), requests(1, "DOME_ABORT_MOTION"), requests(2, "ROTATOR_ABORT_MOTION") };
@@ -1527,17 +1534,82 @@ static void lx200_input_matrix(void) {
 	CHECK(!strcmp(lx_output, "indigo#"));
 }
 
-static void unpark_failure(void) {
-	CHECK(select_peer(0, true, false));
-	CHECK(select_peer(1, true, false));
-	CHECK(operation("PARK", 0, "MOUNT_PARK", INDIGO_OK_STATE));
-	CHECK(operation("DOME_PARK", 1, "DOME_PARK", INDIGO_OK_STATE));
+static void unpark_matrix(bool modern) {
+	CHECK(select_peer(0, modern, false));
+	CHECK(select_peer(1, modern, false));
+	CHECK(select_peer(2, false, false));
 	CHECK(sw(AGENT, FEATURES, "ENABLE_DOME_SLAVING", true, INDIGO_OK_STATE));
-	reject_motion = true;
-	fast_wait = true;
-	CHECK(sw(AGENT, START, "SLEW", true, INDIGO_ALERT_STATE));
-	CHECK(requests(0, "MOUNT_EQUATORIAL_COORDINATES") == 0);
-	CHECK(requests(1, "DOME_HORIZONTAL_COORDINATES") == 0);
+	CHECK(sw(AGENT, FEATURES, "ENABLE_FIELD_DEROTATION", true, INDIGO_OK_STATE));
+	CHECK(num(AGENT, TARGET, "RA", 7));
+	CHECK(num(AGENT, TARGET, "DEC", 20));
+	for (int scenario = 0; scenario < 8; scenario++) {
+		for (int index = 0; index < 2; index++) {
+			indigo_property *p = prop(index, index ? "DOME_PARK" : "MOUNT_PARK");
+			indigo_set_switch(p, p->items, true);
+			complete(index, p->name, INDIGO_OK_STATE);
+		}
+		int mount = requests(0, "MOUNT_PARK"), dome = requests(1, "DOME_PARK");
+		int coordinates = requests(0, "MOUNT_EQUATORIAL_COORDINATES");
+		int dome_coordinates = requests(1, "DOME_HORIZONTAL_COORDINATES");
+		int rotator = requests(2, "ROTATOR_POSITION");
+		int mount_mode = requests(0, "MOUNT_ON_COORDINATES_SET");
+		int dome_mode = requests(1, "DOME_ON_COORDINATES_SET");
+		int rotator_mode = requests(2, "ROTATOR_ON_POSITION_SET");
+		const char *start = scenario == 1 ? "SYNC" : "SLEW";
+		reject_motion = scenario < 2;
+		CHECK(sw(AGENT, START, start, true, scenario < 2 ? INDIGO_ALERT_STATE : INDIGO_BUSY_STATE));
+		CHECK(wait_request(0, "MOUNT_PARK", mount));
+		if (scenario != 1) {
+			CHECK(wait_request(1, "DOME_PARK", dome));
+		}
+		if (scenario >= 2) {
+			CHECK(requests(0, "MOUNT_EQUATORIAL_COORDINATES") == coordinates);
+			if (scenario == 2 || scenario == 3) {
+				complete(scenario - 2, scenario == 2 ? "MOUNT_PARK" : "DOME_PARK", INDIGO_ALERT_STATE);
+			} else if (scenario == 4) {
+				CHECK(sw(AGENT, "AGENT_ABORT_PROCESS", "ABORT", true, INDIGO_OK_STATE));
+			} else if (scenario == 5) {
+				CHECK(sw(peer_names[1], "CONNECTION", "DISCONNECTED", true, INDIGO_OK_STATE));
+			} else if (scenario == 6) {
+				fast_wait = true;
+			} else {
+				complete(0, "MOUNT_PARK", INDIGO_OK_STATE);
+				indigo_usleep(20000);
+				CHECK(requests(0, "MOUNT_EQUATORIAL_COORDINATES") == coordinates);
+				CHECK(requests(1, "DOME_HORIZONTAL_COORDINATES") == dome_coordinates);
+				complete(1, "DOME_PARK", INDIGO_OK_STATE);
+				CHECK(wait_request(0, "MOUNT_EQUATORIAL_COORDINATES", coordinates));
+				CHECK(wait_request(1, "DOME_HORIZONTAL_COORDINATES", dome_coordinates));
+				CHECK(wait_request(2, "ROTATOR_POSITION", rotator));
+				complete(0, "MOUNT_EQUATORIAL_COORDINATES", INDIGO_OK_STATE);
+				complete(1, "DOME_HORIZONTAL_COORDINATES", INDIGO_OK_STATE);
+				complete(2, "ROTATOR_POSITION", INDIGO_OK_STATE);
+				fast_wait = true;
+			}
+			CHECK(wait_state(AGENT, START, 0, scenario == 7 ? INDIGO_OK_STATE : INDIGO_ALERT_STATE));
+		}
+		CHECK(value(AGENT, START, start) == 0);
+		if (scenario < 7) {
+			CHECK(requests(0, "MOUNT_EQUATORIAL_COORDINATES") == coordinates);
+			CHECK(requests(1, "DOME_HORIZONTAL_COORDINATES") == dome_coordinates);
+			CHECK(requests(2, "ROTATOR_POSITION") == rotator);
+			CHECK(requests(0, "MOUNT_ON_COORDINATES_SET") == mount_mode);
+			CHECK(requests(1, "DOME_ON_COORDINATES_SET") == dome_mode);
+			CHECK(requests(2, "ROTATOR_ON_POSITION_SET") == rotator_mode);
+		}
+		fast_wait = reject_motion = false;
+		if (scenario == 5) {
+			CHECK(select_peer(1, modern, false));
+		}
+	}
+}
+
+static void unpark_failure(void) {
+	unpark_matrix(true);
+}
+
+static void unpark_failure_legacy(void) {
+	unpark_matrix(false);
 }
 
 static void legacy_dome_slew(void) {
@@ -1799,6 +1871,7 @@ static const indigo_test_case tests[] = {
 	{ "configuration failure", configuration_failure },
 
 	{ "unpark failure", unpark_failure },
+	{ "unpark failure legacy", unpark_failure_legacy },
 	{ "legacy dome slew", legacy_dome_slew },
 	{ "geometry and threshold", geometry_and_threshold },
 	{ "related solver filters", related_solver_filters },
