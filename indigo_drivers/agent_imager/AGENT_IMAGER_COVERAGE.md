@@ -92,3 +92,7 @@ The retry-exhaustion regression failed before the fix and passes afterward. Cove
 ## DRV-113 follow-up
 
 The streaming-failure regression failed before the fix and passes afterward for counts 1, 3 and -1, checking terminal ALERT, cleared start switch, image counts and successful recovery. Finite capture, abort/reacquire and pause/resume/BUSY guards also pass (four focused cases). Previous full-suite totals and coverage measurements remain historical.
+
+## DRV-114 follow-up
+
+The expanded external-shutter routing case failed before the fix and passes afterward for preview and exposure batch. It checks camera/shutter abort request counts, shutter terminal state and switch reset, reacquisition, and camera-only abort after shutter deselection. General abort/reacquire and two-agent barrier cases also pass (three focused cases). The shutter is a public-bus test peer; no physical shutter validation or new full-suite coverage measurement is claimed.

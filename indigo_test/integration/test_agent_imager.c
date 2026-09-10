@@ -34,6 +34,7 @@ static indigo_client client;
 static char config_folder[] = "/tmp/indigo_imager_test_XXXXXX";
 static bool bus_started, client_attached, simulator_started, agent_started;
 static atomic_int camera_requests;
+static atomic_int camera_abort_requests;
 static _Atomic(indigo_device *) camera_device;
 static indigo_result (*camera_change)(indigo_device *, indigo_client *, indigo_property *);
 static atomic_int exposure_failures;
@@ -199,6 +200,9 @@ static void fail_exposure(indigo_device *device) {
 }
 
 static indigo_result camera_spy(indigo_device *device, indigo_client *sender, indigo_property *property) {
+	if (!strcmp(property->name, "CCD_ABORT_EXPOSURE")) {
+		atomic_fetch_add(&camera_abort_requests, 1);
+	}
 	if (!strcmp(property->name, "CCD_EXPOSURE")) {
 		atomic_fetch_add(&camera_requests, 1);
 		if (atomic_load(&exposure_failures) > 0) {
@@ -931,12 +935,33 @@ static void external_shutter_routing(void) {
 	ASSERT_TRUE(run("PREVIEW_1", INDIGO_OK_STATE));
 	ASSERT_TRUE(atomic_load(&p->requests) > 0);
 	ASSERT_NEAR(0, value(CAMERA, "CCD_EXPOSURE", "EXPOSURE"), 0.001);
-	atomic_store(&p->hold, true);
-	unsigned aborted = revision(p->device.name, "CCD_ABORT_EXPOSURE");
+	const char *modes[] = { "PREVIEW", "EXPOSURE" };
+	for (int i = 0; i < ARRAY_SIZE(modes); i++) {
+		atomic_store(&p->hold, true);
+		unsigned exposure = revision(p->device.name, "CCD_EXPOSURE");
+		unsigned aborted = revision(p->device.name, "CCD_ABORT_EXPOSURE");
+		int camera_aborts = atomic_load(&camera_abort_requests);
+		ASSERT_TRUE(run(modes[i], INDIGO_BUSY_STATE));
+		ASSERT_TRUE(wait_state(p->device.name, "CCD_EXPOSURE", exposure, INDIGO_BUSY_STATE));
+		int shutter_requests = atomic_load(&p->requests);
+		ASSERT_TRUE(abort_running());
+		ASSERT_TRUE(wait_state(p->device.name, "CCD_ABORT_EXPOSURE", aborted, INDIGO_OK_STATE));
+		ASSERT_TRUE(wait_state(p->device.name, "CCD_EXPOSURE", exposure, INDIGO_ALERT_STATE));
+		ASSERT_EQ_INT(shutter_requests + 1, atomic_load(&p->requests));
+		ASSERT_EQ_INT(camera_aborts + 1, atomic_load(&camera_abort_requests));
+		ASSERT_EQ_INT(0, value(p->device.name, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE"));
+		atomic_store(&p->hold, false);
+		ASSERT_TRUE(run("PREVIEW_1", INDIGO_OK_STATE));
+	}
+	ASSERT_TRUE(sw(AGENT, "FILTER_AUX_1_LIST", "NONE", true, INDIGO_OK_STATE));
+	int shutter_requests = atomic_load(&p->requests);
+	int camera_aborts = atomic_load(&camera_abort_requests);
+	ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_BATCH", "EXPOSURE", 1));
 	ASSERT_TRUE(run("PREVIEW", INDIGO_BUSY_STATE));
-	ASSERT_TRUE(wait_state(p->device.name, "CCD_EXPOSURE", 0, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_state(CAMERA, "CCD_EXPOSURE", 0, INDIGO_BUSY_STATE));
 	ASSERT_TRUE(abort_running());
-	ASSERT_TRUE(wait_state(p->device.name, "CCD_ABORT_EXPOSURE", aborted, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(shutter_requests, atomic_load(&p->requests));
+	ASSERT_EQ_INT(camera_aborts + 1, atomic_load(&camera_abort_requests));
 }
 
 static void streaming_failure_alert(indigo_device *device) {
