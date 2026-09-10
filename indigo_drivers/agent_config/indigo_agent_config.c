@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x0300000F
+#define DRIVER_VERSION 0x03000010
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -436,11 +436,12 @@ static void process_configuration_property(indigo_device *device) {
 				bool done = false;
 				for (int k = 0; k < 20; k++) {
 					indigo_usleep(500000);
-					done = true;
+					done = false;
 					pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 					for (int j = 0; j < MAX_AGENTS; j++) {
 						indigo_property *agent = agent = DEVICE_PRIVATE_DATA->agents[j];
 						if (agent && !strcmp(property->name, agent->name)) {
+							done = true;
 							if (agent->state == INDIGO_ALERT_STATE) {
 								DEVICE_PRIVATE_DATA->failure = true;
 								indigo_send_message(device, ALERT_PROPERTY, "Failed to restore '%s'", property->name);
