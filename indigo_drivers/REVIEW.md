@@ -167,7 +167,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-134 | Medium | `agent_mount/indigo_agent_mount.c:1485` | Dome deselection now clears shutter flags, horizontal-coordinate state, all dome state lights and capabilities, and resets `dome_state_defined` to false so a reselected legacy dome can report park/shutter completion. Version `0x03000017`; all three dome-reselection regressions pass, including modern state reporting, plus legacy/modern operation matrices, selection orders and slaving. | Closed (fixed) |
 | DRV-135 | Medium | `agent_mount/indigo_agent_mount.c:1094` | Negative imager OBJCTDEC now converts the fractional declination to minutes before truncating to an integer. Expanded `negative fits` covers -12.5, -12.125, -0.125 and -90 degrees, including nonzero seconds and a negative subdegree sign. | Closed (fixed) |
 | DRV-136 | Medium | `agent_mount/indigo_agent_mount.c:1105`, `agent_mount/indigo_agent_mount.c:1156` | Guider OBJCTDEC and imager SITELAT/SITELONG now format the sign from the original coordinate separately from the absolute integer degrees, preserving negative subdegree values. Expanded regressions cover negative/positive subdegree and multi-degree coordinates, zero and nonzero seconds, including both site axes. | Closed (fixed) |
-| DRV-137 | Medium | `agent_mount/indigo_agent_mount.c:737` | LX200 ACK byte 0x06 sets the reply to P, but the write is inside the colon-command branch at line 872. The client receives no ACK reply. Reproduced through the unchanged worker with `lx200 ack`. | Open |
+| DRV-137 | Medium | `agent_mount/indigo_agent_mount.c:738` | LX200 ACK byte 0x06 now writes its single-byte P reply immediately through indigo_uni_write, instead of leaving it in the output buffer handled only by colon commands. Expanded ACK regression covers single/repeated ACKs and ACKs interleaved with identification, separators and unknown commands. All three targeted LX200 cases pass. | Closed (fixed) |
 | DRV-138 | Medium | `agent_mount/indigo_agent_mount.c:788` | LX200 Sd chooses the sign with `d > 0`; positive declinations beginning with +00 are decoded as negative. `:Sd+00*30:00#` followed by MS sets a -0.5 degree target. Reproduced by `lx200 positive zero`. | Open |
 | DRV-139 | Medium | `agent_mount/indigo_agent_mount.c:745` | EOF inside an LX200 command only breaks the inner read loop; dispatch is skipped for -1 but not for EOF (0), and complete # termination is not required. A truncated `:Sr05:30` is accepted with reply 1. Reproduced by `lx200 truncated command`. | Open |
 | DRV-140 | Medium | `agent_mount/indigo_agent_mount.c:774` | LX200 Sr/Sd accepts out-of-protocol hour, degree and minute fields and responds with success. Requests for RA 25h, DEC +91 degrees or 75 minutes all return 1. This is parsing of transport input, before public bus numeric validation. Reproduced by `lx200 invalid coordinates`. | Open |
@@ -1218,3 +1218,14 @@ publishes list OK before that task finishes; the new wait serializes this test
 setup without changing production queue or filter behavior. Both affected test
 groups pass with this synchronization. This is not a general concurrency audit.
 Version remains `0x03000016`, with the bump deferred until the last fix as requested.
+
+### DRV-137 fix validation — 2026-09-10
+
+The ACK branch now directly sends one P byte using the portable I/O API. Colon
+command parsing and replies are unchanged. `lx200 ack` failed before the fix;
+afterward it passes single ACK, consecutive ACKs, ACK/GVP/ACK with separators,
+and an ACK following an unknown command, with exact expected response bytes.
+`LX200 protocol` and `lx200 input matrix` also pass (3/3 targeted cases). Built
+macOS arm64/x86_64 and executed hardware-free on arm64 through the scripted
+transport boundary. Version remains `0x03000016` as requested. DRV-138 onward
+remain separate open findings.

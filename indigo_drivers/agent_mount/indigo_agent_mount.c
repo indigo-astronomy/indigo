@@ -735,7 +735,7 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 			break;
 		}
 		if (*buffer_in == 6) {
-			strcpy(buffer_out, "P");
+			indigo_uni_write(data->handle, "P", 1);
 		} else if (*buffer_in == '#') {
 			continue;
 		} else if (*buffer_in == ':') {

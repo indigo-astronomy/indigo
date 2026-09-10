@@ -1171,3 +1171,15 @@ unchanged. After this synchronization, the `fits` group passes 3/3 and the
 coordinate/FITS propagation. Built macOS arm64/x86_64, executed on arm64, and
 removed test artifacts with `make -C indigo_test test-clean`. Version stays at
 `0x03000016` per the user's instruction; DRV-136 is closed in the driver review.
+
+
+### DRV-137 fixed — LX200 ACK reply (2026-09-10)
+
+Expanded `lx200 ack` with exact single-byte P responses for single/consecutive
+ACKs and correct reply ordering when interleaved with GVP, separators and an
+unknown command. The original ACK assertion failed before the fix. Sending the
+reply directly from the production ACK branch fixes it; `lx200 ack`,
+`LX200 protocol` and `lx200 input matrix` all pass (3/3). The test uses the real
+LX200 worker and a scripted portable transport, without sockets. Built macOS
+arm64/x86_64 and executed on arm64. Version remains `0x03000016`; DRV-137 is
+closed in the driver review. Removed build artifacts with `test-clean`.

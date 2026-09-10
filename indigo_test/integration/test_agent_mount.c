@@ -913,6 +913,12 @@ static void lx200_ack(void) {
 	CHECK(start_server());
 	exchange("\006");
 	CHECK(!strcmp(lx_output, "P"));
+	exchange("\006\006");
+	CHECK(!strcmp(lx_output, "PP"));
+	exchange("#\006:GVP#\006#");
+	CHECK(!strcmp(lx_output, "Pindigo#P"));
+	exchange(":unknown#\006");
+	CHECK(!strcmp(lx_output, "P"));
 }
 
 static void lx200_positive_zero(void) {
