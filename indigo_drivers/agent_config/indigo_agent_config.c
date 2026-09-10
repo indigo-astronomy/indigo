@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x03000010
+#define DRIVER_VERSION 0x03000011
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -324,9 +324,12 @@ static void process_configuration_property(indigo_device *device) {
 						}
 					}
 				}
-				indigo_change_property(agent_client, copy); // it expects this call is actually synchronous on a local bus
-				bool restored = false;
-				for (int k = 0; k < 20; k++) {
+				bool has_server = *copy->device != 0;
+				if (has_server) {
+					indigo_change_property(agent_client, copy); // synchronous local bus
+				}
+				bool restored = !copy->count;
+				for (int k = 0; has_server && k < 20; k++) {
 					pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 					bool rejected = AGENT_CONFIG_DRIVERS_PROPERTY->state == INDIGO_ALERT_STATE;
 					restored = AGENT_CONFIG_DRIVERS_PROPERTY->state == INDIGO_OK_STATE;
@@ -843,10 +846,12 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 
 static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (strchr(property->device, '@') == NULL) {
-		if (!strcmp(property->name, SERVER_DRIVERS_PROPERTY_NAME)) {
+		if ((!*property->name || !strcmp(property->name, SERVER_DRIVERS_PROPERTY_NAME)) && !strcmp(property->device, DEVICE_PRIVATE_DATA->server)) {
 			pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 			indigo_delete_property(agent_device, AGENT_CONFIG_DRIVERS_PROPERTY, NULL);
 			AGENT_CONFIG_DRIVERS_PROPERTY->count = 0;
+			AGENT_CONFIG_DRIVERS_PROPERTY->state = INDIGO_IDLE_STATE;
+			DEVICE_PRIVATE_DATA->server[0] = 0;
 			indigo_define_property(agent_device, AGENT_CONFIG_DRIVERS_PROPERTY, NULL);
 			pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 		}
