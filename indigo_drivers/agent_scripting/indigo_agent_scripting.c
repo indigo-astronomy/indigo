@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2025 CloudMakers, s. r. o.
+// Copyright (c) 2020-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -843,9 +844,10 @@ static duk_ret_t delete_property(duk_context *ctx) {
 }
 
 static duk_ret_t dtos(duk_context *ctx) {
+	char sexagesimal[128];
 	const double value = duk_require_number(ctx, 0);
 	const char *format = duk_get_string(ctx, 1);
-	duk_push_string(ctx, indigo_dtos(value, format));
+	duk_push_string(ctx, indigo_dtos_r(value, format, sexagesimal, sizeof(sexagesimal)));
 	return 1;
 }
 

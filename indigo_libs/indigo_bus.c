@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -2171,14 +2172,17 @@ static void fix_dms(double *d, double *m, double *s) {
 	}
 }
 
-char* indigo_dtos(double value, const char *format) { // circular use of 4 static buffers!
+char *indigo_dtos_r(double value, const char *format, char *buffer, size_t size) {
+	if (size == 0) {
+		return buffer;
+	}
 	double d = fabs(value);
 	double m = 60.0 * (d - floor(d));
 	double s = 60.0 * (m - floor(m));
 	if (format == NULL) {
 		format = "%d:%02d:%05.2f";
 	}
-	char buffer[127], signature[16];
+	char signature[16];
 	// compute format signature
 	const char *fp = format;
 	char *sp = signature;
@@ -2205,6 +2209,78 @@ char* indigo_dtos(double value, const char *format) { // circular use of 4 stati
 		}
 	}
 	*sp = 0;
+	// format number
+	if (!strcmp(signature, "d")) {
+		snprintf(buffer, size, format, (int)d);
+	} else if (!strcmp(signature, "dd")) {
+		m = round(m);
+		fix_dms(&d, &m, NULL);
+		snprintf(buffer, size, format, (int)d, (int)m);
+	} else if (!strcmp(signature, "ddd")) {
+		s = round(s);
+		fix_dms(&d, &m, &s);
+		snprintf(buffer, size, format, (int)d, (int)m, (int)s);
+	} else if (!strcmp(signature, "d0f")) {
+		m = round(m);
+		fix_dms(&d, &m, NULL);
+		snprintf(buffer, size, format, (int)d, m);
+	} else if (!strcmp(signature, "d1f")) {
+		m = (round(m * 10.0)) / 10.0;
+		fix_dms(&d, &m, NULL);
+		snprintf(buffer, size, format, (int)d, m);
+	} else if (!strcmp(signature, "d2f")) {
+		m = (round(m * 100.0)) / 100.0;
+		fix_dms(&d, &m, NULL);
+		snprintf(buffer, size, format, (int)d, m);
+	} else if (!strcmp(signature, "d3f")) {
+		m = (round(m * 1000.0)) / 1000.0;
+		fix_dms(&d, &m, NULL);
+		snprintf(buffer, size, format, (int)d, m);
+	} else if (!strcmp(signature, "d4f")) {
+		m = (round(m * 10000.0)) / 10000.0;
+		fix_dms(&d, &m, NULL);
+		snprintf(buffer, size, format, (int)d, m);
+	} else if (!strcmp(signature, "dd0f")) {
+		s = round(s);
+		fix_dms(&d, &m, &s);
+		snprintf(buffer, size, format, (int)d, (int)m, s);
+	} else if (!strcmp(signature, "dd1f")) {
+		s = (round(s * 10.0)) / 10.0;
+		fix_dms(&d, &m, &s);
+		snprintf(buffer, size, format, (int)d, (int)m, s);
+	} else if (!strcmp(signature, "dd2f")) {
+		s = (round(s * 100.0)) / 100.0;
+		fix_dms(&d, &m, &s);
+		snprintf(buffer, size, format, (int)d, (int)m, s);
+	} else if (!strcmp(signature, "dd3f")) {
+		s = (round(s * 1000.0)) / 1000.0;
+		fix_dms(&d, &m, &s);
+		snprintf(buffer, size, format, (int)d, (int)m, s);
+	} else if (!strcmp(signature, "dd4f")) {
+		s = (round(s * 10000.0)) / 10000.0;
+		fix_dms(&d, &m, &s);
+		snprintf(buffer, size, format, (int)d, (int)m, s);
+	} else {
+		snprintf(buffer, size, format, d);
+	}
+	// Preserve the sign even when the integer degrees are zero.
+	if (value < 0) {
+		if (buffer[0] == '+') {
+			buffer[0] = '-';
+		} else if (size > 1) {
+			size_t length = strlen(buffer);
+			if (length > size - 2) {
+				length = size - 2;
+			}
+			memmove(buffer + 1, buffer, length);
+			buffer[0] = '-';
+			buffer[length + 1] = 0;
+		}
+	}
+	return buffer;
+}
+
+char *indigo_dtos(double value, const char *format) {
 	// select circular buffer
 	static char string_1[128], string_2[128], string_3[128], string_4[128];
 	static char *string = string_4;
@@ -2217,73 +2293,7 @@ char* indigo_dtos(double value, const char *format) { // circular use of 4 stati
 	} else if (string == string_4) {
 		string = string_1;
 	}
-	// format number
-	if (!strcmp(signature, "d")) {
-			snprintf(buffer, sizeof(buffer), format, (int)d);
-	} else if (!strcmp(signature, "dd")) {
-			m = round(m);
-			fix_dms(&d, &m, NULL);
-			snprintf(buffer, sizeof(buffer), format, (int)d, (int)m);
-	} else if (!strcmp(signature, "ddd")) {
-		s = round(s);
-		fix_dms(&d, &m, &s);
-		snprintf(buffer, sizeof(buffer), format, (int)d, (int)m, (int)s);
-	} else if (!strcmp(signature, "d0f")) {
-		m = round(m);
-		fix_dms(&d, &m, NULL);
-		snprintf(buffer, sizeof(buffer), format, (int)d, m);
-	} else if (!strcmp(signature, "d1f")) {
-		m = (round(m * 10.0)) / 10.0;
-		fix_dms(&d, &m, NULL);
-		snprintf(buffer, sizeof(buffer), format, (int)d, m);
-	} else if (!strcmp(signature, "d2f")) {
-		m = (round(m * 100.0)) / 100.0;
-		fix_dms(&d, &m, NULL);
-		snprintf(buffer, sizeof(buffer), format, (int)d, m);
-	} else if (!strcmp(signature, "d3f")) {
-		m = (round(m * 1000.0)) / 1000.0;
-		fix_dms(&d, &m, NULL);
-		snprintf(buffer, sizeof(buffer), format, (int)d, m);
-	} else if (!strcmp(signature, "d4f")) {
-		m = (round(m * 10000.0)) / 10000.0;
-		fix_dms(&d, &m, NULL);
-		snprintf(buffer, sizeof(buffer), format, (int)d, m);
-	} else if (!strcmp(signature, "dd0f")) {
-		s = round(s);
-		fix_dms(&d, &m, &s);
-		snprintf(buffer, sizeof(buffer), format, (int)d, (int)m, s);
-	} else if (!strcmp(signature, "dd1f")) {
-		s = (round(s * 10.0)) / 10.0;
-		fix_dms(&d, &m, &s);
-		snprintf(buffer, sizeof(buffer), format, (int)d, (int)m, s);
-	} else if (!strcmp(signature, "dd2f")) {
-		s = (round(s * 100.0)) / 100.0;
-		fix_dms(&d, &m, &s);
-		snprintf(buffer, sizeof(buffer), format, (int)d, (int)m, s);
-	} else if (!strcmp(signature, "dd3f")) {
-		s = (round(s * 1000.0)) / 1000.0;
-		fix_dms(&d, &m, &s);
-		snprintf(buffer, sizeof(buffer), format, (int)d, (int)m, s);
-	} else if (!strcmp(signature, "dd4f")) {
-		s = (round(s * 10000.0)) / 10000.0;
-		fix_dms(&d, &m, &s);
-		snprintf(buffer, sizeof(buffer), format, (int)d, (int)m, s);
-	} else {
-		snprintf(buffer, sizeof(buffer), format, d);
-	}
-	// fix sign
-	if (value < 0) {
-		if (buffer[0] == '+') {
-			buffer[0] = '-';
-			snprintf(string, 128, "%s", buffer);
-		} else {
-			snprintf(string, 128, "-%s", buffer);
-		}
-	} else {
-		snprintf(string, 128, "%s", buffer);
-	}
-	//printf("%18s -> %s\n", format, string);
-	return string;
+	return indigo_dtos_r(value, format, string, 128);
 }
 
 void indigo_usleep(long delay) {

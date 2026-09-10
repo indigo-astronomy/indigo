@@ -1025,6 +1025,29 @@ static void negative_zero_fits(void) {
 	}
 }
 
+static void rounded_fits(void) {
+	CHECK(select_peer(0, false, false));
+	CHECK(select_peer(5, false, false));
+	CHECK(select_peer(6, false, false));
+	const double coordinates[] = { 12 + 34.0 / 60 + 56.8 / 3600, -0.999999, 12.999999 };
+	const char *expected[] = { "'12 34 57'", "'-1 00 00'", "'13 00 00'" };
+	for (int i = 0; i < ARRAY_SIZE(coordinates); i++) {
+		emit_number(0, "MOUNT_EQUATORIAL_COORDINATES", "DEC", coordinates[i]);
+		CHECK(!strcmp(header_value(5, "OBJCTDEC"), expected[i]));
+		CHECK(!strcmp(header_value(6, "OBJCTDEC"), expected[i]));
+		CHECK(value(peer_names[6], "AGENT_GUIDER_MOUNT_COORDINATES", "DEC") == coordinates[i]);
+		CHECK(num(AGENT, "GEOGRAPHIC_COORDINATES", "LATITUDE", coordinates[i]));
+		CHECK(!strcmp(header_value(5, "SITELAT"), expected[i]));
+		CHECK(num(AGENT, "GEOGRAPHIC_COORDINATES", "LONGITUDE", coordinates[i]));
+		CHECK(!strcmp(header_value(5, "SITELONG"), expected[i]));
+		if (coordinates[i] >= 0) {
+			emit_number(0, "MOUNT_EQUATORIAL_COORDINATES", "RA", coordinates[i]);
+			CHECK(!strcmp(header_value(5, "OBJCTRA"), expected[i]));
+			CHECK(!strcmp(header_value(6, "OBJCTRA"), expected[i]));
+		}
+	}
+}
+
 static void limits(void) {
 	CHECK(select_peer(0, true, false));
 	CHECK(num(AGENT, "GEOGRAPHIC_COORDINATES", "LONGITUDE", 10));
@@ -1538,6 +1561,7 @@ static const indigo_test_case tests[] = {
 	{ "lx200 idle stop", lx200_idle_stop },
 	{ "related agents", related_agents },
 	{ "negative fits", negative_fits },
+	{ "rounded fits", rounded_fits },
 	{ "negative zero fits", negative_zero_fits },
 	{ "limits", limits },
 	{ "instances", instances },

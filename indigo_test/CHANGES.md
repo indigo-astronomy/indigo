@@ -1195,3 +1195,12 @@ explicit minus prefix for -00 while retaining +00 as positive. `LX200 protocol`
 and `lx200 input matrix` also pass (3/3 targeted cases). Built macOS arm64/x86_64
 and executed hardware-free on arm64. Version remains `0x03000016` per the user;
 DRV-138 is closed. Removed generated test artifacts with `test-clean`.
+
+### Caller-owned sexagesimal formatting — 2026-09-10
+
+`indigo_dtos_r(value, format, buffer, size)` contains the shared formatter; `indigo_dtos()` remains the compatible four-buffer wrapper. All production callers of the library formatter now use caller-owned storage, including client number formatting, mount alignment labels, agents and mount protocol commands. The independent formatter in the indigocat standalone example is not a caller of this API. Mount Agent FITS OBJCTRA/OBJCTDEC/SITELAT/SITELONG now use the common formatter, rounding to whole seconds instead of truncating; FITS quotes surround the formatted result so negative values retain the correct sign.
+
+- `test_bus_helpers`: 22 expected-output fixtures cover every existing sexagesimal signature, default format, explicit signs, negative subdegree values, rounding precision and carry into degrees. Buffer checks cover zero size/NULL, one-byte buffers, truncation with canaries, retained caller storage across wrapper calls and `indigo_format_number()` termination. Eight threads perform 80,000 total conversions into independent buffers.
+- Mount Agent `rounded fits`: verifies fractional-second rounding and minute/degree carry through both related agents and site headers, including unchanged numeric coordinates forwarded to the guider. Existing three signed FITS cases remain passing.
+- Validation: all 150 unit cases passed; Mount Agent FITS (4), LX200 protocol (1), input matrix (1) and related-agent cases (3) passed; iOptron simulator (3) and LX200 simulator (4) passed. Simulator executables must run with `indigo_test` as the working directory; initial invocations from the repository root failed to locate their relative simulator paths, then passed from the correct directory.
+- Framework and all nine affected drivers/agents built for macOS arm64/x86_64; tests ran on arm64. iOptron was regenerated from its `.driver` source with the unchanged generator. Physical hardware and other operating systems were not exercised. Driver version increments remain deferred under the user's instruction to change versions after the final fix. Test artifacts were removed with `make -C indigo_test test-clean`.

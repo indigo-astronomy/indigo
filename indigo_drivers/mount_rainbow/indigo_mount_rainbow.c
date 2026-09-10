@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -394,18 +395,20 @@ static void mount_park_callback(indigo_device *device) {
 }
 
 static void mount_geographic_coordinates_callback(indigo_device *device) {
+	char sexagesimal[128], sexagesimal2[128];
 	char command[128];
 	if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0) {
 		MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
 	}
 	double longitude = (360 - MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - 360;
-	sprintf(command, ":St%s#:Sg%s#", indigo_dtos(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, "%+03d*%02d'%02d"), indigo_dtos(longitude, "%+04d*%02d'%02d"));
+	sprintf(command, ":St%s#:Sg%s#", indigo_dtos_r(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, "%+03d*%02d'%02d", sexagesimal, sizeof(sexagesimal)), indigo_dtos_r(longitude, "%+04d*%02d'%02d", sexagesimal2, sizeof(sexagesimal2)));
 	MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	rainbow_command(device, command, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY);
 	indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 }
 
 static void mount_equatorial_coordinates_callback(indigo_device *device) {
+	char sexagesimal[128], sexagesimal2[128];
 	char command[128];
 	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
@@ -420,7 +423,7 @@ static void mount_equatorial_coordinates_callback(indigo_device *device) {
 		} else if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value) {
 			rainbow_command(device, ":CtU#", MOUNT_TRACK_RATE_PROPERTY);
 		}
-		sprintf(command, ":CtA#:Sr%s#:Sd%s#:MS#", indigo_dtos(ra, "%02d:%02d:%04.1f"), indigo_dtos(dec, "%+03d*%02d:%04.1f"));
+		sprintf(command, ":CtA#:Sr%s#:Sd%s#:MS#", indigo_dtos_r(ra, "%02d:%02d:%04.1f", sexagesimal, sizeof(sexagesimal)), indigo_dtos_r(dec, "%+03d*%02d:%04.1f", sexagesimal2, sizeof(sexagesimal2)));
 	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 		sprintf(command, ":Ck%07.3f%+7.3f#", ra * 15, dec);
 	}

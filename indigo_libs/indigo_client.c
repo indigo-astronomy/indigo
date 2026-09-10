@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -505,25 +506,25 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 indigo_result indigo_format_number(char *buffer, int buffer_size, char *format, double value) {
 	int format_length = (int)strlen(format);
 	if (!strcmp(format + format_length - 3, "10m")) {
-		strncpy(buffer, indigo_dtos(value, "%d:%02d:%06.3f"), buffer_size);
+		indigo_dtos_r(value, "%d:%02d:%06.3f", buffer, buffer_size);
 		return INDIGO_OK;
 	} else if (!strcmp(format + format_length - 2, "9m")) {
-		strncpy(buffer, indigo_dtos(value, "%d:%02d:%05.2f"), buffer_size);
+		indigo_dtos_r(value, "%d:%02d:%05.2f", buffer, buffer_size);
 		return INDIGO_OK;
 	} else if (!strcmp(format + format_length - 2, "8m")) {
-		strncpy(buffer, indigo_dtos(value, "%d:%02d:%04.1f"), buffer_size);
+		indigo_dtos_r(value, "%d:%02d:%04.1f", buffer, buffer_size);
 		return INDIGO_OK;
 	} else if (!strcmp(format + format_length - 2, "6m")) {
-		strncpy(buffer, indigo_dtos(value, "%d:%02d:%02d"), buffer_size);
+		indigo_dtos_r(value, "%d:%02d:%02d", buffer, buffer_size);
 		return INDIGO_OK;
 	} else if (!strcmp(format + format_length - 2, "5m")) {
-		strncpy(buffer, indigo_dtos(value, "%d:%04.1f"), buffer_size);
+		indigo_dtos_r(value, "%d:%04.1f", buffer, buffer_size);
 		return INDIGO_OK;
 	} else if (!strcmp(format + format_length - 2, "3m")) {
-		strncpy(buffer, indigo_dtos(value, "%d:%02d"), buffer_size);
+		indigo_dtos_r(value, "%d:%02d", buffer, buffer_size);
 		return INDIGO_OK;
 	} else if (!strcmp(format + format_length - 1, "m")) {
-		strncpy(buffer, indigo_dtos(value, "%d:%02d:%04.1f"), buffer_size);
+		indigo_dtos_r(value, "%d:%02d:%04.1f", buffer, buffer_size);
 		return INDIGO_OK;
 	} else {
 		return snprintf(buffer, buffer_size, format, value) == 1 ? INDIGO_OK : INDIGO_FAILED;

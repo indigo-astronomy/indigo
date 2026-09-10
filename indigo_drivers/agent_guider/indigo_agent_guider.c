@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -396,18 +397,14 @@ static void write_log_calibration(indigo_device *device) {
 }
 
 static void write_log_header(indigo_device *device, const char *log_type) {
+	char sexagesimal[128], sexagesimal2[128];
 	if (DEVICE_PRIVATE_DATA->log_file != NULL) {
 		char timestamp[32];
 		get_log_timestamp(timestamp);
 		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n%s started at %s\r\n", log_type, timestamp);
 		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "Camera: '%s', Guider: '%s'\r\n", FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_GUIDER_INDEX]);
 
-		indigo_uni_printf(
-			DEVICE_PRIVATE_DATA->log_file,
-			"Mount Coordinates: RA = %s, Dec = %s\r\n",
-			indigo_dtos(AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM->number.value, "%02d:%02d:%04.1f"),
-			indigo_dtos(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value, "%03d:%02d:%04.1f")
-		);
+		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "Mount Coordinates: RA = %s, Dec = %s\r\n", indigo_dtos_r(AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM->number.value, "%02d:%02d:%04.1f", sexagesimal, sizeof(sexagesimal)), indigo_dtos_r(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value, "%03d:%02d:%04.1f", sexagesimal2, sizeof(sexagesimal2)));
 
 		const char *method = "";
 		for (int i = 0; i < AGENT_GUIDER_DETECTION_MODE_PROPERTY->count; i++) {

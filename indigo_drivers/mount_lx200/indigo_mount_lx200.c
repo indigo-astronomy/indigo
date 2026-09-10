@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -625,23 +626,24 @@ static void meade_get_site(indigo_device *device, double *latitude, double *long
 }
 
 static bool meade_set_site(indigo_device *device, double latitude, double longitude, double elevation) {
+	char sexagesimal[128];
 	bool result = true;
 	if (MOUNT_TYPE_AGOTINO_ITEM->sw.value) {
 		return false;
 	}
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
-		meade_simple_reply_command(device, ":St%s#", indigo_dtos(latitude, "%+03d*%02d:%02d"));
+		meade_simple_reply_command(device, ":St%s#", indigo_dtos_r(latitude, "%+03d*%02d:%02d", sexagesimal, sizeof(sexagesimal)));
 		result = true; // ignore result for Avalon StarGO
 	} else {
-		result = meade_simple_reply_command(device, ":St%s#", indigo_dtos(latitude, "%+03d*%02d")) && *PRIVATE_DATA->response == '1';
+		result = meade_simple_reply_command(device, ":St%s#", indigo_dtos_r(latitude, "%+03d*%02d", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 	}
 	// LX200 protocol expects negative longitude for the east
 	longitude = 360 - fmod(longitude + 360, 360);
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
-		meade_simple_reply_command(device, ":Sg%s#", indigo_dtos(longitude, "%+04d*%02d:%02d"));
+		meade_simple_reply_command(device, ":Sg%s#", indigo_dtos_r(longitude, "%+04d*%02d:%02d", sexagesimal, sizeof(sexagesimal)));
 		result = true; // ignore result for Avalon StarGO
 	} else {
-		result = meade_simple_reply_command(device, ":Sg%s#", indigo_dtos(longitude, "%03d*%02d")) && *PRIVATE_DATA->response == '1';
+		result = meade_simple_reply_command(device, ":Sg%s#", indigo_dtos_r(longitude, "%03d*%02d", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 	}
 	if (MOUNT_TYPE_NYX_ITEM->sw.value) {
 		result = meade_simple_reply_command(device, ":Sv%.1f#", elevation) && *PRIVATE_DATA->response == '1';
@@ -686,15 +688,16 @@ static bool meade_get_coordinates(indigo_device *device, double *ra, double *dec
 static bool meade_set_tracking(indigo_device *device, bool on);
 
 static bool meade_slew(indigo_device *device, double ra, double dec) {
+	char sexagesimal[128];
 	if (MOUNT_TYPE_NYX_ITEM->sw.value) {
 		if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
 			meade_set_tracking(device, true);
 		}
 	}
-	if (!meade_simple_reply_command(device, ":Sr%s#", indigo_dtos(ra, "%02d:%02d:%02.0f")) || *PRIVATE_DATA->response != '1') {
+	if (!meade_simple_reply_command(device, ":Sr%s#", indigo_dtos_r(ra, "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
 		return false;
 	}
-	if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f")) || *PRIVATE_DATA->response != '1') {
+	if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos_r(dec, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
 		return false;
 	}
 	if (!meade_simple_reply_command(device, ":MS#") || *PRIVATE_DATA->response != '0') {
@@ -719,10 +722,11 @@ static bool meade_slew(indigo_device *device, double ra, double dec) {
 }
 
 static bool meade_sync(indigo_device *device, double ra, double dec) {
-	if (!meade_simple_reply_command(device, ":Sr%s#", indigo_dtos(ra, "%02d:%02d:%02.0f")) || *PRIVATE_DATA->response != '1') {
+	char sexagesimal[128];
+	if (!meade_simple_reply_command(device, ":Sr%s#", indigo_dtos_r(ra, "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
 		return false;
 	}
-	if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f")) || *PRIVATE_DATA->response != '1') {
+	if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos_r(dec, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
 		return false;
 	}
 	if (!meade_command(device, ":CM#") || *PRIVATE_DATA->response == 0) {

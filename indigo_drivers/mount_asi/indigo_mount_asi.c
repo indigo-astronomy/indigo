@@ -1,4 +1,4 @@
-// Copyright (c) 2022-2025 Rumen G. Bogdanovski
+// Copyright (c) 2022-2026 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
@@ -258,15 +259,16 @@ static void asi_get_site(indigo_device *device, double *latitude, double *longit
 }
 
 static bool asi_set_site(indigo_device *device, double latitude, double longitude) {
+	char sexagesimal[128];
 	char command[128], response[128];
-	sprintf(command, ":St%s#", indigo_dtos(latitude, "%+03d*%02d"));
+	sprintf(command, ":St%s#", indigo_dtos_r(latitude, "%+03d*%02d", sexagesimal, sizeof(sexagesimal)));
 	if (!asi_command(device, command, response, 1, 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 		return false;
 	} else {
 		// LX200 protocol expects negative longitude for the east
 		longitude = fmod((360 - longitude), 360);
-		sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%03d*%02d"));
+		sprintf(command, ":Sg%s#", indigo_dtos_r(longitude, "%03d*%02d", sexagesimal, sizeof(sexagesimal)));
 		if (!asi_command(device, command, response, 1, 0) || *response != '1') {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 			return false;
@@ -352,14 +354,15 @@ static bool asi_get_coordinates(indigo_device *device, double *ra, double *dec) 
 }
 
 static bool asi_slew(indigo_device *device, double ra, double dec, int *error_code) {
+	char sexagesimal[128];
 	char command[128], response[128];
-	sprintf(command, ":Sr%s#", indigo_dtos(ra, "%02d:%02d:%02.0f"));
+	sprintf(command, ":Sr%s#", indigo_dtos_r(ra, "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal)));
 	if (!asi_command(device, command, response, sizeof(response), 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
 		*error_code = asi_error_code(response);
 		return false;
 	}
-	sprintf(command, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f"));
+	sprintf(command, ":Sd%s#", indigo_dtos_r(dec, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal)));
 	if (!asi_command(device, command, response, sizeof(response), 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
 		*error_code = asi_error_code(response);
@@ -375,14 +378,15 @@ static bool asi_slew(indigo_device *device, double ra, double dec, int *error_co
 }
 
 static bool asi_sync(indigo_device *device, double ra, double dec, int *error_code) {
+	char sexagesimal[128];
 	char command[128], response[128];
-	sprintf(command, ":Sr%s#", indigo_dtos(ra, "%02d:%02d:%02.0f"));
+	sprintf(command, ":Sr%s#", indigo_dtos_r(ra, "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal)));
 	if (!asi_command(device, command, response, sizeof(response), 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
 		*error_code = asi_error_code(response);
 		return false;
 	}
-	sprintf(command, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f"));
+	sprintf(command, ":Sd%s#", indigo_dtos_r(dec, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal)));
 	if (!asi_command(device, command, response, sizeof(response), 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
 		*error_code = asi_error_code(response);

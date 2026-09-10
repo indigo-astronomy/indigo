@@ -610,12 +610,13 @@ static bool ioptron_set_utc(indigo_device *device, time_t secs, int utc_offset) 
 //		}
 
 static bool ioptron_set_site(indigo_device *device, double latitude, double longitude, double elevation) {
+	char sexagesimal[128];
 	if (longitude < 0) {
 		longitude += 360;
 	}
 	if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
-		if (ioptron_simple_reply_command(device, ":St %s#", indigo_dtos(latitude, "%+03d*%02d:%02.0f")) && *PRIVATE_DATA->response == '1') {
-			if (ioptron_simple_reply_command(device, ":Sg %s#", indigo_dtos(longitude, "%+04d*%02d:%02.0f")) && *PRIVATE_DATA->response == '1') {
+		if (ioptron_simple_reply_command(device, ":St %s#", indigo_dtos_r(latitude, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1') {
+			if (ioptron_simple_reply_command(device, ":Sg %s#", indigo_dtos_r(longitude, "%+04d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1') {
 				return true;
 			}
 		}
@@ -636,6 +637,7 @@ static bool ioptron_set_site(indigo_device *device, double latitude, double long
 }
 
 static bool ioptron_park(indigo_device *device) {
+	char sexagesimal[128];
 	if (PRIVATE_DATA->protocol == HC_8406) {
 		if (ioptron_simple_reply_command(device, ":PK#") && *PRIVATE_DATA->response == '1') {
 			return true;
@@ -646,9 +648,9 @@ static bool ioptron_park(indigo_device *device) {
 		}
 	} else if (PRIVATE_DATA->protocol == V1_0) {
 		double ra = MOUNT_LST_TIME_ITEM->number.value;
-		if (ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos(ra, "%02d:%02d:%02.0f")) && *PRIVATE_DATA->response == '1') {
+		if (ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos_r(ra, "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1') {
 			double dec = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0 ? 90.0 : -90.0;
-			if (ioptron_simple_reply_command(device, ":Sd %s#", indigo_dtos(dec, "%+03d*%02d:%02.0f")) && *PRIVATE_DATA->response == '1') {
+			if (ioptron_simple_reply_command(device, ":Sd %s#", indigo_dtos_r(dec, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1') {
 				if (ioptron_simple_reply_command(device, ":MP1#") && *PRIVATE_DATA->response == '1') {
 					return true;
 				}
@@ -809,11 +811,12 @@ static bool ioptron_set_tracking_rate(indigo_device *device, char tracking_rate,
 }
 
 static bool ioptron_slew(indigo_device *device, double ra, double dec) {
+	char sexagesimal[128];
 	bool result = false;
 	if (PRIVATE_DATA->protocol == HC_8406) {
-		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos(ra, "%02d:%02d:%04.1f")) && *PRIVATE_DATA->response == '1';
+		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos_r(ra, "%02d:%02d:%04.1f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 	} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
-		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos(ra, "%02d:%02d:%02.0f")) && *PRIVATE_DATA->response == '1';
+		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos_r(ra, "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 	} else if (PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
 		result = ioptron_simple_reply_command(device, ":Sr%08.0f#", ra * 60 * 60 * 1000) && *PRIVATE_DATA->response == '1';
 	} else if (PRIVATE_DATA->protocol == V3_0) {
@@ -821,7 +824,7 @@ static bool ioptron_slew(indigo_device *device, double ra, double dec) {
 	}
 	if (result) {
 		if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
-			result= ioptron_simple_reply_command(device, ":Sd %s#", indigo_dtos(dec, "%+03d*%02d:%02.0f")) && *PRIVATE_DATA->response == '1';
+			result= ioptron_simple_reply_command(device, ":Sd %s#", indigo_dtos_r(dec, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 		} else if (PRIVATE_DATA->protocol >= V2_0) {
 			result = ioptron_simple_reply_command(device, ":Sd%+09.0f#", dec * 60 * 60 * 100) && *PRIVATE_DATA->response == '1';
 		}
@@ -839,11 +842,12 @@ static bool ioptron_slew(indigo_device *device, double ra, double dec) {
 }
 
 static bool ioptron_sync(indigo_device *device, double ra, double dec) {
+	char sexagesimal[128];
 	bool result = false;
 	if (PRIVATE_DATA->protocol == HC_8406) {
-		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos(ra, "%02d:%02d:%04.1f")) && *PRIVATE_DATA->response == '1';
+		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos_r(ra, "%02d:%02d:%04.1f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 	} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
-		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos(ra, "%02d:%02d:%02.0f")) && *PRIVATE_DATA->response == '1';
+		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos_r(ra, "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 	} else if (PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
 		result = ioptron_simple_reply_command(device, ":Sr%08.0f#", ra * 60 * 60 * 1000) && *PRIVATE_DATA->response == '1';
 	} else if (PRIVATE_DATA->protocol == V3_0) {
@@ -851,7 +855,7 @@ static bool ioptron_sync(indigo_device *device, double ra, double dec) {
 	}
 	if (result) {
 		if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
-			result = ioptron_simple_reply_command(device, ":Sd %s#", indigo_dtos(dec, "%+03d*%02d:%02.0f")) && *PRIVATE_DATA->response == '1';
+			result = ioptron_simple_reply_command(device, ":Sd %s#", indigo_dtos_r(dec, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 		} else if (PRIVATE_DATA->protocol >= V2_0) {
 			result = ioptron_simple_reply_command(device, ":Sd%+08.0f#", dec * 60 * 60 * 100) && *PRIVATE_DATA->response == '1';
 		}

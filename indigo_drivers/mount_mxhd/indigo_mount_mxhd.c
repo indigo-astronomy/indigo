@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
 // version history
 // 3.0 by Makoto Kasahara
@@ -477,15 +478,11 @@ static bool parse_degrees(const char *text, double *result) {
 }
 
 static void format_ra(double ra_hours, char *buffer, size_t size) {
-	char *value = indigo_dtos(normalize_hours(ra_hours), "%02d:%02d:%02.0f");
-	strncpy(buffer, value, size);
-	buffer[size - 1] = 0;
+	indigo_dtos_r(normalize_hours(ra_hours), "%02d:%02d:%02.0f", buffer, size);
 }
 
 static void format_dec(double dec_degrees, char *buffer, size_t size) {
-	char *value = indigo_dtos(clamp_dec(dec_degrees), "%+03d*%02d:%02.0f");
-	strncpy(buffer, value, size);
-	buffer[size - 1] = 0;
+	indigo_dtos_r(clamp_dec(dec_degrees), "%+03d*%02d:%02.0f", buffer, size);
 }
 
 static void format_latitude(double latitude, char *buffer, size_t size) {

@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -829,7 +830,12 @@ INDIGO_EXTERN bool indigo_async(void *fun(void *data), void *data);
  */
 INDIGO_EXTERN double indigo_stod(const char *string);
 
-/** Convert double to sexagesimal string.
+/** Convert double to sexagesimal string in caller-owned storage.
+ */
+INDIGO_EXTERN char *indigo_dtos_r(double value, const char *format, char *buffer, size_t size);
+
+/** Convert double to sexagesimal string using four rotating static buffers.
+ * Not thread-safe; use indigo_dtos_r() for caller-owned storage.
  */
 INDIGO_EXTERN char* indigo_dtos(double value, const char *format);
 

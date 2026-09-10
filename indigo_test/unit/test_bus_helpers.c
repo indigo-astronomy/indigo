@@ -5,10 +5,15 @@
 // open-source license' (see LICENSE.md).
 
 #include <string.h>
+#include <pthread.h>
+
+#include <indigo/indigo_client.h>
 
 #include <indigo/indigo_bus.h>
 
 #include "../test_runner.h"
+
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 
 static void numeric_string_helpers_parse_and_format_values(void) {
 	char buffer[64] = { 0 };
@@ -24,6 +29,102 @@ static void sexagesimal_helpers_parse_and_format_values(void) {
 	ASSERT_NEAR(-0.5, indigo_stod("-0:30:00"), 1e-12);
 	ASSERT_STREQ("12:30:00.00", indigo_dtos(12.5, "%d:%02d:%05.2f"));
 	ASSERT_STREQ("-12:30:00.00", indigo_dtos(-12.5, "%d:%02d:%05.2f"));
+}
+
+static void sexagesimal_rounding_follows_format(void) {
+	const struct { double value; const char *format; const char *expected; } cases[] = {
+		{ -0.125, "%d %02d %02d", "-0 07 30" },
+		{ -0.125, "%+03d*%02d:%02d", "-00*07:30" },
+		{ 0.125, "%+03d*%02d:%02d", "+00*07:30" },
+		{ 12.999999999, "%d:%02d", "13:00" },
+		{ 12.999999999, "%d:%02d:%02d", "13:00:00" },
+		{ -12.999999999, "%d:%02d:%02d", "-13:00:00" },
+		{ 12.999999999, "%d:%02.0f", "13:00" },
+		{ 12.999999999, "%d:%04.1f", "13:00.0" },
+		{ 12.999999999, "%d:%05.2f", "13:00.00" },
+		{ 12.999999999, "%d:%06.3f", "13:00.000" },
+		{ 12.999999999, "%d:%07.4f", "13:00.0000" },
+		{ 12.999999999, "%d:%02d:%02.0f", "13:00:00" },
+		{ 12.999999999, "%d:%02d:%04.1f", "13:00:00.0" },
+		{ 12.999999999, "%d:%02d:%05.2f", "13:00:00.00" },
+		{ 12.999999999, "%d:%02d:%06.3f", "13:00:00.000" },
+		{ 12.999999999, "%d:%02d:%07.4f", "13:00:00.0000" },
+		{ 12 + 34.0 / 60 + 56.789 / 3600, "%d:%02d:%02d", "12:34:57" },
+		{ 12 + 34.0 / 60 + 56.789 / 3600, "%d:%02d:%04.1f", "12:34:56.8" },
+		{ 12 + 34.0 / 60 + 56.789 / 3600, "%d:%02d:%05.2f", "12:34:56.79" },
+		{ 12.5, NULL, "12:30:00.00" },
+		{ 12.9, "%d", "12" },
+		{ -12.5, "%.2f", "-12.50" }
+	};
+	char buffer[128];
+	for (int i = 0; i < ARRAY_SIZE(cases); i++) {
+		ASSERT_TRUE(indigo_dtos_r(cases[i].value, cases[i].format, buffer, sizeof(buffer)) == buffer);
+		ASSERT_STREQ(cases[i].expected, buffer);
+		ASSERT_STREQ(cases[i].expected, indigo_dtos(cases[i].value, cases[i].format));
+	}
+}
+
+static void sexagesimal_buffers_are_bounded_and_independent(void) {
+	const char *formats[] = { "%d:%02d:%02d", "%+03d:%02d:%02d" };
+	for (int f = 0; f < ARRAY_SIZE(formats); f++) {
+		for (int sign = -1; sign <= 1; sign += 2) {
+			char full[128];
+			indigo_dtos_r(sign * 0.125, formats[f], full, sizeof(full));
+			for (size_t size = 0; size <= strlen(full) + 2; size++) {
+				char storage[128];
+				memset(storage, 'X', sizeof(storage));
+				ASSERT_TRUE(indigo_dtos_r(sign * 0.125, formats[f], storage + 1, size) == storage + 1);
+				ASSERT_EQ_INT('X', storage[0]);
+				ASSERT_EQ_INT('X', storage[size + 1]);
+				if (size) {
+					char expected[128];
+					snprintf(expected, size, "%s", full);
+					ASSERT_STREQ(expected, storage + 1);
+				}
+			}
+		}
+	}
+	ASSERT_TRUE(indigo_dtos_r(12, NULL, NULL, 0) == NULL);
+	char retained[128];
+	indigo_dtos_r(-0.125, NULL, retained, sizeof(retained));
+	for (int i = 0; i < 8; i++) {
+		indigo_dtos(i, NULL);
+	}
+	ASSERT_STREQ("-0:07:30.00", retained);
+	char small[5];
+	indigo_format_number(small, sizeof(small), "%10.6m", -0.125);
+	ASSERT_STREQ("-0:0", small);
+}
+
+static void *format_sexagesimal_concurrently(void *argument) {
+	int *failed = argument;
+	char buffer[128];
+	for (int i = 0; i < 10000; i++) {
+		indigo_dtos_r(i % 2 ? -0.125 : 12.5, "%d:%02d:%02d", buffer, sizeof(buffer));
+		if (strcmp(buffer, i % 2 ? "-0:07:30" : "12:30:00")) {
+			*failed = 1;
+			break;
+		}
+	}
+	return NULL;
+}
+
+static void sexagesimal_caller_buffers_support_concurrent_calls(void) {
+	pthread_t threads[8];
+	int failed[8] = { 0 };
+	int started = 0;
+	for (; started < ARRAY_SIZE(threads); started++) {
+		if (pthread_create(threads + started, NULL, format_sexagesimal_concurrently, failed + started)) {
+			break;
+		}
+	}
+	for (int i = 0; i < started; i++) {
+		pthread_join(threads[i], NULL);
+	}
+	ASSERT_EQ_INT(ARRAY_SIZE(threads), started);
+	for (int i = 0; i < started; i++) {
+		ASSERT_EQ_INT(0, failed[i]);
+	}
 }
 
 static void pixel_scale_and_local_service_helpers_are_deterministic(void) {
@@ -79,6 +180,9 @@ int main(void) {
 	const indigo_test_case tests[] = {
 		{ "numeric_string_helpers_parse_and_format_values", numeric_string_helpers_parse_and_format_values },
 		{ "sexagesimal_helpers_parse_and_format_values", sexagesimal_helpers_parse_and_format_values },
+		{ "sexagesimal_rounding_follows_format", sexagesimal_rounding_follows_format },
+		{ "sexagesimal_buffers_are_bounded_and_independent", sexagesimal_buffers_are_bounded_and_independent },
+		{ "sexagesimal_caller_buffers_support_concurrent_calls", sexagesimal_caller_buffers_support_concurrent_calls },
 		{ "pixel_scale_and_local_service_helpers_are_deterministic", pixel_scale_and_local_service_helpers_are_deterministic },
 		{ "switch_helpers_find_and_update_items", switch_helpers_find_and_update_items },
 		{ "copy_values_and_targets_clamp_numbers", copy_values_and_targets_clamp_numbers }

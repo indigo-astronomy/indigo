@@ -1241,3 +1241,9 @@ both the success replies and published target declination at epoch 2000.
 macOS arm64/x86_64 and executed on arm64 using the scripted transport boundary.
 Version remains `0x03000016` as requested; framing and numeric validation findings
 DRV-139/140 remain separate and open.
+
+### Shared sexagesimal formatter follow-up — 2026-09-10
+
+At the user's request, the manual Mount Agent FITS conversions used by the DRV-135/DRV-136 fixes have been replaced with `indigo_dtos_r()`, the new caller-buffer implementation behind `indigo_dtos()`. The original API retains its rotating static buffers for compatibility; all production callers now use independent caller storage, including the LX200 worker's existing output buffer. The formatter already rounds according to its supported format, including carry at 60; FITS values now round to seconds rather than truncate. Negative subdegree signs and FITS quoting are preserved.
+
+Validation: all 150 unit cases, nine relevant Mount Agent cases, three iOptron simulator cases and four LX200 simulator cases passed. All nine affected drivers/agents and the framework built for macOS arm64/x86_64; execution was on arm64. Coverage details are in `indigo_test/CHANGES.md`. This is a scoped implementation follow-up, not a new incremental review or an advance of the review baseline. Existing open findings and deferred driver versions are unchanged.

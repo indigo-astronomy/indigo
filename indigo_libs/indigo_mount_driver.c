@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -310,6 +311,7 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 }
 
 void indigo_mount_load_alignment_points(indigo_device *device) {
+	char sexagesimal[128], sexagesimal2[128];
 	indigo_uni_handle *handle = indigo_open_config_file(device->name, 0, false, ".alignment");
 	if (handle != NULL) {
 		int count;
@@ -326,7 +328,7 @@ void indigo_mount_load_alignment_points(indigo_device *device) {
 			sscanf(buffer, "%d %lg %lg %lg %lg %lg %d", &used, &point->ra, &point->dec, &point->raw_ra, &point->raw_dec, &point->lst, &point->side_of_pier);
 			point->used = used;
 			snprintf(name, INDIGO_NAME_SIZE, "%d", i);
-			snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos(point->ra, "%2d:%02d:%02d"), indigo_dtos(point->dec, "%2d:%02d:%02d"), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
+			snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos_r(point->ra, "%2d:%02d:%02d", sexagesimal, sizeof(sexagesimal)), indigo_dtos_r(point->dec, "%2d:%02d:%02d", sexagesimal2, sizeof(sexagesimal2)), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
 			indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + i, name, label, point->used);
 			indigo_init_switch_item(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items + i + 1, name, label, false);
 		}
@@ -353,11 +355,12 @@ void indigo_mount_save_alignment_points(indigo_device *device) {
 }
 
 void indigo_mount_update_alignment_points(indigo_device *device) {
+	char sexagesimal[128], sexagesimal2[128];
 	indigo_mount_save_alignment_points(device);
 	char label[INDIGO_VALUE_SIZE];
 	for (int i = 0; i < MOUNT_CONTEXT->alignment_point_count; i++) {
 		indigo_alignment_point *point =  MOUNT_CONTEXT->alignment_points + i;
-		snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos(point->ra, "%2d:%02d:%02d"), indigo_dtos(point->dec, "%2d:%02d:%02d"), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
+		snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos_r(point->ra, "%2d:%02d:%02d", sexagesimal, sizeof(sexagesimal)), indigo_dtos_r(point->dec, "%2d:%02d:%02d", sexagesimal2, sizeof(sexagesimal2)), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
 		strcpy(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items[i].label, label);
 		strcpy(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items[i + 1].label, label);
 	}
@@ -416,6 +419,7 @@ indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_cl
 }
 
 indigo_result indigo_mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	char sexagesimal[128], sexagesimal2[128];
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
@@ -664,7 +668,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 
 				char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
 				snprintf(name, INDIGO_NAME_SIZE, "%d", index);
-				snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos(point->ra, "%2d:%02d:%02d"), indigo_dtos(point->dec, "%2d:%02d:%02d"), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
+				snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos_r(point->ra, "%2d:%02d:%02d", sexagesimal, sizeof(sexagesimal)), indigo_dtos_r(point->dec, "%2d:%02d:%02d", sexagesimal2, sizeof(sexagesimal2)), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
 				indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + index, name, label, true);
 				point->used = true;
 

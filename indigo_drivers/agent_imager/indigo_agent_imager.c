@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2025 CloudMakers, s. r. o.
+// Copyright (c) 2018-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -1233,6 +1234,7 @@ static bool do_dither(indigo_device *device) {
 }
 
 static bool exposure_batch(indigo_device *device) {
+	char sexagesimal[128];
 	bool pauseOnTTT = AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM->sw.value && DEVICE_PRIVATE_DATA->display_coordinates_state == INDIGO_OK_STATE;
 	// indigo_send_message(device, IDLE_PROPERTY, "Batch started (%s)", pauseOnTTT ? "will pause on transit" : "no pause on transit");
 	indigo_property_state state = INDIGO_ALERT_STATE;
@@ -1267,9 +1269,9 @@ static bool exposure_batch(indigo_device *device) {
 					AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
 					if (DEVICE_PRIVATE_DATA->time_to_transit >= 0) {
-						indigo_send_message(device, BUSY_PROPERTY, "Batch paused, transit in %s", indigo_dtos(time_to_transit, NULL));
+						indigo_send_message(device, BUSY_PROPERTY, "Batch paused, transit in %s", indigo_dtos_r(time_to_transit, NULL, sexagesimal, sizeof(sexagesimal)));
 					} else {
-						indigo_send_message(device, BUSY_PROPERTY, "Batch paused, transit %s ago", indigo_dtos(-time_to_transit, NULL));
+						indigo_send_message(device, BUSY_PROPERTY, "Batch paused, transit %s ago", indigo_dtos_r(-time_to_transit, NULL, sexagesimal, sizeof(sexagesimal)));
 					}
 				}
 			}
