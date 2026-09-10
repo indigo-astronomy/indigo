@@ -16,9 +16,22 @@ Each trial first delivered at least three frames. Direct abort phases ranged fro
 
 The reported four or five extra exposures were not reproduced. These measurements count delivered CCD_IMAGE frames, not unobservable sensor integrations in continuous SDK mode. The test used an in-process client and the actual Imager Agent; network/UI delivery and the reporting user's original application/configuration are not reproduced. The timings combine queue wait, SDK stop and property publication; they do not separately measure SDK stop time or prove that priority was the original cause.
 
-A separate defect was reproduced: when CCD_EXPOSURE and CCD_STREAMING are no longer BUSY, the Player One abort handler sets ALERT and clears the switch without publishing the result. The request's initial BUSY therefore remains visible to clients. The generator suppresses the epilogue because the on_change block references acquisition_finalizer. The initial inter-exposure client-series trial received no terminal CCD_ABORT_EXPOSURE update within five seconds. In the final agent run, 9/20 trials had no camera abort terminal update even though AGENT_ABORT_PROCESS completed and no extra frames arrived; the remaining 11 camera terminal updates took 35.047–128.043 ms. This is an open status-publication defect, not evidence of four or five extra frames.
+A separate defect was reproduced: when CCD_EXPOSURE and CCD_STREAMING are no longer BUSY, the Player One abort handler sets ALERT and clears the switch without publishing the result. The request's initial BUSY therefore remains visible to clients. The generator suppresses the epilogue because the on_change block references acquisition_finalizer. The initial inter-exposure client-series trial received no terminal CCD_ABORT_EXPOSURE update within five seconds. In the final agent run, 9/20 trials had no camera abort terminal update even though AGENT_ABORT_PROCESS completed and no extra frames arrived; the remaining 11 camera terminal updates took 35.047–128.043 ms. This status-publication defect is fixed in the follow-up below; it did not establish four or five extra frames.
 
 Reproduce: build `make -C indigo_test build/hardware/test_ccd_playerone_hw`; explicitly run `indigo_test/build/hardware/test_ccd_playerone_hw --run --abort-latency` and `--run --abort-agent`. ABORT_LATENCY lines report frame counts and monotonic camera timestamps; AGENT_LATENCY lines report process completion. A `done_ms=-1` means no terminal camera update was observed, not zero latency. Hardware runs require USB access. Test configuration is isolated in a temporary directory; the agent selects/connects the previously disconnected camera itself.
+
+### Terminal-publication fix and preview validation
+
+The idle abort branch now resets the switch and explicitly publishes ALERT. Active abort still publishes through the existing cleanup. No new locks or driver version change. The new fake-SDK regression failed before the fix (client remained BUSY) and passed afterward; all five abort-filtered cases passed. Both hardware executables compile.
+
+Physical Mars-C II validation of the fixed driver (`ecf5e90cf`), using `--run --abort-previews`, passed idle abort before acquisition and after a fresh completed exposure, plus these 0.1 s agent processes:
+
+| Process | Trials | Extra delivered frames after send | Camera terminal min / median / max | Agent terminal min / median / max |
+| --- | --- | --- | --- | --- |
+| PREVIEW | 20 | 0 in every trial | 14.896 / 51.786 / 111.194 ms | 0.738 / 4.693 / 11.511 ms |
+| STREAMING, count -1 | 20 | 1 in one trial, otherwise 0 | 15.498 / 59.019 / 107.792 ms | 16.085 / 70.225 / 115.020 ms |
+
+All 40 trials delivered the camera terminal state and no frame after either camera or agent terminal completion. Streaming trial 18 (210 ms phase) delivered one frame after request/BUSY but before completion (90.145 ms); the four/five-frame report remains unreproduced. Observation continued for 600 ms after agent completion. Subsequent acquisition, settings restoration and disconnection passed. These remain local in-process hardware tests, not validation of the original reporting client's UI/network behavior.
 
 ## September 8th 2026 (macOS 26.6.2, arm64)
 
