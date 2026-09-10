@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x03000019
+#define DRIVER_VERSION 0x0300001A
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -111,19 +111,22 @@ static bool configuration_name_valid(const char *name) {
 	return *name && strcmp(name, ".") && strcmp(name, "..") && !strpbrk(name, "/\\:");
 }
 
-static void save_config(indigo_device *device) {
-	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
-		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
-		indigo_save_property(device, NULL, AGENT_CONFIG_SETUP_PROPERTY);
-		if (DEVICE_CONTEXT->property_save_file_handle != NULL) {
-			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_uni_close(&DEVICE_CONTEXT->property_save_file_handle);
-		} else {
-			CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		CONFIG_SAVE_ITEM->sw.value = false;
-		indigo_update_property(device, CONFIG_PROPERTY, NULL);
+static bool save_config(indigo_device *device) {
+	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) != 0) {
+		return false;
 	}
+	pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+	bool saved = indigo_save_property(device, NULL, AGENT_CONFIG_SETUP_PROPERTY) == INDIGO_OK;
+	if (DEVICE_CONTEXT->property_save_file_handle != NULL) {
+		saved = indigo_uni_sync_file(DEVICE_CONTEXT->property_save_file_handle) && saved;
+		indigo_uni_close(&DEVICE_CONTEXT->property_save_file_handle);
+	} else {
+		saved = false;
+	}
+	CONFIG_PROPERTY->state = saved ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	CONFIG_SAVE_ITEM->sw.value = false;
+	indigo_update_property(device, CONFIG_PROPERTY, NULL);
+	return saved;
 }
 
 static void configuration_suffix(char *suffix, size_t size) {
@@ -559,7 +562,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	if (indigo_property_match(AGENT_CONFIG_SETUP_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_CONFIG_SETUP_PROPERTY, property, false);
 		AGENT_CONFIG_SETUP_PROPERTY->state = INDIGO_OK_STATE;
-		save_config(device);
+		if (!save_config(device)) {
+			AGENT_CONFIG_SETUP_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		indigo_update_property(device, AGENT_CONFIG_SETUP_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_CONFIG_SAVE_PROPERTY, property)) {

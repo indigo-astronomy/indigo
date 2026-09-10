@@ -879,6 +879,8 @@ static void setup_save_failure(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&client, AGENT, SETUP, "AUTOSAVE_DEVICE_CONFIGS", true));
 	strcpy(config_folder, original);
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state(SETUP));
+	option("AUTOSAVE_DEVICE_CONFIGS", false);
+	ASSERT_TRUE(exists("Configuration_Agent.config"));
 }
 
 static void nondefault_port_load(void) {

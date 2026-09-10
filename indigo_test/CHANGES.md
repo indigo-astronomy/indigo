@@ -1295,7 +1295,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `all_filter_classes` | Passes; all filter classes. |
 | `xml_escaping` | Passes; xml escaping. |
 | `setup_restart` | Passes; setup restart. |
-| `setup_save_failure` | Fails; see DRV-166 in the driver review. |
+| `setup_save_failure` | Passes after DRV-166 fix; see driver review validation. |
 | `nondefault_port_load` | Passes after DRV-151 fix; see driver review validation. |
 | `shutdown_idle_reinitialize` | Passes; shutdown idle reinitialize. |
 | `direct_restore_capacity` | Passes after DRV-159 fix; see driver review validation. |
