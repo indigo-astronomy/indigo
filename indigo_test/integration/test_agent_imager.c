@@ -36,6 +36,7 @@ static bool bus_started, client_attached, simulator_started, agent_started;
 static atomic_int camera_requests;
 static atomic_int camera_abort_requests;
 static _Atomic(indigo_device *) camera_device;
+static _Atomic(indigo_device *) primary_agent_device, secondary_agent_device;
 static indigo_result (*camera_change)(indigo_device *, indigo_client *, indigo_property *);
 static atomic_int exposure_failures;
 
@@ -79,6 +80,11 @@ static indigo_result observe(indigo_device *device, indigo_property *property, b
 				memcpy(entry->blob_prefix, property->items[0].blob.value, entry->blob_size < sizeof(entry->blob_prefix) ? entry->blob_size : sizeof(entry->blob_prefix));
 			}
 		}
+	}
+	if (!strcmp(property->device, AGENT)) {
+		primary_agent_device = device;
+	} else if (!strcmp(property->device, "Imager Agent #2")) {
+		secondary_agent_device = device;
 	}
 	if (!strcmp(property->device, CAMERA)) {
 		camera_device = device;
@@ -825,6 +831,48 @@ static void additional_instances_and_barrier(void) {
 	ASSERT_TRUE(sw(AGENT, "FILTER_RELATED_AGENT_LIST", other, false, INDIGO_OK_STATE));
 }
 
+static atomic_bool publication_entered, publication_finished;
+static indigo_result (*agent_original_change)(indigo_device *, indigo_client *, indigo_property *);
+
+static void publish_during_removal(indigo_device *device) {
+	indigo_property *property = indigo_init_number_property(NULL, device->name, "X_TEST_PUBLICATION", "Test", "Test", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+	indigo_init_number_item(property->items, "VALUE", "Value", 0, 1, 1, 0);
+	atomic_store(&publication_entered, true);
+	indigo_update_property(device, property, NULL);
+	indigo_release_property(property);
+	atomic_store(&publication_finished, true);
+}
+
+static indigo_result remove_during_publication(indigo_device *device, indigo_client *sender, indigo_property *property) {
+	if (!strcmp(property->name, "ADDITIONAL_INSTANCES")) {
+		indigo_execute_handler(secondary_agent_device, publish_during_removal);
+		double deadline = indigo_monotonic_time() + 2;
+		while (!atomic_load(&publication_entered) && indigo_monotonic_time() < deadline) {
+			indigo_usleep(1000);
+		}
+		if (!atomic_load(&publication_entered)) {
+			return INDIGO_FAILED;
+		}
+	}
+	return agent_original_change(device, sender, property);
+}
+
+static void additional_instance_removal_during_publication(void) {
+	alarm(20);
+	ASSERT_TRUE(num(AGENT, "ADDITIONAL_INSTANCES", "COUNT", 1));
+	ASSERT_TRUE(primary_agent_device != NULL && secondary_agent_device != NULL);
+	indigo_cancel_pending_handlers(secondary_agent_device);
+	agent_original_change = primary_agent_device->change_property;
+	primary_agent_device->change_property = remove_during_publication;
+	bool removed = num(AGENT, "ADDITIONAL_INSTANCES", "COUNT", 0);
+	primary_agent_device->change_property = agent_original_change;
+	ASSERT_TRUE(removed);
+	ASSERT_TRUE(atomic_load(&publication_finished));
+	ASSERT_TRUE(num(AGENT, "ADDITIONAL_INSTANCES", "COUNT", 1));
+	ASSERT_TRUE(num(AGENT, "ADDITIONAL_INSTANCES", "COUNT", 0));
+	alarm(180);
+}
+
 static void additional_instance_lifecycle(void) {
 	for (int i = 0; i < 3; i++) {
 		ASSERT_TRUE(num(AGENT, "ADDITIONAL_INSTANCES", "COUNT", 2));
@@ -1169,6 +1217,7 @@ static const indigo_test_case tests[] = {
 	{ "invalid image detection and recovery", invalid_image_detection_and_recovery },
 	{ "independent instances and reselection", independent_instances_and_reselection },
 	{ "additional instance lifecycle", additional_instance_lifecycle },
+	{ "additional instance removal during publication", additional_instance_removal_during_publication },
 	{ "bahtinov preview and focus", bahtinov_preview_and_focus },
 	{ "configuration reload", configuration_reload },
 	{ "shutdown while paused", shutdown_while_paused },

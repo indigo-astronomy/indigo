@@ -2823,6 +2823,12 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
+static void additional_instances_handler(indigo_device *device) {
+	if (indigo_filter_change_property(device, NULL, ADDITIONAL_INSTANCES_PROPERTY) == INDIGO_OK) {
+		save_config(device);
+	}
+}
+
 static indigo_result agent_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -3287,9 +3293,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
 	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
-		if (indigo_filter_change_property(device, client, property) == INDIGO_OK) {
-			save_config(device);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(ADDITIONAL_INSTANCES_PROPERTY, additional_instances_handler);
 		return INDIGO_OK;
 	} else if (!strcmp(property->device, device->name)) {
 		if (!strcmp(property->name, FOCUSER_BACKLASH_PROPERTY_NAME)) {

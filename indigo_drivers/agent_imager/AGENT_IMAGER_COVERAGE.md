@@ -18,7 +18,7 @@ The executable is also included in `test-integration` and `test`. A substring se
 indigo_test/build/integration/test_agent_imager 'breakpoint POST_BATCH'
 ```
 
-`INDIGO_TEST_TRACE=1` prints switch requests for diagnosis. The complete suite currently exits nonzero for the production regressions listed in [the driver review notes](../REVIEW.md#current-findings). Assertions deliberately require the correct behavior; known failures are not converted into passing expectations or omitted from the default target.
+`INDIGO_TEST_TRACE=1` prints switch and number requests for diagnosis. After the DRV-111–DRV-120 fixes, the complete suite passes 37/37 cases, including cleanup. The regressions remain in the default target; their history is recorded in [the driver review notes](../REVIEW.md#current-findings).
 
 AddressSanitizer (Clang; agent, filter, configuration framework object and harness instrumented, remaining library/simulator archives uninstrumented):
 
@@ -52,11 +52,12 @@ On macOS use `xcrun llvm-profdata`, `xcrun llvm-cov` and add `-arch=arm64` (or t
 | Invalid image | `invalid image detection and recovery`: malformed RAW signature rejected by plain capture and star finding; later valid image succeeds |
 | Plain capture / external shutter routing | `external shutter routing`: shutter exposure used during preview; process abort must reach shutter and publish completion |
 | Pause and busy guards | `pause resume and busy guards`: immediate abort-and-pause, wait-for-frame pause, resume, abort while paused, competing start rejected |
-| All six breakpoints | Six independent `breakpoint ... resume and abort` cases: no new request while suspended, manual resume, abort and recovery. Delay and post-batch defects are exposed independently |
+| All six breakpoints | Six independent `breakpoint ... resume and abort` cases: no new request while suspended, manual resume, abort and recovery. Delay and post-batch regressions include zero delay and the final frame |
 | Delay between images | `interframe delay abort`: waits for the public WAITING phase, aborts with exactly one image delivered, then reacquires |
 | Dithering | `dither cadence failure and abort`; `dither disabled dark and missing guider`: exact trigger cadence, skip count, last-frame option, failure policy, abort during settling, dark/disabled suppression and missing guider |
 | Mount and solver coordination | `mount transit and solver coordination`: transit pause, resume, mount abort permission changes and solver image-solving disable |
 | Multiple agents / camera isolation | `independent instances and reselection`: two cameras run independently, abort one, remove additional instance, reselect camera, shutdown |
+| Additional-instance lifecycle | `additional instance lifecycle`; `additional instance removal during publication`: repeated 0→2→1→0 transitions, recreation, shutdown with attached instances, and deterministic removal while a queued callback publishes under strict bus locking |
 | Barrier synchronization | `additional instances and barrier`: related-agent admission, breakpoint/trigger propagation, synchronized batch, abort propagation, self-exclusion and one-way relation. Admission was fixed and the full barrier case passes; explicit instance removal is covered separately |
 | Star discovery, selection, HFD and format restore | `stars statistics and format restoration`: real generated star image, detected star selection, measured HFD, FITS restored after RAW processing, clear selection |
 | Include region, subframe setting and binning | `selection regions binning and subframe`: include rectangle, discovery, subframe setting, symmetric binning and valid selected coordinates |
@@ -71,15 +72,15 @@ On macOS use `xcrun llvm-profdata`, `xcrun llvm-cov` and add `-arch=arm64` (or t
 
 ## Scope of the measurement
 
-Function/line/branch coverage measures execution, not proof that every combination is correct. Some regression assertions fail before later recovery checks in their case. Barrier synchronization is verified after fixing related-agent admission; instance-removal cleanup remains a separate failing regression.
+Function/line/branch coverage measures execution, not proof that every combination is correct. In the historical coverage run, some regression assertions failed before later recovery checks. The current 37-case suite passes, including barrier synchronization and instance-removal cleanup; coverage percentages have not been remeasured.
 
 There is no exposed sequence executor in this checkout's Imager Agent: the source contains unused sequence fields/constants but no sequence property dispatch or process. External scripting/sequencing belongs to a separate agent and is outside this suite. Image analysis uses simulator-generated mono/Bahtinov images; exhaustive RAW pixel-format and transport combinations are covered separately by image-library/CCD suites. Remote BLOB URL downloads, real guiding/meridian motion, hardware timing and Linux/Windows execution are not validated here. The test peers exercise the Imager Agent's side of those property contracts.
 
-## Recorded validation
+## Historical coverage measurement
 
 On macOS arm64, against the working tree based on `a57057656` plus the related-agent admission fix, the full suite and focused final reruns executed all 69 production-agent functions. Clang measured 78.39% of lines, 82.44% of regions and 66.51% of branches. The uncovered branches include platform/error alternatives and combinations not exercised by these scenarios; this is not a claim of 100% branch coverage. ASan separately confirmed the instance-removal double-free. The fixed barrier scenario passes in both normal and coverage builds.
 
-Final per-case results are 26 passing and 9 failing out of 35, combining the full normal run (25/35 before the admission fix) with the successful fixed barrier rerun. Nine failures correspond to eight open production defects; the two delay-breakpoint cases share a cause. The standard target intentionally returns failure while these regressions remain unresolved.
+At that checkpoint, per-case results were 26 passing and 9 failing out of 35, combining the full normal run (25/35 before the admission fix) with the successful fixed barrier rerun. Those nine failures represented eight production defects; the two delay-breakpoint cases shared a cause. They have since been fixed and remain covered by the passing suite.
 
 ## DRV-111 follow-up
 
@@ -112,3 +113,9 @@ POST_BATCH now checks pending abort before reporting batch success. Its expanded
 ## DRV-119 follow-up
 
 The default-estimator regression now selects a detected star without changing the estimator before asserting HFD, then tests default U-Curve autofocus convergence. The corrected regression fails without default-flag initialization and passes with it. Configuration reload verifies a saved non-default RMS estimator and actual RMS preview. Explicit autofocus estimators and Bahtinov preview/focus also pass (four focused cases). Prior full-suite totals and coverage measurements remain historical.
+
+## DRV-120 and current validation
+
+Thread sampling confirmed that synchronous instance removal held the bus mutex while waiting for a queued disk-usage callback that needed the same mutex to publish. ADDITIONAL_INSTANCES now uses the existing agent queue and standard BUSY guard, with configuration saving after completion. No new lock or version change was introduced.
+
+The deterministic publication/removal regression times out on the pre-fix agent and passes normally and with ASan. All four instance cases pass in both builds; ten repeated lifecycle/publication/barrier runs also pass (30 case executions). The complete normal suite passes **37/37 cases including cleanup**. After a test-only callback ownership refinement, the affected deterministic case was rerun successfully normally and with ASan. ASan coverage is limited to the instrumented agent/filter/configuration framework/harness; other library/simulator archives remain uninstrumented, and leak detection was disabled. No new line/branch coverage or hardware/platform validation is claimed.
