@@ -1256,15 +1256,16 @@ static void preview_1_process(indigo_device *device) {
 	allow_abort_by_mount_agent(device, false);
 	int upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
 	int image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
-	capture_frame(device);
+	bool captured = capture_frame(device);
 	indigo_restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 	indigo_restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
-	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE ? INDIGO_GUIDER_PHASE_DONE : INDIGO_GUIDER_PHASE_FAILED;
+	bool aborted = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE;
+	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = captured || aborted ? INDIGO_GUIDER_PHASE_DONE : INDIGO_GUIDER_PHASE_FAILED;
 	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	AGENT_GUIDER_START_PREVIEW_1_ITEM->sw.value = false;
-	AGENT_START_PROCESS_PROPERTY->state = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_ALERT_STATE;
-	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+	AGENT_START_PROCESS_PROPERTY->state = captured || aborted ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	if (aborted) {
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 	}
@@ -1282,18 +1283,20 @@ static void preview_process(indigo_device *device) {
 	allow_abort_by_mount_agent(device, false);
 	int upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
 	int image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
-	while (capture_frame(device));
+	while (capture_frame(device)) {
+	}
 	indigo_restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 	indigo_restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
-	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+	bool aborted = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE;
+	if (aborted) {
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 	}
-	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE ? INDIGO_GUIDER_PHASE_DONE : INDIGO_GUIDER_PHASE_FAILED;
+	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = aborted ? INDIGO_GUIDER_PHASE_DONE : INDIGO_GUIDER_PHASE_FAILED;
 	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	AGENT_GUIDER_START_PREVIEW_ITEM->sw.value = false;
-	AGENT_START_PROCESS_PROPERTY->state = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_ALERT_STATE;
+	AGENT_START_PROCESS_PROPERTY->state = aborted ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }

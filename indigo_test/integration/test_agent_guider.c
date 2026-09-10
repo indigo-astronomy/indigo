@@ -561,38 +561,105 @@ static void single_preview(void) {
 
 static void preview_failure(void) {
 	ASSERT_TRUE(connect_camera());
+	ASSERT_TRUE(sw(AGENT, "CCD_IMAGE_FORMAT", "FITS", true, INDIGO_OK_STATE));
 	exposure_failures = 3;
-	ASSERT_TRUE(run("PREVIEW_1", -1));
+	ASSERT_TRUE(run("PREVIEW_1", INDIGO_ALERT_STATE));
 	ASSERT_EQ_INT(3, camera_requests);
-	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state(AGENT, "AGENT_START_PROCESS"));
+	ASSERT_EQ_INT(0, blobs(CAMERA));
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_FAILED, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_START_PROCESS", "PREVIEW_1"));
+	ASSERT_EQ_INT(1, value(AGENT, "CCD_IMAGE_FORMAT", "FITS"));
+	ASSERT_TRUE(run("PREVIEW_1", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(1, blobs(CAMERA));
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_DONE, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
 }
 
 static void preview_retry(void) {
 	ASSERT_TRUE(connect_camera());
 	exposure_failures = 2;
-	ASSERT_TRUE(run("PREVIEW_1", -1));
+	ASSERT_TRUE(run("PREVIEW_1", INDIGO_OK_STATE));
 	ASSERT_EQ_INT(3, camera_requests);
 	ASSERT_EQ_INT(1, blobs(CAMERA));
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_DONE, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_START_PROCESS", "PREVIEW_1"));
+}
+
+static void preview_invalid_raw(void) {
+	ASSERT_TRUE(configured_guiding());
+	short_image = true;
+	ASSERT_TRUE(run("PREVIEW_1", INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_FAILED, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_START_PROCESS", "PREVIEW_1"));
+	short_image = false;
+	ASSERT_TRUE(run("PREVIEW_1", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_DONE, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
 }
 
 static void continuous_preview_abort(void) {
 	ASSERT_TRUE(connect_camera());
+	ASSERT_TRUE(sw(AGENT, "CCD_IMAGE_FORMAT", "FITS", true, INDIGO_OK_STATE));
 	ASSERT_TRUE(run("PREVIEW", INDIGO_BUSY_STATE));
 	ASSERT_TRUE(wait_images(3));
 	ASSERT_TRUE(abort_running());
 	ASSERT_EQ_INT(INDIGO_OK_STATE, state(AGENT, "AGENT_START_PROCESS"));
 	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_DONE, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_START_PROCESS", "PREVIEW"));
+	ASSERT_EQ_INT(1, value(AGENT, "CCD_IMAGE_FORMAT", "FITS"));
+	unsigned before = blobs(CAMERA);
+	ASSERT_TRUE(run("PREVIEW", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_images(before + 3));
+	ASSERT_TRUE(abort_running());
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(AGENT, "AGENT_START_PROCESS"));
+}
+
+static void continuous_preview_failure(bool malformed) {
+	ASSERT_TRUE(configured_guiding());
+	ASSERT_TRUE(sw(AGENT, "CCD_IMAGE_FORMAT", "FITS", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(run("PREVIEW", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_images(3));
+	unsigned before = revision(AGENT, "AGENT_START_PROCESS");
+	if (malformed) {
+		short_image = true;
+	} else {
+		exposure_failures = 3;
+	}
+	ASSERT_TRUE(wait_state(AGENT, "AGENT_START_PROCESS", before, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_FAILED, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_START_PROCESS", "PREVIEW"));
+	ASSERT_EQ_INT(1, value(AGENT, "CCD_IMAGE_FORMAT", "FITS"));
+	ASSERT_EQ_INT(0, exposure_failures);
+	short_image = false;
+	before = blobs(CAMERA);
+	ASSERT_TRUE(run("PREVIEW", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_images(before + 3));
+	ASSERT_TRUE(abort_running());
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(AGENT, "AGENT_START_PROCESS"));
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_DONE, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+}
+
+static void continuous_preview_exposure_failure(void) {
+	continuous_preview_failure(false);
+}
+
+static void continuous_preview_invalid_raw(void) {
+	continuous_preview_failure(true);
 }
 
 static void preview_abort_and_restart(void) {
 	ASSERT_TRUE(connect_camera());
+	ASSERT_TRUE(sw(AGENT, "CCD_IMAGE_FORMAT", "FITS", true, INDIGO_OK_STATE));
 	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "EXPOSURE", 5));
 	ASSERT_TRUE(run("PREVIEW_1", INDIGO_BUSY_STATE));
 	ASSERT_TRUE(wait_state(CAMERA, "CCD_EXPOSURE", 0, INDIGO_BUSY_STATE));
 	ASSERT_TRUE(abort_running());
 	ASSERT_TRUE(camera_abort_requests > 0);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(AGENT, "AGENT_START_PROCESS"));
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_DONE, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_START_PROCESS", "PREVIEW_1"));
+	ASSERT_EQ_INT(1, value(AGENT, "CCD_IMAGE_FORMAT", "FITS"));
+	ASSERT_EQ_INT(0, blobs(CAMERA));
 	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "EXPOSURE", 0.1));
-	ASSERT_TRUE(run("PREVIEW_1", -1));
+	ASSERT_TRUE(run("PREVIEW_1", INDIGO_OK_STATE));
 	ASSERT_EQ_INT(1, blobs(CAMERA));
 }
 
@@ -968,9 +1035,15 @@ static void camera_disconnect(void) {
 	unsigned before = revision(AGENT, "AGENT_START_PROCESS");
 	ASSERT_TRUE(sw(CAMERA, "CONNECTION", "DISCONNECTED", true, INDIGO_OK_STATE));
 	ASSERT_TRUE(wait_state(AGENT, "AGENT_START_PROCESS", before, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_FAILED, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_START_PROCESS", "PREVIEW"));
 	ASSERT_TRUE(connect_camera());
-	ASSERT_TRUE(run("PREVIEW_1", -1));
-	ASSERT_TRUE(blobs(CAMERA) > 0);
+	before = blobs(CAMERA);
+	ASSERT_TRUE(run("PREVIEW", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_images(before + 3));
+	ASSERT_TRUE(abort_running());
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(AGENT, "AGENT_START_PROCESS"));
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_DONE, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
 }
 
 static void dither_abort(void) {
@@ -1623,7 +1696,10 @@ static const indigo_test_case tests[] = {
 	{ "single preview status and format restoration", single_preview },
 	{ "single preview failure", preview_failure },
 	{ "single preview retry", preview_retry },
+	{ "single preview invalid raw", preview_invalid_raw },
 	{ "continuous preview abort status", continuous_preview_abort },
+	{ "continuous preview exposure failure", continuous_preview_exposure_failure },
+	{ "continuous preview invalid raw", continuous_preview_invalid_raw },
 	{ "preview abort and restart", preview_abort_and_restart },
 	{ "stars selection clear and resize", stars_selection },
 	{ "selection PI guiding", selection_pi },
