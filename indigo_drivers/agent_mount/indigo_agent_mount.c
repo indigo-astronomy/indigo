@@ -2203,6 +2203,15 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 // -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
+			bool operation_selected = false;
+			for (int i = 0; i < AGENT_START_PROCESS_PROPERTY->count; i++) {
+				operation_selected |= AGENT_START_PROCESS_PROPERTY->items[i].sw.value;
+			}
+			if (!operation_selected) {
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+				return INDIGO_OK;
+			}
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 			if (AGENT_RESET_ITEM->sw.value) {

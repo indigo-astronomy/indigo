@@ -1886,7 +1886,40 @@ static void logging_open_failure_recovery(void) {
 	logging();
 }
 
+static void empty_start(void) {
+	for (int phase = 0; phase < 3; phase++) {
+		if (phase == 1) {
+			ASSERT_TRUE(connect_camera());
+		} else if (phase == 2) {
+			ASSERT_TRUE(sw(AGENT, "FILTER_GUIDER_LIST", GUIDER, true, INDIGO_OK_STATE));
+		}
+		for (int repeat = 0; repeat < 2; repeat++) {
+			int requests = camera_requests;
+			indigo_property *p = snapshot(AGENT, "AGENT_START_PROCESS");
+			ASSERT_TRUE(p != NULL);
+			for (int i = 0; i < p->count; i++) {
+				p->items[i].sw.value = false;
+			}
+			unsigned rev = revision(AGENT, "AGENT_START_PROCESS");
+			indigo_result result = indigo_change_property(&client, p);
+			indigo_release_property(p);
+			ASSERT_EQ_INT(INDIGO_OK, result);
+			ASSERT_TRUE(wait_state(AGENT, "AGENT_START_PROCESS", rev, INDIGO_OK_STATE));
+			ASSERT_EQ_INT(rev + 1, revision(AGENT, "AGENT_START_PROCESS"));
+			ASSERT_EQ_INT(requests, camera_requests);
+		}
+	}
+	ASSERT_TRUE(run("PREVIEW_1", INDIGO_OK_STATE));
+	ASSERT_TRUE(run("PREVIEW", INDIGO_BUSY_STATE));
+	unsigned rev = revision(AGENT, "AGENT_START_PROCESS");
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&client, AGENT, "AGENT_START_PROCESS", "PREVIEW", false));
+	ASSERT_EQ_INT(1, value(AGENT, "AGENT_START_PROCESS", "PREVIEW"));
+	ASSERT_EQ_INT(rev, revision(AGENT, "AGENT_START_PROCESS"));
+	ASSERT_TRUE(abort_running());
+}
+
 static const indigo_test_case tests[] = {
+	{ "empty start", empty_start },
 	{ "live dec mode guards", live_dec_mode_guards },
 	{ "camera selection reset", camera_selection_reset },
 	{ "spiral sequence reset", spiral_sequence_reset },

@@ -11,6 +11,8 @@
 #include <dirent.h>
 #include <sys/wait.h>
 #include <indigo/indigo_ccd_driver.h>
+#include <indigo/indigo_platesolver.h>
+#include <indigo/indigo_filter.h>
 #include <indigo_drivers/agent_imager/indigo_agent_imager.h>
 #include <indigo_drivers/ccd_simulator/indigo_ccd_simulator.h>
 #include "../test_runner.h"
@@ -1207,7 +1209,97 @@ static void default_preview_estimator(void) {
 	ASSERT_EQ_INT(0, value(AGENT, "AGENT_START_PROCESS", "FOCUSING"));
 }
 
+static void solver_save_config(indigo_device *device) {
+}
+
+static indigo_result solver_attach(indigo_device *device) {
+	return indigo_platesolver_device_attach(device, "test_platesolver", 1, 0);
+}
+
+static bool check_solver_empty_start(void) {
+	const char *name = "Test Platesolver";
+	for (int phase = 0; phase < 2; phase++) {
+		if (phase) {
+			REQUIRE(connect_camera());
+			REQUIRE(sw(name, "FILTER_RELATED_AGENT_LIST", AGENT, true, INDIGO_OK_STATE));
+		}
+		for (int repeat = 0; repeat < 2; repeat++) {
+			int requests = camera_requests;
+			indigo_property *p = snapshot(name, "AGENT_START_PROCESS");
+			REQUIRE(p != NULL);
+			for (int i = 0; i < p->count; i++) {
+				p->items[i].sw.value = false;
+			}
+			unsigned rev = revision(name, "AGENT_START_PROCESS");
+			indigo_result result = indigo_change_property(&client, p);
+			indigo_release_property(p);
+			REQUIRE(result == INDIGO_OK);
+			REQUIRE(wait_state(name, "AGENT_START_PROCESS", rev, INDIGO_OK_STATE));
+			REQUIRE(revision(name, "AGENT_START_PROCESS") == rev + 1);
+			REQUIRE(camera_requests == requests);
+		}
+		if (!phase) {
+			REQUIRE(sw(name, "AGENT_START_PROCESS", "SOLVE", true, INDIGO_ALERT_STATE));
+		}
+	}
+	return true;
+}
+
+static void platesolver_empty_start(void) {
+	platesolver_private_data data = { 0 };
+	data.save_config = solver_save_config;
+	indigo_device solver = INDIGO_DEVICE_INITIALIZER("Test Platesolver", solver_attach, indigo_platesolver_enumerate_properties, indigo_platesolver_change_property, NULL, indigo_platesolver_device_detach);
+	solver.private_data = &data;
+	indigo_client solver_client = { "Test Platesolver", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL, indigo_platesolver_client_attach, indigo_platesolver_define_property, indigo_platesolver_update_property, indigo_platesolver_delete_property, NULL, indigo_platesolver_client_detach };
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_device(&solver));
+	solver_client.client_context = solver.device_context;
+	indigo_result attached = indigo_attach_client(&solver_client);
+	indigo_enumerate_properties(&client, &INDIGO_ALL_PROPERTIES);
+	bool passed = attached == INDIGO_OK && check_solver_empty_start();
+	indigo_cancel_pending_handlers(&solver);
+	indigo_cancel_all_timers(&solver);
+	if (attached == INDIGO_OK) {
+		indigo_detach_client(&solver_client);
+	}
+	indigo_detach_device(&solver);
+	ASSERT_TRUE(passed);
+}
+
+static void empty_start(void) {
+	for (int phase = 0; phase < 3; phase++) {
+		if (phase == 1) {
+			ASSERT_TRUE(connect_camera());
+		} else if (phase == 2) {
+			ASSERT_TRUE(sw(AGENT, "FILTER_FOCUSER_LIST", FOCUSER, true, INDIGO_OK_STATE));
+		}
+		for (int repeat = 0; repeat < 2; repeat++) {
+			int requests = camera_requests;
+			indigo_property *p = snapshot(AGENT, "AGENT_START_PROCESS");
+			ASSERT_TRUE(p != NULL);
+			for (int i = 0; i < p->count; i++) {
+				p->items[i].sw.value = false;
+			}
+			unsigned rev = revision(AGENT, "AGENT_START_PROCESS");
+			indigo_result result = indigo_change_property(&client, p);
+			indigo_release_property(p);
+			ASSERT_EQ_INT(INDIGO_OK, result);
+			ASSERT_TRUE(wait_state(AGENT, "AGENT_START_PROCESS", rev, INDIGO_OK_STATE));
+			ASSERT_EQ_INT(rev + 1, revision(AGENT, "AGENT_START_PROCESS"));
+			ASSERT_EQ_INT(requests, camera_requests);
+		}
+	}
+	ASSERT_TRUE(run("PREVIEW_1", INDIGO_OK_STATE));
+	ASSERT_TRUE(run("PREVIEW", INDIGO_BUSY_STATE));
+	unsigned rev = revision(AGENT, "AGENT_START_PROCESS");
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&client, AGENT, "AGENT_START_PROCESS", "PREVIEW", false));
+	ASSERT_EQ_INT(1, value(AGENT, "AGENT_START_PROCESS", "PREVIEW"));
+	ASSERT_EQ_INT(rev, revision(AGENT, "AGENT_START_PROCESS"));
+	ASSERT_TRUE(abort_running());
+}
+
 static const indigo_test_case tests[] = {
+	{ "empty start", empty_start },
+	{ "platesolver empty start", platesolver_empty_start },
 	{ "default preview estimator", default_preview_estimator },
 	{ "interframe delay abort", interframe_delay_abort },
 	{ "dither disabled dark and missing guider", dither_disabled_dark_and_missing_guider },

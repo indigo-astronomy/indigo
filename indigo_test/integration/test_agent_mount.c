@@ -1358,6 +1358,39 @@ static void shutdown_server(void) {
 
 static void all_false_start(void) {
 	CHECK(sw(AGENT, START, "SLEW", false, INDIGO_OK_STATE));
+	CHECK(sw(AGENT, START, "SLEW", true, INDIGO_ALERT_STATE));
+	CHECK(sw(AGENT, START, "SLEW", false, INDIGO_OK_STATE));
+	CHECK(select_peer(0, true, false));
+	CHECK(select_peer(1, true, false));
+	for (int cycle = 0; cycle < 2; cycle++) {
+		int counts[ARRAY_SIZE(operations)];
+		for (int i = 0; i < ARRAY_SIZE(operations); i++) {
+			counts[i] = requests(operations[i].peer, operations[i].property);
+		}
+		indigo_property *p = snapshot(AGENT, START);
+		CHECK(p);
+		for (int i = 0; i < p->count; i++) {
+			p->items[i].sw.value = false;
+		}
+		unsigned rev = revision(AGENT, START);
+		CHECK(indigo_change_property(&client, p) == INDIGO_OK);
+		indigo_release_property(p);
+		CHECK(wait_state(AGENT, START, rev, INDIGO_OK_STATE));
+		CHECK(revision(AGENT, START) == rev + 1);
+		for (int i = 0; i < ARRAY_SIZE(operations); i++) {
+			CHECK(requests(operations[i].peer, operations[i].property) == counts[i]);
+		}
+		CHECK(operation("SYNC", 0, "MOUNT_EQUATORIAL_COORDINATES", INDIGO_OK_STATE));
+	}
+	int n = requests(0, "MOUNT_EQUATORIAL_COORDINATES");
+	CHECK(sw(AGENT, START, "SLEW", true, INDIGO_BUSY_STATE));
+	CHECK(wait_request(0, "MOUNT_EQUATORIAL_COORDINATES", n));
+	unsigned rev = revision(AGENT, START);
+	CHECK(indigo_change_switch_property_1(&client, AGENT, START, "SLEW", false) == INDIGO_OK);
+	CHECK(revision(AGENT, START) == rev);
+	CHECK(value(AGENT, START, "SLEW") == 1);
+	complete(0, "MOUNT_EQUATORIAL_COORDINATES", INDIGO_OK_STATE);
+	CHECK(wait_state(AGENT, START, rev, INDIGO_OK_STATE));
 }
 
 static void home_momentary(void) {

@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2025 CloudMakers, s. r. o.
+// Copyright (c) 2021-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Empty start handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -1045,9 +1046,17 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_START_PROCESS
-		indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_PLATESOLVER_WCS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
+			bool operation_selected = false;
+			for (int i = 0; i < AGENT_START_PROCESS_PROPERTY->count; i++) {
+				operation_selected |= AGENT_START_PROCESS_PROPERTY->items[i].sw.value;
+			}
+			if (!operation_selected) {
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+				return INDIGO_OK;
+			}
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 			if (AGENT_RESET_ITEM->sw.value) {
