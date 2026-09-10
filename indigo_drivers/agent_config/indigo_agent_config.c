@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x03000012
+#define DRIVER_VERSION 0x03000013
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -72,6 +72,8 @@
 #define MAX_AGENTS																16
 #define AGENT_CONFIG_AGENTS_PROPERTIES						(DEVICE_PRIVATE_DATA->agents)
 
+#define MAX_RESTORE_PROPERTIES (MAX_AGENTS + 2)
+
 #define EXTENSION																	".saved"
 
 typedef struct {
@@ -86,7 +88,7 @@ typedef struct {
 	indigo_property *agents[MAX_AGENTS];
 	char server[INDIGO_NAME_SIZE];
 	int restore_count;
-	indigo_property *restore_properties[MAX_AGENTS];
+	indigo_property *restore_properties[MAX_RESTORE_PROPERTIES];
 	pthread_mutex_t restore_mutex;
 	pthread_mutex_t data_mutex;
 	bool failure;
@@ -661,13 +663,24 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (!strncmp(property->name, "AGENT_CONFIG", 12)) {
 		bool restore_scheduled = false;
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->restore_mutex);
-		if (DEVICE_PRIVATE_DATA->restore_count < MAX_AGENTS) {
-			DEVICE_PRIVATE_DATA->restore_properties[DEVICE_PRIVATE_DATA->restore_count++] = indigo_copy_property(NULL, property);
+		int slot = 0;
+		while (slot < DEVICE_PRIVATE_DATA->restore_count && DEVICE_PRIVATE_DATA->restore_properties[slot]) {
+			slot++;
+		}
+		if (slot < MAX_RESTORE_PROPERTIES) {
+			DEVICE_PRIVATE_DATA->restore_properties[slot] = indigo_copy_property(NULL, property);
+			if (slot == DEVICE_PRIVATE_DATA->restore_count) {
+				DEVICE_PRIVATE_DATA->restore_count++;
+			}
 			restore_scheduled = true;
+		} else {
+			DEVICE_PRIVATE_DATA->failure = true;
 		}
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->restore_mutex);
 		if (restore_scheduled) {
 			indigo_execute_handler(device, process_configuration_property);
+		} else {
+			indigo_send_message(device, ALERT_PROPERTY, "Configuration restore queue is full");
 		}
 	}
 	return indigo_agent_change_property(device, client, property);
@@ -677,6 +690,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_cancel_pending_handlers(device);
 	indigo_cancel_all_timers(device);
+	clear_restore_properties(device);
 	indigo_release_property(AGENT_CONFIG_SETUP_PROPERTY);
 	indigo_release_property(AGENT_CONFIG_SAVE_PROPERTY);
 	indigo_release_property(AGENT_CONFIG_DELETE_PROPERTY);

@@ -650,6 +650,18 @@ static void capacity_restore(void) {
 	}
 }
 
+static void restore_queue_overflow(void) {
+	char content[8192] = "";
+	for (int i = 0; i < 19; i++) {
+		strcat(content, "<newTextVector device='Configuration Agent' name='AGENT_CONFIG_PROFILES'></newTextVector>");
+	}
+	ASSERT_TRUE(fixture("overflow.saved", content));
+	refresh();
+	ASSERT_TRUE(load("overflow", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(text_change(SAVE, "recovered", INDIGO_OK_STATE));
+	ASSERT_TRUE(load("recovered", INDIGO_OK_STATE));
+}
+
 static void autosave_reentrant(void) {
 	populate();
 	option("AUTOSAVE_DEVICE_CONFIGS", true);
@@ -863,7 +875,7 @@ static void shutdown_idle_reinitialize(void) {
 
 static void direct_restore_capacity(void) {
 	populate();
-	for (int i = 0; i < 17; i++) {
+	for (int i = 0; i < 64; i++) {
 		indigo_property *p = indigo_init_text_property(NULL, AGENT, PROFILES, "", "", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		indigo_init_text_item(p->items, "Test Camera", "Test Camera", i % 2 ? "Night" : "Default");
 		ASSERT_EQ_INT(INDIGO_OK, indigo_change_property(&client, p));
@@ -1017,6 +1029,7 @@ static void remove_files(const char *folder) {
 }
 
 static const indigo_test_case tests[] = {
+	{ "restore_queue_overflow", restore_queue_overflow },
 	{ "related_failure", related_failure },
 	{ "driver_unload_new", driver_unload_new },
 	{ "empty_selection_roundtrip", empty_selection_roundtrip },

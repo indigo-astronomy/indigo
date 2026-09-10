@@ -1298,7 +1298,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `setup_save_failure` | Fails; see DRV-166 in the driver review. |
 | `nondefault_port_load` | Passes after DRV-151 fix; see driver review validation. |
 | `shutdown_idle_reinitialize` | Passes; shutdown idle reinitialize. |
-| `direct_restore_capacity` | Fails; see DRV-159 in the driver review. |
+| `direct_restore_capacity` | Passes after DRV-159 fix; see driver review validation. |
 | `lifecycle` | Passes; lifecycle. |
 | `schema` | Passes; schema. |
 | `discovery` | Passes; discovery. |
@@ -1327,7 +1327,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `absent_agent` | Passes after DRV-156 fix; see driver review validation. |
 | `server_disappearance` | Passes after DRV-157 fix; see driver review validation. |
 | `profile_no_selection` | Passes after DRV-158 fix; see driver review validation. |
-| `capacity_restore` | Fails; see DRV-159 in the driver review. |
+| `capacity_restore` | Passes after DRV-159 fix; see driver review validation. |
 | `autosave_reentrant` | Fails; see DRV-160 in the driver review. |
 | `concurrent_save` | Fails; see DRV-161 in the driver review. |
 | `startup_scan` | Passes; startup scan. |
@@ -1349,3 +1349,5 @@ A substring selects cases; no matching case returns 2. Full execution returns 1 
 For clang coverage, use a separate `TEST_BUILD=build/config-coverage`, native architecture `CFLAGS`/`LDFLAGS` (same platform/library flags as Makefile.inc, retaining only the host architecture), and `CONFIG_TEST_FLAGS="-fprofile-instr-generate -fcoverage-mapping"`. Set `LLVM_PROFILE_FILE` to an absolute path under that build directory containing `%p.profraw`, run the executable, merge profiles with `llvm-profdata merge -sparse`, and report the agent source with `llvm-cov report`. Measured agent coverage: **100% functions, 97.04% lines, 95.56% regions, 87.47% branches**. Untested guards are described in the driver review; no claim of 100% branch coverage or production correctness is made.
 
 The CCD/mount/wheel/focuser/rotator/guider/AO/GPS class matrices are not applicable to this service-configuration agent. Device selections, profiles and server commands are modeled without real hardware or dynamic driver loading. No simulator motion/protocol audit or manufacturer document is applicable. Real device persistence, external transports, OOM, exhaustive concurrent interleavings and Linux/Windows execution remain outside this hardware-free suite. No new production properties, driver refactor or migration status change is involved.
+
+DRV-159 adds `restore_queue_overflow` (bounded overflow reports ALERT, subsequent load recovers) and extends `direct_restore_capacity` to 64 sequential requests. Both pass with the queue fix.
