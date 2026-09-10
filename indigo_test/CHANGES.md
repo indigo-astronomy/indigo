@@ -1296,7 +1296,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `xml_escaping` | Passes; xml escaping. |
 | `setup_restart` | Passes; setup restart. |
 | `setup_save_failure` | Fails; see DRV-166 in the driver review. |
-| `nondefault_port_load` | Fails; see DRV-151 in the driver review. |
+| `nondefault_port_load` | Passes after DRV-151 fix; see driver review validation. |
 | `shutdown_idle_reinitialize` | Passes; shutdown idle reinitialize. |
 | `direct_restore_capacity` | Fails; see DRV-159 in the driver review. |
 | `lifecycle` | Passes; lifecycle. |
@@ -1319,7 +1319,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `malformed_file` | Passes after DRV-148 fix; see driver review validation. |
 | `scan_suffix` | Passes after DRV-149 fix; see driver review validation. |
 | `alternate_folder_remove` | Passes after DRV-150 fix; see driver review validation. |
-| `port_namespace` | Fails; see DRV-151 in the driver review. |
+| `port_namespace` | Passes after DRV-151 fix; see driver review validation. |
 | `deselection_timeout` | Fails; see DRV-152 in the driver review. |
 | `restore_busy_timeout` | Fails; see DRV-153 in the driver review. |
 | `profile_rejection` | Fails; see DRV-154 in the driver review. |

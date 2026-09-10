@@ -830,9 +830,18 @@ static void setup_save_failure(void) {
 static void nondefault_port_load(void) {
 	indigo_server_tcp_port = 7625;
 	ASSERT_TRUE(text_change(SAVE, "port", INDIGO_OK_STATE));
-	ASSERT_TRUE(has_item(LOAD, "port_7625", NULL, 0));
-	ASSERT_TRUE(load("port_7625", INDIGO_OK_STATE));
-	ASSERT_TRUE(has_item(LAST, "NAME", "port_7625", -1));
+	ASSERT_TRUE(exists("port_7625.saved"));
+	ASSERT_TRUE(has_item(LOAD, "port", NULL, 0));
+	ASSERT_TRUE(load("port", INDIGO_OK_STATE));
+	ASSERT_TRUE(has_item(LAST, "NAME", "port", -1));
+	ASSERT_TRUE(fixture("other_7626.saved", ""));
+	refresh();
+	ASSERT_FALSE(has_item(LOAD, "other_7626", NULL, -1));
+	indigo_is_ephemeral_port = true;
+	ASSERT_TRUE(text_change(SAVE, "ephemeral", INDIGO_OK_STATE));
+	ASSERT_TRUE(exists("ephemeral.saved"));
+	ASSERT_TRUE(load("ephemeral", INDIGO_OK_STATE));
+	ASSERT_TRUE(text_change(REMOVE, "ephemeral", INDIGO_OK_STATE));
 }
 
 static void shutdown_idle_reinitialize(void) {

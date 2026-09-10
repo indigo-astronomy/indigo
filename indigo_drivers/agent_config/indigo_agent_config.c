@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x0300000A
+#define DRIVER_VERSION 0x0300000B
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -41,6 +41,7 @@
 #include <indigo/indigo_agent.h>
 #include <indigo/indigo_xml.h>
 #include <indigo/indigo_client.h>
+#include <indigo/indigo_server_tcp.h>
 
 #include "indigo_agent_config.h"
 
@@ -118,18 +119,30 @@ static void save_config(indigo_device *device) {
 	}
 }
 
+static void configuration_suffix(char *suffix, size_t size) {
+	if (indigo_server_tcp_port == 7624 || indigo_is_ephemeral_port) {
+		snprintf(suffix, size, "%s", EXTENSION);
+	} else {
+		snprintf(suffix, size, "_%d%s", indigo_server_tcp_port, EXTENSION);
+	}
+}
+
 static bool configuration_filter(const char *name) {
+	char suffix[32];
+	configuration_suffix(suffix, sizeof(suffix));
 	size_t length = strlen(name);
-	return length > strlen(EXTENSION) && !strcmp(name + length - strlen(EXTENSION), EXTENSION);
+	return length > strlen(suffix) && !strcmp(name + length - strlen(suffix), suffix);
 }
 
 static void populate_list(indigo_device *device) {
+	char suffix[32];
+	configuration_suffix(suffix, sizeof(suffix));
 	char **list;
 	int count = indigo_uni_scandir(indigo_uni_config_folder(), &list, configuration_filter);
 	if (count >= 0) {
 		AGENT_CONFIG_LOAD_PROPERTY = indigo_resize_property(AGENT_CONFIG_LOAD_PROPERTY, count);
 		for (int i = 0; i < count; i++) {
-			list[i][strlen(list[i]) - strlen(EXTENSION)] = 0;
+			list[i][strlen(list[i]) - strlen(suffix)] = 0;
 			indigo_init_switch_item(AGENT_CONFIG_LOAD_PROPERTY->items + i, list[i], list[i], false);
 			free(list[i]);
 		}
@@ -564,8 +577,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_send_message(device, ALERT_PROPERTY, "Invalid configuration name '%s'", AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
 			AGENT_CONFIG_DELETE_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			char path[1024];
-			int length = snprintf(path, sizeof(path), "%s%c%s%s", indigo_uni_config_folder(), INDIGO_PATH_SEPATATOR, AGENT_CONFIG_DELETE_NAME_ITEM->text.value, EXTENSION);
+			char path[1024], suffix[32];
+			configuration_suffix(suffix, sizeof(suffix));
+			int length = snprintf(path, sizeof(path), "%s%c%s%s", indigo_uni_config_folder(), INDIGO_PATH_SEPATATOR, AGENT_CONFIG_DELETE_NAME_ITEM->text.value, suffix);
 			if (length >= 0 && length < sizeof(path) && indigo_uni_remove(path)) {
 				indigo_send_message(device, OK_PROPERTY, "Configuration '%s' deleted", AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
 				AGENT_CONFIG_DELETE_PROPERTY->state = INDIGO_OK_STATE;
