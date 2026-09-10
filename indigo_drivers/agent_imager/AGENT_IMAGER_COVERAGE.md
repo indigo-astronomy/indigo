@@ -84,3 +84,7 @@ Final per-case results are 26 passing and 9 failing out of 35, combining the ful
 ## DRV-111 follow-up
 
 The original independent-instances/reselection case now passes normally and with ASan after clearing the freed additional-client slot. The suite has 36 cases with the new `additional instance lifecycle` scenario: repeated creation, partial removal, complete removal, recreation and shutdown with two instances still attached. All three instance scenarios pass with ASan. Normal testing exposed an intermittent watchdog timeout in the new lifecycle scenario (DRV-120); a traced rerun passed. The earlier full-suite totals and coverage measurements above are historical and have not been rerun for this change.
+
+## DRV-112 follow-up
+
+The retry-exhaustion regression failed before the fix and passes afterward. Coverage now includes third-attempt success, termination after three failures for batch counts 1, 2 and -1, request/image counts and recovery after each failed batch. Finite acquisitions and abort/reacquire also pass. These are three focused case results; previous full-suite totals and coverage percentages are unchanged historical measurements.

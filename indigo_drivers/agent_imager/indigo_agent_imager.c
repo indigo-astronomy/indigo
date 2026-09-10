@@ -1254,7 +1254,8 @@ static bool exposure_batch(indigo_device *device) {
 			remaining_exposures = -1;
 		}
 		check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_PRE_CAPTURE_ITEM);
-		for (int exposure_attempt = 0; exposure_attempt < 3; exposure_attempt++) {
+		int exposure_attempt;
+		for (exposure_attempt = 0; exposure_attempt < 3; exposure_attempt++) {
 			bool pausedOnTTT = false;
 			double exposure_time = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
 			if (pauseOnTTT && indigo_filter_first_related_agent(device, "Mount Agent")) {
@@ -1392,6 +1393,9 @@ static bool exposure_batch(indigo_device *device) {
 				}
 			}
 			break;
+		}
+		if (exposure_attempt == 3) {
+			return false;
 		}
 	}
 	check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_BATCH_ITEM);

@@ -467,11 +467,26 @@ static void exposure_failure_retry_and_recovery(void) {
 	ASSERT_TRUE(run("PREVIEW_1", INDIGO_OK_STATE));
 	ASSERT_EQ_INT(before + 3, atomic_load(&camera_requests));
 	ASSERT_EQ_INT(1, blobs(CAMERA));
-	atomic_store(&exposure_failures, 3);
+	ASSERT_TRUE(batch(2));
+	atomic_store(&exposure_failures, 2);
 	before = atomic_load(&camera_requests);
-	ASSERT_TRUE(run("EXPOSURE", INDIGO_ALERT_STATE));
-	ASSERT_EQ_INT(before + 3, atomic_load(&camera_requests));
 	ASSERT_TRUE(run("EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(before + 4, atomic_load(&camera_requests));
+	ASSERT_EQ_INT(3, blobs(CAMERA));
+	const int counts[] = { 1, 2, -1 };
+	for (int i = 0; i < ARRAY_SIZE(counts); i++) {
+		ASSERT_TRUE(batch(counts[i]));
+		atomic_store(&exposure_failures, 3);
+		before = atomic_load(&camera_requests);
+		unsigned images = blobs(CAMERA);
+		ASSERT_TRUE(run("EXPOSURE", INDIGO_ALERT_STATE));
+		ASSERT_EQ_INT(before + 3, atomic_load(&camera_requests));
+		ASSERT_EQ_INT(images, blobs(CAMERA));
+		ASSERT_TRUE(batch(1));
+		ASSERT_TRUE(run("EXPOSURE", INDIGO_OK_STATE));
+		ASSERT_EQ_INT(before + 4, atomic_load(&camera_requests));
+		ASSERT_EQ_INT(images + 1, blobs(CAMERA));
+	}
 }
 
 static void settings_selection_and_reset(void) {
