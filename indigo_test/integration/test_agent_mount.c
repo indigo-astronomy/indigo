@@ -1034,7 +1034,35 @@ static void lx200_bind_failure(void) {
 }
 
 static void lx200_idle_stop(void) {
+	int closes = socket_closes;
+	for (int i = 0; i < 2; i++) {
+		CHECK(sw(AGENT, "AGENT_LX200_SERVER", "STOPPED", true, INDIGO_OK_STATE));
+		CHECK(value(AGENT, "AGENT_LX200_SERVER", "STOPPED") == 1);
+		CHECK(value(AGENT, "AGENT_LX200_SERVER", "STARTED") == 0);
+		CHECK(!server_open);
+		CHECK(socket_closes == closes);
+	}
+	server_fail = true;
+	CHECK(sw(AGENT, "AGENT_LX200_SERVER", "STARTED", true, INDIGO_ALERT_STATE));
 	CHECK(sw(AGENT, "AGENT_LX200_SERVER", "STOPPED", true, INDIGO_OK_STATE));
+	CHECK(value(AGENT, "AGENT_LX200_SERVER", "STOPPED") == 1);
+	CHECK(!server_open);
+	CHECK(socket_closes == closes);
+	server_fail = false;
+	CHECK(start_server());
+	exchange(":GVP#");
+	CHECK(!strcmp(lx_output, "indigo#"));
+	closes = socket_closes;
+	CHECK(sw(AGENT, "AGENT_LX200_SERVER", "STOPPED", true, INDIGO_OK_STATE));
+	CHECK(!server_open);
+	CHECK(socket_closes == closes + 1);
+	for (int i = 0; i < 2; i++) {
+		CHECK(sw(AGENT, "AGENT_LX200_SERVER", "STOPPED", true, INDIGO_OK_STATE));
+		CHECK(value(AGENT, "AGENT_LX200_SERVER", "STOPPED") == 1);
+		CHECK(value(AGENT, "AGENT_LX200_SERVER", "STARTED") == 0);
+		CHECK(!server_open);
+		CHECK(socket_closes == closes + 1);
+	}
 }
 
 static char *header_value(int index, const char *keyword) {

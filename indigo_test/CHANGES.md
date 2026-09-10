@@ -1222,3 +1222,9 @@ Validation: invalid coordinates, coordinate boundaries, truncated command, comma
 The transport double now implements the contextual ready-callback contract of `indigo_uni_open_tcp_server_socket_with_callback()`. Expanded `lx200 bind failure` gates three open attempts and checks pending BUSY/no listener, failure STOPPED/ALERT, successful retry STARTED/OK with a working GVP query and normal stop, then another failure to detect stale readiness. Gate release occurs before assertions so failed checks do not leave the listener blocked.
 
 Validation: nine selected LX200 cases (startup, invalid coordinates, coordinate boundaries, truncated command, command length, ACK, signed zero, full protocol and input matrix) plus all 150 unit cases passed. Framework, Mount Agent and tests built for macOS arm64/x86_64; scripted tests executed on arm64 without sockets/hardware. Both POSIX/Windows ready-callback sites and the legacy API adapter were inspected; actual OS socket failures and Windows execution remain untested. Version remains 0x03000016 as requested. Test artifacts removed with `make -C indigo_test test-clean`.
+
+### DRV-142 — complete idle LX200 stop requests (2026-09-10)
+
+Expanded `lx200 idle stop` covers repeated STOPPED requests before any listener exists, STOPPED after failed startup, a successful restart/query/normal stop and repeated STOPPED after listener closure. It verifies STOPPED/OK, cleared STARTED and no extra socket closes. The regression failed on the original NULL-handle no-op and passes with explicit completion.
+
+Validation: idle stop plus all nine previously selected LX200 cases passed (10/10), including cleanup. Production Mount Agent and test executable built for macOS arm64/x86_64; tests executed on arm64 with scripted I/O, without hardware or sockets. Version remains 0x03000016 as requested. Test artifacts removed with `make -C indigo_test test-clean`. Shutdown ordering (DRV-143) is outside this fix.

@@ -940,6 +940,10 @@ static void stop_lx200_server(indigo_device *device) {
 		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
 		indigo_uni_close(&DEVICE_PRIVATE_DATA->server_handle);
+	} else {
+		indigo_set_switch(AGENT_LX200_SERVER_PROPERTY, AGENT_LX200_SERVER_STOPPED_ITEM, true);
+		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
 	}
 }
 
