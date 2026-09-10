@@ -1029,6 +1029,8 @@ static void driver_unload_new(void) {
 	indigo_init_switch_item(drivers->items + 3, "indigo_new_driver", "New driver", true);
 	indigo_update_property(&peer, drivers, NULL);
 	pthread_mutex_unlock(&peer_mutex);
+	ASSERT_TRUE(load("before_new_driver", INDIGO_OK_STATE));
+	ASSERT_TRUE(has_item(DRIVERS, "indigo_new_driver", NULL, 1));
 	option("UNLOAD_UNUSED_DRIVERS", true);
 	ASSERT_TRUE(load("before_new_driver", INDIGO_OK_STATE));
 	ASSERT_TRUE(has_item(DRIVERS, "indigo_new_driver", NULL, 0));

@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x0300001B
+#define DRIVER_VERSION 0x0300001C
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -317,23 +317,31 @@ static void process_configuration_property(indigo_device *device) {
 		if (property) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Restoring '%s'", property->name);
 			if (!strcmp(property->name, AGENT_CONFIG_DRIVERS_PROPERTY_NAME)) {
-				indigo_property *copy = indigo_copy_property(NULL, property);
+				pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
+				indigo_property *copy = indigo_copy_property(NULL, AGENT_CONFIG_DRIVERS_PROPERTY);
 				strcpy(copy->name, SERVER_DRIVERS_PROPERTY_NAME);
 				strcpy(copy->device, DEVICE_PRIVATE_DATA->server);
-				if (!AGENT_CONFIG_SETUP_UNLOAD_DRIVERS_ITEM->sw.value) {
-					for (int j = 0; j < AGENT_CONFIG_DRIVERS_PROPERTY->count; j++) {
-						indigo_item *item = AGENT_CONFIG_DRIVERS_PROPERTY->items + j;
-						if (item->sw.value) {
-							for (int k = 0; k < copy->count; k++) {
-								indigo_item *copy_item = copy->items + k;
-								if (!strcmp(item->name, copy_item->name)) {
-									copy_item->sw.value = true;
-									break;
-								}
-							}
-						}
+				copy->perm = INDIGO_RW_PERM;
+				bool unload = AGENT_CONFIG_SETUP_UNLOAD_DRIVERS_ITEM->sw.value;
+				if (unload) {
+					for (int j = 0; j < copy->count; j++) {
+						copy->items[j].sw.value = false;
 					}
 				}
+				for (int j = 0; j < property->count; j++) {
+					indigo_item *saved = property->items + j;
+					int index = 0;
+					while (index < copy->count && strcmp(copy->items[index].name, saved->name)) {
+						index++;
+					}
+					if (index == copy->count) {
+						copy = indigo_resize_property(copy, copy->count + 1);
+						memcpy(copy->items + index, saved, sizeof(indigo_item));
+					} else {
+						copy->items[index].sw.value = saved->sw.value || (!unload && copy->items[index].sw.value);
+					}
+				}
+				pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 				bool has_server = *copy->device != 0;
 				if (has_server) {
 					indigo_change_property(agent_client, copy); // synchronous local bus

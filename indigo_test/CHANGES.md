@@ -1269,7 +1269,7 @@ Validation: the full Mount Agent suite passed 59/59 cases including cleanup afte
 
 ## 2026-09-10 — Configuration Agent complete behavioral suite
 
-Added `integration/test_agent_config.c`, included in `INTEGRATION_TESTS`, plus the focused `test-agent-config` target. The 55 independently isolated cases exercise the real Configuration Agent and framework via public bus entry points and a synchronous test peer router. Files are confined to a unique temporary root and removed by the parent even when a child assertion/watchdog fails. Each child starts INDIGO after fork and cleans up the bus and properties; the deadlock regression is intentionally killed by its watchdog. Test-only symbol substitutions isolate configuration paths, shorten only agent sleeps, observe client detach, and inject `indigo_save_property` failure. Production sources are compiled as separate objects, never included into a test source.
+Added `integration/test_agent_config.c`, included in `INTEGRATION_TESTS`, plus the focused `test-agent-config` target. The initial 55 independently isolated cases exercise the real Configuration Agent and framework via public bus entry points and a synchronous test peer router. Files are confined to a unique temporary root and removed by the parent even when a child assertion/watchdog fails. Each child starts INDIGO after fork and cleans up the bus and properties; the pre-fix deadlock regression was killed by its watchdog. Test-only symbol substitutions isolate configuration paths, shorten only agent sleeps, observe client detach, and inject `indigo_save_property` failure. Production sources are compiled as separate objects, never included into a test source.
 
 ### Scenario-to-test mapping
 
@@ -1278,7 +1278,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | Case | Coverage/result |
 | --- | --- |
 | `related_failure` | Passes; related failure. |
-| `driver_unload_new` | Fails; see DRV-168 in the driver review. |
+| `driver_unload_new` | Passes after DRV-168 fix; see driver review validation. |
 | `empty_selection_roundtrip` | Passes; empty selection roundtrip. |
 | `delayed_profile` | Passes; delayed profile. |
 | `busy_then_ok` | Passes; busy then ok. |
@@ -1344,7 +1344,7 @@ indigo_test/build/config-asan/integration/test_agent_config
 make -C indigo_test test-clean
 ```
 
-A substring selects cases; no matching case returns 2. Full execution returns 1 today: **30 pass, 25 fail**, mapping to 21 open driver findings. The normal integration target deliberately surfaces the same regressions. Universal macOS arm64/x86_64 build and arm64 execution were verified, including AddressSanitizer. Original-wait checks passed roundtrip and missing-profile recovery; the original-wait BUSY timeout case reproduces its recorded failure.
+A substring selects cases; no matching case returns 2. Initial execution returned 1: **30 passed, 25 failed**, mapping to 21 driver findings. All findings are now fixed; see final validation below. Universal macOS arm64/x86_64 build and arm64 execution were verified, including AddressSanitizer. Original-wait checks passed roundtrip and missing-profile recovery; the original-wait BUSY timeout case reproduces its recorded failure.
 
 For clang coverage, use a separate `TEST_BUILD=build/config-coverage`, native architecture `CFLAGS`/`LDFLAGS` (same platform/library flags as Makefile.inc, retaining only the host architecture), and `CONFIG_TEST_FLAGS="-fprofile-instr-generate -fcoverage-mapping"`. Set `LLVM_PROFILE_FILE` to an absolute path under that build directory containing `%p.profraw`, run the executable, merge profiles with `llvm-profdata merge -sparse`, and report the agent source with `llvm-cov report`. Measured agent coverage: **100% functions, 97.04% lines, 95.56% regions, 87.47% branches**. Untested guards are described in the driver review; no claim of 100% branch coverage or production correctness is made.
 
@@ -1353,3 +1353,9 @@ The CCD/mount/wheel/focuser/rotator/guider/AO/GPS class matrices are not applica
 DRV-159 adds `restore_queue_overflow` (bounded overflow reports ALERT, subsequent load recovers) and extends `direct_restore_capacity` to 64 sequential requests. Both pass with the queue fix.
 
 DRV-162 extends `save_write_failure` with real failed descriptor writes and failed replacement, checks preservation of the old snapshot and temporary-file cleanup, then verifies retry. The shared serialization/I/O changes also passed all unit tests.
+
+### Configuration Agent fixes — final validation
+
+DRV-148–DRV-168 were fixed and tested individually. The suite now contains **56 cases, all passing**, including the additional queue-overflow/recovery case. The full AddressSanitizer run also passes **56/56**; the shared serialization/I/O changes pass **150 unit cases**. Original-duration tests for restore-BUSY timeout, missing-profile recovery and save/load roundtrip pass. Production library/agent and test builds succeeded for macOS arm64/x86_64; execution was on arm64. Earlier coverage percentages and 30/55 results describe the initial audit, not the fixed revision.
+
+Tests also now cover file replacement failure and preservation of existing snapshots, path validation for both slash conventions, ephemeral-port naming, status compaction, failed-operation retry, and both unload policies for newly discovered drivers. No expected-failure masking remains. `make -C indigo_test test-agent-config` is the focused complete run. Test build artifacts are cleaned after verification.
