@@ -388,20 +388,17 @@ driver sx {
 		static bool sx_clear_regs(indigo_device *device) {
 			libusb_device_handle *handle = PRIVATE_DATA->handle;
 			unsigned char *setup_data = PRIVATE_DATA->setup_data;
-			int rc = 0;
 			int transferred;
-			if (rc >= 0) {
-				setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAOUT;
-				setup_data[REQ ] = CCD_CLEAR_PIXELS;
-				setup_data[REQ_VALUE_L ] = FLAGS_NOWIPE_FRAME;
-				setup_data[REQ_VALUE_H ] = 0;
-				setup_data[REQ_INDEX_L ] = 0;
-				setup_data[REQ_INDEX_H ] = 0;
-				setup_data[REQ_LENGTH_L] = 0;
-				setup_data[REQ_LENGTH_H] = 0;
-				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %d bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
-			}
+			setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAOUT;
+			setup_data[REQ ] = CCD_CLEAR_PIXELS;
+			setup_data[REQ_VALUE_L ] = FLAGS_NOWIPE_FRAME;
+			setup_data[REQ_VALUE_H ] = 0;
+			setup_data[REQ_INDEX_L ] = 0;
+			setup_data[REQ_INDEX_H ] = 0;
+			setup_data[REQ_LENGTH_L] = 0;
+			setup_data[REQ_LENGTH_H] = 0;
+			int rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %d bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
 			return rc >= 0 && transferred == REQ_DATA;
 		}
 
