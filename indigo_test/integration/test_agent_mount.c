@@ -435,7 +435,7 @@ static int state(const char *device, const char *name) {
 // dispatcher, filter, timers and handler queues remain unchanged.
 static void (*lx_worker)(indigo_uni_worker_data *);
 static void *lx_device;
-static atomic_bool server_open, server_fail;
+static atomic_bool server_open, server_fail, server_entered, server_hold;
 static indigo_uni_handle listener, connection;
 static const char *lx_input;
 static size_t lx_offset;
@@ -443,14 +443,21 @@ static char lx_output[8192];
 static long lx_read_error;
 static atomic_int socket_closes;
 
-void mount_test_server(int *port, indigo_uni_handle **handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int), int level) {
+void mount_test_server(int *port, indigo_uni_handle **handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int, void *), void *callback_data, int level) {
 	lx_worker = worker;
 	lx_device = data;
+	server_entered = true;
+	while (server_hold) {
+		indigo_usleep(1000);
+	}
 	if (server_fail) {
 		return;
 	}
 	*handle = &listener;
 	server_open = true;
+	if (callback) {
+		callback(0, callback_data);
+	}
 	while (server_open) {
 		indigo_usleep(1000);
 	}
@@ -995,10 +1002,35 @@ static void lx200_command_length(void) {
 }
 
 static void lx200_bind_failure(void) {
-	server_fail = true;
-	unsigned rev = revision(AGENT, "AGENT_LX200_SERVER");
-	indigo_change_switch_property_1(&client, AGENT, "AGENT_LX200_SERVER", "STARTED", true);
-	CHECK(wait_state(AGENT, "AGENT_LX200_SERVER", rev, INDIGO_ALERT_STATE));
+	for (int attempt = 0; attempt < 3; attempt++) {
+		server_fail = attempt != 1;
+		server_hold = true;
+		server_entered = false;
+		unsigned rev = revision(AGENT, "AGENT_LX200_SERVER");
+		indigo_change_switch_property_1(&client, AGENT, "AGENT_LX200_SERVER", "STARTED", true);
+		double deadline = indigo_monotonic_time() + 5;
+		while (!server_entered && indigo_monotonic_time() < deadline) {
+			indigo_usleep(1000);
+		}
+		indigo_property *pending = snapshot(AGENT, "AGENT_LX200_SERVER");
+		bool busy = pending && pending->state == INDIGO_BUSY_STATE;
+		indigo_release_property(pending);
+		bool opened_early = server_open;
+		server_hold = false;
+		CHECK(server_entered);
+		CHECK(busy);
+		CHECK(!opened_early);
+		CHECK(wait_state(AGENT, "AGENT_LX200_SERVER", rev, server_fail ? INDIGO_ALERT_STATE : INDIGO_OK_STATE));
+		CHECK(value(AGENT, "AGENT_LX200_SERVER", "STARTED") == !server_fail);
+		CHECK(value(AGENT, "AGENT_LX200_SERVER", "STOPPED") == server_fail);
+		CHECK(server_open == !server_fail);
+		if (!server_fail) {
+			exchange(":GVP#");
+			CHECK(!strcmp(lx_output, "indigo#"));
+			CHECK(sw(AGENT, "AGENT_LX200_SERVER", "STOPPED", true, INDIGO_OK_STATE));
+			CHECK(!server_open);
+		}
+	}
 }
 
 static void lx200_idle_stop(void) {

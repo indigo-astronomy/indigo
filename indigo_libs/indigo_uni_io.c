@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Server callback context refactored by OpenAI Codex (2026).
 
 // version history
 // 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -1143,7 +1144,7 @@ indigo_uni_handle *indigo_uni_open_url(const char *url, int default_port, indigo
 
 #if !defined(INDIGO_CLIENT)
 
-void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int), int log_level) {
+void indigo_uni_open_tcp_server_socket_with_callback(int *port, indigo_uni_handle **server_handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int, void *), void *callback_data, int log_level) {
 	indigo_rename_thread("TCP server");
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	int server_socket = socket(PF_INET, SOCK_STREAM, 0);
@@ -1194,7 +1195,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 	(*server_handle)->log_level = log_level;
 	indigo_log_on_level(log_level, "Server started on TCP port %d", *port);
 	if (callback) {
-		callback(0);
+		callback(0, callback_data);
 	}
 
 	while (true) {
@@ -1279,7 +1280,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 	(*server_handle)->log_level = log_level;
 	INDIGO_LOG(indigo_log("Server started on TCP port %d", *port));
 	if (callback) {
-		callback(0);
+		callback(0, callback_data);
 	}
 	while (1) {
 		struct sockaddr_in client_addr;
@@ -1324,6 +1325,15 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 #else
 #pragma message ("TODO: indigo_uni_open_server_socket()")
 #endif
+}
+
+static void server_socket_callback(int result, void *data) {
+	void (**callback)(int) = data;
+	(*callback)(result);
+}
+
+void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int), int log_level) {
+	indigo_uni_open_tcp_server_socket_with_callback(port, server_handle, worker, data, callback ? server_socket_callback : NULL, &callback, log_level);
 }
 
 #endif

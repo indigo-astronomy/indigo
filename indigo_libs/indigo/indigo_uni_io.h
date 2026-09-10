@@ -1,4 +1,4 @@
-// Copyright (c) 2025 CloudMakers, s. r. o.
+// Copyright (c) 2025-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Server callback context refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -223,6 +224,11 @@ INDIGO_EXTERN void indigo_uni_set_socket_nodelay_option(indigo_uni_handle *handl
 /** Open server socket.
  */
 INDIGO_EXTERN void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int), int log_level);
+
+/** Open server socket; callback(0, callback_data) runs after listen succeeds.
+ * Like indigo_uni_open_tcp_server_socket(), blocks until the listener finishes.
+ */
+INDIGO_EXTERN void indigo_uni_open_tcp_server_socket_with_callback(int *port, indigo_uni_handle **server_handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int, void *), void *callback_data, int log_level);
 
 #endif
 

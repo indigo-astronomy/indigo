@@ -912,15 +912,27 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 	free(data);
 }
 
+typedef struct {
+	indigo_device *device;
+	int port;
+	bool started;
+} lx200_server_context;
+
+static void lx200_server_started(int result, void *data) {
+	lx200_server_context *context = data;
+	indigo_device *device = context->device;
+	context->started = true;
+	AGENT_LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "Server started on %d", context->port);
+}
+
 static void start_lx200_server(indigo_device *device) {
 	indigo_rename_thread("LX200 listener");
-	int port = (int)AGENT_LX200_CONFIGURATION_PORT_ITEM->number.value;
-	AGENT_LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "Starting server on %d", (int)AGENT_LX200_CONFIGURATION_PORT_ITEM->number.value);
-	indigo_uni_open_tcp_server_socket(&port, &DEVICE_PRIVATE_DATA->server_handle, lx200_server_worker_thread, device, NULL, INDIGO_LOG_DEBUG);
-	AGENT_LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
+	lx200_server_context context = { device, (int)AGENT_LX200_CONFIGURATION_PORT_ITEM->number.value, false };
+	indigo_uni_open_tcp_server_socket_with_callback(&context.port, &DEVICE_PRIVATE_DATA->server_handle, lx200_server_worker_thread, device, lx200_server_started, &context, INDIGO_LOG_DEBUG);
+	AGENT_LX200_SERVER_PROPERTY->state = context.started ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_set_switch(AGENT_LX200_SERVER_PROPERTY, AGENT_LX200_SERVER_STOPPED_ITEM, true);
-	indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "Server finished");
+	indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, context.started ? "Server finished" : "Failed to start server on %d", context.port);
 }
 
 static void stop_lx200_server(indigo_device *device) {
@@ -2139,12 +2151,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			// -------------------------------------------------------------------------------- LX200_SERVER
 		indigo_property_copy_values(AGENT_LX200_SERVER_PROPERTY, property, false);
 		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
 		if (AGENT_LX200_SERVER_STARTED_ITEM->sw.value) {
 			indigo_set_timer(device, 0, start_lx200_server, NULL);
 		} else {
 			indigo_execute_handler(device, stop_lx200_server);
 		}
-		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_LX200_CONFIGURATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_LX200_CONFIGURATION
