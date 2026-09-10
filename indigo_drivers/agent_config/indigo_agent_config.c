@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x03000009
+#define DRIVER_VERSION 0x0300000A
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -564,9 +564,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_send_message(device, ALERT_PROPERTY, "Invalid configuration name '%s'", AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
 			AGENT_CONFIG_DELETE_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			char path[256];
-			snprintf(path, sizeof(path), "%s/.indigo/%s%s", getenv("HOME"), AGENT_CONFIG_DELETE_NAME_ITEM->text.value, EXTENSION);
-			if (indigo_uni_remove(path)) {
+			char path[1024];
+			int length = snprintf(path, sizeof(path), "%s%c%s%s", indigo_uni_config_folder(), INDIGO_PATH_SEPATATOR, AGENT_CONFIG_DELETE_NAME_ITEM->text.value, EXTENSION);
+			if (length >= 0 && length < sizeof(path) && indigo_uni_remove(path)) {
 				indigo_send_message(device, OK_PROPERTY, "Configuration '%s' deleted", AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
 				AGENT_CONFIG_DELETE_PROPERTY->state = INDIGO_OK_STATE;
 			} else {

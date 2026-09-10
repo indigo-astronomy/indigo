@@ -1318,7 +1318,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `missing_file` | Passes after DRV-148 fix; see driver review validation. |
 | `malformed_file` | Passes after DRV-148 fix; see driver review validation. |
 | `scan_suffix` | Passes after DRV-149 fix; see driver review validation. |
-| `alternate_folder_remove` | Fails; see DRV-150 in the driver review. |
+| `alternate_folder_remove` | Passes after DRV-150 fix; see driver review validation. |
 | `port_namespace` | Fails; see DRV-151 in the driver review. |
 | `deselection_timeout` | Fails; see DRV-152 in the driver review. |
 | `restore_busy_timeout` | Fails; see DRV-153 in the driver review. |
