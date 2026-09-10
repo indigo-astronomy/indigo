@@ -167,7 +167,7 @@ function renderTree() {
 			return;
 		}
 		count++;
-		const children = properties.has(node.kind) ? node.children.filter(child => child.kind === 'item') : node.children;
+		const children = node.children;
 		const row = element('div', 'tree-row' + (selected === node.id ? ' selected' : ''));
 		row.style.paddingLeft = `${depth * 13}px`;
 		const button = element('button', 'node-button');
@@ -419,7 +419,12 @@ function renderNodeActions(node) {
 		button.onclick = callback;
 		$('node-actions').append(button);
 	};
-	if (node.kind === 'driver') {
+	if (node.kind === 'driver' || devices.has(node.kind) || properties.has(node.kind)) {
+		add('Add code block', () => showAddNode(node, 'code block'));
+	}
+	if (node.code) {
+		add('Remove code block', removeNode);
+	} else if (node.kind === 'driver') {
 		add('Add device', () => showAddNode(node, 'device'));
 	} else if (devices.has(node.kind)) {
 		add('Remove device', removeNode);
@@ -429,23 +434,27 @@ function renderNodeActions(node) {
 		if (node.kind !== 'inherited') {
 			add('Add item', () => showAddNode(node, 'item'));
 		}
+	} else if (node.kind === 'serial') {
+		add('Add pattern', () => changeStructure('add', 'pattern'));
+	} else if (node.kind === 'pattern') {
+		add('Remove pattern', removeNode);
 	} else if (node.kind === 'item') {
 		add('Remove item', removeNode);
 	}
 }
 function showAddNode(node, category) {
 	$('node-dialog-title').textContent = 'Add ' + category;
-	const kinds = category === 'device' ? [...devices].filter(kind => !node.children.some(child => child.kind === kind)) : category === 'property' ? ['switch', 'number', 'text', 'light', 'inherited'] : ['item'];
+	const kinds = category === 'code block' ? (state.codeBlocks[contextFor(node)] || []).filter(kind => !node.children.some(child => child.kind === kind)) : category === 'device' ? [...devices].filter(kind => !node.children.some(child => child.kind === kind)) : category === 'property' ? ['switch', 'number', 'text', 'light', 'inherited'] : ['item'];
 	$('new-node-kind').replaceChildren();
 	for (const kind of kinds) {
 		const option = element('option', '', kind);
 		option.value = kind;
 		$('new-node-kind').append(option);
 	}
-	$('new-node-name-row').hidden = category === 'device';
-	$('new-node-name').required = category !== 'device';
+	$('new-node-name-row').hidden = category === 'device' || category === 'code block';
+	$('new-node-name').required = category === 'property' || category === 'item';
 	$('new-node-name').value = category === 'property' ? 'X_NEW_PROPERTY' : category === 'item' ? 'NEW_ITEM' : '';
-	$('node-error').textContent = kinds.length ? '' : 'All supported device types are already present.';
+	$('node-error').textContent = kinds.length ? '' : 'All supported block types are already present.';
 	$('confirm-add-node').disabled = !kinds.length;
 	$('node-dialog').showModal();
 }
@@ -497,25 +506,7 @@ function renderDetail() {
 		detail.append(textEditor(node, 'code', node.body));
 	} else {
 		fields(node, detail);
-		for (const child of node.children) {
-			if (child.kind === 'item') {
-				const item = element('fieldset');
-				item.append(element('legend', '', 'item ' + child.name));
-				fields(child, item);
-				detail.append(item);
-			} else if (child.code) {
-				const block = element('section', 'code-block');
-				const summary = element('h3', 'code-block-title', child.kind);
-				const header = element('div', 'code-block-header');
-				const select = element('button', '', 'Highlight this block');
-				select.onclick = () => selectNode(child.id);
-				header.append(select, element('span', '', 'Handwritten C'));
-				block.append(summary, header, textEditor(child, 'code', child.body));
-				detail.append(block);
-			}
-		}
 	}
-
 }
 
 async function flushDrafts() {

@@ -34,7 +34,7 @@ import unittest
 from unittest.mock import patch
 
 from driver_editor import Server
-from driver_format import FormatError, attributes, edit, parse, schema, structure, walk
+from driver_format import FormatError, attributes, code_schema, edit, parse, schema, structure, walk
 from editor import Conflict, Editor, GenerationError, ROOT, generate, output_names
 from source_map import build_mapping
 
@@ -132,6 +132,24 @@ class ParserTests(unittest.TestCase):
 			with self.assertRaises(ValueError):
 				structure(updated, root, root['id'], 'add', 'aux')
 
+	def test_add_multiple_patterns_and_remove_one(self):
+		for eol in ('\n', '\r\n'):
+			source = eol.join(['driver sample {', '\tserial {', '\t	pattern { vid = 1; }', '\t}', '\taux;', '}'])
+			root = parse(source)
+			serial = named(root, 'serial')['id']
+			for _ in range(2):
+				source, root, selected = structure(source, root, serial, 'add', 'pattern')
+			patterns = named(root, 'serial')['children']
+			self.assertEqual(len(patterns), 3)
+			self.assertEqual(len({node['id'] for node in patterns}), 3)
+			self.assertEqual(selected, patterns[-1]['id'])
+			source, root = edit(source, root, selected, [dict(field='attribute', name='vid', value='3')])
+			source, root, selected = structure(source, root, patterns[1]['id'], 'remove')
+			self.assertEqual(selected, serial)
+			self.assertEqual([attributes(node).get('vid') for node in named(root, 'serial')['children']], ['1', '3'])
+			with self.assertRaises(ValueError):
+				structure(source, root, named(root, 'aux')['id'], 'add', 'pattern')
+
 	def test_strings_comments_nested_expressions_and_code(self):
 		source = r'''driver a { constant = ((int[]){1, 2})[0]; code { // } is not a delimiter
 		char c = '}'; /* { */ const char *s = "escaped \" } ;"; if (1) { work(); }
@@ -210,6 +228,14 @@ class ParserTests(unittest.TestCase):
 				self.assertEqual({name: entry['type'] for name, entry in catalog['item:' + kind].items()}, expected)
 		self.assertEqual({name: entry['type'] for name, entry in catalog['driver'].items()}, {'author': 'string', 'copyright': 'string', 'label': 'string', 'supported_architecture': 'string', 'version': 'integer'})
 
+	def test_template_code_blocks_match_generator_contexts(self):
+		catalog = code_schema((ROOT / 'indigo_tools/template.driver').read_text())
+		generator = (ROOT / 'indigo_tools/indigo_generator.c').read_text()
+		for context, function in [('device', 'parse_device_block'), ('sdk', 'parse_sdk_block')] + [(kind, 'parse_property_block') for kind in ('inherited', 'switch', 'text', 'number', 'light')]:
+			body = generator.split('bool ' + function + '(')[1].split('\nbool ')[0]
+			self.assertEqual(set(catalog[context]), set(re.findall(r'parse_code_block\("([^"]+)"', body)))
+		self.assertEqual(set(catalog['driver']), {'include', 'define', 'data', 'code', 'on_init', 'on_shutdown'})
+
 class EditorTests(unittest.TestCase):
 	def setUp(self):
 		self.temporary = tempfile.TemporaryDirectory(prefix='driver editor test ')
@@ -263,6 +289,27 @@ class EditorTests(unittest.TestCase):
 		self.assertEqual(state['selected'], self.editor.root['id'])
 		self.assertNotIn('X_RENAMED', self.editor.source)
 		self.assertTrue(state['preview']['stale'])
+		self.assertEqual(self.path.read_text(), FIXTURE)
+
+	@unittest.skipUnless(GENERATOR.is_file(), 'Build indigo_generator first')
+	def test_code_block_add_edit_generate_remove(self):
+		parents = [(self.editor.root['id'], 'on_shutdown'), (named(self.editor.root, 'aux')['id'], 'on_timer'), (named(self.editor.root, 'X_TEST')['id'], 'on_attach')]
+		for parent, kind in parents:
+			state = self.editor.change_structure(self.editor.revision, parent, 'add', kind)
+			block = state['selected']
+			self.assertTrue(named(self.editor.root, kind)['code'])
+			with self.assertRaises(ValueError):
+				self.editor.change_structure(self.editor.revision, parent, 'add', kind)
+			self.editor.apply(self.editor.revision, block, [dict(field='code', value='\n/* added block test */\n')])
+			preview = self.editor.refresh(self.editor.revision)['preview']
+			self.assertIn('/* added block test */', preview['source'])
+			state = self.editor.change_structure(self.editor.revision, block, 'remove')
+			self.assertEqual(state['selected'], parent)
+			self.assertNotIn('/* added block test */', self.editor.source)
+		with self.assertRaises(ValueError):
+			self.editor.change_structure(self.editor.revision, self.editor.root['id'], 'add', 'on_change')
+		with self.assertRaises(ValueError):
+			self.editor.change_structure(self.editor.revision, named(self.editor.root, 'X_VALUE')['id'], 'add', 'code')
 		self.assertEqual(self.path.read_text(), FIXTURE)
 
 	def test_disk_conflict_and_failed_atomic_save(self):

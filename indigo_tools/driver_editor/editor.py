@@ -29,7 +29,7 @@ import subprocess
 import tempfile
 import threading
 
-from driver_format import DEVICES, edit, parse, schema, structure, walk
+from driver_format import DEVICES, code_schema, edit, parse, schema, structure, walk
 from source_map import build_mapping
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -115,7 +115,9 @@ class Editor:
 		self.generation_failed = False
 		self.lock = threading.RLock()
 		self.generation_lock = threading.Lock()
-		self.catalog = schema((ROOT / 'indigo_tools' / 'template.driver').read_text(encoding='utf-8'))
+		template = (ROOT / 'indigo_tools' / 'template.driver').read_text(encoding='utf-8')
+		self.catalog = schema(template)
+		self.code_catalog = code_schema(template)
 		self.remember_outputs()
 
 	def remember_outputs(self):
@@ -141,7 +143,7 @@ class Editor:
 			preview = copy.deepcopy(self.preview)
 			if preview:
 				preview['stale'] = preview['revision'] != self.revision or self.generation_failed
-			return dict(filename=self.path.name, path=str(self.path), source=self.source, tree=tree, revision=self.revision, dirty=self.source != self.saved_source, preview=preview, diagnostic=self.diagnostic, schema=self.catalog)
+			return dict(filename=self.path.name, path=str(self.path), source=self.source, tree=tree, revision=self.revision, dirty=self.source != self.saved_source, preview=preview, diagnostic=self.diagnostic, schema=self.catalog, codeBlocks=self.code_catalog)
 
 	def apply(self, revision, node, changes):
 		with self.lock:
@@ -160,7 +162,7 @@ class Editor:
 	def change_structure(self, revision, node, action, kind='', name=''):
 		with self.lock:
 			self.check_revision(revision)
-			candidate, root, selected = structure(self.source, self.root, node, action, kind, name)
+			candidate, root, selected = structure(self.source, self.root, node, action, kind, name, self.code_catalog)
 			self.source, self.root = candidate, root
 			self.revision += 1
 			self.remember_outputs()

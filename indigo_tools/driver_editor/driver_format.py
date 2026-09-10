@@ -171,12 +171,12 @@ def validate_node_name(parent, kind, name, current=None):
 		if child is not current and (child['kind'] in PROPERTIES if kind in PROPERTIES else child['kind'] == kind) and child['name'].upper() == name.upper():
 			raise ValueError('An identifier with this name already exists here')
 
-def structure(source, root, identity, action, kind='', name=''):
+def structure(source, root, identity, action, kind='', name='', code_catalog=None):
 	node = find_node(root, identity)
 	eol = '\r\n' if '\r\n' in source else '\n'
 	outer = '\t' * (identity.count('/') - 1)
 	if action == 'remove':
-		if node['kind'] not in DEVICES | PROPERTIES | {'item'}:
+		if node['kind'] not in DEVICES | PROPERTIES | CODE | {'item', 'pattern'}:
 			raise ValueError('This node cannot be removed')
 		parent_id = identity.rsplit('/', 1)[0]
 		start, end = node['start'], node['end']
@@ -189,21 +189,25 @@ def structure(source, root, identity, action, kind='', name=''):
 		return updated, parse(updated), parent_id
 	if action != 'add':
 		raise ValueError('Unknown structural action')
-	allowed = DEVICES if node['kind'] == 'driver' else PROPERTIES if node['kind'] in DEVICES else {'item'} if node['kind'] in PROPERTIES - {'inherited'} else set()
+	allowed = DEVICES if node['kind'] == 'driver' else PROPERTIES if node['kind'] in DEVICES else {'item'} if node['kind'] in PROPERTIES - {'inherited'} else {'pattern'} if node['kind'] == 'serial' else set()
+	context = 'device' if node['kind'] in DEVICES else node['kind']
+	allowed = allowed | set((code_catalog or {}).get(context, []))
 	if kind not in allowed:
 		raise ValueError('This child type is not supported here')
-	if kind in DEVICES:
+	if kind == 'pattern':
+		name = kind
+	elif kind in DEVICES | CODE:
 		name = kind
 		if any(child['kind'] == kind for child in node['children']):
-			raise ValueError('This device type already exists')
+			raise ValueError('This block type already exists')
 	else:
 		validate_node_name(node, kind, name)
 	indent = outer + '\t'
-	header = kind if kind in DEVICES else kind + ' ' + name
+	header = kind if kind in DEVICES | CODE | {'pattern'} else kind + ' ' + name
 	body = ''
 	if kind in DEVICES:
 		body = indent + '\tname = "' + name + '";' + eol
-	elif kind != 'inherited':
+	elif kind not in CODE | {'inherited', 'pattern'}:
 		body = indent + '\tlabel = "' + name + '";' + eol
 		if kind in {'switch', 'number', 'text'}:
 			body += indent + '\ton_change { }' + eol
@@ -294,4 +298,14 @@ def schema(template):
 			value_type = type_match.group(1) if type_match else 'expression'
 			help_text = re.sub(r' @type=\w+', '', help_text)
 			entries[attribute['name']] = dict(example=attribute['value'], help=help_text, type=value_type)
+	return catalog
+
+
+def code_schema(template):
+	catalog = {}
+	for node in walk(parse(template)):
+		context = 'device' if node['kind'] == 'XXXXX' else node['kind']
+		kinds = [child['kind'] for child in node['children'] if child['code']]
+		if kinds:
+			catalog[context] = kinds
 	return catalog

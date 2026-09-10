@@ -43,3 +43,5 @@ Without a CLI file, state contains a null tree and revision zero until a driver 
 ## Structural editing
 
 POST /api/structure accepts revision, document, node, action (add/remove), kind and name. It validates parent/child kinds, C identifiers, custom-property X_ prefixes, and case-insensitive sibling duplicates. Shorthand parents expand into blocks. Removal preserves neighboring comments and source. The returned selected ID identifies the new node or removed node’s parent. Attribute-edit requests also accept field=identifier; responses include old/new node ID mappings to preserve selection. Pending descendant edits are flushed before ancestor renames. Explicit attributes and handwritten code are preserved, not refactored after identifier changes.
+
+Code block creation uses a separate codeBlocks catalog derived from template.driver child blocks. Structural operations enforce that catalog and reject duplicate block kinds. Code removal uses the existing structural removal path. The tree includes every code node; parent detail forms do not include child code bodies.

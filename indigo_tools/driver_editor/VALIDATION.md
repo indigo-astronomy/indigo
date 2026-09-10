@@ -93,3 +93,7 @@ All 29 tests passed. New HTTP checks cover empty-session state, accepted directo
 Browser verification added a wheel device, a number property and an item to the in-memory PlayerOne definition, displayed the item in the tree, renamed both identifiers while preserving selection, generated the new property/item macros, and removed the property. No production file was saved; no browser warnings or errors were reported. Automated checks cover LF/CRLF, shorthand expansion, adjacent source preservation, duplicate and invalid names, unsupported contexts, inherited-item rejection, stale revisions, subtree removal, descendant ID remapping, preview invalidation, and unchanged disk input.
 
 The complete 31-test suite passed after correcting spacing in shorthand expansion; JavaScript syntax validation also passed.
+
+## Code block toolbar and tree-only editing
+
+All 33 tests passed. Added tests compare template code block kinds with generator contexts and cover add/edit/generate/remove at root, device and property levels, duplicate and invalid-context rejection, and unchanged disk input. Browser checks confirmed no embedded code editors in root/property details, a root dialog offering only missing on_shutdown, selection of its new tree node, Remove code block availability, editing and generated output. No production file was saved.

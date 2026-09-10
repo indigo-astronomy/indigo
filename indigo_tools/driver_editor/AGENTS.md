@@ -91,3 +91,9 @@ The CLI file argument is optional. Provide Open driver in the toolbar with a sea
 ## Device, property and item editing
 
 Provide context-specific inspector actions to add/remove devices, properties and items. Show items in the tree. Provide an Identifier field for properties/items, distinct from the name attribute. Validate grammar contexts, duplicate identifiers and the X_ custom-property prefix. Inherited properties cannot have items. Preserve selection through renames; structural edits remain in memory until explicitly saved. The earlier external-only structural editing limitation no longer applies to these supported operations.
+
+Show item settings only when that item is selected in the tree; do not embed item forms in the parent property detail.
+
+Code block bodies are editable only by selecting their own tree node; never embed their editors in parent details. Show all code blocks in the tree, including property blocks. Add code block on root/device/property nodes uses missing block kinds from template.driver; Remove code block appears on code nodes.
+
+Provide Add pattern on serial nodes and Remove pattern on pattern nodes. Allow repeated pattern blocks with distinct node identities and preserve other patterns when removing one.
