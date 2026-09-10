@@ -1,5 +1,13 @@
 # INDIGO Test Suite Changes
 
+## Guider Agent adaptive calibration step fix — DRV-128 (2026-09-10)
+
+`change_step()` now compares against the minimum when reducing a step. Automatic halving/doubling clamps to the advertised 0.05–2 second bounds and fails calibration when further adjustment at the relevant bound is impossible. Values and targets remain synchronized. Version stays `0x0300002C` until the combined DRV-124–DRV-133 change is complete; no properties were added or removed.
+
+Two new cases bring the suite to 75. `calibration adaptive minimum` uses a 40 px/s motion boundary, starts at 0.15 seconds, reaches 0.075 then 0.05 without crossing the lower limit, fails cleanly and subsequently calibrates at the ordinary 10 px/s response. `calibration adaptive maximum` starts at 1.5 seconds with no motion, reaches 2 seconds and fails without issuing a pulse above 2000 ms. The strengthened `calibration adaptive step` verifies successful reduction from 0.2 through 0.1 to 0.05 seconds for a 3-pixel drift threshold. Other tests retain their default 10 px/s motion response.
+
+Validation: driver build passed. All six focused cases passed: the three adaptive cases, `calibration no motion`, `calibration abort`, and `calibration and guiding`. The adaptive-step assertion was corrected to the actual required 0.05-second endpoint and that case rerun successfully; the other five passed without test changes. The full suite and AddressSanitizer were not rerun for this arithmetic/control-flow fix. The separate calibration speed calculation defect DRV-129 remains open, as do DRV-130–DRV-133. Test artifacts were removed with `make -C indigo_test test-clean`.
+
 ## Guider Agent continuous-preview completion fix — DRV-127 (2026-09-10)
 
 `PREVIEW` now snapshots the abort reason before clearing the abort property. Explicit abort publishes `AGENT_START_PROCESS=OK` and phase `DONE`; capture failure (including camera disconnection) publishes `ALERT` and `FAILED`. The preview switch clears and camera settings are restored. Version remains `0x0300002C` until the combined DRV-124–DRV-133 change is complete; no properties were added or removed.
@@ -72,7 +80,7 @@ The final `make -C indigo_test test-agent-guider` run completed **53/64 cases su
 | DRV-125 (subsequently fixed) | Original shutdown use-after-free is resolved; see the focused active-teardown validation above. |
 | DRV-126 (subsequently fixed) | Single-preview terminal states are corrected; see the focused completion validation above. |
 | DRV-127 (subsequently fixed) | Continuous-preview terminal states are corrected; see the focused completion validation above. |
-| DRV-128 | Adaptive calibration fails instead of reducing its step |
+| DRV-128 (subsequently fixed) | Adaptive step reduction and bounds are corrected; see the focused calibration validation above. |
 | DRV-129 | Calibration reports 12.5 px/s for a 10 px/s boundary |
 | DRV-130 | RA-only dither fails the requested magnitude assertion |
 | DRV-131 | Guiding delay prevents completion within the 1.5-second abort bound |
@@ -117,7 +125,7 @@ Inventory: 150 modules — 2 Complete, 37 Partial, 55 Not audited, 46 No tests, 
 | `agent_astrometry` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_auxiliary` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_config` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `agent_guider` | Hand-written | Production agent/filter + CCD simulator and deterministic image/pulse boundary | Partial | 73 mapped integration cases; DRV-124/DRV-125 regressions pass normally and under AddressSanitizer, and focused DRV-126/DRV-127 preview regressions pass; DRV-128–DRV-133 remain open. See the Guider Agent integration coverage section for validation and remaining acceptance work. |
+| `agent_guider` | Hand-written | Production agent/filter + CCD simulator and deterministic image/pulse boundary | Partial | 75 mapped integration cases; DRV-124/DRV-125 regressions pass normally and under AddressSanitizer; focused DRV-126/DRV-127 preview and DRV-128 calibration regressions pass; DRV-129–DRV-133 remain open. See the Guider Agent integration coverage section for validation and remaining acceptance work. |
 | `agent_imager` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_mount` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_scripting` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |

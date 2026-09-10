@@ -199,6 +199,7 @@ static indigo_timer *synthetic_timer, *failure_timer;
 static indigo_result (*guider_change)(indigo_device *, indigo_client *, indigo_property *);
 static pthread_mutex_t motion_mutex = PTHREAD_MUTEX_INITIALIZER;
 static double offset_x, offset_y;
+static _Atomic double motion_scale = 0.01;
 static double pulse_ra, pulse_dec, maximum_pulse;
 static unsigned ra_commands, dec_commands;
 
@@ -300,13 +301,13 @@ static indigo_result guider_spy(indigo_device *device, indigo_client *sender, in
 			ra_commands++;
 			pulse_ra = positive - negative;
 			if (synthetic && !freeze_motion && !pulse_failure) {
-				offset_x += pulse_ra * 0.01;
+				offset_x += pulse_ra * motion_scale;
 			}
 		} else {
 			dec_commands++;
 			pulse_dec = positive - negative;
 			if (synthetic && !freeze_motion && !pulse_failure) {
-				offset_y -= pulse_dec * 0.01;
+				offset_y -= pulse_dec * motion_scale;
 			}
 		}
 		pthread_mutex_unlock(&motion_mutex);
@@ -751,10 +752,38 @@ static void busy_guards(void) {
 static void calibration_adaptive_step(void) {
 	ASSERT_TRUE(model_camera());
 	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT", 3));
-	ASSERT_TRUE(run("CALIBRATION", INDIGO_BUSY_STATE));
-	ASSERT_TRUE(wait_state(AGENT, "AGENT_START_PROCESS", revision(AGENT, "AGENT_START_PROCESS"), INDIGO_OK_STATE));
+	ASSERT_TRUE(run("CALIBRATION", INDIGO_OK_STATE));
+	ASSERT_NEAR(0.05, value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), 0.0001);
 	ASSERT_TRUE(fabs(value(AGENT, "AGENT_GUIDER_SETTINGS", "SPEED_RA")) > 0);
 	ASSERT_TRUE(fabs(value(AGENT, "AGENT_GUIDER_SETTINGS", "SPEED_DEC")) > 0);
+}
+
+static void calibration_adaptive_minimum(void) {
+	ASSERT_TRUE(model_camera());
+	motion_scale = 0.04;
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", 0.15));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT", 1));
+	ASSERT_TRUE(run("CALIBRATION", INDIGO_ALERT_STATE));
+	ASSERT_NEAR(0.05, value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), 0.0001);
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_FAILED, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	motion_scale = 0.01;
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", 0.2));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT", 10));
+	ASSERT_TRUE(run("CALIBRATION", INDIGO_OK_STATE));
+}
+
+static void calibration_adaptive_maximum(void) {
+	ASSERT_TRUE(model_camera());
+	freeze_motion = true;
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", 1.5));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MAX_BL_STEPS", 1));
+	ASSERT_TRUE(run("CALIBRATION", INDIGO_ALERT_STATE));
+	ASSERT_NEAR(2, value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), 0.0001);
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_FAILED, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	pthread_mutex_lock(&motion_mutex);
+	double maximum = maximum_pulse;
+	pthread_mutex_unlock(&motion_mutex);
+	ASSERT_TRUE(maximum <= 2000);
 }
 
 static void calibration(void) {
@@ -1711,6 +1740,8 @@ static const indigo_test_case tests[] = {
 	{ "busy guards and deferred PPEC reset", busy_guards },
 	{ "calibration", calibration },
 	{ "calibration adaptive step", calibration_adaptive_step },
+	{ "calibration adaptive minimum", calibration_adaptive_minimum },
+	{ "calibration adaptive maximum", calibration_adaptive_maximum },
 	{ "calibration speed accuracy", calibration_speed_accuracy },
 	{ "calibration abort", calibration_abort },
 	{ "dither strategies", dither_strategies },

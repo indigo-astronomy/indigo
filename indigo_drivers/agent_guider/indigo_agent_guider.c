@@ -1305,7 +1305,7 @@ static void change_step(indigo_device *device, double q) {
 	if (q > 1) {
 		indigo_send_message(device, ALERT_PROPERTY, "Drift is too slow");
 		if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value < AGENT_GUIDER_SETTINGS_STEP_ITEM->number.max) {
-			AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value *= q);
+			AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value = fmin(AGENT_GUIDER_SETTINGS_STEP_ITEM->number.max, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value * q));
 			indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Increasing calibration step to %.3g", AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target);
 			DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
 		} else {
@@ -1313,8 +1313,8 @@ static void change_step(indigo_device *device, double q) {
 		}
 	} else {
 		indigo_send_message(device, ALERT_PROPERTY, "Drift is too fast");
-		if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value > AGENT_GUIDER_SETTINGS_STEP_ITEM->number.max) {
-			AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value *= q);
+		if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value > AGENT_GUIDER_SETTINGS_STEP_ITEM->number.min) {
+			AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value = fmax(AGENT_GUIDER_SETTINGS_STEP_ITEM->number.min, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value * q));
 			indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Decreasing calibration step to %.3g", AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target);
 			DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
 		} else {
