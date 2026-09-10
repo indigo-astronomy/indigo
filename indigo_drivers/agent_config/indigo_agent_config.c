@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x0300001A
+#define DRIVER_VERSION 0x0300001B
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -86,6 +86,7 @@ typedef struct {
 	indigo_property *profiles;
 	indigo_property_state *profile_states;
 	indigo_property *agents[MAX_AGENTS];
+	indigo_property_state *agent_states[MAX_AGENTS];
 	char server[INDIGO_NAME_SIZE];
 	int restore_count;
 	indigo_property *restore_properties[MAX_RESTORE_PROPERTIES];
@@ -741,6 +742,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	for (int i = 0; i < MAX_AGENTS; i++)
 		if (AGENT_CONFIG_AGENTS_PROPERTIES[i]) {
 			indigo_release_property(AGENT_CONFIG_AGENTS_PROPERTIES[i]);
+			free(DEVICE_PRIVATE_DATA->agent_states[i]);
 		}
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->restore_mutex);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->data_mutex);
@@ -795,15 +797,32 @@ static void add_profile(indigo_device *device, indigo_property *property) {
 	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 }
 
+static void update_agent_state(indigo_device *device, int index) {
+	indigo_property *agent = AGENT_CONFIG_AGENTS_PROPERTIES[index];
+	agent->state = INDIGO_OK_STATE;
+	for (int i = 0; i < agent->count; i++) {
+		indigo_property_state state = DEVICE_PRIVATE_DATA->agent_states[index][i];
+		if (state == INDIGO_ALERT_STATE) {
+			agent->state = INDIGO_ALERT_STATE;
+			break;
+		}
+		if (state == INDIGO_BUSY_STATE || (state == INDIGO_IDLE_STATE && agent->state == INDIGO_OK_STATE)) {
+			agent->state = state;
+		}
+	}
+}
+
 static void add_device(indigo_device *device, indigo_property *property) {
 	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 	indigo_property *agent = NULL;
+	int agent_index = -1;
 	char name[INDIGO_NAME_SIZE];
 	snprintf(name, INDIGO_NAME_SIZE, AGENT_CONFIG_PROPERTY_NAME, property->device);
 	for (int i = 0; i < MAX_AGENTS; i++) {
 		indigo_property *prop = AGENT_CONFIG_AGENTS_PROPERTIES[i];
 		if (prop && !strcmp(prop->name, name)) {
 			agent = prop;
+			agent_index = i;
 			indigo_delete_property(device, agent, NULL);
 			break;
 		}
@@ -814,6 +833,7 @@ static void add_device(indigo_device *device, indigo_property *property) {
 				agent = indigo_init_text_property(NULL, device->name, name, "Configuration", property->device, INDIGO_OK_STATE, INDIGO_RO_PERM, 4);
 				agent->count = 0;
 				AGENT_CONFIG_AGENTS_PROPERTIES[i] = agent;
+				agent_index = i;
 				break;
 			}
 		}
@@ -838,6 +858,7 @@ static void add_device(indigo_device *device, indigo_property *property) {
 				AGENT_CONFIG_AGENTS_PROPERTIES[i] = agent;
 				filter = agent->items +  agent->count - 1;
 				indigo_init_text_item(filter, property->name, property->label, "");
+				DEVICE_PRIVATE_DATA->agent_states[i] = indigo_safe_realloc(DEVICE_PRIVATE_DATA->agent_states[i], agent->count * sizeof(indigo_property_state));
 				break;
 			}
 		}
@@ -865,7 +886,8 @@ static void add_device(indigo_device *device, indigo_property *property) {
 			}
 		}
 	}
-	agent->state = property->state;
+	DEVICE_PRIVATE_DATA->agent_states[agent_index][filter - agent->items] = property->state;
+	update_agent_state(device, agent_index);
 	indigo_define_property(device, agent, NULL);
 	AGENT_CONFIG_LAST_CONFIG_PROPERTY->state = INDIGO_IDLE_STATE;
 	indigo_update_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
@@ -936,6 +958,8 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 						indigo_delete_property(agent_device, agent, NULL);
 						indigo_release_property(agent);
 						AGENT_CONFIG_AGENTS_PROPERTIES[i] = NULL;
+						free(DEVICE_PRIVATE_DATA->agent_states[i]);
+						DEVICE_PRIVATE_DATA->agent_states[i] = NULL;
 					} else {
 						indigo_delete_property(agent_device, agent, NULL);
 						for (int j = 0; j < agent->count; j++) {
@@ -944,11 +968,13 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 								int count = agent->count - j - 1;
 								if (count > 0) {
 									memmove(agent->items + j, agent->items + j + 1, count * sizeof(indigo_item));
+									memmove(DEVICE_PRIVATE_DATA->agent_states[i] + j, DEVICE_PRIVATE_DATA->agent_states[i] + j + 1, count * sizeof(indigo_property_state));
 								}
 								agent->count--;
 								break;
 							}
 						}
+						update_agent_state(agent_device, i);
 						indigo_define_property(agent_device, agent, NULL);
 					}
 					break;

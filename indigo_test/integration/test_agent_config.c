@@ -387,8 +387,11 @@ static void remote_ignored(void) {
 
 static void deletion(void) {
 	populate();
+	selection->state = INDIGO_ALERT_STATE;
+	indigo_update_property(&peer, selection, NULL);
 	indigo_delete_property(&peer, selection, NULL);
 	ASSERT_FALSE(has_item(MIRROR, FILTER, NULL, -1));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(MIRROR));
 	ASSERT_TRUE(has_item(MIRROR, RELATED, NULL, -1));
 	indigo_delete_property(&peer, profile, NULL);
 	ASSERT_FALSE(has_item(PROFILES, "Test Camera", NULL, -1));
@@ -740,6 +743,12 @@ static void selection_alert_masked(void) {
 	choose(selection, 0);
 	reject_select = true;
 	ASSERT_TRUE(load("masked", INDIGO_ALERT_STATE));
+	reject_select = false;
+	ASSERT_TRUE(load("masked", INDIGO_OK_STATE));
+	busy_select = true;
+	ASSERT_TRUE(load("masked", INDIGO_ALERT_STATE));
+	busy_select = false;
+	ASSERT_TRUE(load("masked", INDIGO_OK_STATE));
 }
 
 static void empty_load(void) {

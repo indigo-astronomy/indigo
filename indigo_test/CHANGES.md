@@ -1284,7 +1284,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `busy_then_ok` | Passes; busy then ok. |
 | `shutdown_active` | Passes; shutdown active. |
 | `save_write_failure` | Passes after DRV-162 fix; see driver review validation. |
-| `selection_alert_masked` | Fails; see DRV-167 in the driver review. |
+| `selection_alert_masked` | Passes after DRV-167 fix; see driver review validation. |
 | `empty_load` | Passes after DRV-163 fix; see driver review validation. |
 | `concurrent_remove` | Passes after DRV-161 fix; see driver review validation. |
 | `save_path_separator` | Passes after DRV-164 fix; see driver review validation. |
