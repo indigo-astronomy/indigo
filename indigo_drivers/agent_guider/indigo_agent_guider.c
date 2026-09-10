@@ -2539,6 +2539,27 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
+static void stop_process(indigo_device *device) {
+	AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_cancel_pending_handlers(device);
+	if (FILTER_DEVICE_CONTEXT->running_process) {
+		abort_process(device);
+	}
+	indigo_cancel_all_timers(device);
+}
+
+static void update_instances(indigo_device *device) {
+	for (int i = (int)ADDITIONAL_INSTANCES_COUNT_ITEM->number.value; i < MAX_ADDITIONAL_INSTANCES; i++) {
+		indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];
+		if (additional_device != NULL) {
+			stop_process(additional_device);
+		}
+	}
+	if (indigo_filter_change_property(device, FILTER_DEVICE_CONTEXT->client, ADDITIONAL_INSTANCES_PROPERTY) == INDIGO_OK) {
+		save_config(device);
+	}
+}
+
 static indigo_result agent_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -2948,8 +2969,16 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
-		if (indigo_filter_change_property(device, client, property) == INDIGO_OK) {
-			save_config(device);
+		if (FILTER_DEVICE_CONTEXT->client == NULL) {
+			// During configuration loading, client attach owns initial instance creation.
+			return indigo_filter_change_property(device, client, property);
+		}
+		if (ADDITIONAL_INSTANCES_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_property_copy_values(ADDITIONAL_INSTANCES_PROPERTY, property, false);
+			ADDITIONAL_INSTANCES_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, ADDITIONAL_INSTANCES_PROPERTY, NULL);
+			// Joining workers must run outside the bus change callback's device lock.
+			indigo_set_timer(device, 0, update_instances, NULL);
 		}
 		return INDIGO_OK;
 	}
@@ -2958,11 +2987,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
-	/* abort a running process before waiting for the timers to finish, otherwise
-	   indigo_cancel_all_timers() deadlocks on the guiding loop, which never ends by itself */
-	AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_cancel_pending_handlers(device);
-	indigo_cancel_all_timers(device);
+	stop_process(device);
 	save_config(device);
 	indigo_release_property(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY);
@@ -3146,6 +3171,17 @@ indigo_result indigo_agent_guider(indigo_driver_action action, indigo_driver_inf
 
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
+			if (agent_device != NULL) {
+				// Workers restore camera settings through the client/cache, so join them before either is detached.
+				indigo_device *device = agent_device;
+				stop_process(device);
+				for (int i = 0; i < MAX_ADDITIONAL_INSTANCES; i++) {
+					indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];
+					if (additional_device != NULL) {
+						stop_process(additional_device);
+					}
+				}
+			}
 			if (agent_client != NULL) {
 				indigo_detach_client(agent_client);
 				free(agent_client);

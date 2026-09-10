@@ -1,5 +1,13 @@
 # INDIGO Test Suite Changes
 
+## Guider Agent active teardown fix — DRV-125 (2026-09-10)
+
+Active processes now receive abort and are joined while their filter client/cache remain available for restoring camera settings. SHUTDOWN first joins the primary agent (including pending instance changes), then remaining additional agents, before detaching clients/devices. Removing an additional instance uses the same stop-before-detach contract. Instance changes publish BUSY and run on a timer outside the bus change callback lock, avoiding a deadlock with workers restoring settings through the bus; concurrent count changes are ignored while BUSY. Initial configuration loading still leaves instance creation to client attach. No properties were added/removed. The version remains `0x0300002C` as requested until DRV-133 is fixed.
+
+Four new cases bring the suite to 70: `shutdown subframe` checks restoration and fresh guiding after reload; `shutdown exposure` checks a 30-second exposure is aborted during teardown within five seconds; `shutdown instances` shuts down an active primary guider and secondary preview then restarts; `remove active instance` verifies the secondary disappears while primary guiding continues and a replacement instance can attach. Existing `shutdown active`, `additional instances lifecycle`, `configuration reload` and `simultaneous agents` cover the remaining affected paths.
+
+Validation: driver build passed. The `shutdown` selection passed 4/4, `instance` passed 3/3 (including the overlapping shutdown-instances case), and configuration reload/simultaneous agents each passed 1/1, both normally and with AddressSanitizer. This covers eight distinct scenarios and includes cleanup. Sanitizer build: `TEST_BUILD=build/drv125-asan GUIDER_TEST_FLAGS='-fsanitize=address -fno-omit-frame-pointer -O1'`. The prior `indigo_restore_switch_state()` use-after-free was not reported. The full agent suite was not rerun; DRV-126–DRV-133 remain open. Test artifacts were removed with `make -C indigo_test test-clean`.
+
 ## Guider Agent RAW validation fix — DRV-124 (2026-09-10)
 
 The driver rejects incomplete RAW headers before reading their fields, unsupported signatures, zero/oversized dimensions and incomplete pixel payloads before Bayer processing or image analysis. Division checks precede multiplication; pixel offsets and total BLOB size must fit the signed-int limits used by image-analysis and Bayer-metadata helpers. Valid trailing metadata remains supported. No property definitions changed. Per user instruction, the agent stays at version `0x0300002C` until DRV-133 is fixed; DRV-124–DRV-133 will be recorded as one combined change.
@@ -45,7 +53,7 @@ The final `make -C indigo_test test-agent-guider` run completed **53/64 cases su
 | Open production finding already recorded in `../indigo_drivers/REVIEW.md` | Regression / observed failure |
 | --- | --- |
 | DRV-124 (subsequently fixed) | Original `truncated raw` failure is resolved by the RAW validation fix; see the focused RAW validation results above. |
-| DRV-125 | `shutdown active`: normal execution can pass, but AddressSanitizer reports use-after-free in `indigo_restore_switch_state()` after filter-client teardown |
+| DRV-125 (subsequently fixed) | Original shutdown use-after-free is resolved; see the focused active-teardown validation above. |
 | DRV-126 | Both single-preview status cases publish IDLE rather than OK/ALERT |
 | DRV-127 | Continuous-preview abort and camera-disconnection cases publish incorrect terminal status |
 | DRV-128 | Adaptive calibration fails instead of reducing its step |
@@ -93,7 +101,7 @@ Inventory: 150 modules — 2 Complete, 37 Partial, 55 Not audited, 46 No tests, 
 | `agent_astrometry` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_auxiliary` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_config` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `agent_guider` | Hand-written | Production agent/filter + CCD simulator and deterministic image/pulse boundary | Partial | 66 mapped integration cases; DRV-124 fixed with 4/4 RAW cases passing normally and under AddressSanitizer; DRV-125–DRV-133 remain open. See the Guider Agent integration coverage section for validation and remaining acceptance work. |
+| `agent_guider` | Hand-written | Production agent/filter + CCD simulator and deterministic image/pulse boundary | Partial | 70 mapped integration cases; DRV-124 RAW and DRV-125 active-teardown regressions pass normally and under AddressSanitizer; DRV-126–DRV-133 remain open. See the Guider Agent integration coverage section for validation and remaining acceptance work. |
 | `agent_imager` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_mount` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_scripting` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |

@@ -1236,6 +1236,84 @@ static void shutdown_active(void) {
 	ASSERT_TRUE(abort_running());
 }
 
+static void shutdown_subframe(void) {
+	ASSERT_TRUE(configured_guiding());
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SELECTION", "SUBFRAME", 4));
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(3));
+	ASSERT_TRUE(value(AGENT, "CCD_FRAME", "WIDTH") < 400);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_guider(INDIGO_DRIVER_SHUTDOWN, NULL));
+	agent_started = false;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_guider(INDIGO_DRIVER_INIT, NULL));
+	agent_started = true;
+	ASSERT_TRUE(configured_guiding());
+	ASSERT_EQ_INT(400, value(AGENT, "CCD_FRAME", "WIDTH"));
+	ASSERT_EQ_INT(300, value(AGENT, "CCD_FRAME", "HEIGHT"));
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(3));
+	ASSERT_TRUE(abort_running());
+}
+
+static void shutdown_exposure(void) {
+	ASSERT_TRUE(configured_guiding());
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "EXPOSURE", 30));
+	ASSERT_TRUE(run("PREVIEW", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_state(CAMERA, "CCD_EXPOSURE", 0, INDIGO_BUSY_STATE));
+	int before = camera_abort_requests;
+	double start = indigo_monotonic_time();
+	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_guider(INDIGO_DRIVER_SHUTDOWN, NULL));
+	agent_started = false;
+	ASSERT_TRUE(indigo_monotonic_time() - start < 5);
+	ASSERT_TRUE(camera_abort_requests > before);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_guider(INDIGO_DRIVER_INIT, NULL));
+	agent_started = true;
+	ASSERT_TRUE(configured_guiding());
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(3));
+	ASSERT_TRUE(abort_running());
+}
+
+static void active_instances(bool shutdown) {
+	ASSERT_TRUE(configured_guiding());
+	ASSERT_TRUE(num(AGENT, "ADDITIONAL_INSTANCES", "COUNT", 1));
+	const char *second = "Guider Agent #2";
+	ASSERT_TRUE(wait_state(second, "AGENT_START_PROCESS", 0, INDIGO_OK_STATE));
+	ASSERT_TRUE(sw(second, "FILTER_CCD_LIST", CCD_SIMULATOR_IMAGER_CAMERA_NAME, true, INDIGO_OK_STATE));
+	ASSERT_TRUE(num(second, "AGENT_GUIDER_SETTINGS", "EXPOSURE", 0.1));
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(3));
+	unsigned before = revision(second, "CCD_IMAGE");
+	ASSERT_TRUE(sw(second, "AGENT_START_PROCESS", "PREVIEW", true, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_state(second, "CCD_IMAGE", before, INDIGO_OK_STATE));
+	if (shutdown) {
+		ASSERT_EQ_INT(INDIGO_OK, indigo_agent_guider(INDIGO_DRIVER_SHUTDOWN, NULL));
+		agent_started = false;
+		ASSERT_EQ_INT(INDIGO_OK, indigo_agent_guider(INDIGO_DRIVER_INIT, NULL));
+		agent_started = true;
+		ASSERT_TRUE(wait_state(AGENT, "AGENT_START_PROCESS", 0, INDIGO_OK_STATE));
+		ASSERT_TRUE(configured_guiding());
+		ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+		ASSERT_TRUE(frames(3));
+	} else {
+		ASSERT_TRUE(num(AGENT, "ADDITIONAL_INSTANCES", "COUNT", 0));
+		ASSERT_EQ_INT(-1, state(second, "AGENT_START_PROCESS"));
+		ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(AGENT, "AGENT_START_PROCESS"));
+		ASSERT_TRUE(frames(value(AGENT, "AGENT_GUIDER_STATS", "FRAME") + 3));
+		ASSERT_TRUE(num(AGENT, "ADDITIONAL_INSTANCES", "COUNT", 1));
+		ASSERT_TRUE(wait_state(second, "AGENT_START_PROCESS", 0, INDIGO_OK_STATE));
+	}
+	ASSERT_TRUE(abort_running());
+	ASSERT_TRUE(num(AGENT, "ADDITIONAL_INSTANCES", "COUNT", 0));
+}
+
+static void shutdown_instances(void) {
+	active_instances(true);
+}
+
+static void remove_active_instance(void) {
+	active_instances(false);
+}
+
 static void simultaneous_agents(void) {
 	ASSERT_TRUE(connect_camera());
 	ASSERT_TRUE(num(AGENT, "ADDITIONAL_INSTANCES", "COUNT", 1));
@@ -1513,6 +1591,10 @@ static const indigo_test_case tests[] = {
 	{ "pulse thresholds", pulse_thresholds },
 	{ "ppec learning reset", ppec_learning_reset },
 	{ "shutdown active", shutdown_active },
+	{ "shutdown subframe", shutdown_subframe },
+	{ "shutdown exposure", shutdown_exposure },
+	{ "shutdown instances", shutdown_instances },
+	{ "remove active instance", remove_active_instance },
 	{ "simultaneous agents", simultaneous_agents },
 	{ "correction response", correction_response },
 	{ "dec modes", dec_modes },
