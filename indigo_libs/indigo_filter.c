@@ -360,6 +360,7 @@ static void update_additional_instances(indigo_device *device) {
 			indigo_client *additional_client = FILTER_DEVICE_CONTEXT->additional_client_instances[i];
 			indigo_detach_client(additional_client);
 			free(additional_client);
+			FILTER_DEVICE_CONTEXT->additional_client_instances[i] = NULL;
 			indigo_detach_device(additional_device);
 			free(additional_device->private_data);
 			free(additional_device);

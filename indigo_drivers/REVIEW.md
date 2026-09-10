@@ -115,7 +115,6 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-082 | High | `aux_skyalert/indigo_aux_skyalert.driver` | Negative read results were treated as success and a partial record still connected. | Closed (fixed) |
 | DRV-083 | Medium | `wheel_sx`, `wheel_atik`, `wheel_indigo`, `aux_dsusb`, `focuser_fcusb`, `aux_upb`, `dome_simulator`, `focuser_astromechanics` `.driver` files | User review identified duplicated framework BUSY/input guards and redundant generator-owned updates. | Closed (fixed) |
 | DRV-084 | High | `guider_gpusb/indigo_guider_gpusb.driver` | Replacement canceled the old stop before the SDK accepted the new pulse; failure could leave a relay on. | Closed (fixed) |
-
 | DRV-085 | Medium | `aux_cloudwatcher/indigo_aux_cloudwatcher.c:719` | Low-resolution humidity uses the temperature coefficient and reports negative humidity for valid sensor data. | Open |
 | DRV-086 | High | `aux_cloudwatcher/indigo_aux_cloudwatcher.c:376` | A serial timeout before the first reply byte writes response[-1]. | Open |
 | DRV-087 | High | `aux_dragonfly/shared/dragonfly_shared.c:121` | A full-size UDP reply writes the terminator one byte past the response buffer. | Open |
@@ -129,17 +128,29 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-095 | Medium | `guider_cgusbst4/indigo_guider_cgusbst4.driver:110` | Direction encoding differs from upstream PHD2 (letters versus digits); device-protocol compatibility needs confirmation. | Open (protocol confirmation needed) |
 | DRV-096 | High | `focuser_lunatico/shared/lunatico_shared.c:336` | A full-size serial/UDP reply overflows the response terminator; reproduced through rotator_lunatico with ASan. | Open |
 | DRV-097 | Medium | `focuser_lunatico/shared/lunatico_shared.c:1543` | Rejected rotator GOTO never publishes ALERT and idle polling reports OK instead. | Open |
-| DRV-098 | High | `focuser_lacerta/indigo_focuser_lacerta.c:88` | Full response writes its terminator beyond the buffer; ASan reproduced. | Fixed |
-| DRV-099 | High | `focuser_lacerta/indigo_focuser_lacerta.c:59` | Missing/malformed identity and transaction failures are accepted or block connection. | Fixed |
-| DRV-100 | Medium | `focuser_lacerta/indigo_focuser_lacerta.c:153` | No-op motion remains BUSY; abort/completion ownership needs correction. | Fixed |
-
-| DRV-101 | High | `focuser_ioptron/indigo_focuser_ioptron.driver:86` | Legacy status parser accepted invalid moving flags and connection did not require a valid initial status. Reproduced by init_status and poll_badflag. | Fixed |
-| DRV-102 | Medium | `focuser_ioptron/indigo_focuser_ioptron.driver:318` | Legacy custom ZERO_SYNC lacked the mandatory X_ prefix; generated property is X_FOCUSER_ZERO_SYNC. | Fixed |
-
-| DRV-103 | High | `focuser_efa/indigo_focuser_efa.driver:56` | Legacy reply length overflowed a 16-byte stack buffer and checksum was ignored. Both reproduced; bounded validated frames fix the transport. | Fixed |
-| DRV-104 | Medium | `focuser_efa/indigo_focuser_efa.driver:224` | Temperature parsing lacked shape/NC validation and simulator encoded an unrealistic sample. Explicit signed formats and NC handling preserve valid readings. | Fixed |
-| DRV-105 | High | `focuser_prodigy/indigo_focuser_prodigy.driver` | Legacy logical connections overwrite the shared handle and initialize the same mutex twice. Generated master queue/reference ownership and transactional rollback preserve peer sessions. | Fixed |
-| DRV-106 | Medium | `focuser_prodigy/indigo_focuser_prodigy.driver` | Legacy accepts arbitrary OK_ identities and ignores malformed/failed command replies; second power outlet incorrectly decodes 2 instead of documented boolean 1. Validated transport/ACK/readback and simulator fixtures correct these paths. | Fixed |
+| DRV-098 | High | `focuser_lacerta/indigo_focuser_lacerta.c:88` | Full response writes its terminator beyond the buffer; ASan reproduced. | Closed (fixed) |
+| DRV-099 | High | `focuser_lacerta/indigo_focuser_lacerta.c:59` | Missing/malformed identity and transaction failures are accepted or block connection. | Closed (fixed) |
+| DRV-100 | Medium | `focuser_lacerta/indigo_focuser_lacerta.c:153` | No-op motion remains BUSY; abort/completion ownership needs correction. | Closed (fixed) |
+| DRV-101 | High | `focuser_ioptron/indigo_focuser_ioptron.driver:86` | Legacy status parser accepted invalid moving flags and connection did not require a valid initial status. Reproduced by init_status and poll_badflag. | Closed (fixed) |
+| DRV-102 | Medium | `focuser_ioptron/indigo_focuser_ioptron.driver:318` | Legacy custom ZERO_SYNC lacked the mandatory X_ prefix; generated property is X_FOCUSER_ZERO_SYNC. | Closed (fixed) |
+| DRV-103 | High | `focuser_efa/indigo_focuser_efa.driver:56` | Legacy reply length overflowed a 16-byte stack buffer and checksum was ignored. Both reproduced; bounded validated frames fix the transport. | Closed (fixed) |
+| DRV-104 | Medium | `focuser_efa/indigo_focuser_efa.driver:224` | Temperature parsing lacked shape/NC validation and simulator encoded an unrealistic sample. Explicit signed formats and NC handling preserve valid readings. | Closed (fixed) |
+| DRV-105 | High | `focuser_prodigy/indigo_focuser_prodigy.driver` | Legacy logical connections overwrite the shared handle and initialize the same mutex twice. Generated master queue/reference ownership and transactional rollback preserve peer sessions. | Closed (fixed) |
+| DRV-106 | Medium | `focuser_prodigy/indigo_focuser_prodigy.driver` | Legacy accepts arbitrary OK_ identities and ignores malformed/failed command replies; second power outlet incorrectly decodes 2 instead of documented boolean 1. Validated transport/ACK/readback and simulator fixtures correct these paths. | Closed (fixed) |
+| DRV-107 | High | `ccd_sx/indigo_ccd_sx.driver`, `CCD_ABORT_EXPOSURE.on_change` and other generated abort handlers | URGENT abort could overtake queued NORMAL operation starts, allowing motion or exposure to start after abort completed. All 27 affected abort branches now cancel the associated pending starts. | Closed (fixed) |
+| DRV-108 | Medium | `aux_dsusb/indigo_aux_dsusb.driver`, `CCD_ABORT_EXPOSURE.on_change` and other generated abort handlers | Initial pending-start cancellation prologues bypassed existing abort-switch/BUSY guards. Cancellation now follows each existing abort condition; DSUSB and RTS barrier tests verify false abort preservation. | Closed (fixed) |
+| DRV-109 | High | `dome_skyroof/indigo_dome_skyroof.driver`, `DOME_ABORT_MOTION.on_change` and other generated abort handlers | Canceling a queued start prevents its completion callback from being scheduled, leaving BUSY properties unresolved where abort relied solely on that callback. Abort now explicitly settles pending operations or schedules the existing completion path. | Closed (fixed) |
+| DRV-110 | Medium | `ccd_playerone/indigo_ccd_playerone.driver:1116` | Idle abort between exposures changed state and reset the switch without publishing a terminal update because the acquisition_finalizer reference suppresses the generated epilogue. Clients retained BUSY. The idle branch now explicitly publishes ALERT; SDK regression tests and physical preview/streaming trials passed. | Closed (fixed) |
+| DRV-111 | High | `../indigo_libs/indigo_filter.c:361`, `../indigo_libs/indigo_filter.c:621` | `independent instances and reselection`: removing instance #2 frees its client without clearing the client pointer; subsequent agent shutdown frees it again. ASan confirms double-free. Clearing the client slot immediately after freeing it fixes the repeated release; the original regression passes normally and with ASan. | Closed (fixed) |
+| DRV-112 | Medium | `agent_imager/indigo_agent_imager.c:1398` | `exposure failure retry exhaustion and recovery`: after three camera exposure failures the retry loop falls through and the batch publishes success. | Open |
+| DRV-113 | Medium | `agent_imager/indigo_agent_imager.c:1611` | `streaming failure propagates`: a camera stream finishing ALERT is reported as successful by the agent. | Open |
+| DRV-114 | Medium | `agent_imager/indigo_agent_imager.c:2430` | `external shutter routing`: the auxiliary branch sends CCD_ABORT_EXPOSURE again, instead of AUX_1_CCD_ABORT_EXPOSURE; the shutter receives no abort update. | Open |
+| DRV-115 | Medium | `agent_imager/indigo_agent_imager.c:613`, `agent_imager/indigo_agent_imager.c:3733` | `camera disconnect and recover`: deleting the selected camera's exposure property while preview is running leaves the cached exposure state BUSY and the process does not finish within the bounded wait. Explicit abort during test cleanup releases it. | Open |
+| DRV-116 | Medium | `agent_imager/indigo_agent_imager.c:490` | `additional instances and barrier`: validate_related_agent excludes Imager Agent, so another real instance never appears as a selectable related agent. Fixed by admitting the Imager Agent prefix. The real two-agent test now passes breakpoint propagation, barrier resume, one image per camera, propagated abort and shutdown. | Closed (fixed) |
+| DRV-117 | Medium | `agent_imager/indigo_agent_imager.c:1339` | `breakpoint PRE_DELAY resume and abort` and `breakpoint POST_DELAY resume and abort`: TRIGGER plus any breakpoint marks the instance controlled and skips the block containing both delay breakpoints. No pause is published. | Open |
+| DRV-118 | Medium | `agent_imager/indigo_agent_imager.c:1397`, `agent_imager/indigo_agent_imager.c:1421` | `breakpoint POST_BATCH resume and abort`: abort releases the final breakpoint, but exposure_batch returns true and only its failure branch finalizes AGENT_ABORT_PROCESS. Abort remains BUSY. | Open |
+| DRV-119 | Medium | `agent_imager/indigo_agent_imager.c:2574`, `agent_imager/indigo_agent_imager.c:2890` | `default preview estimator`: with a fresh configuration the U-curve switch is selected, but the internal estimator flags are initialized only by a change request. Preview produces no HFD until explicitly selecting U-curve. The explicit-selection statistics test passes. | Open |
+| DRV-120 | Medium | `../indigo_libs/indigo_filter.c`, `update_additional_instances()`; `agent_imager/indigo_agent_imager.c`, `agent_device_detach()` | The new `additional instance lifecycle` regression intermittently hangs during rapid create/shrink/remove cycles. A normal run reached the 180-second watchdog; a separate traced normal run and ASan run passed. The cause is not yet isolated; this remains separate from the corrected DRV-111 double-free. | Open |
 
 ## Finding Summaries
 
@@ -949,15 +960,15 @@ Reproduction from `indigo_test/`: compile `integration/test_rotator_lunatico_sim
 
 `focuser_lunatico/shared/lunatico_shared.c:1543–1547`: after a rejected `!step goto`, the rotator handler sets `ROTATOR_POSITION` to ALERT internally but never publishes that state. It unconditionally schedules `rotator_timer_callback()`, whose idle readback replaces ALERT with OK at line 1365. Clients see BUSY followed by OK although the device rejected the requested move. The supplied `goto_failure` case fails waiting for ALERT in both serial and isolated UDP runs, with the driver logging `lunatico_goto_position(...) failed`. Publish the command failure and avoid treating a subsequent idle poll as successful completion of the rejected move. No production source change applied.
 
-### DRV-098 (Fixed — 2026-09-09)
+### DRV-098 (Closed — fixed — 2026-09-09)
 
 Baseline `focuser_lacerta/indigo_focuser_lacerta.c:88` writes a terminator after allowing a full-size reply. The new `overlong_identity` simulator case reproduces a stack-buffer-overflow in `lacerta_command` with the unchanged production driver instrumented by ASan. Handwritten transport version `0x02000002` passes the reproducer; repeat against final generated source before closing.
 
-### DRV-099 (Fixed — 2026-09-09)
+### DRV-099 (Closed — fixed — 2026-09-09)
 
 Baseline `focuser_lacerta/indigo_focuser_lacerta.c:59` ignores write failure and can return true after the expected reply never arrived. Connection accepts unknown/truncated identity; silent identification does not reach bounded disconnected ALERT. `unknown_identity`, `short_identity` and `silent_identity` reproduce these failures. Initial numeric readback and setting/poll error handling also require validation during migration.
 
-### DRV-100 (Fixed — 2026-09-09)
+### DRV-100 (Closed — fixed — 2026-09-09)
 
 Baseline `focuser_lacerta/indigo_focuser_lacerta.c:153` changes motion state only when the measured position changes. `noop` reproduces a request for the current position stuck BUSY. Abort also leaves the old target and does not finalize motion state; add abort/restart and stalled/read-failure regressions as part of the scoped migration.
 
@@ -1024,29 +1035,29 @@ Scoped execution of the existing working-tree `integration/test_rotator_lunatico
 LACERTA migration disposition (scoped; folder review baseline unchanged): DRV-098 is fixed by bounded framing in `focuser_lacerta/indigo_focuser_lacerta.driver:43`; final overlong identity/poll cases pass with the production driver instrumented by ASan. DRV-099 is fixed by validated bounded transactions, transactional identity open (`:97`) and explicit post-open initialization rollback (`:233`); all nine identity/initialization rejection cases pass, including descriptor-count checks and retry for one-shot faults. DRV-100 is fixed by explicit no-op completion (`:185`), queue-owned motion finalization and abort (`:329`); no-op, relative, overlap, abort/restart, failed stop and stalled/poll-failure scenarios pass. Final suite: 43/43; targeted ASan: 19/19. Earlier paragraphs preserve reproduction history. No full-folder review or baseline advancement is implied.
 
 
-### DRV-101 (Fixed — 2026-09-09)
+### DRV-101 (Closed — fixed — 2026-09-09)
 
 Against baseline `2509190db7f4697427ea463a27b0f683c637f09e`, the new `init_status` test reproduced a successful connection with invalid FI initialization; `poll_badflag` reproduced acceptance of moving=2. The authoritative DSL validates exact framing, field widths/digits, coordinate range and 0/1 flags, requires successful status initialization and explicitly closes on post-open failure. Both reproductions pass after the generated transition, with descriptor rollback/retry coverage. Additional malformed and lost-reply cases are documented in test CHANGES.md. This is a scoped disposition; folder review baseline is unchanged.
 
-### DRV-102 (Fixed — 2026-09-09)
+### DRV-102 (Closed — fixed — 2026-09-09)
 
 Baseline property allocation used literal `ZERO_SYNC` despite its X_FOCUSER_ZERO_SYNC C macro. The DSL now declares wire name `X_FOCUSER_ZERO_SYNC` with the same SYNC item, connected lifetime and reset-after-request semantics. README and PROPERTIES document the client-visible rename. Normal/model capability tests assert the new property and absence of the old name.
 
 
-### DRV-103 (Fixed — 2026-09-09)
+### DRV-103 (Closed — fixed — 2026-09-09)
 
 Baseline efa_command reads packet-provided count+1 bytes into a 16-byte response buffer. `init_overlong` with the unchanged driver instrumented by ASan reproduces a 201-byte stack-buffer-overflow through indigo_read; `init_checksum` reproduces connection accepting a bad checksum. The DSL now bounds frames, verifies checksum/source/destination/command, skips only exact echoes and checks payload/ACK semantics. Both reproducers and initial/poll variants pass after migration, including ASan. No generator implementation or folder review baseline was changed.
 
-### DRV-104 (Fixed — 2026-09-09)
+### DRV-104 (Closed — fixed — 2026-09-09)
 
 The old temperature path reads fixed offsets without validating reply length or the documented 7F7F absent-sensor marker. The old simulator emits 00 50 01, which becomes 1280.0625 C under that parser. The PDF itself disagrees between its three-byte prose and two-byte example; the driver now explicitly accepts address + big-endian signed sixteenths, plus a documented legacy two-byte little-endian compatibility form. It rejects NC/impossible temperature and retains the last valid value. Positive/negative/zero/NC/recovery fixtures cover both shapes. Physical firmware formats still need hardware validation; no claim that a PTY resolves the document's ambiguity.
 
 
-### DRV-105 (Fixed — 2026-09-09)
+### DRV-105 (Closed — fixed — 2026-09-09)
 
 The original focuser and auxiliary connection handlers unconditionally reopen and overwrite one shared handle before consulting its count, and both attach paths initialize the same mutex. Generated ownership now opens on the first successful logical connection, increments only successful opens, rolls back failed initialization, and closes after the last logical disconnect. Shared queue cancellation retains the other device's pending work. Simulator tests exercise slave-first connection, descriptor count, failed slave initialization while the focuser remains usable, either disconnect order and independent instances. Folder review baseline is unchanged.
 
-### DRV-106 (Fixed — 2026-09-09)
+### DRV-106 (Closed — fixed — 2026-09-09)
 
 The supplied one-page command table requires OK_PRDG identity, matching command echoes, H=0, Z=Z:1, and four D booleans. Legacy prefix matching accepts OK_OTHER (reproduced with original C/header); power/USB/park handlers report success despite rejected replies, and outlet 2 is decoded as 2. The DSL validates complete delimited responses, numeric fields and acknowledgements, uses actual B speed readback, and confirms power/USB state after writes. Fault tests cover malformed/partial/overlong/silent replies, ACK/partial writes and recovery. Park completes only at zero/idle, with abort and stalled-motion handling. PTY tests do not validate physical encoder travel or firmware reboot timing.
 
@@ -1065,9 +1076,9 @@ Next diagnosis should distinguish request receipt, abort BUSY publication, final
 
 Scope: requested review of this task's uncommitted changes relative to `94e1ef2bb`, including all 25 `.driver` inputs and their generated C. This does not advance the subtree baseline. Build/runtime scenario mapping belongs to `indigo_test/CHANGES.md`.
 
-- DRV-107, P1, fixed in draft: URGENT abort overtook NORMAL operation starts, allowing motion/exposure to start after abort completed. All 27 affected abort branches now cancel the associated pending starts. Example: `ccd_sx/indigo_ccd_sx.driver`, `CCD_ABORT_EXPOSURE.on_change`.
-- DRV-108, P2, fixed in draft: the initial cancellation prologues bypassed existing abort-switch/BUSY guards. Cancellation now follows each existing abort condition; DSUSB and RTS barrier tests explicitly verify false abort preservation. Example: `aux_dsusb/indigo_aux_dsusb.driver`, `CCD_ABORT_EXPOSURE.on_change`.
-- DRV-109, P1, fixed in draft: a canceled start never schedules its completion callback, so abort paths relying solely on that callback left BUSY properties unresolved. Explicit settlement or a scheduled existing completion path covers pending acquisition, shutter, relative dome motion, calibration, park/home and focuser motion. Pending motion is settled before a potentially failing stop where no finalizer exists. Example: `dome_skyroof/indigo_dome_skyroof.driver`, `DOME_ABORT_MOTION.on_change`.
+- DRV-107, P1, Closed (fixed): URGENT abort overtook NORMAL operation starts, allowing motion/exposure to start after abort completed. All 27 affected abort branches now cancel the associated pending starts. Example: `ccd_sx/indigo_ccd_sx.driver`, `CCD_ABORT_EXPOSURE.on_change`.
+- DRV-108, P2, Closed (fixed): the initial cancellation prologues bypassed existing abort-switch/BUSY guards. Cancellation now follows each existing abort condition; DSUSB and RTS barrier tests explicitly verify false abort preservation. Example: `aux_dsusb/indigo_aux_dsusb.driver`, `CCD_ABORT_EXPOSURE.on_change`.
+- DRV-109, P1, Closed (fixed): a canceled start never schedules its completion callback, so abort paths relying solely on that callback left BUSY properties unresolved. Explicit settlement or a scheduled existing completion path covers pending acquisition, shutter, relative dome motion, calibration, park/home and focuser motion. Pending motion is settled before a potentially failing stop where no finalizer exists. Example: `dome_skyroof/indigo_dome_skyroof.driver`, `DOME_ABORT_MOTION.on_change`.
 
 Per-driver cancellation/settlement audit:
 
@@ -1096,6 +1107,6 @@ Validation result: 23/24 complete integration suites passed; the remaining focus
 
 ## Physical Player One abort follow-up (2026-09-10)
 
-DRV-110, P2, fixed: `ccd_playerone/indigo_ccd_playerone.driver:1116` (`CCD_ABORT_EXPOSURE.on_change` else branch; generated C lines 1160–1164) sets ALERT and resets the switch without an update when no exposure/stream is BUSY. The on_change block references acquisition_finalizer, suppressing the generated epilogue. The public request's BUSY therefore persists at clients. Reproduced on physical Mars-C II between 0.1 s exposures and in 9/20 final Imager Agent abort trials; the agent itself completes. Fixed in the `.driver` source and regenerated C: the idle branch resets the switch and explicitly publishes ALERT; active abort retains its existing cleanup publication. The regression test failed before the fix and passes afterward, including false/true idle requests, completed-exposure gaps, no extra SDK stop, and subsequent acquisition. The four/five-extra-frame report was not reproduced in the 60 final trials; see TESTING.md. Folder baseline unchanged.
+DRV-110, P2, Closed (fixed): `ccd_playerone/indigo_ccd_playerone.driver:1116` (`CCD_ABORT_EXPOSURE.on_change` else branch; generated C lines 1160–1164) sets ALERT and resets the switch without an update when no exposure/stream is BUSY. The on_change block references acquisition_finalizer, suppressing the generated epilogue. The public request's BUSY therefore persists at clients. Reproduced on physical Mars-C II between 0.1 s exposures and in 9/20 final Imager Agent abort trials; the agent itself completes. Fixed in the `.driver` source and regenerated C: the idle branch resets the switch and explicitly publishes ALERT; active abort retains its existing cleanup publication. The regression test failed before the fix and passes afterward, including false/true idle requests, completed-exposure gaps, no extra SDK stop, and subsequent acquisition. The four/five-extra-frame report was not reproduced in the 60 final trials; see TESTING.md. Folder baseline unchanged.
 
 DRV-110 verification: all five abort-filtered SDK cases passed. Physical idle abort before and after acquisition passed; PREVIEW and indefinite STREAMING each passed 20 trials with camera terminal publication in all 40 and no frames after terminal completion. One streaming trial delivered one frame before completion. Driver version is unchanged; no locks were added. Folder review baseline remains unchanged.
