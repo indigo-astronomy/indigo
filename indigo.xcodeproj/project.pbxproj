@@ -2507,7 +2507,7 @@
 		59910A5A305289D700FB1C2F /* test_agent_imager.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_imager.c; sourceTree = "<group>"; };
 		59910A5B305289D700FB1C2F /* test_ccd_countdown.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_countdown.c; sourceTree = "<group>"; };
 		59910A5C305289D700FB1C2F /* test_rotator_lunatico_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_rotator_lunatico_simulator.c; sourceTree = "<group>"; };
-		59910A5D30528A8200FB1C2F /* AGENT_IMAGER_COVERAGE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENT_IMAGER_COVERAGE.md; sourceTree = "<group>"; };
+		59910A763052B3A100FB1C2F /* test_agent_guider.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_guider.c; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -13291,6 +13291,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				59910A763052B3A100FB1C2F /* test_agent_guider.c */,
 				59910A59305289D700FB1C2F /* abort_queue_test_common.h */,
 				59910A5A305289D700FB1C2F /* test_agent_imager.c */,
 				59910A5B305289D700FB1C2F /* test_ccd_countdown.c */,
@@ -14868,7 +14869,6 @@
 			isa = PBXGroup;
 			children = (
 				9DA451CB21908CBC00818B58 /* README.md */,
-				59910A5D30528A8200FB1C2F /* AGENT_IMAGER_COVERAGE.md */,
 				9DA451CD21908CBC00818B58 /* indigo_agent_imager.h */,
 				9DA451CC21908CBC00818B58 /* indigo_agent_imager.c */,
 			);

@@ -1,5 +1,65 @@
 # INDIGO Test Suite Changes
 
+## Guider Agent integration coverage (2026-09-10)
+
+`integration/test_agent_guider.c` adds 64 independently isolated cases, registered in the normal integration suite and available through `make -C indigo_test test-agent-guider`. To run a subset after building, pass a case-name substring to `indigo_test/build/integration/test_agent_guider`, for example `'calibration'` or `'live dec'`. A missing match returns 2. Failed assertions, child signals/timeouts and teardown failures return nonzero; known production failures are not skipped or accepted as passes.
+
+The test links the production Guider Agent, filter and simulator, uses public bus changes and keeps actual agent timers, image analysis and correction algorithms. The CCD simulator supplies normal preview images. An optional deterministic camera boundary supplies four Gaussian stars (or a bright extended target for full-frame centroid), while a guider spy observes pulse direction/duration and translates pulses to image displacement at 10 px/s. This is an agent integration boundary, not hardware or simulator-driver compliance. Exposure/guide failures are injected only at that boundary. Each child starts INDIGO after `fork()`, writes configuration/logs to its own `mkdtemp()` directory and disconnects/shuts down on completion; the parent removes its files even after a signalled child. Timer failures are bounded, and fresh property revisions are required for asynchronous changes. Reselecting an already selected device is a deliberate synchronous no-op in the filter and is tested without expecting a new event.
+
+### Scenario-to-test mapping
+
+| Agent-owned scenario | Registered cases / assertions |
+| --- | --- |
+| Metadata, public properties, idempotent INIT, missing camera/guider and invalid operational preconditions | `metadata`, `missing devices`, `guiding preconditions` |
+| One-shot preview, RAW override/FITS restoration, exposure retries and terminal states | `single preview status and format restoration`, `single preview failure`, `single preview retry` |
+| Continuous preview, abort during exposure, restart, camera disconnection/reselection | `continuous preview abort status`, `preview abort and restart`, `camera disconnect`, `camera selection reset` |
+| Guide-star discovery, manual selection, dynamic multi-star item count, clear, include/exclude regions, bin-change reset and subframe restoration | `stars selection clear and resize`, `stars abort and failure`, `selection regions binning`, `selection subframe restore`, `multistar weighted`, `donuts include region` |
+| All four detection modes and all applicable correction modes, finite statistics and actual correction of a known displacement | `selection PI guiding`, `weighted hysteresis guiding`, `donuts linear trend guiding`, `centroid resist switch guiding`, `selection PPEC guiding`; each checks emitted commands and residual displacement, rather than only successful frame acquisition |
+| Pulse direction, seconds-to-ms conversion, maximum pulse, minimum-error/minimum-pulse suppression, integral history and DEC reversal/backlash | `correction response`, `pulse thresholds`, `pi integral history`, `backlash reversal`, `dec modes` |
+| Live settings restrictions, blocked process replacement, blocked detection/correction/count/edge-clipping/log changes, supported one-direction DEC changes | `busy guards and deferred PPEC reset`, `live dec mode guards` |
+| Mount declination compensation, meridian flip and optional DEC reversal | `declination scaling`, `meridian flip` compare pulse magnitudes/signs before and after coordinate changes |
+| Calibration axes, measured speeds, adaptive step, missing motion, lost stars, recovery, abort and automatic handoff to guiding | `calibration`, `calibration ra only`, `calibration speed accuracy`, `calibration adaptive step`, `calibration no motion`, `calibration star failure`, `calibration reset recovery`, `calibration abort`, `calibration and guiding` |
+| Loss-of-star policy exclusivity, FAIL/CONTINUE/RESET behavior and recovery | `feature policies`, `star loss fail`, `star loss continue`, `star loss reset` |
+| Exposure failures during guiding, invalid image format/short image, pulse failure and timely abort during inter-frame delay | `exposure failure guiding`, `invalid raw`, `truncated raw`, `pulse error`, `guiding delay abort` |
+| Random/randomized-spiral/spiral dithering and bounds, exact spiral progression/reset, RA-only projection, abort and settle timeout | `dither strategies`, `spiral sequence reset`, `dither RA projection preserves magnitude`, `dither abort`, `dither timeout` |
+| PPEC selection, learning progress, reset while running/idle and restart | `selection PPEC guiding`, `ppec learning reset`, `busy guards and deferred PPEC reset` |
+| Zero drift after a nonzero measurement | `zero drift statistics` checks drift and correction clear |
+| Log creation/header output, algorithm-specific logging paths and inability to create a log followed by successful logging | `logging`, `logging algorithms`, `logging open failure recovery`; logs are written only inside the test's temporary directory |
+| Saved settings/selection shape/correction mode reload, factory defaults, additional-instance lifecycle and independent acquisition | `configuration reload`, `reset defaults`, `additional instances lifecycle`, `simultaneous agents` |
+| Related-agent filtering and enabling/disabling mount-triggered guider abort, shutdown/reinitialization during guiding | `related mount coordination`, `shutdown active` |
+
+### Validation and remaining acceptance work
+
+Validation uses macOS arm64, production source at `ba9259e22` and the existing built INDIGO/simulator libraries. The target also compiles the agent/filter/configuration boundary directly; the only framework replacement redirects the configuration directory. Production source and versions are unchanged by this test completion.
+
+The final `make -C indigo_test test-agent-guider` run completed **53/64 cases successfully**, including cleanup. Eleven regressions failed for the existing production defects listed below; all four added cases and the strengthened correction checks passed. The target correctly returns nonzero. The normal `shutdown active` case passed, but its sanitizer run exposes the separate lifetime defect; an ordinary pass is not acceptance of that path.
+
+| Open production finding already recorded in `../indigo_drivers/REVIEW.md` | Regression / observed failure |
+| --- | --- |
+| DRV-124 | `truncated raw`: the four-byte RAW BLOB does not terminate cleanly (normal watchdog); AddressSanitizer reports an out-of-bounds header read in `capture_frame()` |
+| DRV-125 | `shutdown active`: normal execution can pass, but AddressSanitizer reports use-after-free in `indigo_restore_switch_state()` after filter-client teardown |
+| DRV-126 | Both single-preview status cases publish IDLE rather than OK/ALERT |
+| DRV-127 | Continuous-preview abort and camera-disconnection cases publish incorrect terminal status |
+| DRV-128 | Adaptive calibration fails instead of reducing its step |
+| DRV-129 | Calibration reports 12.5 px/s for a 10 px/s boundary |
+| DRV-130 | RA-only dither fails the requested magnitude assertion |
+| DRV-131 | Guiding delay prevents completion within the 1.5-second abort bound |
+| DRV-132 | A guide-pulse ALERT does not terminate the guiding process |
+| DRV-133 | Drift/correction statistics remain stale when measured drift returns to exactly zero |
+
+Sanitizer reproduction (uses a separate build directory to prevent mixing instrumented and ordinary objects):
+
+```sh
+make -C indigo_test TEST_BUILD=build/guider-asan GUIDER_TEST_FLAGS='-fsanitize=address -fno-omit-frame-pointer -O1' build/guider-asan/integration/test_agent_guider
+indigo_test/build/guider-asan/integration/test_agent_guider 'truncated raw'
+indigo_test/build/guider-asan/integration/test_agent_guider 'shutdown active'
+```
+
+Both sanitizer regressions were reproduced in this run. The final instrumented build also passed `live dec mode guards`, `centroid resist switch guiding` and `spiral sequence reset` (3/3). Instrumentation covers the test, agent, filter and configuration layer, not the prebuilt simulator/library archives; this is not a whole-program memory-safety claim.
+
+The scenario inventory is now explicit, but driver acceptance remains **Partial** until the failing regressions are fixed. Additional limitations: no network/BLOB-download transport tests (the normal suite opens no sockets), physical mount/camera timing, long-period PPEC prediction/period convergence, prolonged pulse-BUSY timeout, forced allocation/attach failure, or Linux/Windows execution. Cross-agent tests verify the guider's related-agent contract with local peers; they do not claim complete real Mount/Imager Agent workflows. Serial-protocol commands, USB hot-plug, guide-port resource ownership and manufacturer motion models belong to the underlying drivers and are not applicable to this meta driver. Shared image/math/configuration algorithms retain their separate framework test scope.
+
+
 ## Framework input validation (2026-09-09)
 
 Removed generic finite/fractional/range guards and matching invalid-request cases added to wheel drivers, plus finalizer cancellation made redundant by their BUSY guards. `indigo_property_copy_values()` and `indigo_property_copy_targets()` own numeric input handling. New unit cases cover NaN/both infinities preserving accepted values/targets, valid sibling items, and unchanged finite min/max clamping. Driver tests retain device/SDK reply validation and operational conflicts.
@@ -16,7 +76,7 @@ The inventory merges the earlier CCD and non-CCD audits and incorporates their r
 - **No tests**: no dedicated automated driver target was found in `indigo_test/`; coverage is not established.
 - **Shared**: a ToupTek OEM wrapper follows the shared implementation's coverage. Per the agreed scope, no separate OEM audit is required; this does not claim its vendor binary was tested by the fake ToupTek build.
 
-Inventory: 150 modules — 2 Complete, 36 Partial, 55 Not audited, 47 No tests, 10 Shared.
+Inventory: 150 modules — 2 Complete, 37 Partial, 55 Not audited, 46 No tests, 10 Shared.
 
 | Driver | Implementation | Automated test boundary | Coverage status | Recorded validation / remaining work |
 | --- | --- | --- | --- | --- |
@@ -25,7 +85,7 @@ Inventory: 150 modules — 2 Complete, 36 Partial, 55 Not audited, 47 No tests, 
 | `agent_astrometry` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_auxiliary` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_config` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `agent_guider` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `agent_guider` | Hand-written | Production agent/filter + CCD simulator and deterministic image/pulse boundary | Partial | 64 mapped integration cases; normal and AddressSanitizer regressions reproduce open DRV-124–DRV-133. See the Guider Agent integration coverage section for validation and remaining acceptance work. |
 | `agent_imager` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_mount` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_scripting` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |

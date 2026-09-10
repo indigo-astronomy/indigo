@@ -65,6 +65,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_guider_asi_sdk \
 	$(INTEGRATION_BUILD)/test_bus_lifecycle \
 	$(INTEGRATION_BUILD)/test_ccd_countdown \
 	$(INTEGRATION_BUILD)/test_agent_imager \
+	$(INTEGRATION_BUILD)/test_agent_guider \
 	$(INTEGRATION_BUILD)/test_ccd_simulator \
 	$(INTEGRATION_BUILD)/test_dome_simulator \
 	$(INTEGRATION_BUILD)/test_dome_baader_simulator \
@@ -1075,3 +1076,19 @@ $(INTEGRATION_BUILD)/test_agent_imager: integration/test_agent_imager.c test_run
 .PHONY: test-agent-imager
 test-agent-imager: check-lib $(INTEGRATION_BUILD)/test_agent_imager
 	$(INTEGRATION_BUILD)/test_agent_imager
+
+$(INTEGRATION_BUILD)/agent_guider_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(GUIDER_TEST_FLAGS) -Dindigo_uni_config_folder=guider_test_config_folder -c $< -o $@
+
+$(INTEGRATION_BUILD)/agent_guider_filter.o: ../indigo_libs/indigo_filter.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(GUIDER_TEST_FLAGS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/agent_guider_driver.o: ../indigo_drivers/agent_guider/indigo_agent_guider.c ../indigo_drivers/agent_guider/indigo_agent_guider.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(GUIDER_TEST_FLAGS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_agent_guider: integration/test_agent_guider.c test_runner.h $(INTEGRATION_BUILD)/agent_guider_framework.o $(INTEGRATION_BUILD)/agent_guider_filter.o $(INTEGRATION_BUILD)/agent_guider_driver.o ../build/drivers/indigo_ccd_simulator.a $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(GUIDER_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_guider_framework.o $(INTEGRATION_BUILD)/agent_guider_filter.o $(INTEGRATION_BUILD)/agent_guider_driver.o ../build/drivers/indigo_ccd_simulator.a -o $@ $(LDFLAGS) $(GUIDER_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+
+.PHONY: test-agent-guider
+test-agent-guider: check-lib $(INTEGRATION_BUILD)/test_agent_guider
+	$(INTEGRATION_BUILD)/test_agent_guider
