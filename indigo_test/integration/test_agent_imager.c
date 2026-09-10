@@ -957,10 +957,19 @@ static indigo_result failing_stream(indigo_device *device, indigo_client *sender
 
 static void streaming_failure_propagates(void) {
 	ASSERT_TRUE(connect_camera());
-	camera_device->change_property = failing_stream;
-	ASSERT_TRUE(run("STREAMING", INDIGO_ALERT_STATE));
-	camera_device->change_property = camera_spy;
-	ASSERT_TRUE(run("STREAMING", INDIGO_OK_STATE));
+	const int counts[] = { 1, 3, -1 };
+	for (int i = 0; i < ARRAY_SIZE(counts); i++) {
+		ASSERT_TRUE(batch(counts[i]));
+		unsigned images = blobs(CAMERA);
+		camera_device->change_property = failing_stream;
+		ASSERT_TRUE(run("STREAMING", INDIGO_ALERT_STATE));
+		ASSERT_EQ_INT(images, blobs(CAMERA));
+		ASSERT_EQ_INT(0, value(AGENT, "AGENT_START_PROCESS", "STREAMING"));
+		camera_device->change_property = camera_spy;
+		ASSERT_TRUE(batch(3));
+		ASSERT_TRUE(run("STREAMING", INDIGO_OK_STATE));
+		ASSERT_EQ_INT(images + 3, blobs(CAMERA));
+	}
 }
 
 static void invalid_frame(indigo_device *device) {

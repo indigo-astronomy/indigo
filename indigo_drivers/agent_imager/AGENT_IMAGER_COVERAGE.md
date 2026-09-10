@@ -88,3 +88,7 @@ The original independent-instances/reselection case now passes normally and with
 ## DRV-112 follow-up
 
 The retry-exhaustion regression failed before the fix and passes afterward. Coverage now includes third-attempt success, termination after three failures for batch counts 1, 2 and -1, request/image counts and recovery after each failed batch. Finite acquisitions and abort/reacquire also pass. These are three focused case results; previous full-suite totals and coverage percentages are unchanged historical measurements.
+
+## DRV-113 follow-up
+
+The streaming-failure regression failed before the fix and passes afterward for counts 1, 3 and -1, checking terminal ALERT, cleared start switch, image counts and successful recovery. Finite capture, abort/reacquire and pause/resume/BUSY guards also pass (four focused cases). Previous full-suite totals and coverage measurements remain historical.
