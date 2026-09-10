@@ -17,16 +17,20 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // XXXXX driver definition
+// Attribute @type annotations describe the value syntax accepted by the generator.
+// This is a catalog: replace placeholders and keep only the blocks and overrides needed.
+// Custom driver constants (XXXXX = YYYYY) are edited through node source.
 
 // version history
 // 2.0 by XXX <XXX>
 // 3.0 refactoring by XXX <XXX>
 
-driver XXXXX { // replace XXXXX with driver base name without indigo_type_ prefix (mandatory identifier literal)
-	author = "XXXXX"; // mandatory attribute; replace XXXXX with author name and surname with optional email enclosed in '<' and '>' (string literal)
-	copyright = "Copyright (c) 2026 XXXXXX"; // mandatory attribute; replace XXXXX with copyright holder (string literal)
-	label = "XXXXX"; // mandatory attribute; replace XXXXX with descriptive driver label (string literal)
-	version = XXXXX; // mandatory attribute; replace XXXXX with driver minor version, major version is always set to 3.0 (int literal)
+driver XXXXX {
+	supported_architecture = "XXXXX"; // optional attribute; Supported architecture guard used in generated code (string literal). @type=string // replace XXXXX with driver base name without indigo_type_ prefix (mandatory identifier literal)
+	author = "XXXXX"; // mandatory attribute; replace XXXXX with author name and surname with optional email enclosed in '<' and '>' (string literal) @type=string
+	copyright = "Copyright (c) 2026 XXXXXX"; // mandatory attribute; replace XXXXX with copyright holder (string literal) @type=string
+	label = "XXXXX"; // mandatory attribute; replace XXXXX with descriptive driver label (string literal) @type=string
+	version = XXXXX; // mandatory attribute; replace XXXXX with driver minor version, major version is always set to 3.0 (int literal) @type=integer
 	XXXXX = YYYYY; // optional attribute(s); replace XXXXX with name and YYYYY with value of any constant (identifier and C expression literal)
 	include {
 		// optional C code block
@@ -58,30 +62,36 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_type_ prefi
 		// replace content of this section with common code for driver deinitialization, it will be put at the end of INDIGO_DRIVER_SHUTDOWN handling code
 		// the code will be surrounded by "//+ on_shutdown" and "//-" markers in the generated code
 	}
-	serial { // this block is mandatory for serial devices, but may be empty if no pattern is defined
-		configurable_speed = true; // optional attribute, default is false; use this if driver should support configurable baud rate (bool literal)
-		pattern {  // this block is optional serial port pattern matching definition and may be repeated as many times as you need
-			product = "XXXXX"; // optional attribute; replace XXXXX with product name pattern (string literal)
-			vendor = "XXXXX"; // optional attribute; replace XXXXX with vendor name pattern (string literal)
-			serial = "XXXXX"; // optional attribute; replace XXXXX with serial number pattern (string literal)
-			pid = XXXXX; // optional attribute; replace XXXXX with product ID (number literal)
-			vid = XXXXX; // optional attribute; replace XXXXX with vendor ID (number literal)
+	serial {
+		no_ports = false; // optional attribute; Suppress serial port properties (bool literal). @type=boolean // this block is mandatory for serial devices, but may be empty if no pattern is defined
+		configurable_speed = true; // optional attribute, default is false; use this if driver should support configurable baud rate (bool literal) @type=boolean
+		pattern {
+			exact_match = XXXXX; // optional attribute; Require exact serial port pattern matching (C expression). @type=expression  // this block is optional serial port pattern matching definition and may be repeated as many times as you need
+			product = "XXXXX"; // optional attribute; replace XXXXX with product name pattern (string literal) @type=expression
+			vendor = "XXXXX"; // optional attribute; replace XXXXX with vendor name pattern (string literal) @type=expression
+			serial = "XXXXX"; // optional attribute; replace XXXXX with serial number pattern (string literal) @type=expression
+			pid = XXXXX; // optional attribute; replace XXXXX with product ID (number literal) @type=expression
+			vid = XXXXX; // optional attribute; replace XXXXX with vendor ID (number literal) @type=expression
 		}
 	}
 	libusb { // this block is mandatory for libusb devices
-		hotplug = false; //optional attribute, default is true; use to disable hotplug (bool literal)
-		pid = XXXXX; // optional attribute; replace XXXXX with product ID (number C expression)
-		vid = XXXXX; // optional attribute; replace XXXXX with vendor ID (number C expression)
+		hotplug = false; //optional attribute, default is true; use to disable hotplug (bool literal) @type=boolean
+		pid = XXXXX; // optional attribute; replace XXXXX with product ID (number C expression) @type=expression
+		vid = XXXXX; // optional attribute; replace XXXXX with vendor ID (number C expression) @type=expression
 	}
 	hid { // this block is mandatory for HID devices
-		hotplug = false; //optional attribute, default is true; use to disable hotplug (bool literal)
-		pid = XXXXX; // optional attribute; replace XXXXX with product ID (number C expression)
-		vid = XXXXX; // optional attribute; replace XXXXX with vendor ID (number C expression)
+		hotplug = false; //optional attribute, default is true; use to disable hotplug (bool literal) @type=boolean
+		pid = XXXXX; // optional attribute; replace XXXXX with product ID (number C expression) @type=expression
+		vid = XXXXX; // optional attribute; replace XXXXX with vendor ID (number C expression) @type=expression
 	}
-	sdk { // this block is mandatory for SDK-based USB hotplug devices
-		hotplug = false; // optional attribute, default is true; use to disable hotplug (bool literal)
-		pid = XXXXX; // optional attribute; replace XXXXX with product ID (number C expression)
-		vid = XXXXX; // optional attribute; replace XXXXX with vendor ID (number C expression)
+	sdk {
+		unplug_match {
+			// Set unplug_result to indicate whether this device matches the removed USB device; device, private_data and dev are available.
+		}
+		discovery_retries = XXXXX; // optional attribute; SDK discovery retry count (C expression). @type=expression // this block is mandatory for SDK-based USB hotplug devices
+		hotplug = false; // optional attribute, default is true; use to disable hotplug (bool literal) @type=boolean
+		pid = XXXXX; // optional attribute; replace XXXXX with product ID (number C expression) @type=expression
+		vid = XXXXX; // optional attribute; replace XXXXX with vendor ID (number C expression) @type=expression
 		plug {
 			// optional C code block
 			// it runs after generated USB descriptor/vid/pid filtering with libusb_device *dev, struct libusb_device_descriptor descriptor, XXXXX_private_data *private_data, char name[INDIGO_NAME_SIZE] and bool plug_result
@@ -95,10 +105,12 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_type_ prefi
 			// the code will be surrounded by "//+ sdk.unplug" and "//-" markers in the generated code
 		}
 	}
-	XXXXX { // at least one device block is mandatory; replace XXXXX with aux, ccd, wheel, focuser, mount, guider, rotator, gps, ao or aux, additional device definitions may follow, but the first one is the master device)
-		name = "XXXXX";  // mandatory attribute; replace XXXXX with device name  (string literal)
-		additional_instances = true; // optional attribute, default is false; use this if the driver can create additional device instances  (bool literal)
-		interface = XXXXX; // mandatory for AUX devices; replace XXXXX with additional AUX interface like INDIGO_INTERFACE_AUX_LIGHTBOX (C uint32 expression)
+	XXXXX {
+		attach_if = XXXXX; // optional attribute; Condition for attaching this logical device (C expression). @type=expression
+		name_value = XXXXX; // optional attribute; Runtime device name expression (C expression). @type=expression // at least one device block is mandatory; replace XXXXX with aux, ccd, wheel, focuser, mount, guider, rotator, dome, gps, ao or aux, additional device definitions may follow, but the first one is the master device)
+		name = "XXXXX";  // mandatory attribute; replace XXXXX with device name  (string literal) @type=expression
+		additional_instances = true; // optional attribute, default is false; use this if the driver can create additional device instances  (bool literal) @type=boolean
+		interface = XXXXX; // mandatory for AUX devices; replace XXXXX with additional AUX interface like INDIGO_INTERFACE_AUX_LIGHTBOX (C uint32 expression) @type=expression
 		code {
 			// optional C code block
 			// replace content of this section with low level communication code
@@ -131,9 +143,27 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_type_ prefi
 			// replace content of this section with intialization code in case of sucessfull connection
 			// the code will be surrounded by "//+ XXXXX.on_disconnect" and "//-" markers in the generated code where XXXXX is device type
 		}
-		inherited XXXXX { // optional block; replace XXXXX with inherited property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
-			preserve_values = true; // preserve values and set only target
-			pass_through_change = true; // optional attribute, default is false; continue to type handler after generated change handling
+		inherited XXXXX {
+			code {
+				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
+			}
+			on_change_request {
+				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
+			}
+			on_detach {
+				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
+			}
+			label = XXXXX; // optional attribute; Display label (C expression). @type=expression
+			handler = XXXXX; // optional attribute; Override the generated change handler name (C expression). @type=expression
+			handle = XXXXX; // optional attribute; Override the generated property or item handle (C expression). @type=expression
+			name = XXXXX; // optional attribute; Property or item name (C expression or string literal). @type=expression
+			asynchronous_change = false; // optional attribute; Serialize change handling asynchronously (bool literal). @type=boolean
+			persistent = false; // optional attribute; Save the property in configuration (bool literal). @type=boolean
+			hidden = XXXXX; // optional attribute; Initial hidden state (C expression). @type=expression
+			perm = XXXXX; // optional attribute; Property permission (C expression). @type=expression
+			rule = XXXXX; // optional attribute; Switch rule (C expression). @type=expression // optional block; replace XXXXX with inherited property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
+			preserve_values = true; // preserve values and set only target @type=boolean
+			pass_through_change = true; // optional attribute, default is false; continue to type handler after generated change handling @type=boolean
 			on_attach {
 				// optional C code block
 				// replace content of this section with property attach code
@@ -145,20 +175,32 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_type_ prefi
 				// the code will be surrounded by "//+ XXXXX.YYYYY.on_change" and "//-" markers in the generated code where XXXXX is device type and YYYYY is property base name
 			}
 		}
-		switch XXXXX { // replace XXXXX with switch property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
-			label = XXXXX; // mandatory attribute; replace XXXXX with descriptive property label (C string expression)
-			name = XXXXX;  // mandatory attribute; replace XXXXX with item name  (string literal)
-			group = XXXXX; // optional attribute, default is MAIN_GROUP; replace XXXXX with group name (C string expression)
-			perm = XXXXX; // optional attribute, default is INDIGO_RW_PERM;replace XXXXX with permission (C int expression)
-			rule = XXXXX; // optional attribute, default is INDIGO_ONE_OF_MANY_RULE;replace XXXXX with switch rule (C int expression)
-			persistent = true; // optional attribute, default is false; use this if property can be saved in driver configuration (bool literal)
-			asynchronous_change = false; // optional attribute, default is true; use this if property change should be asynchronous and serialized (bool C expression)
-			pass_through_change = true; // optional attribute, default is false; continue to type handler after generated change handling
-			always_defined = true; // optional attribute, default is false; use this if property should be always defined (bool literal)
-			hidden = true; // optional attribute, default is false; use if this property should be initially hidden (bool literal)
-			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
-				label = XXXXX; // mandatory attribute; replace XXXXX with descriptive item label (C string expression)
-				value = XXXXX; // optional attribute, default value is false; replace XXXXX with item initial value (C bool expression)
+		switch XXXXX {
+			code {
+				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
+			}
+			on_change_request {
+				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
+			}
+			handler = XXXXX; // optional attribute; Override the generated change handler name (C expression). @type=expression
+			handle = XXXXX; // optional attribute; Override the generated property or item handle (C expression). @type=expression
+			preserve_values = false; // optional attribute; Preserve values and update only targets (bool literal). @type=boolean
+			pointer = XXXXX; // optional attribute; Override the private property pointer field (C expression). @type=expression // replace XXXXX with switch property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
+			label = XXXXX; // mandatory attribute; replace XXXXX with descriptive property label (C string expression) @type=expression
+			name = XXXXX;  // mandatory attribute; replace XXXXX with item name  (string literal) @type=expression
+			group = XXXXX; // optional attribute, default is MAIN_GROUP; replace XXXXX with group name (C string expression) @type=expression
+			perm = XXXXX; // optional attribute, default is INDIGO_RW_PERM;replace XXXXX with permission (C int expression) @type=expression
+			rule = XXXXX; // optional attribute, default is INDIGO_ONE_OF_MANY_RULE;replace XXXXX with switch rule (C int expression) @type=expression
+			persistent = true; // optional attribute, default is false; use this if property can be saved in driver configuration (bool literal) @type=boolean
+			asynchronous_change = false; // optional attribute, default is true; use this if property change should be asynchronous and serialized (bool literal) @type=boolean
+			pass_through_change = true; // optional attribute, default is false; continue to type handler after generated change handling @type=boolean
+			always_defined = true; // optional attribute, default is false; use this if property should be always defined (bool literal) @type=boolean
+			hidden = true; // optional attribute, default is false; use if this property should be initially hidden (bool literal) @type=expression
+			item XXXXX {
+				handle = XXXXX; // optional attribute; Override the generated property or item handle (C expression). @type=expression
+				name = XXXXX; // optional attribute; Property or item name (C expression or string literal). @type=expression // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
+				label = XXXXX; // mandatory attribute; replace XXXXX with descriptive item label (C string expression) @type=expression
+				value = XXXXX; // optional attribute, default value is false; replace XXXXX with item initial value (C bool expression) @type=expression
 			}
 			on_attach {
 				// optional C code block
@@ -176,19 +218,32 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_type_ prefi
 				// the code will be surrounded by "//+ XXXXX.YYYYY.on_change" and "//-" markers in the generated code where XXXXX is device type and YYYYY is property base name
 			}
 		}
-		text XXXXX { // replace XXXXX with text property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
-			label = XXXXX; // mandatory attribute; replace XXXXX with descriptive property label (C string expression)
-			name = XXXXX;  // mandatory attribute; replace XXXXX with item name  (string literal)
-			group = XXXXX; // optional attribute, default is MAIN_GROUP; replace XXXXX with group name (C string expression)
-			perm = XXXXX; // optional attribute, default is INDIGO_RW_PERM;replace XXXXX with permission (C int expression)
-			persistent = true; // optional attribute, default is false; use this if property can be saved in driver configuration (bool literal)
-			asynchronous_change = false; // optional attribute, default is true; use this if property change should be asynchronous and serialized (bool C expression)
-			pass_through_change = true; // optional attribute, default is false; continue to type handler after generated change handling
-			always_defined = true; // optional attribute, default is false; use this if property should be always defined (bool literal)
-			hidden = true; // optional attribute, default is false; use if this property should be initially hidden (bool literal)
-			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
-				label = XXXXX; // mandatory attribute; replace XXXXX with descriptive item label (C string expression)
-				value = XXXXX; // optional attribute, default value is ""; replace XXXXX with item initial value (C string expression)
+		text XXXXX {
+			code {
+				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
+			}
+			on_change_request {
+				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
+			}
+			handler = XXXXX; // optional attribute; Override the generated change handler name (C expression). @type=expression
+			handle = XXXXX; // optional attribute; Override the generated property or item handle (C expression). @type=expression
+			preserve_values = false; // optional attribute; Preserve values and update only targets (bool literal). @type=boolean
+			rule = XXXXX; // optional attribute; Switch rule (C expression). @type=expression
+			pointer = XXXXX; // optional attribute; Override the private property pointer field (C expression). @type=expression // replace XXXXX with text property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
+			label = XXXXX; // mandatory attribute; replace XXXXX with descriptive property label (C string expression) @type=expression
+			name = XXXXX;  // mandatory attribute; replace XXXXX with item name  (string literal) @type=expression
+			group = XXXXX; // optional attribute, default is MAIN_GROUP; replace XXXXX with group name (C string expression) @type=expression
+			perm = XXXXX; // optional attribute, default is INDIGO_RW_PERM;replace XXXXX with permission (C int expression) @type=expression
+			persistent = true; // optional attribute, default is false; use this if property can be saved in driver configuration (bool literal) @type=boolean
+			asynchronous_change = false; // optional attribute, default is true; use this if property change should be asynchronous and serialized (bool literal) @type=boolean
+			pass_through_change = true; // optional attribute, default is false; continue to type handler after generated change handling @type=boolean
+			always_defined = true; // optional attribute, default is false; use this if property should be always defined (bool literal) @type=boolean
+			hidden = true; // optional attribute, default is false; use if this property should be initially hidden (bool literal) @type=expression
+			item XXXXX {
+				handle = XXXXX; // optional attribute; Override the generated property or item handle (C expression). @type=expression
+				name = XXXXX; // optional attribute; Property or item name (C expression or string literal). @type=expression // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
+				label = XXXXX; // mandatory attribute; replace XXXXX with descriptive item label (C string expression) @type=expression
+				value = XXXXX; // optional attribute, default value is ""; replace XXXXX with item initial value (C string expression) @type=expression
 			}
 			on_attach {
 				// optional C code block
@@ -206,24 +261,36 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_type_ prefi
 				// the code will be surrounded by "//+ XXXXX.YYYYY.on_change" and "//-" markers in the generated code where XXXXX is device type and YYYYY is property base name
 			}
 		}
-		number XXXXX { // replace XXXXX with number property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
-			label = XXXXX; // mandatory attribute; replace XXXXX with descriptive property label (C string expression)
-			name = XXXXX;  // mandatory attribute; replace XXXXX with item name  (string literal)
-			group = XXXXX; // optional attribute, default is MAIN_GROUP; replace XXXXX with group name (C string expression)
-			perm = XXXXX; // optional attribute, default is INDIGO_RW_PERM;replace XXXXX with permission (C int expression)
-			persistent = true; // optional attribute, default is false; use this if property can be saved in driver configuration (bool literal)
-			asynchronous_change = false; // optional attribute, default is true; use this if property change should be asynchronous and serialized (bool C expression)
-			pass_through_change = true; // optional attribute, default is false; continue to type handler after generated change handling
-			always_defined = true; // optional attribute, default is false; use this if property should be always defined (bool literal)
-			hidden = true; // optional attribute, default is false; use if this property should be initially hidden (bool literal)
-			preserve_values = true; // optional attribute, default is false; preserve values and set only target
-			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
-				label = XXXXX; // mandatory attribute; replace XXXXX with descriptive item label (C string expression)
-				value = XXXXX; // optional attribute, default value is 0; replace XXXXX with item initial value (C double expression)
-				min = XXXXX; // optional attribute, default value is 0; replace XXXXX with item initial value (C double expression)
-				max = XXXXX; // optional attribute, default value is 0; replace XXXXX with item initial value (C double expression)
-				step = XXXXX; // optional attribute, default value is 0; replace XXXXX with item initial value (C double expression)
-				format = XXXXX; // optional attribute; replace XXXXX with format for item (C string expression)
+		number XXXXX {
+			code {
+				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
+			}
+			on_change_request {
+				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
+			}
+			handler = XXXXX; // optional attribute; Override the generated change handler name (C expression). @type=expression
+			handle = XXXXX; // optional attribute; Override the generated property or item handle (C expression). @type=expression
+			rule = XXXXX; // optional attribute; Switch rule (C expression). @type=expression
+			pointer = XXXXX; // optional attribute; Override the private property pointer field (C expression). @type=expression // replace XXXXX with number property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
+			label = XXXXX; // mandatory attribute; replace XXXXX with descriptive property label (C string expression) @type=expression
+			name = XXXXX;  // mandatory attribute; replace XXXXX with item name  (string literal) @type=expression
+			group = XXXXX; // optional attribute, default is MAIN_GROUP; replace XXXXX with group name (C string expression) @type=expression
+			perm = XXXXX; // optional attribute, default is INDIGO_RW_PERM;replace XXXXX with permission (C int expression) @type=expression
+			persistent = true; // optional attribute, default is false; use this if property can be saved in driver configuration (bool literal) @type=boolean
+			asynchronous_change = false; // optional attribute, default is true; use this if property change should be asynchronous and serialized (bool literal) @type=boolean
+			pass_through_change = true; // optional attribute, default is false; continue to type handler after generated change handling @type=boolean
+			always_defined = true; // optional attribute, default is false; use this if property should be always defined (bool literal) @type=boolean
+			hidden = true; // optional attribute, default is false; use if this property should be initially hidden (bool literal) @type=expression
+			preserve_values = true; // optional attribute, default is false; preserve values and set only target @type=boolean
+			item XXXXX {
+				handle = XXXXX; // optional attribute; Override the generated property or item handle (C expression). @type=expression
+				name = XXXXX; // optional attribute; Property or item name (C expression or string literal). @type=expression // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
+				label = XXXXX; // mandatory attribute; replace XXXXX with descriptive item label (C string expression) @type=expression
+				value = XXXXX; // optional attribute, default value is 0; replace XXXXX with item initial value (C double expression) @type=expression
+				min = XXXXX; // optional attribute, default value is 0; replace XXXXX with item initial value (C double expression) @type=expression
+				max = XXXXX; // optional attribute, default value is 0; replace XXXXX with item initial value (C double expression) @type=expression
+				step = XXXXX; // optional attribute, default value is 0; replace XXXXX with item initial value (C double expression) @type=expression
+				format = XXXXX; // optional attribute; replace XXXXX with format for item (C string expression) @type=expression
 			}
 			on_attach {
 				// optional C code block
@@ -241,15 +308,35 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_type_ prefi
 				// the code will be surrounded by "//+ XXXXX.YYYYY.on_change" and "//-" markers in the generated code where XXXXX is device type and YYYYY is property base name
 			}
 		}
-		light XXXXX { // replace XXXXX with light property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
-			label = XXXXX; // mandatory attribute; replace XXXXX with descriptive property label (C string expression)
-			name = XXXXX;  // mandatory attribute; replace XXXXX with item name  (string literal)
-			group = XXXXX; // optional attribute, default is MAIN_GROUP; replace XXXXX with group name (C string expression)
-			always_defined = true; // optional attribute, default is false; use this if property should be always defined (bool literal)
-			hidden = true; // optional attribute, default is false; use if this property should be initially hidden (bool literal)
-			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
-				label = XXXXX; // mandatory attribute; replace XXXXX with descriptive item label (C string expression)
-				value = XXXXX; // optional attribute, default value is INDIGO_IDLE_STATE; replace XXXXX with item initial value (C int expression)
+		light XXXXX {
+			code {
+				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
+			}
+			on_change {
+				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
+			}
+			on_change_request {
+				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
+			}
+			handler = XXXXX; // optional attribute; Override the generated change handler name (C expression). @type=expression
+			handle = XXXXX; // optional attribute; Override the generated property or item handle (C expression). @type=expression
+			asynchronous_change = false; // optional attribute; Serialize change handling asynchronously (bool literal). @type=boolean
+			persistent = false; // optional attribute; Save the property in configuration (bool literal). @type=boolean
+			preserve_values = false; // optional attribute; Preserve values and update only targets (bool literal). @type=boolean
+			pass_through_change = false; // optional attribute; Continue to the device type change handler (bool literal). @type=boolean
+			perm = XXXXX; // optional attribute; Property permission (C expression). @type=expression
+			rule = XXXXX; // optional attribute; Switch rule (C expression). @type=expression
+			pointer = XXXXX; // optional attribute; Override the private property pointer field (C expression). @type=expression // replace XXXXX with light property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
+			label = XXXXX; // mandatory attribute; replace XXXXX with descriptive property label (C string expression) @type=expression
+			name = XXXXX;  // mandatory attribute; replace XXXXX with item name  (string literal) @type=expression
+			group = XXXXX; // optional attribute, default is MAIN_GROUP; replace XXXXX with group name (C string expression) @type=expression
+			always_defined = true; // optional attribute, default is false; use this if property should be always defined (bool literal) @type=boolean
+			hidden = true; // optional attribute, default is false; use if this property should be initially hidden (bool literal) @type=expression
+			item XXXXX {
+				handle = XXXXX; // optional attribute; Override the generated property or item handle (C expression). @type=expression
+				name = XXXXX; // optional attribute; Property or item name (C expression or string literal). @type=expression // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
+				label = XXXXX; // mandatory attribute; replace XXXXX with descriptive item label (C string expression) @type=expression
+				value = XXXXX; // optional attribute, default value is INDIGO_IDLE_STATE; replace XXXXX with item initial value (C int expression) @type=expression
 			}
 			on_attach {
 				// optional C code block

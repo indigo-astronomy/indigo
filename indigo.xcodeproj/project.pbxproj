@@ -2508,6 +2508,18 @@
 		59910A5B305289D700FB1C2F /* test_ccd_countdown.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_countdown.c; sourceTree = "<group>"; };
 		59910A5C305289D700FB1C2F /* test_rotator_lunatico_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_rotator_lunatico_simulator.c; sourceTree = "<group>"; };
 		59910A763052B3A100FB1C2F /* test_agent_guider.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_guider.c; sourceTree = "<group>"; };
+		59910A773052DDD300FB1C2F /* AGENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENTS.md; sourceTree = "<group>"; };
+		59910A793052DF8C00FB1C2F /* driver_format.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = driver_format.py; sourceTree = "<group>"; };
+		59910A7A3052E35500FB1C2F /* DESIGN.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DESIGN.md; sourceTree = "<group>"; };
+		59910A7B3052E35500FB1C2F /* driver_editor.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = driver_editor.py; sourceTree = "<group>"; };
+		59910A7C3052E35500FB1C2F /* editor.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = editor.py; sourceTree = "<group>"; };
+		59910A7D3052E35500FB1C2F /* source_map.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = source_map.py; sourceTree = "<group>"; };
+		59910A7E3052E35500FB1C2F /* test_editor.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_editor.py; sourceTree = "<group>"; };
+		59910A7F3052E5E400FB1C2F /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59910A803052E5E400FB1C2F /* app.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = app.js; sourceTree = "<group>"; };
+		59910A813052E5E400FB1C2F /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
+		59910A823052E5E400FB1C2F /* style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = style.css; sourceTree = "<group>"; };
+		59910A843052E5E400FB1C2F /* VALIDATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = VALIDATION.md; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -8306,6 +8318,33 @@
 			path = guider_cgusbst4_simulator;
 			sourceTree = "<group>";
 		};
+		59910A783052DDD300FB1C2F /* driver_editor */ = {
+			isa = PBXGroup;
+			children = (
+				59910A7F3052E5E400FB1C2F /* README.md */,
+				59910A843052E5E400FB1C2F /* VALIDATION.md */,
+				59910A773052DDD300FB1C2F /* AGENTS.md */,
+				59910A7A3052E35500FB1C2F /* DESIGN.md */,
+				59910A7B3052E35500FB1C2F /* driver_editor.py */,
+				59910A7C3052E35500FB1C2F /* editor.py */,
+				59910A7D3052E35500FB1C2F /* source_map.py */,
+				59910A7E3052E35500FB1C2F /* test_editor.py */,
+				59910A793052DF8C00FB1C2F /* driver_format.py */,
+				59910A833052E5E400FB1C2F /* static */,
+			);
+			path = driver_editor;
+			sourceTree = "<group>";
+		};
+		59910A833052E5E400FB1C2F /* static */ = {
+			isa = PBXGroup;
+			children = (
+				59910A803052E5E400FB1C2F /* app.js */,
+				59910A813052E5E400FB1C2F /* index.html */,
+				59910A823052E5E400FB1C2F /* style.css */,
+			);
+			path = static;
+			sourceTree = "<group>";
+		};
 		5992F7B01E1EC84B0035242E /* ccd_fli */ = {
 			isa = PBXGroup;
 			children = (
@@ -13762,6 +13801,7 @@
 				595705A321866D9700E713A9 /* indigo_drivers.c */,
 				9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */,
 				9DF4DCCB2C5A182B00A1852B /* indigo_driver_metadata.c */,
+				59910A783052DDD300FB1C2F /* driver_editor */,
 			);
 			path = indigo_tools;
 			sourceTree = "<group>";
