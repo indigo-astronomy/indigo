@@ -66,6 +66,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_guider_asi_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_countdown \
 	$(INTEGRATION_BUILD)/test_agent_imager \
 	$(INTEGRATION_BUILD)/test_agent_guider \
+	$(INTEGRATION_BUILD)/test_agent_mount \
 	$(INTEGRATION_BUILD)/test_ccd_simulator \
 	$(INTEGRATION_BUILD)/test_dome_simulator \
 	$(INTEGRATION_BUILD)/test_dome_baader_simulator \
@@ -1092,3 +1093,21 @@ $(INTEGRATION_BUILD)/test_agent_guider: integration/test_agent_guider.c test_run
 .PHONY: test-agent-guider
 test-agent-guider: check-lib $(INTEGRATION_BUILD)/test_agent_guider
 	$(INTEGRATION_BUILD)/test_agent_guider
+
+# Real mount agent and filter; isolated configuration, scripted LX200 transport,
+# and optional accelerated timeout-loop waits. No sockets or hardware are opened.
+$(INTEGRATION_BUILD)/agent_mount_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(MOUNT_TEST_FLAGS) -Dindigo_uni_config_folder=mount_test_config_folder -c $< -o $@
+
+$(INTEGRATION_BUILD)/agent_mount_filter.o: ../indigo_libs/indigo_filter.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(MOUNT_TEST_FLAGS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/agent_mount_driver.o: ../indigo_drivers/agent_mount/indigo_agent_mount.c ../indigo_drivers/agent_mount/indigo_agent_mount.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(MOUNT_TEST_FLAGS) -Dtime=mount_test_time -Dindigo_usleep=mount_test_sleep -Dindigo_uni_open_tcp_server_socket=mount_test_server -Dindigo_uni_read_available=mount_test_read -Dindigo_uni_write=mount_test_write -Dindigo_uni_close=mount_test_close -Dindigo_uni_set_socket_read_timeout=mount_test_read_timeout -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_agent_mount: integration/test_agent_mount.c test_runner.h $(INTEGRATION_BUILD)/agent_mount_framework.o $(INTEGRATION_BUILD)/agent_mount_filter.o $(INTEGRATION_BUILD)/agent_mount_driver.o $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(MOUNT_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_mount_framework.o $(INTEGRATION_BUILD)/agent_mount_filter.o $(INTEGRATION_BUILD)/agent_mount_driver.o -o $@ $(LDFLAGS) $(MOUNT_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+
+.PHONY: test-agent-mount
+test-agent-mount: check-lib $(INTEGRATION_BUILD)/test_agent_mount
+	$(INTEGRATION_BUILD)/test_agent_mount

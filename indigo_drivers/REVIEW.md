@@ -164,6 +164,20 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-131 | Medium | `agent_guider/indigo_agent_guider.c:2059` | The inter-frame delay checks abort on each existing sleep iteration, then clears delay and follows normal guiding finalization. Four focused cases pass, including abort during 4 s/0.5 s delays, shutdown during delay, no subsequent exposure and restart. Combined fix version is now `0x0300002D`. | Closed (fixed) |
 | DRV-132 | Medium | `agent_guider/indigo_agent_guider.c:1226` | Pulse completion now requires OK from each requested axis; ALERT or remaining BUSY after the existing timeout propagates failure. Unused-axis states are ignored, abort interrupts the completion wait, and calibration marks failure without launching subsequent guiding. CONTINUE keeps guiding active after a pulse error, pauses briefly and computes the next correction from a fresh frame; FAIL terminates. Transient RA/DEC recovery tests verify successful corrections without restarting guiding. Combined fix version is now `0x0300002D`. | Closed (fixed) |
 | DRV-133 | Medium | `agent_guider/indigo_agent_guider.c:1819` | Every accepted guiding frame now updates drift/correction statistics, correction histories and PPEC, including exact zero drift. Regression checks cover displacement returning to zero, decreasing short-term RMSE, no unnecessary PI pulses and PPEC learning on zero drift. Driver version is `0x0300002D` for the combined fixes; deferred DRV-130 remains open. | Closed (fixed) |
+| DRV-134 | Medium | `agent_mount/indigo_agent_mount.c:1486` | Dome deselection sets `dome_state_defined = true` and leaves shutter flags and the OPEN light unchanged. A subsequently selected legacy dome without DOME_STATE never updates park/shutter state through its legacy properties, so completed operations wait until timeout; OPEN may still describe the previously selected dome. Reproduced by `dome reselection` and `dome reselection legacy` in `integration/test_agent_mount.c`. | Open |
+| DRV-135 | Medium | `agent_mount/indigo_agent_mount.c:1094` | Negative imager OBJCTDEC minutes are computed after truncating declination to an integer, making the minutes always zero. A reported -12.5 degrees produces `'-12 00 00'` instead of `'-12 30 00'`. Reproduced by `negative fits`. | Open |
+| DRV-136 | Medium | `agent_mount/indigo_agent_mount.c:1105`, `agent_mount/indigo_agent_mount.c:1156` | Formatting signed coordinates using `(int)value` loses the minus sign for values between -1 and 0. Guider OBJCTDEC and imager SITELAT/SITELONG can therefore describe the opposite side of the equator/meridian. Reproduced with -0.5 degrees by `negative zero fits` and `negative site fits`. | Open |
+| DRV-137 | Medium | `agent_mount/indigo_agent_mount.c:737` | LX200 ACK byte 0x06 sets the reply to P, but the write is inside the colon-command branch at line 872. The client receives no ACK reply. Reproduced through the unchanged worker with `lx200 ack`. | Open |
+| DRV-138 | Medium | `agent_mount/indigo_agent_mount.c:788` | LX200 Sd chooses the sign with `d > 0`; positive declinations beginning with +00 are decoded as negative. `:Sd+00*30:00#` followed by MS sets a -0.5 degree target. Reproduced by `lx200 positive zero`. | Open |
+| DRV-139 | Medium | `agent_mount/indigo_agent_mount.c:745` | EOF inside an LX200 command only breaks the inner read loop; dispatch is skipped for -1 but not for EOF (0), and complete # termination is not required. A truncated `:Sr05:30` is accepted with reply 1. Reproduced by `lx200 truncated command`. | Open |
+| DRV-140 | Medium | `agent_mount/indigo_agent_mount.c:774` | LX200 Sr/Sd accepts out-of-protocol hour, degree and minute fields and responds with success. Requests for RA 25h, DEC +91 degrees or 75 minutes all return 1. This is parsing of transport input, before public bus numeric validation. Reproduced by `lx200 invalid coordinates`. | Open |
+| DRV-141 | Medium | `agent_mount/indigo_agent_mount.c:888` | Starting LX200 publishes OK before opening the listener and unconditionally publishes STOPPED/OK after the open routine returns, including bind/open failure. Reproduced by `lx200 bind failure` with a failing socket boundary. | Open |
+| DRV-142 | Medium | `agent_mount/indigo_agent_mount.c:897`, `agent_mount/indigo_agent_mount.c:2111` | STOPPED while no listener exists changes AGENT_LX200_SERVER to BUSY, but stop_lx200_server does nothing for a NULL handle, leaving it BUSY indefinitely. Reproduced by `lx200 idle stop`. | Open |
+| DRV-143 | High | `agent_mount/indigo_agent_mount.c:2282` | Detach waits in indigo_cancel_all_timers before stop_lx200_server closes the listening handle. The listener timer is blocked inside the server accept loop until that close, so shutdown cannot progress. `shutdown server` hits its five-second watchdog with the normal blocking-listener contract reproduced at the transport boundary. | Open |
+| DRV-144 | High | `agent_mount/indigo_agent_mount.c:2413`, `agent_mount/indigo_agent_mount.c:2281` | SHUTDOWN detaches the agent client and waits for handlers/timers without first aborting an active mount process. Its cached BUSY state can no longer receive completion updates, so a normal active slew blocks shutdown for the long motion timeout. `shutdown active` hits its five-second watchdog; idle teardown and explicit abort followed by teardown succeed. | Open |
+| DRV-145 | Medium | `agent_mount/indigo_agent_mount.c:2159` | An all-false AGENT_START_PROCESS request is accepted by the at-most-one rule, sets BUSY, and launches no operation. There is no completion path, and abort does not clear START. Reproduced by `all false start`. | Open |
+| DRV-146 | Medium | `agent_mount/indigo_agent_mount.c:2315`, `agent_mount/indigo_agent_mount.c:2385` | Capability discovery only sets flags on definitions; property deletion is delegated directly to the filter without clearing the corresponding AGENT_MOUNT_FEATURE/AGENT_DOME_FEATURE flags. Removing MOUNT_HOME from the selected mount leaves HOME advertised, defeating the unsupported-operation guard. Reproduced by `stale capability`. | Open |
+| DRV-147 | High | `agent_mount/indigo_agent_mount.c:315` | Slew/sync sends mount/dome unpark commands and immediately continues to mode and coordinate commands without waiting for successful unpark. Even an immediate ALERT response from unpark does not prevent coordinates being commanded. Reproduced by `unpark failure` with both devices initially parked and rejected unpark requests. | Open |
 
 ## Finding Summaries
 
@@ -1123,3 +1137,38 @@ Validation result: 23/24 complete integration suites passed; the remaining focus
 DRV-110, P2, Closed (fixed): `ccd_playerone/indigo_ccd_playerone.driver:1116` (`CCD_ABORT_EXPOSURE.on_change` else branch; generated C lines 1160–1164) sets ALERT and resets the switch without an update when no exposure/stream is BUSY. The on_change block references acquisition_finalizer, suppressing the generated epilogue. The public request's BUSY therefore persists at clients. Reproduced on physical Mars-C II between 0.1 s exposures and in 9/20 final Imager Agent abort trials; the agent itself completes. Fixed in the `.driver` source and regenerated C: the idle branch resets the switch and explicitly publishes ALERT; active abort retains its existing cleanup publication. The regression test failed before the fix and passes afterward, including false/true idle requests, completed-exposure gaps, no extra SDK stop, and subsequent acquisition. The four/five-extra-frame report was not reproduced in the 60 final trials; see TESTING.md. Folder baseline unchanged.
 
 DRV-110 verification: all five abort-filtered SDK cases passed. Physical idle abort before and after acquisition passed; PREVIEW and indefinite STREAMING each passed 20 trials with camera terminal publication in all 40 and no frames after terminal completion. One streaming trial delivered one frame before completion. Driver version is unchanged; no locks were added. Folder review baseline remains unchanged.
+
+
+## Mount Agent test findings — 2026-09-10
+
+Scoped test-driven inspection of `agent_mount/indigo_agent_mount.c` at
+`f13fdc6965bdc306d4250248e0ef8ed19527d991`, driver version `0x03000016`.
+The production driver was not changed. The folder baseline above is unchanged;
+this is not a review of the rest of `indigo_drivers`.
+
+`indigo_test/integration/test_agent_mount.c` exercises the production agent through
+public bus requests with controlled mount, dome, rotator, GPS, joystick and related
+agent peers. It also drives the unchanged LX200 worker through a scripted portable
+I/O boundary. Real timers, handler queues and filter translation are retained.
+The listener fake blocks until closed, matching `indigo_uni_open_tcp_server_socket`.
+No network sockets, server process or physical devices are required.
+
+The strict suite deliberately keeps correct-behavior assertions for open findings:
+failures are not marked expected or converted into passes. Sixteen failing scenarios
+map to DRV-134–DRV-147 above. Shutdown watchdog failures count as test failures and
+terminate only the isolated child. Use `make -C indigo_test test-agent-mount`, or pass
+a case-name substring to `indigo_test/build/integration/test_agent_mount`.
+
+Coverage includes successful, failed, aborted and timed-out operations; legacy and
+modern state reporting; coupled device motion and abort fan-out; configuration,
+reselection, related agents, limits, joystick routing and the LX200 command set.
+The detailed scenario-to-test map, measurements and validation limitations live in
+`indigo_test/CHANGES.md`. Existing fixes DRV-016/017/018/020/021 have passing checks
+for disabled joystick/default modes, abort fan-out and mount/rotator deselection or
+slaving-alert propagation. The separate legacy dome reselection issue is DRV-134.
+
+Validation observation: the 51-case sanitizer pass had one additional watchdog
+termination in `negative fits`; an immediate isolated rerun reached the expected
+DRV-135 assertion without a sanitizer diagnostic. No separate root cause was
+established. Treat this as an unresolved timing observation, not a confirmed memory
+finding or proof that all concurrency interleavings are safe.

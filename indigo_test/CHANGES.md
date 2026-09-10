@@ -1,5 +1,13 @@
 # INDIGO Test Suite Changes
 
+## Guider Agent zero-drift processing fix — DRV-133 (2026-09-10)
+
+Every accepted guiding frame now runs correction/statistics processing, including exact zero drift. This refreshes pixel/arcsecond drift and correction values, feeds correction histories and PPEC, and includes zero samples in RMSE and dithering settling. Algorithm-specific thresholds still decide whether a pulse is required. The driver version advances once from `0x0300002C` to `0x0300002D` for the combined fixes, as requested; DRV-130 remains deferred. No properties were added or removed.
+
+The existing `zero drift statistics` case reproduced stale DRIFT_RA = 2 before the fix. It now checks both axes and arcsecond values, zero corrections, declining short-term RMSE, and no additional PI pulses after returning to the reference. New `zero drift PPEC learning` verifies learning progress increases with stationary zero-drift frames. The suite contains 87 cases.
+
+Validation: driver and test builds passed; 17 focused cases passed including the two zero-drift cases, correction response, PI integral history, PPEC reset, six selection cases, three dithering cases, two transient-pulse recovery cases and pulse thresholds. The additional `dither RA projection preserves magnitude` case still fails for the known, deferred DRV-130; its code was not changed. The full suite and AddressSanitizer were not rerun for this control-flow change. Test artifacts were removed with `make -C indigo_test test-clean`.
+
 ## Guider Agent pulse failure propagation fix — DRV-132 (2026-09-10)
 
 `pulse_guide()` now checks completion for the axes commanded by the current operation. Non-OK replies, including BUSY after the existing ten-second completion timeout, return ALERT instead of unconditional OK. Stale states on unused axes do not block a correction. Abort interrupts the completion polling loop and uses normal aborted-process finalization without a pulse-failure message; the nominal pulse-duration wait remains unchanged. Calibration marks a failed pulse as a failed phase, and `calibrate()` returns its actual terminal success state so CALIBRATION_AND_GUIDING cannot proceed after calibration failure. No properties were added or removed; version stays `0x0300002C`. Deferred DRV-130 was not changed.
@@ -109,7 +117,7 @@ The final `make -C indigo_test test-agent-guider` run completed **53/64 cases su
 | DRV-130 | RA-only dither fails the requested magnitude assertion |
 | DRV-131 (subsequently fixed) | Guiding delay now responds to abort; see the focused delay validation above. |
 | DRV-132 (subsequently fixed) | Pulse failures and timeout now propagate to guiding/calibration; see the focused validation above. |
-| DRV-133 | Drift/correction statistics remain stale when measured drift returns to exactly zero |
+| DRV-133 (subsequently fixed) | Zero-drift frames now update statistics, correction histories and PPEC; see the focused validation above. |
 
 Sanitizer reproduction (uses a separate build directory to prevent mixing instrumented and ordinary objects):
 
@@ -149,7 +157,7 @@ Inventory: 150 modules — 2 Complete, 37 Partial, 55 Not audited, 46 No tests, 
 | `agent_astrometry` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_auxiliary` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_config` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `agent_guider` | Hand-written | Production agent/filter + CCD simulator and deterministic image/pulse boundary | Partial | 86 mapped integration cases; DRV-124/DRV-125 regressions pass normally and under AddressSanitizer; focused DRV-126–DRV-129 and DRV-131/DRV-132 regressions pass; DRV-130 and DRV-133 remain open. See the Guider Agent integration coverage section for validation and remaining acceptance work. |
+| `agent_guider` | Hand-written | Production agent/filter + CCD simulator and deterministic image/pulse boundary | Partial | 87 mapped integration cases; DRV-124/DRV-125 regressions pass normally and under AddressSanitizer; focused DRV-126–DRV-129 and DRV-131–DRV-133 regressions pass; DRV-130 remains open. See the Guider Agent integration coverage section for validation and remaining acceptance work. |
 | `agent_imager` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_mount` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `agent_scripting` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
@@ -1028,3 +1036,87 @@ DRV-120 final validation: complete normal Imager Agent suite 37/37 passed, inclu
 PlayerOne shared countdown: ordinary exposure setup now uses indigo_ccd_exposure_setup rather than duplicate image/file BUSY updates; acquisition_finalizer publishes remaining seconds only for streaming. New fake-SDK regression blocks the camera queue during a 2.2-second exposure, verifies independent integral countdown progress, then checks completion and subsecond reacquisition. Driver input and generated output remain synchronized; no version bump or generator implementation change.
 
 Validation: the new blocked-device-queue countdown regression fails against the HEAD driver without this change and passes with it. The complete fake-SDK rerun passes all 48 test bodies, but its exit status remains failure because cleanup of Final slow_initialization_and_polling records a gate timeout. That same cleanup failure reproduces against the unchanged HEAD driver in isolation. The first full run additionally saw a cooler failure-state assertion; its isolated rerun and the second full run pass. All abort-filtered cases pass. Cleanup failures now identify their case in the test output. No full-suite success or hardware validation is claimed.
+
+## Mount Agent integration coverage (2026-09-10)
+
+Added `integration/test_agent_mount.c`, the normal integration entry and dedicated
+`make -C indigo_test test-agent-mount` target. The suite links the unchanged mount
+agent source, real filter, bus, timers and queues. Seven controlled peers expose
+mount, dome, rotator, GPS, joystick, imager and guider contracts through public bus
+APIs. Both modern MOUNT_STATE/DOME_STATE and legacy property-derived state paths
+are exercised. A recursive mutex protects peer requests and a separate mutex
+protects copied property observations; waits require fresh property revisions.
+Each case runs in a child with its own temporary configuration directory and a
+bounded watchdog. The parent removes only that case's temporary configuration.
+
+Only test boundaries are replaced: the configuration directory, LX200 portable
+socket I/O, the agent's wall clock for the deterministic morning/afternoon test,
+and its sleep function. Sleeps are real normally; only timeout cases skip the
+wait durations while retaining the production loop counts and terminal decisions.
+This validates timeout behavior, not 180-second wall-clock accuracy. LX200 worker
+parsing and command dispatch remain production code; the fake listener blocks
+until closed, with scripted input, EOF and read failure. No sockets, external
+server process, hardware, vendor SDK or new dependencies are used.
+
+### Scenario map
+
+| Capability / decision | Registered cases and assertions |
+| --- | --- |
+| Public metadata, property inventory, defaults, idle abort, idempotent INIT | `metadata`: all 17 agent-owned properties and item counts; hidden CONNECTION; safe feature defaults; reset abort switch. `missing devices` rejects all 11 mount/dome operations. |
+| Capability discovery and unsupported requests | `missing capabilities` rejects all 11 operations on limited peers. `stale capability` requires HOME to be removed after deleting its underlying property. |
+| Every process branch | `legacy success`, `modern success`, `legacy failure`, `modern failure`, `legacy abort`, `modern abort`: each covers SLEW, SYNC, PARK, UNPARK, HOME, TRACK_ON/OFF and DOME_PARK/UNPARK/OPEN/CLOSE, with fresh BUSY/completion, cleared process item and corresponding device request. |
+| Timeouts and fast responses | `operation timeouts` exercises every process timeout and recovery; `coupled timeouts` includes stalled dome and rotator; `immediate completion` allows a successful response without observable BUSY; `immediate rejection` checks rejection without waiting the full operation timeout. |
+| Target values, synchronization, overlap | `coordinates and busy` verifies target versus reported coordinates, TRACK versus SYNC, forwarding, BUSY exclusion, display-state tracking and reconnect. `all false start` requires a request with no operation selected to remain terminal. |
+| Combined mount/dome/rotator processes | `coupled motion` requires both mount/dome completion and propagates individual subsystem failures; `coupled abort` checks abort fan-out to all three devices during park, unpark and slew; `unpark failure` requires failed prerequisites to prevent coordinate commands. |
+| Slaving, geometry and derotation | `slaving` checks autonomous commands, ALERT preservation, suppression while failed and clearing on mount/rotator deselection. `geometry and threshold` checks a centered dome's expected south azimuth, threshold suppression, field rotation normalization and disabled lights. `rotator sync wrap` checks both sides of angular wrap, SYNC routing and absence of dome slew during SYNC. |
+| State reporting | `state lights` exercises all four light states for every modern mount/dome state item; `legacy dome slew` checks BUSY/ALERT/OK translation; `home momentary` checks completion when HOME resets to false. |
+| Device lifecycle | `selection orders` covers dome/rotator before mount and reselection, GPS removal and mode clearing; `process deselection` covers disconnect during slew and successful operation after reconnect. `dome reselection` and `dome reselection legacy` expose stale shutter and suppressed legacy-state updates. `instances` verifies separate targets and removal of an additional instance. |
+| Shutdown | Normal cleanup aborts active work and disconnects all peers before detaching. `shutdown active` and `shutdown server` require direct shutdown to finish within five seconds and reproduce the current blocking teardown defects. |
+| Site coordinates and host time | `sites` covers HOST/MOUNT/DOME/GPS source selection, latitude/longitude/elevation propagation, source fallback, angular threshold, host-time enable/disable and forwarding. |
+| Related agents and FITS | `related agents` verifies mount coordinates, both pier sides, positive OBJCTRA/OBJCTDEC/SITELAT, abort permission and star-selection clearing. `related solver filters` / `related invalid filter` check accepted Astrometry/ASTAP/Solver prefixes and rejection of unrelated agents. `negative fits`, `negative zero fits`, `negative site fits` check negative minutes and signs. |
+| Limits | `limits` checks HA on both sides of the meridian, wrap-around, enabled/disabled limits and local time. `time limit matrix` uses fixed UTC mornings/afternoons to verify both before/after branches deterministically. |
+| Settings, configuration and reset | `configuration` covers FOV, epoch adjustment, persisted joystick policy and factory reset. `feature persistence` / `persistent features` verify live modes survive saving but reload only with the persistence policy. `configuration failure` injects ENOTDIR, verifies the prior file remains unchanged, then saves/reloads after recovery. |
+| Joystick | `joystick` checks all park, track, home, four slew-rate, RA/DEC and abort items; commands are suppressed when disabled and forwarded when enabled. |
+| LX200 protocol | `LX200 protocol` covers identification, coordinate readback, full/short Sr/Sd formats, slew/sync, both epochs, rates, direction starts/stops, abort, date/generic setters, unknown command and read failure. `lx200 input matrix` covers signed coordinates, extremes, oversized frames and recovery. Additional strict cases cover ACK, positive subdegree DEC, out-of-protocol coordinate fields, truncated frame, bind failure and idle stop. |
+
+### Results and remaining limitations
+
+At `f13fdc6965bdc306d4250248e0ef8ed19527d991`, mount driver version `0x03000016`,
+all 54 cases were compiled for macOS arm64/x86_64 and executed on arm64. The full
+instrumented run reports **38/54 passing**, with **16 failing scenarios exposing
+14 open findings DRV-134–DRV-147 in `../indigo_drivers/REVIEW.md`**. No mount agent
+production changes were made. The strict tests are in the normal integration
+suite and return nonzero for these defects; none is skipped or counted as an
+expected pass. The 11-operation matrices also exercise multiple scenarios per
+registered case.
+
+Clang source-based coverage of the production mount agent in the complete run:
+**34/34 functions (100%), 2,025/2,089 lines (96.94%), 5,282/5,406 regions (97.71%),
+1,283/1,523 branch outcomes (84.24%)**. These measurements include failing cases;
+coverage means code executed, not a claim that it behaved correctly. Macro-heavy
+branch totals include framework macros expanded into the agent. Allocation-failure
+attach branches, every numerical geometry combination and every scheduler
+interleaving are not claimed covered. Failed attachments through fatal allocation
+are not injected. Alignment-math correctness belongs to the library tests.
+
+AddressSanitizer/UndefinedBehaviorSanitizer instrumented the agent, filter,
+configuration framework and test. The initial 51-case run found no sanitizer
+memory/UB diagnostic; it reproduced the open failures. One `negative fits` run
+hit its child watchdog before its assertion; the isolated rerun reproduced the
+expected FITS assertion failure without a sanitizer diagnostic. The three added
+cases were then checked separately with the same instrumentation. Leak detection
+was disabled. This does not constitute a ThreadSanitizer or resource-leak audit.
+
+Real TCP accept/connect, multiple simultaneous external LX200 clients, actual
+shared-library unload and Linux/Windows execution remain outside this hardware-free
+suite. The listener contract and individual worker lifetime are tested at the
+portable I/O boundary, not over a loopback socket. No physical mount/dome/rotator
+acceptance is implied. Configuration, telescope timing and unrelated guider changes
+in the working tree were kept separate from this test-only work.
+
+To reproduce coverage, build the dedicated target in a separate TEST_BUILD with
+`MOUNT_TEST_FLAGS='-fprofile-instr-generate -fcoverage-mapping'`, run it with a
+per-process `LLVM_PROFILE_FILE` pattern, merge with `llvm-profdata`, and use
+`llvm-cov report` restricted to `indigo_drivers/agent_mount/indigo_agent_mount.c`.
+For sanitizers use `MOUNT_TEST_FLAGS='-O1 -fsanitize=address,undefined -fno-omit-frame-pointer'`
+in a different TEST_BUILD. Use `make -C indigo_test test-clean` after validation.
