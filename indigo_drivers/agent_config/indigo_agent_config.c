@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x03000011
+#define DRIVER_VERSION 0x03000012
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -728,6 +728,7 @@ static void add_profile(indigo_device *device, indigo_property *property) {
 		DEVICE_PRIVATE_DATA->profile_states = indigo_safe_realloc(DEVICE_PRIVATE_DATA->profile_states, AGENT_CONFIG_PROFILES_PROPERTY->count * sizeof(indigo_property_state));
 	}
 	DEVICE_PRIVATE_DATA->profile_states[profile - AGENT_CONFIG_PROFILES_PROPERTY->items] = property->state;
+	indigo_set_text_item_value(profile, "");
 	for (int i = 0; i < property->count; i++) {
 		indigo_item *item = property->items + i;
 		if (item->sw.value) {
