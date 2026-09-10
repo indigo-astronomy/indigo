@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x03000013
+#define DRIVER_VERSION 0x03000014
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -565,7 +565,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			if (AGENT_CONFIG_SETUP_AUTOSAVE_ITEM->sw.value) {
 				for (int i = 0; i < MAX_AGENTS; i++) {
 					pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
-					indigo_property *agent = DEVICE_PRIVATE_DATA->agents[i];
+					indigo_property *agent = DEVICE_PRIVATE_DATA->agents[i] ? indigo_copy_property(NULL, DEVICE_PRIVATE_DATA->agents[i]) : NULL;
+					pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 					if (agent) {
 						for (int j = 0; j < agent->count; j++) {
 							indigo_item *item = agent->items + j;
@@ -577,7 +578,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 							}
 						}
 					}
-					pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
+					indigo_release_property(agent);
 				}
 			}
 			indigo_uni_handle *handle = indigo_open_config_file(AGENT_CONFIG_SAVE_NAME_ITEM->text.value, 0, true, EXTENSION);

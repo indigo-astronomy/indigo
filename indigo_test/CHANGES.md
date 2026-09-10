@@ -1328,7 +1328,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `server_disappearance` | Passes after DRV-157 fix; see driver review validation. |
 | `profile_no_selection` | Passes after DRV-158 fix; see driver review validation. |
 | `capacity_restore` | Passes after DRV-159 fix; see driver review validation. |
-| `autosave_reentrant` | Fails; see DRV-160 in the driver review. |
+| `autosave_reentrant` | Passes after DRV-160 fix; see driver review validation. |
 | `concurrent_save` | Fails; see DRV-161 in the driver review. |
 | `startup_scan` | Passes; startup scan. |
 | `enumeration_filter` | Passes; enumeration filter. |
