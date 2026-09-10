@@ -2614,7 +2614,7 @@ static int darwin_abort_transfers (struct usbi_transfer *itransfer) {
     return LIBUSB_ERROR_NO_DEVICE;
   }
 
-  usbi_warn (ctx, "aborting all transactions on interface %d pipe %d", iface, pipeRef);
+  usbi_dbg (ctx, "aborting all transactions on interface %d pipe %d", iface, pipeRef);
 
   /* abort transactions */
 #if MAX_INTERFACE_VERSION >= 550
