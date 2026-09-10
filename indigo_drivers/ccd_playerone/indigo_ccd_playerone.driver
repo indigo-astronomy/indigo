@@ -1109,8 +1109,9 @@ driver playerone {
 					}
 				} else {
 					CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+					CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+					indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 				}
-				CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
 			}
 		}
 		inherited CCD_COOLER {

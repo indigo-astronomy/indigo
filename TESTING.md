@@ -2,6 +2,24 @@
 
 All testing with physical hardware or simulators is documented in this file
 
+## September 10th 2026 — Player One 0.1 s abort latency
+
+Physical Mars-C II, full 1936 × 1100 RAW8 frames, local macOS hardware client, driver 0x03000012 at `b250fa179` (URGENT abort). Production code and driver versions were not changed for this measurement.
+
+| Acquisition path | Trials | Extra frames after abort send / camera BUSY | Terminal latency min / median / max |
+| --- | --- | --- | --- |
+| Indefinite CCD_STREAMING, 0.1 s | 20 | 0 / 0 | 12.818 / 59.522 / 106.024 ms |
+| Client-managed repeated CCD_EXPOSURE, 0.1 s | 20 | 0 / 0 | 13.082 / 51.496 / 126.896 ms |
+| Imager Agent exposure batch, 0.1 s, delay 0, dithering disabled | 20 | 0 / 0 | 0.505 / 60.081 / 133.656 ms (agent terminal state) |
+
+Each trial first delivered at least three frames. Direct abort phases ranged from 0 to 90 ms in 10 ms increments; client-series aborts were explicitly issued after requesting the next exposure. Agent phases ranged from 0 to 270 ms in 30 ms increments, covering inter-frame processing and the next exposure. Delivery was observed for 600 ms after terminal abort publication. No frames arrived after terminal publication, and a fresh 0.1 s exposure succeeded after each set. Initial image-format/upload settings were restored and the camera disconnected. No guiding commands, hot-plug cycles or camera suffix writes were requested by these modes. An initial additional 20-stream run and an initial 20-agent run also delivered zero extra frames; the table contains the final controlled sets.
+
+The reported four or five extra exposures were not reproduced. These measurements count delivered CCD_IMAGE frames, not unobservable sensor integrations in continuous SDK mode. The test used an in-process client and the actual Imager Agent; network/UI delivery and the reporting user's original application/configuration are not reproduced. The timings combine queue wait, SDK stop and property publication; they do not separately measure SDK stop time or prove that priority was the original cause.
+
+A separate defect was reproduced: when CCD_EXPOSURE and CCD_STREAMING are no longer BUSY, the Player One abort handler sets ALERT and clears the switch without publishing the result. The request's initial BUSY therefore remains visible to clients. The generator suppresses the epilogue because the on_change block references acquisition_finalizer. The initial inter-exposure client-series trial received no terminal CCD_ABORT_EXPOSURE update within five seconds. In the final agent run, 9/20 trials had no camera abort terminal update even though AGENT_ABORT_PROCESS completed and no extra frames arrived; the remaining 11 camera terminal updates took 35.047–128.043 ms. This is an open status-publication defect, not evidence of four or five extra frames.
+
+Reproduce: build `make -C indigo_test build/hardware/test_ccd_playerone_hw`; explicitly run `indigo_test/build/hardware/test_ccd_playerone_hw --run --abort-latency` and `--run --abort-agent`. ABORT_LATENCY lines report frame counts and monotonic camera timestamps; AGENT_LATENCY lines report process completion. A `done_ms=-1` means no terminal camera update was observed, not zero latency. Hardware runs require USB access. Test configuration is isolated in a temporary directory; the agent selects/connects the previously disconnected camera itself.
+
 ## September 8th 2026 (macOS 26.6.2, arm64)
 
 | driver | device | Result | Comments |

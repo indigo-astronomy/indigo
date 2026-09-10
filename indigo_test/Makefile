@@ -847,16 +847,16 @@ $(INTEGRATION_BUILD)/test_ccd_playerone_sdk: integration/test_ccd_playerone_sdk.
 test-ccd-playerone-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_playerone_hw
 	$(TEST_BUILD)/hardware/test_ccd_playerone_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug)
 
-$(TEST_BUILD)/hardware/test_ccd_playerone_hw: hardware/test_ccd_playerone_hw.c ../build/drivers/indigo_ccd_playerone.a $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o | $(TEST_BUILD)/hardware
-	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_playerone.a $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS) -lPlayerOneCamera
+$(TEST_BUILD)/hardware/test_ccd_playerone_hw: hardware/test_ccd_playerone_hw.c ../build/drivers/indigo_ccd_playerone.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_playerone.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS) -lPlayerOneCamera
 
 # Dynamic-loader acceptance uses the shared bus and never saves user configuration.
 .PHONY: test-ccd-playerone-reload-hw
 test-ccd-playerone-reload-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw
 	$(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw --run
 
-$(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw: hardware/test_ccd_playerone_hw.c ../build/drivers/indigo_ccd_playerone.$(SOEXT) | $(TEST_BUILD)/hardware
-	$(CC) $(TEST_CFLAGS) -DPOA_DYNAMIC_DRIVER -DPOA_DRIVER_PATH='"$(BUILD_DRIVERS)/indigo_ccd_playerone.$(SOEXT)"' $< -o $@ $(TEST_LDFLAGS) -ldl
+$(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw: hardware/test_ccd_playerone_hw.c ../build/drivers/indigo_ccd_playerone.$(SOEXT) ../build/drivers/indigo_agent_imager.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) -DPOA_DYNAMIC_DRIVER -DPOA_DRIVER_PATH='"$(BUILD_DRIVERS)/indigo_ccd_playerone.$(SOEXT)"' $< -o $@ ../build/drivers/indigo_agent_imager.a $(TEST_LDFLAGS) -ldl
 
 # Native SX command/transfer emulation; production driver is compiled separately.
 SX_USB_TEST_REPLACEMENTS = -Dlibusb_open=sx_test_open -Dlibusb_close=sx_test_close -Dlibusb_kernel_driver_active=sx_test_kernel -Dlibusb_claim_interface=sx_test_claim -Dlibusb_get_config_descriptor=sx_test_config -Dlibusb_free_config_descriptor=sx_test_free_config -Dlibusb_bulk_transfer=sx_test_bulk -Dlibusb_ref_device=sx_test_ref -Dlibusb_unref_device=sx_test_unref -Dlibusb_get_device_descriptor=sx_test_descriptor -Dindigo_get_usb_path=sx_test_path -Dindigo_start_usb_event_handler=sx_test_usb_start -Dlibusb_hotplug_register_callback=sx_test_register -Dlibusb_hotplug_register_callback_sim=sx_test_register_sim -Dlibusb_hotplug_deregister_callback=sx_test_deregister -Dlibusb_hotplug_deregister_callback_poll=sx_test_deregister_poll -Dindigo_try_global_lock=sx_test_lock -Dindigo_global_unlock=sx_test_unlock -Dindigo_execute_handler_in=sx_test_execute_in -Dindigo_attach_device=sx_test_attach -Dindigo_detach_device=sx_test_detach -Dindigo_queue_create=sx_test_queue_create -Dindigo_execute_priority_handler_in=sx_test_execute_priority

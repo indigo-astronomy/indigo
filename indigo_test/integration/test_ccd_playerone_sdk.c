@@ -1356,6 +1356,27 @@ static void stream_errors_and_active_removal(void) {
 	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
 }
 
+static void idle_abort_publishes_completion(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	for (int completed = 0; completed < 2; completed++) {
+		if (completed) {
+			ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+		}
+		int stops = atomic_load(&cameras[0].stops);
+		for (int requested = 0; requested < 2; requested++) {
+			ASSERT_TRUE(set_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", requested));
+			ASSERT_TRUE(wait_state(0, "CCD_ABORT_EXPOSURE", INDIGO_ALERT_STATE));
+			indigo_property *p = snapshot(0, "CCD_ABORT_EXPOSURE");
+			ASSERT_TRUE(p != NULL);
+			bool reset = !p->items[0].sw.value;
+			indigo_release_property(p);
+			ASSERT_TRUE(reset);
+			ASSERT_EQ_INT(stops, atomic_load(&cameras[0].stops));
+		}
+	}
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+}
+
 static atomic_bool abort_priority_observed;
 static atomic_bool abort_priority_probe_finished;
 
@@ -2136,6 +2157,7 @@ int main(int argc, char **argv) {
 		{ "Simultaneous guide axes zero and errors", simultaneous_axes_and_zero },
 		{ "Registration and global lock rollback", registration_and_global_lock_failures },
 		{ "Streaming error active removal and replug", stream_errors_and_active_removal },
+		{ "Idle abort publishes completion and resets switch", idle_abort_publishes_completion },
 		{ "Urgent abort overtakes a ready TIME handler", abort_overtakes_ready_time_handler },
 		{ "Deterministic final frame and abort ordering", pending_frame_abort_orders },
 		{ "Temperature cooler polling and disconnected tasks", temperature_polling_and_disconnect },

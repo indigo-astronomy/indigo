@@ -13,6 +13,7 @@
 #endif
 #include <indigo/indigo_driver.h>
 #include <indigo_drivers/ccd_playerone/indigo_ccd_playerone.h>
+#include <indigo_drivers/agent_imager/indigo_agent_imager.h>
 #include "../test_runner.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
@@ -34,8 +35,15 @@ typedef struct {
 
 static observed_device devices[MAX_DEVICES];
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static int camera = -1, guider = -1;
-static bool hotplug, acceptance, suffix_only;
+static int camera = -1, guider = -1, imager = -1;
+static bool hotplug, acceptance, suffix_only, abort_latency_only, abort_agent_only, abort_previews_only;
+typedef struct {
+	bool enabled;
+	double sent, busy, done, agent_done;
+	unsigned frames_sent, frames_busy, frames_done, frames_agent_done;
+	indigo_property_state state;
+} abort_measurement;
+static abort_measurement abort_probe;
 static char config_folder[] = "/tmp/indigo_playerone_hw_XXXXXX";
 
 const char *poa_test_config_folder(void) {
@@ -96,6 +104,20 @@ static indigo_result observe(indigo_device *device, indigo_property *property, c
 			indigo_release_property(devices[d].properties[p]);
 			devices[d].properties[p] = indigo_copy_property(NULL, property);
 			devices[d].revisions[p]++;
+		}
+		if (abort_probe.enabled && d == imager && image_update && !strcmp(property->name, "AGENT_ABORT_PROCESS") && property->state != INDIGO_BUSY_STATE && abort_probe.agent_done == 0) {
+			abort_probe.agent_done = indigo_monotonic_time();
+			abort_probe.frames_agent_done = devices[camera].frames;
+		}
+		if (abort_probe.enabled && d == camera && image_update && !strcmp(property->name, "CCD_ABORT_EXPOSURE")) {
+			if (property->state == INDIGO_BUSY_STATE && abort_probe.busy == 0) {
+				abort_probe.busy = indigo_monotonic_time();
+				abort_probe.frames_busy = devices[d].frames;
+			} else if (property->state != INDIGO_BUSY_STATE && abort_probe.done == 0) {
+				abort_probe.done = indigo_monotonic_time();
+				abort_probe.frames_done = devices[d].frames;
+				abort_probe.state = property->state;
+			}
 		}
 		if (image_update && !strcmp(property->name, "CCD_IMAGE") && property->state == INDIGO_OK_STATE && property->count && property->items[0].blob.value) {
 			indigo_item *item = property->items;
@@ -410,8 +432,107 @@ static bool complete_physical_acceptance(void) {
 	return suffix_acceptance();
 }
 
+static indigo_property_state cached_state(const char *name) {
+	pthread_mutex_lock(&mutex);
+	int p = slot(camera, name);
+	indigo_property_state state = p < 0 ? INDIGO_ALERT_STATE : devices[camera].properties[p]->state;
+	pthread_mutex_unlock(&mutex);
+	return state;
+}
+
+static bool abort_latency_trials(void) {
+	indigo_property *saved_format = snapshot(camera, "CCD_IMAGE_FORMAT");
+	indigo_property *saved_upload = snapshot(camera, "CCD_UPLOAD_MODE");
+	bool ok = switch_value(camera, "CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE) && switch_value(camera, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE);
+	ok = ok && switch_value(camera, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_ALERT_STATE);
+	unsigned max_sent = 0, max_busy = 0, max_done = 0;
+	double max_latency = 0;
+	for (int mode = abort_previews_only ? 3 : (abort_agent_only ? 2 : 0); ok && mode < (abort_previews_only ? 5 : (abort_agent_only ? 3 : 2)); mode++) {
+		for (int trial = 0; ok && trial < 20; trial++) {
+			unsigned before = frames();
+			int phase_ms = (trial % 10) * (mode >= 2 ? 30 : 10);
+			if (mode >= 2) {
+				indigo_change_number_property(&client, devices[imager].name, "AGENT_IMAGER_BATCH", 3, (const char *[]){ "EXPOSURE", "COUNT", "DELAY" }, (double []){ 0.1, mode == 4 ? -1 : 100, 0 });
+				indigo_change_switch_property_1(&client, devices[imager].name, "AGENT_START_PROCESS", mode == 3 ? "PREVIEW" : (mode == 4 ? "STREAMING" : "EXPOSURE"), true);
+			} else if (mode == 0) {
+				indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.1, -1 });
+			} else {
+				indigo_change_number_property_1(&client, devices[camera].name, "CCD_EXPOSURE", "EXPOSURE", 0.1);
+			}
+			double deadline = indigo_monotonic_time() + 10, abort_at = 0;
+			while (indigo_monotonic_time() < deadline) {
+				double now = indigo_monotonic_time();
+				if (abort_at == 0 && frames() >= before + 3 && (mode != 1 || cached_state("CCD_EXPOSURE") == INDIGO_OK_STATE)) {
+					if (mode == 1) {
+						indigo_change_number_property_1(&client, devices[camera].name, "CCD_EXPOSURE", "EXPOSURE", 0.1);
+					}
+					abort_at = now + phase_ms / 1000.0;
+				}
+				if (abort_at != 0 && now >= abort_at) {
+					break;
+				}
+				if (mode == 1 && cached_state("CCD_EXPOSURE") == INDIGO_OK_STATE) {
+					indigo_change_number_property_1(&client, devices[camera].name, "CCD_EXPOSURE", "EXPOSURE", 0.1);
+				}
+				indigo_usleep(500);
+			}
+			if (abort_at == 0) {
+				fprintf(stderr, "No three-frame warmup in mode %d trial %d\n", mode, trial);
+				ok = false;
+				break;
+			}
+			pthread_mutex_lock(&mutex);
+			abort_probe = (abort_measurement){ .enabled = true, .sent = indigo_monotonic_time(), .frames_sent = devices[camera].frames };
+			pthread_mutex_unlock(&mutex);
+			indigo_change_switch_property_1(&client, devices[mode >= 2 ? imager : camera].name, mode >= 2 ? "AGENT_ABORT_PROCESS" : "CCD_ABORT_EXPOSURE", mode >= 2 ? "ABORT" : "ABORT_EXPOSURE", true);
+			deadline = indigo_monotonic_time() + 5;
+			for (;;) {
+				pthread_mutex_lock(&mutex);
+				double done = mode >= 2 ? abort_probe.agent_done : abort_probe.done;
+				pthread_mutex_unlock(&mutex);
+				if (done != 0 || indigo_monotonic_time() >= deadline) {
+					break;
+				}
+				indigo_usleep(500);
+			}
+			indigo_usleep(600000);
+			pthread_mutex_lock(&mutex);
+			abort_measurement result = abort_probe;
+			unsigned end = devices[camera].frames;
+			abort_probe.enabled = false;
+			pthread_mutex_unlock(&mutex);
+			unsigned after_sent = end - result.frames_sent, after_busy = result.busy ? end - result.frames_busy : 0, after_done = result.done ? end - result.frames_done : 0;
+			double latency = result.done ? (result.done - result.sent) * 1000 : -1;
+			printf("ABORT_LATENCY mode=%s trial=%d phase_ms=%d frames_before=%u after_send=%u after_busy=%u after_done=%u busy_ms=%.3f done_ms=%.3f state=%d\n", mode == 0 ? "stream" : (mode == 1 ? "client_series" : (mode == 2 ? "imager_batch" : (mode == 3 ? "imager_preview" : "imager_streaming"))), trial + 1, phase_ms, result.frames_sent - before, after_sent, after_busy, after_done, result.busy ? (result.busy - result.sent) * 1000 : -1, latency, result.state);
+			if (mode >= 2) {
+				printf("AGENT_LATENCY trial=%d done_ms=%.3f after_done=%u\n", trial + 1, result.agent_done ? (result.agent_done - result.sent) * 1000 : -1, result.agent_done ? end - result.frames_agent_done : 0);
+			}
+			if (after_sent > max_sent) { max_sent = after_sent; }
+			if (after_busy > max_busy) { max_busy = after_busy; }
+			if (after_done > max_done) { max_done = after_done; }
+			if (latency > max_latency) { max_latency = latency; }
+			ok = (mode >= 2 ? result.agent_done != 0 && end == result.frames_agent_done : result.busy != 0 && result.done != 0) && after_done == 0 && cached_state(mode == 0 || mode == 4 ? "CCD_STREAMING" : "CCD_EXPOSURE") != INDIGO_BUSY_STATE;
+		}
+	}
+	pthread_mutex_lock(&mutex);
+	abort_probe.enabled = false;
+	pthread_mutex_unlock(&mutex);
+	if (ok) {
+		ok = number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE);
+	}
+	if (ok) {
+		ok = switch_value(camera, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_ALERT_STATE);
+	}
+	printf("ABORT_SUMMARY max_after_send=%u max_after_busy=%u max_after_done=%u max_done_ms=%.3f success=%d\n", max_sent, max_busy, max_done, max_latency, ok);
+	bool format_restored = restore_property(saved_format);
+	bool upload_restored = restore_property(saved_upload);
+	indigo_release_property(saved_format);
+	indigo_release_property(saved_upload);
+	return ok && format_restored && upload_restored;
+}
+
 static void hardware_workflows(void) {
-	bool initialized = false;
+	bool initialized = false, agent_initialized = false;
 	CHECK(indigo_start() == INDIGO_OK);
 	CHECK(indigo_attach_client(&client) == INDIGO_OK);
 	CHECK(driver_entry(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
@@ -446,6 +567,27 @@ static void hardware_workflows(void) {
 	}
 	CHECK(camera >= 0);
 	printf("    selected: %s, guider: %s\n", devices[camera].name, guider < 0 ? "not available (SKIP guider workflows)" : devices[guider].name);
+	if (abort_latency_only) {
+		if (!abort_agent_only) {
+			CHECK(switch_value(camera, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+		}
+		if (abort_agent_only) {
+			CHECK(indigo_agent_imager(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
+			agent_initialized = true;
+			for (int d = 0; d < MAX_DEVICES; d++) {
+				if (!strcmp(devices[d].name, "Imager Agent")) {
+					imager = d;
+				}
+			}
+			CHECK(imager >= 0);
+			CHECK(switch_value(imager, "FILTER_CCD_LIST", devices[camera].name, INDIGO_OK_STATE));
+			unsigned features_revision = revision(imager, "AGENT_PROCESS_FEATURES");
+			indigo_change_switch_property_1(&client, devices[imager].name, "AGENT_PROCESS_FEATURES", "ENABLE_DITHERING", false);
+			CHECK(wait_state(imager, "AGENT_PROCESS_FEATURES", features_revision, INDIGO_OK_STATE));
+		}
+		CHECK(abort_latency_trials());
+		goto cleanup;
+	}
 	CHECK(switch_value(guider, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
 	CHECK(switch_value(camera, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
 	CHECK(switch_value(camera, "CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE));
@@ -550,6 +692,10 @@ static void hardware_workflows(void) {
 	pthread_mutex_unlock(&mutex);
 	CHECK(invalid == 0);
 cleanup:
+	if (agent_initialized) {
+		indigo_change_switch_property_1(&client, devices[imager].name, "AGENT_ABORT_PROCESS", "ABORT", true);
+		if (indigo_agent_imager(INDIGO_DRIVER_SHUTDOWN, NULL) != INDIGO_OK) { indigo_test_failures++; }
+	}
 	if (camera >= 0) {
 		// Abort any unfinished acquisition before disconnecting; disconnected properties may be unchanged.
 		indigo_change_switch_property_1(&client, devices[camera].name, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true);
@@ -564,12 +710,15 @@ cleanup:
 }
 
 int main(int argc, char **argv) {
-	if ((argc != 2 && argc != 3) || strcmp(argv[1], "--run") || (argc == 3 && strcmp(argv[2], "--hotplug") && strcmp(argv[2], "--acceptance") && strcmp(argv[2], "--suffix"))) {
-		fprintf(stderr, "Physical camera test: run explicitly with --run (or make test-ccd-playerone-hw).\n");
+	if ((argc != 2 && argc != 3) || strcmp(argv[1], "--run") || (argc == 3 && strcmp(argv[2], "--hotplug") && strcmp(argv[2], "--acceptance") && strcmp(argv[2], "--suffix") && strcmp(argv[2], "--abort-latency") && strcmp(argv[2], "--abort-agent") && strcmp(argv[2], "--abort-previews"))) {
+		fprintf(stderr, "Physical camera test: --run [--hotplug|--acceptance|--suffix|--abort-latency|--abort-agent|--abort-previews].\n");
 		return 2;
 	}
 	suffix_only = argc == 3 && !strcmp(argv[2], "--suffix");
-	hotplug = argc == 3 && !suffix_only;
+	abort_previews_only = argc == 3 && !strcmp(argv[2], "--abort-previews");
+	abort_agent_only = abort_previews_only || (argc == 3 && !strcmp(argv[2], "--abort-agent"));
+	abort_latency_only = abort_agent_only || (argc == 3 && !strcmp(argv[2], "--abort-latency"));
+	hotplug = argc == 3 && !suffix_only && !abort_latency_only;
 
 	acceptance = argc == 3 && !strcmp(argv[2], "--acceptance");
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -582,7 +731,7 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 #endif
-	const indigo_test_case tests[] = { { "Physical camera exposure, streaming, guider and reconnect", hardware_workflows } };
+	const indigo_test_case tests[] = { { abort_latency_only ? "Physical camera abort latency" : "Physical camera exposure, streaming, guider and reconnect", hardware_workflows } };
 	int result = indigo_run_tests("Player One hardware", tests, 1);
 	for (int d = 0; d < MAX_DEVICES; d++) {
 		for (int p = 0; p < MAX_PROPERTIES; p++) {

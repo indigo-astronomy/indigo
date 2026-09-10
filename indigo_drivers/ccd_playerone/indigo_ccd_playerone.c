@@ -1159,8 +1159,9 @@ static void ccd_abort_exposure_handler(indigo_device *device) {
 		}
 	} else {
 		CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 	}
-	CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
 	//- ccd.CCD_ABORT_EXPOSURE.on_change
 }
 
