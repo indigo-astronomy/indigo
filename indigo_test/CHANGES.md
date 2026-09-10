@@ -1322,7 +1322,7 @@ All names below are exact executable filters. Failing behavioral requirements ar
 | `port_namespace` | Passes after DRV-151 fix; see driver review validation. |
 | `deselection_timeout` | Passes after DRV-152 fix; see driver review validation. |
 | `restore_busy_timeout` | Passes after DRV-153 fix; see driver review validation. |
-| `profile_rejection` | Fails; see DRV-154 in the driver review. |
+| `profile_rejection` | Passes after DRV-154 fix; see driver review validation. |
 | `driver_rejection` | Fails; see DRV-155 in the driver review. |
 | `absent_agent` | Fails; see DRV-156 in the driver review. |
 | `server_disappearance` | Fails; see DRV-157 in the driver review. |

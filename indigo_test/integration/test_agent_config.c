@@ -599,6 +599,10 @@ static void profile_rejection(void) {
 	choose(profile, 0);
 	reject_profile = true;
 	ASSERT_TRUE(load("reject", INDIGO_ALERT_STATE));
+	choose(profile, 1);
+	ASSERT_TRUE(load("reject", INDIGO_ALERT_STATE));
+	reject_profile = false;
+	ASSERT_TRUE(load("reject", INDIGO_OK_STATE));
 }
 
 static void driver_rejection(void) {

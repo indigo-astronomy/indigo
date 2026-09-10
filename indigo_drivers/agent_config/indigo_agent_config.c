@@ -26,7 +26,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x0300000D
+#define DRIVER_VERSION 0x0300000E
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -82,6 +82,7 @@ typedef struct {
 	indigo_property *last_config;
 	indigo_property *drivers;
 	indigo_property *profiles;
+	indigo_property_state *profile_states;
 	indigo_property *agents[MAX_AGENTS];
 	char server[INDIGO_NAME_SIZE];
 	int restore_count;
@@ -350,6 +351,28 @@ static void process_configuration_property(indigo_device *device) {
 					if (done) {
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Selecting '%s' to '%s'", item->text.value, item->name);
 						indigo_change_switch_property_1(agent_client, item->name, PROFILE_PROPERTY_NAME, item->text.value, true); // it expects this call is actually synchronous on a local bus
+						bool restored = false;
+						for (int k = 0; k < 20; k++) {
+							bool rejected = false;
+							pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
+							for (int l = 0; l < AGENT_CONFIG_PROFILES_PROPERTY->count; l++) {
+								indigo_item *current = AGENT_CONFIG_PROFILES_PROPERTY->items + l;
+								if (!strcmp(current->name, item->name)) {
+									rejected = DEVICE_PRIVATE_DATA->profile_states[l] == INDIGO_ALERT_STATE;
+									restored = DEVICE_PRIVATE_DATA->profile_states[l] == INDIGO_OK_STATE && !strcmp(current->text.value, item->text.value);
+									break;
+								}
+							}
+							pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
+							if (restored || rejected) {
+								break;
+							}
+							indigo_usleep(500000);
+						}
+						if (!restored) {
+							DEVICE_PRIVATE_DATA->failure = true;
+							indigo_send_message(device, ALERT_PROPERTY, "'%s' profile selection failed", item->name);
+						}
 					} else {
 						DEVICE_PRIVATE_DATA->failure = true;
 						indigo_send_message(device, ALERT_PROPERTY, "'%s' profile can't be restored", item->name);
@@ -631,6 +654,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_CONFIG_LOAD_PROPERTY);
 	indigo_release_property(AGENT_CONFIG_DRIVERS_PROPERTY);
 	indigo_release_property(AGENT_CONFIG_PROFILES_PROPERTY);
+	free(DEVICE_PRIVATE_DATA->profile_states);
 	for (int i = 0; i < MAX_AGENTS; i++)
 		if (AGENT_CONFIG_AGENTS_PROPERTIES[i]) {
 			indigo_release_property(AGENT_CONFIG_AGENTS_PROPERTIES[i]);
@@ -670,7 +694,9 @@ static void add_profile(indigo_device *device, indigo_property *property) {
 		AGENT_CONFIG_PROFILES_PROPERTY = indigo_resize_property(AGENT_CONFIG_PROFILES_PROPERTY, AGENT_CONFIG_PROFILES_PROPERTY->count + 1);
 		profile = AGENT_CONFIG_PROFILES_PROPERTY->items + AGENT_CONFIG_PROFILES_PROPERTY->count - 1;
 		indigo_init_text_item(profile, property->device, property->device, "");
+		DEVICE_PRIVATE_DATA->profile_states = indigo_safe_realloc(DEVICE_PRIVATE_DATA->profile_states, AGENT_CONFIG_PROFILES_PROPERTY->count * sizeof(indigo_property_state));
 	}
+	DEVICE_PRIVATE_DATA->profile_states[profile - AGENT_CONFIG_PROFILES_PROPERTY->items] = property->state;
 	for (int i = 0; i < property->count; i++) {
 		indigo_item *item = property->items + i;
 		if (item->sw.value) {
@@ -805,6 +831,7 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 					int count = AGENT_CONFIG_PROFILES_PROPERTY->count - i - 1;
 					if (count > 0) {
 						memmove(AGENT_CONFIG_PROFILES_PROPERTY->items + i, AGENT_CONFIG_PROFILES_PROPERTY->items + i + 1, count * sizeof(indigo_item));
+						memmove(DEVICE_PRIVATE_DATA->profile_states + i, DEVICE_PRIVATE_DATA->profile_states + i + 1, count * sizeof(indigo_property_state));
 					}
 					AGENT_CONFIG_PROFILES_PROPERTY->count--;
 					break;
