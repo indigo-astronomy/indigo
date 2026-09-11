@@ -187,6 +187,8 @@ typedef struct {
 	indigo_property *properties[32];
 	int count, mask;
 	bool attached, modern, limited;
+	atomic_bool defer_enumeration, defer_site_write;
+	atomic_bool legacy_site_timer, release_site_timer, site_timer_fired;
 } peer;
 static peer peers[7];
 static const char *peer_names[] = { "Test Mount", "Test Dome", "Test Rotator", "Test GPS", "Test Joystick", "Imager Agent Test", "Guider Agent Test" };
@@ -256,6 +258,9 @@ static void publish(int index, indigo_property *p) {
 
 static indigo_result peer_enumerate(indigo_device *device, indigo_client *client, indigo_property *request) {
 	peer *p = device->private_data;
+	if (p->defer_enumeration && IS_CONNECTED && (request == NULL || !*request->name)) {
+		return INDIGO_OK;
+	}
 	if (IS_CONNECTED || p->mask == INDIGO_INTERFACE_AGENT) {
 		for (int i = 0; i < p->count; i++) {
 			if (indigo_property_match(p->properties[i], request)) {
@@ -271,6 +276,21 @@ static indigo_result peer_attach(indigo_device *device) {
 	indigo_result result = indigo_device_attach(device, "mount_agent_test_peer", 1, p->mask);
 	peer_enumerate(device, NULL, NULL);
 	return result;
+}
+
+static void peer_site_timer(indigo_device *device) {
+	peer *p = device->private_data;
+	p->site_timer_fired = true;
+	if (!p->release_site_timer) {
+		indigo_set_timer(device, 0.01, peer_site_timer, NULL);
+		return;
+	}
+	pthread_mutex_lock(&peer_mutex);
+	int index = (int)(p - peers);
+	indigo_property *site = prop(index, "GEOGRAPHIC_COORDINATES");
+	site->state = INDIGO_OK_STATE;
+	publish(index, site);
+	pthread_mutex_unlock(&peer_mutex);
 }
 
 static indigo_result peer_change(indigo_device *device, indigo_client *client, indigo_property *request) {
@@ -292,15 +312,28 @@ static indigo_result peer_change(indigo_device *device, indigo_client *client, i
 		}
 		return INDIGO_OK;
 	}
+	if (indigo_property_match(CONFIG_PROPERTY, request) && indigo_switch_match(CONFIG_SAVE_ITEM, request) && prop(index, "GEOGRAPHIC_COORDINATES")) {
+		indigo_save_property(device, NULL, prop(index, "GEOGRAPHIC_COORDINATES"));
+	}
 	pthread_mutex_lock(&peer_mutex);
 	indigo_property *target = prop(index, request->name);
 	if (target) {
+		if (!strcmp(target->name, "GEOGRAPHIC_COORDINATES") && target->state == INDIGO_BUSY_STATE) {
+			pthread_mutex_unlock(&peer_mutex);
+			return INDIGO_OK;
+		}
 		if (command_count < ARRAY_SIZE(commands)) {
 			commands[command_count++] = (command){ index, indigo_copy_property(NULL, request) };
 		}
 		indigo_property_copy_values(target, request, false);
 		target->state = motion(target->name) && index < 3 ? (reject_motion ? INDIGO_ALERT_STATE : immediate ? INDIGO_OK_STATE : INDIGO_BUSY_STATE) : INDIGO_OK_STATE;
+		if (!strcmp(target->name, "GEOGRAPHIC_COORDINATES") && (p->defer_site_write || p->legacy_site_timer)) {
+			target->state = INDIGO_BUSY_STATE;
+		}
 		publish(index, target);
+		if (!strcmp(target->name, "GEOGRAPHIC_COORDINATES") && p->legacy_site_timer) {
+			indigo_set_timer(device, 0, peer_site_timer, NULL);
+		}
 		if (strstr(target->name, "ABORT") && index < 3) {
 			for (int i = 0; i < p->count; i++) {
 				if (p->properties[i]->state == INDIGO_BUSY_STATE) {
@@ -713,6 +746,189 @@ static void sites(void) {
 	CHECK(value(AGENT, "GEOGRAPHIC_COORDINATES", "LATITUDE") == 48.125);
 	CHECK(sw(AGENT, "AGENT_SET_HOST_TIME", "MOUNT", true, INDIGO_OK_STATE));
 	CHECK(requests(0, "MOUNT_SET_HOST_TIME") == n + 1);
+}
+
+static bool saved_site(int index) {
+	REQUIRE(attach_peer(index, false, false));
+	indigo_property *site = prop(index, "GEOGRAPHIC_COORDINATES");
+	const double saved[] = { -12, 100, 300 };
+	for (int i = 0; i < 3; i++) {
+		site->items[i].number.value = site->items[i].number.target = saved[i];
+	}
+	REQUIRE(sw(peer_names[index], "CONFIG", "SAVE", true, INDIGO_OK_STATE));
+	for (int i = 0; i < 3; i++) {
+		site->items[i].number.value = site->items[i].number.target = 0;
+	}
+	return true;
+}
+
+static void filter_site_configuration(bool deferred, bool adopt) {
+	const char *items[] = { "LATITUDE", "LONGITUDE", "ELEVATION" };
+	const char *sources[] = { "MOUNT", "DOME" };
+	const double host[] = { 48.125, 17.25, 230 };
+	const double saved[] = { -12, 100, 300 };
+	for (int index = 0; index < 2; index++) {
+		for (int i = 0; i < 3; i++) {
+			CHECK(num(AGENT, "GEOGRAPHIC_COORDINATES", items[i], host[i]));
+		}
+		CHECK(saved_site(index));
+		CHECK(sw(AGENT, "AGENT_SITE_DATA_SOURCE", adopt ? sources[index] : "HOST", true, INDIGO_OK_STATE));
+		peers[index].defer_site_write = deferred;
+		int before = requests(index, "GEOGRAPHIC_COORDINATES");
+		unsigned rev = revision(AGENT, lists[index]);
+		indigo_change_switch_property_1(&client, AGENT, lists[index], peer_names[index], true);
+		CHECK(wait_request(index, "GEOGRAPHIC_COORDINATES", before));
+		if (deferred) {
+			CHECK(state(peer_names[index], "CONFIG") == INDIGO_BUSY_STATE);
+			CHECK(state(AGENT, lists[index]) == INDIGO_BUSY_STATE);
+			CHECK(state(peer_names[index], "GEOGRAPHIC_COORDINATES") == INDIGO_BUSY_STATE);
+			CHECK(snapshot(AGENT, index == 0 ? "MOUNT_GEOGRAPHIC_COORDINATES" : "DOME_GEOGRAPHIC_COORDINATES") == NULL);
+			CHECK(requests(index, "GEOGRAPHIC_COORDINATES") == before + 1);
+			// An enumeration of the current CONFIG state is not a completion acknowledgement.
+			indigo_device *device = &peers[index].device;
+			indigo_define_property(device, CONFIG_PROPERTY, NULL);
+			CHECK(state(AGENT, lists[index]) == INDIGO_BUSY_STATE);
+			peers[index].defer_site_write = false;
+			complete(index, "GEOGRAPHIC_COORDINATES", INDIGO_OK_STATE);
+		}
+		CHECK(wait_state(AGENT, lists[index], rev, INDIGO_OK_STATE));
+		CHECK(state(peer_names[index], "CONFIG") == INDIGO_OK_STATE);
+		CHECK(requests(index, "GEOGRAPHIC_COORDINATES") == before + (adopt ? 1 : 2));
+		for (int i = 0; i < 3; i++) {
+			CHECK(value(peer_names[index], "GEOGRAPHIC_COORDINATES", items[i]) == (adopt ? saved[i] : host[i]));
+			CHECK(value(AGENT, "GEOGRAPHIC_COORDINATES", items[i]) == (adopt ? saved[i] : host[i]));
+		}
+		CHECK(sw(AGENT, lists[index], "NONE", true, INDIGO_OK_STATE));
+		CHECK(sw(AGENT, "AGENT_SITE_DATA_SOURCE", "HOST", true, INDIGO_OK_STATE));
+	}
+}
+
+static void filter_site_sync(void) {
+	filter_site_configuration(false, false);
+}
+
+static void filter_site_async_host(void) {
+	filter_site_configuration(true, false);
+}
+
+static void filter_site_async_source(void) {
+	filter_site_configuration(true, true);
+}
+
+static void filter_legacy_timer(void) {
+	CHECK(num(AGENT, "GEOGRAPHIC_COORDINATES", "LATITUDE", 48.125));
+	CHECK(saved_site(0));
+	peers[0].legacy_site_timer = true;
+	CHECK(sw(AGENT, lists[0], peer_names[0], true, INDIGO_BUSY_STATE));
+	double deadline = indigo_monotonic_time() + 5;
+	while (!peers[0].site_timer_fired && indigo_monotonic_time() < deadline) {
+		indigo_usleep(1000);
+	}
+	CHECK(peers[0].site_timer_fired);
+	CHECK(state(peer_names[0], "CONFIG") == INDIGO_BUSY_STATE);
+	CHECK(state(AGENT, lists[0]) == INDIGO_BUSY_STATE);
+	CHECK(requests(0, "GEOGRAPHIC_COORDINATES") == 1);
+	peers[0].legacy_site_timer = false;
+	peers[0].release_site_timer = true;
+	CHECK(wait_state(AGENT, lists[0], 0, INDIGO_OK_STATE));
+	CHECK(state(peer_names[0], "CONFIG") == INDIGO_OK_STATE);
+	CHECK(value(peer_names[0], "GEOGRAPHIC_COORDINATES", "LATITUDE") == 48.125);
+	CHECK(requests(0, "GEOGRAPHIC_COORDINATES") == 2);
+}
+
+static void filter_ordered_restore(void) {
+	CHECK(saved_site(0));
+	CHECK(sw(AGENT, "AGENT_SITE_DATA_SOURCE", "MOUNT", true, INDIGO_OK_STATE));
+	indigo_device *device = &peers[0].device;
+	indigo_property *site = prop(0, "GEOGRAPHIC_COORDINATES");
+	indigo_uni_handle *handle = indigo_open_config_file(device->name, 0, true, ".config");
+	CHECK(handle != NULL);
+	site->items[0].number.value = site->items[0].number.target = 12;
+	CHECK(indigo_save_property(device, &handle, site) == INDIGO_OK);
+	site->items[0].number.value = site->items[0].number.target = 24;
+	CHECK(indigo_save_property(device, &handle, site) == INDIGO_OK);
+	indigo_uni_close(&handle);
+	peers[0].defer_site_write = true;
+	CHECK(sw(AGENT, lists[0], peer_names[0], true, INDIGO_BUSY_STATE));
+	CHECK(wait_request(0, "GEOGRAPHIC_COORDINATES", 0));
+	CHECK(requests(0, "GEOGRAPHIC_COORDINATES") == 1);
+	CHECK(value(peer_names[0], "GEOGRAPHIC_COORDINATES", "LATITUDE") == 12);
+	complete(0, "GEOGRAPHIC_COORDINATES", INDIGO_OK_STATE);
+	CHECK(wait_request(0, "GEOGRAPHIC_COORDINATES", 1));
+	CHECK(state(AGENT, lists[0]) == INDIGO_BUSY_STATE);
+	CHECK(state(peer_names[0], "CONFIG") == INDIGO_BUSY_STATE);
+	CHECK(value(peer_names[0], "GEOGRAPHIC_COORDINATES", "LATITUDE") == 24);
+	complete(0, "GEOGRAPHIC_COORDINATES", INDIGO_OK_STATE);
+	CHECK(wait_state(AGENT, lists[0], 0, INDIGO_OK_STATE));
+	CHECK(value(AGENT, "GEOGRAPHIC_COORDINATES", "LATITUDE") == 24);
+	CHECK(requests(0, "GEOGRAPHIC_COORDINATES") == 2);
+}
+
+static void filter_delayed_enumeration(void) {
+	CHECK(num(AGENT, "GEOGRAPHIC_COORDINATES", "LATITUDE", 48.125));
+	for (int index = 0; index < 2; index++) {
+		CHECK(attach_peer(index, false, false));
+		peers[index].defer_enumeration = true;
+		CHECK(sw(AGENT, lists[index], peer_names[index], true, INDIGO_BUSY_STATE));
+		CHECK(requests(index, "GEOGRAPHIC_COORDINATES") == 0);
+		for (int i = 0; i < peers[index].count; i++) {
+			indigo_define_property(&peers[index].device, peers[index].properties[i], NULL);
+		}
+		CHECK(state(AGENT, lists[index]) == INDIGO_BUSY_STATE);
+		CHECK(requests(index, "GEOGRAPHIC_COORDINATES") == 0);
+		// Device INFO follows specific properties; CONNECTION ends the base enumeration.
+		indigo_device_enumerate_properties(&peers[index].device, NULL, NULL);
+		CHECK(state(AGENT, lists[index]) == INDIGO_OK_STATE);
+		CHECK(requests(index, "GEOGRAPHIC_COORDINATES") == 1);
+		CHECK(value(peer_names[index], "GEOGRAPHIC_COORDINATES", "LATITUDE") == 48.125);
+		peers[index].defer_enumeration = false;
+	}
+}
+
+static void filter_restore_failure(void) {
+	CHECK(saved_site(0));
+	peers[0].defer_site_write = true;
+	CHECK(sw(AGENT, lists[0], peer_names[0], true, INDIGO_BUSY_STATE));
+	CHECK(wait_request(0, "GEOGRAPHIC_COORDINATES", 0));
+	complete(0, "GEOGRAPHIC_COORDINATES", INDIGO_ALERT_STATE);
+	CHECK(wait_state(AGENT, lists[0], 0, INDIGO_ALERT_STATE));
+	CHECK(value(AGENT, lists[0], "NONE") == 1);
+	CHECK(requests(0, "GEOGRAPHIC_COORDINATES") == 1);
+	peers[0].defer_site_write = false;
+	CHECK(select_peer(0, false, false));
+}
+
+static void filter_restore_cancel(void) {
+	CHECK(saved_site(0));
+	peers[0].defer_site_write = true;
+	CHECK(sw(AGENT, lists[0], peer_names[0], true, INDIGO_BUSY_STATE));
+	CHECK(wait_request(0, "GEOGRAPHIC_COORDINATES", 0));
+	CHECK(sw(AGENT, lists[0], "NONE", true, INDIGO_OK_STATE));
+	CHECK(wait_state(peer_names[0], "CONFIG", 0, INDIGO_ALERT_STATE));
+	CHECK(value(AGENT, lists[0], "NONE") == 1);
+	CHECK(requests(0, "GEOGRAPHIC_COORDINATES") == 1);
+	peers[0].defer_site_write = false;
+	CHECK(select_peer(0, false, false));
+}
+
+static void filter_unrelated_busy(void) {
+	CHECK(saved_site(0));
+	prop(0, "MOUNT_TRACKING")->state = INDIGO_BUSY_STATE;
+	CHECK(select_peer(0, false, false));
+	CHECK(state(AGENT, "MOUNT_TRACKING") == INDIGO_BUSY_STATE);
+	CHECK(state(peer_names[0], "CONFIG") == INDIGO_OK_STATE);
+}
+
+static void filter_restore_disconnect(void) {
+	CHECK(saved_site(0));
+	peers[0].defer_site_write = true;
+	CHECK(sw(AGENT, lists[0], peer_names[0], true, INDIGO_BUSY_STATE));
+	CHECK(wait_request(0, "GEOGRAPHIC_COORDINATES", 0));
+	CHECK(sw(peer_names[0], "CONNECTION", "DISCONNECTED", true, INDIGO_OK_STATE));
+	CHECK(wait_state(AGENT, lists[0], 0, INDIGO_ALERT_STATE));
+	CHECK(wait_state(peer_names[0], "CONFIG", 0, INDIGO_ALERT_STATE));
+	CHECK(value(AGENT, lists[0], "NONE") == 1);
+	CHECK(requests(0, "GEOGRAPHIC_COORDINATES") == 1);
 }
 
 static void configuration(void) {
@@ -1880,6 +2096,16 @@ static void remove_test_files(void) {
 }
 
 static const indigo_test_case tests[] = {
+	{ "filter legacy timer", filter_legacy_timer },
+	{ "filter ordered restore", filter_ordered_restore },
+	{ "filter site sync", filter_site_sync },
+	{ "filter site async host", filter_site_async_host },
+	{ "filter site async source", filter_site_async_source },
+	{ "filter delayed enumeration", filter_delayed_enumeration },
+	{ "filter restore failure", filter_restore_failure },
+	{ "filter restore cancel", filter_restore_cancel },
+	{ "filter unrelated busy", filter_unrelated_busy },
+	{ "filter restore disconnect", filter_restore_disconnect },
 	{ "time limit matrix", time_limit_matrix },
 	{ "rotator sync wrap", rotator_sync_wrap },
 	{ "configuration failure", configuration_failure },

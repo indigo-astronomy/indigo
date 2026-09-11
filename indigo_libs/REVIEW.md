@@ -24,6 +24,7 @@ Core INDIGO library code, including the bus, timers, protocol adapters, base dri
 | LIB-007 | Medium | `indigo_bus.c:indigo_property_copy_values`, `indigo_property_copy_targets` | Range comparisons did not reject NaN. | Closed (fixed) |
 | LIB-008 | Medium | `indigo_ccd_driver.c:92` | A countdown callback arriving after `countdown_endtime` skips the value update and deadline reset, but keeps rescheduling while exposure remains BUSY. The displayed remainder can stay positive during readout. LOW priority can aggravate delays; increasing priority alone does not fix the expired-deadline path. | Closed (fixed) |
 | LIB-009 | Low | `indigo_ccd_driver.c:78` | Countdown deadlines and remaining time use `gettimeofday()`. A wall-clock adjustment can increase the displayed remainder or move the countdown past its deadline independently of elapsed exposure time. | Closed (fixed) |
+| LIB-010 | High | `indigo_filter.c:selection_property`, `indigo_driver.c:config_restore_handler` | Controlled-device selection became OK after dispatching CONFIG.LOAD, before asynchronous saved settings and property enumeration finished. Initial agent settings could be ignored by a BUSY device or overwritten by restoration. | Closed (fixed; scoped validation) |
 
 ## Finding Summaries
 
@@ -164,3 +165,9 @@ Focused countdown inspection at `48442826a` (2026-09-09): `LIB-008` follows dire
 ## Scoped empty-START follow-up — 2026-09-10
 
 At the user's request, the shared platesolver empty-selection defect and its fix are tracked under the same [DRV-145](../indigo_drivers/REVIEW.md) as Mount/Imager/Guider. `indigo_platesolver.c` now returns OK without scheduling an exposure for an all-false START request and no longer copies values before its BUSY guard. The minimal shared-platesolver bus fixture in `indigo_test/integration/test_agent_imager.c` fails against the original object and passes after the fix. See the driver finding and `indigo_test/CHANGES.md` for scope and validation. No full library review or baseline advance is claimed.
+
+## Scoped configuration completion follow-up — 2026-09-11
+
+At the user's request, the Mount Agent workaround was removed and the correction moved to the shared filter and device framework on `refactoring` (base `14917c207`). CONFIG.LOAD now applies saved requests in order and acknowledges their property completions, including delayed timer/queue finalizers. The filter waits for that acknowledgement and stages its cache until the final CONNECTION definition before publishing selection/OK. Cancellation, disconnect and errors clear pending selection; unrelated BUSY properties are not part of the restore barrier.
+
+The guarantee depends on drivers reporting asynchronous request state correctly and on the standard specific-properties-before-base enumeration order. Older remote frameworks that acknowledge parsing immediately do not supply this completion contract. Direct `indigo_load_properties()` initialization callers retain their prior dispatch-only semantics. No blanket driver audit, hardware validation, comprehensive race-freedom claim or subtree baseline advancement is made. Regression coverage and results belong in `indigo_test/CHANGES.md`.

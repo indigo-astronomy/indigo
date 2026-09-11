@@ -548,6 +548,14 @@ After stopping task producers (for example by deregistering USB hot-plug), call 
 Generated hot-plug drivers use this shutdown sequence for libusb, SDK and HID: verify that devices are disconnected under the driver task mutex; on success stop SDK discovery retries, deregister hot-plug, cancel pending retries, drain the queue without holding the task mutex, and only then detach devices and delete the queue. A rejected shutdown leaves hot-plug and discovery active.
 
 
+### Configuration completion and filter readiness
+
+The base `CONFIG.LOAD` handler parses the selected configuration and applies its saved property requests in order. CONFIG stays BUSY until these requests complete. A property handler must publish BUSY when accepting asynchronous work and publish its final OK or ALERT only when the operation is finished, including any delayed finalizer. This contract applies equally to `indigo_set_timer()` handlers and handler queues. An unrelated periodic update must not falsely report OK while the requested operation is still pending. A queue-tail callback alone cannot establish completion because an earlier handler may have scheduled a later finalizer.
+
+The configuration observer waits only for properties requested by that restore. It does not wait for unrelated BUSY properties. Missing, hidden or read-only saved properties are skipped; a requested operation's ALERT, deletion, device disconnection or restore timeout fails CONFIG. The synchronous `indigo_load_properties()` helper used by existing driver initialization code still dispatches requests without waiting; a driver must finish its connection initialization before reporting CONNECTION/OK.
+
+The shared filter keeps a device selection BUSY until connection, configuration restore and final enumeration finish. Device-specific enumerators must emit their definitions before calling the base enumerator, which emits CONNECTION last. The filter then exposes the completed cache and signals selection/OK. Agents can safely apply their initial device policy at that point. A remote server must also implement the completion-aware CONFIG handler; a server that acknowledges only parsing does not provide the same guarantee.
+
 ### Communication with the Hardware
 
 Most of the devices use USB connection, for communicating with them the standard libusb library is used. Lubusb is well documented and will not be covered in this document.

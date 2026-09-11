@@ -1359,3 +1359,22 @@ DRV-162 extends `save_write_failure` with real failed descriptor writes and fail
 DRV-148–DRV-168 were fixed and tested individually. The suite now contains **56 cases, all passing**, including the additional queue-overflow/recovery case. The full AddressSanitizer run also passes **56/56**; the shared serialization/I/O changes pass **150 unit cases**. Original-duration tests for restore-BUSY timeout, missing-profile recovery and save/load roundtrip pass. Production library/agent and test builds succeeded for macOS arm64/x86_64; execution was on arm64. Earlier coverage percentages and 30/55 results describe the initial audit, not the fixed revision.
 
 Tests also now cover file replacement failure and preservation of existing snapshots, path validation for both slash conventions, ephemeral-port naming, status compaction, failed-operation retry, and both unload policies for newly discovered drivers. No expected-failure masking remains. `make -C indigo_test test-agent-config` is the focused complete run. Test build artifacts are cleaned after verification.
+
+### Shared filter readiness and device CONFIG completion — LIB-010 (2026-09-11)
+
+The earlier Mount Agent site workaround was reverted. On `refactoring` (base `14917c207`), selection now remains BUSY through connection, asynchronous CONFIG.LOAD completion and final property enumeration. The shared base CONFIG handler applies saved requests in order, waits for each requested property's completion and acknowledges the whole restore. Mount Agent policy and driver version are unchanged.
+
+Ten hardware-free cases were added to the existing real Mount Agent/filter/framework harness:
+
+- `filter site sync`, `filter site async host`, `filter site async source`: persist mount/dome coordinates through the real framework, connect with different initial values, delay restoration, and verify either one subsequent agent override or adoption of the saved coordinates. CONFIG and the selector stay BUSY during restoration; cached CONFIG definitions cannot finish it.
+- `filter delayed enumeration`: hold enumeration after connection, publish device-specific properties and then the base definitions; no cloned coordinate write is accepted until preparation finishes. Devices without a saved CONFIG.LOAD item still become ready.
+- `filter legacy timer`: a real `indigo_set_timer()` handler/finalizer remains pending behind an explicit gate; the filter waits for its completion and then applies agent coordinates.
+- `filter ordered restore`: two saved requests for the same property execute in file order, with separate asynchronous completions. The second cannot be rejected by the first request's BUSY guard or finish selection prematurely.
+- `filter restore failure`, `filter restore cancel`, `filter restore disconnect`: errors and interruption clear pending selection, prevent a late initial override, and permit recovery/reselection where applicable.
+- `filter unrelated busy`: an unrelated tracking property remains BUSY while configuration and selection successfully complete.
+
+Validation on macOS arm64, with production/library and normal test builds also targeting x86_64: Mount Agent **69/69**, including cleanup, and **69/69 with AddressSanitizer**; Configuration Agent **56/56**; Imager Agent **39/39**; XML protocol **5/5**. The broader Guider run passed **87/88**; the failure is the already open **DRV-130**, `dither RA projection preserves magnitude`, in unchanged Guider math. The final synchronous-completion compatibility follow-up was additionally checked with Configuration Agent `setup_restart` and the Imager/Guider configuration-reload cases. No unrelated driver fix is included.
+
+`filter site async host` was also linked against the original `14917c207` driver/filter sources and fails because CONFIG reports OK while its geographic request is still BUSY. It passes with the shared fix. This comparison uses the same test and agent sources and compiler flags.
+
+The tests use temporary isolated configuration folders and no hardware or sockets. Full-duration 120/130-second timeout paths, a real remote-server round trip, Windows/Linux execution and drivers that publish an incorrect premature OK remain outside this validation. The completion contract and enumeration order are documented in `indigo_docs/DRIVER_DEVELOPMENT_BASICS.md` and `indigo_docs/PROPERTIES.md`. Test build artifacts are cleaned after verification.

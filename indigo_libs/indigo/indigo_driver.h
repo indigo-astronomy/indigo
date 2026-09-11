@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -244,6 +244,7 @@ extern "C" {
 
 typedef struct {
 	indigo_uni_handle *property_save_file_handle;            ///< handle for property save
+	void *config_restore;                      ///< configuration restore observer and pending requests
 	pthread_mutex_t config_mutex;							///< mutex for configuration load/save synchronisation
 	pthread_mutex_t device_mutex;							///< mutex for synchronising multi-device access over single low level connection
 	indigo_timer *timers;											///< active timer list

@@ -117,7 +117,7 @@ For CCD, mount, wheel, focuser, rotator, guider, AO and GPS validation, follow t
 - Preserve license headers in existing files and use the same header style for new source/header files.
 - Avoid unrelated refactors, whitespace sweeps, and broad mechanical changes.
 - Avoid destructive commands such as `git clean`, `git reset`, and broad file removal unless explicitly requested.
-- For automatically refactored code, preserve the existing license header, update its copyright year or year range to include the current year, and append a notice after the license header stating which agent refactored it.
+- For automatically refactored code, preserve the existing license header and update its copyright year or year range to include the current year.
 
 ## AI Usage Conduct
 

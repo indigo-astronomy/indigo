@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -134,6 +134,7 @@ typedef struct {
 	char call_back_url[INDIGO_NAME_SIZE];
 	indigo_device *device;
 	indigo_client *client;
+	indigo_result (*change_property)(indigo_client *, indigo_property *);
 	int count;
 	indigo_property **properties;
 	pthread_mutex_t mutex;
@@ -293,7 +294,7 @@ static void *new_text_vector_handler(parser_state state, parser_context *context
 			property->access_token = strtol(value, NULL, 16);
 		}
 	} else if (state == END_TAG_STATE) {
-		indigo_change_property(client, property);
+		context->change_property(client, property);
 		indigo_clear_property(property);
 		return top_level_handler;
 	}
@@ -334,7 +335,7 @@ static void *new_number_vector_handler(parser_state state, parser_context *conte
 			property->access_token = strtol(value, NULL, 16);
 		}
 	} else if (state == END_TAG_STATE) {
-		indigo_change_property(client, property);
+		context->change_property(client, property);
 		indigo_clear_property(property);
 		return top_level_handler;
 	}
@@ -376,7 +377,7 @@ static void *new_switch_vector_handler(parser_state state, parser_context *conte
 		}
 		return new_switch_vector_handler;
 	} else if (state == END_TAG_STATE) {
-		indigo_change_property(client, property);
+		context->change_property(client, property);
 		indigo_clear_property(property);
 		return top_level_handler;
 	}
@@ -425,7 +426,7 @@ static void *new_blob_vector_handler(parser_state state, parser_context *context
 			}
 		}
 		property->perm = INDIGO_WO_PERM;
-		indigo_change_property(client, property);
+		context->change_property(client, property);
 		indigo_clear_property(property);
 		return top_level_handler;
 	}
@@ -1341,6 +1342,10 @@ static void *top_level_handler(parser_state state, parser_context *context, char
 }
 
 void indigo_xml_parse(indigo_device *device, indigo_client *client) {
+	indigo_xml_parse_with_callback(device, client, NULL);
+}
+
+void indigo_xml_parse_with_callback(indigo_device *device, indigo_client *client, indigo_result (*change_property)(indigo_client *, indigo_property *)) {
 	char *buffer = indigo_safe_malloc(BUFFER_SIZE + 3); /* BUFFER_SIZE % 4 == 0 and keep always +3 for base64 alignmet */
 	char *value_buffer = indigo_safe_malloc(BUFFER_SIZE + 1); /* +1 to accomodate \0" */
 	char *name_buffer = indigo_safe_malloc(INDIGO_NAME_SIZE);
@@ -1367,6 +1372,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	parser_context *context = indigo_safe_malloc(sizeof(parser_context));
 	context->client = client;
 	context->device = device;
+	context->change_property = change_property ? change_property : indigo_change_property;
 	pthread_mutex_init(&context->mutex, NULL);
 	if (device != NULL) {
 		context->count = 32;

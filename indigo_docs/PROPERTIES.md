@@ -39,6 +39,8 @@ properties are first of all defined memory structures which are, if needed, mapp
 |  |  |  |  | USER | yes | User name |
 | ADDITIONAL_INSTANCES | number | no | no | COUNT | yes | Hidden by default. Sets the number of additional device instances to create. |
 
+`CONFIG.LOAD` sets `CONFIG` to BUSY while the base framework applies saved requests in file order. Each available writable property must publish a new completion update after its request; BUSY keeps the restore pending, and ALERT fails it. CONFIG becomes OK only after all requests complete, or ALERT on failure, disconnection or a 120-second restore timeout. Properties no longer exposed by the device are skipped. Fully synchronous restores can complete within the initiating call; asynchronous handlers and finalizers are awaited. The direct `indigo_load_properties()` helper retains its existing dispatch-only behavior.
+
 Properties CONNECTION through ADDITIONAL_INSTANCES are implemented by the driver base class in [indigo_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_driver.c). GEOGRAPHIC_COORDINATES and UTC_TIME are implemented in the mount, GPS, and dome driver base classes.
 
 ## CCD specific properties
@@ -455,6 +457,8 @@ Auxiliary property names are defined in `indigo_libs/indigo/indigo_names.h`; aux
 ## Agent filter properties
 
 All agents inherit a set of device-selector and relation properties from the agent filter base class. Each agent enables only the device-list properties relevant to its function; the rest remain hidden.
+
+A controlled-device selector remains BUSY through connection, CONFIG.LOAD (when available), and enumeration of the resulting properties. The filter waits for a new CONFIG completion update, not a cached definition. It stages the cloned properties until the base enumerator's final CONNECTION definition, makes the complete cache available, and then publishes the ready selection as OK. This lets each agent apply its own policy to the initialized device, including adopting or overriding its restored site coordinates. Selecting NONE cancels preparation; connection/configuration failure or a 130-second preparation timeout clears the selection and reports ALERT. Related-device and related-agent selectors retain their existing behavior.
 
 | Property name | Type | RO | Required | Item name | Required | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
