@@ -66,6 +66,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_guider_asi_sdk \
 	$(INTEGRATION_BUILD)/test_generator_architecture \
 	$(INTEGRATION_BUILD)/test_wheel_playerone_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_playerone_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_asi_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_sx_usb \
 	$(INTEGRATION_BUILD)/test_wheel_astroasis_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_touptek_sdk \
@@ -856,6 +857,22 @@ $(INTEGRATION_BUILD)/test_ccd_playerone_sdk: integration/test_ccd_playerone_sdk.
 	$(CC) $(TEST_CFLAGS) $(POA_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_playerone_sdk_driver.o $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
 
 
+# Physical ASI hardware is opt-in and excluded from normal integration tests.
+.PHONY: test-ccd-asi-hw
+test-ccd-asi-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_asi_hw
+	$(TEST_BUILD)/hardware/test_ccd_asi_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug)
+
+$(TEST_BUILD)/hardware/test_ccd_asi_hw: hardware/test_ccd_asi_hw.c ../build/drivers/indigo_ccd_asi.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_asi_sdk_framework.o | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_asi.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_asi_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS) $(if $(filter Darwin,$(OS_DETECTED)),-L../indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS) -lASICamera2
+
+# Dynamic-loader acceptance uses the shared bus and never saves user configuration.
+.PHONY: test-ccd-asi-reload-hw
+test-ccd-asi-reload-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_asi_reload_hw
+	$(TEST_BUILD)/hardware/test_ccd_asi_reload_hw --run
+
+$(TEST_BUILD)/hardware/test_ccd_asi_reload_hw: hardware/test_ccd_asi_hw.c ../build/drivers/indigo_ccd_asi.$(SOEXT) ../build/drivers/indigo_agent_imager.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) -DASI_DYNAMIC_DRIVER -DASI_DRIVER_PATH='"$(BUILD_DRIVERS)/indigo_ccd_asi.$(SOEXT)"' $< -o $@ ../build/drivers/indigo_agent_imager.a $(TEST_LDFLAGS) -ldl
+
 # Physical Player One hardware is opt-in and excluded from normal integration tests.
 .PHONY: test-ccd-playerone-hw
 test-ccd-playerone-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_playerone_hw
@@ -1136,3 +1153,25 @@ $(INTEGRATION_BUILD)/test_agent_config: integration/test_agent_config.c test_run
 .PHONY: test-agent-config
 test-agent-config: check-lib $(INTEGRATION_BUILD)/test_agent_config
 	$(INTEGRATION_BUILD)/test_agent_config
+
+ASI_CCD_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_asi/bin_externals/libasicamera/include
+ASI_CCD_SDK_TEST_REPLACEMENTS = -Dindigo_monotonic_time=asi_test_monotonic_time -Dindigo_queue_create=asi_test_queue_create -Dindigo_execute_handler_in=asi_test_execute_in -Dlibusb_hotplug_register_callback_sim=asi_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=asi_test_usb_deregister_poll -Dindigo_start_usb_event_handler=asi_test_usb_start -Dindigo_try_global_lock=asi_test_lock -Dindigo_global_unlock=asi_test_unlock -Dindigo_attach_device=asi_test_attach -Dindigo_detach_device=asi_test_detach -Dlibusb_hotplug_register_callback=asi_test_usb_register -Dlibusb_hotplug_deregister_callback=asi_test_usb_deregister -Dlibusb_ref_device=asi_test_usb_ref -Dlibusb_unref_device=asi_test_usb_unref -Dlibusb_get_device_descriptor=asi_test_usb_descriptor
+
+$(INTEGRATION_BUILD)/ccd_asi_sdk_driver.o: ../indigo_drivers/ccd_asi/indigo_ccd_asi.c ../indigo_drivers/ccd_asi/indigo_ccd_asi.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(ASI_CCD_SDK_TEST_INCLUDE) $(ASI_CCD_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/ccd_asi_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=asi_test_config_folder -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_asi_sdk: integration/test_ccd_asi_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_asi_sdk_driver.o $(INTEGRATION_BUILD)/ccd_asi_sdk_framework.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(ASI_CCD_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_asi_sdk_driver.o $(INTEGRATION_BUILD)/ccd_asi_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+
+.PHONY: test-ccd-asi-sdk
+test-ccd-asi-sdk: $(INTEGRATION_BUILD)/test_ccd_asi_sdk
+	$(INTEGRATION_BUILD)/test_ccd_asi_sdk
+
+# Optional ASI guide ON/OFF statistics, excluded from normal tests.
+.PHONY: benchmark-ccd-asi-guide
+benchmark-ccd-asi-guide: $(INTEGRATION_BUILD)/test_ccd_asi_sdk
+	$(INTEGRATION_BUILD)/test_ccd_asi_sdk --timing

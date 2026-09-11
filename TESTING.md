@@ -2,6 +2,21 @@
 
 All testing with physical hardware or simulators is documented in this file
 
+## September 11th 2026 — ASI generator migration acceptance
+
+macOS 26.6.2 arm64, bundled ASI SDK 1.41.0.0, final driver 0x0300003A in the migration worktree. Opt-in target: `make -C indigo_test test-ccd-asi-hw`, with `INDIGO_TEST_DEVICE` selecting the exact camera name. All 50 fake SDK tests and ASan/UBSan also pass.
+
+| Device | Result | Evidence |
+| --- | --- | --- |
+| ASI120MC-S | PASS | All four pixel formats and five frame types, ROI/bin/configuration, controls/presets, fractional/long/short exposures, exact finite and sustained streams, abort/restart, all ST4 directions, simultaneous axes, BUSY reversal rejection, zero requests and sibling-preserving disconnect. 102 frames/~10 s at 0.1 s; long-stream abort 2.502 s, following short snapshot recovered in 2.645 s including one retry. |
+| ASI294MC Pro | PASS | Same applicable CCD suite; cooler target 21 °C settled at 21.4 °C with 5% power, original target/cooler restored. 108 frames/~10 s; long-stream abort 0.345 s, subsequent short snapshot passed. ST4 is not present. |
+
+Both passed physical USB removal/replug while idle, exposing and streaming; ASI120 also passed pending-ST4 removal/replug. Every cycle restored a fresh image/pulse as applicable, and the other connected camera could acquire while the selected camera was absent. Both passed eight-byte suffix write/replug/name verification, clear/replug and original empty suffix restoration. Final-version driver dlclose/dlopen and fresh image passed on both, in addition to shutdown/reinitialization. All modified settings were restored, logical devices disconnected and test builds cleaned.
+
+The unchanged d373999 driver reproduces ASI120 ASI_EXP_FAILED after long-stream abort; the same sequence passes on ASI294. Final ASI120 recovery permits up to three queued retries. Separate direct-SDK diagnosis measured 0.958/1.673 s short-video frame intervals after a long snapshot abort; ASI120 video readout now allows at least five seconds per frame with 20 ms SDK transactions. Exhausted retries and genuine SDK failures retain ALERT.
+
+See `indigo_drivers/ccd_asi/REFACTOR.md` for atomic checkboxes, H01–H08 mapping and detailed limits. Exact physical unplug inside a brief SDK readout is covered deterministically by gated fake SDK tests, not claimed as synchronized cable testing. Linux/Windows and Intel runtime, unavailable models, optical calibration and electrical ST4 timing were not validated.
+
 ## September 10th 2026 — Player One 0.1 s abort latency
 
 Physical Mars-C II, full 1936 × 1100 RAW8 frames, local macOS hardware client, driver 0x03000012 at `b250fa179` (URGENT abort). Production code and driver versions were not changed for this measurement.
@@ -114,3 +129,9 @@ Available equipment was confirmed by the user: only Mars-C II; no second/cooled 
 | aux_focuser_lunatico | Armadillo Controller | :white_check_mark: | - |
 | aux_rotator_lunatico | Armadillo Controller | :white_check_mark: | - |
 | indigo_gps_nmea | Ublox GPS mouse | :white_check_mark: | There was a bug in the driver -> indigo_set_timer(device, 0, gps_connect_callback, &PRIVATE_DATA->timer_callback) should be  indigo_set_timer(device, 0, gps_connect_callback, NULL) |
+
+ASI294MC Pro original-driver cross-check: unchanged d373999 baseline passed 1.5 s/2.5 s snapshots, a 100-frame 2.5 s stream aborted after three received frames, and the subsequent 0.1 s snapshot. Original abort delivered a fourth streaming frame and completed in 3.058 s. Unlike ASI120MC-S, this sequence passes on ASI294MC Pro with both original and migrated drivers.
+
+ASI294MC Pro physical USB removal/replug passed while idle, streaming at 0.1 s, and exposing for 120 s. Every cycle recovered with a fresh 0.1 s image; removal-related SDK read/stop/close errors did not prevent cleanup or rediscovery. The user performed the cable cycles.
+
+ASI120MC-S resumed physical tests at version 0x03000038 passed idle, active 120 s exposure, active streaming and 60 s ST4 pulse USB removal/replug. Each restored a fresh 0.1 s image and guide pulse; ASI294 stayed connected and acquired during each ASI120 absence. Eight-byte INDIGOT1 suffix write/replug verified both logical names, then clear/replug restored the original empty suffix and names. ASI294 passed the same suffix workflow while ASI120 acquired during its absence. Both cameras were restored and disconnected after these cycles. The earlier long-exposure cycle whose exposure finished before unplug counts only as an idle cycle; the dedicated active-exposure test supplies active-removal evidence.

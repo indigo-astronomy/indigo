@@ -954,9 +954,9 @@ static void *queue_func(indigo_queue *queue) {
 			if (runnable_task->task_mutex) { // if there is specific mutex for task, unlock it
 				pthread_mutex_unlock(runnable_task->task_mutex);
 			}
-			indigo_safe_free(runnable_task);
 			pthread_mutex_lock(&queue->mutex);
 			queue->running_task = NULL;
+			indigo_safe_free(runnable_task);
 			queue->running = false;
 			pthread_cond_broadcast(&queue->cond);
 			pthread_mutex_unlock(&queue->mutex);

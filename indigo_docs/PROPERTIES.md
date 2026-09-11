@@ -872,11 +872,11 @@ Source: `indigo_drivers/aux_wcv4ec/indigo_aux_wcv4ec.c`.
 
 ### ccd_asi
 
-Custom properties: `ASI_ADVANCED`, `ASI_CUSTOM_SUFFIX`, `ASI_PRESETS`, `PIXEL_FORMAT`.
+Custom properties: `X_ADVANCED`, `X_CUSTOM_SUFFIX`, `X_PRESETS`, `X_PIXEL_FORMAT`.
 
 Driver-specific use of existing properties: `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_EGAIN`, `CCD_EXPOSURE`, `CCD_GAIN`, `CCD_GAMMA`, `CCD_IMAGE_FORMAT`, `CCD_MODE`, `CCD_OFFSET`, `CCD_STREAMING`, `CCD_STREAMING_SETTINGS`, `CCD_TEMPERATURE`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`.
 
-Source: `indigo_drivers/ccd_asi/indigo_ccd_asi.c`.
+Source: `indigo_drivers/ccd_asi/indigo_ccd_asi.driver`.
 
 ### ccd_atik
 

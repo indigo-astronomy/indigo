@@ -2520,6 +2520,10 @@
 		59910A813052E5E400FB1C2F /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
 		59910A823052E5E400FB1C2F /* style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = style.css; sourceTree = "<group>"; };
 		59910A843052E5E400FB1C2F /* VALIDATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = VALIDATION.md; sourceTree = "<group>"; };
+		59910AA13054814D00FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		59910AA23054836E00FB1C2F /* test_agent_config.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_config.c; sourceTree = "<group>"; };
+		59910AA33054836E00FB1C2F /* test_agent_mount.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_mount.c; sourceTree = "<group>"; };
+		59910AA43054836E00FB1C2F /* test_ccd_asi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_asi_sdk.c; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -5314,11 +5318,13 @@
 		C0DE20260909000500000002 /* indigo_focuser_ioptron.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_ioptron.driver; sourceTree = "<group>"; };
 		C0DE20260909000600000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260909000600000002 /* indigo_focuser_efa.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_efa.driver; sourceTree = "<group>"; };
+		C0DE20260911000100000002 /* indigo_ccd_asi.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_asi.driver; sourceTree = "<group>"; };
 		C69535F5A30EBCFF42E1200F /* test_gps_nmea_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_nmea_transport.c; sourceTree = "<group>"; };
 		C8683D8A00D36FB4420DE7FD /* test_aux_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_dragonfly_simulator.c; sourceTree = "<group>"; };
 		E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_usb_outputs.c; sourceTree = "<group>"; };
 		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
 		FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_simulator_common.h; sourceTree = "<group>"; };
+		C0DE20260911000100000003 /* test_ccd_asi_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_asi_hw.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -5496,9 +5502,11 @@
 			isa = PBXGroup;
 			children = (
 				594107CD1EC8E95300C44F92 /* README.md */,
+				59910AA13054814D00FB1C2F /* REFACTOR.md */,
 				59D9684721A302730069A64C /* Makefile.inc */,
 				590A86411DB80A04002F12FB /* indigo_ccd_asi.h */,
 				590A86401DB80A04002F12FB /* indigo_ccd_asi.c */,
+				C0DE20260911000100000002 /* indigo_ccd_asi.driver */,
 				590A863F1DB80A04002F12FB /* indigo_ccd_asi_main.c */,
 				59019E0D1DE1125900CCB3ED /* bin_externals */,
 			);
@@ -13330,6 +13338,9 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				59910AA23054836E00FB1C2F /* test_agent_config.c */,
+				59910AA33054836E00FB1C2F /* test_agent_mount.c */,
+				59910AA43054836E00FB1C2F /* test_ccd_asi_sdk.c */,
 				59910A763052B3A100FB1C2F /* test_agent_guider.c */,
 				59910A59305289D700FB1C2F /* abort_queue_test_common.h */,
 				59910A5A305289D700FB1C2F /* test_agent_imager.c */,
@@ -13809,6 +13820,7 @@
 		9D239B3E30500558002E0722 /* hardware */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260911000100000003 /* test_ccd_asi_hw.c */,
 				C0DE20260908000200000003 /* test_ccd_playerone_hw.c */,
 				9D239B3D30500558002E0722 /* test_ccd_touptek_hw.c */,
 			);

@@ -1378,3 +1378,54 @@ Validation on macOS arm64, with production/library and normal test builds also t
 `filter site async host` was also linked against the original `14917c207` driver/filter sources and fails because CONFIG reports OK while its geographic request is still BUSY. It passes with the shared fix. This comparison uses the same test and agent sources and compiler flags.
 
 The tests use temporary isolated configuration folders and no hardware or sockets. Full-duration 120/130-second timeout paths, a real remote-server round trip, Windows/Linux execution and drivers that publish an incorrect premature OK remain outside this validation. The completion contract and enumeration order are documented in `indigo_docs/DRIVER_DEVELOPMENT_BASICS.md` and `indigo_docs/PROPERTIES.md`. Test build artifacts are cleaned after verification.
+
+## 2026-09-11 — ASI CCD migration baseline (in progress)
+
+Added `integration/test_ccd_asi_sdk.c` and the `test-ccd-asi-sdk` target, registered in normal integration tests and Xcode. Production driver is a separate object linked to fake ASI/libusb boundaries and real framework timers/queues; configuration is isolated. Initial seven cases map to F02–F06/F08–F11 in `indigo_drivers/ccd_asi/REFACTOR.md`: property/image/config-save baseline, finite video, guider/shared session, Open/Init rollback, format/ROI payloads, config roundtrip and readout recovery. This is a seed suite, not complete driver coverage.
+
+Baseline functional success: properties/image/save, finite video, guider sharing, Open/Init rollback and read failure/reacquire. Cleanup detects the original driver's extra global unlock; Y8 Bayer metadata and configuration roundtrip remain failing/unresolved. RGB fixture corrected to match original BGR image handoff. Failed checks remain active for subsequent fixes. Remaining F01–F12 adversarial cases, sanitizer acceptance and H01–H08 hardware tests are pending; available hardware is ASI120MC-S and ASI294MC Pro. The initial attach crash disappeared after rebuilding stale framework objects against current headers; no production source fix was made for it.
+
+ASI checkpoints 2–4: isolated formatting preserves non-comment/non-brace token sequence; four X_ property names and SAVE/LOAD roundtrip pass. The default output-directory fixture issue was corrected with CCD_LOCAL_MODE.DIR in temporary storage. The full 12-case handwritten-driver suite now passes, including cleanup and Y8/BGR/RAW payload assertions, immediate start failure, advanced write failure, six initialization-read rollback points, ROI-read failure and temperature-read failure. Discovery/race/profile expansion and physical acceptance remain pending. See the driver's REFACTOR execution record for source-version progression and remaining scope.
+
+ASI checkpoint 5: 16 named fake SDK cases pass against version 0x03000031. Added long indefinite video abort/restart, urgent abort before queued start, idle abort, all guide directions and disconnect cleanup. SDK calls requiring open are checked off the test bus thread. Full F01–F12 acceptance and physical ASI120MC-S/ASI294MC Pro tests remain pending; see ccd_asi/REFACTOR.md.
+
+ASI acceptance expansion: Matrix cases cover discovery filtering/retries, sparse SDK ids/reordered events, name collisions, attach/INIT rollback, malformed identity/geometry, limited formats/bins, controls/presets/suffix failures, snapshot status, video start/read/stop/timeout, guide errors, gated abort/readout/disconnect and fractional countdown. Edges cases cover capability rebuild, malformed control output, cooling read/write/settling, setup failure stages, conflicts, ASI120 cooldown, final-frame video abort orders and five-slot capacity/shutdown. Physical CONFIG restore reproduced unnecessary writes of unchanged SDK controls; `Unchanged advanced controls` fails before version 0x03000034 and passes afterward. ASan exposed running-task lifetime in indigo_timer.c; retirement now occurs under queue mutex. Device INFO percent names now use literal text formatting. Final matrix mapping/results and remaining gaps are tracked by checkboxes in ccd_asi/REFACTOR.md.
+
+### ASI acceptance mapping update (2026-09-11)
+
+All functions are in `indigo_test/integration/test_ccd_asi_sdk.c`. This mapping identifies coverage, not blanket completion of every requirement in each family.
+
+| Family | Named test functions |
+| --- | --- |
+| F01 | `discovery_identity_and_reordering`, `discovery_filter_failures_retry`, `discovery_attach_and_init_rollback`, `malformed_identity_recovery`, `shutdown_pending_discovery_and_capacity` |
+| F02 | `properties_and_exposure`, `open_init_rollback`, `initialization_read_rollback`, `guider_shared_session`, `capability_rebuild_and_cooling`, `control_metadata_rollback` |
+| F03 | `formats_and_roi`, `limited_formats_and_bins`, `malformed_geometry_and_recovery`, `acquisition_conflicts_preserve_configuration` |
+| F04 | `frame_types_and_fractional_countdown`, `setup_write_origin_and_control_failures`, `setup_read_failure_recovers` |
+| F05 | `properties_and_exposure`, `start_failure_is_immediate`, `failed_readout_recovers`, `exposure_status_failures`, `snapshot_watchdog_recovery`, `asi120_family_cooldown_and_unity` |
+| F06 | `finite_stream`, `long_stream_abort_restart`, `video_error_paths`, `finite_video_abort_and_timeout` |
+| F07 | `abort_overtakes_pending_start`, `idle_abort_terminal`, `readout_abort_and_restart`, `video_final_frame_abort_orders`, `frame_types_and_fractional_countdown` |
+| F08 | `control_failures_and_presets`, `advanced_failure_is_alert`, `unchanged_advanced_controls_are_not_written`, `malformed_numeric_readback`, `control_metadata_rollback`, `acquisition_conflicts_preserve_configuration` |
+| F09 | `configuration_roundtrip`, `suffix_boundaries_and_failure`, `discovery_identity_and_reordering`, `malformed_identity_recovery` |
+| F10 | `temperature_read_failure`, `capability_rebuild_and_cooling`, `cooling_reads_writes_and_settling`, `initialization_read_rollback` |
+| F11 | `guide_all_axes_and_disconnect`, `guide_failures_and_overlap`, `disconnect_readout_with_sibling`, `unplug_active_and_replug`, `shutdown_pending_discovery_and_capacity` |
+| F12 | `guide_timing_measurements (--timing only)` |
+
+Still to close: explicit retry exhaustion, opposed guide-item requests, and gated USB removal during video/readout/poll. Electrical guide timing, optical color correctness and real vendor blocking behavior require hardware evidence.
+
+The untouched d373999 ASI120MC-S hardware baseline reproduces the short snapshot failure after long-stream abort (ASI_EXP_FAILED); migration hardware acceptance remains open. Static and dynamic hardware harnesses compile and remain opt-in.
+
+ASI sensor-profile closure: `sensor_only_and_sensor_absent` and `limited_formats_and_bins` pass with realistic absence of cooler controls; combined missing/reversed control enumeration is now supported by the fake. Full pre-addition 43-case suite passed; 44 cases are now registered, with final full/sanitized rerun pending.
+
+Final instrumented 44-case ASI suite passed (driver 0x03000035), including the new sensor profiles. ASan/UBSan instrumented driver/fake and bus/base/CCD/guider/timer/I/O/RAW helpers; vendor codecs and remaining archive objects were not instrumented. Existing full timer unit suite passed. Physical ASI294MC Pro also passed actual dynamic-driver dlclose/dlopen with a fresh image afterward.
+
+ASI final edge closure: `discovery_retry_exhaustion`, `opposed_guide_requests`, and `unplug_during_sdk_read` pass. The latter gates SDK snapshot/video/temperature reads across removal and verifies fresh acquisitions after replug. Complete 47-case normal and ASan/UBSan runs pass. Inherited-property inventory audit remains outstanding; physical cable/suffix tests remain pending.
+
+ASI F01–F12 acceptance: 48 normal cases pass, and all 48 pass with ASan/UBSan. Added `property_inventory` for common/CCD/guider properties and interface bits, plus zero-count streaming in `finite_stream`; no SDK start or image occurs for zero count. Corrected the class inventory spelling of CCD_REMOVE_FITS_HEADER from the authoritative indigo_names.h. Electrical/optical hardware checks remain separate.
+
+ASI120 SDK recovery regression: `asi120_failed_snapshot_retry` adds the 49th normal case, covering a single delayed retry after failed status, exact fractional exposure/dark argument, repeated failure, abort/disconnect during retry delay, surviving guider, and SDK stop/control/start errors. The regression failed against version 0x03000035. Production version 0x03000038 uses StopExposure, 150 ms queued cooldown, exact exposure write and one retry; full rerun is pending.
+
+ASI final fake acceptance at version 0x0300003A: all 50 normal cases pass, as does the complete ASan/UBSan run with the previously documented instrumentation scope. `asi120_failed_snapshot_retry` now covers up to three queued retries, exact 1.5 s dark exposure, four failures producing ALERT, abort/disconnect and stop/control/start failures. `asi120_video_settling` adds delayed successive short-video frames, a bounded watchdog and recovery. Both expanded regressions failed before their respective fixes. Real SDK diagnosis measured 0.958 s and 1.673 s video read intervals after aborting a 5 s snapshot; ASI120's video allowance is now at least five seconds with unchanged 20 ms SDK transactions.
+
+Physical acceptance expansion: idle/exposure/stream/ST4 USB cycles and suffix write/replug/clear/replug pass on ASI120MC-S; ASI294MC Pro passes its idle/exposure/stream and suffix cycles. Each selected-camera removal leaves the other camera able to acquire. Hardware tests additionally exercise all frame types, simultaneous guide axes, silent same-axis BUSY rejection, zero requests, and guider disconnect with CCD survival. H01–H08 final results remain tracked in the driver's Atomic implementation sequence and TESTING.md; no electrical ST4 or optical calibration claim.
+
+Final physical acceptance completed on both ASI120MC-S and ASI294MC Pro at version 0x0300003A, including all five frame types, shared guider lifecycle, USB/suffix cycles and final dynamic reload. See TESTING.md and the completed H01–H08 table in ccd_asi/REFACTOR.md for measured results and explicit applicability limits. Both cameras restored/disconnected and `test-clean` completed.
