@@ -41,6 +41,17 @@ properties are first of all defined memory structures which are, if needed, mapp
 
 Properties CONNECTION through ADDITIONAL_INSTANCES are implemented by the driver base class in [indigo_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_driver.c). GEOGRAPHIC_COORDINATES and UTC_TIME are implemented in the mount, GPS, and dome driver base classes.
 
+## Serial flow control
+
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| FLOW_CONTROL | switch | no | no | ON | yes | Enable RTS/CTS hardware flow control (default). Select exactly one item. |
+|  |  |  |  | OFF | yes | Disable RTS/CTS hardware flow control. |
+
+Implemented by [indigo_mount_temma.c](../indigo_drivers/mount_temma/indigo_mount_temma.c).
+Available before connection; changes require both the mount and guider to be disconnected.
+The selection is saved with CONFIG.SAVE.
+
 ## CCD specific properties
 
 | Property name | Type | RO | Required | Item name | Required | Comments |
