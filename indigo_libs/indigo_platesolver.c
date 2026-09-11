@@ -239,7 +239,11 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 			indigo_usleep(10000);
 		}
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state != INDIGO_BUSY_STATE) {
-			indigo_error("Mount Agent didn't become busy in 1s");
+			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state == INDIGO_ALERT_STATE) {
+				indigo_error("Mount Agent %s failed", operation);
+			} else {
+				indigo_error("Mount Agent didn't become busy in 1s");
+			}
 			return false;
 		}
 		for (int i = 0; i < 6000; i++) { // wait 60s to become not BUSY
@@ -254,7 +258,11 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 			indigo_usleep(10000);
 		}
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state != INDIGO_OK_STATE) {
-			indigo_error("Mount Agent didn't finish in 60s");
+			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state == INDIGO_BUSY_STATE) {
+				indigo_error("Mount Agent didn't finish in 60s");
+			} else {
+				indigo_error("Mount Agent %s failed", operation);
+			}
 			return false;
 		}
 		indigo_sleep(settle_time);
