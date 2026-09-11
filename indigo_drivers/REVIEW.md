@@ -77,6 +77,8 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-036 | High | `mount_synscan/indigo_mount_synscan_driver.c:75` | `synscan_open()` parses `synscan://host:port` by copying `colon - host` bytes into `char host_name[INDIGO_NAME_SIZE]` with no length check and no guaranteed terminator. A long user-supplied `DEVICE_PORT` host segment can overflow the stack before `indigo_open_udp()` is called. | Closed (fixed) |
 | DRV-037 | Medium | `mount_synscan/indigo_mount_synscan_guider.c:179`, `mount_synscan/indigo_mount_synscan_guider.c:237`, `mount_synscan/indigo_mount_synscan_guider.c:258` | The SynScan guider starts two long-lived pulse worker callbacks that wait on condition variables, but disconnect sets `guiding_thread_exit = false` and never signals either condition. Disconnecting the guider without detaching leaves the workers blocked and a later reconnect can start another pair of workers against the same shared state. | Closed (fixed) |
 | DRV-038 | High | `mount_asi/indigo_mount_asi.c:180`, `mount_asi/indigo_mount_asi.c:876`, `mount_asi/indigo_mount_asi.c:889`, `mount_asi/indigo_mount_asi.c:1422` | The ZWO AM connect paths shared the DRV-034/DRV-035 defects, but unrecoverably: `asi_close()` reset `device_count` only when a handle was open, the handshake failure branch closed the shared handle while a sibling device could still hold it, and both failure paths decremented the count unguarded. A failed handshake, or a link lost mid-session, drove `device_count` negative, after which `device_count++ == 0` never held again and `asi_open()` was never called for the life of the loaded driver. | Closed (fixed) |
+| DRV-039 | High | `agent_mount/indigo_agent_mount.c:1272`, `agent_mount/indigo_agent_mount.c:1562` | The agent location was propagated to the mount and the dome only when the device was selected or when the site properties were changed, and a push issued while the device was still disconnected was silently dropped because `indigo_property_match_changeable()` rejects undefined properties. Mount drivers that read the site from the hardware at connect (`mount_asi`, `mount_lx200`, `mount_mxhd`, `mount_nexstar`, `mount_rainbow`, `mount_starbook`) then kept their own stored location while the agent kept displaying and computing with a different one. Transit time, flip indication, HA limits, dome slaving and field derotation used the agent location, but the mount decided the meridian flip from its own, so a goto at the meridian could silently refuse to flip. | Closed (fixed) |
+| DRV-040 | Medium | `agent_mount/indigo_agent_mount.c:217` | `save_config()` saved `AGENT_GEOGRAPHIC_COORDINATES` with `indigo_save_property()`, which persists `number.value`. While the site source is the mount, the dome or the GPS, `handle_site_change()` puts the location of that source into `number.value` and keeps the agent location in `number.target`, so any later config save persisted the source location as the agent location. After a restart or a `CONFIG_LOAD` the agent adopted it, and with DRV-039 fixed it also pushes it to the mount and the dome. The same value/target save asymmetry was already worked around for `AGENT_LIMITS` in the same function. | Closed (fixed) |
 
 ## Finding Summaries
 
@@ -554,6 +556,50 @@ four connect-failure and disconnect paths use `if (--PRIVATE_DATA->device_count 
 closing. `asi_close()` is now always called with `device->master_device` for a correct port
 name in the disconnect log.
 
+### DRV-039 (Closed — fixed)
+
+`handle_site_change()` is the only place that propagated the agent location, and it ran on
+mount or dome selection, on `AGENT_SITE_DATA_SOURCE` and `AGENT_GEOGRAPHIC_COORDINATES`
+changes, and on the related imager agent defining `CCD_SET_FITS_HEADER`. None of those is a
+device connect, and `indigo_property_match_changeable()` returns `false` for a property that
+is not `defined`, so a push issued while the device was still disconnected never reached the
+driver. Selecting a mount and then connecting it, which is the normal order, therefore left
+the push dropped.
+
+Mount drivers that read the site from the hardware at connect then won by default. The agent
+snooped `MOUNT_GEOGRAPHIC_COORDINATES` but only called `handle_site_change()` when the mount
+itself was the selected source, so with any other source the agent kept its own location
+while the mount silently used the one stored in its firmware. The agent computed transit
+time, `FLIP_REQUIRED`, HA limits, dome azimuth and derotation angle from one location and the
+mount decided the meridian flip from another. A field report with `mount_asi` matched the
+resulting failure: a goto issued at the meridian to force a flip did not flip, because for
+the mount's own location the target had not transited yet.
+
+Fixed by adding `restore_site()`, which pushes the agent location back to a device that
+reports a different one, called from the `MOUNT_GEOGRAPHIC_COORDINATES` and
+`DOME_GEOGRAPHIC_COORDINATES` snoop branches whenever that device is not the selected site
+source. Because the snoop runs on define as well as on update, this covers connect. The push
+is skipped while the agent location is still the `0`/`0` default, which cannot be
+distinguished from an unset one, and while the reported location already matches within
+`AGENT_COORDINATES_PROPAGATE_THRESHOLD`. The existing `changed` gate is computed against the
+last reported location, so a driver that echoes a rounded value costs one extra round trip
+and then settles.
+
+### DRV-040 (Closed — fixed)
+
+`indigo_save_property()` serializes `number.value`. For `AGENT_GEOGRAPHIC_COORDINATES` the
+value is the location of the selected site source, which is the mount, the dome or the GPS
+location whenever one of those is selected, while the agent's own location stays in
+`number.target`. Every `save_config()` call therefore rewrote the agent location in the
+config with the location of whatever source was selected at that moment, including calls
+triggered by unrelated settings such as `AGENT_LIMITS` or `AGENT_MOUNT_FOV`. After a server
+restart or a `CONFIG_LOAD` the poisoned value was loaded into the target and became the agent
+location, and with DRV-039 fixed it is now also pushed to the mount and the dome.
+
+Fixed by copying the targets into the values around the `indigo_save_property()` call and
+restoring them afterwards, the same idiom already used a few lines below for
+`AGENT_HA_TRACKING_LIMIT` and `AGENT_LOCAL_TIME_LIMIT`.
+
 ## Review Focus
 
 - Driver lifecycle: `INDIGO_DRIVER_INIT`, `INDIGO_DRIVER_SHUTDOWN`, and `INDIGO_DRIVER_INFO`.
@@ -584,3 +630,4 @@ name in the disconnect log.
 | `017ba602857378e4aed489c065c76eacae15924c` | `1e82d6187` + working tree | 2026-09-01 | Deep focused review of `mount_ioptron` generated driver, generator source, simulator, and integration coverage; recorded `DRV-031` as a generator-template lifecycle bug exposed by `mount_ioptron`, plus `DRV-032` and `DRV-033` as iOptron-specific findings. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
 | `017ba602857378e4aed489c065c76eacae15924c` | HEAD + working tree | 2026-09-01 | Deep focused review of `mount_lx200`, including the incremental tracking-mode diff, hand-written shared connection lifecycle, new host-side simulator, and LX200 integration coverage; recorded `DRV-034` and `DRV-035`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
 | `017ba602857378e4aed489c065c76eacae15924c` | HEAD + working tree | 2026-09-01 | Deep focused review of `mount_synscan`, including the incremental driver/protocol diff, refactored host-side simulator, mount/guider integration coverage, UDP endpoint parsing, and pulse-guiding lifecycle; recorded `DRV-036` and `DRV-037`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
+| `017ba602857378e4aed489c065c76eacae15924c` | `3562a9fba` + working tree | 2026-09-11 | Focused review of site coordinate propagation in `agent_mount`, triggered by a field report of a meridian flip that did not happen with `mount_asi`; covered `handle_site_change()`, the mount, dome and GPS site snoops, `save_config()`, and the connect-time site handling in `mount_asi` and `mount_lx200`; recorded `DRV-039` and `DRV-040`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |

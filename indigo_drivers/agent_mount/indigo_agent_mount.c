@@ -214,7 +214,21 @@ static void save_config(indigo_device *device) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
+		/* Properties are saved by value, but the value of the geographic coordinates is the
+		   location of the selected source, while the agent location is kept in the target.
+		   Save the target, otherwise the location of the source would be restored as the
+		   agent location.
+		*/
+		double tmp_latitude = AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
+		double tmp_longitude = AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+		double tmp_elevation = AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value;
+		AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target;
+		AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target;
+		AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.target;
 		indigo_save_property(device, NULL, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
+		AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = tmp_latitude;
+		AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = tmp_longitude;
+		AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = tmp_elevation;
 		indigo_save_property(device, NULL, AGENT_SITE_DATA_SOURCE_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_LX200_CONFIGURATION_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_MOUNT_FOV_PROPERTY);
@@ -1160,6 +1174,32 @@ static void handle_site_change(indigo_device *device) {
 	handle_mount_change(device);
 }
 
+/* The agent location is authoritative for every device which is not the selected site
+   coordinates source. Mounts and domes often restore their own site (e.g. at connect, when
+   the driver reads it from the device), so the agent location has to be pushed back whenever
+   such a device reports a different location, otherwise it would silently use its own site.
+*/
+static void restore_site(indigo_device *device, const char *property_name, const char *device_type, double latitude, double longitude, double elevation) {
+	/* Default agent location is latitude 0, longitude 0, it can not be distinguished from an unset one,
+	   so do not overwrite the device location with it.
+	*/
+	if (AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value == 0 && AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value == 0) {
+		return;
+	}
+	double threshold = AGENT_COORDINATES_PROPAGATE_THRESHOLD_ITEM->number.value;
+	if (
+		fabs(AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value - latitude) <= threshold &&
+		fabs(indigo_angle_difference(AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, longitude)) <= threshold &&
+		AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value == elevation
+	) {
+		return;
+	}
+	static const char *names[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME };
+	double values[] = { AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value };
+	indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, property_name, 3, names, values);
+	indigo_send_message(device, IDLE_PROPERTY, "%s location replaced by the agent location", device_type);
+}
+
 static void snoop_changes(indigo_client *client, indigo_device *device, indigo_property *property) {
 	if (!strcmp(property->name, FILTER_MOUNT_LIST_PROPERTY_NAME)) { // Snoop mount
 		if (INDIGO_FILTER_MOUNT_SELECTED) {
@@ -1225,8 +1265,12 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				CLIENT_PRIVATE_DATA->mount_elevation = item->number.value;
 			}
 		}
-		if (changed && AGENT_SITE_DATA_SOURCE_MOUNT_ITEM->sw.value) {
-			handle_site_change(device);
+		if (changed) {
+			if (AGENT_SITE_DATA_SOURCE_MOUNT_ITEM->sw.value) {
+				handle_site_change(device);
+			} else {
+				restore_site(device, "MOUNT_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME, "Mount", CLIENT_PRIVATE_DATA->mount_latitude, CLIENT_PRIVATE_DATA->mount_longitude, CLIENT_PRIVATE_DATA->mount_elevation);
+			}
 		}
 	} else if (!strcmp(property->name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
@@ -1511,8 +1555,12 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				CLIENT_PRIVATE_DATA->dome_elevation = item->number.value;
 			}
 		}
-		if (changed && AGENT_SITE_DATA_SOURCE_DOME_ITEM->sw.value) {
-			handle_site_change(device);
+		if (changed) {
+			if (AGENT_SITE_DATA_SOURCE_DOME_ITEM->sw.value) {
+				handle_site_change(device);
+			} else {
+				restore_site(device, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME, "Dome", CLIENT_PRIVATE_DATA->dome_latitude, CLIENT_PRIVATE_DATA->dome_longitude, CLIENT_PRIVATE_DATA->dome_elevation);
+			}
 		}
 	} else if (!strcmp(property->name, DOME_STATE_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
