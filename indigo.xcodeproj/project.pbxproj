@@ -3168,6 +3168,8 @@
 		59A5301E21A3514E000B6F27 /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
 		59A5302021A3514E000B6F27 /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
 		59A5302621A35359000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		59A5A5A00100000000000001 /* indigo_focuser_askar.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_askar.driver; sourceTree = "<group>"; };
+		59A5A5A00100000000000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59A68E04277DC3D0000439CC /* indigo_ccd_svb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_svb.h; sourceTree = "<group>"; };
 		59A68E05277DC3D0000439CC /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59A68E06277DC3D0000439CC /* indigo_ccd_svb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_svb.c; sourceTree = "<group>"; wrapsLines = 0; };
@@ -7057,10 +7059,12 @@
 			isa = PBXGroup;
 			children = (
 				5958A14C2FE9B07F00F0B407 /* README.md */,
+				59A5A5A00100000000000002 /* REFACTOR.md */,
 				5958A1432FE9B07F00F0B407 /* Commands_Focuser_CDC_EN.md */,
 				5958A1442FE9B07F00F0B407 /* indigo_focuser_askar.h */,
 				5958A1452FE9B07F00F0B407 /* indigo_focuser_askar.c */,
 				5958A1482FE9B07F00F0B407 /* indigo_focuser_askar_main.c */,
+				59A5A5A00100000000000001 /* indigo_focuser_askar.driver */,
 				5958A1422FE9B07F00F0B407 /* focuser_askar_simulator */,
 			);
 			path = focuser_askar;

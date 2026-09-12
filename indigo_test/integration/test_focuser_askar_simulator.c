@@ -21,6 +21,10 @@
 #include <indigo_drivers/focuser_askar/indigo_focuser_askar.h>
 
 #include "serial_simulator_test_common.h"
+#include <indigo/indigo_uni_io.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdatomic.h>
 
 #ifndef FOCUSER_ASKAR_SIMULATOR_EXECUTABLE
 #define FOCUSER_ASKAR_SIMULATOR_EXECUTABLE "build/integration/focuser_askar_simulator"
@@ -46,63 +50,405 @@ static const simulator_driver_case askar_focuser = {
 	0
 };
 
-static void askar_focuser_passes_serial_compliance_checks(void) {
-	external_serial_simulator simulator = { 0 };
+static external_serial_simulator fixture;
+static char fixture_dir[] = "/tmp/indigo-askar.XXXXXX";
+static char event_path[256], fault_path[256];
+static const char *observed_names[] = { CONNECTION_PROPERTY_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, X_FOCUSER_MOTOR_MODE_PROPERTY_NAME };
+static atomic_uint revisions[8], motion_busy;
 
-	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_ASKAR_SIMULATOR_EXECUTABLE));
-	SERIAL_CHECK_TRUE(start_serial_driver(&askar_focuser, simulator.port));
-	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+static int observed_index(const char *name) {
+	for (int i = 0; i < ARRAY_SIZE(observed_names); i++) {
+		if (!strcmp(name, observed_names[i])) {
+			return i;
+		}
+	}
+	return -1;
+}
 
+static indigo_result observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	indigo_result result = simulator_client_update_property(client, device, property, message);
+	int index = observed_index(property->name);
+	if (context.driver_case != NULL && !strcmp(property->device, context.driver_case->device_name) && index >= 0) {
+		atomic_fetch_add(&revisions[index], 1);
+		if (!strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME) && property->state == INDIGO_BUSY_STATE) {
+			atomic_fetch_add(&motion_busy, 1);
+		}
+	}
+	return result;
+}
+
+static bool new_state(const char *name, unsigned before, indigo_property_state state) {
+	int index = observed_index(name);
+	for (int i = 0; i < 160; i++) {
+		indigo_property *property = find_cached_property(name);
+		if (index >= 0 && atomic_load(&revisions[index]) > before && property != NULL && property->state == state) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	fprintf(stderr, "No fresh %s state %d\n", name, state);
+	return false;
+}
+
+static bool fault(char command, const char *action) {
+	char temporary[280];
+	snprintf(temporary, sizeof(temporary), "%s.tmp", fault_path);
+	FILE *file = fopen(temporary, "w");
+	if (file == NULL) {
+		return false;
+	}
+	fprintf(file, "%c %s\n", command, action);
+	fclose(file);
+	return rename(temporary, fault_path) == 0;
+}
+
+static int commands(const char *prefix) {
+	FILE *file = fopen(event_path, "r");
+	if (file == NULL) {
+		return -1;
+	}
+	char line[512], kind[16], value[256];
+	long timestamp, milliseconds;
+	int count = 0;
+	while (fgets(line, sizeof(line), file)) {
+		if (sscanf(line, "%ld.%ld %15s %255[^\r\n]", &timestamp, &milliseconds, kind, value) == 4 && !strcmp(kind, "RX") && !strncmp(value, prefix, strlen(prefix))) {
+			count++;
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+static void driver_stop(void) {
+	disconnect_serial_device(&askar_focuser);
+	bool disconnected = !context.connected;
+	indigo_result result = indigo_focuser_askar(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_detach_client(&simulator_test_client);
+	indigo_stop();
+	release_cached_properties();
+	ASSERT_TRUE(disconnected);
+	ASSERT_EQ_INT(INDIGO_OK, result);
+}
+
+static bool driver_start(void) {
+	for (int i = 0; i < ARRAY_SIZE(revisions); i++) {
+		atomic_store(&revisions[i], 0);
+	}
+	atomic_store(&motion_busy, 0);
+	simulator_test_client.update_property = observe_update;
+	return bring_up_serial_driver(&askar_focuser) && connect_serial_device(&askar_focuser, fixture.port);
+}
+
+static bool number_change(const char *property, const char *item, double value, indigo_property_state state) {
+	int index = observed_index(property);
+	unsigned before = index >= 0 ? atomic_load(&revisions[index]) : 0;
+	return indigo_change_number_property_1(&simulator_test_client, askar_focuser.device_name, property, item, value) == INDIGO_OK && (index >= 0 ? new_state(property, before, state) : wait_for_property_state(property, state));
+}
+
+static bool switch_change(const char *property, const char *item, bool value, indigo_property_state state) {
+	int index = observed_index(property);
+	unsigned before = index >= 0 ? atomic_load(&revisions[index]) : 0;
+	if (indigo_change_switch_property_1(&simulator_test_client, askar_focuser.device_name, property, item, value) != INDIGO_OK) {
+		return false;
+	}
+	return index >= 0 ? new_state(property, before, state) : wait_for_property_state(property, state);
+}
+
+static bool sync_to(int position) {
+	return switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE) && number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, position, INDIGO_OK_STATE) && switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true, INDIGO_OK_STATE);
+}
+
+static bool at_position(int position) {
+	return wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, position, .01) && wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE) && wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE);
+}
+
+static bool askar_exchange(indigo_uni_handle *handle, const char *command, const char *expected) {
+	char response[128], stale[128];
+	while (indigo_uni_wait_for_data(handle, 0) > 0) {
+		if (indigo_uni_read_available(handle, stale, sizeof(stale)) <= 0) {
+			return false;
+		}
+	}
+	long length = (long)strlen(command);
+	if (indigo_uni_write(handle, command, length) != length) {
+		return false;
+	}
+	if (expected == NULL) {
+		return true;
+	}
+	if (indigo_uni_read_section(handle, response, sizeof(response), "#", "\r\n", INDIGO_DELAY(2)) <= 0) {
+		return false;
+	}
+	if (strcmp(response, expected)) {
+		fprintf(stderr, "Askar %s: expected '%s', got '%s'\n", command, expected, response);
+		return false;
+	}
+	return true;
+}
+
+static int askar_position(indigo_uni_handle *handle) {
+	char response[128], extra;
+	int position;
+	if (!askar_exchange(handle, "Fp#", NULL)) {
+		return -1;
+	}
+	if (indigo_uni_read_section(handle, response, sizeof(response), "#", "\r\n", INDIGO_DELAY(2)) <= 0) {
+		return -1;
+	}
+	return sscanf(response, "Fp%d#%c", &position, &extra) == 1 ? position : -1;
+}
+
+static bool askar_arrived(indigo_uni_handle *handle, int target) {
+	for (int i = 0; i < 80; i++) {
+		if (askar_position(handle) == target) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	return false;
+}
+
+static void protocol(void) {
+	indigo_uni_handle *handle = indigo_uni_open_serial_with_speed(fixture.port, 115200, INDIGO_LOG_DEBUG);
+	SERIAL_CHECK_TRUE(handle != NULL);
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "FV#", "FV1.1.0#"));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "FI#", "FIAskar-WAF#"));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "Fm#", "Fm100000#"));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "Fb#", "Fb0#"));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "FB25#", "FB25#"));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "Fb#", "Fb25#"));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "FR1#", "FR1#"));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "Fr#", "Fr1#"));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "FO1#", "FO1#"));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "Fo#", "Fo1#"));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "FY500#", "FY500#"));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "FP900#", "FP900#"));
+	SERIAL_CHECK_TRUE(askar_arrived(handle, 900));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "FT-200#", "FT-200#"));
+	SERIAL_CHECK_TRUE(askar_arrived(handle, 700));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "FP9999999#", "FP9999999#"));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "FS#", "FS#"));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "FM50#", "FE#"));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "FM2000#", "FM2000#"));
+	SERIAL_CHECK_TRUE(askar_exchange(handle, "Fm#", "Fm2000#"));
+cleanup:
+	if (handle != NULL) {
+		indigo_uni_close(&handle);
+	}
+}
+
+static void capabilities(void) {
+	SERIAL_CHECK_TRUE(driver_start());
 	assert_device_interface(INDIGO_INTERFACE_FOCUSER);
 	assert_serial_focuser_class_property_completeness();
-	assert_property_has_item(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME);
-	assert_property_has_item(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME);
-	assert_property_has_item(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME);
-	assert_property_has_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-	assert_property_has_item(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME);
-	assert_property_has_item(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME);
-	assert_property_has_item(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME);
-	assert_property_has_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME);
-	assert_property_has_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME);
-	assert_property_has_item(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME);
-	assert_property_has_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME);
+	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_SPEED_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_TEMPERATURE_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_COMPENSATION_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_MODE_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(find_cached_property(INFO_PROPERTY_NAME)->count == 6);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.max == 100000);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME)->number.max == 1000000);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME)->number.max == 10000);
 	assert_property_has_item(X_FOCUSER_MOTOR_MODE_PROPERTY_NAME, X_FOCUSER_MOTOR_MODE_HIGH_PERFORMANCE_ITEM_NAME);
 	assert_property_has_item(X_FOCUSER_MOTOR_MODE_PROPERTY_NAME, X_FOCUSER_MOTOR_MODE_BALANCED_ITEM_NAME);
-	assert_number_item_in_range(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-
-	double sync_position = bounded_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 50000);
-	SERIAL_CHECK_TRUE(!isnan(sync_position));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, askar_focuser.device_name, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, askar_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, sync_position));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, sync_position, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, askar_focuser.device_name, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 5));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_BACKLASH_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, askar_focuser.device_name, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, askar_focuser.device_name, X_FOCUSER_MOTOR_MODE_PROPERTY_NAME, X_FOCUSER_MOTOR_MODE_BALANCED_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(X_FOCUSER_MOTOR_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
-
-	double target_position = bounded_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, sync_position + 400);
-	SERIAL_CHECK_TRUE(!isnan(target_position));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, askar_focuser.device_name, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, askar_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target_position));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target_position, 1));
-
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 5, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(commands("FB5") == 1);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(commands("FR1") == 1);
+	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_MOTOR_MODE_PROPERTY_NAME, X_FOCUSER_MOTOR_MODE_BALANCED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(commands("FO1") == 1);
 cleanup:
-	if (context.connected) {
-		stop_serial_driver(&askar_focuser);
+	driver_stop();
+}
+
+static void absolute_and_relative_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_to(50000));
+	unsigned busy = atomic_load(&motion_busy);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 50400, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(50400) && atomic_load(&motion_busy) > busy);
+	SERIAL_CHECK_TRUE(commands("FP50400") == 1);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(50200));
+	SERIAL_CHECK_TRUE(commands("FP50200") == 1);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(50400));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(50400));
+cleanup:
+	driver_stop();
+}
+
+static void limits_and_sync(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_to(500));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.max == 2000);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(2000));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 1000, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME)->number.value == 2000);
+cleanup:
+	driver_stop();
+}
+
+static void abort_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 10000, INDIGO_BUSY_STATE));
+	for (int i = 0; i < 60 && commands("FP10000") == 0; i++) {
+		indigo_usleep(50000);
 	}
-	stop_external_serial_simulator(&simulator);
+	SERIAL_CHECK_TRUE(commands("FP10000") == 1);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(position->number.value == position->number.target && position->number.value > 10000);
+	SERIAL_CHECK_TRUE(!find_cached_item(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	int next_position = (int)position->number.value - 400;
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, next_position, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(next_position));
+cleanup:
+	driver_stop();
+}
+
+static void rejected_connection(void) {
+	SERIAL_CHECK_TRUE(fault('p', "malformed"));
+	simulator_test_client.update_property = observe_update;
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&askar_focuser));
+	int descriptors = 0;
+	for (int fd = 0; fd < 1024; fd++) {
+		if (fcntl(fd, F_GETFD) >= 0) {
+			descriptors++;
+		}
+	}
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, askar_focuser.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, fixture.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, askar_focuser.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(!context.connected);
+	int after = 0;
+	for (int fd = 0; fd < 1024; fd++) {
+		if (fcntl(fd, F_GETFD) >= 0) {
+			after++;
+		}
+	}
+	SERIAL_CHECK_EQ_INT(descriptors, after);
+	SERIAL_CHECK_TRUE(connect_serial_device(&askar_focuser, fixture.port));
+cleanup:
+	driver_stop();
+}
+
+static void command_failure_recovery(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(fault('B', "error"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 20, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME)->number.value == 0);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 20, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault('R', "malformed"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault('O', "error"));
+	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_MOTOR_MODE_PROPERTY_NAME, X_FOCUSER_MOTOR_MODE_BALANCED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_MOTOR_MODE_PROPERTY_NAME, X_FOCUSER_MOTOR_MODE_BALANCED_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void sync_and_poll_failure_recovery(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault('Y', "malformed"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_ALERT_STATE));
+	disconnect_serial_device(&askar_focuser);
+	SERIAL_CHECK_TRUE(connect_serial_device(&askar_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_OK_STATE));
+	unsigned before = atomic_load(&revisions[observed_index(FOCUSER_POSITION_PROPERTY_NAME)]);
+	SERIAL_CHECK_TRUE(fault('p', "malformed"));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 600, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void external_position_and_reconnect(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(fault('p', "position=750"));
+	SERIAL_CHECK_TRUE(at_position(750));
+	disconnect_serial_device(&askar_focuser);
+	SERIAL_CHECK_TRUE(connect_serial_device(&askar_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(at_position(750));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+typedef struct {
+	const char *name;
+	void (*run)(void);
+} askar_test;
+
+static int run_cases(const askar_test *cases, int count) {
+	int failures = 0;
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	const char *filter = getenv("ASKAR_TEST_FILTER");
+	if (mkdtemp(fixture_dir) == NULL) {
+		return 1;
+	}
+	snprintf(event_path, sizeof(event_path), "%s/events", fixture_dir);
+	snprintf(fault_path, sizeof(fault_path), "%s/fault", fixture_dir);
+	setenv("INDIGO_ASKAR_EVENTS", event_path, 1);
+	setenv("INDIGO_ASKAR_FAULT", fault_path, 1);
+	for (int i = 0; i < count; i++) {
+		if (filter != NULL && !strstr(cases[i].name, filter)) {
+			continue;
+		}
+		unlink(event_path);
+		unlink(fault_path);
+		if (!start_external_serial_simulator(&fixture, FOCUSER_ASKAR_SIMULATOR_EXECUTABLE)) {
+			failures++;
+			break;
+		}
+		fflush(NULL);
+		pid_t child = fork();
+		if (child == 0) {
+			alarm(35);
+			indigo_test_case test = { cases[i].name, cases[i].run };
+			_exit(indigo_run_tests("Askar-WAF", &test, 1));
+		}
+		int status = 0;
+		if (child > 0) {
+			while (waitpid(child, &status, 0) < 0 && errno == EINTR) {
+			}
+		}
+		stop_external_serial_simulator(&fixture);
+		if (child < 0 || !WIFEXITED(status) || WEXITSTATUS(status)) {
+			fprintf(stderr, "FAIL %s (status %d)\n", cases[i].name, status);
+			failures++;
+		}
+	}
+	unlink(fault_path);
+	unlink(event_path);
+	rmdir(fixture_dir);
+	unsetenv("INDIGO_ASKAR_EVENTS");
+	unsetenv("INDIGO_ASKAR_FAULT");
+	printf("Askar-WAF: %d failing scenarios\n", failures);
+	return failures ? 1 : 0;
 }
 
 int main(void) {
-	const indigo_test_case tests[] = {
-		{ "askar_focuser_passes_serial_compliance_checks", askar_focuser_passes_serial_compliance_checks }
+	const askar_test tests[] = {
+		{ "protocol", protocol },
+		{ "capabilities", capabilities },
+		{ "absolute_and_relative_motion", absolute_and_relative_motion },
+		{ "limits_and_sync", limits_and_sync },
+		{ "abort_motion", abort_motion },
+		{ "rejected_connection", rejected_connection },
+		{ "command_failure_recovery", command_failure_recovery },
+		{ "sync_and_poll_failure_recovery", sync_and_poll_failure_recovery },
+		{ "external_position_and_reconnect", external_position_and_reconnect }
 	};
-	return indigo_run_tests("Askar-WAF serial simulator integration tests", tests, ARRAY_SIZE(tests));
+	return run_cases(tests, ARRAY_SIZE(tests));
 }

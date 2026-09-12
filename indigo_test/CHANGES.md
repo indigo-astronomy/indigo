@@ -224,7 +224,7 @@ The inventory merges the earlier CCD and non-CCD audits and incorporates their r
 - **No tests**: no dedicated automated driver target was found in `indigo_test/`; coverage is not established.
 - **Shared**: retained only for drivers whose common implementation has no independently compiled fake-SDK target.
 
-Inventory: 150 modules — 2 Complete, 47 Partial, 55 Not audited, 46 No tests.
+Inventory: 150 modules — 3 Complete, 47 Partial, 54 Not audited, 46 No tests.
 
 | Driver | Implementation | Automated test boundary | Coverage status | Recorded validation / remaining work |
 | --- | --- | --- | --- | --- |
@@ -308,7 +308,7 @@ Inventory: 150 modules — 2 Complete, 47 Partial, 55 Not audited, 46 No tests.
 | `dome_skyroof` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `dome_talon6ror` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `focuser_asi` | Generated | Fake SDK/USB | Partial | Ten fake SDK groups recorded: initialization/lock cleanup, limits/settings/readback, motion/sync/abort, compensation recovery and attach/capacity retry. Full current-standard coverage audit remains unfinished. |
-| `focuser_askar` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
+| `focuser_askar` | Generated | PTY/protocol simulator | Complete | Nine named scenarios cover CDC protocol commands, capability/property inventory, absolute/relative motion, SYNC, limits, abort, command failures, polling recovery and reconnect. Wi-Fi discovery/TCP remains hardware/network validation. |
 | `focuser_astroasis` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `focuser_astromechanics` | Generated | PTY/protocol simulator | Partial | Host simulator models elapsed movement; measured progress, completion and pending disconnect pass; error matrix in progress |
 | `focuser_dmfc` | Generated | PTY/protocol simulator | Partial | Host simulator models elapsed movement; measured progress, completion, abort and pending disconnect pass; remaining audit pending |

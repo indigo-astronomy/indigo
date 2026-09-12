@@ -1058,7 +1058,9 @@ Custom properties: `X_FOCUSER_MOTOR_MODE`.
 
 Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
 
-Source: `indigo_drivers/focuser_askar/indigo_focuser_askar.c`.
+`FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_BACKLASH` and `FOCUSER_REVERSE_MOTION` are visible and backed by the Askar CDC protocol. `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`, `FOCUSER_COMPENSATION` and `FOCUSER_MODE` are hidden because the protocol does not expose them. `FOCUSER_POSITION` and `FOCUSER_STEPS` report `BUSY` during motion and complete when polling confirms the motor has stopped. `FOCUSER_ABORT_MOTION` sends the stop command, refreshes the current position and resets its momentary switch.
+
+Source: `indigo_drivers/focuser_askar/indigo_focuser_askar.driver` (generates `indigo_focuser_askar.c`).
 
 ### focuser_astroasis
 

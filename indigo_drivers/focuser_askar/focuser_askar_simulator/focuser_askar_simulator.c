@@ -85,6 +85,39 @@ static int motor_mode = 0;
 static char firmware[32] = "1.1.0";
 static char model_name[32] = "Askar-WAF";
 
+static void log_event(const char *kind, const char *value) {
+	const char *path = getenv("INDIGO_ASKAR_EVENTS");
+	if (path == NULL || *path == '\0') {
+		return;
+	}
+	FILE *file = fopen(path, "a");
+	if (file == NULL) {
+		return;
+	}
+	fprintf(file, "%ld.%03ld %s %s\n", (long)time(NULL), 0L, kind, value);
+	fclose(file);
+}
+
+static bool consume_fault(char command, char *action, size_t action_size) {
+	const char *path = getenv("INDIGO_ASKAR_FAULT");
+	if (path == NULL || *path == '\0') {
+		return false;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return false;
+	}
+	char target = 0;
+	char value[64] = { 0 };
+	bool matched = fscanf(file, " %c %63s", &target, value) == 2 && target == command;
+	fclose(file);
+	if (matched) {
+		unlink(path);
+		snprintf(action, action_size, "%s", value);
+	}
+	return matched;
+}
+
 static void signal_handler(int sig) {
 	(void)sig;
 	running = 0;
@@ -175,6 +208,7 @@ static bool sim_printf(int fd, const char *format, ...) {
 
 	snprintf(frame, sizeof(frame), "%s#\r\n", buffer);
 	serial_simulator_trace_line(options.trace, "<-", frame);
+	log_event("TX", frame);
 	return serial_simulator_write_all(fd, frame, strlen(frame));
 }
 
@@ -218,7 +252,8 @@ static int sim_read_frame(int fd, char *buffer, int length) {
 		}
 		if (c == '#') {
 			buffer[total_bytes] = '\0';
-		serial_simulator_trace_line(options.trace, "->", buffer);
+			serial_simulator_trace_line(options.trace, "->", buffer);
+			log_event("RX", buffer);
 			return total_bytes;
 		}
 		if (c == '\r' || c == '\n') {
@@ -274,6 +309,37 @@ static void dispatch_command(int fd, const char *frame, int length) {
 
 	char cmd = frame[1];
 	const char *body = frame + 2;
+	char action[64] = { 0 };
+	if (consume_fault(cmd, action, sizeof(action))) {
+		if (!strcmp(action, "silent")) {
+			return;
+		}
+		if (!strcmp(action, "malformed")) {
+			serial_simulator_write_all(fd, "FZ#\r\n", 5);
+			return;
+		}
+		if (!strcmp(action, "error")) {
+			sim_send_error(fd);
+			return;
+		}
+		if (!strcmp(action, "close")) {
+			running = 0;
+			if (serial_fd >= 0) {
+				close(serial_fd);
+				serial_fd = -1;
+			}
+			return;
+		}
+		if (!strncmp(action, "position=", 9)) {
+			int32_t value;
+			if (parse_int(action + 9, &value)) {
+				pthread_mutex_lock(&state_mutex);
+				position = clamp(value, 0, max_step);
+				target = position;
+				pthread_mutex_unlock(&state_mutex);
+			}
+		}
+	}
 
 	switch (cmd) {
 		case 'P': {
