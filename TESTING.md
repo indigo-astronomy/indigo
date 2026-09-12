@@ -341,3 +341,31 @@ User confirmed QHY5III178 connected and authorized resuming physical tests. macO
 Every scenario also completed final physical camera close and driver shutdown without a crash. This supersedes the earlier close-failure result for this camera under this exact driver/SDK combination; it does not establish which part of the combined update fixed it or guarantee other SDK/platform/camera combinations. Hot-plug remains disabled and was not tested. Legacy QHY5/QHY5L-II, cooling, camera-connected CFW, other platforms and optical image quality remain outside this retest. No configuration was saved, and test processes ended. Hardware test binaries were cleaned afterward.
 
 Logs: `/tmp/qhy178-sdk26721-{switching,exposure,abort,guide,geometry,settings,stream}.log`.
+
+### Physical hot-plug outcome: four phases passed
+
+Experimental QHY2 v30, SDK 26.7.21.5, macOS arm64, one QHY5III178M. The user physically unplugged and replugged the camera in each phase: (1) logically disconnected, (2) connected idle, (3) during a 60 s exposure, (4) during continuous streaming. All four detach/rearrival cycles completed; firmware bootloader 1618:0178 became 1618:0179, camera and guider were recreated, and a fresh 0.1 s RAW16 exposure succeeded after every replug. Final close, SDK shutdown and callback deregistration completed, exit 0. During streaming removal the SDK rejected resetting stream mode after USB removal; cleanup and the subsequent replug/exposure still succeeded.
+
+The hardware harness now exposes this manual-only scenario as explicit `QHY_HW_CASE=hotplug`; it is excluded from the default full run. It requires an experimental hot-plug driver, not the checked-in startup-only driver. The exact experiment sources, fake test and generated build remain in `/tmp/qhy178-hotplug`; authoritative physical log: `/tmp/qhy178-hotplug/hardware-early-usb.log`. The hardware build is arm64; the fake test compiled for both macOS architectures and ran natively. All test processes have ended.
+
+Production hot-plug remains disabled. This experiment deliberately matched only QHY5III178 and did not verify discovery while a different camera remains open, SDK-id to physical-USB association with multiple cameras, other QHY models, Windows/Linux, or the legacy SDK. Permanent modern-only activation also needs a shared-source build/DSL decision because `sdk.hotplug` currently accepts a generation-time boolean rather than a QHY2 preprocessor condition. No generator modifications were made.
+
+### QHY5LII-M hot-plug experiment — four phases passed (2026-09-12)
+
+The user connected a camera described as QHY5II; USB bootloader 1618:0920 and SDK discovery identified QHY5LII-M, running firmware 1618:0921. The first process selected the wrong name substring QHY5II and was terminated while waiting for a matching device, before a logical connection; this was a harness-selection error, not an SDK crash. A new process with QHY5LII selection completed all four manual unplug/replug phases: logically disconnected, connected idle, during a 60 s exposure, and during continuous streaming. Each replug loaded firmware, recreated CCD/guider devices and produced a new valid 1280 x 960 RAW8 image. Final camera close and SDK/driver shutdown succeeded, exit 0.
+
+This used the modern SDK 26.7.21.5, macOS arm64 and an isolated QHY2 v30 hot-plug build, with USB handling started before SDK initialization and matching limited to 0920/0921. It does not validate legacy SDK hot-plug or multi-camera scanning. As with QHY5III178, stream-mode reset after physical removal returned an SDK error but cleanup and the following acquisition succeeded. Production hot-plug remains disabled. No persistent camera configuration was saved; all processes ended. Source/build and log: `/tmp/qhy5ii-hotplug`, `/tmp/qhy5ii-hotplug/hardware-qhy5lii.log`.
+
+
+### QHY production hot-plug promotion (2026-09-12)
+
+The user accepted the two four-phase modern-SDK hot-plug experiments above. Independent version-30 definitions now enable hot-plug in `ccd_qhy2` and retain startup-only discovery in legacy `ccd_qhy`. The manual `QHY_HW_CASE=hotplug` harness can use the standard modern driver; an experimental build is no longer required. Physical acceptance remains specific to QHY5III178 and QHY5LII-M on macOS arm64 with SDK 26.7.21.5; it does not imply legacy or multi-camera hardware validation.
+
+
+### Legacy QHY5LII-M hot-plug experiment (2026-09-12)
+
+An isolated x86_64/Rosetta build of legacy v30 enabled SDK hot-plug only for QHY5LII boot/running USB IDs 1618:0920/0921, with firmware loading on boot arrival and early USB event handling. Production legacy hot-plug remains disabled; SDK binaries are unchanged. The first preparation run used the modern firmware-directory convention and detected no camera; the corrected run used the legacy parent directory `bin_externals/qhyccd`.
+
+The corrected run loaded firmware, attached CCD and guider, acquired a 1280 x 960 RAW8 image at 0.1 s, and disconnected successfully. Physical removal while logically disconnected detached both devices without a crash. Replug loaded firmware (0920 -> 0921); ScanQHYCCD returned one camera and GetQHYCCDId/GetQHYCCDModel identified QHY5LII-M, but the discovery probe did not attach it. The last log was immediately before OpenQHYCCD; no close-error log followed, and a process sample showed the driver queue idle, consistent with OpenQHYCCD returning NULL rather than hanging. No fresh image after replug was obtained. The waiting test was terminated with SIGTERM after diagnosis, not an SDK crash. Connected-idle, exposure and streaming removal phases were not reached.
+
+Artifacts: `/tmp/qhy-legacy-hotplug/hardware-correct-firmware.log`, `/tmp/qhy-legacy-hotplug/sample-replug.txt`, temporary definition and binaries in the same directory. This experiment does not validate legacy hot-plug.

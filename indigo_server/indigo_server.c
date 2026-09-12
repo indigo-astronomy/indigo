@@ -87,7 +87,7 @@
 #include "wheel_asi/indigo_wheel_asi.h"
 #include "ccd_atik/indigo_ccd_atik.h"
 #include "wheel_atik/indigo_wheel_atik.h"
-#include "ccd_qhy2/indigo_ccd_qhy.h"
+#include "ccd_qhy2/indigo_ccd_qhy2.h"
 #include "focuser_fcusb/indigo_focuser_fcusb.h"
 #include "ccd_iidc/indigo_ccd_iidc.h"
 #include "mount_lx200/indigo_mount_lx200.h"

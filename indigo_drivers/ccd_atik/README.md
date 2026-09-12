@@ -28,3 +28,13 @@ Driver is developed and tested with:
 * Atik VS 6
 * Atik 11000
 * Atik Horizon
+
+## Generator migration
+
+The source of truth is `indigo_ccd_atik.driver`; regenerate the C, header and
+standalone main with `indigo_generator`. Migration progress, software acceptance
+and pending Titan/One/11000A/Horizon hardware tests are recorded in `REFACTOR.md`.
+
+Version 0x03000020 renames `ATIK_PRESETS` to `X_PRESETS` and
+`ATIK_WINDOW_HEATER` to `X_WINDOW_HEATER`; update client scripts accordingly.
+Standard property and custom item names are unchanged.

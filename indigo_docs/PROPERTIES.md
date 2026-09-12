@@ -880,11 +880,11 @@ Source: `indigo_drivers/ccd_asi/indigo_ccd_asi.driver`.
 
 ### ccd_atik
 
-Custom properties: `ATIK_PRESETS`, `ATIK_WINDOW_HEATER`.
+Custom properties: `X_PRESETS`, `X_WINDOW_HEATER`.
 
 Driver-specific use of existing properties: `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_GAIN`, `CCD_MODE`, `CCD_OFFSET`, `CCD_READ_MODE`, `CCD_TEMPERATURE`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
 
-Source: `indigo_drivers/ccd_atik/indigo_ccd_atik.c`.
+Source: `indigo_drivers/ccd_atik/indigo_ccd_atik.driver`.
 
 ### ccd_dsi
 
@@ -940,7 +940,7 @@ Driver-specific use of existing properties: `CCD_INFO`, `CCD_FRAME`, `CCD_BIN`, 
 
 Pixel-format, bin and mode inventories follow SDK capabilities. Cooler/power and read-only sensor temperature are conditional. Optional ST4 guider and camera-connected CFW devices share the camera session. CFW exposes eight slots; actual wheel capacity cannot be determined through the legacy SDK interface used here.
 
-Source: `indigo_drivers/ccd_qhy/indigo_ccd_qhy.driver`, generated C++ `indigo_drivers/ccd_qhy/indigo_ccd_qhy.cpp` (also used by `ccd_qhy2`).
+Source: `indigo_drivers/ccd_qhy/indigo_ccd_qhy.driver` and `indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.driver`, with independently generated C++ implementations in the same directories.
 
 ### ccd_sbig
 

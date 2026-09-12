@@ -67,6 +67,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_aux_rts_transport \
 	$(INTEGRATION_BUILD)/test_generator_architecture \
 	$(INTEGRATION_BUILD)/test_wheel_playerone_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_atik_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_playerone_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_asi_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_sx_usb \
@@ -1261,8 +1262,8 @@ QHY_LEGACY_LDFLAGS = $(if $(filter Darwin,$(OS_DETECTED)),$(filter-out -arch x86
 $(INTEGRATION_BUILD)/ccd_qhy_sdk_driver.o: ../indigo_drivers/ccd_qhy/indigo_ccd_qhy.cpp Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(QHY_LEGACY_CXXFLAGS) -I../indigo_drivers/ccd_qhy/bin_externals/qhyccd/include $(QHY_SDK_TEST_REPLACEMENTS) -c $< -o $@
 
-$(INTEGRATION_BUILD)/ccd_qhy2_sdk_driver.o: ../indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.cpp ../indigo_drivers/ccd_qhy/indigo_ccd_qhy.cpp Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(QHY_TEST_CXXFLAGS) -DQHY2 -I../indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include $(QHY_SDK_TEST_REPLACEMENTS) -c $< -o $@
+$(INTEGRATION_BUILD)/ccd_qhy2_sdk_driver.o: ../indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.cpp Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(QHY_TEST_CXXFLAGS) -I../indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include $(QHY_SDK_TEST_REPLACEMENTS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_ccd_qhy_sdk: integration/test_ccd_qhy_sdk.cpp test_runner.h $(INTEGRATION_BUILD)/ccd_qhy_sdk_driver.o $(INTEGRATION_BUILD)/ccd_qhy_sdk_framework.o | $(INTEGRATION_BUILD)
 	$(CC) $(QHY_LEGACY_CXXFLAGS) -I../indigo_drivers/ccd_qhy/bin_externals/qhyccd/include $< $(INTEGRATION_BUILD)/ccd_qhy_sdk_driver.o $(INTEGRATION_BUILD)/ccd_qhy_sdk_framework.o -o $@ $(QHY_LEGACY_LDFLAGS)
@@ -1281,3 +1282,25 @@ $(INTEGRATION_BUILD)/ccd_qhy_sdk_framework.o: ../indigo_libs/indigo_driver.c Mak
 # Build only: physical acceptance requires explicit --run, library and device selection.
 $(TEST_BUILD)/hardware/test_ccd_qhy_hw: hardware/test_ccd_qhy_hw.c test_runner.h | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS)
+
+ATIK_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_atik/bin_externals/libatikcameras/include
+ATIK_SDK_TEST_REPLACEMENTS = -Dindigo_queue_create=atik_test_queue_create -Dindigo_execute_handler_in=atik_test_execute_in -Dindigo_monotonic_time=atik_test_monotonic_time -Dlibusb_hotplug_register_callback_sim=atik_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=atik_test_usb_deregister_poll -Dindigo_start_usb_event_handler=atik_test_usb_start -Dindigo_try_global_lock=atik_test_lock -Dindigo_global_unlock=atik_test_unlock -Dindigo_attach_device=atik_test_attach -Dindigo_detach_device=atik_test_detach -Dlibusb_hotplug_register_callback=atik_test_usb_register -Dlibusb_hotplug_deregister_callback=atik_test_usb_deregister -Dlibusb_ref_device=atik_test_usb_ref -Dlibusb_unref_device=atik_test_usb_unref -Dlibusb_get_device_descriptor=atik_test_usb_descriptor
+$(INTEGRATION_BUILD)/ccd_atik_sdk_driver.o: ../indigo_drivers/ccd_atik/indigo_ccd_atik.c ../indigo_drivers/ccd_atik/indigo_ccd_atik.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(ATIK_SDK_TEST_INCLUDE) $(ATIK_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_atik_sdk: integration/test_ccd_atik_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_atik_sdk_driver.o $(INTEGRATION_BUILD)/ccd_atik_sdk_framework.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(ATIK_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_atik_sdk_driver.o $(INTEGRATION_BUILD)/ccd_atik_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+.PHONY: test-ccd-atik-sdk
+test-ccd-atik-sdk: $(INTEGRATION_BUILD)/test_ccd_atik_sdk
+	$(INTEGRATION_BUILD)/test_ccd_atik_sdk
+
+$(INTEGRATION_BUILD)/ccd_atik_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=atik_test_config_folder -c $< -o $@
+
+$(TEST_BUILD)/hardware/test_ccd_atik_hw: hardware/test_ccd_atik_hw.c test_runner.h | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS) -ldl
+
+.PHONY: test-ccd-atik-hw
+test-ccd-atik-hw: $(TEST_BUILD)/hardware/test_ccd_atik_hw
+	$(TEST_BUILD)/hardware/test_ccd_atik_hw --run $(BUILD_DRIVERS)/indigo_ccd_atik.$(SOEXT) indigo_ccd_atik

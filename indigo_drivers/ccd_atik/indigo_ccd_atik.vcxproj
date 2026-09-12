@@ -170,4 +170,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <None Include="indigo_ccd_atik.driver" />
+  </ItemGroup>
 </Project>

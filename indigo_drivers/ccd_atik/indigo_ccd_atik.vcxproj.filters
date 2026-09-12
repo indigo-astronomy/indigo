@@ -33,4 +33,7 @@
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="indigo_ccd_atik.driver" />
+  </ItemGroup>
 </Project>
