@@ -70,6 +70,16 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_guider_asi_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_sx_usb \
 	$(INTEGRATION_BUILD)/test_wheel_astroasis_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_touptek_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_altair_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_baccam_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_bresser_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_mallin_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_meade_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_ogma_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_omegonpro_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_rising_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_ssg_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_svb2_sdk \
 	$(INTEGRATION_BUILD)/test_wheel_asi_sdk \
 	$(INTEGRATION_BUILD)/test_focuser_asi_sdk \
 	$(INTEGRATION_BUILD)/test_rotator_asi_sdk \
@@ -817,6 +827,69 @@ $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o: ../indigo_libs/indigo_driver.c
 
 $(INTEGRATION_BUILD)/test_ccd_touptek_sdk: integration/test_ccd_touptek_sdk.c integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_touptek_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o
 	$(CC) $(TEST_CFLAGS) $(TOUPTEK_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_touptek_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+# OEM SDK regressions: the wrappers include the shared ToupTek fake-SDK test
+# body but compile and link each OEM driver and SDK header independently.
+ALTAIR_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_altair/bin_externals/libaltaircam/include
+BACCAM_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_baccam/bin_externals/libbaccam/include
+BRESSER_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_bresser/bin_externals/libbressercam/include
+MALLIN_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_mallin/bin_externals/libmallincam/include
+MEADE_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_meade/bin_externals/libmedecam/include
+OGMA_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_ogma/bin_externals/libogmacam/include
+OMEGONPRO_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/include
+RISING_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_rising/bin_externals/libnncam/include
+SSG_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_ssg/bin_externals/libstarshootg/include
+SVB2_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_svb2/bin_externals/libsvbonycam/include
+
+$(INTEGRATION_BUILD)/ccd_altair_sdk_driver.o: ../indigo_drivers/ccd_altair/indigo_ccd_altair.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(ALTAIR_SDK_TEST_INCLUDE) $(TOUPTEK_SDK_TEST_REPLACEMENTS) -c $< -o $@
+$(INTEGRATION_BUILD)/test_ccd_altair_sdk: integration/test_ccd_altair_sdk.c integration/test_ccd_touptek_sdk.c integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_altair_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o
+	$(CC) $(TEST_CFLAGS) $(ALTAIR_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_altair_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/ccd_baccam_sdk_driver.o: ../indigo_drivers/ccd_baccam/indigo_ccd_baccam.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(BACCAM_SDK_TEST_INCLUDE) $(TOUPTEK_SDK_TEST_REPLACEMENTS) -c $< -o $@
+$(INTEGRATION_BUILD)/test_ccd_baccam_sdk: integration/test_ccd_baccam_sdk.c integration/test_ccd_touptek_sdk.c integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_baccam_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o
+	$(CC) $(TEST_CFLAGS) $(BACCAM_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_baccam_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/ccd_bresser_sdk_driver.o: ../indigo_drivers/ccd_bresser/indigo_ccd_bresser.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(BRESSER_SDK_TEST_INCLUDE) $(TOUPTEK_SDK_TEST_REPLACEMENTS) -c $< -o $@
+$(INTEGRATION_BUILD)/test_ccd_bresser_sdk: integration/test_ccd_bresser_sdk.c integration/test_ccd_touptek_sdk.c integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_bresser_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o
+	$(CC) $(TEST_CFLAGS) $(BRESSER_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_bresser_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/ccd_mallin_sdk_driver.o: ../indigo_drivers/ccd_mallin/indigo_ccd_mallin.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(MALLIN_SDK_TEST_INCLUDE) $(TOUPTEK_SDK_TEST_REPLACEMENTS) -c $< -o $@
+$(INTEGRATION_BUILD)/test_ccd_mallin_sdk: integration/test_ccd_mallin_sdk.c integration/test_ccd_touptek_sdk.c integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_mallin_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o
+	$(CC) $(TEST_CFLAGS) $(MALLIN_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_mallin_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/ccd_meade_sdk_driver.o: ../indigo_drivers/ccd_meade/indigo_ccd_meade.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(MEADE_SDK_TEST_INCLUDE) $(TOUPTEK_SDK_TEST_REPLACEMENTS) -c $< -o $@
+$(INTEGRATION_BUILD)/test_ccd_meade_sdk: integration/test_ccd_meade_sdk.c integration/test_ccd_touptek_sdk.c integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_meade_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o
+	$(CC) $(TEST_CFLAGS) $(MEADE_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_meade_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/ccd_ogma_sdk_driver.o: ../indigo_drivers/ccd_ogma/indigo_ccd_ogma.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(OGMA_SDK_TEST_INCLUDE) $(TOUPTEK_SDK_TEST_REPLACEMENTS) -c $< -o $@
+$(INTEGRATION_BUILD)/test_ccd_ogma_sdk: integration/test_ccd_ogma_sdk.c integration/test_ccd_touptek_sdk.c integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_ogma_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o
+	$(CC) $(TEST_CFLAGS) $(OGMA_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_ogma_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/ccd_omegonpro_sdk_driver.o: ../indigo_drivers/ccd_omegonpro/indigo_ccd_omegonpro.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(OMEGONPRO_SDK_TEST_INCLUDE) $(TOUPTEK_SDK_TEST_REPLACEMENTS) -c $< -o $@
+$(INTEGRATION_BUILD)/test_ccd_omegonpro_sdk: integration/test_ccd_omegonpro_sdk.c integration/test_ccd_touptek_sdk.c integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_omegonpro_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o
+	$(CC) $(TEST_CFLAGS) $(OMEGONPRO_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_omegonpro_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/ccd_rising_sdk_driver.o: ../indigo_drivers/ccd_rising/indigo_ccd_rising.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(RISING_SDK_TEST_INCLUDE) $(TOUPTEK_SDK_TEST_REPLACEMENTS) -c $< -o $@
+$(INTEGRATION_BUILD)/test_ccd_rising_sdk: integration/test_ccd_rising_sdk.c integration/test_ccd_touptek_sdk.c integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_rising_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o
+	$(CC) $(TEST_CFLAGS) $(RISING_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_rising_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/ccd_ssg_sdk_driver.o: ../indigo_drivers/ccd_ssg/indigo_ccd_ssg.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(SSG_SDK_TEST_INCLUDE) $(TOUPTEK_SDK_TEST_REPLACEMENTS) -c $< -o $@
+$(INTEGRATION_BUILD)/test_ccd_ssg_sdk: integration/test_ccd_ssg_sdk.c integration/test_ccd_touptek_sdk.c integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_ssg_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o
+	$(CC) $(TEST_CFLAGS) $(SSG_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_ssg_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/ccd_svb2_sdk_driver.o: ../indigo_drivers/ccd_svb2/indigo_ccd_svb2.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(SVB2_SDK_TEST_INCLUDE) $(TOUPTEK_SDK_TEST_REPLACEMENTS) -c $< -o $@
+$(INTEGRATION_BUILD)/test_ccd_svb2_sdk: integration/test_ccd_svb2_sdk.c integration/test_ccd_touptek_sdk.c integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_svb2_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o
+	$(CC) $(TEST_CFLAGS) $(SVB2_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_svb2_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
 
 # Physical hardware is opt-in, deliberately excluded from test/test-integration.
 HW_DRIVER ?= touptek

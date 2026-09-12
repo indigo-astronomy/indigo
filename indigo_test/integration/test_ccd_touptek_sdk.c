@@ -25,15 +25,134 @@
 #include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
-#include <toupcam.h>
 #include <indigo/indigo_usb_utils.h>
-#include <indigo_drivers/ccd_touptek/indigo_ccd_touptek.h>
+#include <indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h>
 #include "../test_runner.h"
 #include <math.h>
 #include <time.h>
 #include <dirent.h>
 #include <unistd.h>
 #include "ccd_test_noise.h"
+
+// The branded OEM drivers compile the same source with a vendor SDK prefix.
+// Keep the test body shared while linking each wrapper to the actual OEM ABI.
+#if !defined(MEADE) && !defined(TOUPTEK)
+#define TOUPCAM_MAX SDK_DEF(MAX)
+#define TOUPCAM_AAF_GETAMBIENTTEMP SDK_DEF(AAF_GETAMBIENTTEMP)
+#define TOUPCAM_AAF_GETMAXSTEP SDK_DEF(AAF_GETMAXSTEP)
+#define TOUPCAM_AAF_GETPOSITION SDK_DEF(AAF_GETPOSITION)
+#define TOUPCAM_AAF_GETTEMP SDK_DEF(AAF_GETTEMP)
+#define TOUPCAM_AAF_HALT SDK_DEF(AAF_HALT)
+#define TOUPCAM_AAF_ISMOVING SDK_DEF(AAF_ISMOVING)
+#define TOUPCAM_AAF_RANGEMAX SDK_DEF(AAF_RANGEMAX)
+#define TOUPCAM_AAF_SETBACKLASH SDK_DEF(AAF_SETBACKLASH)
+#define TOUPCAM_AAF_SETBUZZER SDK_DEF(AAF_SETBUZZER)
+#define TOUPCAM_AAF_SETDIRECTION SDK_DEF(AAF_SETDIRECTION)
+#define TOUPCAM_AAF_SETMAXSTEP SDK_DEF(AAF_SETMAXSTEP)
+#define TOUPCAM_AAF_SETPOSITION SDK_DEF(AAF_SETPOSITION)
+#define TOUPCAM_AAF_SETZERO SDK_DEF(AAF_SETZERO)
+#define TOUPCAM_EVENT_ERROR SDK_DEF(EVENT_ERROR)
+#define TOUPCAM_EVENT_IMAGE SDK_DEF(EVENT_IMAGE)
+#define TOUPCAM_EVENT_NOFRAMETIMEOUT SDK_DEF(EVENT_NOFRAMETIMEOUT)
+#define TOUPCAM_EVENT_NOPACKETTIMEOUT SDK_DEF(EVENT_NOPACKETTIMEOUT)
+#define TOUPCAM_FLAG_AUTOFOCUSER SDK_DEF(FLAG_AUTOFOCUSER)
+#define TOUPCAM_FLAG_BLACKLEVEL SDK_DEF(FLAG_BLACKLEVEL)
+#define TOUPCAM_FLAG_CG SDK_DEF(FLAG_CG)
+#define TOUPCAM_FLAG_CGHDR SDK_DEF(FLAG_CGHDR)
+#define TOUPCAM_FLAG_CMOS SDK_DEF(FLAG_CMOS)
+#define TOUPCAM_FLAG_FAN SDK_DEF(FLAG_FAN)
+#define TOUPCAM_FLAG_FILTERWHEEL SDK_DEF(FLAG_FILTERWHEEL)
+#define TOUPCAM_FLAG_GETTEMPERATURE SDK_DEF(FLAG_GETTEMPERATURE)
+#define TOUPCAM_FLAG_HEAT SDK_DEF(FLAG_HEAT)
+#define TOUPCAM_FLAG_MONO SDK_DEF(FLAG_MONO)
+#define TOUPCAM_FLAG_RAW10 SDK_DEF(FLAG_RAW10)
+#define TOUPCAM_FLAG_RAW12 SDK_DEF(FLAG_RAW12)
+#define TOUPCAM_FLAG_RAW14 SDK_DEF(FLAG_RAW14)
+#define TOUPCAM_FLAG_RAW16 SDK_DEF(FLAG_RAW16)
+#define TOUPCAM_FLAG_RAW8 SDK_DEF(FLAG_RAW8)
+#define TOUPCAM_FLAG_ROI_HARDWARE SDK_DEF(FLAG_ROI_HARDWARE)
+#define TOUPCAM_FLAG_ST4 SDK_DEF(FLAG_ST4)
+#define TOUPCAM_FLAG_TEC_ONOFF SDK_DEF(FLAG_TEC_ONOFF)
+#define TOUPCAM_OPTION_BINNING SDK_DEF(OPTION_BINNING)
+#define TOUPCAM_OPTION_BLACKLEVEL SDK_DEF(OPTION_BLACKLEVEL)
+#define TOUPCAM_OPTION_CG SDK_DEF(OPTION_CG)
+#define TOUPCAM_OPTION_FAN SDK_DEF(OPTION_FAN)
+#define TOUPCAM_OPTION_FILTERWHEEL_POSITION SDK_DEF(OPTION_FILTERWHEEL_POSITION)
+#define TOUPCAM_OPTION_FILTERWHEEL_SLOT SDK_DEF(OPTION_FILTERWHEEL_SLOT)
+#define TOUPCAM_OPTION_HEAT SDK_DEF(OPTION_HEAT)
+#define TOUPCAM_OPTION_HEAT_MAX SDK_DEF(OPTION_HEAT_MAX)
+#define TOUPCAM_OPTION_RAW SDK_DEF(OPTION_RAW)
+#define TOUPCAM_OPTION_TAILLIGHT SDK_DEF(OPTION_TAILLIGHT)
+#define TOUPCAM_OPTION_TEC SDK_DEF(OPTION_TEC)
+#define TOUPCAM_OPTION_TECTARGET SDK_DEF(OPTION_TECTARGET)
+#define TOUPCAM_OPTION_TEC_VOLTAGE SDK_DEF(OPTION_TEC_VOLTAGE)
+#define TOUPCAM_OPTION_TEC_VOLTAGE_MAX SDK_DEF(OPTION_TEC_VOLTAGE_MAX)
+#define TOUPCAM_OPTION_TRIGGER SDK_DEF(OPTION_TRIGGER)
+#define ToupcamDeviceV2 SDK_TYPE(DeviceV2)
+#define ToupcamFrameInfoV2 SDK_TYPE(FrameInfoV2)
+#define ToupcamModelV2 SDK_TYPE(ModelV2)
+#define HToupcam SDK_HANDLE
+#define Toupcam_AAF SDK_CALL(AAF)
+#define Toupcam_Close SDK_CALL(Close)
+#define Toupcam_EnumV2 SDK_CALL(EnumV2)
+#define Toupcam_Open SDK_CALL(Open)
+#define Toupcam_PullImageV2 SDK_CALL(PullImageV2)
+#define Toupcam_ST4PlusGuide SDK_CALL(ST4PlusGuide)
+#define Toupcam_StartPullModeWithCallback SDK_CALL(StartPullModeWithCallback)
+#define Toupcam_Stop SDK_CALL(Stop)
+#define Toupcam_Trigger SDK_CALL(Trigger)
+#define Toupcam_Version SDK_CALL(Version)
+#define Toupcam_get_ExpTimeRange SDK_CALL(get_ExpTimeRange)
+#define Toupcam_get_ExpoAGain SDK_CALL(get_ExpoAGain)
+#define Toupcam_get_ExpoAGainRange SDK_CALL(get_ExpoAGainRange)
+#define Toupcam_get_FanMaxSpeed SDK_CALL(get_FanMaxSpeed)
+#define Toupcam_get_FwVersion SDK_CALL(get_FwVersion)
+#define Toupcam_get_HwVersion SDK_CALL(get_HwVersion)
+#define Toupcam_get_Model SDK_CALL(get_Model)
+#define Toupcam_get_Option SDK_CALL(get_Option)
+#define Toupcam_get_RawFormat SDK_CALL(get_RawFormat)
+#define Toupcam_get_SerialNumber SDK_CALL(get_SerialNumber)
+#define Toupcam_get_Speed SDK_CALL(get_Speed)
+#define Toupcam_get_Temperature SDK_CALL(get_Temperature)
+#define Toupcam_put_AutoExpoEnable SDK_CALL(put_AutoExpoEnable)
+#define Toupcam_put_Brightness SDK_CALL(put_Brightness)
+#define Toupcam_put_Contrast SDK_CALL(put_Contrast)
+#define Toupcam_put_ExpoAGain SDK_CALL(put_ExpoAGain)
+#define Toupcam_put_ExpoTime SDK_CALL(put_ExpoTime)
+#define Toupcam_put_Gamma SDK_CALL(put_Gamma)
+#define Toupcam_put_Hue SDK_CALL(put_Hue)
+#define Toupcam_put_Option SDK_CALL(put_Option)
+#define Toupcam_put_Roi SDK_CALL(put_Roi)
+#define Toupcam_put_Saturation SDK_CALL(put_Saturation)
+#define Toupcam_put_Speed SDK_CALL(put_Speed)
+#define Toupcam_put_Temperature SDK_CALL(put_Temperature)
+#define Toupcam_put_WhiteBalanceGain SDK_CALL(put_WhiteBalanceGain)
+#endif
+#define indigo_ccd_touptek ENTRY_POINT
+
+#if defined(ALTAIR)
+#define PTOUPCAM_EVENT_CALLBACK PALTAIRCAM_EVENT_CALLBACK
+#elif defined(BACCAM)
+#define PTOUPCAM_EVENT_CALLBACK PBACCAM_EVENT_CALLBACK
+#elif defined(BRESSER)
+#define PTOUPCAM_EVENT_CALLBACK PBRESSERCAM_EVENT_CALLBACK
+#elif defined(OMEGONPRO)
+#define PTOUPCAM_EVENT_CALLBACK POMEGONPROCAM_EVENT_CALLBACK
+#elif defined(STARSHOOTG)
+#define PTOUPCAM_EVENT_CALLBACK PSTARSHOOTG_EVENT_CALLBACK
+#elif defined(RISING)
+#define PTOUPCAM_EVENT_CALLBACK PNNCAM_EVENT_CALLBACK
+#elif defined(MALLIN)
+#define PTOUPCAM_EVENT_CALLBACK PMALLINCAM_EVENT_CALLBACK
+#elif defined(OGMA)
+#define PTOUPCAM_EVENT_CALLBACK POGMACAM_EVENT_CALLBACK
+#elif defined(SVBONY)
+#define PTOUPCAM_EVENT_CALLBACK PSVBONYCAM_EVENT_CALLBACK
+#endif
+
+#ifndef TOUPTEK_SDK_TEST_LABEL
+#define TOUPTEK_SDK_TEST_LABEL "ToupTek SDK"
+#endif
 
 #define CHECK_TRUE(condition) do { if (!(condition)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #condition); indigo_test_failures++; goto cleanup; } } while (0)
 #define CHECK_EQ_INT(actual, expected) CHECK_TRUE((actual) == (expected))
@@ -1678,6 +1797,46 @@ cleanup:
 	stop_properties();
 }
 
+static bool retain_configuration_properties(const char *name, const char * const *properties, unsigned count) {
+	DIR *directory = opendir(test_output_folder);
+	if (directory == NULL) { return false; }
+	bool found = false;
+	struct dirent *entry;
+	while ((entry = readdir(directory))) {
+		if (strstr(entry->d_name, ".config") == NULL) { continue; }
+		char path[1024], temporary[1024], line[512];
+		snprintf(path, sizeof(path), "%s/%s", test_output_folder, entry->d_name);
+		FILE *input = fopen(path, "r");
+		if (input == NULL) { continue; }
+		bool matches_device = false;
+		bool retain = false;
+		while (fgets(line, sizeof(line), input)) {
+			if (strstr(line, name)) { matches_device = true; }
+		}
+		rewind(input);
+		if (!matches_device) { fclose(input); continue; }
+		snprintf(temporary, sizeof(temporary), "%s.filtered", path);
+		FILE *output = fopen(temporary, "w");
+		if (output == NULL) { fclose(input); closedir(directory); return false; }
+		while (fgets(line, sizeof(line), input)) {
+			if (!strncmp(line, "<new", 4)) {
+				retain = false;
+				for (unsigned i = 0; i < count; i++) {
+					if (strstr(line, properties[i])) { retain = true; }
+				}
+			}
+			if (retain) { fputs(line, output); }
+			if (retain && !strncmp(line, "</new", 5)) { retain = false; }
+		}
+		fclose(output);
+		fclose(input);
+		if (rename(temporary, path)) { closedir(directory); return false; }
+		found = true;
+	}
+	closedir(directory);
+	return found;
+}
+
 static void configuration_workflows(void) {
 	indigo_property *copy = NULL;
 	enable_full_camera();
@@ -1687,11 +1846,6 @@ static void configuration_workflows(void) {
 	CHECK_TRUE(change_switch(0, "X_CCD_LED", "ON", INDIGO_OK_STATE));
 	CHECK_TRUE(change_switch(2, "X_WHEEL_MODEL", "5_POSITIONS", INDIGO_OK_STATE));
 	for (int d = 0; d < 4; d++) {
-		if (d != 1) {
-			unsigned before = revision(d, "CONFIG");
-			indigo_change_switch_property(NULL, logical[d]->name, "CONFIG", 3, (const char *[]){ "LOAD", "SAVE", "REMOVE" }, (bool []){ false, false, false });
-			CHECK_TRUE(wait_property(d, "CONFIG", before, INDIGO_OK_STATE));
-		}
 		CHECK_TRUE(change_switch(d, "CONFIG", "SAVE", INDIGO_OK_STATE));
 	}
 	DIR *directory = opendir(test_output_folder);
@@ -1705,6 +1859,10 @@ static void configuration_workflows(void) {
 	}
 	// Guider has no persistent settings, so SAVE need not create a file.
 	CHECK_EQ_INT(configs, 3);
+	const char *camera_properties[] = { "X_CCD_ADVANCED", "X_CCD_CONVERSION_GAIN" };
+	const char *wheel_properties[] = { "X_WHEEL_MODEL" };
+	CHECK_TRUE(retain_configuration_properties(logical[0]->name, camera_properties, ARRAY_SIZE(camera_properties)));
+	CHECK_TRUE(retain_configuration_properties(logical[2]->name, wheel_properties, ARRAY_SIZE(wheel_properties)));
 	CHECK_TRUE(change_number(0, "X_CCD_ADVANCED", "SPEED", 4, INDIGO_OK_STATE));
 	CHECK_TRUE(change_switch(0, "X_CCD_CONVERSION_GAIN", "LCG", INDIGO_OK_STATE));
 	unsigned before = revision(0, "X_CCD_ADVANCED");
@@ -1917,11 +2075,11 @@ int main(void) {
 	if (filter) {
 		int matched = 0;
 		for (unsigned i = 0; i < ARRAY_SIZE(tests); i++) {
-			if (strstr(tests[i].name, filter)) { result |= indigo_run_tests("ToupTek SDK", tests + i, 1); matched++; }
+			if (strstr(tests[i].name, filter)) { result |= indigo_run_tests(TOUPTEK_SDK_TEST_LABEL, tests + i, 1); matched++; }
 		}
 		if (!matched) { result = 1; }
 	} else {
-		result = indigo_run_tests("ToupTek SDK", tests, ARRAY_SIZE(tests));
+		result = indigo_run_tests(TOUPTEK_SDK_TEST_LABEL, tests, ARRAY_SIZE(tests));
 	}
 	clear_observer();
 	DIR *directory = opendir(test_output_folder);

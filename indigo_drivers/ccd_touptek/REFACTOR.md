@@ -323,11 +323,22 @@ The optional target and its exclusion from the default suite were verified. Buil
 - Forced fresh compilation of ToupTek, Altair, Baccam, Bresser, OmegonPro, StarshootG, Rising, Mallin, Meade, Ogma and SVBony shared-source consumers with their bundled SDKs. Every archive, dylib and executable built successfully; `lipo -archs` confirmed arm64 and x86_64 dylib slices. No Rosetta execution was performed. The SDKs produce existing linker deployment-target warnings (SDK minimum macOS 11.0 versus repository target 10.10); these builds do not establish runtime support on macOS 10.10.
 - The native SDK regression suite passed all 20 scenarios. Native `test_timer` passed all 86 timer/handler/queue cases. AddressSanitizer instrumentation of the test harness, production driver, image fixture and framework dispatcher passed the three deterministic race scenarios without a sanitizer report. Prebuilt framework archives and closed-source SDK internals are outside that instrumentation; this is not a ThreadSanitizer or full-stack instrumentation claim.
 - All 45 property/item initialization calls match baseline `30e667c8cd0b57c0aa0feb285ae79a651ce3dd2c` after resolving extracted name defines and whitespace. All 27 property count/visibility assignments preserve their public effect; the wheel assignment no longer also writes the private slot count because `PRIVATE_DATA->count` now holds connection references. No property/item was added or removed, so `indigo_docs/PROPERTIES.md` needs no schema update.
-- License/copyright includes 2026, the Codex queue-refactoring notice is present, and driver version is already `0x0300002b` (baseline `0x03000029`). No further version bump or driver behavior change was needed for validation.
+- License/copyright includes 2026, and driver version is `0x0300002c` (baseline `0x03000029`). The configuration delegation now clears the queued BUSY state before entering the base CONFIG handler, allowing SAVE and asynchronous LOAD to complete.
 - Altair ALTAIRGP224C #E61F50 passed the same physical acquisition/guider workflows using the real Altair SDK, with RGB RAW frames at 1280 × 960 (3,686,412 bytes). The user physically unplugged it during active streaming; both logical devices were removed. After replug, a fresh exposure and guide pulse succeeded. A further native run successfully shut down/reinitialized the driver in the same process and acquired a frame on its new queue. Both runs exited 0.
 - Hardware testing remains opt-in: `make -C indigo_test test-ccd-touptek-hw HW_DRIVER=altair` selects Altair; append `HW_HOTPLUG=1` only when an operator can unplug/replug at the printed prompts. Default `HW_DRIVER=touptek` selects ToupTek. `make -n test` confirms that normal tests neither build nor run the hardware executable. Detailed coverage is recorded in `indigo_test/CHANGES.md`; no review baseline was advanced.
 
 Deferred external validation: Linux/Windows toolchains, physical Intel macOS, real wheel/focuser hardware, simultaneous multiple physical cameras and prolonged vendor-SDK stress are unavailable/unverified in this session. They are not represented as passed. The two guiding cameras were tested sequentially; only Altair underwent the manual cable-removal test. `git diff --check` passed and test/ASan build artifacts were removed with `make -C indigo_test test-clean`.
+
+## Atomic implementation sequence
+
+- [x] Identify every CCD OEM driver that compiles `ccd_touptek` and inventory its bundled SDK header, exported prefix and public entry point.
+- [x] Refactor the existing ToupTek fake-SDK harness into a prefix-neutral shared body while preserving its 28 scenario groups.
+- [x] Add one OEM wrapper and one independent Makefile target for Altair, BacCam, Bresser, MallinCam, Meade, OGMA, OmegonPro, RisingCam, StarShootG and SVBONY.
+- [x] Compile each wrapper against its actual bundled SDK header and a separately compiled OEM driver translation unit.
+- [x] Run all 28 fake-SDK scenarios for every OEM target and record the results in `indigo_test/CHANGES.md`.
+- [x] Add every created OEM test source to the Xcode integration-test group; this is now a mandatory repository test rule in `indigo_test/AGENTS.md`.
+
+Result (2026-09-11): ToupTek plus all ten OEM targets passed the 28 shared fake-SDK scenarios. Each OEM binary compiled its own driver translation unit against its bundled header. The test matrix includes lifecycle and USB hot-plug, camera/guider/wheel/focuser control, acquisition and streaming races, configuration SAVE/LOAD and pulse timing.
 
 ## Completion criteria
 

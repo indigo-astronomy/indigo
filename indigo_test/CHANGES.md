@@ -146,9 +146,9 @@ The inventory merges the earlier CCD and non-CCD audits and incorporates their r
 - **Partial**: concrete scenarios and their validation results are recorded, but failures, remaining gaps or completion of the full standard audit are still outstanding.
 - **Not audited**: an automated test exists, but its coverage has not been assessed against the complete applicable standard in this audit. This does not mean there are no tests.
 - **No tests**: no dedicated automated driver target was found in `indigo_test/`; coverage is not established.
-- **Shared**: a ToupTek OEM wrapper follows the shared implementation's coverage. Per the agreed scope, no separate OEM audit is required; this does not claim its vendor binary was tested by the fake ToupTek build.
+- **Shared**: retained only for drivers whose common implementation has no independently compiled fake-SDK target.
 
-Inventory: 150 modules — 2 Complete, 37 Partial, 55 Not audited, 46 No tests, 10 Shared.
+Inventory: 150 modules — 2 Complete, 47 Partial, 55 Not audited, 46 No tests.
 
 | Driver | Implementation | Automated test boundary | Coverage status | Recorded validation / remaining work |
 | --- | --- | --- | --- | --- |
@@ -190,38 +190,38 @@ Inventory: 150 modules — 2 Complete, 37 Partial, 55 Not audited, 46 No tests, 
 | `aux_wbplusv3` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `aux_wbprov3` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `aux_wcv4ec` | Generated | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
-| `ccd_altair` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. An opt-in real-SDK hardware harness also exists. |
+| `ccd_altair` | Shared ToupTek | Fake SDK/USB | Partial | 28/28 shared fake-SDK groups passed against the independently compiled Altair driver and bundled Altair SDK header. An opt-in real-SDK hardware harness also exists. |
 | `ccd_andor` | Hand-written | None | No tests | `indigo_optional_drivers/`. No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `ccd_apogee` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `ccd_asi` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `ccd_atik` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `ccd_atik2` | Hand-written | None | No tests | `indigo_mac_drivers/`. No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `ccd_baccam` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
-| `ccd_bresser` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
+| `ccd_baccam` | Shared ToupTek | Fake SDK/USB | Partial | 28/28 shared fake-SDK groups passed against the independently compiled BacCam driver and bundled BacCam SDK header. |
+| `ccd_bresser` | Shared ToupTek | Fake SDK/USB | Partial | 28/28 shared fake-SDK groups passed against the independently compiled Bresser driver and bundled Bresser SDK header. |
 | `ccd_dsi` | Generated | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `ccd_fli` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `ccd_iidc` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `ccd_mallin` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
-| `ccd_meade` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
+| `ccd_mallin` | Shared ToupTek | Fake SDK/USB | Partial | 28/28 shared fake-SDK groups passed against the independently compiled MallinCam driver and bundled MallinCam SDK header. |
+| `ccd_meade` | Shared ToupTek | Fake SDK/USB | Partial | 28/28 shared fake-SDK groups passed against the independently compiled Meade driver and bundled Meade SDK header, which retains ToupCam symbols. |
 | `ccd_mi` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `ccd_ogma` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
-| `ccd_omegonpro` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
+| `ccd_ogma` | Shared ToupTek | Fake SDK/USB | Partial | 28/28 shared fake-SDK groups passed against the independently compiled OGMA driver and bundled OGMA SDK header. |
+| `ccd_omegonpro` | Shared ToupTek | Fake SDK/USB | Partial | 28/28 shared fake-SDK groups passed against the independently compiled OmegonPro driver and bundled OmegonPro SDK header. |
 | `ccd_pentax` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `ccd_playerone` | Generated | Fake SDK/USB | Partial | 45/45 fake SDK groups passed. The earlier continuous-acquisition argument and Bayer mapping gaps are closed; cooling faults, lifecycle/races and discovery retries are covered. No remaining concrete gap is recorded in this inventory, but a final complete-standard matrix is not established here. |
 | `ccd_ptp` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `ccd_qhy` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `ccd_qhy2` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `ccd_qsi` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `ccd_rising` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
+| `ccd_rising` | Shared ToupTek | Fake SDK/USB | Partial | 28/28 shared fake-SDK groups passed against the independently compiled RisingCam driver and bundled Nncam SDK header. |
 | `ccd_rpi` | Hand-written | None | No tests | `indigo_optional_drivers/`. No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `ccd_sbig` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `ccd_simulator` | Simulator | Direct bus | Partial | 16/16 direct integration groups passed, including logical devices, RAW geometry/bin, streaming/abort/reconnect, cooling, simulation modes and generated-noise file-camera input. Cooling/shutdown sanitizer checks passed. No SDK/USB boundary exists; a final complete-standard matrix is not established here. |
 | `ccd_ssag` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `ccd_ssg` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
+| `ccd_ssg` | Shared ToupTek | Fake SDK/USB | Partial | 28/28 shared fake-SDK groups passed against the independently compiled StarShootG driver and bundled StarShootG SDK header. |
 | `ccd_svb` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `ccd_svb2` | Shared ToupTek | Shared fake SDK | Shared | Uses the shared `ccd_touptek` implementation and its coverage status. No independent OEM fake build is claimed; OEM-specific audit is not required for this inventory. |
+| `ccd_svb2` | Shared ToupTek | Fake SDK/USB | Partial | 28/28 shared fake-SDK groups passed against the independently compiled SVBONY driver and bundled Svbonycam SDK header. |
 | `ccd_sx` | Generated | Fake USB/SDK | Complete | 24/24 applicable CCD/guider groups passed normally and with ASan/UBSan, including cooling, readout profiles, transport faults, hot-plug/queue cleanup and SDK-entry guide timing. Coverage/N/A matrix: `../indigo_drivers/ccd_sx/REFACTOR.md`. |
-| `ccd_touptek` | Hand-written | Fake SDK/USB | Partial | 28/28 fake SDK groups passed; later targeted shutdown/lifecycle checks also passed. Earlier ROI/bin/noise geometry, Bayer, initialization/read failures, cooling and multi-camera/capacity gaps were addressed. Complete-standard matrix not established here. |
+| `ccd_touptek` | Hand-written | Fake SDK/USB | Partial | 28/28 fake-SDK groups passed after the CONFIG delegation fix, including custom-property SAVE/LOAD. Earlier ROI/bin/noise geometry, Bayer, initialization/read failures, cooling and multi-camera/capacity gaps were addressed. Complete-standard matrix not established here. |
 | `ccd_uvc` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `dome_baader` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
 | `dome_beaver` | Hand-written | PTY/protocol simulator | Not audited | Existing automated test target; full applicable-standard audit not completed. |
@@ -327,7 +327,7 @@ The generator test retains its 86 attribute/value/block checks and adds libusb l
 
 ## CCD cooling and fake-boundary extensions (2026-09-08)
 
-The camera standard explicitly requires cooler ON/OFF, separate target/measured temperatures and unit conversion, supported power readback, polling/settling, individual read/write failures and recovery, unsupported capability profiles and disconnect cleanup. Apply only controls the driver implements: SX does not report cooler power; the simulator has no SDK communication errors to inject. Hardware tests were not repeated. Altair remains covered as the shared ToupTek implementation, without a separate OEM target as requested.
+The camera standard explicitly requires cooler ON/OFF, separate target/measured temperatures and unit conversion, supported power readback, polling/settling, individual read/write failures and recovery, unsupported capability profiles and disconnect cleanup. Apply only controls the driver implements: SX does not report cooler power; the simulator has no SDK communication errors to inject. Hardware tests were not repeated. Each ToupTek OEM is now covered by a separate fake-SDK target against its bundled header.
 
 - Player One: existing cooler polling, individual SDK failure and slow-initialization cases remain; added exact Bayer mapping and continuous SDK acquisition argument assertions.
 - ToupTek: independent measured temperature, target conversion, temperature and both power-read failures, recovery and settling; failed initialization reads and acquisition setup, Bayer mapping, ROI/bin noise payloads, multiple-camera identity and capacity recovery.
@@ -336,7 +336,7 @@ The camera standard explicitly requires cooler ON/OFF, separate target/measured 
 
 Fake image data uses coordinate-addressable deterministic noise from `integration/ccd_test_noise.h`; no simulator image arrays are linked into fake SDK tests. New files are included in Xcode. ToupTek framework encoding/video/upload matrices were removed from the driver suite. The unified Driver test coverage status table above incorporates these additions and supersedes the initial CCD gap list; these additions do not claim exhaustive branch coverage.
 
-Validation: Player One 45/45, ToupTek 28/28, SX 5/5 and CCD simulator 16/16 normal tests pass. The final ToupTek power/initial cooler-read assertions and simulator per-property revision waits passed narrow reruns. Simulator cooling/shutdown also passes ASan/UBSan (test and driver instrumentation; prebuilt dependencies excluded). SX, ToupTek and simulator driver builds pass. Repeated SX generation produces identical C/header/main files; Xcode project lint and whitespace checks pass. No hardware tests ran.
+Validation: Player One 45/45, ToupTek and each of its ten OEM targets 28/28, SX 5/5 and CCD simulator 16/16 normal tests pass. The final ToupTek power/initial cooler-read assertions and simulator per-property revision waits passed narrow reruns. Simulator cooling/shutdown also passes ASan/UBSan (test and driver instrumentation; prebuilt dependencies excluded). SX, ToupTek, OEM and simulator driver builds pass. Repeated SX generation produces identical C/header/main files; Xcode project lint and whitespace checks pass. No hardware tests ran.
 
 ## Driver test scope by class (2026-09-08)
 
@@ -501,7 +501,7 @@ Validation: native arm64 23/23 SDK scenarios and 86/86 timer/queue cases passed.
 
 ## ToupTek SDK queues and finalizers (2026-09-08)
 
-`integration/test_ccd_touptek_sdk.c` builds as `build/integration/test_ccd_touptek_sdk`, with separately compiled production driver, simulator image fixture and framework dispatcher objects. Twenty-five hardware-free scenarios use public bus requests, the real handler queues and SDK/USB replacements. The observer, test cases and config-path replacement are consolidated into `test_ccd_touptek_sdk.c`; no auxiliary ToupTek test source/header files are needed. After consolidation, the universal binary rebuilt without warnings and the configuration persistence/upload scenario passed.
+`integration/test_ccd_touptek_sdk.c` builds as `build/integration/test_ccd_touptek_sdk`, with separately compiled production driver, simulator image fixture and framework dispatcher objects. Twenty-five hardware-free scenarios use public bus requests, the real handler queues and SDK/USB replacements. The observer, test cases and config-path replacement are consolidated into `test_ccd_touptek_sdk.c`; the OEM wrappers only select the vendor prefix and test label while sharing this body. After consolidation, the universal binary rebuilt without warnings and the configuration persistence/upload scenario passed.
 
 Coverage:
 

@@ -16,8 +16,6 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Queue refactoring by OpenAI Codex (2026).
-
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 // 2.0 refactoring by Rumen G. Bogdanovski <rumenastro@gmail.com>
@@ -40,19 +38,19 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION									0x0300002b
+#define DRIVER_VERSION											0x0300002c
 #define PRIVATE_DATA												((DRIVER_PRIVATE_DATA *)device->private_data)
 
 #define ADVANCED_GROUP											"Advanced"
 
 #ifndef MAKEFOURCC
-#define MAKEFOURCC(a, b, c, d) ((unsigned)(unsigned char)(a) | ((unsigned)(unsigned char)(b) << 8) | ((unsigned)(unsigned char)(c) << 16) | ((unsigned)(unsigned char)(d) << 24))
+#define MAKEFOURCC(a, b, c, d) 							((unsigned)(unsigned char)(a) | ((unsigned)(unsigned char)(b) << 8) | ((unsigned)(unsigned char)(c) << 16) | ((unsigned)(unsigned char)(d) << 24))
 #endif
 
-#define ROUND_BIN(dimention, bin) (2 * ((unsigned)(dimention) / (unsigned)(bin) / 2))
+#define ROUND_BIN(dimention, bin) 					(2 * ((unsigned)(dimention) / (unsigned)(bin) / 2))
 
 #ifdef TOUPTEK
-#define TOUPTEK_VID		0x0547
+#define TOUPTEK_VID													0x0547
 #endif
 
 #pragma mark - Property definitions
@@ -1489,13 +1487,10 @@ static void ccd_config_handler(indigo_device *device) {
 		indigo_save_property(device, NULL, X_CCD_BIN_MODE_PROPERTY);
 		indigo_save_property(device, NULL, X_CCD_LED_PROPERTY);
 	}
+	CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_property *property = indigo_copy_property(NULL, CONFIG_PROPERTY);
 	indigo_ccd_change_property(device, NULL, property);
 	indigo_release_property(property);
-	if (CONFIG_PROPERTY->state == INDIGO_BUSY_STATE) {
-		CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CONFIG_PROPERTY, NULL);
-	}
 }
 
 #pragma mark - Device API (ccd)
@@ -2130,13 +2125,10 @@ static void wheel_config_handler(indigo_device *device) {
 	if (CONFIG_SAVE_ITEM->sw.value) {
 		indigo_save_property(device, NULL, X_WHEEL_MODEL_PROPERTY);
 	}
+	CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_property *property = indigo_copy_property(NULL, CONFIG_PROPERTY);
 	indigo_wheel_change_property(device, NULL, property);
 	indigo_release_property(property);
-	if (CONFIG_PROPERTY->state == INDIGO_BUSY_STATE) {
-		CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CONFIG_PROPERTY, NULL);
-	}
 }
 
 #pragma mark - Device API (wheel)
@@ -2556,13 +2548,10 @@ static void focuser_config_handler(indigo_device *device) {
 	if (CONFIG_SAVE_ITEM->sw.value) {
 		//indigo_save_property(device, NULL, EAF_BEEP_PROPERTY);
 	}
+	CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_property *property = indigo_copy_property(NULL, CONFIG_PROPERTY);
 	indigo_focuser_change_property(device, NULL, property);
 	indigo_release_property(property);
-	if (CONFIG_PROPERTY->state == INDIGO_BUSY_STATE) {
-		CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CONFIG_PROPERTY, NULL);
-	}
 }
 
 #pragma mark - Device API (focuser)

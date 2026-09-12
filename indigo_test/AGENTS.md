@@ -110,6 +110,7 @@ After validating changes that build tests, run `make -C indigo_test test-clean` 
 - Add new unit executables to `UNIT_TESTS`.
 - Add new integration executables to `INTEGRATION_TESTS`.
 - Add new benchmark executables to `BENCHMARKS`.
+- Add every new test source or header to its appropriate Xcode project group in `../indigo.xcodeproj/project.pbxproj`.
 - Keep test-specific linker flags local and explicit.
 - Do not add generated binaries or `build/` artifacts to the repository.
 - Keep `test-clean` able to remove all generated test outputs.
