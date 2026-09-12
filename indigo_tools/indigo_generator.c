@@ -37,6 +37,10 @@ typedef enum {
 	TOKEN_NONE = 0, TOKEN_LBRACE = '{', TOKEN_RBRACE = '}', TOKEN_EQUAL = '=', TOKEN_SEMICOLON = ';', TOKEN_IDENTIFIER = 'I', TOKEN_STRING = 'S', TOKEN_NUMBER = 'N', TOKEN_TRUE = 'T', TOKEN_FALSE = 'F', TOKEN_CODE = 'C', TOKEN_EXPRESSION = 'E'
 } token_type;
 
+typedef enum {
+	INDIGO_LICENSE, GNU_LGPL_LICENSE
+} license_type;
+
 typedef struct code_type {
 	struct code_type *next;
 	char *text;
@@ -103,6 +107,7 @@ typedef struct driver_type {
 	char name[64], label[256], author[256], copyright[256], supported_architecture[256];
 	int version;
 	bool virtual, cpp;
+	license_type license;
 	definition_type *definions;
 	device_type *devices;
 	serial_type *serial;
@@ -1108,6 +1113,9 @@ void read_definition_source(void) {
 	}
 	*current = 0;
 	current = definition_source;
+	if (strstr(definition_source, "GNU Lesser General Public")) {
+		driver.license = GNU_LGPL_LICENSE;
+	}
 }
 
 void write_line(const char *format, ...) {
@@ -1253,20 +1261,36 @@ void write_license(void) {
 	write_line("// %s", driver.copyright);
 	write_line("// All rights reserved.");
 	write_line("");
-	write_line("// You may use this software under the terms of 'INDIGO Astronomy");
-	write_line("// open-source license' (see LICENSE.md).");
-	write_line("");
-	write_line("// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS");
-	write_line("// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED");
-	write_line("// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE");
-	write_line("// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY");
-	write_line("// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL");
-	write_line("// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE");
-	write_line("// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS");
-	write_line("// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,");
-	write_line("// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING");
-	write_line("// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS");
-	write_line("// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
+	if (driver.license == GNU_LGPL_LICENSE) {
+		write_line("// This library is free software; you can redistribute it and/or");
+		write_line("// modify it under the terms of the GNU Lesser General Public");
+		write_line("// License as published by the Free Software Foundation; either");
+		write_line("// version 2.1 of the License, or (at your option) any later version.");
+		write_line("");
+		write_line("// This library is distributed in the hope that it will be useful,");
+		write_line("// but WITHOUT ANY WARRANTY; without even the implied warranty of");
+		write_line("// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU");
+		write_line("// Lesser General Public License for more details.");
+		write_line("");
+		write_line("// You should have received a copy of the GNU Lesser General Public");
+		write_line("// License along with this library; if not, write to the Free Software");
+		write_line("// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA");
+	} else {
+		write_line("// You may use this software under the terms of 'INDIGO Astronomy");
+		write_line("// open-source license' (see LICENSE.md).");
+		write_line("");
+		write_line("// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS");
+		write_line("// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED");
+		write_line("// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE");
+		write_line("// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY");
+		write_line("// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL");
+		write_line("// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE");
+		write_line("// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS");
+		write_line("// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,");
+		write_line("// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING");
+		write_line("// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS");
+		write_line("// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
+	}
 	write_line("");
 	write_line("// This file generated from %s", definition_source_basename);
 	write_line("");
@@ -2577,6 +2601,9 @@ void read_c_source(void) {
 	double d1;
 	while (fgets(line, sizeof(line), stdin)) {
 		line[strcspn(line, "\n")] = 0;
+		if (strstr(line, "GNU Lesser General Public")) {
+			driver.license = GNU_LGPL_LICENSE;
+		}
 		if (sscanf(line, "// supported_architecture: %255[^\n]", driver.supported_architecture) == 1) {
 			continue;
 		}
@@ -2889,20 +2916,36 @@ void write_definition_source(void) {
 	write_line("// %s", driver.copyright);
 	write_line("// All rights reserved.");
 	write_line("//");
-	write_line("// You can use this software under the terms of 'INDIGO Astronomy");
-	write_line("// open-source license' (see LICENSE.md).");
-	write_line("//");
-	write_line("// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS");
-	write_line("// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED");
-	write_line("// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE");
-	write_line("// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY");
-	write_line("// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL");
-	write_line("// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE");
-	write_line("// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS");
-	write_line("// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,");
-	write_line("// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING");
-	write_line("// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS");
-	write_line("// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
+	if (driver.license == GNU_LGPL_LICENSE) {
+		write_line("// This library is free software; you can redistribute it and/or");
+		write_line("// modify it under the terms of the GNU Lesser General Public");
+		write_line("// License as published by the Free Software Foundation; either");
+		write_line("// version 2.1 of the License, or (at your option) any later version.");
+		write_line("//");
+		write_line("// This library is distributed in the hope that it will be useful,");
+		write_line("// but WITHOUT ANY WARRANTY; without even the implied warranty of");
+		write_line("// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU");
+		write_line("// Lesser General Public License for more details.");
+		write_line("//");
+		write_line("// You should have received a copy of the GNU Lesser General Public");
+		write_line("// License along with this library; if not, write to the Free Software");
+		write_line("// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA");
+	} else {
+		write_line("// You can use this software under the terms of 'INDIGO Astronomy");
+		write_line("// open-source license' (see LICENSE.md).");
+		write_line("//");
+		write_line("// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS");
+		write_line("// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED");
+		write_line("// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE");
+		write_line("// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY");
+		write_line("// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL");
+		write_line("// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE");
+		write_line("// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS");
+		write_line("// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,");
+		write_line("// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING");
+		write_line("// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS");
+		write_line("// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
+	}
 	write_line("");
 	write_line("// %s driver definition", driver.label);
 	write_line("");

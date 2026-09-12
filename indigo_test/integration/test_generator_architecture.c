@@ -159,6 +159,30 @@ static void unrestricted_default(void) {
 	ASSERT_TRUE(strstr(generated, "sdk_discovery_retry") == NULL);
 }
 
+static void license_detection_and_reverse_extraction(void) {
+	const char *lgpl = "// This library is free software; you can redistribute it and/or\n// modify it under the terms of the GNU Lesser General Public\n// License as published by the Free Software Foundation.\n\n";
+	char definition[4096], generated[65536];
+	snprintf(definition, sizeof(definition), "%sdriver architecture_test {\n%s", lgpl, fixture);
+	char *generate_arguments[] = { TEST_GENERATOR, DEFINITION, NULL };
+	ASSERT_TRUE(write_text(DEFINITION, definition));
+	ASSERT_TRUE(run(generate_arguments));
+	const char *outputs[] = { "indigo_aux_architecture_test.c", "indigo_aux_architecture_test.h", "indigo_aux_architecture_test_main.c" };
+	for (int i = 0; i < sizeof(outputs) / sizeof(outputs[0]); i++) {
+		ASSERT_TRUE(read_text(outputs[i], generated, sizeof(generated)));
+		ASSERT_TRUE(strstr(generated, "GNU Lesser General Public") != NULL);
+		ASSERT_TRUE(strstr(generated, "INDIGO Astronomy") == NULL);
+	}
+	char *extract_arguments[] = { TEST_GENERATOR, "-c", DEFINITION, NULL };
+	ASSERT_TRUE(run(extract_arguments));
+	ASSERT_TRUE(read_text(DEFINITION, generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "GNU Lesser General Public") != NULL);
+	ASSERT_TRUE(strstr(generated, "INDIGO Astronomy") == NULL);
+	ASSERT_TRUE(generate(NULL));
+	ASSERT_TRUE(read_text(GENERATED, generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "INDIGO Astronomy") != NULL);
+	ASSERT_TRUE(strstr(generated, "GNU Lesser General Public") == NULL);
+}
+
 static void name_and_name_value_are_distinct(void) {
 	const char *orders[] = {
 		"name = \"Static name %s\";\nname_value = private_data->dynamic_name;\n",
@@ -585,6 +609,7 @@ int main(void) {
 		{ "nine platform/CPU conditions and three reverse extractions", conditions_and_reverse_extraction },
 		{ "unsupported fallback without SDK headers or linkage", unsupported_fallback },
 		{ "unrestricted default", unrestricted_default },
+		{ "LGPL detection, propagation and reverse extraction", license_detection_and_reverse_extraction },
 		{ "name and name_value stay distinct in either order", name_and_name_value_are_distinct },
 		{ "All supported DSL attributes and code blocks", all_supported_attributes },
 		{ "USB duplicate, attachment and initialization rollback guards", libusb_lifecycle_guards },
