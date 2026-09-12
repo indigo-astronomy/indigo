@@ -21,6 +21,10 @@
 #include <indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.h>
 
 #include "serial_simulator_test_common.h"
+#include <errno.h>
+#include <stdatomic.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 
 #ifndef FOCUSER_OPTECFL_SIMULATOR_EXECUTABLE
 #define FOCUSER_OPTECFL_SIMULATOR_EXECUTABLE "build/integration/focuser_optecfl_simulator"
@@ -28,40 +32,334 @@
 
 #define X_FOCUSER_TYPE_PROPERTY_NAME "X_FOCUSER_TYPE"
 
-static const simulator_driver_case focuslynx_focuser_1 = {
-	"Optec FocusLynx Focuser",
-	"indigo_focuser_optecfl",
-	"Optec FocusLynx #1",
-	indigo_focuser_optecfl,
-	false,
-	NULL,
-	0,
-	NULL,
-	0,
-	NULL,
-	0,
-	NULL,
-	0
-};
+static const simulator_driver_case optecfl_focuser_1 = { "Optec FocusLynx Focuser", "indigo_focuser_optecfl", "Optec FocusLynx #1", indigo_focuser_optecfl, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static const simulator_driver_case optecfl_focuser_2 = { "Optec FocusLynx Focuser", "indigo_focuser_optecfl", "Optec FocusLynx #2", indigo_focuser_optecfl, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 
-static const simulator_driver_case focuslynx_focuser_2 = {
-	"Optec FocusLynx Focuser",
-	"indigo_focuser_optecfl",
-	"Optec FocusLynx #2",
-	indigo_focuser_optecfl,
-	false,
-	NULL,
-	0,
-	NULL,
-	0,
-	NULL,
-	0,
-	NULL,
-	0
-};
+static external_serial_simulator fixture;
+static char fixture_dir[] = "/tmp/indigo-optecfl.XXXXXX";
+static char event_path[256], fault_path[256];
+static const char *current_profile;
 
-static void assert_focuslynx_properties(void) {
+// ----------------------------------------------------------------- observation
+
+static const char *observed_names[] = { CONNECTION_PROPERTY_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_LIMITS_PROPERTY_NAME, X_FOCUSER_TYPE_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_PROPERTY_NAME };
+#define OBSERVED_COUNT ((int)(sizeof(observed_names) / sizeof(observed_names[0])))
+static atomic_uint revisions[OBSERVED_COUNT];
+
+static int observed_index(const char *name) {
+	for (int i = 0; i < OBSERVED_COUNT; i++) {
+		if (!strcmp(name, observed_names[i])) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+static indigo_result observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	indigo_result result = simulator_client_update_property(client, device, property, message);
+	int index = context.driver_case && !strcmp(property->device, context.driver_case->device_name) ? observed_index(property->name) : -1;
+	if (index >= 0) {
+		atomic_fetch_add(&revisions[index], 1);
+	}
+	return result;
+}
+
+static void reset_revisions(void) {
+	for (int i = 0; i < OBSERVED_COUNT; i++) {
+		atomic_store(&revisions[i], 0);
+	}
+}
+
+static bool new_state(const char *name, unsigned before, indigo_property_state state) {
+	int index = observed_index(name);
+	for (int i = 0; i < 400; i++) {
+		indigo_property *property = find_cached_property(name);
+		if (index >= 0 && atomic_load(&revisions[index]) > before && property && property->state == state) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	fprintf(stderr, "No fresh %s state %d\n", name, state);
+	return false;
+}
+
+static bool number_change(const char *property, const char *item, double value, indigo_property_state state) {
+	int index = observed_index(property);
+	unsigned before = index >= 0 ? atomic_load(&revisions[index]) : 0;
+	return indigo_change_number_property_1(&simulator_test_client, context.driver_case->device_name, property, item, value) == INDIGO_OK && new_state(property, before, state);
+}
+
+static bool switch_change(const char *property, const char *item, bool value, indigo_property_state state) {
+	int index = observed_index(property);
+	unsigned before = index >= 0 ? atomic_load(&revisions[index]) : 0;
+	if (indigo_change_switch_property_1(&simulator_test_client, context.driver_case->device_name, property, item, value) != INDIGO_OK) {
+		return false;
+	}
+	return index >= 0 ? new_state(property, before, state) : wait_for_property_state(property, state);
+}
+
+// ----------------------------------------------------------------- fixtures
+
+static bool fault(const char *command, const char *action) {
+	char temporary[280];
+	snprintf(temporary, sizeof(temporary), "%s.tmp", fault_path);
+	FILE *file = fopen(temporary, "w");
+	if (!file) {
+		return false;
+	}
+	fprintf(file, "%s %s\n", command, action);
+	fclose(file);
+	return rename(temporary, fault_path) == 0;
+}
+
+static int commands(const char *prefix) {
+	FILE *file = fopen(event_path, "r");
+	if (!file) {
+		return -1;
+	}
+	char line[512];
+	int count = 0;
+	while (fgets(line, sizeof(line), file)) {
+		if (!strncmp(line, prefix, strlen(prefix))) {
+			count++;
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+static int open_descriptors(void) {
+	int count = 0;
+	for (int fd = 0; fd < 1024; fd++) {
+		if (fcntl(fd, F_GETFD) >= 0) {
+			count++;
+		}
+	}
+	return count;
+}
+
+static bool driver_up(void) {
+	reset_revisions();
+	return bring_up_serial_driver(&optecfl_focuser_1);
+}
+
+static bool wait_for_type_property(void) {
+	for (int retry = 0; retry < 200; retry++) {
+		if (find_cached_item(X_FOCUSER_TYPE_PROPERTY_NAME, "OA") != NULL) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	return false;
+}
+
+static bool wait_for_type_selection(const char *selected) {
+	for (int retry = 0; retry < 200; retry++) {
+		indigo_property *property = find_cached_property(X_FOCUSER_TYPE_PROPERTY_NAME);
+		if (property != NULL) {
+			for (int i = 0; i < property->count; i++) {
+				if (!strcmp(property->items[i].name, selected) && property->items[i].sw.value) {
+					return true;
+				}
+			}
+		}
+		indigo_usleep(25000);
+	}
+	return false;
+}
+
+static bool connect_device(const simulator_driver_case *driver_case) {
+	if (context.driver_case != driver_case) {
+		reset_simulator_context(driver_case);
+	}
+	enumerate_simulator_device();
+	if (!has_defined_property(CONNECTION_PROPERTY_NAME)) {
+		return false;
+	}
+	if (has_defined_property(DEVICE_PORT_PROPERTY_NAME)) {
+		if (indigo_change_text_property_1_raw(&simulator_test_client, driver_case->device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, fixture.port) != INDIGO_OK || !wait_for_property_state(DEVICE_PORT_PROPERTY_NAME, INDIGO_OK_STATE)) {
+			return false;
+		}
+	}
+	int index = observed_index(CONNECTION_PROPERTY_NAME);
+	unsigned before = atomic_load(&revisions[index]);
+	if (indigo_change_switch_property_1(&simulator_test_client, driver_case->device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true) != INDIGO_OK) {
+		return false;
+	}
+	return new_state(CONNECTION_PROPERTY_NAME, before, INDIGO_OK_STATE) && context.connected && wait_for_type_property();
+}
+
+static bool connect_first(void) {
+	return connect_device(&optecfl_focuser_1);
+}
+
+static bool connect_second(void) {
+	return connect_device(&optecfl_focuser_2);
+}
+
+static bool disconnect_device(const simulator_driver_case *driver_case) {
+	if (context.driver_case != driver_case) {
+		reset_simulator_context(driver_case);
+		enumerate_simulator_device();
+	}
+	indigo_item *connected = find_cached_item(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	if (connected == NULL || !connected->sw.value) {
+		return true;
+	}
+	int index = observed_index(CONNECTION_PROPERTY_NAME);
+	unsigned before = atomic_load(&revisions[index]);
+	if (indigo_change_switch_property_1(&simulator_test_client, driver_case->device_name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true) != INDIGO_OK) {
+		return false;
+	}
+	return new_state(CONNECTION_PROPERTY_NAME, before, INDIGO_OK_STATE) && !context.connected;
+}
+
+static void driver_down(void) {
+	disconnect_device(&optecfl_focuser_2);
+	disconnect_device(&optecfl_focuser_1);
+	tear_down_serial_driver(&optecfl_focuser_1);
+}
+
+static bool start_single(void) {
+	return driver_up() && connect_first();
+}
+
+static double position_value(void) {
+	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	return item ? item->number.value : -1;
+}
+
+static double max_position(void) {
+	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	return item ? item->number.max : -1;
+}
+
+static bool at_position(double position) {
+	return wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, position, 1) && wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE) && wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE);
+}
+
+static bool wait_for_motion_progress(double target) {
+	for (int retry = 0; retry < 100; retry++) {
+		indigo_property *property = find_cached_property(FOCUSER_POSITION_PROPERTY_NAME);
+		indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+		if (property != NULL && item != NULL && property->state == INDIGO_BUSY_STATE && item->number.value > 0 && item->number.value < target) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+// Selects a device type that permits SCCP; all Optec ("O...") types must home.
+static bool select_syncable_type(void) {
+	return switch_change(X_FOCUSER_TYPE_PROPERTY_NAME, "SO", true, INDIGO_OK_STATE);
+}
+
+static bool goto_position(double position, indigo_property_state state) {
+	return switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true, INDIGO_OK_STATE) && number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, position, state);
+}
+
+// ----------------------------------------------------------------- identity and lifecycle
+
+static void metadata(void) {
+	assert_simulator_driver_info(&optecfl_focuser_1);
+	SERIAL_CHECK_TRUE(start_single());
 	assert_device_interface(INDIGO_INTERFACE_FOCUSER);
+cleanup:
+	driver_down();
+}
+
+static void focuser_1_lifecycle(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(disconnect_device(&optecfl_focuser_1));
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_first());
+cleanup:
+	driver_down();
+}
+
+static void focuser_2_lifecycle(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_second());
+	assert_device_interface(INDIGO_INTERFACE_FOCUSER);
+	SERIAL_CHECK_TRUE(commands("<F2GETCONFIG>") >= 1);
+	SERIAL_CHECK_EQ_INT(0, commands("<F1GETCONFIG>"));
+cleanup:
+	driver_down();
+}
+
+static void shared_connection(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	int descriptors = open_descriptors();
+	SERIAL_CHECK_TRUE(connect_second());
+	// The hub is opened once and shared by both logical focusers.
+	SERIAL_CHECK_EQ_INT(descriptors, open_descriptors());
+	SERIAL_CHECK_EQ_INT(1, commands("<FHGETHUBINFO>"));
+	SERIAL_CHECK_TRUE(select_syncable_type());
+	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(300));
+	// Disconnecting the second focuser must not close the shared handle.
+	SERIAL_CHECK_TRUE(disconnect_device(&optecfl_focuser_2));
+	reset_simulator_context(&optecfl_focuser_1);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(goto_position(500, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(500));
+cleanup:
+	driver_down();
+}
+
+static void reverse_connection_order(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_second());
+	SERIAL_CHECK_TRUE(connect_first());
+	SERIAL_CHECK_EQ_INT(1, commands("<FHGETHUBINFO>"));
+	SERIAL_CHECK_TRUE(disconnect_device(&optecfl_focuser_1));
+	reset_simulator_context(&optecfl_focuser_2);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_TYPE_PROPERTY_NAME, "SO", true, INDIGO_OK_STATE));
+cleanup:
+	driver_down();
+}
+
+static void repeated_init_shutdown(void) {
+	bool up = false;
+	for (int i = 0; i < 3; i++) {
+		SERIAL_CHECK_TRUE(start_single());
+		up = true;
+		SERIAL_CHECK_TRUE(disconnect_device(&optecfl_focuser_1));
+		tear_down_serial_driver(&optecfl_focuser_1);
+		up = false;
+	}
+	return;
+cleanup:
+	if (up) {
+		driver_down();
+	}
+}
+
+static void shutdown_rejected_while_connected(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(connect_second());
+	// A driver still owning a connected logical device must refuse to shut down.
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, optecfl_focuser_1.entry(INDIGO_DRIVER_SHUTDOWN, NULL));
+	reset_simulator_context(&optecfl_focuser_1);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(goto_position(250, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(250));
+cleanup:
+	driver_down();
+}
+
+// ----------------------------------------------------------------- property contract
+
+static void property_contract(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	reset_simulator_context(&optecfl_focuser_1);
+	enumerate_simulator_device();
+	// Custom properties appear only once the device is connected.
+	SERIAL_CHECK_TRUE(!has_defined_property(X_FOCUSER_TYPE_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(connect_first());
 	assert_serial_focuser_class_property_completeness();
 	assert_property_has_item(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME);
 	assert_property_has_item(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME);
@@ -72,78 +370,532 @@ static void assert_focuslynx_properties(void) {
 	assert_property_has_item(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME);
 	assert_property_has_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME);
 	assert_property_has_item(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME);
-	assert_property_has_item(X_FOCUSER_TYPE_PROPERTY_NAME, "OA");
-	assert_property_has_item(X_FOCUSER_TYPE_PROPERTY_NAME, "OB");
-	assert_property_has_item(X_FOCUSER_TYPE_PROPERTY_NAME, "TA");
+	assert_property_has_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME);
 	assert_number_item_in_range(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-}
-
-static void focuslynx_focuser_passes_serial_compliance_checks(const simulator_driver_case *driver_case, double target_position) {
-	external_serial_simulator simulator = { 0 };
-
-	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_OPTECFL_SIMULATOR_EXECUTABLE));
-	SERIAL_CHECK_TRUE(start_serial_driver(driver_case, simulator.port));
-	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
-
-	assert_focuslynx_properties();
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, driver_case->device_name, X_FOCUSER_TYPE_PROPERTY_NAME, "OB", true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(X_FOCUSER_TYPE_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, driver_case->device_name, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, driver_case->device_name, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
-
-	target_position = bounded_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target_position);
-	SERIAL_CHECK_TRUE(!isnan(target_position));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, driver_case->device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target_position));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target_position, 1));
-
-	double sync_position = bounded_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target_position + 25);
-	SERIAL_CHECK_TRUE(!isnan(sync_position));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, driver_case->device_name, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, driver_case->device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, sync_position));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, sync_position, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, driver_case->device_name, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, driver_case->device_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_DIRECTION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, driver_case->device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 20));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, sync_position + 20, 1));
-
-	double abort_target = bounded_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, sync_position + 400);
-	SERIAL_CHECK_TRUE(!isnan(abort_target));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, driver_case->device_name, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, driver_case->device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, abort_target));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, driver_case->device_name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-
+	SERIAL_CHECK_TRUE(has_defined_property(X_FOCUSER_TYPE_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(disconnect_device(&optecfl_focuser_1));
+	SERIAL_CHECK_TRUE(find_cached_property(X_FOCUSER_TYPE_PROPERTY_NAME) == NULL);
 cleanup:
-	if (context.connected) {
-		stop_serial_driver(driver_case);
+	driver_down();
+}
+
+// Every code of Appendix A must be offered, and nothing outside it.
+static void device_type_table(void) {
+	static const char *codes[] = { "OA", "OB", "OC", "OD", "OE", "OF", "OG", "FA", "FB", "FC", "SA", "SB", "SC", "SD", "SE", "SF", "SG", "SH", "SI", "SJ", "SK", "SL", "SM", "SN", "SO", "SP", "SQ", "TA", "ZZ" };
+	SERIAL_CHECK_TRUE(start_single());
+	indigo_property *property = find_cached_property(X_FOCUSER_TYPE_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(property != NULL);
+	SERIAL_CHECK_EQ_INT((int)(sizeof(codes) / sizeof(codes[0])), property->count);
+	for (int i = 0; i < (int)(sizeof(codes) / sizeof(codes[0])); i++) {
+		assert_property_has_item(X_FOCUSER_TYPE_PROPERTY_NAME, codes[i]);
 	}
-	stop_external_serial_simulator(&simulator);
+	// Codes invented by the pre-refactoring driver must be gone.
+	SERIAL_CHECK_TRUE(find_cached_item(X_FOCUSER_TYPE_PROPERTY_NAME, "FD") == NULL);
+	SERIAL_CHECK_TRUE(find_cached_item(X_FOCUSER_TYPE_PROPERTY_NAME, "RA") == NULL);
+cleanup:
+	driver_down();
 }
 
-static void focuslynx_focuser_1_passes_serial_compliance_checks(void) {
-	focuslynx_focuser_passes_serial_compliance_checks(&focuslynx_focuser_1, 100);
+// Regression: the controller sends "Dev Typ", not "Dev Type".
+static void device_type_readback(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	// The non-default type configured on the hub must be reflected on connect.
+	SERIAL_CHECK_TRUE(wait_for_type_selection("SO"));
+cleanup:
+	driver_down();
 }
 
-static void focuslynx_focuser_2_passes_serial_compliance_checks(void) {
-	focuslynx_focuser_passes_serial_compliance_checks(&focuslynx_focuser_2, 120);
+static void limits_follow_max_pos(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	indigo_item *limit = find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(limit != NULL);
+	SERIAL_CHECK_TRUE(limit->number.value > 0);
+	SERIAL_CHECK_TRUE(max_position() == limit->number.value);
+	double optec_limit = limit->number.value;
+	// Max Pos is derived from the device type, so it must follow a type change.
+	SERIAL_CHECK_TRUE(select_syncable_type());
+	limit = find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(limit != NULL && limit->number.value != optec_limit);
+cleanup:
+	driver_down();
 }
+
+// ----------------------------------------------------------------- motion
+
+static void absolute_goto(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(goto_position(1200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(1200));
+	SERIAL_CHECK_EQ_INT(1, commands("<F1MA"));
+cleanup:
+	driver_down();
+}
+
+static void motion_progress(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(goto_position(6000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_motion_progress(6000));
+	SERIAL_CHECK_TRUE(at_position(6000));
+cleanup:
+	driver_down();
+}
+
+static void goto_no_op(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(goto_position(400, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(400));
+	SERIAL_CHECK_TRUE(goto_position(400, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(400));
+cleanup:
+	driver_down();
+}
+
+static void goto_boundaries(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(goto_position(800, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(800));
+	SERIAL_CHECK_TRUE(goto_position(0, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(0));
+cleanup:
+	driver_down();
+}
+
+static void steps_outward(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(goto_position(1000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(1000));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 250, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(1250));
+cleanup:
+	driver_down();
+}
+
+static void steps_inward(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(goto_position(1000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(1000));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 250, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(750));
+cleanup:
+	driver_down();
+}
+
+// The protocol has no reverse command, so reversal is resolved by the driver.
+static void steps_reversed(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(goto_position(1000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(1000));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 250, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(1250));
+cleanup:
+	driver_down();
+}
+
+static void steps_clamped(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(goto_position(100, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(100));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	// A relative move past zero must clamp instead of wrapping or failing.
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 5000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(0));
+cleanup:
+	driver_down();
+}
+
+// The framework BUSY guard must drop a second request instead of queueing it.
+static void overlap_rejected(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(goto_position(20000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, optecfl_focuser_1.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 100));
+	indigo_usleep(300000);
+	SERIAL_CHECK_EQ_INT(1, commands("<F1MA"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+cleanup:
+	driver_down();
+}
+
+// Motion started outside the driver must still be reported by polling.
+static void external_motion_observed(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(at_position(0));
+	SERIAL_CHECK_TRUE(fault("<F1GETSTATUS>", "position=4321"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 4321, 1));
+cleanup:
+	driver_down();
+}
+
+// ----------------------------------------------------------------- sync
+
+// Regression: all Optec focusers must home, so SCCP has to be refused.
+static void sync_rejected_for_optec_type(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(wait_for_type_selection("OA"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 700, INDIGO_ALERT_STATE));
+	// The driver must not even attempt the command for a homing focuser.
+	SERIAL_CHECK_EQ_INT(0, commands("<F1SCCP"));
+cleanup:
+	driver_down();
+}
+
+static void sync_accepted_for_other_type(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(select_syncable_type());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 700, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, commands("<F1SCCP"));
+	SERIAL_CHECK_TRUE(at_position(700));
+	// Sync updates coordinates without commanding motion.
+	SERIAL_CHECK_EQ_INT(0, commands("<F1MA"));
+cleanup:
+	driver_down();
+}
+
+// ----------------------------------------------------------------- abort and failures
+
+static void abort_during_motion(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(goto_position(40000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, commands("<F1HALT>"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_value() < 40000);
+cleanup:
+	driver_down();
+}
+
+static void abort_while_idle(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+	driver_down();
+}
+
+// Regression: the pre-refactoring driver used strncpy instead of strncmp and
+// therefore reported every failed HALT as success.
+static void abort_failure_reported(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(goto_position(40000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(fault("<F1HALT>", "reply=NOPE"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_ALERT_STATE));
+cleanup:
+	driver_down();
+}
+
+static void move_after_abort(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(goto_position(40000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(goto_position(600, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(600));
+cleanup:
+	driver_down();
+}
+
+static void device_type_change(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_TYPE_PROPERTY_NAME, "TA", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, commands("<F1SCDTTA>"));
+	SERIAL_CHECK_TRUE(wait_for_type_selection("TA"));
+cleanup:
+	driver_down();
+}
+
+static void device_type_failure(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(fault("<F1SCDTTA>", "reply=NOPE"));
+	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_TYPE_PROPERTY_NAME, "TA", true, INDIGO_ALERT_STATE));
+	// A rejected setting must not leave the device unusable.
+	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_TYPE_PROPERTY_NAME, "TA", true, INDIGO_OK_STATE));
+cleanup:
+	driver_down();
+}
+
+static void connect_hub_info_failure(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	reset_simulator_context(&optecfl_focuser_1);
+	enumerate_simulator_device();
+	int descriptors = open_descriptors();
+	SERIAL_CHECK_TRUE(fault("<FHGETHUBINFO>", "silent"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, optecfl_focuser_1.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, fixture.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, optecfl_focuser_1.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(!context.connected);
+	// A failed attempt must release everything it acquired.
+	SERIAL_CHECK_EQ_INT(descriptors, open_descriptors());
+	SERIAL_CHECK_TRUE(connect_first());
+cleanup:
+	driver_down();
+}
+
+static void connect_config_failure(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	reset_simulator_context(&optecfl_focuser_1);
+	enumerate_simulator_device();
+	int descriptors = open_descriptors();
+	SERIAL_CHECK_TRUE(fault("<F1GETCONFIG>", "silent"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, optecfl_focuser_1.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, fixture.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, optecfl_focuser_1.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(descriptors, open_descriptors());
+	SERIAL_CHECK_TRUE(connect_first());
+cleanup:
+	driver_down();
+}
+
+// Regression: a failed secondary connection must not tear down its sibling.
+static void sibling_survives_failed_connect(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(fault("<F2GETCONFIG>", "silent"));
+	reset_simulator_context(&optecfl_focuser_2);
+	enumerate_simulator_device();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, optecfl_focuser_2.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, fixture.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, optecfl_focuser_2.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	// The first focuser must still be usable on the shared handle.
+	reset_simulator_context(&optecfl_focuser_1);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(goto_position(900, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(900));
+cleanup:
+	driver_down();
+}
+
+// Regression: status polling used to increment the shared connection count, so
+// the serial handle was never released.
+static void handle_released_after_polling(void) {
+	int descriptors = 0;
+	SERIAL_CHECK_TRUE(driver_up());
+	reset_simulator_context(&optecfl_focuser_1);
+	enumerate_simulator_device();
+	descriptors = open_descriptors();
+	SERIAL_CHECK_TRUE(connect_first());
+	SERIAL_CHECK_TRUE(connect_second());
+	// Let several polling cycles run on both logical devices.
+	indigo_usleep(3500000);
+	SERIAL_CHECK_TRUE(commands("<F1GETSTATUS>") >= 2);
+	SERIAL_CHECK_TRUE(commands("<F2GETSTATUS>") >= 2);
+	SERIAL_CHECK_TRUE(disconnect_device(&optecfl_focuser_2));
+	SERIAL_CHECK_TRUE(disconnect_device(&optecfl_focuser_1));
+	SERIAL_CHECK_EQ_INT(descriptors, open_descriptors());
+cleanup:
+	driver_down();
+}
+
+static void malformed_reply(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(fault("<F1MA000300>", "reply=GARBAGE"));
+	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(300));
+cleanup:
+	driver_down();
+}
+
+static void partial_reply(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(fault("<F1MA000300>", "partial"));
+	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(300));
+cleanup:
+	driver_down();
+}
+
+static void overlong_reply(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(fault("<F1MA000300>", "overlong"));
+	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(300));
+cleanup:
+	driver_down();
+}
+
+static void missing_acknowledgement(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(fault("<F1MA000300>", "noack"));
+	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_ALERT_STATE));
+cleanup:
+	driver_down();
+}
+
+static void silent_reply(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(fault("<F1MA000300>", "silent"));
+	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(300));
+cleanup:
+	driver_down();
+}
+
+// A failed status poll must not stop polling.
+static void poll_failure_recovery(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	int before = commands("<F1GETSTATUS>");
+	SERIAL_CHECK_TRUE(fault("<F1GETSTATUS>", "silent"));
+	indigo_usleep(3000000);
+	SERIAL_CHECK_TRUE(commands("<F1GETSTATUS>") > before + 1);
+	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(300));
+cleanup:
+	driver_down();
+}
+
+static void disconnect_during_motion(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(goto_position(40000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(disconnect_device(&optecfl_focuser_1));
+	SERIAL_CHECK_TRUE(!context.connected);
+	int after = commands("<F1GETSTATUS>");
+	indigo_usleep(2000000);
+	// Polling must stop once the device is disconnected.
+	SERIAL_CHECK_EQ_INT(after, commands("<F1GETSTATUS>"));
+	SERIAL_CHECK_TRUE(connect_first());
+cleanup:
+	driver_down();
+}
+
+static void transport_loss(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(fault("<F1MA000300>", "close"));
+	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(disconnect_device(&optecfl_focuser_1));
+	SERIAL_CHECK_TRUE(!context.connected);
+cleanup:
+	driver_down();
+}
+
+// ----------------------------------------------------------------- temperature
+
+static void temperature_polling(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault("<F1GETSTATUS>", "temp=-12.5"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, -12.5, 0.2));
+cleanup:
+	driver_down();
+}
+
+// Without a probe the controller reports TmpProbe = 0 and the reading is idle.
+static void temperature_probe_absent(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_IDLE_STATE));
+cleanup:
+	driver_down();
+}
+
+// ----------------------------------------------------------------- runner
+
+typedef struct {
+	const char *name;
+	void (*run)(void);
+	const char *profile;
+} optecfl_case;
 
 int main(void) {
-	const indigo_test_case tests[] = {
-		{ "focuslynx_focuser_1_passes_serial_compliance_checks", focuslynx_focuser_1_passes_serial_compliance_checks },
-		{ "focuslynx_focuser_2_passes_serial_compliance_checks", focuslynx_focuser_2_passes_serial_compliance_checks }
+	static const optecfl_case cases[] = {
+		{ "metadata", metadata, "normal" },
+		{ "focuser_1_lifecycle", focuser_1_lifecycle, "normal" },
+		{ "focuser_2_lifecycle", focuser_2_lifecycle, "normal" },
+		{ "shared_connection", shared_connection, "normal" },
+		{ "reverse_connection_order", reverse_connection_order, "normal" },
+		{ "repeated_init_shutdown", repeated_init_shutdown, "normal" },
+		{ "shutdown_rejected_while_connected", shutdown_rejected_while_connected, "normal" },
+		{ "property_contract", property_contract, "normal" },
+		{ "device_type_table", device_type_table, "normal" },
+		{ "device_type_readback", device_type_readback, "syncable" },
+		{ "limits_follow_max_pos", limits_follow_max_pos, "normal" },
+		{ "absolute_goto", absolute_goto, "normal" },
+		{ "motion_progress", motion_progress, "normal" },
+		{ "goto_no_op", goto_no_op, "normal" },
+		{ "goto_boundaries", goto_boundaries, "normal" },
+		{ "steps_outward", steps_outward, "normal" },
+		{ "steps_inward", steps_inward, "normal" },
+		{ "steps_reversed", steps_reversed, "normal" },
+		{ "steps_clamped", steps_clamped, "normal" },
+		{ "overlap_rejected", overlap_rejected, "normal" },
+		{ "external_motion_observed", external_motion_observed, "normal" },
+		{ "sync_rejected_for_optec_type", sync_rejected_for_optec_type, "normal" },
+		{ "sync_accepted_for_other_type", sync_accepted_for_other_type, "normal" },
+		{ "abort_during_motion", abort_during_motion, "normal" },
+		{ "abort_while_idle", abort_while_idle, "normal" },
+		{ "abort_failure_reported", abort_failure_reported, "normal" },
+		{ "move_after_abort", move_after_abort, "normal" },
+		{ "device_type_change", device_type_change, "normal" },
+		{ "device_type_failure", device_type_failure, "normal" },
+		{ "connect_hub_info_failure", connect_hub_info_failure, "normal" },
+		{ "connect_config_failure", connect_config_failure, "normal" },
+		{ "sibling_survives_failed_connect", sibling_survives_failed_connect, "normal" },
+		{ "handle_released_after_polling", handle_released_after_polling, "normal" },
+		{ "malformed_reply", malformed_reply, "normal" },
+		{ "partial_reply", partial_reply, "normal" },
+		{ "overlong_reply", overlong_reply, "normal" },
+		{ "missing_acknowledgement", missing_acknowledgement, "normal" },
+		{ "silent_reply", silent_reply, "normal" },
+		{ "poll_failure_recovery", poll_failure_recovery, "normal" },
+		{ "disconnect_during_motion", disconnect_during_motion, "normal" },
+		{ "transport_loss", transport_loss, "normal" },
+		{ "temperature_polling", temperature_polling, "normal" },
+		{ "temperature_probe_absent", temperature_probe_absent, "noprobe" },
+		{ "split_replies", absolute_goto, "split" }
 	};
-	return indigo_run_tests("Optec FocusLynx serial simulator integration tests", tests, ARRAY_SIZE(tests));
+	const int count = (int)(sizeof(cases) / sizeof(cases[0]));
+	const char *filter = getenv("OPTECFL_TEST_FILTER");
+	int failures = 0;
+	simulator_test_client.update_property = observe_update;
+	if (!mkdtemp(fixture_dir)) {
+		fprintf(stderr, "Cannot create fixture directory\n");
+		return 1;
+	}
+	snprintf(event_path, sizeof(event_path), "%s/events.log", fixture_dir);
+	snprintf(fault_path, sizeof(fault_path), "%s/fault", fixture_dir);
+	setenv("INDIGO_OPTECFL_EVENTS", event_path, 1);
+	setenv("INDIGO_OPTECFL_FAULT", fault_path, 1);
+	for (int i = 0; i < count; i++) {
+		if (filter && !strstr(cases[i].name, filter)) {
+			continue;
+		}
+		current_profile = cases[i].profile;
+		unlink(fault_path);
+		const char *args[] = { "--profile", current_profile, NULL };
+		if (!start_external_serial_simulator_with_args(&fixture, FOCUSER_OPTECFL_SIMULATOR_EXECUTABLE, args)) {
+			failures++;
+			break;
+		}
+		fflush(NULL);
+		pid_t child = fork();
+		if (child == 0) {
+			alarm(60);
+			indigo_test_case test = { cases[i].name, cases[i].run };
+			_exit(indigo_run_tests("OPTECFL", &test, 1));
+		}
+		int status = 0;
+		if (child > 0) {
+			while (waitpid(child, &status, 0) < 0 && errno == EINTR) {
+			}
+		}
+		stop_external_serial_simulator(&fixture);
+		if (child < 0 || !WIFEXITED(status) || WEXITSTATUS(status)) {
+			fprintf(stderr, "FAIL %s (status %d)\n", cases[i].name, status);
+			failures++;
+		}
+	}
+	unlink(fault_path);
+	unlink(event_path);
+	rmdir(fixture_dir);
+	unsetenv("INDIGO_OPTECFL_EVENTS");
+	unsetenv("INDIGO_OPTECFL_FAULT");
+	printf("OPTECFL: %d failing scenarios\n", failures);
+	return failures ? 1 : 0;
 }

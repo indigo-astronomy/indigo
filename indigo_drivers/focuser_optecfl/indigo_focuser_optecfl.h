@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 CloudMakers, s. r. o.
+// Copyright (c) 2024-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -53,4 +53,3 @@ INDIGO_EXTERN indigo_result indigo_focuser_optecfl(indigo_driver_action action, 
 #endif
 
 #endif /* focuser_optecfl_h */
-
