@@ -70,6 +70,9 @@ static int slot(int d, const char *name) {
 }
 
 static indigo_result observe(indigo_device *device, indigo_property *property, const char *message, bool image_update) {
+	if (getenv("ATIK_HW_DEBUG")) {
+		fprintf(stderr, "Observed %s %s state=%d count=%d\n", property->device, property->name, property->state, property->count);
+	}
 	pthread_mutex_lock(&mutex);
 	int d;
 	for (d = 0; d < MAX_DEVICES; d++) {
@@ -207,9 +210,14 @@ static bool wait_state(int d, const char *name, unsigned after, indigo_property_
 		pthread_mutex_lock(&mutex);
 		int p = slot(d, name);
 		bool ready = p >= 0 && devices[d].revisions[p] > after && devices[d].properties[p]->state == state;
+		bool failed = p >= 0 && devices[d].revisions[p] > after && devices[d].properties[p]->state == INDIGO_ALERT_STATE && state != INDIGO_ALERT_STATE;
 		pthread_mutex_unlock(&mutex);
 		if (ready) {
 			return true;
+		}
+		if (failed) {
+			fprintf(stderr, "Failed: %s %s is ALERT\n", devices[d].name, name);
+			return false;
 		}
 		indigo_usleep(10000);
 	}
@@ -262,7 +270,7 @@ static bool selected(const char *name) {
 
 static void hardware_workflows(void) {
 	bool initialized = false;
-	indigo_property *format = NULL, *frame = NULL, *bins = NULL, *gain = NULL, *advanced = NULL, *mode = NULL;
+	indigo_property *format = NULL, *frame = NULL, *bins = NULL, *gain = NULL, *advanced = NULL, *mode = NULL, *frame_type = NULL;
 	CHECK(indigo_start() == INDIGO_OK);
 	CHECK(indigo_attach_client(&client) == INDIGO_OK);
 	indigo_driver_info info;
@@ -319,6 +327,7 @@ static void hardware_workflows(void) {
 	gain = snapshot(camera, "CCD_GAIN");
 	advanced = snapshot(camera, "X_WINDOW_HEATER");
 	mode = snapshot(camera, "CCD_READ_MODE");
+	frame_type = snapshot(camera, "CCD_FRAME_TYPE");
 	CHECK(switch_value(camera, "CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE));
 	CHECK(switch_value(camera, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
 	if (selected("exposure")) {
@@ -331,6 +340,16 @@ static void hardware_workflows(void) {
 			printf("Elapsed %.3f seconds\n", indigo_monotonic_time() - start);
 			CHECK(frames() == before + 1);
 		}
+	}
+	if (selected("frame_types")) {
+		CHECK(frame_type != NULL);
+		for (int i = 0; i < frame_type->count; i++) {
+			unsigned before = frames();
+			CHECK(switch_value(camera, "CCD_FRAME_TYPE", frame_type->items[i].name, INDIGO_OK_STATE));
+			CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", .1, INDIGO_OK_STATE));
+			CHECK(frames() == before + 1);
+		}
+		CHECK(restore(frame_type));
 	}
 	if (selected("geometry")) {
 		CHECK(indigo_change_number_property(&client, devices[camera].name, "CCD_FRAME", 4, (const char *[]){ "LEFT", "TOP", "WIDTH", "HEIGHT" }, (double []){ 16, 16, 128, 128 }) == INDIGO_OK);
@@ -408,6 +427,37 @@ static void hardware_workflows(void) {
 		CHECK(disconnect_device(guider));
 		CHECK(switch_value(camera, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
 	}
+	if ((selected("hotplug") || selected("hotplug_idle") || selected("hotplug_active")) && getenv("ATIK_HW_CASE")) {
+		if (guider >= 0) {
+			CHECK(switch_value(guider, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+		}
+		for (int pass = selected("hotplug_active") ? 1 : 0; pass < (selected("hotplug_idle") ? 1 : 2); pass++) {
+			if (pass == 1) {
+				CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 120, INDIGO_BUSY_STATE));
+				indigo_usleep(500000);
+			}
+			printf("HOTPLUG: unplug USB now (%s)\n", pass ? "active exposure" : "idle connected camera and guider");
+			CHECK(wait_presence(false));
+			printf("HOTPLUG: all interfaces detached; reconnect USB now\n");
+			CHECK(wait_presence(true));
+			if (guider >= 0) {
+				CHECK(switch_value(guider, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+			}
+			CHECK(switch_value(camera, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+			CHECK(switch_value(camera, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
+			unsigned before = frames();
+			CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", .1, INDIGO_OK_STATE));
+			CHECK(frames() == before + 1);
+			if (guider >= 0) {
+				CHECK(number_value(guider, "GUIDER_GUIDE_RA", "EAST", 100, INDIGO_OK_STATE));
+			}
+			printf("HOTPLUG: %s removal/reconnect and fresh image/guide passed\n", pass ? "active" : "idle");
+		}
+	}
+	pthread_mutex_lock(&mutex);
+	unsigned invalid_before_cleanup = devices[camera].invalid_frames;
+	pthread_mutex_unlock(&mutex);
+	CHECK(invalid_before_cleanup == 0);
 	if (getenv("ATIK_HW_CASE") && !selected("exposure")) {
 		printf("Selected feature phase completed; reconnect/library reload are tested separately by the exposure scenario\n");
 		goto cleanup;
@@ -438,7 +488,7 @@ cleanup:
 		switch_value(camera, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE);
 		indigo_property *connection = snapshot(camera, "CONNECTION");
 		if (connection && connection->items[0].sw.value) {
-			if (!restore(mode) || !restore(bins) || !restore(format) || !restore(frame) || !restore(gain) || !restore(advanced)) {
+			if (!restore(frame_type) || !restore(mode) || !restore(bins) || !restore(format) || !restore(frame) || !restore(gain) || !restore(advanced)) {
 				indigo_test_failures++;
 			}
 		}
@@ -453,6 +503,7 @@ cleanup:
 	if (guider >= 0 && !disconnect_device(guider)) {
 		indigo_test_failures++;
 	}
+	indigo_release_property(frame_type);
 	indigo_release_property(mode);
 	indigo_release_property(bins);
 	indigo_release_property(format);
@@ -468,7 +519,7 @@ cleanup:
 
 int main(int argc, char **argv) {
 	if (argc != 4 || strcmp(argv[1], "--run") || !getenv("INDIGO_TEST_DEVICE") || !*getenv("INDIGO_TEST_DEVICE")) {
-		fprintf(stderr, "Set INDIGO_TEST_DEVICE to a unique model/name substring and run --run <driver-library> <entry-symbol>. ATIK_HW_CASE optionally selects exposure, geometry, settings, presets, wheel, abort or guide.\n");
+		fprintf(stderr, "Set INDIGO_TEST_DEVICE to a unique model/name substring and run --run <driver-library> <entry-symbol>. ATIK_HW_CASE optionally selects exposure, frame_types, geometry, settings, presets, wheel, abort, guide, hotplug, hotplug_idle or hotplug_active.\n");
 		return 2;
 	}
 	library_path = argv[2];

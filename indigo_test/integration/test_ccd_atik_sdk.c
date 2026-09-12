@@ -34,10 +34,10 @@
 #define PROPERTIES 80
 typedef struct {
 	atomic_bool visible, opened, exposing;
-	bool guider, wheel, cooler, heater, presets;
+	bool guider, wheel, cooler, heater, presets, shutter;
 	atomic_int preview, dark, slot_count, moving, malformed, short_option, ready_stuck, flushing;
 	atomic_int sensor_width, sensor_height, bx, by, left, top, width, height, preset, gain, offset, heater_power, temperature, target, relay, slot, wheel_target;
-	atomic_int opens, closes, starts, stops;
+	atomic_int opens, closes, starts, stops, dark_calls;
 	double exposure, end;
 	uint16_t *pixels;
 	size_t pixel_count;
@@ -477,7 +477,7 @@ int ArtemisProperties(ArtemisHandle h, struct ARTEMISPROPERTIES *p) {
 	p->nPixelsX = c->sensor_width;
 	p->nPixelsY = c->sensor_height;
 	p->PixelMicronsX = p->PixelMicronsY = 5.4;
-	p->cameraflags = c->heater ? ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_WINDOW_HEATER : 0;
+	p->cameraflags = (c->heater ? ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_WINDOW_HEATER : 0) | (c->shutter ? ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_SHUTTER : 0);
 	return 0;
 }
 
@@ -496,6 +496,10 @@ int ArtemisSetPreview(ArtemisHandle h, bool on) {
 
 int ArtemisSetDarkMode(ArtemisHandle h, bool on) {
 	SDK_SCOPE;
+	camera(h)->dark_calls++;
+	if (!camera(h)->shutter) {
+		return ARTEMIS_INVALID_FUNCTION;
+	}
 	camera(h)->dark = on;
 	return failed(__func__);
 }
@@ -813,7 +817,7 @@ static void metadata_profiles(void) {
 	}
 	indigo_driver_info info;
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_atik(INDIGO_DRIVER_INFO, &info));
-	ASSERT_EQ_INT(0x03000020, info.version);
+	ASSERT_EQ_INT(0x03000021, info.version);
 	ASSERT_EQ_INT(-1, state(0, "X_PRESETS"));
 	ASSERT_TRUE(connect_device(0, true));
 	const char *props[] = { "CCD_INFO", "CCD_READ_MODE", "CCD_GAIN", "CCD_OFFSET", "X_PRESETS", "X_WINDOW_HEATER", "CCD_TEMPERATURE", "CCD_COOLER", "CCD_COOLER_POWER" };
@@ -909,6 +913,23 @@ static void malformed_initialization(void) {
 	ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_ALERT_STATE));
 	cameras[0].short_option = 0;
 	ASSERT_TRUE(connect_device(0, true));
+}
+
+static void shutterless_acquisition(void) {
+	cameras[0].shutter = false;
+	ASSERT_TRUE(connect_device(0, true));
+	const char *types[] = { "LIGHT", "DARK", "BIAS", "DARKFLAT", "FLAT" };
+	for (int i = 0; i < ARRAY_SIZE(types); i++) {
+		ASSERT_TRUE(set_switch(0, "CCD_FRAME_TYPE", types[i], true));
+		ASSERT_TRUE(number(0, "CCD_EXPOSURE", "EXPOSURE", .01, INDIGO_OK_STATE));
+	}
+	ASSERT_EQ_INT(5, blobs);
+	ASSERT_EQ_INT(0, cameras[0].dark_calls);
+	ASSERT_TRUE(connect_device(0, false));
+	cameras[0].shutter = true;
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(number(0, "CCD_EXPOSURE", "EXPOSURE", .01, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(1, cameras[0].dark_calls);
 }
 
 static void acquisition_errors(void) {
@@ -1496,7 +1517,7 @@ static void begin_fixture(void) {
 		cameras[i].slot_count = 5;
 	}
 	cameras[0].visible = true;
-	cameras[0].guider = cameras[0].wheel = cameras[0].cooler = cameras[0].heater = cameras[0].presets = true;
+	cameras[0].shutter = cameras[0].guider = cameras[0].wheel = cameras[0].cooler = cameras[0].heater = cameras[0].presets = true;
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_atik(INDIGO_DRIVER_INIT, NULL));
 	ASSERT_TRUE(wait_count(&attached, 3));
 }
@@ -1511,6 +1532,7 @@ int main(int argc, char **argv) {
 	indigo_start();
 	indigo_attach_client(&test_client);
 	const indigo_test_case tests[] = {
+		{ "shutterless_acquisition", shutterless_acquisition },
 		{ "final_mode_bin_synchronization", mode_bin_synchronization },
 		{ "final_configuration_gain_offset", configuration_gain_offset },
 		{ "final_wheel_busy_preserves_target", wheel_busy_preserves_target },

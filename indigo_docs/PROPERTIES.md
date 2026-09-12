@@ -1150,9 +1150,11 @@ Source: `indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.driver`.
 
 Custom properties: `X_FOCUSER_ACTIVE_SLOPE`.
 
-Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_MODE`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+Driver-specific use of existing properties: `FOCUSER_POSITION`, `FOCUSER_STEPS`, `FOCUSER_ABORT_MOTION`, `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_MODE`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
 
-Source: `indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.c`.
+The position is read-only in the calibrated 0–65535 controller range; relative steps use the same range and clamp at the endpoints. Speed remains hidden. Backlash is an integer 0–65535 device setting. Compensation exposes an integer signed slope from -127 to 127 counts/C plus `DEADBAND` and `PERIOD` items from 0 to 65535, with two device-side profiles selected by `X_FOCUSER_ACTIVE_SLOPE`. Temperature is published in 0.5 C units. Motion completion, abort and idle polling publish measured position; abort is accepted only after a delayed stable-position check.
+
+Source: `indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.driver`.
 
 ### focuser_lunatico / rotator_lunatico shared
 

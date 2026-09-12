@@ -2655,6 +2655,10 @@
 		59910B2F305535A900FB1C2F /* RELEASE */ = {isa = PBXFileReference; lastKnownFileType = text; path = RELEASE; sourceTree = "<group>"; };
 		59910B3230554BB600FB1C2F /* indigo_ccd_qhy2.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qhy2.cpp; sourceTree = "<group>"; };
 		59910B3330554BB600FB1C2F /* indigo_ccd_qhy2_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_qhy2_main.c; sourceTree = "<group>"; };
+		59910B3E3055D53700FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		59910B3F3055D79C00FB1C2F /* indigo_focuser_lakeside.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_lakeside.driver; sourceTree = "<group>"; };
+		59910B403055DAD700FB1C2F /* indigo_ccd_atik.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_atik.driver; sourceTree = "<group>"; };
+		59910B413055DAD700FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -5467,11 +5471,6 @@
 		C0DE20260912000100000002 /* test_ccd_qhy_sdk.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = test_ccd_qhy_sdk.cpp; sourceTree = "<group>"; };
 		C0DE20260912000100000003 /* indigo_ccd_qhy.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_qhy.driver; sourceTree = "<group>"; };
 		C0DE20260912000100000005 /* test_ccd_qhy_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_qhy_hw.c; sourceTree = "<group>"; };
-		C69535F5A30EBCFF42E1200F /* test_gps_nmea_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_nmea_transport.c; sourceTree = "<group>"; };
-		C8683D8A00D36FB4420DE7FD /* test_aux_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_dragonfly_simulator.c; sourceTree = "<group>"; };
-		E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_usb_outputs.c; sourceTree = "<group>"; };
-		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
-		FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_simulator_common.h; sourceTree = "<group>"; };
 		C0DE26060912F10000000000 /* Origin678C.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = Origin678C.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000001 /* QHY26800A.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY26800A.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000002 /* QHY585.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY585.img; sourceTree = "<group>"; };
@@ -5479,6 +5478,11 @@
 		C0DE26060912F20000000000 /* QHY5III662.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III662.img; sourceTree = "<group>"; };
 		C0DE26060912F20000000001 /* QHY676.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY676.img; sourceTree = "<group>"; };
 		C0DE26060912F20000000002 /* QHY992_deep_cooling.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY992_deep_cooling.img; sourceTree = "<group>"; };
+		C69535F5A30EBCFF42E1200F /* test_gps_nmea_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_nmea_transport.c; sourceTree = "<group>"; };
+		C8683D8A00D36FB4420DE7FD /* test_aux_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_dragonfly_simulator.c; sourceTree = "<group>"; };
+		E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_usb_outputs.c; sourceTree = "<group>"; };
+		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
+		FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_simulator_common.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -13947,9 +13951,11 @@
 			isa = PBXGroup;
 			children = (
 				59FE347F21886A17004FB5D4 /* README.md */,
+				59910B3E3055D53700FB1C2F /* REFACTOR.md */,
 				59FE348021886A17004FB5D4 /* indigo_focuser_lakeside.h */,
 				59FE347E21886A17004FB5D4 /* indigo_focuser_lakeside.c */,
 				59FE348121886A17004FB5D4 /* indigo_focuser_lakeside_main.c */,
+				59910B3F3055D79C00FB1C2F /* indigo_focuser_lakeside.driver */,
 				59FE348221886A17004FB5D4 /* focuser_lakeside_simulator */,
 			);
 			path = focuser_lakeside;
@@ -15311,10 +15317,12 @@
 			isa = PBXGroup;
 			children = (
 				594107C81EC8E30900C44F92 /* README.md */,
+				59910B413055DAD700FB1C2F /* REFACTOR.md */,
 				59DEC8D321AF5DAA00BF7958 /* Makefile.inc */,
 				9D9EA6A21DBE1F7300E11841 /* indigo_ccd_atik.h */,
 				9D9EA6A11DBE1F7300E11841 /* indigo_ccd_atik.c */,
 				9D9EA6A01DBE1F7300E11841 /* indigo_ccd_atik_main.c */,
+				59910B403055DAD700FB1C2F /* indigo_ccd_atik.driver */,
 				59D96DC421A30DF50069A64C /* indigo_ccd_atik.rules */,
 				599A23F31DBEA5820020BF8F /* bin_externals */,
 			);

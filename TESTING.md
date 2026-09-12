@@ -7,6 +7,62 @@ user request. Connect cameras before initialization; startup discovery runs once
 Physical hot-plug tests are excluded. Results below describe version 27 unless
 explicitly marked otherwise.
 
+## September 12th 2026 — Atik Titan generator acceptance
+
+macOS arm64, bundled Artemis SDK/API 20250630, driver `0x03000021`, USB
+20e7:df2e, SDK name `Atik Titan` with its guider. Serial was not captured.
+The opt-in `indigo_test/hardware/test_ccd_atik_hw.c` ran with
+`INDIGO_TEST_DEVICE=Titan` and explicit library/entry arguments, outside the
+sandbox for USB access. Each scenario had an external 180-second limit
+(120 seconds for frame_types). All six scenarios passed and disconnected cleanly.
+
+| Scenario | Physical evidence |
+| --- | --- |
+| exposure | RAW16 658 x 492, 647484 bytes; .001/.1/1.5/2.5/16.5 s requested, .225/.486/1.726/2.724/16.717 s elapsed including setup/readout. Fresh images after reconnect and driver dlclose/dlopen. |
+| geometry | ROI (16,16), 128 x 128; full-frame binning 1x1/2x2/4x4/8x8 produced 658x492/329x246/164x123/82x61. |
+| settings | HIGH_SPEED and LOW_NOISE each delivered an image; restored original mode. |
+| abort | Interrupted a 5 s exposure after .5 s; a fresh .1 s exposure succeeded. |
+| guide | Four 100 ms directions, pulse during 1.5 s exposure, guider operation after CCD disconnect, then CCD reconnect. This checks SDK/property completion, not electrical timing. |
+| frame_types | LIGHT, BIAS, DARK, FLAT and DARKFLAT each delivered a full RAW16 image; restored original selection. Optical calibration quality was not evaluated. |
+
+Hardware found and fixed a migration regression: version 32 called
+`ArtemisSetDarkMode(false)` on shutterless Titan and rejected its
+`ARTEMIS_INVALID_FUNCTION` return. Version 33 checks the HAS_SHUTTER flag from
+`ArtemisProperties` before calling that API. Fake SDK regression covers absent
+and present shutter capabilities; real runs above use the corrected driver.
+
+Logs: `/tmp/atik-titan-hw-v33-{exposure,geometry,settings,abort,guide}.log`,
+`/tmp/atik-titan-hw-v33-frame-types.log`; diagnostic return codes are in
+`/tmp/atik-titan-hw-setup.log`. The initial sandbox discovery failure and version
+32 exposure failure are not successful hardware acceptance. The available
+settings were restored and all logical interfaces disconnected at the end.
+No adjustable cooling/temperature, gain, heater, presets or wheel was exposed.
+A subsequent physical hot-plug follow-up produced mixed results:
+
+- Idle removal detached CCD/guider cleanly. Replug then crashed (SIGSEGV) in
+  `AtikCore::ExposureThreadStandard::ET_ThreadMain()+300`, while the driver queue
+  was querying `ArtemisDeviceSerial` during camera reconstruction. Report
+  `test_ccd_atik_hw-2026-09-12-205614.ips`; log
+  `/tmp/atik-titan-hw-v33-hotplug.log`. Root cause remains unresolved.
+- An SDK-only C probe without INDIGO repeated a narrower connect/remove/replug/
+  serial/reconnect sequence successfully once. It reported camera flags 100,
+  HAS_SHUTTER=false. `/tmp/atik-titan-sdk-only-hotplug.log`. This does not
+  reproduce or explain the failed driver run.
+- A separate `hotplug_active` process passed removal during a 120 s exposure
+  (removed about 14 s after starting), replug, guider-first then CCD connect,
+  fresh .1 s RAW16 image, 100 ms EAST guide pulse and clean shutdown.
+  `/tmp/atik-titan-hw-v33-hotplug-active.log`.
+
+The user-requested idle-only repeat at 21:07–21:08 with the same driver/SDK
+passed physical removal/replug, a fresh 658 x 492 RAW16 frame, EAST guide pulse
+and clean shutdown (exit 0). Log:
+`/tmp/atik-titan-hw-v33-hotplug-idle-repeat.log`. This run logged SDK
+`ET:Shutdown` during removal. The original crash remains unexplained.
+
+Reliable idle hot-plug, the other three planned cameras (One, 11000A, Horizon),
+and optical/electrical measurements remain pending. The successful active cycle
+does not make the failed idle-replug cycle a pass.
+
 ## September 12th 2026 — QHY generator migration acceptance (partial, blocked by SDK failures)
 
 macOS 26.6 arm64 host, bundled modern QHY SDK 25.3.24.9 (svn 14950), driver

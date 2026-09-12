@@ -1,0 +1,75 @@
+# LakesideAstro focuser generated migration
+
+Status: complete, 2026-09-12. Baseline version 0x02000006; generated version 0x03000007. Hardware tests are explicitly out of scope. No generator implementation change was made.
+
+## Sources and protocol confidence
+
+- Repository guidance: root and `indigo_test/AGENTS.md`, the generator migration guide, driver-development basics, serial-simulator contract, common/focuser testing standard, and the completed focuser EFA, iOptron, Lacerta and Prodigy migrations.
+- Production source: the hand-written `indigo_focuser_lakeside.c`, its README, host simulator, Arduino sketch, property inventory, build/project integration and existing one-case integration test.
+- Manufacturer documentation: LakesideAstro Focuser Manual V2.0 (16 pages, published by LakesideAstro and downloaded from its current downloads page). It documents a virtual USB serial port, AUTO-only PC connectivity, positions and calibrated endpoints, 65536 controller steps, configurable step size, direction, temperature at 0.5 C resolution, two compensation profiles with signed slope, deadband and period, and a minimum compensation period of about six seconds. It does not document the serial command grammar, reply limits or error replies.
+- Wire grammar provenance: the source header says that the command set was extracted from Phil Shepherd's INDI driver with Peter Chance's assistance. Until hardware validation or an independent protocol document is available, command spelling, asynchronous `P...#`/`DONE#` movement replies and ACK behavior remain implementation-derived assumptions. The simulator can validate driver behavior against those assumptions, but cannot certify real firmware.
+
+## Existing behavior and findings
+
+- The driver is a single serial focuser at 9600 baud with additional instances. It exposes relative motion only (`FOCUSER_POSITION` is read-only), abort, direction, reverse-motion readback, temperature, backlash, manual/automatic compensation mode, two compensation profiles, signed slope, deadband and period. Speed, absolute GOTO/SYNC and limits are not exposed.
+- Connection probes with `??# -> OK#`, sends `CTF#`, selects slope 1, then reads position, backlash, motor direction, temperature and the four slope-1 fields. Several initialization writes and the slope-selection ACK are ignored, and partial initialization still reports a successful connection with individual properties in ALERT.
+- Movement is started by `CI<n>#` or `CO<n>#`; unsolicited `P<n>#` progress and `DONE#` completion frames are consumed in a blocking timer loop. This monopolizes the callback until completion, has no overall deadline/stall bound and makes abort depend on another property callback mutating a shared flag. Disconnect/queue interactions are not defined.
+- `focuser_timer_callback()` locks the mutex before checking connection and returns without unlocking when disconnected. The hand-written timer/mutex design is unnecessary once generated handler queues own serialization.
+- The reader accepts a timeout as successful empty response, stops after ten payload bytes without proving `#` termination, silently truncates longer frames, treats signed `char < 0` as a terminator, uses raw `select`/`read`/`write`/`close`, and allocates response buffers in multiple helpers. Numeric parsing uses `atol()` without full-frame, sign, range or overflow validation.
+- Movement progress can overwrite the public position with malformed/out-of-range data. A read failure ends the movement loop without finalizing BUSY state. `DONE` does not obtain final measured position. Abort does not read back the actual stopped position, and failed stop leaves ownership/state ambiguous.
+- `FOCUSER_COMPENSATION_ITEM->number.min` is assigned twice (`-128`, then `-127`), so the maximum is never set by the driver. The intended signed slope range must be made explicit. The manual describes fractional slopes (example 10.5 counts/C), while the implemented wire grammar and properties use integers; fractional device support is therefore unverified and will not be invented.
+- The manual says backlash is used only for handset MANUAL movement and third-party software must implement its own compensation. The existing property is nevertheless a device configuration control, not a promise that `CI`/`CO` uses it.
+- The host simulator covers nominal commands but has no strict numeric grammar, protocol journal, fault injection, split/partial/overlong frames, startup failure, transport failure, stalled motion, external state mutation or independent-instance proof. It uses a custom movement loop instead of shared `serial_motion.h`; temperature is stored as unsigned; mode is not stored; unknown commands always reply `!#` but tests do not assert it.
+- The current integration test is one smoke scenario. It does not independently validate the simulator protocol, assert command ordering/arguments or readback, isolate scenarios, require fresh property revisions, exercise connection failures/recovery, malformed frames, no-op/boundary motion, stop/read failures, overlap, disconnect during motion, reconnect or multiple instances.
+
+## Atomic plan and progress
+
+1. **Baseline and evidence capture — complete.** Build the unchanged driver/simulator/test, run the existing smoke case, record compiler/runtime results, inspect the complete manual and establish precise supported/non-applicable focuser capabilities.
+2. **Independent simulator contract — complete.** Refactor the host simulator onto `serial_motion.h`; add strict command parsing, stateful mode/settings, deterministic command journal/control channel and one-shot startup/read/write/split/malformed/overlong/stall/external-position/temperature faults. Add direct protocol scenarios so simulator expectations do not depend on the production driver. Keep the Arduino sketch as a historical hardware fixture.
+3. **Regression suite — complete.** Replace the smoke case with isolated named cases and a watchdog/reaping runner. Cover property visibility/interface/ranges, initialization and malformed-frame failures, relative inward/outward/no-op/boundaries/progress, overlap, abort idle/moving/failure/recovery, disconnect during motion, reconnect, independent instances, external position/temperature, backlash, mode and both complete compensation profiles. The original smoke test was captured before migration; the expanded fault matrix was completed and passed against the generated transition rather than represented as a full pre-migration baseline run.
+4. **Authoritative generator migration — complete.** Create `indigo_focuser_lakeside.driver`; use generated serial lifecycle and queues; replace raw platform I/O with variadic uniform-I/O commands and one reusable private response buffer; make open transactional and required initialization atomic; parse complete terminated replies and bounded integers; use named nonblocking motion and abort finalizers with progress/stall/timeout/error recovery; define abort/disconnect ownership; preserve supported public behavior and generator defaults; raise the driver version.
+5. **Full validation and hardening — complete.** Regenerate checked-in C/header/main reproducibly, build the driver, run every ordinary simulator scenario and targeted driver-instrumented ASan scenarios, and perform strict warning builds at available macOS architectures/optimization levels. Inspect generated handlers, finalizer suppression, connection rollback and additional-instance isolation. Iterate until all applicable hardware-free scenarios pass.
+6. **Repository synchronization — complete.** Add every new persistent file to the correct Xcode group, preserve unrelated project edits, leave the user-facing README unchanged, update `PROPERTIES.md`, simulator inventory and `indigo_test/CHANGES.md`, and update only the status columns of `MIGRATION_STATUS.md` while preserving its Comment. Verify Xcode/project syntax, byte-identical regeneration, `git diff --check`, cleanup of test processes/build artifacts and explicit platform/hardware gaps.
+
+## Required coverage and boundaries
+
+The final `indigo_test/CHANGES.md` matrix must map named scenarios to: pre/post-connect visibility and focuser interface; initial identity/settings and each failed/malformed/partial/overlong reply; relative inward/outward, zero/no-op and calibrated 0/65535 boundaries; public direction versus controller reversal semantics; BUSY/progress/final measured position; overlapping requests; idle/moving abort, stop/start/read failures and fresh movement recovery; stall timeout; external position and signed half-degree temperature changes; manual/automatic mode; backlash read/write and ACK failure; both slope selections with signed slope/deadband/period plus partial write/read failure; disconnect during pending read/motion, reconnect and independent instances.
+
+Absolute GOTO/SYNC, speed control, exposed limits/calibration, arbitrary step-size configuration and generic framework numeric validation are non-applicable because this driver does not expose them. Simulator tests cannot establish electrical USB-serial behavior, real calibrated endpoint enforcement, physical direction, motor motion, temperature accuracy, fractional slope support or firmware-specific timing. Hardware tests, Linux/Windows runtime and any unavailable architecture runtime will remain explicitly unverified rather than inferred from PTYs.
+
+## Step 1 result
+
+The unchanged hand-written 0x02000006 driver built and linked as a universal macOS arm64/x86_64 archive, dylib and standalone executable. The existing host simulator and integration test built, and its sole smoke scenario passed 1/1. The downloaded 16-page manufacturer manual was text-extracted and its compensation/setup pages were visually inspected; the functional conclusions and protocol-confidence boundary are recorded above. No production or simulator behavior changed during this baseline.
+
+## Steps 2–4 result
+
+The host simulator now uses `serial_motion` rather than a private movement thread. Its state progresses from monotonic elapsed time independently of queries, emits the implementation-derived asynchronous `P...#` and `DONE#` frames, parses complete integer arguments, maintains both compensation profiles, mode, reversal and backlash, and supports split replies plus a private event/fault-file contract. Direct protocol cases exercise the simulator separately from the driver. The Arduino sketch remains present but is no longer listed as a host-simulator migration candidate.
+
+The authoritative DSL replaces raw file descriptors, `select`, `read`, `write`, `close`, mutexes and timers with uniform I/O and generated queue/lifecycle ownership. A single 64-byte response buffer is reused. Replies must contain a complete `#` terminator, no embedded NUL and a fully consumed bounded integer. Open and every required initialization read/write are transactional; failure closes the handle and a same-process retry is tested. Version 0x03000007 is higher than 0x02000006.
+
+Movement is relative-only and endpoint-clipped as before. The handler starts `CI`/`CO`, publishes BUSY and returns; `motion_finalizer` drains progress without sleeping in the queue, enforces a bounded missing-progress threshold, stops on malformed/stalled operation and confirms the final measured position after `DONE`. Abort cancels the identified start/motion work, sends `CH`, measures the position and uses `abort_finalizer` to require a stable second read before publishing OK. A failed or ignored stop becomes ALERT/uncertain and blocks new operations until explicit abort recovery or a successful idle poll. Connection teardown cancels pending abort verification and best-effort stops uncertain/active motion.
+
+The old compensation range typo is fixed: signed integer slope is explicitly -127..127. Both profiles write slope magnitude, sign, deadband and period with ACK checks and read the whole selected profile back; a partial failure publishes reconciled device values with ALERT. Fractional slopes mentioned by the manual remain unsupported because the inherited wire grammar only establishes integers. Idle polling now refreshes position as well as temperature, so device-side compensation or manual external movement becomes visible.
+
+## Final validation and Step 6 result
+
+- Final ordinary simulator suite: **33/33 scenarios passed** on macOS arm64. It includes two direct protocol cases and isolated driver capability, movement, abort, overlap, controls, initialization/polling framing faults, settings recovery, external state, stall/malformed progress/completion, stop/start transport loss, disconnect/reconnect and independent-instance cases. Each case runs in a child with a 30-second watchdog and simulator reaping.
+- Targeted ASan: **21/21 scenarios passed** (`init_`, `poll_`, `failure`, `abort_motion`, `instances`, `disconnect`). The generated production C and test harness are instrumented; the shared INDIGO library and simulator executable are not. LeakSanitizer was disabled for the prebuilt framework boundary. No ASan finding occurred.
+- Generated C passed `-Wall -Wextra -Wconversion -Wshorten-64-to-32 -Wconditional-uninitialized -Wunreachable-code -Wcomma -Werror` at O0 and O2 for arm64 and x86_64 compilation. The simulator passed C11 `-Wall -Wextra -Werror`. The production universal archive/dylib/executable build passed.
+- A repeated generator invocation produced byte-identical C, header and main files. Generated urgent-abort and ordinary motion dispatch, `_finalizer`-suppressed updates, transactional connection rollback and lack of a `MAX_DEVICES` override were inspected. `git diff --check` and `plutil -lint indigo.xcodeproj/project.pbxproj` passed.
+- `REFACTOR.md` and the `.driver` source are present in the existing Lakeside Xcode group; the already-present simulator and integration test remain referenced. No dedicated Windows project for this driver exists to update. The user-facing README is unchanged as requested. `PROPERTIES.md`, simulator inventory, the complete coverage row/details in `indigo_test/CHANGES.md` and `MIGRATION_STATUS.md` agree.
+
+Hardware behavior, actual firmware variants, electrical USB-serial behavior, physical direction/endpoints/motion, temperature accuracy, fractional slope support, Linux/Windows compilation/runtime and x86_64 runtime remain unverified. The x86_64 evidence above is compilation only. No hardware test was attempted.
+
+Reproduction from repository root:
+
+```sh
+build/bin/indigo_generator indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.driver
+make -C indigo_drivers/focuser_lakeside -f ../../Makefile.drv
+make -C indigo_test build/integration/test_focuser_lakeside_simulator build/integration/test_focuser_lakeside_simulator_asan
+cd indigo_test
+./build/integration/test_focuser_lakeside_simulator
+for lakeside_filter in init_ poll_ failure abort_motion instances disconnect; do
+  LAKESIDE_TEST_FILTER="$lakeside_filter" ASAN_OPTIONS=detect_leaks=0 ./build/integration/test_focuser_lakeside_simulator_asan || exit 1
+done
+```
