@@ -18,29 +18,19 @@
 
 // This file generated from indigo_ccd_atik2.driver
 
-#ifndef ccd_atik2_h
-#define ccd_atik2_h
+#include <indigo/indigo_driver_xml.h>
 
-#include <indigo/indigo_driver.h>
+#include "indigo_ccd_atik2.h"
 
-#if defined(INDIGO_WINDOWS)
-#if defined(INDIGO_WINDOWS_DLL)
-#define INDIGO_EXTERN __declspec(dllexport)
-#else
-#define INDIGO_EXTERN __declspec(dllimport)
-#endif
-#else
-#define INDIGO_EXTERN extern
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-INDIGO_EXTERN indigo_result indigo_ccd_atik2(indigo_driver_action action, indigo_driver_info *info);
-
-#ifdef __cplusplus
+int main(int argc, const char * argv[]) {
+	indigo_main_argc = argc;
+	indigo_main_argv = argv;
+	indigo_client *protocol_adapter = indigo_xml_device_adapter(indigo_stdin_handle, indigo_stdout_handle);
+	indigo_start();
+	indigo_ccd_atik2(INDIGO_DRIVER_INIT, NULL);
+	indigo_attach_client(protocol_adapter);
+	indigo_xml_parse(NULL, protocol_adapter);
+	indigo_ccd_atik2(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_stop();
+	return 0;
 }
-#endif
-
-#endif

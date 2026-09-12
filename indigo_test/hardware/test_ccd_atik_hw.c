@@ -109,12 +109,13 @@ static indigo_result observe(indigo_device *device, indigo_property *property, c
 				memcpy(&header, item->blob.value, sizeof(header));
 			}
 			unsigned bytes = header.signature == INDIGO_RAW_MONO8 ? 1 : (header.signature == INDIGO_RAW_MONO16 ? 2 : (header.signature == INDIGO_RAW_RGB24 ? 3 : (header.signature == INDIGO_RAW_RGB48 ? 6 : 0)));
-			if (strcmp(item->blob.format, ".raw") || !bytes || !header.width || !header.height || (uint64_t)header.width * header.height * bytes + sizeof(header) > item->blob.size) {
+			bool invalid = strcmp(item->blob.format, ".raw") || !bytes || !header.width || !header.height || (uint64_t)header.width * header.height * bytes + sizeof(header) > item->blob.size;
+			if (invalid) {
 				devices[d].invalid_frames++;
 			}
 			devices[d].frames++;
-			if (devices[d].frames <= 12 || devices[d].frames % 100 == 0) {
-				printf("    frame %u: %u x %u, %ld bytes\n", devices[d].frames, header.width, header.height, item->blob.size);
+			if (invalid || devices[d].frames <= 12 || devices[d].frames % 100 == 0) {
+				printf("    frame %u: %u x %u, %ld bytes, format %s, signature 0x%08x%s\n", devices[d].frames, header.width, header.height, item->blob.size, item->blob.format, header.signature, invalid ? " INVALID" : "");
 			}
 		}
 	}
@@ -366,7 +367,6 @@ static void hardware_workflows(void) {
 			indigo_release_property(modes);
 		}
 		CHECK(restore(bins));
-		CHECK(restore(format));
 		CHECK(restore(frame));
 	}
 	if (selected("settings")) {
