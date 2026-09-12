@@ -161,11 +161,16 @@ template <typename T> static inline void debayer(T *raw, int index, int row, int
 // histogram - 256x values
 // totals - sum of all pixels in subsample
 // B, C - background, contrast params
+// effective_bits - right-aligned significant bits in the input container, used only for histogram binning
 
-template <typename T> void indigo_compute_stretch_params(const T *buffer, int width, int height, int sample_columns_by, int sample_rows_by, double *shadows, double *midtones, double *highlights, unsigned long *histogram, unsigned long *totals, double B = 0.25, double C = -2.8) {
+template <typename T> static void indigo_compute_stretch_params_with_effective_bits(const T *buffer, int width, int height, int sample_columns_by, int sample_rows_by, double *shadows, double *midtones, double *highlights, unsigned long *histogram, unsigned long *totals, double B, double C, int effective_bits) {
 	const int sample_size = (int)((ceil((double)width / sample_columns_by) * ceil((double)height / sample_rows_by)));
 	const int sample_size_2 = sample_size / 2;
-	const int histo_divider = (sizeof(T) == 1) ? 1 : 256; // TBD for 32 bits
+	const int container_bits = sizeof(T) * 8;
+	if (effective_bits < 8 || effective_bits > container_bits) {
+		effective_bits = container_bits;
+	}
+	const int histo_divider = 1 << (effective_bits - 8);
 	unsigned long total = 0;
 	std::vector<T> samples(sample_size);
 	if (sample_rows_by == 1) {
@@ -173,7 +178,9 @@ template <typename T> void indigo_compute_stretch_params(const T *buffer, int wi
 		int size = width * height;
 		for (int index = 0; index < size; index += sample_columns_by) {
 			T value = buffer[index];
-			histogram[(samples[i++] = value) / histo_divider]++;
+			const int histogram_index = value / histo_divider;
+			histogram[histogram_index < 256 ? histogram_index : 255]++;
+			samples[i++] = value;
 			total += value;
 		}
 	} else {
@@ -182,7 +189,9 @@ template <typename T> void indigo_compute_stretch_params(const T *buffer, int wi
 		for (int line_index = 0; line_index < height; line_index += sample_rows_by) {
 			for (int column_index = 0; column_index < width; column_index += sample_columns_by) {
 				T value = line[column_index];
-				histogram[(samples[i++] = value) / histo_divider]++;
+				const int histogram_index = value / histo_divider;
+				histogram[histogram_index < 256 ? histogram_index : 255]++;
+				samples[i++] = value;
 				total += value;
 			}
 			line += width * sample_rows_by;
@@ -224,6 +233,10 @@ template <typename T> void indigo_compute_stretch_params(const T *buffer, int wi
 	} else {
 		*midtones = ((M - 1) * X) / ((2 * M - 1) * X - M);
 	}
+}
+
+template <typename T> void indigo_compute_stretch_params(const T *buffer, int width, int height, int sample_columns_by, int sample_rows_by, double *shadows, double *midtones, double *highlights, unsigned long *histogram, unsigned long *totals, double B = 0.25, double C = -2.8) {
+	indigo_compute_stretch_params_with_effective_bits(buffer, width, height, sample_columns_by, sample_rows_by, shadows, midtones, highlights, histogram, totals, B, C, sizeof(T) * 8);
 }
 
 
@@ -527,6 +540,18 @@ void indigo_debayer(const uint16_t *input_buffer, int width, int height, int off
 void indigo_compute_stretch_params_8(const uint8_t *buffer, int width, int height, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram, double B, double C) {
 	indigo_compute_stretch_params(buffer + 0, width, height, sample_by, 1, &shadows[0], &midtones[0], &highlights[0], histogram[0] = (unsigned long *)calloc(256, sizeof(unsigned long)), NULL, B, C);
 }
+
+#if defined(__GNUC__) && !defined(INDIGO_WINDOWS)
+#define INDIGO_LOCAL __attribute__((visibility("hidden")))
+#else
+#define INDIGO_LOCAL
+#endif
+
+extern "C" INDIGO_LOCAL void indigo_compute_stretch_params_16_with_effective_bits(const uint16_t *buffer, int width, int height, int sample_columns_by, int sample_rows_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram, unsigned long *total, double B, double C, int effective_bits) {
+	indigo_compute_stretch_params_with_effective_bits(buffer, width, height, sample_columns_by, sample_rows_by, shadows, midtones, highlights, *histogram = (unsigned long *)calloc(256, sizeof(unsigned long)), total, B, C, effective_bits);
+}
+
+#undef INDIGO_LOCAL
 
 void indigo_compute_stretch_params_16(const uint16_t *buffer, int width, int height, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram, double B, double C) {
 	indigo_compute_stretch_params(buffer + 0, width, height,  sample_by, 1, &shadows[0], &midtones[0], &highlights[0], histogram[0] = (unsigned long *)calloc(256, sizeof(unsigned long)), NULL, B, C);
