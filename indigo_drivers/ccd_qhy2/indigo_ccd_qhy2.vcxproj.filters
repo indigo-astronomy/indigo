@@ -24,18 +24,16 @@
     <ClCompile Include="..\..\indigo_windows\dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\ccd_qhy\indigo_ccd_qhy.cpp">
+    <ClCompile Include="indigo_ccd_qhy2.cpp">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="indigo_ccd_qhy.h">
+    <ClInclude Include="indigo_ccd_qhy2.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\ccd_qhy\indigo_ccd_qhy.driver" />
-    <None Include="..\ccd_qhy\indigo_ccd_qhy.cpp" />
-    <ClInclude Include="..\ccd_qhy\indigo_ccd_qhy.h" />
+    <None Include="indigo_ccd_qhy2.driver" />
   </ItemGroup>
 </Project>

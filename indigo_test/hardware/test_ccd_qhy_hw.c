@@ -298,6 +298,32 @@ static void hardware_workflows(void) {
 	format = snapshot(camera, "X_PIXEL_FORMAT"); frame = snapshot(camera, "CCD_FRAME"); bins = snapshot(camera, "CCD_BIN"); gain = snapshot(camera, "CCD_GAIN"); advanced = snapshot(camera, "X_ADVANCED"); mode = snapshot(camera, "X_READ_MODE");
 	CHECK(switch_value(camera, "CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE));
 	CHECK(switch_value(camera, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
+	if (getenv("QHY_HW_CASE") && selected("hotplug")) {
+		const char *phases[] = { "disconnected", "connected idle", "exposure", "streaming" };
+		for (int phase = 0; phase < 4; phase++) {
+			if (phase == 0) { CHECK(disconnect_device(camera)); }
+			if (phase == 2) { CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 60, INDIGO_BUSY_STATE)); }
+			if (phase == 3) {
+				unsigned before = frames(), rev = revision(camera, "CCD_STREAMING");
+				indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.1, -1 });
+				CHECK(wait_state(camera, "CCD_STREAMING", rev, INDIGO_BUSY_STATE));
+				for (int i = 0; i < 3000 && frames() < before + 3; i++) { indigo_usleep(10000); }
+				CHECK(frames() >= before + 3);
+			}
+			printf("HOTPLUG PHASE %d %s: WAITING FOR UNPLUG\n", phase + 1, phases[phase]);
+			CHECK(wait_presence(false));
+			printf("HOTPLUG PHASE %d: DETACHED, WAITING FOR REPLUG\n", phase + 1);
+			CHECK(wait_presence(true));
+			CHECK(switch_value(camera, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+			CHECK(switch_value(camera, "CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE));
+			CHECK(switch_value(camera, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
+			unsigned before = frames();
+			CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
+			CHECK(frames() == before + 1);
+			printf("HOTPLUG PHASE %d: REPLUG AND EXPOSURE PASSED\n", phase + 1);
+		}
+		goto cleanup;
+	}
 	if (selected("exposure")) {
 		double durations[] = { 0.1, 1.5, 2.5, 16.5 };
 		for (unsigned i = 0; i < sizeof(durations) / sizeof(durations[0]); i++) {
@@ -428,7 +454,7 @@ cleanup:
 
 int main(int argc, char **argv) {
 	if (argc != 4 || strcmp(argv[1], "--run") || !getenv("INDIGO_TEST_DEVICE") || !*getenv("INDIGO_TEST_DEVICE")) {
-		fprintf(stderr, "Set INDIGO_TEST_DEVICE to a unique model/name substring and run --run <driver-library> <entry-symbol>. QHY_HW_CASE optionally selects exposure, switching, geometry, settings, abort, stream or guide.\n");
+		fprintf(stderr, "Set INDIGO_TEST_DEVICE to a unique model/name substring and run --run <driver-library> <entry-symbol>. QHY_HW_CASE optionally selects exposure, switching, geometry, settings, abort, stream, guide or hotplug.\n");
 		return 2;
 	}
 	library_path = argv[2]; entry_symbol = argv[3];

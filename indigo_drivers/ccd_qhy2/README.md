@@ -6,7 +6,7 @@ http://www.qhyccd.com
 
 All QHY cameras and filter wheels plugged in to the camera.
 
-Hot-plug is disabled because of SDK lifecycle instability. Connect cameras before driver initialization; discovery runs once at startup. Restart the driver to detect newly attached cameras. SDK failures may require a USB power reset. Both SDK variants share the generated implementation in `../ccd_qhy/indigo_ccd_qhy.driver`; `cpp = true` generates C++ directly and the `QHY2` build define selects the appropriate SDK.
+Hot-plug is enabled. Cameras can be connected and disconnected while the driver is running. This was verified with QHY5III178 and QHY5LII-M, including disconnection during exposure and streaming.
 
 ## Supported platforms
 
@@ -22,7 +22,7 @@ indigo_server indigo_ccd_qhy2
 
 ## Status: Unstable
 
-QHY5III178 passed exposure, streaming, bit-depth switching, guiding, disconnect and reconnect tests on macOS with the bundled SDK on 2026-09-12.
+QHY5III178 passed exposure, streaming, bit-depth switching, guiding, disconnect and reconnect tests on macOS with the bundled SDK on 2026-09-12. Hot-plug tests also passed while idle, exposing and streaming with QHY5III178 and QHY5LII-M.
 
 Earlier SDK versions caused QHY5III178 to crash when disconnected in the application. This did not occur in the latest tests; other cameras and platforms may still be affected. If the camera stops responding, unplug it from USB for a few seconds, reconnect it and restart INDIGO.
 

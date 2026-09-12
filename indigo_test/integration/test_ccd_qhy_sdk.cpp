@@ -228,7 +228,17 @@ extern "C" libusb_device *qhy_test_usb_device(libusb_device_handle *h) { return 
 
 extern "C" indigo_result qhy_test_usb_path(libusb_device *d, char *path) { strcpy(path, "test"); return INDIGO_OK; }
 
-extern "C" int qhy_test_usb_register_sim(libusb_context *, libusb_hotplug_event, libusb_hotplug_flag, int, int, int, libusb_hotplug_callback_fn cb, void *, libusb_hotplug_callback_handle *) { if (fail_registration) { return LIBUSB_ERROR_OTHER; } usb_callback = cb; cb(NULL, (libusb_device *)&usb_token, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL); return 0; }
+extern "C" int qhy_test_usb_register_sim(libusb_context *, libusb_hotplug_event, libusb_hotplug_flag, int, int, int, libusb_hotplug_callback_fn cb, void *, libusb_hotplug_callback_handle *) {
+	if (fail_registration) { return LIBUSB_ERROR_OTHER; }
+	usb_callback = cb;
+	// Deliberately reverse USB order relative to SDK IDs.
+	for (int i = 2; i >= 0; i--) {
+		if (visible && (camera_mask & (1 << i))) {
+			cb(NULL, (libusb_device *)&usb_tokens[i], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+		}
+	}
+	return 0;
+}
 
 extern "C" libusb_device *qhy_test_usb_ref(libusb_device *d);
 extern "C" void qhy_test_usb_unref(libusb_device *d);
@@ -569,6 +579,25 @@ static void disconnect_and_sibling_survival(void) {
 	ASSERT_TRUE(connect(0, true)); number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE)); end();
 }
 
+#ifdef QHY2
+static void startup_only_discovery(void) {
+	ASSERT_TRUE(begin()); ASSERT_TRUE(usb_callback != NULL);
+	for (int phase = 0; phase < 4; phase++) {
+		if (phase) { ASSERT_TRUE(connect(0, true)); }
+		if (phase == 2) { number(0, "CCD_EXPOSURE", "EXPOSURE", 20); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_BUSY_STATE)); }
+		if (phase == 3) { stream_start(-1); ASSERT_TRUE(wait_state(0, "CCD_STREAMING", INDIGO_BUSY_STATE)); }
+		visible = false; usb_callback(NULL, (libusb_device *)&usb_tokens[0], LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+		for (int i = 0; i < 600 && attached; i++) { indigo_usleep(10000); }
+		ASSERT_EQ_INT(0, attached.load()); ASSERT_EQ_INT(0, active.load());
+		visible = true; usb_callback(NULL, (libusb_device *)&usb_tokens[0], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+		for (int i = 0; i < 600 && attached != 3; i++) { indigo_usleep(10000); }
+		ASSERT_EQ_INT(3, attached.load()); ASSERT_TRUE(connect(0, true));
+		number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+		ASSERT_TRUE(connect(0, false));
+	}
+	end(); ASSERT_EQ_INT(0, refs.load()); ASSERT_EQ_INT(0, after_close.load());
+}
+#else
 static void startup_only_discovery(void) {
 	int before = enumeration_calls;
 	ASSERT_TRUE(begin()); ASSERT_TRUE(usb_callback == NULL);
@@ -578,12 +607,22 @@ static void startup_only_discovery(void) {
 	ASSERT_EQ_INT(3, attached.load()); ASSERT_EQ_INT(before + 1, enumeration_calls.load());
 	camera_mask = 1; end(); ASSERT_EQ_INT(0, refs.load());
 }
+#endif
 
 static void init_enumeration_and_attachment_rollback(void) {
 	fail_resource = 1; ASSERT_EQ_INT(INDIGO_FAILED, ENTRY(INDIGO_DRIVER_INIT, NULL)); ASSERT_EQ_INT(0, resources.load());
-	fail_resource = 0; fail_enumeration = 1;
+	fail_resource = 0;
+#ifdef QHY2
+	fail_registration = 1;
+	ASSERT_EQ_INT(INDIGO_FAILED, ENTRY(INDIGO_DRIVER_INIT, NULL));
+	ASSERT_EQ_INT(0, resources.load()); ASSERT_TRUE(usb_callback == NULL);
+	fail_registration = 0;
+	visible = false;
+#else
+	fail_enumeration = 1;
+#endif
 	ASSERT_EQ_INT(INDIGO_OK, ENTRY(INDIGO_DRIVER_INIT, NULL)); indigo_usleep(100000); ASSERT_EQ_INT(0, attached.load());
-	end(); fail_enumeration = 0; ASSERT_EQ_INT(0, resources.load()); ASSERT_EQ_INT(0, refs.load());
+	end(); fail_enumeration = 0; visible = true; ASSERT_EQ_INT(0, resources.load()); ASSERT_EQ_INT(0, refs.load());
 	fail_attachment = 1; ASSERT_EQ_INT(INDIGO_OK, ENTRY(INDIGO_DRIVER_INIT, NULL)); indigo_usleep(100000); ASSERT_EQ_INT(0, attached.load());
 	end(); ASSERT_EQ_INT(0, refs.load()); ASSERT_EQ_INT(0, active.load());
 	ASSERT_TRUE(begin()); end(); ASSERT_EQ_INT(0, refs.load());
@@ -812,9 +851,31 @@ static void discovery_capacity_and_identity(void) {
 	cfw = false; camera_mask = 7;
 	ASSERT_TRUE(begin(4));
 	ASSERT_TRUE(devices[0] && devices[3]); ASSERT_TRUE(strcmp(devices[0]->name, devices[3]->name));
+	#ifdef QHY2
+	ASSERT_TRUE(usb_callback != NULL);
+	// A malformed SDK inventory must not remove any logical devices.
+	scan_error = 1;
+	usb_callback(NULL, (libusb_device *)&usb_tokens[2], LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+	indigo_usleep(100000); ASSERT_EQ_INT(4, attached.load()); scan_error = 0;
+	fail_id = 1;
+	usb_callback(NULL, (libusb_device *)&usb_tokens[2], LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+	indigo_usleep(100000); ASSERT_EQ_INT(4, attached.load()); fail_id = 0;
+	// Camera 1 was attached to USB token 3; identity selects camera 1 anyway.
+	camera_mask = 6;
+	usb_callback(NULL, (libusb_device *)&usb_tokens[0], LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+	for (int i = 0; i < 600 && attached != 2; i++) { indigo_usleep(10000); }
+	ASSERT_EQ_INT(2, attached.load()); ASSERT_TRUE(!devices[0] && devices[3]);
+	ASSERT_TRUE(strstr(devices[3]->name, "QHYTEST-002"));
+	usb_callback(NULL, (libusb_device *)&usb_tokens[1], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	for (int i = 0; i < 600 && attached != 4; i++) { indigo_usleep(10000); }
+	ASSERT_EQ_INT(4, attached.load()); ASSERT_TRUE(devices[0] && devices[3]); ASSERT_TRUE(strcmp(devices[0]->name, devices[3]->name));
+	usb_callback(NULL, (libusb_device *)&usb_tokens[1], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	indigo_usleep(100000); ASSERT_EQ_INT(4, attached.load());
+#else
 	ASSERT_TRUE(usb_callback == NULL);
 	camera_mask = 6; indigo_usleep(100000);
 	ASSERT_TRUE(devices[0] && devices[3]); ASSERT_EQ_INT(4, attached.load());
+#endif
 	end(); ASSERT_EQ_INT(0, refs.load()); ASSERT_EQ_INT(0, active.load()); camera_mask = 1; cfw = true;
 }
 
@@ -822,7 +883,7 @@ int main(int argc, char **argv) {
 	if (!mkdtemp(config_folder)) { return 1; }
 	bus_thread = pthread_self(); indigo_start(); indigo_attach_client(&client);
 	indigo_driver_info info; ENTRY(INDIGO_DRIVER_INFO, &info); migrated = info.version > 0x0300001A;
-	const indigo_test_case cases[] = { { "discovery capacity identity", discovery_capacity_and_identity }, { "property contract frame types", property_contract_and_frame_types }, { "sibling orders guide overlap", sibling_orders_and_guide_overlap }, { "RAW color payload", raw_color_payload }, { "zero stream failed setting", zero_stream_and_failed_setting }, { "cooler failure recovery", cooler_failure_recovery }, { "lifecycle", basic_lifecycle }, { "acquisition", acquisition }, { "open rollback", open_rollback }, { "advanced failure", failed_advanced }, { "initialization failures", initialization_failures }, { "start and read failures", start_and_read_failures }, { "fractional exposures", fractional_exposures }, { "abort restart", abort_and_restart }, { "streams abort", streams_and_abort }, { "stream errors", stream_errors }, { "guide directions errors", guider_directions_and_failures }, { "wheel position errors", wheel_position_and_errors }, { "controls no bus IO", controls_and_no_bus_io }, { "read modes", read_modes }, { "ROI formats bins", roi_formats_and_bins }, { "acquisition conflicts", acquisition_conflicts }, { "disconnect sibling", disconnect_and_sibling_survival }, { "startup only discovery", startup_only_discovery }, { "init enumeration attachment", init_enumeration_and_attachment_rollback }, { "discovery failure reload", discovery_failure_and_reload }, { "metadata readback", metadata_and_readback_errors }, { "queued abort", queued_abort_before_start }, { "wheel timeout status", wheel_timeout_and_malformed_status }, { "setup reinitialize", setup_reinitialize_recovery }, { "mode depth errors", mode_and_depth_errors }, { "stream reset error", stream_reset_error }, { "readout buffer contract", bounded_readout_and_buffer_contract }, { "cooling sensor", cooling_and_sensor_profiles }, { "optional sparse profiles", optional_interfaces_and_sparse_formats }, { "configuration restore", config_and_reopen_settings }, { "guide blocking zero", guide_blocking_and_zero } };
+	const indigo_test_case cases[] = { { "discovery capacity identity", discovery_capacity_and_identity }, { "property contract frame types", property_contract_and_frame_types }, { "sibling orders guide overlap", sibling_orders_and_guide_overlap }, { "RAW color payload", raw_color_payload }, { "zero stream failed setting", zero_stream_and_failed_setting }, { "cooler failure recovery", cooler_failure_recovery }, { "lifecycle", basic_lifecycle }, { "acquisition", acquisition }, { "open rollback", open_rollback }, { "advanced failure", failed_advanced }, { "initialization failures", initialization_failures }, { "start and read failures", start_and_read_failures }, { "fractional exposures", fractional_exposures }, { "abort restart", abort_and_restart }, { "streams abort", streams_and_abort }, { "stream errors", stream_errors }, { "guide directions errors", guider_directions_and_failures }, { "wheel position errors", wheel_position_and_errors }, { "controls no bus IO", controls_and_no_bus_io }, { "read modes", read_modes }, { "ROI formats bins", roi_formats_and_bins }, { "acquisition conflicts", acquisition_conflicts }, { "disconnect sibling", disconnect_and_sibling_survival }, { "discovery lifecycle", startup_only_discovery }, { "init enumeration attachment", init_enumeration_and_attachment_rollback }, { "discovery failure reload", discovery_failure_and_reload }, { "metadata readback", metadata_and_readback_errors }, { "queued abort", queued_abort_before_start }, { "wheel timeout status", wheel_timeout_and_malformed_status }, { "setup reinitialize", setup_reinitialize_recovery }, { "mode depth errors", mode_and_depth_errors }, { "stream reset error", stream_reset_error }, { "readout buffer contract", bounded_readout_and_buffer_contract }, { "cooling sensor", cooling_and_sensor_profiles }, { "optional sparse profiles", optional_interfaces_and_sparse_formats }, { "configuration restore", config_and_reopen_settings }, { "guide blocking zero", guide_blocking_and_zero } };
 	int result = 0, matched = 0;
 	for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
 		if (argc > 1 && !strstr(cases[i].name, argv[1])) { continue; }
