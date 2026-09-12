@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000020
+#define DRIVER_VERSION       0x03000021
 #define DRIVER_NAME          "indigo_ccd_atik"
 #define DRIVER_LABEL         "Atik Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -99,7 +99,7 @@ typedef struct {
 	ArtemisHandle handle;
 	char serial[100];
 	char guider_name[INDIGO_NAME_SIZE], wheel_name[INDIGO_NAME_SIZE];
-	bool has_guider, has_wheel, has_cooler;
+	bool has_guider, has_wheel, has_cooler, has_shutter;
 	unsigned char *buffer;
 	size_t buffer_size;
 	int relay_mask;
@@ -180,6 +180,7 @@ static bool atik_initialize_ccd(indigo_device *device) {
 	if (ArtemisProperties(PRIVATE_DATA->handle, &info) != ARTEMIS_OK || info.nPixelsX <= 0 || info.nPixelsY <= 0 || !isfinite(info.PixelMicronsX) || !isfinite(info.PixelMicronsY) || info.PixelMicronsX <= 0 || info.PixelMicronsY <= 0 || ArtemisGetMaxBin(PRIVATE_DATA->handle, &bx, &by) != ARTEMIS_OK || bx < 1 || by < 1 || bx > info.nPixelsX || by > info.nPixelsY) {
 		return false;
 	}
+	PRIVATE_DATA->has_shutter = (info.cameraflags & ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_SHUTTER) != 0;
 	// Preserve the 383-family active-area workaround.
 	if (info.nPixelsX == 3354 && info.nPixelsY == 2529) {
 		info.nPixelsX = 3326;
@@ -295,7 +296,7 @@ static void exposure_finalizer(indigo_device *device) {
 			indigo_execute_handler_in(device, .01, exposure_finalizer);
 			return;
 		}
-		if (state != CAMERA_IDLE || ArtemisSetPreview(PRIVATE_DATA->handle, CCD_READ_MODE_HIGH_SPEED_ITEM->sw.value) != ARTEMIS_OK || ArtemisSetDarkMode(PRIVATE_DATA->handle, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value) != ARTEMIS_OK || ArtemisBin(PRIVATE_DATA->handle, PRIVATE_DATA->exp_bx, PRIVATE_DATA->exp_by) != ARTEMIS_OK || ArtemisSubframe(PRIVATE_DATA->handle, PRIVATE_DATA->exp_left, PRIVATE_DATA->exp_top, PRIVATE_DATA->exp_width, PRIVATE_DATA->exp_height) != ARTEMIS_OK || ArtemisStartExposure(PRIVATE_DATA->handle, PRIVATE_DATA->exposure_duration) != ARTEMIS_OK) {
+		if (state != CAMERA_IDLE || ArtemisSetPreview(PRIVATE_DATA->handle, CCD_READ_MODE_HIGH_SPEED_ITEM->sw.value) != ARTEMIS_OK || (PRIVATE_DATA->has_shutter && ArtemisSetDarkMode(PRIVATE_DATA->handle, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value) != ARTEMIS_OK) || ArtemisBin(PRIVATE_DATA->handle, PRIVATE_DATA->exp_bx, PRIVATE_DATA->exp_by) != ARTEMIS_OK || ArtemisSubframe(PRIVATE_DATA->handle, PRIVATE_DATA->exp_left, PRIVATE_DATA->exp_top, PRIVATE_DATA->exp_width, PRIVATE_DATA->exp_height) != ARTEMIS_OK || ArtemisStartExposure(PRIVATE_DATA->handle, PRIVATE_DATA->exposure_duration) != ARTEMIS_OK) {
 			atik_exposure_failure(device, "Exposure setup failed");
 			return;
 		}
