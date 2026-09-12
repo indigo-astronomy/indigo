@@ -10,7 +10,7 @@ Hot-plug is disabled because of SDK lifecycle instability. Connect cameras befor
 
 ## Supported platforms
 
-This driver depends on a 3rd party library and is supported on Linux and macOS. The bundled SDK 26.06.04 supports Linux x64, ARM32 and ARM64, and requires macOS 10.14 or later on Intel, or macOS 14.0 or later on Apple Silicon. Linux x86 retains the older SDK because no updated package was supplied.
+This driver depends on a 3rd party library and is supported on Linux and macOS. The bundled SDK 26.07.21 supports Linux x64, ARM32 and ARM64, and requires macOS 14.0 or later on Intel and Apple Silicon. Linux x86 retains the older SDK because no updated package was supplied.
 
 ## License
 
@@ -22,7 +22,9 @@ indigo_server indigo_ccd_qhy2
 
 ## Status: Unstable
 
-Some cameras, including QHY5III178, may cause the driver to crash when disconnected in the application. This problem also occurs in earlier INDIGO versions. If the camera stops responding, unplug it from USB for a few seconds, reconnect it and restart INDIGO.
+QHY5III178 passed exposure, streaming, bit-depth switching, guiding, disconnect and reconnect tests on macOS with the bundled SDK on 2026-09-12.
+
+Earlier SDK versions caused QHY5III178 to crash when disconnected in the application. This did not occur in the latest tests; other cameras and platforms may still be affected. If the camera stops responding, unplug it from USB for a few seconds, reconnect it and restart INDIGO.
 
 Driver is developed and tested with:
 * QHY 5

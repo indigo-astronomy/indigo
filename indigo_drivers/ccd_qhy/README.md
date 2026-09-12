@@ -22,6 +22,8 @@ indigo_server indigo_ccd_qhy
 
 ## Status: Unstable
 
+Mode and bit-depth changes now reuse the current camera connection. Hardware validation of this workaround is pending.
+
 Some cameras, including QHY5III178, may cause the driver to crash when disconnected in the application. If the camera stops responding, unplug it from USB for a few seconds, reconnect it and restart INDIGO.
 
 Driver is developed and tested with:

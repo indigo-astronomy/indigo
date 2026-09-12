@@ -1227,8 +1227,8 @@
 #define QHY461_MAX_WIDTH		   11760
 #define QHY461_MAX_HEIGHT		   8842
 
-#define QHY26800A_MAX_WIDTH        6288
-#define QHY26800A_MAX_HEIGHT       4210
+//#define QHY26800A_MAX_WIDTH        6288
+//#define QHY26800A_MAX_HEIGHT       4210
 
 //#define QHY410C_MAX_WIDTH        6112
 //#define QHY410C_MAX_HEIGHT       4140-100
@@ -1433,6 +1433,10 @@
 
 #define QHY26800AGUIDE_MAX_WIDTH  1920
 #define QHY26800AGUIDE_MAX_HEIGHT 1080
+
+/**
+ * Type define for QHY_DEMO (simulated camera for testing) */
+#define DEVICETYPE_QHY_DEMO     9999
 
 /**
  * Type define for UNKNOW */

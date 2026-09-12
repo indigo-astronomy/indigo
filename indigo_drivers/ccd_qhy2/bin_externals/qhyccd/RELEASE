@@ -1,12 +1,16 @@
-https://www.qhyccd.com/html/prepub/log_en.html
+https://github.com/indilib/indi-3rdparty/tree/387a31e4ff863ca29a0d0dbb8b652efc02d6b0f0/libqhy
 
-V2026.06.04.16 for macOS (universal x86_64 + arm64)
-V2026.06.04.15 for linux arm32
-V2026.06.04.16 for linux arm64
-V2026.06.04.16 for linux X64
-V2026.06.04.16 for windows x64
-V2025.03.24 for windows Win32 (no new package supplied)
-V2020.05.22 for linux X86 (no new package supplied)
+SDK 26.07.21 from INDI commit 387a31e4ff863ca29a0d0dbb8b652efc02d6b0f0.
+macOS: universal x86_64 + arm64, runtime version 26.7.21.5 on both architectures.
+Linux arm32, arm64, x64: 26.07.21 platform libraries from the same commit.
+Windows x64: 26.06.04.16 retained (INDI does not supply Windows binaries).
+Windows Win32: 25.03.24 retained.
+Linux x86: 20.05.22 retained (INDI does not supply x86-32 binaries).
 
-Headers: V2026.06.04.16.
-Shared firmware: V2026.06.04 Linux package, in ccd_qhy.
+Public headers qhyccd.h, qhyccdcamdef.h, qhyccderr.h and qhyccdstruct.h
+are copied from that commit. Ancillary headers, including config.h, retain
+the previous vendor package versions because INDI does not supply them;
+config.h version macros therefore do not identify the new runtime SDK.
+Shared firmware and udev rules are in ccd_qhy. Four firmware images updated
+and QHY5III662.img, QHY676.img, QHY992_deep_cooling.img added from INDI.
+Other existing firmware files retained; QHY5/QHY5L-II/QHY5III178 unchanged.

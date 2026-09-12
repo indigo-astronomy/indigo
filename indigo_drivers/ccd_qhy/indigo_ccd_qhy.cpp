@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001C
+#define DRIVER_VERSION       0x0300001D
 #define DRIVER_NAME          "indigo_ccd_qhy"
 #define DRIVER_LABEL         "QHY CCD (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -378,6 +378,13 @@ static bool qhy_stop(indigo_device *device) {
 	bool ok = PRIVATE_DATA->handle && qhy_result(PRIVATE_DATA->streaming ? StopQHYCCDLive(PRIVATE_DATA->handle) : CancelQHYCCDExposingAndReadout(PRIVATE_DATA->handle), "Stop acquisition");
 	if (ok) {
 		PRIVATE_DATA->acquiring = false;
+		if (PRIVATE_DATA->streaming) {
+			PRIVATE_DATA->last_bpp = 0;
+			ok = qhy_result(SetQHYCCDStreamMode(PRIVATE_DATA->handle, 0), "Reset stream mode") && qhy_result(InitQHYCCD(PRIVATE_DATA->handle), "Reset after streaming");
+			if (ok) {
+				PRIVATE_DATA->last_live = false;
+			}
+		}
 	}
 	return ok;
 }
@@ -475,14 +482,9 @@ static void acquisition_finalizer(indigo_device *device) {
 static bool qhy_setup(indigo_device *device, bool streaming) {
 	int bpp = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
 	if (!PRIVATE_DATA->handle || PRIVATE_DATA->last_bpp != bpp || PRIVATE_DATA->last_live != streaming) {
-		if (PRIVATE_DATA->handle && !qhy_result(CloseQHYCCD(PRIVATE_DATA->handle), "Close before mode change")) {
-			return false;
-		}
-		PRIVATE_DATA->handle = NULL;
-		ScanQHYCCD();
-		PRIVATE_DATA->handle = OpenQHYCCD(PRIVATE_DATA->sid);
+		// Reconfigure the current handle; close/reopen crashes some QHY SDKs.
+		PRIVATE_DATA->last_bpp = 0;
 		if (!PRIVATE_DATA->handle || !qhy_result(SetQHYCCDStreamMode(PRIVATE_DATA->handle, streaming ? 1 : 0), "SetQHYCCDStreamMode") || !qhy_result(InitQHYCCD(PRIVATE_DATA->handle), "InitQHYCCD") || (X_PIXEL_FORMAT_PROPERTY->count > 1 && !qhy_result(SetQHYCCDBitsMode(PRIVATE_DATA->handle, bpp), "SetQHYCCDBitsMode"))) {
-			PRIVATE_DATA->last_bpp = 0;
 			return false;
 		}
 		#ifdef QHY2
@@ -1603,7 +1605,7 @@ indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *in
 #include "indigo_ccd_qhy.h"
 
 indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "QHY CCD (legacy) Camera", __FUNCTION__, 0x0300001C, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "QHY CCD (legacy) Camera", __FUNCTION__, 0x0300001D, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

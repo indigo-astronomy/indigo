@@ -325,3 +325,19 @@ SDK headers and libraries were never replaced and remain unchanged. Previous
 experimental findings/results above are historical evidence, not active fixes.
 The generated driver migration and the separately requested modern SDK update
 remain in place. No further legacy SDK workaround testing is planned.
+
+## QHY5III178M hardware retest — SDK 26.7.21.5, driver v29 (2026-09-12)
+
+User confirmed QHY5III178 connected and authorized resuming physical tests. macOS arm64, modern `ccd_qhy2`, SDK 26.7.21.5 and libusb 1.0.29.11990. Seven sequential isolated scenarios all exited 0 without an intervening USB reset:
+
+- `switching`: two rounds of RAW8 and RAW16; each format runs single/live/single, 20 valid full-frame images in total (3056 x 2048).
+- `exposure`: 0.1, 1.5, 2.5 and 16.5 s requested exposures; logical disconnect/reconnect, driver shutdown/dlclose/dlopen/init and a new exposure all succeed. First exposure includes mode-initialization overhead; this is not optical shutter timing validation.
+- `abort`: interrupt a 5 s exposure and acquire a new 0.1 s exposure.
+- `guide`: four 100 ms directional commands, guiding during a 1.5 s exposure, guider survival after CCD disconnect and reconnect after final guider disconnect. Command completion is verified, not physical mount motion.
+- `geometry`: RAW8/RAW16, 128 x 128 ROI and all exposed modes (1x1 and 2x2).
+- `settings`: gain/advanced settings restoration and available read modes with exposure.
+- `stream`: three-frame acquisition, continuous stream, abort and return to single exposure.
+
+Every scenario also completed final physical camera close and driver shutdown without a crash. This supersedes the earlier close-failure result for this camera under this exact driver/SDK combination; it does not establish which part of the combined update fixed it or guarantee other SDK/platform/camera combinations. Hot-plug remains disabled and was not tested. Legacy QHY5/QHY5L-II, cooling, camera-connected CFW, other platforms and optical image quality remain outside this retest. No configuration was saved, and test processes ended. Hardware test binaries were cleaned afterward.
+
+Logs: `/tmp/qhy178-sdk26721-{switching,exposure,abort,guide,geometry,settings,stream}.log`.

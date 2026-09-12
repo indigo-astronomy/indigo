@@ -5474,6 +5474,9 @@
 		C0DE26060912F10000000001 /* QHY26800A.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY26800A.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000002 /* QHY585.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY585.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000003 /* QHY661.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY661.img; sourceTree = "<group>"; };
+		C0DE26060912F20000000000 /* QHY5III662.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III662.img; sourceTree = "<group>"; };
+		C0DE26060912F20000000001 /* QHY676.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY676.img; sourceTree = "<group>"; };
+		C0DE26060912F20000000002 /* QHY992_deep_cooling.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY992_deep_cooling.img; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -8516,6 +8519,9 @@
 		59910B14305535A900FB1C2F /* firmware */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE26060912F20000000000 /* QHY5III662.img */,
+				C0DE26060912F20000000001 /* QHY676.img */,
+				C0DE26060912F20000000002 /* QHY992_deep_cooling.img */,
 				C0DE26060912F10000000000 /* Origin678C.img */,
 				C0DE26060912F10000000001 /* QHY26800A.img */,
 				C0DE26060912F10000000002 /* QHY585.img */,

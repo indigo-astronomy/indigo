@@ -36,6 +36,7 @@
 extern "C" indigo_result ENTRY(indigo_driver_action, indigo_driver_info *);
 
 static std::atomic<int> opens, closes, active, attached, blobs, after_close, bus_calls, locks, resources;
+static std::atomic<bool> fail_mode, fail_bits;
 static std::atomic<int> fail_open, fail_init, fail_chip, fail_start, fail_read, fail_stop, fail_control;
 static std::atomic<int> malformed, guide_calls, guide_direction, guide_duration, fw_slot, read_mode;
 static std::atomic<int> width(320), height(240), bits(16), bin(1), left, top, formats(3), bin_mask(3), mode_count(2);
@@ -131,7 +132,7 @@ uint32_t CloseQHYCCD(qhyccd_handle *h) { valid(h); closes++; active--; return QH
 
 uint32_t InitQHYCCD(qhyccd_handle *h) { valid(h); bits = formats == 1 ? 8 : formats == 2 ? 16 : sensor_depth.load(); if (reset_controls) { params[CONTROL_GAIN] = params[CONTROL_OFFSET] = params[CONTROL_GAMMA] = params[CONTROL_USBTRAFFIC] = params[CONTROL_SPEED] = 0; } return fail_init ? QHYCCD_ERROR : QHYCCD_SUCCESS; }
 
-uint32_t SetQHYCCDStreamMode(qhyccd_handle *h, uint8_t mode) { valid(h); live = mode; return QHYCCD_SUCCESS; }
+uint32_t SetQHYCCDStreamMode(qhyccd_handle *h, uint8_t mode) { valid(h); live = mode; return fail_mode ? QHYCCD_ERROR : QHYCCD_SUCCESS; }
 
 uint32_t GetQHYCCDChipInfo(qhyccd_handle *h, double *cw, double *ch, uint32_t *w, uint32_t *v, double *pw, double *ph, uint32_t *b) {
 	valid(h); *cw = 3.2; *ch = 2.4; *pw = *ph = 3.75; *w = read_mode ? 640 : 320; *v = 240; *b = sensor_depth;
@@ -167,7 +168,7 @@ uint32_t SetQHYCCDBinMode(qhyccd_handle *h, uint32_t x, uint32_t y) { valid(h); 
 
 uint32_t SetQHYCCDResolution(qhyccd_handle *h, uint32_t x, uint32_t y, uint32_t w, uint32_t v) { valid(h); left = x; top = y; width = w; height = v; return QHYCCD_SUCCESS; }
 
-uint32_t SetQHYCCDBitsMode(qhyccd_handle *h, uint32_t b) { valid(h); if (formats != 3) { return QHYCCD_ERROR; } bits = b; return QHYCCD_SUCCESS; }
+uint32_t SetQHYCCDBitsMode(qhyccd_handle *h, uint32_t b) { valid(h); if (formats != 3 || fail_bits) { return QHYCCD_ERROR; } bits = b; return QHYCCD_SUCCESS; }
 
 uint32_t GetQHYCCDMemLength(qhyccd_handle *h) { valid(h); return memory_length ? memory_length.load() : 640 * 480 * 2; }
 
@@ -367,6 +368,7 @@ static bool begin(int expected = 3) {
 static void end(void) {
 	fail_open = fail_init = fail_chip = fail_start = fail_read = fail_stop = fail_control = malformed = 0;
 	clock_shift = 0;
+	fail_mode = fail_bits = false;
 	release_gate();
 	fail_registration = fail_resource = fail_attachment = fail_descriptor = scan_error = fail_id = fail_range = invalid_value = remaining_error = memory_length = 0;
 	wheel_status = -1;
@@ -622,11 +624,50 @@ static void wheel_timeout_and_malformed_status(void) {
 	wheel_status = -1; number(2, "WHEEL_SLOT", "SLOT", 1); ASSERT_TRUE(wait_state(2, "WHEEL_SLOT", INDIGO_OK_STATE)); end();
 }
 
-static void setup_reopen_recovery(void) {
+static void setup_reinitialize_recovery(void) {
 	ASSERT_TRUE(begin()); ASSERT_TRUE(connect(0, true));
-	fail_open = 1; number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_ALERT_STATE));
-	fail_open = 0; number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+	int before = opens, closed = closes;
+	fail_open = 1; fail_init = 1; number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_ALERT_STATE));
+	fail_init = 0; number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+	for (const char *format : { "RAW 8", "RAW 16", "RAW 8" }) {
+		sw(0, "X_PIXEL_FORMAT", format); ASSERT_TRUE(wait_state(0, "X_PIXEL_FORMAT", INDIGO_OK_STATE));
+		number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+		ASSERT_EQ_INT(!strcmp(format, "RAW 8") ? 8 : 16, bits.load());
+		stream_start(1); ASSERT_TRUE(wait_state(0, "CCD_STREAMING", INDIGO_OK_STATE));
+		number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+		ASSERT_EQ_INT(!strcmp(format, "RAW 8") ? 8 : 16, bits.load());
+	}
+	ASSERT_EQ_INT(before, opens.load()); ASSERT_EQ_INT(closed, closes.load());
 	ASSERT_EQ_INT(0, after_close.load()); end();
+	ASSERT_EQ_INT(closed + 1, closes.load()); ASSERT_EQ_INT(0, active.load());
+	ASSERT_EQ_INT(0, resources.load());
+}
+
+static void mode_and_depth_errors(void) {
+	ASSERT_TRUE(begin()); ASSERT_TRUE(connect(0, true));
+	int before = opens, closed = closes;
+	for (int stage = 0; stage < 2; stage++) {
+		sw(0, "X_PIXEL_FORMAT", stage ? "RAW 16" : "RAW 8"); ASSERT_TRUE(wait_state(0, "X_PIXEL_FORMAT", INDIGO_OK_STATE));
+		fail_mode = stage == 0; fail_bits = stage == 1;
+		number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_ALERT_STATE));
+		fail_mode = fail_bits = false;
+		number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+		ASSERT_EQ_INT(stage ? 16 : 8, bits.load());
+	}
+	ASSERT_EQ_INT(before, opens.load()); ASSERT_EQ_INT(closed, closes.load()); end();
+}
+
+static void stream_reset_error(void) {
+	ASSERT_TRUE(begin()); ASSERT_TRUE(connect(0, true));
+	int before = opens, closed = closes;
+	stream_start(-1); ASSERT_TRUE(wait_state(0, "CCD_STREAMING", INDIGO_BUSY_STATE));
+	for (int i = 0; i < 400 && blobs == 0; i++) { indigo_usleep(10000); }
+	ASSERT_TRUE(blobs > 0);
+	fail_init = 1;
+	sw(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE"); ASSERT_TRUE(wait_state(0, "CCD_ABORT_EXPOSURE", INDIGO_ALERT_STATE));
+	fail_init = 0;
+	number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(before, opens.load()); ASSERT_EQ_INT(closed, closes.load()); end();
 }
 
 static void bounded_readout_and_buffer_contract(void) {
@@ -676,6 +717,9 @@ static void config_and_reopen_settings(void) {
 	for (int i = 0; i < 400 && params[CONTROL_USBTRAFFIC] != 64; i++) { indigo_usleep(10000); }
 	ASSERT_EQ_INT(64, params[CONTROL_USBTRAFFIC]);
 	reset_controls = true; number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(64, params[CONTROL_USBTRAFFIC]); ASSERT_EQ_INT(42, params[CONTROL_GAIN]);
+	stream_start(1); ASSERT_TRUE(wait_state(0, "CCD_STREAMING", INDIGO_OK_STATE));
+	number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
 	ASSERT_EQ_INT(64, params[CONTROL_USBTRAFFIC]); ASSERT_EQ_INT(42, params[CONTROL_GAIN]); end();
 }
 
@@ -778,7 +822,7 @@ int main(int argc, char **argv) {
 	if (!mkdtemp(config_folder)) { return 1; }
 	bus_thread = pthread_self(); indigo_start(); indigo_attach_client(&client);
 	indigo_driver_info info; ENTRY(INDIGO_DRIVER_INFO, &info); migrated = info.version > 0x0300001A;
-	const indigo_test_case cases[] = { { "discovery capacity identity", discovery_capacity_and_identity }, { "property contract frame types", property_contract_and_frame_types }, { "sibling orders guide overlap", sibling_orders_and_guide_overlap }, { "RAW color payload", raw_color_payload }, { "zero stream failed setting", zero_stream_and_failed_setting }, { "cooler failure recovery", cooler_failure_recovery }, { "lifecycle", basic_lifecycle }, { "acquisition", acquisition }, { "open rollback", open_rollback }, { "advanced failure", failed_advanced }, { "initialization failures", initialization_failures }, { "start and read failures", start_and_read_failures }, { "fractional exposures", fractional_exposures }, { "abort restart", abort_and_restart }, { "streams abort", streams_and_abort }, { "stream errors", stream_errors }, { "guide directions errors", guider_directions_and_failures }, { "wheel position errors", wheel_position_and_errors }, { "controls no bus IO", controls_and_no_bus_io }, { "read modes", read_modes }, { "ROI formats bins", roi_formats_and_bins }, { "acquisition conflicts", acquisition_conflicts }, { "disconnect sibling", disconnect_and_sibling_survival }, { "startup only discovery", startup_only_discovery }, { "init enumeration attachment", init_enumeration_and_attachment_rollback }, { "discovery failure reload", discovery_failure_and_reload }, { "metadata readback", metadata_and_readback_errors }, { "queued abort", queued_abort_before_start }, { "wheel timeout status", wheel_timeout_and_malformed_status }, { "setup reopen", setup_reopen_recovery }, { "readout buffer contract", bounded_readout_and_buffer_contract }, { "cooling sensor", cooling_and_sensor_profiles }, { "optional sparse profiles", optional_interfaces_and_sparse_formats }, { "configuration restore", config_and_reopen_settings }, { "guide blocking zero", guide_blocking_and_zero } };
+	const indigo_test_case cases[] = { { "discovery capacity identity", discovery_capacity_and_identity }, { "property contract frame types", property_contract_and_frame_types }, { "sibling orders guide overlap", sibling_orders_and_guide_overlap }, { "RAW color payload", raw_color_payload }, { "zero stream failed setting", zero_stream_and_failed_setting }, { "cooler failure recovery", cooler_failure_recovery }, { "lifecycle", basic_lifecycle }, { "acquisition", acquisition }, { "open rollback", open_rollback }, { "advanced failure", failed_advanced }, { "initialization failures", initialization_failures }, { "start and read failures", start_and_read_failures }, { "fractional exposures", fractional_exposures }, { "abort restart", abort_and_restart }, { "streams abort", streams_and_abort }, { "stream errors", stream_errors }, { "guide directions errors", guider_directions_and_failures }, { "wheel position errors", wheel_position_and_errors }, { "controls no bus IO", controls_and_no_bus_io }, { "read modes", read_modes }, { "ROI formats bins", roi_formats_and_bins }, { "acquisition conflicts", acquisition_conflicts }, { "disconnect sibling", disconnect_and_sibling_survival }, { "startup only discovery", startup_only_discovery }, { "init enumeration attachment", init_enumeration_and_attachment_rollback }, { "discovery failure reload", discovery_failure_and_reload }, { "metadata readback", metadata_and_readback_errors }, { "queued abort", queued_abort_before_start }, { "wheel timeout status", wheel_timeout_and_malformed_status }, { "setup reinitialize", setup_reinitialize_recovery }, { "mode depth errors", mode_and_depth_errors }, { "stream reset error", stream_reset_error }, { "readout buffer contract", bounded_readout_and_buffer_contract }, { "cooling sensor", cooling_and_sensor_profiles }, { "optional sparse profiles", optional_interfaces_and_sparse_formats }, { "configuration restore", config_and_reopen_settings }, { "guide blocking zero", guide_blocking_and_zero } };
 	int result = 0, matched = 0;
 	for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
 		if (argc > 1 && !strstr(cases[i].name, argv[1])) { continue; }

@@ -283,6 +283,12 @@ EXPORTC uint32_t STDCALL ExpQHYCCDSingleFrame(qhyccd_handle *handle);
 EXPORTC uint32_t STDCALL GetQHYCCDSingleFrame(qhyccd_handle *handle,uint32_t *w,uint32_t *h,uint32_t *bpp,uint32_t *channels,uint8_t *imgdata);
 EXPORTC uint32_t STDCALL GetQHYCCDSingleFrame_proc(qhyccd_handle *handle,uint32_t *w,uint32_t *h,uint32_t *bpp,uint32_t *channels,uint8_t *imgdata,uint8_t proc_overscan,uint32_t proc_binx,uint32_t proc_biny,uint8_t proc_bin_avg);
 
+EXPORTC void STDCALL ParseGPSFromFrame(uint8_t *imgdata, uint32_t w, uint32_t bpp, uint32_t channels,
+                                        uint32_t *seqNumber, uint32_t *latitude, uint32_t *longitude,
+                                        bool *gps_locked,
+                                        uint16_t *year, uint8_t *month, uint8_t *day,
+                                        uint8_t *hour, uint8_t *minute, uint8_t *second);
+
 /**
   @fn uint32_t CancelQHYCCDExposing(qhyccd_handle *handle)
   @brief force stop the camera long exposure. But host software must readout the image data. Please note not all camera can use this method.
@@ -354,6 +360,7 @@ EXPORTC uint32_t STDCALL StopQHYCCDLive(qhyccd_handle *handle);
 
 EXPORTFUNC uint32_t STDCALL QHYCCDPcieRecv(qhyccd_handle *handle, void * data, int len,uint64_t timeout);
 EXPORTFUNC uint32_t STDCALL GetQHYCCDPcieDDRNum(qhyccd_handle *handle);
+EXPORTFUNC double STDCALL GetQHYCCDDDRBufferValue(qhyccd_handle *handle);
 
 
 
@@ -971,6 +978,8 @@ EXPORTFUNC void RegisterDataEventLive( void (*in_data_event_live_func)(char *id,
 
 EXPORTFUNC void RegisterTransferEventError( void (*transfer_event_error_func)());
 
+EXPORTFUNC void RegisterPnpEventUVLO(void (*in_pnp_event_uvlo_func)(char* id, uint8_t status));
+
 EXPORTFUNC uint32_t STDCALL PCIEClearDDR(qhyccd_handle *handle);
 EXPORTFUNC uint32_t STDCALL GetReadModesNumber(char* deviceID,uint32_t* numModes);
 
@@ -1095,6 +1104,7 @@ EXPORTC void STDCALL QHYCCD_fpga_reset();
 /// ----------------------------------
 
 void call_pnp_event();
+void call_pnp_event_device_uvlo(char *id, uint8_t status);
 void call_data_event_live(char *id, uint8_t *imgdata);
 void call_transfer_event_error();
 void call_critical_event_error(qhyccd_handle *h);

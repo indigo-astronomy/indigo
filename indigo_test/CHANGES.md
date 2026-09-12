@@ -1560,3 +1560,29 @@ in TESTING.md and ccd_qhy/REFACTOR.md. This is a failed HW scenario.
 At user request, the experimental legacy SDK fixes and external regression
 test were reverted. The shipped legacy SDK remains original. Physical failure
 results above remain historical evidence; no workaround pass is claimed.
+
+## QHY mode/bit-depth switching and SDK 26.07.21 (2026-09-12)
+
+Version 29 retains the normal physical open/close/unload lifecycle. `setup reinitialize` exercises repeated RAW8/RAW16 single/live/single sequences while fake OpenQHYCCD is forced to fail, verifies unchanged open/close counts during acquisition and normal close/resource release at shutdown. It also checks initialization failure/retry on the same handle. New `mode depth errors` covers stream-mode and bit-depth SDK failures with successful retry; `stream reset error` covers failed post-stream initialization and subsequent exposure recovery. `configuration restore` additionally checks gain and USB traffic after stream-stop reinitialization. Existing CCD/guider/CFW and lifecycle cases remain applicable.
+
+Both variants compile against their own real SDK headers; modern public headers now come from INDI SDK 26.07.21. The vendor SDK's real failure behavior is not simulated by successful fake tests. Physical retests are explicitly deferred by the user, and the known QHY5III178 close crash remains unresolved. No properties were added or removed.
+
+Final software validation: 74/74 fake SDK cases pass (37 per SDK variant), including all new switching/error-recovery cases. Both macOS driver builds succeed; legacy retains its unsupported ARM stub. Generated C++/header/main exactly match regeneration, Xcode project parses successfully, imported SDK/header bytes and universal-library slices match INDI inputs. No new property names or visibility changes. Linux/Windows runtime validation and all physical camera retests remain unverified. Test artifacts were cleaned after validation. Logs: `/tmp/qhy-mode-sdk-final-tests.log`, `/tmp/qhy-mode-build-final.log`, `/tmp/qhy2-mode-build-final.log`.
+
+QHY5III178 physical retest resumed with user confirmation. Added hardware-only `QHY_HW_CASE=switching`: two rounds across all exposed pixel formats, each with a 0.1 s single exposure, three 0.1 s streaming frames and another single exposure, checking frame counts and RAW validity before final disconnect. This isolates the mode/bit-depth workaround from the known close failure; no configuration is saved.
+
+## QHY5III178M hardware retest — SDK 26.7.21.5, driver v29 (2026-09-12)
+
+User confirmed QHY5III178 connected and authorized resuming physical tests. macOS arm64, modern `ccd_qhy2`, SDK 26.7.21.5 and libusb 1.0.29.11990. Seven sequential isolated scenarios all exited 0 without an intervening USB reset:
+
+- `switching`: two rounds of RAW8 and RAW16; each format runs single/live/single, 20 valid full-frame images in total (3056 x 2048).
+- `exposure`: 0.1, 1.5, 2.5 and 16.5 s requested exposures; logical disconnect/reconnect, driver shutdown/dlclose/dlopen/init and a new exposure all succeed. First exposure includes mode-initialization overhead; this is not optical shutter timing validation.
+- `abort`: interrupt a 5 s exposure and acquire a new 0.1 s exposure.
+- `guide`: four 100 ms directional commands, guiding during a 1.5 s exposure, guider survival after CCD disconnect and reconnect after final guider disconnect. Command completion is verified, not physical mount motion.
+- `geometry`: RAW8/RAW16, 128 x 128 ROI and all exposed modes (1x1 and 2x2).
+- `settings`: gain/advanced settings restoration and available read modes with exposure.
+- `stream`: three-frame acquisition, continuous stream, abort and return to single exposure.
+
+Every scenario also completed final physical camera close and driver shutdown without a crash. This supersedes the earlier close-failure result for this camera under this exact driver/SDK combination; it does not establish which part of the combined update fixed it or guarantee other SDK/platform/camera combinations. Hot-plug remains disabled and was not tested. Legacy QHY5/QHY5L-II, cooling, camera-connected CFW, other platforms and optical image quality remain outside this retest. No configuration was saved, and test processes ended. Hardware test binaries were cleaned afterward.
+
+Logs: `/tmp/qhy178-sdk26721-{switching,exposure,abort,guide,geometry,settings,stream}.log`.

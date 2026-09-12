@@ -544,3 +544,33 @@ macOS architecture guard. Neither is a camera/SDK acceptance result. Both
 processes ended. A full patched x86_64 SDK and driver have now been built for
 Rosetta. The legacy source intentionally lacks SetQHYCCDLogLevel; only the
 temporary test link supplies a no-op for it, leaving existing logging intact.
+
+## Mode and bit depth workaround (2026-09-12, version 29)
+
+The user narrowed the approved change to mode/bit depth switching only. Camera open, logical disconnect, physical close and driver unload retain their previous lifecycle. The known QHY5III178 close crash remains unresolved.
+
+Plan: reconfigure the current handle with `SetQHYCCDStreamMode`, `InitQHYCCD` and `SetQHYCCDBitsMode`, restoring controls after initialization. After successful streaming stop, return to single-frame mode and reinitialize, invalidating cached settings so the next acquisition restores the requested bit depth and controls. Invalidate settings before any reconfiguration attempt so failure cannot leave a stale success cache. Keep discovery, generator and both vendor SDKs unchanged. Extend fake SDK coverage for repeated 8/16-bit and single/live transitions with `OpenQHYCCD` deliberately unavailable, initialization failure/retry and normal close/unload. Build both variants before physical retesting.
+
+SDK follow-up: user additionally requested INDI's newer SDK, pinned to commit `387a31e4ff863ca29a0d0dbb8b652efc02d6b0f0` (26.07.21). Imported Linux ARM32/ARM64/x64 libraries, four public headers and macOS Intel/Apple Silicon libraries merged with lipo. Each downloaded blob matched its Git SHA; both slices extracted from the universal library match the input bytes. Runtime version-only queries on both macOS architectures return `26.7.21.5`, without camera enumeration or initialization. Ancillary headers are retained because INDI does not supply replacements. Existing Windows and Linux x86 SDKs remain unchanged. Four shared firmware files changed and three were added with Xcode references; udev rules were updated from the same commit. Firmware for the three test cameras and all original legacy SDK headers/libraries remain unchanged.
+
+The user is unavailable and explicitly deferred all physical tests. Required later checks: repeated RAW8/RAW16 exposures, single/live transitions, abort/restart, settings restoration and CCD/guider coexistence on QHY5L-II (legacy) and QHY5III178 (modern). A known crash on actual close is still an accepted limitation, not a passing scenario.
+
+Final software validation: 74/74 fake SDK cases pass (37 per SDK variant), including all new switching/error-recovery cases. Both macOS driver builds succeed; legacy retains its unsupported ARM stub. Generated C++/header/main exactly match regeneration, Xcode project parses successfully, imported SDK/header bytes and universal-library slices match INDI inputs. No new property names or visibility changes. Linux/Windows runtime validation and all physical camera retests remain unverified. Test artifacts were cleaned after validation. Logs: `/tmp/qhy-mode-sdk-final-tests.log`, `/tmp/qhy-mode-build-final.log`, `/tmp/qhy2-mode-build-final.log`.
+
+QHY5III178 physical retest resumed with user confirmation. Added hardware-only `QHY_HW_CASE=switching`: two rounds across all exposed pixel formats, each with a 0.1 s single exposure, three 0.1 s streaming frames and another single exposure, checking frame counts and RAW validity before final disconnect. This isolates the mode/bit-depth workaround from the known close failure; no configuration is saved.
+
+## QHY5III178M hardware retest — SDK 26.7.21.5, driver v29 (2026-09-12)
+
+User confirmed QHY5III178 connected and authorized resuming physical tests. macOS arm64, modern `ccd_qhy2`, SDK 26.7.21.5 and libusb 1.0.29.11990. Seven sequential isolated scenarios all exited 0 without an intervening USB reset:
+
+- `switching`: two rounds of RAW8 and RAW16; each format runs single/live/single, 20 valid full-frame images in total (3056 x 2048).
+- `exposure`: 0.1, 1.5, 2.5 and 16.5 s requested exposures; logical disconnect/reconnect, driver shutdown/dlclose/dlopen/init and a new exposure all succeed. First exposure includes mode-initialization overhead; this is not optical shutter timing validation.
+- `abort`: interrupt a 5 s exposure and acquire a new 0.1 s exposure.
+- `guide`: four 100 ms directional commands, guiding during a 1.5 s exposure, guider survival after CCD disconnect and reconnect after final guider disconnect. Command completion is verified, not physical mount motion.
+- `geometry`: RAW8/RAW16, 128 x 128 ROI and all exposed modes (1x1 and 2x2).
+- `settings`: gain/advanced settings restoration and available read modes with exposure.
+- `stream`: three-frame acquisition, continuous stream, abort and return to single exposure.
+
+Every scenario also completed final physical camera close and driver shutdown without a crash. This supersedes the earlier close-failure result for this camera under this exact driver/SDK combination; it does not establish which part of the combined update fixed it or guarantee other SDK/platform/camera combinations. Hot-plug remains disabled and was not tested. Legacy QHY5/QHY5L-II, cooling, camera-connected CFW, other platforms and optical image quality remain outside this retest. No configuration was saved, and test processes ended. Hardware test binaries were cleaned afterward.
+
+Logs: `/tmp/qhy178-sdk26721-{switching,exposure,abort,guide,geometry,settings,stream}.log`.

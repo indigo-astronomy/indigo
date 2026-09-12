@@ -124,11 +124,12 @@ ATTRS{idVendor}=="1618", ATTRS{idProduct}=="2020", RUN+="/sbin/fxload -t fx3 -I 
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="4040", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY4040.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="4042", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY4040PRO.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="6060", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY6060.img -D $env{DEVNAME}"
+ATTRS{idVendor}=="1618", ATTRS{idProduct}=="6062", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY6060PRO.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c413", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY411ERIS.img -D $env{DEVNAME}"
 #ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c411", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY411.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c461", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY461.img -D $env{DEVNAME}"
 
-#QHYCCD SMALL COLDMOS Camera (5:QHY174 QHY178 QHY290 QHY224 QHY550)
+#QHYCCD SMALL COLDMOS Camera (5:QHY174 QHY178 QHY290 QHY224 QHY550 QHY1253 QHY9701 QHY585)
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c174", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY174.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c178", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY178.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c290", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY290.img -D $env{DEVNAME}"
@@ -136,9 +137,9 @@ ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c224", RUN+="/sbin/fxload -t fx3 -I 
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c550", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY550.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c253", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY1253.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="9701", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY9701.img -D $env{DEVNAME}"
-ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c530", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY530.img -D $env{DEVNAME}"
+ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c585", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY585.img -D $env{DEVNAME}"
 
-#QHYCCD Medium COLDMOS Camera (9:QHY183,QHY163,QHY294,QHY165,QHY168,QHY247,QHY128,QHY367,QHY600)
+#QHYCCD Medium COLDMOS Camera (9:QHY183,QHY163,QHY294,QHY165,QHY168,QHY247,QHY128,QHY367,QHY600,QHY530)
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c183", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY183.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c163", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY163.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c294", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY294.img -D $env{DEVNAME}"
@@ -167,6 +168,9 @@ ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c992", RUN+="/sbin/fxload -t fx3 -I 
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c487", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY487.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c661", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY661.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c811", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY811.img -D $env{DEVNAME}"
+ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c530", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY530.img -D $env{DEVNAME}"
+ATTRS{idVendor}=="1618", ATTRS{idProduct}=="c26c", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY26800A.img -D $env{DEVNAME}"
+ATTRS{idVendor}=="1618", ATTRS{idProduct}=="E991", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY992_deep_cooling.img -D $env{DEVNAME}"
 
 #===============================================================================
 # 2. Make all devices accessible by the user by fixing the permission.

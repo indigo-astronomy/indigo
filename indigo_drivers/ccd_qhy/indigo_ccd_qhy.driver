@@ -20,7 +20,7 @@ driver qhy {
 	label = "QHY CCD (legacy) Camera";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2017-2026 Rumen G. Bogdanovski";
-	version = 28;
+	version = 29;
 	cpp = true;
 	supported_architecture = "!defined(INDIGO_MACOS) || defined(__x86_64__) || defined(QHY2)";
 	include {
@@ -312,6 +312,13 @@ driver qhy {
 			bool ok = PRIVATE_DATA->handle && qhy_result(PRIVATE_DATA->streaming ? StopQHYCCDLive(PRIVATE_DATA->handle) : CancelQHYCCDExposingAndReadout(PRIVATE_DATA->handle), "Stop acquisition");
 			if (ok) {
 				PRIVATE_DATA->acquiring = false;
+				if (PRIVATE_DATA->streaming) {
+					PRIVATE_DATA->last_bpp = 0;
+					ok = qhy_result(SetQHYCCDStreamMode(PRIVATE_DATA->handle, 0), "Reset stream mode") && qhy_result(InitQHYCCD(PRIVATE_DATA->handle), "Reset after streaming");
+					if (ok) {
+						PRIVATE_DATA->last_live = false;
+					}
+				}
 			}
 			return ok;
 		}
@@ -409,14 +416,9 @@ driver qhy {
 		static bool qhy_setup(indigo_device *device, bool streaming) {
 			int bpp = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
 			if (!PRIVATE_DATA->handle || PRIVATE_DATA->last_bpp != bpp || PRIVATE_DATA->last_live != streaming) {
-				if (PRIVATE_DATA->handle && !qhy_result(CloseQHYCCD(PRIVATE_DATA->handle), "Close before mode change")) {
-					return false;
-				}
-				PRIVATE_DATA->handle = NULL;
-				ScanQHYCCD();
-				PRIVATE_DATA->handle = OpenQHYCCD(PRIVATE_DATA->sid);
+				// Reconfigure the current handle; close/reopen crashes some QHY SDKs.
+				PRIVATE_DATA->last_bpp = 0;
 				if (!PRIVATE_DATA->handle || !qhy_result(SetQHYCCDStreamMode(PRIVATE_DATA->handle, streaming ? 1 : 0), "SetQHYCCDStreamMode") || !qhy_result(InitQHYCCD(PRIVATE_DATA->handle), "InitQHYCCD") || (X_PIXEL_FORMAT_PROPERTY->count > 1 && !qhy_result(SetQHYCCDBitsMode(PRIVATE_DATA->handle, bpp), "SetQHYCCDBitsMode"))) {
-					PRIVATE_DATA->last_bpp = 0;
 					return false;
 				}
 				#ifdef QHY2

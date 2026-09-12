@@ -309,6 +309,29 @@ static void hardware_workflows(void) {
 			CHECK(frames() == before + 1);
 		}
 	}
+	if (selected("switching")) {
+		CHECK(format && format->count > 1);
+		for (int round = 0; round < 2; round++) {
+			for (int i = 0; i < format->count; i++) {
+				printf("Switching round %d: %s single/live/single\n", round + 1, format->items[i].name);
+				CHECK(switch_value(camera, "X_PIXEL_FORMAT", format->items[i].name, INDIGO_OK_STATE));
+				unsigned before = frames();
+				CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
+				CHECK(frames() == before + 1);
+				unsigned rev = revision(camera, "CCD_STREAMING");
+				indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.1, 3 });
+				CHECK(wait_state(camera, "CCD_STREAMING", rev, INDIGO_OK_STATE));
+				CHECK(frames() == before + 4);
+				CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
+				CHECK(frames() == before + 5);
+			}
+		}
+		pthread_mutex_lock(&mutex);
+		unsigned invalid = devices[camera].invalid_frames;
+		pthread_mutex_unlock(&mutex);
+		CHECK(invalid == 0);
+		printf("Repeated mode/bit-depth switching completed; final disconnect follows\n");
+	}
 	if (selected("geometry")) {
 		if (format) {
 			for (int i = 0; i < format->count; i++) {
@@ -405,7 +428,7 @@ cleanup:
 
 int main(int argc, char **argv) {
 	if (argc != 4 || strcmp(argv[1], "--run") || !getenv("INDIGO_TEST_DEVICE") || !*getenv("INDIGO_TEST_DEVICE")) {
-		fprintf(stderr, "Set INDIGO_TEST_DEVICE to a unique model/name substring and run --run <driver-library> <entry-symbol>. QHY_HW_CASE optionally selects exposure, geometry, settings, abort, stream or guide.\n");
+		fprintf(stderr, "Set INDIGO_TEST_DEVICE to a unique model/name substring and run --run <driver-library> <entry-symbol>. QHY_HW_CASE optionally selects exposure, switching, geometry, settings, abort, stream or guide.\n");
 		return 2;
 	}
 	library_path = argv[2]; entry_symbol = argv[3];
