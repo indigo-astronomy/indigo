@@ -68,6 +68,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_generator_architecture \
 	$(INTEGRATION_BUILD)/test_wheel_playerone_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_atik_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_atik2_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_playerone_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_asi_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_sx_usb \
@@ -417,8 +418,8 @@ $(INTEGRATION_BUILD)/focuser_ioptron_simulator: ../indigo_drivers/focuser_ioptro
 $(INTEGRATION_BUILD)/focuser_qhy_simulator: ../indigo_drivers/focuser_qhy/focuser_qhy_simulator/focuser_qhy_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
 
-$(INTEGRATION_BUILD)/focuser_optecfl_simulator: ../indigo_drivers/focuser_optecfl/focuser_optecfl_simulator/focuser_optecfl_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+$(INTEGRATION_BUILD)/focuser_optecfl_simulator: ../indigo_drivers/focuser_optecfl/focuser_optecfl_simulator/focuser_optecfl_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/focuser_lacerta_simulator: ../indigo_drivers/focuser_lacerta/focuser_lacerta_simulator/focuser_lacerta_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
@@ -438,10 +439,10 @@ $(INTEGRATION_BUILD)/focuser_mypro2_simulator: ../indigo_drivers/focuser_mypro2/
 $(INTEGRATION_BUILD)/focuser_nfocus_simulator: ../indigo_drivers/focuser_nfocus/focuser_nfocus_simulator/focuser_nfocus_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/focuser_nstep_simulator: ../indigo_drivers/focuser_nstep/focuser_nstep_simulator/focuser_nstep_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/focuser_nstep_simulator: ../indigo_drivers/focuser_nstep/focuser_nstep_simulator/focuser_nstep_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/focuser_optec_simulator: ../indigo_drivers/focuser_optec/focuser_optec_simulator/focuser_optec_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/focuser_optec_simulator: ../indigo_drivers/focuser_optec/focuser_optec_simulator/focuser_optec_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/focuser_primaluce_simulator: ../indigo_drivers/focuser_primaluce/focuser_primaluce_simulator/focuser_primaluce_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -648,7 +649,10 @@ $(INTEGRATION_BUILD)/test_focuser_ioptron_simulator_asan: integration/test_focus
 $(INTEGRATION_BUILD)/test_focuser_qhy_simulator: integration/test_focuser_qhy_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_qhy_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_QHY_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_optecfl_simulator: integration/test_focuser_optecfl_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_optecfl_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_focuser_optecfl_simulator_asan: integration/test_focuser_optecfl_simulator.c ../indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_optecfl_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.c $(TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_optecfl_simulator: integration/test_focuser_optecfl_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_optecfl_simulator $(BUILD_DRIVERS)/indigo_focuser_optecfl.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_OPTECFL_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_lacerta_simulator: integration/test_focuser_lacerta_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_lacerta_simulator $(BUILD_DRIVERS)/indigo_focuser_lacerta.a | $(INTEGRATION_BUILD)
@@ -672,6 +676,9 @@ $(INTEGRATION_BUILD)/test_focuser_mjkzz_simulator_asan: integration/test_focuser
 $(INTEGRATION_BUILD)/test_focuser_moonlite_simulator: integration/test_focuser_moonlite_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_moonlite_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_MOONLITE_SIMULATOR_TEST_LDFLAGS)
 
+$(INTEGRATION_BUILD)/test_focuser_moonlite_simulator_asan: integration/test_focuser_moonlite_simulator.c ../indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_moonlite_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.c $(TEST_LDFLAGS)
+
 $(INTEGRATION_BUILD)/test_focuser_mypro2_simulator: integration/test_focuser_mypro2_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_mypro2_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_MYPRO2_SIMULATOR_TEST_LDFLAGS)
 
@@ -681,8 +688,11 @@ $(INTEGRATION_BUILD)/test_focuser_nfocus_simulator: integration/test_focuser_nfo
 $(INTEGRATION_BUILD)/test_focuser_nstep_simulator: integration/test_focuser_nstep_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_nstep_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_NSTEP_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_optec_simulator: integration/test_focuser_optec_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_optec_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_focuser_optec_simulator: integration/test_focuser_optec_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_optec_simulator $(BUILD_DRIVERS)/indigo_focuser_optec.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_OPTEC_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_optec_simulator_asan: integration/test_focuser_optec_simulator.c ../indigo_drivers/focuser_optec/indigo_focuser_optec.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_optec_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_optec/indigo_focuser_optec.c $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_primaluce_simulator: integration/test_focuser_primaluce_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_primaluce_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_PRIMALUCE_SIMULATOR_TEST_LDFLAGS)
@@ -1304,9 +1314,25 @@ test-ccd-atik-sdk: $(INTEGRATION_BUILD)/test_ccd_atik_sdk
 $(INTEGRATION_BUILD)/ccd_atik_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=atik_test_config_folder -c $< -o $@
 
+ATIK2_SDK_TEST_INCLUDE = -I../indigo_drivers/wheel_atik/bin_externals/libatik/include
+ATIK2_SDK_TEST_REPLACEMENTS = -Dindigo_queue_create=atik2_test_queue_create -Dindigo_execute_handler_in=atik2_test_execute_in -Dindigo_monotonic_time=atik2_test_monotonic_time -Dlibusb_hotplug_register_callback_sim=atik2_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=atik2_test_usb_deregister_poll -Dindigo_start_usb_event_handler=atik2_test_usb_start -Dindigo_try_global_lock=atik2_test_lock -Dindigo_global_unlock=atik2_test_unlock -Dindigo_attach_device=atik2_test_attach -Dindigo_detach_device=atik2_test_detach -Dlibusb_hotplug_register_callback=atik2_test_usb_register -Dlibusb_hotplug_deregister_callback=atik2_test_usb_deregister -Dlibusb_ref_device=atik2_test_usb_ref -Dlibusb_unref_device=atik2_test_usb_unref -Dlibusb_get_device_descriptor=atik2_test_usb_descriptor -Dindigo_get_usb_path=atik2_test_usb_path
+$(INTEGRATION_BUILD)/ccd_atik2_sdk_driver.o: ../indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.c ../indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(ATIK2_SDK_TEST_INCLUDE) $(ATIK2_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_atik2_sdk: integration/test_ccd_atik2_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_atik2_sdk_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(ATIK2_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_atik2_sdk_driver.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+.PHONY: test-ccd-atik2-sdk
+test-ccd-atik2-sdk: $(INTEGRATION_BUILD)/test_ccd_atik2_sdk
+	$(INTEGRATION_BUILD)/test_ccd_atik2_sdk
+
 $(TEST_BUILD)/hardware/test_ccd_atik_hw: hardware/test_ccd_atik_hw.c test_runner.h | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS) -ldl
 
 .PHONY: test-ccd-atik-hw
 test-ccd-atik-hw: $(TEST_BUILD)/hardware/test_ccd_atik_hw
 	$(TEST_BUILD)/hardware/test_ccd_atik_hw --run $(BUILD_DRIVERS)/indigo_ccd_atik.$(SOEXT) indigo_ccd_atik
+
+.PHONY: test-ccd-atik2-hw
+test-ccd-atik2-hw: $(TEST_BUILD)/hardware/test_ccd_atik_hw
+	$(TEST_BUILD)/hardware/test_ccd_atik_hw --run $(BUILD_DRIVERS)/indigo_ccd_atik2.$(SOEXT) indigo_ccd_atik2

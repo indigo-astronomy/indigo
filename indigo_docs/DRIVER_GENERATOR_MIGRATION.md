@@ -136,6 +136,8 @@ Running the generator with a `.driver` file produces:
 
 The generated `.c` is marked `// This file generated from …driver` at the top and **must not be edited by hand** — all changes belong in the `.driver` file. After editing the `.driver`, re-run the generator to refresh the `.c`.
 
+The generator recognizes a GNU Lesser General Public License notice in the `.driver` source and emits the LGPL 2.1-or-later notice in the generated `.c`, `.h`, and `_main.c` files. Definitions without that notice continue to use the standard INDIGO Astronomy open-source license header. Reverse extraction preserves the recognized LGPL license family in the resulting `.driver` file.
+
 The build system picks this up automatically: `Makefile.drv` runs `indigo_generator` as a dependency of the object file whenever the `.driver` file is newer than the `.c` source.
 
 ---

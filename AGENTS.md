@@ -111,6 +111,7 @@ For CCD, mount, wheel, focuser, rotator, guider, AO and GPS validation, follow t
 
 ## Repository Hygiene
 
+- Do not modify any `README.md` file without the user's explicit approval.
 - Add every newly created persistent repository file to the appropriate group in `indigo.xcodeproj/project.pbxproj` in the same change, including source files, headers, `.driver` inputs, tests and documentation. Preserve existing project edits; temporary files and build artifacts must not be added.
 - Keep changes scoped to the requested behavior.
 - Do not edit vendored SDKs, binary outputs, object files, or build products unless the task is specifically about them.

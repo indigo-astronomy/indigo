@@ -315,6 +315,24 @@
     <ProjectReference Include="..\indigo_drivers\focuser_ioptron\indigo_focuser_ioptron.vcxproj">
       <Project>{8b4d45fc-1ec0-46e6-9a95-3ba68860e440}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\focuser_lakeside\indigo_focuser_lakeside.vcxproj">
+      <Project>{35847d19-56d1-43a0-9b2d-53afdac4cfc2}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\focuser_moonlite\indigo_focuser_moonlite.vcxproj">
+      <Project>{8ba2ff9e-ebee-43c6-bc0c-02b389cb8e6c}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\focuser_nfocus\indigo_focuser_nfocus.vcxproj">
+      <Project>{95b47199-758e-4085-ac44-7176187902b2}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\focuser_nstep\indigo_focuser_nstep.vcxproj">
+      <Project>{3ecf1f67-a023-4218-aab9-1207bdfa2664}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\focuser_optec\indigo_focuser_optec.vcxproj">
+      <Project>{b7bd3d07-0be0-4c07-b050-fbadcbfdce0c}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\focuser_optecfl\indigo_focuser_optecfl.vcxproj">
+      <Project>{7695430b-4fc9-4667-9401-a1924b9466a5}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\gps_nmea\indigo_gps_nmea.vcxproj">
       <Project>{a2c83e5f-7089-4217-b4e3-fd60fee14645}</Project>
     </ProjectReference>

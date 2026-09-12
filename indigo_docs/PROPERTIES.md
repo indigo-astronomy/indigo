@@ -1178,7 +1178,7 @@ Custom properties: `X_FOCUSER_STEPPING_MODE`.
 
 Driver-specific use of existing properties: `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`.
 
-Source: `indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.c`.
+Source: `indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.driver`.
 
 ### focuser_mypro2
 
@@ -1190,9 +1190,11 @@ Source: `indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.c`.
 
 ### focuser_nfocus
 
-Driver-specific use of existing properties: `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`.
+Driver-specific use of existing properties: `FOCUSER_SPEED`, `FOCUSER_STEPS`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`.
 
-Source: `indigo_drivers/focuser_nfocus/indigo_focuser_nfocus.c`.
+`FOCUSER_SPEED` is exposed in the inherited 1..250 range and maps to the controller's outgoing speed byte as `255 - speed`; `FOCUSER_STEPS` is exposed as relative 0..999 steps with status-only completion. `FOCUSER_POSITION` and `FOCUSER_REVERSE_MOTION` remain hidden because nFOCUS does not expose absolute position or reverse-motion control through this driver. `FOCUSER_TEMPERATURE` is visible only when the controller reports an external sensor instead of `-888`.
+
+Source: `indigo_drivers/focuser_nfocus/indigo_focuser_nfocus.driver`.
 
 ### focuser_nstep
 
@@ -1200,19 +1202,21 @@ Custom properties: `X_FOCUSER_PHASE_WIRING`, `X_FOCUSER_STEPPING_MODE`.
 
 Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_MODE`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`.
 
-Source: `indigo_drivers/focuser_nstep/indigo_focuser_nstep.c`.
+Source: `indigo_drivers/focuser_nstep/indigo_focuser_nstep.driver`.
 
 ### focuser_optec
 
 Driver-specific use of existing properties: `FOCUSER_ABORT_MOTION`, `FOCUSER_COMPENSATION`, `FOCUSER_MODE`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
 
-Source: `indigo_drivers/focuser_optec/indigo_focuser_optec.c`.
+Source: `indigo_drivers/focuser_optec/indigo_focuser_optec.driver`.
 
 ### focuser_optecfl
 
 Custom properties: `X_FOCUSER_TYPE`.
 
-Driver-specific use of existing properties: `FOCUSER_COMPENSATION`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+Driver-specific use of existing properties: `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+`FOCUSER_LIMITS` is read-only in effect: the maximum position is reported by the controller and follows the configured device type. `FOCUSER_REVERSE_MOTION` is resolved by the driver because the FocusLynx protocol has no reverse command. `FOCUSER_SPEED` is hidden. Sync through `FOCUSER_ON_POSITION_SET` is refused for device types that must home. `FOCUSER_COMPENSATION` and `FOCUSER_MODE` are not implemented.
 
 Source: `indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.c`.
 
