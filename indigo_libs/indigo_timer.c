@@ -994,8 +994,22 @@ indigo_queue *indigo_queue_create(indigo_device *device) {
 	queue->ready = false;
 	queue->rename_pending = false;
 	queue->self_delete_requested = false;
-	if (pthread_create(&queue->thread, NULL, (void * (*)(void*))queue_func, queue) != 0) {
-		indigo_error("Failed to start queue thread");
+	pthread_attr_t attributes;
+	int result = pthread_attr_init(&attributes);
+	if (result == 0) {
+		size_t stack_size = 0;
+		result = pthread_attr_getstacksize(&attributes, &stack_size);
+		// Vendor SDK callbacks can require more than the 512 KiB macOS default.
+		if (result == 0 && stack_size < 2 * 1024 * 1024) {
+			result = pthread_attr_setstacksize(&attributes, 2 * 1024 * 1024);
+		}
+		if (result == 0) {
+			result = pthread_create(&queue->thread, &attributes, (void * (*)(void*))queue_func, queue);
+		}
+		pthread_attr_destroy(&attributes);
+	}
+	if (result != 0) {
+		indigo_error("Failed to start queue thread (%d)", result);
 		pthread_cond_destroy(&queue->cond);
 		pthread_mutex_destroy(&queue->mutex);
 		indigo_safe_free(queue);
