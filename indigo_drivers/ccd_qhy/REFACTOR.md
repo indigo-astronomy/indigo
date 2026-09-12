@@ -2,7 +2,7 @@
 
 Date: 2026-09-12.
 
-Status: generated C++ implementation and dual-SDK software validation complete; physical acceptance is partial because of recorded SDK failures. Remaining hardware scenarios require another physical USB reset while the user is available. This is the shared plan for `ccd_qhy` and `ccd_qhy2`.
+Status: independent generated C++ drivers, version 30. Modern QHY2 hot-plug is enabled following successful physical tests with QHY5III178 and QHY5LII-M; legacy QHY remains startup-only. This file retains the shared migration history and the current split plan below.
 
 ## Goal and scope
 
@@ -574,3 +574,38 @@ User confirmed QHY5III178 connected and authorized resuming physical tests. macO
 Every scenario also completed final physical camera close and driver shutdown without a crash. This supersedes the earlier close-failure result for this camera under this exact driver/SDK combination; it does not establish which part of the combined update fixed it or guarantee other SDK/platform/camera combinations. Hot-plug remains disabled and was not tested. Legacy QHY5/QHY5L-II, cooling, camera-connected CFW, other platforms and optical image quality remain outside this retest. No configuration was saved, and test processes ended. Hardware test binaries were cleaned afterward.
 
 Logs: `/tmp/qhy178-sdk26721-{switching,exposure,abort,guide,geometry,settings,stream}.log`.
+
+## QHY2 hot-plug experiment (2026-09-12)
+
+User authorized testing hot-plug after all seven QHY5III178 scenarios passed with SDK 26.7.21.5. Production `.driver` remains startup-only for both SDKs. An isolated `/tmp/qhy178-hotplug` generated QHY2 build enables the existing `sdk.hotplug` mechanism and deliberately limits matching to QHY5III178 (1618:0178 bootloader, 1618:0179 running firmware). Bootloader arrival reloads firmware and rejects attachment until the running-firmware event. No generator or legacy SDK changes. Fake SDK removal/rearrival while disconnected, idle, exposing and streaming, plus mode switching/recovery, passed.
+
+First physical startup did not discover the camera and exited cleanly. Independent libusb inventory found 1618:0178; an INDIGO-only USB monitor received its arrival. Starting the USB event handler before QHY SDK initialization in the experimental `.driver` allowed the next run to attach 1618:0179 and connect/disconnect normally. This is an observed startup-order workaround candidate, not yet a general fix. The active test now waits for manual unplug/replug, first while logically disconnected. Logs are under `/tmp/qhy178-hotplug`.
+
+### Physical hot-plug outcome: four phases passed
+
+Experimental QHY2 v30, SDK 26.7.21.5, macOS arm64, one QHY5III178M. The user physically unplugged and replugged the camera in each phase: (1) logically disconnected, (2) connected idle, (3) during a 60 s exposure, (4) during continuous streaming. All four detach/rearrival cycles completed; firmware bootloader 1618:0178 became 1618:0179, camera and guider were recreated, and a fresh 0.1 s RAW16 exposure succeeded after every replug. Final close, SDK shutdown and callback deregistration completed, exit 0. During streaming removal the SDK rejected resetting stream mode after USB removal; cleanup and the subsequent replug/exposure still succeeded.
+
+The hardware harness now exposes this manual-only scenario as explicit `QHY_HW_CASE=hotplug`; it is excluded from the default full run. It requires an experimental hot-plug driver, not the checked-in startup-only driver. The exact experiment sources, fake test and generated build remain in `/tmp/qhy178-hotplug`; authoritative physical log: `/tmp/qhy178-hotplug/hardware-early-usb.log`. The hardware build is arm64; the fake test compiled for both macOS architectures and ran natively. All test processes have ended.
+
+Production hot-plug remains disabled. This experiment deliberately matched only QHY5III178 and did not verify discovery while a different camera remains open, SDK-id to physical-USB association with multiple cameras, other QHY models, Windows/Linux, or the legacy SDK. Permanent modern-only activation also needs a shared-source build/DSL decision because `sdk.hotplug` currently accepts a generation-time boolean rather than a QHY2 preprocessor condition. No generator modifications were made.
+
+### QHY5LII-M hot-plug experiment — four phases passed (2026-09-12)
+
+The user connected a camera described as QHY5II; USB bootloader 1618:0920 and SDK discovery identified QHY5LII-M, running firmware 1618:0921. The first process selected the wrong name substring QHY5II and was terminated while waiting for a matching device, before a logical connection; this was a harness-selection error, not an SDK crash. A new process with QHY5LII selection completed all four manual unplug/replug phases: logically disconnected, connected idle, during a 60 s exposure, and during continuous streaming. Each replug loaded firmware, recreated CCD/guider devices and produced a new valid 1280 x 960 RAW8 image. Final camera close and SDK/driver shutdown succeeded, exit 0.
+
+This used the modern SDK 26.7.21.5, macOS arm64 and an isolated QHY2 v30 hot-plug build, with USB handling started before SDK initialization and matching limited to 0920/0921. It does not validate legacy SDK hot-plug or multi-camera scanning. As with QHY5III178, stream-mode reset after physical removal returned an SDK error but cleanup and the following acquisition succeeded. Production hot-plug remains disabled. No persistent camera configuration was saved; all processes ended. Source/build and log: `/tmp/qhy5ii-hotplug`, `/tmp/qhy5ii-hotplug/hardware-qhy5lii.log`.
+
+
+## Independent definitions and production hot-plug (2026-09-12)
+
+The user accepted both modern-SDK physical hot-plug experiments as evidence and requested independent drivers. This supersedes the earlier shared-source and production-hot-plug-disabled decisions above.
+
+Plan and implementation:
+1. Resolve the former QHY2 preprocessor branches into separate `ccd_qhy/indigo_ccd_qhy.driver` and `ccd_qhy2/indigo_ccd_qhy2.driver` sources. Preserve the SDK-specific read modes and readout timeout, real close/reopen behavior, acquisition mode/depth workaround, optional interfaces and mutual exclusion. Both versions advance from 29 to 30.
+2. Replace QHY2 source/main symlinks and obsolete physical copies with its own generated `.cpp`, `.h` and `_main.c`. Use ordinary per-driver generation/build rules. Update Xcode, Windows project inputs and the server include; no generator implementation changes.
+3. Keep `sdk.hotplug = false` for legacy; enable it for modern QHY2. Start USB event handling before modern SDK initialization as in the experiment. Reuse the SDK firmware loader at startup and on accepted vendor arrivals so firmware re-enumeration works beyond the two experimental PID filters. SDK identity determines removal independently of USB/SDK enumeration order; failed or incomplete SDK inventory is inconclusive. The generated driver queue owns attach, detach and connection serialization; default capacity remains five logical devices.
+4. Validate both production variants against the real SDK headers and fake SDK boundary. Modern discovery lifecycle covers the four physical-test scenarios, fresh acquisition after each arrival, callback registration rollback, duplicate arrival, capacity recovery, reversed USB/SDK identity and inconclusive removal inventory. Legacy retains startup-only discovery and existing 37-scenario coverage. Build both native macOS driver variants and verify generated output, project references and whitespace.
+
+Physical evidence remains the four successful unplug/replug phases for each of QHY5III178 and QHY5LII-M recorded above. Multi-camera identity is software-tested; simultaneous physical cameras, other models, Linux/Windows and legacy hot-plug remain unverified. Firmware and vendor SDK binaries are unchanged by this split. Property names/visibility are unchanged. The existing entry adapter remains solely to release SDK resources if generated INIT queue/callback setup fails; cross-variant name/label overrides are gone.
+
+Validation result: 37/37 legacy fake-SDK cases passed under macOS x86_64/Rosetta and 37/37 modern cases passed on macOS arm64. Both driver libraries and standalone executables built as macOS universal binaries (legacy ARM remains the unsupported-architecture stub); the server translation unit compiled with the new header. Regeneration of both definitions reproduced all three checked-in outputs byte-for-byte, Xcode project syntax passed, and scoped whitespace validation passed with existing Windows CRLF respected. Windows/Linux builds were not run. Test/build logs: `/tmp/qhy-split-test-{legacy,modern}.log`, `/tmp/qhy-split-build-{legacy,modern}.log`.

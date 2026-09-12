@@ -18,8 +18,8 @@
 
 // This file generated from indigo_ccd_qhy.driver
 
-// supported_architecture: !defined(INDIGO_MACOS) || defined(__x86_64__) || defined(QHY2)
-#if !defined(INDIGO_MACOS) || defined(__x86_64__) || defined(QHY2)
+// supported_architecture: !defined(INDIGO_MACOS) || defined(__x86_64__)
+#if !defined(INDIGO_MACOS) || defined(__x86_64__)
 
 #pragma mark - Includes
 
@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001D
+#define DRIVER_VERSION       0x0300001E
 #define DRIVER_NAME          "indigo_ccd_qhy"
 #define DRIVER_LABEL         "QHY CCD (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -59,17 +59,7 @@
 //+ define
 
 #define QHY_BUFFER_LIMIT     (128U * 1024 * 1024)
-#ifdef QHY2
-#undef DRIVER_NAME
-#undef DRIVER_LABEL
-#define DRIVER_NAME          "indigo_ccd_qhy2"
-#define DRIVER_LABEL         "QHY CMOS (modern) Camera"
-#define QHY_ENTRY            indigo_ccd_qhy2
-#define CONFLICTING_DRIVER   "indigo_ccd_qhy"
-#else
-#define QHY_ENTRY            indigo_ccd_qhy
 #define CONFLICTING_DRIVER   "indigo_ccd_qhy2"
-#endif
 
 //- define
 
@@ -349,25 +339,6 @@ static bool qhy_initialize_ccd(indigo_device *device) {
 	X_ADVANCED_PROPERTY->count = count;
 	X_ADVANCED_PROPERTY->hidden = count == 0;
 	X_READ_MODE_PROPERTY->hidden = true;
-	#ifdef QHY2
-	uint32_t modes = 0, current = 0;
-	if (GetQHYCCDNumberOfReadModes(PRIVATE_DATA->handle, &modes) == QHYCCD_SUCCESS && modes > 0) {
-		if (modes > 256 || !qhy_result(GetQHYCCDReadMode(PRIVATE_DATA->handle, &current), "GetQHYCCDReadMode") || current >= modes) {
-			return false;
-		}
-		PRIVATE_DATA->read_mode = current;
-		X_READ_MODE_PROPERTY = indigo_resize_property(X_READ_MODE_PROPERTY, modes);
-		for (uint32_t i = 0; i < modes; i++) {
-			char name[32], label[256] = { 0 };
-			snprintf(name, sizeof(name), "%u", i);
-			if (!qhy_result(GetQHYCCDReadModeName(PRIVATE_DATA->handle, i, label), "GetQHYCCDReadModeName") || !memchr(label, 0, sizeof(label)) || !label[0]) {
-				return false;
-			}
-			indigo_init_switch_item(X_READ_MODE_PROPERTY->items + i, name, label, i == current);
-		}
-		X_READ_MODE_PROPERTY->hidden = false;
-	}
-	#endif
 	return true;
 }
 
@@ -487,15 +458,6 @@ static bool qhy_setup(indigo_device *device, bool streaming) {
 		if (!PRIVATE_DATA->handle || !qhy_result(SetQHYCCDStreamMode(PRIVATE_DATA->handle, streaming ? 1 : 0), "SetQHYCCDStreamMode") || !qhy_result(InitQHYCCD(PRIVATE_DATA->handle), "InitQHYCCD") || (X_PIXEL_FORMAT_PROPERTY->count > 1 && !qhy_result(SetQHYCCDBitsMode(PRIVATE_DATA->handle, bpp), "SetQHYCCDBitsMode"))) {
 			return false;
 		}
-		#ifdef QHY2
-		if (!X_READ_MODE_PROPERTY->hidden) {
-			for (int i = 0; i < X_READ_MODE_PROPERTY->count; i++) {
-				if (X_READ_MODE_PROPERTY->items[i].sw.value && !qhy_result(SetQHYCCDReadMode(PRIVATE_DATA->handle, i), "Restore read mode")) {
-					return false;
-				}
-			}
-		}
-		#endif
 		indigo_property *properties[] = { CCD_GAIN_PROPERTY, CCD_OFFSET_PROPERTY, CCD_GAMMA_PROPERTY };
 		const CONTROL_ID controls[] = { CONTROL_GAIN, CONTROL_OFFSET, CONTROL_GAMMA };
 		for (int i = 0; i < 3; i++) {
@@ -521,11 +483,6 @@ static bool qhy_setup(indigo_device *device, bool streaming) {
 	if (!length || length == QHYCCD_ERROR || length > PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE) {
 		return false;
 	}
-	#ifdef QHY2
-	if (!streaming && !qhy_result(SetQHYCCDSingleFrameTimeOut(PRIVATE_DATA->handle, 1000), "Set readout timeout")) {
-		return false;
-	}
-	#endif
 	if (PRIVATE_DATA->has_shutter && !qhy_result(ControlQHYCCDShutter(PRIVATE_DATA->handle, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value ? MACHANICALSHUTTER_CLOSE : MACHANICALSHUTTER_FREE), "Set shutter")) {
 		return false;
 	}
@@ -659,10 +616,10 @@ static void wheel_move_finalizer(indigo_device *device) {
 
 static indigo_result qhy_generated_entry(indigo_driver_action action, indigo_driver_info *info);
 extern "C" {
-INDIGO_EXTERN indigo_result QHY_ENTRY(indigo_driver_action action, indigo_driver_info *info);
+INDIGO_EXTERN indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info);
 }
 
-indigo_result QHY_ENTRY(indigo_driver_action action, indigo_driver_info *info) {
+indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info) {
 	indigo_result result = qhy_generated_entry(action, info);
 	// Failed generated queue setup must also roll back the SDK initialized by on_init.
 	if (action == INDIGO_DRIVER_INIT && result != INDIGO_OK && sdk_initialized) {
@@ -925,32 +882,8 @@ static void ccd_x_advanced_handler(indigo_device *device) {
 }
 
 static void ccd_x_read_mode_handler(indigo_device *device) {
-	X_READ_MODE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ccd.X_READ_MODE.on_change
-	#ifdef QHY2
-	for (int i = 0; i < X_READ_MODE_PROPERTY->count; i++) {
-		if (X_READ_MODE_PROPERTY->items[i].sw.value) {
-			if (!PRIVATE_DATA->handle || !qhy_result(SetQHYCCDReadMode(PRIVATE_DATA->handle, i), "SetQHYCCDReadMode") || !qhy_geometry(device)) {
-				X_READ_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-				if (PRIVATE_DATA->handle) {
-					qhy_result(SetQHYCCDReadMode(PRIVATE_DATA->handle, PRIVATE_DATA->read_mode), "Restore read mode");
-				}
-				indigo_set_switch(X_READ_MODE_PROPERTY, X_READ_MODE_PROPERTY->items + PRIVATE_DATA->read_mode, true);
-			} else {
-				PRIVATE_DATA->read_mode = i;
-				qhy_update_geometry(device);
-				qhy_modes(device);
-				indigo_update_property(device, CCD_INFO_PROPERTY, NULL);
-				indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
-				indigo_delete_property(device, CCD_MODE_PROPERTY, NULL);
-				indigo_define_property(device, CCD_MODE_PROPERTY, NULL);
-			}
-			break;
-		}
-	}
-	#else
 	X_READ_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-	#endif
 	//- ccd.X_READ_MODE.on_change
 	indigo_update_property(device, X_READ_MODE_PROPERTY, NULL);
 }
@@ -1540,9 +1473,6 @@ indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *in
 				last_action = INDIGO_DRIVER_SHUTDOWN;
 				return INDIGO_FAILED;
 			}
-			#ifdef QHY2
-			SetQHYCCDAutoDetectCamera(false);
-			#endif
 			SetQHYCCDLogLevel(6);
 			if (!qhy_result(InitQHYCCDResource(), "InitQHYCCDResource")) {
 				last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -1605,7 +1535,7 @@ indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *in
 #include "indigo_ccd_qhy.h"
 
 indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "QHY CCD (legacy) Camera", __FUNCTION__, 0x0300001D, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "QHY CCD (legacy) Camera", __FUNCTION__, 0x0300001E, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif
