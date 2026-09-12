@@ -20,11 +20,11 @@ driver qhy {
 	label = "QHY CCD (legacy) Camera";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2017-2026 Rumen G. Bogdanovski";
-	version = 30;
+	version = 31;
 	cpp = true;
 	supported_architecture = "!defined(INDIGO_MACOS) || defined(__x86_64__)";
 	include {
-		#include "qhyccd.h"
+		#include "bin_externals/qhyccd/include/qhyccd.h"
 		#include <indigo/indigo_client.h>
 	}
 	define {

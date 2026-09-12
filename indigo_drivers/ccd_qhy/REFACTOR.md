@@ -609,3 +609,17 @@ Plan and implementation:
 Physical evidence remains the four successful unplug/replug phases for each of QHY5III178 and QHY5LII-M recorded above. Multi-camera identity is software-tested; simultaneous physical cameras, other models, Linux/Windows and legacy hot-plug remain unverified. Firmware and vendor SDK binaries are unchanged by this split. Property names/visibility are unchanged. The existing entry adapter remains solely to release SDK resources if generated INIT queue/callback setup fails; cross-variant name/label overrides are gone.
 
 Validation result: 37/37 legacy fake-SDK cases passed under macOS x86_64/Rosetta and 37/37 modern cases passed on macOS arm64. Both driver libraries and standalone executables built as macOS universal binaries (legacy ARM remains the unsupported-architecture stub); the server translation unit compiled with the new header. Regeneration of both definitions reproduced all three checked-in outputs byte-for-byte, Xcode project syntax passed, and scoped whitespace validation passed with existing Windows CRLF respected. Windows/Linux builds were not run. Test/build logs: `/tmp/qhy-split-test-{legacy,modern}.log`, `/tmp/qhy-split-build-{legacy,modern}.log`.
+
+
+### Legacy QHY5LII-M hot-plug experiment (2026-09-12)
+
+An isolated x86_64/Rosetta build of legacy v30 enabled SDK hot-plug only for QHY5LII boot/running USB IDs 1618:0920/0921, with firmware loading on boot arrival and early USB event handling. Production legacy hot-plug remains disabled; SDK binaries are unchanged. The first preparation run used the modern firmware-directory convention and detected no camera; the corrected run used the legacy parent directory `bin_externals/qhyccd`.
+
+The corrected run loaded firmware, attached CCD and guider, acquired a 1280 x 960 RAW8 image at 0.1 s, and disconnected successfully. Physical removal while logically disconnected detached both devices without a crash. Replug loaded firmware (0920 -> 0921); ScanQHYCCD returned one camera and GetQHYCCDId/GetQHYCCDModel identified QHY5LII-M, but the discovery probe did not attach it. The last log was immediately before OpenQHYCCD; no close-error log followed, and a process sample showed the driver queue idle, consistent with OpenQHYCCD returning NULL rather than hanging. No fresh image after replug was obtained. The waiting test was terminated with SIGTERM after diagnosis, not an SDK crash. Connected-idle, exposure and streaming removal phases were not reached.
+
+Artifacts: `/tmp/qhy-legacy-hotplug/hardware-correct-firmware.log`, `/tmp/qhy-legacy-hotplug/sample-replug.txt`, temporary definition and binaries in the same directory. This experiment does not validate legacy hot-plug.
+
+
+### Xcode SDK header collision fixed (2026-09-12)
+
+The indigo_m1 Xcode header map resolved the unqualified qhyccd.h include in QHY2 to the legacy SDK header, producing eight undeclared-function errors (modern read modes, single-frame timeout and autodetection). Replaying the exact failing Xcode compiler command with include tracing confirmed the legacy path. Both definitions now include their own bin_externals/qhyccd/include/qhyccd.h explicitly and advance to version 31. Generated outputs were refreshed. The same Xcode compiler arguments now select the modern header and compile the QHY2 object successfully. This is an include-selection fix with no lifecycle/property change; hardware retesting is unnecessary.
