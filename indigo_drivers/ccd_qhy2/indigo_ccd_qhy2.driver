@@ -20,10 +20,10 @@ driver qhy2 {
 	label = "QHY CMOS (modern) Camera";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2017-2026 Rumen G. Bogdanovski";
-	version = 30;
+	version = 31;
 	cpp = true;
 	include {
-		#include "qhyccd.h"
+		#include "bin_externals/qhyccd/include/qhyccd.h"
 		#include <indigo/indigo_client.h>
 	}
 	define {

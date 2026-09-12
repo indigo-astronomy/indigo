@@ -28,7 +28,7 @@
 
 //+ include
 
-#include "qhyccd.h"
+#include "bin_externals/qhyccd/include/qhyccd.h"
 #include <indigo/indigo_client.h>
 
 //- include
@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001E
+#define DRIVER_VERSION       0x0300001F
 #define DRIVER_NAME          "indigo_ccd_qhy2"
 #define DRIVER_LABEL         "QHY CMOS (modern) Camera"
 #define CCD_DEVICE_NAME      "%s"
