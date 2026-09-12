@@ -502,10 +502,6 @@ the event-mask cast. Handwritten `.driver` blocks must themselves be valid for
 the selected compiler; the flag is an output-language selector, not a translator
 of arbitrary C code into portable C++.
 
-QHY uses direct C++ output shared with QHY2 through the existing source symlink.
-The SDK-dependent public entry adapter is contained in `.driver` code rather
-than a separately maintained wrapper. Other definitions retain their C output.
-
 ### SDK discovery without hot-plug
 
 `sdk { hotplug = false; ... }` queues one initial USB inventory pass and invokes
