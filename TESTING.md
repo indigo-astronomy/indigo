@@ -2,6 +2,97 @@
 
 All testing with physical hardware or simulators is documented in this file
 
+Current QHY migration target: version 28 disables hot-plug for both variants by
+user request. Connect cameras before initialization; startup discovery runs once.
+Physical hot-plug tests are excluded. Results below describe version 27 unless
+explicitly marked otherwise.
+
+## September 12th 2026 — QHY generator migration acceptance (partial, blocked by SDK failures)
+
+macOS 26.6 arm64 host, bundled modern QHY SDK 25.3.24.9 (svn 14950), driver
+0x0300001B. Real tests began only after both generated builds and dual-SDK fake
+suites passed. The user supplied QHY5III178M, QHY5LII-M and QHY5-M; all require
+firmware. Use the bundled `ccd_qhy/bin_externals/qhyccd/firmware` directory as
+`INDIGO_FIRMWARE_BASE` for the modern SDK. Initial sandbox/no-firmware discovery
+failures are environment/setup failures, not failed exposures.
+
+The opt-in client is `indigo_test/hardware/test_ccd_qhy_hw.c`. It requires
+`INDIGO_TEST_DEVICE` (unique name substring), explicit `--run`, driver dylib and
+entry symbol; `QHY_HW_CASE` selects a scenario. Each real-SDK scenario runs in a
+separate process with an external time limit. Both SDKs are never loaded together.
+
+
+With QHY5L-II isolated after USB reset, the corrected guide scenario passed:
+all four 100 ms directions, a pulse during a 1.5 s exposure, guider operation
+after CCD disconnect, reconnection and clean shutdown. This verifies SDK/property
+completion, not electrical ST4 timing. The separate settings scenario also
+passed gain change/restoration and advanced-settings restoration. Logs:
+`/tmp/qhy-hw-5lii-guide-isolated.log` and
+`/tmp/qhy-hw-5lii-isolated-settings.log`.
+The next abort process crashed before selection while closing the discovery
+probe (CloseQHYCCD -> QHY5IIBASE::DisConnectCamera -> QHYCAM::closeCamera,
+`test_ccd_qhy_hw-2026-09-12-104725.000.ips`). Abort did not execute;
+streaming/geometry were not started. Physical hot-plug remains unverified.
+
+
+A minimal x86_64 program linked only the bundled legacy libqhy.a and project
+libusb (with a no-op indigo_debug symbol, no INDIGO bus/driver/queues) reproduced
+the QHY5L-II discovery-close crash. Sequence: InitQHYCCDResource, firmware init,
+3 s wait, ScanQHYCCD, GetQHYCCDId/Model, OpenQHYCCD, query ST4/CFW, CloseQHYCCD,
+ReleaseQHYCCDResource. The first process after a five-second USB reset passed;
+the second identical process without USB reset crashed at CloseQHYCCD ->
+QHY5IIBASE::DisConnectCamera -> QHYCAM::closeCamera (report
+`qhy_probe-2026-09-12-105120.000.ips`). Logs are
+`/tmp/qhy-sdk-only-probe-reset.log` and `/tmp/qhy-sdk-only-probe-repeat.log`.
+This reproduces the specific discovery-close failure independently of migration;
+it does not classify every QHY crash or prove physical hot-plug behavior.
+A prior driver abort attempt after a short reset also crashed at discovery
+(`/tmp/qhy-hw-5lii-abort-reset.log`, report 104824.000); no abort ran.
+
+
+The abort scenario run first after a five-second USB reset passed: start a 5 s
+exposure, request abort, then receive a fresh 1280 x 960 RAW8 image at 0.1 s,
+restore settings and shut down cleanly (`/tmp/qhy-hw-5lii-abort-cold.log`).
+Historical commit 074bd49a8c612d97ad5e2bdcad4bedc929e22fc6 (2020-10-03,
+"ccd_qhy/ccd_qhy2: hot-plug support disabled") confirms hot-plug was deliberately
+disabled. Its message does not identify the exact crash as the reason. The old
+source separately documents repeated QHY5L-II open/close crashes and rescans as
+a leaking workaround. Do not infer that serialized generated hot-plug fixes them.
+
+| Camera / SDK | Evidence so far | Limits/failures |
+| --- | --- | --- |
+| QHY5III178M / modern, arm64 | Full 3056 x 2048 RAW16 at 0.1, 1.5, 2.5, 16.5 s; measured 2.969/1.754/2.750/16.745 s including setup/readout. RAW8 produced a full 6,258,700-byte frame. Abort followed by a fresh image succeeded. Finite stream delivered exactly three frames. | SDK aborts in StopQHYCCDLive -> libusb_cancel_transfer (invalid mutex assertion) during stop/close/reopen. Geometry sequence stops on RAW8-to-RAW16 reopen; stream stops after three images. Reconnect/unload and full settings restoration are not passed. |
+| QHY5LII-M / legacy svn r6536, x86_64 | Four 1280 x 960 RAW16 frames at 0.1/1.5/2.5/16.5 s; elapsed 2.568/3.203/4.187/18.180 s. | Reconnect followed by a short exposure hangs in QHY5LIIBASE::GetSingleFrame. The unchanged baseline reproduces it at RAW8; external 150 s limits terminated both processes. |
+| QHY5-M / legacy svn r6536, x86_64 | After avoiding its unsupported bits setter, four 1280 x 1024 RAW8 frames at 0.1/1.5/2.5/16.5 s; elapsed 0.767/3.436/5.506/21.915 s. | Reuse crashes in SDK CloseQHYCCD/QHYCAM::closeCamera; another discovery probe crashes while closing QHY5L-II. Subsequent camera selection fails. These crashes remain unresolved; no full suite pass. |
+
+The recorded baseline `fdacefa743d24669d7f33f9b6225115cbf7db730`, built in a
+temporary directory against the same modern SDK and current INDIGO library,
+delivered the same four exposures and reproduced the identical CloseQHYCCD
+assertion on disconnect (SIGABRT). This close failure predates migration.
+One separate modern-driver guide attempt crashed during discovery, before camera
+selection, in QHY5LIIBASE::DisConnectCamera -> libusb darwin_reenumerate_device;
+that distinct failure remains unresolved. SDK crashes prevent orderly restoration
+in those processes; no persistent configuration was saved.
+
+Physical hot-plug is **unverified**. The user replugged legacy cameras and disconnected QHY5III178 between stopped test processes to restore initial conditions; this was not a live hot-plug test.
+Legacy uses the parent `bin_externals/qhyccd` firmware path because it appends
+`/firmware` internally; modern uses the firmware directory itself. Initial wrong-path
+runs do not establish hardware failure. Starting framework USB first suppressed
+a warning but was not adopted as a production workaround. Hardware discovery
+waits up to 60 seconds for slow SDK enumeration.
+
+The remaining batch was stopped after repeated failure before camera selection;
+all owned processes ended. QHY5/QHY5L-II need another USB reset before the blocked
+geometry/settings/abort/stream/guide phases can continue. QHY5III178 is currently
+disconnected per test preparation. No full camera suite, reliable reconnect,
+driver reload or hot-plug acceptance is claimed. `QHY_HW_CASE` feature runs skip
+the repeated common reconnect phase, which is exercised separately by the exposure
+scenario; default execution still includes it. See REFACTOR for retained log paths.
+
+Cooling, CFW, physical shutter, electrical pulse timing and Linux/Windows runtime
+are not covered by these three cameras. The fake matrix and detailed software
+checks are in `ccd_qhy/REFACTOR.md` and `indigo_test/CHANGES.md`.
+
 ## September 11th 2026 — ASI generator migration acceptance
 
 macOS 26.6.2 arm64, bundled ASI SDK 1.41.0.0, final driver 0x0300003A in the migration worktree. Opt-in target: `make -C indigo_test test-ccd-asi-hw`, with `INDIGO_TEST_DEVICE` selecting the exact camera name. All 50 fake SDK tests and ASan/UBSan also pass.
@@ -135,3 +226,40 @@ ASI294MC Pro original-driver cross-check: unchanged d373999 baseline passed 1.5 
 ASI294MC Pro physical USB removal/replug passed while idle, streaming at 0.1 s, and exposing for 120 s. Every cycle recovered with a fresh 0.1 s image; removal-related SDK read/stop/close errors did not prevent cleanup or rediscovery. The user performed the cable cycles.
 
 ASI120MC-S resumed physical tests at version 0x03000038 passed idle, active 120 s exposure, active streaming and 60 s ST4 pulse USB removal/replug. Each restored a fresh 0.1 s image and guide pulse; ASI294 stayed connected and acquired during each ASI120 absence. Eight-byte INDIGOT1 suffix write/replug verified both logical names, then clear/replug restored the original empty suffix and names. ASI294 passed the same suffix workflow while ASI120 acquired during its absence. Both cameras were restored and disconnected after these cycles. The earlier long-exposure cycle whose exposure finished before unplug counts only as an idle cycle; the dedicated active-exposure test supplies active-removal evidence.
+
+### QHY version-28 startup follow-up (September 12th 2026)
+
+First version-28 physical startup had both legacy cameras attached (confirmed by
+the user and IOUSBHostDevice inventory). QHY5-M was attached once, without a
+hot-plug callback, then detached cleanly at shutdown. QHY5L-II remained at its
+cold 1618:0920 USB identity while QHY5 was 16c0:296d. SDK enumeration exposed
+only QHY5-M, so the QHY5L-II guide selection timed out without connecting or
+sending pulses. This is not a guide pass or a logical-capacity failure.
+Log: `/tmp/qhy-v28-hw-5lii-guide.log`. Isolated QHY5L-II firmware/startup
+validation follows a fresh user USB reset.
+
+Version 28 with only QHY5L-II attached passed the isolated guide scenario:
+startup enumeration, CCD/guider connection, four 100 ms guide directions,
+guide during a 1.5 s exposure, one valid 1280 x 960 RAW8 image, guider survival
+after logical CCD disconnect, CCD reconnect, settings restoration and clean
+shutdown. Exit 0, log `/tmp/qhy-v28-hw-5lii-guide-isolated.log`.
+This confirms the static-discovery path on this camera; it is not a full camera
+suite or an electrical ST4 measurement. Modern-SDK static startup is next.
+
+Version 28, isolated QHY5III178M / modern SDK: static startup and both logical
+connections succeeded, all four 100 ms guide directions completed, a pulse ran
+during a 1.5 s exposure, and a valid 3056 x 2048 RAW16 frame arrived. Guiding
+also completed after the logical CCD disconnected. Final guider disconnect
+(last shared close) aborted in CloseQHYCCD -> StopQHYCCDLive ->
+QHY5IIIBASE::StopLiveExposure -> libusb_cancel_transfer -> usbi_mutex_lock.
+Report `test_ccd_qhy_hw-2026-09-12-111241.ips`, log
+`/tmp/qhy-v28-hw-178-guide.log`, exit -6. This matches the stop/close assertion
+already reproduced with the unchanged baseline; the complete guide scenario
+is not a pass. Static startup now has physical evidence for both SDK variants.
+
+The final physical checkpoint is complete with partial acceptance, not a full
+camera-suite pass. Existing SDK-blocked streaming/geometry/reconnect/unload
+limitations remain as documented. Hot-plug is intentionally disabled and is
+excluded by user request. No persistent configuration was saved; final settings
+restoration could not complete after the modern SDK abort. All owned HW
+processes have ended.

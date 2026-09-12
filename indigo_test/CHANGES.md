@@ -1,5 +1,81 @@
 # INDIGO Test Suite Changes
 
+## Generator C++ prerequisite for QHY migration (2026-09-12)
+
+Extended `integration/test_generator_architecture.c` with actual C11 and C++11
+syntax compilation of generated transport scaffolding: serial, virtual,
+libusb, SDK, SDK with discovery retries and identity-based removal, and
+single-device HID. Multi-device fixtures cover CCD plus guider where applicable.
+INIT/SHUTDOWN include local variable declarations to catch case-scope failures.
+The retry fixture catches both allocation and callback-data pointer conversions.
+A separate test reverse-extracts legacy and casted USB registration calls and
+asserts preservation of VID/PID. Updated the existing allocation-order assertion
+to tolerate explicit casts while retaining the duplicate-before-allocation check.
+
+Validation: rebuilt the generator; `make -C indigo_test test-generator-architecture`
+passed all ten cases, including 12 C/C++ compilations and 86 DSL attribute/block
+checks. This is compile/parser coverage; it does not claim SDK or camera behavior.
+
+## Generator C++ output option (2026-09-12)
+
+User-authorized `cpp = true;` at driver scope now selects `.cpp` output; omitted
+or explicit `false` retains byte-identical `.c` output. Headers and `_main.c`
+retain their C linkage and filenames. Reverse extraction detects a `.cpp` source
+and emits the flag. The existing `.c`-before-`.cpp` lookup preference is unchanged;
+obsolete output is not deleted automatically.
+
+`cpp_output_selection_and_extraction` in `test_generator_architecture.c` checks
+both extensions, a real C++-only construct, compilation without forcing `-x`,
+public unmangled entry symbols, C standalone-main syntax, reverse extraction and
+regeneration, and default-versus-explicit-false output equality. All 11 generator
+cases passed. QHY now exercises direct C++ generation in production, with its
+small SDK entry adapter in the shared `.driver` instead of a separate wrapper.
+
+## QHY/QHY2 generated driver validation (2026-09-12)
+
+`integration/test_ccd_qhy_sdk.cpp` compiles the generated production C++ separately
+against each real SDK header generation, replacing only SDK/USB/clock/config-folder
+boundaries. `make -C indigo_test test-ccd-qhy-sdk` runs both variants and both are
+included in normal integration. The test does not link or discover real cameras.
+
+The 35 named cases map to Q01–Q12 in `indigo_drivers/ccd_qhy/REFACTOR.md`:
+Q01 open/init/metadata/reopen rollback; Q02/Q12 discovery, duplicate identities,
+capacity and recovery, resource/callback/master-attach failure and shared cleanup;
+Q03 inventory, sparse/fixed formats (unsupported bits setter), native default depth, ROI and frame types; Q04 malformed readout,
+memory limits and deterministic RAW8/16/Bayer payload; Q05 fractional exposure,
+finite/indefinite/zero streaming and watchdog/errors; Q06 queue-gated abort,
+conflicts, disconnect/removal and reacquire; Q07 checked control commands and
+isolated configuration/reopen restoration; Q08 modern read modes; Q09 cooling,
+sensor-only profiles and failure recovery; Q10 four guide directions, blocking
+SDK simulation, zero/overlapping axes and shared acquisition; Q11 CFW ASCII
+positions, names/offsets, timeout/status/send/read errors. See the per-case matrix
+in REFACTOR for exact names and detailed assertions.
+
+Validation: all 35 cases passed for each SDK (70 total), using x86_64 for legacy
+and native arm64 for modern on macOS. The complete direct-C++ ASan/UBSan run also passed all 70 cases; the final
+opposite-guide-direction recovery follow-up passed for both variants. Both production
+SDK builds and generated-file reproducibility passed. Hardware testing has begun;
+modern stop/close crashes and a legacy reconnect readout hang reproduce with
+baseline drivers. Other discovery/reuse crashes remain unresolved; no physical
+suite is counted as passed.
+
+The initial baseline reproduced open-handle leakage and false OK on failed
+advanced-control writes. Those failures pass after migration. Generic framework
+validation/encoders, serial-motion simulators and unavailable SDK APIs are not
+retested. Allocator/queue-creation injection, exhaustive races and malformed
+vendor memory writes remain outside the suite. SDK blocking duration and
+physical timing are hardware questions; optional slave-attach retry retains
+unchanged generator semantics.
+
+`hardware/test_ccd_qhy_hw.c` is build-only in the Makefile and requires explicit
+`--run <driver-library> <entry-symbol>` plus `INDIGO_TEST_DEVICE`. Optional
+`QHY_HW_CASE` selects exposure/geometry/settings/abort/stream/guide. Hot-plug
+is disabled by user request; the cable-action option has been removed. It restores changed driver settings, checks fresh RAW
+frames and performs actual driver dlclose/dlopen. Physical acceptance ran at the final checkpoint and remains partial/blocked: QHY5/QHY5L-II legacy and QHY5III178 modern. Cooling,
+mechanical shutter, CFW and other unavailable hardware capabilities remain
+fake-covered; Linux/Windows execution remains unverified. Physical results belong
+in root TESTING.md and REFACTOR, not in automated pass counts.
+
 ## Guider Agent zero-drift processing fix — DRV-133 (2026-09-10)
 
 Every accepted guiding frame now runs correction/statistics processing, including exact zero drift. This refreshes pixel/arcsecond drift and correction values, feeds correction histories and PPEC, and includes zero samples in RMSE and dithering settling. Algorithm-specific thresholds still decide whether a pulse is required. The driver version advances once from `0x0300002C` to `0x0300002D` for the combined fixes, as requested; DRV-130 remains deferred. No properties were added or removed.
@@ -209,8 +285,8 @@ Inventory: 150 modules — 2 Complete, 47 Partial, 55 Not audited, 46 No tests.
 | `ccd_pentax` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `ccd_playerone` | Generated | Fake SDK/USB | Partial | 45/45 fake SDK groups passed. The earlier continuous-acquisition argument and Bayer mapping gaps are closed; cooling faults, lifecycle/races and discovery retries are covered. No remaining concrete gap is recorded in this inventory, but a final complete-standard matrix is not established here. |
 | `ccd_ptp` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `ccd_qhy` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
-| `ccd_qhy2` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
+| `ccd_qhy` | Generated | Fake SDK + opt-in hardware | Fake passed; HW partial | Dual-SDK Q01–Q12 matrix in ccd_qhy/REFACTOR.md. |
+| `ccd_qhy2` | Generated | Fake SDK + opt-in hardware | Fake passed; HW partial | Separate modern-SDK build and QHY2 read-mode cases; see ccd_qhy/REFACTOR.md. |
 | `ccd_qsi` | Hand-written | None | No tests | No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
 | `ccd_rising` | Shared ToupTek | Fake SDK/USB | Partial | 28/28 shared fake-SDK groups passed against the independently compiled RisingCam driver and bundled Nncam SDK header. |
 | `ccd_rpi` | Hand-written | None | No tests | `indigo_optional_drivers/`. No dedicated automated driver test target found in `indigo_test/`; coverage not established. |
@@ -1429,3 +1505,43 @@ ASI final fake acceptance at version 0x0300003A: all 50 normal cases pass, as do
 Physical acceptance expansion: idle/exposure/stream/ST4 USB cycles and suffix write/replug/clear/replug pass on ASI120MC-S; ASI294MC Pro passes its idle/exposure/stream and suffix cycles. Each selected-camera removal leaves the other camera able to acquire. Hardware tests additionally exercise all frame types, simultaneous guide axes, silent same-axis BUSY rejection, zero requests, and guider disconnect with CCD survival. H01–H08 final results remain tracked in the driver's Atomic implementation sequence and TESTING.md; no electrical ST4 or optical calibration claim.
 
 Final physical acceptance completed on both ASI120MC-S and ASI294MC Pro at version 0x0300003A, including all five frame types, shared guider lifecycle, USB/suffix cycles and final dynamic reload. See TESTING.md and the completed H01–H08 table in ccd_asi/REFACTOR.md for measured results and explicit applicability limits. Both cameras restored/disconnected and `test-clean` completed.
+
+### QHY physical harness follow-up
+
+Resolve the guider after CCD connection, which runs after all logical-device
+attachments on the driver queue. Previously a discovery/selection race could
+silently skip guide pulses. An explicit guide-only run now fails if the guider
+is absent. Universal harness compilation passes. The initial resumed physical
+run skipped guiding and crashed during SDK close; it is not guide coverage.
+
+The corrected isolated QHY5L-II guide scenario and settings scenario pass on
+physical hardware; see TESTING.md for exact scope. A subsequent abort process
+crashed in discovery before the scenario ran. Full HW/hot-plug acceptance remains open.
+
+
+## QHY startup-only discovery (2026-09-12)
+
+The user explicitly requested no hot-plug and approved completing the generator's
+`sdk { hotplug = false; }` branch. Version 28 of both QHY variants uses one queued
+initial USB list and filtered SDK probes, with serialized connection handling
+and generated shutdown cleanup. Existing hot-plug transports are unchanged.
+The 35-case suite per SDK now replaces hot-plug identity/retry/registration tests
+with `startup only discovery`, `discovery failure reload` and
+`init enumeration attachment`. Together with `discovery capacity identity`, they
+cover no callback registration, no runtime discovery/removal, one startup list,
+capacity and duplicate names, list/SDK-id errors, master-attach failure,
+shutdown/reload recovery and balanced USB/SDK ownership. Hot-plug removal/replug
+is no longer applicable to this driver. Prior version-27 hot-plug fake results
+are historical and do not claim a supported feature in the current driver.
+The generator regression also checks no callback/retry emission, serialized
+CCD/guider connections, drain-before-detach and C11/C++11 compilation.
+
+Final version-28 software validation: 70/70 fake cases and 70/70 ASan/UBSan;
+12 generator cases including 14 C/C++ transport compilations pass. Both SDK
+builds pass. Physical startup validation is recorded separately in TESTING.md.
+
+Final physical checkpoint for version 28: isolated QHY5L-II guide/exposure/shared
+lifecycle scenario passed; QHY5III178 completed startup, guide directions,
+guide/exposure overlap and RAW16 image but aborted on last shared SDK close.
+This is partial HW acceptance. Hot-plug is intentionally excluded. TESTING.md
+and REFACTOR.md contain the detailed evidence and remaining SDK-blocked gaps.

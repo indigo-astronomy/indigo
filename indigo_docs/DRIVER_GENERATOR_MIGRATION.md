@@ -131,7 +131,7 @@ Running the generator with a `.driver` file produces:
 | Generated file | Contents |
 |----------------|----------|
 | `indigo_<type>_<name>.h` | Public header with the entry point declaration |
-| `indigo_<type>_<name>.c` | Full driver implementation |
+| `indigo_<type>_<name>.c` (or `.cpp` with `cpp = true`) | Full driver implementation |
 | `indigo_<type>_<name>_main.c` | Standalone executable wrapper |
 
 The generated `.c` is marked `// This file generated from …driver` at the top and **must not be edited by hand** — all changes belong in the `.driver` file. After editing the `.driver`, re-run the generator to refresh the `.c`.
@@ -471,3 +471,47 @@ An optional property `on_change_request { ... }` runs in the matched bus change 
 Generated asynchronous handlers for `CCD_ABORT_EXPOSURE`, `FOCUSER_ABORT_MOTION`, `ROTATOR_ABORT_MOTION`, `MOUNT_ABORT_MOTION`, `DOME_ABORT_MOTION` and `POLARALIGN_ABORT_MOTION` use `INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE`, which queues them at `INDIGO_TASK_PRIORITY_URGENT`. The normal value-copy, BUSY guard and immediate BUSY publication are retained. Explicit synchronous handlers (`asynchronous_change = false`) remain synchronous; empty acceptance-only handlers are unchanged. Guiding retains its existing TIME dispatch and ordinary handlers retain NORMAL dispatch. Priority orders ready queued work; it cannot interrupt a running handler or SDK call.
 
 An urgent abort can overtake a queued start whose property is already BUSY. Abort implementations cancel the associated pending start handlers as well as their delayed completion callbacks and settle the affected properties even when the hardware start has not run. This cancellation belongs to the driver because the generator does not know which operations a particular abort stops.
+
+## Generating a C++ implementation
+
+Set `cpp = true;` at driver scope to emit `indigo_<type>_<name>.cpp` directly.
+The default is `false`: omitted or explicit `cpp = false;` emits the same `.c`
+as before. The public `.h` and standalone `_main.c` filenames and C linkage
+remain unchanged. For example:
+
+```c
+driver qhy {
+    cpp = true;
+    // SDK includes, properties and device blocks...
+}
+```
+
+Reverse extraction with `indigo_generator -c <target>.driver` detects a `.cpp`
+source when no same-basename `.c` exists and writes `cpp = true;` into the
+extracted definition. As before, a `.c` takes precedence when both files exist.
+Changing the flag does not delete the previous output file: remove obsolete
+source references deliberately when migrating, so automatic source discovery
+does not compile both same-basename implementations. Generate once before
+building a new definition, and keep generated outputs checked in.
+
+Generated allocations and SDK retry callback data use explicit pointer casts;
+USB event masks use `libusb_hotplug_event`, and INIT/SHUTDOWN have separate case
+blocks. These constructs also compile as C11 and do not change allocation or
+queue ownership. Reverse extraction accepts USB registrations with and without
+the event-mask cast. Handwritten `.driver` blocks must themselves be valid for
+the selected compiler; the flag is an output-language selector, not a translator
+of arbitrary C code into portable C++.
+
+QHY uses direct C++ output shared with QHY2 through the existing source symlink.
+The SDK-dependent public entry adapter is contained in `.driver` code rather
+than a separately maintained wrapper. Other definitions retain their C output.
+
+### SDK discovery without hot-plug
+
+`sdk { hotplug = false; ... }` queues one initial USB inventory pass and invokes
+the existing `plug` block with descriptor filtering for each initial device.
+It registers no USB arrival/removal callback and ignores `discovery_retries`.
+Connect hardware before INIT; new devices require SHUTDOWN/INIT. The shared
+queue still serializes discovery and connection handling, and SHUTDOWN drains
+that queue before generated detach/free and the driver's `on_shutdown` block.
+The default `hotplug = true` behavior is unchanged.

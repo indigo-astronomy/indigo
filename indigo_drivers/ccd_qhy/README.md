@@ -6,7 +6,7 @@ http://www.qhyccd.com
 
 All QHY cameras and filter wheels plugged in to the camera.
 
-This driver doesn't supports hot-plug. All devices should be connected at driver initialisation.
+Hot-plug is disabled because of SDK lifecycle instability. Connect cameras before driver initialization; discovery runs once at startup. Restart the driver to detect newly attached cameras. SDK failures may require a USB power reset.
 
 ## Supported platforms
 
@@ -21,6 +21,8 @@ INDIGO Astronomy open-source license (3rd party library is closed source).
 indigo_server indigo_ccd_qhy
 
 ## Status: Unstable
+
+Some cameras, including QHY5III178, may cause the driver to crash when disconnected in the application. If the camera stops responding, unplug it from USB for a few seconds, reconnect it and restart INDIGO.
 
 Driver is developed and tested with:
 * QHY 5

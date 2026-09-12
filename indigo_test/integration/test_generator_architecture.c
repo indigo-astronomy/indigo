@@ -28,6 +28,14 @@
 #include <sys/wait.h>
 #include "../test_runner.h"
 
+#if defined(INDIGO_MACOS)
+#define TEST_PLATFORM "-DINDIGO_MACOS"
+#elif defined(INDIGO_FREEBSD)
+#define TEST_PLATFORM "-DINDIGO_FREEBSD"
+#else
+#define TEST_PLATFORM "-DINDIGO_LINUX"
+#endif
+
 #define DEFINITION "indigo_aux_architecture_test.driver"
 #define GENERATED "indigo_aux_architecture_test.c"
 
@@ -362,7 +370,7 @@ static void libusb_lifecycle_guards(void) {
 	char generated[65536];
 	ASSERT_TRUE(read_text("indigo_ccd_architecture_test.c", generated, sizeof(generated)));
 	char *duplicate_guard = strstr(generated, "->usbdev == dev");
-	char *allocation = strstr(generated, "private_data = indigo_safe_malloc");
+	char *allocation = strstr(generated, "indigo_safe_malloc(sizeof(architecture_test_private_data))");
 	ASSERT_TRUE(duplicate_guard && allocation && duplicate_guard < allocation);
 	char *master_failure = strstr(generated, "if (!ccd_attached)");
 	char *slave_allocation = strstr(generated, "indigo_device *guider =");
@@ -465,6 +473,98 @@ static void abort_dispatch_uses_urgent_priority(void) {
 }
 
 
+static void usb_registration_reverse_extraction(void) {
+	const char *events[] = { "LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT", "(libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT)" };
+	for (int i = 0; i < 2; i++) {
+		char source[2048], definition[65536];
+		snprintf(source, sizeof(source), "#define DRIVER_NAME \"indigo_aux_architecture_test\"\n#define DRIVER_VERSION 0x03000001\nstatic indigo_result aux_attach(indigo_device *device) {\n}\nint rc = libusb_hotplug_register_callback(NULL, %s, LIBUSB_HOTPLUG_ENUMERATE, 0x1618, 0x1234, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);\n", events[i]);
+		ASSERT_TRUE(write_text(GENERATED, source));
+		char *arguments[] = { TEST_GENERATOR, "-c", DEFINITION, NULL };
+		ASSERT_TRUE(run(arguments));
+		ASSERT_TRUE(read_text(DEFINITION, definition, sizeof(definition)));
+		ASSERT_TRUE(strstr(definition, "vid = 0x1618;") != NULL);
+		ASSERT_TRUE(strstr(definition, "pid = 0x1234;") != NULL);
+	}
+}
+
+static void sdk_startup_discovery_without_hotplug(void) {
+	ASSERT_TRUE(write_text(DEFINITION, "driver architecture_test { sdk { hotplug = false; vid = 0x1618; discovery_retries = 2; } ccd { name = \"Camera\"; } guider { name = \"Guider\"; } }\n"));
+	char *arguments[] = { TEST_GENERATOR, DEFINITION, NULL };
+	ASSERT_TRUE(run(arguments));
+	char generated[65536];
+	ASSERT_TRUE(read_text("indigo_ccd_architecture_test.c", generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "libusb_hotplug_register_callback") == NULL);
+	ASSERT_TRUE(strstr(generated, "libusb_hotplug_deregister_callback") == NULL);
+	ASSERT_TRUE(strstr(generated, "sdk_discovery_retry") == NULL);
+	ASSERT_TRUE(strstr(generated, "libusb_get_device_list(NULL, &list)") != NULL);
+	ASSERT_TRUE(strstr(generated, "libusb_free_device_list(list, 1)") != NULL);
+	ASSERT_TRUE(strstr(generated, "discover_devices_handler, &driver_queue_mutex)") != NULL);
+	ASSERT_TRUE(strstr(generated, "ccd_connection_handler, &driver_queue_mutex)") != NULL);
+	ASSERT_TRUE(strstr(generated, "guider_connection_handler, &driver_queue_mutex)") != NULL);
+	char *shutdown = strstr(generated, "case INDIGO_DRIVER_SHUTDOWN:");
+	ASSERT_TRUE(shutdown != NULL);
+	char *verify = strstr(shutdown, "verify_devices_disconnected()");
+	char *drain = strstr(shutdown, "indigo_queue_drain(driver_queue)");
+	char *detach = strstr(shutdown, "process_unplug_event_handler(NULL");
+	char *destroy = strstr(shutdown, "indigo_queue_delete(&driver_queue)");
+	ASSERT_TRUE(verify && drain && detach && destroy && verify < drain && drain < detach && detach < destroy);
+}
+
+static void generated_code_compiles_as_c_and_cpp(void) {
+	const char *transports[] = { "serial;", "", "libusb { vid = 0x1618; }", "sdk { vid = 0x1618; }", "sdk { vid = 0x1618; discovery_retries = 2; unplug_match { unplug_result = false; } }", "hid { vid = 0x1618; }", "sdk { hotplug = false; vid = 0x1618; }" };
+	for (unsigned i = 0; i < sizeof(transports) / sizeof(transports[0]); i++) {
+		char definition[4096];
+		snprintf(definition, sizeof(definition), "driver architecture_test {\nlabel = \"C++ test\";\nversion = 1;\n%s\ncode {\nstatic bool architecture_test_open(indigo_device *device) { return true; }\nstatic void architecture_test_close(indigo_device *device) { }\nstatic bool architecture_test_match(struct libusb_device *dev, const char **name) { *name = \"Probe\"; return true; }\n}\non_init { int init_local = 0; (void)init_local; }\non_shutdown { int shutdown_local = 0; (void)shutdown_local; }\nccd { name = \"%%s\"; }\n%s\n}\n", transports[i], i == 5 ? "" : "guider { name = \"%s guider\"; }");
+		ASSERT_TRUE(write_text(DEFINITION, definition));
+		char *generate_arguments[] = { TEST_GENERATOR, DEFINITION, NULL };
+		ASSERT_TRUE(run(generate_arguments));
+		for (int cpp = 0; cpp < 2; cpp++) {
+			char *compile[] = { TEST_CC, "-x", cpp ? "c++" : "c", cpp ? "-std=gnu++11" : "-std=gnu11", "-fsyntax-only", TEST_PLATFORM, "-I" TEST_INCLUDE, "-I" TEST_USB_INCLUDE, "indigo_ccd_architecture_test.c", NULL };
+			printf("    %s, %s\n", transports[i], cpp ? "C++11" : "C11");
+			ASSERT_TRUE(run(compile));
+		}
+	}
+}
+
+static void cpp_output_selection_and_extraction(void) {
+	const char *cpp_source = "indigo_aux_architecture_test.cpp";
+	unlink(GENERATED);
+	unlink(cpp_source);
+	ASSERT_TRUE(write_text(DEFINITION, "driver architecture_test { cpp = true; label = \"C++ output\"; code { static int cpp_value = static_cast<int>(7); } aux { name = \"C++ device\"; } }\n"));
+	char *generate[] = { TEST_GENERATOR, DEFINITION, NULL };
+	ASSERT_TRUE(run(generate));
+	ASSERT_TRUE(access(cpp_source, F_OK) == 0);
+	ASSERT_TRUE(access(GENERATED, F_OK) != 0);
+	ASSERT_TRUE(access("indigo_aux_architecture_test.h", F_OK) == 0);
+	ASSERT_TRUE(access("indigo_aux_architecture_test_main.c", F_OK) == 0);
+	char *compile[] = { TEST_CC, "-std=gnu++11", "-c", TEST_PLATFORM, "-I" TEST_INCLUDE, "-I" TEST_USB_INCLUDE, "indigo_aux_architecture_test.cpp", "-o", "cpp_driver.o", NULL };
+	ASSERT_TRUE(run(compile));
+	char *compile_main[] = { TEST_CC, "-std=gnu11", "-fsyntax-only", TEST_PLATFORM, "-I" TEST_INCLUDE, "-I" TEST_USB_INCLUDE, "indigo_aux_architecture_test_main.c", NULL };
+	ASSERT_TRUE(run(compile_main));
+	char *symbols[] = { "nm", "-g", "cpp_driver.o", NULL };
+	ASSERT_TRUE(run(symbols));
+	char output[65536];
+	ASSERT_TRUE(read_text("command.log", output, sizeof(output)));
+	ASSERT_TRUE(strstr(output, " T _indigo_aux_architecture_test\n") || strstr(output, " T indigo_aux_architecture_test\n"));
+	char *extract[] = { TEST_GENERATOR, "-c", DEFINITION, NULL };
+	ASSERT_TRUE(run(extract));
+	ASSERT_TRUE(read_text(DEFINITION, output, sizeof(output)));
+	ASSERT_TRUE(strstr(output, "cpp = true;") != NULL);
+	ASSERT_TRUE(strstr(output, "static_cast<int>(7)") != NULL);
+	ASSERT_TRUE(run(generate));
+	ASSERT_TRUE(run(compile));
+	unlink(cpp_source);
+	ASSERT_TRUE(write_text(DEFINITION, "driver architecture_test { cpp = false; label = \"C output\"; aux { name = \"C device\"; } }\n"));
+	ASSERT_TRUE(run(generate));
+	ASSERT_TRUE(access(cpp_source, F_OK) != 0);
+	char explicit_c[65536];
+	ASSERT_TRUE(read_text(GENERATED, explicit_c, sizeof(explicit_c)));
+	ASSERT_TRUE(write_text(DEFINITION, "driver architecture_test { label = \"C output\"; aux { name = \"C device\"; } }\n"));
+	ASSERT_TRUE(run(generate));
+	ASSERT_TRUE(read_text(GENERATED, output, sizeof(output)));
+	ASSERT_TRUE(!strcmp(explicit_c, output));
+}
+
 int main(void) {
 	char folder[] = "/tmp/indigo_architecture_XXXXXX";
 	char original[PATH_MAX];
@@ -477,6 +577,10 @@ int main(void) {
 		return 1;
 	}
 	const indigo_test_case tests[] = {
+		{ "SDK startup discovery without hot-plug", sdk_startup_discovery_without_hotplug },
+		{ "C++ output selection, C linkage, extraction and unchanged C default", cpp_output_selection_and_extraction },
+		{ "Generated transport scaffolding compiles as C11 and C++11", generated_code_compiles_as_c_and_cpp },
+		{ "Old and C++ compatible USB registration preserve VID/PID on extraction", usb_registration_reverse_extraction },
 		{ "Abort priority and unchanged synchronous, normal and guiding dispatch", abort_dispatch_uses_urgent_priority },
 		{ "nine platform/CPU conditions and three reverse extractions", conditions_and_reverse_extraction },
 		{ "unsupported fallback without SDK headers or linkage", unsupported_fallback },

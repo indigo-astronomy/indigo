@@ -932,6 +932,16 @@ Driver-specific use of existing properties: `CCD_JPEG_SETTINGS`, `CCD_MODE`, `CC
 
 Source: `indigo_drivers/ccd_ptp/indigo_ccd_ptp.c`.
 
+### ccd_qhy / ccd_qhy2
+
+Custom properties: `X_PIXEL_FORMAT` (RAW 8 / RAW 16), `X_ADVANCED` (capability-dependent USBTRAFFIC, USBSPEED and SHUTTERMOTORHEATING), and `X_READ_MODE` (QHY2 only, SDK mode indices and labels). All three are persistent. These replace `PIXEL_FORMAT`, `QHY_ADVANCED` and `READ_MODE`; legacy names are not aliases.
+
+Driver-specific use of existing properties: `CCD_INFO`, `CCD_FRAME`, `CCD_BIN`, `CCD_MODE`, `CCD_EXPOSURE`, `CCD_STREAMING`, `CCD_STREAMING_SETTINGS`, `CCD_ABORT_EXPOSURE`, `CCD_IMAGE_FORMAT`, `CCD_GAIN`, `CCD_OFFSET`, `CCD_GAMMA`, `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_TEMPERATURE`, `GUIDER_GUIDE_RA`, `GUIDER_GUIDE_DEC`, `WHEEL_SLOT`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Pixel-format, bin and mode inventories follow SDK capabilities. Cooler/power and read-only sensor temperature are conditional. Optional ST4 guider and camera-connected CFW devices share the camera session. CFW exposes eight slots; actual wheel capacity cannot be determined through the legacy SDK interface used here.
+
+Source: `indigo_drivers/ccd_qhy/indigo_ccd_qhy.driver`, generated C++ `indigo_drivers/ccd_qhy/indigo_ccd_qhy.cpp` (also used by `ccd_qhy2`).
+
 ### ccd_sbig
 
 Custom properties: `SBIG_ABG_STATE`, `SBIG_ADD_AO`, `SBIG_ADD_WHEEL`, `SBIG_FREEZE_TEC`.

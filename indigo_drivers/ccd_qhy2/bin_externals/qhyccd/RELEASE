@@ -1,8 +1,12 @@
 https://www.qhyccd.com/html/prepub/log_en.html
 
-V2025.03.24 for macOS
-V2025.03.24 for linux arm32
-V2025.03.24 for linux arm64
-V2025.03.24 for linux X64
-V2025.03.24 for windows
-V2020.05.22 for linux X86!!!
+V2026.06.04.16 for macOS (universal x86_64 + arm64)
+V2026.06.04.15 for linux arm32
+V2026.06.04.16 for linux arm64
+V2026.06.04.16 for linux X64
+V2026.06.04.16 for windows x64
+V2025.03.24 for windows Win32 (no new package supplied)
+V2020.05.22 for linux X86 (no new package supplied)
+
+Headers: V2026.06.04.16.
+Shared firmware: V2026.06.04 Linux package, in ccd_qhy.

@@ -41,7 +41,9 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_timer \
 	$(UNIT_BUILD)/test_token \
 	$(UNIT_BUILD)/test_raw_image
-INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_guider_asi_sdk \
+INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_qhy2_sdk \
+	$(INTEGRATION_BUILD)/test_guider_asi_sdk \
 	$(INTEGRATION_BUILD)/test_guider_cgusbst4_simulator \
 	$(INTEGRATION_BUILD)/test_aux_cloudwatcher_simulator \
 	$(INTEGRATION_BUILD)/test_aux_mgbox_simulator \
@@ -915,7 +917,7 @@ test-generator-architecture: $(INTEGRATION_BUILD)/test_generator_architecture
 	$(INTEGRATION_BUILD)/test_generator_architecture
 
 $(INTEGRATION_BUILD)/test_generator_architecture: integration/test_generator_architecture.c test_runner.h ../build/bin/indigo_generator Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -DTEST_GENERATOR='"$(abspath ../build/bin/indigo_generator)"' -DTEST_INCLUDE='"$(abspath ../indigo_libs)"' -DTEST_CC='"$(CC)"' $< -o $@
+	$(CC) $(TEST_CFLAGS) -DTEST_GENERATOR='"$(abspath ../build/bin/indigo_generator)"' -DTEST_INCLUDE='"$(abspath ../indigo_libs)"' -DTEST_USB_INCLUDE='"$(abspath ../build/include)"' -DTEST_CC='"$(CC)"' $< -o $@
 
 POA_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_playerone/bin_externals/libplayeronecamera/include
 POA_SDK_TEST_REPLACEMENTS = -Dindigo_queue_create=poa_test_queue_create -Dindigo_execute_handler_in=poa_test_execute_in -Dlibusb_hotplug_register_callback_sim=poa_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=poa_test_usb_deregister_poll -Dindigo_start_usb_event_handler=poa_test_usb_start -Dindigo_try_global_lock=poa_test_lock -Dindigo_global_unlock=poa_test_unlock -Dindigo_attach_device=poa_test_attach -Dindigo_detach_device=poa_test_detach -Dlibusb_hotplug_register_callback=poa_test_usb_register -Dlibusb_hotplug_deregister_callback=poa_test_usb_deregister -Dlibusb_ref_device=poa_test_usb_ref -Dlibusb_unref_device=poa_test_usb_unref -Dlibusb_get_device_descriptor=poa_test_usb_descriptor
@@ -1248,3 +1250,34 @@ test-ccd-asi-sdk: $(INTEGRATION_BUILD)/test_ccd_asi_sdk
 .PHONY: benchmark-ccd-asi-guide
 benchmark-ccd-asi-guide: $(INTEGRATION_BUILD)/test_ccd_asi_sdk
 	$(INTEGRATION_BUILD)/test_ccd_asi_sdk --timing
+
+# QHY variants compile against their own real SDK headers and a fake implementation.
+QHY_SDK_TEST_REPLACEMENTS = -Dindigo_monotonic_time=qhy_test_clock -Dindigo_start_usb_event_handler=qhy_test_usb_start -Dindigo_try_global_lock=qhy_test_lock -Dindigo_global_unlock=qhy_test_unlock -Dindigo_attach_device=qhy_test_attach -Dindigo_detach_device=qhy_test_detach -Dlibusb_get_device=qhy_test_usb_device -Dindigo_get_usb_path=qhy_test_usb_path -Dlibusb_hotplug_register_callback_sim=qhy_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=qhy_test_usb_deregister_poll -Dlibusb_ref_device=qhy_test_usb_ref -Dlibusb_unref_device=qhy_test_usb_unref -Dlibusb_get_device_descriptor=qhy_test_usb_descriptor -Dlibusb_get_device_list=qhy_test_usb_list -Dlibusb_free_device_list=qhy_test_usb_free_list
+QHY_TEST_CXXFLAGS = $(filter-out -std=gnu11,$(TEST_CFLAGS)) -std=gnu++11 $(QHY_TEST_FLAGS)
+QHY_LEGACY_ARCH = $(if $(filter Darwin,$(OS_DETECTED)),-arch x86_64)
+QHY_LEGACY_CXXFLAGS = $(if $(filter Darwin,$(OS_DETECTED)),$(filter-out -arch x86_64 arm64,$(QHY_TEST_CXXFLAGS)) $(QHY_LEGACY_ARCH),$(QHY_TEST_CXXFLAGS))
+QHY_LEGACY_LDFLAGS = $(if $(filter Darwin,$(OS_DETECTED)),$(filter-out -arch x86_64 arm64,$(TOUPTEK_SDK_TEST_LDFLAGS)) $(QHY_LEGACY_ARCH),$(TOUPTEK_SDK_TEST_LDFLAGS))
+
+$(INTEGRATION_BUILD)/ccd_qhy_sdk_driver.o: ../indigo_drivers/ccd_qhy/indigo_ccd_qhy.cpp Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(QHY_LEGACY_CXXFLAGS) -I../indigo_drivers/ccd_qhy/bin_externals/qhyccd/include $(QHY_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/ccd_qhy2_sdk_driver.o: ../indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.cpp ../indigo_drivers/ccd_qhy/indigo_ccd_qhy.cpp Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(QHY_TEST_CXXFLAGS) -DQHY2 -I../indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include $(QHY_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_qhy_sdk: integration/test_ccd_qhy_sdk.cpp test_runner.h $(INTEGRATION_BUILD)/ccd_qhy_sdk_driver.o $(INTEGRATION_BUILD)/ccd_qhy_sdk_framework.o | $(INTEGRATION_BUILD)
+	$(CC) $(QHY_LEGACY_CXXFLAGS) -I../indigo_drivers/ccd_qhy/bin_externals/qhyccd/include $< $(INTEGRATION_BUILD)/ccd_qhy_sdk_driver.o $(INTEGRATION_BUILD)/ccd_qhy_sdk_framework.o -o $@ $(QHY_LEGACY_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_ccd_qhy2_sdk: integration/test_ccd_qhy_sdk.cpp test_runner.h $(INTEGRATION_BUILD)/ccd_qhy2_sdk_driver.o $(INTEGRATION_BUILD)/ccd_qhy_sdk_framework.o | $(INTEGRATION_BUILD)
+	$(CC) $(QHY_TEST_CXXFLAGS) -DQHY2 -I../indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include $< $(INTEGRATION_BUILD)/ccd_qhy2_sdk_driver.o $(INTEGRATION_BUILD)/ccd_qhy_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+.PHONY: test-ccd-qhy-sdk
+test-ccd-qhy-sdk: $(INTEGRATION_BUILD)/test_ccd_qhy_sdk $(INTEGRATION_BUILD)/test_ccd_qhy2_sdk
+	$(INTEGRATION_BUILD)/test_ccd_qhy_sdk
+	$(INTEGRATION_BUILD)/test_ccd_qhy2_sdk
+
+$(INTEGRATION_BUILD)/ccd_qhy_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=qhy_test_config_folder -c $< -o $@
+
+# Build only: physical acceptance requires explicit --run, library and device selection.
+$(TEST_BUILD)/hardware/test_ccd_qhy_hw: hardware/test_ccd_qhy_hw.c test_runner.h | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS)
