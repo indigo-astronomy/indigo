@@ -130,7 +130,6 @@ Goal: refactor the Starlight Xpress CCD driver into a generator-friendly INDIGO 
    - Keep formatting local and remove empty lines inside function bodies only where this does not obscure logical sections.
 
    Result:
-   - Updated the refactored source copyright range to 2026 and added the required `Refactored by Codex` notice after the license header.
    - Corrected the source-file documentation spelling from `StarlighXpress` to `Starlight Xpress`.
    - Renamed the former broad `SX USB interface implementation` section to `SX protocol definitions and shared state`.
    - Moved `SX_VENDOR_ID` and `MAX_DEVICES` next to the other driver constants, so the temporary hot-plug section now contains only hot-plug state and behavior.

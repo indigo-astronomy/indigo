@@ -19,8 +19,6 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Refactored by OpenAI Codex, 2026.
-
 driver efa {
 	label = "Celestron / PlaneWave EFA Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";

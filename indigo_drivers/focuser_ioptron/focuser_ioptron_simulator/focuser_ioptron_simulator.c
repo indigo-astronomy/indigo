@@ -6,8 +6,6 @@
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 
-// Refactored by OpenAI Codex, 2026.
-
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>

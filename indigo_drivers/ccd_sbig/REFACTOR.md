@@ -138,7 +138,6 @@ Goal: refactor the hand-written SBIG driver to INDIGO 3.0 APIs, handler queues a
 
 3. Restructure the source without behavioral changes
    - Preserve the license header and update the copyright year range only if code is actually refactored.
-   - Add a short "Refactored by Codex" notice after the license header when the first automated refactor patch lands.
    - Reorder the file into generated-driver-style `#pragma mark` sections:
      - includes;
      - common definitions;
