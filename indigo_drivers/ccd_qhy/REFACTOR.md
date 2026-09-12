@@ -520,3 +520,27 @@ separate from this vendor update. Physical comparison is still pending.
 After the package update, all 70 hardware-free driver/SDK scenarios passed
 (35 per SDK variant). These use the fake SDK and verify driver compatibility
 with the updated headers, not vendor acquisition or lifecycle behavior.
+
+### QHY5III178 retest with modern SDK 26.06.04.16 — 2026-09-12
+
+Working-tree generated driver v28, macOS arm64, isolated QHY5III178M after
+user USB reset. Static discovery, CCD/guider connection, four 100 ms guide
+directions, guiding during a 1.5 s exposure, and a 3056 x 2048 RAW16 image
+completed. A guide pulse after logical CCD disconnect also completed. Final
+guider disconnect aborted (SIGABRT/exit -6). The crash stack is CloseQHYCCD ->
+StopQHYCCDLive -> QHY5IIIBASE::StopLiveExposure ->
+QHYBASE::StopAsyQCamLiveClearLibUsb -> StopAsyQCamLive ->
+libusb_cancel_transfer -> usbi_mutex_lock. Thus the supplied modern update
+does not resolve the previously observed last-close failure. The full guide
+scenario remains failed, not passed. No persistent configuration was saved.
+
+Log: `/tmp/qhy-modern-260604-178-guide.log`; crash report:
+`test_ccd_qhy_hw-2026-09-12-150436.ips`. The process has ended.
+
+Legacy comparison preparation exposed two test-build issues before camera
+access: the first temporary build omitted INDIGO_MACOS (so skipped firmware
+initialization); the corrected arm64 build hit the driver's existing Intel-only
+macOS architecture guard. Neither is a camera/SDK acceptance result. Both
+processes ended. A full patched x86_64 SDK and driver have now been built for
+Rosetta. The legacy source intentionally lacks SetQHYCCDLogLevel; only the
+temporary test link supplies a no-op for it, leaving existing logging intact.

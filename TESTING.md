@@ -263,3 +263,65 @@ limitations remain as documented. Hot-plug is intentionally disabled and is
 excluded by user request. No persistent configuration was saved; final settings
 restoration could not complete after the modern SDK abort. All owned HW
 processes have ended.
+
+### QHY5III178 retest with modern SDK 26.06.04.16 — 2026-09-12
+
+Working-tree generated driver v28, macOS arm64, isolated QHY5III178M after
+user USB reset. Static discovery, CCD/guider connection, four 100 ms guide
+directions, guiding during a 1.5 s exposure, and a 3056 x 2048 RAW16 image
+completed. A guide pulse after logical CCD disconnect also completed. Final
+guider disconnect aborted (SIGABRT/exit -6). The crash stack is CloseQHYCCD ->
+StopQHYCCDLive -> QHY5IIIBASE::StopLiveExposure ->
+QHYBASE::StopAsyQCamLiveClearLibUsb -> StopAsyQCamLive ->
+libusb_cancel_transfer -> usbi_mutex_lock. Thus the supplied modern update
+does not resolve the previously observed last-close failure. The full guide
+scenario remains failed, not passed. No persistent configuration was saved.
+
+Log: `/tmp/qhy-modern-260604-178-guide.log`; crash report:
+`test_ccd_qhy_hw-2026-09-12-150436.ips`. The process has ended.
+
+Legacy comparison preparation exposed two test-build issues before camera
+access: the first temporary build omitted INDIGO_MACOS (so skipped firmware
+initialization); the corrected arm64 build hit the driver's existing Intel-only
+macOS architecture guard. Neither is a camera/SDK acceptance result. Both
+processes ended. A full patched x86_64 SDK and driver have now been built for
+Rosetta. The legacy source intentionally lacks SetQHYCCDLogLevel; only the
+temporary test link supplies a no-op for it, leaving existing logging intact.
+
+### QHY5III178 patched legacy SDK retest — 2026-09-12
+
+Generated driver v28, macOS Intel/Rosetta, SDK built from the separate legacy
+source checkout with the experimental transfer/close fixes. The source-built
+SDK expects INDIGO_FIRMWARE_BASE to name the firmware directory directly, unlike
+the previously bundled legacy binary. An initial path error was corrected
+before opening a camera. Firmware then loaded and USB identity became
+1618:0179 / Titan178U, but startup-only enumeration missed the re-enumeration
+window. That test exited normally with no camera selected. A subsequent process
+with firmware already loaded discovered QHY5III178M and its guider.
+
+CCD/guider connection and all four 100 ms guide directions completed. A guide
+pulse also completed after requesting a 1.5 s exposure. No image arrived.
+The exposure timed out; a process sample showed the device queue blocked in
+GetQHYCCDSingleFrame -> QHY5IIIBASE::GetSingleFrame, repeatedly attempting
+readout. Abort could not execute on the blocked queue. The owned process was
+terminated with SIGTERM after capturing evidence. No persistent configuration
+was saved; normal disconnect/settings restoration could not complete.
+
+Result: failed guide/exposure acceptance, not a successful workaround. This
+run did not reach final close and therefore neither validates nor disproves
+the close fix. It also does not isolate an SDK baseline defect from an effect
+of the experimental patch. A clean USB reset is needed before another HW run.
+Logs: `/tmp/qhy-legacy-fixed-178-guide.log` (firmware/startup) and
+`/tmp/qhy-legacy-fixed-178-guide-loaded.log` (connected test). Stack sample:
+`/tmp/qhy-legacy-fixed-178-readout-sample.txt`. All owned test processes ended.
+
+### Legacy SDK experiment reverted at user request — 2026-09-12
+
+The five experimental source changes in the separate legacy SDK checkout and
+its added transfer regression test have been reverted. Pre-existing user
+Makefile edits and library files were preserved. Temporary patched SDK/driver
+builds and the custom retest launcher were removed. INDIGO's bundled legacy
+SDK headers and libraries were never replaced and remain unchanged. Previous
+experimental findings/results above are historical evidence, not active fixes.
+The generated driver migration and the separately requested modern SDK update
+remain in place. No further legacy SDK workaround testing is planned.

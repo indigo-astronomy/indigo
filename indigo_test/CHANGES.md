@@ -1545,3 +1545,18 @@ lifecycle scenario passed; QHY5III178 completed startup, guide directions,
 guide/exposure overlap and RAW16 image but aborted on last shared SDK close.
 This is partial HW acceptance. Hot-plug is intentionally excluded. TESTING.md
 and REFACTOR.md contain the detailed evidence and remaining SDK-blocked gaps.
+
+Modern SDK 26.06.04.16 physical retest (2026-09-12): QHY5III178M still
+aborts on final shared close after guide/exposure/image checks succeed.
+The whole guide scenario remains failed; detailed stack and evidence are in
+TESTING.md and ccd_qhy/REFACTOR.md. Patched legacy comparison is pending.
+
+Patched legacy SDK physical comparison (2026-09-12, QHY5III178M, Rosetta):
+connection and guide directions completed, but the 1.5 s exposure hung in
+SDK readout and blocked abort. No frame or final-close validation was obtained.
+Test process was terminated after timeout and stack capture; full evidence is
+in TESTING.md and ccd_qhy/REFACTOR.md. This is a failed HW scenario.
+
+At user request, the experimental legacy SDK fixes and external regression
+test were reverted. The shipped legacy SDK remains original. Physical failure
+results above remain historical evidence; no workaround pass is claimed.
