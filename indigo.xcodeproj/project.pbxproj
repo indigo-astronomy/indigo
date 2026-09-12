@@ -2659,6 +2659,8 @@
 		59910B3F3055D79C00FB1C2F /* indigo_focuser_lakeside.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_lakeside.driver; sourceTree = "<group>"; };
 		59910B403055DAD700FB1C2F /* indigo_ccd_atik.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_atik.driver; sourceTree = "<group>"; };
 		59910B413055DAD700FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		59910B423055DF4500FB1C2F /* indigo_focuser_mjkzz.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_mjkzz.driver; sourceTree = "<group>"; };
+		59910B433055DF4500FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -6678,10 +6680,12 @@
 			isa = PBXGroup;
 			children = (
 				592E79152168DD7A00E856F3 /* README.md */,
+				59910B433055DF4500FB1C2F /* REFACTOR.md */,
 				9D61B9E0216E4B1B000DE7E8 /* mjkzz_def.h */,
 				592E79122168DD7A00E856F3 /* indigo_focuser_mjkzz.h */,
 				592E79162168DD7A00E856F3 /* indigo_focuser_mjkzz.c */,
 				592E79172168DD7A00E856F3 /* indigo_focuser_mjkzz_main.c */,
+				59910B423055DF4500FB1C2F /* indigo_focuser_mjkzz.driver */,
 				592E79182168DDC700E856F3 /* MJKZZ.pdf */,
 				592E79132168DD7A00E856F3 /* focuser_mjkzz_simulator */,
 			);

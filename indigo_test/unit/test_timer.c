@@ -1714,6 +1714,36 @@ static void queue_asap_task_runs_promptly(void) {
 	destroy_state();
 }
 
+static void queue_large_stack_callback(indigo_device *device) {
+	volatile unsigned char buffer[1024 * 1024];
+	for (size_t i = 0; i < sizeof(buffer); i++) {
+		buffer[i] = (unsigned char)i;
+	}
+	unsigned long sum = 0;
+	for (size_t i = 0; i < sizeof(buffer); i++) {
+		sum += buffer[i];
+	}
+	pthread_mutex_lock(&state.mutex);
+	state.error_count += sum != 133693440;
+	state.callback_count++;
+	pthread_mutex_unlock(&state.mutex);
+}
+
+static void queue_supports_large_sdk_stack_frame(void) {
+	reset_state();
+	indigo_device_context context = { 0 };
+	indigo_device device = make_test_device(&context);
+	indigo_queue *queue = indigo_queue_create(&device);
+	ASSERT_TRUE(queue != NULL);
+	indigo_queue_add(queue, &device, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_large_stack_callback, NULL);
+	bool completed = wait_for_count(&state.callback_count, 1);
+	indigo_queue_delete(&queue);
+	ASSERT_TRUE(completed);
+	ASSERT_EQ_INT(0, state.error_count);
+	destroy_test_device(&context);
+	destroy_state();
+}
+
 static void queue_delayed_task_does_not_run_before_due_time(void) {
 	reset_state();
 	indigo_device_context context = { 0 };
@@ -2731,6 +2761,7 @@ int main(void) {
 #endif
 		{ "queue_create_starts_worker_and_reports_ready", queue_create_starts_worker_and_reports_ready },
 		{ "queue_asap_task_runs_promptly", queue_asap_task_runs_promptly },
+		{ "queue_supports_large_sdk_stack_frame", queue_supports_large_sdk_stack_frame },
 		{ "queue_delayed_task_does_not_run_before_due_time", queue_delayed_task_does_not_run_before_due_time },
 		{ "queue_executes_runnable_tasks_by_priority", queue_executes_runnable_tasks_by_priority },
 		{ "abort_dispatch_overtakes_ready_normal_and_time_tasks", abort_dispatch_overtakes_ready_normal_and_time_tasks },

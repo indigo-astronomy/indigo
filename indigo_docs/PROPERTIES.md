@@ -1166,9 +1166,11 @@ Source: `indigo_drivers/focuser_lunatico/shared/lunatico_shared.c`.
 
 ### focuser_mjkzz
 
-Driver-specific use of existing properties: `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`.
+Driver-specific use of existing properties: `FOCUSER_SPEED`, `FOCUSER_DIRECTION`, `FOCUSER_STEPS`, `FOCUSER_POSITION`, `FOCUSER_ABORT_MOTION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`.
 
-Source: `indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.c`.
+The controller exposes absolute GOTO through writable `FOCUSER_POSITION` in the signed -32768..32767 range and relative inward/outward movement through 0..1000 steps. Speed exposes the manufacturer-recommended integer range 0..3. Position is polled during motion and while idle; STOP returns and publishes the measured stopped position. Reverse motion, temperature and `FOCUSER_ON_POSITION_SET` remain hidden, so SYNC is not supported.
+
+Source: `indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.driver`.
 
 ### focuser_moonlite
 

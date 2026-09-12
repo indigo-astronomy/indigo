@@ -37,8 +37,8 @@ typedef struct {
 	bool guider, wheel, cooler, heater, presets, shutter;
 	atomic_int preview, dark, slot_count, moving, malformed, short_option, ready_stuck, flushing;
 	atomic_int sensor_width, sensor_height, bx, by, left, top, width, height, preset, gain, offset, heater_power, temperature, target, relay, slot, wheel_target;
-	atomic_int opens, closes, starts, stops, dark_calls;
-	double exposure, end;
+	atomic_int opens, closes, starts, stops, dark_calls, wheel_wrap_reads, abort_readout_ms, drain_checks, temperature_in_drain;
+	double exposure, end, drain_end;
 	uint16_t *pixels;
 	size_t pixel_count;
 	double pulse_on[4], pulse_ms[4];
@@ -534,6 +534,9 @@ int ArtemisStartExposure(ArtemisHandle h, float seconds) {
 		return failed(__func__);
 	}
 	mock_camera *c = camera(h);
+	if (c->drain_end > indigo_monotonic_time()) {
+		return ARTEMIS_OPERATION_FAILED;
+	}
 	c->exposure = seconds;
 	c->end = indigo_monotonic_time() + seconds;
 	c->exposing = true;
@@ -547,6 +550,7 @@ int ArtemisStopExposure(ArtemisHandle h) {
 		return failed(__func__);
 	}
 	mock_camera *c = camera(h);
+	c->drain_end = indigo_monotonic_time() + c->abort_readout_ms / 1000.0;
 	c->exposing = false;
 	c->stops++;
 	return failed(__func__);
@@ -555,6 +559,10 @@ int ArtemisStopExposure(ArtemisHandle h) {
 int ArtemisCameraState(ArtemisHandle h) {
 	SDK_SCOPE;
 	mock_camera *c = camera(h);
+	if (c->drain_end > indigo_monotonic_time()) {
+		c->drain_checks++;
+		return CAMERA_DOWNLOADING;
+	}
 	return failed(__func__) ? CAMERA_ERROR : c->flushing ? CAMERA_FLUSHING : c->exposing ? CAMERA_EXPOSING : CAMERA_IDLE;
 }
 
@@ -605,6 +613,9 @@ void *ArtemisImageBuffer(ArtemisHandle h) {
 int ArtemisTemperatureSensorInfo(ArtemisHandle h, int sensor, int *value) {
 	SDK_SCOPE;
 	mock_camera *c = camera(h);
+	if (sensor && c->drain_end > indigo_monotonic_time()) {
+		c->temperature_in_drain++;
+	}
 	*value = sensor ? c->temperature : c->cooler ? 1 : 0;
 	return failed(__func__);
 }
@@ -698,7 +709,10 @@ int ArtemisFilterWheelInfo(ArtemisHandle h, int *count, int *moving, int *curren
 	mock_camera *c = camera(h);
 	*count = c->slot_count;
 	*moving = c->moving;
-	*current = c->malformed == 4 ? -1 : c->slot;
+	*current = c->malformed == 4 ? -1 : c->malformed == 5 ? *count : c->slot;
+	if (c->malformed == 5) {
+		c->wheel_wrap_reads++;
+	}
 	*target = c->wheel_target;
 	return failed(__func__);
 }
@@ -817,7 +831,7 @@ static void metadata_profiles(void) {
 	}
 	indigo_driver_info info;
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_atik(INDIGO_DRIVER_INFO, &info));
-	ASSERT_EQ_INT(0x03000021, info.version);
+	ASSERT_EQ_INT(0x03000024, info.version);
 	ASSERT_EQ_INT(-1, state(0, "X_PRESETS"));
 	ASSERT_TRUE(connect_device(0, true));
 	const char *props[] = { "CCD_INFO", "CCD_READ_MODE", "CCD_GAIN", "CCD_OFFSET", "X_PRESETS", "X_WINDOW_HEATER", "CCD_TEMPERATURE", "CCD_COOLER", "CCD_COOLER_POWER" };
@@ -1064,6 +1078,38 @@ static void guide_axes_and_replacement(void) {
 	ASSERT_TRUE(number(1, "GUIDER_GUIDE_RA", "EAST", 20, INDIGO_ALERT_STATE));
 	fail_call = NULL;
 	ASSERT_TRUE(number(1, "GUIDER_GUIDE_RA", "EAST", 20, INDIGO_OK_STATE));
+}
+
+static void abort_readout_restart(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	cameras[0].abort_readout_ms = 500;
+	ASSERT_TRUE(number(0, "CCD_EXPOSURE", "EXPOSURE", 2, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_count(&cameras[0].starts, 1));
+	ASSERT_TRUE(set_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true));
+	ASSERT_TRUE(wait_state(0, "CCD_ABORT_EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_TRUE(number(0, "CCD_EXPOSURE", "EXPOSURE", .01, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(2, cameras[0].starts);
+	ASSERT_EQ_INT(1, blobs);
+	ASSERT_TRUE(cameras[0].drain_checks > 0);
+	cameras[0].abort_readout_ms = 10000;
+	ASSERT_TRUE(number(0, "CCD_EXPOSURE", "EXPOSURE", 2, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_count(&cameras[0].starts, 3));
+	ASSERT_TRUE(set_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true));
+	ASSERT_TRUE(wait_state(0, "CCD_ABORT_EXPOSURE", INDIGO_OK_STATE));
+	arm_gate("queue");
+	ASSERT_TRUE(number(0, "CCD_EXPOSURE", "EXPOSURE", .01, INDIGO_BUSY_STATE));
+	indigo_execute_handler(logical[0], block_queue);
+	ASSERT_TRUE(wait_count(&gates_entered, 1));
+	clock_shift = 200;
+	release_gate();
+	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(3, cameras[0].starts);
+	ASSERT_EQ_INT(0, cameras[0].temperature_in_drain);
+	ASSERT_TRUE(connect_device(0, false));
+	clock_shift = 0;
+	cameras[0].drain_end = 0;
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(number(0, "CCD_EXPOSURE", "EXPOSURE", .01, INDIGO_OK_STATE));
 }
 
 static void abort_and_busy(void) {
@@ -1315,6 +1361,52 @@ static void preset_readback_failures(void) {
 	ASSERT_TRUE(number(0, "CCD_OFFSET", "OFFSET", 0, INDIGO_OK_STATE));
 }
 
+static void wheel_wraparound_position(void) {
+	cameras[0].slot = cameras[0].wheel_target = 4;
+	ASSERT_TRUE(connect_device(2, true));
+	cameras[0].moving = 4;
+	cameras[0].malformed = 5;
+	ASSERT_TRUE(number(2, "WHEEL_SLOT", "SLOT", 1, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_count(&cameras[0].wheel_wrap_reads, 1));
+	arm_gate("queue");
+	indigo_execute_handler(logical[2], block_queue);
+	ASSERT_TRUE(wait_count(&gates_entered, 1));
+	indigo_property *slot = snapshot(2, "WHEEL_SLOT");
+	bool retained = slot && slot->state == INDIGO_BUSY_STATE && slot->items[0].number.value == 5;
+	indigo_release_property(slot);
+	release_gate();
+	ASSERT_TRUE(retained);
+	cameras[0].malformed = 0;
+	cameras[0].moving = 0;
+	ASSERT_TRUE(wait_state(2, "WHEEL_SLOT", INDIGO_OK_STATE));
+	ASSERT_TRUE(connect_device(2, false));
+	cameras[0].malformed = 5;
+	ASSERT_TRUE(set_switch(2, "CONNECTION", "CONNECTED", true));
+	ASSERT_TRUE(wait_state(2, "CONNECTION", INDIGO_ALERT_STATE));
+	cameras[0].malformed = 0;
+	ASSERT_TRUE(connect_device(2, true));
+	ASSERT_TRUE(number(2, "WHEEL_SLOT", "SLOT", 2, INDIGO_OK_STATE));
+}
+
+static void initial_wheel_unknown_target(void) {
+	cameras[0].moving = 1;
+	cameras[0].wheel_target = 209;
+	ASSERT_TRUE(connect_device(2, true));
+	ASSERT_TRUE(wait_state(2, "WHEEL_SLOT", INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(209, cameras[0].wheel_target);
+	ASSERT_TRUE(number(2, "WHEEL_SLOT", "SLOT", 3, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_count(&cameras[0].wheel_target, 2));
+	cameras[0].moving = 0;
+	ASSERT_TRUE(wait_state(2, "WHEEL_SLOT", INDIGO_OK_STATE));
+	cameras[0].moving = 1;
+	ASSERT_TRUE(number(2, "WHEEL_SLOT", "SLOT", 4, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_count(&cameras[0].wheel_target, 3));
+	cameras[0].wheel_target = 209;
+	ASSERT_TRUE(wait_state(2, "WHEEL_SLOT", INDIGO_ALERT_STATE));
+	cameras[0].moving = 0;
+	ASSERT_TRUE(number(2, "WHEEL_SLOT", "SLOT", 1, INDIGO_OK_STATE));
+}
+
 static void initial_wheel_moving(void) {
 	cameras[0].moving = 1;
 	cameras[0].wheel_target = 3;
@@ -1545,6 +1637,8 @@ int main(int argc, char **argv) {
 		{ "crop_383_image", crop_383_image },
 		{ "poll_errors_and_cancellation", poll_errors_and_cancellation },
 		{ "preset_readback_failures", preset_readback_failures },
+		{ "wheel_wraparound_position", wheel_wraparound_position },
+		{ "initial_wheel_unknown_target", initial_wheel_unknown_target },
 		{ "initial_wheel_moving", initial_wheel_moving },
 		{ "countdown_with_occupied_queue", countdown_with_occupied_queue },
 		{ "guide_duration_measurements", guide_duration_measurements },
@@ -1562,6 +1656,7 @@ int main(int argc, char **argv) {
 		{ "cooling_and_controls", cooling_and_controls },
 		{ "wheel_errors", wheel_errors },
 		{ "guide_axes_and_replacement", guide_axes_and_replacement },
+		{ "abort_readout_restart", abort_readout_restart },
 		{ "abort_and_busy", abort_and_busy },
 		{ "deadlines_and_recovery", deadlines_and_recovery },
 		{ "pending_start_abort", pending_start_abort },

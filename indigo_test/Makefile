@@ -426,8 +426,8 @@ $(INTEGRATION_BUILD)/focuser_lacerta_simulator: ../indigo_drivers/focuser_lacert
 $(INTEGRATION_BUILD)/focuser_lakeside_simulator: ../indigo_drivers/focuser_lakeside/focuser_lakeside_simulator/focuser_lakeside_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
 
-$(INTEGRATION_BUILD)/focuser_mjkzz_simulator: ../indigo_drivers/focuser_mjkzz/focuser_mjkzz_simulator/focuser_mjkzz_simulator.c simulator_common/serial_simulator_common.h ../indigo_drivers/focuser_mjkzz/mjkzz_def.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+$(INTEGRATION_BUILD)/focuser_mjkzz_simulator: ../indigo_drivers/focuser_mjkzz/focuser_mjkzz_simulator/focuser_mjkzz_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h ../indigo_drivers/focuser_mjkzz/mjkzz_def.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/focuser_moonlite_simulator: ../indigo_drivers/focuser_moonlite/focuser_moonlite_simulator/focuser_moonlite_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
@@ -663,8 +663,11 @@ $(INTEGRATION_BUILD)/test_focuser_lakeside_simulator: integration/test_focuser_l
 $(INTEGRATION_BUILD)/test_focuser_lakeside_simulator_asan: integration/test_focuser_lakeside_simulator.c ../indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_lakeside_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.c $(TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_mjkzz_simulator: integration/test_focuser_mjkzz_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_mjkzz_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_focuser_mjkzz_simulator: integration/test_focuser_mjkzz_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_mjkzz_simulator $(BUILD_DRIVERS)/indigo_focuser_mjkzz.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_MJKZZ_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_mjkzz_simulator_asan: integration/test_focuser_mjkzz_simulator.c ../indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_mjkzz_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.c $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_moonlite_simulator: integration/test_focuser_moonlite_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_moonlite_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_MOONLITE_SIMULATOR_TEST_LDFLAGS)

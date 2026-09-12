@@ -425,3 +425,16 @@ An isolated x86_64/Rosetta build of legacy v30 enabled SDK hot-plug only for QHY
 The corrected run loaded firmware, attached CCD and guider, acquired a 1280 x 960 RAW8 image at 0.1 s, and disconnected successfully. Physical removal while logically disconnected detached both devices without a crash. Replug loaded firmware (0920 -> 0921); ScanQHYCCD returned one camera and GetQHYCCDId/GetQHYCCDModel identified QHY5LII-M, but the discovery probe did not attach it. The last log was immediately before OpenQHYCCD; no close-error log followed, and a process sample showed the driver queue idle, consistent with OpenQHYCCD returning NULL rather than hanging. No fresh image after replug was obtained. The waiting test was terminated with SIGTERM after diagnosis, not an SDK crash. Connected-idle, exposure and streaming removal phases were not reached.
 
 Artifacts: `/tmp/qhy-legacy-hotplug/hardware-correct-firmware.log`, `/tmp/qhy-legacy-hotplug/sample-replug.txt`, temporary definition and binaries in the same directory. This experiment does not validate legacy hot-plug.
+
+
+### Atik One hardware acceptance (2026-09-12)
+
+macOS arm64, SDK/API 20250630, USB 20e7:df3c, Atik One, RAW16 3379 x 2703, ArtemisProperties flags 1612 (HAS_SHUTTER=false), integrated five-slot wheel and adjustable cooling. Serial was not recorded in the acceptance client. Initial discovery exceeded the default 512 KiB queue stack in the SDK constructor; the user approved the portable minimum 2 MiB queue stack, retaining larger system defaults. All 90 timer/queue unit tests, including a 1 MiB callback stack regression, passed.
+
+With that framework fix, production version 33 passed .001/.1/1.5/2.5/16.5 s exposures (10.759/11.052/12.458/13.809/27.891 s including readout), fresh frames after reconnect and dlclose/dlopen, ROI (16,16) 128 x 128, all advertised bins 1 through 128, HIGH_SPEED/LOW_NOISE and all five frame types. Logs `/tmp/atik-one-hw-stack2m-{exposure,geometry,settings,frame_types}.log`.
+
+Version 34 fixed immediate restart while the SDK was still downloading an aborted frame; abort/restart passed (`/tmp/atik-one-hw-v34-abort.log`). Cooling passed 21.8 -> 18.8 °C with nonzero power, an image while cooled, cooler OFF and restoration of original temperature target/cooler selection (`/tmp/atik-one-hw-diagnostic-cooling.log`). Full warming to ambient was not timed.
+
+SDK initially reported wheel moving=1/current=0/target=209 despite the user's confirmation that it was stationary and functional; an SDK-only explicit move restored valid status. Version 35 allows explicit recovery from an unknown initial target without automatic motion. Version 36 additionally handles the transient current==count during wraparound while retaining the last valid public slot. All positions 1–5 and restoration to 1 passed with version 36, including the transient index, followed by clean CCD/wheel shutdown (`/tmp/atik-one-hw-v36-wheel.log`). Regressions and original failure logs are mapped in `indigo_drivers/ccd_atik/REFACTOR.md`.
+
+No guider, heater, presets or gain/offset controls were exposed. Physical One hot-plug, multiple-camera operation, electrical/optical accuracy and 11000A/Horizon are pending. The earlier intermittent Titan idle-replug crash remains unresolved. No README changes were made.

@@ -270,7 +270,7 @@ static bool selected(const char *name) {
 
 static void hardware_workflows(void) {
 	bool initialized = false;
-	indigo_property *format = NULL, *frame = NULL, *bins = NULL, *gain = NULL, *advanced = NULL, *mode = NULL, *frame_type = NULL;
+	indigo_property *format = NULL, *frame = NULL, *bins = NULL, *gain = NULL, *advanced = NULL, *mode = NULL, *frame_type = NULL, *cooler = NULL, *temperature = NULL;
 	CHECK(indigo_start() == INDIGO_OK);
 	CHECK(indigo_attach_client(&client) == INDIGO_OK);
 	indigo_driver_info info;
@@ -385,11 +385,50 @@ static void hardware_workflows(void) {
 			CHECK(restore(mode));
 		}
 	}
+	if (selected("cooling")) {
+		cooler = snapshot(camera, "CCD_COOLER");
+		temperature = snapshot(camera, "CCD_TEMPERATURE");
+		CHECK(cooler != NULL && temperature != NULL && temperature->perm == INDIGO_RW_PERM);
+		double initial = temperature->items[0].number.value;
+		double target = initial - 3;
+		CHECK(target >= temperature->items[0].number.min);
+		printf("Cooling from %.2f to %.2f C\n", initial, target);
+		CHECK(number_value(camera, "CCD_TEMPERATURE", "TEMPERATURE", target, INDIGO_BUSY_STATE));
+		bool settled = false, power_seen = false;
+		for (int i = 0; i < 1200; i++) {
+			indigo_property *current = snapshot(camera, "CCD_TEMPERATURE");
+			indigo_property *power = snapshot(camera, "CCD_COOLER_POWER");
+			bool failed = !current || !power || current->state == INDIGO_ALERT_STATE || power->state == INDIGO_ALERT_STATE;
+			if (!failed) {
+				power_seen |= power->items[0].number.value > 0;
+				settled = current->state == INDIGO_OK_STATE && current->items[0].number.value <= target + .5 && current->items[0].number.value >= target - .5;
+				if (i % 50 == 0 || settled) {
+					printf("Cooling: %.2f C, power %.0f%%, state %d\n", current->items[0].number.value, power->items[0].number.value, current->state);
+				}
+			}
+			indigo_release_property(current);
+			indigo_release_property(power);
+			CHECK(!failed);
+			if (settled && power_seen) {
+				break;
+			}
+			indigo_usleep(100000);
+		}
+		CHECK(settled && power_seen);
+		CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", .1, INDIGO_OK_STATE));
+		CHECK(switch_value(camera, "CCD_COOLER", "OFF", INDIGO_OK_STATE));
+		printf("Cooler warm-up command accepted; original target/state will be restored\n");
+	}
 	if (selected("wheel") && wheel >= 0) {
 		CHECK(switch_value(wheel, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
 		indigo_property *original = snapshot(wheel, "WHEEL_SLOT");
 		CHECK(original != NULL);
-		bool passed = number_value(wheel, "WHEEL_SLOT", "SLOT", 1, INDIGO_OK_STATE) && number_value(wheel, "WHEEL_SLOT", "SLOT", original->items[0].number.max, INDIGO_OK_STATE) && number_value(wheel, "WHEEL_SLOT", "SLOT", original->items[0].number.value, INDIGO_OK_STATE);
+		bool passed = true;
+		for (int position = 1; position <= original->items[0].number.max && passed; position++) {
+			passed = number_value(wheel, "WHEEL_SLOT", "SLOT", position, INDIGO_OK_STATE);
+		}
+		bool restored = number_value(wheel, "WHEEL_SLOT", "SLOT", original->items[0].number.value, INDIGO_OK_STATE);
+		passed &= restored;
 		indigo_release_property(original);
 		CHECK(passed);
 		CHECK(disconnect_device(wheel));
@@ -488,6 +527,12 @@ cleanup:
 		switch_value(camera, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE);
 		indigo_property *connection = snapshot(camera, "CONNECTION");
 		if (connection && connection->items[0].sw.value) {
+			if (temperature && !number_value(camera, "CCD_TEMPERATURE", "TEMPERATURE", temperature->items[0].number.target, INDIGO_BUSY_STATE)) {
+				indigo_test_failures++;
+			}
+			if (!restore(cooler)) {
+				indigo_test_failures++;
+			}
 			if (!restore(frame_type) || !restore(mode) || !restore(bins) || !restore(format) || !restore(frame) || !restore(gain) || !restore(advanced)) {
 				indigo_test_failures++;
 			}
@@ -503,6 +548,8 @@ cleanup:
 	if (guider >= 0 && !disconnect_device(guider)) {
 		indigo_test_failures++;
 	}
+	indigo_release_property(cooler);
+	indigo_release_property(temperature);
 	indigo_release_property(frame_type);
 	indigo_release_property(mode);
 	indigo_release_property(bins);
@@ -519,7 +566,7 @@ cleanup:
 
 int main(int argc, char **argv) {
 	if (argc != 4 || strcmp(argv[1], "--run") || !getenv("INDIGO_TEST_DEVICE") || !*getenv("INDIGO_TEST_DEVICE")) {
-		fprintf(stderr, "Set INDIGO_TEST_DEVICE to a unique model/name substring and run --run <driver-library> <entry-symbol>. ATIK_HW_CASE optionally selects exposure, frame_types, geometry, settings, presets, wheel, abort, guide, hotplug, hotplug_idle or hotplug_active.\n");
+		fprintf(stderr, "Set INDIGO_TEST_DEVICE to a unique model/name substring and run --run <driver-library> <entry-symbol>. ATIK_HW_CASE optionally selects exposure, frame_types, geometry, settings, cooling, presets, wheel, abort, guide, hotplug, hotplug_idle or hotplug_active.\n");
 		return 2;
 	}
 	library_path = argv[2];
