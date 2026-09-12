@@ -276,15 +276,16 @@ indigo_result indigo_dome_skyroof(indigo_driver_action action, indigo_driver_inf
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(skyroof_private_data));
-			dome = indigo_safe_malloc_copy(sizeof(indigo_device), &dome_template);
+			private_data = (skyroof_private_data *)indigo_safe_malloc(sizeof(skyroof_private_data));
+			dome = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &dome_template);
 			dome->private_data = private_data;
 			indigo_attach_device(dome);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(dome);
 			last_action = action;
 			if (dome != NULL) {
@@ -298,6 +299,7 @@ indigo_result indigo_dome_skyroof(indigo_driver_action action, indigo_driver_inf
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

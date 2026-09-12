@@ -513,7 +513,7 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 	dsi_private_data *private_data = NULL;
 	bool plug_result = true;
 	char name[INDIGO_NAME_SIZE] = DRIVER_LABEL;
-	private_data = indigo_safe_malloc(sizeof(dsi_private_data));
+	private_data = (dsi_private_data *)indigo_safe_malloc(sizeof(dsi_private_data));
 	private_data->usbdev = dev;
 	struct libusb_device_descriptor descriptor;
 	if (!(libusb_get_device_descriptor(dev, &descriptor) == LIBUSB_SUCCESS && descriptor.idVendor == DSI_VENDOR_ID)) {
@@ -551,7 +551,7 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 		//- sdk.plug
 	}
 	if (plug_result) {
-		indigo_device *ccd = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
+		indigo_device *ccd = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 		ccd->private_data = private_data;
 		snprintf(ccd->name, INDIGO_NAME_SIZE, "%s", name);
 		bool ccd_attached = false;
@@ -633,7 +633,7 @@ indigo_result indigo_ccd_dsi(indigo_driver_action action, indigo_driver_info *in
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				devices[i] = NULL;
@@ -646,7 +646,7 @@ indigo_result indigo_ccd_dsi(indigo_driver_action action, indigo_driver_info *in
 			}
 			indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
 			indigo_start_usb_event_handler();
-			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, DSI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, DSI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			if (rc < 0) {
 				indigo_queue_delete(&driver_queue);
@@ -655,7 +655,8 @@ indigo_result indigo_ccd_dsi(indigo_driver_action action, indigo_driver_info *in
 			}
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			pthread_mutex_lock(&driver_queue_mutex);
 			indigo_result shutdown_result = verify_devices_disconnected();
 			pthread_mutex_unlock(&driver_queue_mutex);
@@ -675,6 +676,7 @@ indigo_result indigo_ccd_dsi(indigo_driver_action action, indigo_driver_info *in
 			indigo_queue_delete(&driver_queue);
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

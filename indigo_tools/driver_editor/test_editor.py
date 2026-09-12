@@ -346,6 +346,28 @@ class EditorTests(unittest.TestCase):
 		self.assertIn('"Edited"', Editor(self.path, GENERATOR).source)
 
 	@unittest.skipUnless(GENERATOR.is_file(), 'Build indigo_generator first')
+	def test_cpp_preview_publish_and_conflict_with_existing_c(self):
+		self.path.write_text(FIXTURE.replace('version = 1;', 'version = 1; cpp = true;'), encoding='utf-8')
+		c_path = self.path.parent / 'indigo_aux_sample.c'
+		c_path.write_text('// existing C output\n', encoding='utf-8')
+		editor = Editor(self.path, GENERATOR)
+		preview = editor.refresh(1)['preview']
+		self.assertEqual(preview['filename'], 'indigo_aux_sample.cpp')
+		self.assertIn('indigo_aux_sample', preview['source'])
+		self.assertTrue(preview['mapping']['ranges'])
+		cpp_path = self.path.parent / preview['filename']
+		self.assertFalse(cpp_path.exists())
+		cpp_path.write_text('// external change\n', encoding='utf-8')
+		with self.assertRaises(Conflict):
+			editor.publish(1)
+		cpp_path.unlink()
+		editor.publish(1)
+		self.assertEqual(cpp_path.read_text(), preview['source'])
+		self.assertEqual(c_path.read_text(), '// existing C output\n')
+		self.assertTrue((self.path.parent / 'indigo_aux_sample.h').is_file())
+		self.assertTrue((self.path.parent / 'indigo_aux_sample_main.c').is_file())
+
+	@unittest.skipUnless(GENERATOR.is_file(), 'Build indigo_generator first')
 	def test_publish_conflict_and_rollback(self):
 		self.editor.refresh(1)
 		names = output_names(self.editor.root)
@@ -505,7 +527,8 @@ class MappingTests(unittest.TestCase):
 				source = before.decode('utf-8')
 				root = parse(source)
 				outputs, _ = generate(source, path.name, root, GENERATOR, ROOT, 15)
-				text = outputs[output_names(root)[0]].decode('utf-8')
+				name = next(name for name in (output_names(root)[0], output_names(root, '.cpp')[0]) if name in outputs)
+				text = outputs[name].decode('utf-8')
 				mapping = build_mapping(root, text)
 				self.assertEqual(path.read_bytes(), before)
 				for node in walk(root):

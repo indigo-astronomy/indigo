@@ -235,8 +235,8 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 	if (wheel == NULL) {
 		char usb_path[INDIGO_NAME_SIZE];
 		indigo_get_usb_path(dev, usb_path);
-		atik_private_data *private_data = indigo_safe_malloc(sizeof(atik_private_data));
-		wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
+		atik_private_data *private_data = (atik_private_data *)indigo_safe_malloc(sizeof(atik_private_data));
+		wheel = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 		snprintf(wheel->name, INDIGO_NAME_SIZE, "%s #%s", "Atik Filter Wheel", usb_path);
 		wheel->private_data = private_data;
 		if (indigo_attach_device(wheel) != INDIGO_OK) {
@@ -295,7 +295,7 @@ indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info 
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			wheel = NULL;
 			driver_queue = indigo_queue_create(NULL);
@@ -306,7 +306,7 @@ indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info 
 			}
 			indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
 			indigo_start_usb_event_handler();
-			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ATIK_VENDOR_ID, ATIK_PRODUC_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, ATIK_VENDOR_ID, ATIK_PRODUC_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			if (rc < 0) {
 				indigo_queue_delete(&driver_queue);
@@ -315,7 +315,8 @@ indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info 
 			}
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			pthread_mutex_lock(&driver_queue_mutex);
 			indigo_result shutdown_result = verify_devices_disconnected();
 			pthread_mutex_unlock(&driver_queue_mutex);
@@ -330,6 +331,7 @@ indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info 
 			indigo_queue_delete(&driver_queue);
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

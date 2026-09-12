@@ -264,9 +264,9 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 	}
 	const char *name;
 	if (fcusb_match(dev, &name)) {
-		private_data = indigo_safe_malloc(sizeof(fcusb_private_data));
+		private_data = (fcusb_private_data *)indigo_safe_malloc(sizeof(fcusb_private_data));
 		private_data->usbdev = dev;
-			indigo_device *focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
+			indigo_device *focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
 			snprintf(focuser->name, INDIGO_NAME_SIZE, "%s", name);
 			bool focuser_attached = false;
@@ -348,7 +348,7 @@ indigo_result indigo_focuser_fcusb(indigo_driver_action action, indigo_driver_in
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			//+ on_init
 			libfcusb_debug = &fcusb_debug;
@@ -364,7 +364,7 @@ indigo_result indigo_focuser_fcusb(indigo_driver_action action, indigo_driver_in
 			}
 			indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
 			indigo_start_usb_event_handler();
-			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, FCUSB_VID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, FCUSB_VID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			if (rc < 0) {
 				indigo_queue_delete(&driver_queue);
@@ -373,7 +373,8 @@ indigo_result indigo_focuser_fcusb(indigo_driver_action action, indigo_driver_in
 			}
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			pthread_mutex_lock(&driver_queue_mutex);
 			indigo_result shutdown_result = verify_devices_disconnected();
 			pthread_mutex_unlock(&driver_queue_mutex);
@@ -393,6 +394,7 @@ indigo_result indigo_focuser_fcusb(indigo_driver_action action, indigo_driver_in
 			indigo_queue_delete(&driver_queue);
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

@@ -210,15 +210,16 @@ indigo_result indigo_wheel_trutek(indigo_driver_action action, indigo_driver_inf
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(trutek_private_data));
-			wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
+			private_data = (trutek_private_data *)indigo_safe_malloc(sizeof(trutek_private_data));
+			wheel = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 			wheel->private_data = private_data;
 			indigo_attach_device(wheel);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(wheel);
 			last_action = action;
 			if (wheel != NULL) {
@@ -232,6 +233,7 @@ indigo_result indigo_wheel_trutek(indigo_driver_action action, indigo_driver_inf
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

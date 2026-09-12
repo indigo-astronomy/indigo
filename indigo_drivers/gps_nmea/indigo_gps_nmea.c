@@ -517,19 +517,20 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			static indigo_device_match_pattern patterns[2] = { 0 };
 			strcpy(patterns[0].product_string, "GPS");
 			strcpy(patterns[1].product_string, "GNSS");
 			INDIGO_REGISER_MATCH_PATTERNS(gps_template, patterns, 2);
-			private_data = indigo_safe_malloc(sizeof(nmea_private_data));
-			gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
+			private_data = (nmea_private_data *)indigo_safe_malloc(sizeof(nmea_private_data));
+			gps = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
 			gps->private_data = private_data;
 			indigo_attach_device(gps);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(gps);
 			last_action = action;
 			if (gps != NULL) {
@@ -543,6 +544,7 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

@@ -1,6 +1,6 @@
 # INDIGO driver editor
 
-A local, three-panel editor for `.driver` definitions and the C source produced by the existing INDIGO generator. The backend uses only the Python standard library; the frontend uses HTML and JavaScript with the same bundled Bootstrap 5.3.3 and `indigo.css` as the INDIGO Server WebGUI. There are no pip/npm dependencies or build steps for the editor.
+A local, three-panel editor for `.driver` definitions and the C or C++ source produced by the existing INDIGO generator. The backend uses only the Python standard library; the frontend uses HTML and JavaScript with the same bundled Bootstrap 5.3.3 and `indigo.css` as the INDIGO Server WebGUI. There are no pip/npm dependencies or build steps for the editor.
 
 ## Requirements and startup
 
@@ -89,3 +89,5 @@ Code block editors remove the common leading indentation from nonblank lines for
 When a code block is selected in the tree, its textarea fills the available inspector height and follows splitter resizing, leaving room for the fixed help footer. Manual textarea resizing remains available.
 
 The serial inspector provides Add pattern. Each click adds another empty pattern and selects it in the tree. Pattern inspectors provide Remove pattern; removing one retains the other patterns. Configure each pattern through its attributes.
+
+Generated previews accept either `.c` or `.cpp` output (including `cpp = true;` definitions). Publishing writes the generated implementation and its header/main files, with the same external-change checks for both extensions. Existing files with the other extension are left untouched.

@@ -386,19 +386,20 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(sx_private_data));
-			ao = indigo_safe_malloc_copy(sizeof(indigo_device), &ao_template);
+			private_data = (sx_private_data *)indigo_safe_malloc(sizeof(sx_private_data));
+			ao = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &ao_template);
 			ao->private_data = private_data;
 			indigo_attach_device(ao);
-			guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
+			guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;
 			guider->master_device = ao;
 			indigo_attach_device(guider);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(ao);
 			VERIFY_NOT_CONNECTED(guider);
 			last_action = action;
@@ -418,6 +419,7 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

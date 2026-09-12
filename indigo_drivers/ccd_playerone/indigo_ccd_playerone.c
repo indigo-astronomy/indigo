@@ -2043,7 +2043,7 @@ static void update_sdk_discovery_retry(libusb_device *dev, bool retry) {
 		return;
 	}
 	if (!entry) {
-		entry = indigo_safe_malloc(sizeof(*entry));
+		entry = (sdk_discovery_retry *)indigo_safe_malloc(sizeof(*entry));
 		entry->dev = libusb_ref_device(dev);
 		entry->remaining = SDK_DISCOVERY_RETRIES;
 		entry->active = true;
@@ -2058,7 +2058,7 @@ static void update_sdk_discovery_retry(libusb_device *dev, bool retry) {
 }
 
 static void process_sdk_retry_handler(indigo_device *device, void *data) {
-	sdk_discovery_retry *entry = data;
+	sdk_discovery_retry *entry = (sdk_discovery_retry *)data;
 	entry->queued = false;
 	if (entry->active && !sdk_discovery_stopping) {
 		process_plug_event_handler(NULL, libusb_ref_device(entry->dev));
@@ -2093,7 +2093,7 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 	playerone_private_data *private_data = NULL;
 	bool plug_result = true;
 	char name[INDIGO_NAME_SIZE] = DRIVER_LABEL;
-	private_data = indigo_safe_malloc(sizeof(playerone_private_data));
+	private_data = (playerone_private_data *)indigo_safe_malloc(sizeof(playerone_private_data));
 	private_data->usbdev = dev;
 	struct libusb_device_descriptor descriptor;
 	if (!(libusb_get_device_descriptor(dev, &descriptor) == LIBUSB_SUCCESS && descriptor.idVendor == POA_VENDOR_ID)) {
@@ -2154,7 +2154,7 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 		//- sdk.plug
 	}
 	if (plug_result) {
-		indigo_device *ccd = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
+		indigo_device *ccd = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 		ccd->private_data = private_data;
 		snprintf(ccd->name, INDIGO_NAME_SIZE, "%s", name);
 		bool ccd_attached = false;
@@ -2174,7 +2174,7 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 			indigo_safe_free(ccd);
 		}
 		if (ccd_attached && private_data->property.isHasST4Port) {
-		indigo_device *guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
+		indigo_device *guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 		guider->private_data = private_data;
 		guider->master_device = ccd;
 		snprintf(guider->name, INDIGO_NAME_SIZE, "%s", private_data->guider_name);
@@ -2283,7 +2283,7 @@ indigo_result indigo_ccd_playerone(indigo_driver_action action, indigo_driver_in
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			//+ on_init
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Player One camera SDK %s, API %d", POAGetSDKVersion(), POAGetAPIVersion());
@@ -2300,7 +2300,7 @@ indigo_result indigo_ccd_playerone(indigo_driver_action action, indigo_driver_in
 			}
 			indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
 			indigo_start_usb_event_handler();
-			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, POA_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, POA_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			if (rc < 0) {
 				indigo_queue_delete(&driver_queue);
@@ -2309,7 +2309,8 @@ indigo_result indigo_ccd_playerone(indigo_driver_action action, indigo_driver_in
 			}
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			pthread_mutex_lock(&driver_queue_mutex);
 			indigo_result shutdown_result = verify_devices_disconnected();
 			if (shutdown_result == INDIGO_OK) {
@@ -2334,6 +2335,7 @@ indigo_result indigo_ccd_playerone(indigo_driver_action action, indigo_driver_in
 			clear_sdk_discovery_retries();
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

@@ -245,19 +245,20 @@ indigo_result indigo_wheel_indigo(indigo_driver_action action, indigo_driver_inf
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			static indigo_device_match_pattern patterns[1] = { 0 };
 			strcpy(patterns[0].product_string, "Indigo");
 			strcpy(patterns[0].vendor_string, "Pegasus Astro");
 			INDIGO_REGISER_MATCH_PATTERNS(wheel_template, patterns, 1);
-			private_data = indigo_safe_malloc(sizeof(indigo_private_data));
-			wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
+			private_data = (indigo_private_data *)indigo_safe_malloc(sizeof(indigo_private_data));
+			wheel = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 			wheel->private_data = private_data;
 			indigo_attach_device(wheel);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(wheel);
 			last_action = action;
 			if (wheel != NULL) {
@@ -271,6 +272,7 @@ indigo_result indigo_wheel_indigo(indigo_driver_action action, indigo_driver_inf
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

@@ -365,19 +365,20 @@ indigo_result indigo_rotator_falcon(indigo_driver_action action, indigo_driver_i
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			static indigo_device_match_pattern patterns[1] = { 0 };
 			strcpy(patterns[0].product_string, "FalconRotator");
 			strcpy(patterns[0].vendor_string, "Pegasus Astro");
 			INDIGO_REGISER_MATCH_PATTERNS(rotator_template, patterns, 1);
-			private_data = indigo_safe_malloc(sizeof(falcon_private_data));
-			rotator = indigo_safe_malloc_copy(sizeof(indigo_device), &rotator_template);
+			private_data = (falcon_private_data *)indigo_safe_malloc(sizeof(falcon_private_data));
+			rotator = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &rotator_template);
 			rotator->private_data = private_data;
 			indigo_attach_device(rotator);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(rotator);
 			last_action = action;
 			if (rotator != NULL) {
@@ -391,6 +392,7 @@ indigo_result indigo_rotator_falcon(indigo_driver_action action, indigo_driver_i
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

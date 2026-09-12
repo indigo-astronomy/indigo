@@ -263,15 +263,16 @@ indigo_result indigo_rotator_simulator(indigo_driver_action action, indigo_drive
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(simulator_private_data));
-			rotator = indigo_safe_malloc_copy(sizeof(indigo_device), &rotator_template);
+			private_data = (simulator_private_data *)indigo_safe_malloc(sizeof(simulator_private_data));
+			rotator = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &rotator_template);
 			rotator->private_data = private_data;
 			indigo_attach_device(rotator);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(rotator);
 			last_action = action;
 			if (rotator != NULL) {
@@ -285,6 +286,7 @@ indigo_result indigo_rotator_simulator(indigo_driver_action action, indigo_drive
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

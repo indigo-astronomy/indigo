@@ -60,12 +60,12 @@ def replace_file(path, content):
 		if os.path.exists(temporary):
 			os.unlink(temporary)
 
-def output_names(root):
+def output_names(root, extension='.c'):
 	devices = [node for node in root['children'] if node['kind'] in DEVICES]
 	if not devices:
 		raise GenerationError('The definition must contain at least one supported device')
 	stem = 'indigo_' + devices[0]['kind'] + '_' + root['name']
-	return [stem + '.c', stem + '.h', stem + '_main.c']
+	return [stem + extension, stem + '.h', stem + '_main.c']
 
 def generate(source, filename, root, generator, repository, timeout):
 	names = output_names(root)
@@ -90,6 +90,8 @@ def generate(source, filename, root, generator, repository, timeout):
 		diagnostic = (result.stderr + result.stdout).decode('utf-8', errors='replace').replace(str(workspace), '<preview>')
 		if result.returncode != 0:
 			raise GenerationError(f'Generator exited with status {result.returncode}.\n{diagnostic}')
+		if not (working / names[0]).is_file():
+			names = output_names(root, '.cpp')
 		if not all((working / name).is_file() for name in names):
 			raise GenerationError('Generator did not produce all expected output files.\n' + diagnostic)
 		outputs = {name: (working / name).read_bytes() for name in names}
@@ -122,7 +124,7 @@ class Editor:
 
 	def remember_outputs(self):
 		try:
-			names = output_names(self.root)
+			names = set(output_names(self.root) + output_names(self.root, '.cpp'))
 		except GenerationError:
 			return
 		for name in names:
@@ -185,7 +187,7 @@ class Editor:
 				source, root = self.source, copy.deepcopy(self.root)
 			try:
 				outputs, diagnostic = generate(source, self.path.name, root, self.generator, self.repository, self.timeout)
-				c_name = output_names(root)[0]
+				c_name = next(name for name in (output_names(root)[0], output_names(root, '.cpp')[0]) if name in outputs)
 				c_source = outputs[c_name].decode('utf-8')
 				mapping = build_mapping(root, c_source)
 			except (GenerationError, UnicodeError) as error:

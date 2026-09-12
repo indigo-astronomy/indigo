@@ -881,19 +881,20 @@ indigo_result indigo_focuser_prodigy(indigo_driver_action action, indigo_driver_
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(prodigy_private_data));
-			focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
+			private_data = (prodigy_private_data *)indigo_safe_malloc(sizeof(prodigy_private_data));
+			focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
 			indigo_attach_device(focuser);
-			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
+			aux = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
 			aux->master_device = focuser;
 			indigo_attach_device(aux);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(focuser);
 			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
@@ -913,6 +914,7 @@ indigo_result indigo_focuser_prodigy(indigo_driver_action action, indigo_driver_
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

@@ -1595,22 +1595,23 @@ indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_drive
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			static indigo_device_match_pattern patterns[1] = { 0 };
 			strcpy(patterns[0].product_string, "CP2102N");
 			INDIGO_REGISER_MATCH_PATTERNS(focuser_template, patterns, 1);
-			private_data = indigo_safe_malloc(sizeof(primaluce_private_data));
-			focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
+			private_data = (primaluce_private_data *)indigo_safe_malloc(sizeof(primaluce_private_data));
+			focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
 			indigo_attach_device(focuser);
-			rotator = indigo_safe_malloc_copy(sizeof(indigo_device), &rotator_template);
+			rotator = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &rotator_template);
 			rotator->private_data = private_data;
 			rotator->master_device = focuser;
 			indigo_attach_device(rotator);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(focuser);
 			VERIFY_NOT_CONNECTED(rotator);
 			last_action = action;
@@ -1630,6 +1631,7 @@ indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_drive
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

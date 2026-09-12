@@ -443,19 +443,20 @@ indigo_result indigo_aux_uch(indigo_driver_action action, indigo_driver_info *in
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			static indigo_device_match_pattern patterns[1] = { 0 };
 			strcpy(patterns[0].product_string, "USB Control Hub");
 			patterns[0].vendor_id = 0x0403;
 			INDIGO_REGISER_MATCH_PATTERNS(aux_template, patterns, 1);
-			private_data = indigo_safe_malloc(sizeof(uch_private_data));
-			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
+			private_data = (uch_private_data *)indigo_safe_malloc(sizeof(uch_private_data));
+			aux = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
 			indigo_attach_device(aux);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
 			if (aux != NULL) {
@@ -469,6 +470,7 @@ indigo_result indigo_aux_uch(indigo_driver_action action, indigo_driver_info *in
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

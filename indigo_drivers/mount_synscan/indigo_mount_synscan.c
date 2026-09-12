@@ -2515,23 +2515,24 @@ indigo_result indigo_mount_synscan(indigo_driver_action action, indigo_driver_in
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(synscan_private_data));
-			mount = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
+			private_data = (synscan_private_data *)indigo_safe_malloc(sizeof(synscan_private_data));
+			mount = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 			mount->private_data = private_data;
 			indigo_attach_device(mount);
-			guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
+			guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;
 			guider->master_device = mount;
 			indigo_attach_device(guider);
-			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
+			aux = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
 			aux->master_device = mount;
 			indigo_attach_device(aux);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(mount);
 			VERIFY_NOT_CONNECTED(guider);
 			VERIFY_NOT_CONNECTED(aux);
@@ -2557,6 +2558,7 @@ indigo_result indigo_mount_synscan(indigo_driver_action action, indigo_driver_in
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

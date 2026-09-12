@@ -217,15 +217,16 @@ indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_in
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(simulator_private_data));
-			gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
+			private_data = (simulator_private_data *)indigo_safe_malloc(sizeof(simulator_private_data));
+			gps = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
 			gps->private_data = private_data;
 			indigo_attach_device(gps);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(gps);
 			last_action = action;
 			if (gps != NULL) {
@@ -239,6 +240,7 @@ indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_in
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

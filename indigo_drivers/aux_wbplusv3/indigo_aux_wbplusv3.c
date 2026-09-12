@@ -629,15 +629,16 @@ indigo_result indigo_aux_wbplusv3(indigo_driver_action action, indigo_driver_inf
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(wbplusv3_private_data));
-			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
+			private_data = (wbplusv3_private_data *)indigo_safe_malloc(sizeof(wbplusv3_private_data));
+			aux = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
 			indigo_attach_device(aux);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
 			if (aux != NULL) {
@@ -651,6 +652,7 @@ indigo_result indigo_aux_wbplusv3(indigo_driver_action action, indigo_driver_inf
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

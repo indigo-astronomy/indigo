@@ -274,15 +274,16 @@ indigo_result indigo_wheel_qhy(indigo_driver_action action, indigo_driver_info *
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(qhy_private_data));
-			wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
+			private_data = (qhy_private_data *)indigo_safe_malloc(sizeof(qhy_private_data));
+			wheel = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 			wheel->private_data = private_data;
 			indigo_attach_device(wheel);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(wheel);
 			last_action = action;
 			if (wheel != NULL) {
@@ -296,6 +297,7 @@ indigo_result indigo_wheel_qhy(indigo_driver_action action, indigo_driver_info *
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

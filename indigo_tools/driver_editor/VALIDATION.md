@@ -97,3 +97,13 @@ The complete 31-test suite passed after correcting spacing in shorthand expansio
 ## Code block toolbar and tree-only editing
 
 All 33 tests passed. Added tests compare template code block kinds with generator contexts and cover add/edit/generate/remove at root, device and property levels, duplicate and invalid-context rejection, and unchanged disk input. Browser checks confirmed no embedded code editors in root/property details, a root dialog offering only missing on_shutdown, selection of its new tree node, Remove code block availability, editing and generated output. No production file was saved.
+
+## C++ generated output
+
+All 35 tests passed. The editor tries `.c` and then `.cpp` in the isolated
+generator workspace, displays/maps the implementation actually produced and
+tracks both destination extensions for external-change protection. The new
+regression covers C++ preview, publishing its header/main outputs, conflict
+rejection and preservation of an existing C file. The real-driver corpus test
+also passes for the QHY C++ definition. No generator or driver files were
+changed by this editor update.

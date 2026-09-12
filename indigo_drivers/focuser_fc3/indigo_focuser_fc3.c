@@ -422,19 +422,20 @@ indigo_result indigo_focuser_fc3(indigo_driver_action action, indigo_driver_info
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			static indigo_device_match_pattern patterns[1] = { 0 };
 			patterns[0].vendor_id = 0x303a;
 			patterns[0].product_id = 0x9000;
 			INDIGO_REGISER_MATCH_PATTERNS(focuser_template, patterns, 1);
-			private_data = indigo_safe_malloc(sizeof(fc3_private_data));
-			focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
+			private_data = (fc3_private_data *)indigo_safe_malloc(sizeof(fc3_private_data));
+			focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
 			indigo_attach_device(focuser);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(focuser);
 			last_action = action;
 			if (focuser != NULL) {
@@ -448,6 +449,7 @@ indigo_result indigo_focuser_fc3(indigo_driver_action action, indigo_driver_info
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

@@ -244,18 +244,19 @@ indigo_result indigo_guider_cgusbst4(indigo_driver_action action, indigo_driver_
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			static indigo_device_match_pattern patterns[1] = { 0 };
 			strcpy(patterns[0].product_string, "USB to ST4 Astrogene_1000");
 			INDIGO_REGISER_MATCH_PATTERNS(guider_template, patterns, 1);
-			private_data = indigo_safe_malloc(sizeof(cgusbst4_private_data));
-			guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
+			private_data = (cgusbst4_private_data *)indigo_safe_malloc(sizeof(cgusbst4_private_data));
+			guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;
 			indigo_attach_device(guider);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(guider);
 			last_action = action;
 			if (guider != NULL) {
@@ -269,6 +270,7 @@ indigo_result indigo_guider_cgusbst4(indigo_driver_action action, indigo_driver_
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}
