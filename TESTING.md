@@ -437,4 +437,11 @@ Version 34 fixed immediate restart while the SDK was still downloading an aborte
 
 SDK initially reported wheel moving=1/current=0/target=209 despite the user's confirmation that it was stationary and functional; an SDK-only explicit move restored valid status. Version 35 allows explicit recovery from an unknown initial target without automatic motion. Version 36 additionally handles the transient current==count during wraparound while retaining the last valid public slot. All positions 1–5 and restoration to 1 passed with version 36, including the transient index, followed by clean CCD/wheel shutdown (`/tmp/atik-one-hw-v36-wheel.log`). Regressions and original failure logs are mapped in `indigo_drivers/ccd_atik/REFACTOR.md`.
 
-No guider, heater, presets or gain/offset controls were exposed. Physical One hot-plug, multiple-camera operation, electrical/optical accuracy and 11000A/Horizon are pending. The earlier intermittent Titan idle-replug crash remains unresolved. No README changes were made.
+No guider, heater, presets or gain/offset controls were exposed. One idle and active-exposure USB hot-plug passed in the follow-up below; multiple-camera operation, electrical/optical accuracy and 11000A/Horizon are pending. The earlier intermittent Titan idle-replug crash remains unresolved. No README changes were made.
+
+
+### Atik One USB hot-plug follow-up (2026-09-12, 21:47–21:50)
+
+Combined opt-in `ATIK_HW_CASE=hotplug` passed on production version 36 / SDK 20250630, macOS arm64, with camera power retained. The client now tracks the integrated wheel during detach/reattach and verifies its connection and original slot after restoration. Idle removal detached CCD/wheel at 21:47:38; replug attached both at 21:48:01 and delivered a fresh .1 s RAW16 image plus successful wheel-slot verification. A second removal during 120 s integration detached both at 21:49:32; replug restored both at 21:49:52, again delivering a fresh .1 s frame and working wheel. Original camera settings were restored; final shutdown at 21:50:08 was clean, all RAW checks passed, process exit 0. Log `/tmp/atik-one-hw-v36-hotplug.log`.
+
+One idle and one active-integration cycle passed. Removal during readout, power cycling and repeated stress were not tested; no guider is exposed on this One. The prior Titan crash remains unresolved. No production behavior or README was changed.

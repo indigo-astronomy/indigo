@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000021
+#define DRIVER_VERSION       0x03000024
 #define DRIVER_NAME          "indigo_ccd_atik"
 #define DRIVER_LABEL         "Atik Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -103,7 +103,7 @@ typedef struct {
 	unsigned char *buffer;
 	size_t buffer_size;
 	int relay_mask;
-	bool acquisition_active, exposure_started;
+	bool acquisition_active, exposure_started, readout_pending;
 	double exposure_duration, exposure_deadline, wheel_deadline;
 	int exp_left, exp_top, exp_width, exp_height, exp_bx, exp_by;
 	int preset;
@@ -152,6 +152,15 @@ static void atik_close(indigo_device *device) {
 	ArtemisDisconnect(PRIVATE_DATA->handle);
 	PRIVATE_DATA->handle = NULL;
 	indigo_global_unlock(device);
+}
+
+static int atik_stop_exposure(indigo_device *device) {
+	int result = ArtemisStopExposure(PRIVATE_DATA->handle);
+	if (result == ARTEMIS_OK) {
+		// Some models finish downloading the stopped exposure before becoming idle.
+		PRIVATE_DATA->readout_pending = true;
+	}
+	return result;
 }
 
 static bool atik_option(indigo_device *device, int id, uint16_t *values, int length) {
@@ -273,7 +282,7 @@ static bool atik_initialize_ccd(indigo_device *device) {
 
 static void atik_exposure_failure(indigo_device *device, const char *message) {
 	if (PRIVATE_DATA->exposure_started) {
-		PRIVATE_DATA->exposure_started = ArtemisStopExposure(PRIVATE_DATA->handle) != ARTEMIS_OK;
+		PRIVATE_DATA->exposure_started = atik_stop_exposure(device) != ARTEMIS_OK;
 	}
 	PRIVATE_DATA->acquisition_active = false;
 	CCD_EXPOSURE_ITEM->number.value = 0;
@@ -292,9 +301,12 @@ static void exposure_finalizer(indigo_device *device) {
 	}
 	if (!PRIVATE_DATA->exposure_started) {
 		int state = ArtemisCameraState(PRIVATE_DATA->handle);
-		if (state == CAMERA_FLUSHING) {
+		if (state == CAMERA_FLUSHING || (PRIVATE_DATA->readout_pending && (state == CAMERA_WAITING || state == CAMERA_EXPOSING || state == CAMERA_READING || state == CAMERA_DOWNLOADING))) {
 			indigo_execute_handler_in(device, .01, exposure_finalizer);
 			return;
+		}
+		if (state == CAMERA_IDLE) {
+			PRIVATE_DATA->readout_pending = false;
 		}
 		if (state != CAMERA_IDLE || ArtemisSetPreview(PRIVATE_DATA->handle, CCD_READ_MODE_HIGH_SPEED_ITEM->sw.value) != ARTEMIS_OK || (PRIVATE_DATA->has_shutter && ArtemisSetDarkMode(PRIVATE_DATA->handle, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value) != ARTEMIS_OK) || ArtemisBin(PRIVATE_DATA->handle, PRIVATE_DATA->exp_bx, PRIVATE_DATA->exp_by) != ARTEMIS_OK || ArtemisSubframe(PRIVATE_DATA->handle, PRIVATE_DATA->exp_left, PRIVATE_DATA->exp_top, PRIVATE_DATA->exp_width, PRIVATE_DATA->exp_height) != ARTEMIS_OK || ArtemisStartExposure(PRIVATE_DATA->handle, PRIVATE_DATA->exposure_duration) != ARTEMIS_OK) {
 			atik_exposure_failure(device, "Exposure setup failed");
@@ -362,15 +374,19 @@ static void guider_dec_finalizer(indigo_device *device) {
 //+ wheel.code
 
 static bool atik_wheel_info(indigo_device *device, int *count, int *moving, int *current, int *target) {
-	return ArtemisFilterWheelInfo(PRIVATE_DATA->handle, count, moving, current, target) == ARTEMIS_OK && *count >= 1 && *count <= 64 && *current >= 0 && *current < *count && *target >= 0 && *target < *count;
+	int result = ArtemisFilterWheelInfo(PRIVATE_DATA->handle, count, moving, current, target);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ArtemisFilterWheelInfo = %d, count %d, moving %d, current %d, target %d", result, *count, *moving, *current, *target);
+	return result == ARTEMIS_OK && *count >= 1 && *count <= 64 && *current >= 0 && (*current < *count || (*moving && *current == *count));
 }
 
 static void wheel_move_finalizer(indigo_device *device) {
 	int count = 0, moving = 0, current = 0, target = 0;
-	if (!atik_wheel_info(device, &count, &moving, &current, &target) || count != WHEEL_SLOT_ITEM->number.max || indigo_monotonic_time() >= PRIVATE_DATA->wheel_deadline) {
+	if (!atik_wheel_info(device, &count, &moving, &current, &target) || target < 0 || target >= count || count != WHEEL_SLOT_ITEM->number.max || indigo_monotonic_time() >= PRIVATE_DATA->wheel_deadline) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
-		WHEEL_SLOT_ITEM->number.value = current + 1;
+		if (current < count) {
+			WHEEL_SLOT_ITEM->number.value = current + 1;
+		}
 		if (moving) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_execute_handler_in(device, .5, wheel_move_finalizer);
@@ -390,6 +406,14 @@ static void ccd_timer_callback(indigo_device *device) {
 		return;
 	}
 	//+ ccd.on_timer
+	if (PRIVATE_DATA->readout_pending) {
+		int state = ArtemisCameraState(PRIVATE_DATA->handle);
+		if (state != CAMERA_IDLE && state != CAMERA_ERROR) {
+			indigo_execute_handler_in(device, 5, ccd_timer_callback);
+			return;
+		}
+		PRIVATE_DATA->readout_pending = false;
+	}
 	// Preserve the SDK download-phase temperature exclusion; integration can still be polled.
 	if (PRIVATE_DATA->acquisition_active && PRIVATE_DATA->exposure_started && indigo_monotonic_time() >= PRIVATE_DATA->exposure_deadline - ATIK_READOUT_TIMEOUT) {
 		indigo_execute_handler_in(device, 5, ccd_timer_callback);
@@ -454,7 +478,7 @@ static void ccd_connection_handler(indigo_device *device) {
 		//+ ccd.on_disconnect
 		indigo_lock_master_device(device);
 		if (PRIVATE_DATA->exposure_started) {
-			ArtemisStopExposure(PRIVATE_DATA->handle);
+			atik_stop_exposure(device);
 		}
 		PRIVATE_DATA->exposure_started = PRIVATE_DATA->acquisition_active = false;
 		if (PRIVATE_DATA->has_cooler) {
@@ -491,7 +515,7 @@ static void ccd_bin_handler(indigo_device *device) {
 
 static void ccd_exposure_handler(indigo_device *device) {
 	//+ ccd.CCD_EXPOSURE.on_change
-	if (PRIVATE_DATA->exposure_started && ArtemisStopExposure(PRIVATE_DATA->handle) != ARTEMIS_OK) {
+	if (PRIVATE_DATA->exposure_started && atik_stop_exposure(device) != ARTEMIS_OK) {
 		atik_exposure_failure(device, "Previous exposure could not be stopped");
 		return;
 	}
@@ -505,7 +529,7 @@ static void ccd_exposure_handler(indigo_device *device) {
 	PRIVATE_DATA->exp_by = CCD_BIN_VERTICAL_ITEM->number.value;
 	PRIVATE_DATA->acquisition_active = true;
 	PRIVATE_DATA->exposure_started = false;
-	PRIVATE_DATA->exposure_deadline = indigo_monotonic_time() + ATIK_FLUSH_TIMEOUT;
+	PRIVATE_DATA->exposure_deadline = indigo_monotonic_time() + (PRIVATE_DATA->readout_pending ? ATIK_READOUT_TIMEOUT : ATIK_FLUSH_TIMEOUT);
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	exposure_finalizer(device);
@@ -516,7 +540,7 @@ static void ccd_abort_exposure_handler(indigo_device *device) {
 	//+ ccd.CCD_ABORT_EXPOSURE.on_change
 	indigo_cancel_pending_handler(device, ccd_exposure_handler);
 	indigo_cancel_pending_handler(device, exposure_finalizer);
-	int result = PRIVATE_DATA->exposure_started ? ArtemisStopExposure(PRIVATE_DATA->handle) : ARTEMIS_OK;
+	int result = PRIVATE_DATA->exposure_started ? atik_stop_exposure(device) : ARTEMIS_OK;
 	PRIVATE_DATA->exposure_started = result != ARTEMIS_OK;
 	PRIVATE_DATA->acquisition_active = false;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -936,10 +960,13 @@ static void wheel_connection_handler(indigo_device *device) {
 					}
 				}
 				WHEEL_SLOT_ITEM->number.max = count;
-				WHEEL_SLOT_ITEM->number.value = current + 1;
-				WHEEL_SLOT_ITEM->number.target = moving ? target + 1 : current + 1;
-				WHEEL_SLOT_PROPERTY->state = moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-				if (moving) {
+				if (current < count) {
+					WHEEL_SLOT_ITEM->number.value = current + 1;
+				}
+				bool target_known = target >= 0 && target < count;
+				WHEEL_SLOT_ITEM->number.target = moving && target_known ? target + 1 : WHEEL_SLOT_ITEM->number.value;
+				WHEEL_SLOT_PROPERTY->state = moving ? (target_known ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE) : INDIGO_OK_STATE;
+				if (moving && target_known) {
 					PRIVATE_DATA->wheel_deadline = indigo_monotonic_time() + ATIK_WHEEL_TIMEOUT;
 					indigo_execute_handler_in(device, .5, wheel_move_finalizer);
 				}

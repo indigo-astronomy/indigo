@@ -153,9 +153,9 @@ static indigo_result delete_property(indigo_client *client, indigo_device *devic
 static bool wait_presence(bool present) {
 	for (int i = 0; i < 18000; i++) {
 		pthread_mutex_lock(&mutex);
-		bool ready = devices[camera].present == present && (guider < 0 || devices[guider].present == present);
+		bool ready = devices[camera].present == present && (guider < 0 || devices[guider].present == present) && (wheel < 0 || devices[wheel].present == present);
 		if (present) {
-			ready = ready && slot(camera, "CONNECTION") >= 0 && (guider < 0 || slot(guider, "CONNECTION") >= 0);
+			ready = ready && slot(camera, "CONNECTION") >= 0 && (guider < 0 || slot(guider, "CONNECTION") >= 0) && (wheel < 0 || slot(wheel, "CONNECTION") >= 0);
 		}
 		pthread_mutex_unlock(&mutex);
 		if (ready) {
@@ -470,12 +470,20 @@ static void hardware_workflows(void) {
 		if (guider >= 0) {
 			CHECK(switch_value(guider, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
 		}
+		int wheel_position = 1;
+		if (wheel >= 0) {
+			CHECK(switch_value(wheel, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+			indigo_property *position = snapshot(wheel, "WHEEL_SLOT");
+			CHECK(position != NULL);
+			wheel_position = position->items[0].number.value;
+			indigo_release_property(position);
+		}
 		for (int pass = selected("hotplug_active") ? 1 : 0; pass < (selected("hotplug_idle") ? 1 : 2); pass++) {
 			if (pass == 1) {
 				CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 120, INDIGO_BUSY_STATE));
 				indigo_usleep(500000);
 			}
-			printf("HOTPLUG: unplug USB now (%s)\n", pass ? "active exposure" : "idle connected camera and guider");
+			printf("HOTPLUG: unplug USB now (%s)\n", pass ? "active exposure" : "idle connected interfaces");
 			CHECK(wait_presence(false));
 			printf("HOTPLUG: all interfaces detached; reconnect USB now\n");
 			CHECK(wait_presence(true));
@@ -490,7 +498,11 @@ static void hardware_workflows(void) {
 			if (guider >= 0) {
 				CHECK(number_value(guider, "GUIDER_GUIDE_RA", "EAST", 100, INDIGO_OK_STATE));
 			}
-			printf("HOTPLUG: %s removal/reconnect and fresh image/guide passed\n", pass ? "active" : "idle");
+			if (wheel >= 0) {
+				CHECK(switch_value(wheel, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
+				CHECK(number_value(wheel, "WHEEL_SLOT", "SLOT", wheel_position, INDIGO_OK_STATE));
+			}
+			printf("HOTPLUG: %s removal/reconnect, fresh image and available guider/wheel checks passed\n", pass ? "active" : "idle");
 		}
 	}
 	pthread_mutex_lock(&mutex);
