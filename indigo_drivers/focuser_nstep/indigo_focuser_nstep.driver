@@ -1,0 +1,416 @@
+// Copyright (c) 2018-2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// Thanks to Gene Nolan and Leon Palmer for their support.
+//
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public
+// License as published by the Free Software Foundation; either
+// version 2.1 of the License, or (at your option) any later version.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+driver nstep {
+	label = "Rigel Systems nSTEP Focuser";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
+	version = 7;
+	serial;
+	include {
+		#include <ctype.h>
+		#include <errno.h>
+		#include <stdarg.h>
+	}
+	define {
+		#define RESPONSE (PRIVATE_DATA->response)
+		#define NSTEP_STATUS_STALL_LIMIT 12
+	}
+	data {
+		char response[16];
+		int stalled;
+		bool active, uncertain;
+	}
+	code {
+		static void focuser_steps_handler(indigo_device *device);
+
+		static bool nstep_command(indigo_device *device, int reply_length, const char *command, ...) {
+			long result = indigo_uni_discard(PRIVATE_DATA->handle);
+			if (result >= 0) {
+				va_list args;
+				va_start(args, command);
+				result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
+				va_end(args);
+			}
+			if (result <= 0) {
+				return false;
+			}
+			if (reply_length == 0) {
+				return true;
+			}
+			if (reply_length < 0 || reply_length >= (int)sizeof(PRIVATE_DATA->response)) {
+				return false;
+			}
+			long count = indigo_uni_read_section(PRIVATE_DATA->handle, RESPONSE, reply_length, "", "", INDIGO_DELAY(1));
+			if (count != reply_length) {
+				RESPONSE[0] = 0;
+				return false;
+			}
+			if (indigo_uni_discard(PRIVATE_DATA->handle) > 0) {
+				RESPONSE[0] = 0;
+				return false;
+			}
+			return true;
+		}
+
+		static bool nstep_integer(const char *text, int minimum, int maximum, int *value) {
+			if (!text || !*text || isspace((unsigned char)*text)) {
+				return false;
+			}
+			char *end;
+			errno = 0;
+			long number = strtol(text, &end, 10);
+			if (errno || end == text || *end || number < minimum || number > maximum) {
+				return false;
+			}
+			*value = (int)number;
+			return true;
+		}
+
+		static bool nstep_temperature(indigo_device *device, bool *present) {
+			int tenths = 0;
+			if (!nstep_command(device, 4, ":RT")) {
+				return false;
+			}
+			if (!strcmp(RESPONSE, "-888")) {
+				*present = false;
+				return true;
+			}
+			if (!nstep_integer(RESPONSE, -999, 999, &tenths)) {
+				return false;
+			}
+			*present = true;
+			FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_ITEM->number.target = tenths / 10.0;
+			return true;
+		}
+
+		static bool nstep_speed(indigo_device *device, int *speed) {
+			int raw = 0;
+			if (!nstep_command(device, 3, ":RO") || !nstep_integer(RESPONSE, 1, 254, &raw)) {
+				return false;
+			}
+			*speed = 255 - raw;
+			return true;
+		}
+
+		static bool nstep_position(indigo_device *device, int *position) {
+			if (!nstep_command(device, 7, ":RP")) {
+				return false;
+			}
+			return nstep_integer(RESPONSE, -999999, 999999, position);
+		}
+
+		static bool nstep_moving(indigo_device *device, bool *moving) {
+			if (!nstep_command(device, 1, "S") || (RESPONSE[0] != '0' && RESPONSE[0] != '1')) {
+				return false;
+			}
+			*moving = RESPONSE[0] == '1';
+			return true;
+		}
+
+		static bool nstep_stop(indigo_device *device) {
+			return nstep_command(device, 0, ":F10000#");
+		}
+
+		static void nstep_motion_state(indigo_device *device, indigo_property_state state) {
+			FOCUSER_STEPS_PROPERTY->state = state;
+			FOCUSER_POSITION_PROPERTY->state = state;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		}
+
+		static void motion_finalizer(indigo_device *device) {
+			if (!IS_CONNECTED || !PRIVATE_DATA->active) {
+				return;
+			}
+			bool moving = false;
+			if (!nstep_moving(device, &moving)) {
+				if (++PRIVATE_DATA->stalled < NSTEP_STATUS_STALL_LIMIT) {
+					indigo_execute_handler_in(device, 0.5, motion_finalizer);
+					return;
+				}
+				PRIVATE_DATA->active = false;
+				PRIVATE_DATA->uncertain = true;
+				nstep_stop(device);
+				nstep_motion_state(device, INDIGO_ALERT_STATE);
+				return;
+			}
+			PRIVATE_DATA->stalled = 0;
+			int position = 0;
+			if (nstep_position(device, &position)) {
+				FOCUSER_POSITION_ITEM->number.value = position;
+			}
+			if (moving) {
+				nstep_motion_state(device, INDIGO_BUSY_STATE);
+				indigo_execute_handler_in(device, 0.5, motion_finalizer);
+			} else {
+				PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
+				nstep_motion_state(device, INDIGO_OK_STATE);
+			}
+		}
+
+		static bool nstep_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle && nstep_command(device, 1, "%c", 0x06) && !strcmp(RESPONSE, "S")) {
+				return true;
+			}
+			indigo_uni_close(&PRIVATE_DATA->handle);
+			return false;
+		}
+
+		static void nstep_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+	}
+	focuser {
+		name = "nSTEP";
+		additional_instances = true;
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Rigel Systems nSTEP");
+			FOCUSER_POSITION_ITEM->number.min = -999999;
+			FOCUSER_POSITION_ITEM->number.max = 999999;
+			FOCUSER_POSITION_ITEM->number.step = 1;
+			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
+		}
+		on_connect {
+			int speed = 0, position = 0;
+			bool temperature_present = true;
+			char phase = '0';
+			connection_result = nstep_temperature(device, &temperature_present);
+			if (connection_result && temperature_present) {
+				int coefficient = 0, steps = 0, backlash = 0;
+				char mode = '0';
+				connection_result = nstep_command(device, 4, ":RA") && nstep_integer(RESPONSE, -999, 999, &coefficient);
+				if (connection_result) {
+					connection_result = nstep_command(device, 3, ":RB") && nstep_integer(RESPONSE, 0, 999, &steps);
+				}
+				if (connection_result) {
+					connection_result = nstep_command(device, 1, ":RG") && (RESPONSE[0] == '0' || RESPONSE[0] == '1' || RESPONSE[0] == '2');
+					mode = RESPONSE[0];
+				}
+				if (connection_result) {
+					connection_result = nstep_command(device, 3, ":RE") && nstep_integer(RESPONSE, 0, 999, &backlash);
+				}
+				if (connection_result) {
+					double tt = coefficient / 10.0;
+					FOCUSER_COMPENSATION_ITEM->number.value = FOCUSER_COMPENSATION_ITEM->number.target = tt == 0 ? 0 : steps / tt;
+					FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = backlash;
+					indigo_set_switch(FOCUSER_MODE_PROPERTY, mode == '2' ? FOCUSER_MODE_AUTOMATIC_ITEM : FOCUSER_MODE_MANUAL_ITEM, true);
+				}
+			}
+			if (connection_result) {
+				connection_result = nstep_position(device, &position) && nstep_speed(device, &speed);
+			}
+			if (connection_result) {
+				connection_result = nstep_command(device, 1, ":RW") && (RESPONSE[0] == '0' || RESPONSE[0] == '1' || RESPONSE[0] == '2');
+				phase = RESPONSE[0];
+			}
+			if (connection_result) {
+				connection_result = nstep_command(device, 0, ":CC1") && nstep_command(device, 0, ":CS001#");
+			}
+			if (connection_result) {
+				PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
+				PRIVATE_DATA->stalled = 0;
+				FOCUSER_TEMPERATURE_PROPERTY->hidden = FOCUSER_COMPENSATION_PROPERTY->hidden = FOCUSER_MODE_PROPERTY->hidden = !temperature_present;
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = speed;
+				FOCUSER_POSITION_ITEM->number.value = position;
+				indigo_set_switch(X_FOCUSER_PHASE_WIRING_PROPERTY, phase == '2' ? X_FOCUSER_PHASE_WIRING_2_ITEM : (phase == '1' ? X_FOCUSER_PHASE_WIRING_1_ITEM : X_FOCUSER_PHASE_WIRING_0_ITEM), true);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+			} else {
+				nstep_close(device);
+			}
+		}
+		on_disconnect {
+			indigo_cancel_pending_handler(device, motion_finalizer);
+			if (PRIVATE_DATA->active || PRIVATE_DATA->uncertain) {
+				nstep_stop(device);
+			}
+			PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
+			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+		}
+		on_timer {
+			if (!PRIVATE_DATA->active && !FOCUSER_TEMPERATURE_PROPERTY->hidden) {
+				bool temperature_present = true;
+				FOCUSER_TEMPERATURE_PROPERTY->state = nstep_temperature(device, &temperature_present) && temperature_present ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+			}
+			if (!PRIVATE_DATA->active) {
+				int position = 0;
+				if (nstep_position(device, &position) && FOCUSER_POSITION_ITEM->number.value != position) {
+					FOCUSER_POSITION_ITEM->number.value = position;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				}
+			}
+			indigo_execute_handler_in(device, PRIVATE_DATA->active ? 0.5 : 5, focuser_timer_callback);
+		}
+		inherited FOCUSER_REVERSE_MOTION { hidden = true; }
+		inherited FOCUSER_TEMPERATURE { hidden = false; }
+		inherited FOCUSER_SPEED {
+			on_attach {
+				FOCUSER_SPEED_ITEM->number.min = 1;
+				FOCUSER_SPEED_ITEM->number.max = 254;
+				FOCUSER_SPEED_ITEM->number.step = 1;
+			}
+			on_change {
+				int requested = (int)FOCUSER_SPEED_ITEM->number.target;
+				if (!IS_CONNECTED || PRIVATE_DATA->active || PRIVATE_DATA->uncertain || !nstep_command(device, 0, ":CO%03d#", 255 - requested)) {
+					FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					FOCUSER_SPEED_ITEM->number.value = requested;
+				}
+			}
+		}
+		inherited FOCUSER_STEPS {
+			on_attach {
+				FOCUSER_STEPS_ITEM->number.min = 0;
+				FOCUSER_STEPS_ITEM->number.max = 999;
+				FOCUSER_STEPS_ITEM->number.step = 1;
+			}
+			on_change_request {
+				if (FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Abort is unfinished");
+					return INDIGO_OK;
+				}
+			}
+			on_change {
+				int steps = (int)FOCUSER_STEPS_ITEM->number.target;
+				int mode = X_FOCUSER_STEPPING_MODE_WAVE_ITEM->sw.value ? 0 : (X_FOCUSER_STEPPING_MODE_HALF_ITEM->sw.value ? 1 : 2);
+				if (!IS_CONNECTED || PRIVATE_DATA->active || PRIVATE_DATA->uncertain) {
+					nstep_motion_state(device, INDIGO_ALERT_STATE);
+				} else if (steps == 0) {
+					nstep_motion_state(device, INDIGO_OK_STATE);
+				} else if (nstep_command(device, 0, ":F%d%d%03d#", FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : 0, mode, steps)) {
+					PRIVATE_DATA->active = true;
+					PRIVATE_DATA->uncertain = false;
+					PRIVATE_DATA->stalled = 0;
+					nstep_motion_state(device, INDIGO_BUSY_STATE);
+					indigo_execute_handler_in(device, 0.5, motion_finalizer);
+				} else {
+					PRIVATE_DATA->uncertain = true;
+					nstep_motion_state(device, INDIGO_ALERT_STATE);
+				}
+			}
+		}
+		inherited FOCUSER_ABORT_MOTION {
+			on_change {
+				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+				if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+					indigo_cancel_pending_handler(device, focuser_steps_handler);
+					indigo_cancel_pending_handler(device, motion_finalizer);
+					PRIVATE_DATA->active = false;
+					if (IS_CONNECTED && nstep_stop(device)) {
+						PRIVATE_DATA->uncertain = false;
+						nstep_motion_state(device, INDIGO_OK_STATE);
+					} else {
+						PRIVATE_DATA->uncertain = true;
+						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+						nstep_motion_state(device, INDIGO_ALERT_STATE);
+					}
+				}
+				FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+				indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+			}
+		}
+		inherited FOCUSER_BACKLASH {
+			on_attach {
+				FOCUSER_BACKLASH_PROPERTY->hidden = false;
+				FOCUSER_BACKLASH_ITEM->number.min = 0;
+				FOCUSER_BACKLASH_ITEM->number.max = 999;
+				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = 0;
+			}
+			on_change {
+				if (!IS_CONNECTED || !nstep_command(device, 0, ":TB%03d#", (int)FOCUSER_BACKLASH_ITEM->number.target)) {
+					FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_COMPENSATION {
+			on_attach {
+				FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+			}
+			on_change {
+				int compensation = (int)FOCUSER_COMPENSATION_ITEM->number.target;
+				if (!IS_CONNECTED || !nstep_command(device, 0, compensation > 0 ? ":TT+010#:TS%03d#" : ":TT-010#:TS%03d#", compensation)) {
+					FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_MODE {
+			on_attach {
+				FOCUSER_MODE_PROPERTY->hidden = false;
+			}
+			on_change {
+				if (!IS_CONNECTED || !nstep_command(device, 0, FOCUSER_MODE_AUTOMATIC_ITEM->sw.value ? ":TA2:TC30#" : ":TA0")) {
+					FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		switch X_FOCUSER_STEPPING_MODE {
+			name = "X_FOCUSER_STEPPING_MODE";
+			group = FOCUSER_MAIN_GROUP;
+			label = "Stepping mode";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			on_change { }
+			item X_FOCUSER_STEPPING_MODE_WAVE {
+				name = "WAVE";
+				label = "Wave";
+				value = false;
+			}
+			item X_FOCUSER_STEPPING_MODE_HALF {
+				name = "HALF";
+				label = "Half";
+				value = false;
+			}
+			item X_FOCUSER_STEPPING_MODE_FULL {
+				name = "FULL";
+				label = "Full";
+				value = true;
+			}
+		}
+		switch X_FOCUSER_PHASE_WIRING {
+			name = "X_FOCUSER_PHASE_WIRING";
+			group = FOCUSER_MAIN_GROUP;
+			label = "Phase wiring";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			on_change {
+				int wiring = X_FOCUSER_PHASE_WIRING_1_ITEM->sw.value ? 1 : (X_FOCUSER_PHASE_WIRING_2_ITEM->sw.value ? 2 : 0);
+				if (!IS_CONNECTED || !nstep_command(device, 0, ":CW%d#", wiring)) {
+					X_FOCUSER_PHASE_WIRING_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_FOCUSER_PHASE_WIRING_0 {
+				name = "0";
+				label = "0";
+				value = true;
+			}
+			item X_FOCUSER_PHASE_WIRING_1 {
+				name = "1";
+				label = "1";
+				value = false;
+			}
+			item X_FOCUSER_PHASE_WIRING_2 {
+				name = "2";
+				label = "2";
+				value = false;
+			}
+		}
+	}
+}

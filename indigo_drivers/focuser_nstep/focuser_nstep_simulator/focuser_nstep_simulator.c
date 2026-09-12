@@ -17,38 +17,46 @@
 #include <signal.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
+#include "../../../indigo_test/simulator_common/serial_motion.h"
 
 typedef struct {
 	bool headless;
 	bool trace;
+	bool temperature_present;
 	const char *ready_file;
+	const char *event_file;
+	const char *fault_file;
 } simulator_options;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
-	.ready_file = NULL
+	.temperature_present = true,
+	.ready_file = NULL,
+	.event_file = NULL,
+	.fault_file = NULL
 };
 
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
 
-static int position = 50;
-static char tt_value[5] = "+000";
-static char ts_value[4] = "000";
-static char ta_value = '0';
-static char tb_value[4] = "000";
-static char tc_value[3] = "30";
-static char cw_value = '0';
+static char ra_value[5] = "+000";
+static char rb_value[4] = "000";
+static char rg_value = '0';
+static char re_value[4] = "000";
+static char rw_value = '0';
+static char ro_value[4] = "003";
 static char cs_value[4] = "001";
-static char co_value[4] = "003";
-static int moving_polls = 0;
+static serial_motion motion;
 
 static void usage(const char *name) {
 	printf("Rigel Systems nSTEP focuser simulator\n");
 	printf("Usage: %s [OPTIONS]\n", name);
 	printf("  --headless              Disable interactive output suitable for terminals\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
+	printf("  --event-file <path>     Append received commands and injected faults\n");
+	printf("  --fault-file <path>     Read one-shot fault injection commands\n");
+	printf("  --temperature absent    Report the optional sensor as absent\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
@@ -78,12 +86,118 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--event-file")) {
+			if (++i == argc) {
+				fprintf(stderr, "--event-file requires a path\n");
+				return false;
+			}
+			options.event_file = argv[i];
+		} else if (!strcmp(argv[i], "--fault-file")) {
+			if (++i == argc) {
+				fprintf(stderr, "--fault-file requires a path\n");
+				return false;
+			}
+			options.fault_file = argv[i];
+		} else if (!strcmp(argv[i], "--temperature")) {
+			if (++i == argc) {
+				fprintf(stderr, "--temperature requires present or absent\n");
+				return false;
+			}
+			if (!strcmp(argv[i], "present")) {
+				options.temperature_present = true;
+			} else if (!strcmp(argv[i], "absent")) {
+				options.temperature_present = false;
+			} else {
+				fprintf(stderr, "--temperature requires present or absent\n");
+				return false;
+			}
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
 		}
 	}
 	return true;
+}
+
+static void command_text(const char *command, int length, char *text, size_t size) {
+	if (length == 1 && command[0] == 0x06) {
+		snprintf(text, size, "ID");
+		return;
+	}
+	int used = 0;
+	for (int i = 0; i < length && used < (int)size - 1; i++) {
+		unsigned char c = (unsigned char)command[i];
+		if (c >= 32 && c < 127) {
+			text[used++] = (char)c;
+		} else if (used < (int)size - 4) {
+			used += snprintf(text + used, size - (size_t)used, "\\x%02X", c);
+		}
+	}
+	text[used] = 0;
+}
+
+static void append_event(const char *kind, const char *value) {
+	if (options.event_file == NULL) {
+		return;
+	}
+	FILE *events = fopen(options.event_file, "a");
+	if (events != NULL) {
+		fprintf(events, "%.6f %s %s\n", serial_motion_time(), kind, value);
+		fclose(events);
+	}
+}
+
+static bool command_matches_key(const char *text, const char *key) {
+	size_t key_length = strlen(key);
+	return key_length > 0 && !strncmp(text, key, key_length);
+}
+
+static bool consume_fault(const char *command, int length, char *action, size_t size) {
+	if (options.fault_file == NULL) {
+		return false;
+	}
+	FILE *file = fopen(options.fault_file, "r");
+	if (file == NULL) {
+		return false;
+	}
+	char key[64] = { 0 };
+	char requested[32] = { 0 };
+	int fields = fscanf(file, "%63s %31s", key, requested);
+	fclose(file);
+	if (fields != 2) {
+		return false;
+	}
+	char text[64];
+	command_text(command, length, text, sizeof(text));
+	if (!command_matches_key(text, key)) {
+		return false;
+	}
+	if (!strncmp(requested, "sticky_", 7)) {
+		snprintf(action, size, "%s", requested + 7);
+	} else {
+		unlink(options.fault_file);
+		snprintf(action, size, "%s", requested);
+	}
+	char event[128];
+	snprintf(event, sizeof(event), "%s:%s", key, requested);
+	append_event("FAULT", event);
+	return true;
+}
+
+static bool write_reply(int handle, const char *buffer, size_t length) {
+	if (options.trace) {
+		fprintf(stderr, "<- ");
+		for (size_t i = 0; i < length; i++) {
+			unsigned char c = (unsigned char)buffer[i];
+			if (c >= 32 && c < 127) {
+				fputc(c, stderr);
+			} else {
+				fprintf(stderr, "\\x%02X", c);
+			}
+		}
+		fprintf(stderr, "\n");
+	}
+	return serial_simulator_write_all(handle, buffer, length);
 }
 
 static bool sim_printf(int handle, const char *format, ...) {
@@ -100,26 +214,16 @@ static bool sim_printf(int handle, const char *format, ...) {
 	if ((size_t)length >= sizeof(buffer)) {
 		length = (int)sizeof(buffer) - 1;
 	}
-	if (options.trace) {
-		fprintf(stderr, "<- %s\n", buffer);
-	}
-	return serial_simulator_write_all(handle, buffer, (size_t)length);
+	return write_reply(handle, buffer, (size_t)length);
 }
 
 static void trace_command(const char *command, int length) {
-	if (!options.trace) {
-		return;
+	char text[64];
+	command_text(command, length, text, sizeof(text));
+	append_event("RX", text);
+	if (options.trace) {
+		fprintf(stderr, "-> %s\n", text);
 	}
-	fprintf(stderr, "-> ");
-	for (int i = 0; i < length; i++) {
-		unsigned char c = (unsigned char)command[i];
-		if (c >= 32 && c < 127) {
-			fputc(c, stderr);
-		} else {
-			fprintf(stderr, "\\x%02X", c);
-		}
-	}
-	fprintf(stderr, "\n");
 }
 
 static int read_exact(int handle, char *buffer, int length) {
@@ -232,60 +336,105 @@ static void copy_digits(char *target, size_t size, const char *source) {
 	target[size - 1] = '\0';
 }
 
+static bool dispatch_fault(int handle, const char *command, int length) {
+	char action[32];
+	if (!consume_fault(command, length, action, sizeof(action))) {
+		return false;
+	}
+	if (!strcmp(action, "silent")) {
+		return true;
+	}
+	if (!strcmp(action, "close")) {
+		running = 0;
+		close(handle);
+		serial_fd = -1;
+		return true;
+	}
+	if (!strcmp(action, "partial")) {
+		write_reply(handle, "x", 1);
+		return true;
+	}
+	if (!strcmp(action, "overlong")) {
+		if (length == 1 && command[0] == 0x06) {
+			write_reply(handle, "SX", 2);
+		} else if (length == 1 && command[0] == 'S') {
+			write_reply(handle, "0X", 2);
+		} else if (!strncmp(command, ":RT", 3)) {
+			write_reply(handle, "+275X", 5);
+		} else if (!strncmp(command, ":RP", 3)) {
+			write_reply(handle, "+000050X", 8);
+		} else if (!strncmp(command, ":RO", 3)) {
+			write_reply(handle, "003X", 4);
+		}
+		return true;
+	}
+	if (!strcmp(action, "malformed")) {
+		if (length == 1 && command[0] == 0x06) {
+			write_reply(handle, "x", 1);
+		} else if (length == 1 && command[0] == 'S') {
+			write_reply(handle, "?", 1);
+		} else if (!strncmp(command, ":RT", 3)) {
+			write_reply(handle, "abcd", 4);
+		} else if (!strncmp(command, ":RP", 3)) {
+			write_reply(handle, "abcdefg", 7);
+		} else if (!strncmp(command, ":RO", 3)) {
+			write_reply(handle, "xyz", 3);
+		}
+		return true;
+	}
+	if (!strcmp(action, "absent") && !strncmp(command, ":RT", 3)) {
+		write_reply(handle, "-888", 4);
+		return true;
+	}
+	return false;
+}
+
 static void dispatch_command(int handle, const char *command, int length) {
+	if (dispatch_fault(handle, command, length)) {
+		return;
+	}
 	if (length == 1 && command[0] == 0x06) {
 		sim_printf(handle, "S");
 	} else if (length == 1 && command[0] == 'S') {
-		if (moving_polls > 0) {
-			moving_polls--;
-			sim_printf(handle, "1");
-		} else {
-			sim_printf(handle, "0");
-		}
+		serial_motion_update(&motion);
+		sim_printf(handle, motion.duration > 0 ? "1" : "0");
 	} else if (!strncmp(command, ":RT", 3)) {
-		sim_printf(handle, "+275");
+		sim_printf(handle, options.temperature_present ? "+275" : "-888");
 	} else if (!strncmp(command, ":RA", 3)) {
-		serial_simulator_write_all(handle, tt_value, 4);
+		write_reply(handle, ra_value, 4);
 	} else if (!strncmp(command, ":RB", 3)) {
-		serial_simulator_write_all(handle, ts_value, 3);
+		write_reply(handle, rb_value, 3);
 	} else if (!strncmp(command, ":RG", 3)) {
-		serial_simulator_write_all(handle, &ta_value, 1);
-	} else if (!strncmp(command, ":RH", 3)) {
-		serial_simulator_write_all(handle, tc_value, 2);
+		write_reply(handle, &rg_value, 1);
 	} else if (!strncmp(command, ":RE", 3)) {
-		serial_simulator_write_all(handle, tb_value, 3);
+		write_reply(handle, re_value, 3);
 	} else if (!strncmp(command, ":RW", 3)) {
-		serial_simulator_write_all(handle, &cw_value, 1);
-	} else if (!strncmp(command, ":RS", 3)) {
-		serial_simulator_write_all(handle, cs_value, 3);
+		write_reply(handle, &rw_value, 1);
 	} else if (!strncmp(command, ":RO", 3)) {
-		serial_simulator_write_all(handle, co_value, 3);
+		write_reply(handle, ro_value, 3);
 	} else if (!strncmp(command, ":RP", 3)) {
-		sim_printf(handle, "%+07d", position);
+		sim_printf(handle, "%+07d", (int)(serial_motion_update(&motion) + 0.5));
 	} else if (!strncmp(command, ":CS", 3) && length >= 7) {
 		copy_digits(cs_value, sizeof(cs_value), command + 3);
 	} else if (!strncmp(command, ":CO", 3) && length >= 7) {
-		copy_digits(co_value, sizeof(co_value), command + 3);
+		copy_digits(ro_value, sizeof(ro_value), command + 3);
 	} else if (!strncmp(command, ":CW", 3) && length >= 4) {
-		cw_value = command[3];
+		rw_value = command[3];
 	} else if (!strncmp(command, ":TS", 3) && length >= 7) {
-		copy_digits(ts_value, sizeof(ts_value), command + 3);
+		copy_digits(rb_value, sizeof(rb_value), command + 3);
 	} else if (!strncmp(command, ":TT", 3) && length >= 8) {
-		copy_digits(tt_value, sizeof(tt_value), command + 3);
+		copy_digits(ra_value, sizeof(ra_value), command + 3);
 	} else if (!strncmp(command, ":TA", 3) && length >= 4) {
-		ta_value = command[3];
-	} else if (!strncmp(command, ":TC", 3) && length >= 6) {
-		copy_digits(tc_value, sizeof(tc_value), command + 3);
+		rg_value = command[3];
 	} else if (!strncmp(command, ":TB", 3) && length >= 7) {
-		copy_digits(tb_value, sizeof(tb_value), command + 3);
+		copy_digits(re_value, sizeof(re_value), command + 3);
+	} else if (!strncmp(command, ":F10000#", 8)) {
+		serial_motion_stop(&motion);
 	} else if (!strncmp(command, ":F", 2) && length >= 8) {
-		if (!strncmp(command, ":F10000#", 8)) {
-			moving_polls = 0;
-		} else {
-			int steps = (command[4] - '0') * 100 + (command[5] - '0') * 10 + command[6] - '0';
-			position += command[2] == '0' ? steps : -steps;
-			moving_polls = 2;
-		}
+		char steps_text[4] = { command[4], command[5], command[6], 0 };
+		int steps = atoi(steps_text);
+		int direction = command[2] == '1' ? -1 : 1;
+		serial_motion_start(&motion, motion.position + direction * steps, 80);
 	}
 }
 
@@ -299,6 +448,7 @@ int main(int argc, char *argv[]) {
 
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
+	serial_motion_sync(&motion, 50);
 
 	serial_fd = serial_simulator_open_pty(port, sizeof(port));
 	if (serial_fd < 0) {
