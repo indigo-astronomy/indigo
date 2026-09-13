@@ -38,7 +38,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION											0x0300002c
+#define DRIVER_VERSION											0x0300002d
 #define PRIVATE_DATA												((DRIVER_PRIVATE_DATA *)device->private_data)
 
 #define ADVANCED_GROUP											"Advanced"
@@ -736,10 +736,11 @@ static void wheel_connection_finalizer(indigo_device *device) {
 	}
 	int value = 0;
 	HRESULT result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FILTERWHEEL_POSITION), &value);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_FILTERWHEEL_POSITION) -> %08x, %d", result, value + 1);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "get_Option(OPTION_FILTERWHEEL_POSITION) -> %08x, %d", result, value + 1);
 	if (value == -1) {
 		indigo_execute_handler_in(device, 1, wheel_connection_finalizer);
 	} else {
+		PRIVATE_DATA->current_slot = PRIVATE_DATA->target_slot = value + 1;
 		WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = value + 1;
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
