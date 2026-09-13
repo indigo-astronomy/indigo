@@ -1,9 +1,9 @@
-// Copyright (c) 2016-2025 Rumen G. Bogdanovski
+// Copyright (c) 2016-2026 Rumen G. Bogdanovski
 // All rights reserved.
-//
-// You can use this software under the terms of 'INDIGO Astronomy
+
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-//
+
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,20 +16,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// version history
-// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
-
-/** INDIGO mount nexstar driver
- \file indigo_mount_nexstar.h
- */
+// This file generated from indigo_mount_nexstar.driver
 
 #ifndef mount_nexstar_h
 #define mount_nexstar_h
 
 #include <indigo/indigo_driver.h>
-#include <indigo/indigo_mount_driver.h>
-#include <indigo/indigo_guider_driver.h>
-#include <indigo/indigo_gps_driver.h>
 
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
@@ -45,19 +37,10 @@
 extern "C" {
 #endif
 
-#define MOUNT_NEXSTAR_NAME              "Mount Nexstar"
-#define MOUNT_NEXSTAR_GUIDER_NAME       "Mount Nexstar (guider)"
-#define MOUNT_NEXSTAR_GPS_NAME       		"Mount Nexstar (gps)"
-
-
-/** Create mount Nexstar device instance
- */
-
 INDIGO_EXTERN indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* mount_nexstar_h */
-
+#endif

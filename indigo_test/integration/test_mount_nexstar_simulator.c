@@ -21,11 +21,19 @@
 #include <indigo_drivers/mount_nexstar/indigo_mount_nexstar.h>
 
 #include "serial_simulator_test_common.h"
+#include "abort_queue_test_common.h"
 
 #ifndef MOUNT_NEXSTAR_SIMULATOR_EXECUTABLE
 #define MOUNT_NEXSTAR_SIMULATOR_EXECUTABLE "build/integration/mount_nexstar_simulator"
 #endif
 
+#define NEXSTAR_MOUNT_DEVICE_NAME        "Mount Nexstar"
+#define NEXSTAR_GUIDER_DEVICE_NAME       "Mount Nexstar (guider)"
+#define NEXSTAR_GPS_DEVICE_NAME          "Mount Nexstar (gps)"
+#define TRACKING_MODE_PROPERTY_NAME      "TRACKING_MODE"
+#define TRACKING_EQ_ITEM_NAME            "EQ"
+#define TRACKING_AA_ITEM_NAME            "AA"
+#define TRACKING_AUTO_ITEM_NAME          "AUTO"
 #define COMMAND_GUIDE_RATE_PROPERTY_NAME "COMMAND_GUIDE_RATE"
 #define GUIDE_50_ITEM_NAME               "GUIDE_50"
 #define GUIDE_100_ITEM_NAME              "GUIDE_100"
@@ -33,7 +41,7 @@
 static const simulator_driver_case nexstar_mount = {
 	"NexStar Mount",
 	"indigo_mount_nexstar",
-	MOUNT_NEXSTAR_NAME,
+	NEXSTAR_MOUNT_DEVICE_NAME,
 	indigo_mount_nexstar,
 	false,
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
@@ -42,7 +50,16 @@ static const simulator_driver_case nexstar_mount = {
 static const simulator_driver_case nexstar_guider = {
 	"NexStar Mount (guider)",
 	"indigo_mount_nexstar",
-	MOUNT_NEXSTAR_GUIDER_NAME,
+	NEXSTAR_GUIDER_DEVICE_NAME,
+	indigo_mount_nexstar,
+	false,
+	NULL, 0, NULL, 0, NULL, 0, NULL, 0
+};
+
+static const simulator_driver_case nexstar_gps = {
+	"NexStar Mount (gps)",
+	"indigo_mount_nexstar",
+	NEXSTAR_GPS_DEVICE_NAME,
 	indigo_mount_nexstar,
 	false,
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
@@ -53,7 +70,99 @@ static bool start_nexstar_simulator(external_serial_simulator *simulator, const 
 	return start_external_serial_simulator_with_args(simulator, MOUNT_NEXSTAR_SIMULATOR_EXECUTABLE, arguments);
 }
 
-static bool connect_nexstar_mount_with_dialect(const char *dialect, const char *expected_vendor) {
+static bool start_nexstar_simulator_unaligned(external_serial_simulator *simulator) {
+	const char *arguments[] = { "--dialect", "celestron", "--unaligned", NULL };
+	return start_external_serial_simulator_with_args(simulator, MOUNT_NEXSTAR_SIMULATOR_EXECUTABLE, arguments);
+}
+
+static bool start_nexstar_simulator_model(external_serial_simulator *simulator, const char *model_id) {
+	const char *arguments[] = { "--dialect", "celestron", "--model-id", model_id, NULL };
+	return start_external_serial_simulator_with_args(simulator, MOUNT_NEXSTAR_SIMULATOR_EXECUTABLE, arguments);
+}
+
+static bool start_nexstar_simulator_hc(external_serial_simulator *simulator, const char *hc_type) {
+	const char *arguments[] = { "--dialect", "celestron", "--hc-type", hc_type, NULL };
+	return start_external_serial_simulator_with_args(simulator, MOUNT_NEXSTAR_SIMULATOR_EXECUTABLE, arguments);
+}
+
+static bool wait_for_text_item_value(const char *property_name, const char *item_name, const char *value) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *item = find_cached_item(property_name, item_name);
+		if (item != NULL && !strcmp(item->text.value, value)) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static bool wait_for_property_state_long(const char *property_name, indigo_property_state state) {
+	for (int i = 0; i < 300; i++) {
+		indigo_property *property = find_cached_property(property_name);
+		if (property != NULL && property->state == state) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static bool wait_for_switch_item_value(const char *property_name, const char *item_name, bool value) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *item = find_cached_item(property_name, item_name);
+		if (item != NULL && item->sw.value == value) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static bool wait_for_light_item_value(const char *property_name, const char *item_name, indigo_property_state value) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *item = find_cached_item(property_name, item_name);
+		if (item != NULL && item->light.value == value) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static bool wait_for_coordinate_value_change(double initial_ra, double initial_dec, double tolerance) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *ra_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+		indigo_item *dec_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+		if (ra_item != NULL && dec_item != NULL && (fabs(ra_item->number.value - initial_ra) > tolerance || fabs(dec_item->number.value - initial_dec) > tolerance)) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static void assert_nexstar_mount_properties(void) {
+	static const char *properties[] = {
+		MOUNT_INFO_PROPERTY_NAME,
+		GEOGRAPHIC_COORDINATES_PROPERTY_NAME,
+		UTC_TIME_PROPERTY_NAME,
+		MOUNT_SET_HOST_TIME_PROPERTY_NAME,
+		MOUNT_SLEW_RATE_PROPERTY_NAME,
+		MOUNT_MOTION_DEC_PROPERTY_NAME,
+		MOUNT_MOTION_RA_PROPERTY_NAME,
+		MOUNT_TRACKING_PROPERTY_NAME,
+		MOUNT_GUIDE_RATE_PROPERTY_NAME,
+		MOUNT_ON_COORDINATES_SET_PROPERTY_NAME,
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME,
+		MOUNT_ABORT_MOTION_PROPERTY_NAME,
+		MOUNT_PARK_PROPERTY_NAME,
+		MOUNT_PARK_POSITION_PROPERTY_NAME,
+		MOUNT_SIDE_OF_PIER_PROPERTY_NAME
+	};
+	assert_defined_properties(properties, ARRAY_SIZE(properties));
+}
+
+static bool connect_nexstar_mount_with_dialect(const char *dialect, const char *expected_vendor, const char *expected_model) {
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
 	bool ok = false;
@@ -67,8 +176,8 @@ static bool connect_nexstar_mount_with_dialect(const char *dialect, const char *
 	assert_property_has_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_VENDOR_ITEM_NAME);
 	assert_property_has_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME);
 	assert_property_has_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME);
-	indigo_item *vendor = find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_VENDOR_ITEM_NAME);
-	SERIAL_CHECK_TRUE(vendor != NULL && !strcmp(vendor->text.value, expected_vendor));
+	SERIAL_CHECK_TRUE(wait_for_text_item_value(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_VENDOR_ITEM_NAME, expected_vendor));
+	SERIAL_CHECK_TRUE(wait_for_text_item_value(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, expected_model));
 	ok = true;
 
 cleanup:
@@ -84,8 +193,8 @@ cleanup:
 }
 
 static void nexstar_mount_connects_both_protocol_dialects(void) {
-	SERIAL_CHECK_TRUE(connect_nexstar_mount_with_dialect("celestron", "Celestron"));
-	SERIAL_CHECK_TRUE(connect_nexstar_mount_with_dialect("skywatcher", "Sky-Watcher"));
+	SERIAL_CHECK_TRUE(connect_nexstar_mount_with_dialect("celestron", "Celestron", "Advanced VX"));
+	SERIAL_CHECK_TRUE(connect_nexstar_mount_with_dialect("skywatcher", "Sky-Watcher", "EQ6 Series"));
 
 cleanup:
 	return;
@@ -96,6 +205,34 @@ static void nexstar_celestron_mount_passes_serial_compliance_checks(void) {
 		MOUNT_GUIDE_RATE_RA_ITEM_NAME,
 		MOUNT_GUIDE_RATE_DEC_ITEM_NAME
 	};
+	static const char *tracking_items[] = {
+		MOUNT_TRACKING_ON_ITEM_NAME,
+		MOUNT_TRACKING_OFF_ITEM_NAME
+	};
+	static const char *motion_ra_items[] = {
+		MOUNT_MOTION_WEST_ITEM_NAME,
+		MOUNT_MOTION_EAST_ITEM_NAME
+	};
+	static const char *motion_dec_items[] = {
+		MOUNT_MOTION_NORTH_ITEM_NAME,
+		MOUNT_MOTION_SOUTH_ITEM_NAME
+	};
+	static const char *park_items[] = {
+		MOUNT_PARK_PARKED_ITEM_NAME,
+		MOUNT_PARK_UNPARKED_ITEM_NAME
+	};
+	static const char *side_of_pier_items[] = {
+		MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME,
+		MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME
+	};
+	const char *guide_items[] = {
+		MOUNT_GUIDE_RATE_RA_ITEM_NAME,
+		MOUNT_GUIDE_RATE_DEC_ITEM_NAME
+	};
+	double guide_values[] = {
+		50,
+		60
+	};
 	external_serial_simulator simulator = { 0 };
 
 	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
@@ -103,21 +240,26 @@ static void nexstar_celestron_mount_passes_serial_compliance_checks(void) {
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
 
 	assert_device_interface(INDIGO_INTERFACE_MOUNT);
+	assert_nexstar_mount_properties();
 	assert_property_has_items(MOUNT_GUIDE_RATE_PROPERTY_NAME, guide_rate_items, ARRAY_SIZE(guide_rate_items));
-	assert_property_has_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
-	assert_property_has_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
-	assert_property_has_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME);
-	assert_property_has_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME);
+	assert_property_has_items(MOUNT_TRACKING_PROPERTY_NAME, tracking_items, ARRAY_SIZE(tracking_items));
+	assert_property_has_items(MOUNT_MOTION_RA_PROPERTY_NAME, motion_ra_items, ARRAY_SIZE(motion_ra_items));
+	assert_property_has_items(MOUNT_MOTION_DEC_PROPERTY_NAME, motion_dec_items, ARRAY_SIZE(motion_dec_items));
+	assert_property_has_items(MOUNT_PARK_PROPERTY_NAME, park_items, ARRAY_SIZE(park_items));
+	assert_property_has_items(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, side_of_pier_items, ARRAY_SIZE(side_of_pier_items));
 	assert_property_has_item(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME);
 
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, nexstar_mount.device_name, MOUNT_GUIDE_RATE_PROPERTY_NAME, ARRAY_SIZE(guide_items), guide_items, guide_values));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_GUIDE_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50, 1));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 60, 1));
 
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
 
 cleanup:
 	if (context.connected) {
@@ -126,7 +268,277 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static void nexstar_nexstar_hc_sets_time_and_location(void) {
+	const char *location_items[] = {
+		GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME,
+		GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME
+	};
+	double location_values[] = {
+		49,
+		18
+	};
+	external_serial_simulator simulator = { 0 };
+
+	SERIAL_CHECK_TRUE(start_nexstar_simulator_hc(&simulator, "nexstar"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+
+	assert_property_has_item(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME);
+	assert_property_has_item(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME);
+	assert_property_has_item(UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME);
+	assert_property_has_item(MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME);
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, nexstar_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(location_items), location_items, location_values));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 49, 0.1));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 18, 0.1));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&simulator_test_client, nexstar_mount.device_name, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME, "2026-09-13T12:34:56"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(UTC_TIME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_SET_HOST_TIME_PROPERTY_NAME, INDIGO_OK_STATE));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void nexstar_mount_tracks_syncs_and_aborts_coordinate_changes(void) {
+	const char *coordinate_items[] = {
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME,
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME
+	};
+	double sync_values[] = {
+		3,
+		20
+	};
+	double goto_values[] = {
+		5,
+		35
+	};
+	double abort_values[] = {
+		7,
+		45
+	};
+	external_serial_simulator simulator = { 0 };
+	double initial_ra = 0;
+	double initial_dec = 0;
+
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	indigo_item *ra_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	indigo_item *dec_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(ra_item != NULL && dec_item != NULL);
+	initial_ra = ra_item->number.value;
+	initial_dec = dec_item->number.value;
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, nexstar_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(coordinate_items), coordinate_items, sync_values));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_coordinate_value_change(initial_ra, initial_dec, 0.001));
+
+	ra_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	dec_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(ra_item != NULL && dec_item != NULL);
+	initial_ra = ra_item->number.value;
+	initial_dec = dec_item->number.value;
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, nexstar_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(coordinate_items), coordinate_items, goto_values));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_coordinate_value_change(initial_ra, initial_dec, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, nexstar_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(coordinate_items), coordinate_items, abort_values));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void nexstar_mount_rejects_coordinates_when_unaligned(void) {
+	const char *coordinate_items[] = {
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME,
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME
+	};
+	double coordinate_values[] = {
+		3,
+		30
+	};
+	external_serial_simulator simulator = { 0 };
+
+	SERIAL_CHECK_TRUE(start_nexstar_simulator_unaligned(&simulator));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, nexstar_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(coordinate_items), coordinate_items, coordinate_values));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void nexstar_mount_moves_manually_and_parks(void) {
+	const char *park_position_items[] = {
+		MOUNT_PARK_POSITION_HA_ITEM_NAME,
+		MOUNT_PARK_POSITION_DEC_ITEM_NAME
+	};
+	double park_position_values[] = {
+		0,
+		30
+	};
+	external_serial_simulator simulator = { 0 };
+	double initial_ra = 0;
+	double initial_dec = 0;
+
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	indigo_item *ra_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	indigo_item *dec_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(ra_item != NULL && dec_item != NULL);
+	initial_ra = ra_item->number.value;
+	initial_dec = dec_item->number.value;
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_SLEW_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_RA_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_coordinate_value_change(initial_ra, initial_dec, 0.001));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false));
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, nexstar_mount.device_name, MOUNT_PARK_POSITION_PROPERTY_NAME, ARRAY_SIZE(park_position_items), park_position_items, park_position_values));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void nexstar_mount_aborts_queued_park(void) {
+	external_serial_simulator simulator = { 0 };
+
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(check_queued_abort(nexstar_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, 0, true, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void nexstar_tracking_mode_is_exposed_for_altaz_models(void) {
+	static const char *tracking_mode_items[] = {
+		TRACKING_EQ_ITEM_NAME,
+		TRACKING_AA_ITEM_NAME,
+		TRACKING_AUTO_ITEM_NAME
+	};
+	external_serial_simulator simulator = { 0 };
+
+	SERIAL_CHECK_TRUE(start_nexstar_simulator_model(&simulator, "12"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	assert_property_has_items(TRACKING_MODE_PROPERTY_NAME, tracking_mode_items, ARRAY_SIZE(tracking_mode_items));
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, TRACKING_MODE_PROPERTY_NAME, TRACKING_AA_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(TRACKING_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(TRACKING_MODE_PROPERTY_NAME, TRACKING_AA_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void nexstar_celestron_gps_device_reports_fix(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	bool mount_connected = false;
+	bool gps_connected = false;
+
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&nexstar_mount));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&nexstar_mount, simulator.port));
+	mount_connected = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&nexstar_gps, NULL));
+	gps_connected = true;
+
+	assert_device_interface(INDIGO_INTERFACE_GPS);
+	assert_property_has_item(GPS_STATUS_PROPERTY_NAME, GPS_STATUS_3D_FIX_ITEM_NAME);
+	assert_property_has_item(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME);
+	assert_property_has_item(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME);
+	assert_property_has_item(UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME);
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(GPS_STATUS_PROPERTY_NAME, GPS_STATUS_3D_FIX_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(UTC_TIME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_text_item_value(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, "1.2"));
+
+cleanup:
+	if (gps_connected) {
+		disconnect_serial_device(&nexstar_gps);
+		context.connected = false;
+	}
+	if (mount_connected) {
+		disconnect_serial_device(&nexstar_mount);
+	}
+	if (driver_started) {
+		tear_down_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void nexstar_celestron_guider_passes_serial_compliance_checks(void) {
+	static const char *guide_pulse_dec_items[] = {
+		GUIDER_GUIDE_NORTH_ITEM_NAME,
+		GUIDER_GUIDE_SOUTH_ITEM_NAME
+	};
+	static const char *guide_pulse_ra_items[] = {
+		GUIDER_GUIDE_EAST_ITEM_NAME,
+		GUIDER_GUIDE_WEST_ITEM_NAME
+	};
+	static const char *command_guide_rate_items[] = {
+		GUIDE_50_ITEM_NAME,
+		GUIDE_100_ITEM_NAME
+	};
 	external_serial_simulator simulator = { 0 };
 
 	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
@@ -134,17 +546,29 @@ static void nexstar_celestron_guider_passes_serial_compliance_checks(void) {
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
 
 	assert_device_interface(INDIGO_INTERFACE_GUIDER);
-	assert_property_has_item(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME);
-	assert_property_has_item(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME);
-	assert_property_has_item(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME);
-	assert_property_has_item(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME);
-	assert_property_has_item(COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDE_50_ITEM_NAME);
-	assert_property_has_item(COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDE_100_ITEM_NAME);
+	assert_property_has_items(GUIDER_GUIDE_DEC_PROPERTY_NAME, guide_pulse_dec_items, ARRAY_SIZE(guide_pulse_dec_items));
+	assert_property_has_items(GUIDER_GUIDE_RA_PROPERTY_NAME, guide_pulse_ra_items, ARRAY_SIZE(guide_pulse_ra_items));
+	assert_property_has_items(COMMAND_GUIDE_RATE_PROPERTY_NAME, command_guide_rate_items, ARRAY_SIZE(command_guide_rate_items));
 
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_guider.device_name, COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDE_100_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(COMMAND_GUIDE_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDE_100_ITEM_NAME, true));
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 300));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_RA_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 0, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 0, 0.001));
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_RA_PROPERTY_NAME));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 0, 0.001));
 
 cleanup:
 	if (context.connected) {
@@ -157,6 +581,13 @@ int main(void) {
 	const indigo_test_case tests[] = {
 		{ "nexstar_mount_connects_both_protocol_dialects", nexstar_mount_connects_both_protocol_dialects },
 		{ "nexstar_celestron_mount_passes_serial_compliance_checks", nexstar_celestron_mount_passes_serial_compliance_checks },
+		{ "nexstar_nexstar_hc_sets_time_and_location", nexstar_nexstar_hc_sets_time_and_location },
+		{ "nexstar_mount_tracks_syncs_and_aborts_coordinate_changes", nexstar_mount_tracks_syncs_and_aborts_coordinate_changes },
+		{ "nexstar_mount_rejects_coordinates_when_unaligned", nexstar_mount_rejects_coordinates_when_unaligned },
+		{ "nexstar_mount_moves_manually_and_parks", nexstar_mount_moves_manually_and_parks },
+		{ "nexstar_mount_aborts_queued_park", nexstar_mount_aborts_queued_park },
+		{ "nexstar_tracking_mode_is_exposed_for_altaz_models", nexstar_tracking_mode_is_exposed_for_altaz_models },
+		{ "nexstar_celestron_gps_device_reports_fix", nexstar_celestron_gps_device_reports_fix },
 		{ "nexstar_celestron_guider_passes_serial_compliance_checks", nexstar_celestron_guider_passes_serial_compliance_checks }
 	};
 	return indigo_run_tests("NexStar mount serial simulator integration tests", tests, ARRAY_SIZE(tests));
