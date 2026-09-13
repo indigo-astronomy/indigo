@@ -496,6 +496,19 @@ static void abort_dispatch_uses_urgent_priority(void) {
 	}
 }
 
+static void polaralign_device_generation(void) {
+	const char *definition = "driver architecture_test {\nlabel = \"Polar align test\";\nauthor = \"INDIGO tests\";\ncopyright = \"INDIGO tests\";\nversion = 1;\npolaralign { name = \"Polar align test device\"; }\n}\n";
+	ASSERT_TRUE(write_text(DEFINITION, definition));
+	char *arguments[] = { TEST_GENERATOR, DEFINITION, NULL };
+	ASSERT_TRUE(run(arguments));
+	char generated[65536];
+	ASSERT_TRUE(read_text("indigo_polaralign_architecture_test.c", generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "#include <indigo/indigo_polaralign_driver.h>") != NULL);
+	ASSERT_TRUE(strstr(generated, "indigo_polaralign_attach(device, DRIVER_NAME") != NULL);
+	ASSERT_TRUE(strstr(generated, "indigo_polaralign_change_property(device, client, property)") != NULL);
+	ASSERT_TRUE(strstr(generated, "indigo_polaralign_detach(device)") != NULL);
+}
+
 
 static void usb_registration_reverse_extraction(void) {
 	const char *events[] = { "LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT", "(libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT)" };
@@ -601,6 +614,7 @@ int main(void) {
 		return 1;
 	}
 	const indigo_test_case tests[] = {
+		{ "Polar Aligner device keyword and base-driver lifecycle generation", polaralign_device_generation },
 		{ "SDK startup discovery without hot-plug", sdk_startup_discovery_without_hotplug },
 		{ "C++ output selection, C linkage, extraction and unchanged C default", cpp_output_selection_and_extraction },
 		{ "Generated transport scaffolding compiles as C11 and C++11", generated_code_compiles_as_c_and_cpp },

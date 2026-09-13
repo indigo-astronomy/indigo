@@ -759,11 +759,11 @@ bool parse_property_block(device_type *device, property_type **properties) {
 }
 
 bool parse_device_block(driver_type *driver) {
-	if (!(match(TOKEN_IDENTIFIER, "ccd") || match(TOKEN_IDENTIFIER, "wheel") || match(TOKEN_IDENTIFIER, "focuser") || match(TOKEN_IDENTIFIER, "mount") || match(TOKEN_IDENTIFIER, "guider") || match(TOKEN_IDENTIFIER, "rotator") || match(TOKEN_IDENTIFIER, "dome") || match(TOKEN_IDENTIFIER, "gps") || match(TOKEN_IDENTIFIER, "ao") || match(TOKEN_IDENTIFIER, "aux"))) {
+	if (!(match(TOKEN_IDENTIFIER, "ccd") || match(TOKEN_IDENTIFIER, "wheel") || match(TOKEN_IDENTIFIER, "focuser") || match(TOKEN_IDENTIFIER, "mount") || match(TOKEN_IDENTIFIER, "guider") || match(TOKEN_IDENTIFIER, "rotator") || match(TOKEN_IDENTIFIER, "dome") || match(TOKEN_IDENTIFIER, "gps") || match(TOKEN_IDENTIFIER, "ao") || match(TOKEN_IDENTIFIER, "aux") || match(TOKEN_IDENTIFIER, "polaralign"))) {
 		return false;
 	}
 	device_type *device = allocate(sizeof(device_type));
-	char type[8];
+	char type[16];
 	copy(type, sizeof(type));
 	make_lower_case(type);
 	snprintf(device->type, sizeof(device->type), "%s", type);

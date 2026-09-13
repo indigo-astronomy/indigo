@@ -2672,6 +2672,7 @@
 		59910B4D3056040000FB1C2F /* indigo_focuser_robofocus.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_robofocus.driver; sourceTree = "<group>"; };
 		59910B4E305696BA00FB1C2F /* indigo_mount_nexstar.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_mount_nexstar.driver; sourceTree = "<group>"; };
 		59910B4F305696D100FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		59910B503056CA2300FB1C2F /* indigo_polaralign_simulator.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_polaralign_simulator.driver; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -5488,16 +5489,17 @@
 		C0DE20260911000900000001 /* test_ccd_ssg_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_ssg_sdk.c; sourceTree = "<group>"; };
 		C0DE20260911000A00000001 /* test_ccd_svb2_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_svb2_sdk.c; sourceTree = "<group>"; };
 		C0DE20260912000100000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260912000100000002 /* test_ccd_qhy_sdk.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = test_ccd_qhy_sdk.cpp; sourceTree = "<group>"; };
+		C0DE20260912000100000003 /* indigo_ccd_qhy.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_qhy.driver; sourceTree = "<group>"; };
+		C0DE20260912000100000005 /* test_ccd_qhy_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_qhy_hw.c; sourceTree = "<group>"; };
 		C0DE20260913000100000001 /* AGENTS.override.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENTS.override.md; sourceTree = "<group>"; };
+		C0DE20260913000100000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913000200000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913000300000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913000400000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913000500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913000600000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913AA5500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
-		C0DE20260912000100000002 /* test_ccd_qhy_sdk.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = test_ccd_qhy_sdk.cpp; sourceTree = "<group>"; };
-		C0DE20260912000100000003 /* indigo_ccd_qhy.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_qhy.driver; sourceTree = "<group>"; };
-		C0DE20260912000100000005 /* test_ccd_qhy_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_qhy_hw.c; sourceTree = "<group>"; };
 		C0DE26060912F10000000000 /* Origin678C.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = Origin678C.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000001 /* QHY26800A.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY26800A.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000002 /* QHY585.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY585.img; sourceTree = "<group>"; };
@@ -10817,9 +10819,11 @@
 			isa = PBXGroup;
 			children = (
 				59D07D4D2F813F780011F92A /* README.md */,
+				C0DE20260913000100000002 /* REFACTOR.md */,
 				59D07D4A2F813F780011F92A /* indigo_polaralign_simulator.h */,
 				59D07D4B2F813F780011F92A /* indigo_polaralign_simulator.c */,
 				59D07D4C2F813F780011F92A /* indigo_polaralign_simulator_main.c */,
+				59910B503056CA2300FB1C2F /* indigo_polaralign_simulator.driver */,
 			);
 			path = polaralign_simulator;
 			sourceTree = "<group>";

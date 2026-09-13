@@ -36,9 +36,9 @@ static const char *polaralign_connected_properties[] = {
 static const simulator_driver_case polaralign_simulator = {
 	"Polar Aligner Simulator",
 	"indigo_polaralign_simulator",
-	SIMULATOR_POLARALIGN_NAME,
+	"Polar Aligner Simulator",
 	indigo_polaralign_simulator,
-	true,
+	false,
 	base_properties_with_instances,
 	ARRAY_SIZE(base_properties_with_instances),
 	hidden_base_properties,
@@ -82,6 +82,49 @@ static void set_polaralign_offset(double altitude, double azimuth, indigo_proper
 	};
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, polaralign_simulator.device_name, POLARALIGN_OFFSET_PROPERTY_NAME, ARRAY_SIZE(items), items, values));
 	ASSERT_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, expected_state));
+}
+
+static void change_polaralign_offset(double altitude, double azimuth) {
+	const char *items[] = { POLARALIGN_OFFSET_ALT_ITEM_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME };
+	double values[] = { altitude, azimuth };
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, polaralign_simulator.device_name, POLARALIGN_OFFSET_PROPERTY_NAME, ARRAY_SIZE(items), items, values));
+}
+
+static double cached_number_target(const char *property_name, const char *item_name) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	return item == NULL ? NAN : item->number.target;
+}
+
+static bool wait_for_update_after(int previous_count) {
+	for (int i = 0; i < 100; i++) {
+		if (atomic_load(&context.update_count) > previous_count) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static bool wait_for_axis_progress(const char *item_name, double initial_value, double target_value) {
+	for (int i = 0; i < 100; i++) {
+		double value = cached_number_value(POLARALIGN_OFFSET_PROPERTY_NAME, item_name);
+		if (fabs(value - initial_value) > 0.001 && fabs(value - target_value) > 0.001) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static bool wait_for_switch_value(const char *property_name, const char *item_name, bool value) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *item = find_cached_item(property_name, item_name);
+		if (item != NULL && item->sw.value == value) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
 }
 
 static void simulator_passes_polaralign_compliance_checks(void) {
@@ -215,13 +258,160 @@ cleanup:
 	stop_serial_driver(&polaralign_simulator);
 }
 
+static void simulator_reports_axis_progress_and_rejects_overlap(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&polaralign_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&polaralign_simulator, NULL));
+	int updates = atomic_load(&context.update_count);
+	change_polaralign_offset(0, 0);
+	SERIAL_CHECK_TRUE(wait_for_update_after(updates));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_OK_STATE));
+	change_polaralign_offset(2, 0);
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_axis_progress(POLARALIGN_OFFSET_ALT_ITEM_NAME, 0, 2));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME, 0, 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_OK_STATE));
+	change_polaralign_offset(2, -2);
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_axis_progress(POLARALIGN_OFFSET_AZ_ITEM_NAME, 0, -2));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_ALT_ITEM_NAME, 2, 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_OK_STATE));
+	change_polaralign_offset(-2, 2);
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_axis_progress(POLARALIGN_OFFSET_ALT_ITEM_NAME, 2, -2));
+	SERIAL_CHECK_TRUE(wait_for_axis_progress(POLARALIGN_OFFSET_AZ_ITEM_NAME, -2, 2));
+	change_polaralign_offset(7, -7);
+	SERIAL_CHECK_TRUE(fabs(cached_number_target(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_ALT_ITEM_NAME) - -2) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_target(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME) - 2) < 0.001);
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_ALT_ITEM_NAME, -2, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME, 2, 0.001));
+cleanup:
+	stop_serial_driver(&polaralign_simulator);
+}
+
+static void simulator_urgent_abort_cancels_pending_and_running_motion(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&polaralign_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&polaralign_simulator, NULL));
+	change_polaralign_offset(8, -8);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, polaralign_simulator.device_name, POLARALIGN_ABORT_MOTION_PROPERTY_NAME, POLARALIGN_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(POLARALIGN_ABORT_MOTION_PROPERTY_NAME, POLARALIGN_ABORT_MOTION_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(fabs(cached_number_target(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_ALT_ITEM_NAME) - cached_number_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_ALT_ITEM_NAME)) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_target(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME) - cached_number_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME)) < 0.001);
+	change_polaralign_offset(4, -4);
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_axis_progress(POLARALIGN_OFFSET_ALT_ITEM_NAME, 0, 4));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, polaralign_simulator.device_name, POLARALIGN_ABORT_MOTION_PROPERTY_NAME, POLARALIGN_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	double stopped_altitude = cached_number_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_ALT_ITEM_NAME);
+	double stopped_azimuth = cached_number_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME);
+	indigo_usleep(500000);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_ALT_ITEM_NAME) - stopped_altitude) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME) - stopped_azimuth) < 0.001);
+	int updates = atomic_load(&context.update_count);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, polaralign_simulator.device_name, POLARALIGN_ABORT_MOTION_PROPERTY_NAME, POLARALIGN_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_update_after(updates));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	change_polaralign_offset(1, -1);
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_ALT_ITEM_NAME, 1, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME, -1, 0.001));
+cleanup:
+	stop_serial_driver(&polaralign_simulator);
+}
+
+static void simulator_disconnect_cancels_motion_and_allows_recovery(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&polaralign_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&polaralign_simulator, NULL));
+	change_polaralign_offset(8, -8);
+	disconnect_serial_device(&polaralign_simulator);
+	SERIAL_CHECK_TRUE(wait_for_simulator_connection_state(false));
+	int updates = atomic_load(&context.update_count);
+	indigo_usleep(500000);
+	SERIAL_CHECK_EQ_INT(updates, atomic_load(&context.update_count));
+	SERIAL_CHECK_TRUE(connect_serial_device(&polaralign_simulator, NULL));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_target(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_ALT_ITEM_NAME) - cached_number_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_ALT_ITEM_NAME)) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_target(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME) - cached_number_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME)) < 0.001);
+	change_polaralign_offset(1, 1);
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_ALT_ITEM_NAME, 1, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME, 1, 0.001));
+cleanup:
+	stop_serial_driver(&polaralign_simulator);
+}
+
+static void simulator_serializes_both_reset_orders_during_motion(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&polaralign_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&polaralign_simulator, NULL));
+	change_polaralign_offset(3, -3);
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_axis_progress(POLARALIGN_OFFSET_ALT_ITEM_NAME, 0, 3));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, polaralign_simulator.device_name, POLARALIGN_RESET_POSITION_ALT_PROPERTY_NAME, POLARALIGN_RESET_POSITION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_RESET_POSITION_ALT_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(POLARALIGN_RESET_POSITION_ALT_PROPERTY_NAME, POLARALIGN_RESET_POSITION_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_ALT_ITEM_NAME, 0, 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME, -3, 0));
+	change_polaralign_offset(-3, 3);
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_axis_progress(POLARALIGN_OFFSET_AZ_ITEM_NAME, -3, 3));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, polaralign_simulator.device_name, POLARALIGN_RESET_POSITION_AZ_PROPERTY_NAME, POLARALIGN_RESET_POSITION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_RESET_POSITION_AZ_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(POLARALIGN_RESET_POSITION_AZ_PROPERTY_NAME, POLARALIGN_RESET_POSITION_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_ALT_ITEM_NAME, -3, 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME, 0, 0));
+cleanup:
+	stop_serial_driver(&polaralign_simulator);
+}
+
+static void simulator_accepts_settings_and_reports_readback(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&polaralign_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&polaralign_simulator, NULL));
+	const char *step_items[] = { POLARALIGN_STEPS_PER_DEGREE_ALT_ITEM_NAME, POLARALIGN_STEPS_PER_DEGREE_AZ_ITEM_NAME };
+	double steps[] = { 720, 1440 };
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, polaralign_simulator.device_name, POLARALIGN_STEPS_PER_DEGREE_PROPERTY_NAME, ARRAY_SIZE(step_items), step_items, steps));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_STEPS_PER_DEGREE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_STEPS_PER_DEGREE_PROPERTY_NAME, step_items[0], steps[0], 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_STEPS_PER_DEGREE_PROPERTY_NAME, step_items[1], steps[1], 0));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, polaralign_simulator.device_name, POLARALIGN_DIRECTION_ALT_PROPERTY_NAME, POLARALIGN_DIRECTION_REVERSED_ITEM_NAME, true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, polaralign_simulator.device_name, POLARALIGN_DIRECTION_AZ_PROPERTY_NAME, POLARALIGN_DIRECTION_REVERSED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(POLARALIGN_DIRECTION_ALT_PROPERTY_NAME, POLARALIGN_DIRECTION_REVERSED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(POLARALIGN_DIRECTION_AZ_PROPERTY_NAME, POLARALIGN_DIRECTION_REVERSED_ITEM_NAME, true));
+	const char *limit_items[] = { POLARALIGN_LIMITS_MIN_POSITION_ALT_ITEM_NAME, POLARALIGN_LIMITS_MAX_POSITION_ALT_ITEM_NAME, POLARALIGN_LIMITS_MIN_POSITION_AZ_ITEM_NAME, POLARALIGN_LIMITS_MAX_POSITION_AZ_ITEM_NAME };
+	double limits[] = { -12, 34, -56, 78 };
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, polaralign_simulator.device_name, POLARALIGN_LIMITS_PROPERTY_NAME, ARRAY_SIZE(limit_items), limit_items, limits));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_LIMITS_PROPERTY_NAME, INDIGO_OK_STATE));
+	for (int i = 0; i < ARRAY_SIZE(limit_items); i++) {
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_LIMITS_PROPERTY_NAME, limit_items[i], limits[i], 0));
+	}
+cleanup:
+	stop_serial_driver(&polaralign_simulator);
+}
+
+static void simulator_supports_repeated_lifecycle(void) {
+	for (int i = 0; i < 3; i++) {
+		start_connected_simulator(&polaralign_simulator);
+		ASSERT_EQ_INT(INDIGO_BUSY, indigo_polaralign_simulator(INDIGO_DRIVER_SHUTDOWN, NULL));
+		stop_connected_simulator(&polaralign_simulator);
+	}
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "driver_info_reports_simulator_metadata", driver_info_reports_simulator_metadata },
 		{ "simulator_exposes_expected_properties", simulator_exposes_expected_properties },
 		{ "simulator_passes_polaralign_compliance_checks", simulator_passes_polaralign_compliance_checks },
 		{ "simulator_moves_aborts_and_reconnects", simulator_moves_aborts_and_reconnects },
-		{ "simulator_limits_and_resets", simulator_limits_and_resets }
+		{ "simulator_limits_and_resets", simulator_limits_and_resets },
+		{ "simulator_reports_axis_progress_and_rejects_overlap", simulator_reports_axis_progress_and_rejects_overlap },
+		{ "simulator_urgent_abort_cancels_pending_and_running_motion", simulator_urgent_abort_cancels_pending_and_running_motion },
+		{ "simulator_disconnect_cancels_motion_and_allows_recovery", simulator_disconnect_cancels_motion_and_allows_recovery },
+		{ "simulator_serializes_both_reset_orders_during_motion", simulator_serializes_both_reset_orders_during_motion },
+		{ "simulator_accepts_settings_and_reports_readback", simulator_accepts_settings_and_reports_readback },
+		{ "simulator_supports_repeated_lifecycle", simulator_supports_repeated_lifecycle }
 	};
 	return indigo_run_tests("polar aligner simulator integration tests", tests, ARRAY_SIZE(tests));
 }

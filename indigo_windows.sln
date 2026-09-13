@@ -16,6 +16,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_rotator_simulator", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_dome_simulator", "indigo_drivers\dome_simulator\indigo_dome_simulator.vcxproj", "{BED3F6C7-D374-49BB-9004-EAF521129A8C}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_polaralign_simulator", "indigo_drivers\polaralign_simulator\indigo_polaralign_simulator.vcxproj", "{A4E4D4E6-5E19-4B18-A59D-3C552E0AE31F}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "make_indigo_drivers", "indigo_windows\make_indigo_drivers\make_indigo_drivers.vcxproj", "{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_agent_mount", "indigo_drivers\agent_mount\indigo_agent_mount.vcxproj", "{D7058517-71DF-4F6B-865D-6038B2D6085C}"
@@ -298,6 +300,14 @@ Global
 		{BED3F6C7-D374-49BB-9004-EAF521129A8C}.Release|ARM64.Build.0 = Release|ARM64
 		{BED3F6C7-D374-49BB-9004-EAF521129A8C}.Release|x64.ActiveCfg = Release|x64
 		{BED3F6C7-D374-49BB-9004-EAF521129A8C}.Release|x64.Build.0 = Release|x64
+		{A4E4D4E6-5E19-4B18-A59D-3C552E0AE31F}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{A4E4D4E6-5E19-4B18-A59D-3C552E0AE31F}.Debug|ARM64.Build.0 = Debug|ARM64
+		{A4E4D4E6-5E19-4B18-A59D-3C552E0AE31F}.Debug|x64.ActiveCfg = Debug|x64
+		{A4E4D4E6-5E19-4B18-A59D-3C552E0AE31F}.Debug|x64.Build.0 = Debug|x64
+		{A4E4D4E6-5E19-4B18-A59D-3C552E0AE31F}.Release|ARM64.ActiveCfg = Release|ARM64
+		{A4E4D4E6-5E19-4B18-A59D-3C552E0AE31F}.Release|ARM64.Build.0 = Release|ARM64
+		{A4E4D4E6-5E19-4B18-A59D-3C552E0AE31F}.Release|x64.ActiveCfg = Release|x64
+		{A4E4D4E6-5E19-4B18-A59D-3C552E0AE31F}.Release|x64.Build.0 = Release|x64
 		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Debug|ARM64.ActiveCfg = Debug|ARM64
 		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Debug|ARM64.Build.0 = Debug|ARM64
 		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Debug|x64.ActiveCfg = Debug|x64

@@ -291,6 +291,9 @@
     <ProjectReference Include="..\indigo_drivers\dome_simulator\indigo_dome_simulator.vcxproj">
       <Project>{bed3f6c7-d374-49bb-9004-eaf521129a8c}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\polaralign_simulator\indigo_polaralign_simulator.vcxproj">
+      <Project>{a4e4d4e6-5e19-4b18-a59d-3c552e0ae31f}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\focuser_asi\indigo_focuser_asi.vcxproj">
       <Project>{6e012146-7be8-4567-860b-c11515b7a287}</Project>
     </ProjectReference>
