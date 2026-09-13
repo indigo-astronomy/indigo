@@ -84,10 +84,29 @@ static double bounded_dome_number_value(const char *property_name, const char *i
 	return preferred_value;
 }
 
+static bool wait_for_light_item_value(const char *property_name, const char *item_name, indigo_property_state value) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *item = find_cached_item(property_name, item_name);
+		if (item != NULL && item->light.value == value) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
 static void simulator_passes_dome_compliance_checks(void) {
+	static const char *state_items[] = {
+		DOME_STATE_SLEW_ITEM_NAME,
+		DOME_STATE_PARK_ITEM_NAME,
+		DOME_STATE_OPEN_ITEM_NAME
+	};
 	static const char *direction_items[] = {
 		DOME_DIRECTION_MOVE_CLOCKWISE_ITEM_NAME,
 		DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM_NAME
+	};
+	static const char *on_coordinates_set_items[] = {
+		DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME
 	};
 	static const char *horizontal_items[] = {
 		DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME
@@ -116,10 +135,13 @@ static void simulator_passes_dome_compliance_checks(void) {
 	start_connected_simulator(&dome_simulator);
 
 	assert_device_interface(INDIGO_INTERFACE_DOME);
+	assert_property_has_items(DOME_STATE_PROPERTY_NAME, state_items, ARRAY_SIZE(state_items));
 	assert_property_has_item(DOME_SPEED_PROPERTY_NAME, DOME_SPEED_ITEM_NAME);
 	assert_property_has_items(DOME_DIRECTION_PROPERTY_NAME, direction_items, ARRAY_SIZE(direction_items));
+	assert_property_has_items(DOME_ON_COORDINATES_SET_PROPERTY_NAME, on_coordinates_set_items, ARRAY_SIZE(on_coordinates_set_items));
 	assert_property_has_item(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME);
 	assert_property_has_items(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, horizontal_items, ARRAY_SIZE(horizontal_items));
+	assert_property_has_item(DOME_SLAVING_PARAMETERS_PROPERTY_NAME, DOME_SLAVING_THRESHOLD_ITEM_NAME);
 	assert_property_has_item(DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME);
 	assert_property_has_items(DOME_SHUTTER_PROPERTY_NAME, shutter_items, ARRAY_SIZE(shutter_items));
 	assert_property_has_items(DOME_PARK_PROPERTY_NAME, park_items, ARRAY_SIZE(park_items));
@@ -128,7 +150,17 @@ static void simulator_passes_dome_compliance_checks(void) {
 	assert_number_item_in_range(DOME_SPEED_PROPERTY_NAME, DOME_SPEED_ITEM_NAME);
 	assert_number_item_in_range(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME);
 	assert_number_item_in_range(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME);
+	assert_number_item_in_range(DOME_SLAVING_PARAMETERS_PROPERTY_NAME, DOME_SLAVING_THRESHOLD_ITEM_NAME);
 	assert_number_item_in_range(DOME_DIMENSION_PROPERTY_NAME, DOME_RADIUS_ITEM_NAME);
+	assert_number_item_in_range(DOME_DIMENSION_PROPERTY_NAME, DOME_SHUTTER_WIDTH_ITEM_NAME);
+	assert_number_item_in_range(DOME_DIMENSION_PROPERTY_NAME, DOME_MOUNT_PIVOT_OFFSET_NS_ITEM_NAME);
+	assert_number_item_in_range(DOME_DIMENSION_PROPERTY_NAME, DOME_MOUNT_PIVOT_OFFSET_EW_ITEM_NAME);
+	assert_number_item_in_range(DOME_DIMENSION_PROPERTY_NAME, DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM_NAME);
+	assert_number_item_in_range(DOME_DIMENSION_PROPERTY_NAME, DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM_NAME);
+	assert_number_item_in_range(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME);
+	assert_number_item_in_range(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME);
+	assert_number_item_in_range(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME);
+	ASSERT_TRUE(wait_for_light_item_value(DOME_STATE_PROPERTY_NAME, DOME_STATE_PARK_ITEM_NAME, INDIGO_OK_STATE));
 
 	double fast_speed = bounded_dome_number_value(DOME_SPEED_PROPERTY_NAME, DOME_SPEED_ITEM_NAME, 30);
 	ASSERT_FALSE(isnan(fast_speed));
@@ -136,22 +168,31 @@ static void simulator_passes_dome_compliance_checks(void) {
 	ASSERT_TRUE(wait_for_property_state(DOME_SPEED_PROPERTY_NAME, INDIGO_OK_STATE));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true));
 	ASSERT_TRUE(wait_for_property_state(DOME_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_light_item_value(DOME_STATE_PROPERTY_NAME, DOME_STATE_PARK_ITEM_NAME, INDIGO_IDLE_STATE));
 
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, true));
+	ASSERT_TRUE(wait_for_property_state(DOME_SHUTTER_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_for_light_item_value(DOME_STATE_PROPERTY_NAME, DOME_STATE_OPEN_ITEM_NAME, INDIGO_BUSY_STATE));
 	ASSERT_TRUE(wait_for_property_state(DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_light_item_value(DOME_STATE_PROPERTY_NAME, DOME_STATE_OPEN_ITEM_NAME, INDIGO_OK_STATE));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, true));
+	ASSERT_TRUE(wait_for_property_state(DOME_SHUTTER_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	ASSERT_TRUE(wait_for_property_state(DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_light_item_value(DOME_STATE_PROPERTY_NAME, DOME_STATE_OPEN_ITEM_NAME, INDIGO_IDLE_STATE));
 
 	double target_az = bounded_dome_number_value(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 3);
 	ASSERT_FALSE(isnan(target_az));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, dome_simulator.device_name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, target_az));
 	ASSERT_TRUE(wait_for_property_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_for_light_item_value(DOME_STATE_PROPERTY_NAME, DOME_STATE_SLEW_ITEM_NAME, INDIGO_BUSY_STATE));
 	ASSERT_TRUE(wait_for_property_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_light_item_value(DOME_STATE_PROPERTY_NAME, DOME_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
 	ASSERT_TRUE(wait_for_number_item_value(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, target_az, 0.001));
 
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true));
 	ASSERT_TRUE(wait_for_property_state(DOME_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	ASSERT_TRUE(wait_for_property_state(DOME_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_light_item_value(DOME_STATE_PROPERTY_NAME, DOME_STATE_PARK_ITEM_NAME, INDIGO_OK_STATE));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true));
 	ASSERT_TRUE(wait_for_property_state(DOME_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
 
@@ -204,6 +245,9 @@ cleanup:
 static void simulator_relative_wrap_and_park_guard(void) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&dome_simulator));
 	SERIAL_CHECK_TRUE(connect_serial_device(&dome_simulator, NULL));
+	indigo_change_number_property_1(&simulator_test_client, dome_simulator.device_name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 5);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 0, 0.001));
 	indigo_change_number_property_1(&simulator_test_client, dome_simulator.device_name, DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 2);
 	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true);
@@ -221,6 +265,41 @@ cleanup:
 	stop_serial_driver(&dome_simulator);
 }
 
+static void simulator_overlap_idle_abort_and_recovery(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&dome_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&dome_simulator, NULL));
+	indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_change_number_property_1(&simulator_test_client, dome_simulator.device_name, DOME_SPEED_PROPERTY_NAME, DOME_SPEED_ITEM_NAME, 5);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_SPEED_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_change_number_property_1(&simulator_test_client, dome_simulator.device_name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 20);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_change_number_property_1(&simulator_test_client, dome_simulator.device_name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 80);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 20, 0.001));
+	indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!find_cached_item(DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME)->sw.value);
+	indigo_change_number_property_1(&simulator_test_client, dome_simulator.device_name, DOME_SPEED_PROPERTY_NAME, DOME_SPEED_ITEM_NAME, 1);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_SPEED_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_change_number_property_1(&simulator_test_client, dome_simulator.device_name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 180);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(find_cached_item(DOME_STATE_PROPERTY_NAME, DOME_STATE_SLEW_ITEM_NAME)->light.value != INDIGO_BUSY_STATE);
+	double stopped = cached_number_value(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME);
+	double recovered_target = fmod(stopped + 3, 360);
+	indigo_change_number_property_1(&simulator_test_client, dome_simulator.device_name, DOME_SPEED_PROPERTY_NAME, DOME_SPEED_ITEM_NAME, 30);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_SPEED_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_change_number_property_1(&simulator_test_client, dome_simulator.device_name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, recovered_target);
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, recovered_target, 0.001));
+cleanup:
+	stop_serial_driver(&dome_simulator);
+}
+
 static void simulator_queued_abort(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&dome_simulator, NULL));
 	SERIAL_CHECK_TRUE(check_queued_abort(dome_simulator.device_name, "DOME_STEPS", "STEPS", 90, false, "DOME_ABORT_MOTION", "ABORT_MOTION", true));
@@ -232,6 +311,7 @@ cleanup:
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "simulator_queued_abort", simulator_queued_abort },
+		{ "simulator_overlap_idle_abort_and_recovery", simulator_overlap_idle_abort_and_recovery },
 		{ "driver_info_reports_simulator_metadata", driver_info_reports_simulator_metadata },
 		{ "simulator_exposes_expected_properties", simulator_exposes_expected_properties },
 		{ "simulator_passes_dome_compliance_checks", simulator_passes_dome_compliance_checks },

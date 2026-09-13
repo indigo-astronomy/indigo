@@ -86,7 +86,7 @@ static const char *guider_connected_properties[] = {
 static const simulator_driver_case mount_simulator = {
 	"Mount Simulator",
 	"indigo_mount_simulator",
-	MOUNT_SIMULATOR_NAME,
+	"Mount Simulator",
 	indigo_mount_simulator,
 	false,
 	mount_base_properties,
@@ -102,7 +102,7 @@ static const simulator_driver_case mount_simulator = {
 static const simulator_driver_case mount_guider_simulator = {
 	"Mount Simulator",
 	"indigo_mount_simulator",
-	MOUNT_SIMULATOR_GUIDER_NAME,
+	"Mount Simulator (guider)",
 	indigo_mount_simulator,
 	false,
 	base_properties_without_instances,

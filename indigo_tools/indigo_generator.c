@@ -2259,6 +2259,18 @@ void write_c_hotplug_section(void) {
 	}
 }
 
+static void write_c_virtual_device_detach(device_type *device) {
+	if (device == NULL) {
+		return;
+	}
+	write_c_virtual_device_detach(device->next);
+	write_line("\t\t\tif (%s != NULL) {", device->type);
+	write_line("\t\t\t\tindigo_detach_device(%s);", device->type);
+	write_line("\t\t\t\tindigo_safe_free(%s);", device->type);
+	write_line("\t\t\t\t%s = NULL;", device->type);
+	write_line("\t\t\t}", device->type);
+}
+
 void write_c_main_section(void) {
 	write_line("");
 	write_line("#pragma mark - Main code");
@@ -2409,13 +2421,7 @@ void write_c_main_section(void) {
 			write_line("\t\t\tVERIFY_NOT_CONNECTED(%s);", device->type);
 		}
 		write_line("\t\t\tlast_action = action;");
-		for (device_type *device = driver.devices; device; device = device->next) {
-			write_line("\t\t\tif (%s != NULL) {", device->type);
-			write_line("\t\t\t\tindigo_detach_device(%s);", device->type);
-			write_line("\t\t\t\tindigo_safe_free(%s);", device->type);
-			write_line("\t\t\t\t%s = NULL;", device->type);
-			write_line("\t\t\t}", device->type);
-		}
+		write_c_virtual_device_detach(driver.devices);
 		write_line("\t\t\tif (private_data != NULL) {");
 		write_line("\t\t\t\tindigo_safe_free(private_data);");
 		write_line("\t\t\t\tprivate_data = NULL;");

@@ -3380,6 +3380,9 @@
 		59D7076C1DC52C3E00DEF566 /* indigo_mount_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator_main.c; sourceTree = "<group>"; };
 		59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator.c; sourceTree = "<group>"; };
 		59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_simulator.h; sourceTree = "<group>"; };
+		C0DE20260913AA5500000002 /* indigo_mount_simulator.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_mount_simulator.driver; sourceTree = "<group>"; };
+		C0DE20260913AA5600000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260913AA5600000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59D8BBC4260E624600B904EE /* indigo_alpaca_dome.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_alpaca_dome.c; sourceTree = "<group>"; };
 		59D8BBD5260E628B00B904EE /* indigo_alpaca_ccd.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_alpaca_ccd.c; sourceTree = "<group>"; wrapsLines = 0; };
 		59D8BBE526126C8900B904EE /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
@@ -10807,6 +10810,7 @@
 			isa = PBXGroup;
 			children = (
 				59CBD47D1FAF6C80000DAFDB /* README.md */,
+				C0DE20260913AA5600000001 /* REFACTOR.md */,
 				59CBD47C1FAF6C80000DAFDB /* indigo_gps_simulator.h */,
 				59CBD47B1FAF6C80000DAFDB /* indigo_gps_simulator.c */,
 				59CBD47E1FAF6C80000DAFDB /* indigo_gps_simulator_main.c */,
@@ -11139,6 +11143,7 @@
 			children = (
 				594107C31EC8DCCD00C44F92 /* README.md */,
 				C0DE20260913AA5500000001 /* REFACTOR.md */,
+				C0DE20260913AA5500000002 /* indigo_mount_simulator.driver */,
 				59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */,
 				59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */,
 				59D7076C1DC52C3E00DEF566 /* indigo_mount_simulator_main.c */,
@@ -13509,6 +13514,7 @@
 			isa = PBXGroup;
 			children = (
 				59DD69D31FC1DC4900AEF0DF /* README.md */,
+				C0DE20260913AA5600000002 /* REFACTOR.md */,
 				59DD69D21FC1DC4900AEF0DF /* indigo_dome_simulator.h */,
 				59DD69D41FC1DC4900AEF0DF /* indigo_dome_simulator.c */,
 				59DD69D11FC1DC4900AEF0DF /* indigo_dome_simulator_main.c */,

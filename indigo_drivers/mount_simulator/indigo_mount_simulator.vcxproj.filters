@@ -33,4 +33,7 @@
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="indigo_mount_simulator.driver" />
+  </ItemGroup>
 </Project>

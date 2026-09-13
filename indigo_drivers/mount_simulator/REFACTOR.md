@@ -1,6 +1,6 @@
 # Mount Simulator queue refactoring
 
-Status: complete on 2026-09-13. Baseline driver version: `0x0300000B`. Refactored driver version: `0x0300000C`.
+Status: queue refactoring and code-generator migration complete on 2026-09-13. Baseline driver version: `0x0300000B`. Queue-refactored driver version: `0x0300000C`. Generated-driver version: `0x0300000D`.
 
 ## Workflow correction
 
@@ -141,3 +141,41 @@ The timing run issued 120 software pulses: 24 discarded warm-ups and 96 retained
 ## Final test summary
 
 Final simulated test-case executions run: **128**. Final simulated test-case executions passed: **128**. These totals are 64 normal plus 64 ASan executions across arm64 and x86_64 Rosetta; they exclude the separate 120-pulse measurement benchmark. Hardware tests run: **0**. Hardware tests passed: **0**.
+
+## Code-generator migration continuation (2026-09-13)
+
+This continuation migrates the already queue-based implementation to an `indigo_generator` `.driver` source without changing its public capabilities or reintroducing mutexes or INDIGO timers. The existing `.c`, `.h` and `_main.c` files remain the pre-migration baseline; after migration the `.driver` file is the source of truth and all three generated outputs must reproduce deterministically.
+
+### Fresh baseline and audit
+
+Before any production file was changed for this continuation, the current worktree driver was rebuilt from source with `make -B -C indigo_drivers/mount_simulator -f ../../Makefile.drv all`. The integration executable was also rebuilt with `make -B -C indigo_test build/integration/test_mount_simulator` and executed natively on arm64. The universal x86_64/arm64 driver archive, dynamic library and executable built successfully, and all **16/16** current integration scenarios passed.
+
+The migration must preserve the two-device shared-private-data model, the mount-master/guider-child queue ownership, priority abort and guider operations, recurring position processing, cancellable delayed finalizers, same-axis guider replacement, both logical-device connection orders and child-before-master shutdown. It must preserve the complete property contract listed above. Generated public headers do not retain private device-name macros, so the test will use the stable public device-name strings instead. No property is being added or removed; `indigo_docs/PROPERTIES.md` therefore remains unchanged.
+
+This simulator has no hardware target or external manufacturer protocol. The continuation's hardware decision remains **0/0** tests run/passed. Windows project support is in scope, but Windows compilation and execution are explicitly omitted at the user's request; that limitation will remain visible in the final evidence and migration status.
+
+### Atomic migration plan and results
+
+1. **Read the repository, driver and test instructions; record a fresh baseline — completed.** Required references were reviewed and the fresh generated-migration baseline passed 16/16 integration scenarios before production edits.
+2. **Audit generator expressiveness and map hand-written lifecycle/property behavior to generator-owned semantics — completed.** Virtual multi-device generation supplies shared private data, a guider-to-mount `master_device` link, mount parked guards, coordinate final updates, priority guide dispatch and connection cleanup without a driver mutex. The audit found that virtual/serial shutdown detached the master before its children; with user approval the generator now emits reverse detach order, and the architecture suite has a virtual-plus-serial regression for it. Single-device output is unaffected.
+3. **Create the `.driver` source, raise the version from 12 to 13 and regenerate checked-in `.c`, `.h` and `_main.c` outputs — completed, final reproducibility check pending.** The new definition generated all three outputs and the universal driver built. The first compile exposed that device `code` blocks require a shared `code` section; adding that generator-supported section emitted the queue callbacks without changing the generator. No `MAX_DEVICES` override or mutex was introduced. Version is now `0x0300000D`.
+4. **Adapt and extend automated coverage where generated public/lifecycle semantics require it — completed.** The integration test now uses stable device-name strings instead of removed private header macros. Its first generated-driver run caught premature `OK` publication for park/home caused by the generator's normal handler prologue; explicit BUSY ownership at the start of both long-running handlers restored the contract. The rebuilt suite then passed all **16/16** scenarios. The separate generator architecture regression covers child-before-master shutdown emission.
+5. **Update project integration and migration accounting — completed.** The `.driver` source is registered in the existing Xcode mount-simulator group and as a non-compiled item in the Visual Studio project and filters. The existing Windows solution/server references remain valid. Xcode plist validation and Visual Studio XML validation passed. Only the mount row's Generator column changed from No to Yes in `MIGRATION_STATUS.md`; the Comment is byte-for-byte unchanged.
+6. **Validate the generated implementation — completed.** The universal macOS driver build, native arm64 integration, arm64 AddressSanitizer integration, x86_64 Rosetta integration and x86_64 Rosetta AddressSanitizer integration all passed 16/16. Both arm64 and x86_64 strict `-Wall -Wextra -Werror` syntax checks passed. The generator architecture suite passed 15/15, including the new virtual/serial detach-order case. The timing benchmark completed all 120 requested software pulses; mean completion error was 0.205–11.529 ms across the retained samples and all rows completed. Leak detection is unsupported by the macOS ASan runtime, so the successful sanitizer runs used standard address checking. Windows project support was checked statically but not built or executed as requested; Linux was unavailable.
+7. **Perform the final audit and close this ledger — completed.** A second regeneration produced identical SHA-1 hashes for `.c`, `.h` and `_main.c`. Static scans find no mutex declaration/use, INDIGO timer API or `MAX_DEVICES` override in the `.driver` or generated production source. Version 13, project registration, migration status, Xcode/Visual Studio syntax and `git diff --check` are verified. `test-clean`, the mount driver's clean target and removal of the transient implicit generator executable removed the generated test/build artifacts.
+
+### Generator-migration validation evidence
+
+- Fresh pre-migration baseline: universal build passed; native arm64 integration **16/16 passed**.
+- Initial generated integration: **15/16 passed**; `mount_park_home_and_parked_guards` exposed premature generated OK publication for asynchronous home/park and drove the explicit BUSY-state fix.
+- Corrected native arm64 integration: **16/16 passed**.
+- AddressSanitizer arm64 integration: **16/16 passed**; generated driver and test instrumented, shared `libindigo` not instrumented.
+- Normal x86_64 Rosetta integration: **16/16 passed**.
+- AddressSanitizer x86_64 Rosetta integration: **16/16 passed**, with the same shared-library instrumentation limitation.
+- Generator architecture suite: **15/15 passed**, including C11/C++11 transport generation and the new child-before-master detach test for both virtual and serial drivers.
+- Guider timing: **120/120 software pulses completed** under idle polling and concurrent mount motion; this is measurement-only, not a functional pass/fail suite.
+- Hardware: **0/0** run/passed; not applicable to this in-process simulator.
+
+### Generator-migration final totals
+
+The continuation ran **96** mount-simulator test-case executions and passed **95**. The single failure was the recorded pre-fix generated run; after the BUSY-state correction, final native/ASan arm64 and native/ASan x86_64 validation passed **64/64**. The separate generator architecture suite passed **15/15**. The measurement benchmark completed **120/120** software pulses and is excluded from pass/fail totals. Hardware tests run: **0**. Hardware tests passed: **0**.

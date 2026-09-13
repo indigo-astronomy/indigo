@@ -509,6 +509,23 @@ static void polaralign_device_generation(void) {
 	ASSERT_TRUE(strstr(generated, "indigo_polaralign_detach(device)") != NULL);
 }
 
+static void virtual_and_serial_children_detach_before_master(void) {
+	const char *transports[] = { "", "serial;" };
+	for (int i = 0; i < sizeof(transports) / sizeof(transports[0]); i++) {
+		char definition[4096], generated[65536];
+		snprintf(definition, sizeof(definition), "driver architecture_test {\nlabel = \"Detach order test\";\nauthor = \"INDIGO tests\";\ncopyright = \"INDIGO tests\";\nversion = 1;\n%s\nmount { name = \"Mount\"; }\nguider { name = \"Guider\"; }\n}\n", transports[i]);
+		ASSERT_TRUE(write_text(DEFINITION, definition));
+		char *arguments[] = { TEST_GENERATOR, DEFINITION, NULL };
+		ASSERT_TRUE(run(arguments));
+		ASSERT_TRUE(read_text("indigo_mount_architecture_test.c", generated, sizeof(generated)));
+		char *shutdown = strstr(generated, "case INDIGO_DRIVER_SHUTDOWN:");
+		ASSERT_TRUE(shutdown != NULL);
+		char *guider_detach = strstr(shutdown, "indigo_detach_device(guider);");
+		char *mount_detach = strstr(shutdown, "indigo_detach_device(mount);");
+		ASSERT_TRUE(guider_detach && mount_detach && guider_detach < mount_detach);
+	}
+}
+
 
 static void usb_registration_reverse_extraction(void) {
 	const char *events[] = { "LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT", "(libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT)" };
@@ -615,6 +632,7 @@ int main(void) {
 	}
 	const indigo_test_case tests[] = {
 		{ "Polar Aligner device keyword and base-driver lifecycle generation", polaralign_device_generation },
+		{ "Virtual and serial children detach before their master", virtual_and_serial_children_detach_before_master },
 		{ "SDK startup discovery without hot-plug", sdk_startup_discovery_without_hotplug },
 		{ "C++ output selection, C linkage, extraction and unchanged C default", cpp_output_selection_and_extraction },
 		{ "Generated transport scaffolding compiles as C11 and C++11", generated_code_compiles_as_c_and_cpp },
