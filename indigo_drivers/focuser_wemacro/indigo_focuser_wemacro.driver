@@ -121,6 +121,21 @@ driver wemacro {
 			return wemacro_write(device, 0x20, 0, 0, 0, 0);
 		}
 
+		static bool wemacro_wait_status(indigo_device *device, uint8_t expected_status, double timeout) {
+			double deadline = indigo_monotonic_time() + timeout;
+			while (indigo_monotonic_time() < deadline) {
+				uint8_t status = 0;
+				int result = wemacro_read_status(device, 0.1, &status);
+				if (result < 0) {
+					return false;
+				}
+				if (result > 0 && status == expected_status) {
+					return true;
+				}
+			}
+			return false;
+		}
+
 		static void motion_finalizer(indigo_device *device) {
 			if (!IS_CONNECTED || !PRIVATE_DATA->motion_active) {
 				return;
@@ -204,7 +219,7 @@ driver wemacro {
 				return wemacro_write(device, wemacro_options(device, true), wemacro_speed(device), 0, 0, 0);
 			}
 			indigo_uni_discard(PRIVATE_DATA->handle);
-			return wemacro_write(device, 0x40, 0, 0, 0, 0) && wemacro_write(device, 0x20, 0, 0, 0, 0) && wemacro_write(device, 0x40, 0, 0, 0, 0) && wemacro_read_status(device, 2, &status) > 0 && status == WEMACRO_STATUS_FORWARD && wemacro_write(device, wemacro_options(device, true), wemacro_speed(device), 0, 0, 0);
+			return wemacro_write(device, 0x40, 0, 0, 0, 0) && wemacro_write(device, 0x20, 0, 0, 0, 0) && wemacro_wait_status(device, WEMACRO_STATUS_FORWARD, 2) && indigo_uni_discard(PRIVATE_DATA->handle) >= 0 && wemacro_write(device, 0x40, 0, 0, 0, 0) && wemacro_wait_status(device, WEMACRO_STATUS_FORWARD, 2) && wemacro_write(device, wemacro_options(device, true), wemacro_speed(device), 0, 0, 0);
 		}
 
 		static bool wemacro_open(indigo_device *device) {
