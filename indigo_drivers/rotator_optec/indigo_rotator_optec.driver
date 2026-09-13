@@ -1,0 +1,358 @@
+// Copyright (c) 2022-2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Optec Pyxis Rotator driver definition
+
+// version history
+// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
+driver optec {
+	label = "Optec Pyxis Rotator";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2022-2026 CloudMakers, s. r. o.";
+	version = 2;
+	serial;
+	define {
+		#define OPTEC_RESPONSE_SIZE	64
+		#define OPTEC_MOTION_POLL		0.05
+		#define OPTEC_MOTION_MARGIN	5.0
+		#define OPTEC_NO_MOTION		0
+		#define OPTEC_POSITION_MOTION	1
+		#define OPTEC_HOME_MOTION		2
+	}
+	data {
+		char response[OPTEC_RESPONSE_SIZE];
+		int motion;
+		int motion_steps;
+		double motion_deadline;
+		bool position_invalidated;
+		bool previous_direction_normal;
+	}
+	code {
+		static bool optec_write(indigo_device *device, const char *format, ...) {
+			va_list args;
+			va_start(args, format);
+			long result = indigo_uni_vprintf(PRIVATE_DATA->handle, format, args);
+			va_end(args);
+			return result > 0;
+		}
+
+		static bool optec_read_line(indigo_device *device) {
+			long count = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r", INDIGO_DELAY(1), INDIGO_DELAY(0.1));
+			if (count <= 1 || count >= (long)sizeof(PRIVATE_DATA->response) - 1 || PRIVATE_DATA->response[count - 1] != '\n') {
+				return false;
+			}
+			PRIVATE_DATA->response[count - 1] = 0;
+			return true;
+		}
+
+		static bool optec_line_command(indigo_device *device, const char *command) {
+			return indigo_uni_discard(PRIVATE_DATA->handle) >= 0 && optec_write(device, "%s", command) && optec_read_line(device);
+		}
+
+		static bool optec_ack_command(indigo_device *device, const char *format, ...) {
+			if (indigo_uni_discard(PRIVATE_DATA->handle) < 0) {
+				return false;
+			}
+			va_list args;
+			va_start(args, format);
+			long result = indigo_uni_vprintf(PRIVATE_DATA->handle, format, args);
+			va_end(args);
+			if (result <= 0 || indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(1)) <= 0) {
+				return false;
+			}
+			return indigo_uni_read(PRIVATE_DATA->handle, PRIVATE_DATA->response, 1) == 1 && PRIVATE_DATA->response[0] == '!';
+		}
+
+		static bool optec_wakeup(indigo_device *device) {
+			if (!optec_line_command(device, "CWAKUP") || strcmp(PRIVATE_DATA->response, "!")) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to wake up");
+				return false;
+			}
+			return true;
+		}
+
+		static bool optec_sleep(indigo_device *device) {
+			return optec_write(device, "CSLEEP");
+		}
+
+		static bool optec_read_integer(indigo_device *device, const char *command, int minimum, int maximum, int *value) {
+			if (!optec_line_command(device, command)) {
+				return false;
+			}
+			char *end = NULL;
+			long parsed = strtol(PRIVATE_DATA->response, &end, 10);
+			if (end == PRIVATE_DATA->response || *end != 0 || parsed < minimum || parsed > maximum) {
+				return false;
+			}
+			*value = (int)parsed;
+			return true;
+		}
+
+		static bool optec_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle != NULL && optec_wakeup(device) && optec_line_command(device, "CCLINK") && !strcmp(PRIVATE_DATA->response, "!")) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
+				return true;
+			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
+			indigo_uni_close(&PRIVATE_DATA->handle);
+			return false;
+		}
+
+		static void optec_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
+		}
+	}
+	rotator {
+		name = "Optec Pyxis";
+		additional_instances = true;
+		code {
+			static bool optec_operation_idle(indigo_device *device, indigo_property *property) {
+				if (PRIVATE_DATA->motion == OPTEC_NO_MOTION && ROTATOR_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && X_HOME_PROPERTY->state != INDIGO_BUSY_STATE) {
+					return true;
+				}
+				property->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, property, "Rotator operation is already in progress");
+				return false;
+			}
+
+			static void motion_finalizer(indigo_device *device) {
+				bool complete = false;
+				bool failed = false;
+				for (int pass = 0; pass < 4 && indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(0.001)) > 0; pass++) {
+					long count = indigo_uni_read_available(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1);
+					if (count <= 0) {
+						failed = true;
+						break;
+					}
+					for (long i = 0; i < count; i++) {
+						if (PRIVATE_DATA->response[i] == '!') {
+							PRIVATE_DATA->motion_steps++;
+						} else if (PRIVATE_DATA->response[i] == 'F') {
+							complete = true;
+						} else {
+							failed = true;
+						}
+					}
+				}
+				if (!complete && !failed && indigo_monotonic_time() < PRIVATE_DATA->motion_deadline) {
+					indigo_execute_handler_in(device, OPTEC_MOTION_POLL, motion_finalizer);
+					return;
+				}
+				int motion = PRIVATE_DATA->motion;
+				PRIVATE_DATA->motion = OPTEC_NO_MOTION;
+				if (complete && !failed) {
+					int position;
+					if (optec_read_integer(device, "CGETPA", 0, 359, &position)) {
+						ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target = position;
+						ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+						PRIVATE_DATA->position_invalidated = false;
+					} else {
+						failed = true;
+					}
+				}
+				if (failed || !complete) {
+					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator motion failed after %d steps", PRIVATE_DATA->motion_steps);
+				}
+				if (!optec_sleep(device)) {
+					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					failed = true;
+				}
+				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, failed || !complete ? "Rotator motion failed" : NULL);
+				if (motion == OPTEC_HOME_MOTION) {
+					X_HOME_PROPERTY->state = failed || !complete ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+					indigo_update_property(device, X_HOME_PROPERTY, failed || !complete ? "Homing failed" : NULL);
+				}
+			}
+
+			static bool optec_start_motion(indigo_device *device, int motion, const char *command) {
+				if (!optec_wakeup(device) || indigo_uni_discard(PRIVATE_DATA->handle) < 0 || !optec_write(device, "%s", command)) {
+					optec_sleep(device);
+					return false;
+				}
+				PRIVATE_DATA->motion = motion;
+				PRIVATE_DATA->motion_steps = 0;
+				PRIVATE_DATA->motion_deadline = indigo_monotonic_time() + OPTEC_MOTION_MARGIN + 0.36 * (X_RATE_ITEM->number.value > 0 ? X_RATE_ITEM->number.value : 1);
+				indigo_execute_handler_in(device, OPTEC_MOTION_POLL, motion_finalizer);
+				return true;
+			}
+		}
+		on_connect {
+			int direction = 0;
+			int position = 0;
+			connection_result = optec_read_integer(device, "CMREAD", 0, 1, &direction) && optec_read_integer(device, "CGETPA", 0, 359, &position) && optec_ack_command(device, "CTxx%02d", (int)X_RATE_ITEM->number.target) && optec_sleep(device);
+			if (connection_result) {
+				indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, direction == 0 ? ROTATOR_DIRECTION_NORMAL_ITEM : ROTATOR_DIRECTION_REVERSED_ITEM, true);
+				ROTATOR_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
+				ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target = position;
+				ROTATOR_POSITION_PROPERTY->state = PRIVATE_DATA->position_invalidated ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+				X_RATE_ITEM->number.value = X_RATE_ITEM->number.target;
+				X_RATE_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->motion = OPTEC_NO_MOTION;
+			}
+			if (!connection_result) {
+				optec_close(device);
+			}
+		}
+		on_disconnect {
+			if (PRIVATE_DATA->motion != OPTEC_NO_MOTION) {
+				PRIVATE_DATA->motion = OPTEC_NO_MOTION;
+				ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				X_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		}
+		switch X_HOME {
+			name = "X_HOME";
+			group = ROTATOR_MAIN_GROUP;
+			label = "Home";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change_request {
+				if (!optec_operation_idle(device, X_HOME_PROPERTY)) {
+					return INDIGO_OK;
+				}
+			}
+			on_change {
+				bool requested = X_HOME_ITEM->sw.value;
+				X_HOME_ITEM->sw.value = false;
+				if (!requested) {
+					X_HOME_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, X_HOME_PROPERTY, NULL);
+				} else if (optec_start_motion(device, OPTEC_HOME_MOTION, "CHOMES")) { // motion_finalizer owns completion
+					ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+					X_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+					indigo_update_property(device, X_HOME_PROPERTY, NULL);
+				} else {
+					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					X_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Failed to start homing");
+					indigo_update_property(device, X_HOME_PROPERTY, "Failed to start homing");
+				}
+			}
+			item X_HOME { name = "HOME"; label = "Find home"; value = false; }
+		}
+		number X_RATE {
+			persistent = true;
+			preserve_values = true;
+			name = "X_RATE";
+			group = ROTATOR_MAIN_GROUP;
+			label = "Rate";
+			on_change_request {
+				if (!optec_operation_idle(device, X_RATE_PROPERTY)) {
+					return INDIGO_OK;
+				}
+			}
+			on_change {
+				if (optec_wakeup(device) && optec_ack_command(device, "CTxx%02d", (int)X_RATE_ITEM->number.target) && optec_sleep(device)) {
+					X_RATE_ITEM->number.value = X_RATE_ITEM->number.target;
+				} else {
+					optec_sleep(device);
+					X_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_RATE { name = "RATE"; label = "Rotational rate"; value = 8; min = 0; max = 99; step = 1; }
+		}
+		number X_ROTATE {
+			preserve_values = true;
+			name = "X_ROTATE";
+			group = ROTATOR_MAIN_GROUP;
+			label = "Rotate";
+			on_change_request {
+				if (!optec_operation_idle(device, X_ROTATE_PROPERTY)) {
+					return INDIGO_OK;
+				}
+			}
+			on_change {
+				int steps = (int)X_ROTATE_ITEM->number.target;
+				if (steps == 0) {
+					X_ROTATE_ITEM->number.value = X_ROTATE_ITEM->number.target = 0;
+				} else {
+					int encoded = steps > 0 ? steps : 10 - steps;
+					if (optec_wakeup(device) && optec_ack_command(device, "CXxx%02d", encoded) && optec_sleep(device)) {
+						X_ROTATE_ITEM->number.value = X_ROTATE_ITEM->number.target = 0;
+						PRIVATE_DATA->position_invalidated = true;
+						ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Absolute position is unknown; home the rotator before an absolute move");
+					} else {
+						optec_sleep(device);
+						X_ROTATE_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+			}
+			item X_ROTATE { name = "ROTATE"; label = "Steps"; value = 0; min = -9; max = 9; step = 1; }
+		}
+		inherited ROTATOR_ON_POSITION_SET { hidden = true; }
+		inherited ROTATOR_ABORT_MOTION { hidden = true; }
+		inherited ROTATOR_DIRECTION {
+			hidden = false;
+			on_change_request {
+				if (!optec_operation_idle(device, ROTATOR_DIRECTION_PROPERTY)) {
+					return INDIGO_OK;
+				}
+				PRIVATE_DATA->previous_direction_normal = ROTATOR_DIRECTION_NORMAL_ITEM->sw.value;
+			}
+			on_change {
+				if (!optec_wakeup(device) || !optec_write(device, "CD%dxxx", ROTATOR_DIRECTION_NORMAL_ITEM->sw.value ? 0 : 1) || !optec_sleep(device)) {
+					optec_sleep(device);
+					indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, PRIVATE_DATA->previous_direction_normal ? ROTATOR_DIRECTION_NORMAL_ITEM : ROTATOR_DIRECTION_REVERSED_ITEM, true);
+					ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited ROTATOR_POSITION {
+			preserve_values = true;
+			on_change_request {
+				if (!optec_operation_idle(device, ROTATOR_POSITION_PROPERTY)) {
+					return INDIGO_OK;
+				}
+				if (PRIVATE_DATA->position_invalidated) {
+					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Absolute position is unknown; home the rotator first");
+					return INDIGO_OK;
+				}
+			}
+			on_change {
+				int target = (int)ROTATOR_POSITION_ITEM->number.target;
+				if (target == (int)ROTATOR_POSITION_ITEM->number.value) {
+					ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value;
+					ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+				} else {
+					char command[7];
+					snprintf(command, sizeof(command), "CPA%03d", target);
+					if (optec_start_motion(device, OPTEC_POSITION_MOTION, command)) { // motion_finalizer owns completion
+						ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+					} else {
+						ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Failed to start motion");
+					}
+				}
+			}
+			on_attach {
+				ROTATOR_POSITION_ITEM->number.min = 0;
+				ROTATOR_POSITION_ITEM->number.max = 359;
+				ROTATOR_POSITION_ITEM->number.step = 1;
+			}
+		}
+	}
+}

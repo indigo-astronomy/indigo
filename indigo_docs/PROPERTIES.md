@@ -730,7 +730,7 @@ Custom properties: `X_CONFIG`.
 
 Driver-specific use of existing properties: `CCD_ABORT_EXPOSURE`, `CCD_EXPOSURE`.
 
-Source: `indigo_drivers/aux_dsusb/indigo_aux_dsusb.c`.
+Sources: `indigo_drivers/aux_dsusb/indigo_aux_dsusb.driver`, `indigo_drivers/aux_dsusb/indigo_aux_dsusb.c`.
 
 ### aux_fbc
 
@@ -1408,9 +1408,9 @@ Source: `indigo_drivers/rotator_falcon/indigo_rotator_falcon.c`.
 
 Custom properties: `X_HOME`, `X_RATE`, `X_ROTATE`.
 
-Driver-specific use of existing properties: `ROTATOR_ABORT_MOTION`, `ROTATOR_DIRECTION`, `ROTATOR_ON_POSITION_SET`.
+Driver-specific use of existing properties: `ROTATOR_ABORT_MOTION`, `ROTATOR_DIRECTION`, `ROTATOR_ON_POSITION_SET`, `ROTATOR_POSITION`.
 
-Source: `indigo_drivers/rotator_optec/indigo_rotator_optec.c`.
+Source: `indigo_drivers/rotator_optec/indigo_rotator_optec.driver`; generated output in `indigo_drivers/rotator_optec/indigo_rotator_optec.c`.
 
 ### rotator_wa
 

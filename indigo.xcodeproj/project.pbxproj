@@ -2677,8 +2677,7 @@
 		59910B52305708D100FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59910B5330570C7A00FB1C2F /* mount_temma_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_temma_simulator.c; sourceTree = "<group>"; };
 		59910B5430571FF600FB1C2F /* indigo_ccd_qhy2.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_qhy2.driver; sourceTree = "<group>"; };
-		C0DE20260913A70100000001 /* indigo_rotator_optec.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_optec.driver; sourceTree = "<group>"; };
-		C0DE20260913A70100000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		59910B553057285E00FB1C2F /* vixen-starbook-protocol.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "vixen-starbook-protocol.md"; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -5506,8 +5505,9 @@
 		C0DE20260913000400000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913000500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913000600000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
-		C0DE20260913D50000000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
-		C0DE20260913D50000000002 /* test_aux_dsusb_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_dsusb_sdk.c; sourceTree = "<group>"; };
+		C0DE20260913A70100000001 /* indigo_rotator_optec.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_optec.driver; sourceTree = "<group>"; };
+		C0DE20260913A70100000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260913A70100000003 /* indigo_rotator_optec.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_rotator_optec.vcxproj; sourceTree = "<group>"; };
 		C0DE20260913AA5500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913AA5500000002 /* indigo_mount_simulator.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_mount_simulator.driver; sourceTree = "<group>"; };
 		C0DE20260913AA5600000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
@@ -5515,6 +5515,8 @@
 		C0DE20260913CCD000000001 /* indigo_ccd_simulator.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_simulator.driver; sourceTree = "<group>"; };
 		C0DE20260913CCD000000002 /* indigo_ccd_simulator_data.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_data.h; sourceTree = "<group>"; };
 		C0DE20260913CCD000000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260913D50000000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260913D50000000002 /* test_aux_dsusb_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_dsusb_sdk.c; sourceTree = "<group>"; };
 		C0DE26060912F10000000000 /* Origin678C.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = Origin678C.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000001 /* QHY26800A.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY26800A.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000002 /* QHY585.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY585.img; sourceTree = "<group>"; };
@@ -7422,6 +7424,7 @@
 				597DFE1C2804A87F009E37CB /* README.md */,
 				C0DE20260913A70100000002 /* REFACTOR.md */,
 				C0DE20260913A70100000001 /* indigo_rotator_optec.driver */,
+				C0DE20260913A70100000003 /* indigo_rotator_optec.vcxproj */,
 				597DFE1B2804A87F009E37CB /* indigo_rotator_optec.h */,
 				597DFE1F2804A87F009E37CB /* indigo_rotator_optec.c */,
 				597DFE1D2804A87F009E37CB /* indigo_rotator_optec_main.c */,
@@ -10858,6 +10861,7 @@
 				59D29A132841469D00D5E7F7 /* indigo_mount_starbook.h */,
 				59D29A162841469D00D5E7F7 /* indigo_mount_starbook.c */,
 				59D29A152841469D00D5E7F7 /* indigo_mount_starbook_main.c */,
+				59910B553057285E00FB1C2F /* vixen-starbook-protocol.md */,
 				5984A380303CD2DC00D581D2 /* mount_starbook_simulator */,
 			);
 			path = mount_starbook;

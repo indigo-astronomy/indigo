@@ -42,13 +42,51 @@ static const simulator_driver_case optec_rotator = {
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
 
-static void optec_rotator_passes_serial_compliance_checks(void) {
+static bool change_number_after(const char *property_name, const char *item_name, double value, indigo_property_state state) {
+	unsigned int revision = property_revision(property_name);
+	if (indigo_change_number_property_1(&simulator_test_client, optec_rotator.device_name, property_name, item_name, value) != INDIGO_OK) {
+		return false;
+	}
+	return wait_for_property_state_after(property_name, state, revision);
+}
+
+static bool change_switch_after(const char *property_name, const char *item_name, bool value, indigo_property_state state) {
+	unsigned int revision = property_revision(property_name);
+	if (indigo_change_switch_property_1(&simulator_test_client, optec_rotator.device_name, property_name, item_name, value) != INDIGO_OK) {
+		return false;
+	}
+	return wait_for_property_state_after(property_name, state, revision);
+}
+
+static int trace_command_count(const char *path, const char *expected) {
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return 0;
+	}
+	char line[128];
+	char command[64];
+	double timestamp;
+	int count = 0;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		if (sscanf(line, "%lf %63s", &timestamp, command) == 2 && !strcmp(command, expected)) {
+			count++;
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+static void optec_property_contract_and_reconnect(void) {
 	external_serial_simulator simulator = { 0 };
+	bool driver_up = false;
 
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, ROTATOR_OPTEC_SIMULATOR_EXECUTABLE));
-	SERIAL_CHECK_TRUE(start_serial_driver(&optec_rotator, simulator.port));
-	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
-
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&optec_rotator));
+	driver_up = true;
+	enumerate_simulator_device();
+	assert_not_defined_property(ROTATOR_POSITION_PROPERTY_NAME);
+	assert_not_defined_property(OPTEC_HOME_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(connect_serial_device(&optec_rotator, simulator.port));
 	assert_device_interface(INDIGO_INTERFACE_ROTATOR);
 	assert_property_has_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
 	assert_property_has_item(ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_NORMAL_ITEM_NAME);
@@ -58,19 +96,242 @@ static void optec_rotator_passes_serial_compliance_checks(void) {
 	assert_property_has_item(OPTEC_ROTATE_PROPERTY_NAME, OPTEC_ROTATE_ITEM_NAME);
 	assert_not_defined_property(ROTATOR_ABORT_MOTION_PROPERTY_NAME);
 	assert_not_defined_property(ROTATOR_ON_POSITION_SET_PROPERTY_NAME);
+	assert_not_defined_property(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME);
+	indigo_item *position = find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
+	indigo_item *rate = find_cached_item(OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME);
+	indigo_item *rotate = find_cached_item(OPTEC_ROTATE_PROPERTY_NAME, OPTEC_ROTATE_ITEM_NAME);
+	SERIAL_CHECK_TRUE(position != NULL && position->number.min == 0 && position->number.max == 359 && position->number.step == 1);
+	SERIAL_CHECK_TRUE(rate != NULL && rate->number.min == 0 && rate->number.max == 99 && rate->number.step == 1);
+	SERIAL_CHECK_TRUE(rotate != NULL && rotate->number.min == -9 && rotate->number.max == 9 && rotate->number.step == 1);
+	disconnect_serial_device(&optec_rotator);
+	SERIAL_CHECK_TRUE(find_cached_property(OPTEC_HOME_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(OPTEC_RATE_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(OPTEC_ROTATE_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(connect_serial_device(&optec_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
 
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, optec_rotator.device_name, OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME, 5));
-	SERIAL_CHECK_TRUE(wait_for_property_state(OPTEC_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, optec_rotator.device_name, ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_DIRECTION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, optec_rotator.device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 12));
+cleanup:
+	if (driver_up) {
+		if (context.connected) {
+			disconnect_serial_device(&optec_rotator);
+		}
+		tear_down_serial_driver(&optec_rotator);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void optec_absolute_motion_noop_and_overlap(void) {
+	external_serial_simulator simulator = { 0 };
+	char trace_path[] = "/tmp/rotator-optec-trace.XXXXXX";
+	int trace_fd = mkstemp(trace_path);
+	const char *args[] = { "--trace-file", trace_path, NULL };
+
+	SERIAL_CHECK_TRUE(trace_fd >= 0);
+	close(trace_fd);
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, ROTATOR_OPTEC_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&optec_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(change_number_after(OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME, 2, INDIGO_OK_STATE));
+	unsigned int busy_revision = property_state_revision(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, optec_rotator.device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 180));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE, busy_revision));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)) < 0.001);
+	SERIAL_CHECK_TRUE(change_switch_after(OPTEC_HOME_PROPERTY_NAME, OPTEC_HOME_ITEM_NAME, true, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 180, 0.001));
+	int moves = trace_command_count(trace_path, "CPA180");
+	SERIAL_CHECK_TRUE(change_number_after(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 180, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(moves, trace_command_count(trace_path, "CPA180"));
+	SERIAL_CHECK_TRUE(change_number_after(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 359, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 359, 0.001));
+	SERIAL_CHECK_TRUE(change_number_after(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 0, 0.001));
+	SERIAL_CHECK_TRUE(trace_command_count(trace_path, "CPA359") == 1 && trace_command_count(trace_path, "CPA000") == 1);
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&optec_rotator);
+	}
+	stop_external_serial_simulator(&simulator);
+	unlink(trace_path);
+}
+
+static void optec_controls_home_and_protocol(void) {
+	external_serial_simulator simulator = { 0 };
+	char trace_path[] = "/tmp/rotator-optec-trace.XXXXXX";
+	int trace_fd = mkstemp(trace_path);
+	const char *args[] = { "--trace-file", trace_path, NULL };
+
+	SERIAL_CHECK_TRUE(trace_fd >= 0);
+	close(trace_fd);
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, ROTATOR_OPTEC_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&optec_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(change_number_after(OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME, 5, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_switch_after(ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_number_after(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 12, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_number_after(OPTEC_ROTATE_PROPERTY_NAME, OPTEC_ROTATE_ITEM_NAME, 3, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(OPTEC_ROTATE_PROPERTY_NAME, OPTEC_ROTATE_ITEM_NAME)) < 0.001);
+	SERIAL_CHECK_TRUE(find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(change_number_after(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 12, 0.001));
+	SERIAL_CHECK_TRUE(change_number_after(OPTEC_ROTATE_PROPERTY_NAME, OPTEC_ROTATE_ITEM_NAME, -3, INDIGO_OK_STATE));
+	unsigned int home_busy = property_state_revision(OPTEC_HOME_PROPERTY_NAME, INDIGO_BUSY_STATE);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, optec_rotator.device_name, OPTEC_HOME_PROPERTY_NAME, OPTEC_HOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(OPTEC_HOME_PROPERTY_NAME, INDIGO_BUSY_STATE, home_busy));
 	SERIAL_CHECK_TRUE(wait_for_property_state(OPTEC_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 0, 0.001));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, optec_rotator.device_name, OPTEC_ROTATE_PROPERTY_NAME, OPTEC_ROTATE_ITEM_NAME, 3));
-	SERIAL_CHECK_TRUE(wait_for_property_state(OPTEC_ROTATE_PROPERTY_NAME, INDIGO_OK_STATE));
+	disconnect_serial_device(&optec_rotator);
+	SERIAL_CHECK_TRUE(connect_serial_device(&optec_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME, 5, 0.001));
+	SERIAL_CHECK_TRUE(trace_command_count(trace_path, "CTxx05") >= 2);
+	SERIAL_CHECK_TRUE(trace_command_count(trace_path, "CD1xxx") == 1);
+	SERIAL_CHECK_TRUE(trace_command_count(trace_path, "CPA012") == 1);
+	SERIAL_CHECK_TRUE(trace_command_count(trace_path, "CXxx03") == 1);
+	SERIAL_CHECK_TRUE(trace_command_count(trace_path, "CXxx13") == 1);
+	SERIAL_CHECK_TRUE(trace_command_count(trace_path, "CHOMES") == 1);
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&optec_rotator);
+	}
+	stop_external_serial_simulator(&simulator);
+	unlink(trace_path);
+}
+
+static void optec_connection_failure_recovers(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *args[] = { "--fault-reply", "CGETPA", "1", "bad\r\n", NULL };
+	bool driver_up = false;
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, ROTATOR_OPTEC_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&optec_rotator));
+	driver_up = true;
+	SERIAL_CHECK_TRUE(!connect_serial_device(&optec_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(context.disconnected && context.last_connection_state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(connect_serial_device(&optec_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+
+cleanup:
+	if (driver_up) {
+		if (context.connected) {
+			disconnect_serial_device(&optec_rotator);
+		}
+		tear_down_serial_driver(&optec_rotator);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void optec_setting_failure_recovers(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *args[] = { "--fault-reply", "CT*", "2", "?", NULL };
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, ROTATOR_OPTEC_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&optec_rotator, simulator.port));
+	double accepted = cached_number_value(OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME);
+	SERIAL_CHECK_TRUE(change_number_after(OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME, 17, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME) - accepted) < 0.001);
+	SERIAL_CHECK_TRUE(change_number_after(OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME, 17, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME, 17, 0.001));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&optec_rotator);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void optec_motion_error_recovers(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *args[] = { "--fault-reply", "CPA*", "1", "ER=3\r\n", NULL };
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, ROTATOR_OPTEC_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&optec_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(change_number_after(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 0, 0.001));
+	SERIAL_CHECK_TRUE(change_number_after(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20, 0.001));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&optec_rotator);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void optec_final_readback_failure_recovers(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *args[] = { "--fault-reply", "CGETPA", "2", "bad\r\n", NULL };
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, ROTATOR_OPTEC_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&optec_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(change_number_after(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 0, 0.001));
+	SERIAL_CHECK_TRUE(change_number_after(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 21, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 21, 0.001));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&optec_rotator);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void optec_home_error_recovers(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *args[] = { "--fault-reply", "CHOMES", "1", "ER=1\r\n", NULL };
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, ROTATOR_OPTEC_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&optec_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(change_number_after(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 12, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_switch_after(OPTEC_HOME_PROPERTY_NAME, OPTEC_HOME_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 12, 0.001));
+	SERIAL_CHECK_TRUE(change_switch_after(OPTEC_HOME_PROPERTY_NAME, OPTEC_HOME_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 0, 0.001));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&optec_rotator);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void optec_motion_timeout_recovers(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *args[] = { "--stall-motion", "CPA*", NULL };
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, ROTATOR_OPTEC_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&optec_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(change_number_after(OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME, 0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_number_after(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 1, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 0, 0.001));
+	SERIAL_CHECK_TRUE(change_number_after(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 1, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 1, 0.001));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&optec_rotator);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void optec_disconnect_during_motion_and_reinitialize(void) {
+	external_serial_simulator simulator = { 0 };
+	double started = 0;
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, ROTATOR_OPTEC_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&optec_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(change_number_after(OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME, 99, INDIGO_OK_STATE));
+	unsigned int busy_revision = property_state_revision(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, optec_rotator.device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 359));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE, busy_revision));
+	started = indigo_monotonic_time();
+	disconnect_serial_device(&optec_rotator);
+	SERIAL_CHECK_TRUE(!context.connected && indigo_monotonic_time() - started < 2.0);
+	tear_down_serial_driver(&optec_rotator);
+	stop_external_serial_simulator(&simulator);
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, ROTATOR_OPTEC_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&optec_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(change_number_after(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 2, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 2, 0.001));
 
 cleanup:
 	if (context.connected) {
@@ -81,7 +342,16 @@ cleanup:
 
 int main(void) {
 	const indigo_test_case tests[] = {
-		{ "optec_rotator_passes_serial_compliance_checks", optec_rotator_passes_serial_compliance_checks }
+		{ "optec_property_contract_and_reconnect", optec_property_contract_and_reconnect },
+		{ "optec_absolute_motion_noop_and_overlap", optec_absolute_motion_noop_and_overlap },
+		{ "optec_controls_home_and_protocol", optec_controls_home_and_protocol },
+		{ "optec_connection_failure_recovers", optec_connection_failure_recovers },
+		{ "optec_setting_failure_recovers", optec_setting_failure_recovers },
+		{ "optec_motion_error_recovers", optec_motion_error_recovers },
+		{ "optec_final_readback_failure_recovers", optec_final_readback_failure_recovers },
+		{ "optec_home_error_recovers", optec_home_error_recovers },
+		{ "optec_motion_timeout_recovers", optec_motion_timeout_recovers },
+		{ "optec_disconnect_during_motion_and_reinitialize", optec_disconnect_during_motion_and_reinitialize }
 	};
 	return indigo_run_tests("Optec Pyxis rotator serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }

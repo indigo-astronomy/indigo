@@ -60,7 +60,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_wheel_sx_usb \
 	$(INTEGRATION_BUILD)/test_guider_gpusb_usb \
 	$(INTEGRATION_BUILD)/test_focuser_fcusb_usb \
-	$(INTEGRATION_BUILD)/test_aux_dsusb_usb \
+	$(INTEGRATION_BUILD)/test_aux_dsusb_sdk \
 	$(INTEGRATION_BUILD)/test_focuser_primaluce_motion \
 	$(INTEGRATION_BUILD)/test_focuser_usbv3_motion \
 	$(INTEGRATION_BUILD)/test_focuser_dmfc_motion \
@@ -1074,11 +1074,19 @@ $(INTEGRATION_BUILD)/mount_synscan_test_driver.o: ../indigo_drivers/mount_synsca
 USB_OUTPUT_INCLUDES = -I../indigo_drivers/aux_dsusb/bin_externals/libdsusb/include -I../indigo_drivers/focuser_fcusb/bin_externals/libfcusb/include -I../indigo_drivers/guider_gpusb/bin_externals/libgpusb/include -I../indigo_drivers/wheel_atik/bin_externals/libatik/include
 USB_OUTPUT_REPLACEMENTS = -Dindigo_queue_create=output_queue_create -Dindigo_attach_device=output_attach -Dindigo_detach_device=output_detach -Dindigo_start_usb_event_handler=output_usb_start -Dlibusb_hotplug_register_callback=output_usb_register -Dlibusb_hotplug_deregister_callback=output_usb_deregister -Dlibusb_hotplug_register_callback_sim=output_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=output_usb_deregister_poll -Dlibusb_ref_device=output_usb_ref -Dlibusb_unref_device=output_usb_unref -Dindigo_get_usb_path=output_usb_path -Dindigo_uni_open_hid=output_hid_open -Dindigo_uni_close=output_hid_close -Dindigo_uni_read=output_hid_read -Dindigo_uni_write=output_hid_write
 
-$(INTEGRATION_BUILD)/aux_dsusb_usb_output.o: ../indigo_drivers/aux_dsusb/indigo_aux_dsusb.c | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $(USB_OUTPUT_REPLACEMENTS) -c $< -o $@
+AUX_DSUSB_TEST_REPLACEMENTS = -Dindigo_queue_create=dsusb_test_queue_create -Dindigo_attach_device=dsusb_test_attach -Dindigo_detach_device=dsusb_test_detach -Dindigo_start_usb_event_handler=dsusb_test_usb_start -Dlibusb_hotplug_register_callback=dsusb_test_usb_register -Dlibusb_hotplug_deregister_callback=dsusb_test_usb_deregister -Dlibusb_hotplug_register_callback_sim=dsusb_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=dsusb_test_usb_deregister_poll -Dlibusb_ref_device=dsusb_test_usb_ref -Dlibusb_unref_device=dsusb_test_usb_unref -Dindigo_get_usb_path=dsusb_test_usb_path -Dindigo_execute_priority_handler_in=dsusb_test_execute_priority_handler_in
 
-$(INTEGRATION_BUILD)/test_aux_dsusb_usb: integration/test_usb_outputs.c $(INTEGRATION_BUILD)/aux_dsusb_usb_output.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) -DTEST_KIND=1 -DTEST_ENTRY=indigo_aux_dsusb -DTEST_NAME='"DSUSB test"' $< $(INTEGRATION_BUILD)/aux_dsusb_usb_output.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+$(INTEGRATION_BUILD)/aux_dsusb_sdk.o: ../indigo_drivers/aux_dsusb/indigo_aux_dsusb.c | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $(AUX_DSUSB_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_aux_dsusb_sdk: integration/test_aux_dsusb_sdk.c $(INTEGRATION_BUILD)/aux_dsusb_sdk.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $< $(INTEGRATION_BUILD)/aux_dsusb_sdk.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+$(INTEGRATION_BUILD)/aux_dsusb_sdk_asan.o: ../indigo_drivers/aux_dsusb/indigo_aux_dsusb.c | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $(USB_OUTPUT_INCLUDES) $(AUX_DSUSB_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_aux_dsusb_sdk_asan: integration/test_aux_dsusb_sdk.c $(INTEGRATION_BUILD)/aux_dsusb_sdk_asan.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $(USB_OUTPUT_INCLUDES) $< $(INTEGRATION_BUILD)/aux_dsusb_sdk_asan.o -o $@ $(TEST_LDFLAGS) -lusb-1.0 -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/focuser_fcusb_usb_output.o: ../indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.c | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $(USB_OUTPUT_REPLACEMENTS) -c $< -o $@

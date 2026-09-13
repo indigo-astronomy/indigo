@@ -128,6 +128,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_wheel_optec", "indig
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_rotator_falcon", "indigo_drivers\rotator_falcon\indigo_rotator_falcon.vcxproj", "{827BB928-02BF-4DF7-9C0F-4E141DEC7406}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_rotator_optec", "indigo_drivers\rotator_optec\indigo_rotator_optec.vcxproj", "{7A5FE933-A933-4D37-BE85-83A74DC4282A}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_wheel_xagyl", "indigo_drivers\wheel_xagyl\indigo_wheel_xagyl.vcxproj", "{8D2E5B8C-CE39-4F58-A75D-A836B5AF20EB}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_wheel_trutek", "indigo_drivers\wheel_trutek\indigo_wheel_trutek.vcxproj", "{448D3540-28F1-4DEF-98DD-0B4BE29D1F70}"
@@ -750,6 +752,14 @@ Global
 		{827BB928-02BF-4DF7-9C0F-4E141DEC7406}.Release|ARM64.Build.0 = Release|ARM64
 		{827BB928-02BF-4DF7-9C0F-4E141DEC7406}.Release|x64.ActiveCfg = Release|x64
 		{827BB928-02BF-4DF7-9C0F-4E141DEC7406}.Release|x64.Build.0 = Release|x64
+		{7A5FE933-A933-4D37-BE85-83A74DC4282A}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{7A5FE933-A933-4D37-BE85-83A74DC4282A}.Debug|ARM64.Build.0 = Debug|ARM64
+		{7A5FE933-A933-4D37-BE85-83A74DC4282A}.Debug|x64.ActiveCfg = Debug|x64
+		{7A5FE933-A933-4D37-BE85-83A74DC4282A}.Debug|x64.Build.0 = Debug|x64
+		{7A5FE933-A933-4D37-BE85-83A74DC4282A}.Release|ARM64.ActiveCfg = Release|ARM64
+		{7A5FE933-A933-4D37-BE85-83A74DC4282A}.Release|ARM64.Build.0 = Release|ARM64
+		{7A5FE933-A933-4D37-BE85-83A74DC4282A}.Release|x64.ActiveCfg = Release|x64
+		{7A5FE933-A933-4D37-BE85-83A74DC4282A}.Release|x64.Build.0 = Release|x64
 		{8D2E5B8C-CE39-4F58-A75D-A836B5AF20EB}.Debug|ARM64.ActiveCfg = Debug|ARM64
 		{8D2E5B8C-CE39-4F58-A75D-A836B5AF20EB}.Debug|ARM64.Build.0 = Debug|ARM64
 		{8D2E5B8C-CE39-4F58-A75D-A836B5AF20EB}.Debug|x64.ActiveCfg = Debug|x64

@@ -366,6 +366,9 @@
     <ProjectReference Include="..\indigo_drivers\rotator_falcon\indigo_rotator_falcon.vcxproj">
       <Project>{827bb928-02bf-4df7-9c0f-4e141dec7406}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\rotator_optec\indigo_rotator_optec.vcxproj">
+      <Project>{7a5fe933-a933-4d37-be85-83a74dc4282a}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\rotator_simulator\indigo_rotator_simulator.vcxproj">
       <Project>{88bcddef-e256-437d-a5ad-9ef58e6752fa}</Project>
     </ProjectReference>
