@@ -10,7 +10,6 @@
 Read the relevant documentation before changing behavior:
 
 - `README.md` covers platform requirements and top-level build commands.
-- `TESTING.md` documents manual and hardware-oriented validation.
 - `indigo_docs/DEVELOPMENT.md` introduces the bus, device, client, and property model.
 - `indigo_docs/DRIVER_DEVELOPMENT_BASICS.md` is the main reference for driver lifecycle, property semantics, INDIGO 3.0 APIs, portable I/O, and handler queues.
 - `indigo_docs/DRIVER_GENERATOR_MIGRATION.md` documents generated-driver migration.
@@ -106,7 +105,7 @@ Some drivers are generated from `.driver` files by `indigo_generator`.
 
 For CCD, mount, wheel, focuser, rotator, guider, AO and GPS validation, follow the shared scope and class standards in [Driver Testing Rules](indigo_test/DRIVER_TESTING_RULES.md).
 
-- Every driver refactoring must include full applicable test coverage of its supported capabilities and driver-specific behavior, using the class standard as the acceptance checklist. Cover protocol commands and readback, property transitions, failure/recovery paths, lifecycle and concurrency; a smoke test alone is not completion. Record the scenario-to-test mapping and justify non-applicable cases or hardware-only gaps in `indigo_test/CHANGES.md` and the driver's `REFACTOR.md`.
+- Every driver refactoring must include full applicable test coverage of its supported capabilities and driver-specific behavior, using the class standard as the acceptance checklist. Cover protocol commands and readback, property transitions, failure/recovery paths, lifecycle and concurrency; a smoke test alone is not completion. Record the scenario-to-test mapping and justify non-applicable cases or hardware-only gaps in the driver's `REFACTOR.md`.
 - Audit the simulator as part of each refactoring against the supplied manufacturer protocol documentation (including bundled XLSX documents). For serial simulators with motion, use `indigo_test/simulator_common/serial_motion.h` unless a documented protocol requirement cannot be represented by it. Validate elapsed-time motion, stop and sync through the simulator protocol; do not count testing the shared helper itself as driver coverage.
 
 ## Repository Hygiene
@@ -126,7 +125,7 @@ For CCD, mount, wheel, focuser, rotator, guider, AO and GPS validation, follow t
 - Keep AI work scoped to the files, folders, and behavior explicitly requested.
 - Ground conclusions in repository sources. For reviews, cite exact files and lines; for implementation, follow nearby code and documented INDIGO APIs.
 - Treat AI-generated code, tests, and review notes as drafts until they are compiled, tested, or otherwise verified.
-- Separate concerns: use `REVIEW.md` files for risks and findings, `indigo_test/CHANGES.md` for automated-test plans and coverage notes, and patches for actual code changes.
+- Separate concerns: use `REVIEW.md` files for risks and findings, driver-local `REFACTOR.md` files for automated-test plans, coverage notes and refactoring evidence, and patches for actual code changes.
 - Prefer simulator-backed or hardware-free validation before claiming driver behavior is covered; document hardware assumptions when real devices are required.
 - Do not edit generated output, vendored SDKs, build products, or local artifacts unless the task explicitly targets them.
 - Leave the workspace clean of avoidable temporary files, running servers, test processes, and generated artifacts.
@@ -143,4 +142,4 @@ For CCD, mount, wheel, focuser, rotator, guider, AO and GPS validation, follow t
 - Advance a folder's `Last reviewed commit` only after that folder has been reviewed through the target commit.
 - After advancing a folder-level file, update the matching row in top-level `REVIEW.md`.
 - Do not mark a commit reviewed if the review was partial, skipped changed generated files, or depends on unresolved assumptions.
-- Keep review notes separate from test plans: `REVIEW.md` files track risks/findings, while `indigo_test/CHANGES.md` tracks automated-test coverage and deferred test work.
+- Keep review notes separate from test plans: `REVIEW.md` files track risks/findings, while driver-local `REFACTOR.md` files track automated-test coverage and deferred test work.

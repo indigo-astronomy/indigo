@@ -39,7 +39,7 @@ Validation: AO/guider shared connection orders and sibling survival pass.
 - Bounded waits for asynchronous simulator behavior.
 - Cleanup of generated `build/` artifacts through `make -C indigo_test test-clean`.
 - Alignment with `indigo_test/AGENTS.md` and `indigo_test/DRIVER_TESTING_RULES.md`.
-- Updates to `CHANGES.md` for meaningful test coverage changes.
+- Updates to the relevant driver's `REFACTOR.md` for meaningful test coverage changes.
 
 ## Reviewed Ranges
 

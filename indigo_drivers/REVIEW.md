@@ -120,11 +120,11 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-087 | High | `aux_dragonfly/shared/dragonfly_shared.c:121` | A full-size UDP reply writes the terminator one byte past the response buffer. | Open |
 | DRV-088 | High | `aux_mgbox/indigo_aux_mgbox.c:204` | Truncated checksummed NMEA sentences dereference missing fields in GPS and weather parsing. | Closed (fixed) |
 | DRV-089 | High | `aux_mgbox/indigo_aux_mgbox.c:195` | Pointer handles are tested as integer descriptors; failed open and last disconnect do not complete correctly. | Closed (fixed) |
-| DRV-090 | High | `guider_asi/indigo_guider_asi.c:266` | SDK pulse start/stop errors are ignored in property state and completion. | Open |
-| DRV-091 | High | `guider_asi/indigo_guider_asi.c:273` | Reversing a running pulse enables the opposite relay without disabling the original direction. | Open |
-| DRV-092 | High | `guider_asi/indigo_guider_asi.c:259` | A zero-duration replacement cancels the stop timer but never switches off the active relay. | Open |
-| DRV-093 | Medium | `guider_asi/indigo_guider_asi.c:522` | Failed hot-plug registration leaves INIT recorded as successful, so retry skips registration. | Open |
-| DRV-094 | High | `guider_asi/indigo_guider_asi.c:472` | An already scheduled arrival callback can attach a device after SHUTDOWN returns. | Open |
+| DRV-090 | High | `guider_asi/indigo_guider_asi.driver` (`asi_change_axis`, `asi_axis_finalizer`) | SDK pulse start/stop errors are ignored in property state and completion. | Closed (fixed and verified, 2026-09-13) |
+| DRV-091 | High | `guider_asi/indigo_guider_asi.driver` (`asi_change_axis`) | Reversing a running pulse enables the opposite relay without disabling the original direction. | Closed (fixed and verified, 2026-09-13) |
+| DRV-092 | High | `guider_asi/indigo_guider_asi.driver` (`asi_stop_axis`) | A zero-duration replacement cancels the stop timer but never switches off the active relay. | Closed (fixed and verified, 2026-09-13) |
+| DRV-093 | Medium | `guider_asi/indigo_guider_asi.driver` (`on_init`) | Failed hot-plug registration leaves INIT recorded as successful, so retry skips registration. | Closed (fixed and verified, 2026-09-13) |
+| DRV-094 | High | `guider_asi/indigo_guider_asi.driver` (`sdk.discovery_retries`) | An already scheduled arrival callback can attach a device after SHUTDOWN returns. | Closed (fixed and verified, 2026-09-13) |
 | DRV-095 | Medium | `guider_cgusbst4/indigo_guider_cgusbst4.driver:110` | Direction encoding differs from upstream PHD2 (letters versus digits); device-protocol compatibility needs confirmation. | Open (protocol confirmation needed) |
 | DRV-096 | High | `focuser_lunatico/shared/lunatico_shared.c:336` | A full-size serial/UDP reply overflows the response terminator; reproduced through rotator_lunatico with ASan. | Open |
 | DRV-097 | Medium | `focuser_lunatico/shared/lunatico_shared.c:1543` | Rejected rotator GOTO never publishes ALERT and idle polling reports OK instead. | Open |
@@ -972,25 +972,35 @@ Fixed in the 2026-09-09 working tree, generated version `0x0300000A`: `aux_mgbox
 
 Fixed in the 2026-09-09 working tree, generated version `0x0300000A`: `aux_mgbox/indigo_aux_mgbox.driver:351` implements transactional pointer-handle acquisition and `:394` closes the acquired handle; generated connection handlers own shared references and rollback. Bounded reads and callbacks on the master queue replace the independent reader. Invalid port, silent identification, three reconnect cycles, both shared orders, secondary rejection with the primary active, pulse/reboot disconnect and two independent instances pass. ASan also passes both pending-operation disconnect scenarios and instance isolation. The final ordinary suite passes all 32 scenarios; no hardware/TCP validation or folder-wide review is claimed.
 
-### DRV-090 (Open)
+### DRV-090 (Closed — fixed)
 
 The vendor's `USB2ST4_Conv.h` documents error returns for ON and OFF operations. The driver logs failed ON calls but still marks the axis BUSY and schedules successful completion; timer callbacks ignore OFF errors entirely. `start_failure` and `stop_failure` in `test_guider_asi_sdk` inject `USB2ST4_ERROR_GENERAL_ERROR` at the documented SDK boundary. Neither reaches ALERT. In the OFF case the fake SDK retains the asserted relay, while the driver reports completion and clears its private relay state. Confirmed with the unchanged x86_64 driver under Rosetta; no driver fix applied.
 
-### DRV-091 (Open)
+Fixed by the generated 2026-09-13 migration at version `0x03000007`: ON must succeed before BUSY/finalizer scheduling; OFF failure publishes ALERT and retains active-direction ownership so the next zero/replacement can retry. `relay_failures_and_recovery` passes for start failure, completion stop failure, retained fake relay and successful recovery; the complete 16-case ordinary and ASan+UBSan suites pass.
+
+### DRV-091 (Closed — fixed)
 
 The RA replacement branch cancels the old timer, then enables WEST without first disabling EAST. The SDK documents independent per-direction ON/OFF calls, not implicit interlocking. The `reversal` scenario starts EAST for 500 ms and replaces it with WEST for 100 ms: the fake SDK records both bits (12) instead of WEST alone (8). The DEC branch follows the same pattern; the runtime reproducer currently exercises RA. No driver fix applied.
 
-### DRV-092 (Open)
+Fixed by the per-axis state machine: every same/opposite replacement cancels the owned finalizer and successfully switches OFF the exact active relay before starting the replacement. `replacements_and_coalescing` verifies EAST-to-WEST and repeated NORTH ordering with no opposing relay overlap; the fake call journal and relay mask agree.
+
+### DRV-092 (Closed — fixed)
 
 An all-zero RA request cancels the previous completion timer at line 259 and enters neither positive-duration branch. No OFF call or replacement completion is scheduled, and the old private relay flag leaves the property BUSY. The `zero_stop` scenario starts EAST for 500 ms, sends zero and observes the output still asserted after the bounded two-second wait. This is cancellation of a valid active operation, not generic framework numeric validation. No driver fix applied.
 
-### DRV-093 (Open)
+Fixed by routing zero requests through the same owned stop path. `replacements_and_coalescing` now passes active-zero cancellation independently on RA and DEC and verifies relay OFF, item reset and OK; `directions_units_limits_and_opposed` also covers an idle zero no-op.
+
+### DRV-093 (Closed — fixed)
 
 `last_action` is set to INIT before hot-plug registration succeeds. After a simulated registration error, a second INIT returns OK through the repeated-action shortcut without registering a callback or discovering the present device. `registration_failure_retry` deliberately retries INIT directly, without an intervening SHUTDOWN that would conceal the problem. No driver fix applied.
 
-### DRV-094 (Open)
+Fixed by generated hot-plug initialization, which deletes a failed queue and resets `last_action` to SHUTDOWN when registration fails. `discovery_failures_and_retry` injects product-list and registration errors and directly retries INIT; both paths attach the expected device and shut down with balanced references.
+
+### DRV-094 (Closed — fixed)
 
 Hot-plug arrival schedules `process_plug_event` on an untracked 0.5-second timer. SHUTDOWN unregisters the USB callback and removes the current device array but does not cancel or join already scheduled work. `shutdown_pending_arrival` performs INIT followed immediately by SHUTDOWN; after 800 ms the previously scheduled callback has attached one device. The bus cannot stop because that device remains attached. The test uses the real framework timer, not a replacement scheduler. No driver fix applied.
+
+Fixed by generator-owned SDK discovery retries on the driver queue. Accepted shutdown marks discovery stopping, deregisters hot-plug, removes retry work, drains the queue and releases retained references before detaching devices. `shutdown_with_queued_discovery` blocks SDK discovery at a deterministic gate, releases it into immediate shutdown, waits past the old delay and verifies no late attach; the lifetime counters remain zero.
 
 ### DRV-095 (Open — protocol confirmation needed)
 

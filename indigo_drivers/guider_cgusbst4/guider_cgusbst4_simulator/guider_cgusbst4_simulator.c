@@ -2,7 +2,7 @@
 // All rights reserved.
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-// Protocol evidence and unresolved dialect difference: indigo_test/GUIDER_PROTOCOL_TESTS.md.
+// Protocol evidence and unresolved dialect difference: ../REFACTOR.md.
 // Default PHD2 dialect uses numeric directions; --profile indigo accepts letters.
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
 #include <signal.h>

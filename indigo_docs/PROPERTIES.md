@@ -1238,9 +1238,9 @@ Source: `indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.driver`.
 
 ### focuser_qhy
 
-Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+Driver-specific use of existing properties: `FOCUSER_BACKLASH` remains hidden; `FOCUSER_COMPENSATION` exposes coefficient and threshold; `FOCUSER_LIMITS` provides local 0–2,000,000-step clamping; `FOCUSER_MODE` switches between manual controls and automatic temperature compensation; `FOCUSER_ON_POSITION_SET` selects GOTO or SYNC; `FOCUSER_REVERSE_MOTION` and `FOCUSER_SPEED` configure firmware; `FOCUSER_TEMPERATURE` publishes a five-sample mean using the outside probe with chip-temperature fallback.
 
-Source: `indigo_drivers/focuser_qhy/indigo_focuser_qhy.c`.
+Source: `indigo_drivers/focuser_qhy/indigo_focuser_qhy.driver`.
 
 ### focuser_robofocus
 
@@ -1292,7 +1292,7 @@ Source: `indigo_drivers/gps_nmea/indigo_gps_nmea.c`.
 
 Driver-specific use of existing properties: `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`.
 
-Source: `indigo_drivers/guider_asi/indigo_guider_asi.c`.
+Source: `indigo_drivers/guider_asi/indigo_guider_asi.driver`.
 
 ### guider_cgusbst4
 
@@ -1340,9 +1340,9 @@ Source: `indigo_drivers/mount_mxhd/indigo_mount_mxhd.c`.
 
 Custom properties: `COMMAND_GUIDE_RATE`, `TRACKING_MODE`.
 
-Driver-specific use of existing properties: `GEOGRAPHIC_COORDINATES`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `MOUNT_GUIDE_RATE`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK_POSITION`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
+Driver-specific use of existing properties: `GEOGRAPHIC_COORDINATES`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `MOUNT_ABORT_MOTION`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_GUIDE_RATE`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
 
-Source: `indigo_drivers/mount_nexstar/indigo_mount_nexstar.c`.
+Source: `indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver`; generated output in `indigo_drivers/mount_nexstar/indigo_mount_nexstar.c`.
 
 ### mount_nexstaraux
 

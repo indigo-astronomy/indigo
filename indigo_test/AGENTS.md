@@ -41,7 +41,7 @@ All source files and headers under `indigo_test/`, including new files, must use
 - `benchmark/` contains measurement tools that report timing rather than passing or failing.
 - `integration/simulator_test_common.h` contains shared simulator lifecycle helpers, the in-process client, property cache, wait helpers, and compliance-style assertions.
 - `fixtures/protocol/` contains fixed XML and JSON protocol parser fixtures.
-- `CHANGES.md` summarizes current coverage and deferred automated-test work.
+- Driver-local `REFACTOR.md` files summarize current driver coverage and deferred automated-test work.
 
 ## Running Tests
 
@@ -102,8 +102,8 @@ After validating changes that build tests, run `make -C indigo_test test-clean` 
   two libraries to compare implementations.
 - Build every harness being compared with identical compiler flags; mismatched flags have
   already produced a false finding once.
-- Record comparison results in a markdown note beside the benchmark sources, including the
-  environment, the sample counts, and anything left open.
+- For driver-related benchmarks, record comparison results, environment, sample counts
+  and anything left open in the relevant driver's `REFACTOR.md`.
 
 ## Makefile Rules
 
@@ -259,5 +259,5 @@ master is the device that unhides `DEVICE_PORT` (`DEVICE_PORT_PROPERTY->hidden
 
 ## Documentation
 
-- Update `CHANGES.md` when adding meaningful new test coverage or deferring known work.
+- Update the relevant driver's `REFACTOR.md` when adding meaningful new test coverage or deferring known work.
 - Update `DRIVER_TESTING_RULES.md` when base driver property visibility, simulator compliance coverage, or driver-class test scenarios change.

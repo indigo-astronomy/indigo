@@ -103,7 +103,7 @@
 | focuser_optecfl         | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | focuser_primaluce       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
 | focuser_prodigy         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_qhy             | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ❌ No  | ✅ Yes |                                                         |
+| focuser_qhy             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | focuser_robofocus       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | focuser_steeldrive2     | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | focuser_usbv3           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
@@ -112,15 +112,15 @@
 | gps_gpsd                | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⏰ TODO - make libgps for Windows                       |
 | gps_nmea                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes |                                                         |
 | gps_simulator           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ⛔ N/A | ✅ Yes |                                                         |
-| guider_asi              | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⏰ TODO - find SDK for windows                          |
+| guider_asi              | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes | ⏰ TODO - find SDK for windows                          |
 | guider_cgusbst4         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes |                                                         |
 | guider_gpusb            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
 | mount_asi               | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ❌ No  | ❌ No  |                                                         |
 | mount_ioptron           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | mount_lx200             | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| mount_nexstar           | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes | ⏰ TODO - make libnexstar for Windows                   |
+| mount_nexstar           | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes | ⏰ TODO - make libnexstar for Windows                   |
 | mount_nexstaraux        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| mount_pmc8              | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
+| mount_pmc8              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | mount_rainbow           | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
 | mount_simulator         | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ⛔ N/A | ✅ Yes |                                                         |
 | mount_starbook          | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |

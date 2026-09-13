@@ -26,7 +26,8 @@ INTEGRATION_BUILD = $(TEST_BUILD)/integration
 BENCHMARK_BUILD = $(TEST_BUILD)/benchmark
 BENCHMARKS = \
 	$(BENCHMARK_BUILD)/bench_timer \
-	$(BENCHMARK_BUILD)/bench_queue
+	$(BENCHMARK_BUILD)/bench_queue \
+	$(BENCHMARK_BUILD)/bench_guider_asi_timing
 UNIT_TESTS = \
 	$(UNIT_BUILD)/test_align_math \
 	$(UNIT_BUILD)/test_aux_math \
@@ -415,8 +416,8 @@ $(INTEGRATION_BUILD)/focuser_focusdreampro_simulator: ../indigo_drivers/focuser_
 $(INTEGRATION_BUILD)/focuser_ioptron_simulator: ../indigo_drivers/focuser_ioptron/focuser_ioptron_simulator/focuser_ioptron_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
-$(INTEGRATION_BUILD)/focuser_qhy_simulator: ../indigo_drivers/focuser_qhy/focuser_qhy_simulator/focuser_qhy_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+$(INTEGRATION_BUILD)/focuser_qhy_simulator: ../indigo_drivers/focuser_qhy/focuser_qhy_simulator/focuser_qhy_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/focuser_optecfl_simulator: ../indigo_drivers/focuser_optecfl/focuser_optecfl_simulator/focuser_optecfl_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
@@ -550,7 +551,7 @@ $(INTEGRATION_BUILD)/test_mount_lx200_simulator: integration/test_mount_lx200_si
 $(INTEGRATION_BUILD)/mount_nexstar_simulator: ../indigo_drivers/mount_nexstar/mount_nexstar_simulator/mount_nexstar_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/test_mount_nexstar_simulator: integration/test_mount_nexstar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstar_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_nexstar_simulator: integration/test_mount_nexstar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstar_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_NEXSTAR_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/mount_nexstaraux_simulator: ../indigo_drivers/mount_nexstaraux/mount_nexstaraux_simulator/mount_nexstaraux_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -648,6 +649,9 @@ $(INTEGRATION_BUILD)/test_focuser_ioptron_simulator_asan: integration/test_focus
 
 $(INTEGRATION_BUILD)/test_focuser_qhy_simulator: integration/test_focuser_qhy_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_qhy_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_QHY_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_qhy_simulator_asan: integration/test_focuser_qhy_simulator.c ../indigo_drivers/focuser_qhy/indigo_focuser_qhy.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_qhy_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_qhy/indigo_focuser_qhy.c $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_optecfl_simulator_asan: integration/test_focuser_optecfl_simulator.c ../indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_optecfl_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.c $(TEST_LDFLAGS)
@@ -1155,13 +1159,22 @@ ASI_ST4_TEST_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch x86_
 ASI_ST4_TEST_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch x86_64
 endif
 ASI_ST4_INCLUDE = -I../indigo_drivers/guider_asi/bin_externals/libusb2st4conv/include
-ASI_ST4_REPLACEMENTS = -Dindigo_start_usb_event_handler=asi_test_usb_start -Dlibusb_hotplug_register_callback=asi_test_usb_register -Dlibusb_hotplug_deregister_callback=asi_test_usb_deregister -Dlibusb_get_device_descriptor=asi_test_usb_descriptor -Dindigo_attach_device=asi_test_attach -Dindigo_detach_device=asi_test_detach
+ASI_ST4_REPLACEMENTS = -Dindigo_start_usb_event_handler=asi_test_usb_start -Dlibusb_hotplug_register_callback_sim=asi_test_usb_register -Dlibusb_hotplug_deregister_callback_poll=asi_test_usb_deregister -Dlibusb_get_device_descriptor=asi_test_usb_descriptor -Dlibusb_ref_device=asi_test_usb_ref -Dlibusb_unref_device=asi_test_usb_unref -Dindigo_attach_device=asi_test_attach -Dindigo_detach_device=asi_test_detach -Dindigo_update_property=asi_test_update_property -Dindigo_try_global_lock=asi_test_lock -Dindigo_global_unlock=asi_test_unlock
 
 $(INTEGRATION_BUILD)/guider_asi_sdk_driver.o: ../indigo_drivers/guider_asi/indigo_guider_asi.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(ASI_ST4_TEST_CFLAGS) $(ASI_ST4_INCLUDE) $(ASI_ST4_REPLACEMENTS) -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_guider_asi_sdk: integration/test_guider_asi_sdk.c integration/guider_asi_fake_sdk.c integration/guider_asi_fake_sdk.h integration/simulator_test_common.h integration/serial_simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/guider_asi_sdk_driver.o | $(INTEGRATION_BUILD)
-	$(CC) $(ASI_ST4_TEST_CFLAGS) $(ASI_ST4_INCLUDE) $< integration/guider_asi_fake_sdk.c $(INTEGRATION_BUILD)/guider_asi_sdk_driver.o -o $@ $(ASI_ST4_TEST_LDFLAGS) -lusb-1.0
+$(INTEGRATION_BUILD)/test_guider_asi_sdk: integration/test_guider_asi_sdk.c integration/simulator_test_common.h integration/serial_simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/guider_asi_sdk_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(ASI_ST4_TEST_CFLAGS) $(ASI_ST4_INCLUDE) $< $(INTEGRATION_BUILD)/guider_asi_sdk_driver.o -o $@ $(ASI_ST4_TEST_LDFLAGS) -lusb-1.0
+
+$(INTEGRATION_BUILD)/guider_asi_sdk_driver_sanitize.o: ../indigo_drivers/guider_asi/indigo_guider_asi.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(ASI_ST4_TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $(ASI_ST4_INCLUDE) $(ASI_ST4_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_guider_asi_sdk_sanitize: integration/test_guider_asi_sdk.c integration/simulator_test_common.h integration/serial_simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/guider_asi_sdk_driver_sanitize.o | $(INTEGRATION_BUILD)
+	$(CC) $(ASI_ST4_TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $(ASI_ST4_INCLUDE) $< $(INTEGRATION_BUILD)/guider_asi_sdk_driver_sanitize.o -o $@ $(ASI_ST4_TEST_LDFLAGS) -fsanitize=address,undefined -lusb-1.0
+
+$(BENCHMARK_BUILD)/bench_guider_asi_timing: integration/test_guider_asi_sdk.c integration/simulator_test_common.h integration/serial_simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/guider_asi_sdk_driver.o | $(BENCHMARK_BUILD)
+	$(CC) $(ASI_ST4_TEST_CFLAGS) -DASI_TIMING_BENCHMARK $(ASI_ST4_INCLUDE) $< $(INTEGRATION_BUILD)/guider_asi_sdk_driver.o -o $@ $(ASI_ST4_TEST_LDFLAGS) -lusb-1.0
 
 $(INTEGRATION_BUILD)/guider_cgusbst4_simulator: ../indigo_drivers/guider_cgusbst4/guider_cgusbst4_simulator/guider_cgusbst4_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
