@@ -1,9 +1,9 @@
 // Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
-
-// You may use this software under the terms of 'INDIGO Astronomy
+//
+// You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-
+//
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,21 +16,24 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_ccd_simulator.driver
+// version history
+// 3.0 generated-driver migration by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-#include <indigo/indigo_driver_xml.h>
+#ifndef indigo_ccd_simulator_data_h
+#define indigo_ccd_simulator_data_h
 
-#include "indigo_ccd_simulator.h"
+#define IMAGER_WIDTH 1600
+#define IMAGER_HEIGHT 1200
+#define GUIDER_WIDTH 1600
+#define GUIDER_HEIGHT 1200
+#define BAHTINOV_WIDTH 500
+#define BAHTINOV_HEIGHT 500
+#define BAHTINOV_MAX_STEPS 15
+#define DSLR_WIDTH 1600
+#define DSLR_HEIGHT 1200
 
-int main(int argc, const char * argv[]) {
-	indigo_main_argc = argc;
-	indigo_main_argv = argv;
-	indigo_client *protocol_adapter = indigo_xml_device_adapter(indigo_stdin_handle, indigo_stdout_handle);
-	indigo_start();
-	indigo_ccd_simulator(INDIGO_DRIVER_INIT, NULL);
-	indigo_attach_client(protocol_adapter);
-	indigo_xml_parse(NULL, protocol_adapter);
-	indigo_ccd_simulator(INDIGO_DRIVER_SHUTDOWN, NULL);
-	indigo_stop();
-	return 0;
-}
+extern unsigned short indigo_ccd_simulator_raw_image[];
+extern unsigned char indigo_ccd_simulator_rgb_image[];
+extern unsigned char indigo_ccd_simulator_bahtinov_image[][BAHTINOV_WIDTH * BAHTINOV_HEIGHT];
+
+#endif

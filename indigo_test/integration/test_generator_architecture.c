@@ -38,6 +38,7 @@
 
 #define DEFINITION "indigo_aux_architecture_test.driver"
 #define GENERATED "indigo_aux_architecture_test.c"
+#define REPEATED_DEFINITION "indigo_ccd_architecture_test.driver"
 
 static const char *fixture = "\tlabel = \"Architecture test\";\n\tauthor = \"INDIGO tests\";\n\tcopyright = \"Copyright (c) 2026 INDIGO tests\";\n\tversion = 7;\n\tinclude {\n\t\t#include <architecture_test_missing_sdk.h>\n\t}\n\taux {\n\t\tname = \"Architecture test device\";\n\t}\n}\n";
 
@@ -263,7 +264,7 @@ static bool check_attribute(const attribute_case *test) {
 	if (block) {
 		block[1] = 0;
 	}
-	const char *boolean_names[] = { "additional_instances", "asynchronous_change", "persistent", "preserve_values", "pass_through_change", "always_defined", "configurable_speed", "no_ports", "hotplug" };
+	const char *boolean_names[] = { "multi_device_support", "additional_instances", "asynchronous_change", "persistent", "preserve_values", "pass_through_change", "always_defined", "configurable_speed", "no_ports", "hotplug" };
 	bool boolean = false;
 	for (int i = 0; i < sizeof(boolean_names) / sizeof(boolean_names[0]); i++) {
 		if (!strncmp(parsed, boolean_names[i], strlen(boolean_names[i]))) {
@@ -293,6 +294,8 @@ static void all_supported_attributes(void) {
 		{ DRIVER_ATTRIBUTE, "copyright = \"Copyright marker\";", "Copyright marker" },
 		{ DRIVER_ATTRIBUTE, "label = \"Label marker\";", "Label marker" },
 		{ DRIVER_ATTRIBUTE, "supported_architecture = \"defined(__aarch64__)\";", "#if defined(__aarch64__)" },
+		{ DRIVER_ATTRIBUTE, "multi_device_support = true;", "DRIVER_VERSION, true, last_action" },
+		{ DRIVER_ATTRIBUTE, "multi_device_support = false;", "!DRIVER_VERSION, true, last_action" },
 		{ DRIVER_ATTRIBUTE, "version = 19;", "0x03000013" },
 		{ DRIVER_ATTRIBUTE, "PROBE_CONSTANT = 12345;", "12345" },
 		{ DRIVER_ATTRIBUTE, "include {\n/* marker_driver_include */\n}", "marker_driver_include" },
@@ -526,6 +529,69 @@ static void virtual_and_serial_children_detach_before_master(void) {
 	}
 }
 
+static void repeated_device_classes_use_unique_ids(void) {
+	const char *definition = "driver architecture_test {\nlabel = \"Repeated CCD test\";\nauthor = \"INDIGO tests\";\ncopyright = \"INDIGO tests\";\nversion = 1;\nccd { id = imager_ccd; name = \"Imager\"; inherited CCD_EXPOSURE { on_change { indigo_send_message(device, \"imager\"); } } }\nccd { id = guider_ccd; name = \"Guider camera\"; inherited CCD_EXPOSURE { on_change { indigo_send_message(device, \"guider\"); } } }\n}\n";
+	ASSERT_TRUE(write_text(REPEATED_DEFINITION, definition));
+	char *generate_arguments[] = { TEST_GENERATOR, REPEATED_DEFINITION, NULL };
+	ASSERT_TRUE(run(generate_arguments));
+	char generated[131072];
+	ASSERT_TRUE(read_text("indigo_ccd_architecture_test.c", generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "static indigo_result imager_ccd_attach(indigo_device *device)") != NULL);
+	ASSERT_TRUE(strstr(generated, "static indigo_result guider_ccd_attach(indigo_device *device)") != NULL);
+	ASSERT_TRUE(strstr(generated, "static void imager_ccd_ccd_exposure_handler(indigo_device *device)") != NULL);
+	ASSERT_TRUE(strstr(generated, "static void guider_ccd_ccd_exposure_handler(indigo_device *device)") != NULL);
+	ASSERT_TRUE(strstr(generated, "static indigo_device imager_ccd_template") != NULL);
+	ASSERT_TRUE(strstr(generated, "static indigo_device guider_ccd_template") != NULL);
+	ASSERT_TRUE(strstr(generated, "guider_ccd->master_device = imager_ccd;") != NULL);
+	char *shutdown = strstr(generated, "case INDIGO_DRIVER_SHUTDOWN:");
+	ASSERT_TRUE(shutdown != NULL);
+	char *guider_detach = strstr(shutdown, "indigo_detach_device(guider_ccd);");
+	char *imager_detach = strstr(shutdown, "indigo_detach_device(imager_ccd);");
+	ASSERT_TRUE(guider_detach && imager_detach && guider_detach < imager_detach);
+	char *extract_arguments[] = { TEST_GENERATOR, "-c", REPEATED_DEFINITION, NULL };
+	ASSERT_TRUE(run(extract_arguments));
+	ASSERT_TRUE(read_text(REPEATED_DEFINITION, generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "ccd {\n\t\tid = imager_ccd;") != NULL);
+	ASSERT_TRUE(strstr(generated, "ccd {\n\t\tid = guider_ccd;") != NULL);
+	ASSERT_TRUE(run(generate_arguments));
+}
+
+static void multi_device_support_is_opt_in_and_survives_extraction(void) {
+	const char *definition = "driver architecture_test {\nlabel = \"Multi-device metadata\";\nauthor = \"INDIGO tests\";\ncopyright = \"INDIGO tests\";\nversion = 1;\nmulti_device_support = true;\naux { name = \"Device\"; }\n}\n";
+	ASSERT_TRUE(write_text(DEFINITION, definition));
+	char *generate_arguments[] = { TEST_GENERATOR, DEFINITION, NULL };
+	ASSERT_TRUE(run(generate_arguments));
+	char generated[65536];
+	ASSERT_TRUE(read_text(GENERATED, generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "DRIVER_VERSION, true, last_action") != NULL);
+	char *extract_arguments[] = { TEST_GENERATOR, "-c", DEFINITION, NULL };
+	ASSERT_TRUE(run(extract_arguments));
+	ASSERT_TRUE(read_text(DEFINITION, generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "multi_device_support = true;") != NULL);
+	ASSERT_TRUE(run(generate_arguments));
+	ASSERT_TRUE(write_text(DEFINITION, "driver architecture_test { label = \"Default metadata\"; aux { name = \"Device\"; } }\n"));
+	ASSERT_TRUE(run(generate_arguments));
+	ASSERT_TRUE(read_text(GENERATED, generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "DRIVER_VERSION, false, last_action") != NULL);
+}
+
+static void virtual_connection_result_controls_completion(void) {
+	const char *definition = "driver architecture_test {\nlabel = \"Fallible virtual connection\";\nauthor = \"INDIGO tests\";\ncopyright = \"INDIGO tests\";\nversion = 1;\naux { name = \"Virtual device\"; on_connect { connection_result = false; } }\n}\n";
+	ASSERT_TRUE(write_text(DEFINITION, definition));
+	char *arguments[] = { TEST_GENERATOR, DEFINITION, NULL };
+	ASSERT_TRUE(run(arguments));
+	char generated[65536];
+	ASSERT_TRUE(read_text(GENERATED, generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "bool connection_result = true;") != NULL);
+	ASSERT_TRUE(strstr(generated, "if (connection_result) {") != NULL);
+	ASSERT_TRUE(strstr(generated, "CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;") != NULL);
+	ASSERT_TRUE(strstr(generated, "indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);") != NULL);
+	ASSERT_TRUE(write_text(DEFINITION, "driver architecture_test { label = \"Infallible virtual connection\"; aux { name = \"Virtual\"; on_connect { /* connected */ } } }\n"));
+	ASSERT_TRUE(run(arguments));
+	ASSERT_TRUE(read_text(GENERATED, generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "bool connection_result") == NULL);
+}
+
 
 static void usb_registration_reverse_extraction(void) {
 	const char *events[] = { "LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT", "(libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT)" };
@@ -633,6 +699,9 @@ int main(void) {
 	const indigo_test_case tests[] = {
 		{ "Polar Aligner device keyword and base-driver lifecycle generation", polaralign_device_generation },
 		{ "Virtual and serial children detach before their master", virtual_and_serial_children_detach_before_master },
+		{ "Repeated device classes use unique ids and survive extraction", repeated_device_classes_use_unique_ids },
+		{ "Multi-device metadata is opt-in and survives extraction", multi_device_support_is_opt_in_and_survives_extraction },
+		{ "Virtual connection_result controls success and preserves legacy output", virtual_connection_result_controls_completion },
 		{ "SDK startup discovery without hot-plug", sdk_startup_discovery_without_hotplug },
 		{ "C++ output selection, C linkage, extraction and unchanged C default", cpp_output_selection_and_extraction },
 		{ "Generated transport scaffolding compiles as C11 and C++11", generated_code_compiles_as_c_and_cpp },

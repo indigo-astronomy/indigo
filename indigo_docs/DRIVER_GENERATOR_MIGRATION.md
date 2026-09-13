@@ -27,6 +27,7 @@ driver <name> {
     author = "Author Name <email>";
     copyright = "Copyright notice";
     version = <integer>;
+	multi_device_support = true; // optional; default false
     serial;          // or libusb { ... }, hid { ... }, or sdk { ... }
 
     define { /* #define constants */ }
@@ -36,6 +37,7 @@ driver <name> {
 
     <device_type> {
         name = "Device Name";
+		id = logical_device_id; // optional unique C identifier for repeated device classes
         interface = INDIGO_INTERFACE_XYZ;
         additional_instances = true;
 
@@ -126,6 +128,24 @@ queue scheduling or shutdown synchronization. Drivers without this block retain 
 
 The `<device_type>` keyword matches the device's INDIGO class (`aux`, `wheel`, `focuser`, `ccd`, `mount`, `guider`, `rotator`, `dome`, `gps`, etc.).
 
+When a driver exposes the same class more than once, give each repeated block a unique `id` before any properties or code blocks:
+
+```c
+ccd {
+	id = imager_ccd;
+	name = "Imager";
+}
+
+ccd {
+	id = guider_ccd;
+	name = "Guider camera";
+}
+```
+
+The device type continues to select the base header and `indigo_ccd_*` lifecycle API. The `id` is used only for generated C symbols, code-block namespaces, templates and logical-device pointers. Omitting it retains the historical type-based names. Device ids must be unique within a driver and must precede properties and code blocks. Reverse extraction preserves explicit ids.
+
+Drivers that intentionally support more than one logical or physical device can opt into the corresponding `indigo_driver_info` metadata flag with `multi_device_support = true` at driver scope. The default is `false`, so omitting the attribute preserves historical generated output. The setting affects both the normal entry point and an unsupported-architecture metadata fallback, and reverse extraction preserves an enabled setting.
+
 Running the generator with a `.driver` file produces:
 
 | Generated file | Contents |
@@ -189,6 +209,8 @@ Read the `.c` file and note:
 Follow the format above. For the `serial` connection type, write `serial;`. If the device is identified by port pattern (vendor, product, or vid/pid) you can add a `serial { pattern { ... } }` block. For direct USB handles use `libusb` or `hid`; for SDK-based hot-plug with SDK ids/model records use `sdk { hotplug = true; plug { ... } unplug { ... } }`. Refer to existing `.driver` files in `indigo_drivers/` for examples.
 
 Name the open/close helper functions `<driver_name>_open` and `<driver_name>_close`. The generator looks for functions with exactly these names in the `code` block and wires them into the connection handler automatically. For example, for driver `svbpowerbox`, name them `svbpowerbox_open` and `svbpowerbox_close`.
+
+Virtual devices normally connect unconditionally. A virtual `on_connect` block that can fail may assign the generator-provided `connection_result` variable. Referencing that variable opts the block into fallible connection handling: true defines the connected properties and reports OK, while false restores the disconnected switch and reports ALERT. Virtual blocks that do not reference `connection_result` retain the unconditional connection path.
 
 **3. Run the generator**
 

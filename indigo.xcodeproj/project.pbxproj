@@ -3351,6 +3351,9 @@
 		59D381A81D9592A400E87393 /* indigo_bus.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; name = indigo_bus.c; path = indigo_libs/indigo_bus.c; sourceTree = SOURCE_ROOT; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator.c; sourceTree = "<group>"; wrapsLines = 0; };
 		59D381AC1D95996100E87393 /* indigo_ccd_simulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator.h; sourceTree = "<group>"; };
+		C0DE20260913CCD000000001 /* indigo_ccd_simulator.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_simulator.driver; sourceTree = "<group>"; };
+		C0DE20260913CCD000000002 /* indigo_ccd_simulator_data.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_data.h; sourceTree = "<group>"; };
+		C0DE20260913CCD000000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59D381BF1D965FDA00E87393 /* indigo_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; name = indigo_driver.c; path = indigo_libs/indigo_driver.c; sourceTree = SOURCE_ROOT; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59D381C01D965FDA00E87393 /* indigo_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = indigo_driver.h; path = indigo_libs/indigo/indigo_driver.h; sourceTree = SOURCE_ROOT; };
 		59D381C71D96A33D00E87393 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; wrapsLines = 1; };
@@ -10930,8 +10933,11 @@
 			isa = PBXGroup;
 			children = (
 				594107C21EC8D9D400C44F92 /* README.md */,
+				C0DE20260913CCD000000003 /* REFACTOR.md */,
 				593A8F13285FB8F800F6CF1C /* Makefile.inc */,
+				C0DE20260913CCD000000001 /* indigo_ccd_simulator.driver */,
 				59D381AC1D95996100E87393 /* indigo_ccd_simulator.h */,
+				C0DE20260913CCD000000002 /* indigo_ccd_simulator_data.h */,
 				59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */,
 				599C9A561DA026C5008BBCC1 /* indigo_ccd_simulator_main.c */,
 				59F0FE2C2083EA47001B34E9 /* indigo_ccd_simulator_data.c */,

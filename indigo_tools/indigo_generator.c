@@ -64,7 +64,7 @@ typedef struct property_type {
 
 typedef struct device_type {
 	struct device_type *next;
-	char type[16], handle[64], name[64], interface[128];
+	char type[16], id[64], handle[64], name[64], interface[128];
 	char attach_if[256], name_value[256];
 	bool additional_instances;
 	code_type *code, *on_timer, *on_attach, *on_connect, *on_disconnect, *on_detach;
@@ -106,7 +106,7 @@ typedef struct definition_type {
 typedef struct driver_type {
 	char name[64], label[256], author[256], copyright[256], supported_architecture[256];
 	int version;
-	bool virtual, cpp;
+	bool virtual, cpp, multi_device_support;
 	license_type license;
 	definition_type *definions;
 	device_type *devices;
@@ -636,8 +636,8 @@ bool parse_property_block(device_type *device, property_type **properties) {
 	snprintf(property->name, sizeof(property->name), "%s_PROPERTY_NAME", id);
 	make_lower_case(id);
 	snprintf(property->pointer, sizeof(property->pointer), "%s_property", id);
-	if (strncmp(id, device->type, strlen(device->type)) != 0) {
-		snprintf(property->handler, sizeof(property->handler), "%s_%s_handler", device->type, id);
+	if (strcmp(device->id, device->type) || strncmp(id, device->type, strlen(device->type)) != 0) {
+		snprintf(property->handler, sizeof(property->handler), "%s_%s_handler", device->id, id);
 	} else {
 		snprintf(property->handler, sizeof(property->handler), "%s_handler", id);
 	}
@@ -767,6 +767,7 @@ bool parse_device_block(driver_type *driver) {
 	copy(type, sizeof(type));
 	make_lower_case(type);
 	snprintf(device->type, sizeof(device->type), "%s", type);
+	snprintf(device->id, sizeof(device->id), "%s", type);
 	make_upper_case(type);
 	snprintf(device->handle, sizeof(device->handle), "%s_DEVICE_NAME", type);
 	snprintf(device->interface, sizeof(device->interface), "0");
@@ -779,6 +780,23 @@ bool parse_device_block(driver_type *driver) {
 	if (match(TOKEN_LBRACE, NULL)) {
 		debug(-1, "%s {", device->type);
 		while (!match(TOKEN_RBRACE, NULL)) {
+			char id[64];
+			if (parse_identifier_attribute("id", id, sizeof(id))) {
+				if (device->properties || device->code || device->on_timer || device->on_attach || device->on_connect || device->on_disconnect || device->on_detach) {
+					report_error("Device id must precede properties and code blocks");
+					return false;
+				}
+				for (device_type *other = driver->devices; other; other = other->next) {
+					if (!strcmp(other->id, id)) {
+						report_error("Duplicate device id");
+						return false;
+					}
+				}
+				snprintf(device->id, sizeof(device->id), "%s", id);
+				make_upper_case(id);
+				snprintf(device->handle, sizeof(device->handle), "%s_DEVICE_NAME", id);
+				continue;
+			}
 			if (parse_expression_attribute("attach_if", device->attach_if, sizeof(device->attach_if))) {
 				continue;
 			}
@@ -824,6 +842,12 @@ bool parse_device_block(driver_type *driver) {
 	} else {
 		report_error("Missing '{'");
 		return false;
+	}
+	for (device_type *other = driver->devices; other; other = other->next) {
+		if (!strcmp(other->id, device->id)) {
+			report_error("Duplicate device id");
+			return false;
+		}
 	}
 	append((void **)&driver->devices, device);
 	return true;
@@ -1037,6 +1061,9 @@ bool parse_driver_block(void) {
 			continue;
 		}
 		if (parse_bool_attribute("cpp", &driver.cpp)) {
+			continue;
+		}
+		if (parse_bool_attribute("multi_device_support", &driver.multi_device_support)) {
 			continue;
 		}
 		if (parse_int_attribute("version", &driver.version)) {
@@ -1483,9 +1510,9 @@ void write_c_low_level_code_section(void) {
 		}
 		write_c_code_blocks(driver.code, 0, "code");
 		for (device_type *device = driver.devices; device; device = device->next) {
-			write_c_code_blocks(device->code, 0, "%s.code", device->type);
+			write_c_code_blocks(device->code, 0, "%s.code", device->id);
 			for (property_type *property = device->properties; property; property = property->next) {
-				write_c_code_blocks(property->code, 0, "%s.%s.code", device->type, property->id);
+				write_c_code_blocks(property->code, 0, "%s.%s.code", device->id, property->id);
 			}
 		}
 	}
@@ -1495,11 +1522,11 @@ void write_c_timer_callback(device_type *device) {
 //	write_line("");
 //	write_line("// %s state checking timer callback", device->type);
 	write_line("");
-	write_line("static void %s_timer_callback(indigo_device *device) {", device->type);
+	write_line("static void %s_timer_callback(indigo_device *device) {", device->id);
 	write_line("\tif (!IS_CONNECTED) {");
 	write_line("\t\treturn;");
 	write_line("\t}");
-	write_c_code_blocks(device->on_timer, 1, "%s.on_timer", device->type);
+	write_c_code_blocks(device->on_timer, 1, "%s.on_timer", device->id);
 	write_line("}");
 	write_line("");
 }
@@ -1507,23 +1534,40 @@ void write_c_timer_callback(device_type *device) {
 void write_c_connection_change_handler(device_type *device) {
 	bool is_multi_device = driver.devices != NULL && driver.devices->next != NULL;
 	bool is_master_device = device == driver.devices;
+	bool has_virtual_connection_result = driver.virtual && device->on_connect != NULL && memmem(device->on_connect->text, device->on_connect->size, "connection_result", sizeof "connection_result" - 1);
 //	write_line("");
 //	write_line("// CONNECTION change handler");
 	write_line("");
-	write_line("static void %s_connection_handler(indigo_device *device) {", device->type);
+	write_line("static void %s_connection_handler(indigo_device *device) {", device->id);
 	write_line("\tif (CONNECTION_CONNECTED_ITEM->sw.value) {");
 	if (driver.virtual) {
-		write_c_code_blocks(device->on_connect, 2, "%s.on_connect", device->type);
+		if (has_virtual_connection_result) {
+			write_line("\t\tbool connection_result = true;");
+		}
+		write_c_code_blocks(device->on_connect, 2, "%s.on_connect", device->id);
+		if (has_virtual_connection_result) {
+			write_line("\t\tif (connection_result) {");
+		}
 		for (property_type *property2 = device->properties; property2; property2 = property2->next) {
 			if (property2->type[0] != 'i' && !property2->always_defined) {
 				write_line("\t\t\tindigo_define_property(device, %s, NULL);", property2->handle);
 			}
 		}
 		if (device->on_timer != NULL) {
-			write_line("\t\tindigo_execute_handler(device, %s_timer_callback);", device->type);
+			write_line("\t\tindigo_execute_handler(device, %s_timer_callback);", device->id);
 		}
-		write_line("\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
-		write_line("\t\tindigo_send_message(device, OK_PROPERTY, \"Connected to %%s\", device->name);");
+		if (has_virtual_connection_result) {
+			write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
+			write_line("\t\t\tindigo_send_message(device, OK_PROPERTY, \"Connected to %%s\", device->name);");
+			write_line("\t\t} else {");
+			write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;");
+			write_line("\t\t\tindigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);");
+			write_line("\t\t\tindigo_send_message(device, ALERT_PROPERTY, \"Failed to connect to %%s\", device->name);");
+			write_line("\t\t}");
+		} else {
+			write_line("\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
+			write_line("\t\tindigo_send_message(device, OK_PROPERTY, \"Connected to %%s\", device->name);");
+		}
 	} else {
 		write_line("\t\tbool connection_result = true;");
 		if (is_multi_device) {
@@ -1548,7 +1592,7 @@ void write_c_connection_change_handler(device_type *device) {
 		}
 		if (device->on_connect != NULL) {
 			write_line("\t\tif (connection_result) {");
-			write_c_code_blocks(device->on_connect, 3, "%s.on_connect", device->type);
+			write_c_code_blocks(device->on_connect, 3, "%s.on_connect", device->id);
 			write_line("\t\t}");
 		}
 		write_line("\t\tif (connection_result) {");
@@ -1558,7 +1602,7 @@ void write_c_connection_change_handler(device_type *device) {
 			}
 		}
 		if (device->on_timer != NULL) {
-			write_line("\t\t\tindigo_execute_handler(device, %s_timer_callback);", device->type);
+			write_line("\t\t\tindigo_execute_handler(device, %s_timer_callback);", device->id);
 		}
 		write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
 		if (driver.serial) {
@@ -1583,7 +1627,7 @@ void write_c_connection_change_handler(device_type *device) {
 	}
 	write_line("\t} else {");
 	write_line("\t\tindigo_cancel_pending_handlers(device);");
-	write_c_code_blocks(device->on_disconnect, 2, "%s.on_disconnect", device->type);
+	write_c_code_blocks(device->on_disconnect, 2, "%s.on_disconnect", device->id);
 	for (property_type *property2 = device->properties; property2; property2 = property2->next) {
 		if (property2->type[0] != 'i' && !property2->always_defined) {
 			write_line("\t\tindigo_delete_property(device, %s, NULL);", property2->handle);
@@ -1622,7 +1666,7 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 	if (!has_finalizer && !c_code_starts_with(property->on_change, "%s->state = ", property->handle)) {
 		write_line("\t%s->state = INDIGO_OK_STATE;", property->handle);
 	}
-	write_c_code_blocks(property->on_change, 1, "%s.%s.on_change", device->type, property->id);
+	write_c_code_blocks(property->on_change, 1, "%s.%s.on_change", device->id, property->id);
 	if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES")) {
 		write_line("\tindigo_update_coordinates(device, NULL);");
 	} else if (!has_finalizer) {
@@ -1634,7 +1678,10 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 
 void write_c_high_level_code_section(device_type *device) {
 	write_line("");
-	write_line("#pragma mark - High level code (%s)", device->type);
+	write_line("#pragma mark - High level code (%s)", device->id);
+	if (strcmp(device->id, device->type)) {
+		write_line("// device_id: %s type: %s", device->id, device->type);
+	}
 	write_line("");
 	if (device->on_timer != NULL) {
 		write_c_timer_callback(device);
@@ -1652,7 +1699,7 @@ void write_c_attach(device_type *device) {
 //	write_line("");
 //	write_line("// %s attach API callback", device->type);
 	write_line("");
-	write_line("static indigo_result %s_attach(indigo_device *device) {", device->type);
+	write_line("static indigo_result %s_attach(indigo_device *device) {", device->id);
 	if (strcmp(device->type, "aux") == 0) {
 		write_line("\tif (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, %s) == INDIGO_OK) {", device->interface);
 	} else {
@@ -1671,7 +1718,7 @@ void write_c_attach(device_type *device) {
 			write_line("\t\tDEVICE_BAUDRATE_PROPERTY->hidden = false;");
 		}
 	}
-	write_c_code_blocks(device->on_attach, 2, "%s.on_attach", device->type);
+	write_c_code_blocks(device->on_attach, 2, "%s.on_attach", device->id);
 	for (property_type *property = device->properties; property; property = property->next) {
 		if (property->type[0] != 'i') {
 			int count = 0;
@@ -1731,10 +1778,10 @@ void write_c_attach(device_type *device) {
 				write_line("\t\t%s->hidden = true;", property->handle);
 			}
 		}
-		write_c_code_blocks(property->on_attach, 2, "%s.%s.on_attach", device->type, property->id);
+		write_c_code_blocks(property->on_attach, 2, "%s.%s.on_attach", device->id, property->id);
 	}
 	write_line("\t\tINDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);");
-	write_line("\t\treturn %s_enumerate_properties(device, NULL, NULL);", device->type);
+	write_line("\t\treturn %s_enumerate_properties(device, NULL, NULL);", device->id);
 	write_line("\t}");
 	write_line("\treturn INDIGO_FAILED;");
 	write_line("}");
@@ -1744,7 +1791,7 @@ void write_c_enumerate(device_type *device) {
 //	write_line("");
 //	write_line("// %s enumerate API callback", device->type);
 	write_line("");
-	write_line("static indigo_result %s_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {", device->type);
+	write_line("static indigo_result %s_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {", device->id);
 	bool first_one = true;
 	for (property_type *property = device->properties; property; property = property->next) {
 		if (property->type[0] != 'i') {
@@ -1776,7 +1823,7 @@ void write_c_change_property(device_type *device) {
 //	write_line("");
 //	write_line("// %s change property API callback", device->type);
 	write_line("");
-	write_line("static indigo_result %s_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {", device->type);
+	write_line("static indigo_result %s_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {", device->id);
 	bool persistent = false;
 	write_line("\tif (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {");
 	write_line("\t\tif (!indigo_ignore_connection_change(device, property)) {");
@@ -1784,14 +1831,14 @@ void write_c_change_property(device_type *device) {
 		write_line("\t\t\tINDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);");
 		if (driver_uses_device_queue() && driver.devices->next && !driver.sdk) {
 			write_line("\t\t\tif (CONNECTION_CONNECTED_ITEM->sw.value && PRIVATE_DATA->count == 0) {");
-			write_line("\t\t\t\tindigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, %s_connection_handler, &driver_queue_mutex);", device->type);
+				write_line("\t\t\t\tindigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, %s_connection_handler, &driver_queue_mutex);", device->id);
 			write_line("\t\t\t} else {");
-			write_line("\t\t\t\tindigo_execute_handler(device, %s_connection_handler);", device->type);
+				write_line("\t\t\t\tindigo_execute_handler(device, %s_connection_handler);", device->id);
 			write_line("\t\t\t}");
 		} else if (driver_uses_device_queue()) {
-			write_line("\t\t\tindigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, %s_connection_handler, &driver_queue_mutex);", device->type);
+			write_line("\t\t\tindigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, %s_connection_handler, &driver_queue_mutex);", device->id);
 		} else {
-			write_line("\t\t\tindigo_execute_handler(device, %s_connection_handler);", device->type);
+			write_line("\t\t\tindigo_execute_handler(device, %s_connection_handler);", device->id);
 		}
 	write_line("\t\t}");
 	write_line("\t\treturn INDIGO_OK;");
@@ -1800,7 +1847,7 @@ void write_c_change_property(device_type *device) {
 			persistent |= property->persistent;
 			if (property->type[0] != 'i' || property->on_change) {
 				write_line("\t} else if (indigo_property_match_changeable(%s, property)) {", property->handle);
-				write_c_code_blocks(property->on_change_request, 2, "%s.%s.on_change_request", device->type, property->id);
+				write_c_code_blocks(property->on_change_request, 2, "%s.%s.on_change_request", device->id, property->id);
 				if (c_code_is_empty(property->on_change)) {
 					if (property->preserve_values) {
 						write_line("\t\tindigo_property_copy_targets(%s, property, false);", property->handle);
@@ -1855,14 +1902,14 @@ void write_c_detach(device_type *device) {
 //	write_line("");
 //	write_line("// %s detach API callback", device->type);
 	write_line("");
-	write_line("static indigo_result %s_detach(indigo_device *device) {", device->type);
+	write_line("static indigo_result %s_detach(indigo_device *device) {", device->id);
 	write_line("\tif (IS_CONNECTED) {");
 	write_line("\t\tindigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);");
-	write_line("\t\t%s_connection_handler(device);", device->type);
+	write_line("\t\t%s_connection_handler(device);", device->id);
 	write_line("\t}");
-	write_c_code_blocks(device->on_detach, 1, "%s.on_detach", device->type);
+	write_c_code_blocks(device->on_detach, 1, "%s.on_detach", device->id);
 	for (property_type *property = device->properties; property; property = property->next) {
-		write_c_code_blocks(property->on_detach, 1, "%s.%s.on_attach", device->type, property->id);
+		write_c_code_blocks(property->on_detach, 1, "%s.%s.on_attach", device->id, property->id);
 		if (property->type[0] != 'i') {
 			write_line("\tindigo_release_property(%s);", property->handle);
 		}
@@ -1875,9 +1922,9 @@ void write_c_detach(device_type *device) {
 
 void write_c_device_api_section(device_type *device) {
 	write_line("");
-	write_line("#pragma mark - Device API (%s)", device->type);
+	write_line("#pragma mark - Device API (%s)", device->id);
 	write_line("");
-	write_line("static indigo_result %s_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);", device->type);
+	write_line("static indigo_result %s_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);", device->id);
 	write_line("");
 	write_c_attach(device);
 	write_c_enumerate(device);
@@ -1890,7 +1937,7 @@ void write_c_device_templates_section(void) {
 	write_line("#pragma mark - Device templates");
 	write_line("");
 	for (device_type *device = driver.devices; device; device = device->next) {
-		write_line("static indigo_device %s_template = INDIGO_DEVICE_INITIALIZER(%s, %s_attach, %s_enumerate_properties, %s_change_property, NULL, %s_detach);", device->type, device->handle, device->type, device->type, device->type, device->type);
+		write_line("static indigo_device %s_template = INDIGO_DEVICE_INITIALIZER(%s, %s_attach, %s_enumerate_properties, %s_change_property, NULL, %s_detach);", device->id, device->handle, device->id, device->id, device->id, device->id);
 		write_line("");
 	}
 	write_line("");
@@ -1904,7 +1951,7 @@ void write_c_hotplug_section(void) {
 		write_line("static indigo_device *devices[MAX_DEVICES];");
 	} else if (driver.hid) {
 		for (device_type *device = driver.devices; device; device = device->next) {
-			write_line("static indigo_device *%s = NULL;", device->type);
+			write_line("static indigo_device *%s = NULL;", device->id);
 		}
 	}
 	write_line("");
@@ -1915,7 +1962,7 @@ void write_c_hotplug_section(void) {
 		write_line("\t}");
 	} else {
 		for (device_type *device = driver.devices; device; device = device->next) {
-			write_line("\tVERIFY_NOT_CONNECTED(%s);", device->type);
+			write_line("\tVERIFY_NOT_CONNECTED(%s);", device->id);
 		}
 	}
 	write_line("\treturn INDIGO_OK;");
@@ -2015,27 +2062,27 @@ void write_c_hotplug_section(void) {
 		write_line("\t\tprivate_data = (%s_private_data *)indigo_safe_malloc(sizeof(%s_private_data));", driver.name, driver.name);
 		write_line("\t\tprivate_data->usbdev = dev;");
 			for (device_type *device = driver.devices; device; device = device->next) {
-				write_line("\t\t\tindigo_device *%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->type, device->type);
-				write_line("\t\t\t%s->private_data = private_data;", device->type);
+				write_line("\t\t\tindigo_device *%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->id, device->id);
+				write_line("\t\t\t%s->private_data = private_data;", device->id);
 			if (device != driver.devices) {
-				write_line("\t\t\t%s->master_device = %s;", device->type, driver.devices->type);
+				write_line("\t\t\t%s->master_device = %s;", device->id, driver.devices->id);
 				}
-				write_line("\t\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, %s, name);", device->type, device->name);
-				write_line("\t\t\tbool %s_attached = false;", device->type);
+				write_line("\t\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, %s, name);", device->id, device->name);
+				write_line("\t\t\tbool %s_attached = false;", device->id);
 				write_line("\t\t\tfor (int j = 0; j < MAX_DEVICES; j++) {");
 				write_line("\t\t\t\tif (devices[j] == NULL) {");
-				write_line("\t\t\t\t\tdevices[j] = %s;", device->type);
-				write_line("\t\t\t\t\tif (indigo_attach_device(%s) == INDIGO_OK) {", device->type);
+				write_line("\t\t\t\t\tdevices[j] = %s;", device->id);
+				write_line("\t\t\t\t\tif (indigo_attach_device(%s) == INDIGO_OK) {", device->id);
 				write_line("\t\t\t\t\t\tdev_ref_transferred = true;");
-				write_line("\t\t\t\t\t\t%s_attached = true;", device->type);
+				write_line("\t\t\t\t\t\t%s_attached = true;", device->id);
 				write_line("\t\t\t\t\t} else {");
 				write_line("\t\t\t\t\t\tdevices[j] = NULL;");
 				write_line("\t\t\t\t\t}");
 				write_line("\t\t\t\t\tbreak;");
 				write_line("\t\t\t\t}");
 				write_line("\t\t\t}");
-				write_line("\t\t\tif (!%s_attached) {", device->type);
-				write_line("\t\t\t\tindigo_safe_free(%s);", device->type);
+				write_line("\t\t\tif (!%s_attached) {", device->id);
+				write_line("\t\t\t\tindigo_safe_free(%s);", device->id);
 				if (device == driver.devices) {
 					write_line("\t\t\t\tindigo_safe_free(private_data);");
 					write_line("\t\t\t\tlibusb_unref_device(dev);");
@@ -2072,31 +2119,31 @@ void write_c_hotplug_section(void) {
 				if (*device->attach_if) {
 					write_line("\t\tif (%s) {", device->attach_if);
 				}
-				write_line("\t\tindigo_device *%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->type, device->type);
-				write_line("\t\t%s->private_data = private_data;", device->type);
+				write_line("\t\tindigo_device *%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->id, device->id);
+				write_line("\t\t%s->private_data = private_data;", device->id);
 			if (device != driver.devices) {
-				write_line("\t\t%s->master_device = %s;", device->type, driver.devices->type);
+				write_line("\t\t%s->master_device = %s;", device->id, driver.devices->id);
 				}
 				if (*device->name_value) {
-					write_line("\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, \"%%s\", %s);", device->type, device->name_value);
+					write_line("\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, \"%%s\", %s);", device->id, device->name_value);
 				} else {
-				write_line("\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, %s, name);", device->type, device->name);
+				write_line("\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, %s, name);", device->id, device->name);
 				}
-				write_line("\t\tbool %s_attached = false;", device->type);
+				write_line("\t\tbool %s_attached = false;", device->id);
 				write_line("\t\tfor (int j = 0; j < MAX_DEVICES; j++) {");
 				write_line("\t\t\tif (devices[j] == NULL) {");
-				write_line("\t\t\t\tdevices[j] = %s;", device->type);
-				write_line("\t\t\t\tif (indigo_attach_device(%s) == INDIGO_OK) {", device->type);
+				write_line("\t\t\t\tdevices[j] = %s;", device->id);
+				write_line("\t\t\t\tif (indigo_attach_device(%s) == INDIGO_OK) {", device->id);
 				write_line("\t\t\t\t\tdev_ref_transferred = true;");
-				write_line("\t\t\t\t\t%s_attached = true;", device->type);
+				write_line("\t\t\t\t\t%s_attached = true;", device->id);
 				write_line("\t\t\t\t} else {");
 				write_line("\t\t\t\t\tdevices[j] = NULL;");
 				write_line("\t\t\t\t}");
 				write_line("\t\t\t\tbreak;");
 				write_line("\t\t\t}");
 				write_line("\t\t}");
-				write_line("\t\tif (!%s_attached) {", device->type);
-				write_line("\t\t\tindigo_safe_free(%s);", device->type);
+				write_line("\t\tif (!%s_attached) {", device->id);
+				write_line("\t\t\tindigo_safe_free(%s);", device->id);
 				write_line("\t\t}");
 				if (*device->attach_if) {
 					write_line("\t\t}");
@@ -2104,21 +2151,21 @@ void write_c_hotplug_section(void) {
 			}
 			write_line("\t}");
 		} else if (driver.hid) {
-		write_line("\tif (%s == NULL) {", driver.devices->type);
+		write_line("\tif (%s == NULL) {", driver.devices->id);
 		for (device_type *device = driver.devices; device; device = device->next) {
 			write_line("\t\tchar usb_path[INDIGO_NAME_SIZE];");
 			write_line("\t\tindigo_get_usb_path(dev, usb_path);");
 			write_line("\t\t%s_private_data *private_data = (%s_private_data *)indigo_safe_malloc(sizeof(%s_private_data));", driver.name, driver.name, driver.name);
-			write_line("\t\t%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->type, device->type);
-			write_line("\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, \"%%s #%%s\", %s, usb_path);", device->type, device->name);
-			write_line("\t\t%s->private_data = private_data;", device->type);
+			write_line("\t\t%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->id, device->id);
+			write_line("\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, \"%%s #%%s\", %s, usb_path);", device->id, device->name);
+			write_line("\t\t%s->private_data = private_data;", device->id);
 			if (device != driver.devices) {
-				write_line("\t\t%s->master_device = %s;", device->type, driver.devices->type);
+				write_line("\t\t%s->master_device = %s;", device->id, driver.devices->id);
 			}
-			write_line("\t\tif (indigo_attach_device(%s) != INDIGO_OK) {", device->type);
-			write_line("\t\t\tindigo_safe_free(%s->private_data);", device->type);
-			write_line("\t\t\tindigo_safe_free(%s);", device->type);
-			write_line("\t\t\t%s = NULL;", device->type);
+			write_line("\t\tif (indigo_attach_device(%s) != INDIGO_OK) {", device->id);
+			write_line("\t\t\tindigo_safe_free(%s->private_data);", device->id);
+			write_line("\t\t\tindigo_safe_free(%s);", device->id);
+			write_line("\t\t\t%s = NULL;", device->id);
 			if (device == driver.devices) {
 				write_line("\t\t\tlibusb_unref_device(dev);");
 				write_line("\t\t\treturn;");
@@ -2199,17 +2246,17 @@ void write_c_hotplug_section(void) {
 		}
 	} else if (driver.hid) {
 		for (device_type *device = driver.devices->next; device; device = device->next) {
-			write_line("\tif (%s == NULL) {", device->type);
-			write_line("\t\tindigo_detach_device(%s);", device->type);
-			write_line("\t\tindigo_safe_free(%s);", device->type);
+			write_line("\tif (%s == NULL) {", device->id);
+			write_line("\t\tindigo_detach_device(%s);", device->id);
+			write_line("\t\tindigo_safe_free(%s);", device->id);
 			write_line("\t}");
 		}
 		device_type *device = driver.devices;
-		write_line("\tif (%s != NULL) {", device->type);
-		write_line("\t\tindigo_detach_device(%s);", device->type);
-		write_line("\t\tindigo_safe_free(%s->private_data);", device->type);
-		write_line("\t\tindigo_safe_free(%s);", device->type);
-		write_line("\t\t%s = NULL;", device->type);
+		write_line("\tif (%s != NULL) {", device->id);
+		write_line("\t\tindigo_detach_device(%s);", device->id);
+		write_line("\t\tindigo_safe_free(%s->private_data);", device->id);
+		write_line("\t\tindigo_safe_free(%s);", device->id);
+		write_line("\t\t%s = NULL;", device->id);
 		write_line("\t}");
 	}
 	if (driver.hid) {
@@ -2264,11 +2311,11 @@ static void write_c_virtual_device_detach(device_type *device) {
 		return;
 	}
 	write_c_virtual_device_detach(device->next);
-	write_line("\t\t\tif (%s != NULL) {", device->type);
-	write_line("\t\t\t\tindigo_detach_device(%s);", device->type);
-	write_line("\t\t\t\tindigo_safe_free(%s);", device->type);
-	write_line("\t\t\t\t%s = NULL;", device->type);
-	write_line("\t\t\t}", device->type);
+	write_line("\t\t\tif (%s != NULL) {", device->id);
+	write_line("\t\t\t\tindigo_detach_device(%s);", device->id);
+	write_line("\t\t\t\tindigo_safe_free(%s);", device->id);
+	write_line("\t\t\t\t%s = NULL;", device->id);
+	write_line("\t\t\t}", device->id);
 }
 
 void write_c_main_section(void) {
@@ -2284,12 +2331,12 @@ void write_c_main_section(void) {
 	if (driver.virtual || driver.serial) {
 		write_line("\tstatic %s_private_data *private_data = NULL;", driver.name);
 		for (device_type *device = driver.devices; device; device = device->next) {
-			write_line("\tstatic indigo_device *%s = NULL;", device->type);
+			write_line("\tstatic indigo_device *%s = NULL;", device->id);
 		}
 	}
 	write_line("");
 	device_type *master_device = driver.devices;
-	write_line("\tSET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);");
+	write_line("\tSET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, %s, last_action);", driver.multi_device_support ? "true" : "false");
 	write_line("");
 	write_line("\tif (action == last_action) {");
 	write_line("\t\treturn INDIGO_OK;");
@@ -2328,16 +2375,16 @@ void write_c_main_section(void) {
 				}
 				index++;
 			}
-			write_line("\t\t\tINDIGO_REGISER_MATCH_PATTERNS(%s_template, patterns, %d);", master_device->type, index);
+			write_line("\t\t\tINDIGO_REGISER_MATCH_PATTERNS(%s_template, patterns, %d);", master_device->id, index);
 		}
 		write_line("\t\t\tprivate_data = (%s_private_data *)indigo_safe_malloc(sizeof(%s_private_data));", driver.name, driver.name);
 		for (device_type *device = driver.devices; device; device = device->next) {
-			write_line("\t\t\t%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->type, device->type);
-			write_line("\t\t\t%s->private_data = private_data;", device->type);
+			write_line("\t\t\t%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->id, device->id);
+			write_line("\t\t\t%s->private_data = private_data;", device->id);
 			if (device != driver.devices) {
-				write_line("\t\t\t%s->master_device = %s;", device->type, driver.devices->type);
+				write_line("\t\t\t%s->master_device = %s;", device->id, driver.devices->id);
 			}
-			write_line("\t\t\tindigo_attach_device(%s);", device->type);
+			write_line("\t\t\tindigo_attach_device(%s);", device->id);
 		}
 	} else if (driver.libusb) {
 		if (driver.libusb->hotplug) {
@@ -2391,7 +2438,7 @@ void write_c_main_section(void) {
 	} else if (driver.hid) {
 		if (driver.hid->hotplug) {
 				for (device_type *device = driver.devices; device; device = device->next) {
-					write_line("\t\t\t%s = NULL;", device->type);
+					write_line("\t\t\t%s = NULL;", device->id);
 				}
 				write_line("\t\t\tdriver_queue = indigo_queue_create(NULL);");
 				write_line("\t\t\tif (driver_queue == NULL) {");
@@ -2418,7 +2465,7 @@ void write_c_main_section(void) {
 	write_line("\t\tcase INDIGO_DRIVER_SHUTDOWN: {");
 	if (driver.virtual || driver.serial) {
 		for (device_type *device = driver.devices; device; device = device->next) {
-			write_line("\t\t\tVERIFY_NOT_CONNECTED(%s);", device->type);
+			write_line("\t\t\tVERIFY_NOT_CONNECTED(%s);", device->id);
 		}
 		write_line("\t\t\tlast_action = action;");
 		write_c_virtual_device_detach(driver.devices);
@@ -2505,7 +2552,7 @@ void write_c_source(void) {
 		write_line("#include \"indigo_%s_%s.h\"", driver.devices->type, driver.name);
 		write_line("");
 		write_line("indigo_result indigo_%s_%s(indigo_driver_action action, indigo_driver_info *info) {", driver.devices->type, driver.name);
-		write_line("\tSET_DRIVER_INFO(info, \"%s\", __FUNCTION__, 0x%08X, false, INDIGO_DRIVER_SHUTDOWN);", driver.label, 0x03000000 + driver.version);
+		write_line("\tSET_DRIVER_INFO(info, \"%s\", __FUNCTION__, 0x%08X, %s, INDIGO_DRIVER_SHUTDOWN);", driver.label, 0x03000000 + driver.version, driver.multi_device_support ? "true" : "false");
 		write_line("\treturn action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;");
 		write_line("}");
 		write_line("#endif");
@@ -2514,15 +2561,16 @@ void write_c_source(void) {
 
 #pragma mark - parse c code
 
-device_type *get_device(char *type) {
+device_type *get_device(char *id) {
 	for (device_type *device = driver.devices; device; device = device->next) {
-		if (strcmp(device->type, type) == 0) {
+		if (strcmp(device->id, id) == 0) {
 			return device;
 		}
 	}
-	debug(1, "ADDING: '%s'", type);
+	debug(1, "ADDING: '%s'", id);
 	device_type *device = allocate(sizeof(device_type));
-	strncpy(device->type, type, sizeof(device->type));
+	strncpy(device->type, id, sizeof(device->type));
+	strncpy(device->id, id, sizeof(device->id));
 	append((void **)&driver.devices, device);
 	return device;
 }
@@ -2622,7 +2670,10 @@ void read_c_source(void) {
 				todo->text = strdup(line);
 				append((void **)&todos, todo);
 			}
-			if (sscanf(line, "// Copyright (c) %d - %d %127[^\0]", &i1, &i2, s1) == 3) {
+			if (sscanf(line, "// device_id: %127s type: %127s", s1, s2) == 2) {
+				device = get_device(s1);
+				strncpy(device->type, s2, sizeof(device->type));
+			} else if (sscanf(line, "// Copyright (c) %d - %d %127[^\0]", &i1, &i2, s1) == 3) {
 				snprintf(driver.copyright, sizeof(driver.copyright), "Copyright (c) %d-2026 %s", i1, s1);
 			} else if (sscanf(line, "// Copyright (c) %d %127[^\0]", &i1, s1) == 2) {
 				if (i1 < 2025) {
@@ -2726,8 +2777,11 @@ void read_c_source(void) {
 				strncpy(def->value, s2, sizeof(def->value));
 				append((void **)&defs, def);
 			}
-		} else if (sscanf(line, "	SET_DRIVER_INFO(%*[^,], \"%127[^\"]\")", s1) == 1) {
-			strncpy(driver.label, s1, sizeof(driver.label));
+		} else if (sscanf(line, " SET_DRIVER_INFO(%*[^,], %*[^,], %*[^,], %*[^,], %127[^,],", s1) == 1) {
+			driver.multi_device_support = strcmp(s1, "true") == 0;
+			if (sscanf(line, "	SET_DRIVER_INFO(%*[^,], \"%127[^\"]\")", s1) == 1) {
+				strncpy(driver.label, s1, sizeof(driver.label));
+			}
 		} else if (strstr(line, "ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;")) {
 			if (device) {
 				device->additional_instances = true;
@@ -2819,10 +2873,14 @@ void read_c_source(void) {
 				}
 			}
 		} else if (sscanf(line, " if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, %127[^)])", s1) == 1) {
-			device = get_device("aux");
+			if (device == NULL || strcmp(device->type, "aux")) {
+				device = get_device("aux");
+			}
 			strncpy(device->interface, s1, sizeof(device->interface));
 		} else if (sscanf(line, " if (indigo_%127[^_]_%127[^(]()", s1, s2) == 2 && strcmp(s2, "attach") == 0) {
-			device = get_device(s1);
+			if (device == NULL || strcmp(device->type, s1)) {
+				device = get_device(s1);
+			}
 		} else if (sscanf(line, "static indigo_result %127[^_]_%127[^(]() {", s1, s2) == 2 && strcmp(s2, "change_property") == 0) {
 			device = get_device(s1);
 		} else if (sscanf(line, "static indigo_result %127[^_]_%127[^(]()", s1, s2) == 2 && strcmp(s2, "enumerate_properties") == 0 && line[strlen(line) - 1] == '{') {
@@ -2969,6 +3027,9 @@ void write_definition_source(void) {
 	if (driver.cpp) {
 		write_line("\tcpp = true;");
 	}
+	if (driver.multi_device_support) {
+		write_line("\tmulti_device_support = true;");
+	}
 	if (*driver.supported_architecture) {
 		write_line("\tsupported_architecture = \"%s\";", driver.supported_architecture);
 	}
@@ -3103,6 +3164,9 @@ void write_definition_source(void) {
 	}
 	for (device_type *device = driver.devices; device; device = device->next) {
 		write_line("\t%s {", device->type);
+		if (strcmp(device->id, device->type)) {
+			write_line("\t\tid = %s;", device->id);
+		}
 		write_line("\t\tname = \"%s\";", device->name);
 		if (*device->interface) {
 			write_line("\t\tinterface = %s;", device->interface);

@@ -184,18 +184,88 @@ static void simulator_maps_reversed_direction_positions(void) {
 
 static void simulator_moves_across_zero_by_shortest_path(void) {
 	start_connected_simulator(&rotator_simulator);
-
 	double start_position = rotator_target_in_range(1);
 	double wrapped_target = rotator_target_in_range(359);
 	ASSERT_FALSE(isnan(start_position));
 	ASSERT_FALSE(isnan(wrapped_target));
-
 	assert_rotator_direction_is(ROTATOR_DIRECTION_NORMAL_ITEM_NAME);
 	assert_rotator_syncs_to(start_position);
+	double started = indigo_monotonic_time();
 	assert_rotator_moves_to(wrapped_target);
+	ASSERT_TRUE(indigo_monotonic_time() - started < 1.0);
+	started = indigo_monotonic_time();
 	assert_rotator_moves_to(start_position);
-
+	ASSERT_TRUE(indigo_monotonic_time() - started < 1.0);
 	stop_connected_simulator(&rotator_simulator);
+}
+
+static void simulator_rejects_overlapping_goto_requests(void) {
+	start_connected_simulator(&rotator_simulator);
+	assert_rotator_syncs_to(0);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 150));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 75));
+	indigo_usleep(250000);
+	indigo_item *position = find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
+	ASSERT_TRUE(position != NULL);
+	ASSERT_NEAR(150, position->number.target, 0.001);
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, true));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	stop_connected_simulator(&rotator_simulator);
+}
+
+static void simulator_handles_idle_abort_and_no_op_goto(void) {
+	start_connected_simulator(&rotator_simulator);
+	assert_rotator_syncs_to(42);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, true));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_rotator_reports_position(42);
+	assert_rotator_moves_to(42);
+	stop_connected_simulator(&rotator_simulator);
+}
+
+static void simulator_additional_instance_has_independent_position(void) {
+	static const simulator_driver_case second_rotator = {
+		"Field Rotator Simulator",
+		"indigo_rotator_simulator",
+		"Field Rotator Simulator #2",
+		indigo_rotator_simulator,
+		false,
+		NULL, 0, NULL, 0, NULL, 0, NULL, 0
+	};
+	bool driver_started = false;
+	bool second_connected = false;
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&rotator_simulator));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&rotator_simulator, NULL));
+	assert_rotator_syncs_to(10);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, rotator_simulator.device_name, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 1));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 1, 0.001));
+	SERIAL_CHECK_TRUE(connect_serial_device(&second_rotator, NULL));
+	second_connected = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, second_rotator.device_name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, second_rotator.device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 200));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_rotator_reports_position(200);
+	disconnect_serial_device(&second_rotator);
+	second_connected = false;
+	reset_simulator_context(&rotator_simulator);
+	enumerate_simulator_device();
+	indigo_item *connection = find_cached_item(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	SERIAL_CHECK_TRUE(connection != NULL && connection->sw.value);
+	assert_rotator_reports_position(10);
+cleanup:
+	if (second_connected) {
+		disconnect_serial_device(&second_rotator);
+	}
+	if (driver_started) {
+		stop_serial_driver(&rotator_simulator);
+	}
 }
 
 static void simulator_disconnect_cancels_motion(void) {
@@ -238,6 +308,9 @@ int main(void) {
 		{ "simulator_passes_rotator_compliance_checks", simulator_passes_rotator_compliance_checks },
 		{ "simulator_maps_reversed_direction_positions", simulator_maps_reversed_direction_positions },
 		{ "simulator_moves_across_zero_by_shortest_path", simulator_moves_across_zero_by_shortest_path },
+		{ "simulator_rejects_overlapping_goto_requests", simulator_rejects_overlapping_goto_requests },
+		{ "simulator_handles_idle_abort_and_no_op_goto", simulator_handles_idle_abort_and_no_op_goto },
+		{ "simulator_additional_instance_has_independent_position", simulator_additional_instance_has_independent_position },
 		{ "simulator_disconnect_cancels_motion", simulator_disconnect_cancels_motion }
 	};
 	return indigo_run_tests("rotator simulator integration tests", tests, ARRAY_SIZE(tests));
