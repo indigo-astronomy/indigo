@@ -1246,9 +1246,9 @@ Source: `indigo_drivers/focuser_qhy/indigo_focuser_qhy.c`.
 
 Custom properties: `X_FOCUSER_CONFIG`, `X_FOCUSER_POWER_CHANNELS`.
 
-Driver-specific use of existing properties: `FOCUSER_LIMITS`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+Driver-specific use of existing properties: `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
 
-Source: `indigo_drivers/focuser_robofocus/indigo_focuser_robofocus.c`.
+Source: `indigo_drivers/focuser_robofocus/indigo_focuser_robofocus.driver`.
 
 ### focuser_steeldrive2
 

@@ -142,6 +142,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_dmfc", "indi
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_ioptron", "indigo_drivers\focuser_ioptron\indigo_focuser_ioptron.vcxproj", "{8B4D45FC-1EC0-46E6-9A95-3BA68860E440}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_robofocus", "indigo_drivers\focuser_robofocus\indigo_focuser_robofocus.vcxproj", "{D20C1C1A-9D8B-4BE4-BE33-51D96A4A9CB8}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_lakeside", "indigo_drivers\focuser_lakeside\indigo_focuser_lakeside.vcxproj", "{35847D19-56D1-43A0-9B2D-53AFDAC4CFC2}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_moonlite", "indigo_drivers\focuser_moonlite\indigo_focuser_moonlite.vcxproj", "{8BA2FF9E-EBEE-43C6-BC0C-02B389CB8E6C}"
@@ -796,6 +798,14 @@ Global
 		{8B4D45FC-1EC0-46E6-9A95-3BA68860E440}.Release|ARM64.Build.0 = Release|ARM64
 		{8B4D45FC-1EC0-46E6-9A95-3BA68860E440}.Release|x64.ActiveCfg = Release|x64
 		{8B4D45FC-1EC0-46E6-9A95-3BA68860E440}.Release|x64.Build.0 = Release|x64
+		{D20C1C1A-9D8B-4BE4-BE33-51D96A4A9CB8}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{D20C1C1A-9D8B-4BE4-BE33-51D96A4A9CB8}.Debug|ARM64.Build.0 = Debug|ARM64
+		{D20C1C1A-9D8B-4BE4-BE33-51D96A4A9CB8}.Debug|x64.ActiveCfg = Debug|x64
+		{D20C1C1A-9D8B-4BE4-BE33-51D96A4A9CB8}.Debug|x64.Build.0 = Debug|x64
+		{D20C1C1A-9D8B-4BE4-BE33-51D96A4A9CB8}.Release|ARM64.ActiveCfg = Release|ARM64
+		{D20C1C1A-9D8B-4BE4-BE33-51D96A4A9CB8}.Release|ARM64.Build.0 = Release|ARM64
+		{D20C1C1A-9D8B-4BE4-BE33-51D96A4A9CB8}.Release|x64.ActiveCfg = Release|x64
+		{D20C1C1A-9D8B-4BE4-BE33-51D96A4A9CB8}.Release|x64.Build.0 = Release|x64
 		{35847D19-56D1-43A0-9B2D-53AFDAC4CFC2}.Debug|ARM64.ActiveCfg = Debug|ARM64
 		{35847D19-56D1-43A0-9B2D-53AFDAC4CFC2}.Debug|ARM64.Build.0 = Debug|ARM64
 		{35847D19-56D1-43A0-9B2D-53AFDAC4CFC2}.Debug|x64.ActiveCfg = Debug|x64

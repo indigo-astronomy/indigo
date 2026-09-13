@@ -412,7 +412,7 @@ When a candidate is refactored into a host-side pseudo-terminal simulator, add t
 | `indigo_drivers/focuser_efa/focuser_efa_simulator/focuser_efa_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
 | `indigo_drivers/focuser_primaluce/focuser_primaluce_simulator/focuser_primaluce_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
 | `indigo_drivers/focuser_prodigy/focuser_prodigy_simulator/focuser_prodigy_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/focuser_robofocus/focuser_robofocus_simulator/focuser_robofocus_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
+| `indigo_drivers/focuser_robofocus/focuser_robofocus_simulator/focuser_robofocus_simulator.c` | Focuser | Host PTY simulator; strict fixed-frame checksum/field validation, elapsed movement with progress ticks and stop, full driver-used protocol state, split/alternate/stall profiles, command journal and one-shot faults. The `.ino` sketch remains a historical hardware fixture. |
 | `indigo_drivers/focuser_steeldrive2/focuser_steeldrive2_simulator/focuser_steeldrive2_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
 | `indigo_drivers/mount_ioptron/ioptron_simulator/mount_ioptron_1.0_simulator/mount_ioptron_1.0_simulator.ino` | Mount | Arduino sketch; candidate for future host-side serial simulator refactor. |
 | `indigo_drivers/mount_ioptron/ioptron_simulator/mount_ioptron_2.0_simulator/mount_ioptron_2.0_simulator.ino` | Mount | Arduino sketch; candidate for future host-side serial simulator refactor. |

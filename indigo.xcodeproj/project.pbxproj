@@ -2671,6 +2671,8 @@
 		59910B493055EB1500FB1C2F /* indigo_focuser_nfocus.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_nfocus.driver; sourceTree = "<group>"; };
 		59910B4A3055F87700FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59910B4B3055FAF100FB1C2F /* indigo_focuser_nstep.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_nstep.driver; sourceTree = "<group>"; };
+		59910B4C305603F100FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		59910B4D3056040000FB1C2F /* indigo_focuser_robofocus.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_robofocus.driver; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -13704,9 +13706,11 @@
 			isa = PBXGroup;
 			children = (
 				59F682A8250FD48200ABD731 /* README.md */,
+				59910B4C305603F100FB1C2F /* REFACTOR.md */,
 				59F682A9250FD48200ABD731 /* indigo_focuser_robofocus.h */,
 				59F682A4250FD48200ABD731 /* indigo_focuser_robofocus.c */,
 				59F682A5250FD48200ABD731 /* indigo_focuser_robofocus_main.c */,
+				59910B4D3056040000FB1C2F /* indigo_focuser_robofocus.driver */,
 				59F682AA250FD56D00ABD731 /* robofocusins31.pdf */,
 				59F682A6250FD48200ABD731 /* focuser_robofocus_simulator */,
 			);
