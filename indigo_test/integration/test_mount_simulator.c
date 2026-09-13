@@ -152,6 +152,41 @@ static double bounded_mount_number_value(const char *property_name, const char *
 	return preferred_value;
 }
 
+static indigo_result change_mount_coordinates(double ra, double dec) {
+	const char *items[] = {
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME,
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME
+	};
+	double values[] = { ra, dec };
+	return indigo_change_number_property(&simulator_test_client, mount_simulator.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(items), items, values);
+}
+
+static bool select_coordinate_action(const char *item_name) {
+	if (indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, item_name, true) != INDIGO_OK) {
+		return false;
+	}
+	return wait_for_property_state(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, INDIGO_OK_STATE);
+}
+
+static bool unpark_mount(void) {
+	if (indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true) != INDIGO_OK) {
+		return false;
+	}
+	return wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE);
+}
+
+static bool wait_for_mount_coordinate_change(double initial_ra, double initial_dec) {
+	for (int i = 0; i < 100; i++) {
+		double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+		double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+		if (fabs(ra - initial_ra) > 0.0001 && fabs(dec - initial_dec) > 0.0001) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
 static void assert_guide_pulse_resets(const char *property_name, const char *item_name) {
 	double pulse = bounded_pulse_value(property_name, item_name);
 	ASSERT_TRUE(pulse > 0);
@@ -181,6 +216,9 @@ static void mount_guider_passes_guider_compliance_checks(void) {
 	assert_guide_pulse_resets(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME);
 	assert_guide_pulse_resets(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME);
 	assert_guide_pulse_resets(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 0));
+	ASSERT_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_number_item_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 0, 0));
 
 	double original_rate = cached_number_value(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME);
 	indigo_item *rate_item = find_cached_item(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME);
@@ -377,10 +415,13 @@ static void mount_passes_mount_compliance_checks(void) {
 static void guider_pending_disconnect_and_replacement(void) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_guider_simulator));
 	SERIAL_CHECK_TRUE(connect_serial_device(&mount_guider_simulator, NULL));
-	indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 2000);
+	indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100);
 	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_BUSY_STATE));
-	indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 100);
+	indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 400);
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 0, 0));
+	indigo_usleep(150000);
+	SERIAL_CHECK_TRUE(find_cached_property(GUIDER_GUIDE_RA_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME) - 400) < 0.001);
 	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE));
 	indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 300);
 	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
@@ -413,10 +454,361 @@ cleanup:
 	stop_serial_driver(&mount_simulator);
 }
 
+static void mount_goto_runs_on_queue_and_rejects_overlap(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	SERIAL_CHECK_TRUE(unpark_mount());
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(1, 45));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(1.4, 48));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(2, 55));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 1.4, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 48, 0.001));
+cleanup:
+	stop_serial_driver(&mount_simulator);
+}
+
+static void mount_abort_allows_fresh_goto(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	SERIAL_CHECK_TRUE(unpark_mount());
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(3, 10));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(6, 30));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	double target_ra = fmod(ra + 0.2, 24);
+	double target_dec = dec < 88 ? dec + 1.5 : dec - 1.5;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(target_ra, target_dec));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, target_ra, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, target_dec, 0.001));
+cleanup:
+	stop_serial_driver(&mount_simulator);
+}
+
+static void mount_park_home_and_parked_guards(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_RA_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(unpark_mount());
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_HOME_ITEM_NAME)->light.value == INDIGO_OK_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME)->light.value == INDIGO_OK_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	stop_serial_driver(&mount_simulator);
+}
+
+static void guider_axes_complete_independently(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_guider_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_guider_simulator, NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 400));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_property(GUIDER_GUIDE_RA_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 0, 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0));
+cleanup:
+	stop_serial_driver(&mount_guider_simulator);
+}
+
+static void mount_manual_axes_reverse_and_abort(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	SERIAL_CHECK_TRUE(unpark_mount());
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(5, 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_SLEW_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+	double initial_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double initial_dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_mount_coordinate_change(initial_ra, initial_dec));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!find_cached_item(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(!find_cached_item(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+cleanup:
+	stop_serial_driver(&mount_simulator);
+}
+
+static void mount_supports_all_rate_modes(void) {
+	static const char *slew_rates[] = {
+		MOUNT_SLEW_RATE_GUIDE_ITEM_NAME,
+		MOUNT_SLEW_RATE_CENTERING_ITEM_NAME,
+		MOUNT_SLEW_RATE_FIND_ITEM_NAME,
+		MOUNT_SLEW_RATE_MAX_ITEM_NAME
+	};
+	static const char *track_rates[] = {
+		MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME,
+		MOUNT_TRACK_RATE_SOLAR_ITEM_NAME,
+		MOUNT_TRACK_RATE_LUNAR_ITEM_NAME,
+		MOUNT_TRACK_RATE_KING_ITEM_NAME,
+		MOUNT_TRACK_RATE_CUSTOM_ITEM_NAME
+	};
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	SERIAL_CHECK_TRUE(unpark_mount());
+	for (int i = 0; i < ARRAY_SIZE(slew_rates); i++) {
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_SLEW_RATE_PROPERTY_NAME, slew_rates[i], true));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_SLEW_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(find_cached_item(MOUNT_SLEW_RATE_PROPERTY_NAME, slew_rates[i])->sw.value);
+	}
+	for (int i = 0; i < ARRAY_SIZE(track_rates); i++) {
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_TRACK_RATE_PROPERTY_NAME, track_rates[i], true));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACK_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACK_RATE_PROPERTY_NAME, track_rates[i])->sw.value);
+	}
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME)->light.value == INDIGO_OK_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME)->light.value == INDIGO_IDLE_STATE);
+cleanup:
+	stop_serial_driver(&mount_simulator);
+}
+
+static void mount_shutdown_is_rejected_while_connected(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_mount_simulator(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_TRUE(context.connected);
+cleanup:
+	stop_serial_driver(&mount_simulator);
+}
+
+static void guider_shutdown_is_rejected_while_connected(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_guider_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_guider_simulator, NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_mount_simulator(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_TRUE(context.connected);
+cleanup:
+	stop_serial_driver(&mount_guider_simulator);
+}
+
+static void logical_devices_survive_both_connection_orders(void) {
+	bool driver_started = false, mount_connected = false, guider_connected = false;
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	mount_connected = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_guider_simulator, NULL));
+	guider_connected = true;
+	disconnect_serial_device(&mount_simulator);
+	mount_connected = false;
+	reset_simulator_context(&mount_guider_simulator);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(find_cached_item(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME) != NULL && find_cached_item(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME)->sw.value);
+	assert_guide_pulse_resets(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME);
+	disconnect_serial_device(&mount_guider_simulator);
+	guider_connected = false;
+	tear_down_serial_driver(&mount_simulator);
+	driver_started = false;
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_guider_simulator));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_guider_simulator, NULL));
+	guider_connected = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	mount_connected = true;
+	disconnect_serial_device(&mount_guider_simulator);
+	guider_connected = false;
+	reset_simulator_context(&mount_simulator);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(find_cached_item(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME) != NULL && find_cached_item(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(unpark_mount());
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (guider_connected) {
+		disconnect_serial_device(&mount_guider_simulator);
+	}
+	if (mount_connected) {
+		disconnect_serial_device(&mount_simulator);
+	}
+	if (driver_started) {
+		tear_down_serial_driver(&mount_simulator);
+	}
+}
+
+#ifdef MOUNT_SIMULATOR_TIMING_BENCHMARK
+
+#define TIMING_SAMPLE_COUNT 4
+
+static int compare_double(const void *left, const void *right) {
+	double a = *(const double *)left;
+	double b = *(const double *)right;
+	return (a > b) - (a < b);
+}
+
+static bool measure_guide_completion(const char *property_name, const char *item_name, double duration, double *error) {
+	double started = indigo_monotonic_time();
+	if (indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, property_name, item_name, duration) != INDIGO_OK) {
+		return false;
+	}
+	indigo_property *property = find_cached_property(property_name);
+	if (property == NULL || property->state != INDIGO_BUSY_STATE) {
+		return false;
+	}
+	double deadline = started + duration / 1000.0 + 2;
+	while (indigo_monotonic_time() < deadline) {
+		property = find_cached_property(property_name);
+		if (property != NULL && property->state == INDIGO_OK_STATE) {
+			*error = (indigo_monotonic_time() - started) * 1000 - duration;
+			return isfinite(*error);
+		}
+		indigo_usleep(1000);
+	}
+	return false;
+}
+
+static void report_guide_timing(const char *workload, const char *direction, double duration, double *errors) {
+	double sorted[TIMING_SAMPLE_COUNT];
+	double sum = 0, squares = 0, maximum_absolute = 0;
+	for (int i = 0; i < TIMING_SAMPLE_COUNT; i++) {
+		sorted[i] = errors[i];
+		sum += errors[i];
+		squares += errors[i] * errors[i];
+		maximum_absolute = fmax(maximum_absolute, fabs(errors[i]));
+	}
+	qsort(sorted, TIMING_SAMPLE_COUNT, sizeof(double), compare_double);
+	double mean = sum / TIMING_SAMPLE_COUNT;
+	double median = (sorted[1] + sorted[2]) / 2;
+	double standard_deviation = sqrt(fmax(0, squares / TIMING_SAMPLE_COUNT - mean * mean));
+	printf("TIMING workload=%s direction=%s requested_ms=%.0f n=%d warmup=1 endpoints=request-to-public-OK actual_mean_ms=%.3f error_ms min=%.3f mean=%.3f median=%.3f p95=%.3f p99=%.3f max=%.3f sd=%.3f max_abs=%.3f error_mean_pct=%.3f\n", workload, direction, duration, TIMING_SAMPLE_COUNT, duration + mean, sorted[0], mean, median, sorted[3], sorted[3], sorted[3], standard_deviation, maximum_absolute, 100 * mean / duration);
+}
+
+static bool run_guider_software_timing_under_mount_workload(void) {
+	static const char *properties[] = {
+		GUIDER_GUIDE_RA_PROPERTY_NAME,
+		GUIDER_GUIDE_RA_PROPERTY_NAME,
+		GUIDER_GUIDE_DEC_PROPERTY_NAME,
+		GUIDER_GUIDE_DEC_PROPERTY_NAME
+	};
+	static const char *directions[] = {
+		GUIDER_GUIDE_EAST_ITEM_NAME,
+		GUIDER_GUIDE_WEST_ITEM_NAME,
+		GUIDER_GUIDE_NORTH_ITEM_NAME,
+		GUIDER_GUIDE_SOUTH_ITEM_NAME
+	};
+	static const double durations[] = { 20, 100, 500 };
+	bool complete = true, driver_started = false, mount_connected = false, guider_connected = false;
+	if (!bring_up_serial_driver(&mount_simulator)) {
+		fprintf(stderr, "TIMING ERROR: driver setup failed\n");
+		return false;
+	}
+	driver_started = true;
+	if (!connect_serial_device(&mount_simulator, NULL)) {
+		fprintf(stderr, "TIMING ERROR: mount connection failed\n");
+		complete = false;
+		goto cleanup;
+	}
+	mount_connected = true;
+	if (!unpark_mount()) {
+		fprintf(stderr, "TIMING ERROR: mount unpark failed\n");
+		complete = false;
+		goto cleanup;
+	}
+	if (!connect_serial_device(&mount_guider_simulator, NULL)) {
+		fprintf(stderr, "TIMING ERROR: guider connection failed\n");
+		complete = false;
+		goto cleanup;
+	}
+	guider_connected = true;
+	for (int workload = 0; workload < 2; workload++) {
+		if (workload) {
+			if (indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, true) != INDIGO_OK || indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true) != INDIGO_OK || indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) != INDIGO_OK) {
+				fprintf(stderr, "TIMING ERROR: mount workload setup failed\n");
+				complete = false;
+				goto cleanup;
+			}
+			indigo_usleep(100000);
+		}
+		for (int direction = 0; direction < ARRAY_SIZE(directions); direction++) {
+			for (int duration = 0; duration < ARRAY_SIZE(durations); duration++) {
+				double ignored;
+				if (!measure_guide_completion(properties[direction], directions[direction], durations[duration], &ignored)) {
+					fprintf(stderr, "TIMING ERROR: warm-up did not complete for %s %.0f ms\n", directions[direction], durations[duration]);
+					complete = false;
+					goto cleanup;
+				}
+				double errors[TIMING_SAMPLE_COUNT];
+				for (int sample = 0; sample < TIMING_SAMPLE_COUNT; sample++) {
+					if (!measure_guide_completion(properties[direction], directions[direction], durations[duration], errors + sample)) {
+						fprintf(stderr, "TIMING ERROR: sample did not complete for %s %.0f ms\n", directions[direction], durations[duration]);
+						complete = false;
+						goto cleanup;
+					}
+				}
+				report_guide_timing(workload ? "mount-motion" : "idle-polling", directions[direction], durations[duration], errors);
+			}
+		}
+	}
+cleanup:
+	if (mount_connected) {
+		indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true);
+	}
+	if (guider_connected) {
+		disconnect_serial_device(&mount_guider_simulator);
+	}
+	if (mount_connected) {
+		disconnect_serial_device(&mount_simulator);
+	}
+	if (driver_started) {
+		tear_down_serial_driver(&mount_simulator);
+	}
+	return complete;
+}
+
+#endif
+
+#ifndef MOUNT_SIMULATOR_TIMING_BENCHMARK
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "guider_pending_disconnect_and_replacement", guider_pending_disconnect_and_replacement },
+		{ "guider_axes_complete_independently", guider_axes_complete_independently },
 		{ "mount_manual_motion_disconnect", mount_manual_motion_disconnect },
+		{ "mount_goto_runs_on_queue_and_rejects_overlap", mount_goto_runs_on_queue_and_rejects_overlap },
+		{ "mount_abort_allows_fresh_goto", mount_abort_allows_fresh_goto },
+		{ "mount_park_home_and_parked_guards", mount_park_home_and_parked_guards },
+		{ "mount_manual_axes_reverse_and_abort", mount_manual_axes_reverse_and_abort },
+		{ "mount_supports_all_rate_modes", mount_supports_all_rate_modes },
+		{ "mount_shutdown_is_rejected_while_connected", mount_shutdown_is_rejected_while_connected },
+		{ "guider_shutdown_is_rejected_while_connected", guider_shutdown_is_rejected_while_connected },
+		{ "logical_devices_survive_both_connection_orders", logical_devices_survive_both_connection_orders },
 		{ "driver_info_reports_simulator_metadata", driver_info_reports_simulator_metadata },
 		{ "mount_exposes_expected_properties", mount_exposes_expected_properties },
 		{ "mount_passes_mount_compliance_checks", mount_passes_mount_compliance_checks },
@@ -425,3 +817,13 @@ int main(void) {
 	};
 	return indigo_run_tests("mount simulator integration tests", tests, ARRAY_SIZE(tests));
 }
+
+#else
+
+int main(void) {
+	bool complete = run_guider_software_timing_under_mount_workload();
+	printf("TIMING status=%s (measurement benchmark; see integration tests for functional pass/fail)\n", complete ? "complete" : "incomplete");
+	return 0;
+}
+
+#endif

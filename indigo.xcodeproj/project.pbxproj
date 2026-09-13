@@ -5494,6 +5494,7 @@
 		C0DE20260913000400000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913000500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913000600000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260913AA5500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260912000100000002 /* test_ccd_qhy_sdk.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = test_ccd_qhy_sdk.cpp; sourceTree = "<group>"; };
 		C0DE20260912000100000003 /* indigo_ccd_qhy.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_qhy.driver; sourceTree = "<group>"; };
 		C0DE20260912000100000005 /* test_ccd_qhy_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_qhy_hw.c; sourceTree = "<group>"; };
@@ -11133,6 +11134,7 @@
 			isa = PBXGroup;
 			children = (
 				594107C31EC8DCCD00C44F92 /* README.md */,
+				C0DE20260913AA5500000001 /* REFACTOR.md */,
 				59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */,
 				59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */,
 				59D7076C1DC52C3E00DEF566 /* indigo_mount_simulator_main.c */,

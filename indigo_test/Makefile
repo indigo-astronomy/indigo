@@ -27,7 +27,8 @@ BENCHMARK_BUILD = $(TEST_BUILD)/benchmark
 BENCHMARKS = \
 	$(BENCHMARK_BUILD)/bench_timer \
 	$(BENCHMARK_BUILD)/bench_queue \
-	$(BENCHMARK_BUILD)/bench_guider_asi_timing
+	$(BENCHMARK_BUILD)/bench_guider_asi_timing \
+	$(BENCHMARK_BUILD)/bench_mount_simulator_timing
 UNIT_TESTS = \
 	$(UNIT_BUILD)/test_align_math \
 	$(UNIT_BUILD)/test_aux_math \
@@ -343,6 +344,12 @@ $(INTEGRATION_BUILD)/test_gps_simulator: integration/test_gps_simulator.c integr
 
 $(INTEGRATION_BUILD)/test_mount_simulator: integration/test_mount_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h $(BUILD_DRIVERS)/indigo_mount_simulator.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_mount_simulator_asan: integration/test_mount_simulator.c ../indigo_drivers/mount_simulator/indigo_mount_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/mount_simulator/indigo_mount_simulator.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address
+
+$(BENCHMARK_BUILD)/bench_mount_simulator_timing: integration/test_mount_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h $(BUILD_DRIVERS)/indigo_mount_simulator.a | $(BENCHMARK_BUILD)
+	$(CC) $(TEST_CFLAGS) -DMOUNT_SIMULATOR_TIMING_BENCHMARK -o $@ $< $(MOUNT_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_polaralign_simulator: integration/test_polaralign_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h $(BUILD_DRIVERS)/indigo_polaralign_simulator.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(POLARALIGN_SIMULATOR_TEST_LDFLAGS)
