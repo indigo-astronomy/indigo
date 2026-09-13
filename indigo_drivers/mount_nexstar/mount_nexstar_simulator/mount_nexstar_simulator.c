@@ -21,6 +21,7 @@
 #include <string.h>
 #include <sys/select.h>
 #include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
@@ -48,6 +49,8 @@ typedef struct {
 	simulator_dialect dialect;
 	simulator_hc_type hc_type;
 	int model_id;
+	char control_file[PATH_MAX];
+	char event_file[PATH_MAX];
 } simulator_options;
 
 typedef struct {
@@ -88,11 +91,11 @@ static simulator_state state = {
 	.slewing = false,
 	.tracking_mode = 2,
 	.ra = 0x40000000,
-	.dec = 0x40000000,
+	.dec = 0x20000000,
 	.motion_start_ra = 0x40000000,
-	.motion_start_dec = 0x40000000,
+	.motion_start_dec = 0x20000000,
 	.target_ra = 0x40000000,
-	.target_dec = 0x40000000,
+	.target_dec = 0x20000000,
 	.ra_rate = 0,
 	.dec_rate = 0,
 	.ra_direction = 0,
@@ -118,6 +121,8 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
+	printf("  Runtime control is read once from <ready-file>.control as ACTION SELECTOR\n");
+	printf("  and every command is recorded in <ready-file>.events.\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -182,6 +187,10 @@ static bool parse_args(int argc, char *argv[]) {
 			return false;
 		}
 	}
+	if (options.ready_file != NULL) {
+		snprintf(options.control_file, sizeof(options.control_file), "%s.control", options.ready_file);
+		snprintf(options.event_file, sizeof(options.event_file), "%s.events", options.ready_file);
+	}
 	return true;
 }
 
@@ -219,6 +228,79 @@ static void trace_bytes(const char *prefix, const uint8_t *data, size_t length) 
 		fprintf(stderr, " %02X", data[i]);
 	}
 	fprintf(stderr, "\n");
+}
+
+static double monotonic_seconds(void) {
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return now.tv_sec + now.tv_nsec / 1000000000.0;
+}
+
+static void record_command(const uint8_t *command, size_t length) {
+	if (*options.event_file == '\0') {
+		return;
+	}
+	FILE *file = fopen(options.event_file, "a");
+	if (file == NULL) {
+		return;
+	}
+	fprintf(file, "%.9f", monotonic_seconds());
+	for (size_t i = 0; i < length; i++) {
+		fprintf(file, " %02X", command[i]);
+	}
+	fputc('\n', file);
+	fclose(file);
+}
+
+static void command_selector(const uint8_t *command, size_t length, char *selector, size_t size) {
+	if (length >= 4 && command[0] == 'P') {
+		snprintf(selector, size, "P%02X", command[3]);
+	} else {
+		snprintf(selector, size, "%c", command[0]);
+	}
+}
+
+static bool apply_control(const uint8_t *command, size_t length) {
+	if (*options.control_file == '\0') {
+		return false;
+	}
+	FILE *file = fopen(options.control_file, "r");
+	if (file == NULL) {
+		return false;
+	}
+	char action[16] = { 0 };
+	char expected[16] = { 0 };
+	int count = fscanf(file, "%15s %15s", action, expected);
+	fclose(file);
+	if (count != 2) {
+		return false;
+	}
+	char actual[16];
+	command_selector(command, length, actual, sizeof(actual));
+	if (strcmp(expected, "*") && strcmp(expected, actual)) {
+		return false;
+	}
+	unlink(options.control_file);
+	if (!strcmp(action, "drop")) {
+		return true;
+	}
+	if (!strcmp(action, "short")) {
+		static const uint8_t reply[] = { '0', '#' };
+		write_all(reply, sizeof(reply));
+		return true;
+	}
+	if (!strcmp(action, "malformed")) {
+		static const uint8_t reply[] = { 'B', 'A', 'D', '#' };
+		write_all(reply, sizeof(reply));
+		return true;
+	}
+	if (!strcmp(action, "close")) {
+		running = 0;
+		close(serial_fd);
+		serial_fd = -1;
+		return true;
+	}
+	return false;
 }
 
 static void write_reply(const uint8_t *data, size_t length) {
@@ -403,6 +485,10 @@ static void handle_command(const uint8_t *command, size_t length) {
 	char text[32] = { 0 };
 
 	trace_bytes("->", command, length);
+	record_command(command, length);
+	if (apply_control(command, length)) {
+		return;
+	}
 	update_motion();
 
 	switch (command[0]) {

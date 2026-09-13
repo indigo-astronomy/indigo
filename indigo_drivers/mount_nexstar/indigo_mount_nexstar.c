@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001F
+#define DRIVER_VERSION       0x03000020
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -316,23 +316,34 @@ static void nexstar_update_position(indigo_device *device) {
 	time_t ttime = 0;
 	int tz = 0, dst = 0;
 	bool linked = false;
+	bool position_valid = false;
+	bool location_valid = false;
+	bool time_valid = false;
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	if (!PRIVATE_DATA->guiding_in_progress) {
-		if (tc_goto_in_progress(dev_id) || MOUNT_MOTION_NORTH_ITEM->sw.value || MOUNT_MOTION_SOUTH_ITEM->sw.value || MOUNT_MOTION_EAST_ITEM->sw.value || MOUNT_MOTION_WEST_ITEM->sw.value) {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		} else {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		int goto_in_progress = tc_goto_in_progress(dev_id);
+		if (goto_in_progress < 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_in_progress(%d) = %d (%s)", dev_id, goto_in_progress, strerror(errno));
 		}
 		int res = tc_get_rade_p(dev_id, &ra, &dec);
 		if (res != RC_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_rade_p(%d) = %d (%s)", dev_id, res, strerror(errno));
+		}
+		if (goto_in_progress < 0 || res != RC_OK) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			ra = d2h(ra);
 			indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+			position_valid = true;
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = (goto_in_progress || MOUNT_MOTION_NORTH_ITEM->sw.value || MOUNT_MOTION_SOUTH_ITEM->sw.value || MOUNT_MOTION_EAST_ITEM->sw.value || MOUNT_MOTION_WEST_ITEM->sw.value) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 		}
 		res = tc_get_location(dev_id, &lon, &lat);
 		if (res != RC_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_location(%d) = %d (%s)", dev_id, res, strerror(errno));
+			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			location_valid = true;
+			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		if (lon < 0) {
 			lon += 360;
@@ -342,6 +353,7 @@ static void nexstar_update_position(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_time(%d) = %d (%s)", dev_id, res, strerror(errno));
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
+			time_valid = true;
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
@@ -380,14 +392,20 @@ static void nexstar_update_position(indigo_device *device) {
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (!PRIVATE_DATA->guiding_in_progress) {
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+		if (position_valid) {
+			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+		}
 		indigo_update_coordinates(device, NULL);
-		MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
-		MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+		if (location_valid) {
+			MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
+			MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+		}
 		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-		indigo_timetoisolocal(ttime - ((tz + dst) * 3600), MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-		snprintf(MOUNT_UTC_OFFSET_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", tz + dst);
+		if (time_valid) {
+			indigo_timetoisolocal(ttime - ((tz + dst) * 3600), MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+			snprintf(MOUNT_UTC_OFFSET_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", tz + dst);
+		}
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 		if (!TRACKING_MODE_PROPERTY->hidden) {
@@ -405,7 +423,7 @@ static void nexstar_update_position(indigo_device *device) {
 		if (PRIVATE_DATA->gps && PRIVATE_DATA->gps->gp_bits) {
 			indigo_device *gps_device = PRIVATE_DATA->gps;
 			indigo_device *device = gps_device;
-			if (linked) {
+			if (linked && location_valid && time_valid) {
 				if (GPS_STATUS_3D_FIX_ITEM->light.value != INDIGO_OK_STATE) {
 					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 					GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
@@ -429,12 +447,12 @@ static void nexstar_update_position(indigo_device *device) {
 }
 
 static bool nexstar_set_location(indigo_device *device) {
-	double lon = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+	double lon = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target;
 	if (lon > 180) {
 		lon -= 360.0;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	int res = tc_set_location(PRIVATE_DATA->dev_id, lon, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
+	int res = tc_set_location(PRIVATE_DATA->dev_id, lon, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (res == RC_FORBIDDEN) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_location(%d) = RC_FORBIDDEN", PRIVATE_DATA->dev_id);
@@ -447,6 +465,8 @@ static bool nexstar_set_location(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_location(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 		return false;
 	}
+	MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target;
+	MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target;
 	return true;
 }
 
@@ -671,7 +691,7 @@ static void gps_handle_connect(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		if (res == RC_OK) {
 			device->gp_bits = 1;
-			sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%d.%d", response[0], response[1]);
+			snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, sizeof(INFO_DEVICE_FW_REVISION_ITEM->text.value), "%d.%d", response[0], response[1]);
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -937,8 +957,18 @@ static void mount_tracking_handler(indigo_device *device) {
 		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_TRACKING_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		return;
 	}
+	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_TRACKING.on_change
-	MOUNT_TRACKING_PROPERTY->state = nexstar_set_tracking(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	bool ok = nexstar_set_tracking(device);
+	if (!ok) {
+		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+		int tracking_mode = tc_get_tracking_mode(PRIVATE_DATA->dev_id);
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		if (tracking_mode >= 0) {
+			indigo_set_switch(MOUNT_TRACKING_PROPERTY, tracking_mode == TC_TRACK_OFF ? MOUNT_TRACKING_OFF_ITEM : MOUNT_TRACKING_ON_ITEM, true);
+		}
+	}
+	MOUNT_TRACKING_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, TRACKING_MODE_PROPERTY, NULL);
 	//- mount.MOUNT_TRACKING.on_change
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
@@ -1136,7 +1166,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, mount_equatorial_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, mount_geographic_coordinates_handler);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, mount_geographic_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_SET_HOST_TIME_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_SET_HOST_TIME_PROPERTY, mount_set_host_time_handler);
@@ -1390,15 +1420,15 @@ indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_in
 			VERIFY_NOT_CONNECTED(mount);
 			VERIFY_NOT_CONNECTED(guider);
 			last_action = action;
-			if (mount != NULL) {
-				indigo_detach_device(mount);
-				indigo_safe_free(mount);
-				mount = NULL;
-			}
 			if (guider != NULL) {
 				indigo_detach_device(guider);
 				indigo_safe_free(guider);
 				guider = NULL;
+			}
+			if (mount != NULL) {
+				indigo_detach_device(mount);
+				indigo_safe_free(mount);
+				mount = NULL;
 			}
 			if (private_data != NULL) {
 				indigo_safe_free(private_data);
