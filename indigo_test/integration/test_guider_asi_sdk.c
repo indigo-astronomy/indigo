@@ -20,164 +20,491 @@
 
 #include <errno.h>
 #include <sys/wait.h>
+
 #include <indigo_drivers/guider_asi/indigo_guider_asi.h>
+
 #include "serial_simulator_test_common.h"
 #include "guider_asi_fake_sdk.h"
 
-static const simulator_driver_case guider = { "ASI USB-St4 Guider #7", "indigo_guider_asi", "ASI USB-St4 Guider #7", indigo_guider_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static const simulator_driver_case guider7 = { "ZWO ASI USB-St4 Guider", "indigo_guider_asi", "ASI USB-St4 Guider #7", indigo_guider_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static const simulator_driver_case guider42 = { "ZWO ASI USB-St4 Guider", "indigo_guider_asi", "ASI USB-St4 Guider #42", indigo_guider_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static bool bus_started, client_attached, driver_initialized;
 
-static bool wait_count(atomic_int *count, int expected) {
-	for (int i = 0; i < 100; i++) {
-		if (*count == expected) { return true; }
-		indigo_usleep(20000);
+static bool wait_atomic(atomic_int *value, int expected) {
+	for (int i = 0; i < 300; i++) {
+		if (atomic_load(value) == expected) {
+			return true;
+		}
+		indigo_usleep(10000);
 	}
 	return false;
 }
 
-static bool start(void) {
-	if (!bring_up_serial_driver(&guider) || !wait_count(&asi_attached, 1)) { return false; }
-	return connect_serial_device(&guider, NULL);
+static bool wait_relays(int expected) {
+	return wait_atomic(&asi_relays, expected);
 }
 
-static void stop(void) {
-	if (context.connected) { disconnect_serial_device(&guider); }
-	indigo_result result = indigo_guider_asi(INDIGO_DRIVER_SHUTDOWN, NULL);
-	indigo_detach_client(&simulator_test_client);
-	indigo_result stopped = indigo_stop();
-	release_cached_properties();
-	ASSERT_EQ_INT(INDIGO_OK, result);
-	ASSERT_EQ_INT(INDIGO_OK, stopped);
-	ASSERT_EQ_INT(0, asi_attached);
-	ASSERT_EQ_INT(0, asi_invalid_io);
-}
-
-static void pulse(int direction, int duration) {
-	bool ra = direction >= USB2ST4_EAST;
-	const char *items[] = { ra ? GUIDER_GUIDE_EAST_ITEM_NAME : GUIDER_GUIDE_NORTH_ITEM_NAME, ra ? GUIDER_GUIDE_WEST_ITEM_NAME : GUIDER_GUIDE_SOUTH_ITEM_NAME };
-	double values[] = { direction == USB2ST4_EAST || direction == USB2ST4_NORTH ? duration : 0, direction == USB2ST4_WEST || direction == USB2ST4_SOUTH ? duration : 0 };
-	indigo_change_number_property(&simulator_test_client, guider.device_name, ra ? GUIDER_GUIDE_RA_PROPERTY_NAME : GUIDER_GUIDE_DEC_PROPERTY_NAME, 2, items, values);
-}
-
-static void directions(void) {
-	SERIAL_CHECK_TRUE(start());
-	assert_device_interface(INDIGO_INTERFACE_GUIDER);
-	for (int direction = 0; direction < 4; direction++) {
-		pulse(direction, 100);
-		SERIAL_CHECK_TRUE(wait_count(&asi_relays, 1 << direction));
-		SERIAL_CHECK_TRUE(wait_count(&asi_relays, 0));
-		SERIAL_CHECK_TRUE(wait_for_property_state(direction >= USB2ST4_EAST ? GUIDER_GUIDE_RA_PROPERTY_NAME : GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+static bool begin_driver(const simulator_driver_case *guider, int attached) {
+	reset_simulator_context(guider);
+	if (indigo_start() != INDIGO_OK) {
+		return false;
 	}
-	pulse(USB2ST4_EAST, 300);
-	pulse(USB2ST4_NORTH, 300);
-	SERIAL_CHECK_TRUE(wait_count(&asi_relays, (1 << USB2ST4_EAST) | (1 << USB2ST4_NORTH)));
-	SERIAL_CHECK_TRUE(wait_count(&asi_relays, 0));
-cleanup:
-	stop();
+	bus_started = true;
+	if (indigo_attach_client(&simulator_test_client) != INDIGO_OK) {
+		return false;
+	}
+	client_attached = true;
+	if (indigo_guider_asi(INDIGO_DRIVER_INIT, NULL) != INDIGO_OK) {
+		return false;
+	}
+	driver_initialized = true;
+	return wait_atomic(&asi_attached, attached);
 }
 
-static void reversal(void) {
-	SERIAL_CHECK_TRUE(start());
-	pulse(USB2ST4_EAST, 500);
-	SERIAL_CHECK_TRUE(wait_count(&asi_relays, 1 << USB2ST4_EAST));
-	pulse(USB2ST4_WEST, 100);
-	SERIAL_CHECK_EQ_INT(1 << USB2ST4_WEST, asi_relays);
-cleanup:
-	stop();
+static bool connect_device(const simulator_driver_case *guider) {
+	return connect_serial_device(guider, NULL);
 }
 
-static void zero_stop(void) {
-	SERIAL_CHECK_TRUE(start());
-	pulse(USB2ST4_EAST, 500);
-	SERIAL_CHECK_TRUE(wait_count(&asi_relays, 1 << USB2ST4_EAST));
-	pulse(USB2ST4_EAST, 0);
-	SERIAL_CHECK_TRUE(wait_count(&asi_relays, 0));
-cleanup:
-	stop();
+static void disconnect_name(const char *name) {
+	indigo_change_switch_property_1(&simulator_test_client, name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
 }
 
-static void start_failure(void) {
-	SERIAL_CHECK_TRUE(start());
-	asi_fail_on = 1;
-	pulse(USB2ST4_EAST, 20);
-	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_ALERT_STATE));
-cleanup:
-	stop();
+static void cleanup_driver(void) {
+	asi_fake_release_gate();
+	if (client_attached && driver_initialized) {
+		disconnect_name(guider7.device_name);
+		disconnect_name(guider42.device_name);
+		wait_atomic(&asi_lock_count, 0);
+		indigo_result result = indigo_guider_asi(INDIGO_DRIVER_SHUTDOWN, NULL);
+		ASSERT_EQ_INT(INDIGO_OK, result);
+		driver_initialized = false;
+	}
+	if (client_attached) {
+		indigo_detach_client(&simulator_test_client);
+		client_attached = false;
+	}
+	if (bus_started) {
+		ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+		bus_started = false;
+	}
+	release_cached_properties();
+	ASSERT_EQ_INT(0, atomic_load(&asi_attached));
+	ASSERT_EQ_INT(0, atomic_load(&asi_lock_count));
+	ASSERT_EQ_INT(0, atomic_load(&asi_invalid_io));
+	ASSERT_EQ_INT(0, atomic_load(&asi_after_close));
+	ASSERT_EQ_INT(0, atomic_load(&asi_after_detach_update));
+	ASSERT_EQ_INT(0, atomic_load(&asi_duplicate_close));
+	ASSERT_EQ_INT(0, atomic_load(&asi_opposed_overlap));
+	ASSERT_EQ_INT(0, atomic_load(&asi_usb_refs));
 }
 
-static void stop_failure(void) {
-	SERIAL_CHECK_TRUE(start());
+static void pulse_values(const simulator_driver_case *guider, bool ra, double first, double second) {
+	const char *items[] = { ra ? GUIDER_GUIDE_EAST_ITEM_NAME : GUIDER_GUIDE_NORTH_ITEM_NAME, ra ? GUIDER_GUIDE_WEST_ITEM_NAME : GUIDER_GUIDE_SOUTH_ITEM_NAME };
+	double values[] = { first, second };
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, guider->device_name, ra ? GUIDER_GUIDE_RA_PROPERTY_NAME : GUIDER_GUIDE_DEC_PROPERTY_NAME, 2, items, values));
+}
+
+static void pulse(const simulator_driver_case *guider, int direction, int duration) {
+	bool ra = direction >= USB2ST4_EAST;
+	pulse_values(guider, ra, direction == USB2ST4_EAST || direction == USB2ST4_NORTH ? duration : 0, direction == USB2ST4_WEST || direction == USB2ST4_SOUTH ? duration : 0);
+}
+
+static bool wait_axis_state(bool ra, indigo_property_state state) {
+	return wait_for_property_state(ra ? GUIDER_GUIDE_RA_PROPERTY_NAME : GUIDER_GUIDE_DEC_PROPERTY_NAME, state);
+}
+
+static void metadata_and_property_contract(void) {
+	indigo_driver_info info = { 0 };
+	ASSERT_EQ_INT(INDIGO_OK, indigo_guider_asi(INDIGO_DRIVER_INFO, &info));
+	ASSERT_EQ_INT(0x03000007, info.version);
+	ASSERT_TRUE(!strcmp("ZWO ASI USB-St4 Guider", info.description));
+	ASSERT_TRUE(begin_driver(&guider7, 1));
+	enumerate_simulator_device();
+	assert_device_interface(INDIGO_INTERFACE_GUIDER);
+	ASSERT_TRUE(find_cached_property(GUIDER_GUIDE_RA_PROPERTY_NAME) == NULL);
+	ASSERT_TRUE(find_cached_property(GUIDER_GUIDE_DEC_PROPERTY_NAME) == NULL);
+	ASSERT_TRUE(connect_device(&guider7));
+	const char *ra_items[] = { GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME };
+	const char *dec_items[] = { GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME };
+	assert_property_has_items(GUIDER_GUIDE_RA_PROPERTY_NAME, ra_items, 2);
+	assert_property_has_items(GUIDER_GUIDE_DEC_PROPERTY_NAME, dec_items, 2);
+	for (int i = 0; i < 2; i++) {
+		indigo_item *ra_item = find_cached_item(GUIDER_GUIDE_RA_PROPERTY_NAME, ra_items[i]);
+		indigo_item *dec_item = find_cached_item(GUIDER_GUIDE_DEC_PROPERTY_NAME, dec_items[i]);
+		ASSERT_NEAR(0, ra_item->number.min, 0);
+		ASSERT_NEAR(10000, ra_item->number.max, 0);
+		ASSERT_NEAR(0, dec_item->number.min, 0);
+		ASSERT_NEAR(10000, dec_item->number.max, 0);
+	}
+	disconnect_serial_device(&guider7);
+	ASSERT_TRUE(wait_axis_state(true, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_axis_state(false, INDIGO_OK_STATE));
+	cleanup_driver();
+}
+
+static void directions_units_limits_and_opposed(void) {
+	ASSERT_TRUE(begin_driver(&guider7, 1));
+	ASSERT_TRUE(connect_device(&guider7));
+	const int durations[] = { 20, 100, 500, 60 };
+	for (int direction = 0; direction < 4; direction++) {
+		pulse(&guider7, direction, durations[direction]);
+		ASSERT_TRUE(wait_relays(1 << direction));
+		ASSERT_TRUE(wait_axis_state(direction >= USB2ST4_EAST, INDIGO_BUSY_STATE));
+		ASSERT_TRUE(wait_relays(0));
+		ASSERT_TRUE(wait_axis_state(direction >= USB2ST4_EAST, INDIGO_OK_STATE));
+		const char *property = direction >= USB2ST4_EAST ? GUIDER_GUIDE_RA_PROPERTY_NAME : GUIDER_GUIDE_DEC_PROPERTY_NAME;
+		const char *item = direction == USB2ST4_EAST ? GUIDER_GUIDE_EAST_ITEM_NAME : direction == USB2ST4_WEST ? GUIDER_GUIDE_WEST_ITEM_NAME : direction == USB2ST4_NORTH ? GUIDER_GUIDE_NORTH_ITEM_NAME : GUIDER_GUIDE_SOUTH_ITEM_NAME;
+		ASSERT_TRUE(wait_for_number_item_value(property, item, 0, 0));
+		ASSERT_EQ_INT(1, asi_fake_count_events(ASI_FAKE_PULSE_ON, 7, direction));
+		ASSERT_EQ_INT(1, asi_fake_count_events(ASI_FAKE_PULSE_OFF, 7, direction));
+	}
+	pulse_values(&guider7, true, 80, 80);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_EAST));
+	ASSERT_TRUE(wait_relays(0));
+	ASSERT_EQ_INT(0, asi_fake_count_events(ASI_FAKE_PULSE_ON, 7, USB2ST4_WEST) - 1);
+	pulse_values(&guider7, false, 0, 0);
+	ASSERT_TRUE(wait_axis_state(false, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(0, asi_relays);
+	cleanup_driver();
+}
+
+static void replacements_and_coalescing(void) {
+	ASSERT_TRUE(begin_driver(&guider7, 1));
+	ASSERT_TRUE(connect_device(&guider7));
+	pulse(&guider7, USB2ST4_EAST, 500);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_EAST));
+	pulse(&guider7, USB2ST4_WEST, 180);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_WEST));
+	ASSERT_EQ_INT(0, asi_relays & (1 << USB2ST4_EAST));
+	ASSERT_TRUE(wait_relays(0));
+	pulse(&guider7, USB2ST4_NORTH, 500);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_NORTH));
+	pulse(&guider7, USB2ST4_NORTH, 120);
+	ASSERT_TRUE(wait_atomic(&asi_relays, 0));
+	ASSERT_EQ_INT(2, asi_fake_count_events(ASI_FAKE_PULSE_ON, 7, USB2ST4_NORTH));
+	pulse(&guider7, USB2ST4_EAST, 500);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_EAST));
+	pulse_values(&guider7, true, 0, 0);
+	ASSERT_TRUE(wait_relays(0));
+	ASSERT_TRUE(wait_axis_state(true, INDIGO_OK_STATE));
+	pulse(&guider7, USB2ST4_NORTH, 500);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_NORTH));
+	pulse_values(&guider7, false, 0, 0);
+	ASSERT_TRUE(wait_relays(0));
+	ASSERT_TRUE(wait_axis_state(false, INDIGO_OK_STATE));
+	pulse(&guider7, USB2ST4_NORTH, 200);
+	pulse(&guider7, USB2ST4_SOUTH, 160);
+	pulse(&guider7, USB2ST4_NORTH, 80);
+	ASSERT_TRUE(wait_axis_state(false, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_relays(0));
+	ASSERT_TRUE(asi_fake_count_events(ASI_FAKE_PULSE_ON, 7, USB2ST4_SOUTH) <= 1);
+	ASSERT_TRUE(asi_fake_count_events(ASI_FAKE_PULSE_ON, 7, USB2ST4_NORTH) >= 4);
+	ASSERT_EQ_INT(0, asi_opposed_overlap);
+	cleanup_driver();
+}
+
+static void stale_finalizer_and_independent_axes(void) {
+	ASSERT_TRUE(begin_driver(&guider7, 1));
+	ASSERT_TRUE(connect_device(&guider7));
+	pulse(&guider7, USB2ST4_EAST, 70);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_EAST));
+	indigo_usleep(40000);
+	pulse(&guider7, USB2ST4_EAST, 220);
+	indigo_usleep(70000);
+	ASSERT_EQ_INT(1 << USB2ST4_EAST, asi_relays);
+	ASSERT_TRUE(wait_relays(0));
+	pulse(&guider7, USB2ST4_EAST, 100);
+	pulse(&guider7, USB2ST4_NORTH, 300);
+	ASSERT_TRUE(wait_relays((1 << USB2ST4_EAST) | (1 << USB2ST4_NORTH)));
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_NORTH));
+	ASSERT_TRUE(wait_axis_state(true, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_axis_state(false, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_relays(0));
+	ASSERT_TRUE(wait_axis_state(false, INDIGO_OK_STATE));
 	asi_fail_off = 1;
-	pulse(USB2ST4_EAST, 20);
-	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_ALERT_STATE));
-cleanup:
-	stop();
+	pulse(&guider7, USB2ST4_EAST, 50);
+	pulse(&guider7, USB2ST4_NORTH, 180);
+	ASSERT_TRUE(wait_relays((1 << USB2ST4_EAST) | (1 << USB2ST4_NORTH)));
+	ASSERT_TRUE(wait_axis_state(true, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_EAST));
+	ASSERT_TRUE(wait_axis_state(false, INDIGO_OK_STATE));
+	pulse_values(&guider7, true, 0, 0);
+	ASSERT_TRUE(wait_relays(0));
+	ASSERT_TRUE(wait_axis_state(true, INDIGO_OK_STATE));
+	asi_fake_fail_direction(USB2ST4_SOUTH, true);
+	pulse(&guider7, USB2ST4_SOUTH, 30);
+	ASSERT_TRUE(wait_axis_state(false, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(0, asi_relays);
+	pulse(&guider7, USB2ST4_SOUTH, 30);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_SOUTH));
+	ASSERT_TRUE(wait_relays(0));
+	ASSERT_TRUE(wait_axis_state(false, INDIGO_OK_STATE));
+	cleanup_driver();
 }
 
-static void open_failure(void) {
-	SERIAL_CHECK_TRUE(bring_up_serial_driver(&guider));
-	SERIAL_CHECK_TRUE(wait_count(&asi_attached, 1));
+static void relay_failures_and_recovery(void) {
+	ASSERT_TRUE(begin_driver(&guider7, 1));
+	ASSERT_TRUE(connect_device(&guider7));
+	asi_fail_on = 1;
+	pulse(&guider7, USB2ST4_EAST, 20);
+	ASSERT_TRUE(wait_axis_state(true, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(0, asi_relays);
+	pulse(&guider7, USB2ST4_EAST, 40);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_EAST));
+	asi_fail_off = 1;
+	ASSERT_TRUE(wait_axis_state(true, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(1 << USB2ST4_EAST, asi_relays);
+	pulse(&guider7, USB2ST4_WEST, 40);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_WEST));
+	ASSERT_TRUE(wait_relays(0));
+	ASSERT_TRUE(wait_axis_state(true, INDIGO_OK_STATE));
+	cleanup_driver();
+}
+
+static void connection_failures_and_balancing(void) {
+	ASSERT_TRUE(begin_driver(&guider7, 1));
+	asi_fail_lock = 1;
+	ASSERT_FALSE(connect_device(&guider7));
+	ASSERT_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(0, asi_lock_count);
 	asi_fail_open = 1;
-	SERIAL_CHECK_TRUE(!connect_serial_device(&guider, NULL));
-	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(connect_serial_device(&guider, NULL));
-cleanup:
-	stop();
+	ASSERT_FALSE(connect_device(&guider7));
+	ASSERT_EQ_INT(0, asi_lock_count);
+	ASSERT_TRUE(connect_device(&guider7));
+	ASSERT_EQ_INT(1, asi_lock_count);
+	asi_fail_close = 1;
+	disconnect_serial_device(&guider7);
+	ASSERT_EQ_INT(0, asi_lock_count);
+	ASSERT_EQ_INT(1, asi_opened);
+	ASSERT_EQ_INT(1, asi_closed);
+	ASSERT_TRUE(connect_device(&guider7));
+	cleanup_driver();
 }
 
-static void failed_registration_retry(void) {
-	// Do not use bring_up_serial_driver: its failure cleanup calls SHUTDOWN
-	// and would conceal whether retrying INIT itself actually works.
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_start());
+static void discovery_failures_and_retry(void) {
+	reset_simulator_context(&guider7);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	bus_started = true;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(&simulator_test_client));
+	client_attached = true;
+	asi_fail_products = 1;
+	ASSERT_EQ_INT(INDIGO_FAILED, indigo_guider_asi(INDIGO_DRIVER_INIT, NULL));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_guider_asi(INDIGO_DRIVER_INIT, NULL));
+	driver_initialized = true;
+	ASSERT_TRUE(wait_atomic(&asi_attached, 1));
+	cleanup_driver();
+	asi_fake_reset();
 	asi_fail_register = 1;
-	SERIAL_CHECK_EQ_INT(INDIGO_FAILED, indigo_guider_asi(INDIGO_DRIVER_INIT, NULL));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_guider_asi(INDIGO_DRIVER_INIT, NULL));
-	SERIAL_CHECK_TRUE(wait_count(&asi_attached, 1));
-cleanup:
-	stop();
+	ASSERT_TRUE(begin_driver(&guider7, 0) == false);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_guider_asi(INDIGO_DRIVER_INIT, NULL));
+	driver_initialized = true;
+	ASSERT_TRUE(wait_atomic(&asi_attached, 1));
+	cleanup_driver();
 }
 
-static void shutdown_pending_arrival(void) {
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_start());
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_guider_asi(INDIGO_DRIVER_INIT, NULL));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_guider_asi(INDIGO_DRIVER_SHUTDOWN, NULL));
+static void sdk_enumeration_retry_and_identity(void) {
+	asi_fail_get_num = 1;
+	ASSERT_TRUE(begin_driver(&guider7, 1));
+	cleanup_driver();
+	asi_fake_reset();
+	asi_fail_get_id = 1;
+	ASSERT_TRUE(begin_driver(&guider7, 1));
+	cleanup_driver();
+	asi_fake_reset();
+	asi_fake_configure(0, -2, 0x100, true);
+	asi_fake_configure(1, 42, 0x101, true);
+	ASSERT_TRUE(begin_driver(&guider42, 1));
+	ASSERT_TRUE(connect_device(&guider42));
+	cleanup_driver();
+}
+
+static void unsupported_duplicate_multi_device_capacity(void) {
+	asi_fake_configure(0, 7, 0x999, true);
+	ASSERT_TRUE(begin_driver(&guider7, 0));
+	indigo_usleep(700000);
+	ASSERT_EQ_INT(0, asi_attached);
+	cleanup_driver();
+	asi_fake_reset();
+	asi_fake_configure(1, 7, 0x101, true);
+	ASSERT_TRUE(begin_driver(&guider7, 1));
+	ASSERT_EQ_INT(1, asi_attached);
+	cleanup_driver();
+	asi_fake_reset();
+	for (int i = 0; i < 7; i++) {
+		asi_fake_configure(i, 20 + i, 0x100 + i, true);
+	}
+	ASSERT_TRUE(begin_driver(&guider7, 5));
+	ASSERT_EQ_INT(5, asi_attached);
+	asi_fake_removal_slot(0);
 	indigo_usleep(800000);
-	SERIAL_CHECK_EQ_INT(0, asi_attached);
-cleanup:
-	stop();
+	ASSERT_EQ_INT(5, asi_attached);
+	cleanup_driver();
 }
 
-static void removal(void) {
-	SERIAL_CHECK_TRUE(start());
+static void two_device_isolation_and_removal(void) {
+	asi_fake_configure(1, 42, 0x101, true);
+	ASSERT_TRUE(begin_driver(&guider7, 2));
+	ASSERT_TRUE(connect_device(&guider7));
+	ASSERT_TRUE(connect_device(&guider42));
+	ASSERT_EQ_INT(2, asi_lock_count);
+	disconnect_serial_device(&guider7);
+	disconnect_serial_device(&guider42);
+	ASSERT_TRUE(wait_atomic(&asi_lock_count, 0));
+	ASSERT_TRUE(connect_device(&guider42));
+	ASSERT_TRUE(connect_device(&guider7));
+	ASSERT_EQ_INT(2, asi_lock_count);
+	pulse(&guider42, USB2ST4_WEST, 80);
+	ASSERT_TRUE(wait_atomic(&asi_relays, 0));
+	for (int i = 0; i < 200 && asi_fake_device_relays(42) != (1 << USB2ST4_WEST); i++) {
+		indigo_usleep(10000);
+	}
+	ASSERT_TRUE(asi_fake_count_events(ASI_FAKE_PULSE_ON, 42, USB2ST4_WEST) == 1);
+	ASSERT_TRUE(asi_fake_device_relays(7) == 0);
+	asi_fake_removal_slot(0);
+	ASSERT_TRUE(wait_atomic(&asi_attached, 1));
+	ASSERT_TRUE(asi_fake_device_relays(42) == 0 || asi_fake_device_relays(42) == (1 << USB2ST4_WEST));
+	disconnect_name(guider42.device_name);
+	ASSERT_TRUE(wait_atomic(&asi_lock_count, 0));
+	cleanup_driver();
+}
+
+static void disconnect_active_and_reconnect(void) {
+	ASSERT_TRUE(begin_driver(&guider7, 1));
+	ASSERT_TRUE(connect_device(&guider7));
+	pulse(&guider7, USB2ST4_EAST, 500);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_EAST));
+	disconnect_serial_device(&guider7);
+	ASSERT_TRUE(wait_relays(0));
+	ASSERT_EQ_INT(1, asi_closed);
+	ASSERT_TRUE(connect_device(&guider7));
+	pulse(&guider7, USB2ST4_WEST, 30);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_WEST));
+	ASSERT_TRUE(wait_relays(0));
+	cleanup_driver();
+}
+
+static void removal_active_and_rearrival(void) {
+	ASSERT_TRUE(begin_driver(&guider7, 1));
+	ASSERT_TRUE(connect_device(&guider7));
+	pulse(&guider7, USB2ST4_NORTH, 500);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_NORTH));
 	asi_fake_removal();
-	SERIAL_CHECK_TRUE(wait_count(&asi_attached, 0));
-cleanup:
-	stop();
+	ASSERT_TRUE(wait_atomic(&asi_attached, 0));
+	ASSERT_EQ_INT(0, asi_relays);
+	asi_fake_configure(0, 7, 0x100, true);
+	asi_fake_arrival();
+	ASSERT_TRUE(wait_atomic(&asi_attached, 1));
+	ASSERT_TRUE(connect_device(&guider7));
+	pulse(&guider7, USB2ST4_SOUTH, 30);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_SOUTH));
+	ASSERT_TRUE(wait_relays(0));
+	cleanup_driver();
+}
+
+static void blocked_sdk_serializes_disconnect(void) {
+	ASSERT_TRUE(begin_driver(&guider7, 1));
+	ASSERT_TRUE(connect_device(&guider7));
+	asi_fake_gate(ASI_FAKE_PULSE_ON);
+	pulse(&guider7, USB2ST4_EAST, 200);
+	ASSERT_TRUE(asi_fake_wait_gate());
+	disconnect_name(guider7.device_name);
+	indigo_usleep(50000);
+	ASSERT_EQ_INT(0, asi_closed);
+	asi_fake_release_gate();
+	ASSERT_TRUE(wait_atomic(&asi_closed, 1));
+	ASSERT_TRUE(wait_atomic(&asi_lock_count, 0));
+	ASSERT_EQ_INT(0, asi_relays);
+	cleanup_driver();
+}
+
+static void blocked_stop_serializes_removal(void) {
+	ASSERT_TRUE(begin_driver(&guider7, 1));
+	ASSERT_TRUE(connect_device(&guider7));
+	asi_fake_gate(ASI_FAKE_PULSE_OFF);
+	pulse(&guider7, USB2ST4_EAST, 50);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_EAST));
+	ASSERT_TRUE(asi_fake_wait_gate());
+	asi_fake_removal();
+	indigo_usleep(50000);
+	ASSERT_EQ_INT(1, asi_attached);
+	asi_fake_release_gate();
+	ASSERT_TRUE(wait_atomic(&asi_attached, 0));
+	ASSERT_EQ_INT(0, asi_relays);
+	ASSERT_EQ_INT(0, asi_lock_count);
+	cleanup_driver();
+}
+
+static void shutdown_contract_and_repeated_lifecycle(void) {
+	ASSERT_TRUE(begin_driver(&guider7, 1));
+	ASSERT_TRUE(connect_device(&guider7));
+	pulse(&guider7, USB2ST4_EAST, 150);
+	ASSERT_TRUE(wait_relays(1 << USB2ST4_EAST));
+	ASSERT_EQ_INT(INDIGO_BUSY, indigo_guider_asi(INDIGO_DRIVER_SHUTDOWN, NULL));
+	ASSERT_TRUE(wait_relays(0));
+	disconnect_serial_device(&guider7);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_guider_asi(INDIGO_DRIVER_SHUTDOWN, NULL));
+	driver_initialized = false;
+	ASSERT_EQ_INT(0, asi_attached);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_guider_asi(INDIGO_DRIVER_INIT, NULL));
+	driver_initialized = true;
+	ASSERT_TRUE(wait_atomic(&asi_attached, 1));
+	cleanup_driver();
+}
+
+static void shutdown_with_queued_discovery(void) {
+	asi_fake_gate(ASI_FAKE_GET_NUM);
+	ASSERT_TRUE(begin_driver(&guider7, 0));
+	ASSERT_TRUE(asi_fake_wait_gate());
+	asi_fake_release_gate();
+	ASSERT_EQ_INT(INDIGO_OK, indigo_guider_asi(INDIGO_DRIVER_SHUTDOWN, NULL));
+	driver_initialized = false;
+	indigo_usleep(700000);
+	ASSERT_EQ_INT(0, asi_attached);
+	cleanup_driver();
 }
 
 int main(void) {
 	const indigo_test_case tests[] = {
-		{ "directions_and_cross_axis", directions },
-		{ "reversal", reversal },
-		{ "zero_stop", zero_stop },
-		{ "start_failure", start_failure },
-		{ "stop_failure", stop_failure },
-		{ "open_failure_retry", open_failure },
-		{ "registration_failure_retry", failed_registration_retry },
-		{ "shutdown_pending_arrival", shutdown_pending_arrival },
-		{ "removal", removal },
+		{ "metadata_and_property_contract", metadata_and_property_contract },
+		{ "directions_units_limits_and_opposed", directions_units_limits_and_opposed },
+		{ "replacements_and_coalescing", replacements_and_coalescing },
+		{ "stale_finalizer_and_independent_axes", stale_finalizer_and_independent_axes },
+		{ "relay_failures_and_recovery", relay_failures_and_recovery },
+		{ "connection_failures_and_balancing", connection_failures_and_balancing },
+		{ "discovery_failures_and_retry", discovery_failures_and_retry },
+		{ "sdk_enumeration_retry_and_identity", sdk_enumeration_retry_and_identity },
+		{ "unsupported_duplicate_multi_device_capacity", unsupported_duplicate_multi_device_capacity },
+		{ "two_device_isolation_and_removal", two_device_isolation_and_removal },
+		{ "disconnect_active_and_reconnect", disconnect_active_and_reconnect },
+		{ "removal_active_and_rearrival", removal_active_and_rearrival },
+		{ "blocked_sdk_serializes_disconnect", blocked_sdk_serializes_disconnect },
+		{ "blocked_stop_serializes_removal", blocked_stop_serializes_removal },
+		{ "shutdown_contract_and_repeated_lifecycle", shutdown_contract_and_repeated_lifecycle },
+		{ "shutdown_with_queued_discovery", shutdown_with_queued_discovery }
 	};
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	int failures = 0;
 	const char *filter = getenv("ASI_TEST_FILTER");
 	for (int i = 0; i < ARRAY_SIZE(tests); i++) {
-		if (filter && !strstr(tests[i].name, filter)) { continue; }
+		if (filter != NULL && strstr(tests[i].name, filter) == NULL) {
+			continue;
+		}
 		fflush(NULL);
 		pid_t child = fork();
-		if (child == 0) { alarm(20); _exit(indigo_run_tests("ASI USB-ST4 fake SDK", tests + i, 1)); }
+		if (child == 0) {
+			alarm(30);
+			asi_fake_reset();
+			_exit(indigo_run_tests("ASI USB-ST4 fake SDK", tests + i, 1));
+		}
 		int status = 0;
 		pid_t waited;
-		do { waited = waitpid(child, &status, 0); } while (waited < 0 && errno == EINTR);
-		if (child < 0 || waited < 0 || !WIFEXITED(status) || WEXITSTATUS(status)) { failures++; printf("FAIL %s (status %d)\n", tests[i].name, status); }
+		do {
+			waited = waitpid(child, &status, 0);
+		} while (waited < 0 && errno == EINTR);
+		if (child < 0 || waited < 0 || !WIFEXITED(status) || WEXITSTATUS(status)) {
+			failures++;
+			printf("FAIL %s (status %d)\n", tests[i].name, status);
+		}
 	}
 	printf("ASI USB-ST4: %d failing scenarios\n", failures);
 	return failures ? 1 : 0;

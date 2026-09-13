@@ -1,0 +1,306 @@
+// Copyright (c) 2017-2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// ZWO ASI USB2ST4 guider driver definition
+
+// version history
+// 2.0 Build 0 - PoC by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// 3.0 generated migration and asynchronous pulse handling
+
+driver asi {
+	label = "ZWO ASI USB-St4 Guider";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
+	copyright = "Copyright (c) 2017-2026 Rumen G. Bogdanovski";
+	version = 7;
+	supported_architecture = "!defined(INDIGO_WINDOWS) && (!defined(INDIGO_MACOS) || defined(__x86_64__))";
+	include {
+		#include <stdbool.h>
+		#include "USB2ST4_Conv.h"
+	}
+	define {
+		#define ASI_VENDOR_ID 0x03c3
+		#define NO_DIRECTION (-1)
+	}
+	data {
+		int dev_id;
+		int active_ra, active_dec;
+		double deadline_ra, deadline_dec;
+	}
+	sdk {
+		discovery_retries = 6;
+		hotplug = true;
+		vid = ASI_VENDOR_ID;
+		plug {
+			plug_result = asi_pid_supported(descriptor.idProduct);
+			if (plug_result) {
+				plug_result = false;
+				int count = asi_get_num();
+				for (int index = 0; index < count && index < USB2ST4_ID_MAX; index++) {
+					int id = NO_DIRECTION;
+					if (asi_get_id(index, &id) != USB2ST4_SUCCESS || id < 0 || id >= USB2ST4_ID_MAX) {
+						continue;
+					}
+					bool attached = false;
+					for (int slot = 0; slot < MAX_DEVICES; slot++) {
+						if (devices[slot] != NULL && ((asi_private_data *)devices[slot]->private_data)->dev_id == id) {
+							attached = true;
+							break;
+						}
+					}
+					if (!attached) {
+						private_data->dev_id = id;
+						private_data->active_ra = private_data->active_dec = NO_DIRECTION;
+						snprintf(name, INDIGO_NAME_SIZE, "ASI USB-St4 Guider #%d", id);
+						plug_result = true;
+						break;
+					}
+				}
+			}
+		}
+		unplug_match {
+			int count = asi_get_num();
+			bool complete = count >= 0 && count <= USB2ST4_ID_MAX;
+			bool present = false;
+			for (int index = 0; complete && index < count; index++) {
+				int id = NO_DIRECTION;
+				if (asi_get_id(index, &id) != USB2ST4_SUCCESS || id < 0 || id >= USB2ST4_ID_MAX) {
+					complete = false;
+				} else if (id == private_data->dev_id) {
+					present = true;
+				}
+			}
+			unplug_result = complete && !present;
+		}
+	}
+	code {
+		static pthread_mutex_t sdk_mutex = PTHREAD_MUTEX_INITIALIZER;
+		static int asi_products[USB2ST4_ID_MAX];
+		static int asi_product_count;
+
+		static int asi_get_num(void) {
+			pthread_mutex_lock(&sdk_mutex);
+			int count = USB2ST4GetNum();
+			pthread_mutex_unlock(&sdk_mutex);
+			return count;
+		}
+
+		static USB2ST4_ERROR_CODE asi_get_id(int index, int *id) {
+			pthread_mutex_lock(&sdk_mutex);
+			USB2ST4_ERROR_CODE result = USB2ST4GetID(index, id);
+			pthread_mutex_unlock(&sdk_mutex);
+			return result;
+		}
+
+		static bool asi_load_products(void) {
+			pthread_mutex_lock(&sdk_mutex);
+			int capacity = USB2ST4GetProductIDs(NULL);
+			if (capacity <= 0 || capacity > USB2ST4_ID_MAX) {
+				pthread_mutex_unlock(&sdk_mutex);
+				return false;
+			}
+			int count = USB2ST4GetProductIDs(asi_products);
+			pthread_mutex_unlock(&sdk_mutex);
+			if (count <= 0 || count > capacity || count > USB2ST4_ID_MAX) {
+				return false;
+			}
+			asi_product_count = count;
+			return true;
+		}
+
+		static bool asi_pid_supported(uint16_t pid) {
+			for (int index = 0; index < asi_product_count; index++) {
+				if (asi_products[index] == pid) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		static USB2ST4_ERROR_CODE asi_set_relay(indigo_device *device, int direction, bool enabled) {
+			pthread_mutex_lock(&sdk_mutex);
+			USB2ST4_ERROR_CODE result = USB2ST4PulseGuide(PRIVATE_DATA->dev_id, (USB2ST4_DIRECTION)direction, enabled);
+			pthread_mutex_unlock(&sdk_mutex);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB2ST4PulseGuide(%d, %d, %s) = %d", PRIVATE_DATA->dev_id, direction, enabled ? "ON" : "OFF", result);
+			return result;
+		}
+
+		static bool asi_open(indigo_device *device) {
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock");
+				return false;
+			}
+			pthread_mutex_lock(&sdk_mutex);
+			USB2ST4_ERROR_CODE result = USB2ST4Open(PRIVATE_DATA->dev_id);
+			pthread_mutex_unlock(&sdk_mutex);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB2ST4Open(%d) = %d", PRIVATE_DATA->dev_id, result);
+			if (result != USB2ST4_SUCCESS) {
+				indigo_global_unlock(device);
+				return false;
+			}
+			PRIVATE_DATA->active_ra = PRIVATE_DATA->active_dec = NO_DIRECTION;
+			PRIVATE_DATA->deadline_ra = PRIVATE_DATA->deadline_dec = 0;
+			return true;
+		}
+
+		static void asi_close(indigo_device *device) {
+			pthread_mutex_lock(&sdk_mutex);
+			USB2ST4_ERROR_CODE result = USB2ST4Close(PRIVATE_DATA->dev_id);
+			pthread_mutex_unlock(&sdk_mutex);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB2ST4Close(%d) = %d", PRIVATE_DATA->dev_id, result);
+			indigo_global_unlock(device);
+		}
+
+		static void asi_clear_axis_items(indigo_device *device, bool ra) {
+			if (ra) {
+				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+			} else {
+				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+			}
+		}
+
+		static void guider_guide_ra_finalizer(indigo_device *device);
+		static void guider_guide_dec_finalizer(indigo_device *device);
+
+		static bool asi_stop_axis(indigo_device *device, bool ra) {
+			int *active = ra ? &PRIVATE_DATA->active_ra : &PRIVATE_DATA->active_dec;
+			double *deadline = ra ? &PRIVATE_DATA->deadline_ra : &PRIVATE_DATA->deadline_dec;
+			indigo_property *property = ra ? GUIDER_GUIDE_RA_PROPERTY : GUIDER_GUIDE_DEC_PROPERTY;
+			asi_clear_axis_items(device, ra);
+			if (*active == NO_DIRECTION) {
+				*deadline = 0;
+				property->state = INDIGO_OK_STATE;
+				return true;
+			}
+			USB2ST4_ERROR_CODE result = asi_set_relay(device, *active, false);
+			*deadline = 0;
+			if (result != USB2ST4_SUCCESS) {
+				property->state = INDIGO_ALERT_STATE;
+				return false;
+			}
+			*active = NO_DIRECTION;
+			property->state = INDIGO_OK_STATE;
+			return true;
+		}
+
+		static void asi_axis_finalizer(indigo_device *device, bool ra) {
+			if (!IS_CONNECTED) {
+				return;
+			}
+			double deadline = ra ? PRIVATE_DATA->deadline_ra : PRIVATE_DATA->deadline_dec;
+			double remaining = deadline - indigo_monotonic_time();
+			if (deadline > 0 && remaining > 0.0005) {
+				indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, remaining, ra ? guider_guide_ra_finalizer : guider_guide_dec_finalizer);
+				return;
+			}
+			asi_stop_axis(device, ra);
+			indigo_update_property(device, ra ? GUIDER_GUIDE_RA_PROPERTY : GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		}
+
+		static void guider_guide_ra_finalizer(indigo_device *device) {
+			asi_axis_finalizer(device, true);
+		}
+
+		static void guider_guide_dec_finalizer(indigo_device *device) {
+			asi_axis_finalizer(device, false);
+		}
+
+		static void asi_change_axis(indigo_device *device, bool ra, int direction, int duration, indigo_timer_callback finalizer) {
+			int *active = ra ? &PRIVATE_DATA->active_ra : &PRIVATE_DATA->active_dec;
+			double *deadline = ra ? &PRIVATE_DATA->deadline_ra : &PRIVATE_DATA->deadline_dec;
+			indigo_property *property = ra ? GUIDER_GUIDE_RA_PROPERTY : GUIDER_GUIDE_DEC_PROPERTY;
+			if (!asi_stop_axis(device, ra)) {
+				indigo_update_property(device, property, "Failed to stop the active guide relay");
+				return;
+			}
+			if (duration <= 0) {
+				indigo_update_property(device, property, NULL);
+				return;
+			}
+			USB2ST4_ERROR_CODE result = asi_set_relay(device, direction, true);
+			if (result != USB2ST4_SUCCESS) {
+				property->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, property, "Failed to start the guide relay");
+				return;
+			}
+			*active = direction;
+			*deadline = indigo_monotonic_time() + duration / 1000.0;
+			property->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, property, NULL);
+			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, finalizer);
+		}
+	}
+	on_init {
+		if (!asi_load_products()) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get the list of supported IDs");
+			last_action = INDIGO_DRIVER_SHUTDOWN;
+			return INDIGO_FAILED;
+		}
+	}
+	guider {
+		name = "%s";
+		on_connect {
+			GUIDER_GUIDE_RA_PROPERTY->hidden = false;
+			GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
+		}
+		on_disconnect {
+			bool ra_stopped = asi_stop_axis(device, true);
+			bool dec_stopped = asi_stop_axis(device, false);
+			if (!ra_stopped || !dec_stopped) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to stop every guide relay before disconnecting device %d", PRIVATE_DATA->dev_id);
+			}
+			GUIDER_GUIDE_RA_PROPERTY->hidden = true;
+			GUIDER_GUIDE_DEC_PROPERTY->hidden = true;
+		}
+		inherited GUIDER_GUIDE_DEC {
+			hidden = true;
+			on_change_request {
+				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			on_change {
+				int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+				int direction = USB2ST4_NORTH;
+				if (duration <= 0) {
+					duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+					direction = USB2ST4_SOUTH;
+				}
+				asi_change_axis(device, false, direction, duration, guider_guide_dec_finalizer);
+			}
+		}
+		inherited GUIDER_GUIDE_RA {
+			hidden = true;
+			on_change_request {
+				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			on_change {
+				int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+				int direction = USB2ST4_EAST;
+				if (duration <= 0) {
+					duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+					direction = USB2ST4_WEST;
+				}
+				asi_change_axis(device, true, direction, duration, guider_guide_ra_finalizer);
+			}
+		}
+	}
+}
