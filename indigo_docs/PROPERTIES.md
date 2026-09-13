@@ -1366,11 +1366,11 @@ Source: `indigo_drivers/mount_rainbow/indigo_mount_rainbow.c`.
 
 ### mount_starbook
 
-Custom properties: `STARBOOK_RESET`, `STARBOOK_TIMEZONE`.
+Custom properties: `X_STARBOOK_RESET`, `X_STARBOOK_TIMEZONE`.
 
 Driver-specific use of existing properties: `MOUNT_GUIDE_RATE`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
 
-Source: `indigo_drivers/mount_starbook/indigo_mount_starbook.c`.
+Source: `indigo_drivers/mount_starbook/indigo_mount_starbook.driver`.
 
 ### mount_synscan
 

@@ -170,6 +170,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_mount_ioptron", "ind
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_mount_temma", "indigo_drivers\mount_temma\indigo_mount_temma.vcxproj", "{F19DE5F7-5A1E-4C2B-8B4A-6DE8FBE9D53A}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_mount_starbook", "indigo_drivers\mount_starbook\indigo_mount_starbook.vcxproj", "{E3D66A5F-0E6D-4A64-8D68-CDA18A7AC924}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_mount_lx200", "indigo_drivers\mount_lx200\indigo_mount_lx200.vcxproj", "{7C84806A-6F8A-49AC-B9ED-476D4B36EB58}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_mount_mxhd", "indigo_drivers\mount_mxhd\indigo_mount_mxhd.vcxproj", "{4E5B8F65-46E4-4D9F-AE99-64AB8D28D93A}"
@@ -920,6 +922,14 @@ Global
 		{F19DE5F7-5A1E-4C2B-8B4A-6DE8FBE9D53A}.Release|ARM64.Build.0 = Release|ARM64
 		{F19DE5F7-5A1E-4C2B-8B4A-6DE8FBE9D53A}.Release|x64.ActiveCfg = Release|x64
 		{F19DE5F7-5A1E-4C2B-8B4A-6DE8FBE9D53A}.Release|x64.Build.0 = Release|x64
+		{E3D66A5F-0E6D-4A64-8D68-CDA18A7AC924}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{E3D66A5F-0E6D-4A64-8D68-CDA18A7AC924}.Debug|ARM64.Build.0 = Debug|ARM64
+		{E3D66A5F-0E6D-4A64-8D68-CDA18A7AC924}.Debug|x64.ActiveCfg = Debug|x64
+		{E3D66A5F-0E6D-4A64-8D68-CDA18A7AC924}.Debug|x64.Build.0 = Debug|x64
+		{E3D66A5F-0E6D-4A64-8D68-CDA18A7AC924}.Release|ARM64.ActiveCfg = Release|ARM64
+		{E3D66A5F-0E6D-4A64-8D68-CDA18A7AC924}.Release|ARM64.Build.0 = Release|ARM64
+		{E3D66A5F-0E6D-4A64-8D68-CDA18A7AC924}.Release|x64.ActiveCfg = Release|x64
+		{E3D66A5F-0E6D-4A64-8D68-CDA18A7AC924}.Release|x64.Build.0 = Release|x64
 		{7C84806A-6F8A-49AC-B9ED-476D4B36EB58}.Debug|ARM64.ActiveCfg = Debug|ARM64
 		{7C84806A-6F8A-49AC-B9ED-476D4B36EB58}.Debug|ARM64.Build.0 = Debug|ARM64
 		{7C84806A-6F8A-49AC-B9ED-476D4B36EB58}.Debug|x64.ActiveCfg = Debug|x64

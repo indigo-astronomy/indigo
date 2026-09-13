@@ -20,21 +20,68 @@
 
 #include <indigo_drivers/mount_starbook/indigo_mount_starbook.h>
 
+#include <math.h>
+#include <unistd.h>
+
 #include "serial_simulator_test_common.h"
 
 #ifndef MOUNT_STARBOOK_SIMULATOR_EXECUTABLE
 #define MOUNT_STARBOOK_SIMULATOR_EXECUTABLE "build/integration/mount_starbook_simulator"
 #endif
 
-#define STARBOOK_TIMEZONE_PROPERTY_NAME "STARBOOK_TIMEZONE"
+#define STARBOOK_TIMEZONE_PROPERTY_NAME "X_STARBOOK_TIMEZONE"
 #define STARBOOK_TIMEZONE_VALUE_ITEM_NAME "VALUE"
-#define STARBOOK_RESET_PROPERTY_NAME "STARBOOK_RESET"
+#define STARBOOK_RESET_PROPERTY_NAME "X_STARBOOK_RESET"
 #define STARBOOK_RESET_ITEM_NAME "RESET"
+
+static bool create_trace_file(char *path, size_t size) {
+	snprintf(path, size, "/tmp/indigo-mount-starbook-trace.XXXXXX");
+	int fd = mkstemp(path);
+	if (fd < 0) {
+		return false;
+	}
+	close(fd);
+	return true;
+}
+
+static bool trace_contains(const char *path, const char *needle) {
+	for (int attempt = 0; attempt < 100; attempt++) {
+		FILE *file = fopen(path, "r");
+		if (file != NULL) {
+			char line[1200];
+			while (fgets(line, sizeof(line), file) != NULL) {
+				if (strstr(line, needle) != NULL) {
+					fclose(file);
+					return true;
+				}
+			}
+			fclose(file);
+		}
+		indigo_usleep(20000);
+	}
+	return false;
+}
+
+static bool change_switch_after(const simulator_driver_case *driver_case, const char *property_name, const char *item_name, bool value, indigo_property_state state) {
+	unsigned int revision = property_revision(property_name);
+	return indigo_change_switch_property_1(&simulator_test_client, driver_case->device_name, property_name, item_name, value) == INDIGO_OK && wait_for_property_state_after(property_name, state, revision);
+}
+
+static bool change_number_after(const simulator_driver_case *driver_case, const char *property_name, const char *item_name, double value, indigo_property_state state) {
+	unsigned int revision = property_revision(property_name);
+	return indigo_change_number_property_1(&simulator_test_client, driver_case->device_name, property_name, item_name, value) == INDIGO_OK && wait_for_property_state_after(property_name, state, revision);
+}
+
+static indigo_result change_coordinates(double ra, double dec) {
+	static const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double values[] = { ra, dec };
+	return indigo_change_number_property(&simulator_test_client, "Mount Vixen StarBook", MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(items), items, values);
+}
 
 static const simulator_driver_case starbook_mount = {
 	"Vixen StarBook Mount",
 	"indigo_mount_starbook",
-	MOUNT_STARBOOK_NAME,
+	"Mount Vixen StarBook",
 	indigo_mount_starbook,
 	false,
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
@@ -43,7 +90,7 @@ static const simulator_driver_case starbook_mount = {
 static const simulator_driver_case starbook_guider = {
 	"Vixen StarBook Mount (guider)",
 	"indigo_mount_starbook",
-	MOUNT_STARBOOK_GUIDER_NAME,
+	"Mount Vixen StarBook (guider)",
 	indigo_mount_starbook,
 	false,
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
@@ -120,10 +167,271 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static void starbook_firmware_capabilities_are_gated(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	const char *args[] = { "--version", "2.70", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_STARBOOK_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&starbook_mount, simulator.port));
+	driver_started = true;
+	assert_device_interface(INDIGO_INTERFACE_MOUNT);
+	assert_not_defined_property(MOUNT_TRACKING_PROPERTY_NAME);
+	assert_not_defined_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME) != NULL);
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME)->text.value, "StarBook"));
+cleanup:
+	if (driver_started) stop_serial_driver(&starbook_mount);
+	stop_external_serial_simulator(&simulator);
+}
+
+static void starbook_sync_and_goto_have_exact_protocol_and_progress(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = { 0 };
+	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
+	const char *args[] = { "--trace-file", trace_path, NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_STARBOOK_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&starbook_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_coordinates(7.25, -0.5));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(trace_contains(trace_path, "/ALIGN?ra=7+15.000&dec=-0+30.00"));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_coordinates(8.5, -12.25));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 8.5, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -12.25, 0.001));
+	SERIAL_CHECK_TRUE(trace_contains(trace_path, "/GOTORADEC?ra=8+30.000&dec=-12+15.00"));
+cleanup:
+	if (driver_started) stop_serial_driver(&starbook_mount);
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) unlink(trace_path);
+}
+
+static void starbook_manual_motion_rate_abort_and_recovery(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = { 0 };
+	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
+	const char *args[] = { "--trace-file", trace_path, NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_STARBOOK_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&starbook_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(trace_contains(trace_path, "/SETSPEED?speed=8"));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(trace_contains(trace_path, "/MOVE?NORTH=1&SOUTH=0&EAST=1&WEST=0"));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(trace_contains(trace_path, "/MOVE?NORTH=1&SOUTH=0&EAST=0&WEST=1"));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(trace_contains(trace_path, "/STOP"));
+	SERIAL_CHECK_TRUE(trace_contains(trace_path, "/MOVE?NORTH=0&SOUTH=0&EAST=0&WEST=0"));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false, INDIGO_OK_STATE));
+cleanup:
+	if (driver_started) stop_serial_driver(&starbook_mount);
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) unlink(trace_path);
+}
+
+static void starbook_settings_and_commands_are_translated(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = { 0 };
+	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
+	const char *args[] = { "--trace-file", trace_path, NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_STARBOOK_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&starbook_mount, simulator.port));
+	driver_started = true;
+	static const char *items[] = { GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME };
+	double values[] = { -70.5, -33.25 };
+	unsigned int revision = property_revision(GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, starbook_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(items), items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(change_number_after(&starbook_mount, STARBOOK_TIMEZONE_PROPERTY_NAME, STARBOOK_TIMEZONE_VALUE_ITEM_NAME, -4, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(trace_contains(trace_path, "/SETPLACE?LONGITUDE=W70+30&LATITUDE=S33+15&TIMEZONE=-4"));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, STARBOOK_RESET_PROPERTY_NAME, STARBOOK_RESET_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(trace_contains(trace_path, "/RESET"));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(trace_contains(trace_path, "/STOP"));
+cleanup:
+	if (driver_started) stop_serial_driver(&starbook_mount);
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) unlink(trace_path);
+}
+
+static void starbook_command_failure_recovers(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	const char *args[] = { "--fault-reply", "/SETSPEED*", "ERROR:FORMAT", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_STARBOOK_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&starbook_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+	if (driver_started) stop_serial_driver(&starbook_mount);
+	stop_external_serial_simulator(&simulator);
+}
+
+static void starbook_transport_drop_and_near_sun_retry_recover(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	const char *args[] = { "--drop-reply", "/MOVE*", "--fault-reply", "/GOTORADEC*", "WARNING:NEAR SUN", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_STARBOOK_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&starbook_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_coordinates(9.0, 20.0));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+cleanup:
+	if (driver_started) stop_serial_driver(&starbook_mount);
+	stop_external_serial_simulator(&simulator);
+}
+
+static void starbook_shared_lifecycle_survives_active_disconnect(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_STARBOOK_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&starbook_mount));
+	driver_started = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, starbook_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	indigo_usleep(100000);
+	SERIAL_CHECK_TRUE(connect_serial_device(&starbook_mount, NULL));
+	SERIAL_CHECK_TRUE(connect_serial_device(&starbook_guider, NULL));
+	disconnect_serial_device(&starbook_mount);
+	reset_simulator_context(&starbook_guider);
+	enumerate_simulator_device();
+	unsigned int revision = property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, starbook_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(connect_serial_device(&starbook_mount, NULL));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_coordinates(10.0, 25.0));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	disconnect_serial_device(&starbook_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&starbook_mount, NULL));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
+cleanup:
+	if (driver_started) {
+		disconnect_serial_device(&starbook_guider);
+		disconnect_serial_device(&starbook_mount);
+		tear_down_serial_driver(&starbook_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void starbook_connection_failure_recovers(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	const char *args[] = { "--fault-reply", "/VERSION", "VERSION=broken", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_STARBOOK_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&starbook_mount));
+	driver_started = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, starbook_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	indigo_usleep(100000);
+	unsigned int revision = property_revision(CONNECTION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, starbook_mount.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(connect_serial_device(&starbook_mount, NULL));
+cleanup:
+	if (driver_started) {
+		disconnect_serial_device(&starbook_mount);
+		tear_down_serial_driver(&starbook_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static bool wait_for_fast_state_after(const char *property_name, indigo_property_state state, unsigned int revision) {
+	for (int i = 0; i < 5000; i++) {
+		indigo_property *property = find_cached_property(property_name);
+		if (property != NULL && property_revision(property_name) > revision && property->state == state) return true;
+		indigo_usleep(1000);
+	}
+	return false;
+}
+
+static void starbook_guider_directions_and_timing(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = { 0 };
+	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
+	const char *args[] = { "--trace-file", trace_path, NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_STARBOOK_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&starbook_mount));
+	driver_started = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, starbook_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	indigo_usleep(100000);
+	SERIAL_CHECK_TRUE(connect_serial_device(&starbook_guider, NULL));
+	static const char *properties[] = { GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME };
+	static const char *items[] = { GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME };
+	static const int directions[] = { 0, 1, 2, 3 };
+	static const int durations[] = { 20, 100, 500 };
+	double total_error[2] = { 0 }, maximum_error[2] = { 0 };
+	int samples[2] = { 0 };
+	for (int workload = 0; workload < 2; workload++) {
+		if (workload == 1) {
+			SERIAL_CHECK_TRUE(connect_serial_device(&starbook_mount, NULL));
+			reset_simulator_context(&starbook_guider);
+			enumerate_simulator_device();
+		}
+		for (int d = 0; d < 4; d++) {
+			for (int t = 0; t < 3; t++) {
+				unsigned int revision = property_revision(properties[d]);
+				double started = indigo_monotonic_time();
+				SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, starbook_guider.device_name, properties[d], items[d], durations[t]));
+				SERIAL_CHECK_TRUE(wait_for_fast_state_after(properties[d], INDIGO_BUSY_STATE, revision));
+				revision = property_revision(properties[d]);
+				SERIAL_CHECK_TRUE(wait_for_fast_state_after(properties[d], INDIGO_OK_STATE, revision));
+				double error = (indigo_monotonic_time() - started) * 1000 - durations[t];
+				total_error[workload] += error;
+				if (fabs(error) > maximum_error[workload]) maximum_error[workload] = fabs(error);
+				samples[workload]++;
+				char command[64];
+				snprintf(command, sizeof(command), "/MOVEPULSE?DIRECT=%d&DURATION=%d", directions[d], durations[t]);
+				SERIAL_CHECK_TRUE(trace_contains(trace_path, command));
+			}
+		}
+	}
+	printf("StarBook guider timing idle: %d samples, mean signed error %.3f ms, max absolute error %.3f ms\n", samples[0], total_error[0] / samples[0], maximum_error[0]);
+	printf("StarBook guider timing under mount polling: %d samples, mean signed error %.3f ms, max absolute error %.3f ms\n", samples[1], total_error[1] / samples[1], maximum_error[1]);
+cleanup:
+	if (driver_started) {
+		disconnect_serial_device(&starbook_guider);
+		disconnect_serial_device(&starbook_mount);
+		tear_down_serial_driver(&starbook_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) unlink(trace_path);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "starbook_mount_passes_http_compliance_checks", starbook_mount_passes_http_compliance_checks },
-		{ "starbook_guider_passes_http_compliance_checks", starbook_guider_passes_http_compliance_checks }
+		{ "starbook_guider_passes_http_compliance_checks", starbook_guider_passes_http_compliance_checks },
+		{ "starbook_firmware_capabilities_are_gated", starbook_firmware_capabilities_are_gated },
+		{ "starbook_sync_and_goto_have_exact_protocol_and_progress", starbook_sync_and_goto_have_exact_protocol_and_progress },
+		{ "starbook_manual_motion_rate_abort_and_recovery", starbook_manual_motion_rate_abort_and_recovery },
+		{ "starbook_settings_and_commands_are_translated", starbook_settings_and_commands_are_translated },
+		{ "starbook_command_failure_recovers", starbook_command_failure_recovers },
+		{ "starbook_transport_drop_and_near_sun_retry_recover", starbook_transport_drop_and_near_sun_retry_recover },
+		{ "starbook_connection_failure_recovers", starbook_connection_failure_recovers },
+		{ "starbook_shared_lifecycle_survives_active_disconnect", starbook_shared_lifecycle_survives_active_disconnect },
+		{ "starbook_guider_directions_and_timing", starbook_guider_directions_and_timing }
 	};
 	return indigo_run_tests("Vixen StarBook mount HTTP simulator integration tests", tests, ARRAY_SIZE(tests));
 }

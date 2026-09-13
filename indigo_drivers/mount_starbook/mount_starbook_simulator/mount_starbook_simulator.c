@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <limits.h>
+#include <math.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -22,6 +23,7 @@
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
@@ -30,6 +32,12 @@ typedef struct {
 	bool headless;
 	bool trace;
 	const char *ready_file;
+	const char *trace_file;
+	const char *fault_path;
+	const char *fault_reply;
+	const char *drop_path;
+	bool fault_used;
+	bool drop_used;
 } simulator_options;
 
 typedef struct {
@@ -53,12 +61,19 @@ typedef struct {
 	bool south;
 	bool east;
 	bool west;
+	int goto_polls;
 } simulator_state;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = false,
-	.ready_file = NULL
+	.ready_file = NULL,
+	.trace_file = NULL,
+	.fault_path = NULL,
+	.fault_reply = NULL,
+	.drop_path = NULL,
+	.fault_used = false,
+	.drop_used = false
 };
 
 static simulator_state state = {
@@ -81,7 +96,8 @@ static simulator_state state = {
 	.north = false,
 	.south = false,
 	.east = false,
-	.west = false
+	.west = false,
+	.goto_polls = 0
 };
 
 static const char *simulator_name = "mount_starbook";
@@ -94,6 +110,10 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after TCP setup\n");
 	printf("  --trace                 Log HTTP requests\n");
+	printf("  --trace-file <path>     Append timestamped HTTP requests\n");
+	printf("  --version <number>      Select simulated firmware version\n");
+	printf("  --fault-reply <path> <body>  Replace one matching response body\n");
+	printf("  --drop-reply <path>     Drop one matching HTTP response\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -107,6 +127,19 @@ static bool parse_args(int argc, char *argv[]) {
 			options.trace = false;
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
+		} else if (!strcmp(argv[i], "--trace-file")) {
+			if (++i == argc) return false;
+			options.trace_file = argv[i];
+		} else if (!strcmp(argv[i], "--version")) {
+			if (++i == argc) return false;
+			state.version = strtod(argv[i], NULL);
+		} else if (!strcmp(argv[i], "--fault-reply")) {
+			if (i + 2 >= argc) return false;
+			options.fault_path = argv[++i];
+			options.fault_reply = argv[++i];
+		} else if (!strcmp(argv[i], "--drop-reply")) {
+			if (++i == argc) return false;
+			options.drop_path = argv[i];
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -119,6 +152,31 @@ static bool parse_args(int argc, char *argv[]) {
 		}
 	}
 	return true;
+}
+
+static bool path_matches(const char *pattern, const char *path) {
+	if (pattern == NULL) {
+		return false;
+	}
+	size_t length = strlen(pattern);
+	return length > 0 && pattern[length - 1] == '*' ? !strncmp(pattern, path, length - 1) : !strcmp(pattern, path);
+}
+
+static double monotonic_time(void) {
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return now.tv_sec + now.tv_nsec / 1000000000.0;
+}
+
+static void trace_request(const char *path) {
+	if (options.trace_file == NULL) {
+		return;
+	}
+	FILE *file = fopen(options.trace_file, "a");
+	if (file != NULL) {
+		fprintf(file, "%.6f %s\n", monotonic_time(), path);
+		fclose(file);
+	}
 }
 
 static void signal_handler(int sig) {
@@ -251,9 +309,19 @@ static void response_body(const char *path, char *body, size_t size) {
 	if (!strncmp(path, "/VERSION", 8)) {
 		snprintf(body, size, "VERSION=%.2f", state.version);
 	} else if (!strncmp(path, "/GETSTATUS2", 11)) {
+		if (state.north) state.dec += 0.01;
+		if (state.south) state.dec -= 0.01;
+		if (state.east) state.ra += 0.01;
+		if (state.west) state.ra -= 0.01;
 		snprintf(body, size, "RA=%.6f&DEC=%.6f&GOTO=%d&STATE=%s", state.ra, state.dec, state.goto_state, state.track_state == 0 ? "STOP" : "TRACK");
+		if (state.goto_polls > 0 && --state.goto_polls == 0) state.goto_state = 0;
 	} else if (!strncmp(path, "/GETSTATUS", 10)) {
-		snprintf(body, size, "RA=06+00.0&DEC=+45+00&GOTO=%d&STATE=%s", state.goto_state, state.track_state == 0 ? "STOP" : "TRACK");
+		int ra_hours = (int)state.ra;
+		int ra_tenths = (int)((state.ra - ra_hours) * 600);
+		int dec_degrees = (int)fabs(state.dec);
+		int dec_minutes = (int)((fabs(state.dec) - dec_degrees) * 60);
+		snprintf(body, size, "RA=%02d+%02d.%d&DEC=%c%02d+%02d&GOTO=%d&STATE=%s", ra_hours, ra_tenths / 10, ra_tenths % 10, state.dec < 0 ? '-' : '+', dec_degrees, dec_minutes, state.goto_state, state.track_state == 0 ? "STOP" : "TRACK");
+		if (state.goto_polls > 0 && --state.goto_polls == 0) state.goto_state = 0;
 	} else if (!strncmp(path, "/GETTRACKSTATUS", 15)) {
 		snprintf(body, size, "TRACK=%d", state.track_state);
 	} else if (!strncmp(path, "/GET_PIERSIDE", 13)) {
@@ -271,7 +339,8 @@ static void response_body(const char *path, char *body, size_t size) {
 	} else if (!strncmp(path, "/GOTORADEC", 10) || !strncmp(path, "/ALIGN", 6)) {
 		update_radec_from_path(path);
 		state.track_state = 1;
-		state.goto_state = 0;
+		state.goto_state = !strncmp(path, "/GOTORADEC", 10);
+		state.goto_polls = state.goto_state ? 4 : 0;
 		snprintf(body, size, "OK");
 	} else if (!strncmp(path, "/MOVE", 5)) {
 		char value[8];
@@ -299,6 +368,7 @@ static void response_body(const char *path, char *body, size_t size) {
 	} else if (!strncmp(path, "/STOP", 5)) {
 		state.track_state = 0;
 		state.goto_state = 0;
+		state.goto_polls = 0;
 		snprintf(body, size, "OK");
 	} else if (!strncmp(path, "/START", 6)) {
 		state.track_state = 1;
@@ -308,7 +378,7 @@ static void response_body(const char *path, char *body, size_t size) {
 		state.goto_state = 0;
 		snprintf(body, size, "OK");
 	} else {
-		snprintf(body, size, "OK");
+		snprintf(body, size, "ERROR:FORMAT");
 	}
 }
 
@@ -327,9 +397,19 @@ static void handle_client(int client_fd) {
 	if (options.trace) {
 		fprintf(stderr, "-> %s %s\n", method, path);
 	}
+	trace_request(path);
+	if (!options.drop_used && path_matches(options.drop_path, path)) {
+		options.drop_used = true;
+		return;
+	}
 
 	char body[1024];
-	response_body(path, body, sizeof(body));
+	if (!options.fault_used && path_matches(options.fault_path, path)) {
+		options.fault_used = true;
+		snprintf(body, sizeof(body), "%s", options.fault_reply);
+	} else {
+		response_body(path, body, sizeof(body));
+	}
 	char html[1400];
 	snprintf(html, sizeof(html), "<html><HEAD></HEAD><!--%s--></html>", body);
 	char response[1800];
