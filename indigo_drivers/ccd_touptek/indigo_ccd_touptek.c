@@ -736,7 +736,7 @@ static void wheel_connection_finalizer(indigo_device *device) {
 	}
 	int value = 0;
 	HRESULT result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FILTERWHEEL_POSITION), &value);
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "get_Option(OPTION_FILTERWHEEL_POSITION) -> %08x, %d", result, value + 1);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_FILTERWHEEL_POSITION) -> %08x, %d", result, value + 1);
 	if (value == -1) {
 		indigo_execute_handler_in(device, 1, wheel_connection_finalizer);
 	} else {
