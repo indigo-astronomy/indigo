@@ -1256,7 +1256,7 @@ Custom properties: `X_NAME`, `X_PID_SETTINGS`, `X_RESET`, `X_SAVED_VALUES`, `X_S
 
 Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
 
-Source: `indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.c`.
+Source: `indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.driver`.
 
 ### focuser_usbv3
 
@@ -1270,9 +1270,9 @@ Source: `indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.c`.
 
 Custom properties: `X_RAIL_CONFIG`, `X_RAIL_EXECUTE`, `X_RAIL_SHUTTER`.
 
-Driver-specific use of existing properties: `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`.
+Driver-specific use of existing properties: `FOCUSER_ABORT_MOTION`, `FOCUSER_DIRECTION`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_STEPS`.
 
-Source: `indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.c`.
+Source: `indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.driver`.
 
 ### gps_gpsd
 

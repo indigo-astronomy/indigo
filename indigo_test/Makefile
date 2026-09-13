@@ -454,13 +454,13 @@ $(INTEGRATION_BUILD)/focuser_prodigy_simulator: ../indigo_drivers/focuser_prodig
 $(INTEGRATION_BUILD)/focuser_robofocus_simulator: ../indigo_drivers/focuser_robofocus/focuser_robofocus_simulator/focuser_robofocus_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/focuser_steeldrive2_simulator: ../indigo_drivers/focuser_steeldrive2/focuser_steeldrive2_simulator/focuser_steeldrive2_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/focuser_steeldrive2_simulator: ../indigo_drivers/focuser_steeldrive2/focuser_steeldrive2_simulator/focuser_steeldrive2_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/focuser_usbv3_simulator: ../indigo_drivers/focuser_usbv3/focuser_usbv3_simulator/focuser_usbv3_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/focuser_wemacro_simulator: ../indigo_drivers/focuser_wemacro/focuser_wemacro_simulator/focuser_wemacro_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/focuser_wemacro_simulator: ../indigo_drivers/focuser_wemacro/focuser_wemacro_simulator/focuser_wemacro_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/aux_svbpowerbox_simulator: ../indigo_drivers/aux_svbpowerbox/aux_svbpowerbox_simulator/aux_svbpowerbox_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -709,11 +709,17 @@ $(INTEGRATION_BUILD)/test_focuser_robofocus_simulator: integration/test_focuser_
 $(INTEGRATION_BUILD)/test_focuser_steeldrive2_simulator: integration/test_focuser_steeldrive2_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_steeldrive2_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_STEELDRIVE2_SIMULATOR_TEST_LDFLAGS)
 
+$(INTEGRATION_BUILD)/test_focuser_steeldrive2_simulator_asan: integration/test_focuser_steeldrive2_simulator.c ../indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_steeldrive2_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.c $(TEST_LDFLAGS) -lindigocat
+
 $(INTEGRATION_BUILD)/test_focuser_usbv3_simulator: integration/test_focuser_usbv3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_usbv3_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_USBV3_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_wemacro_simulator: integration/test_focuser_wemacro_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_wemacro_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_WEMACRO_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_wemacro_simulator_asan: integration/test_focuser_wemacro_simulator.c ../indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_wemacro_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.c $(TEST_LDFLAGS) -lindigocat
 
 $(INTEGRATION_BUILD)/test_aux_svbpowerbox_simulator: integration/test_aux_svbpowerbox_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_svbpowerbox_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_SVBPOWERBOX_SIMULATOR_TEST_LDFLAGS)

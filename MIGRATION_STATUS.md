@@ -105,9 +105,9 @@
 | focuser_prodigy         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | focuser_qhy             | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ❌ No  | ✅ Yes |                                                         |
 | focuser_robofocus       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_steeldrive2     | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
+| focuser_steeldrive2     | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | focuser_usbv3           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| focuser_wemacro         | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
+| focuser_wemacro         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | focuser_wemacro_bt      | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⛔ macOS only                                           |
 | gps_gpsd                | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⏰ TODO - make libgps for Windows                       |
 | gps_nmea                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes |                                                         |

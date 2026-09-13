@@ -144,6 +144,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_ioptron", "i
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_robofocus", "indigo_drivers\focuser_robofocus\indigo_focuser_robofocus.vcxproj", "{D20C1C1A-9D8B-4BE4-BE33-51D96A4A9CB8}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_steeldrive2", "indigo_drivers\focuser_steeldrive2\indigo_focuser_steeldrive2.vcxproj", "{5F5D3E61-76F8-4D73-A22D-8FC6F76B2A19}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_wemacro", "indigo_drivers\focuser_wemacro\indigo_focuser_wemacro.vcxproj", "{7A6E2D94-3B81-4F55-9C20-D1E8A47B6032}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_lakeside", "indigo_drivers\focuser_lakeside\indigo_focuser_lakeside.vcxproj", "{35847D19-56D1-43A0-9B2D-53AFDAC4CFC2}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_moonlite", "indigo_drivers\focuser_moonlite\indigo_focuser_moonlite.vcxproj", "{8BA2FF9E-EBEE-43C6-BC0C-02B389CB8E6C}"
@@ -806,6 +810,22 @@ Global
 		{D20C1C1A-9D8B-4BE4-BE33-51D96A4A9CB8}.Release|ARM64.Build.0 = Release|ARM64
 		{D20C1C1A-9D8B-4BE4-BE33-51D96A4A9CB8}.Release|x64.ActiveCfg = Release|x64
 		{D20C1C1A-9D8B-4BE4-BE33-51D96A4A9CB8}.Release|x64.Build.0 = Release|x64
+		{5F5D3E61-76F8-4D73-A22D-8FC6F76B2A19}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{5F5D3E61-76F8-4D73-A22D-8FC6F76B2A19}.Debug|ARM64.Build.0 = Debug|ARM64
+		{5F5D3E61-76F8-4D73-A22D-8FC6F76B2A19}.Debug|x64.ActiveCfg = Debug|x64
+		{5F5D3E61-76F8-4D73-A22D-8FC6F76B2A19}.Debug|x64.Build.0 = Debug|x64
+		{5F5D3E61-76F8-4D73-A22D-8FC6F76B2A19}.Release|ARM64.ActiveCfg = Release|ARM64
+		{5F5D3E61-76F8-4D73-A22D-8FC6F76B2A19}.Release|ARM64.Build.0 = Release|ARM64
+		{5F5D3E61-76F8-4D73-A22D-8FC6F76B2A19}.Release|x64.ActiveCfg = Release|x64
+		{5F5D3E61-76F8-4D73-A22D-8FC6F76B2A19}.Release|x64.Build.0 = Release|x64
+		{7A6E2D94-3B81-4F55-9C20-D1E8A47B6032}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{7A6E2D94-3B81-4F55-9C20-D1E8A47B6032}.Debug|ARM64.Build.0 = Debug|ARM64
+		{7A6E2D94-3B81-4F55-9C20-D1E8A47B6032}.Debug|x64.ActiveCfg = Debug|x64
+		{7A6E2D94-3B81-4F55-9C20-D1E8A47B6032}.Debug|x64.Build.0 = Debug|x64
+		{7A6E2D94-3B81-4F55-9C20-D1E8A47B6032}.Release|ARM64.ActiveCfg = Release|ARM64
+		{7A6E2D94-3B81-4F55-9C20-D1E8A47B6032}.Release|ARM64.Build.0 = Release|ARM64
+		{7A6E2D94-3B81-4F55-9C20-D1E8A47B6032}.Release|x64.ActiveCfg = Release|x64
+		{7A6E2D94-3B81-4F55-9C20-D1E8A47B6032}.Release|x64.Build.0 = Release|x64
 		{35847D19-56D1-43A0-9B2D-53AFDAC4CFC2}.Debug|ARM64.ActiveCfg = Debug|ARM64
 		{35847D19-56D1-43A0-9B2D-53AFDAC4CFC2}.Debug|ARM64.Build.0 = Debug|ARM64
 		{35847D19-56D1-43A0-9B2D-53AFDAC4CFC2}.Debug|x64.ActiveCfg = Debug|x64

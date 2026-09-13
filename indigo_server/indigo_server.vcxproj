@@ -318,6 +318,12 @@
     <ProjectReference Include="..\indigo_drivers\focuser_robofocus\indigo_focuser_robofocus.vcxproj">
       <Project>{d20c1c1a-9d8b-4be4-be33-51d96a4a9cb8}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\focuser_steeldrive2\indigo_focuser_steeldrive2.vcxproj">
+      <Project>{5f5d3e61-76f8-4d73-a22d-8fc6f76b2a19}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\focuser_wemacro\indigo_focuser_wemacro.vcxproj">
+      <Project>{7a6e2d94-3b81-4f55-9c20-d1e8a47b6032}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\focuser_lakeside\indigo_focuser_lakeside.vcxproj">
       <Project>{35847d19-56d1-43a0-9b2d-53afdac4cfc2}</Project>
     </ProjectReference>
