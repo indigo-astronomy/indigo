@@ -60,6 +60,8 @@ typedef struct {
 	int defined_property_count;
 	char defined_properties[MAX_DEFINED_PROPERTIES][INDIGO_NAME_SIZE];
 	indigo_property *cached_properties[MAX_DEFINED_PROPERTIES];
+	atomic_uint property_revisions[MAX_DEFINED_PROPERTIES];
+	atomic_uint property_state_revisions[MAX_DEFINED_PROPERTIES][4];
 	bool connected;
 	bool disconnected;
 	indigo_property_state last_connection_state;
@@ -119,6 +121,25 @@ static indigo_property *find_cached_property(const char *name) {
 	return NULL;
 }
 
+static int find_cached_property_index(const char *name) {
+	for (int i = 0; i < MAX_DEFINED_PROPERTIES; i++) {
+		if (context.cached_properties[i] != NULL && !strcmp(context.cached_properties[i]->name, name)) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+static unsigned int property_revision(const char *name) {
+	int index = find_cached_property_index(name);
+	return index < 0 ? 0 : atomic_load(context.property_revisions + index);
+}
+
+static unsigned int property_state_revision(const char *name, indigo_property_state state) {
+	int index = find_cached_property_index(name);
+	return index < 0 ? 0 : atomic_load(context.property_state_revisions[index] + state);
+}
+
 static indigo_item *find_cached_item(const char *property_name, const char *item_name) {
 	indigo_property *property = find_cached_property(property_name);
 	if (property == NULL) {
@@ -156,10 +177,11 @@ static void cache_property(indigo_property *property) {
 }
 
 static void cache_property_update(indigo_property *property) {
-	indigo_property *cached_property = find_cached_property(property->name);
-	if (cached_property == NULL) {
+	int index = find_cached_property_index(property->name);
+	if (index < 0) {
 		return;
 	}
+	indigo_property *cached_property = context.cached_properties[index];
 	cached_property->state = property->state;
 	cached_property->access_token = property->access_token;
 	for (int i = 0; i < property->count; i++) {
@@ -186,6 +208,8 @@ static void cache_property_update(indigo_property *property) {
 				break;
 		}
 	}
+	unsigned int revision = atomic_fetch_add(context.property_revisions + index, 1) + 1;
+	atomic_store(context.property_state_revisions[index] + property->state, revision);
 }
 
 static void uncache_property(indigo_property *property) {
@@ -294,13 +318,14 @@ static double cached_number_value(const char *property_name, const char *item_na
 	return item->number.value;
 }
 
-static void assert_switch_item_value(const char *property_name, const char *item_name, bool expected_value) {
+static void assert_switch_item_value(const char *property_name, const char *item_name, bool expected) {
 	indigo_item *item = find_cached_item(property_name, item_name);
 	if (item == NULL) {
 		fprintf(stderr, "Missing switch item %s.%s on %s\n", property_name, item_name, context.driver_case->device_name);
+		ASSERT_TRUE(item != NULL);
+		return;
 	}
-	ASSERT_TRUE(item != NULL);
-	ASSERT_EQ_INT(expected_value, item->sw.value);
+	ASSERT_EQ_INT(expected, item->sw.value);
 }
 
 static void assert_any_light_item_active(const char *property_name, const char * const *item_names, int count) {
@@ -324,10 +349,42 @@ static bool wait_for_property_state(const char *property_name, indigo_property_s
 	return false;
 }
 
+static bool wait_for_property_state_after(const char *property_name, indigo_property_state state, unsigned int revision) {
+	for (int i = 0; i < 100; i++) {
+		indigo_property *property = find_cached_property(property_name);
+		if (property != NULL && property_revision(property_name) > revision && property->state == state) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static bool wait_for_property_state_seen_after(const char *property_name, indigo_property_state state, unsigned int revision) {
+	for (int i = 0; i < 100; i++) {
+		if (property_state_revision(property_name, state) > revision) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
 static bool wait_for_property_not_busy(const char *property_name) {
 	for (int i = 0; i < 100; i++) {
 		indigo_property *property = find_cached_property(property_name);
 		if (property != NULL && property->state != INDIGO_BUSY_STATE) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static bool wait_for_property_not_busy_after(const char *property_name, unsigned int revision) {
+	for (int i = 0; i < 100; i++) {
+		indigo_property *property = find_cached_property(property_name);
+		if (property != NULL && property_revision(property_name) > revision && property->state != INDIGO_BUSY_STATE) {
 			return true;
 		}
 		indigo_usleep(100000);

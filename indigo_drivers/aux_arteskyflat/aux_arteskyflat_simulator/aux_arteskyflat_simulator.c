@@ -39,6 +39,8 @@ typedef struct {
 	bool trace;
 	const char *ready_file;
 	int device_id;
+	char control_file[PATH_MAX];
+	char event_file[PATH_MAX];
 } simulator_options;
 
 static simulator_options options = {
@@ -57,6 +59,8 @@ static void usage(const char *name) {
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  --device-id <id>        Set reported device id, default is 19\n");
+	printf("  Runtime control is read once from <ready-file>.control as ACTION SELECTOR\n");
+	printf("  and every complete command is recorded in <ready-file>.events.\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -86,6 +90,10 @@ static bool parse_args(int argc, char *argv[]) {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
 		}
+	}
+	if (options.ready_file != NULL) {
+		snprintf(options.control_file, sizeof(options.control_file), "%s.control", options.ready_file);
+		snprintf(options.event_file, sizeof(options.event_file), "%s.events", options.ready_file);
 	}
 	return true;
 }
@@ -169,16 +177,80 @@ static int sim_read_command(int fd, char *buffer, size_t length) {
 	return -1;
 }
 
+static void record_command(const char *command) {
+	if (*options.event_file == '\0') {
+		return;
+	}
+	FILE *file = fopen(options.event_file, "a");
+	if (file == NULL) {
+		return;
+	}
+	fprintf(file, "%s\n", command);
+	fclose(file);
+}
+
+static bool apply_control(int fd, const char *command) {
+	if (*options.control_file == '\0') {
+		return false;
+	}
+	FILE *file = fopen(options.control_file, "r");
+	if (file == NULL) {
+		return false;
+	}
+	char action[16] = { 0 };
+	char selector[16] = { 0 };
+	int count = fscanf(file, "%15s %15s", action, selector);
+	fclose(file);
+	if (count != 2 || (strcmp(selector, "*") && (command[0] != '>' || command[1] != selector[0] || selector[1] != '\0'))) {
+		return false;
+	}
+	unlink(options.control_file);
+	if (!strcmp(action, "drop")) {
+		return true;
+	}
+	if (!strcmp(action, "short")) {
+		sim_printf(fd, "*%c19\r\n", command[1]);
+		return true;
+	}
+	if (!strcmp(action, "malformed")) {
+		sim_printf(fd, "*X19000\r\n");
+		return true;
+	}
+	if (!strcmp(action, "mismatch")) {
+		sim_printf(fd, "*%c19999\r\n", command[1]);
+		return true;
+	}
+	if (!strcmp(action, "bad_id")) {
+		sim_printf(fd, "*%cXX000\r\n", command[1]);
+		return true;
+	}
+	if (!strcmp(action, "close")) {
+		running = 0;
+		close(serial_fd);
+		serial_fd = -1;
+		return true;
+	}
+	return false;
+}
+
+static bool valid_command(const char *command, char operation) {
+	return strlen(command) == 5 && command[0] == '>' && command[1] == operation && command[2] >= '0' && command[2] <= '9' && command[3] >= '0' && command[3] <= '9' && command[4] >= '0' && command[4] <= '9';
+}
+
 static void dispatch_command(int fd, const char *buffer) {
 	// Artesky/Alnitak flat box protocol: ">X<value>" requests reply "*X<id><value>".
-	if (!strncmp(buffer, ">L", 2)) {
+	record_command(buffer);
+	if (apply_control(fd, buffer)) {
+		return;
+	}
+	if (valid_command(buffer, 'L')) {
 		light_on = true;
 		sim_printf(fd, "*L%02d000\r\n", options.device_id);
-	} else if (!strncmp(buffer, ">D", 2)) {
+	} else if (valid_command(buffer, 'D')) {
 		light_on = false;
 		sim_printf(fd, "*D%02d000\r\n", options.device_id);
-	} else if (!strncmp(buffer, ">B", 2)) {
-		brightness = atoi(buffer + 2) % 1000;
+	} else if (valid_command(buffer, 'B')) {
+		brightness = atoi(buffer + 2);
 		sim_printf(fd, "*B%02d%03d\r\n", options.device_id, brightness);
 	} else {
 		serial_simulator_trace_line(options.trace, "??", buffer);

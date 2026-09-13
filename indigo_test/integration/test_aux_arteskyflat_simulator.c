@@ -42,26 +42,101 @@ static const simulator_driver_case arteskyflat_aux = {
 	0
 };
 
-static void arteskyflat_aux_passes_serial_compliance_checks(void) {
-	external_serial_simulator simulator = { 0 };
+static void simulator_path(const external_serial_simulator *simulator, const char *suffix, char *path, size_t size) {
+	snprintf(path, size, "%s.%s", simulator->ready_file, suffix);
+}
 
+static bool set_simulator_control(const external_serial_simulator *simulator, const char *action, const char *selector) {
+	char path[PATH_MAX];
+	simulator_path(simulator, "control", path, sizeof(path));
+	FILE *file = fopen(path, "w");
+	if (file == NULL) {
+		return false;
+	}
+	fprintf(file, "%s %s\n", action, selector);
+	return fclose(file) == 0;
+}
+
+static void clear_simulator_events(const external_serial_simulator *simulator) {
+	char path[PATH_MAX];
+	simulator_path(simulator, "events", path, sizeof(path));
+	unlink(path);
+}
+
+static int simulator_event_count(const external_serial_simulator *simulator, const char *command) {
+	char path[PATH_MAX];
+	char line[64];
+	int count = 0;
+	simulator_path(simulator, "events", path, sizeof(path));
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return 0;
+	}
+	while (fgets(line, sizeof(line), file) != NULL) {
+		line[strcspn(line, "\r\n")] = '\0';
+		if (!strcmp(line, command)) {
+			count++;
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+static bool wait_for_simulator_event(const external_serial_simulator *simulator, const char *command, int expected_count) {
+	for (int i = 0; i < 100; i++) {
+		if (simulator_event_count(simulator, command) >= expected_count) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static bool change_intensity(double intensity, indigo_property_state expected_state) {
+	unsigned int revision = property_revision(AUX_LIGHT_INTENSITY_PROPERTY_NAME);
+	if (indigo_change_number_property_1(&simulator_test_client, arteskyflat_aux.device_name, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, intensity) != INDIGO_OK) {
+		return false;
+	}
+	return wait_for_property_state_seen_after(AUX_LIGHT_INTENSITY_PROPERTY_NAME, INDIGO_BUSY_STATE, revision) && wait_for_property_state_after(AUX_LIGHT_INTENSITY_PROPERTY_NAME, expected_state, revision);
+}
+
+static bool change_light(const char *item_name, indigo_property_state expected_state) {
+	unsigned int revision = property_revision(AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	if (indigo_change_switch_property_1(&simulator_test_client, arteskyflat_aux.device_name, AUX_LIGHT_SWITCH_PROPERTY_NAME, item_name, true) != INDIGO_OK) {
+		return false;
+	}
+	return wait_for_property_state_seen_after(AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_BUSY_STATE, revision) && wait_for_property_state_after(AUX_LIGHT_SWITCH_PROPERTY_NAME, expected_state, revision);
+}
+
+static void arteskyflat_contract_and_exact_protocol(void) {
+	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, AUX_ARTESKYFLAT_SIMULATOR_EXECUTABLE));
 	SERIAL_CHECK_TRUE(start_serial_driver(&arteskyflat_aux, simulator.port));
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
-
-	assert_device_interface(INDIGO_INTERFACE_AUX);
+	assert_device_interface(INDIGO_INTERFACE_AUX_LIGHTBOX);
 	assert_serial_aux_class_property_completeness();
 	assert_property_has_item(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME);
 	assert_property_has_item(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME);
 	assert_property_has_item(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME);
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, arteskyflat_aux.device_name, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 100));
-	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_LIGHT_INTENSITY_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, arteskyflat_aux.device_name, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, arteskyflat_aux.device_name, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE));
-
+	indigo_property *light_property = find_cached_property(AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	indigo_property *intensity_property = find_cached_property(AUX_LIGHT_INTENSITY_PROPERTY_NAME);
+	indigo_item *intensity_item = find_cached_item(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME);
+	SERIAL_CHECK_TRUE(light_property != NULL && light_property->type == INDIGO_SWITCH_VECTOR && light_property->perm == INDIGO_RW_PERM && light_property->rule == INDIGO_ONE_OF_MANY_RULE && light_property->count == 2);
+	SERIAL_CHECK_TRUE(intensity_property != NULL && intensity_property->type == INDIGO_NUMBER_VECTOR && intensity_property->perm == INDIGO_RW_PERM && intensity_property->count == 1);
+	SERIAL_CHECK_TRUE(intensity_item != NULL && intensity_item->number.min == 0 && intensity_item->number.max == 100 && intensity_item->number.step == 1 && intensity_item->number.value == 0 && !strcmp(intensity_item->number.format, "%.0f"));
+	assert_switch_item_value(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, false);
+	assert_switch_item_value(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, true);
+	clear_simulator_events(&simulator);
+	SERIAL_CHECK_TRUE(change_intensity(0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_intensity(50, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_intensity(100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_light(AUX_LIGHT_SWITCH_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_light(AUX_LIGHT_SWITCH_OFF_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event(&simulator, ">B000", 1));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event(&simulator, ">B127", 1));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event(&simulator, ">B255", 1));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event(&simulator, ">L000", 1));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event(&simulator, ">D000", 1));
 cleanup:
 	if (context.connected) {
 		stop_serial_driver(&arteskyflat_aux);
@@ -69,9 +144,83 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static void arteskyflat_rejects_bad_replies_and_recovers(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, AUX_ARTESKYFLAT_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&arteskyflat_aux, simulator.port));
+	SERIAL_CHECK_TRUE(change_intensity(25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME) == 25);
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "malformed", "B"));
+	SERIAL_CHECK_TRUE(change_intensity(50, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME) == 25);
+	SERIAL_CHECK_TRUE(change_intensity(50, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "bad_id", "B"));
+	SERIAL_CHECK_TRUE(change_intensity(60, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME) == 50);
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "mismatch", "B"));
+	SERIAL_CHECK_TRUE(change_intensity(75, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME) == 50);
+	SERIAL_CHECK_TRUE(change_intensity(75, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "short", "L"));
+	SERIAL_CHECK_TRUE(change_light(AUX_LIGHT_SWITCH_ON_ITEM_NAME, INDIGO_ALERT_STATE));
+	assert_switch_item_value(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(change_light(AUX_LIGHT_SWITCH_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "drop", "D"));
+	SERIAL_CHECK_TRUE(change_light(AUX_LIGHT_SWITCH_OFF_ITEM_NAME, INDIGO_ALERT_STATE));
+	assert_switch_item_value(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(change_light(AUX_LIGHT_SWITCH_OFF_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&arteskyflat_aux);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void arteskyflat_handles_connection_failures_and_reconnects(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, AUX_ARTESKYFLAT_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&arteskyflat_aux));
+	driver_started = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, arteskyflat_aux.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, "/dev/indigo-nonexistent-arteskyflat-test"));
+	unsigned int revision = property_revision(CONNECTION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, arteskyflat_aux.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(!context.connected);
+	assert_switch_item_value(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(connect_serial_device(&arteskyflat_aux, simulator.port));
+	SERIAL_CHECK_TRUE(change_intensity(20, INDIGO_OK_STATE));
+	disconnect_serial_device(&arteskyflat_aux);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_LIGHT_SWITCH_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_LIGHT_INTENSITY_PROPERTY_NAME) == NULL);
+	disconnect_serial_device(&arteskyflat_aux);
+	SERIAL_CHECK_TRUE(connect_serial_device(&arteskyflat_aux, simulator.port));
+	SERIAL_CHECK_TRUE(change_light(AUX_LIGHT_SWITCH_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "close", "B"));
+	SERIAL_CHECK_TRUE(change_intensity(40, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(change_light(AUX_LIGHT_SWITCH_OFF_ITEM_NAME, INDIGO_ALERT_STATE));
+	assert_switch_item_value(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, true);
+	disconnect_serial_device(&arteskyflat_aux);
+	stop_external_serial_simulator(&simulator);
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, AUX_ARTESKYFLAT_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(connect_serial_device(&arteskyflat_aux, simulator.port));
+	SERIAL_CHECK_TRUE(change_intensity(40, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_light(AUX_LIGHT_SWITCH_OFF_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (driver_started) {
+		disconnect_serial_device(&arteskyflat_aux);
+		tear_down_serial_driver(&arteskyflat_aux);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
-		{ "arteskyflat_aux_passes_serial_compliance_checks", arteskyflat_aux_passes_serial_compliance_checks }
+		{ "arteskyflat_contract_and_exact_protocol", arteskyflat_contract_and_exact_protocol },
+		{ "arteskyflat_rejects_bad_replies_and_recovers", arteskyflat_rejects_bad_replies_and_recovers },
+		{ "arteskyflat_handles_connection_failures_and_reconnects", arteskyflat_handles_connection_failures_and_reconnects }
 	};
 	return indigo_run_tests("Artesky Flat Box serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }

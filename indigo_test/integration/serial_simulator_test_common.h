@@ -63,7 +63,13 @@ typedef struct {
 static void remove_simulator_directory(const char *directory) {
 	if (*directory) {
 		char ready_file[PATH_MAX];
+		char control_file[PATH_MAX];
+		char event_file[PATH_MAX];
 		snprintf(ready_file, sizeof(ready_file), "%s/ready.env", directory);
+		snprintf(control_file, sizeof(control_file), "%s.control", ready_file);
+		snprintf(event_file, sizeof(event_file), "%s.events", ready_file);
+		unlink(control_file);
+		unlink(event_file);
 		unlink(ready_file);
 		rmdir(directory);
 	}
