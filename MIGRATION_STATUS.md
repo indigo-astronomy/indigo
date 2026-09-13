@@ -122,7 +122,7 @@
 | mount_nexstaraux        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
 | mount_pmc8              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | mount_rainbow           | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
-| mount_simulator         | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ⛔ N/A | ✅ Yes |                                                         |
+| mount_simulator         | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
 | mount_starbook          | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
 | mount_synscan           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
 | mount_temma             | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
