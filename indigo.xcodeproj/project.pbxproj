@@ -210,7 +210,7 @@
 		595567C724B882DD00DF303D /* qhyccdstruct.h in Headers */ = {isa = PBXBuildFile; fileRef = 597E4FC623EEE637007E0BF8 /* qhyccdstruct.h */; };
 		595567C824B882DD00DF303D /* qhyccdcamdef.h in Headers */ = {isa = PBXBuildFile; fileRef = 597E4FC723EEE637007E0BF8 /* qhyccdcamdef.h */; };
 		595567C924B882DD00DF303D /* qhyccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 597E4FC823EEE637007E0BF8 /* qhyccd.h */; };
-		595567CA24B8841000DF303D /* indigo_ccd_qhy.h in Headers */ = {isa = PBXBuildFile; fileRef = 59CD69CC23EEFFC6004B12C0 /* indigo_ccd_qhy.h */; };
+		595567CA24B8841000DF303D /* indigo_ccd_qhy2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59CD69CC23EEFFC6004B12C0 /* indigo_ccd_qhy2.h */; };
 		595567D624BA00DA00DF303D /* indigo_mount_pmc8.h in Headers */ = {isa = PBXBuildFile; fileRef = 595567D024BA00DA00DF303D /* indigo_mount_pmc8.h */; };
 		595567D824BA00DA00DF303D /* indigo_mount_pmc8_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 595567D224BA00DA00DF303D /* indigo_mount_pmc8_main.c */; };
 		595567D924BA00DA00DF303D /* indigo_mount_pmc8.c in Sources */ = {isa = PBXBuildFile; fileRef = 595567D424BA00DA00DF303D /* indigo_mount_pmc8.c */; };
@@ -575,7 +575,7 @@
 		598A1C6F259BA94A00C0B34C /* indigo_focuser_fcusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAC59D71DC24E1400AE410D /* indigo_focuser_fcusb.h */; };
 		598A1C70259BA94A00C0B34C /* indigo_focuser_wemacro.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C4C88020CEF107007EE330 /* indigo_focuser_wemacro.h */; };
 		598A1C71259BA94A00C0B34C /* indigo_mount_nexstaraux.h in Headers */ = {isa = PBXBuildFile; fileRef = 599AD89D2552F64A0008D481 /* indigo_mount_nexstaraux.h */; };
-		598A1C72259BA94A00C0B34C /* indigo_ccd_qhy.h in Headers */ = {isa = PBXBuildFile; fileRef = 59CD69CC23EEFFC6004B12C0 /* indigo_ccd_qhy.h */; };
+		598A1C72259BA94A00C0B34C /* indigo_ccd_qhy2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59CD69CC23EEFFC6004B12C0 /* indigo_ccd_qhy2.h */; };
 		598A1C74259BA94A00C0B34C /* indigo_focuser_dsd.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DE0E7B622C6465500289234 /* indigo_focuser_dsd.h */; };
 		598A1C76259BA94A00C0B34C /* qhyccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 597E4FC823EEE637007E0BF8 /* qhyccd.h */; };
 		598A1C77259BA94A00C0B34C /* indigo_aux_joystick.h in Headers */ = {isa = PBXBuildFile; fileRef = 59588CAA211CC08D00E9FC27 /* indigo_aux_joystick.h */; };
@@ -2676,6 +2676,9 @@
 		59910B51305708D100FB1C2F /* indigo_mount_temma.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_mount_temma.driver; sourceTree = "<group>"; };
 		59910B52305708D100FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59910B5330570C7A00FB1C2F /* mount_temma_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_temma_simulator.c; sourceTree = "<group>"; };
+		59910B5430571FF600FB1C2F /* indigo_ccd_qhy2.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_qhy2.driver; sourceTree = "<group>"; };
+		C0DE20260913A70100000001 /* indigo_rotator_optec.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_optec.driver; sourceTree = "<group>"; };
+		C0DE20260913A70100000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -3253,7 +3256,6 @@
 		59B81EC323376A1A00DFA81B /* arteskyflat.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = arteskyflat.rules; sourceTree = "<group>"; };
 		59B81EC423376A1A00DFA81B /* indigo_aux_arteskyflat.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_arteskyflat.c; sourceTree = "<group>"; };
 		59B81EC7233774DC00DFA81B /* aux_arteskyflat_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = aux_arteskyflat_simulator.ino; sourceTree = "<group>"; };
-		A17E5C012F7A000100000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59B81EC92337AA2E00DFA81B /* indigo_dome_nexdome.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_nexdome.c; sourceTree = "<group>"; };
 		59B81ECA2337AA2E00DFA81B /* indigo_dome_nexdome_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_nexdome_main.c; sourceTree = "<group>"; };
 		59B81ECC2337AA2E00DFA81B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -3325,7 +3327,7 @@
 		59CBD47D1FAF6C80000DAFDB /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59CBD47E1FAF6C80000DAFDB /* indigo_gps_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_gps_simulator_main.c; sourceTree = "<group>"; };
 		59CC444C2CD64E3C00F21E17 /* libqhyccd.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libqhyccd.dylib; path = build/lib/libqhyccd.dylib; sourceTree = "<group>"; };
-		59CD69CC23EEFFC6004B12C0 /* indigo_ccd_qhy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qhy.h; sourceTree = "<group>"; };
+		59CD69CC23EEFFC6004B12C0 /* indigo_ccd_qhy2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qhy2.h; sourceTree = "<group>"; };
 		59CD7311218EF88600F646D4 /* 99-indigo_aux_upb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_aux_upb.rules"; sourceTree = "<group>"; };
 		59CE50FD2F409E3A00DB6489 /* remote_server_client_mount.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = remote_server_client_mount.c; sourceTree = "<group>"; };
 		59CE50FE2F409E3A00DB6489 /* service_discovery.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = service_discovery.c; sourceTree = "<group>"; };
@@ -5453,6 +5455,7 @@
 		9DFE1866213586AB00149BDE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DFE1868213586AB00149BDE /* indigo_focuser_dmfc_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_dmfc_main.c; sourceTree = "<group>"; };
 		9DFE186B2135883A00149BDE /* DMFC-Serial-Command-Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "DMFC-Serial-Command-Table.pdf"; sourceTree = "<group>"; };
+		A17E5C012F7A000100000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0D0A00132FF000100000001 /* indigo_focuser_optec.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_optec.driver; sourceTree = "<group>"; };
 		C0D0A00232FF000100000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0D2A00133AA000000000001 /* REFACTOR.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
@@ -5503,6 +5506,8 @@
 		C0DE20260913000400000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913000500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913000600000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260913D50000000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260913D50000000002 /* test_aux_dsusb_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_dsusb_sdk.c; sourceTree = "<group>"; };
 		C0DE20260913AA5500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913AA5500000002 /* indigo_mount_simulator.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_mount_simulator.driver; sourceTree = "<group>"; };
 		C0DE20260913AA5600000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
@@ -7415,6 +7420,8 @@
 			isa = PBXGroup;
 			children = (
 				597DFE1C2804A87F009E37CB /* README.md */,
+				C0DE20260913A70100000002 /* REFACTOR.md */,
+				C0DE20260913A70100000001 /* indigo_rotator_optec.driver */,
 				597DFE1B2804A87F009E37CB /* indigo_rotator_optec.h */,
 				597DFE1F2804A87F009E37CB /* indigo_rotator_optec.c */,
 				597DFE1D2804A87F009E37CB /* indigo_rotator_optec_main.c */,
@@ -7436,10 +7443,11 @@
 		597E4F7423EEE637007E0BF8 /* ccd_qhy2 */ = {
 			isa = PBXGroup;
 			children = (
-				59CD69CC23EEFFC6004B12C0 /* indigo_ccd_qhy.h */,
+				597E4F7623EEE637007E0BF8 /* README.md */,
+				59CD69CC23EEFFC6004B12C0 /* indigo_ccd_qhy2.h */,
 				59910B3230554BB600FB1C2F /* indigo_ccd_qhy2.cpp */,
 				59910B3330554BB600FB1C2F /* indigo_ccd_qhy2_main.c */,
-				597E4F7623EEE637007E0BF8 /* README.md */,
+				59910B5430571FF600FB1C2F /* indigo_ccd_qhy2.driver */,
 				597E4FD723EEE637007E0BF8 /* Makefile.inc */,
 				597E4F7723EEE637007E0BF8 /* bin_externals */,
 			);
@@ -13903,6 +13911,7 @@
 				7330D4CDFA32AB370C17EF61 /* test_serial_outputs.c */,
 				9664C6C95BD6AB4220114A5E /* test_wheel_manual.c */,
 				911ED5BCFB940CD89E832EBB /* test_focuser_motion.c */,
+				C0DE20260913D50000000002 /* test_aux_dsusb_sdk.c */,
 				E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */,
 				4EB4B98B4C569BFBD5A4A6D3 /* test_aux_upb_simulator.c */,
 				C69535F5A30EBCFF42E1200F /* test_gps_nmea_transport.c */,
@@ -13976,6 +13985,7 @@
 			isa = PBXGroup;
 			children = (
 				59FE34602187B2F7004FB5D4 /* README.md */,
+				C0DE20260913D50000000001 /* REFACTOR.md */,
 				59FE34632187B2F7004FB5D4 /* indigo_aux_dsusb.h */,
 				59FE34622187B2F7004FB5D4 /* indigo_aux_dsusb.c */,
 				59FE34612187B2F7004FB5D4 /* indigo_aux_dsusb_main.c */,
@@ -16096,7 +16106,7 @@
 				598A1C6F259BA94A00C0B34C /* indigo_focuser_fcusb.h in Headers */,
 				598A1C70259BA94A00C0B34C /* indigo_focuser_wemacro.h in Headers */,
 				598A1C71259BA94A00C0B34C /* indigo_mount_nexstaraux.h in Headers */,
-				598A1C72259BA94A00C0B34C /* indigo_ccd_qhy.h in Headers */,
+				598A1C72259BA94A00C0B34C /* indigo_ccd_qhy2.h in Headers */,
 				9D9696C72D5C83AF0051F9E3 /* indigo_ccd_svb2.h in Headers */,
 				596FCA902BD0320E00F5BACB /* gxccd.h in Headers */,
 				591CD0EB29805CBF003243AE /* nncam.h in Headers */,
@@ -16295,7 +16305,7 @@
 				59A68E20277DC3D0000439CC /* SVBCameraSDK.h in Headers */,
 				59C4C88420CEF107007EE330 /* indigo_focuser_wemacro.h in Headers */,
 				599AD8A12552F64A0008D481 /* indigo_mount_nexstaraux.h in Headers */,
-				595567CA24B8841000DF303D /* indigo_ccd_qhy.h in Headers */,
+				595567CA24B8841000DF303D /* indigo_ccd_qhy2.h in Headers */,
 				9DE0E7C422C6465500289234 /* indigo_focuser_dsd.h in Headers */,
 				595567C924B882DD00DF303D /* qhyccd.h in Headers */,
 				59588CAD211CC08D00E9FC27 /* indigo_aux_joystick.h in Headers */,

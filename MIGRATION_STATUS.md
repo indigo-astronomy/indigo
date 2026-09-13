@@ -20,7 +20,7 @@
 | aux_astromechanics      | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
 | aux_cloudwatcher        | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 5 / 0 | |
 | aux_dragonfly           | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 5 / 0 | |
-| aux_dsusb               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
+| aux_dsusb               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 10 / 0 | |
 | aux_fbc                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
 | aux_flatmaster          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
 | aux_flipflat            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
@@ -130,7 +130,7 @@
 | rotator_asi             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 11 / 0 | |
 | rotator_falcon          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
 | rotator_lunatico        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 11 / 0 | |
-| rotator_optec           | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 1 / 0 | |
+| rotator_optec           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 10 / 0 | |
 | rotator_simulator       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
 | rotator_wa              | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ✅ HW  | 1 / 0 | |
 | system_ascol            | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | |

@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_aux_dsusb"
 #define DRIVER_LABEL         "Shoestring DSUSB shutter release"
 #define AUX_DEVICE_NAME      "%s"
@@ -71,6 +71,7 @@ typedef struct {
 	indigo_property *x_config_property;
 	//+ data
 	libdsusb_device_context *device_context;
+	double exposure_endtime;
 	//- data
 } dsusb_private_data;
 
@@ -107,9 +108,12 @@ static void aux_timer_callback(indigo_device *device);
 
 static void aux_focus_finalizer(indigo_device *device) {
 	if (libdsusb_start(PRIVATE_DATA->device_context)) {
+		PRIVATE_DATA->exposure_endtime = indigo_monotonic_time() + CCD_EXPOSURE_ITEM->number.target;
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.target < 1 ? CCD_EXPOSURE_ITEM->number.target : 1, aux_timer_callback);
 	} else {
+		PRIVATE_DATA->exposure_endtime = 0;
+		libdsusb_stop(PRIVATE_DATA->device_context);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -125,14 +129,17 @@ static void aux_timer_callback(indigo_device *device) {
 	}
 	//+ aux.on_timer
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		CCD_EXPOSURE_ITEM->number.value--;
-		if (CCD_EXPOSURE_ITEM->number.value <= 0) {
+		double time_left = PRIVATE_DATA->exposure_endtime - indigo_monotonic_time();
+		if (time_left <= 0) {
 			CCD_EXPOSURE_ITEM->number.value = 0;
+			PRIVATE_DATA->exposure_endtime = 0;
 			CCD_EXPOSURE_PROPERTY->state = libdsusb_stop(PRIVATE_DATA->device_context) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		} else {
+			CCD_EXPOSURE_ITEM->number.value = ceil(time_left);
 		}
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		if (CCD_EXPOSURE_ITEM->number.value > 0) {
-			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+		if (time_left > 0) {
+			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, time_left < 1 ? time_left : 1, aux_timer_callback);
 		}
 	}
 	//- aux.on_timer
@@ -145,6 +152,7 @@ static void aux_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ aux.on_connect
 			CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = 0;
+			PRIVATE_DATA->exposure_endtime = 0;
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			//- aux.on_connect
 		}
@@ -163,6 +171,7 @@ static void aux_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_pending_handlers(device);
 		//+ aux.on_disconnect
+		PRIVATE_DATA->exposure_endtime = 0;
 		libdsusb_stop(PRIVATE_DATA->device_context);
 		//- aux.on_disconnect
 		indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
@@ -182,6 +191,7 @@ static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, aux_ccd_exposure_handler);
 		indigo_cancel_pending_handler(device, aux_timer_callback);
 		indigo_cancel_pending_handler(device, aux_focus_finalizer);
+		PRIVATE_DATA->exposure_endtime = 0;
 		if (!libdsusb_stop(PRIVATE_DATA->device_context)) {
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
