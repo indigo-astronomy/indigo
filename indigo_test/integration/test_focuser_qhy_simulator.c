@@ -22,107 +22,590 @@
 
 #include "serial_simulator_test_common.h"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <stdatomic.h>
+
 #ifndef FOCUSER_QHY_SIMULATOR_EXECUTABLE
 #define FOCUSER_QHY_SIMULATOR_EXECUTABLE "build/integration/focuser_qhy_simulator"
 #endif
 
 static const simulator_driver_case qhy_focuser = {
-	"QHY Q-Focuser",
-	"indigo_focuser_qhy",
-	"Q-Focuser",
-	indigo_focuser_qhy,
-	false,
-	NULL,
-	0,
-	NULL,
-	0,
-	NULL,
-	0,
-	NULL,
-	0
+	"QHY Q-Focuser", "indigo_focuser_qhy", "Q-Focuser", indigo_focuser_qhy, false,
+	NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
 
-static void qhy_focuser_passes_serial_compliance_checks(void) {
-	external_serial_simulator simulator = { 0 };
+static external_serial_simulator fixture, second_fixture;
+static char fixture_dir[] = "/tmp/indigo-qhy.XXXXXX";
+static char event_path[256], fault_path[256], control_path[256];
+static const char *current_profile;
 
-	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_QHY_SIMULATOR_EXECUTABLE));
-	SERIAL_CHECK_TRUE(start_serial_driver(&qhy_focuser, simulator.port));
-	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+static bool atomic_file(const char *path, const char *format, ...) {
+	char temporary[280];
+	snprintf(temporary, sizeof(temporary), "%s.tmp", path);
+	FILE *file = fopen(temporary, "w");
+	if (!file) {
+		return false;
+	}
+	va_list args;
+	va_start(args, format);
+	vfprintf(file, format, args);
+	va_end(args);
+	fputc('\n', file);
+	fclose(file);
+	return rename(temporary, path) == 0;
+}
 
+static bool inject(const char *command, const char *action) {
+	return atomic_file(fault_path, "%s %s", command, action);
+}
+
+static bool control(const char *command, int value) {
+	return atomic_file(control_path, "%s %d", command, value);
+}
+
+static int commands(const char *request) {
+	FILE *file = fopen(event_path, "r");
+	if (!file) {
+		return -1;
+	}
+	char line[512], kind[16], value[300];
+	double timestamp;
+	int count = 0;
+	while (fgets(line, sizeof(line), file)) {
+		if (sscanf(line, "%lf %15s %299[^\r\n]", &timestamp, kind, value) == 3 && !strcmp(kind, "RX") && !strcmp(value, request)) {
+			count++;
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+static bool wait_commands(const char *request, int expected) {
+	for (int i = 0; i < 100; i++) {
+		if (commands(request) >= expected) {
+			return true;
+		}
+		indigo_usleep(20000);
+	}
+	return false;
+}
+
+static int open_descriptors(void) {
+	int count = 0;
+	for (int fd = 0; fd < 1024; fd++) {
+		if (fcntl(fd, F_GETFD) >= 0) {
+			count++;
+		}
+	}
+	return count;
+}
+
+static void driver_stop(void) {
+	if (context.connected) {
+		disconnect_serial_device(&qhy_focuser);
+	}
+	indigo_result result = indigo_focuser_qhy(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_detach_client(&simulator_test_client);
+	indigo_stop();
+	release_cached_properties();
+	ASSERT_EQ_INT(INDIGO_OK, result);
+}
+
+static bool driver_start(void) {
+	return bring_up_serial_driver(&qhy_focuser) && connect_serial_device(&qhy_focuser, fixture.port);
+}
+
+static const char *observed_names[] = {
+	CONNECTION_PROPERTY_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_ABORT_MOTION_PROPERTY_NAME,
+	FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_MODE_PROPERTY_NAME
+};
+static atomic_uint revisions[ARRAY_SIZE(observed_names)], position_busy;
+
+static int observed_index(const char *name) {
+	for (int i = 0; i < (int)ARRAY_SIZE(observed_names); i++) {
+		if (!strcmp(name, observed_names[i])) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+static indigo_result observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	indigo_result result = simulator_client_update_property(client, device, property, message);
+	int index = observed_index(property->name);
+	if (index >= 0) {
+		atomic_fetch_add(&revisions[index], 1);
+	}
+	if (index == 1 && property->state == INDIGO_BUSY_STATE) {
+		atomic_fetch_add(&position_busy, 1);
+	}
+	return result;
+}
+
+static bool new_state(const char *name, unsigned before, indigo_property_state state) {
+	int index = observed_index(name);
+	for (int i = 0; i < 500; i++) {
+		indigo_property *property = find_cached_property(name);
+		if (index >= 0 && atomic_load(&revisions[index]) > before && property && property->state == state) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	fprintf(stderr, "No fresh %s state %d\n", name, state);
+	return false;
+}
+
+static bool number_change(const char *property, const char *item, double value, indigo_property_state state) {
+	int index = observed_index(property);
+	unsigned before = index >= 0 ? atomic_load(&revisions[index]) : 0;
+	if (indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, property, item, value) != INDIGO_OK) {
+		return false;
+	}
+	return index >= 0 ? new_state(property, before, state) : wait_for_property_state(property, state);
+}
+
+static bool switch_change(const char *property, const char *item, bool value, indigo_property_state state) {
+	int index = observed_index(property);
+	unsigned before = index >= 0 ? atomic_load(&revisions[index]) : 0;
+	if (indigo_change_switch_property_1(&simulator_test_client, qhy_focuser.device_name, property, item, value) != INDIGO_OK) {
+		return false;
+	}
+	return index >= 0 ? new_state(property, before, state) : wait_for_property_state(property, state);
+}
+
+static bool at_position(double position) {
+	return wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, position, 1) && wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE) && wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE);
+}
+
+static bool at_position_long(double position) {
+	for (int i = 0; i < 300; i++) {
+		indigo_property *property = find_cached_property(FOCUSER_POSITION_PROPERTY_NAME);
+		indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+		if (property && item && property->state == INDIGO_OK_STATE && fabs(item->number.value - position) <= 1) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static bool property_presence(const char *name, bool present) {
+	for (int i = 0; i < 100; i++) {
+		if ((find_cached_property(name) != NULL) == present) {
+			return true;
+		}
+		indigo_usleep(20000);
+	}
+	return false;
+}
+
+static bool exchange(indigo_uni_handle *handle, const char *request, const char *expected) {
+	if (indigo_uni_write(handle, request, (long)strlen(request)) != (long)strlen(request)) {
+		return false;
+	}
+	char response[300];
+	long count = indigo_uni_read_section2(handle, response, sizeof(response) - 1, "}", "", INDIGO_DELAY(2), INDIGO_DELAY(0.1));
+	return count > 0 && !strcmp(response, expected);
+}
+
+static void simulator_protocol(void) {
+	indigo_uni_handle *handle = indigo_uni_open_serial_with_speed(fixture.port, 9600, INDIGO_LOG_DEBUG);
+	SERIAL_CHECK_TRUE(handle != NULL);
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":1}", "{\"idx\":1,\"version\":\"1.2.3\",\"bv\":\"QFOCUSER-1.0\"}"));
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":4}", "{\"idx\":4,\"o_t\":18500,\"c_t\":30200,\"c_r\":120}"));
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":5}", "{\"idx\":5,\"pos\":50000}"));
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":13,\"speed\":8}", "{\"idx\":13}"));
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":7,\"rev\":1}", "{\"idx\":7}"));
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":16,\"ihold\":0,\"irun\":5}", "{\"idx\":16}"));
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":6,\"tar\":51000}", "{\"idx\":6}"));
+	indigo_usleep(250000);
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":3}", "{\"idx\":3}"));
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":11,\"init_val\":12345}", "{\"idx\":11}"));
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":5}", "{\"idx\":5,\"pos\":12345}"));
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":6}", "{\"idx\":-1}"));
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":13,\"speed\":9}", "{\"idx\":-1}"));
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":5,\"cmd_id\":5}", "{\"idx\":-1}"));
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":5,\"extra\":1}", "{\"idx\":-1}"));
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":5}", "{\"idx\":5,\"pos\":12345}"));
+cleanup:
+	indigo_uni_close(&handle);
+}
+
+static void capabilities(void) {
+	SERIAL_CHECK_TRUE(driver_start());
 	assert_device_interface(INDIGO_INTERFACE_FOCUSER);
 	assert_serial_focuser_class_property_completeness();
-	assert_property_has_item(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME);
-	assert_property_has_item(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME);
-	assert_property_has_item(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME);
-	assert_property_has_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-	assert_property_has_item(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME);
-	assert_property_has_item(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME);
-	assert_property_has_item(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME);
-	assert_property_has_item(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME);
-	assert_property_has_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME);
-	assert_property_has_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME);
-	assert_property_has_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME);
-	assert_property_has_item(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME);
-	assert_property_has_item(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME);
-	assert_property_has_item(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME);
-	assert_property_has_item(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME);
-	assert_property_has_item(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME);
-	assert_number_item_in_range(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-
-	double sync_position = bounded_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 50000);
-	SERIAL_CHECK_TRUE(!isnan(sync_position));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 2000000));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_LIMITS_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 10));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_COMPENSATION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME, 1));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_COMPENSATION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, sync_position));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, sync_position, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 1));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_SPEED_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-
-	double target_position = bounded_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, sync_position + 8);
-	SERIAL_CHECK_TRUE(!isnan(target_position));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target_position));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target_position, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_DIRECTION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target_position - 10, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 8));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_SPEED_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target_position + 1000));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-
+	SERIAL_CHECK_TRUE(has_defined_property(FOCUSER_LIMITS_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(has_defined_property(FOCUSER_SPEED_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(has_defined_property(FOCUSER_REVERSE_MOTION_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(has_defined_property(FOCUSER_TEMPERATURE_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(has_defined_property(FOCUSER_MODE_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(has_defined_property(FOCUSER_COMPENSATION_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_BACKLASH_PROPERTY_NAME));
+	indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	indigo_item *speed = find_cached_item(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME);
+	SERIAL_CHECK_TRUE(position && position->number.min == 0 && position->number.max == 2000000 && position->number.step == 10);
+	SERIAL_CHECK_TRUE(speed && speed->number.min == 1 && speed->number.max == 8 && speed->number.step == 1);
+	SERIAL_CHECK_TRUE(at_position(50000));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 18.5, .01));
+	SERIAL_CHECK_TRUE(commands("{\"cmd_id\":1}") == 1 && commands("{\"cmd_id\":13,\"speed\":1}") == 1 && commands("{\"cmd_id\":7,\"rev\":0}") == 1);
 cleanup:
-	if (context.connected) {
-		stop_serial_driver(&qhy_focuser);
+	driver_stop();
+}
+
+static void movement_and_sync(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 52000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(52000) && atomic_load(&position_busy) > 0);
+	SERIAL_CHECK_TRUE(commands("{\"cmd_id\":6,\"tar\":52000}") == 1);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 52000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(commands("{\"cmd_id\":6,\"tar\":52000}") == 1);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 40000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(40000));
+	SERIAL_CHECK_TRUE(commands("{\"cmd_id\":11,\"init_val\":40000}") == 1);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 1000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(39000));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 1000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(40000));
+	int before = commands("{\"cmd_id\":6,\"tar\":40000}");
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(before, commands("{\"cmd_id\":6,\"tar\":40000}"));
+cleanup:
+	driver_stop();
+}
+
+static void limits_and_controls(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 50500, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(50500));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 60000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(0));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 8, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(commands("{\"cmd_id\":13,\"speed\":8}") == 1 && commands("{\"cmd_id\":7,\"rev\":1}") == 1);
+cleanup:
+	driver_stop();
+}
+
+static void abort_and_overlap(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 150000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_commands("{\"cmd_id\":6,\"tar\":150000}", 1));
+	indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 5000);
+	indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 160000);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(commands("{\"cmd_id\":6,\"tar\":150000}") == 1 && commands("{\"cmd_id\":6,\"tar\":160000}") == 0 && commands("{\"cmd_id\":3}") >= 1);
+	indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(position && position->number.value == position->number.target && position->number.value < 150000);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(commands("{\"cmd_id\":3}") == 1);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 51000, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void rejected_connection(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&qhy_focuser));
+	int descriptors = open_descriptors();
+	SERIAL_CHECK_TRUE(inject(current_profile, !strcmp(current_profile, "VERSION") ? "missing" : "wrong"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, qhy_focuser.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, fixture.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, qhy_focuser.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(!context.connected && open_descriptors() == descriptors);
+	SERIAL_CHECK_TRUE(connect_serial_device(&qhy_focuser, fixture.port));
+cleanup:
+	driver_stop();
+}
+
+static void setting_failure(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	if (!strcmp(current_profile, "SPEED")) {
+		SERIAL_CHECK_TRUE(inject("SPEED", "wrong"));
+		SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 8, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME)->number.value == 1);
+		SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 8, INDIGO_OK_STATE));
+	} else {
+		SERIAL_CHECK_TRUE(inject("REVERSE", "malformed"));
+		SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME)->sw.value);
+		SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true, INDIGO_OK_STATE));
 	}
-	stop_external_serial_simulator(&simulator);
+cleanup:
+	driver_stop();
+}
+
+static void start_failure(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(inject("MOVE", current_profile));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 51000, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void motion_read_failure(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 80000, INDIGO_BUSY_STATE));
+	unsigned before = atomic_load(&revisions[1]);
+	SERIAL_CHECK_TRUE(inject("POSITION", current_profile));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 51000, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void stalled_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(inject("MOVE", "stall"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 80000, INDIGO_BUSY_STATE));
+	unsigned before = atomic_load(&revisions[1]);
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(commands("{\"cmd_id\":3}") >= 1);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 51000, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void polling_and_temperature(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(control("position", 42000));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 42000, 1));
+	SERIAL_CHECK_TRUE(control("outside", 20000));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 19.25, .01));
+	unsigned before = atomic_load(&revisions[6]);
+	SERIAL_CHECK_TRUE(inject("TEMPERATURE", current_profile));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void compensation_limit_and_failure(void) {
+	SERIAL_CHECK_TRUE(control("outside", 20000));
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 20, .01));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 50050, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 1000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME, 0.1, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, true, INDIGO_OK_STATE));
+	indigo_usleep(2200000);
+	SERIAL_CHECK_TRUE(control("outside", 21000));
+	SERIAL_CHECK_TRUE(at_position_long(50050));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 50000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 21, .01));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, true, INDIGO_OK_STATE));
+	indigo_usleep(2200000);
+	SERIAL_CHECK_TRUE(inject("MOVE", "wrong"));
+	unsigned before = atomic_load(&revisions[1]);
+	SERIAL_CHECK_TRUE(control("outside", 22000));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 50010, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void chip_temperature_fallback(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 30.2, .01));
+cleanup:
+	driver_stop();
+}
+
+static void invalid_temperature_recovery(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 30.2, .01));
+	unsigned before = atomic_load(&revisions[6]);
+	SERIAL_CHECK_TRUE(control("chip", -50000));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, before, INDIGO_IDLE_STATE));
+	before = atomic_load(&revisions[6]);
+	SERIAL_CHECK_TRUE(control("chip", 25000));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, before, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void modes_and_compensation(void) {
+	SERIAL_CHECK_TRUE(control("outside", 20000));
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 20, .01));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME, 0.1, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(!find_cached_item(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(property_presence(FOCUSER_STEPS_PROPERTY_NAME, false));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
+	indigo_usleep(2200000);
+	SERIAL_CHECK_TRUE(control("outside", 21000));
+	SERIAL_CHECK_TRUE(at_position_long(50100));
+	SERIAL_CHECK_TRUE(control("outside", 21050));
+	indigo_usleep(2300000);
+	SERIAL_CHECK_TRUE(control("outside", 20000));
+	SERIAL_CHECK_TRUE(at_position_long(50000));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(property_presence(FOCUSER_STEPS_PROPERTY_NAME, true));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->perm == INDIGO_RW_PERM);
+cleanup:
+	driver_stop();
+}
+
+static void reconnect(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&qhy_focuser));
+	indigo_change_text_property_1_raw(&simulator_test_client, qhy_focuser.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, "/dev/indigo-qhy-nonexistent");
+	SERIAL_CHECK_TRUE(switch_change(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	for (int i = 0; i < 2; i++) {
+		SERIAL_CHECK_TRUE(connect_serial_device(&qhy_focuser, fixture.port));
+		SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 50100 + i * 100, INDIGO_OK_STATE));
+		disconnect_serial_device(&qhy_focuser);
+	}
+cleanup:
+	driver_stop();
+}
+
+static void connected_shutdown(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_focuser_qhy(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_TRUE(context.connected);
+cleanup:
+	driver_stop();
+}
+
+static void instances(void) {
+	static const simulator_driver_case second = { "QHY Q-Focuser", "indigo_focuser_qhy", "Q-Focuser #2", indigo_focuser_qhy, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 1));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 1, .01));
+	SERIAL_CHECK_TRUE(connect_serial_device(&second, second_fixture.port));
+	SERIAL_CHECK_TRUE(at_position(50000));
+cleanup:
+	disconnect_serial_device(&second);
+	reset_simulator_context(&qhy_focuser);
+	disconnect_serial_device(&qhy_focuser);
+	indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 0);
+	driver_stop();
+}
+
+typedef struct { const char *name; void (*run)(void); const char *profile; bool no_out_temp; bool second; } qhy_test;
+
+static int run_cases(const qhy_test *cases, int count) {
+	int failures = 0;
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	const char *filter = getenv("QHY_TEST_FILTER");
+	if (!mkdtemp(fixture_dir)) {
+		return 1;
+	}
+	snprintf(event_path, sizeof(event_path), "%s/events", fixture_dir);
+	snprintf(fault_path, sizeof(fault_path), "%s/fault", fixture_dir);
+	snprintf(control_path, sizeof(control_path), "%s/control", fixture_dir);
+	setenv("INDIGO_QHY_EVENTS", event_path, 1);
+	setenv("INDIGO_QHY_FAULT", fault_path, 1);
+	setenv("INDIGO_QHY_CONTROL", control_path, 1);
+	for (int i = 0; i < count; i++) {
+		if (filter && !strstr(cases[i].name, filter)) {
+			continue;
+		}
+		current_profile = cases[i].profile;
+		unlink(fault_path);
+		unlink(control_path);
+		const char *args[5] = { "--profile", !strcmp(current_profile, "split") ? "split" : "normal", NULL, NULL, NULL };
+		if (cases[i].no_out_temp) {
+			args[2] = "--no-out-temp";
+		}
+		if (!start_external_serial_simulator_with_args(&fixture, FOCUSER_QHY_SIMULATOR_EXECUTABLE, args)) {
+			failures++;
+			break;
+		}
+		if (cases[i].second) {
+			unsetenv("INDIGO_QHY_EVENTS");
+			unsetenv("INDIGO_QHY_FAULT");
+			unsetenv("INDIGO_QHY_CONTROL");
+			bool ready = start_external_serial_simulator(&second_fixture, FOCUSER_QHY_SIMULATOR_EXECUTABLE);
+			setenv("INDIGO_QHY_EVENTS", event_path, 1);
+			setenv("INDIGO_QHY_FAULT", fault_path, 1);
+			setenv("INDIGO_QHY_CONTROL", control_path, 1);
+			if (!ready) {
+				stop_external_serial_simulator(&fixture);
+				failures++;
+				break;
+			}
+		}
+		fflush(NULL);
+		pid_t child = fork();
+		if (child == 0) {
+			alarm(75);
+			indigo_test_case test = { cases[i].name, cases[i].run };
+			_exit(indigo_run_tests("QHY Q-Focuser", &test, 1));
+		}
+		int status = 0;
+		if (child > 0) {
+			while (waitpid(child, &status, 0) < 0 && errno == EINTR) {
+			}
+		}
+		stop_external_serial_simulator(&fixture);
+		stop_external_serial_simulator(&second_fixture);
+		if (child < 0 || !WIFEXITED(status) || WEXITSTATUS(status)) {
+			fprintf(stderr, "FAIL %s (status %d)\n", cases[i].name, status);
+			failures++;
+		}
+	}
+	unlink(fault_path);
+	unlink(control_path);
+	unlink(event_path);
+	rmdir(fixture_dir);
+	unsetenv("INDIGO_QHY_EVENTS");
+	unsetenv("INDIGO_QHY_FAULT");
+	unsetenv("INDIGO_QHY_CONTROL");
+	printf("QHY Q-Focuser: %d failing scenarios\n", failures);
+	return failures ? 1 : 0;
 }
 
 int main(void) {
-	const indigo_test_case tests[] = {
-		{ "qhy_focuser_passes_serial_compliance_checks", qhy_focuser_passes_serial_compliance_checks }
+	simulator_test_client.update_property = observe_update;
+	const qhy_test tests[] = {
+		{ "simulator_protocol", simulator_protocol, "normal", false, false },
+		{ "simulator_split_protocol", simulator_protocol, "split", false, false },
+		{ "capabilities", capabilities, "normal", false, false },
+		{ "split_transport", capabilities, "split", false, false },
+		{ "movement_sync_relative", movement_and_sync, "normal", false, false },
+		{ "limits_speed_reverse", limits_and_controls, "normal", false, false },
+		{ "abort_overlap", abort_and_overlap, "normal", false, false },
+		{ "init_version_failure", rejected_connection, "VERSION", false, false },
+		{ "init_position_failure", rejected_connection, "POSITION", false, false },
+		{ "init_speed_failure", rejected_connection, "SPEED", false, false },
+		{ "init_reverse_failure", rejected_connection, "REVERSE", false, false },
+		{ "speed_failure_rollback", setting_failure, "SPEED", false, false },
+		{ "reverse_failure_rollback", setting_failure, "REVERSE", false, false },
+		{ "move_wrong_reply", start_failure, "wrong", false, false },
+		{ "move_malformed_reply", start_failure, "malformed", false, false },
+		{ "move_partial_reply", start_failure, "partial", false, false },
+		{ "motion_wrong_read", motion_read_failure, "wrong", false, false },
+		{ "motion_missing_read", motion_read_failure, "missing", false, false },
+		{ "motion_overlong_read", motion_read_failure, "overlong", false, false },
+		{ "motion_silent_read", motion_read_failure, "silent", false, false },
+		{ "stalled_motion", stalled_motion, "normal", false, false },
+		{ "polling_temperature_smoothing", polling_and_temperature, "malformed", false, false },
+		{ "temperature_silent_recovery", polling_and_temperature, "silent", false, false },
+		{ "chip_temperature_fallback", chip_temperature_fallback, "normal", true, false },
+		{ "invalid_temperature_recovery", invalid_temperature_recovery, "normal", true, false },
+		{ "modes_compensation", modes_and_compensation, "normal", false, false },
+		{ "compensation_limit_failure_recovery", compensation_limit_and_failure, "normal", false, false },
+		{ "reconnect", reconnect, "normal", false, false },
+		{ "connected_shutdown", connected_shutdown, "normal", false, false },
+		{ "additional_instances", instances, "normal", false, true }
 	};
-	return indigo_run_tests("QHY Q-Focuser serial simulator integration tests", tests, ARRAY_SIZE(tests));
+	return run_cases(tests, ARRAY_SIZE(tests));
 }

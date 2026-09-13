@@ -1,9 +1,9 @@
-// Copyright (C) 2024-2025 Rumen G. Bogdanovski
+// Copyright (C) 2024-2026 Rumen G. Bogdanovski
 // All rights reserved.
-//
-// You can use this software under the terms of 'INDIGO Astronomy
+
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-//
+
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,1109 +16,934 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// version history
-// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// This file generated from indigo_focuser_qhy.driver
 
-/** Q-Focuser focuser driver
-	\file indigo_focuser_qhy.c
-*/
-
-#define DRIVER_VERSION 0x03000006
-
-#define DRIVER_NAME "indigo_focuser_qhy"
+#pragma mark - Includes
 
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
+
+//+ include
+
+#include <ctype.h>
+#include <errno.h>
+#include <limits.h>
+#include <math.h>
+#include <stdarg.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct {
+	double values[5];
+	int next;
+	int count;
+} qhy_temperature_buffer;
+
+typedef struct {
+	char key[32];
+	char value[64];
+	bool quoted;
+} qhy_json_field;
+
+typedef struct {
+	int idx;
+	char version[64];
+	char board_version[64];
+	double chip_temperature;
+	double outside_temperature;
+	double voltage;
+	int position;
+	bool has_position;
+} qhy_response;
+
+//- include
 
 #include <indigo/indigo_driver_xml.h>
-
+#include <indigo/indigo_focuser_driver.h>
 #include <indigo/indigo_uni_io.h>
 
 #include "indigo_focuser_qhy.h"
 
-#define SERIAL_BAUDRATE            "9600"
+#pragma mark - Common definitions
 
-#define PRIVATE_DATA                    ((qhy_private_data *)device->private_data)
+#define DRIVER_VERSION       0x03000007
+#define DRIVER_NAME          "indigo_focuser_qhy"
+#define DRIVER_LABEL         "QHY Q-Focuser"
+#define FOCUSER_DEVICE_NAME  "Q-Focuser"
+#define PRIVATE_DATA         ((qhy_private_data *)device->private_data)
 
-// gp_bits is used as boolean
-#define is_connected                    gp_bits
+//+ define
 
-#define NO_TEMP_READING                (-50)
+#define QHY_BAUDRATE         "9600"
+#define QHY_BUFFER_SIZE      192
+#define QHY_NO_TEMPERATURE   (-50)
+#define QHY_STALL_TIMEOUT    10
+#define QHY_MAX_POSITION     2000000
 
-#define CB_SIZE 5
-typedef struct {
-	double buffer[CB_SIZE];
-	int head;
-	int tail;
-} circular_buffer;
+//- define
+
+#pragma mark - Private data definition
 
 typedef struct {
 	indigo_uni_handle *handle;
-	int32_t current_position, target_position;
-	double prev_temp;
-	bool has_valid_temperature;
-	circular_buffer temperature_buffer;
-	pthread_mutex_t port_mutex;
+	//+ data
+	char command[QHY_BUFFER_SIZE];
+	char response[QHY_BUFFER_SIZE];
+	int current_position, target_position, last_position, speed;
+	double motion_deadline, previous_temperature;
+	bool reverse, moving, motion_uncertain, disconnect_pending, temperature_valid;
+	qhy_temperature_buffer temperature_buffer;
+	//- data
 } qhy_private_data;
 
-static void compensate_focus(indigo_device *device, double new_temp);
+#pragma mark - Low level code
 
-/* Circular buffer functions ================================================================= */
+//+ code
 
-static void cb_clear(circular_buffer* cb) {
-	cb->head = 0;
-	cb->tail = 0;
+static void focuser_position_handler(indigo_device *device);
+static void focuser_steps_handler(indigo_device *device);
+static void focuser_connection_handler(indigo_device *device);
+
+static void qhy_skip_space(const char **text) {
+	while (isspace((unsigned char)**text)) {
+		(*text)++;
+	}
 }
 
-static void cb_write(circular_buffer* cb, double data) {
-	if ((cb->head + 1) % CB_SIZE == cb->tail) {
-		// Overwrite the oldest data when the buffer is full
-		cb->tail = (cb->tail + 1) % CB_SIZE;
-	}
-	cb->buffer[cb->head] = data;
-	cb->head = (cb->head + 1) % CB_SIZE;
-}
-
-static double cb_average(circular_buffer* cb) {
-	if (cb->head == cb->tail) {
-		return NO_TEMP_READING;  // Return NO_TEMP_READING when the buffer is empty
-	}
-
-	double sum = 0.0;
+static bool qhy_parse_json(const char *json, qhy_json_field *fields, int capacity, int *field_count) {
+	const char *cursor = json;
 	int count = 0;
-	int index = cb->tail;
-
-	while (index != cb->head) {
-		sum += cb->buffer[index];
+	qhy_skip_space(&cursor);
+	if (*cursor++ != 0x7B) {
+		return false;
+	}
+	qhy_skip_space(&cursor);
+	if (*cursor == 0x7D) {
+		cursor++;
+		qhy_skip_space(&cursor);
+		*field_count = 0;
+		return *cursor == 0;
+	}
+	while (*cursor) {
+		if (count >= capacity || *cursor++ != '"') {
+			return false;
+		}
+		const char *key = cursor;
+		while (*cursor && *cursor != '"') {
+			if (*cursor == '\\') {
+				return false;
+			}
+			cursor++;
+		}
+		size_t key_length = (size_t)(cursor - key);
+		if (*cursor++ != '"' || key_length == 0 || key_length >= sizeof(fields[count].key)) {
+			return false;
+		}
+		memcpy(fields[count].key, key, key_length);
+		fields[count].key[key_length] = 0;
+		for (int i = 0; i < count; i++) {
+			if (!strcmp(fields[i].key, fields[count].key)) {
+				return false;
+			}
+		}
+		qhy_skip_space(&cursor);
+		if (*cursor++ != ':') {
+			return false;
+		}
+		qhy_skip_space(&cursor);
+		fields[count].quoted = *cursor == '"';
+		if (fields[count].quoted) {
+			cursor++;
+		}
+		const char *value = cursor;
+		if (fields[count].quoted) {
+			while (*cursor && *cursor != '"') {
+				if (*cursor == '\\') {
+					return false;
+				}
+				cursor++;
+			}
+		} else {
+			while (*cursor && *cursor != ',' && *cursor != 0x7D && !isspace((unsigned char)*cursor)) {
+				cursor++;
+			}
+		}
+		size_t value_length = (size_t)(cursor - value);
+		if (value_length == 0 || value_length >= sizeof(fields[count].value)) {
+			return false;
+		}
+		memcpy(fields[count].value, value, value_length);
+		fields[count].value[value_length] = 0;
+		if (fields[count].quoted && *cursor++ != '"') {
+			return false;
+		}
 		count++;
-		index = (index + 1) % CB_SIZE;
-	}
-
-	return sum / count;
-}
-
-/* simple JSON parser ==================================================================== */
-
-#define MAX_KV 50
-#define MAX_KEY_LEN 50
-#define MAX_VALUE_LEN 50
-
-#define MAX_CMD_LEN 150
-
-typedef struct kv {
-	char key[MAX_KEY_LEN];
-	char value[MAX_VALUE_LEN];
-} kv_t;
-
-typedef struct {
-	int idx;
-	union {
-		struct {
-			char version[MAX_VALUE_LEN];
-			char version_board[MAX_VALUE_LEN];
-		};
-		struct {
-			double chip_temp;
-			double voltage;
-			double out_temp;
-		};
-		int position;
-	};
-} qhy_response;
-
-typedef enum {
-	START,
-	KEY,
-	COLON,
-	VALUE,
-	COMMA
-} json_state_t;
-
-static int json_parse(kv_t* kvs, const char* json) {
-    json_state_t state = START;
-    char buffer[MAX_VALUE_LEN];
-    int buffer_index = 0;
-    int key_index = 0;
-    int is_string = 0;
-
-    for (int i = 0; json[i] != '\0' ; i++) {
-        char c = json[i];
-        switch (state) {
-		case START:
-			if (c == '{') {
-				state = KEY;
-			}
-			break;
-		case KEY:
-			if (c == '\"') {
-				kvs[key_index] = (kv_t) {0};
-				if (buffer_index != 0) {
-					buffer[buffer_index] = '\0';
-					buffer_index = 0;
-					state = COLON;
-				}
-			} else {
-				buffer[buffer_index++] = c;
-				if (buffer_index == MAX_KEY_LEN) {
-					return -1;
-				}
-			}
-			break;
-		case COLON:
-			if (c == ':') {
-				strncpy(kvs[key_index].key, buffer, MAX_KEY_LEN);
-				state = VALUE;
-				is_string = 0;
-			}
-			break;
-		case VALUE:
-			if (c == '\"') {
-				is_string = 1;
-				if (buffer_index != 0) {
-					buffer[buffer_index] = '\0';
-					buffer_index = 0;
-					strncpy(kvs[key_index].value, buffer, MAX_VALUE_LEN);
-					state = COMMA;
-				}
-			} else if(is_string == 0 && (c == ',' || c == '}')) {
-				if (buffer_index != 0) {
-					buffer[buffer_index] = '\0';
-					buffer_index = 0;
-					strncpy(kvs[key_index].value, buffer, MAX_VALUE_LEN);
-					state = KEY;
-					key_index++;
-				}
-			} else {
-				buffer[buffer_index++] = c;
-				if (buffer_index == MAX_VALUE_LEN) {
-					return -2;
-				}
-			}
-			break;
-		case COMMA:
-			if (c == ',') {
-				state = KEY;
-				key_index++;
-				if(key_index == MAX_KV) {
-					return -3;
-				}
-			}
-			break;
-        }
-    }
-	return 0;
-}
-
-static int qhy_parse_response(char *response, qhy_response *qresponse) {
-	kv_t kvs[10] = {0};
-
-    int res = json_parse(kvs, response);
-	if (res < 0) return res;
-
-	int cmd_id = -1;
-
-	int i = 0;
-    while (kvs[i].key[0] != '\0') {
-        if(!strcmp(kvs[i].key, "idx")) {
-			cmd_id = atoi(kvs[i].value);
-			break;
+		qhy_skip_space(&cursor);
+		if (*cursor == ',') {
+			cursor++;
+			qhy_skip_space(&cursor);
+			continue;
 		}
-        i++;
-    }
-
-	qresponse->idx = cmd_id;
-
-	if (cmd_id == 2 || cmd_id == 3 || cmd_id == 6 || cmd_id == 7 || cmd_id == 11 || cmd_id == 13 || cmd_id == 16) {
-		return 0;
-	} else if (cmd_id == 1) {
-		int i = 0;
-    	while (kvs[i].key[0] != '\0') {
-        	if(!strcmp(kvs[i].key, "version")) {
-				strncpy(qresponse->version, kvs[i].value, 50);
-			} else if(!strcmp(kvs[i].key, "bv")) {
-				strncpy(qresponse->version_board, kvs[i].value, 50);
-			}
-        	i++;
+		if (*cursor++ != 0x7D) {
+			return false;
 		}
-	} else if (cmd_id == 4) {
-		int i = 0;
-    	while (kvs[i].key[0] != '\0') {
-        	if(!strcmp(kvs[i].key, "o_t")) {
-				qresponse->out_temp = atof(kvs[i].value)/1000.0;
-			} else if(!strcmp(kvs[i].key, "c_t")) {
-				qresponse->chip_temp = atof(kvs[i].value)/1000.0;
-			} else if(!strcmp(kvs[i].key, "c_r")) {
-				qresponse->voltage = atof(kvs[i].value)/10.0;
-			}
-        	i++;
+		qhy_skip_space(&cursor);
+		if (*cursor) {
+			return false;
 		}
-	} else if (cmd_id == 5) {
-		int i = 0;
-    	while (kvs[i].key[0] != '\0') {
-        	if(!strcmp(kvs[i].key, "pos")) {
-				qresponse->position = atoi(kvs[i].value);
-				break;
-			}
-		  	i++;
-		}
-	} else if (cmd_id == -1) {
-		// I have no idea why it is responding with -1, Cable reconnect usually fixes it!!!
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Q-Focuser responded with command ID = %d - ubnormal situation. Try reconnecting the focuser!\n", cmd_id);
-		return -1;
+		*field_count = count;
+		return true;
 	}
-	return 0;
-}
-
-//static void qhy_print_response(qhy_response resp) {
-//	int cmd_id = resp.idx;
-//	if (cmd_id == 2 || cmd_id == 3 || cmd_id == 6 || cmd_id == 7 || cmd_id == 11 || cmd_id == 13 || cmd_id == 16) {
-//		indigo_error("command %d returned: no value\n", cmd_id);
-//	} else if (cmd_id == 1) {
-//		indigo_error("command %d returned: version = %s, board_version = %s\n", cmd_id, resp.version, resp.version_board);
-//	} else if (cmd_id == 4) {
-//		indigo_error("command %d returned: out_temp = %g, chip_temp = %g, voltage = %g\n", cmd_id, resp.out_temp, resp.chip_temp, resp.voltage);
-//	} else if (cmd_id == 5) {
-//		indigo_error("command %d returned: position = %d\n", cmd_id, resp.position);
-//	} else if (cmd_id == -1) {
-//		indigo_error("command %d - ubnormal situation\n", cmd_id);
-//	} else {
-//		indigo_error("command %d - unknown\n", cmd_id);
-//	}
-//}
-
-
-/* QHY Q-Focuser Commands ======================================================================== */
-
-static void focuser_connect_callback(indigo_device *device);
-
-static void network_disconnection(indigo_device *device) {
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		focuser_connect_callback(device);
-		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;  // The alert state signals the unexpected disconnection
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		// Sending message as this update will not pass through the agent
-		indigo_send_message(device, ALERT_PROPERTY, "Device disconnected unexpectedly", device->name);
-	}
-	// Otherwise not previously connected, nothing to do
-}
-
-static bool qhy_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
-			if (sleep > 0) {
-				indigo_usleep(sleep);
-			}
-			if (response != NULL) {
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "}", "", INDIGO_DELAY(3)) > 0) {
-					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-					return true;
-				}
-			} else {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return true;
-			}
-		}
-	}
-	if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
-		indigo_execute_handler(device, network_disconnection);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return false;
 }
 
-static void qhy_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle != NULL) {
-		indigo_uni_close(&PRIVATE_DATA->handle);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
+static const qhy_json_field *qhy_field(const qhy_json_field *fields, int count, const char *key) {
+	for (int i = 0; i < count; i++) {
+		if (!strcmp(fields[i].key, key)) {
+			return fields + i;
+		}
+	}
+	return NULL;
+}
+
+static bool qhy_json_integer(const qhy_json_field *fields, int count, const char *key, int minimum, int maximum, int *value) {
+	const qhy_json_field *field = qhy_field(fields, count, key);
+	if (!field || field->quoted) {
+		return false;
+	}
+	char *end = NULL;
+	errno = 0;
+	long parsed = strtol(field->value, &end, 10);
+	if (errno || end == field->value || *end || parsed < minimum || parsed > maximum) {
+		return false;
+	}
+	*value = (int)parsed;
+	return true;
+}
+
+static bool qhy_json_number(const qhy_json_field *fields, int count, const char *key, double minimum, double maximum, double *value) {
+	const qhy_json_field *field = qhy_field(fields, count, key);
+	if (!field || field->quoted) {
+		return false;
+	}
+	char *end = NULL;
+	errno = 0;
+	double parsed = strtod(field->value, &end);
+	if (errno || end == field->value || *end || !isfinite(parsed) || parsed < minimum || parsed > maximum) {
+		return false;
+	}
+	*value = parsed;
+	return true;
+}
+
+static bool qhy_json_string(const qhy_json_field *fields, int count, const char *key, char *value, size_t size) {
+	const qhy_json_field *field = qhy_field(fields, count, key);
+	if (!field || !field->quoted || !field->value[0] || strlen(field->value) >= size) {
+		return false;
+	}
+	snprintf(value, size, "%s", field->value);
+	return true;
+}
+
+static bool qhy_parse_response(const char *response, qhy_response *parsed) {
+	qhy_json_field fields[12] = { 0 };
+	int count = 0;
+	memset(parsed, 0, sizeof(*parsed));
+	if (!qhy_parse_json(response, fields, 12, &count) || !qhy_json_integer(fields, count, "idx", -1, 16, &parsed->idx)) {
+		return false;
+	}
+	if (parsed->idx == 1) {
+		return qhy_json_string(fields, count, "version", parsed->version, sizeof(parsed->version)) && qhy_json_string(fields, count, "bv", parsed->board_version, sizeof(parsed->board_version));
+	}
+	if (parsed->idx == 4) {
+		double outside, chip, voltage;
+		if (!qhy_json_number(fields, count, "o_t", -1000000, 1000000, &outside) || !qhy_json_number(fields, count, "c_t", -1000000, 1000000, &chip) || !qhy_json_number(fields, count, "c_r", -1000000, 1000000, &voltage)) {
+			return false;
+		}
+		parsed->outside_temperature = outside / 1000;
+		parsed->chip_temperature = chip / 1000;
+		parsed->voltage = voltage / 10;
+		return true;
+	}
+	if (parsed->idx == 5) {
+		parsed->has_position = qhy_json_integer(fields, count, "pos", INT_MIN, INT_MAX, &parsed->position);
+		return true;
+	}
+	return parsed->idx == -1 || parsed->idx == 2 || parsed->idx == 3 || parsed->idx == 6 || parsed->idx == 7 || parsed->idx == 11 || parsed->idx == 13 || parsed->idx == 16;
+}
+
+static void qhy_network_disconnection(indigo_device *device) {
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		focuser_connection_handler(device);
+		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, "Device disconnected unexpectedly");
 	}
 }
 
-static int qhy_simple_command(indigo_device *device, int cmd_id, qhy_response *parsed_response) {
-	char command[MAX_CMD_LEN];
-	char response[MAX_CMD_LEN];
-	sprintf(command, "{\"cmd_id\":%d}", cmd_id);
-
-	if (!qhy_command(device, command, response, MAX_CMD_LEN, 0)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command '%s' failed", command);
-		return -1;
+static bool qhy_command(indigo_device *device, qhy_response *parsed, const char *format, ...) {
+	if (!PRIVATE_DATA->handle || indigo_uni_discard(PRIVATE_DATA->handle) < 0) {
+		return false;
 	}
-	int result = qhy_parse_response(response, parsed_response);
-	if (result < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing response '%s' failed with %d", response, result);
+	va_list args, copy;
+	va_start(args, format);
+	va_copy(copy, args);
+	int length = vsnprintf(PRIVATE_DATA->command, sizeof(PRIVATE_DATA->command), format, copy);
+	va_end(copy);
+	long written = length > 0 && length < (int)sizeof(PRIVATE_DATA->command) ? indigo_uni_vprintf(PRIVATE_DATA->handle, format, args) : -1;
+	va_end(args);
+	long count = written == length ? indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\x7D", "", INDIGO_DELAY(3), INDIGO_DELAY(0.1)) : -1;
+	bool result = count > 0 && PRIVATE_DATA->response[count - 1] == 0x7D && (long)strlen(PRIVATE_DATA->response) == count && qhy_parse_response(PRIVATE_DATA->response, parsed);
+	if (!result && PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE && IS_CONNECTED && !PRIVATE_DATA->disconnect_pending) {
+		PRIVATE_DATA->disconnect_pending = true;
+		indigo_execute_handler(device, qhy_network_disconnection);
 	}
 	return result;
 }
 
-static int qhy_get_version(indigo_device *device, char *version, char *board_version) {
-	qhy_response parsed_response;
-	int result = qhy_simple_command(device, 1, &parsed_response);
-	if (result < 0) {
-		return result;
-	}
-	if(parsed_response.idx != 1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Responce expected 1 received %d", parsed_response.idx);
-		return -1;
-	}
-	strncpy(version, parsed_response.version, 50);
-	strncpy(board_version, parsed_response.version_board, 50);
-	return 0;
+static bool qhy_simple_command(indigo_device *device, int command, int alternate, qhy_response *response) {
+	return qhy_command(device, response, "\x7B\"cmd_id\":%d\x7D", command) && (response->idx == command || response->idx == alternate);
 }
 
-//static int qhy_relative_move(indigo_device *device, bool out, int steps) {
-//	qhy_response parsed_response;
-//	char command[MAX_CMD_LEN];
-//	char response[MAX_CMD_LEN];
-//	sprintf(command, "{\"cmd_id\":2,\"dir\":%d,\"step\":%d}", out ? 1 : -1, steps);
-//	int result = qhy_command(device, command, response, MAX_CMD_LEN, 0);
-//	if (result < 0) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command '%s' failed", command);
-//		return result;
-//	}
-//	result = qhy_parse_response(response, &parsed_response);
-//	if (result < 0 || parsed_response.idx != 2) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing response '%s' failed with %d", response, result);
-//	}
-//	return result;
-//}
-
-static int qhy_abort(indigo_device *device) {
+static bool qhy_get_version(indigo_device *device, char *version, char *board_version) {
 	qhy_response response;
-	int result = qhy_simple_command(device, 3, &response);
-	if (result < 0) {
-		return result;
+	if (!qhy_simple_command(device, 1, -2, &response)) {
+		return false;
 	}
-	if(response.idx != 3 && response.idx != 5) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Responce expected 3 or 5 received %d", response.idx);
-		return -1;
-	}
-	return 0;
+	snprintf(version, 64, "%s", response.version);
+	snprintf(board_version, 64, "%s", response.board_version);
+	return true;
 }
 
-int qhy_get_temperature_voltage(indigo_device *device, double *chip_temp, double *out_temp, double *voltage) {
-	qhy_response parsed_response;
-	int result = qhy_simple_command(device, 4, &parsed_response);
-	if (result < 0) {
-		return result;
-	}
-	if(parsed_response.idx != 4) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Responce expected 4 received %d", parsed_response.idx);
-		return -1;
-	}
-	if (chip_temp) *chip_temp = parsed_response.chip_temp;
-	if (out_temp) *out_temp = parsed_response.out_temp;
-	if (voltage) *voltage = parsed_response.voltage;
-	return 0;
+static bool qhy_abort(indigo_device *device) {
+	qhy_response response;
+	return qhy_simple_command(device, 3, 5, &response);
 }
 
-static int qhy_get_position(indigo_device *device, int *position) {
-	qhy_response parsed_response;
-	int result = qhy_simple_command(device, 5, &parsed_response);
-	if (result < 0) {
-		return result;
+static bool qhy_get_temperature_voltage(indigo_device *device, double *chip_temperature, double *outside_temperature, double *voltage) {
+	qhy_response response;
+	if (!qhy_simple_command(device, 4, -2, &response)) {
+		return false;
 	}
-	if(parsed_response.idx != 5) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Responce expected 4 received %d", parsed_response.idx);
-		return -1;
+	if (chip_temperature) {
+		*chip_temperature = response.chip_temperature;
 	}
-	*position = parsed_response.position;
-	return 0;
+	if (outside_temperature) {
+		*outside_temperature = response.outside_temperature;
+	}
+	if (voltage) {
+		*voltage = response.voltage;
+	}
+	return true;
 }
 
-static int qhy_absolute_move(indigo_device *device, int position) {
-	qhy_response parsed_response;
-	char command[MAX_CMD_LEN];
-	char response[MAX_CMD_LEN];
-	sprintf(command, "{\"cmd_id\":6,\"tar\":%d}", position);
-	int result = qhy_command(device, command, response, MAX_CMD_LEN, 0);
-	if (result < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command '%s' failed", command);
-		return result;
+static bool qhy_get_position(indigo_device *device, int *position) {
+	qhy_response response;
+	if (!qhy_simple_command(device, 5, -2, &response) || !response.has_position) {
+		return false;
 	}
-	result = qhy_parse_response(response, &parsed_response);
-	if (result < 0 || parsed_response.idx != 6) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing response '%s' failed with %d", response, result);
-	}
-	return result;
+	*position = response.position;
+	return true;
 }
 
-static int qhy_set_reverse(indigo_device *device, bool reverse) {
-	qhy_response parsed_response;
-	char command[MAX_CMD_LEN];
-	char response[MAX_CMD_LEN];
-	sprintf(command, "{\"cmd_id\":7,\"rev\":%d}", reverse ? 1 : 0);
-	int result = qhy_command(device, command, response, MAX_CMD_LEN, 0);
-	if (result < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command '%s' failed", command);
-		return result;
-	}
-	result = qhy_parse_response(response, &parsed_response);
-	if (result < 0 || parsed_response.idx != 7) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing response '%s' failed with %d", response, result);
-	}
-	return result;
+static bool qhy_absolute_move(indigo_device *device, int position) {
+	qhy_response response;
+	return qhy_command(device, &response, "\x7B\"cmd_id\":6,\"tar\":%d\x7D", position) && response.idx == 6;
 }
 
-static int qhy_sync_position(indigo_device *device, int position) {
-	qhy_response parsed_response;
-	char command[MAX_CMD_LEN];
-	char response[MAX_CMD_LEN];
-	sprintf(command, "{\"cmd_id\":11,\"init_val\":%d}", position);
-	int result = qhy_command(device, command, response, MAX_CMD_LEN, 0);
-	if (result < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command '%s' failed", command);
-		return result;
-	}
-	result = qhy_parse_response(response, &parsed_response);
-	if (result < 0 || parsed_response.idx != 11) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing response '%s' failed with %d", response, result);
-	}
-	return result;
+static bool qhy_set_reverse(indigo_device *device, bool reverse) {
+	qhy_response response;
+	return qhy_command(device, &response, "\x7B\"cmd_id\":7,\"rev\":%d\x7D", reverse ? 1 : 0) && response.idx == 7;
 }
 
-static int qhy_set_speed(indigo_device *device, int speed) {
-	qhy_response parsed_response;
-	char command[MAX_CMD_LEN];
-	char response[MAX_CMD_LEN];
-	sprintf(command, "{\"cmd_id\":13,\"speed\":%d}", speed);
-	int result = qhy_command(device, command, response, MAX_CMD_LEN, 0);
-	if (result < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command '%s' failed", command);
-		return result;
-	}
-	result = qhy_parse_response(response, &parsed_response);
-	if (result < 0 || parsed_response.idx != 13) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing response '%s' failed with %d", response, result);
-	}
-	return result;
+static bool qhy_sync_position(indigo_device *device, int position) {
+	qhy_response response;
+	return qhy_command(device, &response, "\x7B\"cmd_id\":11,\"init_val\":%d\x7D", position) && response.idx == 11;
 }
 
-// From INDI driver - no idea what those hadcoded values mean
-static int qhy_set_hold(indigo_device *device) {
-	qhy_response parsed_response;
-	char command[MAX_CMD_LEN];
-	char response[MAX_CMD_LEN];
-	sprintf(command, "{\"cmd_id\":16,\"ihold\":0,\"irun\":5}");
-	int result = qhy_command(device, command, response, MAX_CMD_LEN, 0);
-	if (result < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command '%s' failed", command);
-		return result;
-	}
-	result = qhy_parse_response(response, &parsed_response);
-	if (result < 0 || parsed_response.idx != 16) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing response '%s' failed with %d", response, result);
-	}
-	return result;
+static bool qhy_set_speed(indigo_device *device, int speed) {
+	qhy_response response;
+	return qhy_command(device, &response, "\x7B\"cmd_id\":13,\"speed\":%d\x7D", speed) && response.idx == 13;
 }
 
-// -------------------------------------------------------------------------------- INDIGO focuser device implementation
-static void focuser_timer_callback(indigo_device *device) {
-	int position;
+static bool qhy_set_hold(indigo_device *device) {
+	qhy_response response;
+	return qhy_command(device, &response, "\x7B\"cmd_id\":16,\"ihold\":0,\"irun\":5\x7D") && response.idx == 16;
+}
 
-	if (qhy_get_position(device, &position) < 0)  {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_get_position(%p) failed", PRIVATE_DATA->handle);
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		PRIVATE_DATA->current_position = (double)position;
-	}
+static void qhy_temperature_clear(indigo_device *device) {
+	memset(&PRIVATE_DATA->temperature_buffer, 0, sizeof(PRIVATE_DATA->temperature_buffer));
+}
 
-	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-	if (PRIVATE_DATA->current_position == PRIVATE_DATA->target_position) {
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
+static double qhy_temperature_add(indigo_device *device, double value) {
+	qhy_temperature_buffer *buffer = &PRIVATE_DATA->temperature_buffer;
+	buffer->values[buffer->next] = value;
+	buffer->next = (buffer->next + 1) % 5;
+	if (buffer->count < 5) {
+		buffer->count++;
 	}
-	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	double sum = 0;
+	for (int i = 0; i < buffer->count; i++) {
+		sum += buffer->values[i];
+	}
+	return sum / buffer->count;
+}
+
+static int qhy_limit_target(indigo_device *device, int target) {
+	int minimum = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+	int maximum = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+	if (target < minimum) {
+		return minimum;
+	}
+	if (target > maximum) {
+		return maximum;
+	}
+	return target;
+}
+
+static void qhy_motion_state(indigo_device *device, indigo_property_state state) {
+	FOCUSER_POSITION_PROPERTY->state = state;
+	FOCUSER_STEPS_PROPERTY->state = state;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 }
 
-
-static void temperature_timer_callback(indigo_device *device) {
-	double temp = 0, temp_sample, chip_temp, voltage;
-
-	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-
-	if (qhy_get_temperature_voltage(device, &chip_temp, &temp_sample, &voltage) < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_get_temperature_voltage(%p) failed", PRIVATE_DATA->handle);
-		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		INDIGO_DRIVER_DEBUG(
-			DRIVER_NAME,
-			"qhy_get_temperature_voltage(%p, -> %f, %f, %f) succeeded",
-			PRIVATE_DATA->handle,
-			temp_sample,
-			chip_temp,
-			voltage
-		);
-		if (temp_sample <= NO_TEMP_READING) {
-			temp_sample = chip_temp;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No outside temperature reading, using chip temperature: %f", chip_temp);
-		}
-
-		// write to circular buffer and calculate average temperature to reduce noise
-		cb_write(&PRIVATE_DATA->temperature_buffer, temp_sample);
-		temp = cb_average(&PRIVATE_DATA->temperature_buffer);
-
-		INDIGO_DRIVER_DEBUG(
-			DRIVER_NAME,
-			"Temperature: temp_sample = %f, chip_temp = %f, average_temp = %f",
-			temp_sample,
-			chip_temp,
-			temp
-		);
-
-		FOCUSER_TEMPERATURE_ITEM->number.value = temp;
+static void motion_finalizer(indigo_device *device) {
+	if (!IS_CONNECTED || !PRIVATE_DATA->moving) {
+		return;
 	}
+	int position = 0;
+	if (!qhy_get_position(device, &position)) {
+		PRIVATE_DATA->moving = false;
+		PRIVATE_DATA->motion_uncertain = true;
+		qhy_motion_state(device, INDIGO_ALERT_STATE);
+		return;
+	}
+	PRIVATE_DATA->current_position = position;
+	FOCUSER_POSITION_ITEM->number.value = position;
+	if (position == PRIVATE_DATA->target_position) {
+		PRIVATE_DATA->moving = PRIVATE_DATA->motion_uncertain = false;
+		FOCUSER_POSITION_ITEM->number.target = position;
+		qhy_motion_state(device, INDIGO_OK_STATE);
+		return;
+	}
+	if (position != PRIVATE_DATA->last_position) {
+		PRIVATE_DATA->last_position = position;
+		PRIVATE_DATA->motion_deadline = indigo_monotonic_time() + QHY_STALL_TIMEOUT;
+	} else if (indigo_monotonic_time() >= PRIVATE_DATA->motion_deadline) {
+		bool recovered = qhy_abort(device) && qhy_get_position(device, &position);
+		PRIVATE_DATA->moving = false;
+		PRIVATE_DATA->motion_uncertain = !recovered;
+		if (recovered) {
+			PRIVATE_DATA->current_position = position;
+			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+		}
+		qhy_motion_state(device, INDIGO_ALERT_STATE);
+		return;
+	}
+	qhy_motion_state(device, INDIGO_BUSY_STATE);
+	indigo_execute_handler_in(device, 0.2, motion_finalizer);
+}
 
-	if (FOCUSER_TEMPERATURE_ITEM->number.value <= NO_TEMP_READING) { /* < -50 is returned when the sensor is not connected */
-		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
-		if (PRIVATE_DATA->has_valid_temperature) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "No valid temperature reading.");
-			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "No valid temperature reading.");
-			PRIVATE_DATA->has_valid_temperature = false;
+static bool qhy_start_motion(indigo_device *device, int target) {
+	target = qhy_limit_target(device, target);
+	if (!IS_CONNECTED || PRIVATE_DATA->moving || PRIVATE_DATA->motion_uncertain) {
+		qhy_motion_state(device, INDIGO_ALERT_STATE);
+		return false;
+	}
+	if (target == PRIVATE_DATA->current_position) {
+		PRIVATE_DATA->target_position = target;
+		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = target;
+		qhy_motion_state(device, INDIGO_OK_STATE);
+		return true;
+	}
+	if (!qhy_absolute_move(device, target)) {
+		PRIVATE_DATA->motion_uncertain = true;
+		qhy_motion_state(device, INDIGO_ALERT_STATE);
+		return false;
+	}
+	PRIVATE_DATA->target_position = target;
+	PRIVATE_DATA->last_position = PRIVATE_DATA->current_position;
+	PRIVATE_DATA->motion_deadline = indigo_monotonic_time() + QHY_STALL_TIMEOUT;
+	PRIVATE_DATA->moving = true;
+	PRIVATE_DATA->motion_uncertain = false;
+	FOCUSER_POSITION_ITEM->number.target = target;
+	qhy_motion_state(device, INDIGO_BUSY_STATE);
+	return true;
+}
+
+static void qhy_compensate(indigo_device *device, double temperature) {
+	if (!FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
+		PRIVATE_DATA->previous_temperature = QHY_NO_TEMPERATURE;
+		return;
+	}
+	if (PRIVATE_DATA->previous_temperature <= QHY_NO_TEMPERATURE) {
+		PRIVATE_DATA->previous_temperature = temperature;
+		return;
+	}
+	double difference = temperature - PRIVATE_DATA->previous_temperature;
+	if (PRIVATE_DATA->moving || PRIVATE_DATA->motion_uncertain || FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE || fabs(difference) < FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value || fabs(difference) >= 100) {
+		return;
+	}
+	int correction = (int)lround(difference * FOCUSER_COMPENSATION_ITEM->number.value);
+	PRIVATE_DATA->previous_temperature = temperature;
+	if (correction != 0) {
+		qhy_start_motion(device, PRIVATE_DATA->current_position + correction);
+		if (PRIVATE_DATA->moving) {
+			indigo_execute_handler_in(device, 0.2, motion_finalizer);
+		}
+	}
+}
+
+static bool qhy_open(indigo_device *device) {
+	char *name = DEVICE_PORT_ITEM->text.value;
+	if (indigo_uni_is_url(name, "qfocuser")) {
+		PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
+	} else {
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
+		if (PRIVATE_DATA->handle) {
+			indigo_usleep(ONE_SECOND_DELAY);
+		}
+	}
+	if (!PRIVATE_DATA->handle) {
+		return false;
+	}
+	char firmware[64], board[64];
+	int position = 0;
+	int requested_speed = (int)FOCUSER_SPEED_ITEM->number.value;
+	bool requested_reverse = FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
+	if (!qhy_get_version(device, firmware, board) || !qhy_get_position(device, &position) || position < 0 || position > QHY_MAX_POSITION || !qhy_set_speed(device, requested_speed) || !qhy_set_reverse(device, requested_reverse)) {
+		indigo_uni_close(&PRIVATE_DATA->handle);
+		return false;
+	}
+	INDIGO_COPY_VALUE(INFO_DEVICE_HW_REVISION_ITEM->text.value, board);
+	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+	PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = PRIVATE_DATA->last_position = position;
+	PRIVATE_DATA->speed = requested_speed;
+	PRIVATE_DATA->reverse = requested_reverse;
+	FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+	double voltage = 0;
+	if (qhy_get_temperature_voltage(device, NULL, NULL, &voltage) && voltage == 0) {
+		qhy_set_hold(device);
+	}
+	return true;
+}
+
+static void qhy_close(indigo_device *device) {
+	indigo_uni_close(&PRIVATE_DATA->handle);
+	PRIVATE_DATA->disconnect_pending = false;
+}
+
+//- code
+
+#pragma mark - High level code (focuser)
+
+static void focuser_timer_callback(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	//+ focuser.on_timer
+	if (!PRIVATE_DATA->moving && !PRIVATE_DATA->motion_uncertain) {
+		int position = 0;
+		if (qhy_get_position(device, &position) && position >= 0 && position <= QHY_MAX_POSITION) {
+			PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = PRIVATE_DATA->last_position = position;
+			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
+	double chip = 0, outside = 0;
+	if (qhy_get_temperature_voltage(device, &chip, &outside, NULL)) {
+		double sample = outside <= QHY_NO_TEMPERATURE ? chip : outside;
+		if (sample > QHY_NO_TEMPERATURE && isfinite(sample)) {
+			double temperature = qhy_temperature_add(device, sample);
+			FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
+			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+			PRIVATE_DATA->temperature_valid = true;
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+			qhy_compensate(device, temperature);
+		} else {
+			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
+			PRIVATE_DATA->temperature_valid = false;
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "No valid temperature reading");
 		}
 	} else {
-		PRIVATE_DATA->	has_valid_temperature = true;
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		PRIVATE_DATA->temperature_valid = false;
 		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 	}
-	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
-		compensate_focus(device, temp);
-	} else {
-		/* reset temp so that the compensation starts when auto mode is selected */
-		PRIVATE_DATA->prev_temp = NO_TEMP_READING;
-	}
-
-	indigo_execute_handler_in(device, 2, temperature_timer_callback);
+	indigo_execute_handler_in(device, 2, focuser_timer_callback);
+	//- focuser.on_timer
 }
 
-static void compensate_focus(indigo_device *device, double new_temp) {
-	int compensation;
-	double temp_difference = new_temp - PRIVATE_DATA->prev_temp;
-
-	/* we do not have previous temperature reading */
-	if (PRIVATE_DATA->prev_temp <= NO_TEMP_READING) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: PRIVATE_DATA->prev_temp = %f", PRIVATE_DATA->prev_temp);
-		PRIVATE_DATA->prev_temp = new_temp;
-		return;
-	}
-
-	/* we do not have current temperature reading or focuser is moving */
-	if ((new_temp <= NO_TEMP_READING) || (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: new_temp = %f, FOCUSER_POSITION_PROPERTY->state = %d", new_temp, FOCUSER_POSITION_PROPERTY->state);
-		return;
-	}
-
-	/* temperature difference if more than 1 degree so compensation needed */
-	if ((fabs(temp_difference) >= FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value) && (fabs(temp_difference) < 100)) {
-		compensation = (int)(temp_difference * FOCUSER_COMPENSATION_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(
-			DRIVER_NAME,
-			"Compensation: temp_difference = %.2f, Compensation = %d, steps/degC = %.0f, threshold = %.2f",
-			temp_difference,
-			compensation,
-			FOCUSER_COMPENSATION_ITEM->number.value,
-			FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value
-		);
-	} else {
-		INDIGO_DRIVER_DEBUG(
-			DRIVER_NAME,
-			"Not compensating (not needed): temp_difference = %.2f, threshold = %.2f",
-			temp_difference,
-			FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value
-		);
-		return;
-	}
-
-	PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + compensation;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: PRIVATE_DATA->current_position = %d, PRIVATE_DATA->target_position = %d", PRIVATE_DATA->current_position, PRIVATE_DATA->target_position);
-
-	int current_position;
-
-	if (qhy_get_position(device, &current_position) < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_get_position(%p) failed", PRIVATE_DATA->handle);
-	}
-
-	PRIVATE_DATA->current_position = (double)current_position;
-
-	/* Make sure we do not attempt to go beyond the limits */
-	if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
-		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
-	} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
-		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
-	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
-
-	if (qhy_absolute_move(device, PRIVATE_DATA->target_position) < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_absolute_position(%p, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-
-	PRIVATE_DATA->prev_temp = new_temp;
-	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
-}
-
-static indigo_result qhy_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (IS_CONNECTED) {
-	}
-	return indigo_focuser_enumerate_properties(device, NULL, NULL);
-}
-
-static indigo_result focuser_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(PRIVATE_DATA != NULL);
-	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
-		PRIVATE_DATA->handle = NULL;
-		// -------------------------------------------------------------------------------- SIMULATION
-		SIMULATION_PROPERTY->hidden = true;
-		// -------------------------------------------------------------------------------- DEVICE_PORT
-		DEVICE_PORT_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- DEVICE_PORTS
-		DEVICE_PORTS_PROPERTY->hidden = false;
-		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
-		DEVICE_BAUDRATE_PROPERTY->hidden = false;
-		INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, SERIAL_BAUDRATE);
-		// --------------------------------------------------------------------------------
-		INFO_PROPERTY->count = 7;
-
-		FOCUSER_LIMITS_PROPERTY->hidden = false;
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 1000;
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 2000000;
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.step = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min;
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max;
-
-		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = 0;
-		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = 0;
-		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 0;
-		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.step = 1000;
-
-		FOCUSER_SPEED_PROPERTY->hidden = false;
-		FOCUSER_SPEED_ITEM->number.min = 1;
-		FOCUSER_SPEED_ITEM->number.max = 8;
-		FOCUSER_SPEED_ITEM->number.step = 1;
-		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
-		strncpy(FOCUSER_SPEED_ITEM->label, "Speed (1 = fastest, 8 = slowest)", INDIGO_NAME_SIZE);
-
-		FOCUSER_POSITION_ITEM->number.min = 0;
-		FOCUSER_POSITION_ITEM->number.step = 10;
-		FOCUSER_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max;
-
-		FOCUSER_STEPS_ITEM->number.min = 0;
-		FOCUSER_STEPS_ITEM->number.step = 10;
-		FOCUSER_STEPS_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max;
-
-		FOCUSER_MODE_PROPERTY->hidden = false;
-		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
-		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
-		FOCUSER_COMPENSATION_ITEM->number.min = -100000;
-		FOCUSER_COMPENSATION_ITEM->number.max = 100000;
-		FOCUSER_COMPENSATION_PROPERTY->count = 2;
-
-		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
-		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
-		FOCUSER_BACKLASH_PROPERTY->hidden = true;
-
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
-
-		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_focuser_enumerate_properties(device, NULL, NULL);
-	}
-	return INDIGO_FAILED;
-}
-
-static void focuser_connect_callback(indigo_device *device) {
-	int position;
+static void focuser_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			} else {
-				char *name = DEVICE_PORT_ITEM->text.value;
-				if (!indigo_uni_is_url(name, "qfocuser")) {
-					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
-					/* To be on the safe side - wait for 1 sec! */
-					indigo_usleep(ONE_SECOND_DELAY);
-				} else {
-					PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
-				}
-				if (PRIVATE_DATA->handle == NULL) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-					indigo_global_unlock(device);
-					return;
-				} else if (qhy_get_position(device, &position) < 0) {  // check if it is QHY Focuser first
-					qhy_close(device);
-					indigo_global_unlock(device);
-					device->is_connected = false;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: Q-Focuser did not respond");
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-					indigo_update_property(device, CONNECTION_PROPERTY, "Q-Focuser did not respond");
-					return;
-				} else { // Successfully connected
-					char board[MAX_CMD_LEN] = "N/A";
-					char firmware[MAX_CMD_LEN] = "N/A";
-					if (qhy_get_version(device, firmware, board) == 0) {
-						INDIGO_COPY_VALUE(INFO_DEVICE_HW_REVISION_ITEM->text.value, board);
-						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
-						indigo_update_property(device, INFO_PROPERTY, NULL);
-					}
-
-					qhy_get_position(device, &position);
-					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = (double)position;
-					PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
-
-					if (qhy_set_speed(device, FOCUSER_SPEED_ITEM->number.value) < 0) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_set_speed(%p) failed", PRIVATE_DATA->handle);
-					}
-					FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.value;
-
-					if (qhy_set_reverse(device, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_set_reverse(%p) failed", PRIVATE_DATA->handle);
-					}
-
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					device->is_connected = true;
-
-					indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
-
-					double voltage = 0;
-					/* Copied from INDI driver - no idea why if power is off hold is set */
-					if(qhy_get_temperature_voltage(device, NULL, NULL, &voltage) < 0) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_get_temperature_voltage(%p) failed", PRIVATE_DATA->handle);
-					} else if (voltage == 0) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Voltage is 0.0 V, focuser is running with no external power.");
-						qhy_set_hold(device);
-					}
-
-					cb_clear(&PRIVATE_DATA->temperature_buffer);
-					PRIVATE_DATA->has_valid_temperature = true;
-					indigo_execute_handler_in(device, 0, temperature_timer_callback);
-				}
+		bool connection_result = true;
+		connection_result = qhy_open(device);
+		if (connection_result) {
+			//+ focuser.on_connect
+			PRIVATE_DATA->moving = PRIVATE_DATA->motion_uncertain = PRIVATE_DATA->disconnect_pending = false;
+			PRIVATE_DATA->temperature_valid = false;
+			PRIVATE_DATA->previous_temperature = QHY_NO_TEMPERATURE;
+			qhy_temperature_clear(device);
+			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			//- focuser.on_connect
+		}
+		if (connection_result) {
+			indigo_execute_handler(device, focuser_timer_callback);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+		} else {
+			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		indigo_cancel_pending_handlers(device);
+		//+ focuser.on_disconnect
+		indigo_cancel_pending_handler(device, motion_finalizer);
+		if (PRIVATE_DATA->moving || PRIVATE_DATA->motion_uncertain) {
+			qhy_abort(device);
+			if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+				qhy_motion_state(device, INDIGO_ALERT_STATE);
 			}
 		}
-	} else {
-		if (device->is_connected) {
-			indigo_cancel_pending_handlers(device);
-
-			qhy_abort(device);
-
-			qhy_close(device);
-			indigo_global_unlock(device);
-			device->is_connected = false;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		PRIVATE_DATA->moving = PRIVATE_DATA->motion_uncertain = false;
+		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+		//- focuser.on_disconnect
+		qhy_close(device);
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
-
-static void revese_motion_callback(indigo_device *device) {
-	FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-	if (qhy_set_reverse(device, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value) < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_set_reverse(%p, %d) failed", PRIVATE_DATA->handle, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
-		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
-}
-
-static void focuser_position_callback(indigo_device *device) {
-	if (FOCUSER_POSITION_ITEM->number.target < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value ||
-		FOCUSER_POSITION_ITEM->number.target > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value
-	) {
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	} else if (FOCUSER_POSITION_ITEM->number.target == PRIVATE_DATA->current_position) {
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	} else { /* GOTO position */
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.target;
-		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
-			if (qhy_absolute_move(device, PRIVATE_DATA->target_position) < 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_absolute_move(%p, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
-			}
-			indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
-		} else { /* RESET CURRENT POSITION */
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-			if (qhy_sync_position(device, PRIVATE_DATA->target_position) < 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_sync_position(%p, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			int position;
-			if (qhy_get_position(device, &position) < 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_get_position(%p) failed", PRIVATE_DATA->handle);
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = (double)position;
-			}
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		}
-	}
-}
-
-static void focuser_limits_callback(indigo_device *device) {
+static void focuser_limits_handler(indigo_device *device) {
 	FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_LIMITS.on_change
+	FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
+	FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+	//- focuser.FOCUSER_LIMITS.on_change
 	indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
 }
 
-static void focuser_speed_callback(indigo_device *device) {
+static void focuser_speed_handler(indigo_device *device) {
 	FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-	if (qhy_set_speed(device, FOCUSER_SPEED_ITEM->number.target) < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_set_speed(%p) failed", PRIVATE_DATA->handle);
+	//+ focuser.FOCUSER_SPEED.on_change
+	int requested = (int)FOCUSER_SPEED_ITEM->number.target;
+	if (!IS_CONNECTED || PRIVATE_DATA->moving || PRIVATE_DATA->motion_uncertain || !qhy_set_speed(device, requested)) {
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		PRIVATE_DATA->speed = requested;
+		FOCUSER_SPEED_ITEM->number.value = requested;
 	}
+	//- focuser.FOCUSER_SPEED.on_change
 	indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 }
 
-static void focuser_steps_callback(indigo_device *device) {
-	if (FOCUSER_STEPS_ITEM->number.value < 0 || FOCUSER_STEPS_ITEM->number.value > FOCUSER_STEPS_ITEM->number.max) {
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+static void focuser_mode_handler(indigo_device *device) {
+	FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_MODE.on_change
+	PRIVATE_DATA->previous_temperature = QHY_NO_TEMPERATURE;
+	if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
+		indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
+		indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	} else {
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		int position;
-		if (qhy_get_position(device, &position) < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_get_position(%p) failed", PRIVATE_DATA->handle);
-		} else {
-			PRIVATE_DATA->current_position = (double)position;
-		}
-
-		if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
-		} else {
-			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value;
-		}
-
-		// Make sure we do not attempt to go beyond the limits
-		if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
-			PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
-		} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
-			PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
-		}
-
-		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-		if (qhy_absolute_move(device, PRIVATE_DATA->target_position) < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_goto_position(%p, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
+		indigo_delete_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
+		indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	}
+	//- focuser.FOCUSER_MODE.on_change
+	indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
 }
 
-static void focuser_abort_callback(indigo_device *device) {
-	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_cancel_pending_handler(device, focuser_timer_callback);
+static void focuser_compensation_handler(indigo_device *device) {
+	FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_COMPENSATION.on_change
+	for (int i = 0; i < FOCUSER_COMPENSATION_PROPERTY->count; i++) {
+		FOCUSER_COMPENSATION_PROPERTY->items[i].number.value = FOCUSER_COMPENSATION_PROPERTY->items[i].number.target;
+	}
+	//- focuser.FOCUSER_COMPENSATION.on_change
+	indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+}
 
-	if (qhy_abort(device) < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_stop(%p) failed", PRIVATE_DATA->handle);
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	int position;
-	if (qhy_get_position(device, &position) < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_get_position(%p) failed", PRIVATE_DATA->handle);
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+static void focuser_reverse_motion_handler(indigo_device *device) {
+	FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_REVERSE_MOTION.on_change
+	bool requested = FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
+	if (!IS_CONNECTED || PRIVATE_DATA->moving || PRIVATE_DATA->motion_uncertain || !qhy_set_reverse(device, requested)) {
+		indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reverse ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
-		PRIVATE_DATA->current_position = (double)position;
+		PRIVATE_DATA->reverse = requested;
 	}
-	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+	//- focuser.FOCUSER_REVERSE_MOTION.on_change
+	indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+}
+
+static void focuser_position_handler(indigo_device *device) {
+	//+ focuser.FOCUSER_POSITION.on_change
+	int requested = (int)FOCUSER_POSITION_ITEM->number.target;
+	if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
+		qhy_start_motion(device, requested);
+	} else {
+		int actual = 0;
+		if (IS_CONNECTED && !PRIVATE_DATA->moving && !PRIVATE_DATA->motion_uncertain && qhy_sync_position(device, requested) && qhy_get_position(device, &actual) && actual == requested) {
+			PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = PRIVATE_DATA->last_position = actual;
+			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = actual;
+			qhy_motion_state(device, INDIGO_OK_STATE);
+		} else {
+			qhy_motion_state(device, INDIGO_ALERT_STATE);
+		}
+	}
+	if (PRIVATE_DATA->moving) {
+		indigo_execute_handler_in(device, 0.2, motion_finalizer);
+	}
+	//- focuser.FOCUSER_POSITION.on_change
+}
+
+static void focuser_steps_handler(indigo_device *device) {
+	//+ focuser.FOCUSER_STEPS.on_change
+	int position = 0;
+	if (!IS_CONNECTED || PRIVATE_DATA->moving || PRIVATE_DATA->motion_uncertain || !qhy_get_position(device, &position)) {
+		qhy_motion_state(device, INDIGO_ALERT_STATE);
+	} else {
+		PRIVATE_DATA->current_position = position;
+		FOCUSER_POSITION_ITEM->number.value = position;
+		int direction = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1;
+		qhy_start_motion(device, position + direction * (int)FOCUSER_STEPS_ITEM->number.target);
+	}
+	if (PRIVATE_DATA->moving) {
+		indigo_execute_handler_in(device, 0.2, motion_finalizer);
+	}
+	//- focuser.FOCUSER_STEPS.on_change
+}
+
+static void focuser_abort_motion_handler(indigo_device *device) {
+	//+ focuser.FOCUSER_ABORT_MOTION.on_change
+	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+		bool pending = PRIVATE_DATA->moving || PRIVATE_DATA->motion_uncertain || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+		indigo_cancel_pending_handler(device, focuser_position_handler);
+		indigo_cancel_pending_handler(device, focuser_steps_handler);
+		indigo_cancel_pending_handler(device, motion_finalizer);
+		if (pending) {
+			int position = 0;
+			bool recovered = IS_CONNECTED && qhy_abort(device) && qhy_get_position(device, &position);
+			PRIVATE_DATA->moving = false;
+			PRIVATE_DATA->motion_uncertain = !recovered;
+			if (recovered) {
+				PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = PRIVATE_DATA->last_position = position;
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+				qhy_motion_state(device, INDIGO_OK_STATE);
+			} else {
+				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				qhy_motion_state(device, INDIGO_ALERT_STATE);
+			}
+		}
+	}
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+	//- focuser.FOCUSER_ABORT_MOTION.on_change
+}
+
+#pragma mark - Device API (focuser)
+
+static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
+static indigo_result focuser_attach(indigo_device *device) {
+	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
+		DEVICE_PORT_PROPERTY->hidden = false;
+		DEVICE_PORTS_PROPERTY->hidden = false;
+		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
+		DEVICE_BAUDRATE_PROPERTY->hidden = false;
+		//+ focuser.on_attach
+		INFO_PROPERTY->count = 7;
+		//- focuser.on_attach
+		SIMULATION_PROPERTY->hidden = true;
+		FOCUSER_LIMITS_PROPERTY->hidden = false;
+		//+ focuser.FOCUSER_LIMITS.on_attach
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = 0;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.step = 1000;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 1000;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = QHY_MAX_POSITION;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.step = 1000;
+		//- focuser.FOCUSER_LIMITS.on_attach
+		FOCUSER_SPEED_PROPERTY->hidden = false;
+		//+ focuser.FOCUSER_SPEED.on_attach
+		FOCUSER_SPEED_ITEM->number.min = 1;
+		FOCUSER_SPEED_ITEM->number.max = 8;
+		FOCUSER_SPEED_ITEM->number.step = 1;
+		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
+		INDIGO_COPY_VALUE(FOCUSER_SPEED_ITEM->label, "Speed (1 = fastest, 8 = slowest)");
+		//- focuser.FOCUSER_SPEED.on_attach
+		FOCUSER_DIRECTION_PROPERTY->hidden = false;
+		FOCUSER_MODE_PROPERTY->hidden = false;
+		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
+		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+		//+ focuser.FOCUSER_COMPENSATION.on_attach
+		FOCUSER_COMPENSATION_ITEM->number.min = -100000;
+		FOCUSER_COMPENSATION_ITEM->number.max = 100000;
+		FOCUSER_COMPENSATION_PROPERTY->count = 2;
+		//- focuser.FOCUSER_COMPENSATION.on_attach
+		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
+		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
+		FOCUSER_BACKLASH_PROPERTY->hidden = true;
+		FOCUSER_POSITION_PROPERTY->hidden = false;
+		//+ focuser.FOCUSER_POSITION.on_attach
+		FOCUSER_POSITION_ITEM->number.min = 0;
+		FOCUSER_POSITION_ITEM->number.max = QHY_MAX_POSITION;
+		FOCUSER_POSITION_ITEM->number.step = 10;
+		//- focuser.FOCUSER_POSITION.on_attach
+		FOCUSER_STEPS_PROPERTY->hidden = false;
+		//+ focuser.FOCUSER_STEPS.on_attach
+		FOCUSER_STEPS_ITEM->number.min = 0;
+		FOCUSER_STEPS_ITEM->number.max = QHY_MAX_POSITION;
+		FOCUSER_STEPS_ITEM->number.step = 10;
+		//- focuser.FOCUSER_STEPS.on_attach
+		FOCUSER_ABORT_MOTION_PROPERTY->hidden = false;
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return focuser_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	return indigo_focuser_enumerate_properties(device, client, property);
 }
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property))
-			return INDIGO_OK;
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_execute_handler(device, focuser_connect_callback);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
-		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
-		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
-		indigo_execute_handler(device, revese_motion_callback);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		indigo_execute_handler(device, focuser_position_callback);
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_handler(device, focuser_connection_handler);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
-		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
-		FOCUSER_LIMITS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
-		indigo_execute_handler(device, focuser_limits_callback);
+		INDIGO_COPY_TARGETS_PROCESS_SYNC_CHANGE(FOCUSER_LIMITS_PROPERTY, focuser_limits_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_SPEED_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_SPEED
-		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
-		FOCUSER_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-		indigo_execute_handler(device, focuser_speed_callback);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_SPEED_PROPERTY, focuser_speed_handler);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_STEPS
-		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		indigo_execute_handler(device, focuser_steps_callback);
+	} else if (indigo_property_match_changeable(FOCUSER_DIRECTION_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_DIRECTION_PROPERTY, property, false);
+		FOCUSER_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
-		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-		indigo_execute_priority_handler(device, INDIGO_TASK_PRIORITY_URGENT, focuser_abort_callback);
+	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(FOCUSER_MODE_PROPERTY, focuser_mode_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_COMPENSATION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION_PROPERTY
-		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
-		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+		INDIGO_COPY_TARGETS_PROCESS_SYNC_CHANGE(FOCUSER_COMPENSATION_PROPERTY, focuser_compensation_handler);
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- FOCUSER_MODE
-	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
-		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
-		if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
-			indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
-			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else {
-			indigo_delete_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
-			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		}
-		FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
+	} else if (indigo_property_match_changeable(FOCUSER_ON_POSITION_SET_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_ON_POSITION_SET_PROPERTY, property, false);
+		FOCUSER_ON_POSITION_SET_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONFIG
-		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_REVERSE_MOTION_PROPERTY, focuser_reverse_motion_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
+		//+ focuser.FOCUSER_POSITION.on_change_request
+		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Another focuser operation is in progress");
+			return INDIGO_OK;
 		}
-		// --------------------------------------------------------------------------------
+		//- focuser.FOCUSER_POSITION.on_change_request
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
+		//+ focuser.FOCUSER_STEPS.on_change_request
+		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Another focuser operation is in progress");
+			return INDIGO_OK;
+		}
+		//- focuser.FOCUSER_STEPS.on_change_request
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
+		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);
 }
 
-
 static indigo_result focuser_detach(indigo_device *device) {
-	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		focuser_connect_callback(device);
+		focuser_connection_handler(device);
 	}
-	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-
 	return indigo_focuser_detach(device);
 }
 
+#pragma mark - Device templates
 
-// --------------------------------------------------------------------------------
+static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(FOCUSER_DEVICE_NAME, focuser_attach, focuser_enumerate_properties, focuser_change_property, NULL, focuser_detach);
+
+#pragma mark - Main code
+
 indigo_result indigo_focuser_qhy(indigo_driver_action action, indigo_driver_info *info) {
+	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	static qhy_private_data *private_data = NULL;
 	static indigo_device *focuser = NULL;
-	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
-		FOCUSER_QHY_NAME,
-		focuser_attach,
-		qhy_enumerate_properties,
-		focuser_change_property,
-		NULL,
-		focuser_detach
-	);
 
-	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-
-	SET_DRIVER_INFO(info, "QHY Q-Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-
-			private_data = indigo_safe_malloc(sizeof(qhy_private_data));
-			focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
+			private_data = (qhy_private_data *)indigo_safe_malloc(sizeof(qhy_private_data));
+			focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
 			indigo_attach_device(focuser);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(focuser);
 			last_action = action;
 			if (focuser != NULL) {
 				indigo_detach_device(focuser);
-				free(focuser);
+				indigo_safe_free(focuser);
 				focuser = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}
