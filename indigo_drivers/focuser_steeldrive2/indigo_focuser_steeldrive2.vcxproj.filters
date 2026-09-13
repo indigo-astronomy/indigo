@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files"><UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier><Extensions>cpp;c;cc;cxx;c++;cppm;ixx</Extensions></Filter>
+    <Filter Include="Header Files"><UniqueIdentifier>{93995380-89BD-4B04-88EB-625FBE52EBFB}</UniqueIdentifier><Extensions>h;hh;hpp;hxx</Extensions></Filter>
+    <Filter Include="Source Files\indigo"><UniqueIdentifier>{99ABA4D8-10C2-4AF9-8CC0-FB6E6B82C8B3}</UniqueIdentifier></Filter>
+    <Filter Include="Header Files\indigo"><UniqueIdentifier>{E1017FF9-5C7F-4430-927D-8CBAF114DA5D}</UniqueIdentifier></Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\indigo_windows\dllmain.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="indigo_focuser_steeldrive2.c"><Filter>Source Files\indigo</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup><ClInclude Include="indigo_focuser_steeldrive2.h"><Filter>Header Files\indigo</Filter></ClInclude></ItemGroup>
+  <ItemGroup>
+    <None Include="indigo_focuser_steeldrive2.driver" />
+    <None Include="REFACTOR.md" />
+  </ItemGroup>
+</Project>
