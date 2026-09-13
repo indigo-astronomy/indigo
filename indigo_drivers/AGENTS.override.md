@@ -37,6 +37,9 @@
 
 ## Mandatory workflow checklist
 
+- When a user asks to continue or complete a driver refactoring, do not end the task at an intermediate buildable state or after a partial test pass. Continue through every applicable planned step, status update and final verification unless an external dependency or a required user decision genuinely blocks progress.
+- After every change to a driver's integration or opt-in hardware tests, recalculate and update that driver's `Automated Tests (Sim / HW)` counts in root `MIGRATION_STATUS.md`. The first number is the hardware-free integration-case count and the second is the physical-hardware-case count; preserve the Comment column exactly.
+
 1. Read the applicable instructions, driver sources, protocol/SDK documentation, build files, simulator/fake SDK, and tests.
 2. Create or update the driver's `REFACTOR.md` before production-code changes.
 3. Record the complete current-state audit and the baseline build/test evidence.

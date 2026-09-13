@@ -1,0 +1,610 @@
+// Copyright (c) 2017-2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Takahashi Temma Mount driver definition
+
+driver temma {
+	label = "Takahashi Temma Mount";
+	author = "";
+	copyright = "Copyright (c) 2017-2026 CloudMakers, s. r. o.";
+	version = 10;
+	serial {
+	}
+	include {
+		#include <ctype.h>
+		#include <stdarg.h>
+	}
+	define {
+		#define CCD_ADVANCED_GROUP   "Advanced"
+		#define TEMMA_MOTION_RA_EAST  0x02
+		#define TEMMA_MOTION_RA_WEST  0x04
+		#define TEMMA_MOTION_DEC_NORTH 0x08
+		#define TEMMA_MOTION_DEC_SOUTH 0x10
+	}
+	data {
+		double current_ra, current_dec;
+		char telescope_side;
+		bool is_busy, start_tracking, stop_tracking;
+		unsigned char mount_motion_mask, guider_motion_mask;
+		bool mount_high_speed;
+		char response[128];
+	}
+	code {
+		static void mount_goto_finalizer(indigo_device *device);
+		static void mount_motion_finalizer(indigo_device *device);
+		static void guider_guide_ra_finalizer(indigo_device *device);
+		static void guider_guide_dec_finalizer(indigo_device *device);
+
+		static bool temma_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_config(DEVICE_PORT_ITEM->text.value, "19200-8E1", INDIGO_LOG_DEBUG);
+			return PRIVATE_DATA->handle != NULL;
+		}
+
+		static void temma_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+
+		static bool temma_vcommand(indigo_device *device, bool reply, const char *format, va_list args) {
+			if (PRIVATE_DATA->handle == NULL) {
+				return false;
+			}
+			long result = indigo_uni_discard(PRIVATE_DATA->handle);
+			if (result >= 0) {
+				result = indigo_uni_vprintf(PRIVATE_DATA->handle, format, args);
+			}
+			if (result >= 0) {
+				result = indigo_uni_printf(PRIVATE_DATA->handle, "\r\n");
+			}
+			if (!reply) {
+				return result >= 0;
+			}
+			result = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r", INDIGO_DELAY(0.3), INDIGO_DELAY(0.3));
+			if (result <= 0) {
+				return false;
+			}
+			while (result > 0 && (PRIVATE_DATA->response[result - 1] == '\r' || PRIVATE_DATA->response[result - 1] == '\n')) {
+				result--;
+			}
+			PRIVATE_DATA->response[result] = 0;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Temma %s -> %s", format, PRIVATE_DATA->response);
+			return true;
+		}
+
+		static bool temma_command(indigo_device *device, bool reply, const char *format, ...) {
+			va_list args;
+			va_start(args, format);
+			bool result = temma_vcommand(device, reply, format, args);
+			va_end(args);
+			return result;
+		}
+
+		static bool temma_command_ack(indigo_device *device, const char *format, ...) {
+			va_list args;
+			va_start(args, format);
+			bool result = temma_vcommand(device, true, format, args);
+			va_end(args);
+			return result && !strcmp(PRIVATE_DATA->response, "R1");
+		}
+
+		static unsigned char temma_motion_byte(indigo_device *device) {
+			unsigned char motion_mask = PRIVATE_DATA->mount_motion_mask | PRIVATE_DATA->guider_motion_mask;
+			return motion_mask == 0 ? 'A' : 0x40 | motion_mask | (PRIVATE_DATA->mount_motion_mask != 0 && PRIVATE_DATA->mount_high_speed ? 1 : 0);
+		}
+
+		static bool temma_update_motion(indigo_device *device) {
+			indigo_device *mount = device->master_device == NULL ? device : device->master_device;
+			return temma_command_ack(mount, "M%c", temma_motion_byte(mount));
+		}
+
+		static bool temma_update_position(indigo_device *device) {
+			if (!temma_command(device, true, "E") || strlen(PRIVATE_DATA->response) != 15 || PRIVATE_DATA->response[0] != 'E' || (PRIVATE_DATA->response[7] != '+' && PRIVATE_DATA->response[7] != '-') || (PRIVATE_DATA->response[13] != 'E' && PRIVATE_DATA->response[13] != 'W') || (PRIVATE_DATA->response[14] != '0' && PRIVATE_DATA->response[14] != '1')) {
+				return false;
+			}
+			for (int index = 1; index <= 12; index++) {
+				if (index != 7 && !isdigit((unsigned char)PRIVATE_DATA->response[index])) {
+					return false;
+				}
+			}
+			int degrees, minutes, seconds;
+			if (sscanf(PRIVATE_DATA->response + 1, "%02d%02d%02d", &degrees, &minutes, &seconds) != 3 || degrees > 23 || minutes > 59 || seconds > 59) {
+				return false;
+			}
+			PRIVATE_DATA->current_ra = degrees + minutes / 60.0 + seconds / 3600.0;
+			if (sscanf(PRIVATE_DATA->response + 8, "%02d%02d%01d", &degrees, &minutes, &seconds) != 3 || degrees > 90 || minutes > 59 || (degrees == 90 && (minutes != 0 || seconds != 0))) {
+				return false;
+			}
+			PRIVATE_DATA->current_dec = degrees + minutes / 60.0 + seconds / 600.0;
+			if (PRIVATE_DATA->response[7] == '-') {
+				PRIVATE_DATA->current_dec = -PRIVATE_DATA->current_dec;
+			}
+			indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &PRIVATE_DATA->current_ra, &PRIVATE_DATA->current_dec);
+			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->current_ra;
+			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->current_dec;
+			PRIVATE_DATA->telescope_side = PRIVATE_DATA->response[13];
+			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, PRIVATE_DATA->telescope_side == 'W' ? MOUNT_SIDE_OF_PIER_EAST_ITEM : MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+			return true;
+		}
+
+		static bool temma_set_lst(indigo_device *device) {
+			time_t utc = indigo_get_mount_utc(device);
+			double lst = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+			return temma_command_ack(device, "T%02d%02d%02d", (int)lst, ((int)(lst * 60)) % 60, ((int)(lst * 3600)) % 60);
+		}
+
+		static bool temma_set_latitude(indigo_device *device) {
+			double latitude = fabs(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
+			int degrees = latitude;
+			int minutes = (latitude - degrees) * 60;
+			int tenths = ((int)(latitude * 600)) % 10;
+			return temma_command_ack(device, "I%c%02d%02d%d", MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0 ? '-' : '+', degrees, minutes, tenths);
+		}
+
+		static void mount_goto_finalizer(indigo_device *device) {
+			if (!IS_CONNECTED || !temma_update_position(device) || !temma_command(device, true, "s") || (strcmp(PRIVATE_DATA->response, "s0") && strcmp(PRIVATE_DATA->response, "s1"))) {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else if (PRIVATE_DATA->response[1] == '1') {
+				indigo_update_coordinates(device, NULL);
+				indigo_execute_handler_in(device, 0.5, mount_goto_finalizer);
+				return;
+			} else {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				if (PRIVATE_DATA->start_tracking) {
+					if (!temma_command_ack(device, "STN-OFF")) {
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+					PRIVATE_DATA->start_tracking = false;
+				}
+				if (PRIVATE_DATA->stop_tracking) {
+					if (!temma_command_ack(device, "STN-ON")) {
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+					PRIVATE_DATA->stop_tracking = false;
+				}
+			}
+			indigo_update_coordinates(device, NULL);
+		}
+
+		static void mount_motion_finalizer(indigo_device *device) {
+			if (!IS_CONNECTED || PRIVATE_DATA->mount_motion_mask == 0) {
+				return;
+			}
+			if (temma_update_motion(device)) {
+				indigo_execute_handler_in(device, 0.25, mount_motion_finalizer);
+			} else {
+				PRIVATE_DATA->mount_motion_mask = 0;
+				MOUNT_MOTION_RA_PROPERTY->state = MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+				indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+			}
+		}
+
+		static void guider_guide_ra_finalizer(indigo_device *device) {
+			PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_RA_EAST | TEMMA_MOTION_RA_WEST);
+			bool ok = temma_update_motion(device);
+			GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+			GUIDER_GUIDE_RA_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		}
+
+		static void guider_guide_dec_finalizer(indigo_device *device) {
+			PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_DEC_NORTH | TEMMA_MOTION_DEC_SOUTH);
+			bool ok = temma_update_motion(device);
+			GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+			GUIDER_GUIDE_DEC_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		}
+	}
+	// on_init { }
+	// on_shutdown { }
+	mount {
+		name = "Takahashi Temma Mount";
+		additional_instances = true;
+		// code { }
+		on_timer {
+			bool ok = temma_update_position(device) && temma_command(device, true, "s") && (!strcmp(PRIVATE_DATA->response, "s0") || !strcmp(PRIVATE_DATA->response, "s1"));
+			if (ok) {
+				PRIVATE_DATA->is_busy = !strcmp(PRIVATE_DATA->response, "s1");
+			}
+			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			}
+			indigo_update_coordinates(device, NULL);
+			indigo_execute_handler_in(device, 0.5, mount_timer_callback);
+		}
+		on_connect {
+			connection_result = temma_command(device, true, "v") && PRIVATE_DATA->response[0] == 'v' && PRIVATE_DATA->response[1] != 0;
+			if (connection_result) {
+				INDIGO_COPY_VALUE(MOUNT_INFO_VENDOR_ITEM->text.value, "Takahashi");
+				INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->response + 1);
+				INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
+				connection_result = temma_command_ack(device, "v1");
+				if (connection_result) {
+					PRIVATE_DATA->mount_motion_mask = PRIVATE_DATA->guider_motion_mask = 0;
+					PRIVATE_DATA->mount_high_speed = false;
+					temma_update_position(device);
+					if (temma_command(device, true, "lg") && strlen(PRIVATE_DATA->response) == 8 && PRIVATE_DATA->response[0] == 'l' && PRIVATE_DATA->response[1] == 'g' && isdigit((unsigned char)PRIVATE_DATA->response[2]) && isdigit((unsigned char)PRIVATE_DATA->response[3]) && PRIVATE_DATA->response[4] == 'D' && isdigit((unsigned char)PRIVATE_DATA->response[5]) && isdigit((unsigned char)PRIVATE_DATA->response[6]) && (PRIVATE_DATA->response[7] == 'N' || PRIVATE_DATA->response[7] == 'S')) {
+						int ra_correction = atoi(PRIVATE_DATA->response + 2);
+						int dec_correction = atoi(PRIVATE_DATA->response + 5);
+						if (ra_correction >= 10 && ra_correction <= 90 && dec_correction >= 10 && dec_correction <= 90) {
+							CORRECTION_SPEED_RA_ITEM->number.value = ra_correction;
+							CORRECTION_SPEED_DEC_ITEM->number.value = dec_correction;
+						}
+					}
+				}
+			}
+		}
+		on_disconnect {
+			indigo_cancel_pending_handlers(device);
+			PRIVATE_DATA->mount_motion_mask = 0;
+			PRIVATE_DATA->mount_high_speed = false;
+			if (PRIVATE_DATA->handle != NULL) {
+				temma_update_motion(device);
+				if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+					temma_command_ack(device, "PS");
+				}
+			}
+		}
+		on_attach {
+			MOUNT_PARK_PROPERTY->count = 1;
+			MOUNT_PARK_PARKED_ITEM->sw.value = false;
+			MOUNT_PARK_POSITION_PROPERTY->hidden = false;
+			MOUNT_PARK_SET_PROPERTY->hidden = false;
+			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+			MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RW_PERM;
+			MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
+			ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
+		}
+		// on_detach { }
+		number CORRECTION_SPEED {
+			persistent = true;
+			on_change {
+				bool ok = temma_command_ack(device, "LA%02d", (int)CORRECTION_SPEED_RA_ITEM->number.value) && temma_command_ack(device, "LB%02d", (int)CORRECTION_SPEED_DEC_ITEM->number.value);
+				CORRECTION_SPEED_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			}
+			// on_attach { }
+			// on_detach { }
+			name = "X_TEMMA_CORRECTION_SPEED";
+			group = CCD_ADVANCED_GROUP;
+			label = "Correction speed";
+			// asynchronous_change = false;
+			item CORRECTION_SPEED_RA {
+				name = "RA";
+				label = "RA speed (10% - 90%)";
+				value = 50;
+				min = 10;
+				max = 90;
+				step = 1;
+			}
+			item CORRECTION_SPEED_DEC {
+				name = "DEC";
+				label = "Dec speed (10% - 90%)";
+				value = 50;
+				min = 10;
+				max = 90;
+				step = 1;
+			}
+		}
+		switch HIGH_SPEED {
+			on_change {
+				HIGH_SPEED_PROPERTY->state = temma_command_ack(device, HIGH_SPEED_HIGH_ITEM->sw.value ? "v2" : "v1") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			}
+			// on_attach { }
+			// on_detach { }
+			name = "X_TEMMA_HIGH_SPEED";
+			group = CCD_ADVANCED_GROUP;
+			label = "High-speed or High-voltage config";
+			// asynchronous_change = false;
+			item HIGH_SPEED_LOW {
+				name = "LOW";
+				label = "12V or Low-speed";
+				value = true;
+			}
+			item HIGH_SPEED_HIGH {
+				name = "HIGH";
+				label = "24V or High-speed";
+				value = false;
+			}
+		}
+		switch ZENITH {
+			on_change {
+				bool ok = temma_command_ack(device, "Z");
+				ZENITH_EAST_ITEM->sw.value = false;
+				ZENITH_WEST_ITEM->sw.value = false;
+				ZENITH_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			}
+			// on_attach { }
+			// on_detach { }
+			name = "X_TEMMA_ZENITH";
+			group = CCD_ADVANCED_GROUP;
+			label = "Sync zenith";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			// asynchronous_change = false;
+			item ZENITH_EAST {
+				name = "EAST";
+				label = "East zenith";
+				value = false;
+			}
+			item ZENITH_WEST {
+				name = "WEST";
+				label = "West zenith";
+				value = false;
+			}
+		}
+		inherited MOUNT_EQUATORIAL_COORDINATES {
+			hidden = false;
+			on_change {
+				double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+				double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+				indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+				int ra_seconds = ra * 3600;
+				int dec_tenths = dec * 600;
+				char dec_sign = dec_tenths < 0 ? '-' : '+';
+				dec_tenths = abs(dec_tenths);
+				char command[32];
+				snprintf(command, sizeof(command), "%c%02d%02d%02d%c%02d%02d%d", MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? 'D' : 'P', ra_seconds / 3600, (ra_seconds / 60) % 60, ra_seconds % 60, dec_sign, dec_tenths / 600, (dec_tenths / 10) % 60, dec_tenths % 10);
+				if (temma_command_ack(device, "%s", command)) {
+					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+					PRIVATE_DATA->start_tracking = MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value || MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value;
+					PRIVATE_DATA->stop_tracking = MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value;
+					indigo_update_coordinates(device, NULL);
+					indigo_execute_handler_in(device, 0.1, mount_goto_finalizer);
+				} else {
+					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_coordinates(device, NULL);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_ABORT_MOTION {
+			hidden = false;
+			on_change {
+				indigo_cancel_pending_handler(device, mount_goto_finalizer);
+				indigo_cancel_pending_handler(device, mount_motion_finalizer);
+				PRIVATE_DATA->mount_motion_mask = 0;
+				bool ok = temma_update_motion(device) && temma_command_ack(device, "PS");
+				MOUNT_MOTION_RA_PROPERTY->state = MOUNT_MOTION_DEC_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				MOUNT_MOTION_EAST_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = false;
+				MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+				indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+				indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_coordinates(device, NULL);
+				if (!ok) {
+					MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				if (MOUNT_ABORT_MOTION_PROPERTY->state != INDIGO_ALERT_STATE) {
+					MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				MOUNT_ABORT_MOTION_ITEM->sw.value = false;
+				indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_TRACK_RATE {
+			hidden = false;
+			on_change {
+				MOUNT_TRACK_RATE_PROPERTY->state = temma_command_ack(device, MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value ? "LK" : "LL") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_TRACKING {
+			hidden = false;
+			on_change {
+				MOUNT_TRACKING_PROPERTY->state = temma_command_ack(device, MOUNT_TRACKING_ON_ITEM->sw.value ? "STN-OFF" : "STN-ON") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_MOTION_DEC {
+			hidden = false;
+			on_change {
+				PRIVATE_DATA->mount_motion_mask &= ~(TEMMA_MOTION_DEC_NORTH | TEMMA_MOTION_DEC_SOUTH);
+				if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
+					PRIVATE_DATA->mount_motion_mask |= TEMMA_MOTION_DEC_NORTH;
+				} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
+					PRIVATE_DATA->mount_motion_mask |= TEMMA_MOTION_DEC_SOUTH;
+				}
+				PRIVATE_DATA->mount_high_speed = !(MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value);
+				indigo_cancel_pending_handler(device, mount_motion_finalizer);
+				if (PRIVATE_DATA->mount_motion_mask) {
+					MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+					indigo_execute_handler(device, mount_motion_finalizer);
+				} else {
+					MOUNT_MOTION_DEC_PROPERTY->state = temma_update_motion(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+					indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_MOTION_RA {
+			hidden = false;
+			on_change {
+				PRIVATE_DATA->mount_motion_mask &= ~(TEMMA_MOTION_RA_EAST | TEMMA_MOTION_RA_WEST);
+				if (MOUNT_MOTION_WEST_ITEM->sw.value) {
+					PRIVATE_DATA->mount_motion_mask |= TEMMA_MOTION_RA_WEST;
+				} else if (MOUNT_MOTION_EAST_ITEM->sw.value) {
+					PRIVATE_DATA->mount_motion_mask |= TEMMA_MOTION_RA_EAST;
+				}
+				PRIVATE_DATA->mount_high_speed = !(MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value);
+				indigo_cancel_pending_handler(device, mount_motion_finalizer);
+				if (PRIVATE_DATA->mount_motion_mask) {
+					MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+					indigo_execute_handler(device, mount_motion_finalizer);
+				} else {
+					MOUNT_MOTION_RA_PROPERTY->state = temma_update_motion(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+					indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_SET_HOST_TIME {
+			hidden = true;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_UTC_TIME {
+			hidden = true;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_PARK_POSITION {
+			hidden = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_PARK_SET {
+			hidden = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_SIDE_OF_PIER {
+			hidden = false;
+			on_change {
+				bool switch_side = (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value && PRIVATE_DATA->telescope_side == 'E') || (MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value && PRIVATE_DATA->telescope_side == 'W');
+				MOUNT_SIDE_OF_PIER_PROPERTY->state = !switch_side || temma_command_ack(device, "PT") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				if (MOUNT_SIDE_OF_PIER_PROPERTY->state == INDIGO_OK_STATE) {
+					temma_update_position(device);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_PARK {
+			hidden = false;
+			on_change {
+				if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+					time_t utc = indigo_get_mount_utc(device);
+					double ra = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_PARK_POSITION_HA_ITEM->number.value;
+					int ra_seconds = (ra < 0 ? ra + 24 : ra) * 3600;
+					int dec_tenths = MOUNT_PARK_POSITION_DEC_ITEM->number.value * 600;
+					char dec_sign = dec_tenths < 0 ? '-' : '+';
+					dec_tenths = abs(dec_tenths);
+					bool ok = temma_set_lst(device) && temma_command_ack(device, "P%02d%02d%02d%c%02d%02d%d", ra_seconds / 3600, (ra_seconds / 60) % 60, ra_seconds % 60, dec_sign, dec_tenths / 600, (dec_tenths / 10) % 60, dec_tenths % 10) && temma_command_ack(device, "STN-ON");
+					MOUNT_PARK_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+					MOUNT_PARK_PARKED_ITEM->sw.value = false;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_GEOGRAPHIC_COORDINATES {
+			hidden = false;
+			on_change {
+				if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0) {
+					MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
+				}
+				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = temma_set_latitude(device) && temma_set_lst(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+	}
+	guider {
+		name = "Takahashi Temma Mount (guider)";
+		// code { }
+		// on_timer { }
+		// on_connect { }
+		on_disconnect {
+			indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+			indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+			PRIVATE_DATA->guider_motion_mask = 0;
+			if (PRIVATE_DATA->handle != NULL) {
+				temma_update_motion(device);
+			}
+		}
+		// on_attach { }
+		// on_detach { }
+		inherited GUIDER_GUIDE_DEC {
+			hidden = false;
+			on_change_request {
+				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			on_change {
+				indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+				PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_DEC_NORTH | TEMMA_MOTION_DEC_SOUTH);
+				double duration = 0;
+				if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
+					PRIVATE_DATA->guider_motion_mask |= TEMMA_MOTION_DEC_NORTH;
+					duration = GUIDER_GUIDE_NORTH_ITEM->number.value / 1000.0;
+				} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
+					PRIVATE_DATA->guider_motion_mask |= TEMMA_MOTION_DEC_SOUTH;
+					duration = GUIDER_GUIDE_SOUTH_ITEM->number.value / 1000.0;
+				}
+				bool ok = temma_update_motion(device);
+				if (duration > 0 && ok) {
+					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+					indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration, guider_guide_dec_finalizer);
+				} else {
+					if (!ok) {
+						PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_DEC_NORTH | TEMMA_MOTION_DEC_SOUTH);
+					}
+					GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+					GUIDER_GUIDE_DEC_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+					indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited GUIDER_GUIDE_RA {
+			hidden = false;
+			on_change_request {
+				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			on_change {
+				indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+				PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_RA_EAST | TEMMA_MOTION_RA_WEST);
+				double duration = 0;
+				if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
+					PRIVATE_DATA->guider_motion_mask |= TEMMA_MOTION_RA_WEST;
+					duration = GUIDER_GUIDE_WEST_ITEM->number.value / 1000.0;
+				} else if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
+					PRIVATE_DATA->guider_motion_mask |= TEMMA_MOTION_RA_EAST;
+					duration = GUIDER_GUIDE_EAST_ITEM->number.value / 1000.0;
+				}
+				bool ok = temma_update_motion(device);
+				if (duration > 0 && ok) {
+					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+					indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration, guider_guide_ra_finalizer);
+				} else {
+					if (!ok) {
+						PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_RA_EAST | TEMMA_MOTION_RA_WEST);
+					}
+					GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+					GUIDER_GUIDE_RA_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+					indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+	}
+}

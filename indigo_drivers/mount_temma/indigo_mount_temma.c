@@ -1,11 +1,9 @@
-// Copyright (c) 2017-2025 CloudMakers, s. r. o.
+// Copyright (c) 2017-2026 CloudMakers, s. r. o.
 // All rights reserved.
-//
-// Code is partially based on Temma driver created by Kok Chen.
-//
-// You can use this software under the terms of 'INDIGO Astronomy
+
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-//
+
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -18,378 +16,600 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// version history
-// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// This file generated from indigo_mount_temma.driver
 
-/** INDIGO Takahashi Temma driver
- \file indigo_mount_temma.c
- */
-
-#define DRIVER_VERSION 0x02000008
-#define DRIVER_NAME	"indigo_mount_temma"
+#pragma mark - Includes
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <time.h>
 #include <math.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <termios.h>
-#include <sys/time.h>
+
+//+ include
+
+#include <ctype.h>
+#include <stdarg.h>
+
+//- include
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_mount_driver.h>
 #include <indigo/indigo_align.h>
+#include <indigo/indigo_guider_driver.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_mount_temma.h"
 
-#define PRIVATE_DATA        ((temma_private_data *)device->private_data)
+#pragma mark - Common definitions
 
-#define CCD_ADVANCED_GROUP         "Advanced"
+#define DRIVER_VERSION       0x0300000A
+#define DRIVER_NAME          "indigo_mount_temma"
+#define DRIVER_LABEL         "Takahashi Temma Mount"
+#define MOUNT_DEVICE_NAME    "Takahashi Temma Mount"
+#define GUIDER_DEVICE_NAME   "Takahashi Temma Mount (guider)"
+#define PRIVATE_DATA         ((temma_private_data *)device->private_data)
 
-#define CORRECTION_SPEED_PROPERTY			(PRIVATE_DATA->correction_speed_property)
-#define CORRECTION_SPEED_RA_ITEM          (CORRECTION_SPEED_PROPERTY->items+0)
-#define CORRECTION_SPEED_DEC_ITEM         (CORRECTION_SPEED_PROPERTY->items+1)
+//+ define
 
-#define CORRECTION_SPEED_PROPERTY_NAME	  "TEMMA_CORRECTION_SPEED"
-#define CORRECTION_SPEED_RA_ITEM_NAME     "RA"
-#define CORRECTION_SPEED_DEC_ITEM_NAME    "DEC"
+#define CCD_ADVANCED_GROUP   "Advanced"
+#define TEMMA_MOTION_RA_EAST 0x02
+#define TEMMA_MOTION_RA_WEST 0x04
+#define TEMMA_MOTION_DEC_NORTH 0x08
+#define TEMMA_MOTION_DEC_SOUTH 0x10
 
-#define HIGH_SPEED_PROPERTY                (PRIVATE_DATA->high_speed_property)
-#define HIGH_SPEED_LOW_ITEM                (HIGH_SPEED_PROPERTY->items+0)
-#define HIGH_SPEED_HIGH_ITEM               (HIGH_SPEED_PROPERTY->items+1)
-#define HIGH_SPEED_PROPERTY_NAME           "TEMMA_HIGH_SPEED"
-#define HIGH_SPEED_LOW_ITEM_NAME           "LOW"
-#define HIGH_SPEED_HIGH_ITEM_NAME          "HIGH"
+//- define
 
-#define ZENITH_PROPERTY                   (PRIVATE_DATA->zenith_property)
-#define ZENITH_EAST_ITEM                  (ZENITH_PROPERTY->items+0)
-#define ZENITH_WEST_ITEM                  (ZENITH_PROPERTY->items+1)
-#define ZENITH_PROPERTY_NAME              "TEMMA_ZENITH"
-#define ZENITH_EAST_ITEM_NAME             "EAST"
-#define ZENITH_WEST_ITEM_NAME             "WEST"
+#pragma mark - Property definitions
 
-#define TEMMA_GET_VERSION						"v"
-#define TEMMA_GET_POSITION					"E"
-#define TEMMA_GET_GOTO_STATE				"s"
-#define TEMMA_GET_CORRECTION_SPEED	"lg"
-#define TEMMA_SET_VOLTAGE_12V_OR_LOW_SPEED		"v1"
-#define TEMMA_SET_VOLTAGE_24V_OR_HIGH_SPEED		"v2"
-#define TEMMA_SET_STELLAR_RATE			"LL"
-#define TEMMA_SET_SOLAR_RATE				"LK"
-#define TEMMA_GOTO_STOP							"PS"
+#define CORRECTION_SPEED_PROPERTY      (PRIVATE_DATA->correction_speed_property)
+#define CORRECTION_SPEED_RA_ITEM       (CORRECTION_SPEED_PROPERTY->items + 0)
+#define CORRECTION_SPEED_DEC_ITEM      (CORRECTION_SPEED_PROPERTY->items + 1)
 
-#define TEMMA_SLEW_SLOW_EAST				"MB"
-#define TEMMA_SLEW_SLOW_WEST				"MD"
-#define TEMMA_SLEW_SLOW_NORTH				"MH"
-#define TEMMA_SLEW_SLOW_SOUTH				"MP"
-#define TEMMA_SLEW_FAST_EAST				"MC"
-#define TEMMA_SLEW_FAST_WEST				"ME"
-#define TEMMA_SLEW_FAST_NORTH				"MI"
-#define TEMMA_SLEW_FAST_SOUTH				"MQ"
-#define TEMMA_SLEW_STOP							"MA"
+#define CORRECTION_SPEED_PROPERTY_NAME "X_TEMMA_CORRECTION_SPEED"
+#define CORRECTION_SPEED_RA_ITEM_NAME  "RA"
+#define CORRECTION_SPEED_DEC_ITEM_NAME "DEC"
 
-#define TEMMA_SWITCH_SIDE_OF_MOUNT  "PT"
+#define HIGH_SPEED_PROPERTY            (PRIVATE_DATA->high_speed_property)
+#define HIGH_SPEED_LOW_ITEM            (HIGH_SPEED_PROPERTY->items + 0)
+#define HIGH_SPEED_HIGH_ITEM           (HIGH_SPEED_PROPERTY->items + 1)
 
-#define TEMMA_MOTOR_ON							"STN-OFF"
-#define TEMMA_MOTOR_OFF							"STN-ON"
-#define TEMMA_ZENITH                "Z"
+#define HIGH_SPEED_PROPERTY_NAME       "X_TEMMA_HIGH_SPEED"
+#define HIGH_SPEED_LOW_ITEM_NAME       "LOW"
+#define HIGH_SPEED_HIGH_ITEM_NAME      "HIGH"
+
+#define ZENITH_PROPERTY                (PRIVATE_DATA->zenith_property)
+#define ZENITH_EAST_ITEM               (ZENITH_PROPERTY->items + 0)
+#define ZENITH_WEST_ITEM               (ZENITH_PROPERTY->items + 1)
+
+#define ZENITH_PROPERTY_NAME           "X_TEMMA_ZENITH"
+#define ZENITH_EAST_ITEM_NAME          "EAST"
+#define ZENITH_WEST_ITEM_NAME          "WEST"
+
+#pragma mark - Private data definition
 
 typedef struct {
-	int handle;
-	int device_count;
-	double currentRA;
-	double currentDec;
-	char telescopeSide;
-	bool isBusy, startTracking, stopTracking;
-	char slewCommand[3];
-	indigo_timer *slew_timer;
-	indigo_timer *position_timer;
-	pthread_mutex_t port_mutex;
-	char product[128];
+	int count;
+	indigo_uni_handle *handle;
 	indigo_property *correction_speed_property;
 	indigo_property *high_speed_property;
 	indigo_property *zenith_property;
+	//+ data
+	double current_ra, current_dec;
+	char telescope_side;
+	bool is_busy, start_tracking, stop_tracking;
+	unsigned char mount_motion_mask, guider_motion_mask;
+	bool mount_high_speed;
+	char response[128];
+	//- data
 } temma_private_data;
 
-static bool temma_open(indigo_device *device) {
-	char *name = DEVICE_PORT_ITEM->text.value;
-	PRIVATE_DATA->handle = indigo_open_serial(name);
-	if (PRIVATE_DATA->handle >= 0) {
-		struct termios options;
-		memset(&options, 0, sizeof options);
-		if (tcgetattr(PRIVATE_DATA->handle, &options) != 0) {
-			close(PRIVATE_DATA->handle);
-			return false;
-		}
-		options.c_cflag |= (CS8 | PARENB | CRTSCTS);
-		options.c_cflag &= (~PARODD & ~CSTOPB);
-		cfsetispeed(&options, B19200);
-		cfsetospeed(&options, B19200);
-		options.c_iflag = IGNBRK;
-		options.c_cc[VMIN] = 1;
-		options.c_cc[VTIME] = 5;
-		options.c_lflag = options.c_oflag = 0;
-		if (tcsetattr(PRIVATE_DATA->handle ,TCSANOW, &options) != 0) {
-			close(PRIVATE_DATA->handle);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
-			return false;
-		}
-	}
-	if (PRIVATE_DATA->handle >= 0) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
-		return true;
-	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
-		return false;
-	}
-}
+#pragma mark - Low level code
 
-static bool temma_command(indigo_device *device, char *command, bool wait) {
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	char c;
-	struct timeval tv;
-	// flush
-	while (true) {
-		fd_set readout;
-		FD_ZERO(&readout);
-		FD_SET(PRIVATE_DATA->handle, &readout);
-		tv.tv_sec = 0;
-		tv.tv_usec = 100000;
-		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0) {
-			break;
-		}
-		if (result < 0) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-		result = read(PRIVATE_DATA->handle, &c, 1);
-		if (result < 1) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-	}
-	// write command
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	indigo_write(PRIVATE_DATA->handle, "\r\n", 2);
-	// read response
-	if (wait) {
-		char buffer[128];
-		int index = 0;
-		int max = sizeof(buffer) - 1;
-		while (index < max) {
-			fd_set readout;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			tv.tv_sec = 0;
-			tv.tv_usec = 300000;
-			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "select failed from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-			if (c == '\r') {
-				continue;
-			}
-			if (c == '\n') {
-				break;
-			}
-			buffer[index++] = c;
-		}
-		buffer[index] = 0;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "command '%s' -> '%s'", command, buffer);
-		switch (buffer[0]) {
-			case 'E': {
-				int d, m, s;
-				sscanf(buffer + 1, "%02d%02d%02d", &d, &m, &s);
-				PRIVATE_DATA->currentRA = d + m / 60.0 + s / 3600.0;
-				sscanf(buffer + 8, "%02d%02d%01d", &d, &m, &s);
-				if (buffer[7] == '-') {
-					PRIVATE_DATA->currentDec = -(d + m / 60.0 + s / 600.0);
-				} else {
-					PRIVATE_DATA->currentDec = d + m / 60.0 + s / 600.0;
-				}
-				if (buffer[13] == 'E' || buffer[13] == 'W') {
-					// telescope side
-					bool changed = PRIVATE_DATA->telescopeSide == (buffer[13] == 'E' ? 'W' : 'E');
-					PRIVATE_DATA->telescopeSide = buffer[13];
-					MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = PRIVATE_DATA->telescopeSide == 'W';
-					MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = PRIVATE_DATA->telescopeSide == 'E';
-					if (changed) {
-						indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-					}
-				} else if (buffer[13] == 'F') {
-					// fulfilled
-				}
-				indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &PRIVATE_DATA->currentRA, &PRIVATE_DATA->currentDec);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Coords %c %g %g", PRIVATE_DATA->telescopeSide, PRIVATE_DATA->currentRA, PRIVATE_DATA->currentDec);
-				break;
-			}
-			case 'v': {
-				switch (buffer[1]) {
-					case 'e':
-						INDIGO_COPY_VALUE(MOUNT_INFO_VENDOR_ITEM->text.value, "Takahashi");
-						INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, buffer + 4);
-						INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
-						break;
-					case '1':
-					case '2':
-						HIGH_SPEED_LOW_ITEM->sw.value = buffer[1] == '1';
-						HIGH_SPEED_HIGH_ITEM->sw.value = buffer[1] == '2';
-						break;
-				};
-				break;
-			}
-			case 's': {
-				PRIVATE_DATA->isBusy = buffer[1] == '1';
-				break;
-			}
-			case 'l': {
-				if (buffer[1] == 'a') {
-					CORRECTION_SPEED_RA_ITEM->number.value = atoi(buffer + 3);
-				} else if (buffer[1] == 'b')
-					CORRECTION_SPEED_DEC_ITEM->number.value = atoi(buffer + 3);
-				else if (buffer[1] == 'g') {
-					buffer[4] = 0;
-					CORRECTION_SPEED_RA_ITEM->number.value = atoi(buffer + 2);
-					buffer[7] = 0;
-					CORRECTION_SPEED_DEC_ITEM->number.value = atoi(buffer + 5);
-				}
-				break;
-			}
-			default:
-				break;
-		}
-	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "command '%s'", command);
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	return true;
+//+ code
+
+static void mount_goto_finalizer(indigo_device *device);
+static void mount_motion_finalizer(indigo_device *device);
+static void guider_guide_ra_finalizer(indigo_device *device);
+static void guider_guide_dec_finalizer(indigo_device *device);
+
+static bool temma_open(indigo_device *device) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_config(DEVICE_PORT_ITEM->text.value, "19200-8E1", INDIGO_LOG_DEBUG);
+	return PRIVATE_DATA->handle != NULL;
 }
 
 static void temma_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
-	}
+	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
-static void temma_set_lst(indigo_device *device) {
-	char buffer[128];
+static bool temma_vcommand(indigo_device *device, bool reply, const char *format, va_list args) {
+	if (PRIVATE_DATA->handle == NULL) {
+		return false;
+	}
+	long result = indigo_uni_discard(PRIVATE_DATA->handle);
+	if (result >= 0) {
+		result = indigo_uni_vprintf(PRIVATE_DATA->handle, format, args);
+	}
+	if (result >= 0) {
+		result = indigo_uni_printf(PRIVATE_DATA->handle, "\r\n");
+	}
+	if (!reply) {
+		return result >= 0;
+	}
+	result = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r", INDIGO_DELAY(0.3), INDIGO_DELAY(0.3));
+	if (result <= 0) {
+		return false;
+	}
+	while (result > 0 && (PRIVATE_DATA->response[result - 1] == '\r' || PRIVATE_DATA->response[result - 1] == '\n')) {
+		result--;
+	}
+	PRIVATE_DATA->response[result] = 0;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Temma %s -> %s", format, PRIVATE_DATA->response);
+	return true;
+}
+
+static bool temma_command(indigo_device *device, bool reply, const char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	bool result = temma_vcommand(device, reply, format, args);
+	va_end(args);
+	return result;
+}
+
+static bool temma_command_ack(indigo_device *device, const char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	bool result = temma_vcommand(device, true, format, args);
+	va_end(args);
+	return result && !strcmp(PRIVATE_DATA->response, "R1");
+}
+
+static unsigned char temma_motion_byte(indigo_device *device) {
+	unsigned char motion_mask = PRIVATE_DATA->mount_motion_mask | PRIVATE_DATA->guider_motion_mask;
+	return motion_mask == 0 ? 'A' : 0x40 | motion_mask | (PRIVATE_DATA->mount_motion_mask != 0 && PRIVATE_DATA->mount_high_speed ? 1 : 0);
+}
+
+static bool temma_update_motion(indigo_device *device) {
+	indigo_device *mount = device->master_device == NULL ? device : device->master_device;
+	return temma_command_ack(mount, "M%c", temma_motion_byte(mount));
+}
+
+static bool temma_update_position(indigo_device *device) {
+	if (!temma_command(device, true, "E") || strlen(PRIVATE_DATA->response) != 15 || PRIVATE_DATA->response[0] != 'E' || (PRIVATE_DATA->response[7] != '+' && PRIVATE_DATA->response[7] != '-') || (PRIVATE_DATA->response[13] != 'E' && PRIVATE_DATA->response[13] != 'W') || (PRIVATE_DATA->response[14] != '0' && PRIVATE_DATA->response[14] != '1')) {
+		return false;
+	}
+	for (int index = 1; index <= 12; index++) {
+		if (index != 7 && !isdigit((unsigned char)PRIVATE_DATA->response[index])) {
+			return false;
+		}
+	}
+	int degrees, minutes, seconds;
+	if (sscanf(PRIVATE_DATA->response + 1, "%02d%02d%02d", &degrees, &minutes, &seconds) != 3 || degrees > 23 || minutes > 59 || seconds > 59) {
+		return false;
+	}
+	PRIVATE_DATA->current_ra = degrees + minutes / 60.0 + seconds / 3600.0;
+	if (sscanf(PRIVATE_DATA->response + 8, "%02d%02d%01d", &degrees, &minutes, &seconds) != 3 || degrees > 90 || minutes > 59 || (degrees == 90 && (minutes != 0 || seconds != 0))) {
+		return false;
+	}
+	PRIVATE_DATA->current_dec = degrees + minutes / 60.0 + seconds / 600.0;
+	if (PRIVATE_DATA->response[7] == '-') {
+		PRIVATE_DATA->current_dec = -PRIVATE_DATA->current_dec;
+	}
+	indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &PRIVATE_DATA->current_ra, &PRIVATE_DATA->current_dec);
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->current_ra;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->current_dec;
+	PRIVATE_DATA->telescope_side = PRIVATE_DATA->response[13];
+	indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, PRIVATE_DATA->telescope_side == 'W' ? MOUNT_SIDE_OF_PIER_EAST_ITEM : MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+	return true;
+}
+
+static bool temma_set_lst(indigo_device *device) {
 	time_t utc = indigo_get_mount_utc(device);
 	double lst = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
-	sprintf(buffer, "T%.2d%.2d%.2d", (int)lst, ((int)(lst * 60)) % 60, ((int)(lst * 3600)) % 60);
-	temma_command(device, buffer, false);
+	return temma_command_ack(device, "T%02d%02d%02d", (int)lst, ((int)(lst * 60)) % 60, ((int)(lst * 3600)) % 60);
 }
 
-static void temma_set_latitude(indigo_device *device) {
-	char buffer[128];
-	double lat = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
-	double l = fabs(lat);
-	int d = (int)l;
-	l = (l - d) * 60;
-	int m = (int)l;
-	l = (l - m) * 6;
-	int s = (int)l;
-	if (lat > 0) {
-		sprintf(buffer, "I+%.2d%.2d%.1d", d, m, s);
+static bool temma_set_latitude(indigo_device *device) {
+	double latitude = fabs(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
+	int degrees = latitude;
+	int minutes = (latitude - degrees) * 60;
+	int tenths = ((int)(latitude * 600)) % 10;
+	return temma_command_ack(device, "I%c%02d%02d%d", MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0 ? '-' : '+', degrees, minutes, tenths);
+}
+
+static void mount_goto_finalizer(indigo_device *device) {
+	if (!IS_CONNECTED || !temma_update_position(device) || !temma_command(device, true, "s") || (strcmp(PRIVATE_DATA->response, "s0") && strcmp(PRIVATE_DATA->response, "s1"))) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else if (PRIVATE_DATA->response[1] == '1') {
+		indigo_update_coordinates(device, NULL);
+		indigo_execute_handler_in(device, 0.5, mount_goto_finalizer);
+		return;
 	} else {
-		sprintf(buffer, "I-%.2d%.2d%.1d", d, m, s);
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		if (PRIVATE_DATA->start_tracking) {
+			if (!temma_command_ack(device, "STN-OFF")) {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			PRIVATE_DATA->start_tracking = false;
+		}
+		if (PRIVATE_DATA->stop_tracking) {
+			if (!temma_command_ack(device, "STN-ON")) {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			PRIVATE_DATA->stop_tracking = false;
+		}
 	}
-	temma_command(device, buffer, false);
+	indigo_update_coordinates(device, NULL);
 }
 
-// -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
+static void mount_motion_finalizer(indigo_device *device) {
+	if (!IS_CONNECTED || PRIVATE_DATA->mount_motion_mask == 0) {
+		return;
+	}
+	if (temma_update_motion(device)) {
+		indigo_execute_handler_in(device, 0.25, mount_motion_finalizer);
+	} else {
+		PRIVATE_DATA->mount_motion_mask = 0;
+		MOUNT_MOTION_RA_PROPERTY->state = MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+	}
+}
 
-static void position_timer_callback(indigo_device *device) {
-	if (IS_CONNECTED && PRIVATE_DATA->handle > 0) {
-		temma_command(device, TEMMA_GET_POSITION, true);
-		temma_command(device, TEMMA_GET_GOTO_STATE, true);
-		if (PRIVATE_DATA->isBusy) {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		} else {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			if (PRIVATE_DATA->startTracking) {
-				temma_command(device, TEMMA_MOTOR_ON, true);
-				PRIVATE_DATA->startTracking = false;
+static void guider_guide_ra_finalizer(indigo_device *device) {
+	PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_RA_EAST | TEMMA_MOTION_RA_WEST);
+	bool ok = temma_update_motion(device);
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+	GUIDER_GUIDE_RA_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+}
+
+static void guider_guide_dec_finalizer(indigo_device *device) {
+	PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_DEC_NORTH | TEMMA_MOTION_DEC_SOUTH);
+	bool ok = temma_update_motion(device);
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+	GUIDER_GUIDE_DEC_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+}
+
+//- code
+
+#pragma mark - High level code (mount)
+
+static void mount_timer_callback(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	//+ mount.on_timer
+	bool ok = temma_update_position(device) && temma_command(device, true, "s") && (!strcmp(PRIVATE_DATA->response, "s0") || !strcmp(PRIVATE_DATA->response, "s1"));
+	if (ok) {
+		PRIVATE_DATA->is_busy = !strcmp(PRIVATE_DATA->response, "s1");
+	}
+	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	}
+	indigo_update_coordinates(device, NULL);
+	indigo_execute_handler_in(device, 0.5, mount_timer_callback);
+	//- mount.on_timer
+}
+
+static void mount_connection_handler(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		bool connection_result = true;
+		if (PRIVATE_DATA->count == 0) {
+			connection_result = temma_open(device);
+		}
+		if (connection_result) {
+			PRIVATE_DATA->count++;
+		}
+		if (connection_result) {
+			//+ mount.on_connect
+			connection_result = temma_command(device, true, "v") && PRIVATE_DATA->response[0] == 'v' && PRIVATE_DATA->response[1] != 0;
+			if (connection_result) {
+				INDIGO_COPY_VALUE(MOUNT_INFO_VENDOR_ITEM->text.value, "Takahashi");
+				INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->response + 1);
+				INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
+				connection_result = temma_command_ack(device, "v1");
+				if (connection_result) {
+					PRIVATE_DATA->mount_motion_mask = PRIVATE_DATA->guider_motion_mask = 0;
+					PRIVATE_DATA->mount_high_speed = false;
+					temma_update_position(device);
+					if (temma_command(device, true, "lg") && strlen(PRIVATE_DATA->response) == 8 && PRIVATE_DATA->response[0] == 'l' && PRIVATE_DATA->response[1] == 'g' && isdigit((unsigned char)PRIVATE_DATA->response[2]) && isdigit((unsigned char)PRIVATE_DATA->response[3]) && PRIVATE_DATA->response[4] == 'D' && isdigit((unsigned char)PRIVATE_DATA->response[5]) && isdigit((unsigned char)PRIVATE_DATA->response[6]) && (PRIVATE_DATA->response[7] == 'N' || PRIVATE_DATA->response[7] == 'S')) {
+						int ra_correction = atoi(PRIVATE_DATA->response + 2);
+						int dec_correction = atoi(PRIVATE_DATA->response + 5);
+						if (ra_correction >= 10 && ra_correction <= 90 && dec_correction >= 10 && dec_correction <= 90) {
+							CORRECTION_SPEED_RA_ITEM->number.value = ra_correction;
+							CORRECTION_SPEED_DEC_ITEM->number.value = dec_correction;
+						}
+					}
+				}
 			}
-			if (PRIVATE_DATA->stopTracking) {
-				temma_command(device, TEMMA_MOTOR_OFF, true);
-				PRIVATE_DATA->stopTracking = false;
+			//- mount.on_connect
+		}
+		if (connection_result) {
+			indigo_define_property(device, CORRECTION_SPEED_PROPERTY, NULL);
+			indigo_define_property(device, HIGH_SPEED_PROPERTY, NULL);
+			indigo_define_property(device, ZENITH_PROPERTY, NULL);
+			indigo_execute_handler(device, mount_timer_callback);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+		} else {
+			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
+				temma_close(device);
+			}
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		indigo_cancel_pending_handlers(device);
+		//+ mount.on_disconnect
+		indigo_cancel_pending_handlers(device);
+		PRIVATE_DATA->mount_motion_mask = 0;
+		PRIVATE_DATA->mount_high_speed = false;
+		if (PRIVATE_DATA->handle != NULL) {
+			temma_update_motion(device);
+			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+				temma_command_ack(device, "PS");
 			}
 		}
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
-		indigo_update_coordinates(device, NULL);
-		indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
+		//- mount.on_disconnect
+		indigo_delete_property(device, CORRECTION_SPEED_PROPERTY, NULL);
+		indigo_delete_property(device, HIGH_SPEED_PROPERTY, NULL);
+		indigo_delete_property(device, ZENITH_PROPERTY, NULL);
+		if (--PRIVATE_DATA->count == 0) {
+			temma_close(device);
+		}
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
+	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
-static void slew_timer_callback(indigo_device *device) {
-	if (IS_CONNECTED && *PRIVATE_DATA->slewCommand) {
-		temma_command(device, PRIVATE_DATA->slewCommand, false);
-		indigo_reschedule_timer(device, 0.25, &PRIVATE_DATA->slew_timer);
-	}
+static void mount_correction_speed_handler(indigo_device *device) {
+	CORRECTION_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.CORRECTION_SPEED.on_change
+	bool ok = temma_command_ack(device, "LA%02d", (int)CORRECTION_SPEED_RA_ITEM->number.value) && temma_command_ack(device, "LB%02d", (int)CORRECTION_SPEED_DEC_ITEM->number.value);
+	CORRECTION_SPEED_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	//- mount.CORRECTION_SPEED.on_change
+	indigo_update_property(device, CORRECTION_SPEED_PROPERTY, NULL);
 }
+
+static void mount_high_speed_handler(indigo_device *device) {
+	//+ mount.HIGH_SPEED.on_change
+	HIGH_SPEED_PROPERTY->state = temma_command_ack(device, HIGH_SPEED_HIGH_ITEM->sw.value ? "v2" : "v1") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	//- mount.HIGH_SPEED.on_change
+	indigo_update_property(device, HIGH_SPEED_PROPERTY, NULL);
+}
+
+static void mount_zenith_handler(indigo_device *device) {
+	ZENITH_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.ZENITH.on_change
+	bool ok = temma_command_ack(device, "Z");
+	ZENITH_EAST_ITEM->sw.value = false;
+	ZENITH_WEST_ITEM->sw.value = false;
+	ZENITH_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	//- mount.ZENITH.on_change
+	indigo_update_property(device, ZENITH_PROPERTY, NULL);
+}
+
+static void mount_equatorial_coordinates_handler(indigo_device *device) {
+	if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+		indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		return;
+	}
+	//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change
+	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+	int ra_seconds = ra * 3600;
+	int dec_tenths = dec * 600;
+	char dec_sign = dec_tenths < 0 ? '-' : '+';
+	dec_tenths = abs(dec_tenths);
+	char command[32];
+	snprintf(command, sizeof(command), "%c%02d%02d%02d%c%02d%02d%d", MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? 'D' : 'P', ra_seconds / 3600, (ra_seconds / 60) % 60, ra_seconds % 60, dec_sign, dec_tenths / 600, (dec_tenths / 10) % 60, dec_tenths % 10);
+	if (temma_command_ack(device, "%s", command)) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		PRIVATE_DATA->start_tracking = MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value || MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value;
+		PRIVATE_DATA->stop_tracking = MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value;
+		indigo_update_coordinates(device, NULL);
+		indigo_execute_handler_in(device, 0.1, mount_goto_finalizer);
+	} else {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_coordinates(device, NULL);
+	}
+	//- mount.MOUNT_EQUATORIAL_COORDINATES.on_change
+	indigo_update_coordinates(device, NULL);
+}
+
+static void mount_abort_motion_handler(indigo_device *device) {
+	//+ mount.MOUNT_ABORT_MOTION.on_change
+	indigo_cancel_pending_handler(device, mount_goto_finalizer);
+	indigo_cancel_pending_handler(device, mount_motion_finalizer);
+	PRIVATE_DATA->mount_motion_mask = 0;
+	bool ok = temma_update_motion(device) && temma_command_ack(device, "PS");
+	MOUNT_MOTION_RA_PROPERTY->state = MOUNT_MOTION_DEC_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	MOUNT_MOTION_EAST_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = false;
+	MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+	indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+	indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_coordinates(device, NULL);
+	if (!ok) {
+		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	if (MOUNT_ABORT_MOTION_PROPERTY->state != INDIGO_ALERT_STATE) {
+		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	MOUNT_ABORT_MOTION_ITEM->sw.value = false;
+	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
+	//- mount.MOUNT_ABORT_MOTION.on_change
+}
+
+static void mount_track_rate_handler(indigo_device *device) {
+	//+ mount.MOUNT_TRACK_RATE.on_change
+	MOUNT_TRACK_RATE_PROPERTY->state = temma_command_ack(device, MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value ? "LK" : "LL") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	//- mount.MOUNT_TRACK_RATE.on_change
+	indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+}
+
+static void mount_tracking_handler(indigo_device *device) {
+	if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+		indigo_send_message(device, MOUNT_TRACKING_PROPERTY, "Mount is parked!");
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_TRACKING_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		return;
+	}
+	//+ mount.MOUNT_TRACKING.on_change
+	MOUNT_TRACKING_PROPERTY->state = temma_command_ack(device, MOUNT_TRACKING_ON_ITEM->sw.value ? "STN-OFF" : "STN-ON") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	//- mount.MOUNT_TRACKING.on_change
+	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+}
+
+static void mount_motion_dec_handler(indigo_device *device) {
+	if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+		indigo_send_message(device, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked!");
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		return;
+	}
+	//+ mount.MOUNT_MOTION_DEC.on_change
+	PRIVATE_DATA->mount_motion_mask &= ~(TEMMA_MOTION_DEC_NORTH | TEMMA_MOTION_DEC_SOUTH);
+	if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
+		PRIVATE_DATA->mount_motion_mask |= TEMMA_MOTION_DEC_NORTH;
+	} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
+		PRIVATE_DATA->mount_motion_mask |= TEMMA_MOTION_DEC_SOUTH;
+	}
+	PRIVATE_DATA->mount_high_speed = !(MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value);
+	indigo_cancel_pending_handler(device, mount_motion_finalizer);
+	if (PRIVATE_DATA->mount_motion_mask) {
+		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+		indigo_execute_handler(device, mount_motion_finalizer);
+	} else {
+		MOUNT_MOTION_DEC_PROPERTY->state = temma_update_motion(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+	}
+	//- mount.MOUNT_MOTION_DEC.on_change
+}
+
+static void mount_motion_ra_handler(indigo_device *device) {
+	if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+		indigo_send_message(device, MOUNT_MOTION_RA_PROPERTY, "Mount is parked!");
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		return;
+	}
+	//+ mount.MOUNT_MOTION_RA.on_change
+	PRIVATE_DATA->mount_motion_mask &= ~(TEMMA_MOTION_RA_EAST | TEMMA_MOTION_RA_WEST);
+	if (MOUNT_MOTION_WEST_ITEM->sw.value) {
+		PRIVATE_DATA->mount_motion_mask |= TEMMA_MOTION_RA_WEST;
+	} else if (MOUNT_MOTION_EAST_ITEM->sw.value) {
+		PRIVATE_DATA->mount_motion_mask |= TEMMA_MOTION_RA_EAST;
+	}
+	PRIVATE_DATA->mount_high_speed = !(MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value);
+	indigo_cancel_pending_handler(device, mount_motion_finalizer);
+	if (PRIVATE_DATA->mount_motion_mask) {
+		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+		indigo_execute_handler(device, mount_motion_finalizer);
+	} else {
+		MOUNT_MOTION_RA_PROPERTY->state = temma_update_motion(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+	}
+	//- mount.MOUNT_MOTION_RA.on_change
+}
+
+static void mount_side_of_pier_handler(indigo_device *device) {
+	MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_SIDE_OF_PIER.on_change
+	bool switch_side = (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value && PRIVATE_DATA->telescope_side == 'E') || (MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value && PRIVATE_DATA->telescope_side == 'W');
+	MOUNT_SIDE_OF_PIER_PROPERTY->state = !switch_side || temma_command_ack(device, "PT") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	if (MOUNT_SIDE_OF_PIER_PROPERTY->state == INDIGO_OK_STATE) {
+		temma_update_position(device);
+	}
+	//- mount.MOUNT_SIDE_OF_PIER.on_change
+	indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+}
+
+static void mount_park_handler(indigo_device *device) {
+	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_PARK.on_change
+	if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+		time_t utc = indigo_get_mount_utc(device);
+		double ra = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_PARK_POSITION_HA_ITEM->number.value;
+		int ra_seconds = (ra < 0 ? ra + 24 : ra) * 3600;
+		int dec_tenths = MOUNT_PARK_POSITION_DEC_ITEM->number.value * 600;
+		char dec_sign = dec_tenths < 0 ? '-' : '+';
+		dec_tenths = abs(dec_tenths);
+		bool ok = temma_set_lst(device) && temma_command_ack(device, "P%02d%02d%02d%c%02d%02d%d", ra_seconds / 3600, (ra_seconds / 60) % 60, ra_seconds % 60, dec_sign, dec_tenths / 600, (dec_tenths / 10) % 60, dec_tenths % 10) && temma_command_ack(device, "STN-ON");
+		MOUNT_PARK_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		MOUNT_PARK_PARKED_ITEM->sw.value = false;
+	}
+	//- mount.MOUNT_PARK.on_change
+	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+}
+
+static void mount_geographic_coordinates_handler(indigo_device *device) {
+	MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_GEOGRAPHIC_COORDINATES.on_change
+	if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0) {
+		MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
+	}
+	MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = temma_set_latitude(device) && temma_set_lst(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	//- mount.MOUNT_GEOGRAPHIC_COORDINATES.on_change
+	indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+}
+
+#pragma mark - Device API (mount)
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
 static indigo_result mount_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(PRIVATE_DATA != NULL);
 	if (indigo_mount_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		*PRIVATE_DATA->slewCommand = 0;
-		MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
-		MOUNT_UTC_TIME_PROPERTY->hidden = true;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
+		DEVICE_PORT_PROPERTY->hidden = false;
+		DEVICE_PORTS_PROPERTY->hidden = false;
+		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
+		//+ mount.on_attach
 		MOUNT_PARK_PROPERTY->count = 1;
 		MOUNT_PARK_PARKED_ITEM->sw.value = false;
 		MOUNT_PARK_POSITION_PROPERTY->hidden = false;
 		MOUNT_PARK_SET_PROPERTY->hidden = false;
 		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+		MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RW_PERM;
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
-		DEVICE_PORT_PROPERTY->hidden = false;
-		DEVICE_PORTS_PROPERTY->hidden = false;
-		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-
-		// CORRECTION_SPEED
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
+		//- mount.on_attach
 		CORRECTION_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, CORRECTION_SPEED_PROPERTY_NAME, CCD_ADVANCED_GROUP, "Correction speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (CORRECTION_SPEED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_number_item(CORRECTION_SPEED_RA_ITEM, CORRECTION_SPEED_RA_ITEM_NAME, "RA speed (10% - 90%)", 10, 90, 1, 50);
 		indigo_init_number_item(CORRECTION_SPEED_DEC_ITEM, CORRECTION_SPEED_DEC_ITEM_NAME, "Dec speed (10% - 90%)", 10, 90, 1, 50);
-		// HIGH_SPEED
 		HIGH_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, HIGH_SPEED_PROPERTY_NAME, CCD_ADVANCED_GROUP, "High-speed or High-voltage config", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (HIGH_SPEED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(HIGH_SPEED_LOW_ITEM, HIGH_SPEED_LOW_ITEM_NAME, "12V or Low-speed", true);
 		indigo_init_switch_item(HIGH_SPEED_HIGH_ITEM, HIGH_SPEED_HIGH_ITEM_NAME, "24V or High-speed", false);
-		// ZENITH
 		ZENITH_PROPERTY = indigo_init_switch_property(NULL, device->name, ZENITH_PROPERTY_NAME, CCD_ADVANCED_GROUP, "Sync zenith", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
 		if (ZENITH_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(ZENITH_EAST_ITEM, ZENITH_EAST_ITEM_NAME, "East zenith", false);
 		indigo_init_switch_item(ZENITH_WEST_ITEM, ZENITH_WEST_ITEM_NAME, "West zenith", false);
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
-
-		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->hidden = false;
+		MOUNT_ABORT_MOTION_PROPERTY->hidden = false;
+		MOUNT_TRACK_RATE_PROPERTY->hidden = false;
+		MOUNT_TRACKING_PROPERTY->hidden = false;
+		MOUNT_MOTION_DEC_PROPERTY->hidden = false;
+		MOUNT_MOTION_RA_PROPERTY->hidden = false;
+		MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
+		MOUNT_UTC_TIME_PROPERTY->hidden = true;
+		MOUNT_PARK_POSITION_PROPERTY->hidden = false;
+		MOUNT_PARK_SET_PROPERTY->hidden = false;
+		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+		MOUNT_PARK_PROPERTY->hidden = false;
+		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return mount_enumerate_properties(device, NULL, NULL);
 	}
@@ -405,335 +625,51 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 	return indigo_mount_enumerate_properties(device, client, property);
 }
 
-static void mount_connect_callback(indigo_device *device) {
-	indigo_lock_master_device(device);
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool result = true;
-		if (PRIVATE_DATA->device_count++ == 0) {
-			result = temma_open(device);
-		}
-		if (result) {
-			int repeat = 5;
-			while (repeat-- > 0)
-				if ((result = temma_command(device, TEMMA_GET_VERSION, true)))
-					break;
-			if (result) {
-				temma_set_lst(device);
-				temma_set_latitude(device);
-				// TemmaPC set to 24V when TEMMA_GET_VERSION (`v`) command sent.
-				temma_command(device, TEMMA_SET_VOLTAGE_12V_OR_LOW_SPEED, false);
-				temma_command(device, TEMMA_GET_POSITION, true);
-				temma_command(device, TEMMA_GET_CORRECTION_SPEED, true);
-				temma_command(device, TEMMA_GET_GOTO_STATE, true);
-				indigo_set_timer(device, 0, position_timer_callback, &PRIVATE_DATA->position_timer);
-				indigo_define_property(device, CORRECTION_SPEED_PROPERTY, NULL);
-				indigo_define_property(device, HIGH_SPEED_PROPERTY, NULL);
-				indigo_define_property(device, ZENITH_PROPERTY, NULL);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get version, not temma mount?");
-				PRIVATE_DATA->device_count--;
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open serial port");
-			PRIVATE_DATA->device_count--;
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		}
-	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
-		*PRIVATE_DATA->slewCommand = 0;
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->slew_timer);
-		indigo_delete_property(device, CORRECTION_SPEED_PROPERTY, NULL);
-		indigo_delete_property(device, HIGH_SPEED_PROPERTY, NULL);
-		indigo_delete_property(device, ZENITH_PROPERTY, NULL);
-		if (--PRIVATE_DATA->device_count == 0) {
-			temma_command(device, TEMMA_SLEW_STOP, false);
-			temma_command(device, TEMMA_GOTO_STOP, false);
-			temma_close(device);
-		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	}
-	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
-	indigo_unlock_master_device(device);
-}
-
 static indigo_result mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property))
-			return INDIGO_OK;
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, mount_connect_callback, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_PARK_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_PARK
-		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
-		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
-			char buffer[128];
-			time_t utc = indigo_get_mount_utc(device);
-			int ra = (indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_PARK_POSITION_HA_ITEM->number.value) * 3600;
-			if (ra < 0) {
-				ra += 24 * 3600;
-			}
-			int ra_h = ra / 3600;
-			int ra_m = (ra / 60) % 60;
-			int ra_s = ra % 60;
-			int dec = MOUNT_PARK_POSITION_DEC_ITEM->number.value * 600;
-			int dec_d = dec / 600;
-			int dec_m = abs((dec / 10) % 60);
-			int dec_s = abs(dec % 10);
-			temma_set_lst(device);
-			sprintf(buffer, "P%02d%02d%02d%+03d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
-			temma_command(device, buffer, true);
-			temma_command(device, TEMMA_MOTOR_OFF, true);
-			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-			MOUNT_PARK_PARKED_ITEM->sw.value = false;
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_handler(device, mount_connection_handler);
 		}
-		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPHIC_COORDINATES
-		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
-		if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0) {
-			MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
-		}
-		temma_set_latitude(device);
-		temma_set_lst(device);
-		temma_command(device, TEMMA_GET_POSITION, true);
-		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
-		double currentRa = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-		double currentDec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
-		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = currentRa;
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = currentDec;
-		double targetRa = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
-		double targetDec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
-		indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &targetRa, &targetDec);
-		char buffer[128];
-		int ra = targetRa * 3600;
-		int ra_h = ra / 3600;
-		int ra_m = (ra / 60) % 60;
-		int ra_s = ra % 60;
-		int dec = targetDec * 600;
-		int dec_d = dec / 600;
-		int dec_m = abs((dec / 10) % 60);
-		int dec_s = abs(dec % 10);
-		temma_command(device, TEMMA_MOTOR_ON, true);
-		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-			sprintf(buffer, "D%02d%02d%02d%+03d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
-			temma_set_lst(device);
-			temma_command(device, "Z", false);
-			temma_set_lst(device);
-			temma_command(device, buffer, true);
-			PRIVATE_DATA->startTracking = true;
-		} else if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
-			sprintf(buffer, "P%02d%02d%02d%+03d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
-			temma_set_lst(device);
-			temma_command(device, buffer, true);
-			PRIVATE_DATA->startTracking = true;
-		} else {
-			sprintf(buffer, "P%02d%02d%02d%+03d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
-			temma_set_lst(device);
-			temma_command(device, buffer, true);
-			PRIVATE_DATA->stopTracking = true;
-		}
-		indigo_update_coordinates(device, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
-		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
-		if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
-			*PRIVATE_DATA->slewCommand = 0;
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->slew_timer);
-			temma_command(device, TEMMA_SLEW_STOP, false);
-			temma_command(device, TEMMA_GOTO_STOP, false);
-			for (int i = 0; i < 16; i++) {
-				indigo_usleep(250000);
-				temma_command(device, TEMMA_GET_GOTO_STATE, true);
-				if (!PRIVATE_DATA->isBusy) {
-					break;
-				}
-				temma_command(device, TEMMA_GOTO_STOP, false);
-			}
-			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
-		}
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_TRACK_RATE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
-		indigo_property_copy_values(MOUNT_TRACK_RATE_PROPERTY, property, false);
-		if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
-			MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
-			temma_command(device, TEMMA_SET_SOLAR_RATE, false);
-		} else if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
-			MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
-			temma_command(device, TEMMA_SET_STELLAR_RATE, false);
-		} else {
-			MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
-			temma_command(device, TEMMA_SET_STELLAR_RATE, false);
-			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
-		}
-		temma_command(device, TEMMA_MOTOR_ON, true);
-		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_TRACKING
-		indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
-		if (MOUNT_TRACKING_ON_ITEM->sw.value) {
-			temma_command(device, TEMMA_MOTOR_ON, true);
-		} else {
-			temma_command(device, TEMMA_MOTOR_OFF, true);
-		}
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_MOTION_DEC_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
-		indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
-		if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
-			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
-				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_SLOW_NORTH);
-			} else {
-				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_FAST_NORTH);
-			}
-			if (PRIVATE_DATA->slew_timer) {
-				indigo_reschedule_timer(device, 0.0, &PRIVATE_DATA->slew_timer);
-			} else {
-				indigo_set_timer(device, 0.0, slew_timer_callback, &PRIVATE_DATA->slew_timer);
-			}
-		} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
-			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
-				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_SLOW_SOUTH);
-			} else {
-				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_FAST_SOUTH);
-			}
-			if (PRIVATE_DATA->slew_timer) {
-				indigo_reschedule_timer(device, 0.0, &PRIVATE_DATA->slew_timer);
-			} else {
-				indigo_set_timer(device, 0.0, slew_timer_callback, &PRIVATE_DATA->slew_timer);
-			}
-		} else {
-			*PRIVATE_DATA->slewCommand = 0;
-			indigo_cancel_timer(device, &PRIVATE_DATA->slew_timer);
-			temma_command(device, TEMMA_SLEW_STOP, false);
-		}
-		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_MOTION_RA_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_MOTION_WE
-		indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
-		if (MOUNT_MOTION_WEST_ITEM->sw.value) {
-			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
-				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_SLOW_WEST);
-			} else {
-				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_FAST_WEST);
-			}
-			if (PRIVATE_DATA->slew_timer) {
-				indigo_reschedule_timer(device, 0.0, &PRIVATE_DATA->slew_timer);
-			} else {
-				indigo_set_timer(device, 0.0, slew_timer_callback, &PRIVATE_DATA->slew_timer);
-			}
-		} else if (MOUNT_MOTION_EAST_ITEM->sw.value) {
-			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
-				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_SLOW_EAST);
-			} else {
-				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_FAST_EAST);
-			}
-			if (PRIVATE_DATA->slew_timer) {
-				indigo_reschedule_timer(device, 0.0, &PRIVATE_DATA->slew_timer);
-			} else {
-				indigo_set_timer(device, 0.0, slew_timer_callback, &PRIVATE_DATA->slew_timer);
-			}
-		} else {
-			*PRIVATE_DATA->slewCommand = 0;
-			indigo_cancel_timer(device, &PRIVATE_DATA->slew_timer);
-			temma_command(device, TEMMA_SLEW_STOP, false);
-		}
-		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_SIDE_OF_PIER_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- SIDE_OF_PIER
-		indigo_property_copy_values(MOUNT_SIDE_OF_PIER_PROPERTY, property, false);
-		if (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
-			if (PRIVATE_DATA->telescopeSide == 'E') {
-				temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, true);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Side of telescope switched : West -> East");
-			}
-		} else if (MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
-			if (PRIVATE_DATA->telescopeSide == 'W') {
-				temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, true);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Side of telescope switched : East -> West");
-			}
-		}
-		indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CORRECTION_SPEED_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CORRECTION_SPEED
-		indigo_property_copy_values(CORRECTION_SPEED_PROPERTY, property, false);
-		char buffer[128];
-		sprintf(buffer, "LA%02d", (int)CORRECTION_SPEED_RA_ITEM->number.value);
-		temma_command(device, buffer, false);
-		sprintf(buffer, "LB%02d", (int)CORRECTION_SPEED_DEC_ITEM->number.value);
-		temma_command(device, buffer, false);
-		CORRECTION_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CORRECTION_SPEED_PROPERTY, NULL);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(CORRECTION_SPEED_PROPERTY, mount_correction_speed_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(HIGH_SPEED_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- HIGH_SPEED
-		indigo_property_copy_values(HIGH_SPEED_PROPERTY, property, false);
-		if (HIGH_SPEED_LOW_ITEM->sw.value || HIGH_SPEED_HIGH_ITEM->sw.value) {
-			// show busy
-			HIGH_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, HIGH_SPEED_PROPERTY, NULL);
-			if (HIGH_SPEED_LOW_ITEM->sw.value) {
-				temma_command(device, TEMMA_SET_VOLTAGE_12V_OR_LOW_SPEED, false);
-			} else if (HIGH_SPEED_HIGH_ITEM->sw.value) {
-				temma_command(device, TEMMA_SET_VOLTAGE_24V_OR_HIGH_SPEED, false);
-			}
-			// show ok
-			HIGH_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, HIGH_SPEED_PROPERTY, NULL);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(HIGH_SPEED_PROPERTY, mount_high_speed_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ZENITH_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- ZENITH
-		indigo_property_copy_values(ZENITH_PROPERTY, property, false);
-		if (ZENITH_EAST_ITEM->sw.value || ZENITH_WEST_ITEM->sw.value) {
-			// show busy
-			ZENITH_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, ZENITH_PROPERTY, NULL);
-			// check side of pier
-			if ((ZENITH_EAST_ITEM->sw.value && PRIVATE_DATA->telescopeSide == 'W') ||
-					(ZENITH_WEST_ITEM->sw.value && PRIVATE_DATA->telescopeSide == 'E')) {
-				// update side of pier
-				temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, false);
-			}
-			// send zenith
-			temma_set_lst(device);
-			temma_command(device, TEMMA_ZENITH, false);
-			ZENITH_EAST_ITEM->sw.value = false;
-			ZENITH_WEST_ITEM->sw.value = false;
-			// show ok
-			ZENITH_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, ZENITH_PROPERTY, NULL);
-			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(ZENITH_PROPERTY, mount_zenith_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, mount_equatorial_coordinates_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(MOUNT_ABORT_MOTION_PROPERTY, mount_abort_motion_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_TRACK_RATE_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_TRACK_RATE_PROPERTY, mount_track_rate_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_TRACKING_PROPERTY, mount_tracking_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_MOTION_DEC_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_DEC_PROPERTY, mount_motion_dec_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_MOTION_RA_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_RA_PROPERTY, mount_motion_ra_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_SIDE_OF_PIER_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_SIDE_OF_PIER_PROPERTY, mount_side_of_pier_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_PARK_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PARK_PROPERTY, mount_park_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, mount_geographic_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, CORRECTION_SPEED_PROPERTY);
 		}
@@ -742,10 +678,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 }
 
 static indigo_result mount_detach(indigo_device *device) {
-	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		mount_connect_callback(device);
+		mount_connection_handler(device);
 	}
 	indigo_release_property(CORRECTION_SPEED_PROPERTY);
 	indigo_release_property(HIGH_SPEED_PROPERTY);
@@ -754,171 +689,209 @@ static indigo_result mount_detach(indigo_device *device) {
 	return indigo_mount_detach(device);
 }
 
-// -------------------------------------------------------------------------------- INDIGO guider device implementation
+#pragma mark - High level code (guider)
 
-static indigo_result guider_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(PRIVATE_DATA != NULL);
-	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_guider_enumerate_properties(device, NULL, NULL);
-	}
-	return INDIGO_FAILED;
-}
-
-static void guider_connect_callback(indigo_device *device) {
-	indigo_lock_master_device(device);
+static void guider_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool result = true;
-		if (PRIVATE_DATA->device_count++ == 0) {
-			result = temma_open(device->master_device);
+		bool connection_result = true;
+		if (PRIVATE_DATA->count == 0) {
+			connection_result = temma_open(device->master_device);
 		}
-		if (result) {
+		if (connection_result) {
+			PRIVATE_DATA->count++;
+		}
+		if (connection_result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			PRIVATE_DATA->device_count--;
+			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
+				temma_close(device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (--PRIVATE_DATA->device_count == 0) {
+		indigo_cancel_pending_handlers(device);
+		//+ guider.on_disconnect
+		indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+		indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+		PRIVATE_DATA->guider_motion_mask = 0;
+		if (PRIVATE_DATA->handle != NULL) {
+			temma_update_motion(device);
+		}
+		//- guider.on_disconnect
+		if (--PRIVATE_DATA->count == 0) {
 			temma_close(device);
 		}
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
-	indigo_unlock_master_device(device);
+}
+
+static void guider_guide_dec_handler(indigo_device *device) {
+	//+ guider.GUIDER_GUIDE_DEC.on_change
+	indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+	PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_DEC_NORTH | TEMMA_MOTION_DEC_SOUTH);
+	double duration = 0;
+	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
+		PRIVATE_DATA->guider_motion_mask |= TEMMA_MOTION_DEC_NORTH;
+		duration = GUIDER_GUIDE_NORTH_ITEM->number.value / 1000.0;
+	} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
+		PRIVATE_DATA->guider_motion_mask |= TEMMA_MOTION_DEC_SOUTH;
+		duration = GUIDER_GUIDE_SOUTH_ITEM->number.value / 1000.0;
+	}
+	bool ok = temma_update_motion(device);
+	if (duration > 0 && ok) {
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration, guider_guide_dec_finalizer);
+	} else {
+		if (!ok) {
+			PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_DEC_NORTH | TEMMA_MOTION_DEC_SOUTH);
+		}
+		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+		GUIDER_GUIDE_DEC_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+	}
+	//- guider.GUIDER_GUIDE_DEC.on_change
+}
+
+static void guider_guide_ra_handler(indigo_device *device) {
+	//+ guider.GUIDER_GUIDE_RA.on_change
+	indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+	PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_RA_EAST | TEMMA_MOTION_RA_WEST);
+	double duration = 0;
+	if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
+		PRIVATE_DATA->guider_motion_mask |= TEMMA_MOTION_RA_WEST;
+		duration = GUIDER_GUIDE_WEST_ITEM->number.value / 1000.0;
+	} else if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
+		PRIVATE_DATA->guider_motion_mask |= TEMMA_MOTION_RA_EAST;
+		duration = GUIDER_GUIDE_EAST_ITEM->number.value / 1000.0;
+	}
+	bool ok = temma_update_motion(device);
+	if (duration > 0 && ok) {
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration, guider_guide_ra_finalizer);
+	} else {
+		if (!ok) {
+			PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_RA_EAST | TEMMA_MOTION_RA_WEST);
+		}
+		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+		GUIDER_GUIDE_RA_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+	}
+	//- guider.GUIDER_GUIDE_RA.on_change
+}
+
+#pragma mark - Device API (guider)
+
+static indigo_result guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
+static indigo_result guider_attach(indigo_device *device) {
+	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
+		GUIDER_GUIDE_RA_PROPERTY->hidden = false;
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return guider_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	return indigo_guider_enumerate_properties(device, client, property);
 }
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property))
-			return INDIGO_OK;
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, guider_connect_callback, NULL);
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_handler(device, guider_connection_handler);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
-		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-		if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
-			temma_command(device, TEMMA_SLEW_SLOW_NORTH, false);
-			indigo_usleep(1000 * GUIDER_GUIDE_NORTH_ITEM->number.value);
-		} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
-			temma_command(device, TEMMA_SLEW_SLOW_SOUTH, false);
-			indigo_usleep(1000 * GUIDER_GUIDE_SOUTH_ITEM->number.value);
-		}
-		temma_command(device, TEMMA_SLEW_STOP, false);
-		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+		//+ guider.GUIDER_GUIDE_DEC.on_change_request
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		//- guider.GUIDER_GUIDE_DEC.on_change_request
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
-		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-		if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
-			temma_command(device, TEMMA_SLEW_SLOW_WEST, false);
-			indigo_usleep(1000 * GUIDER_GUIDE_WEST_ITEM->number.value);
-		} else if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
-			temma_command(device, TEMMA_SLEW_SLOW_EAST, false);
-			indigo_usleep(1000 * GUIDER_GUIDE_EAST_ITEM->number.value);
-		}
-		temma_command(device, TEMMA_SLEW_STOP, false);
-		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+		//+ guider.GUIDER_GUIDE_RA.on_change_request
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		//- guider.GUIDER_GUIDE_RA.on_change_request
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
 		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
 	}
 	return indigo_guider_change_property(device, client, property);
 }
 
 static indigo_result guider_detach(indigo_device *device) {
-	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		guider_connect_callback(device);
+		guider_connection_handler(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
 
-// --------------------------------------------------------------------------------
+#pragma mark - Device templates
 
-static temma_private_data *private_data = NULL;
+static indigo_device mount_template = INDIGO_DEVICE_INITIALIZER(MOUNT_DEVICE_NAME, mount_attach, mount_enumerate_properties, mount_change_property, NULL, mount_detach);
 
-static indigo_device *mount = NULL;
-static indigo_device *mount_guider = NULL;
+static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(GUIDER_DEVICE_NAME, guider_attach, guider_enumerate_properties, guider_change_property, NULL, guider_detach);
+
+#pragma mark - Main code
 
 indigo_result indigo_mount_temma(indigo_driver_action action, indigo_driver_info *info) {
-	static indigo_device mount_template = INDIGO_DEVICE_INITIALIZER(
-		MOUNT_TEMMA_NAME,
-		mount_attach,
-		mount_enumerate_properties,
-		mount_change_property,
-		NULL,
-		mount_detach
-	);
-	static indigo_device mount_guider_template = INDIGO_DEVICE_INITIALIZER(
-		MOUNT_TEMMA_GUIDER_NAME,
-		guider_attach,
-		indigo_guider_enumerate_properties,
-		guider_change_property,
-		NULL,
-		guider_detach
-	);
-
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+	static temma_private_data *private_data = NULL;
+	static indigo_device *mount = NULL;
+	static indigo_device *guider = NULL;
 
-	SET_DRIVER_INFO(info, "Takahashi Temma Mount", __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(temma_private_data));
-			mount = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
+			private_data = (temma_private_data *)indigo_safe_malloc(sizeof(temma_private_data));
+			mount = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 			mount->private_data = private_data;
-			mount->master_device = mount;
 			indigo_attach_device(mount);
-			mount_guider = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_guider_template);
-			mount_guider->private_data = private_data;
-			mount_guider->master_device = mount;
-			indigo_attach_device(mount_guider);
+			guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
+			guider->private_data = private_data;
+			guider->master_device = mount;
+			indigo_attach_device(guider);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(mount);
-			VERIFY_NOT_CONNECTED(mount_guider);
+			VERIFY_NOT_CONNECTED(guider);
 			last_action = action;
+			if (guider != NULL) {
+				indigo_detach_device(guider);
+				indigo_safe_free(guider);
+				guider = NULL;
+			}
 			if (mount != NULL) {
 				indigo_detach_device(mount);
-				free(mount);
+				indigo_safe_free(mount);
 				mount = NULL;
 			}
-			if (mount_guider != NULL) {
-				indigo_detach_device(mount_guider);
-				free(mount_guider);
-				mount_guider = NULL;
-			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

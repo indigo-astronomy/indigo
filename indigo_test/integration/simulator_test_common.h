@@ -457,6 +457,12 @@ static indigo_client simulator_test_client = {
 static void reset_simulator_context(const simulator_driver_case *driver_case) {
 	release_cached_properties();
 	memset(&context, 0, sizeof(context));
+	for (int index = 0; index < MAX_DEFINED_PROPERTIES; index++) {
+		atomic_init(context.property_revisions + index, 0);
+		for (int state = 0; state < 4; state++) {
+			atomic_init(context.property_state_revisions[index] + state, 0);
+		}
+	}
 	context.driver_case = driver_case;
 	simulator_test_client.version = INDIGO_VERSION_CURRENT;
 	simulator_test_client.last_result = INDIGO_OK;

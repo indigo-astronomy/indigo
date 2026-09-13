@@ -2673,6 +2673,9 @@
 		59910B4E305696BA00FB1C2F /* indigo_mount_nexstar.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_mount_nexstar.driver; sourceTree = "<group>"; };
 		59910B4F305696D100FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59910B503056CA2300FB1C2F /* indigo_polaralign_simulator.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_polaralign_simulator.driver; sourceTree = "<group>"; };
+		59910B51305708D100FB1C2F /* indigo_mount_temma.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_mount_temma.driver; sourceTree = "<group>"; };
+		59910B52305708D100FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		59910B5330570C7A00FB1C2F /* mount_temma_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_temma_simulator.c; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -3250,6 +3253,7 @@
 		59B81EC323376A1A00DFA81B /* arteskyflat.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = arteskyflat.rules; sourceTree = "<group>"; };
 		59B81EC423376A1A00DFA81B /* indigo_aux_arteskyflat.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_arteskyflat.c; sourceTree = "<group>"; };
 		59B81EC7233774DC00DFA81B /* aux_arteskyflat_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = aux_arteskyflat_simulator.ino; sourceTree = "<group>"; };
+		A17E5C012F7A000100000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59B81EC92337AA2E00DFA81B /* indigo_dome_nexdome.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_nexdome.c; sourceTree = "<group>"; };
 		59B81ECA2337AA2E00DFA81B /* indigo_dome_nexdome_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_nexdome_main.c; sourceTree = "<group>"; };
 		59B81ECC2337AA2E00DFA81B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -3351,9 +3355,6 @@
 		59D381A81D9592A400E87393 /* indigo_bus.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; name = indigo_bus.c; path = indigo_libs/indigo_bus.c; sourceTree = SOURCE_ROOT; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator.c; sourceTree = "<group>"; wrapsLines = 0; };
 		59D381AC1D95996100E87393 /* indigo_ccd_simulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator.h; sourceTree = "<group>"; };
-		C0DE20260913CCD000000001 /* indigo_ccd_simulator.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_simulator.driver; sourceTree = "<group>"; };
-		C0DE20260913CCD000000002 /* indigo_ccd_simulator_data.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_data.h; sourceTree = "<group>"; };
-		C0DE20260913CCD000000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59D381BF1D965FDA00E87393 /* indigo_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; name = indigo_driver.c; path = indigo_libs/indigo_driver.c; sourceTree = SOURCE_ROOT; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59D381C01D965FDA00E87393 /* indigo_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = indigo_driver.h; path = indigo_libs/indigo/indigo_driver.h; sourceTree = SOURCE_ROOT; };
 		59D381C71D96A33D00E87393 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; wrapsLines = 1; };
@@ -3383,9 +3384,6 @@
 		59D7076C1DC52C3E00DEF566 /* indigo_mount_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator_main.c; sourceTree = "<group>"; };
 		59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator.c; sourceTree = "<group>"; };
 		59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_simulator.h; sourceTree = "<group>"; };
-		C0DE20260913AA5500000002 /* indigo_mount_simulator.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_mount_simulator.driver; sourceTree = "<group>"; };
-		C0DE20260913AA5600000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
-		C0DE20260913AA5600000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59D8BBC4260E624600B904EE /* indigo_alpaca_dome.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_alpaca_dome.c; sourceTree = "<group>"; };
 		59D8BBD5260E628B00B904EE /* indigo_alpaca_ccd.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_alpaca_ccd.c; sourceTree = "<group>"; wrapsLines = 0; };
 		59D8BBE526126C8900B904EE /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
@@ -5506,6 +5504,12 @@
 		C0DE20260913000500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913000600000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913AA5500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260913AA5500000002 /* indigo_mount_simulator.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_mount_simulator.driver; sourceTree = "<group>"; };
+		C0DE20260913AA5600000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260913AA5600000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260913CCD000000001 /* indigo_ccd_simulator.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_simulator.driver; sourceTree = "<group>"; };
+		C0DE20260913CCD000000002 /* indigo_ccd_simulator_data.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_data.h; sourceTree = "<group>"; };
+		C0DE20260913CCD000000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE26060912F10000000000 /* Origin678C.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = Origin678C.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000001 /* QHY26800A.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY26800A.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000002 /* QHY585.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY585.img; sourceTree = "<group>"; };
@@ -5709,6 +5713,7 @@
 		590B0F022F521D9A007B66B1 /* mount_temma_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				59910B5330570C7A00FB1C2F /* mount_temma_simulator.c */,
 				590B0F032F521DAF007B66B1 /* mount_temma_simulator.ino */,
 			);
 			path = mount_temma_simulator;
@@ -5718,9 +5723,11 @@
 			isa = PBXGroup;
 			children = (
 				590B59CF1F78543F00086FD2 /* README.md */,
+				59910B52305708D100FB1C2F /* REFACTOR.md */,
 				590B59D01F78544000086FD2 /* indigo_mount_temma_main.c */,
 				590B59D11F78544000086FD2 /* indigo_mount_temma.c */,
 				590B59D21F78544000086FD2 /* indigo_mount_temma.h */,
+				59910B51305708D100FB1C2F /* indigo_mount_temma.driver */,
 				590B59D31F78544000086FD2 /* Temma.pdf */,
 				590B0F022F521D9A007B66B1 /* mount_temma_simulator */,
 			);
@@ -10567,6 +10574,7 @@
 			isa = PBXGroup;
 			children = (
 				59B81EC123376A1A00DFA81B /* README.md */,
+				A17E5C012F7A000100000001 /* REFACTOR.md */,
 				59B81EC023376A1A00DFA81B /* indigo_aux_arteskyflat.h */,
 				59B81EC423376A1A00DFA81B /* indigo_aux_arteskyflat.c */,
 				59B81EC223376A1A00DFA81B /* indigo_aux_arteskyflat_main.c */,

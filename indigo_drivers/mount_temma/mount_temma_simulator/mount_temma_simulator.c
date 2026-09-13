@@ -12,6 +12,7 @@
 #define _XOPEN_SOURCE 600
 
 #include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <math.h>
 #include <signal.h>
@@ -21,6 +22,7 @@
 #include <string.h>
 #include <sys/select.h>
 #include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
@@ -31,6 +33,10 @@ typedef struct {
 	bool headless;
 	bool trace;
 	const char *ready_file;
+	const char *malformed_reply_command;
+	const char *trace_file;
+	const char *fault_command;
+	const char *fault_reply;
 } simulator_options;
 
 typedef struct {
@@ -46,6 +52,9 @@ typedef struct {
 	unsigned correction_ra;
 	unsigned correction_dec;
 	bool high_speed;
+	double slew_deadline;
+	double target_ra;
+	double target_dec;
 } simulator_state;
 
 static simulator_options options = {
@@ -72,6 +81,8 @@ static simulator_state state = {
 static const char *simulator_name = "mount_temma";
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
+static int serial_keepalive_fd = -1;
+static FILE *trace_file = NULL;
 
 static void usage(const char *name) {
 	printf("Takahashi Temma mount serial simulator\n");
@@ -79,6 +90,10 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
+	printf("  --trace-file <path>     Record timestamped command bytes\n");
+	printf("  --malformed-reply <cmd> Return a malformed reply for a protocol command\n");
+	printf("  --fault-reply <cmd> <r> Return one reply override for a protocol command\n");
+	printf("  --drop-reply <cmd>      Drop one reply for a protocol command\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -98,6 +113,32 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--trace-file")) {
+			if (++i == argc) {
+				fprintf(stderr, "--trace-file requires a path\n");
+				return false;
+			}
+			options.trace_file = argv[i];
+		} else if (!strcmp(argv[i], "--malformed-reply")) {
+			if (++i == argc) {
+				fprintf(stderr, "--malformed-reply requires a command\n");
+				return false;
+			}
+			options.malformed_reply_command = argv[i];
+		} else if (!strcmp(argv[i], "--fault-reply")) {
+			if (i + 2 >= argc) {
+				fprintf(stderr, "--fault-reply requires a command and reply\n");
+				return false;
+			}
+			options.fault_command = argv[++i];
+			options.fault_reply = argv[++i];
+		} else if (!strcmp(argv[i], "--drop-reply")) {
+			if (++i == argc) {
+				fprintf(stderr, "--drop-reply requires a command\n");
+				return false;
+			}
+			options.fault_command = argv[i];
+			options.fault_reply = NULL;
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -112,6 +153,10 @@ static void signal_handler(int sig) {
 	if (serial_fd >= 0) {
 		close(serial_fd);
 		serial_fd = -1;
+	}
+	if (serial_keepalive_fd >= 0) {
+		close(serial_keepalive_fd);
+		serial_keepalive_fd = -1;
 	}
 }
 
@@ -162,20 +207,62 @@ static double clamp(double value, double min, double max) {
 	return value;
 }
 
+static double monotonic_time(void) {
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return now.tv_sec + now.tv_nsec / 1000000000.0;
+}
+
+static void record_command(const unsigned char *command, size_t length) {
+	if (trace_file == NULL) {
+		return;
+	}
+	fprintf(trace_file, "%.9f", monotonic_time());
+	for (size_t i = 0; i < length; i++) {
+		fprintf(trace_file, " %02X", command[i]);
+	}
+	fputc('\n', trace_file);
+	fflush(trace_file);
+}
+
+static bool inject_fault(const char *command) {
+	if (options.fault_command == NULL) {
+		return false;
+	}
+	size_t length = strlen(options.fault_command);
+	bool wildcard = length > 0 && options.fault_command[length - 1] == '*';
+	if ((wildcard && strncmp(command, options.fault_command, length - 1)) || (!wildcard && strcmp(command, options.fault_command))) {
+		return false;
+	}
+	options.fault_command = NULL;
+	if (options.fault_reply != NULL) {
+		send_line(options.fault_reply);
+	}
+	return true;
+}
+
+static void update_slew(void) {
+	if (state.slewing && monotonic_time() >= state.slew_deadline) {
+		state.ra = state.target_ra;
+		state.dec = state.target_dec;
+		state.slewing = false;
+	}
+}
+
 static void format_ra(char *buffer, size_t size, double ra) {
-	ra = wrap24(ra);
-	int hours = (int)ra;
-	int minutes = (int)(ra * 60.0) % 60;
-	int seconds = (int)(ra * 3600.0 + 0.5) % 60;
+	int total_seconds = (int)round(wrap24(ra) * 3600.0) % (24 * 3600);
+	int hours = total_seconds / 3600;
+	int minutes = total_seconds / 60 % 60;
+	int seconds = total_seconds % 60;
 	snprintf(buffer, size, "%02d%02d%02d", hours, minutes, seconds);
 }
 
 static void format_dec(char *buffer, size_t size, double dec) {
 	char sign = dec < 0 ? '-' : '+';
-	dec = fabs(dec);
-	int degrees = (int)dec;
-	int minutes = (int)(dec * 60.0) % 60;
-	int tenths = (int)(dec * 600.0 + 0.5) % 10;
+	int total_tenths = (int)round(fabs(dec) * 600.0);
+	int degrees = total_tenths / 600;
+	int minutes = total_tenths / 10 % 60;
+	int tenths = total_tenths % 10;
 	snprintf(buffer, size, "%c%02d%02d%d", sign, degrees, minutes, tenths);
 }
 
@@ -200,6 +287,14 @@ static bool parse_radec(const char *text, double *ra, double *dec) {
 static void handle_ascii_command(const char *command) {
 	char response[160];
 	serial_simulator_trace_line(options.trace, "->", command);
+	update_slew();
+	if (inject_fault(command)) {
+		return;
+	}
+	if (options.malformed_reply_command != NULL && !strcmp(command, options.malformed_reply_command)) {
+		send_line("malformed");
+		return;
+	}
 
 	if (!strcmp(command, "v")) {
 		send_line("vTemma-Sim");
@@ -268,8 +363,13 @@ static void handle_ascii_command(const char *command) {
 		snprintf(response, sizeof(response), "E%s%s%c1", ra, dec, state.telescope_side);
 		send_line(response);
 	} else if ((command[0] == 'D' || command[0] == 'P') && strlen(command) >= 13) {
-		if (parse_radec(command + 1, &state.ra, &state.dec)) {
-			state.slewing = false;
+		if (parse_radec(command + 1, &state.target_ra, &state.target_dec)) {
+			state.slewing = command[0] == 'P';
+			state.slew_deadline = monotonic_time() + 0.75;
+			if (!state.slewing) {
+				state.ra = state.target_ra;
+				state.dec = state.target_dec;
+			}
 			state.motors_on = true;
 			reply_ok();
 		} else {
@@ -281,8 +381,13 @@ static void handle_ascii_command(const char *command) {
 }
 
 static void handle_command(const unsigned char *command, size_t length) {
+	record_command(command, length);
 	if (length == 2 && command[0] == 'M') {
 		serial_simulator_trace_line(options.trace, "->", "M<binary>");
+		char text[3] = { 'M', command[1], 0 };
+		if (inject_fault(text)) {
+			return;
+		}
 		reply_ok();
 		return;
 	}
@@ -345,6 +450,19 @@ int main(int argc, char *argv[]) {
 	if (serial_fd < 0) {
 		return 1;
 	}
+	serial_keepalive_fd = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	if (serial_keepalive_fd < 0) {
+		close(serial_fd);
+		return 1;
+	}
+	if (options.trace_file != NULL) {
+		trace_file = fopen(options.trace_file, "w");
+		if (trace_file == NULL) {
+			close(serial_keepalive_fd);
+			close(serial_fd);
+			return 1;
+		}
+	}
 	if (options.ready_file != NULL && !serial_simulator_write_ready_file(options.ready_file, simulator_name, port)) {
 		close(serial_fd);
 		return 1;
@@ -359,6 +477,12 @@ int main(int argc, char *argv[]) {
 	run_loop();
 	if (serial_fd >= 0) {
 		close(serial_fd);
+	}
+	if (serial_keepalive_fd >= 0) {
+		close(serial_keepalive_fd);
+	}
+	if (trace_file != NULL) {
+		fclose(trace_file);
 	}
 	return 0;
 }

@@ -702,7 +702,7 @@ Source: `indigo_drivers/ao_sx/indigo_ao_sx.c`.
 
 Driver-specific use of existing properties: `AUX_LIGHT_INTENSITY`, `AUX_LIGHT_SWITCH`.
 
-Source: `indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.c`.
+Source: `indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.driver`; generated output in `indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.c`.
 
 ### aux_astromechanics
 
@@ -1382,7 +1382,7 @@ Source: `indigo_drivers/mount_synscan/indigo_mount_synscan.c`.
 
 ### mount_temma
 
-Custom properties: `TEMMA_CORRECTION_SPEED`, `TEMMA_HIGH_SPEED`, `TEMMA_ZENITH`.
+Custom properties: `X_TEMMA_CORRECTION_SPEED`, `X_TEMMA_HIGH_SPEED`, `X_TEMMA_ZENITH`.
 
 Driver-specific use of existing properties: `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `UTC_TIME`.
 

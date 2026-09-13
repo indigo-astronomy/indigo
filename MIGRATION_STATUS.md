@@ -1,153 +1,153 @@
 # Migration status
 
-`Automated Tests` indicates whether a driver test exists in `indigo_test/` (simulator, fake SDK or opt-in hardware harness), not whether it has passed or provides complete coverage. Shared implementation alone does not count as a test of an OEM variant.
+`Automated Tests (Sim / HW)` gives the number of hardware-free integration cases and opt-in physical-hardware cases. It does not indicate whether they have passed or provide complete coverage. Shared implementation alone does not count as a test of an OEM variant.
 
-| Driver                  | API | Windows | Generator | Async Queues | Retested | Automated Tests | Comment |
-| ----------------------- | --- | ------- | --------- | ------------ | -------- | --------------- | ------- |
-| agent_alpaca            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | ❌ No  |                                                         |
-| agent_auxiliary         | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | ❌ No  |                                                         |
-| agent_config            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | ❌ No  |                                                         |
-| agent_guider            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | ❌ No  |                                                         |
-| agent_imager            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | ❌ No  |                                                         |
-| agent_mount             | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | ❌ No  |                                                         |
-| agent_scripting         | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | ❌ No  |                                                         |
-| agent_astrometry        | 2️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | ❌ No  |                                                         |
-| agent_astap             | 2️⃣ | ❌ No  | ⛔ N/A | ❌ No  | ❌ No  | ❌ No  | ⛔ Needs fork() & pipes                                 |
-| agent_snoop             | 2️⃣ | ❌ No  | ⛔ N/A | ❌ No  | ❌ No  | ❌ No  | 🚧 Obsolete                                             |
-| ao_sx                   | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| aux_arteskyflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| aux_asiair              | 2️⃣ | ⛔ N/A | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⛔ RPi only                                             |
-| aux_astromechanics      | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| aux_cloudwatcher        | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ❌ No  |                                                         |
-| aux_dragonfly           | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
-| aux_dsusb               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| aux_fbc                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| aux_flatmaster          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| aux_flipflat            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| aux_geoptikflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| aux_joystick            | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
-| aux_mgbox               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes | 																												 |
-| aux_ppb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| aux_rpio                | 2️⃣ | ⛔ N/A | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⛔ RPi only                                             |
-| aux_rts                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes |                                                         |
-| aux_skyalert            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| aux_sqm                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| aux_svbpowerbox         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| aux_uch                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| aux_upb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| aux_upb3                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| aux_usbdp               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| aux_wbplusv3            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| aux_wbprov3             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| aux_wcv4ec              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| ccd_altair              | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ✅ Yes | ➡️ Touptek                                              |
-| ccd_apogee              | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⏰ TODO - make boost_regex and libapogee for Windows    |
-| ccd_asi                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| ccd_atik                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| ccd_atik2               | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes | ⛔ macOS only                                           |
-| ccd_baccam              | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ✅ Yes | ➡️ Touptek                                              |
-| ccd_bresser             | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ✅ Yes | ➡️ Touptek                                              |
-| ccd_dsi                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ❌ No  |                                                         |
-| ccd_fli                 | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
-| ccd_iidc                | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⏰ TODO - make libdc1394 for Windows                    |
-| ccd_mallin              | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ✅ Yes | ➡️ Touptek                                              |
-| ccd_mi                  | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⛔ Unix and Windows SDKs are not compatible             |
-| ccd_ogma                | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ✅ Yes | ➡️ Touptek                                              |
-| ccd_omegonpro           | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ✅ Yes | ➡️ Touptek                                              |
-| ccd_pentax              | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 🚧 Unfinished & stalled                                 |
-| ccd_playerone           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| ccd_ptp                 | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
-| ccd_qhy                 | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ⚠️ HW  | ✅ Yes | ⏰ TODO - make libqhy for Windows                       |
-| ccd_qhy2                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| ccd_qsi                 | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⏰ TODO - find SDK for windows                          |
-| ccd_rising              | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ✅ Yes | ➡️ Touptek                                              |
-| ccd_sbig                | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⏰ TODO - find SDK for windows                          |
-| ccd_simulator           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| ccd_ssag                | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
-| ccd_ssg                 | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ✅ Yes | ➡️ Touptek                                              |
-| ccd_svb                 | 3️⃣ | ✅ No  | ❌ No  | ❌ No  | ✅ HW  | ❌ No  |                                                         |
-| ccd_svb2                | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ✅ Yes | ➡️ Touptek                                              |
-| ccd_sx                  | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| ccd_touptek             | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| ccd_uvc                 | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⛔ libuvc is Unix only                                  |
-| dome_baader             | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
-| dome_beaver             | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| dome_dragonfly          | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
-| dome_nexdome            | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
-| dome_nexdome3           | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
-| dome_simulator          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| dome_skyroof            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |                                                         |
-| dome_talon6ror          | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
-| focuser_asi             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |                                                         |
-| focuser_askar           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_astroasis       | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ✅ HW  | ❌ No  |                                                         |
-| focuser_astromechanics  | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_dmfc            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_dsd             | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ✅ HW  | ✅ Yes |                                                         |
-| focuser_efa             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_fc3             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes |                                                         |
-| focuser_fcusb           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| focuser_fli             | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
-| focuser_focusdreampro   | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
-| focuser_ioptron         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_lacerta         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_lakeside        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_lunatico        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
-| focuser_mjkzz           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_mjkzz_bt        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⛔ macOS only                                           |
-| focuser_moonlite        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_mypro2          | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| focuser_nfocus          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_nstep           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_optec           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_optecfl         | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_primaluce       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| focuser_prodigy         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_qhy             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_robofocus       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_steeldrive2     | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_usbv3           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| focuser_wemacro         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| focuser_wemacro_bt      | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⛔ macOS only                                           |
-| gps_gpsd                | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⏰ TODO - make libgps for Windows                       |
-| gps_nmea                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes |                                                         |
-| gps_simulator           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| guider_asi              | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes | ⏰ TODO - find SDK for windows                          |
-| guider_cgusbst4         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes |                                                         |
-| guider_gpusb            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| mount_asi               | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ❌ No  | ❌ No  |                                                         |
-| mount_ioptron           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| mount_lx200             | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| mount_nexstar           | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes | ⏰ TODO - make libnexstar for Windows                   |
-| mount_nexstaraux        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| mount_pmc8              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| mount_rainbow           | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
-| mount_simulator         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| mount_starbook          | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
-| mount_synscan           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| mount_temma             | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
-| polaralign_simulator    | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| rotator_asi             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| rotator_falcon          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| rotator_lunatico        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
-| rotator_optec           | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ✅ Yes |                                                         |
-| rotator_simulator       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| rotator_wa              | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ✅ HW  | ✅ Yes |                                                         |
-| system_ascol            | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
-| wheel_asi               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| wheel_astroasis         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| wheel_atik              | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes | ⏰ TODO - make libatik for Windows                      |
-| wheel_fli               | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | ❌ No  |                                                         |
-| wheel_indigo            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | ✅ Yes |                                                         |
-| wheel_manual            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | ✅ Yes |                                                         |
-| wheel_mi                | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ❌ No  | ⛔ Unix and Windows SDKs are not compatible             |
-| wheel_optec             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |                                                         |
-| wheel_playerone         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | ✅ Yes |                                                         |
-| wheel_qhy               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |                                                         |
-| wheel_quantum           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |                                                         |
-| wheel_sx                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ⏰ TODO - make hidapi for Windows                       |
-| wheel_trutek            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |                                                         |
-| wheel_xagyl             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |                                                         |
+| Driver                  | API | Windows | Generator | Async Queues | Retested | Automated Tests (Sim / HW) | Comment |
+| ----------------------- | --- | ------- | --------- | ------------ | -------- | -------------------------- | ------- |
+| agent_alpaca            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 0 / 0 | |
+| agent_auxiliary         | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 0 / 0 | |
+| agent_config            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 56 / 0 | |
+| agent_guider            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 88 / 0 | |
+| agent_imager            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 39 / 0 | |
+| agent_mount             | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 69 / 0 | |
+| agent_scripting         | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 0 / 0 | |
+| agent_astrometry        | 2️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 0 / 0 | |
+| agent_astap             | 2️⃣ | ❌ No  | ⛔ N/A | ❌ No  | ❌ No  | 0 / 0 | ⛔ Needs fork() & pipes |
+| agent_snoop             | 2️⃣ | ❌ No  | ⛔ N/A | ❌ No  | ❌ No  | 0 / 0 | 🚧 Obsolete |
+| ao_sx                   | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 9 / 0 | |
+| aux_arteskyflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
+| aux_asiair              | 2️⃣ | ⛔ N/A | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ RPi only |
+| aux_astromechanics      | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
+| aux_cloudwatcher        | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 5 / 0 | |
+| aux_dragonfly           | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 5 / 0 | |
+| aux_dsusb               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
+| aux_fbc                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
+| aux_flatmaster          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
+| aux_flipflat            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
+| aux_geoptikflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 0 / 0 | |
+| aux_joystick            | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | |
+| aux_mgbox               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 32 / 0 | |
+| aux_ppb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
+| aux_rpio                | 2️⃣ | ⛔ N/A | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ RPi only |
+| aux_rts                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 0 / 0 | |
+| aux_skyalert            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
+| aux_sqm                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
+| aux_svbpowerbox         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
+| aux_uch                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
+| aux_upb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
+| aux_upb3                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 2 / 0 | |
+| aux_usbdp               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 2 / 0 | |
+| aux_wbplusv3            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
+| aux_wbprov3             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
+| aux_wcv4ec              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
+| ccd_altair              | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 28 / 1 | ➡️ Touptek |
+| ccd_apogee              | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⏰ TODO - make boost_regex and libapogee for Windows |
+| ccd_asi                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 51 / 1 | |
+| ccd_atik                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 40 / 1 | |
+| ccd_atik2               | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 24 / 0 | ⛔ macOS only |
+| ccd_baccam              | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
+| ccd_bresser             | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
+| ccd_dsi                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
+| ccd_fli                 | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | |
+| ccd_iidc                | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⏰ TODO - make libdc1394 for Windows |
+| ccd_mallin              | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
+| ccd_mi                  | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ Unix and Windows SDKs are not compatible |
+| ccd_ogma                | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
+| ccd_omegonpro           | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
+| ccd_pentax              | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | 🚧 Unfinished & stalled |
+| ccd_playerone           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 48 / 1 | |
+| ccd_ptp                 | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | |
+| ccd_qhy                 | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ⚠️ HW  | 0 / 1 | ⏰ TODO - make libqhy for Windows |
+| ccd_qhy2                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
+| ccd_qsi                 | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⏰ TODO - find SDK for windows |
+| ccd_rising              | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
+| ccd_sbig                | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⏰ TODO - find SDK for windows |
+| ccd_simulator           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 19 / 0 | |
+| ccd_ssag                | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | |
+| ccd_ssg                 | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
+| ccd_svb                 | 3️⃣ | ✅ No  | ❌ No  | ❌ No  | ✅ HW  | 0 / 0 | |
+| ccd_svb2                | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
+| ccd_sx                  | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 24 / 0 | |
+| ccd_touptek             | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 28 / 1 | |
+| ccd_uvc                 | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ libuvc is Unix only |
+| dome_baader             | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 1 / 0 | |
+| dome_beaver             | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 1 / 0 | |
+| dome_dragonfly          | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | |
+| dome_nexdome            | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 1 / 0 | |
+| dome_nexdome3           | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 1 / 0 | |
+| dome_simulator          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 7 / 0 | |
+| dome_skyroof            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 1 / 0 | |
+| dome_talon6ror          | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 1 / 0 | |
+| focuser_asi             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 10 / 0 | |
+| focuser_askar           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
+| focuser_astroasis       | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ✅ HW  | 0 / 0 | |
+| focuser_astromechanics  | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
+| focuser_dmfc            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
+| focuser_dsd             | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ✅ HW  | 1 / 0 | |
+| focuser_efa             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 56 / 0 | |
+| focuser_fc3             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 1 / 0 | |
+| focuser_fcusb           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
+| focuser_fli             | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | |
+| focuser_focusdreampro   | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | 1 / 0 | |
+| focuser_ioptron         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 40 / 0 | |
+| focuser_lacerta         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 43 / 0 | |
+| focuser_lakeside        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 16 / 0 | |
+| focuser_lunatico        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | |
+| focuser_mjkzz           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 19 / 0 | |
+| focuser_mjkzz_bt        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ macOS only |
+| focuser_moonlite        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 20 / 0 | |
+| focuser_mypro2          | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 1 / 0 | |
+| focuser_nfocus          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 10 / 0 | |
+| focuser_nstep           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 12 / 0 | |
+| focuser_optec           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 16 / 0 | |
+| focuser_optecfl         | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ Sim | 0 / 0 | |
+| focuser_primaluce       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 2 / 0 | |
+| focuser_prodigy         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 0 / 0 | |
+| focuser_qhy             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 30 / 0 | |
+| focuser_robofocus       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 18 / 0 | |
+| focuser_steeldrive2     | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 49 / 0 | |
+| focuser_usbv3           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
+| focuser_wemacro         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 22 / 0 | |
+| focuser_wemacro_bt      | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ macOS only |
+| gps_gpsd                | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⏰ TODO - make libgps for Windows |
+| gps_nmea                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 1 / 0 | |
+| gps_simulator           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 4 / 0 | |
+| guider_asi              | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | ⏰ TODO - find SDK for windows |
+| guider_cgusbst4         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 0 / 0 | |
+| guider_gpusb            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
+| mount_asi               | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ❌ No  | 0 / 0 | |
+| mount_ioptron           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
+| mount_lx200             | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 4 / 0 | |
+| mount_nexstar           | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 13 / 0 | ⏰ TODO - make libnexstar for Windows |
+| mount_nexstaraux        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 2 / 0 | |
+| mount_pmc8              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 11 / 0 | |
+| mount_rainbow           | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | 1 / 0 | |
+| mount_simulator         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 16 / 0 | |
+| mount_starbook          | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 2 / 0 | |
+| mount_synscan           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 16 / 0 | |
+| mount_temma             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 13 / 0 | |
+| polaralign_simulator    | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 11 / 0 | |
+| rotator_asi             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 11 / 0 | |
+| rotator_falcon          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
+| rotator_lunatico        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 11 / 0 | |
+| rotator_optec           | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 1 / 0 | |
+| rotator_simulator       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
+| rotator_wa              | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ✅ HW  | 1 / 0 | |
+| system_ascol            | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | |
+| wheel_asi               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 5 / 0 | |
+| wheel_astroasis         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 10 / 0 | |
+| wheel_atik              | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ❌ No  | 0 / 0 | ⏰ TODO - make libatik for Windows |
+| wheel_fli               | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | |
+| wheel_indigo            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 5 / 0 | |
+| wheel_manual            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 0 / 0 | |
+| wheel_mi                | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ Unix and Windows SDKs are not compatible |
+| wheel_optec             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 1 / 0 | |
+| wheel_playerone         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 12 / 0 | |
+| wheel_qhy               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 3 / 0 | |
+| wheel_quantum           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 1 / 0 | |
+| wheel_sx                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 0 / 0 | ⏰ TODO - make hidapi for Windows |
+| wheel_trutek            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 1 / 0 | |
+| wheel_xagyl             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 1 / 0 | |
 
 # COOKBOOK for migration to API 3.0 and Windows
 

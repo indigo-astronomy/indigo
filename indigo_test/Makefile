@@ -29,7 +29,8 @@ BENCHMARKS = \
 	$(BENCHMARK_BUILD)/bench_queue \
 	$(BENCHMARK_BUILD)/bench_guider_asi_timing \
 	$(BENCHMARK_BUILD)/bench_ccd_simulator_guider_timing \
-	$(BENCHMARK_BUILD)/bench_mount_simulator_timing
+	$(BENCHMARK_BUILD)/bench_mount_simulator_timing \
+	$(BENCHMARK_BUILD)/bench_mount_nexstar_guider_timing
 UNIT_TESTS = \
 	$(UNIT_BUILD)/test_align_math \
 	$(UNIT_BUILD)/test_aux_math \
@@ -114,6 +115,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_mount_rainbow_simulator \
 	$(INTEGRATION_BUILD)/test_mount_simulator \
 	$(INTEGRATION_BUILD)/test_mount_starbook_simulator \
+	$(INTEGRATION_BUILD)/test_mount_temma_simulator \
 	$(INTEGRATION_BUILD)/test_polaralign_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_optec_simulator \
@@ -352,8 +354,14 @@ $(INTEGRATION_BUILD)/test_mount_simulator: integration/test_mount_simulator.c in
 $(INTEGRATION_BUILD)/test_mount_simulator_asan: integration/test_mount_simulator.c ../indigo_drivers/mount_simulator/indigo_mount_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/mount_simulator/indigo_mount_simulator.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address
 
+$(INTEGRATION_BUILD)/test_mount_nexstar_simulator_asan: integration/test_mount_nexstar_simulator.c ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.c integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h integration/serial_simulator_test_common.h $(INTEGRATION_BUILD)/mount_nexstar_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -I../indigo_drivers/mount_nexstar/externals/libnexstar/build/include -o $@ $< ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.c $(TEST_LDFLAGS) ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a -lindigocat -fsanitize=address,undefined
+
 $(BENCHMARK_BUILD)/bench_mount_simulator_timing: integration/test_mount_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h $(BUILD_DRIVERS)/indigo_mount_simulator.a | $(BENCHMARK_BUILD)
 	$(CC) $(TEST_CFLAGS) -DMOUNT_SIMULATOR_TIMING_BENCHMARK -o $@ $< $(MOUNT_SIMULATOR_TEST_LDFLAGS)
+
+$(BENCHMARK_BUILD)/bench_mount_nexstar_guider_timing: integration/test_mount_nexstar_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h $(INTEGRATION_BUILD)/mount_nexstar_simulator | $(BENCHMARK_BUILD)
+	$(CC) $(TEST_CFLAGS) -DMOUNT_NEXSTAR_TIMING_BENCHMARK -o $@ $< $(MOUNT_NEXSTAR_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_polaralign_simulator: integration/test_polaralign_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h $(BUILD_DRIVERS)/indigo_polaralign_simulator.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(POLARALIGN_SIMULATOR_TEST_LDFLAGS)
@@ -753,6 +761,9 @@ $(INTEGRATION_BUILD)/test_aux_wcv4ec_simulator: integration/test_aux_wcv4ec_simu
 
 $(INTEGRATION_BUILD)/test_aux_arteskyflat_simulator: integration/test_aux_arteskyflat_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_arteskyflat_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_ARTESKYFLAT_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_aux_arteskyflat_simulator_asan: integration/test_aux_arteskyflat_simulator.c ../indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_arteskyflat_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/test_aux_astromechanics_simulator: integration/test_aux_astromechanics_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_astromechanics_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_ASTROMECHANICS_SIMULATOR_TEST_LDFLAGS)
