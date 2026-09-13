@@ -2,7 +2,8 @@
 
 ## Scope
 
-- These instructions apply to the whole INDIGO repository. More specific instructions may exist in subdirectories. 
+- These instructions apply to the whole INDIGO repository. More specific instructions may exist in subdirectories.
+- For driver work under `indigo_drivers/`, read `indigo_drivers/AGENTS.override.md` and follow it in addition to this file. It contains the driver-refactoring workflow and is more specific than this root file.
 - For automated tests under `indigo_test/`, read `indigo_test/AGENTS.md` and follow it in addition to this file.
 
 ## Developer References
@@ -14,7 +15,7 @@ Read the relevant documentation before changing behavior:
 - `indigo_docs/DRIVER_DEVELOPMENT_BASICS.md` is the main reference for driver lifecycle, property semantics, INDIGO 3.0 APIs, portable I/O, and handler queues.
 - `indigo_docs/DRIVER_GENERATOR_MIGRATION.md` documents generated-driver migration.
 - `indigo_docs/MAKEFILES.md` explains the makefile layers.
-- `indigo_docs/SERIAL_DEVICE_SIMULATORS.md` documents the host-side serial simulator contract, ready-file convention, and refactored simulator inventory.
+- `indigo_docs/SERIAL_DEVICE_SIMULATORS.md` documents the host-side serial simulator contract and ready-file convention.
 - `indigo_drivers/*/README.md` files document driver-specific hardware, prerequisites, connection details, limitations, and operational notes.
 - `indigo_test/AGENTS.md` documents automated-test layout, harness conventions, simulator integration rules, and test cleanup.
 - `REVIEW.md` indexes incremental automatic code review state and links to folder-level review files.
