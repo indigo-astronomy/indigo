@@ -25,7 +25,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0300003A
+#define DRIVER_VERSION 0x0300003B
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -2821,6 +2821,7 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_IMAGER_BREAKPOINT_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_IMAGER_RESUME_CONDITION_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_IMAGER_BARRIER_STATE_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_WHEEL_FILTER_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_FOCUSER_CONTROL_PROPERTY);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
@@ -3508,6 +3509,10 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 	} else if (!strcmp(property->name, FILTER_WHEEL_LIST_PROPERTY_NAME)) { // Snoop wheel ...
 		if (!INDIGO_FILTER_WHEEL_SELECTED) {
 			indigo_delete_property(FILTER_CLIENT_CONTEXT->device, AGENT_WHEEL_FILTER_PROPERTY, NULL);
+			// Clear selection, otherwise it can resurface alongside a new one on reattach
+			for (int i = 0; i < FILTER_SLOT_COUNT; i++) {
+				AGENT_WHEEL_FILTER_PROPERTY->items[i].sw.value = false;
+			}
 			AGENT_WHEEL_FILTER_PROPERTY->count = 0;
 			indigo_define_property(FILTER_CLIENT_CONTEXT->device, AGENT_WHEEL_FILTER_PROPERTY, NULL);
 		}
