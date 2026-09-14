@@ -1173,7 +1173,6 @@
 		0E2DAEC5555FF3DF5BFBE8E0 /* test_ao_sx_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ao_sx_transport.c; sourceTree = "<group>"; };
 		2D7262A5A6EB6D2BF8614DCA /* aux_test_isolation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_test_isolation.h; sourceTree = "<group>"; };
 		30C50F83B71C53EA7F53B386 /* test_aux_cloudwatcher_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_cloudwatcher_simulator.c; sourceTree = "<group>"; };
-		4C8E9528A919F2519EEA4E91 /* aux_dragonfly_simulator/aux_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_dragonfly_simulator/aux_dragonfly_simulator.c; sourceTree = "<group>"; };
 		4EB4B98B4C569BFBD5A4A6D3 /* test_aux_upb_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_upb_simulator.c; sourceTree = "<group>"; };
 		543383E8449CF052349990E3 /* aux_cloudwatcher_simulator/aux_cloudwatcher_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_cloudwatcher_simulator/aux_cloudwatcher_simulator.c; sourceTree = "<group>"; };
 		5560F867DB1B8995E921356D /* test_wheel_indigo_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_indigo_transport.c; sourceTree = "<group>"; };
@@ -5530,6 +5529,10 @@
 		C0DE20260913D50000000002 /* test_aux_dsusb_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_dsusb_sdk.c; sourceTree = "<group>"; };
 		C0DE20260914B00100000001 /* test_agent_scripting.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scripting.c; sourceTree = "<group>"; };
 		C0DE20260914B00100000002 /* test_agent_scripting_sequencer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scripting_sequencer.c; sourceTree = "<group>"; };
+		C0DE20260914C00100000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260914C00100000002 /* test_aux_joystick_hid.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_joystick_hid.c; sourceTree = "<group>"; };
+		C0DE20260914C00100000003 /* malloc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = malloc.h; sourceTree = "<group>"; };
+		C0DE20260914C00100000004 /* joystick.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = joystick.h; sourceTree = "<group>"; };
 		C0DE26060912F10000000000 /* Origin678C.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = Origin678C.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000001 /* QHY26800A.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY26800A.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000002 /* QHY585.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY585.img; sourceTree = "<group>"; };
@@ -6555,7 +6558,6 @@
 				C0DE20260913000300000001 /* REFACTOR.md */,
 				591F328F24211EB000D1D64B /* README.md */,
 				591F329224211EB000D1D64B /* indigo_aux_dragonfly.h */,
-				4C8E9528A919F2519EEA4E91 /* aux_dragonfly_simulator/aux_dragonfly_simulator.c */,
 				591F328924211EB000D1D64B /* indigo_aux_dragonfly.c */,
 				591F329024211EB000D1D64B /* indigo_aux_dragonfly_main.c */,
 				591F329124211EB000D1D64B /* Makefile.inc */,
@@ -6718,6 +6720,7 @@
 				59FEFFD0301E7005007FB62D /* simulator_common */,
 				59FA7BE9301D35FD00A35CFB /* unit */,
 				59FA7BF3301D3A5800A35CFB /* integration */,
+				C0DE20260914C00100000005 /* fakes */,
 				9D239B3E30500558002E0722 /* hardware */,
 				592C3357304BE541004D5AE6 /* benchmark */,
 				59FA7C07301D439A00A35CFB /* fixtures */,
@@ -7110,6 +7113,7 @@
 			isa = PBXGroup;
 			children = (
 				59588CA9211CC08D00E9FC27 /* README.md */,
+				C0DE20260914C00100000001 /* REFACTOR.md */,
 				59A5302621A35359000B6F27 /* Makefile */,
 				59588CA8211CC08D00E9FC27 /* indigo_aux_joystick_main.c */,
 				59588CA7211CC08D00E9FC27 /* indigo_aux_joystick.c */,
@@ -13835,6 +13839,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260914C00100000002 /* test_aux_joystick_hid.c */,
 				9D56D3593058283B00725436 /* test_agent_astrometry.c */,
 				9D56D35A3058283B00725436 /* test_ccd_atik_sdk.c */,
 				59910B493055E73500FB1C2F /* test_ccd_atik2_sdk.c */,
@@ -15996,6 +16001,23 @@
 				9DB88E9D214BEDD900CECBCE /* focuser_dmfc_simulator */,
 			);
 			path = focuser_dmfc;
+			sourceTree = "<group>";
+		};
+		C0DE20260914C00100000005 /* fakes */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20260914C00100000003 /* malloc.h */,
+				C0DE20260914C00100000006 /* linux */,
+			);
+			path = fakes;
+			sourceTree = "<group>";
+		};
+		C0DE20260914C00100000006 /* linux */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20260914C00100000004 /* joystick.h */,
+			);
+			path = linux;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

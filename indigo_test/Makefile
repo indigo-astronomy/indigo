@@ -61,6 +61,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_guider_gpusb_usb \
 	$(INTEGRATION_BUILD)/test_focuser_fcusb_usb \
 	$(INTEGRATION_BUILD)/test_aux_dsusb_sdk \
+	$(INTEGRATION_BUILD)/test_aux_joystick_hid \
 	$(INTEGRATION_BUILD)/test_focuser_primaluce_motion \
 	$(INTEGRATION_BUILD)/test_focuser_usbv3_motion \
 	$(INTEGRATION_BUILD)/test_focuser_dmfc_motion \
@@ -1119,6 +1120,29 @@ $(INTEGRATION_BUILD)/aux_dsusb_sdk_asan.o: ../indigo_drivers/aux_dsusb/indigo_au
 
 $(INTEGRATION_BUILD)/test_aux_dsusb_sdk_asan: integration/test_aux_dsusb_sdk.c $(INTEGRATION_BUILD)/aux_dsusb_sdk_asan.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $(USB_OUTPUT_INCLUDES) $< $(INTEGRATION_BUILD)/aux_dsusb_sdk_asan.o -o $@ $(TEST_LDFLAGS) -lusb-1.0 -fsanitize=address,undefined
+
+JOYSTICK_HID_TEST_REPLACEMENTS = -Dopen=joystick_test_open -Dclose=joystick_test_close -Dread=joystick_test_read -Dfcntl=joystick_test_fcntl -Dioctl=joystick_test_ioctl -Dopendir=joystick_test_opendir -Dreaddir=joystick_test_readdir -Dclosedir=joystick_test_closedir -Dindigo_attach_device=joystick_test_attach -Dindigo_detach_device=joystick_test_detach -Dindigo_start_usb_event_handler=joystick_test_usb_start -Dlibusb_hotplug_register_callback=joystick_test_usb_register -Dlibusb_hotplug_deregister_callback=joystick_test_usb_deregister -Dlibusb_hotplug_register_callback_sim=joystick_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=joystick_test_usb_deregister_poll
+JOYSTICK_HID_TEST_CFLAGS = $(TEST_CFLAGS) -UINDIGO_MACOS -DINDIGO_LINUX -DJOYSTICK_RESCAN_DELAY=0.01 -Ifakes $(JOYSTICK_HID_TEST_REPLACEMENTS)
+
+$(INTEGRATION_BUILD)/aux_joystick_hid.o: ../indigo_drivers/aux_joystick/indigo_aux_joystick.c fakes/linux/joystick.h fakes/malloc.h | $(INTEGRATION_BUILD)
+	$(CC) $(JOYSTICK_HID_TEST_CFLAGS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_aux_joystick_hid: integration/test_aux_joystick_hid.c $(INTEGRATION_BUILD)/aux_joystick_hid.o integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Ifakes $< $(INTEGRATION_BUILD)/aux_joystick_hid.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+$(INTEGRATION_BUILD)/aux_joystick_hid_asan.o: ../indigo_drivers/aux_joystick/indigo_aux_joystick.c fakes/linux/joystick.h fakes/malloc.h | $(INTEGRATION_BUILD)
+	$(CC) $(JOYSTICK_HID_TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_aux_joystick_hid_asan: integration/test_aux_joystick_hid.c $(INTEGRATION_BUILD)/aux_joystick_hid_asan.o integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Ifakes -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $< $(INTEGRATION_BUILD)/aux_joystick_hid_asan.o -o $@ $(TEST_LDFLAGS) -lusb-1.0 -fsanitize=address,undefined
+
+.PHONY: test-aux-joystick-hid test-aux-joystick-hid-asan
+
+test-aux-joystick-hid: $(INTEGRATION_BUILD)/test_aux_joystick_hid
+	$(INTEGRATION_BUILD)/test_aux_joystick_hid
+
+test-aux-joystick-hid-asan: $(INTEGRATION_BUILD)/test_aux_joystick_hid_asan
+	ASAN_OPTIONS=detect_leaks=0 $(INTEGRATION_BUILD)/test_aux_joystick_hid_asan
 
 $(INTEGRATION_BUILD)/focuser_fcusb_usb_output.o: ../indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.c | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $(USB_OUTPUT_REPLACEMENTS) -c $< -o $@

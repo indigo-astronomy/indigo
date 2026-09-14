@@ -25,7 +25,7 @@
 | aux_flatmaster          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
 | aux_flipflat            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
 | aux_geoptikflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 0 / 0 | |
-| aux_joystick            | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | |
+| aux_joystick            | 3️⃣ | ❌ No  | ❌ No  | ✅ Yes | ✅ HW  | 14 / 2 | |
 | aux_mgbox               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 32 / 0 | |
 | aux_ppb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
 | aux_rpio                | 2️⃣ | ⛔ N/A | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ RPi only |
