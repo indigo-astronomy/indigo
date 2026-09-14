@@ -1260,6 +1260,8 @@ indigo_property *indigo_copy_property(indigo_property *copy, indigo_property *pr
 		for (int k = 0; k < copy->count; k++) {
 			indigo_item *item = copy->items + k;
 			if (item->text.long_value) {
+				// memcpy duplicated the source pointer, drop it so a private buffer is allocated
+				item->text.long_value = NULL;
 				indigo_set_text_item_value(item, property->items[k].text.long_value);
 			}
 		}
@@ -1874,21 +1876,24 @@ char *indigo_get_text_item_value(indigo_item *item) {
 }
 
 void indigo_set_text_item_value(indigo_item *item, const char *value) {
-	if (item->text.long_value) {
-		item->do_update = strcmp(item->text.long_value, value);
-		indigo_safe_free(item->text.long_value);
-		item->text.long_value = NULL;
+	// value may alias item->text.long_value, so read it completely before releasing the old buffer
+	char *old_long_value = item->text.long_value;
+	if (old_long_value) {
+		item->do_update = strcmp(old_long_value, value);
 	} else {
 		item->do_update = strcmp(item->text.value, value);
 	}
 	long length = (long)strlen(value);
+	char *long_value = NULL;
+	if (length >= INDIGO_VALUE_SIZE) {
+		long_value = indigo_safe_malloc(length + 1);
+		memcpy(long_value, value, length);
+		long_value[length] = 0;
+	}
 	INDIGO_COPY_VALUE(item->text.value, value);
 	item->text.length = length + 1;
-	if (length >= INDIGO_VALUE_SIZE) {
-		item->text.long_value = indigo_safe_malloc(item->text.length);
-		strncpy(item->text.long_value, value, length);
-		item->text.long_value[length] = 0;
-	}
+	item->text.long_value = long_value;
+	indigo_safe_free(old_long_value);
 }
 
 indigo_result indigo_change_text_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const char **values) {
