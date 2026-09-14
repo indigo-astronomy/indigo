@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000013
 #define DRIVER_NAME          "indigo_ccd_playerone"
 #define DRIVER_LABEL         "Player One Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -376,9 +376,7 @@ static bool playerone_set_cooler(indigo_device *device, bool status, double targ
 }
 
 static double playerone_now(void) {
-	struct timespec now;
-	clock_gettime(CLOCK_MONOTONIC, &now);
-	return now.tv_sec + now.tv_nsec / 1000000000.0;
+	return indigo_monotonic_time();
 }
 
 static void acquisition_finish(indigo_device *device, bool failed, bool aborted) {

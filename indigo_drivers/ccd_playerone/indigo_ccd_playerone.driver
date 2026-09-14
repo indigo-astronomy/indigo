@@ -23,7 +23,7 @@ driver playerone {
 	label = "Player One Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 18;
+	version = 19;
 	include {
 		#include <time.h>
 		#include <math.h>
@@ -300,9 +300,7 @@ driver playerone {
 		}
 
 		static double playerone_now(void) {
-			struct timespec now;
-			clock_gettime(CLOCK_MONOTONIC, &now);
-			return now.tv_sec + now.tv_nsec / 1000000000.0;
+			return indigo_monotonic_time();
 		}
 
 		static void acquisition_finish(indigo_device *device, bool failed, bool aborted) {

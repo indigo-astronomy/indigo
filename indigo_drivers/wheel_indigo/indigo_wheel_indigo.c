@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_wheel_indigo"
 #define DRIVER_LABEL         "PegasusAstro Indigo Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Pegasus Indigo Filter Wheel"
@@ -44,7 +44,7 @@ typedef struct {
 	indigo_uni_handle *handle;
 	//+ data
 	char response[128];
-	struct timespec move_started;
+	double move_started;
 	//- data
 } indigo_private_data;
 
@@ -112,9 +112,7 @@ static void wheel_move_finalizer(indigo_device *device) {
 	if (readback && position == WHEEL_SLOT_ITEM->number.target) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		struct timespec now;
-		clock_gettime(CLOCK_MONOTONIC, &now);
-		double elapsed = now.tv_sec - PRIVATE_DATA->move_started.tv_sec + (now.tv_nsec - PRIVATE_DATA->move_started.tv_nsec) / 1e9;
+		double elapsed = indigo_monotonic_time() - PRIVATE_DATA->move_started;
 		if (elapsed >= MOVE_TIMEOUT) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
@@ -163,7 +161,7 @@ static void wheel_slot_handler(indigo_device *device) {
 	} else {
 		// Firmware can lose the WM echo. Confirm actual arrival through WF.
 		indigo_command(device, "WM:%d", (int)target);
-		clock_gettime(CLOCK_MONOTONIC, &PRIVATE_DATA->move_started);
+		PRIVATE_DATA->move_started = indigo_monotonic_time();
 		WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_execute_handler_in(device, SETTLE_DELAY, wheel_move_finalizer);
 	}

@@ -264,3 +264,19 @@ Ordinary exposures now call indigo_ccd_exposure_setup(), which owns image/file B
 The new fake-SDK case `Shared countdown progresses with blocked device queue` deliberately blocks the camera queue during a 2.2-second exposure and verifies that the shared countdown still advances to an integral remaining value. It then verifies frame completion and a subsequent 0.01-second exposure. Physical camera validation was not repeated for this change.
 
 Validation: the new blocked-device-queue countdown regression fails against the HEAD driver without this change and passes with it. The complete fake-SDK rerun passes all 48 test bodies, but its exit status remains failure because cleanup of Final slow_initialization_and_polling records a gate timeout. That same cleanup failure reproduces against the unchanged HEAD driver in isolation. The first full run additionally saw a cooler failure-state assertion; its isolated rerun and the second full run pass. All abort-filtered cases pass. Cleanup failures now identify their case in the test output. No full-suite success or hardware validation is claimed.
+
+## Windows monotonic-time portability follow-up (2026-09-15)
+
+Audit: the Windows x64 build reports `CLOCK_MONOTONIC` undefined in `playerone_now()`. The generated `.c` accurately reflects the `.driver`, whose custom helper directly calls POSIX `clock_gettime()`. INDIGO already exposes portable `indigo_monotonic_time()`, so no SDK, property, lifecycle, acquisition deadline or queue semantics need to change. Driver version before this fix is `0x03000012`. No hardware test will be performed for this source-portability change; physical Player One behavior is unchanged and the available Windows report is compile-time evidence only.
+
+Baseline: the universal macOS driver build passed. All 48 fake-SDK test bodies reported PASS, followed by the already documented `slow_initialization_and_polling` cleanup gate timeout; process exit status was 1. This pre-existing cleanup failure is not attributed to the time-helper change.
+
+Atomic plan:
+
+1. **Completed.** Replaced the private POSIX timespec/clock helper with `indigo_monotonic_time()` in `.driver` and incremented the version from `0x03000012` to `0x03000013`.
+2. **Completed.** Regenerated checked-in C/H/main output and confirmed a second generation is byte-identical. The generated implementation emits version `0x03000013` and contains no direct `CLOCK_MONOTONIC` use.
+3. **Completed with the existing test-harness limitation.** Universal macOS driver build passed. All 48 fake-SDK test bodies again reported PASS, followed by the same documented `slow_initialization_and_polling` cleanup gate timeout and process exit 1. XML/project and diff-format validation passed. Native Windows compilation remains to be confirmed in the reporting environment.
+
+Found defect: direct use of `clock_gettime(CLOCK_MONOTONIC)` prevents MSVC compilation. The production fix uses the framework's portable monotonic clock; existing acquisition deadline tests provide regression coverage.
+
+Final test summary: simulated test bodies run **48**, simulated test bodies passed **48**, suite exit status **1** because of the pre-existing cleanup gate timeout; hardware tests run **0**, hardware tests passed **0**.
