@@ -10,7 +10,7 @@
 | agent_guider            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 88 / 0 | |
 | agent_imager            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 39 / 0 | |
 | agent_mount             | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 69 / 0 | |
-| agent_scripting         | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 0 / 0 | |
+| agent_scripting         | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 60 / 0 | |
 | agent_astrometry        | 2️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 0 / 0 | |
 | agent_astap             | 2️⃣ | ❌ No  | ⛔ N/A | ❌ No  | ❌ No  | 0 / 0 | ⛔ Needs fork() & pipes |
 | agent_snoop             | 2️⃣ | ❌ No  | ⛔ N/A | ❌ No  | ❌ No  | 0 / 0 | 🚧 Obsolete |

@@ -6,8 +6,8 @@ This file indexes folder-level automatic code review notes. Use it to find the r
 
 | Path | Review File | Last Reviewed Commit | Notes |
 | --- | --- | --- | --- |
-| `indigo_libs/` | `indigo_libs/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Core library, bus, protocol, timers, base drivers. Countdown findings LIB-008/LIB-009 and configuration completion LIB-010 fixed; scoped validation recorded (see folder file). |
-| `indigo_drivers/` | `indigo_drivers/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Portable drivers and agents. Open findings recorded in folder file. |
+| `indigo_libs/` | `indigo_libs/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Core library, bus, protocol, timers, base drivers. LIB-008/LIB-009/LIB-010 fixed; scoped 2026-09-14 text ownership fix review and before/after ASan evidence recorded. |
+| `indigo_drivers/` | `indigo_drivers/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Portable drivers and agents. Open findings recorded in folder file; scoped 2026-09-14 ToupTek review passed; Scripting findings DRV-169–DRV-181 and Guider finding DRV-182 were fixed and verified. DRV-130 remains open awaiting manual approval and must not be fixed automatically during Guider Agent testing. |
 | `indigo_linux_drivers/` | `indigo_linux_drivers/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Linux-specific drivers. |
 | `indigo_mac_drivers/` | `indigo_mac_drivers/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | macOS-specific drivers. All recorded findings resolved (see folder file). |
 | `indigo_optional_drivers/` | `indigo_optional_drivers/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Optional drivers with extra dependencies. Open findings in folder file. |

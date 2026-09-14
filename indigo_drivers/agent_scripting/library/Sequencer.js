@@ -20,6 +20,10 @@ function Sequence(name) {
 	this.warn_wait_until_12 = true;
 }
 
+function sequencer_string(value) {
+	return JSON.stringify(String(value));
+}
+
 Sequence.prototype.enable_reset_loop_content_state = function() {
 	this.reset_loop_content_state = true;
 }
@@ -74,7 +78,7 @@ Sequence.prototype.wait_until = function(time) {
 		this.warn_wait_until_12 = false;
 	}
 	if (typeof time === 'string') {
-		this.sequence.push({ execute: 'wait_until_utc("' + time + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+		this.sequence.push({ execute: 'wait_until_utc(' + sequencer_string(time) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 	} else {
 		this.sequence.push({ execute: 'wait_until_time(' + time + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 	}
@@ -98,7 +102,7 @@ Sequence.prototype.break_at = function(time) {
 		indigo_send_message("Possible error - 'break_at' will fire in more than 12 hours!");
 		this.warn_break_at_12 = false;
 	}
-	this.sequence.push({ execute: 'break_at(' + time + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'break_at(' + t + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.break_at_ha = function(limit) {
@@ -127,79 +131,79 @@ Sequence.prototype.resume_point = function() {
 };
 
 Sequence.prototype.evaluate = function(code) {
-	this.sequence.push({ execute: 'evaluate("' + code + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'evaluate(' + sequencer_string(code) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.send_message = function(message) {
-	this.sequence.push({ execute: 'send_message("' + message + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'send_message(' + sequencer_string(message) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.load_config = function(name) {
-	this.sequence.push({ execute: 'load_config("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'load_config(' + sequencer_string(name) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.load_driver = function(name) {
-	this.sequence.push({ execute: 'load_driver("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'load_driver(' + sequencer_string(name) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.unload_driver = function(name) {
-	this.sequence.push({ execute: 'unload_driver("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'unload_driver(' + sequencer_string(name) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_imager_agent = function(agent) {
-	this.sequence.push({ execute: 'select_imager_agent("' + agent + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_imager_agent(' + sequencer_string(agent) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_mount_agent = function(agent) {
-	this.sequence.push({ execute: 'select_mount_agent("' + agent + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_mount_agent(' + sequencer_string(agent) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_guider_agent = function(agent) {
-	this.sequence.push({ execute: 'select_guider_agent("' + agent + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_guider_agent(' + sequencer_string(agent) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_imager_camera = function(camera) {
-	this.sequence.push({ execute: 'select_imager_camera("' + camera + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_imager_camera(' + sequencer_string(camera) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_filter_wheel = function(wheel) {
-	this.sequence.push({ execute: 'select_filter_wheel("' + wheel + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_filter_wheel(' + sequencer_string(wheel) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_focuser = function(focuser) {
-	this.sequence.push({ execute: 'select_focuser("' + focuser + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_focuser(' + sequencer_string(focuser) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_rotator = function(rotator) {
-	this.sequence.push({ execute: 'select_rotator("' + rotator + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_rotator(' + sequencer_string(rotator) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_mount = function(mount) {
-	this.sequence.push({ execute: 'select_mount("' + mount + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_mount(' + sequencer_string(mount) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_dome = function(dome) {
-	this.sequence.push({ execute: 'select_dome("' + dome + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_dome(' + sequencer_string(dome) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_gps = function(gps) {
-	this.sequence.push({ execute: 'select_gps("' + gps + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_gps(' + sequencer_string(gps) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_guider_camera = function(camera) {
-	this.sequence.push({ execute: 'select_guider_camera("' + camera + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_guider_camera(' + sequencer_string(camera) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_guider = function(guider) {
-	this.sequence.push({ execute: 'select_guider("' + guider + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_guider(' + sequencer_string(guider) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_frame_type = function(type) {
-	this.sequence.push({ execute: 'select_frame_type("' + type + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_frame_type(' + sequencer_string(type) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_image_format = function(format) {
-	this.sequence.push({ execute: 'select_image_format("' + format + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_image_format(' + sequencer_string(format) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.set_frame = function(left, top, width, height) {
@@ -211,7 +215,7 @@ Sequence.prototype.reset_frame = function() {
 };
 
 Sequence.prototype.select_camera_mode = function(mode) {
-	this.sequence.push({ execute: 'select_camera_mode("' + mode + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_camera_mode(' + sequencer_string(mode) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.set_gain = function(value) {
@@ -227,19 +231,19 @@ Sequence.prototype.set_gamma = function(value) {
 };
 
 Sequence.prototype.select_program = function(program) {
-	this.sequence.push({ execute: 'select_program("' + program + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_program(' + sequencer_string(program) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_aperture = function(aperture) {
-	this.sequence.push({ execute: 'select_aperture("' + aperture + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_aperture(' + sequencer_string(aperture) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_shutter = function(shutter) {
-	this.sequence.push({ execute: 'select_shutter("' + shutter + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_shutter(' + sequencer_string(shutter) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_iso = function(iso) {
-	this.sequence.push({ execute: 'select_iso("' + iso + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_iso(' + sequencer_string(iso) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.enable_cooler = function(temperature) {
@@ -280,27 +284,27 @@ Sequence.prototype.disable_filter_offsets = function() {
 };
 
 Sequence.prototype.set_fits_header = function(keyword, value) {
-	this.sequence.push({ execute: 'set_fits_header("' + keyword + '", "' + value +'")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'set_fits_header(' + sequencer_string(keyword) + ',' + sequencer_string(value) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.remove_fits_header = function(keyword) {
-	this.sequence.push({ execute: 'remove_fits_header("' + keyword + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'remove_fits_header(' + sequencer_string(keyword) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.select_filter = function(filter) {
-	this.sequence.push({ execute: 'select_filter("' + filter + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'select_filter(' + sequencer_string(filter) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.set_directory = function(directory) {
-	this.sequence.push({ execute: 'set_local_mode("' + directory + '", null, null)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'set_local_mode(' + sequencer_string(directory) + ',null,null)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.set_file_template = function(template) {
-	this.sequence.push({ execute: 'set_local_mode(null, "' + template + '", null)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'set_local_mode(null,' + sequencer_string(template) + ',null)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.set_object_name = function(name) {
-	this.sequence.push({ execute: 'set_local_mode(null, null, "' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'set_local_mode(null,null,' + sequencer_string(name) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.start_preview = function(exposure) {
@@ -327,7 +331,7 @@ Sequence.prototype.capture_batch = function(p1, p2, p3) {
 		exposure = p2;
 	}
 	if (arguments.length === 3 && typeof p1 === 'string') {
-		this.sequence.push({ execute: 'set_local_mode(null, "' + name_template + '", null)', step: this.step, progress: this.progress++, exposure: this.exposure });
+		this.sequence.push({ execute: 'set_local_mode(null,' + sequencer_string(name_template) + ',null)', step: this.step, progress: this.progress++, exposure: this.exposure });
 	}
 	this.sequence.push({ execute: 'set_batch(' + count + ',' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_upload_mode("BOTH")', step: this.step, progress: this.progress++, exposure: this.exposure });
@@ -350,7 +354,7 @@ Sequence.prototype.capture_stream = function(p1, p2, p3) {
 		exposure = p2;
 	}
 	if (arguments.length === 3 && typeof p1 === 'string') {
-		this.sequence.push({ execute: 'set_local_mode(null, "' + name_template + '", null)', step: this.step, progress: this.progress++, exposure: this.exposure });
+		this.sequence.push({ execute: 'set_local_mode(null,' + sequencer_string(name_template) + ',null)', step: this.step, progress: this.progress++, exposure: this.exposure });
 	}
 	this.sequence.push({ execute: 'set_batch(' + count + ',' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_upload_mode("BOTH")', step: this.step, progress: this.progress++, exposure: this.exposure });
@@ -781,13 +785,13 @@ var indigo_sequencer = {
 				indigo_define_light_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STEP_STATE", "Sequencer", "Step state", this.step_states, this.step_states_defs, "Ok");
 			}
 			if (property.name == null || property.name == "AGENT_ABORT_PROCESS") {
-				indigo_define_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_ABORT_PROCESS", "Sequencer", "Abort sequence", { ABORT: false }, { ABORT: { label: "Abort" }}, this.abort_state, "RW", "OneOfMany");
+				indigo_define_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_ABORT_PROCESS", "Sequencer", "Abort sequence", { ABORT: false }, { ABORT: { label: "Abort" }}, this.abort_state, "RW", "ONE_OF_MANY");
 			}
 			if (property.name == null || property.name == "AGENT_PAUSE_PROCESS") {
-				indigo_define_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_PAUSE_PROCESS", "Sequencer", "Pause sequence", { PAUSE_WAIT: this.paused }, { PAUSE_WAIT: { label: "Pause (before next operation)" }}, this.pause_state, "RW", "OneOfMany");
+				indigo_define_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_PAUSE_PROCESS", "Sequencer", "Pause sequence", { PAUSE_WAIT: this.paused }, { PAUSE_WAIT: { label: "Pause (before next operation)" }}, this.pause_state, "RW", "ONE_OF_MANY");
 			}
 			if (property.name == null || property.name == "SEQUENCE_RESET") {
-				indigo_define_switch_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_RESET", "Sequencer", "Reset sequence", { RESET: false }, { RESET: { label: "Reset" }}, "Ok", "RW", "OneOfMany");
+				indigo_define_switch_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_RESET", "Sequencer", "Reset sequence", { RESET: false }, { RESET: { label: "Reset" }}, "Ok", "RW", "ONE_OF_MANY");
 			}
 			for (var i = 0; i < this.loop_level; i++) {
 				if (property.name == null || property.name == "LOOP_" + i) {
@@ -984,7 +988,11 @@ var indigo_sequencer = {
 				indigo_log(current.execute);
 				indigo_update_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Busy");
 				this.update_step_state(this.step, "Busy");
-				eval("indigo_sequencer." + current.execute);
+				try {
+					eval("indigo_sequencer." + current.execute);
+				} catch (error) {
+					this.failure("Step failed: " + error);
+				}
 			} else {
 				this.progress = this.progress_total;
 				this.exposure = this.exposure_total;
@@ -1071,7 +1079,8 @@ var indigo_sequencer = {
 	},
 
 	set_switch: function(device, property_name, item, value, state) {
-		var property = indigo_devices[device][property_name];
+		var peer = indigo_devices[device];
+		var property = peer == null ? null : peer[property_name];
 
 		var allow_busy_state = this.allow_busy_state;
 		var allow_missing_property = this.allow_missing_property;
@@ -1136,7 +1145,8 @@ var indigo_sequencer = {
 	},
 
 	change_texts: function(device, property_name, items) {
-		var property = indigo_devices[device][property_name];
+		var peer = indigo_devices[device];
+		var property = peer == null ? null : peer[property_name];
 
 		var allow_busy_state = this.allow_busy_state;
 		var allow_missing_property = this.allow_missing_property;
@@ -1177,7 +1187,8 @@ var indigo_sequencer = {
 	},
 
 	change_numbers: function(device, property_name, items) {
-		var property = indigo_devices[device][property_name];
+		var peer = indigo_devices[device];
+		var property = peer == null ? null : peer[property_name];
 
 		var allow_busy_state = this.allow_busy_state;
 		var allow_missing_property = this.allow_missing_property;

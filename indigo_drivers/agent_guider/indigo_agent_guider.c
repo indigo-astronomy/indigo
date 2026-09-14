@@ -2246,7 +2246,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 					}
 				}
 			}
-			if (reset_selection) {
+			if (reset_selection && DEVICE_PRIVATE_DATA->bin_x > 0 && DEVICE_PRIVATE_DATA->bin_y > 0) {
 				DEVICE_PRIVATE_DATA->last_width = (int)(DEVICE_PRIVATE_DATA->frame[2] / DEVICE_PRIVATE_DATA->bin_x);
 				DEVICE_PRIVATE_DATA->last_height = (int)(DEVICE_PRIVATE_DATA->frame[3] / DEVICE_PRIVATE_DATA->bin_y);
 				AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_LEFT_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_TOP_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value = 0;
@@ -2689,6 +2689,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			double angle = -PI * get_rotation_angle(device) / 180;
 			double sign = copysign(1.0, AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target) * copysign(1.0, AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target);
 			double dith_total = sign * sqrt(AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target * AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target + AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target * AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target);
+// TODO: @Rumen, pls. check this proposal, it is DRV-130
+//			AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value = dith_total * cos(angle);
+//			AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value = dith_total * sin(angle);
 			double cos_angle = cos(angle);
 			if (cos_angle != 0) {
 				double tan_angle = tan(angle);
