@@ -24,9 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-#include <pthread.h>
-#endif
 
 //+ include
 
@@ -45,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_mount_temma"
 #define DRIVER_LABEL         "Takahashi Temma Mount"
 #define MOUNT_DEVICE_NAME    "Takahashi Temma Mount"

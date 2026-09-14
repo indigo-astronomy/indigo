@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_aux_driver.h>
 #include <indigo/indigo_focuser_driver.h>

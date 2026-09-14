@@ -1383,7 +1383,6 @@ void write_c_include_section(void) {
 	write_line("#include <string.h>");
 	write_line("#include <math.h>");
 	write_line("#include <assert.h>");
-	write_line("#include <pthread.h>");
 	write_c_code_blocks(driver.include, 0, "include");
 	write_line("#include <indigo/indigo_driver_xml.h>");
 	for (device_type *device = driver.devices; device; device = device->next) {

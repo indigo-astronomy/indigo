@@ -20,7 +20,7 @@ driver askar {
 	label = "Askar-WAF Focuser";
 	author = "Rumen G. Bogdanovski";
 	copyright = "Copyright (C) 2026 Rumen G. Bogdanovski";
-	version = 4;
+	version = 5;
 	serial {
 		configurable_speed = true;
 	}
@@ -31,8 +31,8 @@ driver askar {
 		#include <stdarg.h>
 		#include <stdbool.h>
 		#include <fcntl.h>
-		#include <sys/time.h>
 		#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		#include <sys/time.h>
 		#include <unistd.h>
 		#include <sys/socket.h>
 		#include <netinet/in.h>

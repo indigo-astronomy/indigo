@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 
 //+ include
 
@@ -57,7 +56,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_focuser_askar"
 #define DRIVER_LABEL         "Askar-WAF Focuser"
 #define FOCUSER_DEVICE_NAME  "Askar-WAF"
