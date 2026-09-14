@@ -25,7 +25,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0300002E
+#define DRIVER_VERSION 0x0300002F
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -2682,22 +2682,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		double dith_y = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target;
 		indigo_property_copy_values(AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, property, false);
 		if (!AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value) {
-			/* If Dec guiding is not "North and South" do not dither in Dec, however if cos(angle) == 0 we end up in devision by 0.
-			   In this case we set the limits -> DITH_X = 0 and DITH_Y = dith_total.
+			/* If Dec guiding is not "North and South" do not dither in Dec.
 			   Note: we preserve the requested amount of dithering but we do it in RA only.
 			*/
 			double angle = -PI * get_rotation_angle(device) / 180;
 			double sign = copysign(1.0, AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target) * copysign(1.0, AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target);
 			double dith_total = sign * sqrt(AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target * AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target + AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target * AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target);
-			double cos_angle = cos(angle);
-			if (cos_angle != 0) {
-				double tan_angle = tan(angle);
-				AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value = dith_total / (cos_angle + tan_angle);
-				AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value * tan_angle;
-			} else {
-				AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value = 0;
-				AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value = dith_total;
-			}
+			AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value = dith_total * cos(angle);
+			AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value = dith_total * sin(angle);
 			if (dith_x != AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target || dith_y != AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME,
 					"Dithering request altered as Dec dithering is disabled, requested X/Y: %.3f/%.3f calculated X/Y: %.3f/%.3f",
