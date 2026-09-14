@@ -14,7 +14,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="Configuration"><ConfigurationType>DynamicLibrary</ConfigurationType><UseDebugLibraries>false</UseDebugLibraries></PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ItemDefinitionGroup>
-    <ClCompile><PreprocessorDefinitions>INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions><ConformanceMode>true</ConformanceMode><PrecompiledHeader>NotUsing</PrecompiledHeader><AdditionalIncludeDirectories>..\..\indigo_libs\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories></ClCompile>
+    <ClCompile><PreprocessorDefinitions>INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions><ConformanceMode>true</ConformanceMode><PrecompiledHeader>NotUsing</PrecompiledHeader><AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories></ClCompile>
     <Link><AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;%(AdditionalDependencies)</AdditionalDependencies><AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories></Link>
   </ItemDefinitionGroup>
   <ItemGroup><ClCompile Include="..\..\indigo_windows\dllmain.cpp" /><ClCompile Include="indigo_mount_starbook.c" /></ItemGroup>
