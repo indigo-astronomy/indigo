@@ -45,8 +45,10 @@ extern "C" {
 
 /** Use <enableBLOB>URL</enableBLOB> for remote INDIGO servers;
  */
-
+#ifndef INDIGO_USE_BLOB_URLS_DECLARED
+#define INDIGO_USE_BLOB_URLS_DECLARED
 INDIGO_EXTERN bool indigo_use_blob_urls;
+#endif
 
 /** XML wire protocol parser.
  */

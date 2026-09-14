@@ -49,7 +49,10 @@ extern "C" {
 /** Use <enableBLOB>URL</enableBLOB> for remote INDIGO servers;
  *  defined in indigo_xml.c
  */
+#ifndef INDIGO_USE_BLOB_URLS_DECLARED
+#define INDIGO_USE_BLOB_URLS_DECLARED
 INDIGO_EXTERN bool indigo_use_blob_urls;
+#endif
 
 /** Client name used for enumeration requests to set adapter name on server side for client identification in trace logs. Defaults to argv[0]
  */
