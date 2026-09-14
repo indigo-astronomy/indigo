@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2025 CloudMakers, s. r. o.
+// Copyright (c) 2021-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x02000016
+#define DRIVER_VERSION 0x02000017
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -34,6 +34,7 @@
 #include <pthread.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <setjmp.h>
@@ -48,6 +49,7 @@
 #include <signal.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <sys/wait.h>
 #include <netinet/in.h>
 #endif
 
@@ -273,7 +275,11 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	vsnprintf(buffer, sizeof(buffer), command, args);
 	va_end(args);
 
-	ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = false;
+	if (ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested) {
+		ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = false;
+		indigo_send_message(device, ALERT_PROPERTY, "Aborted");
+		return false;
+	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
 
 	SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
@@ -316,6 +322,13 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	ASTROMETRY_DEVICE_PRIVATE_DATA->job_handle = job;
 	ResumeThread(pi.hThread);
 	CloseHandle(pi.hThread);
+	if (ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested) {
+		if (job) {
+			TerminateJobObject(job, 1);
+		} else {
+			TerminateProcess(pi.hProcess, 1);
+		}
+	}
 
 	bool res = true;
 	char line[4 * 1024];
@@ -346,6 +359,10 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	}
 	CloseHandle(read_pipe);
 	WaitForSingleObject(pi.hProcess, INFINITE);
+	DWORD exit_code = 0;
+	if (!GetExitCodeProcess(pi.hProcess, &exit_code) || exit_code != 0) {
+		res = false;
+	}
 	CloseHandle(pi.hProcess);
 	if (job) {
 		CloseHandle(job);
@@ -369,13 +386,19 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	vsnprintf(buffer, sizeof(buffer), command, args);
 	va_end(args);
 
-	ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = false;
+	if (ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested) {
+		ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = false;
+		indigo_send_message(device, ALERT_PROPERTY, "Aborted");
+		return false;
+	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
 	int pipe_stdout[2];
 	if (pipe(pipe_stdout)) {
 		return false;
 	}
-	switch (ASTROMETRY_DEVICE_PRIVATE_DATA->pid = fork()) {
+	pid_t child_pid = fork();
+	ASTROMETRY_DEVICE_PRIVATE_DATA->pid = child_pid;
+	switch (child_pid) {
 		case -1: {
 			close(pipe_stdout[0]);
 			close(pipe_stdout[1]);
@@ -391,6 +414,10 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 			perror("execl");
 			_exit(127);
 		}
+	}
+	setpgid(child_pid, child_pid);
+	if (ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested) {
+		kill(-child_pid, SIGTERM);
 	}
 	close(pipe_stdout[1]);
 	FILE *output = fdopen(pipe_stdout[0], "r");
@@ -412,7 +439,15 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 		}
 	}
 	fclose(output);
+	int status = 0;
+	pid_t waited;
+	do {
+		waited = waitpid(child_pid, &status, 0);
+	} while (waited < 0 && errno == EINTR);
 	ASTROMETRY_DEVICE_PRIVATE_DATA->pid = 0;
+	if (waited != child_pid || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+		res = false;
+	}
 	if (ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested) {
 		res = false;
 		ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = false;
@@ -494,10 +529,9 @@ static void jpeg_decompress_error_callback(j_common_ptr cinfo) {
 #define astrometry_save_config indigo_platesolver_save_config
 
 static void astrometry_abort(indigo_device *device) {
-#if defined(INDIGO_WINDOWS)
-	/* the flag is also polled by download_index_file(), which runs no child process;
-	   both it and execute_command() clear it when they start */
 	ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = true;
+#if defined(INDIGO_WINDOWS)
+	/* The flag is also polled by download_index_file(), which runs no child process. */
 	if (ASTROMETRY_DEVICE_PRIVATE_DATA->job_handle) {
 		/* terminates the whole job (the process and any children it spawned) */
 		TerminateJobObject(ASTROMETRY_DEVICE_PRIVATE_DATA->job_handle, 1);
@@ -507,15 +541,17 @@ static void astrometry_abort(indigo_device *device) {
 	}
 #else
 	if (ASTROMETRY_DEVICE_PRIVATE_DATA->pid) {
-		ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = true;
 		/* NB: To kill the whole process group with PID you should send kill signal to -PID (-1 * PID) */
 		kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGTERM);
 	}
 #endif
+	pthread_mutex_lock(&DEVICE_CONTEXT->config_mutex);
+	pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 }
 
 static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *task) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
+		ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = false;
 		indigo_send_message(device, IDLE_PROPERTY, "Solving started");
 		void *image = task->image;
 		unsigned long image_size = task->size;
@@ -535,7 +571,12 @@ static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *tas
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 		char base[512];
-		sprintf(base, "%s/%s_%lX", base_dir, "image", time(0));
+		int base_length = snprintf(base, sizeof(base), "%s/image_%lX_%p", base_dir, (unsigned long)time(0), (void *)task);
+		if (base_length < 0 || (size_t)base_length >= sizeof(base)) {
+			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+			message = "Temporary image path is too long";
+			goto cleanup;
+		}
 #pragma clang diagnostic pop
 		// convert any input image to FITS file
 		indigo_uni_handle *handle = indigo_uni_create_file(base, -INDIGO_LOG_TRACE);
@@ -544,42 +585,64 @@ static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *tas
 			message = "Can't create temporary image file";
 			goto cleanup;
 		}
-		if (!strncmp("SIMPLE", (const char *)image, 6)) {
+		if (image_size >= 6 && !memcmp("SIMPLE", image, 6)) {
 			// FITS - copy only
-			indigo_uni_write(handle, (const char *)image, image_size);
+			if (image_size > LONG_MAX || indigo_uni_write(handle, (const char *)image, (long)image_size) != (long)image_size) {
+				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+				message = "Can't write temporary image file";
+				indigo_uni_close(&handle);
+				goto cleanup;
+			}
 			ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = 0;
 		} else {
 			void *intermediate_image = NULL;
 			int byte_per_pixel = 0, components = 0;
-			if (!strncmp("RAW1", (const char *)(image), 4)) {
+			uint32_t signature = 0;
+			if (image_size >= sizeof(signature)) {
+				memcpy(&signature, image, sizeof(signature));
+			}
+			if (signature == INDIGO_RAW_MONO8 || signature == INDIGO_RAW_MONO16 || signature == INDIGO_RAW_RGB24 || signature == INDIGO_RAW_RGB48) {
+				if (image_size < sizeof(indigo_raw_header)) {
+					AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+					message = "Truncated RAW image";
+					indigo_uni_close(&handle);
+					goto cleanup;
+				}
+				indigo_raw_header *header = image;
+				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = header->width;
+				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = header->height;
+				if (signature == INDIGO_RAW_MONO8) {
 				// 8 bit RAW
 				byte_per_pixel = 1;
 				components = 1;
-				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ((indigo_raw_header *)image)->width;
-				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = ((indigo_raw_header *)image)->height;
-				image = (char *)image + sizeof(indigo_raw_header);
-			} else if (!strncmp("RAW2", (const char *)(image), 4)) {
+				} else if (signature == INDIGO_RAW_MONO16) {
 				// 16 bit RAW
 				byte_per_pixel = 2;
 				components = 1;
-				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ((indigo_raw_header *)image)->width;
-				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = ((indigo_raw_header *)image)->height;
-				image = (char *)image + sizeof(indigo_raw_header);
-			} else if (!strncmp("RAW3", (const char *)(image), 4)) {
+				} else if (signature == INDIGO_RAW_RGB24) {
 				// 8 bit RGB
 				byte_per_pixel = 1;
 				components = 3;
-				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ((indigo_raw_header *)image)->width;
-				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = ((indigo_raw_header *)image)->height;
-				image = (char *)image + sizeof(indigo_raw_header);
-			} else if (!strncmp("RAW6", (const char *)(image), 4)) {
+				} else {
 				// 16 bit RGB
 				byte_per_pixel = 2;
 				components = 3;
-				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ((indigo_raw_header *)image)->width;
-				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = ((indigo_raw_header *)image)->height;
+				}
+				if (ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width <= 0 || ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height <= 0 || (size_t)ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width > INT_MAX / (size_t)ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height) {
+					AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+					message = "Invalid RAW dimensions";
+					indigo_uni_close(&handle);
+					goto cleanup;
+				}
+				size_t pixel_bytes = (size_t)ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width * ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height * components * byte_per_pixel;
+				if (pixel_bytes > image_size - sizeof(indigo_raw_header)) {
+					AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+					message = "Truncated RAW image";
+					indigo_uni_close(&handle);
+					goto cleanup;
+				}
 				image = (char *)image + sizeof(indigo_raw_header);
-			} else if (((uint8_t *)image)[0] == 0xFF && ((uint8_t *)image)[1] == 0xD8 && ((uint8_t *)image)[2] == 0xFF) {
+			} else if (image_size >= 3 && ((uint8_t *)image)[0] == 0xFF && ((uint8_t *)image)[1] == 0xD8 && ((uint8_t *)image)[2] == 0xFF) {
 				// JPEG
 				struct indigo_jpeg_decompress_struct cinfo;
 				struct jpeg_error_mgr jerr;
@@ -603,10 +666,23 @@ static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *tas
 				jpeg_start_decompress(&cinfo.pub);
 				byte_per_pixel = 1;
 				components = cinfo.pub.output_components;
-				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = cinfo.pub.output_width;
-				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = cinfo.pub.output_height;
+				if (cinfo.pub.output_width > INT_MAX || cinfo.pub.output_height > INT_MAX || components <= 0 || cinfo.pub.output_width > (unsigned int)(INT_MAX / components)) {
+					jpeg_destroy_decompress(&cinfo.pub);
+					AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+					message = "Invalid image dimensions";
+					goto cleanup;
+				}
+				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = (int)cinfo.pub.output_width;
+				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = (int)cinfo.pub.output_height;
 				int row_stride = ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width * components;
-				image = intermediate_image = indigo_safe_malloc(image_size = ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height * row_stride);
+				if ((size_t)ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height > ULONG_MAX / (size_t)row_stride) {
+					jpeg_destroy_decompress(&cinfo.pub);
+					AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+					message = "Invalid image dimensions";
+					goto cleanup;
+				}
+				image_size = (unsigned long)ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height * row_stride;
+				image = intermediate_image = indigo_safe_malloc(image_size);
 				while (cinfo.pub.output_scanline < cinfo.pub.output_height) {
 					unsigned char *buffer_array[1];
 					buffer_array[0] = (unsigned char *)intermediate_image + (size_t)(cinfo.pub.output_scanline) * row_stride;
@@ -636,8 +712,22 @@ static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *tas
 				indigo_uni_close(&handle);
 				goto cleanup;
 			}
+			if (ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width <= 0 || ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height <= 0 || (size_t)ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width > INT_MAX / (size_t)ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height) {
+				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+				message = "Invalid image dimensions";
+				indigo_safe_free(intermediate_image);
+				indigo_uni_close(&handle);
+				goto cleanup;
+			}
 			int pixel_count = ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width * ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height;
-			image_size = pixel_count * byte_per_pixel + FITS_LOGICAL_RECORD_LENGTH;
+			if ((unsigned long)pixel_count > ((unsigned long)LONG_MAX - FITS_LOGICAL_RECORD_LENGTH) / (unsigned long)byte_per_pixel) {
+				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+				message = "Invalid image dimensions";
+				indigo_safe_free(intermediate_image);
+				indigo_uni_close(&handle);
+				goto cleanup;
+			}
+			image_size = (unsigned long)pixel_count * byte_per_pixel + FITS_LOGICAL_RECORD_LENGTH;
 			if (image_size % FITS_LOGICAL_RECORD_LENGTH) {
 				image_size = (image_size / FITS_LOGICAL_RECORD_LENGTH + 1) * FITS_LOGICAL_RECORD_LENGTH;
 			}
@@ -691,7 +781,14 @@ static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *tas
 					}
 				}
 			}
-			indigo_uni_write(handle, buffer, image_size);
+			if (image_size > LONG_MAX || indigo_uni_write(handle, buffer, (long)image_size) != (long)image_size) {
+				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+				message = "Can't write temporary image file";
+				indigo_safe_free(buffer);
+				indigo_safe_free(intermediate_image);
+				indigo_uni_close(&handle);
+				goto cleanup;
+			}
 			indigo_safe_free(buffer);
 			indigo_safe_free(intermediate_image);
 		}
@@ -707,14 +804,26 @@ static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *tas
 		}
 		char config[INDIGO_VALUE_SIZE];
 		snprintf(config, sizeof(config), "add_path %s\n", base_dir);
-		indigo_uni_write(handle, config, strlen(config));
+		long config_length = (long)strlen(config);
+		if (indigo_uni_write(handle, config, config_length) != config_length) {
+			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+			message = "Can't write astrometry.cfg";
+			indigo_uni_close(&handle);
+			goto cleanup;
+		}
 		for (int k = 0; k < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count; k++) {
 			indigo_item *item = AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + k;
 			if (item->sw.value) {
 				for (int l = 0; index_files[l]; l++) {
 					if (!strncmp(item->name, index_files[l], 4)) {
 						snprintf(config, sizeof(config), "index index-%s\n", index_files[l]);
-						indigo_uni_write(handle, config, strlen(config));
+						config_length = (long)strlen(config);
+						if (indigo_uni_write(handle, config, config_length) != config_length) {
+							AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+							message = "Can't write astrometry.cfg";
+							indigo_uni_close(&handle);
+							goto cleanup;
+						}
 					}
 				}
 			}
@@ -883,23 +992,17 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 }
 
 static void index_41xx_handler(indigo_device *device) {
-	static int instances = 0;
-	instances++;
 	sync_installed_indexes(device, "4100", AGENT_ASTROMETRY_INDEX_41XX_PROPERTY);
-	instances--;
 	if (AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->state == INDIGO_BUSY_STATE) {
-		AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->state = instances ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+		AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_update_property(device, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, NULL);
 }
 
 static void index_42xx_handler(indigo_device *device) {
-	static int instances = 0;
-	instances++;
 	sync_installed_indexes(device, "4200", AGENT_ASTROMETRY_INDEX_42XX_PROPERTY);
-	instances--;
 	if (AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->state == INDIGO_BUSY_STATE) {
-		AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->state = instances ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+		AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_update_property(device, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, NULL);
 }
@@ -915,10 +1018,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE], path[INDIGO_VALUE_SIZE];
 		bool present;
 		AGENT_ASTROMETRY_INDEX_41XX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY_NAME, "Index managememt", "Installed Tycho-2 catalog indexes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 13);
-		strcpy(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->hints,"warn_on_clear:\"Delete Tycho-2 index file?\";");
 		if (AGENT_ASTROMETRY_INDEX_41XX_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
+		strcpy(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->hints, "warn_on_clear:\"Delete Tycho-2 index file?\";");
 		for (int i = 19; i >=7; i--) {
 			sprintf(name, "41%02d", i);
 			if (index_diameters[i][0] > 60) {
@@ -946,10 +1049,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			}
 		}
 		AGENT_ASTROMETRY_INDEX_42XX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY_NAME, "Index managememt", "Installed 2MASS catalog indexes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 20);
-		strcpy(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->hints, "warn_on_clear:\"Delete 2MASS index file?\";");
 		if (AGENT_ASTROMETRY_INDEX_42XX_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
+		strcpy(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->hints, "warn_on_clear:\"Delete 2MASS index file?\";");
 		for (int i = 19; i >=0; i--) {
 			sprintf(name, "42%02d", i);
 			if (index_diameters[i][0] > 60) {
@@ -1004,7 +1107,11 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	if (client == FILTER_DEVICE_CONTEXT->client) {
 		return INDIGO_OK;
 	}
-	if (indigo_property_match(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, property)) {
+	if (indigo_property_match(AGENT_PLATESOLVER_IMAGE_PROPERTY, property) && AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		AGENT_PLATESOLVER_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_PLATESOLVER_IMAGE_PROPERTY, "Solver is busy");
+		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_ASTROMETRY_INDEX_41XX
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, index_41xx_handler);
 		return INDIGO_OK;
@@ -1018,6 +1125,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	astrometry_abort(device);
 	indigo_cancel_pending_handlers(device);
 	indigo_cancel_all_timers(device);
 	indigo_release_property(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY);
@@ -1042,6 +1150,7 @@ static void kill_children() {
 			TerminateProcess(ASTROMETRY_DEVICE_PRIVATE_DATA->process_handle, 1);
 		}
 #else
+		ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = true;
 		if (ASTROMETRY_DEVICE_PRIVATE_DATA->pid) {
 			kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGKILL);
 		}
@@ -1059,6 +1168,7 @@ static void kill_children() {
 						TerminateProcess(ASTROMETRY_DEVICE_PRIVATE_DATA->process_handle, 1);
 					}
 #else
+					ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = true;
 					if (ASTROMETRY_DEVICE_PRIVATE_DATA->pid) {
 						kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGKILL);
 					}

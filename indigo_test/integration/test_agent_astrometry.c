@@ -49,6 +49,7 @@ typedef struct {
 	char device[INDIGO_NAME_SIZE];
 	char name[INDIGO_NAME_SIZE];
 	indigo_property *property;
+	void *blob_data;
 	unsigned revision;
 } observation;
 
@@ -69,6 +70,10 @@ static atomic_int imager_capture_requests;
 static atomic_int imager_abort_requests;
 static atomic_int mount_start_requests;
 static atomic_int mount_abort_requests;
+static atomic_bool fail_imager_capture;
+static atomic_bool hold_imager_capture;
+static atomic_bool fail_mount_start;
+static atomic_bool hold_mount_start;
 static bool running;
 static bool peers_attached;
 
@@ -98,8 +103,15 @@ static indigo_result observe(indigo_property *property) {
 	pthread_mutex_lock(&cache_mutex);
 	observation *entry = find_observation(property->device, property->name);
 	if (entry) {
+		free(entry->blob_data);
+		entry->blob_data = NULL;
 		indigo_release_property(entry->property);
 		entry->property = indigo_copy_property(NULL, property);
+		if (property->type == INDIGO_BLOB_VECTOR && property->count == 1 && property->items[0].blob.value && property->items[0].blob.size > 0) {
+			entry->blob_data = malloc(property->items[0].blob.size);
+			memcpy(entry->blob_data, property->items[0].blob.value, property->items[0].blob.size);
+			entry->property->items[0].blob.value = entry->blob_data;
+		}
 		entry->revision++;
 	}
 	pthread_mutex_unlock(&cache_mutex);
@@ -110,7 +122,17 @@ static indigo_result defined(indigo_client *client, indigo_device *device, indig
 	return observe(property);
 }
 
+static void observe_message(const char *message) {
+	pthread_mutex_lock(&cache_mutex);
+	if (message && strlen(messages) + strlen(message) + 2 < sizeof(messages)) {
+		strcat(messages, message);
+		strcat(messages, "\n");
+	}
+	pthread_mutex_unlock(&cache_mutex);
+}
+
 static indigo_result updated(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	observe_message(message);
 	return observe(property);
 }
 
@@ -118,6 +140,8 @@ static indigo_result deleted(indigo_client *client, indigo_device *device, indig
 	pthread_mutex_lock(&cache_mutex);
 	for (unsigned i = 0; i < ARRAY_SIZE(cache); i++) {
 		if (*cache[i].name && !strcmp(cache[i].device, property->device) && (!*property->name || !strcmp(cache[i].name, property->name))) {
+			free(cache[i].blob_data);
+			cache[i].blob_data = NULL;
 			indigo_release_property(cache[i].property);
 			cache[i].property = NULL;
 			cache[i].revision++;
@@ -128,12 +152,7 @@ static indigo_result deleted(indigo_client *client, indigo_device *device, indig
 }
 
 static indigo_result message_received(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	pthread_mutex_lock(&cache_mutex);
-	if (message && strlen(messages) + strlen(message) + 2 < sizeof(messages)) {
-		strcat(messages, message);
-		strcat(messages, "\n");
-	}
-	pthread_mutex_unlock(&cache_mutex);
+	observe_message(message);
 	return INDIGO_OK;
 }
 
@@ -145,12 +164,16 @@ static indigo_property *snapshot(const char *device, const char *name) {
 	return result;
 }
 
-static unsigned revision(const char *name) {
+static unsigned revision_for(const char *device, const char *name) {
 	pthread_mutex_lock(&cache_mutex);
-	observation *entry = find_observation(AGENT, name);
+	observation *entry = find_observation(device, name);
 	unsigned result = entry ? entry->revision : 0;
 	pthread_mutex_unlock(&cache_mutex);
 	return result;
+}
+
+static unsigned revision(const char *name) {
+	return revision_for(AGENT, name);
 }
 
 static int property_state(const char *name) {
@@ -187,6 +210,20 @@ static bool wait_state_after(const char *name, unsigned before, indigo_property_
 	return false;
 }
 
+static bool wait_device_state_after(const char *device, const char *name, unsigned before, indigo_property_state expected) {
+	for (int i = 0; i < 15000; i++) {
+		indigo_property *property = snapshot(device, name);
+		bool ready = property && property->state == expected && revision_for(device, name) > before;
+		indigo_release_property(property);
+		if (ready) {
+			return true;
+		}
+		indigo_usleep(1000);
+	}
+	fprintf(stderr, "Timeout waiting for %s.%s state %d after %u\n", device, name, expected, before);
+	return false;
+}
+
 static bool wait_not_busy_after(const char *name, unsigned before) {
 	for (int i = 0; i < 15000; i++) {
 		indigo_property *property = snapshot(AGENT, name);
@@ -209,6 +246,30 @@ static bool has_message(const char *text) {
 	bool result = strstr(messages, text) != NULL;
 	pthread_mutex_unlock(&cache_mutex);
 	return result;
+}
+
+static bool file_contains(const char *path, const char *text) {
+	FILE *file = fopen(path, "r");
+	if (!file) {
+		return false;
+	}
+	char buffer[16384];
+	size_t length = fread(buffer, 1, sizeof(buffer) - 1, file);
+	fclose(file);
+	buffer[length] = 0;
+	return strstr(buffer, text) != NULL;
+}
+
+static bool wait_deleted(const char *device, const char *name) {
+	for (int i = 0; i < 5000; i++) {
+		indigo_property *property = snapshot(device, name);
+		if (!property) {
+			return true;
+		}
+		indigo_release_property(property);
+		indigo_usleep(1000);
+	}
+	return false;
 }
 
 static void write_executable(const char *name, const char *body) {
@@ -263,7 +324,7 @@ static void create_fake_tools(void) {
 		"echo curl \"$@\" >> \"$ASTROMETRY_FAKE_LOG\"\n"
 		"out=''\n"
 		"while [ $# -gt 0 ]; do if [ \"$1\" = '-o' ]; then shift; out=$1; fi; shift; done\n"
-		"case \"$ASTROMETRY_FAKE_MODE\" in curl_exit) exit 22 ;; curl_bad) printf 'ERROR' > \"$out\"; exit 0 ;; esac\n"
+		"case \"$ASTROMETRY_FAKE_MODE\" in curl_exit) exit 22 ;; curl_bad) printf 'ERROR' > \"$out\"; exit 0 ;; curl_slow) sleep 1 ;; esac\n"
 		"printf 'SIMPLE' > \"$out\"\n"
 		"exit 0\n");
 }
@@ -304,13 +365,26 @@ static indigo_result peer_change(indigo_device *device, indigo_client *client, i
 		if (!strcmp(request->name, AGENT_IMAGER_CAPTURE_PROPERTY_NAME)) {
 			atomic_fetch_add(&imager_capture_requests, 1);
 			indigo_property_copy_values(imager_properties[1], request, false);
+			if (atomic_load(&fail_imager_capture)) {
+				imager_properties[1]->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, imager_properties[1], NULL);
+				return INDIGO_OK;
+			}
 			imager_properties[1]->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, imager_properties[1], NULL);
-			indigo_set_timer(device, 0.02, finish_capture, NULL);
+			imager_properties[4]->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, imager_properties[4], NULL);
+			if (!atomic_load(&hold_imager_capture)) {
+				indigo_set_timer(device, 0.02, finish_capture, NULL);
+			}
 		} else if (!strcmp(request->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME)) {
 			atomic_fetch_add(&imager_abort_requests, 1);
 			imager_properties[3]->state = INDIGO_OK_STATE;
 			indigo_update_property(device, imager_properties[3], NULL);
+			imager_properties[1]->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, imager_properties[1], NULL);
+			imager_properties[4]->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, imager_properties[4], NULL);
 		}
 		return INDIGO_OK;
 	}
@@ -321,13 +395,22 @@ static indigo_result peer_change(indigo_device *device, indigo_client *client, i
 	} else if (!strcmp(request->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
 		atomic_fetch_add(&mount_start_requests, 1);
 		indigo_property_copy_values(mount_properties[3], request, false);
+		if (atomic_load(&fail_mount_start)) {
+			mount_properties[3]->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, mount_properties[3], NULL);
+			return INDIGO_OK;
+		}
 		mount_properties[3]->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, mount_properties[3], NULL);
-		indigo_set_timer(device, 0.01, finish_mount, NULL);
+		if (!atomic_load(&hold_mount_start)) {
+			indigo_set_timer(device, 0.01, finish_mount, NULL);
+		}
 	} else if (!strcmp(request->name, MOUNT_ABORT_MOTION_PROPERTY_NAME)) {
 		atomic_fetch_add(&mount_abort_requests, 1);
 		mount_properties[4]->state = INDIGO_OK_STATE;
 		indigo_update_property(device, mount_properties[4], NULL);
+		mount_properties[3]->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, mount_properties[3], NULL);
 	} else if (!strcmp(request->name, AGENT_MOUNT_FOV_PROPERTY_NAME)) {
 		indigo_property_copy_values(mount_properties[5], request, false);
 		mount_properties[5]->state = INDIGO_OK_STATE;
@@ -406,6 +489,7 @@ static void cleanup(void) {
 	indigo_detach_client(&observer);
 	indigo_stop();
 	for (unsigned i = 0; i < ARRAY_SIZE(cache); i++) {
+		free(cache[i].blob_data);
 		indigo_release_property(cache[i].property);
 	}
 	for (unsigned i = 0; i < ARRAY_SIZE(imager_properties); i++) {
@@ -448,7 +532,10 @@ static bool select_related(const char *name) {
 static bool upload(const void *data, long size, const char *format, indigo_property_state expected) {
 	unsigned before = revision(AGENT_PLATESOLVER_WCS_PROPERTY_NAME);
 	REQUIRE(indigo_change_blob_property_1(&observer, AGENT, AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME, AGENT_PLATESOLVER_IMAGE_ITEM_NAME, (void *)data, size, format, "") == INDIGO_OK);
-	REQUIRE(wait_state_after(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, before, expected));
+	if (!wait_state_after(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, before, expected)) {
+		fprintf(stderr, "%s", messages);
+		REQUIRE(false);
+	}
 	return true;
 }
 
@@ -499,18 +586,30 @@ static unsigned char *make_jpeg(size_t *size) {
 static void schema_and_metadata(void) {
 	indigo_driver_info info = { 0 };
 	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_astrometry(INDIGO_DRIVER_INFO, &info));
-	ASSERT_STREQ(AGENT, info.name);
-	ASSERT_EQ_INT(0x02000016, info.version);
+	ASSERT_STREQ("indigo_agent_astrometry", info.name);
+	ASSERT_EQ_INT(0x02000017, info.version);
 	const struct { const char *name; int type; int perm; int count; } expected[] = {
 		{ INDEX_41, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 13 },
 		{ INDEX_42, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 20 },
+		{ AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 0 },
 		{ AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, INDIGO_NUMBER_VECTOR, INDIGO_RW_PERM, 9 },
 		{ AGENT_PLATESOLVER_WCS_PROPERTY_NAME, INDIGO_NUMBER_VECTOR, INDIGO_RO_PERM, 10 },
+		{ AGENT_PLATESOLVER_SYNC_PROPERTY_NAME, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 5 },
 		{ AGENT_START_PROCESS_PROPERTY_NAME, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 7 },
 		{ AGENT_ABORT_PROCESS_PROPERTY_NAME, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 1 },
+		{ AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY_NAME, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 2 },
+		{ AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY_NAME, INDIGO_NUMBER_VECTOR, INDIGO_RW_PERM, 1 },
+		{ AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY_NAME, INDIGO_NUMBER_VECTOR, INDIGO_RW_PERM, 3 },
+		{ AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY_NAME, INDIGO_NUMBER_VECTOR, INDIGO_RW_PERM, 2 },
+		{ AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY_NAME, INDIGO_NUMBER_VECTOR, INDIGO_RW_PERM, 1 },
 		{ AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME, INDIGO_BLOB_VECTOR, INDIGO_WO_PERM, 1 },
 		{ AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY_NAME, INDIGO_BLOB_VECTOR, INDIGO_RO_PERM, 1 },
-		{ AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME, INDIGO_NUMBER_VECTOR, INDIGO_RO_PERM, 13 }
+		{ AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME, INDIGO_NUMBER_VECTOR, INDIGO_RO_PERM, 13 },
+		{ AGENT_PLATESOLVER_ABORT_PROPERTY_NAME, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 1 },
+		{ CCD_PREVIEW_PROPERTY_NAME, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 3 },
+		{ CCD_PREVIEW_IMAGE_PROPERTY_NAME, INDIGO_BLOB_VECTOR, INDIGO_RO_PERM, 1 },
+		{ CCD_JPEG_SETTINGS_PROPERTY_NAME, INDIGO_NUMBER_VECTOR, INDIGO_RW_PERM, 4 },
+		{ CCD_JPEG_STRETCH_PRESETS_PROPERTY_NAME, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 4 }
 	};
 	for (unsigned i = 0; i < ARRAY_SIZE(expected); i++) {
 		indigo_property *property = snapshot(AGENT, expected[i].name);
@@ -518,6 +617,33 @@ static void schema_and_metadata(void) {
 		ASSERT_EQ_INT(expected[i].type, property->type);
 		ASSERT_EQ_INT(expected[i].perm, property->perm);
 		ASSERT_EQ_INT(expected[i].count, property->count);
+		indigo_release_property(property);
+	}
+	const struct { const char *property; const char *name; } required_items[] = {
+		{ AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, AGENT_PLATESOLVER_HINTS_RADIUS_ITEM_NAME },
+		{ AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, AGENT_PLATESOLVER_HINTS_RA_ITEM_NAME },
+		{ AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, AGENT_PLATESOLVER_HINTS_DEC_ITEM_NAME },
+		{ AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, AGENT_PLATESOLVER_HINTS_EPOCH_ITEM_NAME },
+		{ AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, AGENT_PLATESOLVER_HINTS_SCALE_ITEM_NAME },
+		{ AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, AGENT_PLATESOLVER_HINTS_PARITY_ITEM_NAME },
+		{ AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM_NAME },
+		{ AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, AGENT_PLATESOLVER_HINTS_DEPTH_ITEM_NAME },
+		{ AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM_NAME },
+		{ AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME },
+		{ AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_SYNC_ITEM_NAME },
+		{ AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_CENTER_ITEM_NAME },
+		{ AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM_NAME },
+		{ AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_CALCULATE_PA_ERROR_ITEM_NAME },
+		{ AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM_NAME },
+		{ AGENT_START_PROCESS_PROPERTY_NAME, AGENT_RESET_ITEM_NAME },
+		{ AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME },
+		{ CCD_PREVIEW_PROPERTY_NAME, CCD_PREVIEW_DISABLED_ITEM_NAME },
+		{ CCD_PREVIEW_PROPERTY_NAME, CCD_PREVIEW_ENABLED_ITEM_NAME },
+		{ CCD_PREVIEW_PROPERTY_NAME, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM_NAME }
+	};
+	for (unsigned i = 0; i < ARRAY_SIZE(required_items); i++) {
+		indigo_property *property = snapshot(AGENT, required_items[i].property);
+		ASSERT_TRUE(item(property, required_items[i].name) != NULL);
 		indigo_release_property(property);
 	}
 }
@@ -538,6 +664,53 @@ static void settings_and_reset(void) {
 	indigo_release_property(hints);
 }
 
+static void shared_controls_preview_and_mirror(void) {
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY_NAME, AGENT_PLATESOLVER_SOLVE_IMAGES_DISABLED_ITEM_NAME, true));
+	indigo_property *property = snapshot(AGENT, AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY_NAME);
+	ASSERT_TRUE(item(property, AGENT_PLATESOLVER_SOLVE_IMAGES_DISABLED_ITEM_NAME)->sw.value);
+	indigo_release_property(property);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_PLATESOLVER_SYNC_PROPERTY_NAME, AGENT_PLATESOLVER_SYNC_CENTER_ITEM_NAME, true));
+	property = snapshot(AGENT, AGENT_PLATESOLVER_SYNC_PROPERTY_NAME);
+	ASSERT_TRUE(item(property, AGENT_PLATESOLVER_SYNC_CENTER_ITEM_NAME)->sw.value);
+	indigo_release_property(property);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_PLATESOLVER_SYNC_PROPERTY_NAME, AGENT_PLATESOLVER_SYNC_DISABLED_ITEM_NAME, true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&observer, AGENT, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY_NAME, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM_NAME, 9));
+	property = snapshot(AGENT, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY_NAME);
+	ASSERT_NEAR(9, item(property, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM_NAME)->number.value, 0.001);
+	indigo_release_property(property);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, CCD_JPEG_STRETCH_PRESETS_PROPERTY_NAME, CCD_JPEG_STRETCH_PRESETS_HARD_ITEM_NAME, true));
+	property = snapshot(AGENT, CCD_JPEG_SETTINGS_PROPERTY_NAME);
+	ASSERT_NEAR(0.40, item(property, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM_NAME)->number.value, 0.001);
+	ASSERT_NEAR(-2.5, item(property, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM_NAME)->number.value, 0.001);
+	indigo_release_property(property);
+	const char *setting_names[] = { CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM_NAME, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM_NAME, CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM_NAME };
+	double setting_values[] = { 0.37, -1.7, 2.8 };
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&observer, AGENT, CCD_JPEG_SETTINGS_PROPERTY_NAME, ARRAY_SIZE(setting_names), setting_names, setting_values));
+	property = snapshot(AGENT, CCD_JPEG_SETTINGS_PROPERTY_NAME);
+	ASSERT_EQ_INT(2, item(property, CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM_NAME)->number.value);
+	indigo_release_property(property);
+	property = snapshot(AGENT, CCD_JPEG_STRETCH_PRESETS_PROPERTY_NAME);
+	for (int i = 0; i < property->count; i++) {
+		ASSERT_TRUE(!property->items[i].sw.value);
+	}
+	indigo_release_property(property);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, CCD_PREVIEW_PROPERTY_NAME, CCD_PREVIEW_ENABLED_ITEM_NAME, true));
+	size_t size;
+	unsigned char *raw = make_raw(INDIGO_RAW_MONO8, 32, 24, &size);
+	ASSERT_TRUE(upload(raw, size, ".raw", INDIGO_OK_STATE));
+	property = snapshot(AGENT, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY_NAME);
+	ASSERT_EQ_INT(size, item(property, AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM_NAME)->blob.size);
+	ASSERT_STREQ(".raw", item(property, AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM_NAME)->blob.format);
+	ASSERT_TRUE(!memcmp(raw, item(property, AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM_NAME)->blob.value, size));
+	indigo_release_property(property);
+	property = snapshot(AGENT, CCD_PREVIEW_IMAGE_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, property->state);
+	ASSERT_TRUE(item(property, CCD_PREVIEW_IMAGE_ITEM_NAME)->blob.size > 0);
+	ASSERT_STREQ(".jpeg", item(property, CCD_PREVIEW_IMAGE_ITEM_NAME)->blob.format);
+	indigo_release_property(property);
+	free(raw);
+}
+
 static void fits_solution_and_arguments(void) {
 	unsigned char data[2880];
 	make_fits(data, sizeof(data));
@@ -553,6 +726,33 @@ static void fits_solution_and_arguments(void) {
 	ASSERT_NEAR(1, item(wcs, AGENT_PLATESOLVER_WCS_PARITY_ITEM_NAME)->number.value, 0.001);
 	indigo_release_property(wcs);
 	ASSERT_TRUE(has_message("fake solver running"));
+}
+
+static void solver_hints_and_config(void) {
+	const char *names[] = {
+		AGENT_PLATESOLVER_HINTS_RADIUS_ITEM_NAME,
+		AGENT_PLATESOLVER_HINTS_RA_ITEM_NAME,
+		AGENT_PLATESOLVER_HINTS_DEC_ITEM_NAME,
+		AGENT_PLATESOLVER_HINTS_SCALE_ITEM_NAME,
+		AGENT_PLATESOLVER_HINTS_PARITY_ITEM_NAME,
+		AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM_NAME,
+		AGENT_PLATESOLVER_HINTS_DEPTH_ITEM_NAME,
+		AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM_NAME
+	};
+	double values[] = { 5, 2, -10, 0.001, -1, 4, 20, 30 };
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&observer, AGENT, AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, ARRAY_SIZE(names), names, values));
+	unsigned char data[2880];
+	make_fits(data, sizeof(data));
+	ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_OK_STATE));
+	ASSERT_TRUE(file_contains(fake_log, "image2xy -O -v -d 4"));
+	ASSERT_TRUE(file_contains(fake_log, "--ra 30 --dec -10 --radius 5"));
+	ASSERT_TRUE(file_contains(fake_log, "--parity neg"));
+	ASSERT_TRUE(file_contains(fake_log, "--depth 20"));
+	ASSERT_TRUE(file_contains(fake_log, "--scale-units arcsecperpix --scale-low 3.060 --scale-high 4.140"));
+	ASSERT_TRUE(file_contains(fake_log, "--cpulimit 30"));
+	char config[512];
+	snprintf(config, sizeof(config), "%s/astrometry.cfg", astrometry_folder);
+	ASSERT_TRUE(file_contains(config, "add_path"));
 }
 
 static void solver_units_and_parity(void) {
@@ -603,11 +803,25 @@ static void invalid_raw_dimensions(void) {
 	ASSERT_TRUE(upload(&raw, sizeof(raw), ".raw", INDIGO_ALERT_STATE));
 }
 
+static void image_filesystem_failures(void) {
+	unsigned char data[2880];
+	make_fits(data, sizeof(data));
+	ASSERT_EQ_INT(0, chmod(astrometry_folder, 0500));
+	ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(has_message("Can't create temporary image file"));
+	ASSERT_EQ_INT(0, chmod(astrometry_folder, 0700));
+	char config[512];
+	snprintf(config, sizeof(config), "%s/astrometry.cfg", astrometry_folder);
+	ASSERT_EQ_INT(0, mkdir(config, 0700));
+	ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(has_message("Can't create astrometry.cfg"));
+}
+
 static void solver_reported_failures(void) {
 	unsigned char data[2880];
 	make_fits(data, sizeof(data));
 	const char *modes[] = { "no_solution", "no_index", "cpu_limit", "solve_not_found" };
-	const char *expected[] = { "No solution found", "select at least one index", "CPU time limit reached", "not found" };
+	const char *expected[] = { "No solution found", "select at least one index", "CPU time limit reached", "Execution of solve-field failed" };
 	for (unsigned i = 0; i < ARRAY_SIZE(modes); i++) {
 		setenv("ASTROMETRY_FAKE_MODE", modes[i], 1);
 		ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_ALERT_STATE));
@@ -645,6 +859,23 @@ static void abort_and_recover(void) {
 	ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_OK_STATE));
 }
 
+static void overlapping_solve_rejected(void) {
+	unsigned char data[2880];
+	make_fits(data, sizeof(data));
+	setenv("ASTROMETRY_FAKE_MODE", "image_slow", 1);
+	unsigned wcs_before = revision(AGENT_PLATESOLVER_WCS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_blob_property_1(&observer, AGENT, AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME, AGENT_PLATESOLVER_IMAGE_ITEM_NAME, data, sizeof(data), ".fits", ""));
+	ASSERT_TRUE(wait_state_after(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, wcs_before, INDIGO_BUSY_STATE));
+	unsigned image_before = revision(AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_blob_property_1(&observer, AGENT, AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME, AGENT_PLATESOLVER_IMAGE_ITEM_NAME, data, sizeof(data), ".fits", ""));
+	ASSERT_TRUE(wait_state_after(AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME, image_before, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, property_state(AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true));
+	ASSERT_TRUE(wait_not_busy_after(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, wcs_before));
+	setenv("ASTROMETRY_FAKE_MODE", "success", 1);
+	ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_OK_STATE));
+}
+
 static void direct_upload_copies_target(void) {
 	unsigned char data[2880];
 	make_fits(data, sizeof(data));
@@ -662,6 +893,46 @@ static void related_agent_capture(void) {
 	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_OK_STATE));
 	ASSERT_EQ_INT(1, atomic_load(&imager_capture_requests));
 	ASSERT_EQ_INT(INDIGO_OK_STATE, property_state(AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+}
+
+static void peer_failures_and_abort_forwarding(void) {
+	ASSERT_TRUE(select_related(IMAGER));
+	ASSERT_TRUE(select_related(MOUNT));
+	atomic_store(&fail_imager_capture, true);
+	unsigned before = revision(AGENT_START_PROCESS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	atomic_store(&fail_imager_capture, false);
+	atomic_store(&fail_mount_start, true);
+	before = revision(AGENT_START_PROCESS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_SYNC_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	atomic_store(&fail_mount_start, false);
+	atomic_store(&hold_imager_capture, true);
+	before = revision(AGENT_START_PROCESS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(1, atomic_load(&imager_abort_requests));
+	atomic_store(&hold_imager_capture, false);
+}
+
+static void mount_abort_forwarding(void) {
+	ASSERT_TRUE(select_related(IMAGER));
+	ASSERT_TRUE(select_related(MOUNT));
+	atomic_store(&hold_mount_start, true);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&observer, AGENT, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY_NAME, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM_NAME, 0));
+	unsigned before = revision(AGENT_START_PROCESS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	for (int i = 0; i < 5000 && atomic_load(&mount_start_requests) < 1; i++) {
+		indigo_usleep(1000);
+	}
+	ASSERT_TRUE(atomic_load(&mount_start_requests) >= 1);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(atomic_load(&mount_abort_requests) >= 1);
 }
 
 static void missing_image_source(void) {
@@ -700,6 +971,48 @@ static void precise_goto(void) {
 	ASSERT_EQ_INT(3, atomic_load(&mount_start_requests));
 }
 
+static void polar_alignment_failures(void) {
+	ASSERT_TRUE(select_related(IMAGER));
+	ASSERT_TRUE(select_related(MOUNT));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&observer, AGENT, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY_NAME, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM_NAME, 0));
+	atomic_store(&fail_mount_start, true);
+	unsigned before = revision(AGENT_START_PROCESS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_CALCULATE_PA_ERROR_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	indigo_property *state = snapshot(AGENT, AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_POLAR_ALIGN_IDLE, item(state, AGENT_PLATESOLVER_PA_STATE_ITEM_NAME)->number.value);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state->state);
+	indigo_release_property(state);
+	atomic_store(&fail_mount_start, false);
+	before = revision(AGENT_START_PROCESS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(has_message("Polar alignment is not in progress"));
+}
+
+static void polar_alignment_and_recalculation(void) {
+	ASSERT_TRUE(select_related(IMAGER));
+	ASSERT_TRUE(select_related(MOUNT));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&observer, AGENT, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY_NAME, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM_NAME, 0));
+	unsigned before = revision(AGENT_START_PROCESS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_CALCULATE_PA_ERROR_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(3, atomic_load(&imager_capture_requests));
+	ASSERT_EQ_INT(2, atomic_load(&mount_start_requests));
+	indigo_property *state = snapshot(AGENT, AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_POLAR_ALIGN_IN_PROGRESS, item(state, AGENT_PLATESOLVER_PA_STATE_ITEM_NAME)->number.value);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state->state);
+	indigo_release_property(state);
+	before = revision(AGENT_START_PROCESS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM_NAME, true));
+	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(4, atomic_load(&imager_capture_requests));
+	state = snapshot(AGENT, AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_POLAR_ALIGN_IN_PROGRESS, item(state, AGENT_PLATESOLVER_PA_STATE_ITEM_NAME)->number.value);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state->state);
+	indigo_release_property(state);
+}
+
 static void index_install_remove(void) {
 	setenv("ASTROMETRY_FAKE_MODE", "success", 1);
 	unsigned before = revision(INDEX_42);
@@ -730,6 +1043,61 @@ static void index_download_failures(void) {
 	}
 }
 
+static void index_remove_failure_and_recovery(void) {
+	setenv("ASTROMETRY_FAKE_MODE", "success", 1);
+	unsigned before = revision(INDEX_42);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_42, "4219", true));
+	ASSERT_TRUE(wait_state_after(INDEX_42, before, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(0, chmod(astrometry_folder, 0500));
+	before = revision(INDEX_42);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_42, "4219", false));
+	ASSERT_TRUE(wait_state_after(INDEX_42, before, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(0, chmod(astrometry_folder, 0700));
+	before = revision(INDEX_42);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_42, "4219", false));
+	ASSERT_TRUE(wait_state_after(INDEX_42, before, INDIGO_OK_STATE));
+}
+
+static void additional_instances_lifecycle(void) {
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&observer, AGENT, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 1));
+	ASSERT_TRUE(wait_defined("Astrometry Agent #2", AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+	ASSERT_TRUE(wait_defined("Astrometry Agent #2", INDEX_41));
+	setenv("ASTROMETRY_FAKE_MODE", "curl_slow", 1);
+	unsigned first_before = revision_for(AGENT, INDEX_42);
+	unsigned second_before = revision_for("Astrometry Agent #2", INDEX_42);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_42, "4219", true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, "Astrometry Agent #2", INDEX_42, "4218", true));
+	ASSERT_TRUE(wait_device_state_after(AGENT, INDEX_42, first_before, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_device_state_after("Astrometry Agent #2", INDEX_42, second_before, INDIGO_OK_STATE));
+	setenv("ASTROMETRY_FAKE_MODE", "success", 1);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&observer, AGENT, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 0));
+	ASSERT_TRUE(wait_deleted("Astrometry Agent #2", AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&observer, AGENT, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 1));
+	ASSERT_TRUE(wait_defined("Astrometry Agent #2", AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&observer, AGENT, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 0));
+	ASSERT_TRUE(wait_deleted("Astrometry Agent #2", AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+}
+
+static void repeated_driver_lifecycle(void) {
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&observer, AGENT, AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, AGENT_PLATESOLVER_HINTS_RADIUS_ITEM_NAME, 7));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&observer, AGENT, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY_NAME, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM_NAME, 4));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_astrometry(INDIGO_DRIVER_SHUTDOWN, NULL));
+	running = false;
+	ASSERT_TRUE(wait_deleted(AGENT, AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_astrometry(INDIGO_DRIVER_INIT, NULL));
+	running = true;
+	ASSERT_TRUE(wait_defined(AGENT, AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+	indigo_property *property = snapshot(AGENT, AGENT_PLATESOLVER_HINTS_PROPERTY_NAME);
+	ASSERT_NEAR(7, item(property, AGENT_PLATESOLVER_HINTS_RADIUS_ITEM_NAME)->number.value, 0.001);
+	indigo_release_property(property);
+	property = snapshot(AGENT, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY_NAME);
+	ASSERT_NEAR(4, item(property, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM_NAME)->number.value, 0.001);
+	indigo_release_property(property);
+	unsigned char data[2880];
+	make_fits(data, sizeof(data));
+	ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_OK_STATE));
+}
+
 static void shutdown_during_solve(void) {
 	unsigned char data[2880];
 	make_fits(data, sizeof(data));
@@ -744,23 +1112,34 @@ static void shutdown_during_solve(void) {
 static const indigo_test_case tests[] = {
 	{ "schema and metadata", schema_and_metadata },
 	{ "settings synchronization and reset", settings_and_reset },
+	{ "shared controls preview and image mirror", shared_controls_preview_and_mirror },
 	{ "FITS solution and parsed WCS", fits_solution_and_arguments },
+	{ "solver hints and generated config", solver_hints_and_config },
 	{ "solver size units and parity", solver_units_and_parity },
 	{ "RAW1 RAW2 RAW3 RAW6 conversion", raw_formats },
 	{ "JPEG conversion", jpeg_format },
 	{ "short truncated and broken images", invalid_short_images },
 	{ "invalid RAW dimensions", invalid_raw_dimensions },
+	{ "image filesystem failures", image_filesystem_failures },
 	{ "reported solver failures", solver_reported_failures },
 	{ "child process exit status", child_exit_status },
 	{ "empty image upload", empty_upload },
 	{ "abort and recovery", abort_and_recover },
+	{ "overlapping solve rejection and recovery", overlapping_solve_rejected },
 	{ "direct upload copies GOTO target", direct_upload_copies_target },
 	{ "related Imager Agent capture", related_agent_capture },
+	{ "peer failures and Imager abort forwarding", peer_failures_and_abort_forwarding },
+	{ "Mount abort forwarding", mount_abort_forwarding },
 	{ "missing image source", missing_image_source },
 	{ "mount sync and center", sync_and_center },
 	{ "precise GOTO", precise_goto },
+	{ "polar alignment failures", polar_alignment_failures },
+	{ "polar alignment and recalculation", polar_alignment_and_recalculation },
 	{ "index install and remove", index_install_remove },
 	{ "index download failures", index_download_failures },
+	{ "index remove failure and recovery", index_remove_failure_and_recovery },
+	{ "additional instances lifecycle", additional_instances_lifecycle },
+	{ "repeated driver lifecycle", repeated_driver_lifecycle },
 	{ "shutdown during solve", shutdown_during_solve }
 };
 
