@@ -1472,11 +1472,11 @@ Source: `indigo_drivers/wheel_manual/indigo_wheel_manual.c`.
 
 ### wheel_mi
 
-Custom properties: `MI_SFW_COMMANDS`.
+Custom properties: `X_MI_SFW_COMMANDS` (connected-only switch, item `MI_SFW_REINIT`; reinitializes the wheel and refreshes the detected slot count).
 
-Driver-specific use of existing properties: `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+Driver-specific use of existing properties: `WHEEL_SLOT`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
 
-Source: `indigo_drivers/wheel_mi/indigo_wheel_mi.c`.
+Source: `indigo_drivers/wheel_mi/indigo_wheel_mi.driver`.
 
 ### wheel_optec
 

@@ -72,6 +72,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_aux_rts_transport \
 	$(INTEGRATION_BUILD)/test_generator_architecture \
 	$(INTEGRATION_BUILD)/test_wheel_playerone_sdk \
+	$(INTEGRATION_BUILD)/test_wheel_mi_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_atik_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_atik2_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_playerone_sdk \
@@ -842,6 +843,32 @@ $(INTEGRATION_BUILD)/wheel_playerone_sdk_base.o: ../indigo_libs/indigo_wheel_dri
 
 $(INTEGRATION_BUILD)/test_wheel_playerone_sdk: integration/test_wheel_playerone_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_playerone_sdk_driver.o $(INTEGRATION_BUILD)/wheel_playerone_sdk_framework.o $(INTEGRATION_BUILD)/wheel_playerone_sdk_base.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(PW_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/wheel_playerone_sdk_driver.o $(INTEGRATION_BUILD)/wheel_playerone_sdk_framework.o $(INTEGRATION_BUILD)/wheel_playerone_sdk_base.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+MIW_SDK_TEST_INCLUDE = -I../indigo_drivers/wheel_mi/bin_externals/libgxccd/include
+MIW_SDK_TEST_REPLACEMENTS = -Dindigo_queue_create=miw_test_queue_create -Dlibusb_hotplug_register_callback_sim=miw_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=miw_test_usb_deregister_poll -Dindigo_start_usb_event_handler=miw_test_usb_start -Dindigo_try_global_lock=miw_test_lock -Dindigo_global_unlock=miw_test_unlock -Dindigo_attach_device=miw_test_attach -Dindigo_detach_device=miw_test_detach -Dlibusb_hotplug_register_callback=miw_test_usb_register -Dlibusb_hotplug_deregister_callback=miw_test_usb_deregister -Dlibusb_ref_device=miw_test_usb_ref -Dlibusb_unref_device=miw_test_usb_unref -Dlibusb_get_device_descriptor=miw_test_usb_descriptor
+
+$(INTEGRATION_BUILD)/wheel_mi_sdk_driver.o: ../indigo_drivers/wheel_mi/indigo_wheel_mi.c ../indigo_drivers/wheel_mi/indigo_wheel_mi.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(MIW_SDK_TEST_INCLUDE) $(MIW_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_wheel_mi_sdk: integration/test_wheel_mi_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_mi_sdk_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(MIW_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/wheel_mi_sdk_driver.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+.PHONY: test-wheel-mi-sdk
+test-wheel-mi-sdk: $(INTEGRATION_BUILD)/test_wheel_mi_sdk
+	$(INTEGRATION_BUILD)/test_wheel_mi_sdk
+
+MIW_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+MIW_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+
+$(INTEGRATION_BUILD)/wheel_mi_sdk_driver_sanitize.o: ../indigo_drivers/wheel_mi/indigo_wheel_mi.c ../indigo_drivers/wheel_mi/indigo_wheel_mi.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(MIW_SANITIZE_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(MIW_SDK_TEST_INCLUDE) $(MIW_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_wheel_mi_sdk_sanitize: integration/test_wheel_mi_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_mi_sdk_driver_sanitize.o | $(INTEGRATION_BUILD)
+	$(CC) $(MIW_SANITIZE_CFLAGS) $(MIW_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/wheel_mi_sdk_driver_sanitize.o -o $@ $(MIW_SANITIZE_LDFLAGS)
+
+.PHONY: test-wheel-mi-sdk-sanitize
+test-wheel-mi-sdk-sanitize: $(INTEGRATION_BUILD)/test_wheel_mi_sdk_sanitize
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_wheel_mi_sdk_sanitize
 
 OFW_SDK_TEST_INCLUDE = -I../indigo_drivers/wheel_astroasis/bin_externals/OasisFilterWheel/include
 OFW_SDK_TEST_REPLACEMENTS = -Dindigo_execute_handler_in=ofw_test_poll -Dlibusb_hotplug_register_callback_sim=ofw_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=ofw_test_usb_deregister_poll -Dindigo_start_usb_event_handler=ofw_test_usb_start -Dindigo_try_global_lock=ofw_test_lock -Dindigo_global_unlock=ofw_test_unlock -Dindigo_attach_device=ofw_test_attach -Dindigo_detach_device=ofw_test_detach -Dlibusb_hotplug_register_callback=ofw_test_usb_register -Dlibusb_hotplug_deregister_callback=ofw_test_usb_deregister -Dlibusb_ref_device=ofw_test_usb_ref -Dlibusb_unref_device=ofw_test_usb_unref -Dlibusb_get_device_descriptor=ofw_test_usb_descriptor

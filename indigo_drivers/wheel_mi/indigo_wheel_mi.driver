@@ -1,0 +1,304 @@
+// Copyright (c) 2024-2026 Moravian Instruments
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// version history
+// 2.0 by Jakub Smutny <info@gxccd.com>
+// 3.0 generator migration and test-driven refactoring in 2026
+
+// Moravian Instruments SFW driver definition
+
+driver mi {
+	label = "Moravian Instruments SFW";
+	author = "Jakub Smutny <info@gxccd.com>";
+	copyright = "Copyright (c) 2024-2026 Moravian Instruments";
+	version = 4;
+	multi_device_support = true;
+	include {
+		#include <ctype.h>
+		#include <stdio.h>
+		#include <string.h>
+		#include <gxccd.h>
+	}
+	define {
+		#define MI_VID                    0x1347
+		#define MI_MAX_ENUMERATED_IDS     64
+	}
+	data {
+		int eid;
+		fwheel_t *wheel;
+		int current_slot;
+		int slot_count;
+		bool move_pending;
+		bool reinit_pending;
+		char model[INDIGO_NAME_SIZE];
+	}
+	code {
+		static int enumerated_ids[MI_MAX_ENUMERATED_IDS];
+		static int enumerated_id_count;
+
+		static void enumerate_callback(int eid) {
+			if (enumerated_id_count < MI_MAX_ENUMERATED_IDS) {
+				enumerated_ids[enumerated_id_count++] = eid;
+			}
+		}
+
+		static int enumerate_wheels(void) {
+			enumerated_id_count = 0;
+			gxfw_enumerate_usb(enumerate_callback);
+			return enumerated_id_count;
+		}
+
+		static bool wheel_is_enumerated(int eid) {
+			int count = enumerate_wheels();
+			for (int i = 0; i < count; i++) {
+				if (enumerated_ids[i] == eid) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		static void trim_trailing_space(char *text) {
+			size_t length = strlen(text);
+			while (length > 0 && isspace((unsigned char)text[length - 1])) {
+				text[--length] = 0;
+			}
+		}
+
+		static void report_error(indigo_device *device, indigo_property *property, const char *operation) {
+			char message[128] = "Moravian Instruments SDK error";
+			if (PRIVATE_DATA->wheel != NULL) {
+				gxfw_get_last_error(PRIVATE_DATA->wheel, message, sizeof(message));
+			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed: %s", operation, message);
+			property->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, property, "%s", message);
+		}
+
+		static bool mi_open(indigo_device *device) {
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock() failed");
+				return false;
+			}
+			PRIVATE_DATA->wheel = gxfw_initialize_usb(PRIVATE_DATA->eid);
+			if (PRIVATE_DATA->wheel == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "gxfw_initialize_usb(%d) failed", PRIVATE_DATA->eid);
+				indigo_global_unlock(device);
+				return false;
+			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxfw_initialize_usb(%d) succeeded", PRIVATE_DATA->eid);
+			return true;
+		}
+
+		static void mi_close(indigo_device *device) {
+			indigo_lock_master_device(device);
+			if (PRIVATE_DATA->wheel != NULL) {
+				gxfw_release(PRIVATE_DATA->wheel);
+				PRIVATE_DATA->wheel = NULL;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxfw_release() succeeded");
+			}
+			indigo_global_unlock(device);
+			indigo_unlock_master_device(device);
+		}
+	}
+	sdk {
+		discovery_retries = 6;
+		hotplug = true;
+		vid = MI_VID;
+		plug {
+			plug_result = false;
+			int count = enumerate_wheels();
+			for (int i = 0; i < count; i++) {
+				int eid = enumerated_ids[i];
+				bool attached = false;
+				for (int slot = 0; slot < MAX_DEVICES; slot++) {
+					if (devices[slot] != NULL && ((mi_private_data *)devices[slot]->private_data)->eid == eid) {
+						attached = true;
+						break;
+					}
+				}
+				if (attached) {
+					continue;
+				}
+				fwheel_t *wheel = gxfw_initialize_usb(eid);
+				if (wheel == NULL) {
+					continue;
+				}
+				char description[INDIGO_NAME_SIZE] = "SFW";
+				if (gxfw_get_string_parameter(wheel, FW_GSP_DESCRIPTION, description, sizeof(description)) != 0) {
+					snprintf(description, sizeof(description), "SFW");
+				}
+				gxfw_release(wheel);
+				description[sizeof(description) - 1] = 0;
+				trim_trailing_space(description);
+				private_data->eid = eid;
+				snprintf(private_data->model, sizeof(private_data->model), "%s", description[0] ? description : "SFW");
+				snprintf(name, INDIGO_NAME_SIZE, "MI %s", private_data->model);
+				indigo_make_name_unique(name, "%d", eid);
+				plug_result = true;
+				break;
+			}
+		}
+		unplug_match {
+			unplug_result = !wheel_is_enumerated(private_data->eid);
+		}
+	}
+	wheel {
+		name = "%s";
+		on_attach {
+			INFO_PROPERTY->count = 8;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
+		}
+		on_connect {
+			int filters = 0;
+			connection_result = gxfw_get_integer_parameter(PRIVATE_DATA->wheel, FW_GIP_FILTERS, &filters) == 0 && filters > 0 && filters <= WHEEL_SLOT_NAME_PROPERTY->allocated_count && filters <= WHEEL_SLOT_OFFSET_PROPERTY->allocated_count;
+			if (connection_result) {
+				PRIVATE_DATA->slot_count = filters;
+				WHEEL_SLOT_ITEM->number.min = 1;
+				WHEEL_SLOT_ITEM->number.max = filters;
+				WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = filters;
+				char value[INDIGO_VALUE_SIZE] = { 0 };
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
+				if (gxfw_get_string_parameter(PRIVATE_DATA->wheel, FW_GSP_DESCRIPTION, value, sizeof(value)) == 0) {
+					value[sizeof(value) - 1] = 0;
+					trim_trailing_space(value);
+					if (value[0]) {
+						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, value);
+					}
+				}
+				if (gxfw_get_string_parameter(PRIVATE_DATA->wheel, FW_GSP_SERIAL_NUMBER, value, sizeof(value)) == 0) {
+					value[sizeof(value) - 1] = 0;
+					INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, value);
+				} else {
+					INFO_DEVICE_SERIAL_NUM_ITEM->text.value[0] = 0;
+				}
+				int version[4] = { 0 };
+				bool has_version = true;
+				for (int i = 0; i < 4; i++) {
+					if (gxfw_get_integer_parameter(PRIVATE_DATA->wheel, FW_GIP_VERSION_1 + i, version + i) != 0) {
+						has_version = false;
+						break;
+					}
+				}
+				if (has_version) {
+					snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%d.%d.%d.%d", version[0], version[1], version[2], version[3]);
+				} else {
+					INFO_DEVICE_FW_REVISION_ITEM->text.value[0] = 0;
+				}
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+				REINIT_ITEM->sw.value = false;
+				X_MI_SFW_COMMANDS_PROPERTY->state = INDIGO_OK_STATE;
+				int result = gxfw_set_filter(PRIVATE_DATA->wheel, 0);
+				if (result == 0) {
+					PRIVATE_DATA->current_slot = 1;
+					WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
+					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					PRIVATE_DATA->current_slot = 0;
+					WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			} else {
+				mi_close(device);
+			}
+		}
+		on_disconnect {
+			PRIVATE_DATA->current_slot = 0;
+			PRIVATE_DATA->slot_count = 0;
+			PRIVATE_DATA->move_pending = false;
+			PRIVATE_DATA->reinit_pending = false;
+			REINIT_ITEM->sw.value = false;
+		}
+		inherited WHEEL_SLOT {
+			on_change_request {
+				if (PRIVATE_DATA->reinit_pending) {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Wheel reinitialization is in progress");
+					return INDIGO_OK;
+				}
+				PRIVATE_DATA->move_pending = true;
+			}
+			on_change {
+				int slot = (int)WHEEL_SLOT_ITEM->number.value;
+				if (slot == PRIVATE_DATA->current_slot) {
+					WHEEL_SLOT_ITEM->number.target = slot;
+				} else {
+					WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot > 0 ? PRIVATE_DATA->current_slot : 1;
+					if (gxfw_set_filter(PRIVATE_DATA->wheel, slot - 1) != 0) {
+						report_error(device, WHEEL_SLOT_PROPERTY, "gxfw_set_filter()");
+						PRIVATE_DATA->move_pending = false;
+						return;
+					}
+					PRIVATE_DATA->current_slot = slot;
+					WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = slot;
+				}
+				PRIVATE_DATA->move_pending = false;
+			}
+		}
+		switch X_MI_SFW_COMMANDS {
+			name = "X_MI_SFW_COMMANDS";
+			group = MAIN_GROUP;
+			label = "Commands";
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			on_change_request {
+				if (PRIVATE_DATA->move_pending) {
+					X_MI_SFW_COMMANDS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_MI_SFW_COMMANDS_PROPERTY, "Wheel movement is in progress");
+					return INDIGO_OK;
+				}
+				PRIVATE_DATA->reinit_pending = true;
+			}
+			on_change {
+				if (REINIT_ITEM->sw.value) {
+					int filters = 0;
+					int result = gxfw_reinit_filter_wheel(PRIVATE_DATA->wheel, &filters);
+					if (result != 0 || filters <= 0 || filters > WHEEL_SLOT_NAME_PROPERTY->allocated_count || filters > WHEEL_SLOT_OFFSET_PROPERTY->allocated_count) {
+						REINIT_ITEM->sw.value = false;
+						if (result != 0) {
+							report_error(device, X_MI_SFW_COMMANDS_PROPERTY, "gxfw_reinit_filter_wheel()");
+						} else {
+							X_MI_SFW_COMMANDS_PROPERTY->state = INDIGO_ALERT_STATE;
+							indigo_update_property(device, X_MI_SFW_COMMANDS_PROPERTY, "Invalid filter count returned by SDK");
+						}
+						PRIVATE_DATA->reinit_pending = false;
+						return;
+					}
+					PRIVATE_DATA->slot_count = filters;
+					PRIVATE_DATA->current_slot = 1;
+					WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_NAME_PROPERTY->allocated_count;
+					WHEEL_SLOT_OFFSET_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->allocated_count;
+					indigo_delete_property(device, WHEEL_SLOT_NAME_PROPERTY, NULL);
+					indigo_delete_property(device, WHEEL_SLOT_OFFSET_PROPERTY, NULL);
+					WHEEL_SLOT_ITEM->number.max = filters;
+					WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = filters;
+					WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
+					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Filter count changed to %d", filters);
+					indigo_define_property(device, WHEEL_SLOT_NAME_PROPERTY, NULL);
+					indigo_define_property(device, WHEEL_SLOT_OFFSET_PROPERTY, NULL);
+				}
+				REINIT_ITEM->sw.value = false;
+				PRIVATE_DATA->reinit_pending = false;
+			}
+			item REINIT {
+				name = "MI_SFW_REINIT";
+				label = "Reinit Filter Wheel";
+				value = false;
+			}
+		}
+	}
+}
