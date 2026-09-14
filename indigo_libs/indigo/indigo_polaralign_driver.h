@@ -173,16 +173,16 @@ typedef struct {
 
 /** Attach callback function.
  */
-extern indigo_result indigo_polaralign_attach(indigo_device *device, const char *driver_name, unsigned version);
+INDIGO_EXTERN indigo_result indigo_polaralign_attach(indigo_device *device, const char *driver_name, unsigned version);
 /** Enumerate properties callback function.
  */
-extern indigo_result indigo_polaralign_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_polaralign_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
-extern indigo_result indigo_polaralign_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_polaralign_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
-extern indigo_result indigo_polaralign_detach(indigo_device *device);
+INDIGO_EXTERN indigo_result indigo_polaralign_detach(indigo_device *device);
 
 #ifdef __cplusplus
 }
