@@ -75,6 +75,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_atik_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_atik2_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_playerone_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_mi_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_asi_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_sx_usb \
 	$(INTEGRATION_BUILD)/test_ccd_ssag_usb \
@@ -987,6 +988,32 @@ $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o: ../indigo_libs/indigo_driver
 
 $(INTEGRATION_BUILD)/test_ccd_playerone_sdk: integration/test_ccd_playerone_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_playerone_sdk_driver.o $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(POA_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_playerone_sdk_driver.o $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+MI_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_mi/bin_externals/libgxccd/include
+MI_SDK_TEST_REPLACEMENTS = -Dindigo_monotonic_time=mi_test_monotonic_time -Dindigo_queue_create=mi_test_queue_create -Dindigo_execute_handler_in=mi_test_execute_in -Dindigo_execute_priority_handler_in=mi_test_execute_priority -Dlibusb_hotplug_register_callback_sim=mi_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=mi_test_usb_deregister_poll -Dindigo_start_usb_event_handler=mi_test_usb_start -Dindigo_try_global_lock=mi_test_lock -Dindigo_global_unlock=mi_test_unlock -Dindigo_attach_device=mi_test_attach -Dindigo_detach_device=mi_test_detach -Dlibusb_hotplug_register_callback=mi_test_usb_register -Dlibusb_hotplug_deregister_callback=mi_test_usb_deregister -Dlibusb_ref_device=mi_test_usb_ref -Dlibusb_unref_device=mi_test_usb_unref -Dlibusb_get_device_descriptor=mi_test_usb_descriptor
+
+$(INTEGRATION_BUILD)/ccd_mi_sdk_driver.o: ../indigo_drivers/ccd_mi/indigo_ccd_mi.c ../indigo_drivers/ccd_mi/indigo_ccd_mi.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(MI_SDK_TEST_INCLUDE) $(MI_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_mi_sdk: integration/test_ccd_mi_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_mi_sdk_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(MI_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_mi_sdk_driver.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+.PHONY: test-ccd-mi-sdk
+test-ccd-mi-sdk: $(INTEGRATION_BUILD)/test_ccd_mi_sdk
+	$(INTEGRATION_BUILD)/test_ccd_mi_sdk
+
+MI_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+MI_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+
+$(INTEGRATION_BUILD)/ccd_mi_sdk_driver_sanitize.o: ../indigo_drivers/ccd_mi/indigo_ccd_mi.c ../indigo_drivers/ccd_mi/indigo_ccd_mi.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(MI_SANITIZE_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(MI_SDK_TEST_INCLUDE) $(MI_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_mi_sdk_sanitize: integration/test_ccd_mi_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_mi_sdk_driver_sanitize.o | $(INTEGRATION_BUILD)
+	$(CC) $(MI_SANITIZE_CFLAGS) $(MI_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_mi_sdk_driver_sanitize.o -o $@ $(MI_SANITIZE_LDFLAGS)
+
+.PHONY: test-ccd-mi-sdk-sanitize
+test-ccd-mi-sdk-sanitize: $(INTEGRATION_BUILD)/test_ccd_mi_sdk_sanitize
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_ccd_mi_sdk_sanitize
 
 
 # Physical ASI hardware is opt-in and excluded from normal integration tests.

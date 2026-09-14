@@ -5513,6 +5513,9 @@
 		C0DE20260913000400000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913000500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913000600000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260914003000000001 /* indigo_ccd_mi.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_ccd_mi.driver; sourceTree = "<group>"; };
+		C0DE20260914003000000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260914003000000003 /* test_ccd_mi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_mi_sdk.c; sourceTree = "<group>"; };
 		C0DE20260913000610000001 /* test_ccd_ssag_usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_ssag_usb.c; sourceTree = "<group>"; };
 		C0DE20260913000610000002 /* test_ccd_ssag_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_ssag_hw.c; sourceTree = "<group>"; };
 		C0DE20260913A70100000001 /* indigo_rotator_optec.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_optec.driver; sourceTree = "<group>"; };
@@ -13839,6 +13842,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260914003000000003 /* test_ccd_mi_sdk.c */,
 				C0DE20260914C00100000002 /* test_aux_joystick_hid.c */,
 				9D56D3593058283B00725436 /* test_agent_astrometry.c */,
 				9D56D35A3058283B00725436 /* test_ccd_atik_sdk.c */,
@@ -13998,6 +14002,8 @@
 			isa = PBXGroup;
 			children = (
 				59FC2EB8210CA76200730343 /* README.md */,
+				C0DE20260914003000000002 /* REFACTOR.md */,
+				C0DE20260914003000000001 /* indigo_ccd_mi.driver */,
 				59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */,
 				59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */,
 				59FC2EB5210CA76100730343 /* indigo_ccd_mi_main.c */,

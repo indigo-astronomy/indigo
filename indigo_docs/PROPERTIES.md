@@ -910,7 +910,7 @@ Source: `indigo_drivers/ccd_iidc/indigo_ccd_iidc.c`.
 
 Driver-specific use of existing properties: `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_EGAIN`, `CCD_GAIN`, `CCD_MODE`, `CCD_READ_MODE`, `CCD_TEMPERATURE`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
 
-Source: `indigo_drivers/ccd_mi/indigo_ccd_mi.c`.
+Source: `indigo_drivers/ccd_mi/indigo_ccd_mi.driver`.
 
 ### ccd_pentax
 
