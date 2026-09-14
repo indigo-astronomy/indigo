@@ -34,8 +34,8 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <fcntl.h>
-#include <sys/time.h>
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#include <sys/time.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
