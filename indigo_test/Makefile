@@ -76,6 +76,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_playerone_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_asi_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_sx_usb \
+	$(INTEGRATION_BUILD)/test_ccd_ssag_usb \
 	$(INTEGRATION_BUILD)/test_wheel_astroasis_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_touptek_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_altair_sdk \
@@ -1024,6 +1025,34 @@ $(INTEGRATION_BUILD)/ccd_sx_usb_driver.o: ../indigo_drivers/ccd_sx/indigo_ccd_sx
 
 $(INTEGRATION_BUILD)/test_ccd_sx_usb: integration/test_ccd_sx_usb.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_sx_usb_driver.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/ccd_sx_usb_driver.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+SSAG_USB_TEST_REPLACEMENTS = -Dlibusb_open=ssag_test_open -Dlibusb_close=ssag_test_close -Dlibusb_kernel_driver_active=ssag_test_kernel -Dlibusb_detach_kernel_driver=ssag_test_detach_kernel -Dlibusb_set_configuration=ssag_test_set_configuration -Dlibusb_claim_interface=ssag_test_claim -Dlibusb_release_interface=ssag_test_release -Dlibusb_control_transfer=ssag_test_control -Dlibusb_bulk_transfer=ssag_test_bulk -Dlibusb_ref_device=ssag_test_ref -Dlibusb_unref_device=ssag_test_unref -Dlibusb_get_device_descriptor=ssag_test_descriptor -Dindigo_get_usb_path=ssag_test_path -Dindigo_start_usb_event_handler=ssag_test_usb_start -Dlibusb_hotplug_register_callback=ssag_test_register -Dlibusb_hotplug_register_callback_sim=ssag_test_register_sim -Dlibusb_hotplug_deregister_callback=ssag_test_deregister -Dlibusb_hotplug_deregister_callback_poll=ssag_test_deregister_poll -Dindigo_attach_device=ssag_test_attach -Dindigo_detach_device=ssag_test_detach -Dindigo_queue_create=ssag_test_queue_create
+
+$(INTEGRATION_BUILD)/ccd_ssag_usb_driver.o: ../indigo_drivers/ccd_ssag/indigo_ccd_ssag.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(SSAG_USB_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_ssag_usb: integration/test_ccd_ssag_usb.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_ssag_usb_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/ccd_ssag_usb_driver.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+SSAG_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+SSAG_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+
+$(INTEGRATION_BUILD)/ccd_ssag_usb_driver_sanitize.o: ../indigo_drivers/ccd_ssag/indigo_ccd_ssag.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(SSAG_SANITIZE_CFLAGS) $(SSAG_USB_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_ssag_usb_sanitize: integration/test_ccd_ssag_usb.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_ssag_usb_driver_sanitize.o | $(INTEGRATION_BUILD)
+	$(CC) $(SSAG_SANITIZE_CFLAGS) $< $(INTEGRATION_BUILD)/ccd_ssag_usb_driver_sanitize.o -o $@ $(SSAG_SANITIZE_LDFLAGS)
+
+test-ccd-ssag-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_ssag_hw
+	$(TEST_BUILD)/hardware/test_ccd_ssag_hw --run
+
+SSAG_HW_TEST_REPLACEMENTS = -Dlibusb_hotplug_register_callback=ssag_hw_register -Dlibusb_hotplug_register_callback_sim=ssag_hw_register_sim -Dlibusb_hotplug_deregister_callback=ssag_hw_deregister -Dlibusb_hotplug_deregister_callback_poll=ssag_hw_deregister_poll
+
+$(TEST_BUILD)/hardware/ccd_ssag_hw_driver.o: ../indigo_drivers/ccd_ssag/indigo_ccd_ssag.c Makefile | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $(SSAG_HW_TEST_REPLACEMENTS) -c $< -o $@
+
+$(TEST_BUILD)/hardware/test_ccd_ssag_hw: hardware/test_ccd_ssag_hw.c test_runner.h $(TEST_BUILD)/hardware/ccd_ssag_hw_driver.o | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< $(TEST_BUILD)/hardware/ccd_ssag_hw_driver.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
 
 OUTPUT_TRANSPORT_REPLACEMENTS = -Dindigo_uni_open_serial=output_open -Dindigo_uni_close=output_close -Dindigo_uni_discard=output_discard -Dindigo_uni_vprintf=output_write -Dindigo_uni_vtprintf=output_write_line -Dindigo_uni_read_section=output_read -Dindigo_uni_set_rts=output_rts
 
