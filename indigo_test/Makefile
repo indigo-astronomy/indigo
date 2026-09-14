@@ -98,6 +98,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_agent_guider \
 	$(INTEGRATION_BUILD)/test_agent_mount \
 	$(INTEGRATION_BUILD)/test_agent_config \
+	$(INTEGRATION_BUILD)/test_agent_astrometry \
 	$(INTEGRATION_BUILD)/test_agent_scripting \
 	$(INTEGRATION_BUILD)/test_agent_scripting_sequencer \
 	$(INTEGRATION_BUILD)/test_ccd_simulator \
@@ -1328,6 +1329,22 @@ $(INTEGRATION_BUILD)/test_agent_config: integration/test_agent_config.c test_run
 .PHONY: test-agent-config
 test-agent-config: check-lib $(INTEGRATION_BUILD)/test_agent_config
 	$(INTEGRATION_BUILD)/test_agent_config
+
+# Real Astrometry Agent with controlled local image2xy, solve-field and curl peers.
+ASTROMETRY_TEST_FLAGS = -DINDIGO_ASTROMETRY_TEST
+
+$(INTEGRATION_BUILD)/agent_astrometry_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(ASTROMETRY_TEST_FLAGS) -Dindigo_uni_config_folder=astrometry_test_config_folder -c $< -o $@
+
+$(INTEGRATION_BUILD)/agent_astrometry_driver.o: ../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c ../indigo_drivers/agent_astrometry/indigo_agent_astrometry.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(ASTROMETRY_TEST_FLAGS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_agent_astrometry: integration/test_agent_astrometry.c test_runner.h $(INTEGRATION_BUILD)/agent_astrometry_framework.o $(INTEGRATION_BUILD)/agent_astrometry_driver.o $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(ASTROMETRY_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_astrometry_framework.o $(INTEGRATION_BUILD)/agent_astrometry_driver.o -o $@ $(LDFLAGS) $(ASTROMETRY_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+
+.PHONY: test-agent-astrometry
+test-agent-astrometry: check-lib $(INTEGRATION_BUILD)/test_agent_astrometry
+	$(INTEGRATION_BUILD)/test_agent_astrometry
 
 # Real Scripting Agent and Duktape; isolated configuration/BLOB I/O and fixed wall clock.
 SCRIPTING_TEST_FLAGS = -DINDIGO_SCRIPTING_TEST
