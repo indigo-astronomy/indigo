@@ -24,7 +24,9 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <pthread.h>
+#endif
 
 //+ include
 
