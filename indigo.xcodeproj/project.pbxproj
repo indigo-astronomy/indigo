@@ -2681,6 +2681,8 @@
 		59910B5630572CD800FB1C2F /* indigo_mount_starbook.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_mount_starbook.driver; sourceTree = "<group>"; };
 		59910B5730572CD800FB1C2F /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59910B5830572CD800FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		59910B5930573AE000FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		59910B5A30573D9500FB1C2F /* indigo_ccd_ssag.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_ssag.driver; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -5476,6 +5478,8 @@
 		C0DE20260908000200000004 /* indigo_ccd_playerone.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_ccd_playerone.driver; sourceTree = "<group>"; };
 		C0DE20260908000300000001 /* ccd_test_noise.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ccd_test_noise.h; sourceTree = "<group>"; };
 		C0DE20260908000300000002 /* test_ccd_sx_usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_sx_usb.c; sourceTree = "<group>"; };
+		C0DE20260913000610000001 /* test_ccd_ssag_usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_ssag_usb.c; sourceTree = "<group>"; };
+		C0DE20260913000610000002 /* test_ccd_ssag_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_ssag_hw.c; sourceTree = "<group>"; };
 		C0DE20260909000100000001 /* serial_motion.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = serial_motion.h; sourceTree = "<group>"; };
 		C0DE20260909000200000001 /* aux_upb_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_upb_simulator.c; sourceTree = "<group>"; };
 		C0DE20260909000300000001 /* indigo_aux_mgbox.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_aux_mgbox.driver; sourceTree = "<group>"; };
@@ -6984,10 +6988,12 @@
 			isa = PBXGroup;
 			children = (
 				594107CA1EC8E59300C44F92 /* README.md */,
+				59910B5930573AE000FB1C2F /* REFACTOR.md */,
 				59519D441DB4231C008BAF29 /* indigo_ccd_ssag.h */,
 				59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */,
 				59519D471DB42443008BAF29 /* indigo_ccd_ssag_main.c */,
 				59519D461DB423E0008BAF29 /* indigo_ccd_ssag_firmware.h */,
+				59910B5A30573D9500FB1C2F /* indigo_ccd_ssag.driver */,
 				59C8E7F01DBBD91400AA3F0A /* indigo_ccd_ssag.rules */,
 			);
 			path = ccd_ssag;
@@ -13930,6 +13936,7 @@
 				F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */,
 				8C1FC871C19C3024C359D9DF /* test_aux_skyalert_transport.c */,
 				C0DE20260908000300000002 /* test_ccd_sx_usb.c */,
+				C0DE20260913000610000001 /* test_ccd_ssag_usb.c */,
 				C0DE20260908000300000001 /* ccd_test_noise.h */,
 				30C50F83B71C53EA7F53B386 /* test_aux_cloudwatcher_simulator.c */,
 				C8683D8A00D36FB4420DE7FD /* test_aux_dragonfly_simulator.c */,
@@ -14322,6 +14329,7 @@
 				C0DE20260911000100000003 /* test_ccd_asi_hw.c */,
 				C0DE20260912000100000005 /* test_ccd_qhy_hw.c */,
 				C0DE20260908000200000003 /* test_ccd_playerone_hw.c */,
+				C0DE20260913000610000002 /* test_ccd_ssag_hw.c */,
 				9D239B3D30500558002E0722 /* test_ccd_touptek_hw.c */,
 			);
 			path = hardware;

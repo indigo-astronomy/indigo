@@ -952,9 +952,9 @@ Source: `indigo_drivers/ccd_sbig/indigo_ccd_sbig.c`.
 
 ### ccd_ssag
 
-Driver-specific use of existing properties: `CCD_GAIN`, `CCD_IMAGE_FORMAT`, `CCD_STREAMING`, `CCD_STREAMING_SETTINGS`.
+Driver-specific use of existing properties: `CCD_ABORT_EXPOSURE`, `CCD_BIN`, `CCD_EXPOSURE`, `CCD_FRAME`, `CCD_GAIN`, `CCD_INFO`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`.
 
-Source: `indigo_drivers/ccd_ssag/indigo_ccd_ssag.c`.
+Source: `indigo_drivers/ccd_ssag/indigo_ccd_ssag.driver`.
 
 ### ccd_svb
 
