@@ -11,6 +11,14 @@
 
 Core INDIGO library code, including the bus, timers, protocol adapters, base drivers, utility helpers, portable I/O, image/format helpers, and shared public headers.
 
+## Scoped review — Rumen's text ownership fix (2026-09-14)
+
+Reviewed `db1ac15fd69f55fd773249cea9dedfa8c418c92a` against its parent, including both changed functions in `indigo_bus.c`; the reviewed source is unchanged at workspace HEAD `5dd7a9415`. No new regression found. This author/commit-scoped review does not advance the whole-folder baseline.
+
+The reported Scripting Agent crash is consistent with configuration restoration: `agent_scripting/indigo_agent_scripting.c:100–106` saves script text, and `indigo_driver.c:405–411` copies parsed configuration properties into pending restore requests. For text of at least `INDIGO_VALUE_SIZE` (512 bytes), the old `indigo_copy_property()` duplicated the source `long_value` pointer and passed it to a setter that freed it before `strlen()`. That both read freed memory and invalidated the source owner's allocation. The fix clears the borrowed pointer before allocating the copy and delays freeing the setter's old buffer until all source reads finish.
+
+Validation on macOS arm64: rebuilt `indigo_libs` for arm64/x86_64; existing bus property suite passed 6/6 cases. A temporary public-API harness linked the complete before/after `indigo_bus.c` translation units, instrumented with AddressSanitizer, against the built library. Both pre-fix scenarios (copy a 2,047-byte script and set a long item from its own value) reproduced heap-use-after-free in the setter. Both post-fix scenarios passed, including independent copy ownership after source release and replacement by a short suffix of the old long buffer. The rest of the linked library was not sanitizer-instrumented. No original crash dump or end-to-end Scripting Agent session was available; the configuration path was traced statically. Temporary harness files were not added to the repository.
+
 ## Current Findings
 
 | ID | Severity | File | Summary | Status |

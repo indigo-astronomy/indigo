@@ -30,8 +30,8 @@
 #include "../test_runner.h"
 
 #define AGENT "Guider Agent"
-#define CAMERA CCD_SIMULATOR_GUIDER_CAMERA_NAME
-#define GUIDER CCD_SIMULATOR_GUIDER_NAME
+#define CAMERA "CCD Guider Simulator"
+#define GUIDER "CCD Guider Simulator (guider)"
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define REQUIRE(c) do { if (!(c)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #c); indigo_test_failures++; return false; } } while (0)
 
@@ -460,7 +460,7 @@ static void cleanup(void) {
 	}
 	cleanup_related();
 	if (simulator_started) {
-		const char *names[] = { CAMERA, GUIDER, CCD_SIMULATOR_IMAGER_CAMERA_NAME };
+		const char *names[] = { CAMERA, GUIDER, "CCD Imager Simulator" };
 		for (int i = 0; i < ARRAY_SIZE(names); i++) {
 			if (value(names[i], "CONNECTION", "CONNECTED") == 1) {
 				sw(names[i], "CONNECTION", "DISCONNECTED", true, INDIGO_OK_STATE);
@@ -1581,7 +1581,7 @@ static void active_instances(bool shutdown) {
 	ASSERT_TRUE(num(AGENT, "ADDITIONAL_INSTANCES", "COUNT", 1));
 	const char *second = "Guider Agent #2";
 	ASSERT_TRUE(wait_state(second, "AGENT_START_PROCESS", 0, INDIGO_OK_STATE));
-	ASSERT_TRUE(sw(second, "FILTER_CCD_LIST", CCD_SIMULATOR_IMAGER_CAMERA_NAME, true, INDIGO_OK_STATE));
+	ASSERT_TRUE(sw(second, "FILTER_CCD_LIST", "CCD Imager Simulator", true, INDIGO_OK_STATE));
 	ASSERT_TRUE(num(second, "AGENT_GUIDER_SETTINGS", "EXPOSURE", 0.1));
 	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
 	ASSERT_TRUE(frames(3));
@@ -1622,7 +1622,7 @@ static void simultaneous_agents(void) {
 	ASSERT_TRUE(num(AGENT, "ADDITIONAL_INSTANCES", "COUNT", 1));
 	const char *second = "Guider Agent #2";
 	ASSERT_TRUE(wait_state(second, "AGENT_START_PROCESS", 0, INDIGO_OK_STATE));
-	ASSERT_TRUE(sw(second, "FILTER_CCD_LIST", CCD_SIMULATOR_IMAGER_CAMERA_NAME, true, INDIGO_OK_STATE));
+	ASSERT_TRUE(sw(second, "FILTER_CCD_LIST", "CCD Imager Simulator", true, INDIGO_OK_STATE));
 	ASSERT_TRUE(num(second, "AGENT_GUIDER_SETTINGS", "EXPOSURE", 0.1));
 	ASSERT_TRUE(run("PREVIEW", INDIGO_BUSY_STATE));
 	ASSERT_TRUE(sw(second, "AGENT_START_PROCESS", "PREVIEW", true, INDIGO_BUSY_STATE));
@@ -1858,7 +1858,7 @@ static void camera_selection_reset(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&client, AGENT, "FILTER_CCD_LIST", CAMERA, true));
 	ASSERT_EQ_INT(110, value(AGENT, "AGENT_GUIDER_SELECTION", "X"));
 	ASSERT_EQ_INT(100, value(AGENT, "AGENT_GUIDER_SELECTION", "Y"));
-	ASSERT_TRUE(sw(AGENT, "FILTER_CCD_LIST", CCD_SIMULATOR_IMAGER_CAMERA_NAME, true, INDIGO_OK_STATE));
+	ASSERT_TRUE(sw(AGENT, "FILTER_CCD_LIST", "CCD Imager Simulator", true, INDIGO_OK_STATE));
 	ASSERT_EQ_INT(0, value(AGENT, "AGENT_GUIDER_SELECTION", "X"));
 	ASSERT_EQ_INT(0, value(AGENT, "AGENT_GUIDER_SELECTION", "Y"));
 	ASSERT_TRUE(connect_camera());

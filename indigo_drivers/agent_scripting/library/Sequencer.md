@@ -138,6 +138,10 @@ All methods below are called on a `Sequence` instance and append one or more ste
 | `wait_for_gps()` | Block until the selected GPS device has a fix. |
 | `break_at(time)` | Checkpoint: when execution reaches it, if `time` has already passed, skip forward to the next `resume_point()`; otherwise continue. `time` is a UTC time string or a local time number. Typically placed inside a loop to stop capturing after a cutoff time. Warns once if `time` is more than 12 hours ahead. |
 | `break_at_ha(limit)` | Checkpoint: if the mount's hour angle is past `limit`, skip forward to the next `resume_point()`; otherwise continue. `limit` is a sexagesimal string or a number in hours. |
+| `wait_until_solar_altitude_below(limit)` | Wait until the Sun is below `limit` degrees at the selected site. |
+| `wait_until_target_altitude_above(limit, ra, dec)` | Wait until the target at `ra`/`dec` is above `limit` degrees at the selected site. |
+| `break_if_solar_altitude_above(limit)` | Skip to the next `resume_point()` when the Sun is above `limit` degrees. |
+| `break_if_target_altitude_below(limit, ra, dec)` | Skip to the next `resume_point()` when the target is below `limit` degrees. |
 | `send_message(message)` | Broadcast a human readable message to all clients. |
 | `evaluate(code)` | Evaluate an arbitrary snippet of scripting `code` as a step. |
 | `enable_verbose()` / `disable_verbose()` | Turn verbose logging of executed steps on/off. |
@@ -253,6 +257,9 @@ Frames captured by `capture_batch` / `capture_stream` contribute to the `EXPOSUR
 | `park()` / `unpark()` | Park / unpark the mount. |
 | `home()` | Send the mount to its home position. |
 | `enable_tracking()` / `disable_tracking()` | Turn sidereal tracking on/off. |
+| `enable_ha_limit()` / `disable_ha_limit()` | Enable/disable the Mount Agent hour-angle limit. |
+| `enable_time_limit()` / `disable_time_limit()` | Enable/disable the Mount Agent process time limit. |
+| `enable_joystick_control()` / `disable_joystick_control()` | Enable/disable Mount Agent joystick control. |
 
 ### Dome
 
@@ -280,7 +287,7 @@ Frames captured by `capture_batch` / `capture_stream` contribute to the `EXPOSUR
 | `stop_guiding()` | Stop guiding. |
 | `clear_guider_selection()` | Clear the guide star selection. |
 
-> `calibrate_guiding_exposure(exposure)` and `start_guiding_exposure(exposure)` are **deprecated** - use `calibrate_guiding(exposure)` / `start_guiding(exposure)` instead.
+> `start_guiding_exposure(exposure)` is **deprecated** - use `start_guiding(exposure)` instead.
 
 ### Dithering
 
@@ -301,6 +308,8 @@ Frames captured by `capture_batch` / `capture_stream` contribute to the `EXPOSUR
 | Method | Description |
 |---|---|
 | `set_rotator_angle(value)` | Rotate the field rotator to the given angle. |
+| `enable_field_derotation()` / `disable_field_derotation()` | Enable/disable field derotation in the Mount Agent. |
+| `make_field_derotation_persistent()` / `make_field_derotation_not_persistent()` | Keep field derotation enabled across mount processes, or limit it to the current process. |
 
 ## Properties published during execution
 
