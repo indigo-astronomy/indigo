@@ -1615,15 +1615,15 @@ indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_drive
 			VERIFY_NOT_CONNECTED(focuser);
 			VERIFY_NOT_CONNECTED(rotator);
 			last_action = action;
-			if (focuser != NULL) {
-				indigo_detach_device(focuser);
-				indigo_safe_free(focuser);
-				focuser = NULL;
-			}
 			if (rotator != NULL) {
 				indigo_detach_device(rotator);
 				indigo_safe_free(rotator);
 				rotator = NULL;
+			}
+			if (focuser != NULL) {
+				indigo_detach_device(focuser);
+				indigo_safe_free(focuser);
+				focuser = NULL;
 			}
 			if (private_data != NULL) {
 				indigo_safe_free(private_data);

@@ -898,15 +898,15 @@ indigo_result indigo_focuser_prodigy(indigo_driver_action action, indigo_driver_
 			VERIFY_NOT_CONNECTED(focuser);
 			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
-			if (focuser != NULL) {
-				indigo_detach_device(focuser);
-				indigo_safe_free(focuser);
-				focuser = NULL;
-			}
 			if (aux != NULL) {
 				indigo_detach_device(aux);
 				indigo_safe_free(aux);
 				aux = NULL;
+			}
+			if (focuser != NULL) {
+				indigo_detach_device(focuser);
+				indigo_safe_free(focuser);
+				focuser = NULL;
 			}
 			if (private_data != NULL) {
 				indigo_safe_free(private_data);

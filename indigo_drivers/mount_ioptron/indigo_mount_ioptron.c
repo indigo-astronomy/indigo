@@ -2285,15 +2285,15 @@ indigo_result indigo_mount_ioptron(indigo_driver_action action, indigo_driver_in
 			VERIFY_NOT_CONNECTED(mount);
 			VERIFY_NOT_CONNECTED(guider);
 			last_action = action;
-			if (mount != NULL) {
-				indigo_detach_device(mount);
-				indigo_safe_free(mount);
-				mount = NULL;
-			}
 			if (guider != NULL) {
 				indigo_detach_device(guider);
 				indigo_safe_free(guider);
 				guider = NULL;
+			}
+			if (mount != NULL) {
+				indigo_detach_device(mount);
+				indigo_safe_free(mount);
+				mount = NULL;
 			}
 			if (private_data != NULL) {
 				indigo_safe_free(private_data);

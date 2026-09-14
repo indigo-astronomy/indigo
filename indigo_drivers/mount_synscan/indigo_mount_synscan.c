@@ -2537,20 +2537,20 @@ indigo_result indigo_mount_synscan(indigo_driver_action action, indigo_driver_in
 			VERIFY_NOT_CONNECTED(guider);
 			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
-			if (mount != NULL) {
-				indigo_detach_device(mount);
-				indigo_safe_free(mount);
-				mount = NULL;
+			if (aux != NULL) {
+				indigo_detach_device(aux);
+				indigo_safe_free(aux);
+				aux = NULL;
 			}
 			if (guider != NULL) {
 				indigo_detach_device(guider);
 				indigo_safe_free(guider);
 				guider = NULL;
 			}
-			if (aux != NULL) {
-				indigo_detach_device(aux);
-				indigo_safe_free(aux);
-				aux = NULL;
+			if (mount != NULL) {
+				indigo_detach_device(mount);
+				indigo_safe_free(mount);
+				mount = NULL;
 			}
 			if (private_data != NULL) {
 				indigo_safe_free(private_data);

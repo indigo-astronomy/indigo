@@ -403,15 +403,15 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 			VERIFY_NOT_CONNECTED(ao);
 			VERIFY_NOT_CONNECTED(guider);
 			last_action = action;
-			if (ao != NULL) {
-				indigo_detach_device(ao);
-				indigo_safe_free(ao);
-				ao = NULL;
-			}
 			if (guider != NULL) {
 				indigo_detach_device(guider);
 				indigo_safe_free(guider);
 				guider = NULL;
+			}
+			if (ao != NULL) {
+				indigo_detach_device(ao);
+				indigo_safe_free(ao);
+				ao = NULL;
 			}
 			if (private_data != NULL) {
 				indigo_safe_free(private_data);
