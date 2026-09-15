@@ -1418,7 +1418,7 @@ Custom properties: `X_SET_ZERO_POSITION`.
 
 Driver-specific use of existing properties: `ROTATOR_ABORT_MOTION`, `ROTATOR_BACKLASH`, `ROTATOR_DIRECTION`, `ROTATOR_ON_POSITION_SET`, `ROTATOR_POSITION_OFFSET`, `ROTATOR_RAW_POSITION`, `ROTATOR_RELATIVE_MOVE`.
 
-Source: `indigo_drivers/rotator_wa/indigo_rotator_wa.c`.
+Source: `indigo_drivers/rotator_wa/indigo_rotator_wa.driver`; generated output in `indigo_drivers/rotator_wa/indigo_rotator_wa.c`.
 
 ### system_ascol
 

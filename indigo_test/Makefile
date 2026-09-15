@@ -631,7 +631,7 @@ $(INTEGRATION_BUILD)/rotator_optec_simulator: ../indigo_drivers/rotator_optec/ro
 $(INTEGRATION_BUILD)/test_rotator_optec_simulator: integration/test_rotator_optec_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_optec_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(ROTATOR_OPTEC_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/rotator_wa_simulator: ../indigo_drivers/rotator_wa/rotator_wa_simulator/rotator_wa_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/rotator_wa_simulator: ../indigo_drivers/rotator_wa/rotator_wa_simulator/rotator_wa_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/test_rotator_wa_simulator: integration/test_rotator_wa_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_wa_simulator | $(INTEGRATION_BUILD)

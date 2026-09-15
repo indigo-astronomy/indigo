@@ -2685,6 +2685,8 @@
 		59910B933059266C00FB1C2F /* indigo_ccd_iidc.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_iidc.driver; sourceTree = "<group>"; };
 		59910B943059266C00FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59910B953059397000FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		59910BB23059C4E700FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		59910BB33059C4F800FB1C2F /* indigo_rotator_wa.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_wa.driver; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -7365,9 +7367,11 @@
 			isa = PBXGroup;
 			children = (
 				596FCAAA2BD0328000F5BACB /* README.md */,
+				59910BB23059C4E700FB1C2F /* REFACTOR.md */,
 				596FCAA82BD0328000F5BACB /* indigo_rotator_wa.h */,
 				596FCAA72BD0328000F5BACB /* indigo_rotator_wa.c */,
 				596FCAA52BD0328000F5BACB /* indigo_rotator_wa_main.c */,
+				59910BB33059C4F800FB1C2F /* indigo_rotator_wa.driver */,
 				596FCAAB2BD0328000F5BACB /* Serial protocol for WandererRotator Lite V2-20240226-1.pdf */,
 				596FCAAC2BD0328000F5BACB /* Serial protocol for WandererRotator Mini and Mini V2-20240226-1.pdf */,
 				5984A386303CDBA400D581D2 /* rotator_wa_simulator */,

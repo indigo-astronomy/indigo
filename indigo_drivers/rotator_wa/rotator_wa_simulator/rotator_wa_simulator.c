@@ -23,6 +23,7 @@
 #include <unistd.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
+#include "../../../indigo_test/simulator_common/serial_motion.h"
 
 typedef struct {
 	bool headless;
@@ -39,7 +40,15 @@ static simulator_options options = {
 static const char *simulator_name = "rotator_wa";
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
-static double position = 0;
+static serial_motion motion;
+static bool pending;
+static double moved;
+static const char *model = "WandererRotatorMiniV2";
+static int steps_degree = 1142;
+static char status_fault[128];
+static char completion_fault[128];
+static bool ignore_setting;
+static bool ignore_stop;
 static double backlash = 1.2;
 static bool reversed = false;
 
@@ -48,6 +57,7 @@ static void usage(const char *name) {
 	printf("Usage: %s [OPTIONS]\n", name);
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
+	printf("  --model <name>          Select Mini, MiniV2, Lite or LiteV2 identity\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
@@ -68,6 +78,9 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--model") && i + 1 < argc) {
+			model = argv[++i];
+			steps_degree = strstr(model, "Lite") != NULL ? 1199 : 1142;
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -90,37 +103,127 @@ static bool write_response(const char *response) {
 	return serial_simulator_write_all(serial_fd, response, strlen(response));
 }
 
-static void send_status(void) {
-	char response[128];
-	snprintf(response, sizeof(response), "WandererRotatorMiniV2A20240226A%.0fA%.1fA%d\n", position * 1000, backlash, reversed ? 1 : 0);
-	write_response(response);
+// Test controls are out-of-band files, never hardware commands.
+static void load_control(void) {
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.control", options.ready_file ? options.ready_file : "");
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return;
+	}
+	char control[160] = { 0 };
+	fgets(control, sizeof(control), file);
+	fclose(file);
+	unlink(path);
+	control[strcspn(control, "\r\n")] = 0;
+	if (!strncmp(control, "status:", 7)) {
+		snprintf(status_fault, sizeof(status_fault), "%s", control + 7);
+	} else if (!strncmp(control, "completion:", 11)) {
+		snprintf(completion_fault, sizeof(completion_fault), "%s", control + 11);
+	} else if (!strcmp(control, "ignore_setting")) {
+		ignore_setting = true;
+	} else if (!strcmp(control, "ignore_stop")) {
+		ignore_stop = true;
+	} else if (!strncmp(control, "position:", 9)) {
+		serial_motion_sync(&motion, atof(control + 9));
+	}
 }
 
-static void send_move_complete(double move_steps) {
+static void record_command(const char *command) {
+	if (options.ready_file == NULL) {
+		return;
+	}
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.events", options.ready_file);
+	FILE *file = fopen(path, "a");
+	if (file != NULL) {
+		fprintf(file, "%s\n", command);
+		fclose(file);
+	}
+}
+
+static void send_frame(const char *response, char *fault) {
+	if (!*fault) {
+		write_response(response);
+	} else if (!strcmp(fault, "silent")) {
+		// Deliberately suppress one response.
+	} else if (!strcmp(fault, "np")) {
+		write_response("NP\n");
+	} else if (!strcmp(fault, "truncated")) {
+		write_response("1A");
+	} else if (!strcmp(fault, "overlong")) {
+		char long_reply[400];
+		memset(long_reply, '1', sizeof(long_reply) - 2);
+		long_reply[sizeof(long_reply) - 2] = '\n';
+		long_reply[sizeof(long_reply) - 1] = 0;
+		write_response(long_reply);
+	} else if (!strcmp(fault, "split")) {
+		serial_simulator_write_all(serial_fd, response, 3);
+		usleep(20000);
+		write_response(response + 3);
+	} else {
+		char invalid[160];
+		snprintf(invalid, sizeof(invalid), "%s\n", fault);
+		write_response(invalid);
+	}
+	*fault = 0;
+}
+
+static void send_status(void) {
+	char response[128];
+	snprintf(response, sizeof(response), "%sA20240226A%.0fA%.1fA%dA\r\n", model, serial_motion_update(&motion) * 1000, backlash, reversed ? 1 : 0);
+	send_frame(response, status_fault);
+}
+
+static void send_move_complete(void) {
 	char response[64];
-	position += move_steps / 1142.0;
-	snprintf(response, sizeof(response), "%.0fA%.0f\n", move_steps, position * 1000);
-	write_response(response);
+	snprintf(response, sizeof(response), "%.2fA%.0fA\r\n", moved, serial_motion_update(&motion) * 1000);
+	send_frame(response, completion_fault);
+	pending = false;
 }
 
 static void dispatch_command(const char *command) {
+	load_control();
+	record_command(command);
 	serial_simulator_trace_line(options.trace, "->", command);
 	if (!strcmp(command, "1500001")) {
 		send_status();
-	} else if (!strcmp(command, "1500002")) {
-		position = 0;
-	} else if (!strncmp(command, "1600", 4)) {
-		backlash = atof(command + 4) / 10.0;
-	} else if (!strncmp(command, "170000", 6)) {
-		reversed = command[6] == '1';
 	} else if (!strcmp(command, "stop")) {
-		send_move_complete(0);
-	} else {
-		double move_steps = atof(command);
-		if (move_steps >= 1000000 || move_steps <= -1000000) {
-			move_steps += move_steps < 0 ? 1000000 : -1000000;
+		if (ignore_stop) {
+			ignore_stop = false;
+			strcpy(status_fault, "silent");
+		} else {
+			serial_motion_stop(&motion);
+			pending = false;
+			*completion_fault = 0;
 		}
-		send_move_complete(move_steps);
+	} else if (!strcmp(command, "1500002")) {
+		if (!ignore_setting) {
+			serial_motion_sync(&motion, 0);
+		}
+		ignore_setting = false;
+	} else if (!strncmp(command, "1600", 4) && strlen(command) == 7) {
+		if (!ignore_setting) {
+			backlash = atof(command + 4) / 10;
+		}
+		ignore_setting = false;
+	} else if (!strcmp(command, "1700000") || !strcmp(command, "1700001")) {
+		if (!ignore_setting) {
+			reversed = command[6] == '1';
+		}
+		ignore_setting = false;
+	} else {
+		char *end;
+		long steps = strtol(command, &end, 10);
+		if (*end == 0 && end != command && !pending) {
+			if (!strcmp(completion_fault, "np")) {
+				send_frame("NP\n", completion_fault);
+				return;
+			}
+			moved = (double)steps / steps_degree;
+			serial_motion_start(&motion, serial_motion_update(&motion) + moved, 30);
+			pending = true;
+		}
 	}
 }
 
@@ -129,6 +232,9 @@ static void run_loop(void) {
 	size_t used = 0;
 
 	while (running) {
+		if (pending && serial_motion_update(&motion) == motion.target && motion.duration == 0) {
+			send_move_complete();
+		}
 		fd_set readfds;
 		FD_ZERO(&readfds);
 		FD_SET(serial_fd, &readfds);
@@ -146,6 +252,10 @@ static void run_loop(void) {
 		char buffer[32];
 		ssize_t count = read(serial_fd, buffer, sizeof(buffer));
 		if (count <= 0) {
+			if (count == 0) {
+				usleep(1000);
+				continue;
+			}
 			if (count < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK || errno == EIO)) {
 				continue;
 			}
