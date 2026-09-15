@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2025 CloudMakers, s. r. o.
+// Copyright (c) 2019-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -145,6 +145,7 @@ typedef struct {
 	uint64_t focus_mode;
 	uint64_t shutter_speed;
 	bool is_dual_compression;
+	unsigned downloaded_objects;
 	int steps;
 	uint32_t api_version;
 	bool needs_pre_capture_delay;
@@ -164,6 +165,7 @@ extern bool ptp_sony_set_property(indigo_device *device, ptp_property *property)
 extern bool ptp_sony_exposure(indigo_device *device);
 extern bool ptp_sony_liveview(indigo_device *device);
 extern bool ptp_sony_af(indigo_device *device);
+extern bool ptp_sony_af_stop(indigo_device *device);
 extern bool ptp_sony_focus(indigo_device *device, int steps);
 extern bool ptp_sony_check_dual_compression(indigo_device *device);
 

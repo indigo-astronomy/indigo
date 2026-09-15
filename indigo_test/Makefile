@@ -79,6 +79,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_mi_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_asi_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_iidc_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_ptp_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_sx_usb \
 	$(INTEGRATION_BUILD)/test_ccd_ssag_usb \
 	$(INTEGRATION_BUILD)/test_wheel_astroasis_sdk \
@@ -260,6 +261,10 @@ test-unit: check-lib $(UNIT_TESTS)
 		printf "Running %s\n" "$$test"; \
 		"$$test" || exit $$?; \
 	done
+
+ifeq ($(OS_DETECTED),Darwin)
+INTEGRATION_TESTS += $(INTEGRATION_BUILD)/test_ccd_ptp_ica
+endif
 
 test-integration: check-lib $(INTEGRATION_TESTS)
 	@for test in $(INTEGRATION_TESTS); do \
@@ -1627,3 +1632,54 @@ test-ccd-atik-hw: $(TEST_BUILD)/hardware/test_ccd_atik_hw
 .PHONY: test-ccd-atik2-hw
 test-ccd-atik2-hw: $(TEST_BUILD)/hardware/test_ccd_atik_hw
 	$(TEST_BUILD)/hardware/test_ccd_atik_hw --run $(BUILD_DRIVERS)/indigo_ccd_atik2.$(SOEXT) indigo_ccd_atik2
+
+PTP_SDK_TEST_SOURCES = indigo_ccd_ptp indigo_ptp indigo_ptp_canon indigo_ptp_nikon indigo_ptp_sony indigo_ptp_fuji indigo_ptp_olympus
+PTP_SDK_TEST_OBJECTS = $(addprefix $(INTEGRATION_BUILD)/ccd_ptp_sdk_,$(addsuffix .o,$(PTP_SDK_TEST_SOURCES)))
+PTP_SDK_TEST_REPLACEMENTS = -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach
+
+$(INTEGRATION_BUILD)/ccd_ptp_sdk_%.o: ../indigo_drivers/ccd_ptp/%.c $(wildcard ../indigo_drivers/ccd_ptp/*.h) Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(PTP_SDK_TEST_REPLACEMENTS) -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_ptp_sdk: integration/test_ccd_ptp_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(PTP_SDK_TEST_OBJECTS) | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -DPTP_STOP_RETRY_LIMIT=5 $< $(PTP_SDK_TEST_OBJECTS) -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+.PHONY: test-ccd-ptp-sdk
+test-ccd-ptp-sdk: $(INTEGRATION_BUILD)/test_ccd_ptp_sdk
+	$(INTEGRATION_BUILD)/test_ccd_ptp_sdk
+
+PTP_SANITIZE_OBJECTS = $(addprefix $(INTEGRATION_BUILD)/ccd_ptp_sanitize_,$(addsuffix .o,$(PTP_SDK_TEST_SOURCES)))
+PTP_SANITIZE_CFLAGS = $(if $(filter Darwin,$(OS_DETECTED)),$(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64,$(TEST_CFLAGS)) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+PTP_SANITIZE_LDFLAGS = $(if $(filter Darwin,$(OS_DETECTED)),$(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -arch arm64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -fsanitize=address,undefined
+
+$(INTEGRATION_BUILD)/ccd_ptp_sanitize_%.o: ../indigo_drivers/ccd_ptp/%.c $(wildcard ../indigo_drivers/ccd_ptp/*.h) Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(PTP_SANITIZE_CFLAGS) $(PTP_SDK_TEST_REPLACEMENTS) -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_ptp_sdk_sanitize: integration/test_ccd_ptp_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(PTP_SANITIZE_OBJECTS) | $(INTEGRATION_BUILD)
+	$(CC) $(PTP_SANITIZE_CFLAGS) -DPTP_STOP_RETRY_LIMIT=5 $< $(PTP_SANITIZE_OBJECTS) -o $@ $(PTP_SANITIZE_LDFLAGS)
+
+.PHONY: test-ccd-ptp-sdk-sanitize
+test-ccd-ptp-sdk-sanitize: $(INTEGRATION_BUILD)/test_ccd_ptp_sdk_sanitize
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_ccd_ptp_sdk_sanitize
+
+ifeq ($(OS_DETECTED),Darwin)
+
+$(INTEGRATION_BUILD)/ccd_ptp_ica_transport.o: ../indigo_drivers/ccd_ptp/indigo_ptp.m ../indigo_drivers/ccd_ptp/indigo_ptp.c ../indigo_drivers/ccd_ptp/indigo_ptp_ica.h $(wildcard ../indigo_drivers/ccd_ptp/*.h) Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -fobjc-arc -DPTP_ICA_TRANSACTION_TIMEOUT=20000000ull -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_ptp_ica: integration/test_ccd_ptp_ica.m test_runner.h $(INTEGRATION_BUILD)/ccd_ptp_ica_transport.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -mmacosx-version-min=10.13 -fobjc-arc $< $(INTEGRATION_BUILD)/ccd_ptp_ica_transport.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS) -mmacosx-version-min=10.13
+
+$(INTEGRATION_BUILD)/ccd_ptp_ica_sanitize.o: ../indigo_drivers/ccd_ptp/indigo_ptp.m ../indigo_drivers/ccd_ptp/indigo_ptp.c ../indigo_drivers/ccd_ptp/indigo_ptp_ica.h $(wildcard ../indigo_drivers/ccd_ptp/*.h) Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(PTP_SANITIZE_CFLAGS) -fobjc-arc -DPTP_ICA_TRANSACTION_TIMEOUT=20000000ull -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_ptp_ica_sanitize: integration/test_ccd_ptp_ica.m test_runner.h $(INTEGRATION_BUILD)/ccd_ptp_ica_sanitize.o | $(INTEGRATION_BUILD)
+	$(CC) $(PTP_SANITIZE_CFLAGS) -fobjc-arc $< $(INTEGRATION_BUILD)/ccd_ptp_ica_sanitize.o -o $@ $(PTP_SANITIZE_LDFLAGS) -mmacosx-version-min=10.13
+
+.PHONY: test-ccd-ptp-ica-sanitize
+test-ccd-ptp-ica-sanitize: $(INTEGRATION_BUILD)/test_ccd_ptp_ica_sanitize
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_ccd_ptp_ica_sanitize
+
+.PHONY: test-ccd-ptp-ica
+test-ccd-ptp-ica: $(INTEGRATION_BUILD)/test_ccd_ptp_ica
+	$(INTEGRATION_BUILD)/test_ccd_ptp_ica
+endif

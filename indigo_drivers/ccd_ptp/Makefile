@@ -1,6 +1,6 @@
 #---------------------------------------------------------------------
 #
-# Copyright (c) 2023-2025 CloudMakers, s. r. o.
+# Copyright (c) 2023-2026 CloudMakers, s. r. o.
 # All rights reserved.
 #
 # You can use this software under the terms of 'INDIGO Astronomy
@@ -41,6 +41,8 @@ endif
 .PHONY: all status install uninstall clean clean-all
 
 all: status $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
+
+indigo_ccd_ptp.o indigo_ptp.o indigo_ptp_canon.o indigo_ptp_nikon.o indigo_ptp_sony.o indigo_ptp_fuji.o indigo_ptp_olympus.o: indigo_ptp.h indigo_ptp_ica.h indigo_ptp_canon.h indigo_ptp_nikon.h indigo_ptp_sony.h indigo_ptp_fuji.h indigo_ptp_olympus.h
 
 status:
 	@printf "\n$(DRIVER) ---------------------------------------\n\n"
@@ -125,5 +127,3 @@ clean: status
 	rm -f *.o $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 
 clean-all: clean
-
-

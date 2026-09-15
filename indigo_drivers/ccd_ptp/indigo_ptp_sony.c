@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2025 CloudMakers, s. r. o.
+// Copyright (c) 2019-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -1293,21 +1293,9 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 }
 
 static void ptp_check_event(indigo_device *device) {
-#ifdef USE_ICA_TRANSPORT
 	ptp_get_event(device);
-#else
-	ptp_container event;
-	int length = 0;
-	memset(&event, 0, sizeof(event));
-	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_int, (unsigned char *)&event, sizeof(event), &length, 1000);
-	if (rc >= 0) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
-		PTP_DUMP_CONTAINER(&event);
-		ptp_sony_handle_event(device, event.code, event.payload.params);
-	}
-#endif
 	if (IS_CONNECTED) {
-		indigo_reschedule_timer(device, 0, &PRIVATE_DATA->event_checker);
+		indigo_execute_handler_in(device, 0.05, ptp_check_event);
 	}
 }
 
@@ -1390,7 +1378,7 @@ bool ptp_sony_initialise(indigo_device *device) {
 			free(buffer);
 		}
 	}
-	indigo_set_timer(device, 0.5, ptp_check_event, &PRIVATE_DATA->event_checker);
+	indigo_execute_handler_in(device, 0.5, ptp_check_event);
 	struct timespec now;
 	clock_gettime(CLOCK_REALTIME, &now);
 	SONY_PRIVATE_DATA->connection_time = now.tv_sec;
@@ -1430,18 +1418,22 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 				buffer = NULL;
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, size = %u, name = '%s'", params[0], size, filename);
 				if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, NULL)) {
+					SONY_PRIVATE_DATA->downloaded_objects++;
 					const char *ext = strchr(filename, '.');
 					if (PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {
 						if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
 							indigo_process_dslr_preview_image(device, buffer, size);
 						}
-						ptp_sony_handle_event(device, code, params);
+						if (SONY_PRIVATE_DATA->api_version != SONY_NEW_API && !PRIVATE_DATA->image_added) {
+							ptp_sony_handle_event(device, code, params);
+						}
 					} else {
 						indigo_process_dslr_image(device, buffer, size, ext, false);
 						if (PRIVATE_DATA->image_buffer) {
 							free(PRIVATE_DATA->image_buffer);
 						}
 						PRIVATE_DATA->image_buffer = buffer;
+						PRIVATE_DATA->image_added = true;
 						buffer = NULL;
 					}
 				}
@@ -1512,232 +1504,154 @@ bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 	return false;
 }
 
+static bool sony_capture_stop(indigo_device *device) {
+	int16_t value = 1;
+	bool result = true;
+	if (PRIVATE_DATA->shutter_open) {
+		result = ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Capture, &value, sizeof(value));
+		PRIVATE_DATA->shutter_open = !result;
+	}
+	return ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(value)) && result;
+}
+
 bool ptp_sony_exposure(indigo_device *device) {
-	if (SONY_PRIVATE_DATA->needs_pre_capture_delay) {
-		// A7R4/A7R4A needs 3s delay before first capture
-		struct timespec now;
-		clock_gettime(CLOCK_REALTIME, &now);
-		if (now.tv_sec - SONY_PRIVATE_DATA->connection_time < 3) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "enforce 3s delay...");
-			while (true) {
-				indigo_usleep(100000);
-				clock_gettime(CLOCK_REALTIME, &now);
-				if (now.tv_sec - SONY_PRIVATE_DATA->connection_time > 3) {
-					break;
-				}
-				if (PRIVATE_DATA->abort_capture) {
-					return false;
-				}
-			}
-		}
-	}
-	int16_t value = 2;
-	SONY_PRIVATE_DATA->focus_state = 1;
-	if (ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t))) {
-		if (SONY_PRIVATE_DATA->focus_mode != 1) {
-			for (int i = 0; i < 50 && SONY_PRIVATE_DATA->focus_state == 1; i++) {
-				usleep(100000);
-			}
-			if (SONY_PRIVATE_DATA->focus_state == 3) {
-				value = 1;
-				ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t));
-				return false;
-			}
-		} else {
-			usleep(1000000);
-		}
-	}
-	if (SONY_PRIVATE_DATA->api_version != SONY_NEW_API && SONY_PRIVATE_DATA->shutter_speed == 0) {
-		value = 1;
-		ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t));
-	}
-	value = 2;
-	if (ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Capture, &value, sizeof(uint16_t))) {
-		value = 1;
-		if (SONY_PRIVATE_DATA->shutter_speed == 0) {
-			ptp_blob_exposure_timer(device);
-			ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Capture, &value, sizeof(uint16_t));
-		} else {
-			ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Capture, &value, sizeof(uint16_t));
-			ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t));
-		}
-		if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_PREVIEW_ENABLED_ITEM->sw.value && ptp_sony_check_dual_compression(device)) {
-			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
-		}
-		if (SONY_PRIVATE_DATA->api_version == SONY_NEW_API) {
-			// readout memory buffer
-			ptp_property *property = ptp_property_supported(device, ptp_property_sony_ObjectInMemory);
-			if (property) {
-				while (true) {
-					// NOTE: DO NOT ABORT HERE
-					// The image remains in the memory buffer as long as the object is not read out.
-					if (property->value.number.value > 0x8000) {
-						// CaptureCompleted
-						uint32_t dummy[1] = { 0xffffc001 };
-						ptp_sony_handle_event(device, (ptp_event_code)ptp_event_sony_ObjectAdded, dummy);
-						break;
-					}
-					indigo_usleep(100000);
-				}
-			}
-		} else {
-			bool complete_detected = false;
-			while (true) {
-				if (PRIVATE_DATA->abort_capture || (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_IMAGE_FILE_PROPERTY->state != INDIGO_BUSY_STATE)) {
-					break;
-				}
-				// SONY a9 does not notify ObjectAdded
-				ptp_property *property = ptp_property_supported(device, ptp_property_sony_ObjectInMemory);
-				if (!complete_detected && property && property->value.number.value > 0x8000) {
-					// CaptureCompleted
-					complete_detected = property->value.number.value == 0x8001;
-					uint32_t dummy[1] = { 0xffffc001 };
-					ptp_sony_handle_event(device, (ptp_event_code)ptp_event_sony_ObjectAdded, dummy);
-				}
-				indigo_usleep(100000);
-			}
-		}
+	if (PRIVATE_DATA->capture_phase == 0) {
+		PRIVATE_DATA->capture_stop = sony_capture_stop;
+		SONY_PRIVATE_DATA->downloaded_objects = 0;
 		if (PRIVATE_DATA->abort_capture) {
-			if (CCD_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
-				CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-			}
-			if (CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
-				CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
-			}
-			if (CCD_IMAGE_FILE_PROPERTY->state != INDIGO_OK_STATE) {
-				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-			}
+			return false;
 		}
-		return !PRIVATE_DATA->abort_capture;
+		if (SONY_PRIVATE_DATA->needs_pre_capture_delay && indigo_monotonic_time() < PRIVATE_DATA->connected_at + 3) {
+			return true;
+		}
+		int16_t value = 2;
+		SONY_PRIVATE_DATA->focus_state = 1;
+		if (!ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(value))) {
+			return false;
+		}
+		PRIVATE_DATA->capture_phase = 3;
+		PRIVATE_DATA->phase_deadline = indigo_monotonic_time() + (SONY_PRIVATE_DATA->focus_mode == 1 ? 1 : 5);
+		return true;
 	}
-	return false;
+	if (PRIVATE_DATA->capture_phase == 3) {
+		if (PRIVATE_DATA->abort_capture || SONY_PRIVATE_DATA->focus_state == 3) {
+			return false;
+		}
+		if ((SONY_PRIVATE_DATA->focus_mode == 1 || SONY_PRIVATE_DATA->focus_state == 1) && indigo_monotonic_time() < PRIVATE_DATA->phase_deadline) {
+			return true;
+		}
+		int16_t value = 1;
+		bool bulb = SONY_PRIVATE_DATA->shutter_speed == 0;
+		if (SONY_PRIVATE_DATA->api_version != SONY_NEW_API && bulb && !ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(value))) {
+			return false;
+		}
+		value = 2;
+		if (!ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Capture, &value, sizeof(value))) {
+			return false;
+		}
+		PRIVATE_DATA->shutter_open = true;
+		if (!bulb && !sony_capture_stop(device)) {
+			return false;
+		}
+		ptp_capture_start(device, bulb, 0);
+		return true;
+	}
+	if (PRIVATE_DATA->capture_phase == 1) {
+		if (!PRIVATE_DATA->abort_capture && indigo_monotonic_time() < PRIVATE_DATA->shutter_deadline) {
+			return true;
+		}
+		if (!sony_capture_stop(device)) {
+			return false;
+		}
+		PRIVATE_DATA->capture_phase = 2;
+	}
+	ptp_property *property = ptp_property_supported(device, ptp_property_sony_ObjectInMemory);
+	if (!PRIVATE_DATA->readout_detected && property && property->value.number.value > 0x8000) {
+		// Even an aborted NEW_API capture must drain its object before reuse.
+		uint32_t dummy[] = { 0xffffc001 };
+		PRIVATE_DATA->readout_detected = property->value.number.value == 0x8001 || SONY_PRIVATE_DATA->api_version == SONY_NEW_API;
+		if (!ptp_sony_handle_event(device, (ptp_event_code)ptp_event_sony_ObjectAdded, dummy)) {
+			return false;
+		}
+	}
+	// NEW_API exposes the pair through the same memory handle, in either order.
+	bool pending_pair = SONY_PRIVATE_DATA->api_version == SONY_NEW_API && SONY_PRIVATE_DATA->is_dual_compression && SONY_PRIVATE_DATA->downloaded_objects == 1;
+	if (pending_pair) {
+		PRIVATE_DATA->readout_detected = false;
+	}
+	PRIVATE_DATA->capture_complete = !pending_pair && PRIVATE_DATA->image_added && CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_IMAGE_FILE_PROPERTY->state != INDIGO_BUSY_STATE;
+	if (SONY_PRIVATE_DATA->api_version != SONY_NEW_API && PRIVATE_DATA->abort_capture) {
+		return false;
+	}
+	return PRIVATE_DATA->capture_complete ? !PRIVATE_DATA->abort_capture : indigo_monotonic_time() < PRIVATE_DATA->capture_deadline;
 }
 
 bool ptp_sony_liveview(indigo_device *device) {
+	if (SONY_PRIVATE_DATA->needs_pre_capture_delay && indigo_monotonic_time() < PRIVATE_DATA->connected_at + 3) {
+		return true;
+	}
+	PRIVATE_DATA->stream_started = true;
 	void *buffer = NULL;
-	uint32_t size;
-	int retry_count = 0;
-	if (SONY_PRIVATE_DATA->needs_pre_capture_delay) {
-		// A7R4/A7R4A needs 3s delay before first capture
-		struct timespec now;
-		clock_gettime(CLOCK_REALTIME, &now);
-		if (now.tv_sec - SONY_PRIVATE_DATA->connection_time < 3) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "enforce 3s delay...");
-			while (true) {
-				indigo_usleep(100000);
-				clock_gettime(CLOCK_REALTIME, &now);
-				if (now.tv_sec - SONY_PRIVATE_DATA->connection_time > 3) {
-					break;
-				}
-				if (PRIVATE_DATA->abort_capture) {
-					return false;
+	uint32_t size = 0;
+	bool result = ptp_transaction_1_0_i(device, ptp_operation_GetObject, 0xffffc002, &buffer, &size);
+	if (!result) {
+		free(buffer);
+		return (PRIVATE_DATA->last_error == ptp_response_AccessDenied || PRIVATE_DATA->last_error == ptp_response_DeviceBusy) && ++PRIVATE_DATA->stream_retries <= 100;
+	}
+	uint8_t *bytes = buffer;
+	for (uint32_t start = 0; bytes && start + 3 < size; start++) {
+		if (bytes[start] == 0xff && bytes[start + 1] == 0xd8 && bytes[start + 2] == 0xff && bytes[start + 3] == 0xdb) {
+			for (uint32_t end = start + 2; end + 1 < size; end++) {
+				if (bytes[end] == 0xff && bytes[end + 1] == 0xd9) {
+					ptp_stream_frame(device, buffer, bytes + start, end + 2 - start);
+					return true;
 				}
 			}
+			break;
 		}
 	}
-	while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
-		if (ptp_transaction_1_0_i(device, ptp_operation_GetObject, 0xffffc002, &buffer, &size)) {
-			uint8_t *start = (uint8_t *)buffer;
-			while (size > 0) {
-				if (size > 3 && start[0] == 0xFF && start[1] == 0xD8 && start[2] == 0xFF && start[3] == 0xDB) {
-					uint8_t *end = start + 2;
-					size -= 2;
-					while (size > 0) {
-						if (size > 2 && end[0] == 0xFF && end[1] == 0xD9) {
-							if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-								CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-								indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-							}
-							if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-								CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-								indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-							}
-							indigo_process_dslr_image(device, start, (int)(end - start), ".jpeg", true);
-							if (PRIVATE_DATA->image_buffer) {
-								free(PRIVATE_DATA->image_buffer);
-							}
-							PRIVATE_DATA->image_buffer = buffer;
-							buffer = NULL;
-							CCD_STREAMING_COUNT_ITEM->number.value--;
-							if (CCD_STREAMING_COUNT_ITEM->number.value < 0) {
-								CCD_STREAMING_COUNT_ITEM->number.value = -1;
-							}
-							indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-							retry_count = 0;
-							break;
-						}
-						end++;
-						size--;
-					}
-					break;
-				}
-				start++;
-				size--;
-			}
-		} else if (PRIVATE_DATA->last_error == ptp_response_AccessDenied) {
-			if (retry_count++ > 100) {
-				indigo_finalize_dslr_video_stream(device);
-				return false;
-			}
-		}
-		if (buffer) {
-			free(buffer);
-		}
-		buffer = NULL;
-		indigo_usleep(100000);
+	free(buffer);
+	return ++PRIVATE_DATA->stream_retries <= 100;
+}
+
+bool ptp_sony_af_stop(indigo_device *device) {
+	if (!PRIVATE_DATA->af_pending) {
+		return true;
 	}
-	indigo_finalize_dslr_video_stream(device);
-	return !PRIVATE_DATA->abort_capture;
+	int16_t value = 1;
+	bool result = ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(value));
+	PRIVATE_DATA->af_pending = !result;
+	PRIVATE_DATA->af_complete = result;
+	return result;
 }
 
 bool ptp_sony_af(indigo_device *device) {
-	if (SONY_PRIVATE_DATA->focus_mode != 1) {
-		int16_t value = 2;
-		SONY_PRIVATE_DATA->focus_state = 1;
-		if (ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t))) {
-			for (int i = 0; i < 50 && SONY_PRIVATE_DATA->focus_state == 1; i++) {
-				usleep(100000);
-			}
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focus_state %d", (int)(SONY_PRIVATE_DATA->focus_state));
-			value = 1;
-			ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t));
-			return SONY_PRIVATE_DATA->focus_state == 2;
-		}
+	if (SONY_PRIVATE_DATA->focus_mode == 1) {
+		return false;
 	}
-	return false;
+	int16_t value = 2;
+	if (!PRIVATE_DATA->af_pending) {
+		SONY_PRIVATE_DATA->focus_state = 1;
+		if (!ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(value))) {
+			return false;
+		}
+		PRIVATE_DATA->af_pending = true;
+		PRIVATE_DATA->af_complete = false;
+		PRIVATE_DATA->af_deadline = indigo_monotonic_time() + 5;
+		return true;
+	}
+	if (SONY_PRIVATE_DATA->focus_state == 1 && indigo_monotonic_time() < PRIVATE_DATA->af_deadline && !PRIVATE_DATA->detaching) {
+		return true;
+	}
+	return ptp_sony_af_stop(device) && SONY_PRIVATE_DATA->focus_state == 2;
 }
 
 bool ptp_sony_focus(indigo_device *device, int steps) {
-	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-	if (steps == 0) {
-		pthread_mutex_lock(&mutex);
-		SONY_PRIVATE_DATA->steps = 0;
-		pthread_mutex_unlock(&mutex);
+	if (!steps) {
 		return true;
-	} else {
-		pthread_mutex_lock(&mutex);
-		SONY_PRIVATE_DATA->steps = steps;
-		pthread_mutex_unlock(&mutex);		
-		while (true) {
-			pthread_mutex_lock(&mutex);
-			if (SONY_PRIVATE_DATA->steps == 0) {
-				pthread_mutex_unlock(&mutex);
-				return true;
-			}
-			int16_t value = SONY_PRIVATE_DATA->steps <= -1 ? -1 : 1;
-			SONY_PRIVATE_DATA->steps -= value;
-			pthread_mutex_unlock(&mutex);
-			if (!ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_NearFar, &value, sizeof(uint16_t))) {
-				return false;
-			}
-			indigo_usleep(50000);
-		}
 	}
-	return true;
+	int16_t value = steps < 0 ? -1 : 1;
+	return ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_NearFar, &value, sizeof(value));
 }
 
 bool ptp_sony_check_dual_compression(indigo_device *device) {

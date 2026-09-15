@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2025 CloudMakers, s. r. o.
+// Copyright (c) 2019-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -33,10 +33,13 @@
 #include <indigo/indigo_driver.h>
 
 #define PRIVATE_DATA                ((ptp_private_data *)device->private_data)
-#define DRIVER_VERSION 							0x02000023
+#define DRIVER_VERSION 							0x02000033
 #define DRIVER_NAME                 "indigo_ccd_ptp"
 
 #define PTP_TIMEOUT                 10000
+#ifndef PTP_CAPTURE_TIMEOUT
+#define PTP_CAPTURE_TIMEOUT         60
+#endif
 #define PTP_MAX_BULK_TRANSFER_SIZE  8388608
 
 typedef enum {
@@ -279,6 +282,10 @@ typedef enum {
 #define PTP_MAX_ELEMENTS										1024
 #define PTP_MAX_CHARS												256
 
+#ifndef PTP_STOP_RETRY_LIMIT
+#define PTP_STOP_RETRY_LIMIT							100
+#endif
+
 typedef struct {
 	uint32_t length;
 	uint16_t type;
@@ -395,15 +402,46 @@ typedef struct {
 	bool (* set_property)(indigo_device *device, ptp_property *property);
 	bool (* exposure)(indigo_device *device);
 	bool (* liveview)(indigo_device *device);
+	bool (* capture_stop)(indigo_device *device);
+	bool (* liveview_stop)(indigo_device *device);
 	bool (* lock)(indigo_device *device);
 	bool (* af)(indigo_device *device);
 	bool (* zoom)(indigo_device *device);
 	bool (* focus)(indigo_device *device, int steps);
 	bool (* set_host_time)(indigo_device *device);
 	bool (* check_dual_compression)(indigo_device *device);
-	indigo_timer *event_checker;
-	pthread_mutex_t message_mutex;
-	int message_property_index;
+	indigo_property *pending_properties[PTP_MAX_ELEMENTS];
+	unsigned property_retries[PTP_MAX_ELEMENTS];
+	bool focuser_attached;
+	bool session_active;
+	int focus_remaining;
+	unsigned focus_retries;
+	unsigned focus_stop_retries;
+	bool focus_temporary_lv;
+	bool focus_stop_pending;
+	bool focus_complete_result;
+	bool detaching;
+	bool (* focus_stop)(indigo_device *device);
+	bool af_complete;
+	bool af_pending;
+	double af_deadline;
+	int capture_phase;
+	bool capture_complete;
+	bool capture_active;
+	bool capture_ui_locked;
+	bool stream_active;
+	bool shutter_open;
+	bool readout_detected;
+	bool stream_started;
+	bool stream_stop_pending;
+	bool stream_complete_result;
+	double shutter_deadline;
+	double capture_deadline;
+	double phase_deadline;
+	double connected_at;
+	unsigned stream_retries;
+	unsigned stream_stop_retries;
+	unsigned capture_stop_retries;
 	bool abort_capture;
 	bool image_added;
 	uint32_t last_error;
@@ -463,7 +501,9 @@ extern bool ptp_exposure(indigo_device *device);
 extern bool ptp_set_host_time(indigo_device *device);
 extern bool ptp_check_jpeg_ext(const char *ext);
 
-extern void ptp_blob_exposure_timer(indigo_device *device);
+extern void ptp_capture_start(indigo_device *device, bool bulb, double delay);
+extern bool ptp_capture_wait(indigo_device *device);
+extern void ptp_stream_frame(indigo_device *device, void *buffer, void *image, uint32_t size);
 
 #define ptp_transaction_0_0(device, code) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 #define ptp_transaction_1_0(device, code, out_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)

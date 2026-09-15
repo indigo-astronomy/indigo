@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2025 CloudMakers, s. r. o.
+// Copyright (c) 2019-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -395,6 +395,7 @@ static void ptp_fuji_get_event(indigo_device *device) {
 								free(PRIVATE_DATA->image_buffer);
 							}
 							PRIVATE_DATA->image_buffer = image_buffer;
+							PRIVATE_DATA->image_added = true;
 							image_buffer = NULL;
 							if (ptp_transaction_1_0(device, ptp_operation_DeleteObject, handle)) {
 								INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_operation_DeleteObject succeed.");
@@ -416,7 +417,7 @@ static void ptp_fuji_get_event(indigo_device *device) {
 static void ptp_fuji_check_event(indigo_device *device) {
 	ptp_fuji_get_event(device);
 	if (IS_CONNECTED) {
-		indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+		indigo_execute_handler_in(device, 1, ptp_fuji_check_event);
 	}
 }
 
@@ -490,12 +491,28 @@ bool ptp_fuji_initialise(indigo_device *device) {
 		}
 	}
 	ptp_fuji_get_event(device);
-	indigo_set_timer(device, 0.5, ptp_fuji_check_event, &PRIVATE_DATA->event_checker);
+	indigo_execute_handler_in(device, 0.5, ptp_fuji_check_event);
 	return true;
 }
 
 bool ptp_fuji_fix_property(indigo_device *device, ptp_property *property) {
 	switch (property->code) {
+		case ptp_property_fuji_AutoFocus: {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Fuji d208 descriptor type=0x%04x form=%u count=%d", property->type, property->form, property->count);
+			FUJI_PRIVATE_DATA->action_enum_known = property->form == ptp_enum_form && property->type == ptp_uint16_type && property->count >= 0;
+			if (FUJI_PRIVATE_DATA->action_enum_known) {
+				bool start = false, stop = false;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Fuji d208 declared action count=%d", property->count);
+				for (int i = 0; i < property->count; i++) {
+					unsigned action = property->value.sw.values[i];
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Fuji d208 declared action[%d]=0x%04x", i, action);
+					start |= action == 0x0500;
+					stop |= action == 0x000c;
+				}
+				FUJI_PRIVATE_DATA->bulb_supported = start && stop;
+			}
+			return true;
+		}
 		case ptp_property_fuji_CompressionSetting: {
 			FUJI_PRIVATE_DATA->is_dual_compression = property->value.sw.value == 4 || property->value.sw.value == 5 || property->value.sw.value == 7;
 			return true;
@@ -567,21 +584,11 @@ bool ptp_fuji_set_control_priority(indigo_device *device, bool pc) {
 }
 
 bool ptp_fuji_set_property(indigo_device *device, ptp_property *property) {
-	if (property->code != ptp_property_fuji_ControlPriority) {
-		ptp_property *control_priority = ptp_property_supported(device, ptp_property_fuji_ControlPriority);
-		if (control_priority) {
-			ptp_fuji_set_control_priority(device, true);
-		}
+	if (property->code != ptp_property_fuji_ControlPriority && !ptp_fuji_set_control_priority(device, true)) {
+		return false;
 	}
-	int retry_count = 0;
-	while (!ptp_set_property(device, property)) {
-		if (retry_count++ > 100) {
-			return false;
-		}
-		indigo_usleep(100000);  // 100ms
-	}
-	if (property->code == ptp_property_fuji_CompressionSetting) {
-		FUJI_PRIVATE_DATA->is_dual_compression = property->value.sw.value == 4 || property->value.sw.value == 5 || property->value.sw.value == 7;
+	if (!ptp_set_property(device, property)) {
+		return false;
 	}
 	if (property->code == ptp_property_ExposureProgramMode) {
 		ptp_refresh_property(device, ptp_property_supported(device, ptp_property_ExposureTime));
@@ -590,164 +597,157 @@ bool ptp_fuji_set_property(indigo_device *device, ptp_property *property) {
 	return true;
 }
 
-bool ptp_fuji_exposure(indigo_device *device) {
-	ptp_property *property = ptp_property_supported(device, ptp_property_ExposureTime);
-	bool result = true;
-	result = ptp_fuji_set_control_priority(device, true);
-	ptp_property *card_save = ptp_property_supported(device, ptp_property_fuji_CardSave);
-	if (result && card_save) {
-		if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value || PRIVATE_DATA->model.product == 703) { // Temporary fix, switching to FUJI_CARD_SAVE_ON_RAW_JPEG leads to random failures with X-T1
-			result = result && ptp_set_switch_property(device, card_save, FUJI_CARD_SAVE_OFF);
-		} else {
-			result = result && ptp_set_switch_property(device, card_save, FUJI_CARD_SAVE_ON_RAW_JPEG);
-		}
+static bool fuji_capture_stop(indigo_device *device) {
+	if (!PRIVATE_DATA->shutter_open && !FUJI_PRIVATE_DATA->focus_held) {
+		return true;
 	}
-	if (result && property && ptp_operation_supported(device, ptp_operation_InitiateCapture)) {
-		// focus
-		uint16_t value = 0x0200;
-		result = result && ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_fuji_AutoFocus, &value, sizeof(uint16_t));
-		result = result && ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0);
-
-		value = 1;
-		void *buffer = 0;
-		uint32_t size = 0;
-		while (result && value == 1) {
-			result = ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropValue, ptp_property_fuji_AutoFocusState, &buffer, &size);
-			if (buffer) {
-				(void)ptp_decode_uint16(buffer, &value);
-				free(buffer);
-				buffer = NULL;
-			}
-		}
-
-		if (property->value.sw.value == 0xffffffff) {
-			// Bulb
-			value = 0x0500;
-			result = result && ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_fuji_AutoFocus, &value, sizeof(uint16_t));
-			result = result && ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0);
-			if (result) {
-				if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_PREVIEW_ENABLED_ITEM->sw.value && ptp_fuji_check_dual_compression(device)) {
-					CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
-				}
-				ptp_blob_exposure_timer(device);
-				value = 0x000C;
-				result = result && ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_fuji_AutoFocus, &value, sizeof(uint16_t));
-				result = result && ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0);
-			}
-		} else {
-			// Timer
-			value = 0x0304;
-			result = result && ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_fuji_AutoFocus, &value, sizeof(uint16_t));
-			result = result && ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0);
-		}
-		if (result) {
-			if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_PREVIEW_ENABLED_ITEM->sw.value && ptp_fuji_check_dual_compression(device)) {
-				CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
-			}
-			while (true) {
-				if (PRIVATE_DATA->abort_capture || (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_IMAGE_FILE_PROPERTY->state != INDIGO_BUSY_STATE))
-					break;
-				indigo_usleep(100000);
-			}
-		}
-		if (!result || PRIVATE_DATA->abort_capture) {
-			if (CCD_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
-				CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-			}
-			if (CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
-				CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
-			}
-			if (CCD_IMAGE_FILE_PROPERTY->state != INDIGO_OK_STATE) {
-				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-			}
-		}
-
+	uint16_t value = PRIVATE_DATA->shutter_open ? 0x000c : 0x0004;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Fuji release d208=0x%04x", value);
+	bool result = ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_fuji_AutoFocus, &value, sizeof(value)) && ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0);
+	if (result) {
+		PRIVATE_DATA->shutter_open = false;
+		FUJI_PRIVATE_DATA->focus_held = false;
 	}
 	return result;
 }
 
-bool ptp_fuji_liveview(indigo_device *device) {
-	void *buffer = NULL;
-	uint32_t size = 0;
-	int retry_count = 0;
-
-	bool result = true;
-	result = ptp_fuji_set_control_priority(device, true);
-
-	// start liveview
-	while (!PRIVATE_DATA->abort_capture && !ptp_transaction_2_0(device, ptp_operation_InitiateOpenCapture, 0, 0)) {
-		indigo_usleep(200000); // 200ms
-		if (retry_count++ > 100) {
+bool ptp_fuji_exposure(indigo_device *device) {
+	if (PRIVATE_DATA->capture_phase == 0) {
+		PRIVATE_DATA->capture_stop = fuji_capture_stop;
+		if (!fuji_capture_stop(device)) {
 			return false;
 		}
-	}
-
-	while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
-		result = result && ptp_transaction_3_0(device, ptp_operation_GetNumObjects, 0xffffffff, 0, 0);
-		result = result && ptp_transaction_3_0_i(device, ptp_operation_GetObjectHandles, 0xffffffff, 0, 0, &buffer, &size);
-		if (result) {
-			uint8_t *source = buffer;
-			uint32_t count = 0;
-			uint32_t handle = 0;
-			source = ptp_decode_uint32(source, &count);
-			if (count != 1) {
-				if (retry_count++ > 100) {
-					// abort
-					if (buffer) {
-						free(buffer);
-						buffer = NULL;
-					}
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "liveview failed to start.");
-					ptp_transaction_1_0(device, ptp_operation_TerminateOpenCapture, FUJI_LIVEVIEW_HANDLE);
-					return false;
-				}
-				indigo_usleep(100000);  // 100ms
-				continue;
-			}
-			source = ptp_decode_uint32(source, &handle);
-			free(buffer);
-			buffer = NULL;
-			//result = handle == FUJI_LIVEVIEW_HANDLE;
-			result = result && ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, handle, &buffer, &size);
-			if (buffer) {
-				free(buffer);
-				buffer = NULL;
-			}
-			result = result && ptp_transaction_1_0_i(device, ptp_operation_GetObject, handle, &buffer, &size);
-			if (result) {
-				if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-				}
-				if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-					CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-				}
-				indigo_process_dslr_image(device, buffer, size, ".jpeg", true);
-				if (PRIVATE_DATA->image_buffer) {
-					free(PRIVATE_DATA->image_buffer);
-				}
-				PRIVATE_DATA->image_buffer = buffer;
-				buffer = NULL;
-				ptp_transaction_1_0(device, ptp_operation_DeleteObject, handle);
-				CCD_STREAMING_COUNT_ITEM->number.value--;
-				if (CCD_STREAMING_COUNT_ITEM->number.value < 0) {
-					CCD_STREAMING_COUNT_ITEM->number.value = -1;
-				}
-				indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-				retry_count = 0;
-			}
+		ptp_property *property = ptp_property_supported(device, ptp_property_ExposureTime);
+		if (!property || !ptp_operation_supported(device, ptp_operation_InitiateCapture)) {
+			return false;
 		}
-		indigo_usleep(100000);  // 100ms
+		// PC priority and queued AF polling can change the camera's shutter readback.
+		FUJI_PRIVATE_DATA->shutter_speed = property->value.sw.value;
+		if (FUJI_PRIVATE_DATA->shutter_speed == 0xffffffff && FUJI_PRIVATE_DATA->action_enum_known && !FUJI_PRIVATE_DATA->bulb_supported) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera does not advertise USB BULB start and stop");
+			indigo_send_message(device, ALERT_PROPERTY, "Camera does not advertise USB BULB start and stop");
+			return false;
+		}
+		if (PRIVATE_DATA->abort_capture || !ptp_fuji_set_control_priority(device, true)) {
+			return false;
+		}
+		ptp_property *card_save = ptp_property_supported(device, ptp_property_fuji_CardSave);
+		if (card_save && !ptp_set_switch_property(device, card_save, DSLR_DELETE_IMAGE_ON_ITEM->sw.value || PRIVATE_DATA->model.product == 703 ? FUJI_CARD_SAVE_OFF : FUJI_CARD_SAVE_ON_RAW_JPEG)) {
+			return false;
+		}
+		uint16_t value = 0x0200;
+		if (!ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_fuji_AutoFocus, &value, sizeof(value))) {
+			return false;
+		}
+		FUJI_PRIVATE_DATA->focus_held = true;
+		if (!ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0)) {
+			return false;
+		}
+		PRIVATE_DATA->capture_phase = 3;
+		PRIVATE_DATA->phase_deadline = indigo_monotonic_time() + 10;
+		return true;
 	}
-	indigo_finalize_dslr_video_stream(device);
-	ptp_transaction_1_0(device, ptp_operation_TerminateOpenCapture, FUJI_LIVEVIEW_HANDLE);
-	return !PRIVATE_DATA->abort_capture;
+	if (PRIVATE_DATA->capture_phase == 3) {
+		if (PRIVATE_DATA->abort_capture || indigo_monotonic_time() >= PRIVATE_DATA->phase_deadline) {
+			return false;
+		}
+		void *buffer = NULL;
+		uint32_t size = 0;
+		bool result = ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropValue, ptp_property_fuji_AutoFocusState, &buffer, &size);
+		uint16_t state = 1;
+		if (result && buffer && size >= sizeof(state)) {
+			ptp_decode_uint16(buffer, &state);
+		} else {
+			result = false;
+		}
+		free(buffer);
+		if (!result) {
+			return false;
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Fuji autofocus d209=0x%04x", state);
+		if (state == 1) {
+			return true;
+		}
+		if (state != 2) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Fuji autofocus did not become capture-ready (0x%04x)", state);
+			return false;
+		}
+		bool bulb = FUJI_PRIVATE_DATA->shutter_speed == 0xffffffff;
+		uint16_t value = bulb ? 0x0500 : 0x0304;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Fuji capture d208=0x%04x, requested shutter=0x%08llx", value, (unsigned long long)FUJI_PRIVATE_DATA->shutter_speed);
+		if (!ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_fuji_AutoFocus, &value, sizeof(value)) || !ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0)) {
+			return false;
+		}
+		FUJI_PRIVATE_DATA->focus_held = false;
+		ptp_capture_start(device, bulb, 0);
+		return true;
+	}
+	if (PRIVATE_DATA->capture_phase == 1) {
+		if (!PRIVATE_DATA->abort_capture && indigo_monotonic_time() < PRIVATE_DATA->shutter_deadline) {
+			return true;
+		}
+		if (!fuji_capture_stop(device)) {
+			return false;
+		}
+		PRIVATE_DATA->capture_phase = 2;
+	}
+	return ptp_capture_wait(device);
+}
+
+static bool fuji_liveview_stop(indigo_device *device) {
+	if (!PRIVATE_DATA->stream_started) {
+		return true;
+	}
+	bool result = ptp_transaction_1_0(device, ptp_operation_TerminateOpenCapture, FUJI_LIVEVIEW_HANDLE);
+	PRIVATE_DATA->stream_started = !result;
+	return result;
+}
+
+bool ptp_fuji_liveview(indigo_device *device) {
+	PRIVATE_DATA->liveview_stop = fuji_liveview_stop;
+	if (!PRIVATE_DATA->stream_started) {
+		if (!ptp_fuji_set_control_priority(device, true)) {
+			return false;
+		}
+		if (!ptp_transaction_2_0(device, ptp_operation_InitiateOpenCapture, 0, 0)) {
+			return PRIVATE_DATA->last_error == ptp_response_DeviceBusy && ++PRIVATE_DATA->stream_retries <= 100;
+		}
+		PRIVATE_DATA->stream_started = true;
+		PRIVATE_DATA->stream_retries = 0;
+		return true;
+	}
+	void *buffer = NULL;
+	uint32_t size = 0;
+	if (!ptp_transaction_3_0(device, ptp_operation_GetNumObjects, 0xffffffff, 0, 0) || !ptp_transaction_3_0_i(device, ptp_operation_GetObjectHandles, 0xffffffff, 0, 0, &buffer, &size)) {
+		free(buffer);
+		return PRIVATE_DATA->last_error == ptp_response_DeviceBusy && ++PRIVATE_DATA->stream_retries <= 100;
+	}
+	uint32_t count = 0, handle = 0;
+	if (!buffer || size < sizeof(count)) {
+		free(buffer);
+		return false;
+	}
+	ptp_decode_uint32(buffer, &count);
+	if (count != 1) {
+		free(buffer);
+		return ++PRIVATE_DATA->stream_retries <= 100;
+	}
+	if (size < 2 * sizeof(uint32_t)) {
+		free(buffer);
+		return false;
+	}
+	ptp_decode_uint32((uint8_t *)buffer + sizeof(count), &handle);
+	free(buffer);
+	buffer = NULL;
+	bool result = ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, handle, &buffer, &size);
+	free(buffer);
+	buffer = NULL;
+	if (!result || !ptp_transaction_1_0_i(device, ptp_operation_GetObject, handle, &buffer, &size) || !buffer || size == 0) {
+		free(buffer);
+		return false;
+	}
+	ptp_stream_frame(device, buffer, buffer, size);
+	return ptp_transaction_1_0(device, ptp_operation_DeleteObject, handle);
 }
 
 bool ptp_fuji_af(indigo_device *device) {

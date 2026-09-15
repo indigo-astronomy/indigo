@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2025 CloudMakers, s. r. o.
+// Copyright (c) 2019-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -58,6 +58,8 @@ typedef struct {
 	uint64_t focus_mode;
 	uint64_t shutter_speed;
 	bool is_dual_compression;
+	bool focus_held;
+	bool action_enum_known, bulb_supported;
 } fuji_private_data;
 
 

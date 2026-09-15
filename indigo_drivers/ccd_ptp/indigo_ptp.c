@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2025 CloudMakers, s. r. o.
+// Copyright (c) 2019-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -945,6 +945,10 @@ uint32_t ptp_type_size(ptp_type type) {
 
 #ifdef USE_ICA_TRANSPORT
 
+#ifndef PTP_ICA_TRANSACTION_TIMEOUT
+#define PTP_ICA_TRANSACTION_TIMEOUT 10000000000ull
+#endif
+
 @implementation ICACameraDelegate {
 }
 
@@ -981,11 +985,18 @@ uint32_t ptp_type_size(ptp_type type) {
 }
 
 - (void)cameraDevice:(nonnull ICCameraDevice *)camera didReceivePTPEvent:(nonnull NSData *)eventData {
+	ptp_container event = { 0 };
+	if (eventData.length >= PTP_CONTAINER_HDR_SIZE) {
+		[eventData getBytes:&event length:MIN(eventData.length, sizeof(event))];
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ICA event bytes=%lu length=%u type=%u code=%04x transaction=%u handle=%08x", (unsigned long)eventData.length, event.length, event.type, event.code, event.transaction_id, event.payload.params[0]);
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ICA short event bytes=%lu", (unsigned long)eventData.length);
+	}
 	if (_events == nil) {
 		_events = [[NSMutableArray alloc] init];
 	}
 	@synchronized (_events) {
-		[_events insertObject:eventData atIndex:0];
+		[_events addObject:eventData];
 	}
 }
 
@@ -1015,17 +1026,16 @@ uint32_t ptp_type_size(ptp_type type) {
 }
 
 -(void)didSendPTPCommand:(NSData*)command inData:(NSData*)inData response:(NSData*)response error:(NSError*)error contextInfo:(void*)contextInfo {
-	if (error == nil) {
-		if (_ptpSemafor) {
-			_ptpResponse = response;
-			_ptpInput = inData;
-			_error = nil;
+	@synchronized (self) {
+		if (!_ptpSemafor || _ptpTransactionID != (uint32_t)(uintptr_t)contextInfo) {
+			return;
 		}
-	} else {
-		_error = error.description;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "error %s", [_error cStringUsingEncoding:NSUTF8StringEncoding]);
-	}
-	if (_ptpSemafor) {
+		_ptpResponse = response;
+		_ptpInput = inData;
+		_error = error ? error.description : nil;
+		if (error) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "error %s", [_error cStringUsingEncoding:NSUTF8StringEncoding]);
+		}
 		dispatch_semaphore_signal(_ptpSemafor);
 	}
 }
@@ -1038,6 +1048,7 @@ bool ptp_open(indigo_device *device) {
 		return false;
 	}
 	ICACameraDelegate *delegate = [[ICACameraDelegate alloc] init];
+	delegate.events = [[NSMutableArray alloc] init];
 	PRIVATE_DATA->delegate = delegate;
 	camera.delegate = delegate;
 	delegate.openSemafor = dispatch_semaphore_create(0);
@@ -1060,9 +1071,15 @@ bool ptp_open(indigo_device *device) {
 }
 
 bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t data_out_size, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in, uint32_t *data_in_size) {
+	if (data_in) {
+		*data_in = NULL;
+	}
+	if (data_in_size) {
+		*data_in_size = 0;
+	}
 	ICCameraDevice *camera = PRIVATE_DATA->dev;
 	ICACameraDelegate *delegate = PRIVATE_DATA->delegate;
-	if (camera == NULL || delegate == NULL) {
+	if (camera == NULL || delegate == NULL || count < 0 || count > 5) {
 		return false;
 	}
 	if (delegate.removed) {
@@ -1079,15 +1096,24 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	container.payload.params[2] = out_3;
 	container.payload.params[3] = out_4;
 	container.payload.params[4] = out_5;
+	uint32_t transaction_id = container.transaction_id;
 	PTP_DUMP_CONTAINER(&container);
 	NSData *requestData = [NSData dataWithBytes:&container length:container.length];
 	NSData *outData = data_out ? [NSData dataWithBytes:data_out length:data_out_size] : nil;
-	if (delegate.ptpSemafor == nil) {
-		delegate.ptpSemafor = dispatch_semaphore_create(0);
+	dispatch_semaphore_t completion = dispatch_semaphore_create(0);
+	@synchronized (delegate) {
+		delegate.ptpTransactionID = transaction_id;
+		delegate.ptpSemafor = completion;
+		delegate.ptpResponse = nil;
+		delegate.ptpInput = nil;
+		delegate.error = nil;
 	}
-	[camera requestSendPTPCommand:requestData outData:outData sendCommandDelegate:delegate didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:nil];
-	if (dispatch_semaphore_wait(delegate.ptpSemafor, dispatch_time(DISPATCH_TIME_NOW, 10000000000ull))) {
+	[camera requestSendPTPCommand:requestData outData:outData sendCommandDelegate:delegate didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:(void *)(uintptr_t)transaction_id];
+	long timeout = dispatch_semaphore_wait(completion, dispatch_time(DISPATCH_TIME_NOW, PTP_ICA_TRANSACTION_TIMEOUT));
+	@synchronized (delegate) {
 		delegate.ptpSemafor = nil;
+	}
+	if (timeout) {
 		PRIVATE_DATA->last_error = ptp_response_GeneralError;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "timeout");
 		return false;
@@ -1096,25 +1122,32 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 		indigo_send_message(device, ALERT_PROPERTY, [delegate.error cStringUsingEncoding:NSUTF8StringEncoding]);
 		return false;
 	}
- 	[delegate.ptpResponse getBytes:&container length:sizeof(container)];
+	if (delegate.ptpResponse.length < (int)PTP_CONTAINER_HDR_SIZE || delegate.ptpResponse.length > sizeof(container)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ICA response size %lu, expected %u..%lu", (unsigned long)delegate.ptpResponse.length, (unsigned)PTP_CONTAINER_HDR_SIZE, (unsigned long)sizeof(container));
+		PRIVATE_DATA->last_error = ptp_response_GeneralError;
+		return false;
+	}
+	memset(&container, 0, sizeof(container));
+	[delegate.ptpResponse getBytes:&container length:delegate.ptpResponse.length];
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ICA response bytes=%lu length=%u type=%u code=%04x transaction=%u expected=%u input=%lu", (unsigned long)delegate.ptpResponse.length, container.length, container.type, container.code, container.transaction_id, transaction_id, (unsigned long)delegate.ptpInput.length);
+	// ICA owns wire transaction numbering; the delegate context token pairs this response with our request.
+	if (container.type != ptp_container_response || container.length != delegate.ptpResponse.length || container.length > PTP_CONTAINER_COMMAND_SIZE(5) || (container.length - PTP_CONTAINER_HDR_SIZE) % sizeof(uint32_t)) {
+		PRIVATE_DATA->last_error = ptp_response_GeneralError;
+		return false;
+	}
+	uint32_t *outputs[] = { in_1, in_2, in_3, in_4, in_5 };
+	for (int i = 0; container.code == ptp_response_OK && i < 5; i++) {
+		if (outputs[i] && container.length < PTP_CONTAINER_COMMAND_SIZE(i + 1)) {
+			PRIVATE_DATA->last_error = ptp_response_GeneralError;
+			return false;
+		}
+		if (outputs[i]) {
+			*outputs[i] = container.payload.params[i];
+		}
+	}
 	PTP_DUMP_CONTAINER(&container);
-	if (in_1) {
-		*in_1 = container.payload.params[0];
-	}
-	if (in_2) {
-		*in_2 = container.payload.params[1];
-	}
-	if (in_3) {
-		*in_3 = container.payload.params[2];
-	}
-	if (in_4) {
-		*in_4 = container.payload.params[3];
-	}
-	if (in_5) {
-		*in_5 = container.payload.params[4];
-	}
 	delegate.ptpResponse = nil;
-	if (data_in) {
+	if (data_in && container.code == ptp_response_OK) {
 		if (delegate.ptpInput) {
 			*data_in = malloc(delegate.ptpInput.length);
 			if (data_in_size) {
@@ -1140,15 +1173,23 @@ bool ptp_get_event(indigo_device *device) {
 	}
 	ptp_container event;
 	NSData *eventData;	
-	while (true) {
+	for (int i = 0; i < 32; i++) {
 		@synchronized (delegate.events) {
-			if ((eventData = delegate.events.lastObject))
-				[delegate.events removeLastObject];
+			if ((eventData = delegate.events.firstObject)) {
+				[delegate.events removeObjectAtIndex:0];
+			}
 		}
 		if (eventData == nil) {
 			break;
 		}
-		[eventData getBytes:&event length:sizeof(event)];
+		if (eventData.length < (int)PTP_CONTAINER_HDR_SIZE || eventData.length > sizeof(event)) {
+			continue;
+		}
+		memset(&event, 0, sizeof(event));
+		[eventData getBytes:&event length:eventData.length];
+		if (event.type != ptp_container_event || event.length != eventData.length || event.length > PTP_CONTAINER_COMMAND_SIZE(5) || (event.length - PTP_CONTAINER_HDR_SIZE) % sizeof(uint32_t) || !PRIVATE_DATA->handle_event) {
+			continue;
+		}
 		PTP_DUMP_CONTAINER(&event);
 		PRIVATE_DATA->handle_event(device, event.code, event.payload.params);
 	}
@@ -1185,6 +1226,10 @@ bool ptp_open(indigo_device *device) {
 	libusb_device *dev = PRIVATE_DATA->dev;
 	rc = libusb_get_device_descriptor(dev, &device_descriptor);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
+	if (rc < 0) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return false;
+	}
 	rc = libusb_open(dev, &PRIVATE_DATA->handle);
 	libusb_device_handle *handle = PRIVATE_DATA->handle;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_open() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
@@ -1277,158 +1322,124 @@ bool ptp_open(indigo_device *device) {
 	return rc >= 0;
 }
 
+static bool ptp_usb_read(indigo_device *device, void *buffer, int size, int *length, double deadline) {
+	*length = 0;
+	do {
+		if (indigo_monotonic_time() >= deadline) {
+			return false;
+		}
+		int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, buffer, size, length, PRIVATE_DATA->transaction_timeout);
+		if (rc < 0 || *length < 0 || *length > size) {
+			return false;
+		}
+	} while (*length == 0);
+	return true;
+}
+
 bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t data_out_size, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in, uint32_t *data_in_size) {
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	if (PRIVATE_DATA->handle == NULL) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if (data_in) {
+		*data_in = NULL;
+	}
+	if (data_in_size) {
+		*data_in_size = 0;
+	}
+	if (!PRIVATE_DATA->handle || count < 0 || count > 5) {
 		return false;
 	}
-	ptp_container request, response;
-	int length = 0;
-	memset(&request, 0, sizeof(request));
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	double deadline = indigo_monotonic_time() + (PRIVATE_DATA->transaction_timeout > 0 ? PRIVATE_DATA->transaction_timeout : PTP_TIMEOUT) / 1000.0;
+	ptp_container request = { 0 }, response = { 0 };
 	request.length = PTP_CONTAINER_COMMAND_SIZE(count);
 	request.type = ptp_container_command;
 	request.code = code;
 	request.transaction_id = PRIVATE_DATA->transaction_id++;
-	request.payload.params[0] = out_1;
-	request.payload.params[1] = out_2;
-	request.payload.params[2] = out_3;
-	request.payload.params[3] = out_4;
-	request.payload.params[4] = out_5;
-	PTP_DUMP_CONTAINER(&request);
+	uint32_t params[] = { out_1, out_2, out_3, out_4, out_5 };
+	memcpy(request.payload.params, params, sizeof(params));
+	int length = 0;
 	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, request.length, &length, PRIVATE_DATA->transaction_timeout);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer(%d) -> %s", length, rc < 0 ? libusb_error_name(rc) : "OK");
-	if (rc < 0) {
-		rc = libusb_clear_halt(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_clear_halt() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
+	if (rc == LIBUSB_ERROR_PIPE && libusb_clear_halt(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out) == 0 && indigo_monotonic_time() < deadline) {
 		rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, request.length, &length, PRIVATE_DATA->transaction_timeout);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "libusb_bulk_transfer(%d) -> %s", length, rc < 0 ? libusb_error_name(rc) : "OK");
 	}
-	if (rc < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to send request -> %s", libusb_error_name(rc));
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		return false;
-	}
-	if (data_out) {
-		int size = data_out_size;
-		request.length = PTP_CONTAINER_HDR_SIZE + data_out_size;
+	bool result = rc >= 0 && length == (int)request.length;
+	if (result && data_out) {
 		request.type = ptp_container_data;
-		PTP_DUMP_CONTAINER(&request);
-		if (size < sizeof(ptp_container) - PTP_CONTAINER_HDR_SIZE) {
-			memcpy(request.payload.data, data_out, size);
-			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, request.length, &length, PRIVATE_DATA->transaction_timeout);
-		} else {
-			memcpy(request.payload.data, data_out, sizeof(ptp_container) - PTP_CONTAINER_HDR_SIZE);
-			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, sizeof(ptp_container), &length, PRIVATE_DATA->transaction_timeout);
-		}
-		size -= length - PTP_CONTAINER_HDR_SIZE;
-		while (rc >=0 && size > 0) {
-			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, size, &length, PRIVATE_DATA->transaction_timeout);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer(%d) -> %s", length, rc < 0 ? libusb_error_name(rc) : "OK");
-			size -= length;
-		}
-		if (rc < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to send request -> %s", libusb_error_name(rc));
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			return false;
-		}
-	}
-	while (true) {
-		memset(&response, 0, sizeof(response));
-		length = 0;
-		rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, (unsigned char *)&response, sizeof(response), &length, PRIVATE_DATA->transaction_timeout);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
-		if (rc < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read response -> %s", libusb_error_name(rc));
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			return false;
-		}
-		if (length == 0) {
-			continue;
-		}
-		break;
-	}
-	PTP_DUMP_CONTAINER(&response);
-	if (response.type == ptp_container_data) {
-		length -= PTP_CONTAINER_HDR_SIZE;
-		int total = response.length - PTP_CONTAINER_HDR_SIZE;
-		unsigned char *buffer = indigo_safe_malloc(total + 1024); // 1024 added to avoid mysterious LIBUSB_ERROR_OVERFLOWs
-		memcpy(buffer, &response.payload, length);
-		int offset = length;
-		if (data_in_size) {
-			*data_in_size = total;
-		}
-		total -= length;
-		while (total > 0) {
-			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, buffer + offset, total + 1024 > PTP_MAX_BULK_TRANSFER_SIZE ? PTP_MAX_BULK_TRANSFER_SIZE : total + 1024, &length, PRIVATE_DATA->transaction_timeout);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
-			if (rc < 0) {
-				free(buffer);
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-				return false;
+		request.length = PTP_CONTAINER_HDR_SIZE + data_out_size;
+		uint32_t chunk = data_out_size < sizeof(request.payload) ? data_out_size : sizeof(request.payload);
+		memcpy(request.payload.data, data_out, chunk);
+		rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, PTP_CONTAINER_HDR_SIZE + chunk, &length, PRIVATE_DATA->transaction_timeout);
+		result = rc >= 0 && length == (int)(PTP_CONTAINER_HDR_SIZE + chunk);
+		uint32_t offset = chunk;
+		while (result && offset < data_out_size) {
+			chunk = data_out_size - offset;
+			if (chunk > PTP_MAX_BULK_TRANSFER_SIZE) {
+				chunk = PTP_MAX_BULK_TRANSFER_SIZE;
 			}
-			offset += length;
-			total -= length;
+			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (uint8_t *)data_out + offset, chunk, &length, PRIVATE_DATA->transaction_timeout);
+			result = rc >= 0 && length > 0 && length <= (int)chunk && indigo_monotonic_time() < deadline;
+			offset += result ? length : 0;
 		}
-		if (data_in) {
+	}
+	result = result && ptp_usb_read(device, &response, sizeof(response), &length, deadline);
+	result = result && length >= (int)PTP_CONTAINER_HDR_SIZE && response.length >= (int)PTP_CONTAINER_HDR_SIZE && response.transaction_id == request.transaction_id;
+	if (result && response.type == ptp_container_data) {
+		uint32_t total = response.length - PTP_CONTAINER_HDR_SIZE;
+		uint32_t received = length - PTP_CONTAINER_HDR_SIZE;
+		result = response.code == code && total <= 512u * 1024u * 1024u && received <= total;
+		void *buffer = result ? indigo_safe_malloc(total + 1024) : NULL;
+		if (result) {
+			memcpy(buffer, response.payload.data, received);
+		}
+		while (result && received < total) {
+			uint32_t chunk = total - received;
+			if (chunk > PTP_MAX_BULK_TRANSFER_SIZE) {
+				chunk = PTP_MAX_BULK_TRANSFER_SIZE;
+			}
+			result = ptp_usb_read(device, (uint8_t *)buffer + received, chunk + 1024, &length, deadline) && length <= (int)(total - received);
+			received += result ? length : 0;
+		}
+		if (result && data_in) {
 			*data_in = buffer;
+			if (data_in_size) {
+				*data_in_size = total;
+			}
 		} else {
 			free(buffer);
 		}
-		while (true) {
-			memset(&response, 0, sizeof(response));
-			length = 0;
-			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, (unsigned char *)&response, sizeof(response), &length, PRIVATE_DATA->transaction_timeout);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
-			if (rc < 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read response -> %s", libusb_error_name(rc));
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-				return false;
+		memset(&response, 0, sizeof(response));
+		result = result && ptp_usb_read(device, &response, sizeof(response), &length, deadline);
+	}
+	result = result && response.type == ptp_container_response && length >= (int)PTP_CONTAINER_HDR_SIZE && response.length == (uint32_t)length && response.length <= PTP_CONTAINER_COMMAND_SIZE(5) && response.transaction_id == request.transaction_id;
+	uint32_t *outputs[] = { in_1, in_2, in_3, in_4, in_5 };
+	for (int i = 0; result && response.code == ptp_response_OK && i < 5; i++) {
+		if (outputs[i]) {
+			if (response.length < PTP_CONTAINER_COMMAND_SIZE(i + 1)) {
+				result = false;
+			} else {
+				*outputs[i] = response.payload.params[i];
 			}
-			if (length == 0) {
-				continue;
-			}
-			break;
 		}
-		PTP_DUMP_CONTAINER(&response);
 	}
-	if (in_1) {
-		*in_1 = response.payload.params[0];
-	}
-	if (in_2) {
-		*in_2 = response.payload.params[1];
-	}
-	if (in_3) {
-		*in_3 = response.payload.params[2];
-	}
-	if (in_4) {
-		*in_4 = response.payload.params[3];
-	}
-	if (in_5) {
-		*in_5 = response.payload.params[4];
+	result = result && (response.code != ptp_response_OK || !data_in || *data_in != NULL);
+	PRIVATE_DATA->last_error = result ? response.code : ptp_response_GeneralError;
+	if ((!result || response.code != ptp_response_OK) && data_in) {
+		free(*data_in);
+		*data_in = NULL;
+		if (data_in_size) {
+			*data_in_size = 0;
+		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	PRIVATE_DATA->last_error = response.code;
-	return rc >= 0 && response.code == ptp_response_OK;
+	return result && response.code == ptp_response_OK;
 }
 
 bool ptp_get_event(indigo_device *device) {
-	ptp_container event;
+	ptp_container event = { 0 };
 	int length = 0;
-	memset(&event, 0, sizeof(event));
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_int, (unsigned char *)&event, sizeof(event), &length, PTP_TIMEOUT);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
-	if (rc < 0) {
-		rc = libusb_clear_halt(PRIVATE_DATA->handle, PRIVATE_DATA->ep_int);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_clear_halt() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_int, (unsigned char *)&event, sizeof(event), &length, 10);
+	if (rc < 0 || length < (int)PTP_CONTAINER_HDR_SIZE || event.length != (uint32_t)length || event.length > PTP_CONTAINER_COMMAND_SIZE(5) || event.type != ptp_container_event || !PRIVATE_DATA->handle_event) {
 		return false;
 	}
-	PTP_DUMP_CONTAINER(&event);
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	PRIVATE_DATA->handle_event(device, event.code, event.payload.params);
-	return true;
+	return PRIVATE_DATA->handle_event(device, event.code, event.payload.params);
 }
 
 void ptp_close(indigo_device *device) {
@@ -1639,7 +1650,7 @@ bool ptp_refresh_property(indigo_device *device, ptp_property *property) {
 static void ptp_check_event(indigo_device *device) {
 	ptp_get_event(device);
 	if (IS_CONNECTED) {
-		indigo_reschedule_timer(device, 0, &PRIVATE_DATA->event_checker);
+		indigo_execute_handler_in(device, 0.05, ptp_check_event);
 	}
 }
 
@@ -1690,7 +1701,7 @@ bool ptp_initialise(indigo_device *device) {
 			buffer = NULL;
 		}
 		if (PRIVATE_DATA->initialise == ptp_initialise) {
-			indigo_set_timer(device, 0.5, ptp_check_event, &PRIVATE_DATA->event_checker);
+			indigo_execute_handler_in(device, 0.5, ptp_check_event);
 		}
 		return true;
 	}
@@ -1836,30 +1847,44 @@ bool ptp_set_host_time(indigo_device *device) {
 }
 
 bool ptp_check_jpeg_ext(const char *ext) {
-	return strcmp(ext, ".JPG") == 0 || strcmp(ext, ".jpg") == 0 || strcmp(ext, ".JPEG") == 0 || strcmp(ext, ".jpeg") == 0;
+	return ext && (strcmp(ext, ".JPG") == 0 || strcmp(ext, ".jpg") == 0 || strcmp(ext, ".JPEG") == 0 || strcmp(ext, ".jpeg") == 0);
 }
 
-double timestamp(void) {
-	struct timespec ts;
-	clock_gettime(CLOCK_REALTIME, &ts);
-	return ts.tv_sec + ts.tv_nsec / 1000000000.0;
-}
-
-void ptp_blob_exposure_timer(indigo_device *device) {
-	double finish = timestamp() + CCD_EXPOSURE_ITEM->number.target;
-	double remains = finish;
-	while (!PRIVATE_DATA->abort_capture && remains > 0) {
-		indigo_usleep(10000);
-		remains = finish - timestamp();
-		if (remains < 0) {
-			remains = 0;
-		}
-		double remains_ceil = ceil(remains);
-		if (remains_ceil != CCD_EXPOSURE_ITEM->number.value) {
-			CCD_EXPOSURE_ITEM->number.value = remains_ceil;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		}
+// Each vendor acquisition callback performs one bounded protocol step.
+void ptp_capture_start(indigo_device *device, bool bulb, double delay) {
+	PRIVATE_DATA->shutter_open = bulb;
+	PRIVATE_DATA->shutter_deadline = indigo_monotonic_time() + CCD_EXPOSURE_ITEM->number.target + delay;
+	PRIVATE_DATA->capture_deadline = PRIVATE_DATA->shutter_deadline + PTP_CAPTURE_TIMEOUT;
+	PRIVATE_DATA->capture_phase = bulb ? 1 : 2;
+	indigo_ccd_exposure_setup(device);
+	if (CCD_PREVIEW_ENABLED_ITEM->sw.value && PRIVATE_DATA->check_dual_compression && PRIVATE_DATA->check_dual_compression(device) && CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 	}
-	CCD_EXPOSURE_ITEM->number.value = 0;
-	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+	CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target + delay;
+	indigo_ccd_resume_countdown(device);
+}
+
+bool ptp_capture_wait(indigo_device *device) {
+	PRIVATE_DATA->capture_complete = PRIVATE_DATA->image_added && CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_IMAGE_FILE_PROPERTY->state != INDIGO_BUSY_STATE;
+	return !PRIVATE_DATA->abort_capture && (!PRIVATE_DATA->capture_complete || (CCD_IMAGE_PROPERTY->state != INDIGO_ALERT_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_ALERT_STATE && CCD_IMAGE_FILE_PROPERTY->state != INDIGO_ALERT_STATE)) && (PRIVATE_DATA->capture_complete || indigo_monotonic_time() < PRIVATE_DATA->capture_deadline);
+}
+
+void ptp_stream_frame(indigo_device *device, void *buffer, void *image, uint32_t size) {
+	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+		CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+	}
+	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+	}
+	if (!CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
+		indigo_process_dslr_image(device, image, size, ".jpeg", true);
+	}
+	free(PRIVATE_DATA->image_buffer);
+	PRIVATE_DATA->image_buffer = buffer;
+	CCD_STREAMING_COUNT_ITEM->number.value = CCD_STREAMING_COUNT_ITEM->number.value > 0 ? CCD_STREAMING_COUNT_ITEM->number.value - 1 : -1;
+	PRIVATE_DATA->stream_retries = 0;
+	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 }
