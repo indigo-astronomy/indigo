@@ -904,7 +904,7 @@ Source: `indigo_drivers/ccd_fli/indigo_ccd_fli.c`.
 
 Driver-specific use of existing properties: `CCD_GAIN`, `CCD_GAMMA`, `CCD_IMAGE_FORMAT`, `CCD_MODE`, `CCD_STREAMING`, `CCD_STREAMING_SETTINGS`, `CCD_TEMPERATURE`.
 
-Source: `indigo_drivers/ccd_iidc/indigo_ccd_iidc.c`.
+Source: `indigo_drivers/ccd_iidc/indigo_ccd_iidc.driver`.
 
 ### ccd_mi
 

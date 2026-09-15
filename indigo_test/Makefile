@@ -78,6 +78,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_playerone_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_mi_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_asi_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_iidc_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_sx_usb \
 	$(INTEGRATION_BUILD)/test_ccd_ssag_usb \
 	$(INTEGRATION_BUILD)/test_wheel_astroasis_sdk \
@@ -1041,6 +1042,32 @@ $(INTEGRATION_BUILD)/test_ccd_mi_sdk_sanitize: integration/test_ccd_mi_sdk.c int
 .PHONY: test-ccd-mi-sdk-sanitize
 test-ccd-mi-sdk-sanitize: $(INTEGRATION_BUILD)/test_ccd_mi_sdk_sanitize
 	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_ccd_mi_sdk_sanitize
+
+IIDC_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_iidc/externals/libdc1394
+IIDC_SDK_TEST_REPLACEMENTS = -Ddc1394_new=iidc_test_new -Ddc1394_free=iidc_test_free -Ddc1394_camera_enumerate=iidc_test_enumerate -Ddc1394_camera_free_list=iidc_test_free_list -Ddc1394_camera_new_unit=iidc_test_camera_new -Ddc1394_camera_free=iidc_test_camera_free -Ddc1394_video_get_supported_modes=iidc_test_modes -Ddc1394_format7_get_color_codings=iidc_test_codings -Ddc1394_format7_get_max_image_size=iidc_test_max_size -Ddc1394_format7_get_unit_size=iidc_test_unit_size -Ddc1394_video_set_mode=iidc_test_set_mode -Ddc1394_format7_set_color_coding=iidc_test_set_coding -Ddc1394_feature_get=iidc_test_feature_get -Ddc1394_feature_set_absolute_value=iidc_test_set_absolute -Ddc1394_feature_set_power=iidc_test_feature_power -Ddc1394_feature_set_mode=iidc_test_feature_mode -Ddc1394_feature_set_absolute_control=iidc_test_feature_absolute -Ddc1394_feature_is_present=iidc_test_feature_present -Ddc1394_feature_temperature_get_value=iidc_test_temperature -Ddc1394_video_set_operation_mode=iidc_test_operation_mode -Ddc1394_video_set_iso_speed=iidc_test_iso_speed -Ddc1394_format7_set_image_position=iidc_test_position -Ddc1394_format7_set_image_size=iidc_test_size -Ddc1394_format7_get_recommended_packet_size=iidc_test_packet_size -Ddc1394_format7_set_packet_size=iidc_test_set_packet -Ddc1394_capture_setup=iidc_test_capture_setup -Ddc1394_video_set_transmission=iidc_test_transmission -Ddc1394_video_set_one_shot=iidc_test_one_shot -Ddc1394_capture_stop=iidc_test_capture_stop -Ddc1394_capture_dequeue=iidc_test_dequeue -Ddc1394_capture_enqueue=iidc_test_enqueue -Ddc1394_convert_to_RGB8=iidc_test_convert -Ddc1394_error_get_string=iidc_test_error -Ddc1394_log_register_handler=iidc_test_log -Dlibusb_ref_device=iidc_test_ref -Dlibusb_unref_device=iidc_test_unref -Dlibusb_get_device_descriptor=iidc_test_descriptor -Dindigo_start_usb_event_handler=iidc_test_usb_start -Dlibusb_hotplug_register_callback=iidc_test_register -Dlibusb_hotplug_register_callback_sim=iidc_test_register_sim -Dlibusb_hotplug_deregister_callback=iidc_test_deregister -Dlibusb_hotplug_deregister_callback_poll=iidc_test_deregister_poll -Dindigo_attach_device=iidc_test_attach -Dindigo_detach_device=iidc_test_detach -Dindigo_execute_handler_in=iidc_test_execute_in
+
+$(INTEGRATION_BUILD)/ccd_iidc_sdk_driver.o: ../indigo_drivers/ccd_iidc/indigo_ccd_iidc.c ../indigo_drivers/ccd_iidc/indigo_ccd_iidc.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(IIDC_SDK_TEST_INCLUDE) $(IIDC_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_iidc_sdk: integration/test_ccd_iidc_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_iidc_sdk_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(IIDC_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_iidc_sdk_driver.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+.PHONY: test-ccd-iidc-sdk
+test-ccd-iidc-sdk: $(INTEGRATION_BUILD)/test_ccd_iidc_sdk
+	$(INTEGRATION_BUILD)/test_ccd_iidc_sdk
+
+IIDC_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+IIDC_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+
+$(INTEGRATION_BUILD)/ccd_iidc_sdk_driver_sanitize.o: ../indigo_drivers/ccd_iidc/indigo_ccd_iidc.c ../indigo_drivers/ccd_iidc/indigo_ccd_iidc.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(IIDC_SANITIZE_CFLAGS) $(IIDC_SDK_TEST_INCLUDE) $(IIDC_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_iidc_sdk_sanitize: integration/test_ccd_iidc_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_iidc_sdk_driver_sanitize.o | $(INTEGRATION_BUILD)
+	$(CC) $(IIDC_SANITIZE_CFLAGS) $(IIDC_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_iidc_sdk_driver_sanitize.o -o $@ $(IIDC_SANITIZE_LDFLAGS)
+
+.PHONY: test-ccd-iidc-sdk-sanitize
+test-ccd-iidc-sdk-sanitize: $(INTEGRATION_BUILD)/test_ccd_iidc_sdk_sanitize
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_ccd_iidc_sdk_sanitize
 
 
 # Physical ASI hardware is opt-in and excluded from normal integration tests.

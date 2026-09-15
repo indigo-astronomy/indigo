@@ -49,7 +49,7 @@
 | ccd_bresser             | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
 | ccd_dsi                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
 | ccd_fli                 | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | |
-| ccd_iidc                | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⏰ TODO - make libdc1394 for Windows |
+| ccd_iidc                | 3️⃣ | ⛔ N/A | ✅ Yes | ✅ Yes | ✅ Sim + HW (macOS) | 14 / 0 | ⏰ TODO - make libdc1394 for Windows |
 | ccd_mallin              | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
 | ccd_mi                  | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 17 / 0 | ⛔ Unix and Windows SDKs are not compatible |
 | ccd_ogma                | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
