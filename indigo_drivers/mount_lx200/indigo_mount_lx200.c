@@ -25,7 +25,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x03000033
+#define DRIVER_VERSION 0x03000034
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #define NYX_BASE64_THRESHOLD_VERSION "1.32.0"
@@ -209,6 +209,7 @@ typedef struct {
 	char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
 	double lastRA, lastDec;
 	bool motioned;
+	bool coordinate_read_failed;
 	char lastUTC[INDIGO_VALUE_SIZE];
 	char product[64];
 	bool slewing, tracking, parked, parking, homed, homing;
@@ -651,16 +652,65 @@ static bool meade_set_site(indigo_device *device, double latitude, double longit
 	return result;
 }
 
+static bool meade_parse_coordinate(const char *reply, bool right_ascension, double *value) {
+	if (strpbrk(reply, "eExX") != NULL) {
+		return false;
+	}
+	const char *cursor = reply;
+	if (!right_ascension && (*cursor == '+' || *cursor == '-')) {
+		cursor++;
+	}
+	if (!isdigit((unsigned char)*cursor)) {
+		return false;
+	}
+	char *end;
+	long degrees = strtol(cursor, &end, 10);
+	if (degrees > (right_ascension ? 23 : 90) || (right_ascension ? *end != ':' : *end != '*' && *end != ':' && (unsigned char)*end != 0xDF)) {
+		return false;
+	}
+	cursor = end + 1;
+	if (!isdigit((unsigned char)*cursor)) {
+		return false;
+	}
+	double minutes = strtod(cursor, &end);
+	if (!isfinite(minutes) || minutes < 0 || minutes >= 60) {
+		return false;
+	}
+	double seconds = 0;
+	if (*end == ':') {
+		cursor = end + 1;
+		if (!isdigit((unsigned char)*cursor)) {
+			return false;
+		}
+		seconds = strtod(cursor, &end);
+		if (!isfinite(seconds) || seconds < 0 || seconds >= 60) {
+			return false;
+		}
+	}
+	if (*end != 0 || (!right_ascension && degrees == 90 && (minutes != 0 || seconds != 0))) {
+		return false;
+	}
+	*value = indigo_stod(reply);
+	return isfinite(*value);
+}
+
 static bool meade_get_coordinates(indigo_device *device, double *ra, double *dec) {
 	if (MOUNT_TYPE_NYX_ITEM->sw.value) {
 		if (meade_command(device, ":GRH#")) {
-			*ra = indigo_stod(PRIVATE_DATA->response);
+			if (!meade_parse_coordinate(PRIVATE_DATA->response, true, ra)) {
+				return false;
+			}
 			if (meade_command(device, ":GDH#")) {
-				*dec = indigo_stod(PRIVATE_DATA->response);
+				if (!meade_parse_coordinate(PRIVATE_DATA->response, false, dec)) {
+					return false;
+				}
 				return true;
 			}
 		}
 	} else if (meade_command(device, ":GR#")) {
+		if (!meade_parse_coordinate(PRIVATE_DATA->response, true, ra)) {
+			return false;
+		}
 		if (strlen(PRIVATE_DATA->response) < 8) {
 			if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value) {
 				meade_command(device, ":P#");
@@ -673,12 +723,16 @@ static bool meade_get_coordinates(indigo_device *device, double *ra, double *dec
 				meade_command(device, ":GR#");
 			}
 		}
-		*ra = indigo_stod(PRIVATE_DATA->response);
+		if (!meade_parse_coordinate(PRIVATE_DATA->response, true, ra)) {
+			return false;
+		}
 		if (meade_command(device, ":GD#")) {
 			if (MOUNT_TYPE_AGOTINO_ITEM->sw.value) {
 				PRIVATE_DATA->response[3] = '*';
 			}
-			*dec = indigo_stod(PRIVATE_DATA->response);
+			if (!meade_parse_coordinate(PRIVATE_DATA->response, false, dec)) {
+				return false;
+			}
 			return true;
 		}
 	}
@@ -755,7 +809,7 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 
 static bool meade_pec(indigo_device *device, bool on) {
 	if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
-		return meade_no_reply_command(device, on ? "$QZ+" : "$QZ-");
+		return meade_no_reply_command(device, on ? ":$QZ+#" : ":$QZ-#");
 	}
 	return false;
 }
@@ -902,13 +956,13 @@ static bool meade_get_tracking_rate(indigo_device *device) {
 		if (meade_command(device, ":GT#")) {
 			double rate = atof(PRIVATE_DATA->response);
 			if (rate <= 57.9) {
-				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
 			} else if (rate <= 60.0) {
-				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
 			} else if (rate <= 60.14) {
-				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACK_RATE_KING_ITEM, true);
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_KING_ITEM, true);
 			} else {
-				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
 			}
 			return true;
 		}
@@ -1309,6 +1363,10 @@ static void meade_init_meade_mount(indigo_device *device) {
 static void meade_update_meade_state(indigo_device *device) {
 	if (meade_command(device, ":D#")) {
 		PRIVATE_DATA->slewing = *PRIVATE_DATA->response;
+		if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+			PRIVATE_DATA->parking = PRIVATE_DATA->slewing;
+			PRIVATE_DATA->parked = !PRIVATE_DATA->slewing;
+		}
 	}
 	if (meade_command(device, ":GW#")) {
 		PRIVATE_DATA->tracking = PRIVATE_DATA->response[1] == 'T';
@@ -2002,10 +2060,17 @@ static void meade_update_mount_state(indigo_device *device) {
 		indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
-		PRIVATE_DATA->lastRA = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-		PRIVATE_DATA->lastDec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+		if (PRIVATE_DATA->coordinate_read_failed) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		PRIVATE_DATA->coordinate_read_failed = false;
+	} else {
+		PRIVATE_DATA->coordinate_read_failed = true;
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	bool ap_parked = MOUNT_TYPE_AP_ITEM->sw.value && PRIVATE_DATA->parked;
 	PRIVATE_DATA->slewing = PRIVATE_DATA->tracking = PRIVATE_DATA->parking = PRIVATE_DATA->parked = PRIVATE_DATA->homing = PRIVATE_DATA->homed = false;
+	PRIVATE_DATA->parked = ap_parked;
 	if (MOUNT_TYPE_MEADE_ITEM->sw.value) {
 		meade_update_meade_state(device);
 	} else if (MOUNT_TYPE_10MICRONS_ITEM->sw.value) {
@@ -2030,8 +2095,12 @@ static void meade_update_mount_state(indigo_device *device) {
 	} else {
 		meade_update_generic_state(device);
 	}
+	PRIVATE_DATA->lastRA = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+	PRIVATE_DATA->lastDec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 	indigo_debug("*** slewing=%d, tracking=%d, parked=%d, parking=%d, homed=%d, homing=%d", PRIVATE_DATA->slewing, PRIVATE_DATA->tracking, PRIVATE_DATA->parked, PRIVATE_DATA->parking, PRIVATE_DATA->homed, PRIVATE_DATA->homing);
-	if (PRIVATE_DATA->slewing) {
+	if (PRIVATE_DATA->coordinate_read_failed) {
+		MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
+	} else if (PRIVATE_DATA->slewing) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 	} else {
 		if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
@@ -2052,7 +2121,7 @@ static void meade_update_mount_state(indigo_device *device) {
 		}
 	}
 	if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) { // to avoid race never change parking state if BUSY with these exceptions
-		if (MOUNT_PARK_PARKED_ITEM->sw.value && PRIVATE_DATA->parked) {
+		if ((MOUNT_PARK_PROPERTY->count == 1 || MOUNT_PARK_PARKED_ITEM->sw.value) && PRIVATE_DATA->parked) {
 			MOUNT_PARK_PROPERTY->state = MOUNT_STATE_PARK_ITEM->light.value = INDIGO_OK_STATE;
 		} else if (MOUNT_PARK_PROPERTY->count == 2 && MOUNT_PARK_UNPARKED_ITEM->sw.value && !PRIVATE_DATA->parked) {
 			MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
@@ -2070,7 +2139,7 @@ static void meade_update_mount_state(indigo_device *device) {
 		}
 	}
 	if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) { // to avoid race never change home state if BUSY with this exception
-		if (MOUNT_HOME_ITEM->sw.value && PRIVATE_DATA->homed) {
+		if (PRIVATE_DATA->homed) {
 			MOUNT_HOME_PROPERTY->state = MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
 		}
 	} else { // otherwise mirror state reported by mount
@@ -2276,7 +2345,9 @@ static void onstep_aux_timer_callback(indigo_device *device) {
 		for (int i = 0; i < AUX_HEATER_OUTLET_PROPERTY->count; i++) {
 			int onstep_slot = ONSTEP_AUX_HEATER_OUTLET_MAPPING[i];
 			// responds with a number between 0 for fully off and 255 for fully on
-			meade_command(device, ":GXX%d#", onstep_slot);
+			if (!meade_command(device, ":GXX%d#", onstep_slot)) {
+				continue;
+			}
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "received PRIVATE_DATA->response %s for slot %d", PRIVATE_DATA->response, onstep_slot);
 			indigo_item *item = AUX_HEATER_OUTLET_PROPERTY->items + i;
 			// convert to percent
@@ -2296,7 +2367,9 @@ static void onstep_aux_timer_callback(indigo_device *device) {
 		for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
 			int onstep_slot = ONSTEP_AUX_POWER_OUTLET_MAPPING[i];
 			// the PRIVATE_DATA->response is 0 when disabled and 1 when the switch is enabled
-			meade_command(device, ":GXX%d#", onstep_slot);
+			if (!meade_command(device, ":GXX%d#", onstep_slot) || AUX_POWER_OUTLET_PROPERTY->state == INDIGO_BUSY_STATE) {
+				continue;
+			}
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "received PRIVATE_DATA->response %s for slot %d", PRIVATE_DATA->response, onstep_slot);
 			indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
 			bool active = PRIVATE_DATA->response[0] - '0';
@@ -2305,7 +2378,7 @@ static void onstep_aux_timer_callback(indigo_device *device) {
 				do_update = true;
 			}
 		}
-		if (do_update) {
+		if (do_update && AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
 			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 		}
@@ -2392,7 +2465,10 @@ static void mount_park_callback(indigo_device *device) {
 			MOUNT_PARK_PARKED_ITEM->sw.value = false;
 		}
 		if (meade_park(device)) {
-			if (!(MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value)) {
+			if (MOUNT_TYPE_AP_ITEM->sw.value) {
+				PRIVATE_DATA->parked = true;
+			}
+			if (!(MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value)) {
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		} else {
@@ -2401,6 +2477,9 @@ static void mount_park_callback(indigo_device *device) {
 		MOUNT_STATE_PARK_ITEM->light.value = MOUNT_PARK_PROPERTY->state;
 	} else if (MOUNT_PARK_UNPARKED_ITEM->sw.value) {
 		if (meade_unpark(device)) {
+			if (MOUNT_TYPE_AP_ITEM->sw.value) {
+				PRIVATE_DATA->parked = false;
+			}
 			if (!(MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value)) {
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 				MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
@@ -2497,18 +2576,15 @@ static void mount_abort_callback(indigo_device *device) {
 	if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
 		MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 		if (meade_stop(device)) {
-			if (MOUNT_MOTION_DEC_PROPERTY->state != INDIGO_BUSY_STATE) {
-				MOUNT_MOTION_NORTH_ITEM->sw.value = false;
-				MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
-				MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-			}
-			if (MOUNT_MOTION_RA_PROPERTY->state != INDIGO_BUSY_STATE) {
-				MOUNT_MOTION_WEST_ITEM->sw.value = false;
-				MOUNT_MOTION_EAST_ITEM->sw.value = false;
-				MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-			}
+			PRIVATE_DATA->lastMotionNS = PRIVATE_DATA->lastMotionWE = 0;
+			MOUNT_MOTION_NORTH_ITEM->sw.value = false;
+			MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+			MOUNT_MOTION_WEST_ITEM->sw.value = false;
+			MOUNT_MOTION_EAST_ITEM->sw.value = false;
+			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
 		} else {
@@ -3064,7 +3140,12 @@ static void guider_guide_dec_finish_callback(indigo_device *device) {
 static void guider_guide_dec_callback(indigo_device *device) {
 	int north = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 	int south = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
-	meade_guide_dec(device, north, south);
+	if ((north > 0 || south > 0) && !meade_guide_dec(device, north, south)) {
+		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, "Guide command failed");
+		return;
+	}
 	if (north > 0) {
 		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)north) / 1000.0, guider_guide_dec_finish_callback);
 	} else if (south > 0) {
@@ -3083,7 +3164,12 @@ static void guider_guide_ra_finish_callback(indigo_device *device) {
 static void guider_guide_ra_callback(indigo_device *device) {
 	int west = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 	int east = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
-	meade_guide_ra(device, west, east);
+	if ((west > 0 || east > 0) && !meade_guide_ra(device, west, east)) {
+		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, "Guide command failed");
+		return;
+	}
 	if (west > 0) {
 		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)west) / 1000.0, guider_guide_ra_finish_callback);
 	} else if (east > 0) {
@@ -3099,6 +3185,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property)) {
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -3353,11 +3442,13 @@ static void aux_connect_handler(indigo_device *device) {
 				meade_command(device, ":GXY0#");
 				// Onstep responds with a string like "11000000" to indicate that the first and second aux device is enabled
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep active device string: %s", PRIVATE_DATA->response);
+				char active_slots[ONSTEP_AUX_DEVICE_COUNT];
+				memcpy(active_slots, PRIVATE_DATA->response, sizeof(active_slots));
 				// in the first pass over the active devices we count how many auxiliary devices of each purpose we have
 				AUX_HEATER_OUTLET_PROPERTY->count = 0;
 				AUX_POWER_OUTLET_PROPERTY->count = 0;
 				for (int i = 0; i < ONSTEP_AUX_DEVICE_COUNT; i++) {
-					bool active = PRIVATE_DATA->response[i] == '1';
+					bool active = active_slots[i] == '1';
 					if (active) {
 						// Now we get the name and purpose of each active aux device, it is one-indexed
 						meade_command(device, ":GXY%d#", i + 1);

@@ -71,6 +71,1152 @@ static bool start_lx200_simulator(external_serial_simulator *simulator, const ch
 	return start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments);
 }
 
+// libindigo exports a legacy macOS clock_gettime shim using wall time.
+// Use the native nanosecond API so test and external simulator share a clock.
+static uint64_t lx_monotonic_ns(void) {
+#if defined(__APPLE__)
+	return clock_gettime_nsec_np(CLOCK_MONOTONIC);
+#else
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return (uint64_t)now.tv_sec * 1000000000 + now.tv_nsec;
+#endif
+}
+
+static atomic_uint_fast64_t guide_completed[2];
+
+static indigo_result timed_client_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, lx200_guider.device_name) && property->state == INDIGO_OK_STATE) {
+		int axis = !strcmp(property->name, GUIDER_GUIDE_RA_PROPERTY_NAME) ? 0 : !strcmp(property->name, GUIDER_GUIDE_DEC_PROPERTY_NAME) ? 1 : -1;
+		if (axis >= 0) {
+			atomic_store(guide_completed + axis, lx_monotonic_ns());
+		}
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+// Every operation waits for a fresh update, never a cached pre-request OK.
+static bool lx_switch(const simulator_driver_case *device, const char *property, const char *item, bool value, indigo_property_state state) {
+	unsigned int revision = property_revision(property);
+	return indigo_change_switch_property_1(&simulator_test_client, device->device_name, property, item, value) == INDIGO_OK && wait_for_property_state_seen_after(property, state, revision);
+}
+
+static bool lx_number(const simulator_driver_case *device, const char *property, const char *item, double value, indigo_property_state state) {
+	unsigned int revision = property_revision(property);
+	return indigo_change_number_property_1(&simulator_test_client, device->device_name, property, item, value) == INDIGO_OK && wait_for_property_state_seen_after(property, state, revision);
+}
+
+static int event_count(external_serial_simulator *simulator, const char *command, double *last_time) {
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.events", simulator->ready_file);
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return 0;
+	}
+	char line[256];
+	int count = 0;
+	while (fgets(line, sizeof(line), file)) {
+		char *tab = strchr(line, '\t');
+		if (tab != NULL) {
+			*tab++ = 0;
+			tab[strcspn(tab, "\r\n")] = 0;
+			if (!strcmp(tab, command)) {
+				count++;
+				if (last_time != NULL) {
+					*last_time = atof(line);
+				}
+			}
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+static bool wait_event(external_serial_simulator *simulator, const char *command, int before) {
+	for (int i = 0; i < 500; i++) {
+		if (event_count(simulator, command, NULL) > before) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Missing LX200 command %s\n", command);
+	return false;
+}
+
+static bool inject_reply(external_serial_simulator *simulator, const char *command, const char *reply) {
+	char path[PATH_MAX], temporary[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.control", simulator->ready_file);
+	snprintf(temporary, sizeof(temporary), "%s.inject", simulator->ready_file);
+	FILE *file = fopen(temporary, "w");
+	if (file == NULL) {
+		return false;
+	}
+	fprintf(file, "%s\t%s\n", command, reply);
+	fclose(file);
+	return rename(temporary, path) == 0;
+}
+
+static bool lx_coordinates(double ra, double dec, indigo_property_state state) {
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double values[] = { ra, dec };
+	return indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, values) == INDIGO_OK && wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, state, revision);
+}
+
+static bool start_profile(external_serial_simulator *simulator, const char *model, const char *type) {
+	if (!start_lx200_simulator(simulator, model) || !bring_up_serial_driver(&lx200_mount)) {
+		return false;
+	}
+	enumerate_simulator_device();
+	if (type != NULL && !lx_switch(&lx200_mount, MOUNT_TYPE_PROPERTY_NAME, type, true, INDIGO_OK_STATE)) {
+		tear_down_serial_driver(&lx200_mount);
+		return false;
+	}
+	if (connect_serial_device(&lx200_mount, simulator->port)) {
+		return true;
+	}
+	wait_for_property_not_busy(CONNECTION_PROPERTY_NAME);
+	disconnect_serial_device(&lx200_mount);
+	tear_down_serial_driver(&lx200_mount);
+	return false;
+}
+
+typedef struct {
+	const char *model, *type, *vendor, *guide_command, *tracking_command;
+	bool tracking, manual, home, park, guide_rate;
+	int info_count;
+} lx_profile;
+
+static const lx_profile profiles[] = {
+	{ "meade", "MEADE", "Meade", "RG", "AP", true, true, false, true, false, 3 },
+	{ "onstep", "ONSTEP", "On-Step", "R1", "Te", true, true, true, true, false, 3 },
+	{ "10mic", "10MIC", "10Micron", "RG", "AP", true, true, true, true, false, 1 },
+	{ "gemini", "GEMINI", "Losmandy", "RG", NULL, true, true, false, true, false, 1 },
+	{ "stargo", "STARGO", "Avalon", "RG2", "X122", true, true, true, true, true, 2 },
+	{ "stargo2", "STARGO2", "Avalon", "RG", NULL, false, true, false, false, false, 2 },
+	{ "ap", "AP", "AstroPhysics", "RG", "RT2", true, true, false, true, false, 1 },
+	{ "agotino", "AGOTINO", "aGotino", NULL, NULL, false, false, false, false, false, 3 },
+	{ "zwo", "ZWO_AM", "ZWO", "R1", "Te", true, true, true, false, true, 3 },
+	{ "nyx", "NYX", "PegasusAstro", "R1", "Te", true, true, true, true, false, 3 },
+	{ "oat", "OAT", "OpenAstroTech", "RG", "MT1", true, true, false, true, false, 3 },
+	{ "teen", "TEEN_ASTRO", "TeenAstro", "RG", "Te", true, true, true, true, false, 3 },
+	{ "generic", "GENERIC", "Generic", "RG", NULL, false, true, false, false, true, 1 }
+};
+
+static void check_profile(int index) {
+	const lx_profile *profile = profiles + index;
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, profile->model, index == 5 || index == 6 ? profile->type : NULL));
+	online = true;
+	assert_device_interface(INDIGO_INTERFACE_MOUNT);
+	assert_switch_item_value(MOUNT_TYPE_PROPERTY_NAME, profile->type, true);
+	SERIAL_CHECK_EQ_INT(profile->info_count, find_cached_property(MOUNT_INFO_PROPERTY_NAME)->count);
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_VENDOR_ITEM_NAME)->text.value, profile->vendor));
+	SERIAL_CHECK_EQ_INT(profile->tracking, has_defined_property(MOUNT_TRACKING_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(profile->manual, has_defined_property(MOUNT_MOTION_RA_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(profile->home, has_defined_property(MOUNT_HOME_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(profile->park, has_defined_property(MOUNT_PARK_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(profile->guide_rate, has_defined_property(MOUNT_GUIDE_RATE_PROPERTY_NAME));
+	static const char *common[] = { MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_EPOCH_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, "MOUNT_STATE" };
+	assert_defined_properties(common, ARRAY_SIZE(common));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	int sync_before = event_count(&simulator, "CM", NULL);
+	int slew_before = event_count(&simulator, "MS", NULL);
+	SERIAL_CHECK_TRUE(lx_coordinates(23.5, -0.5, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "CM", sync_before));
+	SERIAL_CHECK_EQ_INT(slew_before, event_count(&simulator, "MS", NULL));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sr23:30:00", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sd-00*30:00", 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 23.5, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -0.5, 0.001));
+	if (profile->tracking) {
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+		if (profile->tracking_command != NULL) {
+			SERIAL_CHECK_TRUE(wait_event(&simulator, profile->tracking_command, 0));
+		}
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
+		const char *rate_items[] = { MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME };
+		const char *classic[] = { "TS", "TL", "TQ" };
+		const char *ap[] = { "RT1", "RT0", "RT2" };
+		const char *oat[] = { "XSS0.997", "XSS0.965", "XSS1.000" };
+		const char *gemini[] = { "134:r", "133:u", "131:w" };
+		for (int rate = 0; rate < 3; rate++) {
+			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, rate_items[rate], true, INDIGO_OK_STATE));
+			const char *command = index == 6 ? ap[rate] : index == 10 ? oat[rate] : index == 3 ? gemini[rate] : index == 2 && rate == 0 ? "TSOLAR" : classic[rate];
+			SERIAL_CHECK_TRUE(wait_event(&simulator, command, 0));
+		}
+	}
+	if (profile->manual) {
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, profile->guide_command, 0));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, "Mn", 0));
+		const char *rate_items[] = { MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME };
+		const char *classic_rates[] = { "RC", "RM", "RS" };
+		const char *onstep_rates[] = { "R4", "R7", "R9" };
+		const char *stargo_rates[] = { "RC0", "RC1", "RC3" };
+		for (int rate = 0; rate < 3; rate++) {
+			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
+			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_SLEW_RATE_PROPERTY_NAME, rate_items[rate], true, INDIGO_OK_STATE));
+			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+			const char *command = !strcmp(profile->guide_command, "R1") ? onstep_rates[rate] : !strcmp(profile->model, "stargo") ? stargo_rates[rate] : classic_rates[rate];
+			SERIAL_CHECK_TRUE(wait_event(&simulator, command, 0));
+		}
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, !strcmp(profile->model, "stargo") ? "Q" : "Qn", 0));
+	}
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(lx_coordinates(6.25, 12.5, INDIGO_OK_STATE));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_meade_profile(void) {
+	check_profile(0);
+}
+
+static void lx200_onstep_profile(void) {
+	check_profile(1);
+}
+
+static void lx200_10mic_profile(void) {
+	check_profile(2);
+}
+
+static void lx200_gemini_profile(void) {
+	check_profile(3);
+}
+
+static void lx200_stargo_profile(void) {
+	check_profile(4);
+}
+
+static void lx200_stargo2_profile(void) {
+	check_profile(5);
+}
+
+static void lx200_ap_profile(void) {
+	check_profile(6);
+}
+
+static void lx200_agotino_profile(void) {
+	check_profile(7);
+}
+
+static void lx200_zwo_profile(void) {
+	check_profile(8);
+}
+
+static void lx200_nyx_profile(void) {
+	check_profile(9);
+}
+
+static void lx200_oat_profile(void) {
+	check_profile(10);
+}
+
+static void lx200_teen_profile(void) {
+	check_profile(11);
+}
+
+static void lx200_generic_profile(void) {
+	check_profile(12);
+}
+
+static void lx200_goto_progress_abort_and_restart(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(10, -20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 10, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -20, 0.001));
+	SERIAL_CHECK_TRUE(lx_coordinates(0.5, 80, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", 1));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Q", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 80) > 1);
+	SERIAL_CHECK_TRUE(lx_coordinates(9, 15, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 15, 0.001));
+	SERIAL_CHECK_TRUE(lx_coordinates(9, 15, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_coordinate_command_failures_recover(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "meade", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	const char *commands[] = { "Sr07:30:00", "Sd-12*30:00", "MS" };
+	const char *replies[] = { "0", "x", "1Below horizon#" };
+	for (int i = 0; i < 3; i++) {
+		SERIAL_CHECK_TRUE(inject_reply(&simulator, commands[i], replies[i]));
+		SERIAL_CHECK_TRUE(lx_coordinates(7.5, -12.5, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_TRUE(lx_coordinates(7.5, -12.5, INDIGO_BUSY_STATE));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -12.5, 0.001));
+	}
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "CM", "#"));
+	SERIAL_CHECK_TRUE(lx_coordinates(7.5, -12.5, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(7.5, -12.5, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Sr07:30:00", "DROP"));
+	SERIAL_CHECK_TRUE(lx_coordinates(7.5, -12.5, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(7.5, -12.5, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_location_and_utc_translation(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "meade", NULL));
+	online = true;
+	const char *location_items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME };
+	double location[] = { -33.5, 151.25, 100 };
+	unsigned int revision = property_revision(GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, location_items, location));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "St-33*30", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sg208*45", 0));
+	const char *time_items[] = { UTC_TIME_ITEM_NAME, UTC_OFFSET_ITEM_NAME };
+	const char *time_values[] = { "2026-09-15T23:30:45", "2" };
+	revision = property_revision(UTC_TIME_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property(&simulator_test_client, lx200_mount.device_name, UTC_TIME_PROPERTY_NAME, 2, time_items, time_values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(UTC_TIME_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SC09/16/26", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SG-02", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SL01:30:45", 0));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Sg208*45", "0"));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, -33.5, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, -33.5, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_onstep_options_and_partial_failures(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	const char *sides[] = { "EAST", "WEST", "BEST", "AUTO" };
+	const char *side_commands[] = { "SX96,E", "SX96,W", "SX96,B", "SX96,A" };
+	for (int i = 0; i < 4; i++) {
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_ONSTEP_PREFERRED_PIER_SIDE", sides[i], true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, side_commands[i], 0));
+	}
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP", "ENABLED", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SX95,1", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP", "DISABLED", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_ONSTEP_MERIDIAN_LIMITS", "EAST", 12.25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SXE9,49", 0));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "SXEA,60", "0"));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_ONSTEP_MERIDIAN_LIMITS", "EAST", 13, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_ONSTEP_MERIDIAN_LIMITS", "EAST") - 12.25) < 0.001);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_ONSTEP_MERIDIAN_LIMITS", "EAST", 13, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_ALTITUDE_LIMITS", "HORIZON", -5, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sh-5", 0));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "So85", "0"));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_ALTITUDE_LIMITS", "HORIZON", -6, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_ALTITUDE_LIMITS", "HORIZON") + 5) < 0.001);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_ALTITUDE_LIMITS", "HORIZON", -6, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Te", "0#"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	const char *rates[] = { MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME };
+	const char *commands[] = { "TS", "TL", "TK", "TQ" };
+	for (int i = 0; i < 4; i++) {
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, rates[i], true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, commands[i], 0));
+	}
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hQ", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hF", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PEC_PROPERTY_NAME, MOUNT_PEC_ENABLED_ITEM_NAME, true, INDIGO_OK_STATE));
+	bool enabled = wait_event(&simulator, "$QZ+", 0);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PEC_PROPERTY_NAME, MOUNT_PEC_DISABLED_ITEM_NAME, true, INDIGO_OK_STATE));
+	bool disabled = wait_event(&simulator, "$QZ-", 0);
+	SERIAL_CHECK_TRUE(enabled && disabled);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_park_rejects_motion_and_unpark_recovers(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hP", 0));
+	int before = event_count(&simulator, "MS", NULL);
+	SERIAL_CHECK_TRUE(lx_coordinates(7, 15, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(before, event_count(&simulator, "MS", NULL));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hR", 0));
+	SERIAL_CHECK_TRUE(lx_coordinates(7, 15, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static bool start_secondary_profile(external_serial_simulator *simulator, const simulator_driver_case *secondary, const char *model, const char *type) {
+	if (!start_lx200_simulator(simulator, model) || !bring_up_serial_driver(secondary)) {
+		return false;
+	}
+	if (type != NULL && indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, MOUNT_TYPE_PROPERTY_NAME, type, true) != INDIGO_OK) {
+		tear_down_serial_driver(secondary);
+		return false;
+	}
+	if (indigo_change_text_property_1_raw(&simulator_test_client, lx200_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator->port) != INDIGO_OK) {
+		tear_down_serial_driver(secondary);
+		return false;
+	}
+	if (connect_serial_device(secondary, NULL)) {
+		return true;
+	}
+	wait_for_property_not_busy(CONNECTION_PROPERTY_NAME);
+	tear_down_serial_driver(secondary);
+	return false;
+}
+
+static void lx200_guider_directions_overlap_and_timing(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_guider, "meade", NULL));
+	online = true;
+	const char *properties[] = { GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME };
+	const char *items[] = { GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME };
+	const char directions[] = { 'n', 's', 'e', 'w' };
+	const int durations[] = { 20, 100, 500 };
+	double errors[48], percentages[48];
+	int samples = 0;
+	for (int workload = 0; workload < 2; workload++) {
+		if (workload) {
+			SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+			reset_simulator_context(&lx200_guider);
+			enumerate_simulator_device();
+		}
+		for (int direction = 0; direction < 4; direction++) {
+			if (workload) {
+				const char *coordinate_items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+				double coordinates[] = { direction % 2 ? 2 : 22, direction % 2 ? 70 : -70 };
+				int before = event_count(&simulator, "MS", NULL);
+				SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, coordinate_items, coordinates));
+				SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", before));
+			}
+			for (int sample = -1; sample < 6; sample++) {
+				int duration = sample < 0 ? 20 : durations[sample % 3];
+				char command[32];
+				snprintf(command, sizeof(command), "Mg%c%04d", directions[direction], duration);
+				int before = event_count(&simulator, command, NULL);
+				unsigned int revision = property_revision(properties[direction]);
+				int axis = direction < 2 ? 1 : 0;
+				atomic_store(guide_completed + axis, 0);
+				SERIAL_CHECK_TRUE(lx_number(&lx200_guider, properties[direction], items[direction], duration, INDIGO_BUSY_STATE));
+				SERIAL_CHECK_TRUE(wait_event(&simulator, command, before));
+				SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(properties[direction], INDIGO_OK_STATE, revision));
+				double entered = 0;
+				event_count(&simulator, command, &entered);
+				double completed = atomic_load(guide_completed + axis) / 1e9;
+				double error = (completed - entered) * 1000 - duration;
+				SERIAL_CHECK_TRUE(isfinite(error) && completed >= entered && completed - entered < 5);
+				SERIAL_CHECK_TRUE(cached_number_value(properties[direction], items[direction]) == 0);
+				if (sample >= 0) {
+					percentages[samples] = error * 100 / duration;
+					errors[samples++] = error;
+				}
+			}
+		}
+	}
+	// Same-axis BUSY requests are ignored; another axis remains independent.
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 500, INDIGO_BUSY_STATE));
+	int before = event_count(&simulator, "Mgs0100", NULL);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, lx200_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(before, event_count(&simulator, "Mgs0100", NULL));
+	for (int i = 0; i < samples; i++) {
+		for (int j = i + 1; j < samples; j++) {
+			if (errors[j] < errors[i]) {
+				double swap = errors[i];
+				errors[i] = errors[j];
+				errors[j] = swap;
+			}
+		}
+	}
+	double sum = 0, square = 0, absolute = 0, percent_sum = 0, percent_max = 0;
+	for (int i = 0; i < samples; i++) {
+		sum += errors[i];
+		percent_sum += percentages[i];
+		percent_max = fmax(percent_max, fabs(percentages[i]));
+		square += errors[i] * errors[i];
+		absolute = fmax(absolute, fabs(errors[i]));
+	}
+	printf("  Guider software latency, simulator receipt to public OK callback; idle and mount GOTO/polling; 20/100/500 ms; n=%d min=%.3f mean=%.3f median=%.3f p95=%.3f p99=%.3f max=%.3f stddev=%.3f max_abs=%.3f ms\n", samples, errors[0], sum / samples, (errors[23] + errors[24]) / 2, errors[45], errors[47], errors[47], sqrt(fmax(0, square / samples - sum * sum / samples / samples)), absolute);
+	printf("  Guider signed mean error=%.3f%% maximum absolute error=%.3f%%; no physical relay timing measured\n", percent_sum / samples, percent_max);
+cleanup:
+	if (online) {
+		indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
+		stop_serial_driver(&lx200_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void check_focuser_profile(const char *model, const char *type) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_focuser, model, type));
+	online = true;
+	assert_device_interface(INDIGO_INTERFACE_FOCUSER);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_focuser, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 1, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_focuser, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_focuser, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "FS", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, !strcmp(model, "onstep") ? "FR+25" : "F+", 0));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_focuser, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 2, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_focuser, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_focuser, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "FF", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, !strcmp(model, "onstep") ? "FR-25" : "F-", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_focuser, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true, INDIGO_OK_STATE));
+	int before = event_count(&simulator, !strcmp(model, "onstep") ? "FR+25" : "F+", NULL);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_focuser, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, !strcmp(model, "onstep") ? "FR+25" : "F+", before));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_focuser, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 500, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_focuser, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_focuser, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_focuser, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0, INDIGO_OK_STATE));
+	disconnect_serial_device(&lx200_focuser);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_focuser, NULL));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_focuser); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_focuser_meade_operations(void) {
+	check_focuser_profile("meade", NULL);
+}
+
+static void lx200_focuser_onstep_operations(void) {
+	check_focuser_profile("onstep", NULL);
+}
+
+static void lx200_focuser_ap_operations(void) {
+	check_focuser_profile("ap", "AP");
+}
+
+static void lx200_focuser_oat_operations(void) {
+	check_focuser_profile("oat", NULL);
+}
+
+static void lx200_aux_slot_mapping_and_failure_recovery(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_aux, "onstep", NULL));
+	online = true;
+	SERIAL_CHECK_EQ_INT(2, find_cached_property(AUX_POWER_OUTLET_PROPERTY_NAME)->count);
+	SERIAL_CHECK_EQ_INT(1, find_cached_property(AUX_HEATER_OUTLET_PROPERTY_NAME)->count);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_aux, AUX_POWER_OUTLET_PROPERTY_NAME, "OUTLET_2", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SXX3,V1", 0));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_aux, AUX_HEATER_OUTLET_PROPERTY_NAME, "OUTLET_1", 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SXX4,V255", 0));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "SXX4,V128", "0"));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_aux, AUX_HEATER_OUTLET_PROPERTY_NAME, "OUTLET_1", 50, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(AUX_HEATER_OUTLET_PROPERTY_NAME, "OUTLET_1") - 100) < 0.001);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_aux, AUX_HEATER_OUTLET_PROPERTY_NAME, "OUTLET_1", 50, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SXX4,V128", 1));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "SXX3,V0", "0"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_aux, AUX_POWER_OUTLET_PROPERTY_NAME, "OUTLET_2", false, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_aux, AUX_POWER_OUTLET_PROPERTY_NAME, "OUTLET_2", false, INDIGO_OK_STATE));
+	disconnect_serial_device(&lx200_aux);
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_HEATER_OUTLET_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_aux, NULL));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_nyx_aux_readback(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_aux, "nyx", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME, 12.5, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_PRESSURE_ITEM_NAME, 1013.25, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_INFO_PROPERTY_NAME, AUX_INFO_VOLTAGE_ITEM_NAME, 12.8, 0.001));
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_POWER_OUTLET_PROPERTY_NAME) == NULL);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_shared_connection_orders_and_last_close(void) {
+	for (int order = 0; order < 2; order++) {
+		external_serial_simulator simulator = { 0 };
+		bool online = false;
+		bool guider_open = false;
+		SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_guider, "meade", NULL));
+		online = true;
+		guider_open = true;
+		if (order == 0) {
+			disconnect_serial_device(&lx200_guider);
+			guider_open = false;
+		}
+		SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+		if (order == 0) {
+			SERIAL_CHECK_TRUE(connect_serial_device(&lx200_guider, NULL));
+			guider_open = true;
+		} else {
+			reset_simulator_context(&lx200_guider);
+			enumerate_simulator_device();
+		}
+		SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100, INDIGO_OK_STATE));
+		disconnect_serial_device(&lx200_mount);
+		reset_simulator_context(&lx200_guider);
+		enumerate_simulator_device();
+		int before = event_count(&simulator, "Mgn0100", NULL);
+		SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, "Mgn0100", before));
+		disconnect_serial_device(&lx200_guider);
+		guider_open = false;
+		int polls = event_count(&simulator, "GR", NULL);
+		indigo_usleep(1100000);
+		SERIAL_CHECK_EQ_INT(polls, event_count(&simulator, "GR", NULL));
+		SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+		if (online) {
+			if (guider_open) {
+				disconnect_serial_device(&lx200_guider);
+			}
+			disconnect_serial_device(&lx200_mount);
+			tear_down_serial_driver(&lx200_mount);
+		}
+		stop_external_serial_simulator(&simulator);
+	}
+}
+
+static void lx200_zwo_rates_and_buzzer(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "zwo", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 70, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Rg0.7", 0));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME) - 70) < 0.001);
+	const char *items[] = { "OFF", "LOW", "HIGH" };
+	const char *commands[] = { "SBu0", "SBu1", "SBu2" };
+	for (int i = 0; i < 3; i++) {
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_ZWO_BUZZER", items[i], true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, commands[i], 0));
+	}
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "MS", "e1#"));
+	SERIAL_CHECK_TRUE(lx_coordinates(7, 20, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(7, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_nyx_options_and_wifi_failures(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "nyx", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_NYX_LEVELER", "PITCH") - 1.25) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_NYX_LEVELER", "ROLL") - 2.5) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_NYX_LEVELER", "COMPASS") - 123.5) < 0.001);
+	const char *ap_items[] = { "AP_SSID", "AP_PASSWORD" };
+	const char *values[] = { "INDIGO", "test-password" };
+	unsigned int revision = property_revision("X_NYX_WIFI_AP");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property(&simulator_test_client, lx200_mount.device_name, "X_NYX_WIFI_AP", 2, ap_items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after("X_NYX_WIFI_AP", INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "WAINDIGO", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "WBtest-password", 0));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "WBtest-password", "0"));
+	revision = property_revision("X_NYX_WIFI_AP");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property(&simulator_test_client, lx200_mount.device_name, "X_NYX_WIFI_AP", 2, ap_items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after("X_NYX_WIFI_AP", INDIGO_ALERT_STATE, revision));
+	const char *cl_items[] = { "CL_SSID", "CL_PASSWORD" };
+	revision = property_revision("X_NYX_WIFI_CL");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property(&simulator_test_client, lx200_mount.device_name, "X_NYX_WIFI_CL", 2, cl_items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after("X_NYX_WIFI_CL", INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "WSSU5ESUdP", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_NYX_WIFI_RESET", "RESET", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "WLZ", 0));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_initialization_rollback_and_reconnect(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_lx200_simulator(&simulator, "meade"));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_mount));
+	online = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, lx200_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(DEVICE_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
+	stop_external_serial_simulator(&simulator);
+	SERIAL_CHECK_TRUE(!connect_serial_device(&lx200_mount, NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, context.last_connection_state);
+	SERIAL_CHECK_TRUE(start_lx200_simulator(&simulator, "generic"));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GD", "#"));
+	SERIAL_CHECK_TRUE(!connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, context.last_connection_state);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	assert_switch_item_value(MOUNT_TYPE_PROPERTY_NAME, "GENERIC", true);
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TYPE_PROPERTY_NAME, "DETECT", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GVP", "DROP"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	assert_switch_item_value(MOUNT_TYPE_PROPERTY_NAME, "GENERIC", true);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// These acceptance assertions intentionally expose existing production defects.
+// Keep them active: a green smoke suite is not evidence of complete coverage.
+static void lx200_manual_abort_completes_both_axes(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Mn", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Me", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false);
+	assert_switch_item_value(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_home_single_item_completes(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "10mic", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_coordinates(8, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hF", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_malformed_coordinates_preserve_readback(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	int initial_count = event_count(&simulator, "GD", NULL);
+	unsigned int initial_revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "GD", initial_count));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, initial_revision));
+	double before = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	int count = event_count(&simulator, "GR", NULL);
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GR", "invalid#"));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "GR", count));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - before) < 0.001);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_aux_heater_conversion_and_rejected_write(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_lx200_simulator(&simulator, "onstep"));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GXY0", "00010000#"));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_aux));
+	online = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, lx200_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_aux, NULL));
+	SERIAL_CHECK_EQ_INT(1, find_cached_property(AUX_HEATER_OUTLET_PROPERTY_NAME)->count);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_aux, AUX_HEATER_OUTLET_PROPERTY_NAME, "OUTLET_1", 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SXX4,V255", 0));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "SXX4,V128", "0"));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_aux, AUX_HEATER_OUTLET_PROPERTY_NAME, "OUTLET_1", 50, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(AUX_HEATER_OUTLET_PROPERTY_NAME, "OUTLET_1") - 100) < 0.001);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_aux, AUX_HEATER_OUTLET_PROPERTY_NAME, "OUTLET_1", 50, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_aux, AUX_HEATER_OUTLET_PROPERTY_NAME, "OUTLET_1", 0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SXX4,V0", 0));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_aux_power_rejected_write_recovers(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_aux, "onstep", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_aux, AUX_POWER_OUTLET_PROPERTY_NAME, "OUTLET_1", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SXX1,V1", 0));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "SXX1,V0", "0"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_aux, AUX_POWER_OUTLET_PROPERTY_NAME, "OUTLET_1", false, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_aux, AUX_POWER_OUTLET_PROPERTY_NAME, "OUTLET_1", false, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SXX1,V0", 1));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_initial_tracking_rate_readback(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_lx200_simulator(&simulator, "meade"));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GT", "57.0#"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&lx200_mount, simulator.port));
+	online = true;
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true);
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, false);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_guider_ap_duration_commands(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_guider, "ap", "AP"));
+	online = true;
+	const char *properties[] = { GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME };
+	const char *items[] = { GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME };
+	const char *commands[] = { "Mn100", "Ms100", "Me100", "Mw100" };
+	for (int i = 0; i < 4; i++) {
+		SERIAL_CHECK_TRUE(lx_number(&lx200_guider, properties[i], items[i], 100, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, commands[i], 0));
+	}
+cleanup:
+	if (online) { stop_serial_driver(&lx200_guider); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_disconnect_cancels_pulses_and_reconnects(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_guider, "meade", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 500, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Mge0500", 0));
+	disconnect_serial_device(&lx200_guider);
+	unsigned int revision = property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME);
+	indigo_usleep(600000);
+	SERIAL_CHECK_EQ_INT(revision, property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_guider, NULL));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_guider); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void check_home_profile(int index) {
+	const lx_profile *profile = profiles + index;
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, profile->model, profile->type));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(8, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, !strcmp(profile->model, "stargo") ? "X361" : "hC", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_home_onstep(void) {
+	check_home_profile(1);
+}
+
+static void lx200_home_stargo(void) {
+	check_home_profile(4);
+}
+
+static void lx200_home_zwo(void) {
+	check_home_profile(8);
+}
+
+static void lx200_home_nyx(void) {
+	check_home_profile(9);
+}
+
+static void lx200_home_teenastro(void) {
+	check_home_profile(11);
+}
+
+static void check_park_profile(int index) {
+	const lx_profile *profile = profiles + index;
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, profile->model, profile->type));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, index == 2 || index == 6 ? "KA" : index == 3 ? "hC" : index == 4 ? "X362" : "hP", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	if (index != 0 && index != 10) {
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, index == 2 || index == 6 ? "PO" : index == 3 ? "hW" : index == 4 ? "X370" : "hR", 0));
+	}
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_park_meade(void) {
+	check_park_profile(0);
+}
+
+static void lx200_park_10micron(void) {
+	check_park_profile(2);
+}
+
+static void lx200_park_gemini(void) {
+	check_park_profile(3);
+}
+
+static void lx200_park_stargo(void) {
+	check_park_profile(4);
+}
+
+static void lx200_park_ap(void) {
+	check_park_profile(6);
+}
+
+static void lx200_park_nyx(void) {
+	check_park_profile(9);
+}
+
+static void lx200_park_oat(void) {
+	check_park_profile(10);
+}
+
+static void lx200_park_teenastro(void) {
+	check_park_profile(11);
+}
+
+static void lx200_transport_loss_and_fresh_session(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_coordinates(22, -60, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", 0));
+	stop_external_serial_simulator(&simulator);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(start_lx200_simulator(&simulator, "onstep"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(8, 20, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_secondary_capability_rejection(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_lx200_simulator(&simulator, "zwo"));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_focuser));
+	online = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, lx200_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	SERIAL_CHECK_TRUE(!connect_serial_device(&lx200_focuser, NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, context.last_connection_state);
+	SERIAL_CHECK_TRUE(!connect_serial_device(&lx200_aux, NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, context.last_connection_state);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+cleanup:
+	if (online) {
+		disconnect_serial_device(&lx200_mount);
+		tear_down_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_driver_metadata_and_base_properties(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	indigo_driver_info info = { 0 };
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_mount_lx200(INDIGO_DRIVER_INFO, &info));
+	SERIAL_CHECK_TRUE(!strcmp(info.name, "indigo_mount_lx200"));
+	SERIAL_CHECK_TRUE(!strcmp(info.description, "LX200 Mount"));
+	SERIAL_CHECK_TRUE(info.version >= 0x03000034 && !info.multi_device_support);
+	SERIAL_CHECK_EQ_INT(INDIGO_DRIVER_SHUTDOWN, info.status);
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_mount));
+	online = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_mount_lx200(INDIGO_DRIVER_INIT, NULL));
+	enumerate_simulator_device();
+	const char *base[] = { INFO_PROPERTY_NAME, CONFIG_PROPERTY_NAME, PROFILE_PROPERTY_NAME, PROFILE_NAME_PROPERTY_NAME, CONNECTION_PROPERTY_NAME, DEVICE_PORT_PROPERTY_NAME, DEVICE_BAUDRATE_PROPERTY_NAME, MOUNT_TYPE_PROPERTY_NAME };
+	assert_defined_properties(base, ARRAY_SIZE(base));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_EQ_INT(14, find_cached_property(MOUNT_TYPE_PROPERTY_NAME)->count);
+	for (int i = 0; i < ARRAY_SIZE(profiles); i++) {
+		assert_property_has_item(MOUNT_TYPE_PROPERTY_NAME, profiles[i].type);
+	}
+cleanup:
+	if (online) { tear_down_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_utc_write_failures_recover(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "meade", NULL));
+	online = true;
+	const char *items[] = { UTC_TIME_ITEM_NAME, UTC_OFFSET_ITEM_NAME };
+	const char *values[] = { "2026-09-15T23:30:45", "-3" };
+	const char *commands[] = { "SC09/15/26", "SG+03", "SL20:30:45" };
+	for (int i = 0; i < 3; i++) {
+		SERIAL_CHECK_TRUE(inject_reply(&simulator, commands[i], "0"));
+		unsigned int revision = property_revision(UTC_TIME_PROPERTY_NAME);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property(&simulator_test_client, lx200_mount.device_name, UTC_TIME_PROPERTY_NAME, 2, items, values));
+		SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(UTC_TIME_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+		revision = property_revision(UTC_TIME_PROPERTY_NAME);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property(&simulator_test_client, lx200_mount.device_name, UTC_TIME_PROPERTY_NAME, 2, items, values));
+		SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(UTC_TIME_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	}
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_manual_reversal_and_axis_stops(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "meade", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Mn", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Qn", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Ms", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Me", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Qe", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Mw", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Qs", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Qw", 0));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static bool secondary_operation(const simulator_driver_case *secondary) {
+	if (secondary == &lx200_focuser) {
+		return lx_number(secondary, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_OK_STATE);
+	}
+	return lx_switch(secondary, AUX_POWER_OUTLET_PROPERTY_NAME, "OUTLET_1", true, INDIGO_OK_STATE);
+}
+
+static void check_shared_secondary(const simulator_driver_case *secondary) {
+	for (int order = 0; order < 2; order++) {
+		external_serial_simulator simulator = { 0 };
+		bool online = false;
+		SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, secondary, "onstep", NULL));
+		online = true;
+		if (order == 0) {
+			disconnect_serial_device(secondary);
+		}
+		SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+		if (order == 0) {
+			SERIAL_CHECK_TRUE(connect_serial_device(secondary, NULL));
+		} else {
+			reset_simulator_context(secondary);
+			enumerate_simulator_device();
+		}
+		SERIAL_CHECK_TRUE(secondary_operation(secondary));
+		disconnect_serial_device(&lx200_mount);
+		reset_simulator_context(secondary);
+		enumerate_simulator_device();
+		SERIAL_CHECK_TRUE(secondary_operation(secondary));
+		disconnect_serial_device(secondary);
+		SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+		if (online) {
+			disconnect_serial_device(secondary);
+			disconnect_serial_device(&lx200_mount);
+			tear_down_serial_driver(&lx200_mount);
+		}
+		stop_external_serial_simulator(&simulator);
+	}
+}
+
+static void lx200_shared_focuser_lifecycle(void) {
+	check_shared_secondary(&lx200_focuser);
+}
+
+static void lx200_shared_aux_lifecycle(void) {
+	check_shared_secondary(&lx200_aux);
+}
+
+static void lx200_goto_overlap_replaces_target(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(22, -70, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", 0));
+	int before = event_count(&simulator, "MS", NULL);
+	SERIAL_CHECK_TRUE(lx_coordinates(1, 70, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", before));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 1, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 70, 0.001));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
 static void lx200_mount_passes_serial_compliance_checks(void) {
 	external_serial_simulator simulator = { 0 };
 
@@ -170,12 +1316,297 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-int main(void) {
+static void lx200_stargo_guide_rate_units(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "stargo", "STARGO"));
+	online = true;
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME) - 50) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME) - 60) < 0.001);
+	const char *items[] = { MOUNT_GUIDE_RATE_RA_ITEM_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME };
+	double values[] = { 55, 65 };
+	unsigned int revision = property_revision(MOUNT_GUIDE_RATE_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, MOUNT_GUIDE_RATE_PROPERTY_NAME, 2, items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_GUIDE_RATE_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "X2055", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "X2165", 0));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_teenastro_set_positions(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "teen", "TEEN_ASTRO"));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hQ", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hB", 0));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_nyx_legacy_wifi_and_elevation(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_lx200_simulator(&simulator, "nyx"));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GVN", "1.31.0#"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&lx200_mount, simulator.port));
+	online = true;
+	const char *items[] = { "CL_SSID", "CL_PASSWORD" };
+	const char *values[] = { "INDIGO", "test-password" };
+	unsigned int revision = property_revision("X_NYX_WIFI_CL");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property(&simulator_test_client, lx200_mount.device_name, "X_NYX_WIFI_CL", 2, items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after("X_NYX_WIFI_CL", INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "WSINDIGO", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "WPtest-password", 0));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, 750, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sv750.0", 0));
+	const char *ap_items[] = { "AP_SSID", "AP_PASSWORD" };
+	const char *long_values[] = { "1234567890123456789012345678901234567890", "1234567890123456789012345678901234567890" };
+	revision = property_revision("X_NYX_WIFI_AP");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property(&simulator_test_client, lx200_mount.device_name, "X_NYX_WIFI_AP", 2, ap_items, long_values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after("X_NYX_WIFI_AP", INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "WA1234567890123456789012345", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "WB123456789012345678901234567890", 0));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// Explicit opt-in only: the default integration suite opens no network sockets.
+static void lx200_tcp_mount_commands_and_reconnect(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--tcp", "--model", "onstep", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&lx200_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "CONNECT", 0));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(8, -20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "CLOSE", 0));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "CONNECT", 1));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(8, -20, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -20, 0.001));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_tcp_guider_keepalive_and_shared_ownership(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	bool guider_open = false;
+	const char *arguments[] = { "--tcp", "--model", "meade", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_guider));
+	online = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, lx200_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_guider, NULL));
+	guider_open = true;
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "GR", 0));
+	int reads = event_count(&simulator, "GR", NULL);
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "GR", reads) || wait_event(&simulator, "GR", reads));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "CONNECT", NULL));
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "CLOSE", NULL));
+	reset_simulator_context(&lx200_guider);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 100, INDIGO_OK_STATE));
+	disconnect_serial_device(&lx200_guider);
+	guider_open = false;
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "CLOSE", 0));
+cleanup:
+	if (online) {
+		if (guider_open) {
+			disconnect_serial_device(&lx200_guider);
+		}
+		disconnect_serial_device(&lx200_mount);
+		tear_down_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_tcp_redundant_guider_connection_balances_close(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	int references = 0;
+	const char *arguments[] = { "--tcp", "--model", "meade", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_guider));
+	online = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, lx200_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_guider, NULL));
+	references = 1;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, lx200_guider.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	references = 2;
+	disconnect_serial_device(&lx200_guider);
+	references--;
+	bool closed = wait_event(&simulator, "CLOSE", 0);
+	if (closed) {
+		references = 0;
+	}
+	SERIAL_CHECK_TRUE(closed);
+cleanup:
+	if (online) {
+		// Roll back the reproduced extra reference without leaking the session.
+		if (references > 0) {
+			disconnect_serial_device(&lx200_guider);
+		}
+		tear_down_serial_driver(&lx200_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_guider_transport_failure_and_recovery(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_guider, "meade", NULL));
+	online = true;
+	stop_external_serial_simulator(&simulator);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+	unsigned int ra_revision = property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME);
+	unsigned int dec_revision = property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME);
+	indigo_usleep(200000);
+	SERIAL_CHECK_EQ_INT(ra_revision, property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(dec_revision, property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(cached_number_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME) == 0);
+	SERIAL_CHECK_TRUE(cached_number_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME) == 0);
+	disconnect_serial_device(&lx200_guider);
+	SERIAL_CHECK_TRUE(start_lx200_simulator(&simulator, "meade"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, lx200_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_guider, NULL));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 20, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 20, INDIGO_OK_STATE));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_generic_goto_polling_progress(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "generic", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(22, -60, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", 0));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - 22) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) + 60) < 0.01);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+int main(int argc, char **argv) {
+	setbuf(stdout, NULL);
+	simulator_test_client.update_property = timed_client_update;
 	const indigo_test_case tests[] = {
+		{ "lx200_guider_transport_failure_and_recovery", lx200_guider_transport_failure_and_recovery },
+		{ "lx200_generic_goto_polling_progress", lx200_generic_goto_polling_progress },
+		{ "lx200_teenastro_set_positions", lx200_teenastro_set_positions },
+		{ "lx200_nyx_legacy_wifi_and_elevation", lx200_nyx_legacy_wifi_and_elevation },
+		{ "lx200_stargo_guide_rate_units", lx200_stargo_guide_rate_units },
+		{ "lx200_driver_metadata_and_base_properties", lx200_driver_metadata_and_base_properties },
+		{ "lx200_utc_write_failures_recover", lx200_utc_write_failures_recover },
+		{ "lx200_manual_reversal_and_axis_stops", lx200_manual_reversal_and_axis_stops },
+		{ "lx200_shared_focuser_lifecycle", lx200_shared_focuser_lifecycle },
+		{ "lx200_shared_aux_lifecycle", lx200_shared_aux_lifecycle },
+		{ "lx200_goto_overlap_replaces_target", lx200_goto_overlap_replaces_target },
+		{ "lx200_home_onstep", lx200_home_onstep },
+		{ "lx200_home_stargo", lx200_home_stargo },
+		{ "lx200_home_zwo", lx200_home_zwo },
+		{ "lx200_home_nyx", lx200_home_nyx },
+		{ "lx200_home_teenastro", lx200_home_teenastro },
+		{ "lx200_park_meade", lx200_park_meade },
+		{ "lx200_park_10micron", lx200_park_10micron },
+		{ "lx200_park_gemini", lx200_park_gemini },
+		{ "lx200_park_stargo", lx200_park_stargo },
+		{ "lx200_park_ap", lx200_park_ap },
+		{ "lx200_park_nyx", lx200_park_nyx },
+		{ "lx200_park_oat", lx200_park_oat },
+		{ "lx200_park_teenastro", lx200_park_teenastro },
+		{ "lx200_transport_loss_and_fresh_session", lx200_transport_loss_and_fresh_session },
+		{ "lx200_secondary_capability_rejection", lx200_secondary_capability_rejection },
+		{ "lx200_aux_heater_conversion_and_rejected_write", lx200_aux_heater_conversion_and_rejected_write },
+		{ "lx200_aux_power_rejected_write_recovers", lx200_aux_power_rejected_write_recovers },
+		{ "lx200_initial_tracking_rate_readback", lx200_initial_tracking_rate_readback },
+		{ "lx200_guider_ap_duration_commands", lx200_guider_ap_duration_commands },
+		{ "lx200_disconnect_cancels_pulses_and_reconnects", lx200_disconnect_cancels_pulses_and_reconnects },
+		{ "lx200_zwo_rates_and_buzzer", lx200_zwo_rates_and_buzzer },
+		{ "lx200_nyx_options_and_wifi_failures", lx200_nyx_options_and_wifi_failures },
+		{ "lx200_initialization_rollback_and_reconnect", lx200_initialization_rollback_and_reconnect },
+		{ "lx200_manual_abort_completes_both_axes", lx200_manual_abort_completes_both_axes },
+		{ "lx200_home_single_item_completes", lx200_home_single_item_completes },
+		{ "lx200_malformed_coordinates_preserve_readback", lx200_malformed_coordinates_preserve_readback },
+		{ "lx200_guider_directions_overlap_and_timing", lx200_guider_directions_overlap_and_timing },
+		{ "lx200_focuser_meade_operations", lx200_focuser_meade_operations },
+		{ "lx200_focuser_onstep_operations", lx200_focuser_onstep_operations },
+		{ "lx200_focuser_ap_operations", lx200_focuser_ap_operations },
+		{ "lx200_focuser_oat_operations", lx200_focuser_oat_operations },
+		{ "lx200_aux_slot_mapping_and_failure_recovery", lx200_aux_slot_mapping_and_failure_recovery },
+		{ "lx200_nyx_aux_readback", lx200_nyx_aux_readback },
+		{ "lx200_shared_connection_orders_and_last_close", lx200_shared_connection_orders_and_last_close },
+		{ "lx200_goto_progress_abort_and_restart", lx200_goto_progress_abort_and_restart },
+		{ "lx200_coordinate_command_failures_recover", lx200_coordinate_command_failures_recover },
+		{ "lx200_location_and_utc_translation", lx200_location_and_utc_translation },
+		{ "lx200_onstep_options_and_partial_failures", lx200_onstep_options_and_partial_failures },
+		{ "lx200_park_rejects_motion_and_unpark_recovers", lx200_park_rejects_motion_and_unpark_recovers },
+		{ "lx200_meade_profile", lx200_meade_profile },
+		{ "lx200_onstep_profile", lx200_onstep_profile },
+		{ "lx200_10mic_profile", lx200_10mic_profile },
+		{ "lx200_gemini_profile", lx200_gemini_profile },
+		{ "lx200_stargo_profile", lx200_stargo_profile },
+		{ "lx200_stargo2_profile", lx200_stargo2_profile },
+		{ "lx200_ap_profile", lx200_ap_profile },
+		{ "lx200_agotino_profile", lx200_agotino_profile },
+		{ "lx200_zwo_profile", lx200_zwo_profile },
+		{ "lx200_nyx_profile", lx200_nyx_profile },
+		{ "lx200_oat_profile", lx200_oat_profile },
+		{ "lx200_teen_profile", lx200_teen_profile },
+		{ "lx200_generic_profile", lx200_generic_profile },
 		{ "lx200_mount_passes_serial_compliance_checks", lx200_mount_passes_serial_compliance_checks },
 		{ "lx200_guider_passes_serial_compliance_checks", lx200_guider_passes_serial_compliance_checks },
 		{ "lx200_focuser_passes_serial_compliance_checks", lx200_focuser_passes_serial_compliance_checks },
 		{ "lx200_aux_passes_serial_compliance_checks", lx200_aux_passes_serial_compliance_checks }
 	};
+	if (argc == 2 && !strcmp(argv[1], "--tcp")) {
+		const indigo_test_case network_tests[] = {
+			{ "lx200_tcp_redundant_guider_connection_balances_close", lx200_tcp_redundant_guider_connection_balances_close },
+			{ "lx200_tcp_mount_commands_and_reconnect", lx200_tcp_mount_commands_and_reconnect },
+			{ "lx200_tcp_guider_keepalive_and_shared_ownership", lx200_tcp_guider_keepalive_and_shared_ownership }
+		};
+		return indigo_run_tests("LX200 opt-in TCP simulator tests", network_tests, ARRAY_SIZE(network_tests));
+	}
+	if (argc == 2) {
+		bool matched = false;
+		for (int i = 0; i < ARRAY_SIZE(tests); i++) {
+			if (strstr(tests[i].name, argv[1])) {
+				matched = true;
+				indigo_run_tests("LX200 selected tests", tests + i, 1);
+			}
+		}
+		return !matched ? 2 : indigo_test_failures ? 1 : 0;
+	}
 	return indigo_run_tests("LX200 mount serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }
