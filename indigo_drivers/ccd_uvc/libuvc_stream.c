@@ -588,11 +588,10 @@ uvc_error_t uvc_get_still_ctrl_format_size(
 }
 
 static int _uvc_stream_params_negotiated(
-  uvc_stream_ctrl_t *required,
-  uvc_stream_ctrl_t *actual) {
-    return required->bFormatIndex == actual->bFormatIndex &&
-    required->bFrameIndex == actual->bFrameIndex &&
-    required->dwMaxPayloadTransferSize == actual->dwMaxPayloadTransferSize;
+    uvc_stream_ctrl_t *required,
+    uvc_stream_ctrl_t *actual) {
+  return required->bFormatIndex == actual->bFormatIndex &&
+    required->bFrameIndex == actual->bFrameIndex;
 }
 
 /** @internal
@@ -798,6 +797,38 @@ void LIBUSB_CALL _uvc_stream_callback(struct libusb_transfer *transfer) {
   uvc_stream_handle_t *strmh = transfer->user_data;
 
   int resubmit = 1;
+#if defined(__APPLE__)
+  int transfer_id = -1;
+  for (int i = 0; i < LIBUVC_NUM_TRANSFER_BUFS; i++) {
+    if (strmh->transfers[i] == transfer) {
+      transfer_id = i;
+      break;
+    }
+  }
+  if (transfer->num_iso_packets == 0 && strmh->bulk_recovering && transfer->status == LIBUSB_TRANSFER_NO_DEVICE)
+    strmh->bulk_recovering = 0;
+  if (transfer->num_iso_packets == 0 && strmh->bulk_recovering && strmh->running) {
+    pthread_mutex_lock(&strmh->cb_mutex);
+    if (transfer_id >= 0)
+      strmh->transfer_active[transfer_id] = 0;
+    int active = 0;
+    for (int i = 0; i < LIBUVC_NUM_TRANSFER_BUFS; i++) {
+      active += strmh->transfer_active[i] != 0;
+    }
+    if (active == 0) {
+      strmh->bulk_recovering = 0;
+      if (strmh->running && libusb_clear_halt(strmh->devh->usb_devh, transfer->endpoint) == LIBUSB_SUCCESS) {
+        for (int i = 0; i < LIBUVC_NUM_TRANSFER_BUFS; i++) {
+          if (strmh->transfers[i] && libusb_submit_transfer(strmh->transfers[i]) == LIBUSB_SUCCESS)
+            strmh->transfer_active[i] = 1;
+        }
+      }
+    }
+    pthread_cond_broadcast(&strmh->cb_cond);
+    pthread_mutex_unlock(&strmh->cb_mutex);
+    return;
+  }
+#endif
 
   switch (transfer->status) {
   case LIBUSB_TRANSFER_COMPLETED:
@@ -826,8 +857,42 @@ void LIBUSB_CALL _uvc_stream_callback(struct libusb_transfer *transfer) {
       }
     }
     break;
-  case LIBUSB_TRANSFER_CANCELLED:
+#if defined(__APPLE__)
   case LIBUSB_TRANSFER_ERROR:
+    if (transfer->num_iso_packets == 0) {
+      UVC_DEBUG("recovering macOS bulk endpoint after status %d", transfer->status);
+      pthread_mutex_lock(&strmh->cb_mutex);
+      if (transfer_id >= 0)
+        strmh->transfer_active[transfer_id] = 0;
+      strmh->bulk_recovering = 1;
+      for (int i = 0; i < LIBUVC_NUM_TRANSFER_BUFS; i++) {
+        if (strmh->transfer_active[i])
+          libusb_cancel_transfer(strmh->transfers[i]);
+      }
+      int active = 0;
+      for (int i = 0; i < LIBUVC_NUM_TRANSFER_BUFS; i++) {
+        active += strmh->transfer_active[i] != 0;
+      }
+      if (active == 0) {
+        strmh->bulk_recovering = 0;
+        if (strmh->running && libusb_clear_halt(strmh->devh->usb_devh, transfer->endpoint) == LIBUSB_SUCCESS) {
+          for (int i = 0; i < LIBUVC_NUM_TRANSFER_BUFS; i++) {
+            if (strmh->transfers[i] && libusb_submit_transfer(strmh->transfers[i]) == LIBUSB_SUCCESS)
+              strmh->transfer_active[i] = 1;
+          }
+        }
+      }
+      pthread_cond_broadcast(&strmh->cb_cond);
+      pthread_mutex_unlock(&strmh->cb_mutex);
+      resubmit = 0;
+      break;
+    }
+    /* fall through */
+#endif
+  case LIBUSB_TRANSFER_CANCELLED:
+#if !defined(__APPLE__)
+  case LIBUSB_TRANSFER_ERROR:
+#endif
   case LIBUSB_TRANSFER_NO_DEVICE: {
     int i;
     UVC_DEBUG("not retrying transfer, status = %d", transfer->status);
@@ -840,6 +905,9 @@ void LIBUSB_CALL _uvc_stream_callback(struct libusb_transfer *transfer) {
         free(transfer->buffer);
         libusb_free_transfer(transfer);
         strmh->transfers[i] = NULL;
+#if defined(__APPLE__)
+        strmh->transfer_active[i] = 0;
+#endif
         break;
       }
     }
@@ -876,6 +944,9 @@ void LIBUSB_CALL _uvc_stream_callback(struct libusb_transfer *transfer) {
             free(transfer->buffer);
             libusb_free_transfer(transfer);
             strmh->transfers[i] = NULL;
+#if defined(__APPLE__)
+            strmh->transfer_active[i] = 0;
+#endif
             break;
           }
         }
@@ -897,6 +968,9 @@ void LIBUSB_CALL _uvc_stream_callback(struct libusb_transfer *transfer) {
           free(transfer->buffer);
           libusb_free_transfer(transfer);
           strmh->transfers[i] = NULL;
+#if defined(__APPLE__)
+          strmh->transfer_active[i] = 0;
+#endif
           break;
         }
       }
@@ -1242,6 +1316,9 @@ uvc_error_t uvc_stream_start(
       UVC_DEBUG("libusb_submit_transfer failed: %d",ret);
       break;
     }
+#if defined(__APPLE__)
+    strmh->transfer_active[transfer_id] = 1;
+#endif
   }
 
   if ( ret != UVC_SUCCESS && transfer_id >= 0 ) {
@@ -1490,6 +1567,10 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
 
   for(i=0; i < LIBUVC_NUM_TRANSFER_BUFS; i++) {
     if(strmh->transfers[i] != NULL) {
+#if defined(__APPLE__)
+      if (!strmh->transfer_active[i])
+        continue;
+#endif
       int res = libusb_cancel_transfer(strmh->transfers[i]);
       if(res < 0 && res != LIBUSB_ERROR_NOT_FOUND ) {
         free(strmh->transfers[i]->buffer);
@@ -1501,12 +1582,30 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
 
   /* Wait for transfers to complete/cancel */
   do {
+#if defined(__APPLE__)
+    int active = 0;
+    for(i=0; i < LIBUVC_NUM_TRANSFER_BUFS; i++) {
+      if(strmh->transfers[i] != NULL && strmh->transfer_active[i])
+        active++;
+    }
+    if(active == 0) {
+      for(i=0; i < LIBUVC_NUM_TRANSFER_BUFS; i++) {
+        if(strmh->transfers[i] != NULL) {
+          free(strmh->transfers[i]->buffer);
+          libusb_free_transfer(strmh->transfers[i]);
+          strmh->transfers[i] = NULL;
+        }
+      }
+      break;
+    }
+#else
     for(i=0; i < LIBUVC_NUM_TRANSFER_BUFS; i++) {
       if(strmh->transfers[i] != NULL)
         break;
     }
     if(i == LIBUVC_NUM_TRANSFER_BUFS )
       break;
+#endif
     pthread_cond_wait(&strmh->cb_cond, &strmh->cb_mutex);
   } while(1);
   // Kick the user thread awake

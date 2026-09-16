@@ -1,0 +1,568 @@
+// Copyright (c) 2019-2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+driver uvc {
+	label = "UVC Camera";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
+	version = 25;
+	multi_device_support = true;
+	supported_architecture = "!defined(INDIGO_WINDOWS)";
+	include {
+		#include <limits.h>
+		#include <math.h>
+		#include "indigo_ccd_uvc_libuvc.h"
+	}
+	define {
+		#define UVC_CTRL_FLAG_SET_CUR          (1 << 0)
+		#define UVC_CTRL_FLAG_GET_CUR          (1 << 1)
+		#define UVC_READOUT_TIMEOUT            15
+		#define UVC_POLL_INTERVAL               0.001
+		typedef struct {
+			enum uvc_frame_format format;
+			int width, height, bits_per_pixel;
+		} uvc_mode_data;
+	}
+	data {
+		uvc_device_t *dev;
+		uvc_device_handle_t *handle;
+		uvc_stream_ctrl_t ctrl;
+		uvc_stream_handle_t *stream;
+		uvc_mode_data *modes;
+		int mode_count, selected_mode;
+		char *buffer;
+		size_t buffer_size;
+		bool acquisition_active, streaming;
+		double frame_deadline;
+	}
+	code {
+		typedef struct {
+			enum uvc_frame_format format;
+			const char *fourcc;
+			const char *label_format;
+		} uvc_format_info;
+
+		static const uvc_format_info UVC_FORMATS[] = {
+			{ UVC_FRAME_FORMAT_YUYV, "YUY2", "YUV %dx%d" },
+			{ UVC_FRAME_FORMAT_YUYV, "YUVY", "YUV %dx%d " },
+			{ UVC_FRAME_FORMAT_RGB, "YUVY", "RGB %dx%d " },
+			{ UVC_FRAME_FORMAT_GRAY8, "Y800", "MONO8  %dx%d" },
+			{ UVC_FRAME_FORMAT_GRAY16, "Y16 ", "MONO16  %dx%d" },
+			{ UVC_FRAME_FORMAT_BY8, "BY8 ", "RAW8  %dx%d" },
+			{ UVC_FRAME_FORMAT_BA81, "BY81", "RAW8  %dx%d" },
+			{ UVC_FRAME_FORMAT_SGRBG8, "GRBG", "RAW8  %dx%d" },
+			{ UVC_FRAME_FORMAT_SGBRG8, "GBRG", "RAW8  %dx%d" },
+			{ UVC_FRAME_FORMAT_SRGGB8, "RGGB", "RAW8  %dx%d" },
+			{ UVC_FRAME_FORMAT_SBGGR8, "BGGR", "RAW8  %dx%d" },
+			{ UVC_FRAME_FORMAT_ANY, "    ", "%dx%d" }
+		};
+
+		static uvc_context_t *uvc_context;
+
+		static bool uvc_native_8_bit(enum uvc_frame_format format) {
+			return format == UVC_FRAME_FORMAT_GRAY8 || format == UVC_FRAME_FORMAT_BY8 || format == UVC_FRAME_FORMAT_BA81 || format == UVC_FRAME_FORMAT_SGRBG8 || format == UVC_FRAME_FORMAT_SGBRG8 || format == UVC_FRAME_FORMAT_SRGGB8 || format == UVC_FRAME_FORMAT_SBGGR8;
+		}
+
+		static bool uvc_converted_rgb(enum uvc_frame_format format) {
+			return format == UVC_FRAME_FORMAT_RGB || format == UVC_FRAME_FORMAT_YUYV || format == UVC_FRAME_FORMAT_UYVY;
+		}
+
+		static bool uvc_add_mode(indigo_device *device, int format_index, int width, int height) {
+			if (PRIVATE_DATA->mode_count == INT_MAX / (int)sizeof(uvc_mode_data)) {
+				return false;
+			}
+			int count = PRIVATE_DATA->mode_count;
+			uvc_mode_data *modes = indigo_safe_realloc(PRIVATE_DATA->modes, (size_t)(count + 1) * sizeof(uvc_mode_data));
+			if (!modes) {
+				return false;
+			}
+			PRIVATE_DATA->modes = modes;
+			PRIVATE_DATA->modes[count] = (uvc_mode_data) { UVC_FORMATS[format_index].format, width, height, UVC_FORMATS[format_index].format == UVC_FRAME_FORMAT_GRAY16 ? 16 : 8 };
+			CCD_MODE_PROPERTY = indigo_resize_property(CCD_MODE_PROPERTY, count + 1);
+			char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
+			snprintf(name, sizeof(name), "%d_%dx%d", format_index, width, height);
+			snprintf(label, sizeof(label), UVC_FORMATS[format_index].label_format, width, height);
+			indigo_init_switch_item(CCD_MODE_PROPERTY->items + count, name, label, count == 0);
+			PRIVATE_DATA->mode_count++;
+			return true;
+		}
+
+		static bool uvc_select_mode(indigo_device *device, int selected) {
+			if (selected < 0 || selected >= PRIVATE_DATA->mode_count) {
+				return false;
+			}
+			uvc_mode_data *mode = PRIVATE_DATA->modes + selected;
+			uvc_error_t result = uvc_get_stream_ctrl_format_size(PRIVATE_DATA->handle, &PRIVATE_DATA->ctrl, mode->format, mode->width, mode->height, 0);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_stream_ctrl_format_size(..., %d, %d, %d, 0) -> %s", mode->format, mode->width, mode->height, uvc_strerror(result));
+			if (result != UVC_SUCCESS) {
+				return false;
+			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "stream ctrl: format=%u frame=%u interval=%u frame_size=%u payload=%u", PRIVATE_DATA->ctrl.bFormatIndex, PRIVATE_DATA->ctrl.bFrameIndex, PRIVATE_DATA->ctrl.dwFrameInterval, PRIVATE_DATA->ctrl.dwMaxVideoFrameSize, PRIVATE_DATA->ctrl.dwMaxPayloadTransferSize);
+			PRIVATE_DATA->selected_mode = selected;
+			CCD_FRAME_LEFT_ITEM->number.value = CCD_FRAME_LEFT_ITEM->number.target = 0;
+			CCD_FRAME_TOP_ITEM->number.value = CCD_FRAME_TOP_ITEM->number.target = 0;
+			CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = mode->width;
+			CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = mode->height;
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = mode->bits_per_pixel;
+			return true;
+		}
+
+		static bool uvc_discover_modes(indigo_device *device) {
+			PRIVATE_DATA->mode_count = 0;
+			PRIVATE_DATA->selected_mode = -1;
+			indigo_safe_free(PRIVATE_DATA->modes);
+			PRIVATE_DATA->modes = NULL;
+			CCD_MODE_PROPERTY->count = 0;
+			CCD_INFO_WIDTH_ITEM->number.value = CCD_INFO_HEIGHT_ITEM->number.value = 0;
+			const uvc_format_desc_t *format = uvc_get_format_descs(PRIVATE_DATA->handle);
+			while (format) {
+				int format_index = 0;
+				while (UVC_FORMATS[format_index].format != UVC_FRAME_FORMAT_ANY && strncmp((char *)format->fourccFormat, UVC_FORMATS[format_index].fourcc, 4)) {
+					format_index++;
+				}
+				if (format->bDescriptorSubtype == UVC_VS_FORMAT_UNCOMPRESSED || format->bDescriptorSubtype == UVC_VS_FORMAT_FRAME_BASED) {
+					for (uvc_frame_desc_t *frame = format->frame_descs; frame; frame = frame->next) {
+						if (!uvc_add_mode(device, format_index, frame->wWidth, frame->wHeight)) {
+							return false;
+						}
+						if (CCD_INFO_WIDTH_ITEM->number.value < frame->wWidth) {
+							CCD_INFO_WIDTH_ITEM->number.value = frame->wWidth;
+						}
+						if (CCD_INFO_HEIGHT_ITEM->number.value < frame->wHeight) {
+							CCD_INFO_HEIGHT_ITEM->number.value = frame->wHeight;
+						}
+					}
+				}
+				format = format->next;
+			}
+			if (PRIVATE_DATA->mode_count == 0 || !uvc_select_mode(device, 0)) {
+				return false;
+			}
+			uvc_error_t result = uvc_set_ae_mode(PRIVATE_DATA->handle, 1);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_ae_mode(1) -> %s", uvc_strerror(result));
+			return result == UVC_SUCCESS;
+		}
+
+		static void uvc_setup_control(indigo_device *device, indigo_property *property, indigo_item *item, uvc_error_t (*getter)(uvc_device_handle_t *, uint16_t *, enum uvc_req_code)) {
+			uint16_t value = 0;
+			uvc_error_t result = getter(PRIVATE_DATA->handle, &value, UVC_GET_INFO);
+			if (result != UVC_SUCCESS || !(value & UVC_CTRL_FLAG_GET_CUR)) {
+				property->hidden = true;
+				return;
+			}
+			property->hidden = false;
+			property->perm = value & UVC_CTRL_FLAG_SET_CUR ? INDIGO_RW_PERM : INDIGO_RO_PERM;
+			if (getter(PRIVATE_DATA->handle, &value, UVC_GET_CUR) == UVC_SUCCESS) {
+				item->number.value = item->number.target = value;
+			}
+			if (getter(PRIVATE_DATA->handle, &value, UVC_GET_MIN) == UVC_SUCCESS) {
+				item->number.min = value;
+			}
+			if (getter(PRIVATE_DATA->handle, &value, UVC_GET_MAX) == UVC_SUCCESS) {
+				item->number.max = value;
+			}
+		}
+
+		static void uvc_stop(indigo_device *device) {
+			if (PRIVATE_DATA->stream) {
+				uvc_stream_close(PRIVATE_DATA->stream);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_close()");
+				PRIVATE_DATA->stream = NULL;
+			}
+			PRIVATE_DATA->acquisition_active = PRIVATE_DATA->streaming = false;
+		}
+
+		static void uvc_close(indigo_device *device);
+
+		static bool uvc_open(indigo_device *device) {
+			uvc_error_t result = uvc_sdk_open(PRIVATE_DATA->dev, &PRIVATE_DATA->handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_open() -> %s", uvc_strerror(result));
+			if (result != UVC_SUCCESS) {
+				PRIVATE_DATA->handle = NULL;
+				return false;
+			}
+			uvc_print_diag(PRIVATE_DATA->handle, NULL);
+			if (!uvc_discover_modes(device)) {
+				uvc_close(device);
+				return false;
+			}
+			uint32_t exposure = 0;
+			if (uvc_get_exposure_abs(PRIVATE_DATA->handle, &exposure, UVC_GET_MIN) == UVC_SUCCESS) {
+				CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = exposure / 10000.0;
+			}
+			if (uvc_get_exposure_abs(PRIVATE_DATA->handle, &exposure, UVC_GET_MAX) == UVC_SUCCESS) {
+				CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = exposure / 10000.0;
+			}
+			uvc_setup_control(device, CCD_GAIN_PROPERTY, CCD_GAIN_ITEM, uvc_get_gain);
+			uvc_setup_control(device, CCD_GAMMA_PROPERTY, CCD_GAMMA_ITEM, uvc_get_gamma);
+			if (CCD_INFO_WIDTH_ITEM->number.value <= 0 || CCD_INFO_HEIGHT_ITEM->number.value <= 0 || (size_t)CCD_INFO_WIDTH_ITEM->number.value > (SIZE_MAX - FITS_HEADER_SIZE) / (size_t)CCD_INFO_HEIGHT_ITEM->number.value / 6) {
+				uvc_close(device);
+				return false;
+			}
+			PRIVATE_DATA->buffer_size = FITS_HEADER_SIZE + (size_t)CCD_INFO_WIDTH_ITEM->number.value * (size_t)CCD_INFO_HEIGHT_ITEM->number.value * 6;
+			PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
+			if (!PRIVATE_DATA->buffer) {
+				uvc_close(device);
+				return false;
+			}
+			return true;
+		}
+
+		static void uvc_close(indigo_device *device) {
+			uvc_stop(device);
+			if (PRIVATE_DATA->handle) {
+				uvc_sdk_close(PRIVATE_DATA->handle);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_close()");
+				PRIVATE_DATA->handle = NULL;
+			}
+			indigo_safe_free(PRIVATE_DATA->buffer);
+			PRIVATE_DATA->buffer = NULL;
+			PRIVATE_DATA->buffer_size = 0;
+			indigo_safe_free(PRIVATE_DATA->modes);
+			PRIVATE_DATA->modes = NULL;
+			PRIVATE_DATA->mode_count = 0;
+		}
+
+		static bool uvc_start_acquisition(indigo_device *device, bool streaming) {
+			uvc_error_t result = uvc_set_ae_mode(PRIVATE_DATA->handle, 1);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_ae_mode(1) -> %s", uvc_strerror(result));
+			double exposure = streaming ? CCD_STREAMING_EXPOSURE_ITEM->number.value : CCD_EXPOSURE_ITEM->number.value;
+			if (result == UVC_SUCCESS) {
+				result = uvc_set_exposure_abs(PRIVATE_DATA->handle, (uint32_t)(10000 * exposure));
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_exposure_abs(%u) -> %s", (uint32_t)(10000 * exposure), uvc_strerror(result));
+			}
+			if (result == UVC_SUCCESS && !CCD_GAIN_PROPERTY->hidden) {
+				result = uvc_set_gain(PRIVATE_DATA->handle, (uint16_t)CCD_GAIN_ITEM->number.value);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_gain(%u) -> %s", (uint16_t)CCD_GAIN_ITEM->number.value, uvc_strerror(result));
+			}
+			if (result == UVC_SUCCESS && !CCD_GAMMA_PROPERTY->hidden) {
+				result = uvc_set_gamma(PRIVATE_DATA->handle, (uint16_t)CCD_GAMMA_ITEM->number.value);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_gamma(%u) -> %s", (uint16_t)CCD_GAMMA_ITEM->number.value, uvc_strerror(result));
+			}
+			if (result == UVC_SUCCESS) {
+				result = uvc_stream_open_ctrl(PRIVATE_DATA->handle, &PRIVATE_DATA->stream, &PRIVATE_DATA->ctrl);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_open_ctrl() -> %s", uvc_strerror(result));
+			}
+			if (result == UVC_SUCCESS) {
+				result = uvc_stream_start(PRIVATE_DATA->stream, NULL, device, 0);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_start() -> %s", uvc_strerror(result));
+			}
+			if (result != UVC_SUCCESS) {
+				uvc_stop(device);
+				return false;
+			}
+			PRIVATE_DATA->acquisition_active = true;
+			PRIVATE_DATA->streaming = streaming;
+			PRIVATE_DATA->frame_deadline = indigo_monotonic_time() + exposure + UVC_READOUT_TIMEOUT;
+			return true;
+		}
+
+		static bool uvc_process_frame(indigo_device *device, uvc_frame_t *frame, bool streaming) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "frame=%p data=%p format=%d width=%u height=%u bytes=%zu", frame, frame ? frame->data : NULL, frame ? frame->frame_format : UVC_FRAME_FORMAT_UNKNOWN, frame ? frame->width : 0, frame ? frame->height : 0, frame ? frame->data_bytes : 0);
+			if (!frame || !frame->data || frame->width == 0 || frame->height == 0 || frame->width > SIZE_MAX / frame->height) {
+				return false;
+			}
+			size_t pixels = (size_t)frame->width * frame->height;
+			if (uvc_native_8_bit(frame->frame_format)) {
+				if (frame->data_bytes < pixels || pixels > PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE) {
+					return false;
+				}
+				memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, frame->data, pixels);
+				indigo_process_image(device, PRIVATE_DATA->buffer, frame->width, frame->height, 8, true, true, NULL, streaming);
+				return true;
+			}
+			if (frame->frame_format == UVC_FRAME_FORMAT_GRAY16) {
+				if (pixels > SIZE_MAX / 2 || frame->data_bytes < 2 * pixels || 2 * pixels > PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE) {
+					return false;
+				}
+				memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, frame->data, 2 * pixels);
+				indigo_process_image(device, PRIVATE_DATA->buffer, frame->width, frame->height, 16, true, true, NULL, streaming);
+				return true;
+			}
+			if (uvc_converted_rgb(frame->frame_format) && pixels <= SIZE_MAX / 3 && 3 * pixels <= PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE) {
+				size_t source_size = frame->frame_format == UVC_FRAME_FORMAT_RGB ? 3 * pixels : 2 * pixels;
+				if (frame->data_bytes < source_size) {
+					return false;
+				}
+				uvc_frame_t *rgb = uvc_allocate_frame(3 * pixels);
+				if (!rgb) {
+					return false;
+				}
+				uvc_error_t result = uvc_any2rgb(frame, rgb);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_any2rgb(...) -> %s", uvc_strerror(result));
+				if (result == UVC_SUCCESS && rgb->data && rgb->data_bytes >= 3 * pixels) {
+					memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, rgb->data, 3 * pixels);
+					indigo_process_image(device, PRIVATE_DATA->buffer, frame->width, frame->height, 24, true, true, NULL, streaming);
+				}
+				uvc_free_frame(rgb);
+				return result == UVC_SUCCESS;
+			}
+			return false;
+		}
+
+		static bool uvc_frame_is_complete(indigo_device *device, uvc_frame_t *frame) {
+			if (!frame || !frame->data || frame->width == 0 || frame->height == 0 || frame->width > SIZE_MAX / frame->height) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "discarding invalid frame: frame=%p data=%p width=%u height=%u", frame, frame ? frame->data : NULL, frame ? frame->width : 0, frame ? frame->height : 0);
+				return false;
+			}
+			uvc_mode_data *mode = PRIVATE_DATA->modes + PRIVATE_DATA->selected_mode;
+			if (frame->width != mode->width || frame->height != mode->height) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "discarding stale frame: received=%ux%u selected=%dx%d bytes=%zu", frame->width, frame->height, mode->width, mode->height, frame->data_bytes);
+				return false;
+			}
+			size_t pixels = (size_t)frame->width * frame->height;
+			size_t required = 0;
+			if (uvc_native_8_bit(frame->frame_format)) {
+				required = pixels;
+			}
+			if (frame->frame_format == UVC_FRAME_FORMAT_GRAY16 || frame->frame_format == UVC_FRAME_FORMAT_YUYV || frame->frame_format == UVC_FRAME_FORMAT_UYVY) {
+				required = pixels <= SIZE_MAX / 2 ? 2 * pixels : SIZE_MAX;
+			}
+			if (frame->frame_format == UVC_FRAME_FORMAT_RGB) {
+				required = pixels <= SIZE_MAX / 3 ? 3 * pixels : SIZE_MAX;
+			}
+			if (required && frame->data_bytes < required) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "discarding incomplete frame: format=%d size=%ux%u bytes=%zu required=%zu", frame->frame_format, frame->width, frame->height, frame->data_bytes, required);
+				return false;
+			}
+			return true;
+		}
+
+		static void uvc_acquisition_failure(indigo_device *device, indigo_property *property, const char *message) {
+			bool streaming = PRIVATE_DATA->streaming;
+			uvc_stop(device);
+			if (streaming) {
+				indigo_finalize_video_stream(device);
+			}
+			indigo_ccd_failure_cleanup(device);
+			property->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, property, "%s", message);
+		}
+
+		static void exposure_finalizer(indigo_device *device) {
+			if (!IS_CONNECTED || !PRIVATE_DATA->acquisition_active || CCD_EXPOSURE_PROPERTY->state != INDIGO_BUSY_STATE) {
+				return;
+			}
+			uvc_frame_t *frame = NULL;
+			uvc_error_t result = uvc_stream_get_frame(PRIVATE_DATA->stream, &frame, 1000);
+			if (result != UVC_ERROR_TIMEOUT) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_get_frame(...) -> %s", uvc_strerror(result));
+			}
+			bool incomplete = result == UVC_SUCCESS && frame && !uvc_frame_is_complete(device, frame);
+			if ((result == UVC_ERROR_TIMEOUT || (result == UVC_SUCCESS && !frame) || incomplete) && indigo_monotonic_time() < PRIVATE_DATA->frame_deadline) {
+				indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, UVC_POLL_INTERVAL, exposure_finalizer);
+				return;
+			}
+			if (result != UVC_SUCCESS || incomplete || !uvc_process_frame(device, frame, false)) {
+				uvc_acquisition_failure(device, CCD_EXPOSURE_PROPERTY, result == UVC_ERROR_TIMEOUT || !frame ? "Exposure timed out" : "Exposure readout failed");
+				return;
+			}
+			uvc_stop(device);
+			CCD_EXPOSURE_ITEM->number.value = 0;
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		}
+
+		static void streaming_finalizer(indigo_device *device) {
+			if (!IS_CONNECTED || !PRIVATE_DATA->acquisition_active || CCD_STREAMING_PROPERTY->state != INDIGO_BUSY_STATE) {
+				return;
+			}
+			uvc_frame_t *frame = NULL;
+			uvc_error_t result = uvc_stream_get_frame(PRIVATE_DATA->stream, &frame, 1000);
+			if (result != UVC_ERROR_TIMEOUT) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_get_frame(...) -> %s", uvc_strerror(result));
+			}
+			bool incomplete = result == UVC_SUCCESS && frame && !uvc_frame_is_complete(device, frame);
+			if ((result == UVC_ERROR_TIMEOUT || (result == UVC_SUCCESS && !frame) || incomplete) && indigo_monotonic_time() < PRIVATE_DATA->frame_deadline) {
+				indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, UVC_POLL_INTERVAL, streaming_finalizer);
+				return;
+			}
+			if (result != UVC_SUCCESS || incomplete || !uvc_process_frame(device, frame, true)) {
+				uvc_acquisition_failure(device, CCD_STREAMING_PROPERTY, result == UVC_ERROR_TIMEOUT || !frame ? "Streaming timed out" : "Streaming readout failed");
+				return;
+			}
+			if (CCD_STREAMING_COUNT_ITEM->number.value > 0) {
+				CCD_STREAMING_COUNT_ITEM->number.value--;
+			}
+			if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
+				uvc_stop(device);
+				indigo_finalize_video_stream(device);
+				CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+				return;
+			}
+			PRIVATE_DATA->frame_deadline = indigo_monotonic_time() + CCD_STREAMING_EXPOSURE_ITEM->number.value + UVC_READOUT_TIMEOUT;
+			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, 0, streaming_finalizer);
+		}
+	}
+	sdk {
+		hotplug = true;
+		discovery_retries = 3;
+		plug {
+			plug_result = false;
+			uvc_device_t **list = NULL;
+			uvc_error_t result = uvc_context ? UVC_SUCCESS : uvc_init(&uvc_context, NULL);
+			if (result == UVC_SUCCESS) {
+				result = uvc_get_device_list(uvc_context, &list);
+			}
+			if (result == UVC_SUCCESS && list) {
+				uvc_device_t *selected = NULL;
+				for (int i = 0; list[i]; i++) {
+					uvc_device_t *candidate = list[i];
+					bool matches = uvc_get_bus_number(candidate) == libusb_get_bus_number(dev) && uvc_get_device_address(candidate) == libusb_get_device_address(dev);
+					bool attached = false;
+					if (matches) {
+						for (int slot = 0; slot < MAX_DEVICES; slot++) {
+							if (devices[slot] && uvc_get_bus_number(((uvc_private_data *)devices[slot]->private_data)->dev) == uvc_get_bus_number(candidate) && uvc_get_device_address(((uvc_private_data *)devices[slot]->private_data)->dev) == uvc_get_device_address(candidate)) {
+								attached = true;
+								break;
+							}
+						}
+					}
+					if (matches && !attached && !selected) {
+						uvc_device_descriptor_t *uvc_descriptor = NULL;
+						result = uvc_get_device_descriptor(candidate, &uvc_descriptor);
+						if (result == UVC_SUCCESS && uvc_descriptor) {
+							selected = candidate;
+							private_data->dev = candidate;
+							snprintf(name, INDIGO_NAME_SIZE, "%s%s%s", uvc_descriptor->manufacturer ? uvc_descriptor->manufacturer : "", uvc_descriptor->manufacturer && uvc_descriptor->product ? " " : "", uvc_descriptor->product ? uvc_descriptor->product : DRIVER_LABEL);
+							char usb_path[INDIGO_NAME_SIZE];
+							indigo_get_usb_path(dev, usb_path);
+							indigo_make_name_unique(name, "%s", usb_path);
+						}
+						if (uvc_descriptor) {
+							uvc_free_device_descriptor(uvc_descriptor);
+						}
+					}
+					if (candidate != selected) {
+						uvc_unref_device(candidate);
+					}
+				}
+				uvc_free_device_list(list, 0);
+				plug_result = selected != NULL;
+			}
+		}
+		unplug_match {
+			unplug_result = private_data->dev && uvc_get_bus_number(private_data->dev) == libusb_get_bus_number(dev) && uvc_get_device_address(private_data->dev) == libusb_get_device_address(dev);
+		}
+	}
+	on_init {
+		uvc_context_t *probe_context = NULL;
+		uvc_error_t result = uvc_init(&probe_context, NULL);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libuvc %s, uvc_init() -> %s", LIBUVC_VERSION_STR, uvc_strerror(result));
+		if (result != UVC_SUCCESS) {
+			last_action = INDIGO_DRIVER_SHUTDOWN;
+			return INDIGO_FAILED;
+		}
+		uvc_exit(probe_context);
+	}
+	on_shutdown {
+		if (uvc_context) {
+			uvc_exit(uvc_context);
+			uvc_context = NULL;
+		}
+	}
+	ccd {
+		name = "%s";
+		on_attach {
+			CCD_BIN_PROPERTY->hidden = true;
+			CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 0;
+			CCD_EXPOSURE_ITEM->number.min = 0.001;
+			CCD_STREAMING_EXPOSURE_ITEM->number.min = 0.001;
+			CCD_INFO_PROPERTY->count = 2;
+			CCD_STREAMING_PROPERTY->hidden = false;
+			CCD_IMAGE_FORMAT_PROPERTY->count = 7;
+			CCD_STREAMING_SETTINGS_PROPERTY->hidden = false;
+		}
+		on_disconnect {
+			indigo_cancel_pending_handler(device, exposure_finalizer);
+			indigo_cancel_pending_handler(device, streaming_finalizer);
+			uvc_stop(device);
+		}
+		on_detach {
+			if (PRIVATE_DATA->dev) {
+				uvc_unref_device(PRIVATE_DATA->dev);
+				PRIVATE_DATA->dev = NULL;
+			}
+		}
+		inherited CCD_MODE {
+			on_change_request {
+				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+					return INDIGO_OK;
+				}
+			}
+			on_change {
+				int selected = -1;
+				for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
+					if (CCD_MODE_PROPERTY->items[i].sw.value) {
+						selected = i;
+						break;
+					}
+				}
+				if (!uvc_select_mode(device, selected)) {
+					CCD_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+				}
+			}
+		}
+		inherited CCD_EXPOSURE {
+			on_change_request { if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) { return INDIGO_OK; } }
+			on_change {
+				indigo_use_shortest_exposure_if_bias(device);
+				if (uvc_start_acquisition(device, false)) {
+					indigo_ccd_exposure_setup(device);
+					indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, 0, exposure_finalizer);
+				} else {
+					uvc_acquisition_failure(device, CCD_EXPOSURE_PROPERTY, "Exposure setup failed");
+				}
+			}
+		}
+		inherited CCD_STREAMING {
+			on_change_request { if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) { return INDIGO_OK; } }
+			on_change {
+				if (uvc_start_acquisition(device, true)) {
+					indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, 0, streaming_finalizer);
+				} else {
+					uvc_acquisition_failure(device, CCD_STREAMING_PROPERTY, "Streaming setup failed");
+					indigo_finalize_video_stream(device);
+				}
+			}
+		}
+		inherited CCD_ABORT_EXPOSURE {
+			on_change {
+				indigo_cancel_pending_handler(device, exposure_finalizer);
+				indigo_cancel_pending_handler(device, streaming_finalizer);
+				uvc_stop(device);
+				if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_finalize_video_stream(device);
+				}
+				indigo_ccd_abort_exposure_cleanup(device);
+			}
+		}
+		inherited CCD_GAIN {
+			on_change { }
+		}
+		inherited CCD_GAMMA {
+			on_change { }
+		}
+	}
+}

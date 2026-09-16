@@ -1,9 +1,9 @@
 // Copyright (c) 2019-2026 CloudMakers, s. r. o.
 // All rights reserved.
-
-// You may use this software under the terms of 'INDIGO Astronomy
+//
+// You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-
+//
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,31 +16,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_ccd_uvc.driver
+#include "libuvc.h"
 
-#ifndef ccd_uvc_h
-#define ccd_uvc_h
-
-#include <indigo/indigo_driver.h>
-
-#if defined(INDIGO_WINDOWS)
-#if defined(INDIGO_WINDOWS_DLL)
-#define INDIGO_EXTERN __declspec(dllexport)
-#else
-#define INDIGO_EXTERN __declspec(dllimport)
-#endif
-#else
-#define INDIGO_EXTERN extern
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-INDIGO_EXTERN indigo_result indigo_ccd_uvc(indigo_driver_action action, indigo_driver_info *info);
-
-#ifdef __cplusplus
+uvc_error_t uvc_sdk_open(uvc_device_t *device, uvc_device_handle_t **handle) {
+	return uvc_open(device, handle);
 }
-#endif
 
-#endif
+void uvc_sdk_close(uvc_device_handle_t *handle) {
+	uvc_close(handle);
+}

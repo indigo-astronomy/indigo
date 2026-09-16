@@ -259,7 +259,11 @@ typedef struct uvc_device_info {
   this macro.
  */
 #ifndef LIBUVC_NUM_TRANSFER_BUFS
+#if defined(__APPLE__) && defined(__MACH__)
+#define LIBUVC_NUM_TRANSFER_BUFS 5
+#else
 #define LIBUVC_NUM_TRANSFER_BUFS 100
+#endif
 #endif
 
 
@@ -289,6 +293,10 @@ struct uvc_stream_handle {
   void *user_ptr;
   struct libusb_transfer *transfers[LIBUVC_NUM_TRANSFER_BUFS];
   uint8_t *transfer_bufs[LIBUVC_NUM_TRANSFER_BUFS];
+#if defined(__APPLE__)
+  uint8_t transfer_active[LIBUVC_NUM_TRANSFER_BUFS];
+  uint8_t bulk_recovering;
+#endif
   struct uvc_frame frame;
   enum uvc_frame_format frame_format;
   struct timespec capture_time_finished;
@@ -347,4 +355,3 @@ uvc_error_t uvc_release_if(uvc_device_handle_t *devh, int idx);
 
 #endif // !def(LIBUVC_INTERNAL_H)
 /** @endcond */
-

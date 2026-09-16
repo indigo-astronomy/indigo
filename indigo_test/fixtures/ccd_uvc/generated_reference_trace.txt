@@ -1,0 +1,41 @@
+uvc_init
+uvc_exit
+indigo_start_usb_event_handler
+libusb_hotplug_register
+uvc_init
+uvc_get_device_list
+uvc_get_device_descriptor camera=0
+uvc_free_device_descriptor
+uvc_free_device_list unref=0
+indigo_attach_device name=SVBONY SV205
+property CONNECTION state=2
+uvc_open camera=0
+uvc_print_diag
+uvc_get_format_descs
+uvc_get_stream_ctrl format=3 width=64 height=48 fps=0
+uvc_set_ae_mode value=1
+uvc_get_exposure request=130
+uvc_get_exposure request=131
+uvc_get_gain request=134
+uvc_get_gain request=129
+uvc_get_gain request=130
+uvc_get_gain request=131
+uvc_get_gamma request=134
+uvc_get_gamma request=129
+uvc_get_gamma request=130
+uvc_get_gamma request=131
+property CONNECTION state=1
+property CCD_EXPOSURE state=2
+uvc_set_ae_mode value=1
+uvc_set_exposure value=100
+uvc_set_gain value=10
+uvc_set_gamma value=100
+uvc_stream_open camera=0 size=9216
+uvc_stream_start flags=0
+uvc_stream_get_frame timeout=1000
+uvc_stream_get_frame timeout=1000
+uvc_allocate_frame bytes=9216
+uvc_any2rgb
+uvc_free_frame
+uvc_stream_close
+property CCD_EXPOSURE state=1

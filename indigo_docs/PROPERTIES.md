@@ -984,7 +984,7 @@ Source: `indigo_drivers/ccd_touptek/indigo_ccd_touptek.c`.
 
 Driver-specific use of existing properties: `CCD_BIN`, `CCD_GAIN`, `CCD_GAMMA`, `CCD_IMAGE_FORMAT`, `CCD_INFO`, `CCD_MODE`, `CCD_STREAMING`, `CCD_STREAMING_SETTINGS`.
 
-Source: `indigo_drivers/ccd_uvc/indigo_ccd_uvc.c`.
+Source: `indigo_drivers/ccd_uvc/indigo_ccd_uvc.driver`.
 
 ### dome_baader
 
@@ -1064,11 +1064,11 @@ Source: `indigo_drivers/focuser_askar/indigo_focuser_askar.driver` (generates `i
 
 ### focuser_astroasis
 
-Custom properties: `BACKLASH_DIRECTION_PROPERTY`, `BEEP_ON_MOVE_PROPERTY`, `BEEP_ON_POWER_UP_PROPERTY`, `BLUETOOTH_PROPERTY`, `BLUETOOTH_NAME_PROPERTY`, `BOARD_TEMPERATURE_PROPERTY`, `CUSTOM_SUFFIX`, `FACTORY_RESET_PROPERTY`.
+Custom properties: `X_BACKLASH_DIRECTION_PROPERTY`, `X_BEEP_ON_MOVE_PROPERTY`, `X_BEEP_ON_POWER_UP_PROPERTY`, `X_BLUETOOTH_PROPERTY`, `X_BLUETOOTH_NAME_PROPERTY`, `X_BOARD_TEMPERATURE_PROPERTY`, `X_CUSTOM_SUFFIX`, `X_FACTORY_RESET_PROPERTY`. All are connect-scoped; their items, labels, groups and rules are unchanged from the former unprefixed names. Failed device writes restore the last confirmed value and report ALERT.
 
-Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+Driver-specific use of existing properties: `FOCUSER_ABORT_MOTION`, `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_STEPS`, `FOCUSER_TEMPERATURE`. `FOCUSER_POSITION` and `FOCUSER_STEPS` maxima follow the device maximum step read on connection and set through `FOCUSER_LIMITS`.
 
-Source: `indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.c`.
+Source: `indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.driver`.
 
 ### focuser_astromechanics
 
@@ -1276,9 +1276,9 @@ Source: `indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.driver`.
 
 ### gps_gpsd
 
-Driver-specific use of existing properties: `GEOGRAPHIC_COORDINATES`, `GPS_ADVANCED`, `UTC_TIME`.
+Driver-specific use of existing properties: `DEVICE_PORT` (gpsd host as `gpsd://host:port`, default port 2947), `GEOGRAPHIC_COORDINATES`, `GPS_ADVANCED`, `GPS_ADVANCED_STATUS`, `GPS_STATUS`, `UTC_TIME`. Elevation uses the gpsd `alt` field when present, otherwise `altMSL`, otherwise `altHAE`. A lost gpsd connection disconnects the device and reports `CONNECTION` ALERT.
 
-Source: `indigo_drivers/gps_gpsd/indigo_gps_gpsd.c`.
+Source: `indigo_drivers/gps_gpsd/indigo_gps_gpsd.driver`.
 
 ### gps_nmea
 
