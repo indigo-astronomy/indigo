@@ -1,9 +1,9 @@
-// Copyright (C) 2024 Astroasis Vision Technology, Inc.
+// Copyright (C) 2024-2026 Astroasis Vision Technology, Inc.
 // All rights reserved.
-//
-// You can use this software under the terms of 'INDIGO Astronomy
+
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-//
+
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,39 +16,118 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// version history
-// 2.0 by Frank Chen <frank.chen@astroasis.com>
-// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// This file generated from indigo_focuser_astroasis.driver
 
-/** INDIGO Astroasis focuser driver
- \file indigo_focuser_astroasis.c
- */
+// supported_architecture: !defined(__i386__)
+#if !defined(__i386__)
 
-#define DRIVER_VERSION 0x03000006
-#define DRIVER_NAME "indigo_focuser_astroasis"
+#pragma mark - Includes
 
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
-#include <stdbool.h>
+
+//+ include
+
+#include <AOFocus.h>
+
+//- include
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_focuser_driver.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_usb_utils.h>
 
 #include "indigo_focuser_astroasis.h"
 
-#if !defined(__i386__)
+#pragma mark - Common definitions
 
-#include <AOFocus.h>
+#define DRIVER_VERSION       0x03000007
+#define DRIVER_NAME          "indigo_focuser_astroasis"
+#define DRIVER_LABEL         "Astroasis Oasis Focuser"
+#define FOCUSER_DEVICE_NAME  "%s"
+#define MAX_DEVICES          5
+#define PRIVATE_DATA         ((astroasis_private_data *)device->private_data)
 
-#define ASTROASIS_VENDOR_ID			0x338f
-#define ASTROASIS_PRODUCT_FOCUSER_ID		0xa0f0
+//+ define
 
-#define PRIVATE_DATA				((astroasis_private_data *)device->private_data)
+#define ASTROASIS_VENDOR_ID  0x338f
+#define ASTROASIS_PRODUCT_FOCUSER_ID 0xa0f0
+
+//- define
+
+#pragma mark - Property definitions
+
+#define X_BEEP_ON_POWER_UP_PROPERTY      (PRIVATE_DATA->x_beep_on_power_up_property)
+#define X_BEEP_ON_POWER_UP_ON_ITEM       (X_BEEP_ON_POWER_UP_PROPERTY->items + 0)
+#define X_BEEP_ON_POWER_UP_OFF_ITEM      (X_BEEP_ON_POWER_UP_PROPERTY->items + 1)
+
+#define X_BEEP_ON_POWER_UP_PROPERTY_NAME "X_BEEP_ON_POWER_UP_PROPERTY"
+#define X_BEEP_ON_POWER_UP_ON_ITEM_NAME  "ON"
+#define X_BEEP_ON_POWER_UP_OFF_ITEM_NAME "OFF"
+
+#define X_BEEP_ON_MOVE_PROPERTY        (PRIVATE_DATA->x_beep_on_move_property)
+#define X_BEEP_ON_MOVE_ON_ITEM         (X_BEEP_ON_MOVE_PROPERTY->items + 0)
+#define X_BEEP_ON_MOVE_OFF_ITEM        (X_BEEP_ON_MOVE_PROPERTY->items + 1)
+
+#define X_BEEP_ON_MOVE_PROPERTY_NAME   "X_BEEP_ON_MOVE_PROPERTY"
+#define X_BEEP_ON_MOVE_ON_ITEM_NAME    "ON"
+#define X_BEEP_ON_MOVE_OFF_ITEM_NAME   "OFF"
+
+#define X_BACKLASH_DIRECTION_PROPERTY      (PRIVATE_DATA->x_backlash_direction_property)
+#define X_BACKLASH_DIRECTION_IN_ITEM       (X_BACKLASH_DIRECTION_PROPERTY->items + 0)
+#define X_BACKLASH_DIRECTION_OUT_ITEM      (X_BACKLASH_DIRECTION_PROPERTY->items + 1)
+
+#define X_BACKLASH_DIRECTION_PROPERTY_NAME "X_BACKLASH_DIRECTION_PROPERTY"
+#define X_BACKLASH_DIRECTION_IN_ITEM_NAME  "INWARD"
+#define X_BACKLASH_DIRECTION_OUT_ITEM_NAME "OUTWARD"
+
+#define X_CUSTOM_SUFFIX_PROPERTY       (PRIVATE_DATA->x_custom_suffix_property)
+#define X_CUSTOM_SUFFIX_ITEM           (X_CUSTOM_SUFFIX_PROPERTY->items + 0)
+
+#define X_CUSTOM_SUFFIX_PROPERTY_NAME  "X_CUSTOM_SUFFIX"
+#define X_CUSTOM_SUFFIX_ITEM_NAME      "SUFFIX"
+
+#define X_BLUETOOTH_PROPERTY           (PRIVATE_DATA->x_bluetooth_property)
+#define X_BLUETOOTH_ON_ITEM            (X_BLUETOOTH_PROPERTY->items + 0)
+#define X_BLUETOOTH_OFF_ITEM           (X_BLUETOOTH_PROPERTY->items + 1)
+
+#define X_BLUETOOTH_PROPERTY_NAME      "X_BLUETOOTH_PROPERTY"
+#define X_BLUETOOTH_ON_ITEM_NAME       "ENABLED"
+#define X_BLUETOOTH_OFF_ITEM_NAME      "DISABLED"
+
+#define X_BLUETOOTH_NAME_PROPERTY      (PRIVATE_DATA->x_bluetooth_name_property)
+#define X_BLUETOOTH_NAME_ITEM          (X_BLUETOOTH_NAME_PROPERTY->items + 0)
+
+#define X_BLUETOOTH_NAME_PROPERTY_NAME "X_BLUETOOTH_NAME_PROPERTY"
+#define X_BLUETOOTH_NAME_ITEM_NAME     "BLUETOOTH_NAME"
+
+#define X_FACTORY_RESET_PROPERTY       (PRIVATE_DATA->x_factory_reset_property)
+#define X_FACTORY_RESET_ITEM           (X_FACTORY_RESET_PROPERTY->items + 0)
+
+#define X_FACTORY_RESET_PROPERTY_NAME  "X_FACTORY_RESET_PROPERTY"
+#define X_FACTORY_RESET_ITEM_NAME      "RESET"
+
+#define X_BOARD_TEMPERATURE_PROPERTY      (PRIVATE_DATA->x_board_temperature_property)
+#define X_BOARD_TEMPERATURE_ITEM          (X_BOARD_TEMPERATURE_PROPERTY->items + 0)
+
+#define X_BOARD_TEMPERATURE_PROPERTY_NAME "X_BOARD_TEMPERATURE_PROPERTY"
+#define X_BOARD_TEMPERATURE_ITEM_NAME     "Internal Temp."
+
+#pragma mark - Private data definition
 
 typedef struct {
+	libusb_device *usbdev;
+	indigo_property *x_beep_on_power_up_property;
+	indigo_property *x_beep_on_move_property;
+	indigo_property *x_backlash_direction_property;
+	indigo_property *x_custom_suffix_property;
+	indigo_property *x_bluetooth_property;
+	indigo_property *x_bluetooth_name_property;
+	indigo_property *x_factory_reset_property;
+	indigo_property *x_board_temperature_property;
+	//+ data
 	int dev_id;
 	AOFocuserConfig config;
 	AOFocuserStatus status;
@@ -59,182 +138,173 @@ typedef struct {
 	char bluetooth_name[AO_FOCUSER_NAME_LEN + 1];
 	double compensation_last_temp;
 	bool has_temperature_sensor;
-	indigo_timer *focuser_timer, *temperature_timer;
-	indigo_property *beep_on_power_up_property;
-	indigo_property *beep_on_move_property;
-	indigo_property *backlash_direction_property;
-	indigo_property *custom_suffix_property;
-	indigo_property *bluetooth_property;
-	indigo_property *bluetooth_name_property;
-	indigo_property *factory_reset_property;
-	indigo_property *board_temperature_property;
+	//- data
 } astroasis_private_data;
 
-#define BEEP_ON_POWER_UP_PROPERTY		(PRIVATE_DATA->beep_on_power_up_property)
-#define BEEP_ON_POWER_UP_ON_ITEM		(BEEP_ON_POWER_UP_PROPERTY->items+0)
-#define BEEP_ON_POWER_UP_OFF_ITEM		(BEEP_ON_POWER_UP_PROPERTY->items+1)
-#define BEEP_ON_POWER_UP_PROPERTY_NAME		"BEEP_ON_POWER_UP_PROPERTY"
-#define BEEP_ON_POWER_UP_ON_ITEM_NAME		"ON"
-#define BEEP_ON_POWER_UP_OFF_ITEM_NAME		"OFF"
+#pragma mark - Low level code
 
-#define BEEP_ON_MOVE_PROPERTY			(PRIVATE_DATA->beep_on_move_property)
-#define BEEP_ON_MOVE_ON_ITEM			(BEEP_ON_MOVE_PROPERTY->items+0)
-#define BEEP_ON_MOVE_OFF_ITEM			(BEEP_ON_MOVE_PROPERTY->items+1)
-#define BEEP_ON_MOVE_PROPERTY_NAME		"BEEP_ON_MOVE_PROPERTY"
-#define BEEP_ON_MOVE_ON_ITEM_NAME		"ON"
-#define BEEP_ON_MOVE_OFF_ITEM_NAME		"OFF"
+static indigo_queue *driver_queue = NULL;
+static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-#define BACKLASH_DIRECTION_PROPERTY		(PRIVATE_DATA->backlash_direction_property)
-#define BACKLASH_DIRECTION_IN_ITEM		(BACKLASH_DIRECTION_PROPERTY->items+0)
-#define BACKLASH_DIRECTION_OUT_ITEM		(BACKLASH_DIRECTION_PROPERTY->items+1)
-#define BACKLASH_DIRECTION_PROPERTY_NAME	"BACKLASH_DIRECTION_PROPERTY"
-#define BACKLASH_DIRECTION_IN_ITEM_NAME		"INWARD"
-#define BACKLASH_DIRECTION_OUT_ITEM_NAME	"OUTWARD"
+//+ code
 
-#define CUSTOM_SUFFIX_PROPERTY     (PRIVATE_DATA->custom_suffix_property)
-#define CUSTOM_SUFFIX_ITEM         (CUSTOM_SUFFIX_PROPERTY->items+0)
-#define CUSTOM_SUFFIX_PROPERTY_NAME   "CUSTOM_SUFFIX"
-#define CUSTOM_SUFFIX_NAME         "SUFFIX"
-
-#define BLUETOOTH_PROPERTY			(PRIVATE_DATA->bluetooth_property)
-#define BLUETOOTH_ON_ITEM			(BLUETOOTH_PROPERTY->items+0)
-#define BLUETOOTH_OFF_ITEM			(BLUETOOTH_PROPERTY->items+1)
-#define BLUETOOTH_PROPERTY_NAME			"BLUETOOTH_PROPERTY"
-#define BLUETOOTH_ON_ITEM_NAME			"ENABLED"
-#define BLUETOOTH_OFF_ITEM_NAME			"DISABLED"
-
-#define BLUETOOTH_NAME_PROPERTY			(PRIVATE_DATA->bluetooth_name_property)
-#define BLUETOOTH_NAME_ITEM			(BLUETOOTH_NAME_PROPERTY->items+0)
-#define BLUETOOTH_NAME_PROPERTY_NAME		"BLUETOOTH_NAME_PROPERTY"
-#define BLUETOOTH_NAME_NAME			"BLUETOOTH_NAME"
-
-#define FACTORY_RESET_PROPERTY			(PRIVATE_DATA->factory_reset_property)
-#define FACTORY_RESET_ITEM			(FACTORY_RESET_PROPERTY->items+0)
-#define FACTORY_RESET_PROPERTY_NAME		"FACTORY_RESET_PROPERTY"
-#define FACTORY_RESET_ITEM_NAME			"RESET"
-
-#define FOCUSER_TEMPERATURE_BOARD_PROPERTY	(PRIVATE_DATA->board_temperature_property)
-#define FOCUSER_TEMPERATURE_BOARD_ITEM		(FOCUSER_TEMPERATURE_BOARD_PROPERTY->items+0)
-#define FOCUSER_TEMPERATURE_BOARD_PROPERTY_NAME	"BOARD_TEMPERATURE_PROPERTY"
-#define FOCUSER_TEMPERATURE_BOARD_ITEM_NAME	"BOARD_TEMPERATURE"
-
-// INDIGO focuser device implementation
-static bool focuser_config(indigo_device *device, unsigned int mask, int value) {
-	AOFocuserConfig *config = &PRIVATE_DATA->config;
-
-	config->mask = mask;
-
-	switch (mask) {
-	case MASK_MAX_STEP:
-		config->maxStep = value;
-		break;
-	case MASK_BACKLASH:
-		config->backlash = value;
-		break;
-	case MASK_BACKLASH_DIRECTION:
-		config->backlashDirection = value;
-		break;
-	case MASK_REVERSE_DIRECTION:
-		config->reverseDirection = value;
-		break;
-	case MASK_SPEED:
-		config->speed = value;
-		break;
-	case MASK_BEEP_ON_MOVE:
-		config->beepOnMove = value;
-		break;
-	case MASK_BEEP_ON_STARTUP:
-		config->beepOnStartup = value;
-		break;
-	case MASK_BLUETOOTH:
-		config->bluetoothOn = value;
-		break;
-	default:
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid Oasis Focuser configuration mask %08X\n", mask);
+static bool astroasis_open(indigo_device *device) {
+	if (indigo_try_global_lock(device) != INDIGO_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 		return false;
 	}
-
-	AOReturn ret = AOFocuserSetConfig(PRIVATE_DATA->dev_id, config);
-
-	if (ret != AO_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set Oasis Focuser configuration, ret = %d\n", ret);
+	int res = AOFocuserOpen(PRIVATE_DATA->dev_id);
+	if (res != AO_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserOpen() failed, ret = %d", res);
+		indigo_global_unlock(device);
 		return false;
 	}
-
 	return true;
 }
 
-static void focuser_timer_callback(indigo_device *device) {
-	AOReturn ret = AOFocuserGetStatus(PRIVATE_DATA->dev_id, &PRIVATE_DATA->status);
+static void astroasis_close(indigo_device *device) {
+	AOFocuserClose(PRIVATE_DATA->dev_id);
+	indigo_global_unlock(device);
+}
 
-	if (ret == AO_SUCCESS) {
+static bool astroasis_config(indigo_device *device, unsigned int mask, int value) {
+	AOFocuserConfig config = PRIVATE_DATA->config;
+	config.mask = mask;
+	switch (mask) {
+		case MASK_MAX_STEP:
+			config.maxStep = value;
+			break;
+		case MASK_BACKLASH:
+			config.backlash = value;
+			break;
+		case MASK_BACKLASH_DIRECTION:
+			config.backlashDirection = value;
+			break;
+		case MASK_REVERSE_DIRECTION:
+			config.reverseDirection = value;
+			break;
+		case MASK_BEEP_ON_MOVE:
+			config.beepOnMove = value;
+			break;
+		case MASK_BEEP_ON_STARTUP:
+			config.beepOnStartup = value;
+			break;
+		case MASK_BLUETOOTH:
+			config.bluetoothOn = value;
+			break;
+		default:
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid Oasis Focuser configuration mask %08X", mask);
+			return false;
+	}
+	int res = AOFocuserSetConfig(PRIVATE_DATA->dev_id, &config);
+	if (res != AO_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set Oasis Focuser configuration, ret = %d", res);
+		return false;
+	}
+	PRIVATE_DATA->config = config;
+	return true;
+}
+
+//- code
+
+//+ focuser.code
+
+static void focuser_position_handler(indigo_device *device);
+static void focuser_steps_handler(indigo_device *device);
+
+static void focuser_move_finalizer(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
+	int res = AOFocuserGetStatus(PRIVATE_DATA->dev_id, &PRIVATE_DATA->status);
+	if (res == AO_SUCCESS) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving = %d, Position = %d", PRIVATE_DATA->status.moving, PRIVATE_DATA->status.position);
-
 		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status.position;
 		if (!PRIVATE_DATA->status.moving) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			indigo_reschedule_timer(device, 0.5, &(PRIVATE_DATA->focuser_timer));
+			indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
 		}
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetStatus() failed, ret = %d", ret);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetStatus() failed, ret = %d", res);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+}
+
+static void focuser_move_failed(indigo_device *device, int res) {
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to move Oasis Focuser, ret = %d", res);
+	FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+}
+
+static void focuser_update_limits(indigo_device *device, int maximum) {
+	bool changed = FOCUSER_POSITION_ITEM->number.max != maximum || FOCUSER_STEPS_ITEM->number.max != maximum;
+	if (changed && IS_CONNECTED) {
+		indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
+			indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		}
+	}
+	FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = maximum;
+	FOCUSER_POSITION_ITEM->number.max = FOCUSER_STEPS_ITEM->number.max = maximum;
+	if (changed && IS_CONNECTED) {
+		if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
+			indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		}
+		indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
 }
 
 static void focuser_compensation(indigo_device *device, double curr_temp) {
 	int compensation;
 	double temp_diff = curr_temp - PRIVATE_DATA->compensation_last_temp;
-
 	/* Last compensation temperature is invalid */
 	if (PRIVATE_DATA->compensation_last_temp < -270) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation not started yet, last temperature = %f", PRIVATE_DATA->compensation_last_temp);
 		PRIVATE_DATA->compensation_last_temp = curr_temp;
 		return;
 	}
-
 	/* Current temperature is invalid or focuser is moving */
 	if ((curr_temp < -270) || (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation not started: curr_temp = %f, FOCUSER_POSITION_PROPERTY->state = %d", curr_temp, FOCUSER_POSITION_PROPERTY->state);
 		return;
 	}
-
 	/* Temperature difference is big enough to do compensation */
 	if ((fabs(temp_diff) >= FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value) && (fabs(temp_diff) < 100)) {
 		compensation = (int)(temp_diff * FOCUSER_COMPENSATION_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: temperature difference = %.2f, compensation = %d, steps/degC = %.0f, threshold = %.2f",
-			temp_diff, compensation, FOCUSER_COMPENSATION_ITEM->number.value, FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: temperature difference = %.2f, compensation = %d, steps/degC = %.0f, threshold = %.2f", temp_diff, compensation, FOCUSER_COMPENSATION_ITEM->number.value, FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value);
 	} else {
 		return;
 	}
-
-	AOReturn ret = AOFocuserMove(PRIVATE_DATA->dev_id, compensation);
-	if (ret != AO_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to move Oasis Focuser, ret = %d\n", ret);
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-
+	int res = AOFocuserMove(PRIVATE_DATA->dev_id, compensation);
 	PRIVATE_DATA->compensation_last_temp = curr_temp;
+	if (res != AO_SUCCESS) {
+		focuser_move_failed(device, res);
+		return;
+	}
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status.position;
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+	indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
 }
 
-static void temperature_timer_callback(indigo_device *device) {
-	char *property_message = NULL;
-	AOReturn ret = AOFocuserGetStatus(PRIVATE_DATA->dev_id, &PRIVATE_DATA->status);
-
-	if (ret == AO_SUCCESS) {
-		FOCUSER_TEMPERATURE_BOARD_ITEM->number.value = (double)PRIVATE_DATA->status.temperatureInt / 100;
-		FOCUSER_TEMPERATURE_BOARD_PROPERTY->state = INDIGO_OK_STATE;
-
-		if (PRIVATE_DATA->status.temperatureDetection && (PRIVATE_DATA->status.temperatureExt != TEMPERATURE_INVALID)) {
+static void focuser_temperature_poll(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
+	const char *property_message = NULL;
+	int res = AOFocuserGetStatus(PRIVATE_DATA->dev_id, &PRIVATE_DATA->status);
+	if (res == AO_SUCCESS) {
+		X_BOARD_TEMPERATURE_ITEM->number.value = (double)PRIVATE_DATA->status.temperatureInt / 100;
+		X_BOARD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+		if (PRIVATE_DATA->status.temperatureDetection && ((unsigned int)PRIVATE_DATA->status.temperatureExt != TEMPERATURE_INVALID)) {
 			FOCUSER_TEMPERATURE_ITEM->number.value = (double)PRIVATE_DATA->status.temperatureExt / 100;
 			if (!PRIVATE_DATA->has_temperature_sensor) {
 				property_message = "Temperature sensor connected.";
@@ -242,7 +312,7 @@ static void temperature_timer_callback(indigo_device *device) {
 				PRIVATE_DATA->has_temperature_sensor = true;
 			}
 		} else {
-			FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_BOARD_ITEM->number.value;
+			FOCUSER_TEMPERATURE_ITEM->number.value = X_BOARD_TEMPERATURE_ITEM->number.value;
 			if (PRIVATE_DATA->has_temperature_sensor) {
 				property_message = "No temperature sensor connected. Using board temperature as ambient.";
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", property_message);
@@ -250,865 +320,899 @@ static void temperature_timer_callback(indigo_device *device) {
 			}
 		}
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-
 		if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
 			focuser_compensation(device, FOCUSER_TEMPERATURE_ITEM->number.value);
 		} else {
 			/* reset temp so that the compensation starts when auto mode is selected */
 			PRIVATE_DATA->compensation_last_temp = -273.15;
 		}
-
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetStatus() failed, ret = %d", ret);
-		FOCUSER_TEMPERATURE_BOARD_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetStatus() failed, ret = %d", res);
+		X_BOARD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-
-	indigo_update_property(device, FOCUSER_TEMPERATURE_BOARD_PROPERTY, NULL);
-	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, property_message);
-
-	indigo_reschedule_timer(device, 2, &(PRIVATE_DATA->temperature_timer));
-}
-
-static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (IS_CONNECTED) {
-		INDIGO_DEFINE_MATCHING_PROPERTY(BEEP_ON_POWER_UP_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(BEEP_ON_MOVE_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(BACKLASH_DIRECTION_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(CUSTOM_SUFFIX_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(BLUETOOTH_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(BLUETOOTH_NAME_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(FACTORY_RESET_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(FOCUSER_TEMPERATURE_BOARD_PROPERTY);
+	indigo_update_property(device, X_BOARD_TEMPERATURE_PROPERTY, NULL);
+	if (property_message != NULL) {
+		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "%s", property_message);
+	} else {
+		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 	}
-
-	return indigo_focuser_enumerate_properties(device, client, property);
+	indigo_execute_handler_in(device, 2, focuser_temperature_poll);
 }
+
+//- focuser.code
+
+#pragma mark - High level code (focuser)
+
+static void focuser_connection_handler(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		bool connection_result = true;
+		connection_result = astroasis_open(device);
+		if (connection_result) {
+			//+ focuser.on_connect
+			int res = AOFocuserGetConfig(PRIVATE_DATA->dev_id, &PRIVATE_DATA->config);
+			if (res != AO_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetConfig() failed, ret = %d", res);
+				connection_result = false;
+				astroasis_close(device);
+			} else {
+				focuser_update_limits(device, PRIVATE_DATA->config.maxStep);
+				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = PRIVATE_DATA->config.backlash;
+				indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->config.reverseDirection ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+				indigo_set_switch(X_BEEP_ON_POWER_UP_PROPERTY, PRIVATE_DATA->config.beepOnStartup ? X_BEEP_ON_POWER_UP_ON_ITEM : X_BEEP_ON_POWER_UP_OFF_ITEM, true);
+				indigo_set_switch(X_BEEP_ON_MOVE_PROPERTY, PRIVATE_DATA->config.beepOnMove ? X_BEEP_ON_MOVE_ON_ITEM : X_BEEP_ON_MOVE_OFF_ITEM, true);
+				indigo_set_switch(X_BACKLASH_DIRECTION_PROPERTY, PRIVATE_DATA->config.backlashDirection ? X_BACKLASH_DIRECTION_OUT_ITEM : X_BACKLASH_DIRECTION_IN_ITEM, true);
+				res = AOFocuserGetConfig(PRIVATE_DATA->dev_id, &PRIVATE_DATA->config);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AOFocuserGetConfig(%d, -> .speed = %d .bluetoothOn = %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->config.speed, PRIVATE_DATA->config.bluetoothOn, res);
+				indigo_set_switch(X_BLUETOOTH_PROPERTY, PRIVATE_DATA->config.bluetoothOn ? X_BLUETOOTH_ON_ITEM : X_BLUETOOTH_OFF_ITEM, true);
+				res = AOFocuserGetBluetoothName(PRIVATE_DATA->dev_id, PRIVATE_DATA->bluetooth_name);
+				PRIVATE_DATA->bluetooth_name[AO_FOCUSER_NAME_LEN] = 0;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AOFocuserGetBluetoothName(%d, -> \"%s\") = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->bluetooth_name, res);
+				indigo_set_text_item_value(X_BLUETOOTH_NAME_ITEM, PRIVATE_DATA->bluetooth_name);
+				INDIGO_COPY_VALUE(X_CUSTOM_SUFFIX_ITEM->text.value, PRIVATE_DATA->custom_suffix);
+				PRIVATE_DATA->compensation_last_temp = -273.15;
+				indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
+				indigo_execute_handler_in(device, 0.1, focuser_temperature_poll);
+			}
+			//- focuser.on_connect
+		}
+		if (connection_result) {
+			indigo_define_property(device, X_BEEP_ON_POWER_UP_PROPERTY, NULL);
+			indigo_define_property(device, X_BEEP_ON_MOVE_PROPERTY, NULL);
+			indigo_define_property(device, X_BACKLASH_DIRECTION_PROPERTY, NULL);
+			indigo_define_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
+			indigo_define_property(device, X_BLUETOOTH_PROPERTY, NULL);
+			indigo_define_property(device, X_BLUETOOTH_NAME_PROPERTY, NULL);
+			indigo_define_property(device, X_FACTORY_RESET_PROPERTY, NULL);
+			indigo_define_property(device, X_BOARD_TEMPERATURE_PROPERTY, NULL);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
+		} else {
+			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s", device->name);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		indigo_cancel_pending_handlers(device);
+		//+ focuser.on_disconnect
+		int res = AOFocuserStopMove(PRIVATE_DATA->dev_id);
+		if (res != AO_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserStopMove() failed, ret = %d", res);
+		}
+		//- focuser.on_disconnect
+		indigo_delete_property(device, X_BEEP_ON_POWER_UP_PROPERTY, NULL);
+		indigo_delete_property(device, X_BEEP_ON_MOVE_PROPERTY, NULL);
+		indigo_delete_property(device, X_BACKLASH_DIRECTION_PROPERTY, NULL);
+		indigo_delete_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
+		indigo_delete_property(device, X_BLUETOOTH_PROPERTY, NULL);
+		indigo_delete_property(device, X_BLUETOOTH_NAME_PROPERTY, NULL);
+		indigo_delete_property(device, X_FACTORY_RESET_PROPERTY, NULL);
+		indigo_delete_property(device, X_BOARD_TEMPERATURE_PROPERTY, NULL);
+		astroasis_close(device);
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
+static void focuser_reverse_motion_handler(indigo_device *device) {
+	FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_REVERSE_MOTION.on_change
+	if (!astroasis_config(device, MASK_REVERSE_DIRECTION, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value)) {
+		indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->config.reverseDirection ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	//- focuser.FOCUSER_REVERSE_MOTION.on_change
+	indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+}
+
+static void focuser_position_handler(indigo_device *device) {
+	//+ focuser.FOCUSER_POSITION.on_change
+	int target = (int)FOCUSER_POSITION_ITEM->number.target;
+	if (target == PRIVATE_DATA->status.position) {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	} else if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status.position;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		int res = AOFocuserMoveTo(PRIVATE_DATA->dev_id, target);
+		if (res != AO_SUCCESS) {
+			focuser_move_failed(device, res);
+		} else {
+			indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
+		}
+	} else {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status.position;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		int res = AOFocuserSyncPosition(PRIVATE_DATA->dev_id, target);
+		if (res != AO_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to sync Oasis Focuser, ret = %d", res);
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		res = AOFocuserGetStatus(PRIVATE_DATA->dev_id, &PRIVATE_DATA->status);
+		if (res != AO_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetStatus() failed, ret = %d", res);
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status.position;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
+	//- focuser.FOCUSER_POSITION.on_change
+}
+
+static void focuser_limits_handler(indigo_device *device) {
+	FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_LIMITS.on_change
+	int maximum = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+	if (astroasis_config(device, MASK_MAX_STEP, maximum)) {
+		focuser_update_limits(device, maximum);
+	} else {
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+		FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	//- focuser.FOCUSER_LIMITS.on_change
+	indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+}
+
+static void focuser_backlash_handler(indigo_device *device) {
+	FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_BACKLASH.on_change
+	int backlash = (int)FOCUSER_BACKLASH_ITEM->number.target;
+	if (astroasis_config(device, MASK_BACKLASH, backlash)) {
+		FOCUSER_BACKLASH_ITEM->number.value = backlash;
+	} else {
+		FOCUSER_BACKLASH_ITEM->number.target = FOCUSER_BACKLASH_ITEM->number.value;
+		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	//- focuser.FOCUSER_BACKLASH.on_change
+	indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+}
+
+static void focuser_steps_handler(indigo_device *device) {
+	//+ focuser.FOCUSER_STEPS.on_change
+	FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	int step = (int)(FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -FOCUSER_STEPS_ITEM->number.value : FOCUSER_STEPS_ITEM->number.value);
+	int res = AOFocuserMove(PRIVATE_DATA->dev_id, step);
+	if (res != AO_SUCCESS) {
+		focuser_move_failed(device, res);
+	} else {
+		indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
+	}
+	//- focuser.FOCUSER_STEPS.on_change
+}
+
+static void focuser_abort_motion_handler(indigo_device *device) {
+	//+ focuser.FOCUSER_ABORT_MOTION.on_change
+	indigo_cancel_pending_handler(device, focuser_position_handler);
+	indigo_cancel_pending_handler(device, focuser_steps_handler);
+	indigo_cancel_pending_handler(device, focuser_move_finalizer);
+	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	int res = AOFocuserStopMove(PRIVATE_DATA->dev_id);
+	if (res != AO_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to stop Oasis Focuser, ret = %d", res);
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	res = AOFocuserGetStatus(PRIVATE_DATA->dev_id, &PRIVATE_DATA->status);
+	if (res != AO_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get Oasis Focuser status, ret = %d", res);
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status.position;
+	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+	//- focuser.FOCUSER_ABORT_MOTION.on_change
+}
+
+static void focuser_mode_handler(indigo_device *device) {
+	FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_MODE.on_change
+	if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
+		indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
+		indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	} else {
+		indigo_delete_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
+		indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
+	//- focuser.FOCUSER_MODE.on_change
+	indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
+}
+
+static void focuser_x_beep_on_power_up_handler(indigo_device *device) {
+	X_BEEP_ON_POWER_UP_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.X_BEEP_ON_POWER_UP.on_change
+	if (!astroasis_config(device, MASK_BEEP_ON_STARTUP, X_BEEP_ON_POWER_UP_ON_ITEM->sw.value)) {
+		indigo_set_switch(X_BEEP_ON_POWER_UP_PROPERTY, PRIVATE_DATA->config.beepOnStartup ? X_BEEP_ON_POWER_UP_ON_ITEM : X_BEEP_ON_POWER_UP_OFF_ITEM, true);
+		X_BEEP_ON_POWER_UP_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	//- focuser.X_BEEP_ON_POWER_UP.on_change
+	indigo_update_property(device, X_BEEP_ON_POWER_UP_PROPERTY, NULL);
+}
+
+static void focuser_x_beep_on_move_handler(indigo_device *device) {
+	X_BEEP_ON_MOVE_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.X_BEEP_ON_MOVE.on_change
+	if (!astroasis_config(device, MASK_BEEP_ON_MOVE, X_BEEP_ON_MOVE_ON_ITEM->sw.value)) {
+		indigo_set_switch(X_BEEP_ON_MOVE_PROPERTY, PRIVATE_DATA->config.beepOnMove ? X_BEEP_ON_MOVE_ON_ITEM : X_BEEP_ON_MOVE_OFF_ITEM, true);
+		X_BEEP_ON_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	//- focuser.X_BEEP_ON_MOVE.on_change
+	indigo_update_property(device, X_BEEP_ON_MOVE_PROPERTY, NULL);
+}
+
+static void focuser_x_backlash_direction_handler(indigo_device *device) {
+	X_BACKLASH_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.X_BACKLASH_DIRECTION.on_change
+	if (!astroasis_config(device, MASK_BACKLASH_DIRECTION, X_BACKLASH_DIRECTION_OUT_ITEM->sw.value)) {
+		indigo_set_switch(X_BACKLASH_DIRECTION_PROPERTY, PRIVATE_DATA->config.backlashDirection ? X_BACKLASH_DIRECTION_OUT_ITEM : X_BACKLASH_DIRECTION_IN_ITEM, true);
+		X_BACKLASH_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	//- focuser.X_BACKLASH_DIRECTION.on_change
+	indigo_update_property(device, X_BACKLASH_DIRECTION_PROPERTY, NULL);
+}
+
+static void focuser_x_custom_suffix_handler(indigo_device *device) {
+	X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.X_CUSTOM_SUFFIX.on_change
+	if (strlen(X_CUSTOM_SUFFIX_ITEM->text.value) > AO_FOCUSER_NAME_LEN) {
+		INDIGO_COPY_VALUE(X_CUSTOM_SUFFIX_ITEM->text.value, PRIVATE_DATA->custom_suffix);
+		X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Custom suffix is too long");
+		return;
+	}
+	char suffix[AO_FOCUSER_NAME_LEN + 1] = { 0 };
+	snprintf(suffix, sizeof(suffix), "%s", X_CUSTOM_SUFFIX_ITEM->text.value);
+	int res = AOFocuserSetFriendlyName(PRIVATE_DATA->dev_id, suffix);
+	if (res != AO_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set Oasis Focuser custom suffix, ret = %d", res);
+		INDIGO_COPY_VALUE(X_CUSTOM_SUFFIX_ITEM->text.value, PRIVATE_DATA->custom_suffix);
+		X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		snprintf(PRIVATE_DATA->custom_suffix, sizeof(PRIVATE_DATA->custom_suffix), "%s", suffix);
+	}
+	//- focuser.X_CUSTOM_SUFFIX.on_change
+	indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
+}
+
+static void focuser_x_bluetooth_handler(indigo_device *device) {
+	X_BLUETOOTH_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.X_BLUETOOTH.on_change
+	if (!astroasis_config(device, MASK_BLUETOOTH, X_BLUETOOTH_ON_ITEM->sw.value)) {
+		indigo_set_switch(X_BLUETOOTH_PROPERTY, PRIVATE_DATA->config.bluetoothOn ? X_BLUETOOTH_ON_ITEM : X_BLUETOOTH_OFF_ITEM, true);
+		X_BLUETOOTH_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	//- focuser.X_BLUETOOTH.on_change
+	indigo_update_property(device, X_BLUETOOTH_PROPERTY, NULL);
+}
+
+static void focuser_x_bluetooth_name_handler(indigo_device *device) {
+	X_BLUETOOTH_NAME_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.X_BLUETOOTH_NAME.on_change
+	if (strlen(X_BLUETOOTH_NAME_ITEM->text.value) > AO_FOCUSER_NAME_LEN) {
+		INDIGO_COPY_VALUE(X_BLUETOOTH_NAME_ITEM->text.value, PRIVATE_DATA->bluetooth_name);
+		X_BLUETOOTH_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_BLUETOOTH_NAME_PROPERTY, "Bluetooth name is too long");
+		return;
+	}
+	char bluetooth_name[AO_FOCUSER_NAME_LEN + 1] = { 0 };
+	snprintf(bluetooth_name, sizeof(bluetooth_name), "%s", X_BLUETOOTH_NAME_ITEM->text.value);
+	int res = AOFocuserSetBluetoothName(PRIVATE_DATA->dev_id, bluetooth_name);
+	if (res != AO_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set the Bluetooth name for the Oasis Focuser, ret = %d", res);
+		INDIGO_COPY_VALUE(X_BLUETOOTH_NAME_ITEM->text.value, PRIVATE_DATA->bluetooth_name);
+		X_BLUETOOTH_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		snprintf(PRIVATE_DATA->bluetooth_name, sizeof(PRIVATE_DATA->bluetooth_name), "%s", bluetooth_name);
+	}
+	//- focuser.X_BLUETOOTH_NAME.on_change
+	indigo_update_property(device, X_BLUETOOTH_NAME_PROPERTY, NULL);
+}
+
+static void focuser_x_factory_reset_handler(indigo_device *device) {
+	X_FACTORY_RESET_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.X_FACTORY_RESET.on_change
+	if (X_FACTORY_RESET_ITEM->sw.value) {
+		X_FACTORY_RESET_ITEM->sw.value = false;
+		int res = AOFocuserFactoryReset(PRIVATE_DATA->dev_id);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AOFocuserFactoryReset(%d) = %d", PRIVATE_DATA->dev_id, res);
+		if (res != AO_SUCCESS) {
+			X_FACTORY_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_FACTORY_RESET_PROPERTY, "Factory reset failed");
+		} else {
+			indigo_update_property(device, X_FACTORY_RESET_PROPERTY, "Factory reset completed");
+		}
+		return;
+	}
+	//- focuser.X_FACTORY_RESET.on_change
+	indigo_update_property(device, X_FACTORY_RESET_PROPERTY, NULL);
+}
+
+#pragma mark - Device API (focuser)
+
+static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
 static indigo_result focuser_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(PRIVATE_DATA != NULL);
-
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		//+ focuser.on_attach
 		INFO_PROPERTY->count = 7;
-
 		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
 		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware_version);
 		INDIGO_COPY_VALUE(INFO_DEVICE_HW_REVISION_ITEM->text.value, PRIVATE_DATA->sdk_version);
 		INDIGO_COPY_VALUE(INFO_DEVICE_HW_REVISION_ITEM->label, "SDK version");
-
-		FOCUSER_LIMITS_PROPERTY->hidden = false;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = 0;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 0x7fffffff;
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = 0;
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = 0;
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 0;
-
 		FOCUSER_SPEED_PROPERTY->hidden = true;
-
-		FOCUSER_BACKLASH_PROPERTY->hidden = false;
 		FOCUSER_BACKLASH_ITEM->number.min = 0;
 		FOCUSER_BACKLASH_ITEM->number.max = 10000;
 		FOCUSER_BACKLASH_ITEM->number.step = 1;
-
 		FOCUSER_POSITION_ITEM->number.min = 0;
 		FOCUSER_POSITION_ITEM->number.step = 1;
 		FOCUSER_POSITION_ITEM->number.max = PRIVATE_DATA->config.maxStep;
-
 		FOCUSER_STEPS_ITEM->number.min = 0;
 		FOCUSER_STEPS_ITEM->number.step = 1;
 		FOCUSER_STEPS_ITEM->number.max = PRIVATE_DATA->config.maxStep;
-
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
-		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
-
-		// FOCUSER_COMPENSATION
-		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
 		FOCUSER_COMPENSATION_ITEM->number.min = -10000;
 		FOCUSER_COMPENSATION_ITEM->number.max = 10000;
 		FOCUSER_COMPENSATION_PROPERTY->count = 2;
-
-		// FOCUSER_MODE
-		FOCUSER_MODE_PROPERTY->hidden = false;
-
-		// BEEP_ON_POWER_UP_PROPERTY
-		BEEP_ON_POWER_UP_PROPERTY = indigo_init_switch_property(NULL, device->name, BEEP_ON_POWER_UP_PROPERTY_NAME, "Advanced", "Beep on power up", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (BEEP_ON_POWER_UP_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
-
-		indigo_init_switch_item(BEEP_ON_POWER_UP_ON_ITEM, BEEP_ON_POWER_UP_ON_ITEM_NAME, "On", false);
-		indigo_init_switch_item(BEEP_ON_POWER_UP_OFF_ITEM, BEEP_ON_POWER_UP_OFF_ITEM_NAME, "Off", true);
-
-		// BEEP_ON_MOVE_PROPERTY
-		BEEP_ON_MOVE_PROPERTY = indigo_init_switch_property(NULL, device->name, BEEP_ON_MOVE_PROPERTY_NAME, "Advanced", "Beep on move", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (BEEP_ON_MOVE_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
-
-		indigo_init_switch_item(BEEP_ON_MOVE_ON_ITEM, BEEP_ON_MOVE_ON_ITEM_NAME, "On", false);
-		indigo_init_switch_item(BEEP_ON_MOVE_OFF_ITEM, BEEP_ON_MOVE_OFF_ITEM_NAME, "Off", true);
-
-		// BACKLASH_DIRECTION_PROPERTY
-		BACKLASH_DIRECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, BACKLASH_DIRECTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Backlash compensation overshot direction", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (BACKLASH_DIRECTION_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
-
-		indigo_init_switch_item(BACKLASH_DIRECTION_IN_ITEM, BACKLASH_DIRECTION_IN_ITEM_NAME, "Inward", false);
-		indigo_init_switch_item(BACKLASH_DIRECTION_OUT_ITEM, BACKLASH_DIRECTION_OUT_ITEM_NAME, "Outward", true);
-
-		// CUSTOM_SUFFIX_PROPERTY
-		CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, CUSTOM_SUFFIX_PROPERTY_NAME, "Advanced", "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (CUSTOM_SUFFIX_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
-		indigo_init_text_item(CUSTOM_SUFFIX_ITEM, CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->custom_suffix);
-
-		// BLUETOOTH_PROPERTY
-		BLUETOOTH_PROPERTY = indigo_init_switch_property(NULL, device->name, BLUETOOTH_PROPERTY_NAME, "Advanced", "Bluetooth", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (BLUETOOTH_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
-		indigo_init_switch_item(BLUETOOTH_ON_ITEM, BLUETOOTH_ON_ITEM_NAME, "Enabled", false);
-		indigo_init_switch_item(BLUETOOTH_OFF_ITEM, BLUETOOTH_OFF_ITEM_NAME, "Disabled", true);
-
-		// BLUETOOTH_NAME_PROPERTY
-		BLUETOOTH_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, BLUETOOTH_NAME_PROPERTY_NAME, "Advanced", "Bluetooth name", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (BLUETOOTH_NAME_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
-		indigo_init_text_item(BLUETOOTH_NAME_ITEM, BLUETOOTH_NAME_NAME, "Bluetooth name", PRIVATE_DATA->bluetooth_name);
-
-		// FACTORY_RESET_PROPERTY
-		FACTORY_RESET_PROPERTY = indigo_init_switch_property(NULL, device->name, FACTORY_RESET_PROPERTY_NAME, "Advanced", "Factory reset", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-		if (FACTORY_RESET_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
-		indigo_init_switch_item(FACTORY_RESET_ITEM, FACTORY_RESET_ITEM_NAME, "Reset", false);
-		sprintf(FACTORY_RESET_ITEM->hints, "warn_on_set:\"Confirm focuser factory reset?\";");
-
-		// FOCUSER_TEMPERATURE and FOCUSER_TEMPERATURE_BOARD
-		FOCUSER_TEMPERATURE_BOARD_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_TEMPERATURE_BOARD_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Temperature 1 (Board)", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
-		FOCUSER_TEMPERATURE_BOARD_PROPERTY->hidden = false;
-		indigo_init_number_item(FOCUSER_TEMPERATURE_BOARD_ITEM, "Internal Temp.", "Temperature (°C)", -50, 50, 1, 0);
 		INDIGO_COPY_VALUE(FOCUSER_TEMPERATURE_PROPERTY->label, "Temperature 2 (Ambient)");
-
+		//- focuser.on_attach
+		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
+		FOCUSER_POSITION_PROPERTY->hidden = false;
+		FOCUSER_LIMITS_PROPERTY->hidden = false;
+		FOCUSER_BACKLASH_PROPERTY->hidden = false;
+		FOCUSER_STEPS_PROPERTY->hidden = false;
+		FOCUSER_ABORT_MOTION_PROPERTY->hidden = false;
+		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+		FOCUSER_MODE_PROPERTY->hidden = false;
+		X_BEEP_ON_POWER_UP_PROPERTY = indigo_init_switch_property(NULL, device->name, X_BEEP_ON_POWER_UP_PROPERTY_NAME, "Advanced", "Beep on power up", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_BEEP_ON_POWER_UP_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(X_BEEP_ON_POWER_UP_ON_ITEM, X_BEEP_ON_POWER_UP_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(X_BEEP_ON_POWER_UP_OFF_ITEM, X_BEEP_ON_POWER_UP_OFF_ITEM_NAME, "Off", true);
+		X_BEEP_ON_MOVE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_BEEP_ON_MOVE_PROPERTY_NAME, "Advanced", "Beep on move", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_BEEP_ON_MOVE_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(X_BEEP_ON_MOVE_ON_ITEM, X_BEEP_ON_MOVE_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(X_BEEP_ON_MOVE_OFF_ITEM, X_BEEP_ON_MOVE_OFF_ITEM_NAME, "Off", true);
+		X_BACKLASH_DIRECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, X_BACKLASH_DIRECTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Backlash compensation overshot direction", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_BACKLASH_DIRECTION_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(X_BACKLASH_DIRECTION_IN_ITEM, X_BACKLASH_DIRECTION_IN_ITEM_NAME, "Inward", false);
+		indigo_init_switch_item(X_BACKLASH_DIRECTION_OUT_ITEM, X_BACKLASH_DIRECTION_OUT_ITEM_NAME, "Outward", true);
+		X_CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, X_CUSTOM_SUFFIX_PROPERTY_NAME, "Advanced", "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (X_CUSTOM_SUFFIX_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_text_item(X_CUSTOM_SUFFIX_ITEM, X_CUSTOM_SUFFIX_ITEM_NAME, "Suffix", PRIVATE_DATA->custom_suffix);
+		X_BLUETOOTH_PROPERTY = indigo_init_switch_property(NULL, device->name, X_BLUETOOTH_PROPERTY_NAME, "Advanced", "Bluetooth", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_BLUETOOTH_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(X_BLUETOOTH_ON_ITEM, X_BLUETOOTH_ON_ITEM_NAME, "Enabled", false);
+		indigo_init_switch_item(X_BLUETOOTH_OFF_ITEM, X_BLUETOOTH_OFF_ITEM_NAME, "Disabled", true);
+		X_BLUETOOTH_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, X_BLUETOOTH_NAME_PROPERTY_NAME, "Advanced", "Bluetooth name", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (X_BLUETOOTH_NAME_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_text_item(X_BLUETOOTH_NAME_ITEM, X_BLUETOOTH_NAME_ITEM_NAME, "Bluetooth name", PRIVATE_DATA->bluetooth_name);
+		X_FACTORY_RESET_PROPERTY = indigo_init_switch_property(NULL, device->name, X_FACTORY_RESET_PROPERTY_NAME, "Advanced", "Factory reset", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		if (X_FACTORY_RESET_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(X_FACTORY_RESET_ITEM, X_FACTORY_RESET_ITEM_NAME, "Reset", false);
+		//+ focuser.X_FACTORY_RESET.on_attach
+		INDIGO_COPY_VALUE(X_FACTORY_RESET_ITEM->hints, "warn_on_set:\"Confirm focuser factory reset?\";");
+		//- focuser.X_FACTORY_RESET.on_attach
+		X_BOARD_TEMPERATURE_PROPERTY = indigo_init_number_property(NULL, device->name, X_BOARD_TEMPERATURE_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Temperature 1 (Board)", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+		if (X_BOARD_TEMPERATURE_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(X_BOARD_TEMPERATURE_ITEM, X_BOARD_TEMPERATURE_ITEM_NAME, "Temperature (°C)", -50, 50, 1, 0);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
 
-static void focuser_connect_callback(indigo_device *device) {
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (indigo_try_global_lock(device) != INDIGO_OK) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		} else {
-			AOReturn ret = AOFocuserOpen(PRIVATE_DATA->dev_id);
-
-			if (ret != AO_SUCCESS) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserOpen() failed, ret = %d", ret);
-			} else {
-				ret = AOFocuserGetConfig(PRIVATE_DATA->dev_id, &PRIVATE_DATA->config);
-
-				if (ret != AO_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetConfig() failed, ret = %d", ret);
-				}
-			}
-
-			if (ret == AO_SUCCESS) {
-				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->config.maxStep;
-				FOCUSER_BACKLASH_ITEM->number.value = (double)PRIVATE_DATA->config.backlash;
-				FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value = PRIVATE_DATA->config.reverseDirection ? true : false;
-				FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
-
-				BEEP_ON_POWER_UP_ON_ITEM->sw.value = PRIVATE_DATA->config.beepOnStartup ? true : false;;
-				BEEP_ON_POWER_UP_OFF_ITEM->sw.value = !BEEP_ON_POWER_UP_ON_ITEM->sw.value;
-
-				BEEP_ON_MOVE_ON_ITEM->sw.value = PRIVATE_DATA->config.beepOnMove ? true : false;;
-				BEEP_ON_MOVE_OFF_ITEM->sw.value = !BEEP_ON_MOVE_ON_ITEM->sw.value;
-
-				BACKLASH_DIRECTION_IN_ITEM->sw.value = PRIVATE_DATA->config.backlashDirection ? false : true;;
-				BACKLASH_DIRECTION_OUT_ITEM->sw.value = !BACKLASH_DIRECTION_IN_ITEM->sw.value;
-
-				int res = AOFocuserGetConfig(PRIVATE_DATA->dev_id, &PRIVATE_DATA->config);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AOFocuserGetConfig(%d, -> .speed = %d .bluetoothOn = %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->config.speed, PRIVATE_DATA->config.bluetoothOn, res);
-				BLUETOOTH_ON_ITEM->sw.value = PRIVATE_DATA->config.bluetoothOn ? true : false;;
-				BLUETOOTH_OFF_ITEM->sw.value = !BLUETOOTH_ON_ITEM->sw.value;
-
-				res = AOFocuserGetBluetoothName(PRIVATE_DATA->dev_id, PRIVATE_DATA->bluetooth_name);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AOFocuserGetBluetoothName(%d, -> \"%s\") = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->bluetooth_name, res);
-				indigo_set_text_item_value(BLUETOOTH_NAME_ITEM, PRIVATE_DATA->bluetooth_name);
-
-				indigo_define_property(device, BEEP_ON_POWER_UP_PROPERTY, NULL);
-				indigo_define_property(device, BEEP_ON_MOVE_PROPERTY, NULL);
-				indigo_define_property(device, BACKLASH_DIRECTION_PROPERTY, NULL);
-				indigo_define_property(device, CUSTOM_SUFFIX_PROPERTY, NULL);
-				indigo_define_property(device, BLUETOOTH_PROPERTY, NULL);
-				indigo_define_property(device, BLUETOOTH_NAME_PROPERTY, NULL);
-				indigo_define_property(device, FACTORY_RESET_PROPERTY, NULL);
-				indigo_define_property(device, FOCUSER_TEMPERATURE_BOARD_PROPERTY, NULL);
-
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-
-				PRIVATE_DATA->compensation_last_temp = -273.15;  /* we do not have previous temperature reading */
-				indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
-				indigo_set_timer(device, 0.1, temperature_timer_callback, &PRIVATE_DATA->temperature_timer);
-			} else {
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			}
-		}
-	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
-
-		indigo_delete_property(device, BEEP_ON_POWER_UP_PROPERTY, NULL);
-		indigo_delete_property(device, BEEP_ON_MOVE_PROPERTY, NULL);
-		indigo_delete_property(device, BACKLASH_DIRECTION_PROPERTY, NULL);
-		indigo_delete_property(device, CUSTOM_SUFFIX_PROPERTY, NULL);
-		indigo_delete_property(device, BLUETOOTH_PROPERTY, NULL);
-		indigo_delete_property(device, BLUETOOTH_NAME_PROPERTY, NULL);
-		indigo_delete_property(device, FACTORY_RESET_PROPERTY, NULL);
-		indigo_delete_property(device, FOCUSER_TEMPERATURE_BOARD_PROPERTY, NULL);
-
-		AOReturn ret = AOFocuserStopMove(PRIVATE_DATA->dev_id);
-		if (ret != AO_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserStopMove() failed, ret = %d", ret);
-		}
-
-		AOFocuserClose(PRIVATE_DATA->dev_id);
-
-		indigo_global_unlock(device);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (IS_CONNECTED) {
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_BEEP_ON_POWER_UP_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_BEEP_ON_MOVE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_BACKLASH_DIRECTION_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_CUSTOM_SUFFIX_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_BLUETOOTH_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_BLUETOOTH_NAME_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_FACTORY_RESET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_BOARD_TEMPERATURE_PROPERTY);
 	}
-	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+	return indigo_focuser_enumerate_properties(device, client, property);
 }
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
-
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		// CONNECTION
-		if (indigo_ignore_connection_change(device, property))
-			return INDIGO_OK;
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, focuser_connect_callback, NULL);
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, focuser_connection_handler, &driver_queue_mutex);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
-		// FOCUSER_REVERSE_MOTION
-		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
-
-		if (focuser_config(device, MASK_REVERSE_DIRECTION, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value)) {
-			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-
-		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
-
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_REVERSE_MOTION_PROPERTY, focuser_reverse_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-		// FOCUSER_POSITION
-		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
-		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-			return INDIGO_OK;
-		}
-		if (FOCUSER_POSITION_ITEM->number.target < 0 || FOCUSER_POSITION_ITEM->number.target > FOCUSER_POSITION_ITEM->number.max) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else if (FOCUSER_POSITION_ITEM->number.target == PRIVATE_DATA->status.position) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status.position;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-
-			if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
-				/* Goto position */
-				AOReturn ret = AOFocuserMoveTo(PRIVATE_DATA->dev_id, (int)FOCUSER_POSITION_ITEM->number.target);
-
-				if (ret != AO_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to move Oasis Focuser, ret = %d\n", ret);
-				}
-
-				indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
-			} else {
-				/* Sync position */
-				AOReturn ret;
-
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-
-				ret = AOFocuserSyncPosition(PRIVATE_DATA->dev_id, (int)FOCUSER_POSITION_ITEM->number.target);
-
-				if (ret != AO_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to sync Oasis Focuser, ret = %d\n", ret);
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-
-				ret = AOFocuserGetStatus(PRIVATE_DATA->dev_id, &PRIVATE_DATA->status);
-
-				if (ret != AO_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetStatus() failed, ret = %d", ret);
-
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-
-				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status.position;
-
-				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			}
-		}
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
-		// FOCUSER_LIMITS
-		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
-
-		int max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
-
-		if (focuser_config(device, MASK_MAX_STEP, max_position)) {
-			FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = max_position;
-		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_LIMITS_PROPERTY, focuser_limits_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_BACKLASH_PROPERTY, property)) {
-		// FOCUSER_BACKLASH
-		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
-
-		int backlash = (int)FOCUSER_BACKLASH_ITEM->number.target;
-
-		if (focuser_config(device, MASK_BACKLASH, backlash)) {
-			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-
-		FOCUSER_BACKLASH_ITEM->number.value = backlash;
-		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_BACKLASH_PROPERTY, focuser_backlash_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		// FOCUSER_STEPS
-		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			return INDIGO_OK;
-		}
-		if (FOCUSER_STEPS_ITEM->number.value < 0 || FOCUSER_STEPS_ITEM->number.value > FOCUSER_STEPS_ITEM->number.max) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else {
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-
-			int step = (int)((FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) ? (-FOCUSER_STEPS_ITEM->number.value) : FOCUSER_STEPS_ITEM->number.value);
-			AOReturn ret = AOFocuserMove(PRIVATE_DATA->dev_id, step);
-
-			if (ret != AO_SUCCESS) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to move Oasis Focuser, ret = %d\n", ret);
-			}
-
-			indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		// FOCUSER_ABORT_MOTION
-		AOReturn ret;
-
-		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-
-		indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
-
-		ret = AOFocuserStopMove(PRIVATE_DATA->dev_id);
-
-		if (ret != AO_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to stop Oasis Focuser, ret = %d\n", ret);
-			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-
-		ret = AOFocuserGetStatus(PRIVATE_DATA->dev_id, &PRIVATE_DATA->status);
-
-		if (ret != AO_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get Oasis Focuser status, ret = %d\n", ret);
-			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-
-		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status.position;
-		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_COMPENSATION_PROPERTY, property)) {
-		// FOCUSER_COMPENSATION_PROPERTY
 		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(BEEP_ON_POWER_UP_PROPERTY, property)) {
-		// BEEP_ON_POWER_UP_PROPERTY
-		indigo_property_copy_values(BEEP_ON_POWER_UP_PROPERTY, property, false);
-
-		if (focuser_config(device, MASK_BEEP_ON_STARTUP, BEEP_ON_POWER_UP_ON_ITEM->sw.value)) {
-			BEEP_ON_POWER_UP_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			BEEP_ON_POWER_UP_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-
-		indigo_update_property(device, BEEP_ON_POWER_UP_PROPERTY, NULL);
-
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(BEEP_ON_MOVE_PROPERTY, property)) {
-		// BEEP_ON_MOVE_PROPERTY
-		indigo_property_copy_values(BEEP_ON_MOVE_PROPERTY, property, false);
-
-		if (focuser_config(device, MASK_BEEP_ON_MOVE, BEEP_ON_MOVE_ON_ITEM->sw.value)) {
-			BEEP_ON_MOVE_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			BEEP_ON_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-
-		indigo_update_property(device, BEEP_ON_MOVE_PROPERTY, NULL);
-
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(BACKLASH_DIRECTION_PROPERTY, property)) {
-		// BACKLASH_DIRECTION_PROPERTY
-		indigo_property_copy_values(BACKLASH_DIRECTION_PROPERTY, property, false);
-
-		if (focuser_config(device, MASK_BACKLASH_DIRECTION, BACKLASH_DIRECTION_OUT_ITEM->sw.value)) {
-			BACKLASH_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			BACKLASH_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-
-		indigo_update_property(device, BACKLASH_DIRECTION_PROPERTY, NULL);
-
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(CUSTOM_SUFFIX_PROPERTY, property)) {
-		// CUSTOM_SUFFIX_PROPERTY
-		indigo_property_copy_values(CUSTOM_SUFFIX_PROPERTY, property, false);
-
-		if (strlen(CUSTOM_SUFFIX_ITEM->text.value) > AO_FOCUSER_VERSION_LEN) {
-			CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CUSTOM_SUFFIX_PROPERTY, "Custom suffix is too long");
-			return INDIGO_OK;
-		}
-
-		strcpy(PRIVATE_DATA->custom_suffix, CUSTOM_SUFFIX_ITEM->text.value);
-
-		AOReturn ret = AOFocuserSetFriendlyName(PRIVATE_DATA->dev_id, PRIVATE_DATA->custom_suffix);
-
-		if (ret == AO_SUCCESS) {
-			CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set Oasis Focuser custom suffix, ret = %d\n", ret);
-			CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-
-		indigo_update_property(device, CUSTOM_SUFFIX_PROPERTY, NULL);
-
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(BLUETOOTH_PROPERTY, property)) {
-		// BLUETOOTH_PROPERTY
-		indigo_property_copy_values(BLUETOOTH_PROPERTY, property, false);
-
-		if (focuser_config(device, MASK_BLUETOOTH, BLUETOOTH_ON_ITEM->sw.value)) {
-			BLUETOOTH_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			BLUETOOTH_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-
-		indigo_update_property(device, BLUETOOTH_PROPERTY, NULL);
-
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(BLUETOOTH_NAME_PROPERTY, property)) {
-		// BLUETOOTH_NAME_PROPERTY
-		indigo_property_copy_values(BLUETOOTH_NAME_PROPERTY, property, false);
-
-		if (strlen(BLUETOOTH_NAME_ITEM->text.value) > AO_FOCUSER_VERSION_LEN) {
-			BLUETOOTH_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, BLUETOOTH_NAME_PROPERTY, "Bluetooth name is too long");
-			return INDIGO_OK;
-		}
-
-		strcpy(PRIVATE_DATA->bluetooth_name, BLUETOOTH_NAME_ITEM->text.value);
-
-		AOReturn ret = AOFocuserSetBluetoothName(PRIVATE_DATA->dev_id, PRIVATE_DATA->bluetooth_name);
-
-		if (ret == AO_SUCCESS) {
-			BLUETOOTH_NAME_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set the Bluetooth name for the Oasis Focuser, ret = %d\n", ret);
-			BLUETOOTH_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-
-		indigo_update_property(device, BLUETOOTH_NAME_PROPERTY, NULL);
-
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FACTORY_RESET_PROPERTY, property)) {
-		// FACTORY_RESET_PROPERTY
-		indigo_property_copy_values(FACTORY_RESET_PROPERTY, property, false);
-		if (FACTORY_RESET_ITEM->sw.value) {
-			FACTORY_RESET_ITEM->sw.value = false;
-			FACTORY_RESET_PROPERTY->state = INDIGO_BUSY_STATE;
-			int res = AOFocuserFactoryReset(PRIVATE_DATA->dev_id);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AOFocuserFactoryReset(%d) = %d", PRIVATE_DATA->dev_id, res);
-			if (res == AO_SUCCESS) {
-				FACTORY_RESET_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, FACTORY_RESET_PROPERTY, "Factory reset completed");
-			} else {
-				FACTORY_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, FACTORY_RESET_PROPERTY, "Factory reset failed");
-			}
-		}
-		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
-		// FOCUSER_MODE
-		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
-		if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
-			indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
-			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else {
-			indigo_delete_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
-			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		}
-		FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_MODE_PROPERTY, focuser_mode_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_BEEP_ON_POWER_UP_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_BEEP_ON_POWER_UP_PROPERTY, focuser_x_beep_on_power_up_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_BEEP_ON_MOVE_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_BEEP_ON_MOVE_PROPERTY, focuser_x_beep_on_move_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_BACKLASH_DIRECTION_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_BACKLASH_DIRECTION_PROPERTY, focuser_x_backlash_direction_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_CUSTOM_SUFFIX_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_CUSTOM_SUFFIX_PROPERTY, focuser_x_custom_suffix_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_BLUETOOTH_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_BLUETOOTH_PROPERTY, focuser_x_bluetooth_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_BLUETOOTH_NAME_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_BLUETOOTH_NAME_PROPERTY, focuser_x_bluetooth_name_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_FACTORY_RESET_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FACTORY_RESET_PROPERTY, focuser_x_factory_reset_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-		// CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			indigo_save_property(device, NULL, BEEP_ON_MOVE_PROPERTY);
+			indigo_save_property(device, NULL, X_BEEP_ON_MOVE_PROPERTY);
 		}
 	}
 	return indigo_focuser_change_property(device, client, property);
 }
 
 static indigo_result focuser_detach(indigo_device *device) {
-	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		focuser_connect_callback(device);
+		focuser_connection_handler(device);
 	}
-	indigo_release_property(BEEP_ON_POWER_UP_PROPERTY);
-	indigo_release_property(BEEP_ON_MOVE_PROPERTY);
-	indigo_release_property(BACKLASH_DIRECTION_PROPERTY);
-	indigo_release_property(CUSTOM_SUFFIX_PROPERTY);
-	indigo_release_property(BLUETOOTH_PROPERTY);
-	indigo_release_property(BLUETOOTH_NAME_PROPERTY);
-	indigo_release_property(FACTORY_RESET_PROPERTY);
-	indigo_release_property(FOCUSER_TEMPERATURE_BOARD_PROPERTY);
+	indigo_release_property(X_BEEP_ON_POWER_UP_PROPERTY);
+	indigo_release_property(X_BEEP_ON_MOVE_PROPERTY);
+	indigo_release_property(X_BACKLASH_DIRECTION_PROPERTY);
+	indigo_release_property(X_CUSTOM_SUFFIX_PROPERTY);
+	indigo_release_property(X_BLUETOOTH_PROPERTY);
+	indigo_release_property(X_BLUETOOTH_NAME_PROPERTY);
+	indigo_release_property(X_FACTORY_RESET_PROPERTY);
+	indigo_release_property(X_BOARD_TEMPERATURE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
 
-// hot-plug support
+#pragma mark - Device templates
 
-typedef struct _FOCUSER_LIST {
-	indigo_device *device[AO_FOCUSER_MAX_NUM];
-	int count;
-} FOCUSER_LIST;
+static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(FOCUSER_DEVICE_NAME, focuser_attach, focuser_enumerate_properties, focuser_change_property, NULL, focuser_detach);
 
-static FOCUSER_LIST gFocusers = { {}, 0 };
+#pragma mark - Hot-plug code
 
-static int focuser_get_index(int id) {
-	int i;
+static indigo_device *devices[MAX_DEVICES];
 
-	for (i = 0; i < gFocusers.count; i++) {
-		indigo_device *device = gFocusers.device[i];
-
-		if (device && (PRIVATE_DATA->dev_id == id))
-			return i;
+static indigo_result verify_devices_disconnected(void) {
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		VERIFY_NOT_CONNECTED(devices[i]);
 	}
-
-	return -1;
+	return INDIGO_OK;
 }
 
-static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
+#define SDK_DISCOVERY_RETRIES (6)
+typedef struct sdk_discovery_retry {
+	libusb_device *dev;
+	int remaining;
+	bool active, queued;
+	struct sdk_discovery_retry *next;
+} sdk_discovery_retry;
 
-static indigo_device *focuser_create(int id) {
-	AOFocuserVersion version;
-	AOFocuserConfig config;
-	char model[AO_FOCUSER_NAME_LEN + 1];
-	char custom_suffix[AO_FOCUSER_NAME_LEN + 1];
-	char bluetooth_name[AO_FOCUSER_NAME_LEN + 1];
-	indigo_device *device = NULL;
+static sdk_discovery_retry *sdk_discovery_retries;
+static bool sdk_discovery_stopping;
+static void process_plug_event_handler(indigo_device *device, void *data);
+static void process_sdk_retry_handler(indigo_device *device, void *data);
 
-	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
-		"",
-		focuser_attach,
-		focuser_enumerate_properties,
-		focuser_change_property,
-		NULL,
-		focuser_detach
-		);
-
-	AOReturn ret = AOFocuserOpen(id);
-	if (ret != AO_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserOpen() failed, ret = %d", ret);
-		return NULL;
+static void update_sdk_discovery_retry(libusb_device *dev, bool retry) {
+	sdk_discovery_retry *entry = sdk_discovery_retries;
+	while (entry && entry->dev != dev) {
+		entry = entry->next;
 	}
-
-	ret = AOFocuserGetVersion(id, &version);
-	if (ret != AO_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetVersion() failed, ret = %d", ret);
-		goto out;
+	if (!retry || sdk_discovery_stopping) {
+		if (entry) {
+			entry->active = false;
+		}
+		return;
 	}
-
-	ret = AOFocuserGetProductModel(id, model);
-	if (ret != AO_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetProductModel() failed, ret = %d", ret);
-		goto out;
+	if (!entry && SDK_DISCOVERY_RETRIES <= 0) {
+		return;
 	}
-
-	ret = AOFocuserGetFriendlyName(id, custom_suffix);
-	if (ret != AO_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetFriendlyName() failed, ret = %d", ret);
-		goto out;
+	if (!entry) {
+		entry = (sdk_discovery_retry *)indigo_safe_malloc(sizeof(*entry));
+		entry->dev = libusb_ref_device(dev);
+		entry->remaining = SDK_DISCOVERY_RETRIES;
+		entry->active = true;
+		entry->next = sdk_discovery_retries;
+		sdk_discovery_retries = entry;
 	}
-
-	ret = AOFocuserGetBluetoothName(id, bluetooth_name);
-	if (ret != AO_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetBluetoothName() failed, ret = %d", ret);
-		goto out;
+	if (entry->active && !entry->queued && entry->remaining > 0) {
+		entry->remaining--;
+		entry->queued = true;
+		indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0.5, process_sdk_retry_handler, entry, &driver_queue_mutex);
 	}
-
-	ret = AOFocuserGetConfig(id, &config);
-	if (ret != AO_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetConfig() failed, ret = %d", ret);
-		goto out;
-	}
-
-	device = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
-
-	astroasis_private_data *private_data = indigo_safe_malloc(sizeof(astroasis_private_data));
-
-	private_data->dev_id = id;
-
-	AOFocuserGetSDKVersion(private_data->sdk_version);
-
-	sprintf(private_data->firmware_version, "%d.%d.%d", version.firmware >> 24, (version.firmware & 0x00FF0000) >> 16, (version.firmware & 0x0000FF00) >> 8);
-
-	strcpy(private_data->model, model);
-	strcpy(private_data->custom_suffix, custom_suffix);
-	strcpy(private_data->bluetooth_name, bluetooth_name);
-
-	if (strlen(private_data->custom_suffix) > 0) {
-		sprintf(device->name, "%s #%s", "Oasis Focuser", private_data->custom_suffix);
-	} else {
-		sprintf(device->name, "%s", "Oasis Focuser");
-	}
-
-	memcpy(&private_data->config, &config, sizeof(AOFocuserConfig));
-	private_data->has_temperature_sensor = true;
-
-	device->private_data = private_data;
-
-	indigo_make_name_unique(device->name, "%d", id);
-
-	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-
-	indigo_attach_device(device);
-
-out:
-	AOFocuserClose(id);
-
-	return device;
 }
 
-static void focuser_refresh(void) {
-	FOCUSER_LIST focusers = { {}, 0 };
-	int number, ids[AO_FOCUSER_MAX_NUM];
-	int i;
+static void process_sdk_retry_handler(indigo_device *device, void *data) {
+	sdk_discovery_retry *entry = (sdk_discovery_retry *)data;
+	entry->queued = false;
+	if (entry->active && !sdk_discovery_stopping) {
+		process_plug_event_handler(NULL, libusb_ref_device(entry->dev));
+	}
+	if (!entry->queued) {
+		sdk_discovery_retry **link = &sdk_discovery_retries;
+		while (*link != entry) {
+			link = &(*link)->next;
+		}
+		*link = entry->next;
+		libusb_unref_device(entry->dev);
+		indigo_safe_free(entry);
+	}
+}
 
-	pthread_mutex_lock(&indigo_device_enumeration_mutex);
-
-	AOFocuserScan(&number, ids);
-	for (i = 0; i < number; i++) {
-		int pos = focuser_get_index(ids[i]);
-
-		if (pos == -1) {
-			// This focuser is not found in previous scan. Create focuser device instance for it
-			focusers.device[focusers.count] = focuser_create(ids[i]);
-			focusers.count += focusers.device[focusers.count] ? 1 : 0;
-		} else {
-			// This focuser is found in previous scan
-			focusers.device[focusers.count] = gFocusers.device[pos];
-			focusers.count++;
-
-			gFocusers.device[pos] = 0;
+static void clear_sdk_discovery_retries(void) {
+	while (sdk_discovery_retries) {
+		sdk_discovery_retry *entry = sdk_discovery_retries;
+		sdk_discovery_retries = entry->next;
+		libusb_unref_device(entry->dev);
+		indigo_safe_free(entry);
+	}
+}
+static void process_plug_event_handler(indigo_device *device, void *data) {
+	indigo_set_handler_max_run_time(1);
+	libusb_device *dev = (libusb_device *)data;
+	if (sdk_discovery_stopping) {
+		libusb_unref_device(dev);
+		return;
+	}
+	bool dev_ref_transferred = false;
+	astroasis_private_data *private_data = NULL;
+	bool plug_result = true;
+	char name[INDIGO_NAME_SIZE] = DRIVER_LABEL;
+	private_data = (astroasis_private_data *)indigo_safe_malloc(sizeof(astroasis_private_data));
+	private_data->usbdev = dev;
+	struct libusb_device_descriptor descriptor;
+	if (!(libusb_get_device_descriptor(dev, &descriptor) == LIBUSB_SUCCESS && descriptor.idVendor == ASTROASIS_VENDOR_ID && descriptor.idProduct == ASTROASIS_PRODUCT_FOCUSER_ID)) {
+		plug_result = false;
+	}
+	bool discovery_eligible = plug_result;
+	if (plug_result) {
+		//+ sdk.plug
+		plug_result = false;
+		bool duplicate = false;
+		for (int slot = 0; slot < MAX_DEVICES; slot++) {
+			if (devices[slot] != NULL && ((astroasis_private_data *)devices[slot]->private_data)->usbdev == dev) {
+				duplicate = true;
+				break;
+			}
+		}
+		int number = 0, ids[AO_FOCUSER_MAX_NUM] = { 0 };
+		if (!duplicate && AOFocuserScan(&number, ids) == AO_SUCCESS && number >= 0 && number <= AO_FOCUSER_MAX_NUM) {
+			for (int index = 0; index < number && !plug_result; index++) {
+				int id = ids[index];
+				bool attached = false;
+				for (int slot = 0; slot < MAX_DEVICES; slot++) {
+					if (devices[slot] != NULL && ((astroasis_private_data *)devices[slot]->private_data)->dev_id == id) {
+						attached = true;
+						break;
+					}
+				}
+				if (attached) {
+					continue;
+				}
+				int res = AOFocuserOpen(id);
+				if (res != AO_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserOpen() failed, ret = %d", res);
+					continue;
+				}
+				AOFocuserVersion version = { 0 };
+				AOFocuserConfig config = { 0 };
+				char model[AO_FOCUSER_NAME_LEN + 1] = { 0 };
+				char suffix[AO_FOCUSER_NAME_LEN + 1] = { 0 };
+				char bluetooth_name[AO_FOCUSER_NAME_LEN + 1] = { 0 };
+				res = AOFocuserGetVersion(id, &version);
+				if (res == AO_SUCCESS) {
+					res = AOFocuserGetProductModel(id, model);
+				}
+				if (res == AO_SUCCESS) {
+					res = AOFocuserGetFriendlyName(id, suffix);
+				}
+				if (res == AO_SUCCESS) {
+					res = AOFocuserGetBluetoothName(id, bluetooth_name);
+				}
+				if (res == AO_SUCCESS) {
+					res = AOFocuserGetConfig(id, &config);
+				}
+				if (res == AO_SUCCESS) {
+					model[AO_FOCUSER_NAME_LEN] = suffix[AO_FOCUSER_NAME_LEN] = bluetooth_name[AO_FOCUSER_NAME_LEN] = 0;
+					private_data->dev_id = id;
+					private_data->config = config;
+					private_data->has_temperature_sensor = true;
+					AOFocuserGetSDKVersion(private_data->sdk_version);
+					snprintf(private_data->firmware_version, sizeof(private_data->firmware_version), "%u.%u.%u", version.firmware >> 24, (version.firmware & 0x00FF0000) >> 16, (version.firmware & 0x0000FF00) >> 8);
+					snprintf(private_data->model, sizeof(private_data->model), "%s", model);
+					snprintf(private_data->custom_suffix, sizeof(private_data->custom_suffix), "%s", suffix);
+					snprintf(private_data->bluetooth_name, sizeof(private_data->bluetooth_name), "%s", bluetooth_name);
+					snprintf(name, INDIGO_NAME_SIZE, "Oasis Focuser%s%s", suffix[0] ? " #" : "", suffix);
+					indigo_make_name_unique(name, "%d", id);
+					plug_result = true;
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Oasis Focuser %d probe failed, ret = %d", id, res);
+				}
+				AOFocuserClose(id);
+			}
+		}
+		//- sdk.plug
+	}
+	if (plug_result) {
+		indigo_device *focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
+		focuser->private_data = private_data;
+		snprintf(focuser->name, INDIGO_NAME_SIZE, "%s", name);
+		bool focuser_attached = false;
+		for (int j = 0; j < MAX_DEVICES; j++) {
+			if (devices[j] == NULL) {
+				devices[j] = focuser;
+				if (indigo_attach_device(focuser) == INDIGO_OK) {
+					dev_ref_transferred = true;
+					focuser_attached = true;
+				} else {
+					devices[j] = NULL;
+				}
+				break;
+			}
+		}
+		if (!focuser_attached) {
+			indigo_safe_free(focuser);
 		}
 	}
+	update_sdk_discovery_retry(dev, discovery_eligible && !dev_ref_transferred);
+	if (!dev_ref_transferred) {
+		indigo_safe_free(private_data);
+		libusb_unref_device(dev);
+	}
+}
 
-	for (int i = 0; i < gFocusers.count; i++) {
-		indigo_device *device = gFocusers.device[i];
-
-		if (device) {
-			indigo_detach_device(device);
-			free(device->private_data);
-			free(device);
+static void process_unplug_event_handler(indigo_device *device, void *data) {
+	libusb_device *dev = (libusb_device *)data;
+	update_sdk_discovery_retry(dev, false);
+	astroasis_private_data *private_data = NULL;
+	astroasis_private_data *removed[MAX_DEVICES];
+	int removed_count = 0;
+	for (int j = MAX_DEVICES - 1; j >= 0; j--) {
+		if (devices[j] != NULL) {
+			indigo_device *device = devices[j];
+			private_data = PRIVATE_DATA;
+			bool unplug_result = private_data->usbdev == dev;
+			if (last_action != INDIGO_DRIVER_SHUTDOWN) {
+				//+ sdk.unplug_match
+				int number = 0, ids[AO_FOCUSER_MAX_NUM] = { 0 };
+				unplug_result = AOFocuserScan(&number, ids) == AO_SUCCESS && number >= 0 && number <= AO_FOCUSER_MAX_NUM;
+				for (int index = 0; unplug_result && index < number; index++) {
+					if (ids[index] == private_data->dev_id) {
+						unplug_result = false;
+					}
+				}
+				//- sdk.unplug_match
+			}
+			if (unplug_result) {
+				private_data = PRIVATE_DATA;
+				indigo_detach_device(device);
+				indigo_safe_free(device);
+				devices[j] = NULL;
+				bool recorded = false;
+				for (int k = 0; k < removed_count; k++) {
+					if (removed[k] == private_data) {
+						recorded = true;
+						break;
+					}
+				}
+				if (!recorded) {
+					removed[removed_count++] = private_data;
+				}
+			}
 		}
 	}
-
-	memcpy(&gFocusers, &focusers, sizeof(FOCUSER_LIST));
-
-	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
-}
-
-static void process_plug_event(indigo_device *unused) {
-	focuser_refresh();
-}
-
-static void process_unplug_event(indigo_device *unused) {
-	focuser_refresh();
+	for (int k = 0; k < removed_count; k++) {
+		libusb_unref_device(removed[k]->usbdev);
+		indigo_safe_free(removed[k]);
+	}
+	libusb_unref_device(dev);
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-	struct libusb_device_descriptor descriptor;
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			libusb_get_device_descriptor(dev, &descriptor);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Device plugged has PID:VID = %x:%x", descriptor.idVendor, descriptor.idProduct);
-			indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_plug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			indigo_set_timer(NULL, 0.5, process_unplug_event, NULL);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_unplug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
+		default:
+			break;
 	}
 	return 0;
-};
-
-static void remove_all_devices() {
-	pthread_mutex_lock(&indigo_device_enumeration_mutex);
-
-	for (int i = 0; i < gFocusers.count; i++) {
-		indigo_device *device = gFocusers.device[i];
-
-		if (device) {
-			indigo_detach_device(device);
-			free(device->private_data);
-			free(device);
-		}
-	}
-
-	memset(&gFocusers, 0, sizeof(FOCUSER_LIST));
-
-	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 static libusb_hotplug_callback_handle callback_handle;
 
-indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_driver_info *info) {
-	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+#pragma mark - Main code
 
-	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
+indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_driver_info *info) {
+
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-
-			char sdk_version[AO_FOCUSER_VERSION_LEN];
-
+			//+ on_init
+			char sdk_version[AO_FOCUSER_VERSION_LEN + 1] = { 0 };
 			AOFocuserGetSDKVersion(sdk_version);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Oasis Focuser SDK version: %s", sdk_version);
-
-			if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
-				AOFocuserSetLogLevel(AO_LOG_LEVEL_DEBUG);
-			} else {
-				AOFocuserSetLogLevel(AO_LOG_LEVEL_QUIET);
+			AOFocuserSetLogLevel(indigo_get_log_level() >= INDIGO_LOG_DEBUG ? AO_LOG_LEVEL_DEBUG : AO_LOG_LEVEL_QUIET);
+			//- on_init
+			for (int i = 0; i < MAX_DEVICES; i++) {
+				devices[i] = NULL;
 			}
-
+			sdk_discovery_stopping = false;
+			driver_queue = indigo_queue_create(NULL);
+			if (driver_queue == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create driver queue");
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
+			indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
 			indigo_start_usb_event_handler();
-			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ASTROASIS_VENDOR_ID, ASTROASIS_PRODUCT_FOCUSER_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, ASTROASIS_VENDOR_ID, ASTROASIS_PRODUCT_FOCUSER_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
-			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
+			if (rc < 0) {
+				indigo_queue_delete(&driver_queue);
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
+			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
-			for (int i = 0; i < gFocusers.count; i++) {
-				VERIFY_NOT_CONNECTED(gFocusers.device[i]);
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
+			pthread_mutex_lock(&driver_queue_mutex);
+			indigo_result shutdown_result = verify_devices_disconnected();
+			if (shutdown_result == INDIGO_OK) {
+				sdk_discovery_stopping = true;
+			}
+			pthread_mutex_unlock(&driver_queue_mutex);
+			if (shutdown_result != INDIGO_OK) {
+				return shutdown_result;
 			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-			remove_all_devices();
+			indigo_queue_remove(driver_queue, NULL, (indigo_timer_callback)process_sdk_retry_handler);
+			indigo_queue_drain(driver_queue);
+			for (int i = 0; i < MAX_DEVICES; i++) {
+				if (devices[i] != NULL) {
+					indigo_device *device = devices[i];
+					process_unplug_event_handler(NULL, libusb_ref_device(PRIVATE_DATA->usbdev));
+				}
+			}
+			indigo_queue_delete(&driver_queue);
+			clear_sdk_discovery_retries();
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}
 
 	return INDIGO_OK;
 }
-
 #else
+#include "indigo_focuser_astroasis.h"
+
 indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_driver_info *info) {
-	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-
-	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
-
-	switch(action) {
-		case INDIGO_DRIVER_INIT:
-		case INDIGO_DRIVER_SHUTDOWN:
-			return INDIGO_UNSUPPORTED_ARCH;
-		case INDIGO_DRIVER_INFO:
-			break;
-	}
-	return INDIGO_OK;
+	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, 0x03000007, false, INDIGO_DRIVER_SHUTDOWN);
+	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

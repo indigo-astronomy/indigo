@@ -167,6 +167,10 @@
   <ItemGroup>
     <ClInclude Include="indigo_focuser_astroasis.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="indigo_focuser_astroasis.driver" />
+    <None Include="REFACTOR.md" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
