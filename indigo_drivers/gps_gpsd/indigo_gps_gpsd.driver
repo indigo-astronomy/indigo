@@ -23,7 +23,7 @@
 // 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 driver gpsd {
-	label = "GPS Sevice Daemon (GPSD) Client";
+	label = "GPS Service Daemon (GPSD) Client";
 	author = "Thomas Stibor";
 	copyright = "Copyright (c) 2019-2026 Thomas Stibor";
 	version = 5;

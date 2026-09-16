@@ -41,7 +41,7 @@
 
 #define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_gps_gpsd"
-#define DRIVER_LABEL         "GPS Sevice Daemon (GPSD) Client"
+#define DRIVER_LABEL         "GPS Service Daemon (GPSD) Client"
 #define GPS_DEVICE_NAME      "GPSD Client"
 #define PRIVATE_DATA         ((gpsd_private_data *)device->private_data)
 

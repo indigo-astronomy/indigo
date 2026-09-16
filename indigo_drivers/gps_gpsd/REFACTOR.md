@@ -44,7 +44,7 @@ libgps connects only over TCP (`gps_sock_open()` → `netlib_connectsock(AF_UNSP
 
 ### Architecture and implementation
 
-- Version `0x02000004`, label `GPS Sevice Daemon (GPSD) Client` (misspelling is part of the published driver description), device `GPSD Client`, author Thomas Stibor. One static device, no hot plug, no additional instances. Registered in `indigo_server/indigo_server.c`; no Windows project exists (`MIGRATION_STATUS.md` comment: libgps for Windows is TODO).
+- Version `0x02000004`, label `GPS Sevice Daemon (GPSD) Client` (misspelled; corrected to `GPS Service Daemon (GPSD) Client` at the user's request after migration), device `GPSD Client`, author Thomas Stibor. One static device, no hot plug, no additional instances. Registered in `indigo_server/indigo_server.c`; no Windows project exists (`MIGRATION_STATUS.md` comment: libgps for Windows is TODO).
 - `DEVICE_PORT` is visible with label `GPS daemon host`, item label `Hostname (host:port)` and default `gpsd://localhost:2947`; `DEVICE_PORTS` and `DEVICE_BAUDRATE` are hidden. The optional `gpsd://` prefix is stripped; without a colon the port is `2947`; host ≥ 128 bytes or port ≥ 15 bytes is rejected.
 - Connection runs on a zero-delay timer: `gps_open(host, port)` (blocking TCP connect; libgps then makes the socket non-blocking), `gps_stream(WATCH_ENABLE | WATCH_JSON)` (result ignored, sends `?WATCH={"enable":true,"json":true};`), resets coordinates to 0, fix lights to IDLE, status/coordinates/UTC to BUSY and UTC text to `0000-00-00T00:00:00.00`, starts the reader on another zero-delay timer, publishes CONNECTION OK. Open failure publishes CONNECTION ALERT/disconnected.
 - Disconnect runs on a timer thread: `gps_stream(WATCH_DISABLE)`, `gps_close()` (frees libgps private data and closes the socket), CONNECTION OK. SHUTDOWN refuses with `INDIGO_BUSY` while connected.
@@ -108,10 +108,11 @@ The vendored gpsd 3.20 client parses SKY with a strict attribute table that has 
 
 ## Post-migration evidence
 
-- Reproducible generation: two further generator runs left the checked-in outputs unchanged: `.c` `133bd2bb1016b1714f48b31d9be49d93c838ed78`, `.h` `75fbf84ea6edd5c9a10873b0bf79d8edf1f95332`, `_main.c` `b7c6fb29cf9eab004f26b0740f89ba06fa4950ec`.
+- Reproducible generation: two further generator runs left the checked-in outputs unchanged: `.c` `459e4f63e1b4b3938c63d4ba7cd5c2a278827361` (after the label correction; previously `133bd2bb1016b1714f48b31d9be49d93c838ed78`), `.h` `75fbf84ea6edd5c9a10873b0bf79d8edf1f95332`, `_main.c` `b7c6fb29cf9eab004f26b0740f89ba06fa4950ec`.
 - `make -f ../../Makefile.drv` in this directory: passed, x86_64 + arm64, zero warnings. (`make -B` still fails on the pre-existing libgps `./configure` rule described in the baseline.)
 - Strict syntax checks (`-Wall -Wextra -Wpedantic -Wno-unused-parameter -Wshadow -Wformat=2`): generated driver zero warnings; simulator zero warnings after adding a printf format attribute to its event logger.
 - `make -C indigo_test test-gps-gpsd-simulator`: 17 run, 17 passed in each of five full runs after promotion (the last after all edits).
+- Label correction: `.driver` edited, regenerated (only `indigo_gps_gpsd.c` changed), `make -f ../../Makefile.drv` passed with zero warnings, `make -C indigo_test test-gps-gpsd-simulator` 17 run, 17 passed with the updated expected label; test artifacts cleaned. The sanitizer suite was not rerun for this string-only change.
 - `make -C indigo_test test-gps-gpsd-simulator-sanitize` (arm64 ASan + UBSan, `detect_leaks=0`, vendored libgps uninstrumented): 17 run, 17 passed after all edits, no sanitizer report.
 - `git diff --check` on changed text files and a formatting audit of the `.driver`, simulator and test: no trailing whitespace, tab indentation, no blank lines inside function bodies. Test artifacts removed with `make -C indigo_test test-clean`.
 - Unavailable: Linux builds (where closing a socket does not wake `select()`, the case GPSD-01/03 target), Windows (libgps not ported), a real gpsd and GPS receiver.
@@ -128,6 +129,7 @@ The generated driver reproduces `original_reference_trace.txt` exactly: the same
 - **Elevation:** `alt` is still used when present (unchanged values for older gpsd); otherwise `altMSL`, otherwise `altHAE`. A non-finite altitude no longer marks coordinates OK by itself (GPSD-05).
 - **Session reset:** satellites and DOP are reset to 0 and GPS_ADVANCED_STATUS to BUSY on connect, matching the existing reset of coordinates, lights and UTC (GPSD-06).
 - **Messages:** generated connection messages (`Connected to GPSD Client on <port>`, `Failed to connect ...`, `Disconnected from ...`) are sent in addition to the unchanged driver log lines.
+- **Driver description:** the INFO/driver label typo `Sevice` was corrected to `GPS Service Daemon (GPSD) Client` at the user's request. Driver name `indigo_gps_gpsd` and device name `GPSD Client` are unchanged; the version was already raised to `0x03000005` by this migration.
 - **Generic C strings:** host/port copies use bounded `snprintf` with the same length limits instead of `strcpy`/`strncpy`.
 
 ## Found defects
@@ -162,5 +164,5 @@ Not applicable: constellation/talker selection and receiver commands (gpsd is on
 ## Final test summary
 
 - Simulated tests, original driver: 12 preservation cases run, 12 passed (ordinary); 12 run, 12 passed (ASan/UBSan); 5 defect reproducers run, 0 passed (all failed as expected).
-- Simulated tests, final generated driver: 17 registered cases; final ordinary run 17 run, 17 passed; final ASan/UBSan run 17 run, 17 passed.
+- Simulated tests, final generated driver: 17 registered cases; final ordinary run (after the label correction) 17 run, 17 passed; final ASan/UBSan run (before the string-only label correction) 17 run, 17 passed.
 - Hardware tests: 0 run, 0 passed.

@@ -38,7 +38,7 @@
 
 #define DEVICE_NAME "GPSD Client"
 #define EXPECTED_VERSION 0x03000005
-#define EXPECTED_LABEL "GPS Sevice Daemon (GPSD) Client"
+#define EXPECTED_LABEL "GPS Service Daemon (GPSD) Client"
 #define PROPERTIES 48
 #define WAIT_STEPS 500
 #define TRACE_RECENT 32
