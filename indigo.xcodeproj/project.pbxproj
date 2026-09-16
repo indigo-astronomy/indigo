@@ -2687,6 +2687,7 @@
 		59910B953059397000FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59910BB23059C4E700FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59910BB33059C4F800FB1C2F /* indigo_rotator_wa.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_wa.driver; sourceTree = "<group>"; };
+		59910BB43059D2F200FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -5545,6 +5546,8 @@
 		C0DE20260914C00100000003 /* malloc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = malloc.h; sourceTree = "<group>"; };
 		C0DE20260914C00100000004 /* joystick.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = joystick.h; sourceTree = "<group>"; };
 		C0DE20260915000100000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260915BEEF00000001 /* mount_lx200_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_lx200_simulator.c; sourceTree = "<group>"; };
+		C0DE20260915BEEF00000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260915000200000001 /* test_ccd_iidc_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_iidc_sdk.c; sourceTree = "<group>"; };
 		C0DE20260915A0B000000001 /* test_ccd_ptp_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_ptp_sdk.c; sourceTree = "<group>"; };
 		C0DE20260915A0B000000002 /* test_ccd_ptp_ica.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = test_ccd_ptp_ica.m; sourceTree = "<group>"; };
@@ -14122,6 +14125,7 @@
 		59FEFFD0301E7005007FB62D /* simulator_common */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260915BEEF00000001 /* mount_lx200_simulator.c */,
 				C0DE20260909000100000001 /* serial_motion.h */,
 				FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */,
 				59FEFFCF301E7005007FB62D /* serial_simulator_common.h */,
@@ -15507,6 +15511,7 @@
 			isa = PBXGroup;
 			children = (
 				9DAD522D21246EB5002FCC79 /* README.md */,
+				59910BB43059D2F200FB1C2F /* REFACTOR.md */,
 				9DAD522B21246EB5002FCC79 /* indigo_mount_ioptron.h */,
 				9DAD522E21246EB5002FCC79 /* indigo_mount_ioptron.c */,
 				9DAD522C21246EB5002FCC79 /* indigo_mount_ioptron_main.c */,
@@ -15653,6 +15658,7 @@
 			isa = PBXGroup;
 			children = (
 				594107C51EC8DEFD00C44F92 /* README.md */,
+				C0DE20260915BEEF00000002 /* REFACTOR.md */,
 				9DB918011DF8546800678721 /* indigo_mount_lx200.h */,
 				9DB918001DF8546800678721 /* indigo_mount_lx200.c */,
 				9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */,
