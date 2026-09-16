@@ -1,0 +1,213 @@
+// Copyright (c) 2019-2026 Thomas Stibor
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// GPS Service Daemon (GPSD) client driver definition
+
+// version history
+// 2.0 by Thomas Stibor
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
+driver gpsd {
+	label = "GPS Sevice Daemon (GPSD) Client";
+	author = "Thomas Stibor";
+	copyright = "Copyright (c) 2019-2026 Thomas Stibor";
+	version = 5;
+	serial {
+		no_ports = true;
+	}
+	include {
+		#include <gps.h>
+	}
+	define {
+		#define GPSD_DEFAULT_PORT "2947"
+		#define GPSD_MAX_MESSAGES 32
+		#define GPSD_POLL_DELAY 0.1
+	}
+	data {
+		struct gps_data_t gps_data;
+	}
+	code {
+		static bool gpsd_open(indigo_device *device) {
+			char *text = DEVICE_PORT_ITEM->text.value;
+			char host_name[INDIGO_NAME_SIZE] = { 0 };
+			char port[15] = { 0 };
+			if (!strncmp(text, "gpsd://", 7)) {
+				text += 7;
+			}
+			char *colon = strchr(text, ':');
+			if (colon == NULL) {
+				if (strlen(text) >= sizeof(host_name)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Host name too long");
+					return false;
+				}
+				snprintf(host_name, sizeof(host_name), "%s", text);
+				snprintf(port, sizeof(port), "%s", GPSD_DEFAULT_PORT);
+			} else {
+				if (colon - text >= (ptrdiff_t)sizeof(host_name)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Host name too long");
+					return false;
+				}
+				if (strlen(colon + 1) >= sizeof(port)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Port value too long");
+					return false;
+				}
+				snprintf(host_name, sizeof(host_name), "%.*s", (int)(colon - text), text);
+				snprintf(port, sizeof(port), "%s", colon + 1);
+			}
+			if (gps_open(host_name, port, &PRIVATE_DATA->gps_data)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to gpsd://%s:%s", host_name, port);
+				return false;
+			}
+			(void)gps_stream(&PRIVATE_DATA->gps_data, WATCH_ENABLE | WATCH_JSON, NULL);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to gpsd://%s:%s", host_name, port);
+			return true;
+		}
+
+		static void gpsd_close(indigo_device *device) {
+			(void)gps_stream(&PRIVATE_DATA->gps_data, WATCH_DISABLE, NULL);
+			if (gps_close(&PRIVATE_DATA->gps_data)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to disconnect from gpsd.");
+			} else {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from gpsd.");
+			}
+		}
+
+		static void gps_connection_handler(indigo_device *device);
+	}
+	gps {
+		name = "GPSD Client";
+		code {
+			static void gpsd_publish(indigo_device *device) {
+				struct gps_data_t *gps_data = &PRIVATE_DATA->gps_data;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gps_read(): set: %llx", (unsigned long long)gps_data->set);
+				GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
+				GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+				GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+				GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				if (gps_data->set & TIME_SET) {
+					char isotime[INDIGO_VALUE_SIZE] = { 0 };
+					indigo_timetoisogm(gps_data->fix.time.tv_sec, isotime, sizeof(isotime));
+					INDIGO_COPY_VALUE(GPS_UTC_ITEM->text.value, isotime);
+					GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				if (gps_data->set & LATLON_SET) {
+					GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = gps_data->fix.longitude;
+					GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = gps_data->fix.latitude;
+					GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				if (gps_data->set & ALTITUDE_SET) {
+					/* "alt" is deprecated since gpsd 3.20; fall back to the documented altMSL/altHAE fields */
+					double altitude = isfinite(gps_data->fix.altitude) ? gps_data->fix.altitude : (isfinite(gps_data->fix.altMSL) ? gps_data->fix.altMSL : gps_data->fix.altHAE);
+					if (isfinite(altitude)) {
+						GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = altitude;
+						GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+					}
+				}
+				if (gps_data->set & MODE_SET) {
+					if (gps_data->fix.mode == MODE_NO_FIX) {
+						GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+					}
+					if (gps_data->fix.mode == MODE_2D) {
+						GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
+					}
+					if (gps_data->fix.mode == MODE_3D) {
+						GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
+					}
+					if (gps_data->fix.mode != MODE_NOT_SEEN) {
+						GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+					}
+				}
+				/* DOP_SET does not seem to be set even when there is DOP data */
+				if (!isnan(gps_data->dop.pdop)) {
+					GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = gps_data->dop.pdop;
+				}
+				if (!isnan(gps_data->dop.hdop)) {
+					GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = gps_data->dop.hdop;
+				}
+				if (!isnan(gps_data->dop.vdop)) {
+					GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = gps_data->dop.vdop;
+				}
+				if (gps_data->set & SATELLITE_SET) {
+					GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = gps_data->satellites_used;
+					GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = gps_data->satellites_visible;
+				}
+				indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+				indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+				indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+				if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
+					indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+				}
+			}
+		}
+		on_attach {
+			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
+			INDIGO_COPY_VALUE(DEVICE_PORT_PROPERTY->label, "GPS daemon host");
+			INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->label, "Hostname (host:port)");
+			INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, "gpsd://localhost:2947");
+			GPS_ADVANCED_PROPERTY->hidden = false;
+			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
+			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;
+			GPS_UTC_TIME_PROPERTY->hidden = false;
+			GPS_UTC_TIME_PROPERTY->count = 1;
+		}
+		on_connect {
+			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
+			GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
+			GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
+			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+			GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
+			INDIGO_COPY_VALUE(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
+			GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = 0;
+			GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = 0;
+			GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = 0;
+			GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = 0;
+			GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = 0;
+			GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		on_timer {
+			for (int processed = 0; processed < GPSD_MAX_MESSAGES; processed++) {
+				if (!gps_waiting(&PRIVATE_DATA->gps_data, 0)) {
+					indigo_execute_handler_in(device, GPSD_POLL_DELAY, gps_timer_callback);
+					return;
+				}
+				int result = gps_read(&PRIVATE_DATA->gps_data, NULL, 0);
+				if (result == -1) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "gps_read(): %s", gps_errstr(result));
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+					gps_connection_handler(device);
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, CONNECTION_PROPERTY, "Connection to gpsd lost");
+					return;
+				}
+				if (result == 0) {
+					indigo_execute_handler_in(device, GPSD_POLL_DELAY, gps_timer_callback);
+					return;
+				}
+				gpsd_publish(device);
+			}
+			indigo_execute_handler(device, gps_timer_callback);
+		}
+	}
+}
