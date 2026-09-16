@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000015
+#define DRIVER_VERSION       0x03000016
 #define DRIVER_NAME          "indigo_ccd_svb"
 #define DRIVER_LABEL         "SVBONY Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -100,7 +100,7 @@ typedef struct {
 	long cooler_power;
 	unsigned char *buffer;
 	long buffer_size;
-	bool can_check_temperature, has_temperature_sensor, has_cooler;
+	bool can_check_temperature, has_temperature_sensor, has_cooler, first_frame;
 	bool acquisition_active, streaming, frame_ready, video_started;
 	double exposure_duration, exposure_end, readout_deadline;
 	//- data
@@ -121,7 +121,7 @@ static void acquisition_finalizer(indigo_device *device);
 static bool svb_valid_info(SVB_CAMERA_INFO *info, SVB_CAMERA_PROPERTY *property) {
 	info->FriendlyName[sizeof(info->FriendlyName) - 1] = 0;
 	info->CameraSN[sizeof(info->CameraSN) - 1] = 0;
-	if (info->CameraID < 0 || !info->FriendlyName[0] || property->MaxWidth <= 0 || property->MaxHeight <= 0 || property->MaxWidth > INT_MAX || property->MaxHeight > INT_MAX || property->MaxHeight > (LONG_MAX - FITS_HEADER_SIZE) / 4 / property->MaxWidth || property->MaxBitDepth <= 0 || property->MaxBitDepth > 16) {
+	if (info->CameraID < 0 || !info->FriendlyName[0] || property->MaxWidth <= 0 || property->MaxHeight <= 0 || property->MaxWidth > INT_MAX || property->MaxHeight > INT_MAX || property->MaxHeight > (LONG_MAX - FITS_HEADER_SIZE - 1024) / 3 / property->MaxWidth || property->MaxBitDepth <= 0 || property->MaxBitDepth > 16) {
 		return false;
 	}
 	bool bin1 = false;
@@ -267,8 +267,8 @@ static bool svb_open(indigo_device *device) {
 		indigo_unlock_master_device(device);
 		return false;
 	}
-	// SVB SDK 1.13.4 uses its four-byte RGB32 working stride even while delivering RAW8 on SV305 Pro.
-	PRIVATE_DATA->buffer_size = PRIVATE_DATA->property.MaxHeight * PRIVATE_DATA->property.MaxWidth * 4 + FITS_HEADER_SIZE;
+	PRIVATE_DATA->first_frame = true;
+	PRIVATE_DATA->buffer_size = PRIVATE_DATA->property.MaxHeight * PRIVATE_DATA->property.MaxWidth * (PRIVATE_DATA->property.IsColorCam ? 3 : 2) + FITS_HEADER_SIZE + 1024;
 	PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 	if (PRIVATE_DATA->buffer == NULL) {
 		pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
@@ -310,8 +310,11 @@ static bool svb_setup_exposure(indigo_device *device, double exposure, int frame
 	int requested_format = get_pixel_format(device);
 	pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 	res = SVBGetOutputImageType(id, &c_pixel_format);
-	if (res == SVB_SUCCESS && c_pixel_format != requested_format) {
+	if (res == SVB_SUCCESS && (PRIVATE_DATA->first_frame || c_pixel_format != requested_format)) {
 		res = SVBSetOutputImageType(id, requested_format);
+		if (res == SVB_SUCCESS) {
+			PRIVATE_DATA->first_frame = false;
+		}
 	}
 	if (res == SVB_SUCCESS) {
 		res = SVBGetROIFormat(id, &c_frame_left, &c_frame_top, &c_frame_width, &c_frame_height, &c_bin);
@@ -331,14 +334,11 @@ static bool svb_setup_exposure(indigo_device *device, double exposure, int frame
 		res = SVBSetControlValue(id, SVB_EXPOSURE, (long)s2us(exposure), SVB_FALSE);
 	}
 	if (res == SVB_SUCCESS) {
-		res = SVBGetOutputImageType(id, &c_pixel_format);
-	}
-	if (res == SVB_SUCCESS) {
 		res = SVBGetROIFormat(id, &c_frame_left, &c_frame_top, &c_frame_width, &c_frame_height, &c_bin);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
-	if (res != SVB_SUCCESS || c_bin != horizontal_bin || c_frame_left != left || c_frame_top != top || c_frame_width != width || c_frame_height != height || c_frame_width <= 0 || c_frame_height <= 0 || c_frame_width > PRIVATE_DATA->property.MaxWidth / c_bin || c_frame_height > PRIVATE_DATA->property.MaxHeight / c_bin || c_frame_width % 8 || c_frame_height % 2 || c_pixel_format != requested_format) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid ROI readback: result %d, %d,%d %dx%d bin %d format %d", res, c_frame_left, c_frame_top, c_frame_width, c_frame_height, c_bin, c_pixel_format);
+	if (res != SVB_SUCCESS || c_bin != horizontal_bin || c_frame_left != left || c_frame_top != top || c_frame_width != width || c_frame_height != height || c_frame_width <= 0 || c_frame_height <= 0 || c_frame_width > PRIVATE_DATA->property.MaxWidth / c_bin || c_frame_height > PRIVATE_DATA->property.MaxHeight / c_bin || c_frame_width % 8 || c_frame_height % 2) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid ROI readback: result %d, %d,%d %dx%d bin %d", res, c_frame_left, c_frame_top, c_frame_width, c_frame_height, c_bin);
 		return false;
 	}
 	PRIVATE_DATA->exp_bin_x = c_bin;

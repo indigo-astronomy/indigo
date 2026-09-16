@@ -57,7 +57,7 @@ typedef struct {
 	double pixel_size;
 	atomic_long config[64];
 	atomic_bool visible, opened, exposing, video, snapshot_needs_stop;
-	atomic_int opens, closes, frames, starts, stops, width, height, bin, left, top, format;
+	atomic_int opens, closes, frames, starts, stops, width, height, bin, left, top, format, delivery_format, readback_format, format_sets;
 	atomic_int open_error, init_error, read_error, start_error, stop_error;
 	atomic_int read_config_fail, write_config_fail, caps_fail, status_error, roi_error;
 	atomic_int relays, config_error, roi_write_error, origin_read_error, origin_write_error, malformed_roi;
@@ -801,7 +801,7 @@ SVB_ERROR_CODE SVBSetControlValue(int id, SVB_CONTROL_TYPE control, long value, 
 
 SVB_ERROR_CODE SVBGetOutputImageType(int id, SVB_IMG_TYPE *format) {
 	SDK_CHECK(id, true);
-	*format = camera(id)->format;
+	*format = camera(id)->readback_format;
 	return SVB_SUCCESS;
 }
 
@@ -811,6 +811,8 @@ SVB_ERROR_CODE SVBSetOutputImageType(int id, SVB_IMG_TYPE format) {
 		return SVB_ERROR_GENERAL_ERROR;
 	}
 	camera(id)->format = format;
+	camera(id)->delivery_format = format;
+	atomic_fetch_add(&camera(id)->format_sets, 1);
 	return SVB_SUCCESS;
 }
 
@@ -909,8 +911,9 @@ static SVB_ERROR_CODE fill_frame(int id, unsigned char *buffer, long size) {
 	if (c->read_error) {
 		return SVB_ERROR_GENERAL_ERROR;
 	}
-	int bytes = c->format == SVB_IMG_RGB24 ? 3 : (c->format == SVB_IMG_RAW16 || c->format == SVB_IMG_Y16) ? 2
-																																					: 1;
+	int delivery_format = atomic_load(&c->delivery_format);
+	int bytes = delivery_format == SVB_IMG_RGB32 ? 4 : delivery_format == SVB_IMG_RGB24 ? 3 : (delivery_format == SVB_IMG_RAW16 || delivery_format == SVB_IMG_Y16) ? 2
+																																																	: 1;
 	long pixels = (long)c->width * c->height;
 	if (size < pixels * bytes) {
 		return SVB_ERROR_BUFFER_TOO_SMALL;
@@ -918,7 +921,12 @@ static SVB_ERROR_CODE fill_frame(int id, unsigned char *buffer, long size) {
 	for (long i = 0; i < pixels; i++) {
 		int source = ((i / c->width + c->top) * c->bin) * IMAGER_WIDTH + (i % c->width + c->left) * c->bin;
 		unsigned short mono = ccd_test_noise(source, 0);
-		if (bytes == 3) {
+		if (bytes == 4) {
+			buffer[4 * i] = ccd_test_noise(source, 3) >> 8;
+			buffer[4 * i + 1] = ccd_test_noise(source, 2) >> 8;
+			buffer[4 * i + 2] = ccd_test_noise(source, 1) >> 8;
+			buffer[4 * i + 3] = 255;
+		} else if (bytes == 3) {
 			for (int channel = 0; channel < 3; channel++) {
 				buffer[3 * i + channel] = ccd_test_noise(source, 3 - channel) >> 8; // SDK BGR order, converted by the driver image handoff.
 			}
@@ -928,6 +936,7 @@ static SVB_ERROR_CODE fill_frame(int id, unsigned char *buffer, long size) {
 			buffer[i] = mono >> 8;
 		}
 	}
+	atomic_store(&c->readback_format, delivery_format);
 	atomic_fetch_add(&c->frames, 1);
 	return SVB_SUCCESS;
 }
@@ -1106,7 +1115,8 @@ static void properties_and_exposure(void) {
 	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
 	ASSERT_EQ_INT(0, atomic_load(&bad_blob));
 	ASSERT_EQ_INT(0, atomic_load(&cameras[0].post_stop_reads));
-	ASSERT_TRUE(atomic_load(&cameras[0].last_video_buffer_size) >= cameras[0].property.MaxWidth * cameras[0].property.MaxHeight * 4);
+	ASSERT_EQ_INT(1, atomic_load(&cameras[0].format_sets));
+	ASSERT_TRUE(atomic_load(&cameras[0].last_video_buffer_size) >= cameras[0].property.MaxWidth * cameras[0].property.MaxHeight * 3 + 1024);
 	ASSERT_TRUE(set_switch(0, CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME, true));
 	ASSERT_TRUE(wait_state(0, CONFIG_PROPERTY_NAME, INDIGO_OK_STATE));
 	ASSERT_TRUE(connect_device(0, false));
@@ -2317,6 +2327,7 @@ static bool begin_fixture(void) {
 		atomic_store(&c->bin, 1);
 		atomic_store(&c->width, 640);
 		atomic_store(&c->height, 480);
+		atomic_store(&c->delivery_format, SVB_IMG_RGB32);
 	}
 	atomic_store(&cameras[0].visible, true);
 	return indigo_ccd_svb(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK && wait_count(&attached, 2);
@@ -2415,7 +2426,7 @@ int main(int argc, char **argv) {
 		{ "Matrix disconnect_readout_with_sibling", disconnect_readout_with_sibling },
 		{ "Matrix unplug_active_and_replug", unplug_active_and_replug },
 		{ "Matrix frame_types_and_fractional_countdown", frame_types_and_fractional_countdown },
-		{ "CCD properties image and configuration baseline", properties_and_exposure },
+		{ "First-frame format image and configuration baseline", properties_and_exposure },
 		{ "Finite streaming baseline", finite_stream },
 		{ "Long indefinite stream abort restart", long_stream_abort_restart },
 		{ "Urgent abort overtakes pending start", abort_overtakes_pending_start },

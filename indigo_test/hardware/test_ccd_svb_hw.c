@@ -144,6 +144,22 @@ static indigo_result observe(indigo_device *device, indigo_property *property, c
 			if (strcmp(item->blob.format, ".raw") || !bytes || !header.width || !header.height || (uint64_t)header.width * header.height * bytes + sizeof(header) > item->blob.size) {
 				devices[d].invalid_frames++;
 			}
+			if (header.signature == INDIGO_RAW_MONO8 && (uint64_t)header.width * header.height >= 4096) {
+				const unsigned char *pixels = (const unsigned char *)item->blob.value + sizeof(header);
+				unsigned alpha = 0, other = 0;
+				for (unsigned i = 0; i < 4096; i++) {
+					if (pixels[i] == 255) {
+						if (i % 4 == 3) {
+							alpha++;
+						} else {
+							other++;
+						}
+					}
+				}
+				if (alpha > 1000 && other < 100) {
+					devices[d].invalid_frames++;
+				}
+			}
 			devices[d].width = header.width;
 			devices[d].height = header.height;
 			devices[d].bytes = bytes;
@@ -349,10 +365,19 @@ static bool format_geometry_and_controls(void) {
 		unsigned exposure_revision = revision(camera, "CCD_EXPOSURE");
 		indigo_change_number_property_1(&client, devices[camera].name, "CCD_EXPOSURE", "EXPOSURE", 0.1);
 		indigo_property_state state = wait_terminal_state(camera, "CCD_EXPOSURE", exposure_revision);
-		if (i == 0 || state != INDIGO_ALERT_STATE) {
-			ok = ok && state == INDIGO_OK_STATE && frames() == before + 1;
-		} else {
-			printf("    hardware pixel format rejected by SDK readback: %s (SKIP)\n", pixel->items[i].name);
+		ok = ok && state == INDIGO_OK_STATE && frames() == before + 1;
+	}
+	if (ok && bin->items[0].number.max >= 2) {
+		unsigned before = revision(camera, "CCD_BIN");
+		indigo_change_number_property(&client, devices[camera].name, "CCD_BIN", 2, (const char *[]){ "HORIZONTAL", "VERTICAL" }, (double []){ 2, 2 });
+		ok = wait_state(camera, "CCD_BIN", before, INDIGO_OK_STATE);
+		for (int i = 0; ok && i < pixel->count; i++) {
+			printf("    hardware pixel format at 2x2: %s\n", pixel->items[i].name);
+			before = frames();
+			ok = switch_value(camera, "X_PIXEL_FORMAT", pixel->items[i].name, INDIGO_OK_STATE);
+			unsigned exposure_revision = revision(camera, "CCD_EXPOSURE");
+			indigo_change_number_property_1(&client, devices[camera].name, "CCD_EXPOSURE", "EXPOSURE", 0.1);
+			ok = ok && wait_terminal_state(camera, "CCD_EXPOSURE", exposure_revision) == INDIGO_OK_STATE && frames() == before + 1;
 		}
 	}
 	if (ok) {
