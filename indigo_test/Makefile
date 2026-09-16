@@ -78,6 +78,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_playerone_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_mi_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_asi_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_svb_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_iidc_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_ptp_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_sx_usb \
@@ -1125,6 +1126,14 @@ test-ccd-playerone-reload-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_playeron
 $(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw: hardware/test_ccd_playerone_hw.c ../build/drivers/indigo_ccd_playerone.$(SOEXT) ../build/drivers/indigo_agent_imager.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) -DPOA_DYNAMIC_DRIVER -DPOA_DRIVER_PATH='"$(BUILD_DRIVERS)/indigo_ccd_playerone.$(SOEXT)"' $< -o $@ ../build/drivers/indigo_agent_imager.a $(TEST_LDFLAGS) -ldl
 
+# Physical SVB camera hardware is opt-in and excluded from normal integration tests.
+.PHONY: test-ccd-svb-hw
+test-ccd-svb-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_svb_hw
+	$(TEST_BUILD)/hardware/test_ccd_svb_hw --run $(if $(filter 1,$(HW_ACCEPTANCE)),--acceptance,$(if $(filter 1,$(HW_HOTPLUG)),--hotplug))
+
+$(TEST_BUILD)/hardware/test_ccd_svb_hw: hardware/test_ccd_svb_hw.c ../build/drivers/indigo_ccd_svb.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_svb.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS) $(if $(filter Darwin,$(OS_DETECTED)),-L../indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/macOS) -lSVBCameraSDK
+
 # Native SX command/transfer emulation; production driver is compiled separately.
 SX_USB_TEST_REPLACEMENTS = -Dlibusb_open=sx_test_open -Dlibusb_close=sx_test_close -Dlibusb_kernel_driver_active=sx_test_kernel -Dlibusb_claim_interface=sx_test_claim -Dlibusb_get_config_descriptor=sx_test_config -Dlibusb_free_config_descriptor=sx_test_free_config -Dlibusb_bulk_transfer=sx_test_bulk -Dlibusb_ref_device=sx_test_ref -Dlibusb_unref_device=sx_test_unref -Dlibusb_get_device_descriptor=sx_test_descriptor -Dindigo_get_usb_path=sx_test_path -Dindigo_start_usb_event_handler=sx_test_usb_start -Dlibusb_hotplug_register_callback=sx_test_register -Dlibusb_hotplug_register_callback_sim=sx_test_register_sim -Dlibusb_hotplug_deregister_callback=sx_test_deregister -Dlibusb_hotplug_deregister_callback_poll=sx_test_deregister_poll -Dindigo_try_global_lock=sx_test_lock -Dindigo_global_unlock=sx_test_unlock -Dindigo_execute_handler_in=sx_test_execute_in -Dindigo_attach_device=sx_test_attach -Dindigo_detach_device=sx_test_detach -Dindigo_queue_create=sx_test_queue_create -Dindigo_execute_priority_handler_in=sx_test_execute_priority
 
@@ -1576,6 +1585,43 @@ $(INTEGRATION_BUILD)/test_ccd_asi_sdk: integration/test_ccd_asi_sdk.c integratio
 .PHONY: test-ccd-asi-sdk
 test-ccd-asi-sdk: $(INTEGRATION_BUILD)/test_ccd_asi_sdk
 	$(INTEGRATION_BUILD)/test_ccd_asi_sdk
+
+SVB_CCD_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_svb/bin_externals/libsvbcamera/include
+SVB_CCD_SDK_TEST_REPLACEMENTS = -Dindigo_monotonic_time=svb_test_monotonic_time -Dindigo_queue_create=svb_test_queue_create -Dindigo_execute_handler_in=svb_test_execute_in -Dlibusb_hotplug_register_callback_sim=svb_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=svb_test_usb_deregister_poll -Dindigo_start_usb_event_handler=svb_test_usb_start -Dindigo_try_global_lock=svb_test_lock -Dindigo_global_unlock=svb_test_unlock -Dindigo_attach_device=svb_test_attach -Dindigo_detach_device=svb_test_detach -Dlibusb_hotplug_register_callback=svb_test_usb_register -Dlibusb_hotplug_deregister_callback=svb_test_usb_deregister -Dlibusb_ref_device=svb_test_usb_ref -Dlibusb_unref_device=svb_test_usb_unref -Dlibusb_get_device_descriptor=svb_test_usb_descriptor
+
+$(INTEGRATION_BUILD)/ccd_svb_sdk_driver.o: ../indigo_drivers/ccd_svb/indigo_ccd_svb.c ../indigo_drivers/ccd_svb/indigo_ccd_svb.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(SVB_CCD_SDK_TEST_INCLUDE) $(SVB_CCD_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=svb_test_config_folder -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_svb_sdk: integration/test_ccd_svb_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_svb_sdk_driver.o $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(SVB_CCD_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_svb_sdk_driver.o $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+.PHONY: test-ccd-svb-sdk
+test-ccd-svb-sdk: $(INTEGRATION_BUILD)/test_ccd_svb_sdk
+	$(INTEGRATION_BUILD)/test_ccd_svb_sdk
+
+SVB_CCD_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+SVB_CCD_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+
+$(INTEGRATION_BUILD)/ccd_svb_sdk_driver_sanitize.o: ../indigo_drivers/ccd_svb/indigo_ccd_svb.c ../indigo_drivers/ccd_svb/indigo_ccd_svb.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(SVB_CCD_SANITIZE_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(SVB_CCD_SDK_TEST_INCLUDE) $(SVB_CCD_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/ccd_svb_sdk_framework_sanitize.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(SVB_CCD_SANITIZE_CFLAGS) -Dindigo_uni_config_folder=svb_test_config_folder -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_svb_sdk_sanitize: integration/test_ccd_svb_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_svb_sdk_driver_sanitize.o $(INTEGRATION_BUILD)/ccd_svb_sdk_framework_sanitize.o | $(INTEGRATION_BUILD)
+	$(CC) $(SVB_CCD_SANITIZE_CFLAGS) $(SVB_CCD_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_svb_sdk_driver_sanitize.o $(INTEGRATION_BUILD)/ccd_svb_sdk_framework_sanitize.o -o $@ $(SVB_CCD_SANITIZE_LDFLAGS)
+
+.PHONY: test-ccd-svb-sdk-sanitize
+test-ccd-svb-sdk-sanitize: $(INTEGRATION_BUILD)/test_ccd_svb_sdk_sanitize
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_ccd_svb_sdk_sanitize
+
+# Optional SVB duration-based guide completion statistics, excluded from normal tests.
+.PHONY: benchmark-ccd-svb-guide
+benchmark-ccd-svb-guide: $(INTEGRATION_BUILD)/test_ccd_svb_sdk
+	$(INTEGRATION_BUILD)/test_ccd_svb_sdk --timing
 
 # Optional ASI guide ON/OFF statistics, excluded from normal tests.
 .PHONY: benchmark-ccd-asi-guide

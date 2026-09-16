@@ -958,11 +958,11 @@ Source: `indigo_drivers/ccd_ssag/indigo_ccd_ssag.driver`.
 
 ### ccd_svb
 
-Custom properties: `PIXEL_FORMAT`, `SVB_ADVANCED`.
+Custom properties: `X_PIXEL_FORMAT`, `X_ADVANCED`.
 
 Driver-specific use of existing properties: `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_EXPOSURE`, `CCD_GAIN`, `CCD_GAMMA`, `CCD_IMAGE_FORMAT`, `CCD_MODE`, `CCD_OFFSET`, `CCD_STREAMING`, `CCD_STREAMING_SETTINGS`, `CCD_TEMPERATURE`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`.
 
-Source: `indigo_drivers/ccd_svb/indigo_ccd_svb.c`.
+Source: `indigo_drivers/ccd_svb/indigo_ccd_svb.driver`.
 
 ### ccd_sx
 
