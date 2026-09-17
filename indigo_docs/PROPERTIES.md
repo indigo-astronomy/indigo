@@ -1036,11 +1036,11 @@ Source: `indigo_drivers/dome_skyroof/indigo_dome_skyroof.c`.
 
 ### dome_talon6ror
 
-Custom properties: `X_CLOSE_COND`, `X_DELAY_CONF`, `X_MOTOR_CONF`, `X_POSITION`, `X_SENSORS`, `X_STATUS`, `X_TIMER_COND`.
+Custom properties: `X_CLOSE_COND`, `X_DELAY_CONF`, `X_MOTOR_CONF`, `X_POSITION_PROPERTY`, `X_SENSORS`, `X_STATUS_PROPERTY`, `X_TIMER_COND`.
 
-Driver-specific use of existing properties: `DOME_DIMENSION`, `DOME_DIRECTION`, `DOME_HORIZONTAL_COORDINATES`, `DOME_PARK`, `DOME_SLAVING_PARAMETERS`, `DOME_SPEED`, `DOME_STEPS`.
+Driver-specific use of existing properties: `DOME_DIMENSION`, `DOME_DIRECTION`, `DOME_HORIZONTAL_COORDINATES`, `DOME_PARK`, `DOME_SHUTTER`, `DOME_SLAVING_PARAMETERS`, `DOME_SPEED`, `DOME_STEPS`.
 
-Source: `indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.c`.
+Source: `indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.driver`.
 
 ### focuser_asi
 

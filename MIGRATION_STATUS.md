@@ -77,7 +77,7 @@
 | dome_nexdome3           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 52 / 0 | |
 | dome_simulator          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 7 / 0 | |
 | dome_skyroof            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 1 / 0 | |
-| dome_talon6ror          | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 1 / 0 | |
+| dome_talon6ror          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 33 / 0 | |
 | focuser_asi             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 10 / 0 | |
 | focuser_askar           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
 | focuser_astroasis       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 33 / 0 | |
