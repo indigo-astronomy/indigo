@@ -20,7 +20,7 @@ driver lacerta {
 	label = "LACERTA Motorfocus Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2024-2026 CloudMakers, s. r. o.";
-	version = 6;
+	version = 7;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -267,11 +267,9 @@ driver lacerta {
 				FOCUSER_POSITION_ITEM->number.min = 0;
 				FOCUSER_POSITION_ITEM->number.max = 250000;
 			}
-			on_change_request {
-				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "A relative move is unfinished");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "A relative move is unfinished";
 			}
 			on_change {
 				int position = (int)FOCUSER_POSITION_ITEM->number.target;
@@ -295,11 +293,9 @@ driver lacerta {
 			on_attach {
 				FOCUSER_STEPS_ITEM->number.max = 250000;
 			}
-			on_change_request {
-				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "An absolute move is unfinished");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "An absolute move is unfinished";
 			}
 			on_change {
 				int direction = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ^ FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? -1 : 1;

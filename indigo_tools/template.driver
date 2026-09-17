@@ -150,6 +150,10 @@ driver XXXXX {
 			on_change_request {
 				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
 			}
+			reject_change {
+				condition = XXXXX; // mandatory attribute; Reject the change when this condition is true (C expression). @type=expression
+				message = "XXXXX"; // mandatory attribute; Message published with the rejection (string literal). @type=string
+			}
 			on_detach {
 				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
 			}
@@ -181,6 +185,10 @@ driver XXXXX {
 			}
 			on_change_request {
 				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
+			}
+			reject_change {
+				condition = XXXXX; // mandatory attribute; Reject the change when this condition is true (C expression). @type=expression
+				message = "XXXXX"; // mandatory attribute; Message published with the rejection (string literal). @type=string
 			}
 			handler = XXXXX; // optional attribute; Override the generated change handler name (C expression). @type=expression
 			handle = XXXXX; // optional attribute; Override the generated property or item handle (C expression). @type=expression
@@ -225,6 +233,10 @@ driver XXXXX {
 			on_change_request {
 				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
 			}
+			reject_change {
+				condition = XXXXX; // mandatory attribute; Reject the change when this condition is true (C expression). @type=expression
+				message = "XXXXX"; // mandatory attribute; Message published with the rejection (string literal). @type=string
+			}
 			handler = XXXXX; // optional attribute; Override the generated change handler name (C expression). @type=expression
 			handle = XXXXX; // optional attribute; Override the generated property or item handle (C expression). @type=expression
 			preserve_values = false; // optional attribute; Preserve values and update only targets (bool literal). @type=boolean
@@ -267,6 +279,10 @@ driver XXXXX {
 			}
 			on_change_request {
 				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
+			}
+			reject_change {
+				condition = XXXXX; // mandatory attribute; Reject the change when this condition is true (C expression). @type=expression
+				message = "XXXXX"; // mandatory attribute; Message published with the rejection (string literal). @type=string
 			}
 			handler = XXXXX; // optional attribute; Override the generated change handler name (C expression). @type=expression
 			handle = XXXXX; // optional attribute; Override the generated property or item handle (C expression). @type=expression
@@ -317,6 +333,10 @@ driver XXXXX {
 			}
 			on_change_request {
 				// Optional handwritten C block; see DRIVER_GENERATOR_MIGRATION.md for lifecycle semantics.
+			}
+			reject_change {
+				condition = XXXXX; // mandatory attribute; Reject the change when this condition is true (C expression). @type=expression
+				message = "XXXXX"; // mandatory attribute; Message published with the rejection (string literal). @type=string
 			}
 			handler = XXXXX; // optional attribute; Override the generated change handler name (C expression). @type=expression
 			handle = XXXXX; // optional attribute; Override the generated property or item handle (C expression). @type=expression

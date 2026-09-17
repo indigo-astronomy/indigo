@@ -23,7 +23,7 @@ driver efa {
 	label = "Celestron / PlaneWave EFA Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 18;
+	version = 19;
 	serial;
 	define {
 		#define RESPONSE (PRIVATE_DATA->response + 5)
@@ -433,11 +433,9 @@ driver efa {
 				FOCUSER_POSITION_ITEM->number.max = 3799422;
 				FOCUSER_POSITION_ITEM->number.step = 1;
 			}
-			on_change_request {
-				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
 			}
 			on_change {
 				int target = (int)FOCUSER_POSITION_ITEM->number.target;
@@ -462,11 +460,9 @@ driver efa {
 				FOCUSER_STEPS_ITEM->number.max = 3799422;
 				FOCUSER_STEPS_ITEM->number.step = 1;
 			}
-			on_change_request {
-				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
 			}
 			on_change {
 				int delta = (int)FOCUSER_STEPS_ITEM->number.value;

@@ -70,3 +70,13 @@ make -C indigo_test build/integration/test_focuser_robofocus_simulator
 cd indigo_test
 ./build/integration/test_focuser_robofocus_simulator
 ```
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+Covered by the `rejected_change` scenario in `indigo_test/integration/test_focuser_robofocus_simulator.c`: while `FOCUSER_POSITION` is BUSY, `FOCUSER_STEPS` ends in ALERT with unchanged value and target, and motion is accepted again after the abort.
+
+```sh
+cd indigo_test && ROBOFOCUS_TEST_FILTER=rejected_change ./build/integration/test_focuser_robofocus_simulator
+```

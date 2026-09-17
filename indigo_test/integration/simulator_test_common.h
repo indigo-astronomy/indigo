@@ -454,6 +454,75 @@ static indigo_client simulator_test_client = {
 	false
 };
 
+static bool assert_rejected_number_change_on(const char *device_name, const char *property_name, const char *item_name, double value) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL) {
+		fprintf(stderr, "Missing number item %s.%s on %s\n", property_name, item_name, device_name);
+		return false;
+	}
+	double previous_value = item->number.value, previous_target = item->number.target;
+	unsigned int revision = property_revision(property_name);
+	if (indigo_change_number_property_1(&simulator_test_client, device_name, property_name, item_name, value) != INDIGO_OK) {
+		return false;
+	}
+	if (!wait_for_property_state_after(property_name, INDIGO_ALERT_STATE, revision)) {
+		indigo_property *property = find_cached_property(property_name);
+		fprintf(stderr, "Rejected %s did not reach ALERT, state is %d\n", property_name, property ? property->state : -1);
+		return false;
+	}
+	item = find_cached_item(property_name, item_name);
+	if (item == NULL || item->number.value != previous_value || item->number.target != previous_target) {
+		fprintf(stderr, "Rejected %s.%s was not restored: value %g -> %g, target %g -> %g\n", property_name, item_name, previous_value, item ? item->number.value : NAN, previous_target, item ? item->number.target : NAN);
+		return false;
+	}
+	return true;
+}
+
+static bool assert_rejected_switch_change_on(const char *device_name, const char *property_name, const char *item_name) {
+	indigo_property *property = find_cached_property(property_name);
+	if (property == NULL) {
+		fprintf(stderr, "Missing switch property %s on %s\n", property_name, device_name);
+		return false;
+	}
+	bool previous[MAX_DEFINED_PROPERTIES];
+	int count = property->count;
+	if (count > ARRAY_SIZE(previous)) {
+		fprintf(stderr, "Switch property %s has %d items, more than %d\n", property_name, count, ARRAY_SIZE(previous));
+		return false;
+	}
+	for (int i = 0; i < count; i++) {
+		previous[i] = property->items[i].sw.value;
+	}
+	unsigned int revision = property_revision(property_name);
+	if (indigo_change_switch_property_1(&simulator_test_client, device_name, property_name, item_name, true) != INDIGO_OK) {
+		return false;
+	}
+	if (!wait_for_property_state_after(property_name, INDIGO_ALERT_STATE, revision)) {
+		property = find_cached_property(property_name);
+		fprintf(stderr, "Rejected %s did not reach ALERT, state is %d\n", property_name, property ? property->state : -1);
+		return false;
+	}
+	property = find_cached_property(property_name);
+	if (property == NULL || property->count != count) {
+		return false;
+	}
+	for (int i = 0; i < count; i++) {
+		if (property->items[i].sw.value != previous[i]) {
+			fprintf(stderr, "Rejected %s.%s was not restored\n", property_name, property->items[i].name);
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool assert_rejected_number_change(const char *property_name, const char *item_name, double value) {
+	return assert_rejected_number_change_on(context.driver_case->device_name, property_name, item_name, value);
+}
+
+static bool assert_rejected_switch_change(const char *property_name, const char *item_name) {
+	return assert_rejected_switch_change_on(context.driver_case->device_name, property_name, item_name);
+}
+
 static void reset_simulator_context(const simulator_driver_case *driver_case) {
 	release_cached_properties();
 	memset(&context, 0, sizeof(context));

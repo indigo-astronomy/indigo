@@ -51,7 +51,7 @@
 #endif
 
 #ifndef EXPECTED_VERSION
-#define EXPECTED_VERSION 0x03000011
+#define EXPECTED_VERSION 0x03000012
 #endif
 
 #define DEVICE_NAME "Focuser DSD AF"
@@ -1724,7 +1724,11 @@ static void busy_motion_requests_rejected(void) {
 	CHECK_EQ(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, DEVICE_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 500));
 	CHECK(wait_rx("[SMOV]", 1, 5));
 	CHECK_EQ(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, DEVICE_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000));
+	double rejected_steps = value_of(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME);
 	CHECK_EQ(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, DEVICE_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
+	CHECK(wait_settled(FOCUSER_STEPS_PROPERTY_NAME, steps, INDIGO_ALERT_STATE, 5));
+	CHECK_EQ(rejected_steps, value_of(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME));
+	CHECK_EQ(rejected_steps, target_of(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME));
 	CHECK_EQ(12000, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
 	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_OK_STATE, 10));
 	CHECK(revision_of(FOCUSER_STEPS_PROPERTY_NAME) > steps);

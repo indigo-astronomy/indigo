@@ -53,12 +53,18 @@ typedef struct item_type {
 	code_type *attach;
 } item_type;
 
+typedef struct reject_type {
+	struct reject_type *next;
+	char condition[512], message[256];
+} reject_type;
+
 typedef struct property_type {
 	struct property_type *next;
 	char type[12], id[128], handle[128], name[128], define_name[128], pointer[128], handler[64], label[256], group[32],  perm[32], rule[32], hidden[64];
 	bool always_defined, handle_change, asynchronous_change, persistent, preserve_values, pass_through_change;
 	int max_name_length;
 	code_type *code, *on_attach, *on_change_request, *on_change, *on_detach;
+	reject_type *rejects;
 	item_type *items;
 } property_type;
 
@@ -541,6 +547,39 @@ bool parse_code_block(char *name, code_type **codes) {
 	return true;
 }
 
+bool parse_reject_block(reject_type **rejects) {
+	if (!match(TOKEN_IDENTIFIER, "reject_change")) {
+		return false;
+	}
+	if (!match(TOKEN_LBRACE, NULL)) {
+		report_error("Missing '{'");
+		return false;
+	}
+	debug(-1, "reject_change {");
+	reject_type *reject = allocate(sizeof(reject_type));
+	while (!match(TOKEN_RBRACE, NULL)) {
+		if (parse_expression_attribute("condition", reject->condition, sizeof(reject->condition))) {
+			continue;
+		}
+		if (parse_string_attribute("message", reject->message, sizeof(reject->message))) {
+			continue;
+		}
+		report_unexpected_token_error();
+		return false;
+	}
+	if (reject->condition[0] == 0) {
+		report_error("Missing 'condition' in reject_change block");
+		return false;
+	}
+	if (reject->message[0] == 0) {
+		report_error("Missing 'message' in reject_change block");
+		return false;
+	}
+	append((void **)rejects, reject);
+	debug(0, "}");
+	return true;
+}
+
 bool parse_item_block(char *type, item_type **items) {
 	if (!match(TOKEN_IDENTIFIER, "item")) {
 		return false;
@@ -682,6 +721,9 @@ bool parse_property_block(device_type *device, property_type **properties) {
 				continue;
 			}
 			if (parse_code_block("on_attach", &property->on_attach)) {
+				continue;
+			}
+			if (parse_reject_block(&property->rejects)) {
 				continue;
 			}
 			if (parse_code_block("on_change_request", &property->on_change_request)) {
@@ -1842,10 +1884,24 @@ void write_c_change_property(device_type *device) {
 	write_line("\t\t}");
 	write_line("\t\treturn INDIGO_OK;");
 	for (property_type *property = device->properties; property; property = property->next) {
+		bool change_branch = property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO") && (property->type[0] != 'i' || property->on_change);
+		if (property->rejects && !change_branch) {
+			report_error("'%s' has no change branch, its reject_change block(s) would be ignored", property->handle);
+		}
 		if (property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO")) {
 			persistent |= property->persistent;
 			if (property->type[0] != 'i' || property->on_change) {
 				write_line("\t} else if (indigo_property_match_changeable(%s, property)) {", property->handle);
+				for (reject_type *reject = property->rejects; reject; reject = reject->next) {
+					write_line("\t\tif (%s) {", reject->condition);
+					write_line("\t\t\tfor (int i = 0; i < %s->count; i++) {", property->handle);
+					write_line("\t\t\t\t%s->items[i].do_update = true;", property->handle);
+					write_line("\t\t\t}");
+					write_line("\t\t\t%s->state = INDIGO_ALERT_STATE;", property->handle);
+					write_line("\t\t\tindigo_update_property(device, %s, \"%s\");", property->handle, reject->message);
+					write_line("\t\t\treturn INDIGO_OK;");
+					write_line("\t\t}");
+				}
 				write_c_code_blocks(property->on_change_request, 2, "%s.%s.on_change_request", device->id, property->id);
 				if (c_code_is_empty(property->on_change)) {
 					if (property->preserve_values) {

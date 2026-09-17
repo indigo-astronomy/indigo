@@ -123,3 +123,13 @@ Fake profiles explicitly cover color and mono, with/without guider, cooled, temp
 
 - Simulated/fake-SDK registered: 47 cases (46 ordinary plus one opt-in timing benchmark). Final ordinary run/passed: 46 / 46; sanitizer run/passed: 46 / 46; timing run/passed: 1 / 1.
 - Hardware registered/passed: 1 / 1 on SV305Pro with SDK 1.13.4. The earlier SV205 attempt was not applicable because that camera uses UVC.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+Covered by `Edges rejected_change_alerts_and_keeps_values` in `indigo_test/integration/test_ccd_svb_sdk.c`: during an exposure it checks that `CCD_GAIN`, `CCD_FRAME`, `CCD_BIN` and `X_PIXEL_FORMAT` end in ALERT with unchanged values and targets, and that `CCD_GAIN` is accepted again once the exposure finishes.
+
+```sh
+make -C indigo_test test-ccd-svb-sdk
+```

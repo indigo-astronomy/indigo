@@ -235,3 +235,13 @@ Not applicable or not covered: hot plug and multiple physical devices (serial, n
 - Simulated tests, original driver: preservation suite 26 run, 26 passed (normal build); 26 run, 25 passed (ASan/UBSan build, `reference_trace` abort race before normalization), followed by `reference_trace` 6 run, 6 passed after the test-only normalization (2 normal, 4 sanitizer); defect reproducers 14 run, 0 passed (all failed as expected).
 - Simulated tests, generated driver: first comparison run 26 run, 25 passed (trace differences analysed) and 14 reproducers run, 13 passed (harness helper defect, fixed); final 42 registered cases: normal build 42 run, 42 passed in each of two complete runs, ASan/UBSan build 42 run, 42 passed; mutation check 1 run against a deliberately broken scratch driver, failed as intended (not counted as a pass).
 - Hardware tests: 0 run, 0 passed.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+Covered by the extended `busy_motion_requests_rejected` scenario in `indigo_test/integration/test_focuser_dsd_simulator.c`: while `FOCUSER_POSITION` is BUSY, `FOCUSER_STEPS` now has to settle in ALERT with unchanged value and target.
+
+```sh
+make -C indigo_test test-focuser-dsd-simulator
+```

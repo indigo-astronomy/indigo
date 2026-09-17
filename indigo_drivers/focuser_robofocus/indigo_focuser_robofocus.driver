@@ -20,7 +20,7 @@ driver robofocus {
 	label = "RoboFocus Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2020-2026 CloudMakers, s. r. o.";
-	version = 2;
+	version = 3;
 	serial;
 	include {
 		#include <stdint.h>
@@ -401,11 +401,9 @@ driver robofocus {
 				FOCUSER_POSITION_ITEM->number.max = ROBOFOCUS_MAX_POSITION;
 				FOCUSER_POSITION_ITEM->number.step = 1;
 			}
-			on_change_request {
-				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Motion already in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Motion already in progress";
 			}
 			on_change {
 				int requested = (int)FOCUSER_POSITION_ITEM->number.target;
@@ -433,11 +431,9 @@ driver robofocus {
 				FOCUSER_STEPS_ITEM->number.max = ROBOFOCUS_MAX_POSITION;
 				FOCUSER_STEPS_ITEM->number.step = 1;
 			}
-			on_change_request {
-				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Motion already in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Motion already in progress";
 			}
 			on_change {
 				int delta = (int)FOCUSER_STEPS_ITEM->number.value;

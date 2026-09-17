@@ -20,7 +20,7 @@ driver wemacro {
 	label = "WeMacro Rail Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 6;
+	version = 7;
 	serial {
 		pattern {
 			product = "USB2.0-Serial";
@@ -289,11 +289,9 @@ driver wemacro {
 				FOCUSER_STEPS_ITEM->number.max = 0xFFFFFF;
 				FOCUSER_STEPS_ITEM->number.step = 1;
 			}
-			on_change_request {
-				if (X_RAIL_EXECUTE_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Another rail operation is in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = X_RAIL_EXECUTE_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another rail operation is in progress";
 			}
 			on_change {
 				uint32_t steps = (uint32_t)FOCUSER_STEPS_ITEM->number.target;
@@ -374,11 +372,9 @@ driver wemacro {
 			name = "X_RAIL_EXECUTE";
 			group = X_RAIL_BATCH;
 			label = "Execute batch";
-			on_change_request {
-				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, X_RAIL_EXECUTE_PROPERTY, "Another rail operation is in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another rail operation is in progress";
 			}
 			on_change {
 				PRIVATE_DATA->batch_settle = (uint8_t)X_RAIL_EXECUTE_SETTLE_TIME_ITEM->number.target;

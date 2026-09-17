@@ -22,7 +22,7 @@ driver steeldrive2 {
 	label = "Baader Planetarium SteelDriveII Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 13;
+	version = 14;
 	serial;
 	include {
 		#include <ctype.h>
@@ -612,11 +612,9 @@ driver steeldrive2 {
 			name = "X_START_ZEROING";
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "Start zeroing";
-			on_change_request {
-				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, X_START_ZEROING_PROPERTY, "Another motion is pending");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion is pending";
 			}
 			on_change {
 				bool requested = X_START_ZEROING_ITEM->sw.value;
@@ -693,11 +691,9 @@ driver steeldrive2 {
 		inherited FOCUSER_POSITION {
 			preserve_values = true;
 			on_attach { FOCUSER_POSITION_ITEM->number.min = 0; FOCUSER_POSITION_ITEM->number.max = STEELDRIVE2_MAX_POSITION; FOCUSER_POSITION_ITEM->number.step = 1; }
-			on_change_request {
-				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_START_ZEROING_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Another motion is pending");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_START_ZEROING_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion is pending";
 			}
 			on_change {
 				int requested = (int)FOCUSER_POSITION_ITEM->number.target;
@@ -719,11 +715,9 @@ driver steeldrive2 {
 		}
 		inherited FOCUSER_STEPS {
 			on_attach { FOCUSER_STEPS_ITEM->number.min = 0; FOCUSER_STEPS_ITEM->number.max = STEELDRIVE2_MAX_POSITION; FOCUSER_STEPS_ITEM->number.step = 1; }
-			on_change_request {
-				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_START_ZEROING_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Another motion is pending");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_START_ZEROING_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion is pending";
 			}
 			on_change {
 				int direction = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1;

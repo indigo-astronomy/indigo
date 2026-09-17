@@ -48,3 +48,13 @@ cd indigo_test
 ```
 
 Final automated result: 9/9 named scenarios passed, 0 failing scenarios. The scenarios were `protocol`, `capabilities`, `absolute_and_relative_motion`, `limits_and_sync`, `abort_motion`, `rejected_connection`, `command_failure_recovery`, `sync_and_poll_failure_recovery` and `external_position_and_reconnect`.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+Covered by the `rejected_change` scenario in `indigo_test/integration/test_focuser_askar_simulator.c`: while `FOCUSER_POSITION` is BUSY, `FOCUSER_STEPS` ends in ALERT with unchanged value and target, no second move command is issued, and the property is accepted again after the abort.
+
+```sh
+cd indigo_test && ASKAR_TEST_FILTER=rejected_change ./build/integration/test_focuser_askar_simulator
+```

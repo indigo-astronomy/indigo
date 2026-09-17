@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_focuser_wemacro"
 #define DRIVER_LABEL         "WeMacro Rail Focuser"
 #define FOCUSER_DEVICE_NAME  "WeMacro Rail"
@@ -528,12 +528,14 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_SPEED_PROPERTY, focuser_speed_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		//+ focuser.FOCUSER_STEPS.on_change_request
 		if (X_RAIL_EXECUTE_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < FOCUSER_STEPS_PROPERTY->count; i++) {
+				FOCUSER_STEPS_PROPERTY->items[i].do_update = true;
+			}
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Another rail operation is in progress");
 			return INDIGO_OK;
 		}
-		//- focuser.FOCUSER_STEPS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
@@ -548,12 +550,14 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_RAIL_SHUTTER_PROPERTY, focuser_x_rail_shutter_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_RAIL_EXECUTE_PROPERTY, property)) {
-		//+ focuser.X_RAIL_EXECUTE.on_change_request
 		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < X_RAIL_EXECUTE_PROPERTY->count; i++) {
+				X_RAIL_EXECUTE_PROPERTY->items[i].do_update = true;
+			}
+			X_RAIL_EXECUTE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, X_RAIL_EXECUTE_PROPERTY, "Another rail operation is in progress");
 			return INDIGO_OK;
 		}
-		//- focuser.X_RAIL_EXECUTE.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_RAIL_EXECUTE_PROPERTY, focuser_x_rail_execute_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {

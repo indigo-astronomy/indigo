@@ -370,6 +370,16 @@ cleanup:
 	driver_stop();
 }
 
+static void rejected_change_alerts_and_keeps_values(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, is_celestron() ? 90000 : 2000000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 500));
+	SERIAL_CHECK_TRUE(abort_ok());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void temperature(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 21.5, .01));
@@ -658,7 +668,7 @@ int main(void) {
 		{ "limits", limits, "normal" },
 		{ "abort_efa", abort_motion, "normal" },
 		{ "abort_celestron", abort_motion, "celestron" },
-		{ "overlap", overlap, "normal" },
+		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal" },
 		{ "temperature", temperature, "normal" },
 		{ "temperature_legacy", temperature, "legacy_temp" },
 		{ "poll_checksum", poll_failure, "checksum" },

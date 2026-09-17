@@ -102,3 +102,13 @@ done
 Windows/Linux execution, real relative polarity/encoder park, output electrical behavior and actual firmware reboot timing remain hardware/platform acceptance gaps. PTY and driver ASan tests do not certify those. The shared library is built normally; ASan instruments the production driver and test harness.
 
 Final hygiene: all test parents exited and reaped their simulators; make -C indigo_test test-clean removed generated test artifacts. Task-owned temporary source copies, PDF rendering and diagnostic logs were removed after recording outcomes. Final git diff --check passes.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+Covered by the `rejected_change` scenario in `indigo_test/integration/test_focuser_prodigy_simulator.c`: while `FOCUSER_POSITION` is BUSY, both `FOCUSER_STEPS` and the `X_FOCUSER_PARK` switch end in ALERT with their values restored, no park command is issued, and motion is accepted again after the abort.
+
+```sh
+cd indigo_test && PRODIGY_TEST_FILTER=rejected_change ./build/integration/test_focuser_prodigy_simulator
+```

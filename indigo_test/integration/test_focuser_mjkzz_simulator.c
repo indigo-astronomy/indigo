@@ -445,6 +445,19 @@ cleanup:
 	driver_stop();
 }
 
+static void rejected_change_alerts_and_keeps_values(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_command_count(CMD_SPOS, 1));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(command_count(CMD_SPOS) == 1);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 25, INDIGO_BUSY_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void rejected_connection(void) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mjkzz_focuser));
 	int descriptors = open_descriptors();
@@ -683,6 +696,7 @@ int main(void) {
 		{ "absolute_motion", absolute_motion, "normal", NULL, NULL }, { "boundary_motion", boundary_motion, "normal", NULL, NULL },
 		{ "relative_motion", relative_motion, "normal", NULL, NULL }, { "speed_control", speed_control, "normal", NULL, NULL },
 		{ "abort_motion", abort_motion, "normal", NULL, NULL }, { "overlap", overlap, "normal", NULL, NULL },
+		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal", NULL, NULL },
 		{ "init_version_silent", rejected_connection, "normal", "v", "silent" }, { "init_version_checksum", rejected_connection, "normal", "v", "badsum" },
 		{ "init_hpwr_reject", rejected_connection, "normal", "R:102", "reject" }, { "init_lpwr_partial", rejected_connection, "normal", "R:101", "partial" },
 		{ "init_microstep_index", rejected_connection, "normal", "R:103", "badidx" }, { "init_position_value", rejected_connection, "normal", "p", "badvalue" },

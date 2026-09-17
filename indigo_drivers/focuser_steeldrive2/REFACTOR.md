@@ -77,3 +77,13 @@ Generic framework validation of numeric range, finite value, integer step and BU
 - 2026-09-13: Clean driver archive/dylib/executable build passed. Generated code passed `-Wall -Wextra -Werror -O0`; simulator passed `-Wall -Wextra -Werror -O3`. Xcode plist, Visual Studio XML, solution/GUID/path and `git diff --check` validation passed.
 - 2026-09-13: Added and wired the Windows x64/ARM64 Debug/Release project without registering its two Visual Studio files in Xcode. Windows compilation/runtime remains unverified. No hardware tests were run.
 - 2026-09-13: README SHA-256 remains `8135402ea6782dacf46b4c6ed9cff24190f3e95de6c82c973b06d6bf3673f74c`; project/property/simulator/migration/test records are synchronized.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+Covered by the `rejected_change` scenario in `indigo_test/integration/test_focuser_steeldrive2_simulator.c`: while `FOCUSER_POSITION` is BUSY, `FOCUSER_STEPS` and the `X_START_ZEROING` switch both end in ALERT with their values restored, and motion is accepted again after the abort.
+
+```sh
+cd indigo_test && STEELDRIVE2_TEST_FILTER=rejected_change ./build/integration/test_focuser_steeldrive2_simulator
+```

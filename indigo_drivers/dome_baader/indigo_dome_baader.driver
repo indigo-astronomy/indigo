@@ -22,7 +22,7 @@ driver baader {
 	label = "Baader Classic Dome";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
-	version = 6;
+	version = 7;
 	serial;
 	include {
 		#include <math.h>
@@ -540,11 +540,9 @@ driver baader {
 			}
 		}
 		inherited DOME_STEPS {
-			on_change_request {
-				if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is moving: request can not be completed");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Dome is moving: request can not be completed";
 			}
 			on_change {
 				DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;

@@ -23,7 +23,7 @@ driver lakeside {
 	label = "LakesideAstro Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 7;
+	version = 8;
 	serial;
 	include {
 		#include <ctype.h>
@@ -289,11 +289,9 @@ driver lakeside {
 				FOCUSER_STEPS_ITEM->number.max = 65535;
 				FOCUSER_STEPS_ITEM->number.step = 1;
 			}
-			on_change_request {
-				if (FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Abort is unfinished");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Abort is unfinished";
 			}
 			on_change {
 				int steps = (int)FOCUSER_STEPS_ITEM->number.target;

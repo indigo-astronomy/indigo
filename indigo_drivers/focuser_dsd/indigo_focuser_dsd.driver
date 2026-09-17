@@ -22,7 +22,7 @@ driver dsd {
 	label = "Deep Sky Dad Focuser";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2019-2026 Rumen G. Bogdanovski";
-	version = 17;
+	version = 18;
 	serial {
 		configurable_speed = true;
 	}
@@ -510,11 +510,9 @@ driver dsd {
 				FOCUSER_STEPS_ITEM->number.min = 0;
 				FOCUSER_STEPS_ITEM->number.step = 1;
 			}
-			on_change_request {
-				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Motion already in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Motion already in progress";
 			}
 			on_change {
 				dsd_motion_state(device, INDIGO_BUSY_STATE);

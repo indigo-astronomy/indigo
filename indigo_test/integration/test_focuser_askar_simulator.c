@@ -314,6 +314,22 @@ cleanup:
 	driver_stop();
 }
 
+static void rejected_change_alerts_and_keeps_values(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 10000, INDIGO_BUSY_STATE));
+	for (int i = 0; i < 60 && commands("FP10000") == 0; i++) {
+		indigo_usleep(50000);
+	}
+	SERIAL_CHECK_TRUE(commands("FP10000") == 1);
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200));
+	SERIAL_CHECK_TRUE(commands("FP10000") == 1);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void rejected_connection(void) {
 	SERIAL_CHECK_TRUE(fault('p', "malformed"));
 	simulator_test_client.update_property = observe_update;
@@ -445,6 +461,7 @@ int main(void) {
 		{ "absolute_and_relative_motion", absolute_and_relative_motion },
 		{ "limits_and_sync", limits_and_sync },
 		{ "abort_motion", abort_motion },
+		{ "rejected_change", rejected_change_alerts_and_keeps_values },
 		{ "rejected_connection", rejected_connection },
 		{ "command_failure_recovery", command_failure_recovery },
 		{ "sync_and_poll_failure_recovery", sync_and_poll_failure_recovery },

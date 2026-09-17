@@ -20,7 +20,7 @@ driver moonlite {
 	label = "MoonLite Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 11;
+	version = 12;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -297,11 +297,9 @@ driver moonlite {
 				FOCUSER_STEPS_ITEM->number.max = MOONLITE_MAX_POSITION;
 				FOCUSER_STEPS_ITEM->number.step = 1;
 			}
-			on_change_request {
-				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Motion already in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Motion already in progress";
 			}
 			on_change {
 				int64_t steps = (int64_t)FOCUSER_STEPS_ITEM->number.target;
@@ -324,11 +322,9 @@ driver moonlite {
 				FOCUSER_POSITION_ITEM->number.max = MOONLITE_MAX_POSITION;
 				FOCUSER_POSITION_ITEM->number.step = 1;
 			}
-			on_change_request {
-				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Motion already in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Motion already in progress";
 			}
 			on_change {
 				moonlite_start_motion(device, (int)FOCUSER_POSITION_ITEM->number.target);

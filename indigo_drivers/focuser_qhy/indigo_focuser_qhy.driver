@@ -22,7 +22,7 @@ driver qhy {
 	label = "QHY Q-Focuser";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2024-2026 Rumen G. Bogdanovski";
-	version = 7;
+	version = 8;
 	serial {
 		configurable_speed = true;
 	}
@@ -673,11 +673,9 @@ driver qhy {
 				FOCUSER_POSITION_ITEM->number.max = QHY_MAX_POSITION;
 				FOCUSER_POSITION_ITEM->number.step = 10;
 			}
-			on_change_request {
-				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Another focuser operation is in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another focuser operation is in progress";
 			}
 			on_change {
 				int requested = (int)FOCUSER_POSITION_ITEM->number.target;
@@ -704,11 +702,9 @@ driver qhy {
 				FOCUSER_STEPS_ITEM->number.max = QHY_MAX_POSITION;
 				FOCUSER_STEPS_ITEM->number.step = 10;
 			}
-			on_change_request {
-				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Another focuser operation is in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another focuser operation is in progress";
 			}
 			on_change {
 				int position = 0;

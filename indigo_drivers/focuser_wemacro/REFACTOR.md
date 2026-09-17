@@ -71,3 +71,13 @@ Generic framework numeric validation, persistence internals and hidden unsupport
 - 2026-09-13: Final results: 22/22 ordinary and 22/22 ASan scenarios pass. Expected `Failed to write (Input/output error)` diagnostics are produced only by the two intentional transport-failure cases. Strict generated-driver O0 and simulator O3 warning builds pass with `-Wall -Wextra -Werror`; archive/dylib/executable build succeeds.
 - 2026-09-13: `plutil -lint` accepts Xcode, `xmllint` accepts both new Visual Studio files and the server project, solution/server GUID and all eight solution configuration mappings agree, and neither `.vcxproj` file occurs in Xcode. The `.driver` and ledger are in the WeMacro Xcode group. `git diff --check` passes and README SHA-256 remains `0efb83da4534b3fed3e0189f1831cefe27d2d7c3b179f33f007d0a399db26323`.
 - 2026-09-13: Hardware tests were not run as requested. Physical behavior and Linux/Windows runtime remain unverified; the Visual Studio project was structurally validated only.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+Covered by the `rejected_change` scenario in `indigo_test/integration/test_focuser_wemacro_simulator.c`: while `X_RAIL_EXECUTE` is BUSY, `FOCUSER_STEPS` ends in ALERT with unchanged value and target, no rail move command is issued, and stepping is accepted again after the abort.
+
+```sh
+cd indigo_test && WEMACRO_TEST_FILTER=rejected_change ./build/integration/test_focuser_wemacro_simulator
+```

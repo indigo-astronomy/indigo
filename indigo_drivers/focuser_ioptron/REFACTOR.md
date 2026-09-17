@@ -85,3 +85,13 @@ Final variadic transport build checkpoint: all three drivers compile under stric
 Targeted ASan on the final variadic/input-only-discard implementation: 20/20 scenarios pass (readback_failure, init_, poll_, instances, disconnect), including all previously failing write-only-command/readback cases. Full ordinary suite remains in progress; strict compilation and reproducible generation pass.
 
 Preferred-I/O follow-up complete: full 40/40 simulator scenarios and targeted 20/20 ASan pass on the final variadic transport and shared input-only discard implementation. Strict O0/O2 arm64/x86_64 checks and byte-identical regeneration pass. Version 0x03000006 is higher than pre-follow-up 0x03000005. Existing MIGRATION_STATUS status columns remain correct and Comment is preserved. Hardware/Windows/Linux runtime limits remain unchanged.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+Covered by the `rejected_change` scenario in `indigo_test/integration/test_focuser_ioptron_simulator.c`: both directions of the guard are checked, `FOCUSER_STEPS` refused while `FOCUSER_POSITION` is BUSY and `FOCUSER_POSITION` refused while `FOCUSER_STEPS` is BUSY, each ending in ALERT with unchanged value and target.
+
+```sh
+cd indigo_test && IOPTRON_TEST_FILTER=rejected_change ./build/integration/test_focuser_ioptron_simulator
+```

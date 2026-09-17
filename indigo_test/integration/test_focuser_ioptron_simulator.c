@@ -358,6 +358,21 @@ cleanup:
 	driver_stop();
 }
 
+static void rejected_change_alerts_and_keeps_values(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 50000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 500));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 40000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 100, INDIGO_BUSY_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void poll_failure(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	unsigned before = atomic_load(&revisions[1]);
@@ -565,7 +580,7 @@ int main(void) {
 		{ "movement", movement, "normal" },
 		{ "zero", zero_sync, "normal" },
 		{ "abort", abort_motion, "normal" },
-		{ "overlap", overlap, "normal" },
+		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal" },
 		{ "poll_malformed", poll_failure, "malformed" },
 		{ "poll_short", poll_failure, "short" },
 		{ "poll_overlong", poll_failure, "overlong" },

@@ -352,6 +352,20 @@ cleanup:
 	driver_stop();
 }
 
+static void rejected_change_alerts_and_keeps_values(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 40000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_command("FG", 1));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(command_count("FG") == 1);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(FOCUSER_POSITION_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void rejected_connection(void) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&moonlite_focuser));
 	int descriptors = open_descriptors();
@@ -613,6 +627,7 @@ int main(void) {
 		{ "capabilities_split", capabilities, "split", NULL, NULL }, { "capabilities_alternate", capabilities, "alternate", NULL, NULL },
 		{ "controls", controls, "normal", NULL, NULL }, { "motion", motion, "normal", NULL, NULL }, { "limits", limits, "normal", NULL, NULL }, { "boundaries", boundaries, "normal", NULL, NULL },
 		{ "abort_and_overlap", abort_and_overlap, "normal", NULL, NULL },
+		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal", NULL, NULL },
 		{ "init_version_silent", rejected_connection, "normal", "GV", "silent" }, { "init_version_malformed", rejected_connection, "normal", "GV", "malformed" },
 		{ "init_status_malformed", rejected_connection, "normal", "GI", "malformed" }, { "init_position_partial", rejected_connection, "normal", "GP", "partial" },
 		{ "init_coefficient_overlong", rejected_connection, "normal", "GC", "overlong" },

@@ -29,7 +29,7 @@ driver svb {
 	label = "SVBONY Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>, Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o. and Rumen G. Bogdanovski";
-	version = 22;
+	version = 23;
 	multi_device_support = true;
 	include {
 		#include <assert.h>
@@ -1088,11 +1088,9 @@ driver svb {
 		inherited CCD_GAIN {
 			hidden = true;
 			preserve_values = true;
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, CCD_GAIN_PROPERTY, "Acquisition in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				svb_set_number(device, CCD_GAIN_PROPERTY, SVB_GAIN, CCD_GAIN_ITEM->number.target);
@@ -1101,11 +1099,9 @@ driver svb {
 		inherited CCD_GAMMA {
 			hidden = true;
 			preserve_values = true;
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, CCD_GAMMA_PROPERTY, "Acquisition in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				svb_set_number(device, CCD_GAMMA_PROPERTY, SVB_GAMMA, CCD_GAMMA_ITEM->number.target);
@@ -1114,22 +1110,18 @@ driver svb {
 		inherited CCD_OFFSET {
 			hidden = true;
 			preserve_values = true;
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, CCD_OFFSET_PROPERTY, "Acquisition in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				svb_set_number(device, CCD_OFFSET_PROPERTY, SVB_BLACK_LEVEL, CCD_OFFSET_ITEM->number.target);
 			}
 		}
 		inherited CCD_FRAME {
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, CCD_FRAME_PROPERTY, "Acquisition in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				if (CCD_FRAME_WIDTH_ITEM->number.value != CCD_FRAME_WIDTH_ITEM->number.max) {
@@ -1183,11 +1175,9 @@ driver svb {
 			}
 		}
 		inherited CCD_MODE {
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, CCD_MODE_PROPERTY, "Acquisition in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				char name[32] = "";
@@ -1219,11 +1209,9 @@ driver svb {
 		}
 		inherited CCD_BIN {
 			preserve_values = true;
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, CCD_BIN_PROPERTY, "Acquisition in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				int prev_h_bin = CCD_BIN_HORIZONTAL_ITEM->number.value;
@@ -1272,11 +1260,9 @@ driver svb {
 			on_attach {
 				initialize_properties(device);
 			}
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, X_PIXEL_FORMAT_PROPERTY, "Acquisition in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				/* NOTE: BPP can not be set directly because can not be linked to X_PIXEL_FORMAT_PROPERTY */
@@ -1306,11 +1292,9 @@ driver svb {
 			label = "Advanced";
 			persistent = true;
 			preserve_values = true;
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, X_ADVANCED_PROPERTY, "Acquisition in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				if (handle_advanced_property(device, X_ADVANCED_PROPERTY) != INDIGO_OK) {

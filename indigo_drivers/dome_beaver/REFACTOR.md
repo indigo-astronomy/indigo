@@ -236,3 +236,13 @@ Counts include development runs; a registered case run inside a complete suite r
 - Simulated tests, generated driver: 149 run, 146 passed. Breakdown: first complete run 31 run, 30 passed (trace compared with the original fixture copy); reproducers 15 run, 14 passed; BVR-15 debug run 0/1 and after the fix 1/1; trace captures 3/3; final complete run 46/46; ASan/UBSan complete run 46/46; network cases 3/3 and under ASan/UBSan 3/3.
 - Mutation checks (not counted above): 2 runs against deliberately broken scratch copies of the generated driver; both failed as intended.
 - Hardware tests: 0 run, 0 passed.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+Covered by the `rejected_change` scenario in `indigo_test/integration/test_dome_beaver_simulator.c`: while `DOME_HORIZONTAL_COORDINATES` is BUSY, `DOME_STEPS` ends in ALERT with unchanged value and target, and is accepted again after the abort.
+
+```sh
+cd indigo_test && BEAVER_TEST_FILTER=rejected_change ./build/integration/test_dome_beaver_simulator
+```

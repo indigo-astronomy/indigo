@@ -504,6 +504,19 @@ cleanup:
 	driver_stop();
 }
 
+static void rejected_change_alerts_and_keeps_values(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 50));
+	SERIAL_CHECK_TRUE(at_position(2000));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 2000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000));
+	SERIAL_CHECK_TRUE(at_position(4000));
+cleanup:
+	driver_stop();
+}
+
 static void settings_failure(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	const char *property = FOCUSER_BACKLASH_PROPERTY_NAME, *item = FOCUSER_BACKLASH_ITEM_NAME, *command = "B";
@@ -738,7 +751,7 @@ int main(void) {
 		{ "split", capabilities, "split" },
 		{ "relative", relative_motion, "normal" },
 		{ "abort", abort_motion, "normal" },
-		{ "overlap", overlap, "normal" },
+		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal" },
 		{ "backlash_failure", settings_failure, "normal" },
 		{ "limits_failure", settings_failure, "limits_failure" },
 		{ "reverse_failure", reverse_failure, "normal" },

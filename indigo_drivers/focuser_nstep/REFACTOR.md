@@ -74,3 +74,9 @@ nSTEP exposes the full manual-mode focuser surface plus optional controls:
 ## Coverage boundaries
 
 Automated coverage will include all behavior exposed by this driver through INDIGO properties and its inherited nSTEP protocol grammar. It will not include real motor direction, electrical serial behavior, physical travel, stored-position UI behavior, ASCOM/Windows vendor software behavior, unknown firmware variants, actual temperature accuracy or hardware interruption. Linux/Windows runtime and hardware validation remain out of scope for this task.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+**Not covered.** The only `reject_change` condition in this driver is `FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE`, and that state is only published by `INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE` for the moment between accepting the abort request and running the queued handler. `focuser_abort_motion_handler` ends in OK or ALERT and never parks in BUSY, and throughout that window `FOCUSER_STEPS` is itself BUSY from the move being aborted, so the framework BUSY guard in `INDIGO_COPY_VALUES_PROCESS_CHANGE` refuses the request before the driver guard can. The guard is kept for symmetry with the other focusers but is unreachable through the simulator; decide separately whether to drop it or to give abort an observable BUSY phase as `focuser_lakeside` has.

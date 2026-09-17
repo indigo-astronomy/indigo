@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000003
+#define DRIVER_VERSION       0x03000004
 #define DRIVER_NAME          "indigo_focuser_prodigy"
 #define DRIVER_LABEL         "PegasusAstro Prodigy Microfocuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus Prodigy Focuser"
@@ -605,33 +605,39 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_LIMITS_PROPERTY, focuser_limits_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-		//+ focuser.FOCUSER_POSITION.on_change_request
 		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < FOCUSER_POSITION_PROPERTY->count; i++) {
+				FOCUSER_POSITION_PROPERTY->items[i].do_update = true;
+			}
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Another motion is pending");
 			return INDIGO_OK;
 		}
-		//- focuser.FOCUSER_POSITION.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		//+ focuser.FOCUSER_STEPS.on_change_request
 		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < FOCUSER_STEPS_PROPERTY->count; i++) {
+				FOCUSER_STEPS_PROPERTY->items[i].do_update = true;
+			}
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Another motion is pending");
 			return INDIGO_OK;
 		}
-		//- focuser.FOCUSER_STEPS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_FOCUSER_PARK_PROPERTY, property)) {
-		//+ focuser.X_FOCUSER_PARK.on_change_request
 		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < X_FOCUSER_PARK_PROPERTY->count; i++) {
+				X_FOCUSER_PARK_PROPERTY->items[i].do_update = true;
+			}
+			X_FOCUSER_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, X_FOCUSER_PARK_PROPERTY, "Another motion is pending");
 			return INDIGO_OK;
 		}
-		//- focuser.X_FOCUSER_PARK.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_PARK_PROPERTY, focuser_x_focuser_park_handler);
 		return INDIGO_OK;
 	}

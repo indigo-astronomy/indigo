@@ -434,6 +434,24 @@ cleanup:
 	stop_driver();
 }
 
+static void rejected_change_alerts_and_keeps_values(void) {
+	double values[] = { 0, 1, 1, 20, 10 };
+	SERIAL_CHECK_TRUE(start_driver());
+	int index = observed_index(X_RAIL_EXECUTE_PROPERTY_NAME);
+	unsigned before = atomic_load(&revisions[index]);
+	static const char *items[] = { X_RAIL_EXECUTE_SETTLE_TIME_ITEM_NAME, X_RAIL_EXECUTE_PER_STEP_ITEM_NAME, X_RAIL_EXECUTE_INTERVAL_ITEM_NAME, X_RAIL_EXECUTE_LENGTH_ITEM_NAME, X_RAIL_EXECUTE_COUNT_ITEM_NAME };
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, wemacro.device_name, X_RAIL_EXECUTE_PROPERTY_NAME, ARRAY_SIZE(items), items, values));
+	SERIAL_CHECK_TRUE(new_state(X_RAIL_EXECUTE_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event("RX", "BATCH_EXEC", 1));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 20));
+	SERIAL_CHECK_EQ_INT(0, event_count("RX", "MOVE_"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_RAIL_EXECUTE_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(move_steps(20, INDIGO_OK_STATE));
+cleanup:
+	stop_driver();
+}
+
 static void batch_failure_recovery(void) {
 	double values[] = { 0, 1, 1, 20, 2 };
 	SERIAL_CHECK_TRUE(start_driver());
@@ -592,6 +610,7 @@ int main(void) {
 		{ "initialization_failure_retry", initialization_failure_retry, "silent" },
 		{ "motion_and_controls", motion_and_controls, "normal" },
 		{ "overlap_and_abort", overlap_and_abort, "normal" },
+		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal" },
 		{ "motion_wrong_status", motion_failure_recovery, "normal" },
 		{ "motion_malformed_status", motion_failure_recovery, "normal" },
 		{ "motion_silent_status", motion_failure_recovery, "normal" },

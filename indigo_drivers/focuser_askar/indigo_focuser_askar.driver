@@ -20,7 +20,7 @@ driver askar {
 	label = "Askar-WAF Focuser";
 	author = "Rumen G. Bogdanovski";
 	copyright = "Copyright (C) 2026 Rumen G. Bogdanovski";
-	version = 5;
+	version = 6;
 	serial {
 		configurable_speed = true;
 	}
@@ -575,11 +575,9 @@ driver askar {
 				FOCUSER_POSITION_ITEM->number.max = ASKAR_MAX_TRAVEL_MAX;
 				FOCUSER_POSITION_ITEM->number.step = 100;
 			}
-			on_change_request {
-				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
 			}
 			on_change {
 				int target = (int)FOCUSER_POSITION_ITEM->number.target;
@@ -604,11 +602,9 @@ driver askar {
 				FOCUSER_STEPS_ITEM->number.max = ASKAR_MAX_TRAVEL_MAX;
 				FOCUSER_STEPS_ITEM->number.step = 1;
 			}
-			on_change_request {
-				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
 			}
 			on_change {
 				int steps = (int)FOCUSER_STEPS_ITEM->number.value;

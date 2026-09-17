@@ -64,3 +64,13 @@ All 23 targeted ASan scenarios pass after the final shared-buffer/CTS changes, c
 All atomic steps are complete. Final version is 0x03000012, higher than baseline 0x02000011. Full scenario-to-capability mapping is in indigo_test/CHANGES.md. README, property source/capabilities, simulator inventory and scoped DRV-103/DRV-104 dispositions are synchronized. Xcode includes DSL/REFACTOR; Windows project and solution entries cover Debug/Release ARM64/x64. MIGRATION_STATUS records API 3, generated code, queues, Windows project support and simulator retesting, preserving its manual Comment column and the initial unrelated user edit. No generator implementation change.
 
 Final git diff --check passes. All test runs have exited and make -C indigo_test test-clean removed test build artifacts; task-owned temporary protocol extracts, rendered page and diagnostic logs were removed after recording results.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+Covered by the `rejected_change` scenario in `indigo_test/integration/test_focuser_efa_simulator.c`: while `FOCUSER_POSITION` is BUSY, `FOCUSER_STEPS` ends in ALERT with unchanged value and target, and motion is accepted again after the abort.
+
+```sh
+cd indigo_test && EFA_TEST_FILTER=rejected_change ./build/integration/test_focuser_efa_simulator
+```

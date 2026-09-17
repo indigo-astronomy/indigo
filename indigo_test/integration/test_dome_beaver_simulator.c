@@ -52,7 +52,7 @@
 #endif
 
 #ifndef EXPECTED_VERSION
-#define EXPECTED_VERSION 0x03000004
+#define EXPECTED_VERSION 0x03000005
 #endif
 
 #define DEVICE_NAME "Nexdome Beaver Dome"
@@ -1369,6 +1369,23 @@ cleanup:
 	driver_down();
 }
 
+static void rejected_change_alerts_and_keeps_values(void) {
+	CHECK(start_connected());
+	unsigned steps_revision = revision_of(DOME_STEPS_PROPERTY_NAME);
+	double steps = value_of(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME);
+	CHECK_EQ(INDIGO_OK, request_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 270));
+	CHECK(wait_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
+	CHECK_EQ(INDIGO_OK, request_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 30));
+	CHECK(wait_settled(DOME_STEPS_PROPERTY_NAME, steps_revision, INDIGO_ALERT_STATE, 5));
+	CHECK_EQ(steps, value_of(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME));
+	CHECK_EQ(steps, target_of(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME));
+	CHECK(abort_motion(INDIGO_OK_STATE));
+	CHECK(wait_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, 5));
+	CHECK(move_steps(DOME_DIRECTION_MOVE_CLOCKWISE_ITEM_NAME, 30, INDIGO_OK_STATE, 15));
+cleanup:
+	driver_down();
+}
+
 static void abort_rotation(void) {
 	CHECK(start_connected());
 	unsigned before = revision_of(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
@@ -2474,6 +2491,7 @@ static const beaver_case cases[] = {
 	{ "park_and_unpark", park_and_unpark, "--azimuth 90", false, false },
 	{ "park_position_set", park_position_set, "--azimuth 90", false, false },
 	{ "go_home", go_home, "--azimuth 90 --home 20", false, false },
+	{ "rejected_change", rejected_change_alerts_and_keeps_values, "--azimuth 90", false, false },
 	{ "abort_rotation", abort_rotation, "--azimuth 90 --rotation-speed 10", false, false },
 	{ "abort_park", abort_park, "--azimuth 180 --rotation-speed 10", false, false },
 	{ "shutter_open_close", shutter_open_close, NULL, false, false },

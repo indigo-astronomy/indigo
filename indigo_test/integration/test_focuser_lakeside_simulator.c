@@ -286,6 +286,19 @@ cleanup:
 	driver_stop();
 }
 
+static void rejected_change_alerts_and_keeps_values(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 20000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, lakeside_focuser.device_name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 30));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(FOCUSER_ABORT_MOTION_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void controls(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 12, INDIGO_OK_STATE));
@@ -547,7 +560,8 @@ int main(void) {
 	const lakeside_test tests[] = {
 		{ "simulator_protocol", simulator_protocol, "normal" }, { "simulator_split", simulator_protocol, "split" },
 		{ "capabilities", capabilities, "normal" }, { "capabilities_split", capabilities, "split" }, { "relative_motion", relative_motion, "normal" },
-		{ "abort_motion", abort_motion, "normal" }, { "overlap", overlap, "normal" }, { "controls", controls, "normal" },
+		{ "abort_motion", abort_motion, "normal" }, { "overlap", overlap, "normal" },
+		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal" }, { "controls", controls, "normal" },
 		{ "init_probe_silent", rejected_connection, "??_silent" }, { "init_probe_overlong", rejected_connection, "??_overlong" },
 		{ "init_slope_reject", rejected_connection, "CRg1_reject" }, { "init_position_malformed", rejected_connection, "?P" },
 		{ "init_backlash_partial", rejected_connection, "?B_partial" }, { "init_direction_malformed", rejected_connection, "?D" },

@@ -74,3 +74,13 @@ for mjkzz_filter in init_ poll_ failure start_transport_loss abort_motion discon
   MJKZZ_TEST_FILTER="$mjkzz_filter" ASAN_OPTIONS=detect_leaks=0 ./build/integration/test_focuser_mjkzz_simulator_asan || exit 1
 done
 ```
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+Covered by the `rejected_change` scenario in `indigo_test/integration/test_focuser_mjkzz_simulator.c`: while `FOCUSER_POSITION` is BUSY, `FOCUSER_STEPS` ends in ALERT with unchanged value and target, no second position command is issued, and motion is accepted again after the abort.
+
+```sh
+cd indigo_test && MJKZZ_TEST_FILTER=rejected_change ./build/integration/test_focuser_mjkzz_simulator
+```

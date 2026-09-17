@@ -211,3 +211,13 @@ User-directed variadic command pattern applied: command helpers accept format st
 Final variadic transport build checkpoint: all three drivers compile under strict O0/O2 arm64/x86_64 flags. Lacerta required explicit zero initialization of decoded position locals after separating command and response parsing; failed queries still return before publication. This warning-only refinement is separately smoke-tested after the full-suite run. The corrected input-only discard restores iOptron zero/reverse/abort readback regression cases.
 
 Preferred-I/O follow-up final results: 43/43 full simulator scenarios and 19/19 targeted ASan scenarios pass with variadic transport and input-only discard. Strict O0/O2 arm64/x86_64 checks pass; after the warning-only local initialization change, the normal scenario and ASan motion_poll_failure are rerun separately. Existing API/Windows/generator/queues/simulator-test status columns remain correct; the MIGRATION_STATUS Comment is untouched. Hardware and Windows/Linux runtime gaps are unchanged.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+Covered by the `rejected_change` scenario in `indigo_test/integration/test_focuser_lacerta_simulator.c`: both directions of the guard are checked, `FOCUSER_STEPS` refused while `FOCUSER_POSITION` is BUSY and `FOCUSER_POSITION` refused while `FOCUSER_STEPS` is BUSY, each ending in ALERT with unchanged value and target.
+
+```sh
+cd indigo_test && LACERTA_TEST_FILTER=rejected_change ./build/integration/test_focuser_lacerta_simulator
+```

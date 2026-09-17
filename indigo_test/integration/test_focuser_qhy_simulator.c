@@ -311,6 +311,19 @@ cleanup:
 	driver_stop();
 }
 
+static void rejected_change_alerts_and_keeps_values(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 150000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_commands("{\"cmd_id\":6,\"tar\":150000}", 1));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 5000));
+	SERIAL_CHECK_TRUE(commands("{\"cmd_id\":6,\"tar\":150000}") == 1);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_BUSY_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void rejected_connection(void) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&qhy_focuser));
 	int descriptors = open_descriptors();
@@ -583,6 +596,7 @@ int main(void) {
 		{ "movement_sync_relative", movement_and_sync, "normal", false, false },
 		{ "limits_speed_reverse", limits_and_controls, "normal", false, false },
 		{ "abort_overlap", abort_and_overlap, "normal", false, false },
+		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal", false, false },
 		{ "init_version_failure", rejected_connection, "VERSION", false, false },
 		{ "init_position_failure", rejected_connection, "POSITION", false, false },
 		{ "init_speed_failure", rejected_connection, "SPEED", false, false },

@@ -251,6 +251,18 @@ cleanup:
 	driver_stop();
 }
 
+static void rejected_change_alerts_and_keeps_values(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, robofocus_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 50000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 500));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_BUSY_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void controls(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(switch_change(POWER_PROPERTY_NAME, "1", true, INDIGO_OK_STATE));
@@ -474,6 +486,7 @@ int main(void) {
 		{ "capabilities_split", capabilities, "split" },
 		{ "movement_and_sync", movement_and_sync, "normal" },
 		{ "abort_and_overlap", abort_and_overlap, "normal" },
+		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal" },
 		{ "controls", controls, "normal" },
 		{ "poll_bad_checksum", poll_and_motion_failure, "poll_bad_checksum" },
 		{ "motion_bad_checksum", poll_and_motion_failure, "motion_bad_checksum" },

@@ -2521,7 +2521,6 @@
 		59910AA23054836E00FB1C2F /* test_agent_config.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_config.c; sourceTree = "<group>"; };
 		59910AA33054836E00FB1C2F /* test_agent_mount.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_mount.c; sourceTree = "<group>"; };
 		59910AA43054836E00FB1C2F /* test_ccd_asi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_asi_sdk.c; sourceTree = "<group>"; };
-		59910AA53055288200FB1C2F /* test_ccd_asi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_asi_sdk.c; sourceTree = "<group>"; };
 		59910AA6305535A900FB1C2F /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		59910AA7305535A900FB1C2F /* pthread_yield_compat.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = pthread_yield_compat.c; sourceTree = "<group>"; };
 		59910AA9305535A900FB1C2F /* IC90A.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = IC90A.HEX; sourceTree = "<group>"; };
@@ -13974,7 +13973,6 @@
 				59FA7BF2301D3A5800A35CFB /* test_bus_lifecycle.c */,
 				C0DE20260911000100000001 /* test_ccd_altair_sdk.c */,
 				59910AA43054836E00FB1C2F /* test_ccd_asi_sdk.c */,
-				59910AA53055288200FB1C2F /* test_ccd_asi_sdk.c */,
 				9D56D35A3058283B00725436 /* test_ccd_atik_sdk.c */,
 				59910B493055E73500FB1C2F /* test_ccd_atik2_sdk.c */,
 				C0DE20260911000200000001 /* test_ccd_baccam_sdk.c */,

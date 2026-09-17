@@ -1223,6 +1223,34 @@ static void guide_all_axes_and_disconnect(void) {
 	ASSERT_TRUE(cameras[0].opened);
 }
 
+static double number_target(int index, const char *property, const char *item) {
+	indigo_property *p = snapshot(index, property);
+	double result = NAN;
+	if (p) {
+		for (int i = 0; i < p->count; i++) {
+			if (!strcmp(p->items[i].name, item)) {
+				result = p->items[i].number.target;
+			}
+		}
+	}
+	indigo_release_property(p);
+	return result;
+}
+
+static bool switch_value(int index, const char *property, const char *item) {
+	indigo_property *p = snapshot(index, property);
+	bool result = false;
+	if (p) {
+		for (int i = 0; i < p->count; i++) {
+			if (!strcmp(p->items[i].name, item)) {
+				result = p->items[i].sw.value;
+			}
+		}
+	}
+	indigo_release_property(p);
+	return result;
+}
+
 static double number_value(int index, const char *property, const char *item) {
 	indigo_property *p = snapshot(index, property);
 	double result = NAN;
@@ -1821,6 +1849,42 @@ static void acquisition_conflicts_preserve_configuration(void) {
 	ASSERT_TRUE(take_image(0, 0.01));
 }
 
+static void rejected_change_alerts_and_keeps_values(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	double gain = number_value(0, "CCD_GAIN", "GAIN");
+	double width = number_value(0, "CCD_FRAME", "WIDTH");
+	double horizontal = number_value(0, "CCD_BIN", "HORIZONTAL");
+	ASSERT_TRUE(switch_value(0, PIXEL_PROPERTY, "RAW 8"));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_EXPOSURE", "EXPOSURE", 2.5));
+	ASSERT_TRUE(wait_count(&cameras[0].starts, 1));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_GAIN", "GAIN", gain + 20));
+	ASSERT_TRUE(wait_state(0, "CCD_GAIN", INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT((int)gain, (int)number_value(0, "CCD_GAIN", "GAIN"));
+	ASSERT_EQ_INT((int)gain, (int)number_target(0, "CCD_GAIN", "GAIN"));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_FRAME", "WIDTH", 320));
+	ASSERT_TRUE(wait_state(0, "CCD_FRAME", INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT((int)width, (int)number_value(0, "CCD_FRAME", "WIDTH"));
+	ASSERT_EQ_INT((int)width, (int)number_target(0, "CCD_FRAME", "WIDTH"));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_BIN", "HORIZONTAL", 2));
+	ASSERT_TRUE(wait_state(0, "CCD_BIN", INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT((int)horizontal, (int)number_value(0, "CCD_BIN", "HORIZONTAL"));
+	ASSERT_EQ_INT((int)horizontal, (int)number_target(0, "CCD_BIN", "HORIZONTAL"));
+	ASSERT_TRUE(set_switch(0, PIXEL_PROPERTY, "RAW 16", true));
+	ASSERT_TRUE(wait_state(0, PIXEL_PROPERTY, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(switch_value(0, PIXEL_PROPERTY, "RAW 8"));
+	ASSERT_TRUE(!switch_value(0, PIXEL_PROPERTY, "RAW 16"));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&test_client, observed[0].name, SUFFIX_PROPERTY, "SUFFIX", "busy"));
+	ASSERT_TRUE(wait_state(0, SUFFIX_PROPERTY, INDIGO_ALERT_STATE));
+	indigo_property *suffix = snapshot(0, SUFFIX_PROPERTY);
+	ASSERT_TRUE(suffix != NULL);
+	ASSERT_STREQ("", suffix->items->text.value);
+	indigo_release_property(suffix);
+	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_GAIN", "GAIN", gain + 20));
+	ASSERT_TRUE(wait_state(0, "CCD_GAIN", INDIGO_OK_STATE));
+	ASSERT_EQ_INT((int)gain + 20, (int)number_value(0, "CCD_GAIN", "GAIN"));
+}
+
 static void asi120_family_cooldown_and_unity(void) {
 	ASSERT_TRUE(remove_initial());
 	strcpy(cameras[0].info.Name, "ZWO ASI120MC-S");
@@ -2299,6 +2363,7 @@ int main(int argc, char **argv) {
 		{ "Edges cooling_reads_writes_and_settling", cooling_reads_writes_and_settling },
 		{ "Edges setup_write_origin_and_control_failures", setup_write_origin_and_control_failures },
 		{ "Edges acquisition_conflicts_preserve_configuration", acquisition_conflicts_preserve_configuration },
+		{ "Edges rejected_change_alerts_and_keeps_values", rejected_change_alerts_and_keeps_values },
 		{ "Edges asi120_family_cooldown_and_unity", asi120_family_cooldown_and_unity },
 		{ "Edges video_final_frame_abort_orders", video_final_frame_abort_orders },
 		{ "Edges shutdown_pending_discovery_and_capacity", shutdown_pending_discovery_and_capacity },

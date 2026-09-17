@@ -74,3 +74,13 @@ Generic framework numeric validation and persistence internals are not driver te
 - 2026-09-13: Two consecutive generator runs were byte-identical. Final generated SHA-256 values: C `dc2f829c1058c21c26b8736051d8f71bc14dc8975a911118e554b9c98887396a`; header `162249b044e6ca3c0c207b960b4af7fcf3677e216f8be2f8efa087f091343c76`; main `aaa0228e18b0ec91db3bfdf8c8e832bc56d95f2338369a495c8eb18644d9c404`.
 - 2026-09-13: `plutil` accepted Xcode; `xmllint` accepted the QHY project/filter and server project; the existing QHY GUID and all nine solution references remain present; no VS file is referenced by Xcode. README SHA-256 remains the baseline `2256baea224a8da455d4ceaf135a53ecedbc3fde646e53877f16b6a9cd9a18da`.
 - 2026-09-13: No hardware, physical TCP endpoint or Windows runtime test was run. Those gaps, plus physical direction/load/travel/holding-current/sensor/firmware validation, remain explicitly outside the simulator claim.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+Covered by the `rejected_change` scenario in `indigo_test/integration/test_focuser_qhy_simulator.c`: while `FOCUSER_POSITION` is BUSY, `FOCUSER_STEPS` ends in ALERT with unchanged value and target, no second move command is issued, and motion is accepted again after the abort.
+
+```sh
+cd indigo_test && QHY_TEST_FILTER=rejected_change ./build/integration/test_focuser_qhy_simulator
+```

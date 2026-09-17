@@ -581,6 +581,18 @@ cleanup:
 	driver_stop();
 }
 
+static void rejected_change_alerts_and_keeps_values(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200));
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change("X_FOCUSER_PARK", "PARK"));
+	SERIAL_CHECK_EQ_INT(0, commands("G:"));
+	SERIAL_CHECK_TRUE(abort_ok());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 600, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void shared_failure(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	int descriptors = open_descriptors();
@@ -698,6 +710,7 @@ int main(void) {
 		{ "init_ports", rejected_aux, "init_D_reply=D:0:2:0:0" },
 		{ "transport_loss", transport_loss, "normal" },
 		{ "overlap", overlap, "normal" },
+		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal" },
 		{ "shared_failure", shared_failure, "normal" },
 		{ "reboot_busy", reboot_busy, "normal" },
 		{ "disconnect_park", disconnect_special, "normal" },

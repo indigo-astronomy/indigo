@@ -256,3 +256,13 @@ Counts include development runs; a registered case run inside a complete suite r
 - Simulated tests, generated driver: 414 run, 404 passed. Breakdown: first comparison run 26 run, 25 passed (trace differences analysed) and reproducers 11/11; queue cases 2/2 and 1/1 after strengthening; trace captures 3/3, 3/3 and 3/3; `rotation_completes_at_target` 1 run, 0 passed before and 1/1 after the step 7 fix; complete runs 40/40 twice; first sanitizer run 40 run, 38 passed and 2 sanitizer debug reruns failed (step 8a); `busy_guard_holds_while_command_runs` 2 run, 0 passed before the fix and the 3 affected cases 3/3 after it; final trace captures 3/3; final complete runs 41/41 twice; final sanitizer run 41/41; `reference_trace` 4/4 after step 8c; network cases 3/3 in three runs and 3/3 under the sanitizer, and one complete default run 41/41 after the simulator change (step 11); step 12: before the fix `simulator_protocol` 1/1, `emergency_flags` 1/1 and `BDR-11` 2 run, 0 passed, after the fix `BDR-11` 2/2, the complete default suite 43/43 and 4/4 affected cases under the sanitizer.
 - Mutation checks (not counted above): 6 runs against deliberately broken scratch copies of the generated driver; 4 failed as intended, 1 passed and exposed a too-weak assertion that was then strengthened, and 1 unrelated case selected by the same name filter passed.
 - Hardware tests: 0 run, 0 passed.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+Covered by the `rejected_change` scenario in `indigo_test/integration/test_dome_baader_simulator.c`: while `DOME_HORIZONTAL_COORDINATES` is BUSY, `DOME_STEPS` ends in ALERT with unchanged value and target, and is accepted again after the abort.
+
+```sh
+cd indigo_test && BAADER_TEST_FILTER=rejected_change ./build/integration/test_dome_baader_simulator
+```

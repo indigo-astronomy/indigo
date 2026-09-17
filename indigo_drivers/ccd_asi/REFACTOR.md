@@ -394,3 +394,13 @@ Final source is the migration worktree over repository HEAD `23d1f926b`; the unc
 Reproduction: build `make -C indigo_test build/hardware/test_ccd_asi_hw build/hardware/test_ccd_asi_reload_hw`; select the exact camera with `INDIGO_TEST_DEVICE` and run the hardware executable with `--run`. `INDIGO_TEST_PHASE=reload` selects focused dynamic reload; `hotplug-exposure`, `hotplug-stream`, `hotplug-guide` and `--run --suffix` require coordinated USB cycles. Do not run two real-SDK processes concurrently. Fake coverage: `make -C indigo_test test-ccd-asi-sdk`; all 50 cases and the fully documented ASan/UBSan instrumentation scope passed. Hardware and diagnostic logs were inspected under the temporary `indigo-asi-refactor` workspace; persistent acceptance evidence is summarized here and in TESTING.md.
 
 Linux/Windows builds and runtime, Intel runtime, monochrome/non-S USB2 models and other physical ASI models were not available. Fake profiles cover absent capabilities. No external electrical ST4 timing or optical calibration is claimed or required for this driver acceptance. The original ASI120 SDK failure remains reproducible in the unchanged driver; the migrated driver supplies bounded recovery and preserves ALERT if recovery is exhausted.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
+
+Covered by `Edges rejected_change_alerts_and_keeps_values` in `indigo_test/integration/test_ccd_asi_sdk.c`: during an exposure it checks that `CCD_GAIN`, `CCD_FRAME`, `CCD_BIN`, `X_PIXEL_FORMAT` and `X_CUSTOM_SUFFIX` end in ALERT with unchanged values and targets, and that `CCD_GAIN` is accepted again once the exposure finishes.
+
+```sh
+make -C indigo_test test-ccd-asi-sdk
+```

@@ -20,7 +20,7 @@ driver prodigy {
 	label = "PegasusAstro Prodigy Microfocuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2022-2026 CloudMakers, s. r. o.";
-	version = 3;
+	version = 4;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -321,11 +321,9 @@ driver prodigy {
 		inherited FOCUSER_POSITION {
 			preserve_values = true;
 			on_attach { FOCUSER_POSITION_ITEM->number.min = -999999; FOCUSER_POSITION_ITEM->number.max = 999999; FOCUSER_POSITION_ITEM->number.step = 1; }
-			on_change_request {
-				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Another motion is pending");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion is pending";
 			}
 			on_change {
 				if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
@@ -342,11 +340,9 @@ driver prodigy {
 		}
 		inherited FOCUSER_STEPS {
 			on_attach { FOCUSER_STEPS_ITEM->number.min = 0; FOCUSER_STEPS_ITEM->number.max = 1999998; FOCUSER_STEPS_ITEM->number.step = 1; }
-			on_change_request {
-				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Another motion is pending");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion is pending";
 			}
 			on_change {
 				int target = PRIVATE_DATA->position + (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1);
@@ -396,11 +392,9 @@ driver prodigy {
 			label = "Park";
 			perm = INDIGO_RW_PERM;
 			rule = INDIGO_ANY_OF_MANY_RULE;
-			on_change_request {
-				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, X_FOCUSER_PARK_PROPERTY, "Another motion is pending");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion is pending";
 			}
 			on_change {
 				bool requested = X_FOCUSER_PARK_ITEM->sw.value;

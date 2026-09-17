@@ -409,6 +409,19 @@ cleanup:
 	driver_stop(&focuser);
 }
 
+static void rejected_change_alerts_and_keeps_values(void) {
+	SERIAL_CHECK_TRUE(start_focuser());
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1900));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change_on(focuser.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change_on(focuser.device_name, "X_START_ZEROING", "START"));
+	SERIAL_CHECK_TRUE(switch_change(&focuser, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(&focuser, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_BUSY_STATE));
+cleanup:
+	driver_stop(&focuser);
+}
+
 static void focuser_zeroing(void) {
 	SERIAL_CHECK_TRUE(start_focuser());
 	SERIAL_CHECK_TRUE(switch_change(&focuser, X_START_ZEROING_PROPERTY_NAME, "START", true, INDIGO_OK_STATE));
@@ -691,6 +704,7 @@ int main(void) {
 		{ "focuser_missing_sensor", focuser_capabilities, "missing_sensor" },
 		{ "focuser_movement", focuser_movement, "normal" },
 		{ "focuser_abort_overlap_disconnect", focuser_abort_overlap_disconnect, "normal" },
+		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal" },
 		{ "focuser_zeroing", focuser_zeroing, "normal" },
 		{ "focuser_controls", focuser_controls, "normal" },
 		{ "poll_failure", focuser_failure_recovery, "normal" },

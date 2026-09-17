@@ -20,7 +20,7 @@ driver ioptron {
 	label = "iOptron iEAF Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2024-2026 CloudMakers, s. r. o.";
-	version = 6;
+	version = 7;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -233,11 +233,9 @@ driver ioptron {
 				FOCUSER_POSITION_ITEM->number.max = 99999;
 				FOCUSER_POSITION_ITEM->number.step = 1;
 			}
-			on_change_request {
-				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_ZERO_SYNC_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Motion already in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_ZERO_SYNC_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Motion already in progress";
 			}
 			on_change {
 				ioptron_start_motion(device, (int)FOCUSER_POSITION_ITEM->number.target);
@@ -252,11 +250,9 @@ driver ioptron {
 				FOCUSER_STEPS_ITEM->number.max = 99999;
 				FOCUSER_STEPS_ITEM->number.step = 1;
 			}
-			on_change_request {
-				if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_ZERO_SYNC_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Motion already in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_ZERO_SYNC_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Motion already in progress";
 			}
 			on_change {
 				int delta = (int)FOCUSER_STEPS_ITEM->number.value;
