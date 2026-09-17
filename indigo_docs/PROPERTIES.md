@@ -1020,11 +1020,11 @@ Source: `indigo_drivers/dome_nexdome/indigo_dome_nexdome.driver` (generates `ind
 
 ### dome_nexdome3
 
-Custom properties: `NEXDOME_ACCELERATION_TIME`, `NEXDOME_BATTERY_POWER`, `NEXDOME_COMMAND`, `NEXDOME_FIND_HOME`, `NEXDOME_HOME_POSITION`, `NEXDOME_MOVE_THRESHOLD`, `NEXDOME_RAIN_SENSOR`, `NEXDOME_RANGE`, `NEXDOME_SETTINGS`, `NEXDOME_VELOCITY`, `NEXDOME_XB_STATE`.
+Custom properties: `X_ACCELERATION_TIME`, `X_BATTERY_POWER`, `X_FIND_HOME`, `X_HOME_POSITION`, `X_MOVE_THRESHOLD`, `X_RAIN_SENSOR`, `X_RANGE`, `X_SETTINGS`, `X_VELOCITY`, `X_XB_STATE`.
 
 Driver-specific use of existing properties: `DOME_ON_COORDINATES_SET`, `DOME_SLAVING_PARAMETERS`, `DOME_SPEED`.
 
-Source: `indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.c`.
+Source: `indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.driver` (generates `indigo_dome_nexdome3.c`).
 
 ### dome_skyroof
 

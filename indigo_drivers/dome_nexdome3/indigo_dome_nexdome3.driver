@@ -1,0 +1,1101 @@
+// Copyright (c) 2019-2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// NexDome dome driver definition (firmware 3.x by Tim Long)
+
+driver nexdome3 {
+	label = "NexDome3";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
+	copyright = "Copyright (c) 2019-2026 Rumen G. Bogdanovski";
+	version = 12;
+	serial;
+	include {
+		#include <math.h>
+		#include <stdarg.h>
+		#include <pthread.h>
+	}
+	define {
+		#define NEXDOME3_NETWORK_PORT 8080
+		#define NEXDOME3_RESET_DELAY 1
+		#define NEXDOME3_IDENTIFICATION_TIMEOUT 5
+		#define NEXDOME3_IDENTIFICATION_MESSAGES 30
+		#define NEXDOME3_READ_TIMEOUT 0.5
+		#define NEXDOME3_TRANSPORT_RETRY_DELAY 500000
+		#define NEXDOME3_STATUS_DELAY 3
+		#define NEXDOME3_CHECK_DELAY 1
+		#define NEXDOME3_STATUS_TIMEOUT 3
+		#define NEXDOME3_STALL_TIMEOUT 5
+		#define NEXDOME3_SHUTTER_TIMEOUT 30
+		#define NEXDOME3_DEFAULT_STEPS_PER_DEGREE 153
+		#define NEXDOME3_FIRMWARE_VERSION_3_2 0x0302
+		#define NEXDOME3_VOLTS_PER_ADU 0.01465
+		#define NEXDOME3_VOLT_THRESHOLD 7.5
+		#define NEXDOME3_MESSAGE_SIZE 100
+		#define NEXDOME3_MESSAGE_COUNT 64
+		#define NEXDOME3_PENDING_COUNT 16
+	}
+	data {
+		char command[64];
+		char messages[NEXDOME3_MESSAGE_COUNT][NEXDOME3_MESSAGE_SIZE], processed[NEXDOME3_MESSAGE_COUNT][NEXDOME3_MESSAGE_SIZE];
+		int message_count;
+		bool messages_scheduled, reader_running;
+		pthread_mutex_t message_mutex;
+		indigo_timer *reader;
+		char pending[NEXDOME3_PENDING_COUNT][4];
+		double pending_time[NEXDOME3_PENDING_COUNT];
+		int pending_count;
+		int version;
+		double steps_per_degree, position;
+		int dead_zone;
+		bool low_voltage, park_detection;
+		bool rotation_active, rotation_moving, rotation_stop_requested, park_active, home_active, rotation_check_scheduled;
+		double rotation_motion_time, rotation_status_time;
+		bool shutter_active, shutter_moving, shutter_motion_seen, shutter_stop_requested, shutter_open_target, shutter_closed, shutter_check_scheduled;
+		double shutter_request_time, shutter_motion_time;
+	}
+	code {
+		// writes one command; the reply arrives through the reader like any other message
+		static bool nexdome3_command(indigo_device *device, const char *format, ...) {
+			va_list args;
+			va_start(args, format);
+			vsnprintf(PRIVATE_DATA->command, sizeof(PRIVATE_DATA->command), format, args);
+			va_end(args);
+			if (indigo_uni_printf(PRIVATE_DATA->handle, "@%s\n", PRIVATE_DATA->command) <= 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to write %s", PRIVATE_DATA->command);
+				return false;
+			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command -> %s", PRIVATE_DATA->command);
+			// commands are answered in order: remember the command code for reply matching
+			if (PRIVATE_DATA->pending_count == NEXDOME3_PENDING_COUNT) {
+				memmove(PRIVATE_DATA->pending, PRIVATE_DATA->pending + 1, sizeof(PRIVATE_DATA->pending[0]) * (NEXDOME3_PENDING_COUNT - 1));
+				memmove(PRIVATE_DATA->pending_time, PRIVATE_DATA->pending_time + 1, sizeof(PRIVATE_DATA->pending_time[0]) * (NEXDOME3_PENDING_COUNT - 1));
+				PRIVATE_DATA->pending_count--;
+			}
+			snprintf(PRIVATE_DATA->pending[PRIVATE_DATA->pending_count], sizeof(PRIVATE_DATA->pending[0]), "%.3s", PRIVATE_DATA->command);
+			PRIVATE_DATA->pending_time[PRIVATE_DATA->pending_count++] = indigo_monotonic_time();
+			return true;
+		}
+
+		static void nexdome3_drop_pending(indigo_device *device, int count) {
+			memmove(PRIVATE_DATA->pending, PRIVATE_DATA->pending + count, sizeof(PRIVATE_DATA->pending[0]) * (PRIVATE_DATA->pending_count - count));
+			memmove(PRIVATE_DATA->pending_time, PRIVATE_DATA->pending_time + count, sizeof(PRIVATE_DATA->pending_time[0]) * (PRIVATE_DATA->pending_count - count));
+			PRIVATE_DATA->pending_count -= count;
+		}
+
+		// returns true when the reply code answers a pending command; unanswered older commands are dropped
+		static bool nexdome3_match_reply(indigo_device *device, const char *code) {
+			double now = indigo_monotonic_time();
+			while (PRIVATE_DATA->pending_count > 0 && now - PRIVATE_DATA->pending_time[0] > NEXDOME3_STATUS_TIMEOUT) {
+				nexdome3_drop_pending(device, 1);
+			}
+			for (int i = 0; i < PRIVATE_DATA->pending_count; i++) {
+				if (!strcmp(PRIVATE_DATA->pending[i], code)) {
+					nexdome3_drop_pending(device, i + 1);
+					return true;
+				}
+			}
+			return false;
+		}
+
+		static void request_settings(indigo_device *device) {
+			nexdome3_command(device, "ARR");
+			nexdome3_command(device, "ARS");
+			nexdome3_command(device, "DRR");
+			nexdome3_command(device, "HRR");
+			nexdome3_command(device, "PRR");
+			nexdome3_command(device, "PRS");
+			nexdome3_command(device, "VRR");
+			nexdome3_command(device, "VRS");
+			nexdome3_command(device, "RRR");
+			nexdome3_command(device, "RRS");
+		}
+
+		static bool nexdome3_open(indigo_device *device) {
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+				return false;
+			}
+			char *name = DEVICE_PORT_ITEM->text.value;
+			if (!indigo_uni_is_url(name, "nexdome")) {
+				PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
+				if (PRIVATE_DATA->handle != NULL) {
+					// to be on the safe side
+					indigo_sleep(NEXDOME3_RESET_DELAY);
+				}
+			} else {
+				PRIVATE_DATA->handle = indigo_uni_open_url(name, NEXDOME3_NETWORK_PORT, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
+			}
+			if (PRIVATE_DATA->handle == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", name);
+				indigo_global_unlock(device);
+				return false;
+			}
+			char response[NEXDOME3_MESSAGE_SIZE], firmware[NEXDOME3_MESSAGE_SIZE] = "";
+			PRIVATE_DATA->pending_count = 0;
+			if (nexdome3_command(device, "FRR")) {
+				// events can arrive before the version reply
+				double deadline = indigo_monotonic_time() + NEXDOME3_IDENTIFICATION_TIMEOUT;
+				for (int i = 0; i < NEXDOME3_IDENTIFICATION_MESSAGES && !*firmware; i++) {
+					double remaining = deadline - indigo_monotonic_time();
+					if (remaining <= 0) {
+						break;
+					}
+					long length = indigo_uni_read_section2(PRIVATE_DATA->handle, response, sizeof(response) - 1, "#\n\r", "", INDIGO_DELAY(remaining), INDIGO_DELAY(NEXDOME3_READ_TIMEOUT));
+					if (length <= 0) {
+						break;
+					}
+					response[length] = 0;
+					if (length == 1 && response[0] != '#') {
+						// the undocumented line break after a reply
+						i--;
+						continue;
+					}
+					if (!strncmp(response, ":FR", 3) && response[length - 1] == '#' && length > 4) {
+						snprintf(firmware, sizeof(firmware), "%.*s", (int)(length - 4), response + 3);
+					}
+				}
+			}
+			PRIVATE_DATA->pending_count = 0;
+			int major = 0, minor = 0;
+			if (*firmware && sscanf(firmware, "%d.%d", &major, &minor) >= 1) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "NexDome");
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+				PRIVATE_DATA->version = (major << 8) + minor;
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with firmware V.%s (%04x) connected.", "NexDome", firmware, PRIVATE_DATA->version);
+				return true;
+			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: NexDome did not respond. Are you using the correct firmware?");
+			indigo_send_message(device, CONNECTION_PROPERTY, "NexDome did not respond. Are you using the correct firmware?");
+			indigo_uni_close(&PRIVATE_DATA->handle);
+			indigo_global_unlock(device);
+			return false;
+		}
+
+		static void nexdome3_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+			indigo_global_unlock(device);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
+		}
+	}
+	dome {
+		name = "NexDome3";
+		additional_instances = true;
+		code {
+			static void nexdome3_process_messages(indigo_device *device);
+
+			// reads notifications and replies on its own thread and hands them over to the device queue
+			static void nexdome3_reader(indigo_device *device) {
+				indigo_rename_thread("NexDome3 reader");
+				char message[NEXDOME3_MESSAGE_SIZE];
+				bool discard = false, failed = false;
+				while (PRIVATE_DATA->reader_running) {
+					double started = indigo_monotonic_time();
+					long length = indigo_uni_read_section2(PRIVATE_DATA->handle, message, sizeof(message) - 1, "#\n\r", "", INDIGO_DELAY(NEXDOME3_READ_TIMEOUT), INDIGO_DELAY(NEXDOME3_READ_TIMEOUT));
+					if (length <= 0) {
+						// an immediate empty read is a closed or failed transport, not a timeout
+						if (length < 0 || indigo_monotonic_time() - started < NEXDOME3_READ_TIMEOUT / 2) {
+							if (!failed) {
+								INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s", DEVICE_PORT_ITEM->text.value);
+							}
+							failed = true;
+							indigo_usleep(NEXDOME3_TRANSPORT_RETRY_DELAY);
+						}
+						continue;
+					}
+					failed = false;
+					message[length] = 0;
+					bool terminated = strchr("#\n\r", message[length - 1]) != NULL;
+					if (discard || !terminated) {
+						// the rest of an overlong line is not a message
+						if (!discard) {
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Overlong message ignored");
+						}
+						discard = !terminated;
+						continue;
+					}
+					if (message[length - 1] != '#') {
+						message[--length] = 0;
+					}
+					if (length == 0) {
+						continue;
+					}
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Response -> %s", message);
+					pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
+					bool schedule = false;
+					if (PRIVATE_DATA->message_count < NEXDOME3_MESSAGE_COUNT) {
+						strcpy(PRIVATE_DATA->messages[PRIVATE_DATA->message_count++], message);
+						schedule = !PRIVATE_DATA->messages_scheduled;
+						PRIVATE_DATA->messages_scheduled = true;
+					} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Message queue full, '%s' ignored", message);
+					}
+					pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
+					if (schedule) {
+						indigo_execute_handler(device, nexdome3_process_messages);
+					}
+				}
+			}
+
+			static void nexdome3_clear_messages(indigo_device *device) {
+				pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
+				PRIVATE_DATA->message_count = 0;
+				PRIVATE_DATA->messages_scheduled = false;
+				pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
+			}
+
+			static double nexdome3_azimuth(indigo_device *device, double position) {
+				double azimuth = fmod(position / PRIVATE_DATA->steps_per_degree, 360);
+				return azimuth < 0 ? azimuth + 360 : azimuth;
+			}
+
+			// a park request cannot get closer to the park position than the dead zone
+			static bool nexdome3_in_park_position(indigo_device *device, bool dead_zone) {
+				double tolerance = dead_zone ? PRIVATE_DATA->dead_zone / PRIVATE_DATA->steps_per_degree : 1;
+				return indigo_azimuth_distance(0, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value) <= (tolerance > 1 ? tolerance : 1);
+			}
+
+			static void nexdome3_update_shutter_switches(indigo_device *device) {
+				indigo_set_switch(DOME_SHUTTER_PROPERTY, PRIVATE_DATA->shutter_closed ? DOME_SHUTTER_CLOSED_ITEM : DOME_SHUTTER_OPENED_ITEM, true);
+			}
+
+			static void nexdome3_rotation_failed(indigo_device *device) {
+				PRIVATE_DATA->rotation_active = PRIVATE_DATA->rotation_moving = PRIVATE_DATA->rotation_stop_requested = false;
+				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+				if (DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+					DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+				}
+				if (PRIVATE_DATA->park_active) {
+					PRIVATE_DATA->park_active = false;
+					DOME_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
+				}
+				if (PRIVATE_DATA->home_active) {
+					PRIVATE_DATA->home_active = false;
+					indigo_set_switch(X_FIND_HOME_PROPERTY, X_FIND_HOME_ITEM, false);
+					X_FIND_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_FIND_HOME_PROPERTY, NULL);
+				}
+			}
+
+			static void nexdome3_shutter_failed(indigo_device *device, const char *message) {
+				PRIVATE_DATA->shutter_active = PRIVATE_DATA->shutter_moving = false;
+				nexdome3_update_shutter_switches(device);
+				DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, DOME_SHUTTER_PROPERTY, message);
+			}
+
+			// watches a rotation request until the controller reports that the motor stopped
+			static void rotation_finalizer(indigo_device *device) {
+				if (!IS_CONNECTED || !PRIVATE_DATA->rotation_active) {
+					PRIVATE_DATA->rotation_check_scheduled = false;
+					return;
+				}
+				double now = indigo_monotonic_time();
+				if (PRIVATE_DATA->rotation_moving) {
+					if (now - PRIVATE_DATA->rotation_motion_time > NEXDOME3_STALL_TIMEOUT) {
+						// no position report: the next status report ends the motion
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotation reports stopped, requesting status");
+						PRIVATE_DATA->rotation_moving = false;
+						PRIVATE_DATA->rotation_status_time = now;
+						nexdome3_command(device, "SRR");
+					}
+				} else if (PRIVATE_DATA->rotation_status_time > 0 && now - PRIVATE_DATA->rotation_status_time > NEXDOME3_STATUS_TIMEOUT) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No rotator status report");
+					PRIVATE_DATA->rotation_check_scheduled = false;
+					nexdome3_rotation_failed(device);
+					return;
+				}
+				indigo_execute_handler_in(device, NEXDOME3_CHECK_DELAY, rotation_finalizer);
+			}
+
+			// the status is requested 3 s after every rotation request
+			static void rotator_status_finalizer(indigo_device *device) {
+				if (!IS_CONNECTED) {
+					return;
+				}
+				if (PRIVATE_DATA->rotation_active && !PRIVATE_DATA->rotation_moving) {
+					PRIVATE_DATA->rotation_status_time = indigo_monotonic_time();
+				}
+				nexdome3_command(device, "SRR");
+				if (PRIVATE_DATA->rotation_active && !PRIVATE_DATA->rotation_check_scheduled) {
+					PRIVATE_DATA->rotation_check_scheduled = true;
+					indigo_execute_handler_in(device, NEXDOME3_CHECK_DELAY, rotation_finalizer);
+				}
+			}
+
+			static void nexdome3_start_rotation(indigo_device *device) {
+				PRIVATE_DATA->rotation_active = true;
+				PRIVATE_DATA->rotation_moving = false;
+				PRIVATE_DATA->rotation_status_time = 0;
+				indigo_execute_handler_in(device, NEXDOME3_STATUS_DELAY, rotator_status_finalizer);
+			}
+
+			// watches a shutter request until the shutter reports the requested end position
+			static void shutter_finalizer(indigo_device *device) {
+				if (!IS_CONNECTED || !PRIVATE_DATA->shutter_active) {
+					PRIVATE_DATA->shutter_check_scheduled = false;
+					return;
+				}
+				double now = indigo_monotonic_time();
+				if (!PRIVATE_DATA->shutter_motion_seen && now - PRIVATE_DATA->shutter_request_time > NEXDOME3_SHUTTER_TIMEOUT) {
+					PRIVATE_DATA->shutter_check_scheduled = false;
+					nexdome3_shutter_failed(device, "Shutter did not respond");
+					return;
+				}
+				if (PRIVATE_DATA->shutter_moving && now - PRIVATE_DATA->shutter_motion_time > NEXDOME3_STALL_TIMEOUT) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Shutter reports stopped, requesting status");
+					PRIVATE_DATA->shutter_moving = false;
+					PRIVATE_DATA->shutter_motion_time = now;
+					nexdome3_command(device, "SRS");
+				}
+				indigo_execute_handler_in(device, NEXDOME3_CHECK_DELAY, shutter_finalizer);
+			}
+
+			// the status is requested 3 s after every shutter request
+			static void shutter_status_finalizer(indigo_device *device) {
+				if (!IS_CONNECTED) {
+					return;
+				}
+				nexdome3_command(device, "SRS");
+				if (PRIVATE_DATA->shutter_active && !PRIVATE_DATA->shutter_check_scheduled) {
+					PRIVATE_DATA->shutter_check_scheduled = true;
+					indigo_execute_handler_in(device, NEXDOME3_CHECK_DELAY, shutter_finalizer);
+				}
+			}
+
+			static void handle_rotator_position(indigo_device *device, const char *message) {
+				int position;
+				char end;
+				if (sscanf(message, ":PRR%d%c", &position, &end) != 2 && sscanf(message, "P%d%c", &position, &end) != 1) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
+					return;
+				}
+				PRIVATE_DATA->position = position;
+				if (*message == 'P') {
+					PRIVATE_DATA->rotation_motion_time = indigo_monotonic_time();
+				}
+				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = nexdome3_azimuth(device, position);
+				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			}
+
+			static void handle_rotator_move(indigo_device *device, const char *message) {
+				PRIVATE_DATA->rotation_moving = true;
+				PRIVATE_DATA->rotation_motion_time = indigo_monotonic_time();
+				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+				DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+				indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+				if (PRIVATE_DATA->home_active) {
+					X_FIND_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, X_FIND_HOME_PROPERTY, "Going home...");
+				}
+				if (PRIVATE_DATA->park_active) {
+					DOME_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, DOME_PARK_PROPERTY, "Going to park position...");
+				}
+			}
+
+			static void handle_shutter_move(indigo_device *device, const char *message) {
+				PRIVATE_DATA->shutter_moving = PRIVATE_DATA->shutter_motion_seen = true;
+				PRIVATE_DATA->shutter_motion_time = indigo_monotonic_time();
+				DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, DOME_SHUTTER_PROPERTY, message[1] == 'c' ? "Shutter is closing..." : "Shutter is opening...");
+			}
+
+			static void handle_rotator_status(indigo_device *device, const char *message, bool reply) {
+				int position, at_home, max_position, home_position, dead_zone;
+				char end;
+				if (sscanf(message, ":SER,%d,%d,%d,%d,%d%c", &position, &at_home, &max_position, &home_position, &dead_zone, &end) != 6 || end != '#' || max_position <= 0) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
+					return;
+				}
+				PRIVATE_DATA->steps_per_degree = max_position / 360.0;
+				PRIVATE_DATA->position = position;
+				PRIVATE_DATA->dead_zone = dead_zone;
+				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = nexdome3_azimuth(device, position);
+				if (reply && PRIVATE_DATA->rotation_moving) {
+					// a requested status report while the motor moves
+					indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+					return;
+				}
+				bool stopped = PRIVATE_DATA->rotation_moving || PRIVATE_DATA->rotation_active;
+				// a requested status report does not hide a failed request
+				bool failed = reply && !stopped;
+				PRIVATE_DATA->rotation_active = PRIVATE_DATA->rotation_moving = false;
+				if (!failed || DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
+					DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				if (!failed || DOME_STEPS_PROPERTY->state != INDIGO_ALERT_STATE) {
+					DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				if (PRIVATE_DATA->home_active && at_home) {
+					X_FIND_HOME_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_set_switch(X_FIND_HOME_PROPERTY, X_FIND_HOME_ITEM, false);
+					indigo_update_property(device, X_FIND_HOME_PROPERTY, "Dome is at home.");
+					PRIVATE_DATA->home_active = false;
+				}
+				if ((PRIVATE_DATA->park_active && nexdome3_in_park_position(device, true)) || (PRIVATE_DATA->park_detection && nexdome3_in_park_position(device, false))) {
+					DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
+					indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
+					PRIVATE_DATA->park_active = false;
+				}
+				PRIVATE_DATA->park_detection = false;
+				if (PRIVATE_DATA->rotation_stop_requested || stopped) {
+					PRIVATE_DATA->rotation_stop_requested = false;
+					// a find home or park that stopped elsewhere has failed
+					if (PRIVATE_DATA->home_active) {
+						PRIVATE_DATA->home_active = false;
+						indigo_set_switch(X_FIND_HOME_PROPERTY, X_FIND_HOME_ITEM, false);
+						X_FIND_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, X_FIND_HOME_PROPERTY, NULL);
+					}
+					if (PRIVATE_DATA->park_active) {
+						PRIVATE_DATA->park_active = false;
+						DOME_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
+					}
+				}
+				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+				indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+			}
+
+			static void handle_shutter_status(indigo_device *device, const char *message, bool reply) {
+				int position, max_position, open_switch, close_switch;
+				char end;
+				if (sscanf(message, ":SES,%d,%d,%d,%d%c", &position, &max_position, &open_switch, &close_switch, &end) != 5 || end != '#' || max_position <= 0) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
+					return;
+				}
+				if (!reply) {
+					PRIVATE_DATA->shutter_moving = false;
+				}
+				bool closed = close_switch || position <= 0, open = !closed && (open_switch || position >= max_position);
+				if (PRIVATE_DATA->shutter_active && !PRIVATE_DATA->shutter_motion_seen && ((PRIVATE_DATA->shutter_open_target && closed) || (!PRIVATE_DATA->shutter_open_target && open))) {
+					// the shutter has not started to move over the wireless link yet
+					PRIVATE_DATA->shutter_closed = closed;
+					return;
+				}
+				if (closed) {
+					PRIVATE_DATA->shutter_active = PRIVATE_DATA->shutter_stop_requested = false;
+					PRIVATE_DATA->shutter_closed = true;
+					DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
+					indigo_update_property(device, DOME_SHUTTER_PROPERTY, close_switch ? "Shutter is closed." : "Shutter is closed, but end swich is not activated.");
+				} else if (open) {
+					PRIVATE_DATA->shutter_active = PRIVATE_DATA->shutter_stop_requested = false;
+					PRIVATE_DATA->shutter_closed = false;
+					DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
+					indigo_update_property(device, DOME_SHUTTER_PROPERTY, open_switch ? "Shutter is open." : "Shutter is open, but end swich is not activated.");
+				} else if (PRIVATE_DATA->shutter_stop_requested) {
+					PRIVATE_DATA->shutter_active = PRIVATE_DATA->shutter_stop_requested = PRIVATE_DATA->shutter_moving = false;
+					PRIVATE_DATA->shutter_closed = false;
+					DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
+					indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter stopped.");
+				} else if (PRIVATE_DATA->shutter_moving) {
+					DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+				} else {
+					// stopped between the end positions
+					PRIVATE_DATA->shutter_active = false;
+					PRIVATE_DATA->shutter_closed = false;
+					DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
+					indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+				}
+			}
+
+			static void handle_battery_status(indigo_device *device, const char *message) {
+				int adc_value;
+				char end;
+				if (sscanf(message, ":BV%d%c", &adc_value, &end) != 2 || end != '#') {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
+					return;
+				}
+				/* 15 / 1024 =  0.01465 V/ADU */
+				double volts = NEXDOME3_VOLTS_PER_ADU * adc_value;
+				if (volts < NEXDOME3_VOLT_THRESHOLD) {
+					if (!PRIVATE_DATA->low_voltage) {
+						indigo_send_message(device, ALERT_PROPERTY, "Dome power is low! (U = %.2fV)", volts);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dome power is low! (U = %.2fV", volts);
+					}
+					PRIVATE_DATA->low_voltage = true;
+				} else {
+					if (PRIVATE_DATA->low_voltage) {
+						indigo_send_message(device, IDLE_PROPERTY, "Dome power is normal! (U = %.2fV)", volts);
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "Dome power is normal! (U = %.2fV)", volts);
+					}
+					PRIVATE_DATA->low_voltage = false;
+				}
+				if (fabs((volts - X_BATTERY_POWER_VOLTAGE_ITEM->number.value) * 100) >= 1) {
+					X_BATTERY_POWER_VOLTAGE_ITEM->number.value = volts;
+					indigo_update_property(device, X_BATTERY_POWER_PROPERTY, NULL);
+				}
+			}
+
+			static void handle_home_position(indigo_device *device, const char *message) {
+				int home_position;
+				char end;
+				if (sscanf(message, ":HRR%d%c", &home_position, &end) != 2 || end != '#') {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
+					return;
+				}
+				if (fabs(home_position - X_HOME_POSITION_ITEM->number.value) >= 1) {
+					X_HOME_POSITION_ITEM->number.value = home_position;
+					indigo_update_property(device, X_HOME_POSITION_PROPERTY, NULL);
+				}
+			}
+
+			static void handle_move_threshold(indigo_device *device, const char *message) {
+				int dead_zone;
+				char end;
+				if (sscanf(message, ":DRR%d%c", &dead_zone, &end) != 2 || end != '#') {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
+					return;
+				}
+				PRIVATE_DATA->dead_zone = dead_zone;
+				if (fabs(dead_zone - X_MOVE_THRESHOLD_ITEM->number.value) >= 1) {
+					X_MOVE_THRESHOLD_ITEM->number.value = dead_zone;
+					indigo_update_property(device, X_MOVE_THRESHOLD_PROPERTY, NULL);
+				}
+				if (dead_zone > (DOME_SLAVING_THRESHOLD_ITEM->number.value * PRIVATE_DATA->steps_per_degree)) {
+					DOME_SLAVING_THRESHOLD_ITEM->number.value = dead_zone / PRIVATE_DATA->steps_per_degree;
+					DOME_SLAVING_PARAMETERS_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, "Dome synchrinization threshold updated as it can not be less than the dome minimal move.");
+				}
+			}
+
+			// :ARR, :ARS, :VRR, :VRS, :RRR and :RRS update the rotator or shutter item of a property
+			static void handle_pair(indigo_device *device, const char *message, const char *format, indigo_property *property) {
+				int value;
+				char target, end;
+				if (sscanf(message, format, &target, &value, &end) != 3 || end != '#' || (target != 'R' && target != 'S')) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
+					return;
+				}
+				property->items[target == 'R' ? 0 : 1].number.value = value;
+				indigo_update_property(device, property, NULL);
+				if (property == X_RANGE_PROPERTY && target == 'R' && value > 0) {
+					// the circumference defines the step conversion
+					PRIVATE_DATA->steps_per_degree = value / 360.0;
+				}
+			}
+
+			static void handle_xb(indigo_device *device, const char *message) {
+				char state[20];
+				if (sscanf(message, "XB->%19s", state) != 1) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
+					return;
+				}
+				if (strcmp(state, X_XB_STATE_ITEM->text.value)) {
+					indigo_set_text_item_value(X_XB_STATE_ITEM, state);
+					X_XB_STATE_PROPERTY->state = strcmp(state, "Online") ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+					indigo_update_property(device, X_XB_STATE_PROPERTY, NULL);
+				}
+			}
+
+			static void handle_rain(indigo_device *device, const char *message) {
+				if (!strcmp(message, ":Rain#")) {
+					X_RAIN_SENSOR_PROPERTY->state = INDIGO_ALERT_STATE;
+					X_RAIN_SENSOR_ALERT_ITEM->light.value = INDIGO_ALERT_STATE;
+				} else if (!strcmp(message, ":RainStopped#")) {
+					X_RAIN_SENSOR_PROPERTY->state = INDIGO_OK_STATE;
+					X_RAIN_SENSOR_ALERT_ITEM->light.value = INDIGO_OK_STATE;
+				}
+				indigo_update_property(device, X_RAIN_SENSOR_PROPERTY, NULL);
+			}
+
+			// a command rejected by the controller fails the operation it started
+			static void handle_error(indigo_device *device) {
+				char code[4] = "";
+				if (PRIVATE_DATA->pending_count > 0) {
+					strcpy(code, PRIVATE_DATA->pending[0]);
+					nexdome3_drop_pending(device, 1);
+				}
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command %s rejected", *code ? code : "(unknown)");
+				if ((!strcmp(code, "GAR") || !strcmp(code, "GSR") || !strcmp(code, "GHR") || !strcmp(code, "PWR")) && (PRIVATE_DATA->rotation_active || PRIVATE_DATA->home_active)) {
+					nexdome3_rotation_failed(device);
+				} else if ((!strcmp(code, "OPS") || !strcmp(code, "CLS")) && PRIVATE_DATA->shutter_active) {
+					nexdome3_shutter_failed(device, NULL);
+				}
+			}
+
+			static void nexdome3_process_message(indigo_device *device, const char *message) {
+				if (!strncmp(message, "P", 1) || !strncmp(message, ":PRR", 4)) {
+					if (*message == ':') {
+						nexdome3_match_reply(device, "PRR");
+					}
+					handle_rotator_position(device, message);
+				} else if (!strncmp(message, "S", 1) || !strncmp(message, ":PRS", 4)) {
+					if (*message == ':') {
+						nexdome3_match_reply(device, "PRS");
+					} else if (PRIVATE_DATA->shutter_moving) {
+						PRIVATE_DATA->shutter_motion_time = indigo_monotonic_time();
+					}
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", message);
+				} else if (!strcmp(message, ":left#") || !strcmp(message, ":right#")) {
+					handle_rotator_move(device, message);
+				} else if (!strcmp(message, ":open#") || !strcmp(message, ":close#")) {
+					handle_shutter_move(device, message);
+				} else if (!strncmp(message, ":SER", 4)) {
+					handle_rotator_status(device, message, nexdome3_match_reply(device, "SRR"));
+				} else if (!strncmp(message, ":SES", 4)) {
+					handle_shutter_status(device, message, nexdome3_match_reply(device, "SRS"));
+				} else if (!strncmp(message, ":BV", 3)) {
+					handle_battery_status(device, message);
+				} else if (!strncmp(message, ":HRR", 4)) {
+					nexdome3_match_reply(device, "HRR");
+					handle_home_position(device, message);
+				} else if (!strncmp(message, ":DRR", 4)) {
+					nexdome3_match_reply(device, "DRR");
+					handle_move_threshold(device, message);
+				} else if (!strncmp(message, ":AR", 3)) {
+					nexdome3_match_reply(device, message[3] == 'S' ? "ARS" : "ARR");
+					handle_pair(device, message, ":AR%c%d%c", X_ACCELERATION_TIME_PROPERTY);
+				} else if (!strncmp(message, ":VR", 3)) {
+					nexdome3_match_reply(device, message[3] == 'S' ? "VRS" : "VRR");
+					handle_pair(device, message, ":VR%c%d%c", X_VELOCITY_PROPERTY);
+				} else if (!strncmp(message, ":RR", 3)) {
+					nexdome3_match_reply(device, message[3] == 'S' ? "RRS" : "RRR");
+					handle_pair(device, message, ":RR%c%d%c", X_RANGE_PROPERTY);
+				} else if (!strncmp(message, "XB->", 4)) {
+					handle_xb(device, message);
+				} else if (!strncmp(message, ":Rain", 5)) {
+					handle_rain(device, message);
+				} else if (!strcmp(message, ":Err#")) {
+					handle_error(device);
+				} else if (*message == ':' && strlen(message) == 5 && message[4] == '#') {
+					char code[4];
+					snprintf(code, sizeof(code), "%.3s", message + 1);
+					nexdome3_match_reply(device, code);
+				}
+			}
+
+			static void nexdome3_process_messages(indigo_device *device) {
+				pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
+				int count = PRIVATE_DATA->message_count;
+				memcpy(PRIVATE_DATA->processed, PRIVATE_DATA->messages, sizeof(PRIVATE_DATA->messages[0]) * count);
+				PRIVATE_DATA->message_count = 0;
+				PRIVATE_DATA->messages_scheduled = false;
+				pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
+				if (!IS_CONNECTED) {
+					return;
+				}
+				for (int i = 0; i < count; i++) {
+					nexdome3_process_message(device, PRIVATE_DATA->processed[i]);
+				}
+			}
+		}
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			pthread_mutex_init(&PRIVATE_DATA->message_mutex, NULL);
+		}
+		on_detach {
+			pthread_mutex_destroy(&PRIVATE_DATA->message_mutex);
+		}
+		on_connect {
+			PRIVATE_DATA->steps_per_degree = NEXDOME3_DEFAULT_STEPS_PER_DEGREE;
+			PRIVATE_DATA->dead_zone = 0;
+			PRIVATE_DATA->low_voltage = false;
+			// operations interrupted by a disconnection are not resumed
+			PRIVATE_DATA->rotation_active = PRIVATE_DATA->rotation_moving = PRIVATE_DATA->rotation_stop_requested = PRIVATE_DATA->park_active = PRIVATE_DATA->home_active = PRIVATE_DATA->rotation_check_scheduled = false;
+			PRIVATE_DATA->shutter_active = PRIVATE_DATA->shutter_moving = PRIVATE_DATA->shutter_motion_seen = PRIVATE_DATA->shutter_stop_requested = PRIVATE_DATA->shutter_check_scheduled = false;
+			X_FIND_HOME_PROPERTY->state = X_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+			X_FIND_HOME_ITEM->sw.value = false;
+			// the dome is parked when the first status report is in the park position
+			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
+			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
+			PRIVATE_DATA->park_detection = true;
+			nexdome3_clear_messages(device);
+			PRIVATE_DATA->reader_running = true;
+			indigo_set_timer(device, 0, nexdome3_reader, &PRIVATE_DATA->reader);
+			/* Request Rotator and Shutter report to set the current values */
+			nexdome3_command(device, "SRR");
+			nexdome3_command(device, "SRS");
+			request_settings(device);
+		}
+		on_disconnect {
+			PRIVATE_DATA->reader_running = false;
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->reader);
+			nexdome3_clear_messages(device);
+			PRIVATE_DATA->pending_count = 0;
+		}
+		inherited DOME_SPEED {
+			hidden = true;
+		}
+		inherited DOME_ON_COORDINATES_SET {
+			hidden = false;
+			on_attach {
+				DOME_ON_COORDINATES_SET_PROPERTY->count = 2;
+			}
+		}
+		inherited DOME_SLAVING_PARAMETERS {
+			hidden = false;
+			on_change {
+				if (X_MOVE_THRESHOLD_ITEM->number.value > (DOME_SLAVING_THRESHOLD_ITEM->number.value * PRIVATE_DATA->steps_per_degree)) {
+					DOME_SLAVING_THRESHOLD_ITEM->number.value = X_MOVE_THRESHOLD_ITEM->number.value / PRIVATE_DATA->steps_per_degree;
+					DOME_SLAVING_PARAMETERS_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, "Requested synchronization threshold is less than the dome minimal move. Minimal move is used.");
+					return;
+				}
+			}
+		}
+		inherited DOME_HORIZONTAL_COORDINATES {
+			on_attach {
+				DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RW_PERM;
+			}
+			on_change {
+				double target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
+				if (DOME_PARK_PARKED_ITEM->sw.value) {
+					DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is parked.");
+					nexdome3_command(device, "PRR");
+					return;
+				}
+				PRIVATE_DATA->park_active = PRIVATE_DATA->home_active = PRIVATE_DATA->park_detection = false;
+				bool result;
+				if (DOME_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+					result = nexdome3_command(device, "PWR,%.0f", target_position * PRIVATE_DATA->steps_per_degree);
+					DOME_HORIZONTAL_COORDINATES_PROPERTY->state = result ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+					if (result) {
+						indigo_execute_handler_in(device, NEXDOME3_STATUS_DELAY, rotator_status_finalizer);
+					}
+				} else {
+					if (PRIVATE_DATA->version < NEXDOME3_FIRMWARE_VERSION_3_2) {
+						result = nexdome3_command(device, "GAR,%.0f", target_position);
+					} else {
+						result = nexdome3_command(device, "GSR,%.0f", target_position * PRIVATE_DATA->steps_per_degree);
+					}
+					DOME_HORIZONTAL_COORDINATES_PROPERTY->state = result ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE;
+					if (result) {
+						nexdome3_start_rotation(device);
+					}
+				}
+				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			}
+		}
+		inherited DOME_STEPS {
+			on_change {
+				if (DOME_PARK_PARKED_ITEM->sw.value) {
+					DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is parked.");
+					return;
+				}
+				double current_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value, target_position = current_position;
+				// the step is a whole number of degrees, the current heading keeps its fraction
+				DOME_STEPS_ITEM->number.value = (int)DOME_STEPS_ITEM->number.value;
+				if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value) {
+					target_position = fmod(current_position - DOME_STEPS_ITEM->number.value + 360, 360);
+				} else if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value) {
+					target_position = fmod(current_position + DOME_STEPS_ITEM->number.value + 360, 360);
+				}
+				PRIVATE_DATA->park_active = PRIVATE_DATA->home_active = PRIVATE_DATA->park_detection = false;
+				if (nexdome3_command(device, "GAR,%.0f", target_position)) {
+					DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+					nexdome3_start_rotation(device);
+				} else {
+					DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited DOME_ABORT_MOTION {
+			on_change {
+				if (DOME_ABORT_MOTION_ITEM->sw.value) {
+					nexdome3_command(device, "SWR");
+					if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE || PRIVATE_DATA->rotation_active || PRIVATE_DATA->home_active) {
+						PRIVATE_DATA->rotation_stop_requested = true;
+					}
+					nexdome3_command(device, "SWS");
+					if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
+						PRIVATE_DATA->shutter_stop_requested = true;
+					}
+				}
+				DOME_ABORT_MOTION_ITEM->sw.value = false;
+			}
+		}
+		inherited DOME_SHUTTER {
+			on_change {
+				bool open = DOME_SHUTTER_OPENED_ITEM->sw.value;
+				if (!nexdome3_command(device, open ? "OPS" : "CLS")) {
+					nexdome3_update_shutter_switches(device);
+					DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					PRIVATE_DATA->shutter_active = true;
+					PRIVATE_DATA->shutter_open_target = open;
+					PRIVATE_DATA->shutter_motion_seen = PRIVATE_DATA->shutter_stop_requested = false;
+					PRIVATE_DATA->shutter_request_time = indigo_monotonic_time();
+					DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_execute_handler_in(device, NEXDOME3_STATUS_DELAY, shutter_status_finalizer);
+				}
+				indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+			}
+		}
+		inherited DOME_PARK {
+			on_change {
+				if (DOME_PARK_UNPARKED_ITEM->sw.value) {
+					DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
+					PRIVATE_DATA->park_active = PRIVATE_DATA->park_detection = false;
+				} else if (nexdome3_in_park_position(device, true)) {
+					DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
+					PRIVATE_DATA->home_active = false;
+					if (nexdome3_command(device, "GAR,0")) {
+						PRIVATE_DATA->park_active = true;
+						nexdome3_command(device, "PRR");
+						DOME_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+						nexdome3_start_rotation(device);
+					} else {
+						DOME_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+			}
+		}
+		switch X_FIND_HOME {
+			name = "X_FIND_HOME";
+			group = "Settings";
+			label = "Find home position";
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			on_change {
+				if (X_FIND_HOME_ITEM->sw.value) {
+					PRIVATE_DATA->park_active = PRIVATE_DATA->park_detection = false;
+					if (nexdome3_command(device, "GHR")) {
+						PRIVATE_DATA->home_active = true;
+						X_FIND_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+					} else {
+						X_FIND_HOME_ITEM->sw.value = false;
+						X_FIND_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+			}
+			item X_FIND_HOME {
+				name = "FIND_HOME";
+				label = "Find home sensor";
+				value = false;
+			}
+		}
+		number X_HOME_POSITION {
+			name = "X_HOME_POSITION";
+			group = "Settings";
+			label = "Home position";
+			on_change {
+				nexdome3_command(device, "HWR,%.0f", X_HOME_POSITION_ITEM->number.value);
+				nexdome3_command(device, "HRR");
+			}
+			item X_HOME_POSITION {
+				name = "POSITION";
+				label = "Position (steps, ~153 steps/°)";
+				min = 0;
+				max = 100000;
+				step = 1;
+				value = 0;
+				format = "%.0f";
+			}
+		}
+		number X_MOVE_THRESHOLD {
+			name = "X_MOVE_THRESHOLD";
+			group = "Settings";
+			label = "Move threshold";
+			on_change {
+				nexdome3_command(device, "DWR,%.0f", X_MOVE_THRESHOLD_ITEM->number.value);
+				nexdome3_command(device, "DRR");
+			}
+			item X_MOVE_THRESHOLD {
+				name = "THRESHOLD";
+				label = "Minimal move (steps, ~153 steps/°)";
+				min = 0;
+				max = 10000;
+				step = 1;
+				value = 300;
+				format = "%.0f";
+			}
+		}
+		number X_BATTERY_POWER {
+			name = "X_BATTERY_POWER";
+			group = "Settings";
+			label = "Power status";
+			perm = INDIGO_RO_PERM;
+			item X_BATTERY_POWER_VOLTAGE {
+				name = "VOLTAGE";
+				label = "Battery charge (Volts)";
+				min = 0;
+				max = 500;
+				step = 1;
+				value = 0;
+				format = "%.2f";
+			}
+		}
+		number X_ACCELERATION_TIME {
+			name = "X_ACCELERATION_TIME";
+			group = "Settings";
+			label = "Acceleration time";
+			on_change {
+				nexdome3_command(device, "AWR,%.0f", X_ACCELERATION_TIME_ROTATOR_ITEM->number.value);
+				nexdome3_command(device, "AWS,%.0f", X_ACCELERATION_TIME_SHUTTER_ITEM->number.value);
+				nexdome3_command(device, "ARR");
+				nexdome3_command(device, "ARS");
+			}
+			item X_ACCELERATION_TIME_ROTATOR {
+				name = "ROTATOR";
+				label = "Rotator (ms)";
+				min = 100;
+				max = 10000;
+				step = 1;
+				value = 1500;
+				format = "%.0f";
+			}
+			item X_ACCELERATION_TIME_SHUTTER {
+				name = "SHUTTER";
+				label = "Shutter (ms)";
+				min = 100;
+				max = 10000;
+				step = 1;
+				value = 1500;
+				format = "%.0f";
+			}
+		}
+		number X_VELOCITY {
+			name = "X_VELOCITY";
+			group = "Settings";
+			label = "Movement velocity";
+			on_change {
+				nexdome3_command(device, "VWR,%.0f", X_VELOCITY_ROTATOR_ITEM->number.value);
+				nexdome3_command(device, "VWS,%.0f", X_VELOCITY_SHUTTER_ITEM->number.value);
+				nexdome3_command(device, "VRR");
+				nexdome3_command(device, "VRS");
+			}
+			item X_VELOCITY_ROTATOR {
+				name = "ROTATOR";
+				label = "Rotator (steps/s)";
+				min = 32;
+				max = 5000;
+				step = 1;
+				value = 600;
+				format = "%.0f";
+			}
+			item X_VELOCITY_SHUTTER {
+				name = "SHUTTER";
+				label = "Shutter (steps/s)";
+				min = 32;
+				max = 5000;
+				step = 1;
+				value = 800;
+				format = "%.0f";
+			}
+		}
+		number X_RANGE {
+			name = "X_RANGE";
+			group = "Settings";
+			label = "Movement range";
+			on_change {
+				nexdome3_command(device, "RWR,%.0f", X_RANGE_ROTATOR_ITEM->number.value);
+				nexdome3_command(device, "RWS,%.0f", X_RANGE_SHUTTER_ITEM->number.value);
+				nexdome3_command(device, "RRR");
+				nexdome3_command(device, "RRS");
+			}
+			item X_RANGE_ROTATOR {
+				name = "ROTATOR";
+				label = "Dome circumference (steps)";
+				min = 30000;
+				max = 100000;
+				step = 1;
+				value = 55080;
+				format = "%.0f";
+			}
+			item X_RANGE_SHUTTER {
+				name = "SHUTTER";
+				label = "Shutter travel (steps)";
+				min = 20000;
+				max = 90000;
+				step = 1;
+				value = 46000;
+				format = "%.0f";
+			}
+		}
+		switch X_SETTINGS {
+			name = "X_SETTINGS";
+			group = "Settings";
+			label = "Settings management";
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			on_change {
+				if (X_SETTINGS_LOAD_ITEM->sw.value) {
+					X_SETTINGS_LOAD_ITEM->sw.value = false;
+					// Load settings
+					nexdome3_command(device, "ZRR");
+					nexdome3_command(device, "ZRS");
+					request_settings(device);
+				} else if (X_SETTINGS_SAVE_ITEM->sw.value) {
+					X_SETTINGS_SAVE_ITEM->sw.value = false;
+					// Save current settings
+					nexdome3_command(device, "ZWR");
+					nexdome3_command(device, "ZWS");
+				} else if (X_SETTINGS_DEFAULT_ITEM->sw.value) {
+					X_SETTINGS_DEFAULT_ITEM->sw.value = false;
+					// Load default settings
+					nexdome3_command(device, "ZDR");
+					nexdome3_command(device, "ZDS");
+					request_settings(device);
+				}
+			}
+			item X_SETTINGS_LOAD {
+				name = "LOAD_EEPROM";
+				label = "Load from EEPROM";
+				value = false;
+			}
+			item X_SETTINGS_SAVE {
+				name = "SAVE_EEPROM";
+				label = "Save to EEPROM";
+				value = false;
+			}
+			item X_SETTINGS_DEFAULT {
+				name = "LOAD_DEFAULT";
+				label = "Load factory defaults";
+				value = false;
+			}
+		}
+		light X_RAIN_SENSOR {
+			name = "X_RAIN_SENSOR";
+			group = "Settings";
+			label = "Rain sensor";
+			item X_RAIN_SENSOR_ALERT {
+				name = "RAIN_ALERT";
+				label = "Rain alert";
+				value = INDIGO_IDLE_STATE;
+			}
+		}
+		text X_XB_STATE {
+			name = "X_XB_STATE";
+			group = "Settings";
+			label = "Shutter state";
+			perm = INDIGO_RO_PERM;
+			on_attach {
+				X_XB_STATE_PROPERTY->state = INDIGO_IDLE_STATE;
+			}
+			item X_XB_STATE {
+				name = "XB_STATE";
+				label = "Shutter state";
+				value = "";
+			}
+		}
+	}
+}

@@ -24,7 +24,7 @@ indigo_server indigo_ccd_asi
 
 Driver is developed and tested with:
 * ASI224MC
-* ASI120MM
+* ASI120MM (linux only)
 * ASI120MC-S
 * ASI1600MC-Cool
 * ASI071MC-Cool
@@ -32,6 +32,7 @@ Driver is developed and tested with:
 * ASI2600MM Pro
 * ASI174 Mini
 * ASI290 Mini
+* ASI294MC Pro
 
 ## Notes
 
