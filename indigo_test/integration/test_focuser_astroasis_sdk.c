@@ -35,7 +35,7 @@
 #define OAF_REFERENCE_TRACE_PATH "fixtures/focuser_astroasis/generated_reference_trace.txt"
 #endif
 
-#define EXPECTED_VERSION 0x03000007
+#define EXPECTED_VERSION 0x03000008
 #define CUSTOM_PREFIX "X_"
 #define BEEP_ON_POWER_UP_NAME CUSTOM_PREFIX "BEEP_ON_POWER_UP_PROPERTY"
 #define BEEP_ON_MOVE_NAME CUSTOM_PREFIX "BEEP_ON_MOVE_PROPERTY"
@@ -120,7 +120,7 @@ enum {
 };
 
 typedef struct {
-	bool usb_present, visible, opened, hold_motion;
+	bool usb_present, visible, opened, hold_motion, track_status_after_stop;
 	int generation;
 	unsigned int firmware;
 	AOFocuserConfig config, last_config;
@@ -128,6 +128,7 @@ typedef struct {
 	int position, target, moving, polls_left, motion_polls;
 	int temperature_int, temperature_ext, detection;
 	int error[FN_COUNT], error_skip[FN_COUNT], calls[FN_COUNT];
+	int pending_status_errors_after_stop, status_errors_after_stop, status_calls_after_stop;
 	int last_move, last_move_to, last_sync;
 	char call_log[4096];
 	atomic_int active;
@@ -439,6 +440,16 @@ AOReturn AOFocuserSetConfig(int id, AOFocuserConfig *config) {
 AOReturn AOFocuserGetStatus(int id, AOFocuserStatus *status) {
 	int index = fake_index(id);
 	int result = fake_enter(index, FN_STATUS, true);
+	if (result == AO_SUCCESS && fakes[index].track_status_after_stop) {
+		fakes[index].status_calls_after_stop++;
+		if (fakes[index].status_errors_after_stop > 0) {
+			fakes[index].status_errors_after_stop--;
+			result = AO_ERROR_COMMUNICATION;
+		}
+		if (result == AO_SUCCESS || fakes[index].status_calls_after_stop == 3) {
+			fakes[index].track_status_after_stop = false;
+		}
+	}
 	if (result == AO_SUCCESS) {
 		fake_focuser *fake = fakes + index;
 		if (fake->moving && !fake->hold_motion) {
@@ -535,6 +546,10 @@ AOReturn AOFocuserStopMove(int id) {
 	if (result == AO_SUCCESS) {
 		fakes[index].moving = 0;
 		fakes[index].target = fakes[index].position;
+		fakes[index].status_errors_after_stop = fakes[index].pending_status_errors_after_stop;
+		fakes[index].pending_status_errors_after_stop = 0;
+		fakes[index].status_calls_after_stop = 0;
+		fakes[index].track_status_after_stop = fakes[index].status_errors_after_stop > 0;
 	}
 	if (index >= 0) {
 		trace_printf(false, "sdk f%d StopMove -> %d", index, result);
@@ -1106,6 +1121,19 @@ static void set_hold_motion(int index, bool hold) {
 	pthread_mutex_unlock(&sdk_mutex);
 }
 
+static void set_status_errors_after_stop(int index, int count) {
+	pthread_mutex_lock(&sdk_mutex);
+	fakes[index].pending_status_errors_after_stop = count;
+	pthread_mutex_unlock(&sdk_mutex);
+}
+
+static int status_calls_after_stop(int index) {
+	pthread_mutex_lock(&sdk_mutex);
+	int count = fakes[index].status_calls_after_stop;
+	pthread_mutex_unlock(&sdk_mutex);
+	return count;
+}
+
 static int fake_int(int index, size_t offset) {
 	pthread_mutex_lock(&sdk_mutex);
 	int value = *(int *)((char *)(fakes + index) + offset);
@@ -1527,6 +1555,25 @@ static void abort_motion(void) {
 	set_error(0, FN_STOP, 0, 0);
 	CHECK(set_number_and_wait(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900, INDIGO_OK_STATE));
 	CHECK_EQ(900, FAKE(0, position));
+cleanup:
+	finish_test();
+}
+
+static void abort_status_communication_retry(void) {
+	CHECK(start_driver(1));
+	CHECK(connect_and_wait_position(0));
+	set_status_errors_after_stop(0, 2);
+	CHECK(set_switch_and_wait(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	CHECK_EQ(3, status_calls_after_stop(0));
+	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_EQ(false, switch_value(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME));
+	set_status_errors_after_stop(0, 3);
+	CHECK(set_switch_and_wait(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	CHECK_EQ(3, status_calls_after_stop(0));
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_EQ(false, switch_value(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME));
 cleanup:
 	finish_test();
 }
@@ -2270,6 +2317,7 @@ int main(int argc, char **argv) {
 		{ "goto_sync_and_noop", goto_sync_and_noop },
 		{ "relative_steps_and_direction", relative_steps_and_direction },
 		{ "abort_motion", abort_motion },
+		{ "abort_status_communication_retry", abort_status_communication_retry },
 		{ "urgent_abort_cancels_queued_move", urgent_abort_cancels_queued_move },
 		{ "motion_poll_failure_and_recovery", motion_poll_failure_and_recovery },
 		{ "settings_config_writes", settings_config_writes },
