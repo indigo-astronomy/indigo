@@ -514,6 +514,30 @@ static void yuv_and_legacy_modes(void) {
 	end();
 }
 
+static void rejected_change_alerts_and_keeps_values(void) {
+	ASSERT_TRUE(begin(true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, device_name, CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME, 23));
+	ASSERT_TRUE(wait_for_property_state(CCD_GAIN_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_NEAR(23, cameras[0].gain, .01);
+	atomic_store(&fail_call, "gain");
+	ASSERT_TRUE(assert_rejected_number_change_on(device_name, CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME, 40));
+	ASSERT_NEAR(23, cameras[0].gain, .01);
+	atomic_store(&fail_call, "gamma");
+	ASSERT_TRUE(assert_rejected_number_change_on(device_name, CCD_GAMMA_PROPERTY_NAME, CCD_GAMMA_ITEM_NAME, 12));
+	atomic_store(&fail_call, NULL);
+	atomic_store(&hold_frames, 1);
+	indigo_change_number_property_1(&simulator_test_client, device_name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, .2);
+	ASSERT_TRUE(wait_for_property_state(CCD_EXPOSURE_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(assert_rejected_number_change_on(device_name, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_WIDTH_ITEM_NAME, 320));
+	ASSERT_TRUE(assert_rejected_switch_change_on(device_name, CCD_MODE_PROPERTY_NAME, "MODE_1"));
+	atomic_store(&hold_frames, 0);
+	ASSERT_TRUE(wait_for_property_state(CCD_EXPOSURE_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, device_name, CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME, 40));
+	ASSERT_TRUE(wait_for_property_state(CCD_GAIN_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_NEAR(40, cameras[0].gain, .01);
+	end();
+}
+
 static void busy_overlap_and_disconnect(void) {
 	ASSERT_TRUE(begin(true));
 	atomic_store(&hold_frames, 1);
@@ -637,6 +661,7 @@ int main(int argc, char **argv) {
 		{ "Controls and temperature recovery", controls_and_temperature_recovery },
 		{ "YUV and legacy modes", yuv_and_legacy_modes },
 		{ "Busy overlap and disconnect", busy_overlap_and_disconnect },
+		{ "Rejected change keeps values", rejected_change_alerts_and_keeps_values },
 		{ "Active removal and recovery", active_removal_and_recovery },
 		{ "Hotplug identity and inconclusive removal", hotplug_identity_and_inconclusive_removal },
 		{ "Multiple devices and capacity", multiple_devices_and_capacity },

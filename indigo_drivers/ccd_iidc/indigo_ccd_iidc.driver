@@ -20,7 +20,7 @@ driver iidc {
 	label = "IIDC Compatible Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 15;
+	version = 16;
 	multi_device_support = true;
 	supported_architecture = "defined(INDIGO_LINUX) || defined(INDIGO_MACOS)";
 	include {
@@ -487,10 +487,9 @@ driver iidc {
 			indigo_execute_handler_in(device, IIDC_TEMPERATURE_INTERVAL, ccd_timer_callback);
 		}
 		inherited CCD_MODE {
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				int selected = -1;
@@ -514,10 +513,9 @@ driver iidc {
 		}
 		inherited CCD_FRAME {
 			asynchronous_change = false;
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				iidc_mode_data *mode = PRIVATE_DATA->modes + PRIVATE_DATA->selected_mode;
@@ -584,16 +582,24 @@ driver iidc {
 			}
 		}
 		inherited CCD_GAIN {
+			preserve_values = true;
 			on_change {
-				if (dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_GAIN, CCD_GAIN_ITEM->number.value) != DC1394_SUCCESS) {
+				if (dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_GAIN, CCD_GAIN_ITEM->number.target) != DC1394_SUCCESS) {
+					CCD_GAIN_ITEM->number.target = CCD_GAIN_ITEM->number.value;
 					CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target;
 				}
 			}
 		}
 		inherited CCD_GAMMA {
+			preserve_values = true;
 			on_change {
-				if (dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_GAMMA, CCD_GAMMA_ITEM->number.value) != DC1394_SUCCESS) {
+				if (dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_GAMMA, CCD_GAMMA_ITEM->number.target) != DC1394_SUCCESS) {
+					CCD_GAMMA_ITEM->number.target = CCD_GAMMA_ITEM->number.value;
 					CCD_GAMMA_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					CCD_GAMMA_ITEM->number.value = CCD_GAMMA_ITEM->number.target;
 				}
 			}
 		}

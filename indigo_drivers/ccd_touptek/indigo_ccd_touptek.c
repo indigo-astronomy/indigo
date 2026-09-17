@@ -38,7 +38,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION											0x0300002d
+#define DRIVER_VERSION											0x0300002e
 #define PRIVATE_DATA												((DRIVER_PRIVATE_DATA *)device->private_data)
 
 #define ADVANCED_GROUP											"Advanced"
@@ -999,7 +999,7 @@ static void ccd_connection_handler(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_ExpoAGain(->%d) -> %08x", gain_current, result);
 			CCD_GAIN_ITEM->number.min = gain_min;
 			CCD_GAIN_ITEM->number.max = gain_max;
-			CCD_GAIN_ITEM->number.value = gain_current;
+			CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = gain_current;
 			if (PRIVATE_DATA->cam.model->flag & SDK_DEF(FLAG_BLACKLEVEL)) {
 				CCD_OFFSET_PROPERTY->hidden = false;
 				CCD_OFFSET_ITEM->number.min = SDK_DEF(BLACKLEVEL_MIN);
@@ -1305,17 +1305,20 @@ static void ccd_temperature_handler(indigo_device *device) {
 
 static void ccd_gain_handler(indigo_device *device) {
 	HRESULT result;
-	result = SDK_CALL(put_ExpoAGain)(PRIVATE_DATA->handle, (unsigned short)CCD_GAIN_ITEM->number.value);
+	unsigned short gain = (unsigned short)CCD_GAIN_ITEM->number.target;
+	result = SDK_CALL(put_ExpoAGain)(PRIVATE_DATA->handle, gain);
 	if (result < 0) {
+		CCD_GAIN_ITEM->number.target = CCD_GAIN_ITEM->number.value;
 		CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_ExpoAGain(%d) -> %08x", (unsigned short)CCD_GAIN_ITEM->number.value, result);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_ExpoAGain(%d) -> %08x", gain, result);
 		indigo_update_property(device, CCD_GAIN_PROPERTY, "Analog gain setting is not supported");
 	} else {
+		CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target;
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_ExpoAGain(%d) -> %08x", (unsigned short)CCD_GAIN_ITEM->number.value, result);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_ExpoAGain(%d) -> %08x", gain, result);
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		indigo_ccd_change_property(device, NULL, CCD_GAIN_PROPERTY);
 	}
-	indigo_ccd_change_property(device, NULL, CCD_GAIN_PROPERTY);
 }
 
 static void ccd_offset_handler(indigo_device *device) {
@@ -1328,19 +1331,23 @@ static void ccd_offset_handler(indigo_device *device) {
 			if (result >= 0) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_BLACKLEVEL, <- %d) = %d", target_blacklevel, result);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set blacklevel=%d, scale=%f => offset=%f", target_blacklevel, scale, target_blacklevel * scale);
+				CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = target_blacklevel * scale;
 				CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Option(OPTION_BLACKLEVEL, <- %d) = %d", target_blacklevel, result);
+				CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = blacklevel * scale;
 				CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, CCD_OFFSET_PROPERTY, "Can not set camera offset");
 			}
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "unchanged blacklevel=%d, scale=%f => offset=%f", target_blacklevel, scale, target_blacklevel * scale);
+			CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = blacklevel * scale;
 			CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		}
 	} else {
+		CCD_OFFSET_ITEM->number.target = CCD_OFFSET_ITEM->number.value;
 		CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_OFFSET_PROPERTY, "Can not set camera offset");
 	}
@@ -1792,10 +1799,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(CCD_TEMPERATURE_PROPERTY, ccd_temperature_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_GAIN_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_GAIN_PROPERTY, ccd_gain_handler);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_GAIN_PROPERTY, ccd_gain_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_OFFSET_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_OFFSET_PROPERTY, ccd_offset_handler);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_OFFSET_PROPERTY, ccd_offset_handler);
 		return INDIGO_OK;
 	} else if (X_CCD_ADVANCED_PROPERTY && indigo_property_match_defined(X_CCD_ADVANCED_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_CCD_ADVANCED_PROPERTY, ccd_x_advanced_handler);

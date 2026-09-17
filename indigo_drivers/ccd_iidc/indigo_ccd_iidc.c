@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_ccd_iidc"
 #define DRIVER_LABEL         "IIDC Compatible Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -564,8 +564,11 @@ static void ccd_abort_exposure_handler(indigo_device *device) {
 static void ccd_gain_handler(indigo_device *device) {
 	CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ccd.CCD_GAIN.on_change
-	if (dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_GAIN, CCD_GAIN_ITEM->number.value) != DC1394_SUCCESS) {
+	if (dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_GAIN, CCD_GAIN_ITEM->number.target) != DC1394_SUCCESS) {
+		CCD_GAIN_ITEM->number.target = CCD_GAIN_ITEM->number.value;
 		CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target;
 	}
 	//- ccd.CCD_GAIN.on_change
 	indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
@@ -574,8 +577,11 @@ static void ccd_gain_handler(indigo_device *device) {
 static void ccd_gamma_handler(indigo_device *device) {
 	CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ccd.CCD_GAMMA.on_change
-	if (dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_GAMMA, CCD_GAMMA_ITEM->number.value) != DC1394_SUCCESS) {
+	if (dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_GAMMA, CCD_GAMMA_ITEM->number.target) != DC1394_SUCCESS) {
+		CCD_GAMMA_ITEM->number.target = CCD_GAMMA_ITEM->number.value;
 		CCD_GAMMA_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		CCD_GAMMA_ITEM->number.value = CCD_GAMMA_ITEM->number.target;
 	}
 	//- ccd.CCD_GAMMA.on_change
 	indigo_update_property(device, CCD_GAMMA_PROPERTY, NULL);
@@ -623,19 +629,25 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_MODE_PROPERTY, property)) {
-		//+ ccd.CCD_MODE.on_change_request
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
+				CCD_MODE_PROPERTY->items[i].do_update = true;
+			}
+			CCD_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_MODE_PROPERTY, "Acquisition in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.CCD_MODE.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_MODE_PROPERTY, ccd_mode_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
-		//+ ccd.CCD_FRAME.on_change_request
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < CCD_FRAME_PROPERTY->count; i++) {
+				CCD_FRAME_PROPERTY->items[i].do_update = true;
+			}
+			CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_FRAME_PROPERTY, "Acquisition in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.CCD_FRAME.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(CCD_FRAME_PROPERTY, ccd_frame_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
@@ -654,10 +666,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, ccd_abort_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_GAIN_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_GAIN_PROPERTY, ccd_gain_handler);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_GAIN_PROPERTY, ccd_gain_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_GAMMA_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_GAMMA_PROPERTY, ccd_gamma_handler);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_GAMMA_PROPERTY, ccd_gamma_handler);
 		return INDIGO_OK;
 	}
 	return indigo_ccd_change_property(device, client, property);
@@ -1007,7 +1019,7 @@ indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *i
 #include "indigo_ccd_iidc.h"
 
 indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "IIDC Compatible Camera", __FUNCTION__, 0x0300000F, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "IIDC Compatible Camera", __FUNCTION__, 0x03000010, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

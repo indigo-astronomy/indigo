@@ -1162,6 +1162,20 @@ static bool change_switch(int index, const char *property, const char *item, ind
 	return set_switch(index, property, item, true) && wait_state(index, property, expected);
 }
 
+static double number_target(int index, const char *property, const char *item) {
+	indigo_property *p = snapshot(index, property);
+	double result = NAN;
+	if (p) {
+		for (int i = 0; i < p->count; i++) {
+			if (!strcmp(p->items[i].name, item)) {
+				result = p->items[i].number.target;
+			}
+		}
+	}
+	indigo_release_property(p);
+	return result;
+}
+
 static double number_value(int index, const char *property, const char *item) {
 	indigo_property *p = snapshot(index, property);
 	double result = NAN;
@@ -1285,6 +1299,31 @@ static void controls_and_error_recovery(void) {
 	atomic_store(&cameras[0].mode_error, 0);
 	ASSERT_TRUE(change_switch(0, SENSOR_PROPERTY, "MODE_1", INDIGO_OK_STATE));
 	ASSERT_EQ_INT(1, atomic_load(&cameras[0].mode));
+}
+
+static void rejected_change_alerts_and_keeps_values(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	double gain = number_value(0, "CCD_GAIN", "GAIN");
+	double offset = number_value(0, "CCD_OFFSET", "OFFSET");
+	atomic_store(&cameras[0].config_error, POA_ERROR_OPERATION_FAILED);
+	ASSERT_TRUE(change_number(0, "CCD_GAIN", "GAIN", gain + 30, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT((int)gain, (int)number_value(0, "CCD_GAIN", "GAIN"));
+	ASSERT_EQ_INT((int)gain, (int)number_target(0, "CCD_GAIN", "GAIN"));
+	ASSERT_TRUE(change_number(0, "CCD_OFFSET", "OFFSET", offset + 20, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT((int)offset, (int)number_value(0, "CCD_OFFSET", "OFFSET"));
+	ASSERT_EQ_INT((int)offset, (int)number_target(0, "CCD_OFFSET", "OFFSET"));
+	atomic_store(&cameras[0].config_error, 0);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_EXPOSURE", "EXPOSURE", 2.5));
+	ASSERT_TRUE(wait_count(&cameras[0].starts, 1));
+	ASSERT_TRUE(change_number(0, "CCD_GAIN", "GAIN", gain + 30, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT((int)gain, (int)number_value(0, "CCD_GAIN", "GAIN"));
+	ASSERT_EQ_INT((int)gain, (int)number_target(0, "CCD_GAIN", "GAIN"));
+	ASSERT_TRUE(change_number(0, "CCD_OFFSET", "OFFSET", offset + 20, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT((int)offset, (int)number_value(0, "CCD_OFFSET", "OFFSET"));
+	ASSERT_EQ_INT((int)offset, (int)number_target(0, "CCD_OFFSET", "OFFSET"));
+	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_TRUE(change_number(0, "CCD_GAIN", "GAIN", gain + 30, INDIGO_OK_STATE));
+	ASSERT_EQ_INT((int)gain + 30, (int)number_value(0, "CCD_GAIN", "GAIN"));
 }
 
 static void exposure_setup_errors(void) {
@@ -2181,6 +2220,7 @@ int main(int argc, char **argv) {
 		{ "SDK short wait returns OPERATION_FAILED before frame", short_readout_retry },
 		{ "Shared countdown progresses with blocked device queue", shared_countdown_with_blocked_device_queue },
 		{ "Guiding and abort during long exposure then reacquire", abort_long_exposure },
+		{ "Rejected change keeps values", rejected_change_alerts_and_keeps_values },
 		{ "Readout error and subsequent acquisition", failed_readout_recovers },
 		{ "Open, Init and config failure rollback", connection_rollback },
 		{ "Optional guider, capacity and SDK identity removal", optional_guider_capacity_and_identity },

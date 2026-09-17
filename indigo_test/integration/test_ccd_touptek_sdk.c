@@ -515,6 +515,20 @@ static indigo_property *snapshot(int index, const char *name) {
 	return copy;
 }
 
+static double item_number(int index, const char *name, const char *item_name, bool want_target) {
+	indigo_property *copy = snapshot(index, name);
+	double result = NAN;
+	if (copy) {
+		for (int i = 0; i < copy->count; i++) {
+			if (!strcmp(copy->items[i].name, item_name)) {
+				result = want_target ? copy->items[i].number.target : copy->items[i].number.value;
+			}
+		}
+	}
+	indigo_release_property(copy);
+	return result;
+}
+
 static unsigned revision(int index, const char *name) {
 	pthread_mutex_lock(&property_mutex);
 	int slot = property_slot(index, name);
@@ -907,8 +921,8 @@ static void camera_properties(void) {
 	atomic_store(&fail_control, true);
 	atomic_store(&property_state[0], -1);
 	indigo_change_number_property_1(NULL, logical[0]->name, "CCD_GAIN", "GAIN", 13);
-	CHECK_TRUE(wait_value(&property_state[0], INDIGO_OK_STATE));
-	// The original gain branch falls through to base code, which publishes OK after ALERT.
+	CHECK_TRUE(wait_value(&property_state[0], INDIGO_ALERT_STATE));
+	// A refused gain keeps ALERT: the base branch, which would publish OK, runs only on success.
 	CHECK_EQ_INT(atomic_load(&property_alerts[0]), 1);
 	indigo_change_number_property_1(NULL, logical[0]->name, "CCD_OFFSET", "OFFSET", 16);
 	CHECK_TRUE(wait_value(&property_state[1], INDIGO_ALERT_STATE)); // explicit return: no base OK
@@ -1124,6 +1138,30 @@ static void property_inventory(void) {
 	}
 cleanup:
 	indigo_release_property(copy);
+	restore_camera();
+}
+
+static void rejected_change_alerts_and_keeps_values(void) {
+	enable_full_camera();
+	CHECK_TRUE(start_properties());
+	CHECK_TRUE(change_number(0, "CCD_GAIN", "GAIN", 12, INDIGO_OK_STATE));
+	CHECK_EQ_INT(12, atomic_load(&last_gain));
+	CHECK_TRUE(change_number(0, "CCD_OFFSET", "OFFSET", 16, INDIGO_OK_STATE));
+	double offset = item_number(0, "CCD_OFFSET", "OFFSET", false);
+	atomic_store(&fail_control, true);
+	CHECK_TRUE(change_number(0, "CCD_GAIN", "GAIN", 30, INDIGO_ALERT_STATE));
+	CHECK_EQ_INT(12, (int)item_number(0, "CCD_GAIN", "GAIN", false));
+	CHECK_EQ_INT(12, (int)item_number(0, "CCD_GAIN", "GAIN", true));
+	atomic_store(&fail_control, false);
+	atomic_store(&fail_option, TOUPCAM_OPTION_BLACKLEVEL);
+	CHECK_TRUE(change_number(0, "CCD_OFFSET", "OFFSET", offset + 8, INDIGO_ALERT_STATE));
+	CHECK_EQ_INT((int)offset, (int)item_number(0, "CCD_OFFSET", "OFFSET", false));
+	CHECK_EQ_INT((int)offset, (int)item_number(0, "CCD_OFFSET", "OFFSET", true));
+	atomic_store(&fail_option, -1);
+	CHECK_TRUE(change_number(0, "CCD_GAIN", "GAIN", 30, INDIGO_OK_STATE));
+	CHECK_EQ_INT(30, (int)item_number(0, "CCD_GAIN", "GAIN", false));
+	CHECK_EQ_INT(30, atomic_load(&last_gain));
+cleanup:
 	restore_camera();
 }
 
@@ -2051,6 +2089,7 @@ int main(void) {
 		{ "Focuser property handlers", focuser_properties },
 		{ "All published properties and writable base properties", property_inventory },
 		{ "Optional CCD controls and SDK errors", optional_camera_properties },
+		{ "Rejected change keeps values", rejected_change_alerts_and_keeps_values },
 		{ "CCD formats, ROI, binning and image payloads", image_formats },
 		{ "Acquisition admission, errors and reconnect", acquisition_edges },
 		{ "All guider directions and cancellation", guide_workflows },

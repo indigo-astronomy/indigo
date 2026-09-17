@@ -104,3 +104,13 @@ Unsupported/not applicable by design: guider timing, cooling, device-side binnin
 
 - Simulated/fake-SDK tests: 28 run, 28 passed (14 normal + the same 14 under ASan/UBSan).
 - Hardware acceptance: scenarios above passed on macOS with Atik GP; no Linux or FireWire hardware validation claimed.
+
+## Rejected-change regression coverage (2026-09-18)
+
+`CCD_GAIN` and `CCD_GAMMA` were dispatched with `INDIGO_COPY_VALUES_PROCESS_CHANGE` and written from `number.value`, so a failed `dc1394_feature_set_absolute_value()` left the refused value in the property permanently, with no previous value kept anywhere. Both properties now use `preserve_values = true`, are written from `number.target`, restore `target` from `value` on failure and commit `value` on success; `iidc_setup_feature()` seeds `value` from the camera at connect, so the restored value is device truth. The `CCD_MODE` and `CCD_FRAME` busy guards returned silently without publishing anything and are now declared with the generator's `reject_change` block, so the client gets ALERT, a message and the actual values.
+
+Covered by `Rejected change keeps values` in `indigo_test/integration/test_ccd_iidc_sdk.c`: injected `gain` and `gamma` SDK failures and then an exposure in progress leave the property in ALERT with unchanged value and target, and gain is accepted again afterwards.
+
+```sh
+cd indigo_test && ./build/integration/test_ccd_iidc_sdk "Rejected change"
+```

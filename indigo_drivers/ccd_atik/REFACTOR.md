@@ -179,3 +179,13 @@ User-requested combined `ATIK_HW_CASE=hotplug` acceptance passed with unchanged 
 - **Cleanup passed.** Original camera settings were restored and both interfaces disconnected; driver shutdown detached both at 21:50:08. Final RAW buffer validation passed. Log `/tmp/atik-one-hw-v36-hotplug.log`; harness build `/tmp/atik-one-hotplug-build.log`.
 
 This validates one idle and one active-integration USB cycle, not repeated stress, power interruption or removal during SDK readout. One has no exposed guider. The earlier Titan idle-replug crash remains unresolved. No production driver, generator, SDK or README change was needed. Scoped whitespace checks passed and the test build was cleaned afterward.
+
+## Rejected-change regression coverage (2026-09-18)
+
+`ArtemisCameraSpecificOptionSetData()` failure in `ccd_gain_handler` / `ccd_offset_handler` set `INDIGO_ALERT_STATE` but left the refused value in `number.target`; the handlers now restore `target` from the last confirmed `value`. The exposure busy guards moved from hand-written `on_change_request` blocks to the generator's `reject_change` block, so a refusal marks every item for update and the client receives the actual driver-side values instead of an update carrying no items.
+
+Covered by `rejected_change` in `indigo_test/integration/test_ccd_atik_sdk.c`: a failed SDK write and then an exposure in progress both leave `CCD_GAIN` and `CCD_OFFSET` in ALERT with unchanged value and target, and gain is accepted again after the abort.
+
+```sh
+cd indigo_test && ./build/integration/test_ccd_atik_sdk rejected_change
+```

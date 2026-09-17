@@ -343,3 +343,15 @@ Result (2026-09-11): ToupTek plus all ten OEM targets passed the 28 shared fake-
 ## Completion criteria
 
 The handwritten source uses a stable driver-wide SDK lifecycle queue and master-device handlers for normal work; bus callbacks no longer perform blocking SDK control operations. Hot-plug and shutdown cannot leave pending work targeting freed devices. Camera/guider ownership and SDK callback termination are covered by focused tests, available branded builds pass, and public behavior is preserved. SDK callback handoff and queue teardown are documented; no driver timers remain. Every production change is necessary for execution-context migration or its lifecycle safety, with existing overall logic preserved. Hardware-dependent claims remain explicitly pending until tested. No generator migration is part of this change.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Three defects on the refusal path were fixed; they apply to every driver built from this source (altair, baccam, bresser, mallin, meade, ogma, omegonpro, rising, ssg, svb2).
+
+`ccd_gain_handler` ended with `indigo_ccd_change_property(device, NULL, CCD_GAIN_PROPERTY)`, and the base `CCD_GAIN` branch sets `INDIGO_OK_STATE` and publishes, so a refused gain was reported to the client as success; that call now runs only on the success path. `CCD_GAIN` and `CCD_OFFSET` were dispatched with `INDIGO_COPY_VALUES_PROCESS_CHANGE`, so a failed `put_ExpoAGain()` or `put_Option(OPTION_BLACKLEVEL)` left the refused value in the property with no previous value kept; both now use `INDIGO_COPY_TARGETS_PROCESS_CHANGE`, restore `target` from `value` on failure and commit `value` on success. `ccd_offset_handler` additionally resyncs both from the blacklevel it reads back from the camera, and the connect path seeds `CCD_GAIN_ITEM->number.target` alongside `value`.
+
+Covered by `Rejected change keeps values` in `indigo_test/integration/test_ccd_touptek_sdk.c`: a failed gain write and a failed blacklevel write both leave the property in ALERT with unchanged value and target, and gain is accepted again afterwards. The `CCD property handlers and base dispatch` case now requires the refused gain to stay in ALERT instead of ending in OK.
+
+```sh
+cd indigo_test && INDIGO_TEST_FILTER="Rejected change" ./build/integration/test_ccd_touptek_sdk
+```

@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000024
+#define DRIVER_VERSION       0x03000025
 #define DRIVER_NAME          "indigo_ccd_atik"
 #define DRIVER_LABEL         "Atik Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -585,6 +585,7 @@ static void ccd_gain_handler(indigo_device *device) {
 	//+ ccd.CCD_GAIN.on_change
 	int value = CCD_GAIN_ITEM->number.target;
 	if (ArtemisCameraSpecificOptionSetData(PRIVATE_DATA->handle, 5, (unsigned char *)&value, sizeof(value)) != ARTEMIS_OK) {
+		CCD_GAIN_ITEM->number.target = CCD_GAIN_ITEM->number.value;
 		CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		CCD_GAIN_ITEM->number.value = value;
@@ -598,6 +599,7 @@ static void ccd_offset_handler(indigo_device *device) {
 	//+ ccd.CCD_OFFSET.on_change
 	int value = CCD_OFFSET_ITEM->number.target;
 	if (ArtemisCameraSpecificOptionSetData(PRIVATE_DATA->handle, 6, (unsigned char *)&value, sizeof(value)) != ARTEMIS_OK) {
+		CCD_OFFSET_ITEM->number.target = CCD_OFFSET_ITEM->number.value;
 		CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		CCD_OFFSET_ITEM->number.value = value;
@@ -711,13 +713,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
-		//+ ccd.CCD_BIN.on_change_request
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < CCD_BIN_PROPERTY->count; i++) {
+				CCD_BIN_PROPERTY->items[i].do_update = true;
+			}
 			CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_BIN_PROPERTY, "Exposure in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.CCD_BIN.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_BIN_PROPERTY, ccd_bin_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
@@ -736,33 +739,36 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_TEMPERATURE_PROPERTY, ccd_temperature_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_GAIN_PROPERTY, property)) {
-		//+ ccd.CCD_GAIN.on_change_request
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < CCD_GAIN_PROPERTY->count; i++) {
+				CCD_GAIN_PROPERTY->items[i].do_update = true;
+			}
 			CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_GAIN_PROPERTY, "Exposure in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.CCD_GAIN.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_GAIN_PROPERTY, ccd_gain_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_OFFSET_PROPERTY, property)) {
-		//+ ccd.CCD_OFFSET.on_change_request
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < CCD_OFFSET_PROPERTY->count; i++) {
+				CCD_OFFSET_PROPERTY->items[i].do_update = true;
+			}
 			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_OFFSET_PROPERTY, "Exposure in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.CCD_OFFSET.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_OFFSET_PROPERTY, ccd_offset_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_PRESETS_PROPERTY, property)) {
-		//+ ccd.X_PRESETS.on_change_request
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < X_PRESETS_PROPERTY->count; i++) {
+				X_PRESETS_PROPERTY->items[i].do_update = true;
+			}
 			X_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, X_PRESETS_PROPERTY, "Exposure in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.X_PRESETS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_PRESETS_PROPERTY, ccd_x_presets_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_WINDOW_HEATER_PROPERTY, property)) {

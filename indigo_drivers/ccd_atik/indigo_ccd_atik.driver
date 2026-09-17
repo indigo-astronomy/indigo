@@ -20,7 +20,7 @@ driver atik {
 	label = "Atik Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 36;
+	version = 37;
 	include {
 		#include <math.h>
 		#include <limits.h>
@@ -409,12 +409,9 @@ driver atik {
 			hidden = false;
 		}
 		inherited CCD_BIN {
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-					CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, CCD_BIN_PROPERTY, "Exposure in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Exposure in progress";
 			}
 			perm = INDIGO_RW_PERM;
 			on_change {
@@ -491,17 +488,15 @@ driver atik {
 			}
 		}
 		inherited CCD_GAIN {
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-					CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, CCD_GAIN_PROPERTY, "Exposure in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Exposure in progress";
 			}
 			preserve_values = true;
 			on_change {
 				int value = CCD_GAIN_ITEM->number.target;
 				if (ArtemisCameraSpecificOptionSetData(PRIVATE_DATA->handle, 5, (unsigned char *)&value, sizeof(value)) != ARTEMIS_OK) {
+					CCD_GAIN_ITEM->number.target = CCD_GAIN_ITEM->number.value;
 					CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
 					CCD_GAIN_ITEM->number.value = value;
@@ -509,17 +504,15 @@ driver atik {
 			}
 		}
 		inherited CCD_OFFSET {
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-					CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, CCD_OFFSET_PROPERTY, "Exposure in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Exposure in progress";
 			}
 			preserve_values = true;
 			on_change {
 				int value = CCD_OFFSET_ITEM->number.target;
 				if (ArtemisCameraSpecificOptionSetData(PRIVATE_DATA->handle, 6, (unsigned char *)&value, sizeof(value)) != ARTEMIS_OK) {
+					CCD_OFFSET_ITEM->number.target = CCD_OFFSET_ITEM->number.value;
 					CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
 					CCD_OFFSET_ITEM->number.value = value;
@@ -527,12 +520,9 @@ driver atik {
 			}
 		}
 		switch X_PRESETS {
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-					X_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, X_PRESETS_PROPERTY, "Exposure in progress");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Exposure in progress";
 			}
 			name = "X_PRESETS";
 			group = CCD_MAIN_GROUP;

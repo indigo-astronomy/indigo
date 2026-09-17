@@ -804,6 +804,20 @@ static bool toggle(int index, const char *prop, const char *item, int expected) 
 	return set_switch(index, prop, item, true) && wait_state(index, prop, expected);
 }
 
+static double target(int index, const char *prop, const char *item) {
+	indigo_property *p = snapshot(index, prop);
+	double result = -99999;
+	if (p) {
+		for (int i = 0; i < p->count; i++) {
+			if (!strcmp(p->items[i].name, item)) {
+				result = p->items[i].number.target;
+			}
+		}
+	}
+	indigo_release_property(p);
+	return result;
+}
+
 static double value(int index, const char *prop, const char *item) {
 	indigo_property *p = snapshot(index, prop);
 	double result = -99999;
@@ -831,7 +845,7 @@ static void metadata_profiles(void) {
 	}
 	indigo_driver_info info;
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_atik(INDIGO_DRIVER_INFO, &info));
-	ASSERT_EQ_INT(0x03000024, info.version);
+	ASSERT_EQ_INT(0x03000025, info.version);
 	ASSERT_EQ_INT(-1, state(0, "X_PRESETS"));
 	ASSERT_TRUE(connect_device(0, true));
 	const char *props[] = { "CCD_INFO", "CCD_READ_MODE", "CCD_GAIN", "CCD_OFFSET", "X_PRESETS", "X_WINDOW_HEATER", "CCD_TEMPERATURE", "CCD_COOLER", "CCD_COOLER_POWER" };
@@ -1110,6 +1124,30 @@ static void abort_readout_restart(void) {
 	cameras[0].drain_end = 0;
 	ASSERT_TRUE(connect_device(0, true));
 	ASSERT_TRUE(number(0, "CCD_EXPOSURE", "EXPOSURE", .01, INDIGO_OK_STATE));
+}
+
+static void rejected_change_alerts_and_keeps_values(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(number(0, "CCD_GAIN", "GAIN", 60, INDIGO_OK_STATE));
+	ASSERT_TRUE(number(0, "CCD_OFFSET", "OFFSET", 511, INDIGO_OK_STATE));
+	fail_call = "ArtemisCameraSpecificOptionSetData";
+	ASSERT_TRUE(number(0, "CCD_GAIN", "GAIN", 1, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(60, (int)value(0, "CCD_GAIN", "GAIN"));
+	ASSERT_EQ_INT(60, (int)target(0, "CCD_GAIN", "GAIN"));
+	ASSERT_TRUE(number(0, "CCD_OFFSET", "OFFSET", 1, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(511, (int)value(0, "CCD_OFFSET", "OFFSET"));
+	ASSERT_EQ_INT(511, (int)target(0, "CCD_OFFSET", "OFFSET"));
+	fail_call = NULL;
+	ASSERT_TRUE(number(0, "CCD_EXPOSURE", "EXPOSURE", 2.5, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(number(0, "CCD_GAIN", "GAIN", 1, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(60, (int)value(0, "CCD_GAIN", "GAIN"));
+	ASSERT_EQ_INT(60, (int)target(0, "CCD_GAIN", "GAIN"));
+	ASSERT_TRUE(number(0, "CCD_OFFSET", "OFFSET", 1, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(511, (int)value(0, "CCD_OFFSET", "OFFSET"));
+	ASSERT_EQ_INT(511, (int)target(0, "CCD_OFFSET", "OFFSET"));
+	ASSERT_TRUE(toggle(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_TRUE(number(0, "CCD_GAIN", "GAIN", 1, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(1, (int)value(0, "CCD_GAIN", "GAIN"));
 }
 
 static void abort_and_busy(void) {
@@ -1658,6 +1696,7 @@ int main(int argc, char **argv) {
 		{ "guide_axes_and_replacement", guide_axes_and_replacement },
 		{ "abort_readout_restart", abort_readout_restart },
 		{ "abort_and_busy", abort_and_busy },
+		{ "rejected_change", rejected_change_alerts_and_keeps_values },
 		{ "deadlines_and_recovery", deadlines_and_recovery },
 		{ "pending_start_abort", pending_start_abort },
 		{ "readout_disconnect", readout_disconnect },

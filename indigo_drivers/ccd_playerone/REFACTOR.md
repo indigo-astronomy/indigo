@@ -280,3 +280,17 @@ Atomic plan:
 Found defect: direct use of `clock_gettime(CLOCK_MONOTONIC)` prevents MSVC compilation. The production fix uses the framework's portable monotonic clock; existing acquisition deadline tests provide regression coverage.
 
 Final test summary: simulated test bodies run **48**, simulated test bodies passed **48**, suite exit status **1** because of the pre-existing cleanup gate timeout; hardware tests run **0**, hardware tests passed **0**.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Two defects on the refusal path were fixed.
+
+`POASetConfig()` failure and the `PRIVATE_DATA->acquisition_active` guard in `ccd_gain_handler` / `ccd_offset_handler` set `INDIGO_ALERT_STATE` but left the refused value in `number.target`, which `INDIGO_COPY_TARGETS_PROCESS_CHANGE` had already overwritten; the handlers now restore `target` from the last confirmed `value`. The busy guards that refuse a change before any value is copied moved from hand-written `on_change_request` blocks to the generator's `reject_change` block, so the refusal now marks every item for update and the client receives the actual driver-side values instead of an update carrying no items.
+
+Covered by `Rejected change keeps values` in `indigo_test/integration/test_ccd_playerone_sdk.c`: a `POA_ERROR_OPERATION_FAILED` write and then an exposure in progress both leave `CCD_GAIN` and `CCD_OFFSET` in ALERT with unchanged value and target, and both are accepted again afterwards.
+
+```sh
+cd indigo_test && ./build/integration/test_ccd_playerone_sdk "Rejected change"
+```
+
+The suite has one pre-existing failure unrelated to this change: `Final slow_initialization_and_polling` cleanup reports one `gate_timeouts`, and it reproduces on the unmodified driver.
