@@ -10,6 +10,7 @@
 **/*.la
 **/.deps
 **/*.log
+!indigo_libs/externals/libjpeg/change.log
 **/a.out
 *.deb
 **/configure~
