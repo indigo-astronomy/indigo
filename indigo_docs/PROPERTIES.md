@@ -1012,11 +1012,11 @@ Source: `indigo_drivers/dome_dragonfly/indigo_dome_dragonfly.c`.
 
 ### dome_nexdome
 
-Custom properties: `NEXDOME_CALLIBRATE`, `NEXDOME_FIND_HOME`, `NEXDOME_POWER`, `NEXDOME_RESET_SHUTTER_COMM`, `NEXDOME_REVERSED`.
+Custom properties: `X_CALIBRATE`, `X_FIND_HOME`, `X_POWER`, `X_RESET_SHUTTER_COMM`, `X_REVERSED`.
 
 Driver-specific use of existing properties: `DOME_ON_COORDINATES_SET`, `DOME_SLAVING_PARAMETERS`, `DOME_SPEED`.
 
-Source: `indigo_drivers/dome_nexdome/indigo_dome_nexdome.c`.
+Source: `indigo_drivers/dome_nexdome/indigo_dome_nexdome.driver` (generates `indigo_dome_nexdome.c`).
 
 ### dome_nexdome3
 

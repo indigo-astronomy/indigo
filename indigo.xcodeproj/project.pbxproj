@@ -5590,6 +5590,10 @@
 		C0DE20260917F1F000000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260917F1F000000004 /* original_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = original_reference_trace.txt; sourceTree = "<group>"; };
 		C0DE20260917F1F000000005 /* generated_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = generated_reference_trace.txt; sourceTree = "<group>"; };
+		C0DE20260917F2F000000001 /* indigo_dome_nexdome.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_dome_nexdome.driver; sourceTree = "<group>"; };
+		C0DE20260917F2F000000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260917F2F000000004 /* original_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = original_reference_trace.txt; sourceTree = "<group>"; };
+		C0DE20260917F2F000000005 /* generated_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = generated_reference_trace.txt; sourceTree = "<group>"; };
 		C0DE26060912F10000000000 /* Origin678C.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = Origin678C.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000001 /* QHY26800A.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY26800A.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000002 /* QHY585.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY585.img; sourceTree = "<group>"; };
@@ -10704,6 +10708,8 @@
 			isa = PBXGroup;
 			children = (
 				59B81ECC2337AA2E00DFA81B /* README.md */,
+				C0DE20260917F2F000000002 /* REFACTOR.md */,
+				C0DE20260917F2F000000001 /* indigo_dome_nexdome.driver */,
 				59B81ECE2337AA2E00DFA81B /* indigo_dome_nexdome.h */,
 				59B81EC92337AA2E00DFA81B /* indigo_dome_nexdome.c */,
 				59B81ECA2337AA2E00DFA81B /* indigo_dome_nexdome_main.c */,
@@ -14078,6 +14084,7 @@
 				C0DE20260916C0C000000005 /* ccd_uvc */,
 				C0DE20260917F0F000000003 /* dome_baader */,
 				C0DE20260917F1F000000003 /* dome_beaver */,
+				C0DE20260917F2F000000003 /* dome_nexdome */,
 				C0DE20260916A0A500000004 /* focuser_astroasis */,
 				C0DE20260916E0E000000002 /* focuser_dsd */,
 				C0DE20260916B0B000000002 /* gps_gpsd */,
@@ -16194,6 +16201,15 @@
 				C0DE20260917F1F000000005 /* generated_reference_trace.txt */,
 			);
 			path = dome_beaver;
+			sourceTree = "<group>";
+		};
+		C0DE20260917F2F000000003 /* dome_nexdome */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20260917F2F000000004 /* original_reference_trace.txt */,
+				C0DE20260917F2F000000005 /* generated_reference_trace.txt */,
+			);
+			path = dome_nexdome;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
