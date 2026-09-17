@@ -80,6 +80,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_asi_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_svb_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_iidc_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_uvc_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_ptp_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_sx_usb \
 	$(INTEGRATION_BUILD)/test_ccd_ssag_usb \
@@ -97,6 +98,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_svb2_sdk \
 	$(INTEGRATION_BUILD)/test_wheel_asi_sdk \
 	$(INTEGRATION_BUILD)/test_focuser_asi_sdk \
+	$(INTEGRATION_BUILD)/test_focuser_astroasis_sdk \
 	$(INTEGRATION_BUILD)/test_rotator_asi_sdk \
 	$(INTEGRATION_BUILD)/test_bus_lifecycle \
 	$(INTEGRATION_BUILD)/test_ccd_countdown \
@@ -117,6 +119,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_dome_talon6ror_simulator \
 	$(INTEGRATION_BUILD)/test_gps_simulator \
 	$(INTEGRATION_BUILD)/test_gps_nmea_simulator \
+	$(INTEGRATION_BUILD)/test_gps_gpsd_simulator \
 	$(INTEGRATION_BUILD)/test_mount_ioptron_simulator \
 	$(INTEGRATION_BUILD)/test_mount_lx200_simulator \
 	$(INTEGRATION_BUILD)/test_mount_nexstar_simulator \
@@ -197,6 +200,7 @@ MOUNT_NEXSTAR_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_nexstar.a $
 MOUNT_NEXSTARAUX_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_nexstaraux.a $(TEST_LDFLAGS) -lindigocat
 MOUNT_PMC8_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_pmc8.a $(TEST_LDFLAGS) -lindigocat
 MOUNT_RAINBOW_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_rainbow.a $(TEST_LDFLAGS) -lindigocat
+MOUNT_RAINBOW_TEST_CFLAGS = $(TEST_CFLAGS) -DMOUNT_RAINBOW_SIMULATOR_EXECUTABLE='"$(abspath $(INTEGRATION_BUILD)/mount_rainbow_simulator)"' -DRAINBOW_REFERENCE_TRACE_PATH='"$(abspath fixtures/mount_rainbow/original_reference_trace.txt)"'
 MOUNT_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_simulator.a $(TEST_LDFLAGS) -lindigocat
 MOUNT_STARBOOK_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_starbook.a $(TEST_LDFLAGS) -lindigocat
 MOUNT_TEMMA_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_temma.a $(TEST_LDFLAGS) -lindigocat
@@ -443,7 +447,7 @@ $(INTEGRATION_BUILD)/focuser_efa_simulator: ../indigo_drivers/focuser_efa/focuse
 $(INTEGRATION_BUILD)/focuser_dmfc_simulator: ../indigo_drivers/focuser_dmfc/focuser_dmfc_simulator/focuser_dmfc_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/focuser_dsd_simulator: ../indigo_drivers/focuser_dsd/focuser_dsd_simulator/focuser_dsd_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/focuser_dsd_simulator: ../indigo_drivers/focuser_dsd/focuser_dsd_simulator/focuser_dsd_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/focuser_focusdreampro_simulator: ../indigo_drivers/focuser_focusdreampro/focuser_focusdreampro_simulator/focuser_focusdreampro_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -575,6 +579,41 @@ $(INTEGRATION_BUILD)/test_dome_talon6ror_simulator: integration/test_dome_talon6
 $(INTEGRATION_BUILD)/test_gps_nmea_simulator: integration/test_gps_nmea_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/gps_nmea_simulator $(BUILD_DRIVERS)/indigo_gps_nmea.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(GPS_NMEA_SIMULATOR_TEST_LDFLAGS)
 
+GPSD_TEST_LIBGPS_DIR = ../indigo_drivers/gps_gpsd/externals/libgps
+GPSD_TEST_LIBGPS = $(GPSD_TEST_LIBGPS_DIR)/libgps.a
+GPSD_TEST_INCLUDE = -I$(GPSD_TEST_LIBGPS_DIR)
+GPSD_TEST_REPLACEMENTS = -Dgps_open=gpsd_test_open -Dgps_close=gpsd_test_close -Dgps_stream=gpsd_test_stream -Dgps_waiting=gpsd_test_waiting -Dgps_read=gpsd_test_read
+GPSD_TEST_TRACE = -DGPSD_REFERENCE_TRACE_PATH='"$(abspath fixtures/gps_gpsd/original_reference_trace.txt)"'
+
+$(GPSD_TEST_LIBGPS):
+	$(MAKE) -C $(GPSD_TEST_LIBGPS_DIR)
+
+$(INTEGRATION_BUILD)/gps_gpsd_simulator: ../indigo_drivers/gps_gpsd/gps_gpsd_simulator/gps_gpsd_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
+$(INTEGRATION_BUILD)/gps_gpsd_simulator_driver.o: ../indigo_drivers/gps_gpsd/indigo_gps_gpsd.c ../indigo_drivers/gps_gpsd/indigo_gps_gpsd.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(GPSD_TEST_INCLUDE) $(GPSD_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_gps_gpsd_simulator: integration/test_gps_gpsd_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/gps_gpsd/original_reference_trace.txt $(INTEGRATION_BUILD)/gps_gpsd_simulator $(INTEGRATION_BUILD)/gps_gpsd_simulator_driver.o $(GPSD_TEST_LIBGPS) | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(GPSD_TEST_INCLUDE) $(GPSD_TEST_TRACE) $< $(INTEGRATION_BUILD)/gps_gpsd_simulator_driver.o $(GPSD_TEST_LIBGPS) -o $@ $(TEST_LDFLAGS)
+
+.PHONY: test-gps-gpsd-simulator
+test-gps-gpsd-simulator: $(INTEGRATION_BUILD)/test_gps_gpsd_simulator
+	$(INTEGRATION_BUILD)/test_gps_gpsd_simulator
+
+GPSD_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+GPSD_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+
+$(INTEGRATION_BUILD)/gps_gpsd_simulator_driver_sanitize.o: ../indigo_drivers/gps_gpsd/indigo_gps_gpsd.c ../indigo_drivers/gps_gpsd/indigo_gps_gpsd.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(GPSD_SANITIZE_CFLAGS) $(GPSD_TEST_INCLUDE) $(GPSD_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_gps_gpsd_simulator_sanitize: integration/test_gps_gpsd_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/gps_gpsd/original_reference_trace.txt $(INTEGRATION_BUILD)/gps_gpsd_simulator $(INTEGRATION_BUILD)/gps_gpsd_simulator_driver_sanitize.o $(GPSD_TEST_LIBGPS) | $(INTEGRATION_BUILD)
+	$(CC) $(GPSD_SANITIZE_CFLAGS) $(GPSD_TEST_INCLUDE) $(GPSD_TEST_TRACE) $< $(INTEGRATION_BUILD)/gps_gpsd_simulator_driver_sanitize.o $(GPSD_TEST_LIBGPS) -o $@ $(GPSD_SANITIZE_LDFLAGS)
+
+.PHONY: test-gps-gpsd-simulator-sanitize
+test-gps-gpsd-simulator-sanitize: $(INTEGRATION_BUILD)/test_gps_gpsd_simulator_sanitize
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_gps_gpsd_simulator_sanitize
+
 IOPTRON_TEST_CFLAGS = $(TEST_CFLAGS) -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter -Wno-sign-compare
 
 $(INTEGRATION_BUILD)/test_mount_ioptron_simulator: integration/test_mount_ioptron_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_ioptron_simulator | $(INTEGRATION_BUILD)
@@ -620,11 +659,24 @@ $(INTEGRATION_BUILD)/mount_pmc8_simulator: ../indigo_drivers/mount_pmc8/mount_pm
 $(INTEGRATION_BUILD)/test_mount_pmc8_simulator: integration/test_mount_pmc8_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_pmc8_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_PMC8_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/mount_rainbow_simulator: ../indigo_drivers/mount_rainbow/mount_rainbow_simulator/mount_rainbow_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/mount_rainbow_simulator: ../indigo_drivers/mount_rainbow/mount_rainbow_simulator/mount_rainbow_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/test_mount_rainbow_simulator: integration/test_mount_rainbow_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_rainbow_simulator | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_RAINBOW_SIMULATOR_TEST_LDFLAGS)
+$(INTEGRATION_BUILD)/test_mount_rainbow_simulator: integration/test_mount_rainbow_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/mount_rainbow/original_reference_trace.txt $(INTEGRATION_BUILD)/mount_rainbow_simulator $(BUILD_DRIVERS)/indigo_mount_rainbow.a | $(INTEGRATION_BUILD)
+	$(CC) $(MOUNT_RAINBOW_TEST_CFLAGS) -o $@ $< $(MOUNT_RAINBOW_SIMULATOR_TEST_LDFLAGS)
+
+MOUNT_RAINBOW_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(MOUNT_RAINBOW_TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+MOUNT_RAINBOW_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined -lindigocat
+
+$(INTEGRATION_BUILD)/test_mount_rainbow_simulator_sanitize: integration/test_mount_rainbow_simulator.c ../indigo_drivers/mount_rainbow/indigo_mount_rainbow.c ../indigo_drivers/mount_rainbow/indigo_mount_rainbow.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/mount_rainbow/original_reference_trace.txt $(INTEGRATION_BUILD)/mount_rainbow_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(MOUNT_RAINBOW_SANITIZE_CFLAGS) -o $@ $< ../indigo_drivers/mount_rainbow/indigo_mount_rainbow.c $(MOUNT_RAINBOW_SANITIZE_LDFLAGS)
+
+.PHONY: test-mount-rainbow-simulator test-mount-rainbow-simulator-sanitize
+test-mount-rainbow-simulator: $(INTEGRATION_BUILD)/test_mount_rainbow_simulator
+	$(INTEGRATION_BUILD)/test_mount_rainbow_simulator
+
+test-mount-rainbow-simulator-sanitize: $(INTEGRATION_BUILD)/test_mount_rainbow_simulator_sanitize
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_mount_rainbow_simulator_sanitize
 
 $(INTEGRATION_BUILD)/mount_starbook_simulator: ../indigo_drivers/mount_starbook/mount_starbook_simulator/mount_starbook_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
@@ -689,8 +741,21 @@ $(INTEGRATION_BUILD)/test_focuser_efa_simulator_asan: integration/test_focuser_e
 $(INTEGRATION_BUILD)/test_focuser_dmfc_simulator: integration/test_focuser_dmfc_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_dmfc_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_DMFC_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_dsd_simulator: integration/test_focuser_dsd_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_dsd_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_focuser_dsd_simulator: integration/test_focuser_dsd_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/focuser_dsd/original_reference_trace.txt fixtures/focuser_dsd/generated_reference_trace.txt $(INTEGRATION_BUILD)/focuser_dsd_simulator $(BUILD_DRIVERS)/indigo_focuser_dsd.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_DSD_SIMULATOR_TEST_LDFLAGS)
+
+FOCUSER_DSD_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+FOCUSER_DSD_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined -lindigocat
+
+$(INTEGRATION_BUILD)/test_focuser_dsd_simulator_sanitize: integration/test_focuser_dsd_simulator.c ../indigo_drivers/focuser_dsd/indigo_focuser_dsd.c ../indigo_drivers/focuser_dsd/indigo_focuser_dsd.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/focuser_dsd/original_reference_trace.txt fixtures/focuser_dsd/generated_reference_trace.txt $(INTEGRATION_BUILD)/focuser_dsd_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(FOCUSER_DSD_SANITIZE_CFLAGS) -o $@ $< ../indigo_drivers/focuser_dsd/indigo_focuser_dsd.c $(FOCUSER_DSD_SANITIZE_LDFLAGS)
+
+.PHONY: test-focuser-dsd-simulator test-focuser-dsd-simulator-sanitize
+test-focuser-dsd-simulator: $(INTEGRATION_BUILD)/test_focuser_dsd_simulator
+	$(INTEGRATION_BUILD)/test_focuser_dsd_simulator
+
+test-focuser-dsd-simulator-sanitize: $(INTEGRATION_BUILD)/test_focuser_dsd_simulator_sanitize
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_focuser_dsd_simulator_sanitize
 
 $(INTEGRATION_BUILD)/test_focuser_focusdreampro_simulator: integration/test_focuser_focusdreampro_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_focusdreampro_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_FOCUSDREAMPRO_SIMULATOR_TEST_LDFLAGS)
@@ -844,6 +909,45 @@ $(INTEGRATION_BUILD)/focuser_asi_sdk_driver.o: ../indigo_drivers/focuser_asi/ind
 
 $(INTEGRATION_BUILD)/test_focuser_asi_sdk: integration/test_focuser_asi_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_asi_sdk_driver.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(EAF_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/focuser_asi_sdk_driver.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+OAF_SDK_TEST_INCLUDE = -I../indigo_drivers/focuser_astroasis/bin_externals/liboasisfocuser/include
+OAF_SDK_TEST_REPLACEMENTS = -Dindigo_set_timer=oaf_test_set_timer -Dindigo_reschedule_timer=oaf_test_reschedule_timer -Dindigo_execute_handler_in=oaf_test_execute_in -Dindigo_start_usb_event_handler=oaf_test_usb_start -Dindigo_try_global_lock=oaf_test_lock -Dindigo_global_unlock=oaf_test_unlock -Dindigo_attach_device=oaf_test_attach -Dindigo_detach_device=oaf_test_detach -Dlibusb_hotplug_register_callback=oaf_test_usb_register -Dlibusb_hotplug_register_callback_sim=oaf_test_usb_register_sim -Dlibusb_hotplug_deregister_callback=oaf_test_usb_deregister -Dlibusb_hotplug_deregister_callback_poll=oaf_test_usb_deregister_poll -Dlibusb_ref_device=oaf_test_usb_ref -Dlibusb_unref_device=oaf_test_usb_unref -Dlibusb_get_device_descriptor=oaf_test_usb_descriptor
+OAF_SDK_TEST_TRACE = -DOAF_REFERENCE_TRACE_PATH='"$(abspath fixtures/focuser_astroasis/generated_reference_trace.txt)"'
+
+$(INTEGRATION_BUILD)/focuser_astroasis_sdk_driver.o: ../indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.c ../indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(OAF_SDK_TEST_INCLUDE) $(OAF_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/focuser_astroasis_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=oaf_test_config_folder -c $< -o $@
+
+$(INTEGRATION_BUILD)/focuser_astroasis_sdk_base.o: ../indigo_libs/indigo_focuser_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_focuser_astroasis_sdk: integration/test_focuser_astroasis_sdk.c integration/simulator_test_common.h test_runner.h fixtures/focuser_astroasis/generated_reference_trace.txt $(INTEGRATION_BUILD)/focuser_astroasis_sdk_driver.o $(INTEGRATION_BUILD)/focuser_astroasis_sdk_framework.o $(INTEGRATION_BUILD)/focuser_astroasis_sdk_base.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(OAF_SDK_TEST_INCLUDE) $(OAF_SDK_TEST_TRACE) $< $(INTEGRATION_BUILD)/focuser_astroasis_sdk_driver.o $(INTEGRATION_BUILD)/focuser_astroasis_sdk_framework.o $(INTEGRATION_BUILD)/focuser_astroasis_sdk_base.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+.PHONY: test-focuser-astroasis-sdk
+test-focuser-astroasis-sdk: $(INTEGRATION_BUILD)/test_focuser_astroasis_sdk
+	$(INTEGRATION_BUILD)/test_focuser_astroasis_sdk
+
+OAF_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+OAF_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+
+$(INTEGRATION_BUILD)/focuser_astroasis_sdk_driver_sanitize.o: ../indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.c ../indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(OAF_SANITIZE_CFLAGS) $(OAF_SDK_TEST_INCLUDE) $(OAF_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/focuser_astroasis_sdk_framework_sanitize.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(OAF_SANITIZE_CFLAGS) -Dindigo_uni_config_folder=oaf_test_config_folder -c $< -o $@
+
+$(INTEGRATION_BUILD)/focuser_astroasis_sdk_base_sanitize.o: ../indigo_libs/indigo_focuser_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(OAF_SANITIZE_CFLAGS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_focuser_astroasis_sdk_sanitize: integration/test_focuser_astroasis_sdk.c integration/simulator_test_common.h test_runner.h fixtures/focuser_astroasis/generated_reference_trace.txt $(INTEGRATION_BUILD)/focuser_astroasis_sdk_driver_sanitize.o $(INTEGRATION_BUILD)/focuser_astroasis_sdk_framework_sanitize.o $(INTEGRATION_BUILD)/focuser_astroasis_sdk_base_sanitize.o | $(INTEGRATION_BUILD)
+	$(CC) $(OAF_SANITIZE_CFLAGS) $(OAF_SDK_TEST_INCLUDE) $(OAF_SDK_TEST_TRACE) $< $(INTEGRATION_BUILD)/focuser_astroasis_sdk_driver_sanitize.o $(INTEGRATION_BUILD)/focuser_astroasis_sdk_framework_sanitize.o $(INTEGRATION_BUILD)/focuser_astroasis_sdk_base_sanitize.o -o $@ $(OAF_SANITIZE_LDFLAGS) -lusb-1.0
+
+.PHONY: test-focuser-astroasis-sdk-sanitize
+test-focuser-astroasis-sdk-sanitize: $(INTEGRATION_BUILD)/test_focuser_astroasis_sdk_sanitize
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_focuser_astroasis_sdk_sanitize
 
 EFW_SDK_TEST_INCLUDE = -I../indigo_drivers/wheel_asi/bin_externals/libEFWFilter/include
 EFW_SDK_TEST_REPLACEMENTS = -Dlibusb_hotplug_register_callback_sim=efw_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=efw_test_usb_deregister_poll -Dindigo_start_usb_event_handler=efw_test_usb_start -Dindigo_try_global_lock=efw_test_lock -Dindigo_global_unlock=efw_test_unlock -Dindigo_attach_device=efw_test_attach -Dindigo_detach_device=efw_test_detach -Dlibusb_hotplug_register_callback=efw_test_usb_register -Dlibusb_hotplug_deregister_callback=efw_test_usb_deregister -Dlibusb_ref_device=efw_test_usb_ref -Dlibusb_unref_device=efw_test_usb_unref -Dlibusb_get_device_descriptor=efw_test_usb_descriptor
@@ -1092,6 +1196,40 @@ $(INTEGRATION_BUILD)/test_ccd_iidc_sdk_sanitize: integration/test_ccd_iidc_sdk.c
 .PHONY: test-ccd-iidc-sdk-sanitize
 test-ccd-iidc-sdk-sanitize: $(INTEGRATION_BUILD)/test_ccd_iidc_sdk_sanitize
 	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_ccd_iidc_sdk_sanitize
+
+UVC_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_uvc
+UVC_SDK_TEST_REPLACEMENTS = -Dindigo_monotonic_time=uvc_test_monotonic_time -Dindigo_queue_create=uvc_test_queue_create -Dindigo_get_usb_path=uvc_test_usb_path -Dindigo_attach_device=uvc_test_attach -Dindigo_detach_device=uvc_test_detach -Dindigo_start_usb_event_handler=uvc_test_usb_start -Dlibusb_hotplug_register_callback=uvc_test_usb_register -Dlibusb_hotplug_register_callback_sim=uvc_test_usb_register_sim -Dlibusb_hotplug_deregister_callback=uvc_test_usb_deregister -Dlibusb_hotplug_deregister_callback_poll=uvc_test_usb_deregister_poll -Dlibusb_get_bus_number=uvc_test_usb_bus -Dlibusb_get_device_address=uvc_test_usb_address -Dlibusb_get_device_descriptor=uvc_test_usb_descriptor -Dlibusb_ref_device=uvc_test_usb_ref -Dlibusb_unref_device=uvc_test_usb_unref
+
+$(INTEGRATION_BUILD)/ccd_uvc_sdk_driver.o: ../indigo_drivers/ccd_uvc/indigo_ccd_uvc.c ../indigo_drivers/ccd_uvc/indigo_ccd_uvc.h ../indigo_drivers/ccd_uvc/libuvc.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(UVC_SDK_TEST_INCLUDE) $(UVC_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_uvc_sdk: integration/test_ccd_uvc_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h fixtures/ccd_uvc/original_reference_trace.txt fixtures/ccd_uvc/generated_reference_trace.txt test_runner.h $(INTEGRATION_BUILD)/ccd_uvc_sdk_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(UVC_SDK_TEST_INCLUDE) -DUVC_REFERENCE_TRACE_PATH='"$(abspath fixtures/ccd_uvc/generated_reference_trace.txt)"' $< $(INTEGRATION_BUILD)/ccd_uvc_sdk_driver.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+.PHONY: test-ccd-uvc-sdk
+test-ccd-uvc-sdk: $(INTEGRATION_BUILD)/test_ccd_uvc_sdk
+	$(INTEGRATION_BUILD)/test_ccd_uvc_sdk
+
+UVC_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+UVC_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+
+$(INTEGRATION_BUILD)/ccd_uvc_sdk_driver_sanitize.o: ../indigo_drivers/ccd_uvc/indigo_ccd_uvc.c ../indigo_drivers/ccd_uvc/indigo_ccd_uvc.h ../indigo_drivers/ccd_uvc/libuvc.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(UVC_SANITIZE_CFLAGS) $(UVC_SDK_TEST_INCLUDE) $(UVC_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_uvc_sdk_sanitize: integration/test_ccd_uvc_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h fixtures/ccd_uvc/original_reference_trace.txt fixtures/ccd_uvc/generated_reference_trace.txt test_runner.h $(INTEGRATION_BUILD)/ccd_uvc_sdk_driver_sanitize.o | $(INTEGRATION_BUILD)
+	$(CC) $(UVC_SANITIZE_CFLAGS) $(UVC_SDK_TEST_INCLUDE) -DUVC_REFERENCE_TRACE_PATH='"$(abspath fixtures/ccd_uvc/generated_reference_trace.txt)"' $< $(INTEGRATION_BUILD)/ccd_uvc_sdk_driver_sanitize.o -o $@ $(UVC_SANITIZE_LDFLAGS)
+
+.PHONY: test-ccd-uvc-sdk-sanitize
+test-ccd-uvc-sdk-sanitize: $(INTEGRATION_BUILD)/test_ccd_uvc_sdk_sanitize
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_ccd_uvc_sdk_sanitize
+
+# Physical UVC camera hardware is opt-in and excluded from normal integration tests.
+.PHONY: test-ccd-uvc-hw
+test-ccd-uvc-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_uvc_hw
+	$(TEST_BUILD)/hardware/test_ccd_uvc_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug)
+
+$(TEST_BUILD)/hardware/test_ccd_uvc_hw: hardware/test_ccd_uvc_hw.c ../build/drivers/indigo_ccd_uvc.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_uvc.a -o $@ $(TEST_LDFLAGS) -ljpeg -lusb-1.0
 
 
 # Physical ASI hardware is opt-in and excluded from normal integration tests.

@@ -1088,11 +1088,11 @@ Source: `indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.c`.
 
 ### focuser_dsd
 
-Custom properties: `DSD_COILS_MODE`, `DSD_CURRENT_CONTROL`, `DSD_MODEL_HINT`, `DSD_STEP_MODE`, `DSD_TIMINGS`.
+Custom properties: `X_DSD_COILS_MODE`, `X_DSD_CURRENT_CONTROL`, `X_DSD_MODEL_HINT`, `X_DSD_STEP_MODE`, `X_DSD_TIMINGS`. `X_DSD_MODEL_HINT` is always defined and selects the `DEVICE_BAUDRATE` (AF1/AF2 9600, AF3 115200); the others are connect-scoped. Items, labels, groups and rules are unchanged from the former unprefixed names. Model-dependent shape is reapplied on every connection: AF1/AF2 expose four step modes, coils mode and both timings; AF3 hides coils mode, exposes one timing and current multipliers (1–100). Settings publish the values read back from the device and report ALERT on write or readback failure.
 
-Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+Driver-specific use of existing properties: `FOCUSER_ABORT_MOTION`, `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_STEPS`, `FOCUSER_TEMPERATURE`. `FOCUSER_MODE`, `FOCUSER_TEMPERATURE` and `FOCUSER_COMPENSATION` are defined for AF2/AF3 only.
 
-Source: `indigo_drivers/focuser_dsd/indigo_focuser_dsd.c`.
+Source: `indigo_drivers/focuser_dsd/indigo_focuser_dsd.driver`.
 
 ### focuser_efa
 

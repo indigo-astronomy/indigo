@@ -2398,8 +2398,6 @@
 		5984A33C303BA73500D581D2 /* test_focuser_wemacro_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_wemacro_simulator.c; sourceTree = "<group>"; };
 		5984A33D303BA80100D581D2 /* gps_nmea_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = gps_nmea_simulator.c; sourceTree = "<group>"; };
 		5984A33F303BA81300D581D2 /* test_gps_nmea_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_nmea_simulator.c; sourceTree = "<group>"; };
-		C0DE20260916B0B000000001 /* test_gps_gpsd_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_gpsd_simulator.c; sourceTree = "<group>"; };
-		C0DE20260916B0B000000003 /* original_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = original_reference_trace.txt; sourceTree = "<group>"; };
 		5984A340303BA9A100D581D2 /* mount_ioptron_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_ioptron_simulator.c; sourceTree = "<group>"; };
 		5984A342303BA9B100D581D2 /* test_mount_ioptron_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_ioptron_simulator.c; sourceTree = "<group>"; };
 		5984A373303CC91500D581D2 /* mount_lx200_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_lx200_simulator.c; sourceTree = "<group>"; };
@@ -2699,6 +2697,9 @@
 		59910BF1305B1CD600FB1C2F /* gps_gpsd_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = gps_gpsd_simulator.c; sourceTree = "<group>"; };
 		59910BF3305B1CD600FB1C2F /* indigo_gps_gpsd.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_gps_gpsd.driver; sourceTree = "<group>"; };
 		59910BF4305B1CD600FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		59910BF5305B2A9700FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		59910BF6305B30B700FB1C2F /* indigo_mount_rainbow.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_mount_rainbow.driver; sourceTree = "<group>"; };
+		59910BF7305B30B700FB1C2F /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -5569,12 +5570,18 @@
 		C0DE20260916A0A500000003 /* test_focuser_astroasis_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_astroasis_sdk.c; sourceTree = "<group>"; };
 		C0DE20260916A0A500000005 /* original_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = original_reference_trace.txt; sourceTree = "<group>"; };
 		C0DE20260916A0A500000006 /* generated_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = generated_reference_trace.txt; sourceTree = "<group>"; };
+		C0DE20260916B0B000000001 /* test_gps_gpsd_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_gpsd_simulator.c; sourceTree = "<group>"; };
+		C0DE20260916B0B000000003 /* original_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = original_reference_trace.txt; sourceTree = "<group>"; };
 		C0DE20260916C0C000000001 /* indigo_ccd_uvc.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_ccd_uvc.driver; sourceTree = "<group>"; };
 		C0DE20260916C0C000000002 /* indigo_ccd_uvc_libuvc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_uvc_libuvc.h; sourceTree = "<group>"; };
 		C0DE20260916C0C000000003 /* indigo_ccd_uvc_libuvc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_uvc_libuvc.c; sourceTree = "<group>"; };
 		C0DE20260916C0C000000004 /* test_ccd_uvc_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_uvc_sdk.c; sourceTree = "<group>"; };
 		C0DE20260916C0C000000006 /* original_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = original_reference_trace.txt; sourceTree = "<group>"; };
 		C0DE20260916C0C000000007 /* generated_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = generated_reference_trace.txt; sourceTree = "<group>"; };
+		C0DE20260916D0D000000002 /* original_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = original_reference_trace.txt; sourceTree = "<group>"; };
+		C0DE20260916E0E000000001 /* indigo_focuser_dsd.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_dsd.driver; sourceTree = "<group>"; };
+		C0DE20260916E0E000000003 /* original_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = original_reference_trace.txt; sourceTree = "<group>"; };
+		C0DE20260916E0E000000004 /* generated_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = generated_reference_trace.txt; sourceTree = "<group>"; };
 		C0DE20260916C0C000000008 /* test_ccd_uvc_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_uvc_hw.c; sourceTree = "<group>"; };
 		C0DE26060912F10000000000 /* Origin678C.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = Origin678C.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000001 /* QHY26800A.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY26800A.img; sourceTree = "<group>"; };
@@ -6598,8 +6605,8 @@
 		591F328824211EB000D1D64B /* aux_dragonfly */ = {
 			isa = PBXGroup;
 			children = (
-				C0DE20260913000300000001 /* REFACTOR.md */,
 				591F328F24211EB000D1D64B /* README.md */,
+				C0DE20260913000300000001 /* REFACTOR.md */,
 				591F329224211EB000D1D64B /* indigo_aux_dragonfly.h */,
 				591F328924211EB000D1D64B /* indigo_aux_dragonfly.c */,
 				591F329024211EB000D1D64B /* indigo_aux_dragonfly_main.c */,
@@ -13724,9 +13731,11 @@
 			isa = PBXGroup;
 			children = (
 				59E5A29C23C1238400E8BBBF /* README.md */,
+				59910BF7305B30B700FB1C2F /* REFACTOR.md */,
 				59E5A2A223C1238400E8BBBF /* indigo_mount_rainbow.h */,
 				59E5A29823C1238400E8BBBF /* indigo_mount_rainbow.c */,
 				59E5A2A023C1238400E8BBBF /* indigo_mount_rainbow_main.c */,
+				59910BF6305B30B700FB1C2F /* indigo_mount_rainbow.driver */,
 				59E5A29523C1238400E8BBBF /* RainbowAstro_191217.pdf */,
 				59AD798F24AA6AE700F52563 /* RainbowAstro_200629.pdf */,
 				59E5A29E23C1238400E8BBBF /* mount_rainbow_simulator */,
@@ -14058,7 +14067,9 @@
 			children = (
 				C0DE20260916C0C000000005 /* ccd_uvc */,
 				C0DE20260916A0A500000004 /* focuser_astroasis */,
+				C0DE20260916E0E000000002 /* focuser_dsd */,
 				C0DE20260916B0B000000002 /* gps_gpsd */,
+				C0DE20260916D0D000000001 /* mount_rainbow */,
 				59FA7C06301D439A00A35CFB /* protocol */,
 			);
 			path = fixtures;
@@ -15944,6 +15955,8 @@
 			isa = PBXGroup;
 			children = (
 				9DE0E7B522C6465500289234 /* README.md */,
+				59910BF5305B2A9700FB1C2F /* REFACTOR.md */,
+				C0DE20260916E0E000000001 /* indigo_focuser_dsd.driver */,
 				9DE0E7B622C6465500289234 /* indigo_focuser_dsd.h */,
 				9DE0E7B322C6465500289234 /* indigo_focuser_dsd.c */,
 				9DE0E7B422C6465500289234 /* indigo_focuser_dsd_main.c */,
@@ -16110,14 +16123,6 @@
 			path = linux;
 			sourceTree = "<group>";
 		};
-		C0DE20260916B0B000000002 /* gps_gpsd */ = {
-			isa = PBXGroup;
-			children = (
-				C0DE20260916B0B000000003 /* original_reference_trace.txt */,
-			);
-			path = gps_gpsd;
-			sourceTree = "<group>";
-		};
 		C0DE20260916A0A500000004 /* focuser_astroasis */ = {
 			isa = PBXGroup;
 			children = (
@@ -16127,6 +16132,23 @@
 			path = focuser_astroasis;
 			sourceTree = "<group>";
 		};
+		C0DE20260916E0E000000002 /* focuser_dsd */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20260916E0E000000003 /* original_reference_trace.txt */,
+				C0DE20260916E0E000000004 /* generated_reference_trace.txt */,
+			);
+			path = focuser_dsd;
+			sourceTree = "<group>";
+		};
+		C0DE20260916B0B000000002 /* gps_gpsd */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20260916B0B000000003 /* original_reference_trace.txt */,
+			);
+			path = gps_gpsd;
+			sourceTree = "<group>";
+		};
 		C0DE20260916C0C000000005 /* ccd_uvc */ = {
 			isa = PBXGroup;
 			children = (
@@ -16134,6 +16156,14 @@
 				C0DE20260916C0C000000007 /* generated_reference_trace.txt */,
 			);
 			path = ccd_uvc;
+			sourceTree = "<group>";
+		};
+		C0DE20260916D0D000000001 /* mount_rainbow */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20260916D0D000000002 /* original_reference_trace.txt */,
+			);
+			path = mount_rainbow;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
