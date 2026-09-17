@@ -12,6 +12,7 @@
 #define _XOPEN_SOURCE 600
 
 #include <errno.h>
+#include <math.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -21,13 +22,21 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include "../../../indigo_test/simulator_common/serial_motion.h"
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
 
 typedef struct {
 	bool headless;
 	bool trace;
 	const char *ready_file;
+	long firmware;
 } simulator_options;
+
+typedef enum {
+	OPERATION_NONE,
+	OPERATION_GOTO,
+	OPERATION_PARK
+} simulator_operation;
 
 typedef struct {
 	int date_day;
@@ -39,22 +48,31 @@ typedef struct {
 	int time_offset;
 	char latitude[16];
 	char longitude[16];
-	long ra_ms;
-	long dec_ms;
-	long target_ra_ms;
-	long target_dec_ms;
-	bool slewing;
+	serial_motion ra;
+	serial_motion dec;
+	double target_ra;
+	double target_dec;
+	simulator_operation operation;
 	bool tracking;
 	bool parked;
+	bool manual_ra;
+	bool manual_dec;
 	char tracking_rate;
 	char slew_rate;
 	char guide_rate[8];
 } simulator_state;
 
+typedef struct {
+	char command[64];
+	char action[128];
+	int remaining;
+} simulator_injection;
+
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
-	.ready_file = NULL
+	.ready_file = NULL,
+	.firmware = 200625
 };
 
 static simulator_state state = {
@@ -67,13 +85,15 @@ static simulator_state state = {
 	.time_offset = 2,
 	.latitude = "+48*08'10",
 	.longitude = "-17*06'20",
-	.ra_ms = 6L * 3600000L,
-	.dec_ms = 45L * 3600000L,
-	.target_ra_ms = 6L * 3600000L,
-	.target_dec_ms = 45L * 3600000L,
-	.slewing = false,
+	.ra = { .position = 6 * 3600000.0, .target = 6 * 3600000.0 },
+	.dec = { .position = 45 * 3600000.0, .target = 45 * 3600000.0 },
+	.target_ra = 6 * 3600000.0,
+	.target_dec = 45 * 3600000.0,
+	.operation = OPERATION_NONE,
 	.tracking = false,
 	.parked = false,
+	.manual_ra = false,
+	.manual_dec = false,
 	.tracking_rate = '0',
 	.slew_rate = 'M',
 	.guide_rate = "0.3"
@@ -82,12 +102,23 @@ static simulator_state state = {
 static const char *simulator_name = "mount_rainbow";
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
+static int keepalive_fd = -1;
+static FILE *events = NULL;
+static simulator_injection injection = { 0 };
+
+static void record_event(const char *kind, const char *value) {
+	if (events != NULL) {
+		fprintf(events, "%.6f\t%s\t%s\n", serial_motion_time(), kind, value);
+		fflush(events);
+	}
+}
 
 static void usage(const char *name) {
 	printf("RainbowAstro mount serial simulator\n");
 	printf("Usage: %s [OPTIONS]\n", name);
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
+	printf("  --firmware <version>    Simulate a six-digit firmware version\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
@@ -108,6 +139,16 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--firmware")) {
+			if (++i == argc) {
+				fprintf(stderr, "--firmware requires a version\n");
+				return false;
+			}
+			options.firmware = atol(argv[i]);
+			if (options.firmware < 100000 || options.firmware > 999999) {
+				fprintf(stderr, "Invalid firmware version '%s'\n", argv[i]);
+				return false;
+			}
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -125,47 +166,126 @@ static void signal_handler(int sig) {
 	}
 }
 
+static bool write_raw(const char *response, size_t length) {
+	return running && serial_simulator_write_all(serial_fd, response, length);
+}
+
 static void write_response(const char *response) {
 	serial_simulator_trace_line(options.trace, "<-", response);
-	const char *cursor = response;
-	size_t remaining = strlen(response);
-	while (running && remaining > 0) {
-		ssize_t written = write(serial_fd, cursor, remaining);
-		if (written > 0) {
-			cursor += written;
-			remaining -= (size_t)written;
-		} else if (written < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK || errno == EIO)) {
-			usleep(1000);
-		} else {
-			running = 0;
-		}
+	record_event("RSP", response);
+	write_raw(response, strlen(response));
+}
+
+static void write_split_response(const char *response) {
+	serial_simulator_trace_line(options.trace, "<-", response);
+	record_event("RSP_SPLIT", response);
+	size_t length = strlen(response), first = length / 2;
+	write_raw(response, first);
+	usleep(50000);
+	write_raw(response + first, length - first);
+}
+
+static void format_ra(char *buffer, size_t size) {
+	long milliseconds = lround(serial_motion_update(&state.ra));
+	milliseconds %= 24L * 3600000L;
+	if (milliseconds < 0) {
+		milliseconds += 24L * 3600000L;
 	}
+	snprintf(buffer, size, ":GR%02ld:%02ld:%04.1f#", milliseconds / 3600000L, (milliseconds / 60000L) % 60, (milliseconds % 60000L) / 1000.0);
 }
 
-static void format_ra(char *buffer, size_t size, long value) {
-	snprintf(buffer, size, ":GR%02ld:%02ld:%02ld.0#", value / 3600000L, (value / 60000L) % 60, (value / 1000L) % 60);
-}
-
-static void format_dec(char *buffer, size_t size, long value) {
-	long degrees = value / 3600000L;
-	long abs_value = labs(value);
-	snprintf(buffer, size, ":GD%+03ld*%02ld'%02ld.0#", degrees, (abs_value / 60000L) % 60, (abs_value / 1000L) % 60);
+static void format_dec(char *buffer, size_t size) {
+	long milliseconds = lround(serial_motion_update(&state.dec));
+	long absolute = labs(milliseconds);
+	snprintf(buffer, size, ":GD%c%02ld*%02ld'%04.1f#", milliseconds < 0 ? '-' : '+', absolute / 3600000L, (absolute / 60000L) % 60, (absolute % 60000L) / 1000.0);
 }
 
 static void set_target_ra(const char *text) {
-	state.target_ra_ms = atol(text) * 3600000L + atol(text + 3) * 60000L + (long)(atof(text + 6) * 1000.0);
+	state.target_ra = atol(text) * 3600000.0 + atol(text + 3) * 60000.0 + atof(text + 6) * 1000.0;
 }
 
 static void set_target_dec(const char *text) {
 	long degrees = atol(text);
-	long value = labs(degrees) * 3600000L + atol(text + 4) * 60000L + (long)(atof(text + 7) * 1000.0);
-	state.target_dec_ms = degrees < 0 ? -value : value;
+	double value = labs(degrees) * 3600000.0 + atol(text + 4) * 60000.0 + atof(text + 7) * 1000.0;
+	state.target_dec = degrees < 0 || *text == '-' ? -value : value;
+}
+
+static bool motion_active(void) {
+	serial_motion_update(&state.ra);
+	serial_motion_update(&state.dec);
+	return state.operation != OPERATION_NONE || state.manual_ra || state.manual_dec;
+}
+
+static double manual_speed(void) {
+	switch (state.slew_rate) {
+		case 'G': return 0.25 * 3600000.0;
+		case 'C': return 1.0 * 3600000.0;
+		case 'M': return 4.0 * 3600000.0;
+		default: return 12.0 * 3600000.0;
+	}
+}
+
+static void start_manual(bool ra_axis, int direction) {
+	serial_motion *motion = ra_axis ? &state.ra : &state.dec;
+	double limit = ra_axis ? 24.0 * 3600000.0 : 90.0 * 3600000.0;
+	serial_motion_start(motion, direction > 0 ? limit : -limit, manual_speed());
+	if (ra_axis) {
+		state.manual_ra = true;
+	} else {
+		state.manual_dec = true;
+	}
+}
+
+static void stop_manual(bool ra_axis) {
+	serial_motion_stop(ra_axis ? &state.ra : &state.dec);
+	if (ra_axis) {
+		state.manual_ra = false;
+	} else {
+		state.manual_dec = false;
+	}
+}
+
+static void stop_all(void) {
+	serial_motion_stop(&state.ra);
+	serial_motion_stop(&state.dec);
+	state.operation = OPERATION_NONE;
+	state.manual_ra = false;
+	state.manual_dec = false;
+}
+
+static bool consume_injection(const char *command) {
+	if (injection.remaining == 0 || strcmp(injection.command, command)) {
+		return false;
+	}
+	if (injection.remaining > 0) {
+		injection.remaining--;
+	}
+	if (!strcmp(injection.action, "DROP")) {
+		record_event("DROP", command);
+	} else if (!strncmp(injection.action, "DELAY:", 6)) {
+		usleep((useconds_t)atoi(injection.action + 6) * 1000);
+		record_event("DELAY", command);
+		return false;
+	} else if (!strncmp(injection.action, "SPLIT:", 6)) {
+		write_split_response(injection.action + 6);
+	} else if (!strcmp(injection.action, "CLOSE")) {
+		record_event("CLOSE", command);
+		close(serial_fd);
+		serial_fd = -1;
+		running = 0;
+	} else {
+		write_response(injection.action);
+	}
+	return true;
 }
 
 static void handle_command(const char *command) {
 	char response[128];
-
 	serial_simulator_trace_line(options.trace, "->", command);
+	record_event("CMD", command);
+	if (consume_injection(command)) {
+		return;
+	}
 	if (!strcmp(command, "GL")) {
 		snprintf(response, sizeof(response), ":GL%02d:%02d:%02d#", state.time_hour, state.time_minute, state.time_second);
 		write_response(response);
@@ -199,34 +319,30 @@ static void handle_command(const char *command) {
 		set_target_ra(command + 2);
 		write_response("1");
 	} else if (!strcmp(command, "GR")) {
-		format_ra(response, sizeof(response), state.ra_ms);
+		format_ra(response, sizeof(response));
 		write_response(response);
 	} else if (!strncmp(command, "Sd", 2)) {
 		set_target_dec(command + 2);
 		write_response("1");
 	} else if (!strcmp(command, "GD")) {
-		format_dec(response, sizeof(response), state.dec_ms);
+		format_dec(response, sizeof(response));
 		write_response(response);
 	} else if (!strcmp(command, "MS")) {
-		state.ra_ms = state.target_ra_ms;
-		state.dec_ms = state.target_dec_ms;
-		state.slewing = false;
-		state.tracking = true;
-		write_response(":MM0#");
+		serial_motion_start(&state.ra, state.target_ra, 4.0 * 3600000.0);
+		serial_motion_start(&state.dec, state.target_dec, 15.0 * 3600000.0);
+		state.operation = OPERATION_GOTO;
+		state.parked = false;
 	} else if (!strcmp(command, "Ch")) {
-		state.ra_ms = 0;
-		state.dec_ms = 90L * 3600000L;
-		state.slewing = false;
-		state.parked = true;
+		serial_motion_start(&state.ra, 0, 12.0 * 3600000.0);
+		serial_motion_start(&state.dec, 90.0 * 3600000.0, 30.0 * 3600000.0);
+		state.operation = OPERATION_PARK;
 		state.tracking = false;
-		write_response(":CHO#");
 	} else if (!strcmp(command, "Q")) {
-		if (state.slewing) {
-			write_response(":MME#");
-		}
-		state.slewing = false;
-	} else if (!strcmp(command, "Qe") || !strcmp(command, "Qw") || !strcmp(command, "Qn") || !strcmp(command, "Qs")) {
-		/* accepted */
+		stop_all();
+	} else if (!strcmp(command, "Qe") || !strcmp(command, "Qw")) {
+		stop_manual(true);
+	} else if (!strcmp(command, "Qn") || !strcmp(command, "Qs")) {
+		stop_manual(false);
 	} else if (!strcmp(command, "CtR")) {
 		state.tracking_rate = '0';
 	} else if (!strcmp(command, "CtS")) {
@@ -243,20 +359,27 @@ static void handle_command(const char *command) {
 		state.slew_rate = 'M';
 	} else if (!strcmp(command, "RS")) {
 		state.slew_rate = 'S';
-	} else if (!strcmp(command, "Mn") || !strcmp(command, "Ms") || !strcmp(command, "Mw") || !strcmp(command, "Me")) {
-		/* accepted */
+	} else if (!strcmp(command, "Mn")) {
+		start_manual(false, -1);
+	} else if (!strcmp(command, "Ms")) {
+		start_manual(false, 1);
+	} else if (!strcmp(command, "Mw")) {
+		start_manual(true, -1);
+	} else if (!strcmp(command, "Me")) {
+		start_manual(true, 1);
 	} else if (!strncmp(command, "Ck", 2)) {
-		state.ra_ms = (long)(atof(command + 2) / 15.0 * 3600000.0);
-		state.dec_ms = (long)(atof(command + 9) * 3600000.0);
+		serial_motion_sync(&state.ra, atof(command + 2) / 15.0 * 3600000.0);
+		serial_motion_sync(&state.dec, atof(command + 9) * 3600000.0);
 	} else if (!strncmp(command, "CU0=", 4)) {
 		snprintf(state.guide_rate, sizeof(state.guide_rate), "%s", command + 4);
 	} else if (!strcmp(command, "CU0")) {
 		snprintf(response, sizeof(response), ":CU0=%s#", state.guide_rate);
 		write_response(response);
 	} else if (!strcmp(command, "AV")) {
-		write_response(":AV200625#");
+		snprintf(response, sizeof(response), ":AV%06ld#", options.firmware);
+		write_response(response);
 	} else if (!strcmp(command, "CL")) {
-		write_response(state.slewing ? ":CL1#" : ":CL0#");
+		write_response(motion_active() ? ":CL1#" : ":CL0#");
 	} else if (!strcmp(command, "AT")) {
 		write_response(state.tracking ? ":AT1#" : ":AT0#");
 	} else if (!strcmp(command, "Ct?")) {
@@ -264,25 +387,81 @@ static void handle_command(const char *command) {
 		write_response(response);
 	} else if (!strcmp(command, "CtA")) {
 		state.tracking = true;
+		state.parked = false;
 	} else if (!strcmp(command, "CtL")) {
 		state.tracking = false;
 	} else if (!strcmp(command, "AH")) {
-		write_response(":AH0#");
+		write_response(state.operation == OPERATION_PARK ? ":AH1#" : ":AH0#");
 	} else if (!strcmp(command, "GH")) {
-		write_response(":GH0#");
+		write_response(state.parked ? ":GHO#" : ":GH0#");
+	} else {
+		record_event("UNKNOWN", command);
 	}
+}
+
+static void check_operation_completion(void) {
+	if (state.operation == OPERATION_NONE) {
+		return;
+	}
+	serial_motion_update(&state.ra);
+	serial_motion_update(&state.dec);
+	if (state.ra.duration > 0 || state.dec.duration > 0) {
+		return;
+	}
+	if (state.operation == OPERATION_GOTO) {
+		state.tracking = true;
+		state.operation = OPERATION_NONE;
+		write_response(":MM0#");
+	} else if (state.operation == OPERATION_PARK) {
+		state.parked = true;
+		state.tracking = false;
+		state.operation = OPERATION_NONE;
+		write_response(":CHO#");
+	}
+}
+
+static void check_control_file(void) {
+	if (options.ready_file == NULL) {
+		return;
+	}
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.control", options.ready_file);
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return;
+	}
+	char line[320];
+	if (fgets(line, sizeof(line), file) != NULL) {
+		line[strcspn(line, "\r\n")] = 0;
+		char *action = strchr(line, '\t');
+		char *count = action == NULL ? NULL : strchr(action + 1, '\t');
+		if (action != NULL && count != NULL) {
+			*action++ = 0;
+			*count++ = 0;
+			snprintf(injection.command, sizeof(injection.command), "%s", line);
+			snprintf(injection.action, sizeof(injection.action), "%s", action);
+			injection.remaining = atoi(count);
+			if (injection.remaining == 0) {
+				injection.remaining = -1;
+			}
+			record_event("INJECT", line);
+		}
+	}
+	fclose(file);
+	unlink(path);
 }
 
 static void run_loop(void) {
 	char command[128] = { 0 };
 	size_t length = 0;
 	bool in_command = false;
-
 	while (running) {
+		check_control_file();
+		check_operation_completion();
 		fd_set readfds;
 		FD_ZERO(&readfds);
 		FD_SET(serial_fd, &readfds);
-		struct timeval timeout = { .tv_sec = 0, .tv_usec = 100000 };
+		struct timeval timeout = { .tv_sec = 0, .tv_usec = 10000 };
 		int selected = select(serial_fd + 1, &readfds, NULL, NULL, &timeout);
 		if (selected < 0) {
 			if (errno == EINTR) {
@@ -293,7 +472,6 @@ static void run_loop(void) {
 		if (selected == 0) {
 			continue;
 		}
-
 		char ch;
 		ssize_t count = read(serial_fd, &ch, 1);
 		if (count <= 0) {
@@ -304,12 +482,12 @@ static void run_loop(void) {
 		}
 		if (ch == 6) {
 			write_response("P");
-		} else if (ch == ':' || ch == '>') {
+		} else if (!in_command && (ch == ':' || ch == '>')) {
 			in_command = true;
 			length = 0;
-			command[0] = '\0';
+			command[0] = 0;
 		} else if (in_command && ch == '#') {
-			command[length] = '\0';
+			command[length] = 0;
 			handle_command(command);
 			in_command = false;
 			length = 0;
@@ -323,13 +501,29 @@ int main(int argc, char *argv[]) {
 	if (!parse_args(argc, argv)) {
 		return 2;
 	}
-
 	char port[PATH_MAX];
 	serial_fd = serial_simulator_open_pty(port, sizeof(port));
 	if (serial_fd < 0) {
 		return 1;
 	}
+	keepalive_fd = open(port, O_RDWR | O_NOCTTY);
+	if (keepalive_fd < 0) {
+		close(serial_fd);
+		return 1;
+	}
+	if (options.ready_file != NULL) {
+		char event_path[PATH_MAX];
+		snprintf(event_path, sizeof(event_path), "%s.events", options.ready_file);
+		events = fopen(event_path, "w");
+		if (events == NULL) {
+			close(serial_fd);
+			return 1;
+		}
+	}
 	if (options.ready_file != NULL && !serial_simulator_write_ready_file(options.ready_file, simulator_name, port)) {
+		if (events != NULL) {
+			fclose(events);
+		}
 		close(serial_fd);
 		return 1;
 	}
@@ -337,12 +531,17 @@ int main(int argc, char *argv[]) {
 		printf("RainbowAstro simulator listening on %s\n", port);
 		fflush(stdout);
 	}
-
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 	run_loop();
+	if (events != NULL) {
+		fclose(events);
+	}
 	if (serial_fd >= 0) {
 		close(serial_fd);
+	}
+	if (keepalive_fd >= 0) {
+		close(keepalive_fd);
 	}
 	return 0;
 }
