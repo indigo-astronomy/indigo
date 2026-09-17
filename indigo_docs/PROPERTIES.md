@@ -1000,7 +1000,7 @@ Custom properties: `X_CLEAR_FAILURES`, `X_CONDITIONS_SAFETY`, `X_FAILURE_MESSAGE
 
 Driver-specific use of existing properties: `DOME_HOME`, `DOME_ON_COORDINATES_SET`, `DOME_PARK_POSITION`, `DOME_SHUTTER`, `DOME_SLAVING_PARAMETERS`, `DOME_SPEED`.
 
-Source: `indigo_drivers/dome_beaver/indigo_dome_beaver.c`.
+Source: `indigo_drivers/dome_beaver/indigo_dome_beaver.driver`.
 
 ### dome_dragonfly
 

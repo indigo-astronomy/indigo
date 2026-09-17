@@ -1,0 +1,293 @@
+## connect
+S RX !seletek version#
+S TX !seletek version:7203#
+S RX !dome shutterisup#
+S TX !dome shutterisup:1#
+S RX !dome getaz#
+S TX !dome getaz:90.0#
+S RX !dome atpark#
+S TX !dome atpark:0#
+S RX !domerot getpark#
+S TX !domerot getpark:0.0#
+S POLL [dome status:256] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:256] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U CONNECTION BUSY CONNECTED
+U INFO OK DEVICE_MODEL=Beaver (rotator) DEVICE_FIRMWARE_REVISION=2.3
+D X_SHUTTER_CALIBRATE OK RW count=1
+D X_ROTATOR_CALIBRATE OK RW count=1
+D X_FAILURE_MESSAGES OK RO count=2 ROTATOR= SHUTTER=
+D X_CLEAR_FAILURES OK RW count=1
+D X_CONDITIONS_SAFETY IDLE RO count=2 CLOUD_WATCHER=IDLE HYDREON=IDLE
+U DOME_PARK OK UNPARKED
+U DOME_PARK_POSITION OK AZ=0/0
+D DOME_DIRECTION OK RW count=2 MOVE_CLOCKWISE
+D DOME_ON_COORDINATES_SET OK RW count=1 GOTO
+D DOME_STEPS OK RW count=1 STEPS=0/0
+D DOME_HORIZONTAL_COORDINATES OK RW count=1 AZ=90/90
+D DOME_SLAVING_PARAMETERS OK RW count=1 MOVE_THRESHOLD=1/1
+D DOME_ABORT_MOTION OK RW count=1
+D DOME_SHUTTER OK RW count=2 CLOSED
+D DOME_PARK OK RW count=2 UNPARKED
+D DOME_PARK_POSITION OK RW count=1 AZ=0/0
+D DOME_HOME OK RW count=1
+U CONNECTION OK CONNECTED
+U X_CONDITIONS_SAFETY OK CLOUD_WATCHER=OK HYDREON=OK
+U DOME_HORIZONTAL_COORDINATES OK AZ=90/90
+U DOME_STEPS OK STEPS=0/0
+U DOME_SHUTTER OK CLOSED
+M DOME_SHUTTER "Shutter closed"
+## goto 180
+S RX !dome gotoaz 180.000000#
+S TX !dome gotoaz 180.000000:0#
+S POLL [dome status:257] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:256] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:256] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_STEPS BUSY STEPS=0/0
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
+U DOME_HORIZONTAL_COORDINATES OK AZ=180/180
+U DOME_STEPS OK STEPS=0/0
+## steps clockwise 30
+S RX !dome getaz#
+S TX !dome getaz:180.0#
+S RX !dome gotoaz 210.000000#
+S TX !dome gotoaz 210.000000:0#
+S POLL [dome status:257] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:256] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:256] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_DIRECTION OK MOVE_CLOCKWISE
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
+U DOME_STEPS BUSY STEPS=30/30
+U DOME_HORIZONTAL_COORDINATES OK AZ=210/180
+U DOME_STEPS OK STEPS=30/30
+## steps counterclockwise 40
+S RX !dome getaz#
+S TX !dome getaz:210.0#
+S RX !dome gotoaz 170.000000#
+S TX !dome gotoaz 170.000000:0#
+S POLL [dome status:257] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:256] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:256] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_DIRECTION OK MOVE_COUNTERCLOCKWISE
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
+U DOME_STEPS BUSY STEPS=40/40
+U DOME_HORIZONTAL_COORDINATES OK AZ=170/180
+U DOME_STEPS OK STEPS=40/40
+## direction clockwise
+S POLL [dome status:256] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_DIRECTION OK MOVE_CLOCKWISE
+## park
+S RX !dome gopark#
+S TX !dome gopark:0#
+S POLL [dome status:257] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:6400] [dome getaz:#] [dome atpark:1] [domerot getpark:0.0] [dome athome:1] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:6400] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_STEPS BUSY STEPS=40/40
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
+U DOME_PARK BUSY UNPARKED
+U DOME_HORIZONTAL_COORDINATES OK AZ=0/180
+U DOME_STEPS OK STEPS=40/40
+U DOME_PARK OK PARKED
+U DOME_PARK_POSITION OK AZ=0/0
+U DOME_HOME OK HOME
+## goto while parked
+S RX !dome getaz#
+S TX !dome getaz:0.0#
+S POLL [dome status:6400] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_STEPS ALERT STEPS=40/40
+U DOME_HORIZONTAL_COORDINATES ALERT AZ=0/90
+M DOME_HORIZONTAL_COORDINATES "Dome is parked, please unpark"
+## steps while parked
+S POLL [dome status:6400] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_STEPS ALERT STEPS=10/10
+M DOME_STEPS "Dome is parked, please unpark"
+## unpark
+S POLL [dome status:6400] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_PARK OK UNPARKED
+## home
+S RX !dome gohome#
+S TX !dome gohome:0#
+S POLL [dome status:6400] [dome getaz:#] [dome atpark:1] [dome athome:1] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:6400] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_HOME BUSY
+M DOME_HOME "Dome going to home position..."
+U DOME_STEPS BUSY STEPS=10/10
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
+U DOME_HORIZONTAL_COORDINATES OK AZ=0/90
+U DOME_STEPS OK STEPS=10/10
+U DOME_HOME OK HOME
+M DOME_HOME "Dome is at home position"
+## goto 200
+S RX !dome gotoaz 200.000000#
+S TX !dome gotoaz 200.000000:0#
+S POLL [dome status:257] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:256] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:256] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_STEPS BUSY STEPS=10/10
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
+U DOME_HOME OK
+U DOME_HORIZONTAL_COORDINATES OK AZ=200/200
+U DOME_STEPS OK STEPS=10/10
+## abort in motion
+S RX !dome gotoaz 100.000000#
+S TX !dome gotoaz #:##
+S POLL [dome status:#] [dome getaz:#] [dome atpark:#] [dome athome:#] [dome shutterstatus:#] [seletek getfailurecode:#] [dome sendtoshutter "seletek getfailurecode":#]
+S RX !dome abort 1#
+S TX !dome abort #:##
+S POLL [dome status:#] [dome getaz:#] [dome atpark:#] [dome athome:#] [dome shutterstatus:#] [seletek getfailurecode:#] [dome sendtoshutter "seletek getfailurecode":#]
+S POLL [dome status:#] [dome getaz:#] [dome shutterstatus:#] [seletek getfailurecode:#] [dome sendtoshutter "seletek getfailurecode":#]
+U DOME_STEPS BUSY STEPS=#/#
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
+U DOME_ABORT_MOTION OK
+U DOME_SHUTTER OK CLOSED
+U DOME_HORIZONTAL_COORDINATES OK AZ=#/#
+U DOME_STEPS OK STEPS=#/#
+## goto 300 after abort
+S RX !dome gotoaz 300.000000#
+S TX !dome gotoaz 300.000000:0#
+S POLL [dome status:257] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:256] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:256] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_STEPS BUSY STEPS=10/10
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
+U DOME_HORIZONTAL_COORDINATES OK AZ=300/300
+U DOME_STEPS OK STEPS=10/10
+## abort idle
+S RX !dome abort 1#
+S TX !dome abort 1:0#
+S POLL [dome status:256] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_ABORT_MOTION OK
+U DOME_SHUTTER OK CLOSED
+U DOME_HORIZONTAL_COORDINATES OK AZ=300/300
+U DOME_STEPS OK STEPS=10/10
+## failed abort
+S RX !dome abort 1#
+S FAULT !dome abort 1# error
+S TX !dome abort 1:-1#
+S POLL [dome status:256] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_ABORT_MOTION ALERT
+M DOME_ABORT_MOTION "Abort failed"
+## park position
+S RX !dome setpark#
+S TX !dome setpark:0#
+S RX !seletek savefs#
+S TX !seletek savefs:0#
+S RX !domerot getpark#
+S TX !domerot getpark:300.0#
+S POLL [dome status:4352] [dome getaz:#] [dome atpark:1] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_PARK_POSITION OK AZ=300/300
+U DOME_HORIZONTAL_COORDINATES OK AZ=300/300
+U DOME_STEPS OK STEPS=10/10
+## shutter open
+S RX !dome openshutter#
+S TX !dome openshutter:0#
+S POLL [dome status:4610] [dome getaz:#] [dome atpark:1] [dome athome:0] [dome shutterstatus:2] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:4224] [dome getaz:#] [dome atpark:1] [dome athome:0] [dome shutterstatus:0] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:4224] [dome getaz:#] [dome shutterstatus:0] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_SHUTTER BUSY OPENED
+U DOME_HORIZONTAL_COORDINATES OK AZ=300/300
+U DOME_STEPS OK STEPS=10/10
+M DOME_SHUTTER "Opening shutter..."
+U DOME_HORIZONTAL_COORDINATES OK AZ=300/300
+U DOME_STEPS OK STEPS=10/10
+U DOME_SHUTTER OK OPENED
+M DOME_SHUTTER "Shutter open"
+## shutter close
+S RX !dome closeshutter#
+S TX !dome closeshutter:0#
+S POLL [dome status:5122] [dome getaz:#] [dome atpark:1] [dome athome:0] [dome shutterstatus:3] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:4352] [dome getaz:#] [dome atpark:1] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:4352] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_SHUTTER BUSY CLOSED
+U DOME_HORIZONTAL_COORDINATES OK AZ=300/300
+U DOME_STEPS OK STEPS=10/10
+U DOME_SHUTTER BUSY OPENED
+M DOME_SHUTTER "Closing shutter..."
+U DOME_HORIZONTAL_COORDINATES OK AZ=300/300
+U DOME_STEPS OK STEPS=10/10
+U DOME_SHUTTER OK CLOSED
+M DOME_SHUTTER "Shutter closed"
+## rotator calibration
+S RX !dome autocalrot 2#
+S TX !dome autocalrot 2:0#
+S POLL [dome status:257] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:2304] [dome getaz:#] [dome atpark:0] [dome athome:1] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:2304] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U X_ROTATOR_CALIBRATE BUSY CALIBRATE
+M X_ROTATOR_CALIBRATE "Calibrating rotator..."
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
+U DOME_STEPS OK STEPS=10/10
+U DOME_STEPS OK STEPS=10/10
+U DOME_HORIZONTAL_COORDINATES OK AZ=0/300
+U DOME_STEPS OK STEPS=10/10
+U DOME_HOME OK HOME
+U X_ROTATOR_CALIBRATE OK
+M X_ROTATOR_CALIBRATE "Rotator calibration complete"
+## shutter calibration
+S RX !dome autocalshutter#
+S TX !dome autocalshutter:0#
+S POLL [dome status:2304] [dome getaz:#] [dome shutterstatus:1] [dome sendtoshutter "shutter getcalibrationstatus":1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:2304] [dome getaz:#] [dome shutterstatus:1] [dome sendtoshutter "shutter getcalibrationstatus":2] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:2304] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U X_SHUTTER_CALIBRATE BUSY CALIBRATE
+M X_SHUTTER_CALIBRATE "Calibrating shutter..."
+U X_SHUTTER_CALIBRATE OK
+M X_SHUTTER_CALIBRATE "Shutter calibration complete"
+## unsafe cloud watcher
+S POLL [dome status:2336] [dome getaz:#] [dome atpark:0] [dome athome:1] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:2336] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U X_CONDITIONS_SAFETY OK CLOUD_WATCHER=ALERT HYDREON=OK
+M X_CONDITIONS_SAFETY "Unsafe weather conditions reported, check X_CONDITIONS_SAFETY prperty"
+U DOME_HORIZONTAL_COORDINATES OK AZ=0/300
+U DOME_STEPS OK STEPS=10/10
+## rotator failure
+S POLL [dome status:2340] [dome getaz:#] [dome atpark:0] [dome athome:1] [dome shutterstatus:1] [seletek getfailurecode:5] [dome sendtoshutter "seletek getfailurecode":0] [seletek getfailuremsg:Rotator motor stalled] [dome sendtoshutter "seletek getfailuremsg":]
+S POLL [dome status:2340] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:5] [dome sendtoshutter "seletek getfailurecode":0]
+U DOME_HORIZONTAL_COORDINATES OK AZ=0/300
+U DOME_STEPS OK STEPS=10/10
+U X_FAILURE_MESSAGES ALERT ROTATOR=Rotator motor stalled SHUTTER=
+M X_FAILURE_MESSAGES "Rotator or Shutter failure detected, check X_FAILURE_MESSAGES property"
+## clear failures
+S RX !dome status#
+S TX !dome status:2340#
+S RX !dome getaz#
+S TX !dome getaz:0.0#
+S RX !dome shutterstatus#
+S TX !dome shutterstatus:1#
+S RX !seletek clearfailure#
+S TX !seletek clearfailure:0#
+S RX !dome sendtoshutter "seletek clearfailure"#
+S TX !dome sendtoshutter "seletek clearfailure":0#
+S RX !seletek getfailurecode#
+S TX !seletek getfailurecode:0#
+S RX !dome sendtoshutter "seletek getfailurecode"#
+S TX !dome sendtoshutter "seletek getfailurecode":0#
+S RX !seletek getfailuremsg#
+S TX !seletek getfailuremsg:#
+S RX !dome sendtoshutter "seletek getfailuremsg"#
+S TX !dome sendtoshutter "seletek getfailuremsg":#
+S POLL [dome status:2336] [dome getaz:#] [dome atpark:0] [dome athome:1] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+S POLL [dome status:2336] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
+U X_CLEAR_FAILURES BUSY CLEAR
+U X_CLEAR_FAILURES OK
+U X_FAILURE_MESSAGES OK ROTATOR= SHUTTER=
+U DOME_HORIZONTAL_COORDINATES OK AZ=0/300
+U DOME_STEPS OK STEPS=10/10
+## disconnect
+U CONNECTION BUSY DISCONNECTED
+X X_SHUTTER_CALIBRATE
+X X_ROTATOR_CALIBRATE
+X X_FAILURE_MESSAGES
+X X_CLEAR_FAILURES
+X X_CONDITIONS_SAFETY
+U INFO OK DEVICE_MODEL=Nexdome Beaver Dome DEVICE_FIRMWARE_REVISION=N/A
+X DOME_DIRECTION
+X DOME_ON_COORDINATES_SET
+X DOME_STEPS
+X DOME_HORIZONTAL_COORDINATES
+X DOME_SLAVING_PARAMETERS
+X DOME_ABORT_MOTION
+X DOME_SHUTTER
+X DOME_PARK
+X DOME_PARK_POSITION
+X DOME_HOME
+U CONNECTION OK DISCONNECTED

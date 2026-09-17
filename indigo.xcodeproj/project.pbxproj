@@ -1176,7 +1176,6 @@
 		2D7262A5A6EB6D2BF8614DCA /* aux_test_isolation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_test_isolation.h; sourceTree = "<group>"; };
 		30C50F83B71C53EA7F53B386 /* test_aux_cloudwatcher_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_cloudwatcher_simulator.c; sourceTree = "<group>"; };
 		4EB4B98B4C569BFBD5A4A6D3 /* test_aux_upb_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_upb_simulator.c; sourceTree = "<group>"; };
-		543383E8449CF052349990E3 /* aux_cloudwatcher_simulator/aux_cloudwatcher_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_cloudwatcher_simulator/aux_cloudwatcher_simulator.c; sourceTree = "<group>"; };
 		5560F867DB1B8995E921356D /* test_wheel_indigo_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_indigo_transport.c; sourceTree = "<group>"; };
 		59019E091DE0AC7400CCB3ED /* indigo_client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_client.c; sourceTree = "<group>"; tabWidth = 2; wrapsLines = 0; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59019E0A1DE0AC7400CCB3ED /* indigo_client.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_client.h; sourceTree = "<group>"; };
@@ -5587,6 +5586,10 @@
 		C0DE20260917F0F000000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260917F0F000000004 /* original_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = original_reference_trace.txt; sourceTree = "<group>"; };
 		C0DE20260917F0F000000005 /* generated_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = generated_reference_trace.txt; sourceTree = "<group>"; };
+		C0DE20260917F1F000000001 /* indigo_dome_beaver.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_dome_beaver.driver; sourceTree = "<group>"; };
+		C0DE20260917F1F000000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260917F1F000000004 /* original_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = original_reference_trace.txt; sourceTree = "<group>"; };
+		C0DE20260917F1F000000005 /* generated_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = generated_reference_trace.txt; sourceTree = "<group>"; };
 		C0DE26060912F10000000000 /* Origin678C.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = Origin678C.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000001 /* QHY26800A.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY26800A.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000002 /* QHY585.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY585.img; sourceTree = "<group>"; };
@@ -7117,6 +7120,8 @@
 			isa = PBXGroup;
 			children = (
 				5955CB682684BC9C00685071 /* README.md */,
+				C0DE20260917F1F000000002 /* REFACTOR.md */,
+				C0DE20260917F1F000000001 /* indigo_dome_beaver.driver */,
 				5955CB692684BC9C00685071 /* indigo_dome_beaver.h */,
 				5955CB662684BC9C00685071 /* indigo_dome_beaver.c */,
 				5955CB672684BC9C00685071 /* indigo_dome_beaver_main.c */,
@@ -13882,7 +13887,6 @@
 				C0DE20260913000200000001 /* REFACTOR.md */,
 				59F7E5E82457616400EF273A /* README.md */,
 				59F7E5E92457616400EF273A /* indigo_aux_cloudwatcher.h */,
-				543383E8449CF052349990E3 /* aux_cloudwatcher_simulator/aux_cloudwatcher_simulator.c */,
 				59F7E5E62457616400EF273A /* indigo_aux_cloudwatcher.c */,
 				59F7E5E72457616400EF273A /* indigo_aux_cloudwatcher_main.c */,
 				59910A3B305161C300FB1C2F /* aux_cloudwatcher_simulator */,
@@ -14073,6 +14077,7 @@
 			children = (
 				C0DE20260916C0C000000005 /* ccd_uvc */,
 				C0DE20260917F0F000000003 /* dome_baader */,
+				C0DE20260917F1F000000003 /* dome_beaver */,
 				C0DE20260916A0A500000004 /* focuser_astroasis */,
 				C0DE20260916E0E000000002 /* focuser_dsd */,
 				C0DE20260916B0B000000002 /* gps_gpsd */,
@@ -16180,6 +16185,15 @@
 				C0DE20260917F0F000000005 /* generated_reference_trace.txt */,
 			);
 			path = dome_baader;
+			sourceTree = "<group>";
+		};
+		C0DE20260917F1F000000003 /* dome_beaver */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20260917F1F000000004 /* original_reference_trace.txt */,
+				C0DE20260917F1F000000005 /* generated_reference_trace.txt */,
+			);
+			path = dome_beaver;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

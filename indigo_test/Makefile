@@ -393,7 +393,7 @@ $(INTEGRATION_BUILD)/test_rotator_simulator: integration/test_rotator_simulator.
 $(INTEGRATION_BUILD)/dome_baader_simulator: ../indigo_drivers/dome_baader/dome_baader_simulator/dome_baader_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/dome_beaver_simulator: ../indigo_drivers/dome_beaver/dome_beaver_simulator/dome_beaver_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/dome_beaver_simulator: ../indigo_drivers/dome_beaver/dome_beaver_simulator/dome_beaver_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/dome_nexdome_simulator: ../indigo_drivers/dome_nexdome/dome_nexdome_simulator/dome_nexdome_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -579,8 +579,26 @@ test-dome-baader-simulator-sanitize: $(INTEGRATION_BUILD)/test_dome_baader_simul
 test-dome-baader-simulator-network: $(INTEGRATION_BUILD)/test_dome_baader_simulator
 	$(INTEGRATION_BUILD)/test_dome_baader_simulator --network
 
-$(INTEGRATION_BUILD)/test_dome_beaver_simulator: integration/test_dome_beaver_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/dome_beaver_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_dome_beaver_simulator: integration/test_dome_beaver_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_beaver/original_reference_trace.txt fixtures/dome_beaver/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_beaver_simulator $(BUILD_DRIVERS)/indigo_dome_beaver.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_BEAVER_SIMULATOR_TEST_LDFLAGS)
+
+DOME_BEAVER_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+DOME_BEAVER_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined -lindigocat
+
+$(INTEGRATION_BUILD)/test_dome_beaver_simulator_sanitize: integration/test_dome_beaver_simulator.c ../indigo_drivers/dome_beaver/indigo_dome_beaver.c ../indigo_drivers/dome_beaver/indigo_dome_beaver.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_beaver/original_reference_trace.txt fixtures/dome_beaver/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_beaver_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(DOME_BEAVER_SANITIZE_CFLAGS) -o $@ $< ../indigo_drivers/dome_beaver/indigo_dome_beaver.c $(DOME_BEAVER_SANITIZE_LDFLAGS)
+
+.PHONY: test-dome-beaver-simulator test-dome-beaver-simulator-sanitize
+test-dome-beaver-simulator: $(INTEGRATION_BUILD)/test_dome_beaver_simulator
+	$(INTEGRATION_BUILD)/test_dome_beaver_simulator
+
+test-dome-beaver-simulator-sanitize: $(INTEGRATION_BUILD)/test_dome_beaver_simulator_sanitize
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_dome_beaver_simulator_sanitize
+
+# opt-in: opens loopback TCP sockets (127.0.0.1, including port 8080), not part of test-integration
+.PHONY: test-dome-beaver-simulator-network
+test-dome-beaver-simulator-network: $(INTEGRATION_BUILD)/test_dome_beaver_simulator
+	$(INTEGRATION_BUILD)/test_dome_beaver_simulator --network
 
 $(INTEGRATION_BUILD)/test_dome_nexdome_simulator: integration/test_dome_nexdome_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/dome_nexdome_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_NEXDOME_SIMULATOR_TEST_LDFLAGS)
