@@ -405,7 +405,7 @@ $(INTEGRATION_BUILD)/dome_nexdome3_simulator: ../indigo_drivers/dome_nexdome3/do
 $(INTEGRATION_BUILD)/dome_skyroof_simulator: ../indigo_drivers/dome_skyroof/dome_skyroof_simulator/dome_skyroof_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/dome_talon6ror_simulator: ../indigo_drivers/dome_talon6ror/dome_talon6ror_simulator/dome_talon6ror_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/dome_talon6ror_simulator: ../indigo_drivers/dome_talon6ror/dome_talon6ror_simulator/dome_talon6ror_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/gps_nmea_simulator: ../indigo_drivers/gps_nmea/gps_nmea_simulator/gps_nmea_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -642,8 +642,21 @@ test-dome-nexdome3-simulator-network: $(INTEGRATION_BUILD)/test_dome_nexdome3_si
 $(INTEGRATION_BUILD)/test_dome_skyroof_simulator: integration/test_dome_skyroof_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/dome_skyroof_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_SKYROOF_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_dome_talon6ror_simulator: integration/test_dome_talon6ror_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/dome_talon6ror_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_dome_talon6ror_simulator: integration/test_dome_talon6ror_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_talon6ror/original_reference_trace.txt fixtures/dome_talon6ror/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_talon6ror_simulator $(BUILD_DRIVERS)/indigo_dome_talon6ror.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_TALON6ROR_SIMULATOR_TEST_LDFLAGS)
+
+DOME_TALON6ROR_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+DOME_TALON6ROR_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined -lindigocat
+
+$(INTEGRATION_BUILD)/test_dome_talon6ror_simulator_sanitize: integration/test_dome_talon6ror_simulator.c ../indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.c ../indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_talon6ror/original_reference_trace.txt fixtures/dome_talon6ror/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_talon6ror_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(DOME_TALON6ROR_SANITIZE_CFLAGS) -o $@ $< ../indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.c $(DOME_TALON6ROR_SANITIZE_LDFLAGS)
+
+.PHONY: test-dome-talon6ror-simulator test-dome-talon6ror-simulator-sanitize
+test-dome-talon6ror-simulator: $(INTEGRATION_BUILD)/test_dome_talon6ror_simulator
+	$(INTEGRATION_BUILD)/test_dome_talon6ror_simulator
+
+test-dome-talon6ror-simulator-sanitize: $(INTEGRATION_BUILD)/test_dome_talon6ror_simulator_sanitize
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_dome_talon6ror_simulator_sanitize
 
 $(INTEGRATION_BUILD)/test_gps_nmea_simulator: integration/test_gps_nmea_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/gps_nmea_simulator $(BUILD_DRIVERS)/indigo_gps_nmea.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(GPS_NMEA_SIMULATOR_TEST_LDFLAGS)
@@ -1299,6 +1312,14 @@ test-ccd-uvc-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_uvc_hw
 
 $(TEST_BUILD)/hardware/test_ccd_uvc_hw: hardware/test_ccd_uvc_hw.c ../build/drivers/indigo_ccd_uvc.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_uvc.a -o $@ $(TEST_LDFLAGS) -ljpeg -lusb-1.0
+
+# Physical Starlight Xpress camera hardware is opt-in and excluded from normal integration tests.
+.PHONY: test-ccd-sx-hw
+test-ccd-sx-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_sx_hw
+	$(TEST_BUILD)/hardware/test_ccd_sx_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug) $(if $(filter 1,$(HW_DEBUG)),--debug) $(HW_FILTER)
+
+$(TEST_BUILD)/hardware/test_ccd_sx_hw: hardware/test_ccd_sx_hw.c test_runner.h ../build/drivers/indigo_ccd_sx.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_sx.a -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
 
 # Physical ASI hardware is opt-in and excluded from normal integration tests.

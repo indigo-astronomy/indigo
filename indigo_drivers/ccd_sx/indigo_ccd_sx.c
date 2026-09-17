@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_ccd_sx"
 #define DRIVER_LABEL         "Starlight Xpress Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -828,8 +828,8 @@ static void guider_guide_dec_finalizer(indigo_device *device) {
 	}
 	PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_NORTH | SX_GUIDE_SOUTH);
 	bool ok = sx_guide_relays(device, PRIVATE_DATA->relay_mask);
-	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
-	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+	GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 
@@ -839,8 +839,8 @@ static void guider_guide_ra_finalizer(indigo_device *device) {
 	}
 	PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_WEST | SX_GUIDE_EAST);
 	bool ok = sx_guide_relays(device, PRIVATE_DATA->relay_mask);
-	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
-	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 static struct {
@@ -1218,6 +1218,12 @@ static void guider_connection_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
 		indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
 		sx_guide_relays(device, PRIVATE_DATA->relay_mask = 0);
+		// An interrupted pulse must not leave the property BUSY, a BUSY property ignores every following pulse.
+		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+		GUIDER_GUIDE_DEC_PROPERTY->state = GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		//- guider.on_disconnect
 		if (--PRIVATE_DATA->count == 0) {
 			sx_close(device);
@@ -1230,17 +1236,15 @@ static void guider_connection_handler(indigo_device *device) {
 
 static void guider_guide_dec_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_DEC.on_change
+	// A new request replaces the running pulse, a zero request just cancels it.
 	indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
-	PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_NORTH | SX_GUIDE_SOUTH);
 	int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.target;
-	if (duration > 0) {
-		PRIVATE_DATA->relay_mask |= SX_GUIDE_NORTH;
-	} else {
+	unsigned short mask = duration > 0 ? SX_GUIDE_NORTH : 0;
+	if (mask == 0) {
 		duration = (int)GUIDER_GUIDE_SOUTH_ITEM->number.target;
-		if (duration > 0) {
-			PRIVATE_DATA->relay_mask |= SX_GUIDE_SOUTH;
-		}
+		mask = duration > 0 ? SX_GUIDE_SOUTH : 0;
 	}
+	PRIVATE_DATA->relay_mask = (PRIVATE_DATA->relay_mask & ~(SX_GUIDE_NORTH | SX_GUIDE_SOUTH)) | mask;
 	if (!sx_guide_relays(device, PRIVATE_DATA->relay_mask)) {
 		PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_NORTH | SX_GUIDE_SOUTH);
 		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_ALERT_STATE, "Guide command failed");
@@ -1248,24 +1252,24 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	}
 	if (duration > 0) {
 		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_dec_finalizer);
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_BUSY_STATE, NULL);
+	} else {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
-	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, PRIVATE_DATA->relay_mask & (SX_GUIDE_NORTH | SX_GUIDE_SOUTH) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE, NULL);
 	//- guider.GUIDER_GUIDE_DEC.on_change
 }
 
 static void guider_guide_ra_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_RA.on_change
+	// A new request replaces the running pulse, a zero request just cancels it.
 	indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
-	PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_EAST | SX_GUIDE_WEST);
 	int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.target;
-	if (duration > 0) {
-		PRIVATE_DATA->relay_mask |= SX_GUIDE_EAST;
-	} else {
+	unsigned short mask = duration > 0 ? SX_GUIDE_EAST : 0;
+	if (mask == 0) {
 		duration = (int)GUIDER_GUIDE_WEST_ITEM->number.target;
-		if (duration > 0) {
-			PRIVATE_DATA->relay_mask |= SX_GUIDE_WEST;
-		}
+		mask = duration > 0 ? SX_GUIDE_WEST : 0;
 	}
+	PRIVATE_DATA->relay_mask = (PRIVATE_DATA->relay_mask & ~(SX_GUIDE_EAST | SX_GUIDE_WEST)) | mask;
 	if (!sx_guide_relays(device, PRIVATE_DATA->relay_mask)) {
 		PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_EAST | SX_GUIDE_WEST);
 		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_ALERT_STATE, "Guide command failed");
@@ -1273,8 +1277,10 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	}
 	if (duration > 0) {
 		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_ra_finalizer);
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_BUSY_STATE, NULL);
+	} else {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
-	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, PRIVATE_DATA->relay_mask & (SX_GUIDE_WEST | SX_GUIDE_EAST) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE, NULL);
 	//- guider.GUIDER_GUIDE_RA.on_change
 }
 
@@ -1310,20 +1316,18 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		//+ guider.GUIDER_GUIDE_DEC.on_change_request
-		indigo_cancel_pending_handler(device, guider_guide_dec_handler);
 		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
-		// Accept replacement and zero requests while the previous pulse is BUSY.
+		// Accept a replacing or cancelling request while the previous pulse is still running.
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		//- guider.GUIDER_GUIDE_DEC.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		//+ guider.GUIDER_GUIDE_RA.on_change_request
-		indigo_cancel_pending_handler(device, guider_guide_ra_handler);
 		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
-		// Accept replacement and zero requests while the previous pulse is BUSY.
+		// Accept a replacing or cancelling request while the previous pulse is still running.
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		//- guider.GUIDER_GUIDE_RA.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);

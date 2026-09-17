@@ -329,3 +329,55 @@ Validation: all 24 groups passed in the normal build and under ASan/UBSan (test 
 The user approved generator changes for duplicate USB arrivals, failed-master rollback, failed queue/registration INIT rollback, and draining accepted USB events before SHUTDOWN detach/free. Shutdown also serializes its connected-device check against an in-progress attach. The generated allocation cleanup uses `indigo_safe_free()` as requested.
 
 Shutdown synchronization now uses the shared `indigo_queue_drain()` API in `indigo_timer.c`; the generator no longer emits a per-driver drain callback, condition variable or completion flag. The connected-device check remains serialized against attach.
+
+## Physical hardware acceptance (2026-09-17)
+
+Environment: macOS 26.6.2, arm64 (Apple M3), working tree at `7412198c3` with the SX driver unmodified, driver version `0x0300000F`, libusb hot plug served by the INDIGO polling helper (`indigo_usb_hotplug_thread`, ~3 s cadence).
+
+Devices under test:
+
+| Device | USB PID | Geometry | Pixel | Readout | Cooler | Star2K | Flood LED |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `SXVR-H694 #0001` | 0x0194 | 2750 x 2200 | 4.54 x 4.54 um | progressive | yes | yes | no |
+| `SX LodeStar #0201` | 0x0507 | 752 x 580 | 8.60 x 8.30 um | interlaced (driver doubles height, halves pixel height) | no | yes | no |
+
+Harness: `indigo_test/hardware/test_ccd_sx_hw.c`, built and run with `make -C indigo_test test-ccd-sx-hw` (add `HW_HOTPLUG=1` for the physical unplug case, `HW_FILTER=<substring>` for one case, `--camera <substring>` to restrict hot plug to one camera). It links the production driver archive, drives the public bus only, discovers every attached SX camera, probes its capabilities at runtime and applies the hardware-relevant scenarios of `indigo_test/integration/test_ccd_sx_usb.c`. A watchdog thread enforces a per-case deadline so a deadlocked driver fails instead of hanging.
+
+| Case | H694 | LodeStar | Evidence |
+| --- | --- | --- | --- |
+| Identity, discovery and property contract | pass | pass | Driver info/name/version, `#<usb path>` names, CCD and guider interface bits, common properties before connect, `CCD_INFO` geometry/pixel size/16 bpp/max bin 4, `CCD_MODE` `BIN_1x1`/`BIN_2x2`/`BIN_4x4` RW, absence of `CCD_STREAMING`/gain/offset/gamma/cooler power/read mode, capability-gated `CCD_COOLER`, `CCD_TEMPERATURE` and `X_CCD_FLOOD_LED`, property deletion after disconnect. |
+| Shared lifecycle and rejected shutdown | pass | pass | Both connection orders, `INDIGO_DRIVER_SHUTDOWN` rejected with `INDIGO_BUSY` while connected, exposure while both logical devices are connected, guider pulse after the CCD disconnects, CCD acquisition after the guider disconnects, three reconnect cycles, clean shutdown when idle. |
+| Acquisition units, frame types, bins and ROI | pass | pass | RAW16 to client; full frame 2750x2200 / 752x580; five frame types; bias uses the shortest exposure; `BIN_2x2` and `BIN_4x4` deliver 1375x1100, 687x550 and 376x290, 188x145; ROI 256x192 at 64,60; out-of-range frame clamped to 16x16 with ALERT; rejected bins 3x3, 1x2, 5x5 keep 1x1; 1.5 s and 4 s exposures (long-exposure register-clear path); every frame has a valid header, exact geometry, full payload and non-uniform pixels. |
+| Abort orders and reacquisition | pass | pass | 20 s exposure aborted after 1.5 s leaves `CCD_EXPOSURE` ALERT, `CCD_ABORT_EXPOSURE` OK and publishes no frame; immediate reacquisition works; abort issued during readout completes the in-flight frame and reports ALERT on the abort property (latency 0.66 s LodeStar, 4.34 s H694 for a 12.1 MB full frame); abort with no exposure returns ALERT. |
+| Cooling profile | pass | not applicable | H694: target set 5 C below ambient switches `CCD_COOLER` on automatically, `CCD_TEMPERATURE` goes BUSY, measured value reached 9.9 C for target 10.0 C, four updates in 30 s (the 5 s poll is suppressed by the bus when nothing changes), no ALERT, exposure while cooling, cooler off restores OK, temperature readable after reconnect, initial cooler state restored. LodeStar: `CCD_COOLER`, `CCD_TEMPERATURE` and `CCD_COOLER_POWER` correctly absent. |
+| Guider pulses and shared acquisition | fail before the fix, see DRV-192 | fail before the fix, retested and passed in 3.0.0.16 | Four direction pulses and item reset to zero passed; the same-axis replacement pulse deadlocked the driver in 6 of 8 runs of 3.0.0.15. Retested with 3.0.0.16 on the LodeStar, see the guiding fix section below. |
+| Guider pulse timing | pass | pass | 40 samples per camera (20/50/100/250/500 ms, each direction, idle and during an exposure), client-observed BUSY-to-OK. H694: min +0.946, mean +3.897, median +4.302, p95 +5.754, p99 +6.008, max +6.008, stddev 1.584 ms. LodeStar: min +0.393, mean +3.981, median +4.507, p95 +5.784, p99 +5.949, max +5.949, stddev 1.539 ms. Completion always resets both items to zero. |
+| Flood LED contract | pass | pass | Neither model reports the flood-LED capability, `X_CCD_FLOOD_LED` stays hidden. The command itself remains unverified on hardware. |
+| Teardown and reload | pass | pass | Two full `INDIGO_DRIVER_INIT` / discovery / connect / expose / disconnect / `INDIGO_DRIVER_SHUTDOWN` cycles per camera in one process, no hang and no leaked device. |
+| Physical idle and active hot plug | pass | pass | Cable actually unplugged while connected and idle, and again during a 60 s exposure. Both removals detach the logical devices, both replugs re-enumerate them, and after each recovery the camera reconnects and delivers a fresh full frame; a guide pulse completes after recovery. While one camera was unplugged the other kept connecting, exposing and delivering frames in both directions. |
+
+Defect found: **DRV-192** in `indigo_drivers/REVIEW.md` — replacing a running guide pulse on the same axis deadlocks the driver. `GUIDER_GUIDE_RA`/`GUIDER_GUIDE_DEC` `on_change_request` calls `indigo_cancel_pending_handler()` on the client thread, which holds the bus mutex for the whole `indigo_change_property()` dispatch, while the still-running `guider_guide_ra_handler` needs the same bus mutex inside `indigo_update_property()`. Instrumented mutex ownership, `sample` and `lldb` stacks are recorded with the finding. Reproduced 6 times in 8 runs on both cameras, therefore the guider case is currently expected to fail.
+
+Observed once and not reproduced: after an idle unplug/replug of the H694 the first `CCD_EXPOSURE` request stayed IDLE for 60 s while `CCD_UPLOAD_MODE` and `CCD_IMAGE_FORMAT` changes were still accepted. The same sequence passed in the following runs, including the recorded hot-plug run, so it is recorded as unexplained rather than as a defect.
+
+Not covered on hardware: flood-LED command (no supporting model available), colour/Bayer readout and ICX453 layout (no such camera available), cameras without Star2K, more than two physical cameras, USB transfer error injection (covered by the fake-USB suite only), Windows and Linux hosts, and `CONFIG` save/load with hardware restore, which was skipped because the INDIGO configuration folder is the user's own `~/.indigo`.
+
+## Guide pulse replacement fix (2026-09-17)
+
+DRV-192 is fixed in driver version 3.0.0.16. The requested behaviour is unchanged replacement semantics: a new pulse on an axis cancels the running one and replaces it, a zero request only cancels it.
+
+Source changes in `indigo_ccd_sx.driver`, all inside the guider block:
+
+- `GUIDER_GUIDE_RA` / `GUIDER_GUIDE_DEC` `on_change_request` no longer calls `indigo_cancel_pending_handler(device, guider_guide_*_handler)`. That call ran on the client thread inside `indigo_change_property()`, which holds the bus mutex for the whole dispatch, and waited for a handler that needs the same mutex to publish its update. Accepting the request while the property is BUSY is still done there by zeroing both items and setting `INDIGO_OK_STATE`.
+- The replacement itself is performed by `indigo_cancel_pending_handler(device, guider_guide_*_finalizer)` at the top of the change handler. The handler runs on the shared device queue, which is also the queue the finalizer runs on, so `indigo_queue_remove()` removes the pending finalizer without waiting and cannot deadlock.
+- The handler publishes BUSY for a started pulse and OK for a cancelling zero request; the finalizers now clear item targets as well as values.
+- `on_disconnect` clears all four items and returns both properties to `INDIGO_OK_STATE`, so a pulse interrupted by a disconnect cannot leave the property BUSY.
+
+Behaviour difference worth knowing: requests that pile up behind an occupied device queue are no longer dropped by cancelling the queued handler. Each of them now performs its own replacement, so three requests arriving during a readout produce four relay commands instead of two. The last request still wins, and the fake USB suite asserts exactly this.
+
+Validation:
+
+- `indigo_test/integration/test_ccd_sx_usb.c`: all 24 groups pass with 3.0.0.16. The guider groups were updated for the changed queued-request accounting and extended with a pulse after reconnect following an interrupted pulse.
+- Hardware, SX LodeStar #0101 on macOS 26.6.2 arm64: the guider case passed 8 consecutive runs (3 plus 5 in a stress loop), where 3.0.0.15 deadlocked in 6 of 8 runs. Measured replacement behaviour: an 800 ms pulse replaced after 200 ms by a 200 ms pulse ends the axis after 0.411 s, 0.421 s and 0.408 s in three runs, and a zero request cancelled a running 3000 ms pulse after 0.313 s, 0.318 s and 0.316 s.
+- The complete hardware suite (identity and property contract, shared lifecycle, acquisition, abort, uncooled profile, guider pulses, guider pulse timing, flood LED, teardown and reload) passed on the LodeStar with 3.0.0.16.
+- Not retested with 3.0.0.16: the SXVR-H694, because it was unplugged when the fix was validated. Its cooling row and the physical hot-plug case therefore remain evidence from 3.0.0.15, whose acquisition, cooling and hot-plug paths are untouched by this fix.

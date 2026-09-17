@@ -67,7 +67,7 @@
 | ccd_ssg                 | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
 | ccd_svb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 47 / 1 | |
 | ccd_svb2                | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
-| ccd_sx                  | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 24 / 0 | |
+| ccd_sx                  | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 24 / 10 | |
 | ccd_touptek             | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 1 | |
 | ccd_uvc                 | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 20 / 1 | ⛔ libuvc is Unix only |
 | dome_baader             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 46 / 0 | |

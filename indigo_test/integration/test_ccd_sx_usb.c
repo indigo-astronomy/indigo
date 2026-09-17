@@ -568,6 +568,11 @@ static void guider_replacement_errors_and_disconnect(void) {
 	SX_CHECK(sx_wait(&relay_mask, 8));
 	SX_CHECK(sx_connect(1, false, 0));
 	SX_CHECK(atomic_load(&relay_mask) == 0 && atomic_load(&is_open));
+	SX_CHECK(sx_connect(1, true, 1));
+	SX_CHECK(sx_pulse("GUIDER_GUIDE_RA", "EAST", 60));
+	SX_CHECK(sx_wait(&relay_mask, 8));
+	SX_CHECK(sx_wait(&guide_state[0], INDIGO_OK_STATE));
+	SX_CHECK(sx_connect(1, false, 0));
 	SX_CHECK(sx_expose(0.02, INDIGO_OK_STATE));
 	SX_CHECK(sx_connect(1, true, 1));
 	SX_CHECK(sx_pulse("GUIDER_GUIDE_DEC", "NORTH", 30));
@@ -581,7 +586,7 @@ static void flood_led_and_property_contract(void) {
 	sx_begin();
 	indigo_driver_info info;
 	SX_CHECK(indigo_ccd_sx(INDIGO_DRIVER_INFO, &info) == INDIGO_OK);
-	SX_CHECK(!strcmp(info.name, "indigo_ccd_sx") && info.version == 0x0300000f);
+	SX_CHECK(!strcmp(info.name, "indigo_ccd_sx") && info.version == 0x03000010);
 	assert_device_interface(INDIGO_INTERFACE_CCD);
 	indigo_property *p = find_cached_property("X_CCD_FLOOD_LED");
 	SX_CHECK(p && p->type == INDIGO_SWITCH_VECTOR && p->count == 2 && p->perm == INDIGO_RW_PERM);
@@ -958,7 +963,9 @@ static void queued_guiding_and_pulse_removal(void) {
 	sx_release_gate();
 	SX_CHECK(sx_wait(&relay_mask, 8));
 	SX_CHECK(sx_wait(&guide_state[0], INDIGO_OK_STATE));
-	SX_CHECK(atomic_load(&command_count[9]) == before + 2);
+	// Requests queued behind the readout are not cancelled any more, each of them replaces the pulse of the previous one and the last one wins.
+	SX_CHECK(atomic_load(&command_count[9]) == before + 4);
+	SX_CHECK(atomic_load(&pulse_count[0]) == 0);
 	SX_CHECK(sx_pulse("GUIDER_GUIDE_DEC", "SOUTH", 500));
 	SX_CHECK(sx_wait(&relay_mask, 2));
 	usb_callback(NULL, (libusb_device *)usb_tokens, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
