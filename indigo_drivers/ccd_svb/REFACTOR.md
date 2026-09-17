@@ -133,3 +133,28 @@ Covered by `Edges rejected_change_alerts_and_keeps_values` in `indigo_test/integ
 ```sh
 make -C indigo_test test-ccd-svb-sdk
 ```
+
+## Per-camera `sdk_mutex` removal (2026-09-18)
+
+The migrated driver kept `svb_private_data.sdk_mutex`, a rename of the original hand-written `usb_mutex`, and wrapped every individual SDK transaction in it. That lock has been removed, together with the now-unused `#include <pthread.h>` in the `.driver` include block. Version increased from 23 to 24.
+
+The mutex protected nothing that the generated queue split does not already protect. `CONNECTION`, hot-plug arrival and removal run on the per-driver queue; acquisition, guiding, temperature polling and every `_finalizer` run on the master-device queue. Both disconnect branches begin with `indigo_cancel_pending_handlers()`, and `indigo_queue_remove()` blocks until the currently running matching task finishes, so no device-queue handler can touch the SDK once close proceeds. `indigo_lock_master_device()` remains where `ccd_asi` and `ccd_playerone` use it: around `svb_open()`/`svb_close()` and the CCD `on_connect`/`on_disconnect` and guider `on_disconnect` blocks. The driver now matches those two drivers, which never carried an equivalent per-camera lock.
+
+One window is not closed by either driver and is unchanged by this edit: `ccd_connection_handler` runs `initialize_camera()` on the driver queue while an already-connected sibling guider can be executing a pulse on the master-device queue. `ccd_asi` and `ccd_playerone` hold the master-device lock on the connect side only, and their device-queue handlers do not take it, so the pairing is one-sided there as well. Closing it belongs in the generator rather than in one driver's private lock.
+
+Verification on macOS 26.6, Apple Silicon arm64:
+
+```sh
+cd indigo_drivers/ccd_svb && make -B -f ../../Makefile.drv
+make -B -C indigo_test test-ccd-svb-sdk
+make -B -C indigo_test test-ccd-svb-sdk-sanitize
+```
+
+- Universal x86_64+arm64 driver build: passed, no compiler warnings; only the pre-existing `libSVBCameraSDK.dylib` deployment-target linker warnings (10.13 and 14.0 versus the 10.10/11.0 build targets).
+- Strict driver build `make -B -f ../../Makefile.drv CC='clang -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter -Wno-cast-function-type-mismatch'`: passed. The excluded diagnostic is the generator-owned `(indigo_timer_callback)process_sdk_retry_handler` cast at `indigo_ccd_svb.c:1897`, which is pre-existing and not driver-authored.
+- Strict fake-SDK build with the same flags: passed, no warnings.
+- Ordinary fake-SDK run: 47 / 47.
+- Arm64 ASan+UBSan run: 47 / 47, no sanitizer report (`detect_leaks=0`; LeakSanitizer unsupported on this runtime).
+- Arm64 ThreadSanitizer run, built by overriding `SVB_CCD_SANITIZE_CFLAGS`/`SVB_CCD_SANITIZE_LDFLAGS` with `-fsanitize=thread`: 47 / 47 cases pass, 6 data races reported. The identical run against the pre-change driver reports the same 6 races in the same functions, so the removal introduces none. They are property and private-data races between the driver queue and the master-device queue that the removed mutex never covered: `ccd_connection_handler` versus `ccd_timer_callback`, `ccd_temperature_callback` versus the connection path, one in the test harness itself, and one on the guider RA path. They are recorded here as a pre-existing finding, not fixed by this change, and `libindigo.a` is not instrumented in that build so the happens-before edges inside `indigo_timer.c` are invisible to the detector.
+- Regeneration is deterministic. Final SHA-1 values are `8bbc37c7c3645d5d317d05865a00b3550e67fd2e`, `31802bf3964357cafbbad6b01416aeca13439b37` and `d4e39ae7cdc1bb9f081895f8fbc3b45b7d1b51e2` for `.c`, `.h` and `_main.c`; the `.h` and `_main.c` outputs are unchanged.
+- No hardware was available for this change; the SV305Pro workflow was not repeated.

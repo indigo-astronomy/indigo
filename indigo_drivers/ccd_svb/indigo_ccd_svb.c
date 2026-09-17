@@ -30,7 +30,6 @@
 #include <assert.h>
 #include <math.h>
 #include <limits.h>
-#include <pthread.h>
 #include "SVBCameraSDK.h"
 
 //- include
@@ -45,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000017
+#define DRIVER_VERSION       0x03000018
 #define DRIVER_NAME          "indigo_ccd_svb"
 #define DRIVER_LABEL         "SVBONY Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -92,7 +91,6 @@ typedef struct {
 	SVB_CAMERA_PROPERTY_EX property_ex;
 	double pixel_size;
 	char guider_name[INDIGO_NAME_SIZE];
-	pthread_mutex_t sdk_mutex;
 	int exp_bin_x, exp_bin_y;
 	int exp_frame_width, exp_frame_height;
 	int exp_bpp;
@@ -238,10 +236,8 @@ static bool svb_open(indigo_device *device) {
 		indigo_unlock_master_device(device);
 		return false;
 	}
-	pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 	SVB_ERROR_CODE result = SVBOpenCamera(PRIVATE_DATA->dev_id);
 	if (result != SVB_SUCCESS) {
-		pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 		indigo_global_unlock(device);
 		indigo_unlock_master_device(device);
 		return false;
@@ -249,7 +245,6 @@ static bool svb_open(indigo_device *device) {
 	result = SVBSetAutoSaveParam(PRIVATE_DATA->dev_id, SVB_FALSE);
 	if (result != SVB_SUCCESS) {
 		SVBCloseCamera(PRIVATE_DATA->dev_id);
-		pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 		indigo_global_unlock(device);
 		indigo_unlock_master_device(device);
 		return false;
@@ -258,11 +253,8 @@ static bool svb_open(indigo_device *device) {
 	if (PRIVATE_DATA->property.IsTriggerCam) {
 		result = SVBSetCameraMode(PRIVATE_DATA->dev_id, SVB_MODE_TRIG_SOFT);
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 	if (result != SVB_SUCCESS) {
-		pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 		SVBCloseCamera(PRIVATE_DATA->dev_id);
-		pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 		indigo_global_unlock(device);
 		indigo_unlock_master_device(device);
 		return false;
@@ -271,9 +263,7 @@ static bool svb_open(indigo_device *device) {
 	PRIVATE_DATA->buffer_size = PRIVATE_DATA->property.MaxHeight * PRIVATE_DATA->property.MaxWidth * (PRIVATE_DATA->property.IsColorCam ? 3 : 2) + FITS_HEADER_SIZE + 1024;
 	PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 	if (PRIVATE_DATA->buffer == NULL) {
-		pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 		SVBCloseCamera(PRIVATE_DATA->dev_id);
-		pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 		indigo_global_unlock(device);
 		indigo_unlock_master_device(device);
 		return false;
@@ -284,9 +274,7 @@ static bool svb_open(indigo_device *device) {
 
 static void svb_close(indigo_device *device) {
 	indigo_lock_master_device(device);
-	pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 	SVB_ERROR_CODE result = SVBCloseCamera(PRIVATE_DATA->dev_id);
-	pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 	if (result != SVB_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBCloseCamera(%d) = %d", PRIVATE_DATA->dev_id, result);
 	}
@@ -308,7 +296,6 @@ static bool svb_setup_exposure(indigo_device *device, double exposure, int frame
 	frame_width = frame_width / horizontal_bin / 8 * 8 * horizontal_bin;
 	frame_height = frame_height / vertical_bin / 2 * 2 * vertical_bin;
 	int requested_format = get_pixel_format(device);
-	pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 	res = SVBGetOutputImageType(id, &c_pixel_format);
 	if (res == SVB_SUCCESS && (PRIVATE_DATA->first_frame || c_pixel_format != requested_format)) {
 		res = SVBSetOutputImageType(id, requested_format);
@@ -336,7 +323,6 @@ static bool svb_setup_exposure(indigo_device *device, double exposure, int frame
 	if (res == SVB_SUCCESS) {
 		res = SVBGetROIFormat(id, &c_frame_left, &c_frame_top, &c_frame_width, &c_frame_height, &c_bin);
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 	if (res != SVB_SUCCESS || c_bin != horizontal_bin || c_frame_left != left || c_frame_top != top || c_frame_width != width || c_frame_height != height || c_frame_width <= 0 || c_frame_height <= 0 || c_frame_width > PRIVATE_DATA->property.MaxWidth / c_bin || c_frame_height > PRIVATE_DATA->property.MaxHeight / c_bin || c_frame_width % 8 || c_frame_height % 2) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid ROI readback: result %d, %d,%d %dx%d bin %d", res, c_frame_left, c_frame_top, c_frame_width, c_frame_height, c_bin);
 		return false;
@@ -356,11 +342,9 @@ static bool svb_set_cooler(indigo_device *device, bool status, double target, do
 	long current_status;
 	long temp_x10;
 	bool success = true;
-	pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 	if (PRIVATE_DATA->has_temperature_sensor) {
 		res = SVBGetControlValue(id, SVB_CURRENT_TEMPERATURE, &temp_x10, &unused);
 		if (res != SVB_SUCCESS) {
-			pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 			return false;
 		}
 		*current = temp_x10 / 10.0;
@@ -368,12 +352,10 @@ static bool svb_set_cooler(indigo_device *device, bool status, double target, do
 		*current = 0;
 	}
 	if (!PRIVATE_DATA->has_cooler) {
-		pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 		return true;
 	}
 	res = SVBGetControlValue(id, SVB_COOLER_ENABLE, &current_status, &unused);
 	if (res != SVB_SUCCESS) {
-		pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 		return false;
 	}
 	if (current_status != status) {
@@ -383,7 +365,6 @@ static bool svb_set_cooler(indigo_device *device, bool status, double target, do
 		long current_target = 0;
 		res = SVBGetControlValue(id, SVB_TARGET_TEMPERATURE, &current_target, &unused);
 		if (res != SVB_SUCCESS) {
-			pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 			return false;
 		}
 		long requested_target = lround(target * 10);
@@ -393,16 +374,13 @@ static bool svb_set_cooler(indigo_device *device, bool status, double target, do
 		}
 	}
 	res = SVBGetControlValue(id, SVB_COOLER_POWER, cooler_power, &unused);
-	pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 	return success && res == SVB_SUCCESS;
 }
 
 static void acquisition_finish(indigo_device *device, bool failed, bool aborted) {
 	bool streaming = PRIVATE_DATA->streaming;
 	if (PRIVATE_DATA->video_started) {
-		pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 		SVB_ERROR_CODE result = SVBStopVideoCapture(PRIVATE_DATA->dev_id);
-		pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 		failed = failed || result != SVB_SUCCESS;
 	}
 	PRIVATE_DATA->acquisition_active = false;
@@ -447,9 +425,7 @@ static void acquisition_finalizer(indigo_device *device) {
 	SVB_ERROR_CODE result = SVB_SUCCESS;
 	if (!PRIVATE_DATA->frame_ready) {
 		PRIVATE_DATA->can_check_temperature = false;
-		pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 		result = SVBGetVideoData(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE, 20);
-		pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 		PRIVATE_DATA->can_check_temperature = true;
 		if (result == SVB_ERROR_TIMEOUT && indigo_monotonic_time() < PRIVATE_DATA->readout_deadline) {
 			indigo_execute_handler_in(device, 0.01, acquisition_finalizer);
@@ -476,9 +452,7 @@ static void acquisition_finalizer(indigo_device *device) {
 	if (!streaming || CCD_STREAMING_COUNT_ITEM->number.value == 0) {
 		acquisition_finish(device, false, false);
 	} else {
-		pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 		result = SVBSendSoftTrigger(PRIVATE_DATA->dev_id);
-		pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 		if (result != SVB_SUCCESS) {
 			acquisition_finish(device, true, false);
 			return;
@@ -499,23 +473,19 @@ static void acquisition_start(indigo_device *device, bool streaming) {
 		acquisition_finish(device, false, false);
 		return;
 	}
-	pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 	SVB_ERROR_CODE error = SVB_SUCCESS;
 	for (int i = 0; error == SVB_SUCCESS && i < 8; i++) {
 		error = SVBGetVideoData(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE, 1);
 	}
 	// SV305 Pro short exposures can time out if the pending-frame drain is performed after stop.
 	SVBStopVideoCapture(PRIVATE_DATA->dev_id);
-	pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 	bool result = error == SVB_ERROR_TIMEOUT && svb_setup_exposure(device, PRIVATE_DATA->exposure_duration, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
 	if (result) {
-		pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 		error = SVBStartVideoCapture(PRIVATE_DATA->dev_id);
 		if (error == SVB_SUCCESS) {
 			PRIVATE_DATA->video_started = true;
 			error = SVBSendSoftTrigger(PRIVATE_DATA->dev_id);
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 		result = error == SVB_SUCCESS;
 	}
 	if (!result) {
@@ -577,9 +547,7 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 	if (!IS_CONNECTED) {
 		return INDIGO_OK;
 	}
-	pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 	if (SVBGetNumOfControls(id, &ctrl_count) != SVB_SUCCESS || ctrl_count < 0 || ctrl_count > 1024) {
-		pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 		return INDIGO_FAILED;
 	}
 	bool failed = false;
@@ -618,7 +586,6 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 			}
 		}
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 	return failed ? INDIGO_FAILED : INDIGO_OK;
 }
 
@@ -817,10 +784,8 @@ static bool initialize_camera(indigo_device *device) {
 	int id = PRIVATE_DATA->dev_id;
 	int ctrl_count = 0;
 	SVB_CONTROL_CAPS ctrl_caps;
-	pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 	int res = SVBGetNumOfControls(id, &ctrl_count);
 	if (res || ctrl_count < 0 || ctrl_count > 1024) {
-		pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetNumOfControls(%d) = %d", id, res);
 		return false;
 	}
@@ -828,21 +793,17 @@ static bool initialize_camera(indigo_device *device) {
 	for (int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
 		res = SVBGetControlCaps(id, ctrl_no, &ctrl_caps);
 		if (res || init_camera_property(device, ctrl_caps) != INDIGO_OK) {
-			pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 			return false;
 		}
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 	return true;
 }
 
 static bool svb_set_number(indigo_device *device, indigo_property *property, SVB_CONTROL_TYPE control, long target) {
 	long value;
 	SVB_BOOL automatic;
-	pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 	SVB_ERROR_CODE write_result = SVBSetControlValue(PRIVATE_DATA->dev_id, control, target, SVB_FALSE);
 	SVB_ERROR_CODE read_result = SVBGetControlValue(PRIVATE_DATA->dev_id, control, &value, &automatic);
-	pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 	if (!read_result && (value < property->items->number.min || value > property->items->number.max)) {
 		read_result = SVB_ERROR_OUTOF_BOUNDARY;
 	}
@@ -1505,9 +1466,7 @@ static void guider_guide_ra_handler(indigo_device *device) {
 		guider_ra_finalizer(device);
 		return;
 	}
-	pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 	SVB_ERROR_CODE res = SVBPulseGuide(PRIVATE_DATA->dev_id, direction, duration);
-	pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 	if (res != SVB_SUCCESS) {
 		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
@@ -1534,9 +1493,7 @@ static void guider_guide_dec_handler(indigo_device *device) {
 		guider_dec_finalizer(device);
 		return;
 	}
-	pthread_mutex_lock(&PRIVATE_DATA->sdk_mutex);
 	SVB_ERROR_CODE res = SVBPulseGuide(PRIVATE_DATA->dev_id, direction, duration);
-	pthread_mutex_unlock(&PRIVATE_DATA->sdk_mutex);
 	if (res != SVB_SUCCESS) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
@@ -1757,7 +1714,6 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 			if (model_suffix != NULL) {
 				*model_suffix = 0;
 			}
-			pthread_mutex_init(&private_data->sdk_mutex, NULL);
 			snprintf(name, INDIGO_NAME_SIZE, "%.*s", INDIGO_NAME_SIZE - 1, private_data->info.FriendlyName);
 			snprintf(private_data->guider_name, INDIGO_NAME_SIZE, "%.*s (guider)", INDIGO_NAME_SIZE - 10, private_data->info.FriendlyName);
 			indigo_make_name_unique(name, "%d", info.CameraID);
