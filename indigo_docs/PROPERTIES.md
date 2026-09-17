@@ -992,7 +992,7 @@ Custom properties: `X_EMERGENCY_CLOSE`.
 
 Driver-specific use of existing properties: `DOME_FLAP`, `DOME_ON_COORDINATES_SET`, `DOME_SLAVING_PARAMETERS`, `DOME_SPEED`.
 
-Source: `indigo_drivers/dome_baader/indigo_dome_baader.c`.
+Source: `indigo_drivers/dome_baader/indigo_dome_baader.driver`.
 
 ### dome_beaver
 

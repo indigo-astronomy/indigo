@@ -5583,6 +5583,10 @@
 		C0DE20260916E0E000000001 /* indigo_focuser_dsd.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_dsd.driver; sourceTree = "<group>"; };
 		C0DE20260916E0E000000003 /* original_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = original_reference_trace.txt; sourceTree = "<group>"; };
 		C0DE20260916E0E000000004 /* generated_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = generated_reference_trace.txt; sourceTree = "<group>"; };
+		C0DE20260917F0F000000001 /* indigo_dome_baader.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_dome_baader.driver; sourceTree = "<group>"; };
+		C0DE20260917F0F000000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260917F0F000000004 /* original_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = original_reference_trace.txt; sourceTree = "<group>"; };
+		C0DE20260917F0F000000005 /* generated_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = generated_reference_trace.txt; sourceTree = "<group>"; };
 		C0DE26060912F10000000000 /* Origin678C.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = Origin678C.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000001 /* QHY26800A.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY26800A.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000002 /* QHY585.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY585.img; sourceTree = "<group>"; };
@@ -13770,6 +13774,8 @@
 			isa = PBXGroup;
 			children = (
 				59EF8BC724683B10009D75C5 /* README.md */,
+				C0DE20260917F0F000000002 /* REFACTOR.md */,
+				C0DE20260917F0F000000001 /* indigo_dome_baader.driver */,
 				59EF8BC824683B10009D75C5 /* indigo_dome_baader.h */,
 				59EF8BC024683B10009D75C5 /* indigo_dome_baader.c */,
 				59EF8BC624683B10009D75C5 /* indigo_dome_baader_main.c */,
@@ -14066,6 +14072,7 @@
 			isa = PBXGroup;
 			children = (
 				C0DE20260916C0C000000005 /* ccd_uvc */,
+				C0DE20260917F0F000000003 /* dome_baader */,
 				C0DE20260916A0A500000004 /* focuser_astroasis */,
 				C0DE20260916E0E000000002 /* focuser_dsd */,
 				C0DE20260916B0B000000002 /* gps_gpsd */,
@@ -16164,6 +16171,15 @@
 				C0DE20260916E0E000000004 /* generated_reference_trace.txt */,
 			);
 			path = focuser_dsd;
+			sourceTree = "<group>";
+		};
+		C0DE20260917F0F000000003 /* dome_baader */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20260917F0F000000004 /* original_reference_trace.txt */,
+				C0DE20260917F0F000000005 /* generated_reference_trace.txt */,
+			);
+			path = dome_baader;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

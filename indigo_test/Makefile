@@ -390,8 +390,8 @@ $(INTEGRATION_BUILD)/test_polaralign_simulator_asan: integration/test_polaralign
 $(INTEGRATION_BUILD)/test_rotator_simulator: integration/test_rotator_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h $(BUILD_DRIVERS)/indigo_rotator_simulator.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(ROTATOR_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/dome_baader_simulator: ../indigo_drivers/dome_baader/dome_baader_simulator/dome_baader_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+$(INTEGRATION_BUILD)/dome_baader_simulator: ../indigo_drivers/dome_baader/dome_baader_simulator/dome_baader_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/dome_beaver_simulator: ../indigo_drivers/dome_beaver/dome_beaver_simulator/dome_beaver_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
@@ -558,8 +558,26 @@ $(INTEGRATION_BUILD)/aux_usbdp_simulator: ../indigo_drivers/aux_usbdp/aux_usbdp_
 $(INTEGRATION_BUILD)/test_focuser_askar_simulator: integration/test_focuser_askar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_askar_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_ASKAR_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_dome_baader_simulator: integration/test_dome_baader_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/dome_baader_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_dome_baader_simulator: integration/test_dome_baader_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_baader/original_reference_trace.txt fixtures/dome_baader/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_baader_simulator $(BUILD_DRIVERS)/indigo_dome_baader.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_BAADER_SIMULATOR_TEST_LDFLAGS)
+
+DOME_BAADER_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+DOME_BAADER_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined -lindigocat
+
+$(INTEGRATION_BUILD)/test_dome_baader_simulator_sanitize: integration/test_dome_baader_simulator.c ../indigo_drivers/dome_baader/indigo_dome_baader.c ../indigo_drivers/dome_baader/indigo_dome_baader.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_baader/original_reference_trace.txt fixtures/dome_baader/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_baader_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(DOME_BAADER_SANITIZE_CFLAGS) -o $@ $< ../indigo_drivers/dome_baader/indigo_dome_baader.c $(DOME_BAADER_SANITIZE_LDFLAGS)
+
+.PHONY: test-dome-baader-simulator test-dome-baader-simulator-sanitize
+test-dome-baader-simulator: $(INTEGRATION_BUILD)/test_dome_baader_simulator
+	$(INTEGRATION_BUILD)/test_dome_baader_simulator
+
+test-dome-baader-simulator-sanitize: $(INTEGRATION_BUILD)/test_dome_baader_simulator_sanitize
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_dome_baader_simulator_sanitize
+
+# opt-in: opens loopback TCP sockets (127.0.0.1, including port 8080), not part of test-integration
+.PHONY: test-dome-baader-simulator-network
+test-dome-baader-simulator-network: $(INTEGRATION_BUILD)/test_dome_baader_simulator
+	$(INTEGRATION_BUILD)/test_dome_baader_simulator --network
 
 $(INTEGRATION_BUILD)/test_dome_beaver_simulator: integration/test_dome_beaver_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/dome_beaver_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_BEAVER_SIMULATOR_TEST_LDFLAGS)
