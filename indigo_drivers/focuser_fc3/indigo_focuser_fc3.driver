@@ -26,7 +26,7 @@ driver fc3 {
 	label = "PegasusAstro FocusCube v3 Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2024-2026 CloudMakers, s. r. o.";
-	version = 3;
+	version = 4;
 	serial {
 		pattern {
 			pid = 0x9000;
@@ -198,6 +198,10 @@ driver fc3 {
 			}
 		}
 		inherited FOCUSER_STEPS {
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				int position = (int)FOCUSER_POSITION_ITEM->number.value;
 				if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
@@ -228,6 +232,10 @@ driver fc3 {
 		}
 		inherited FOCUSER_POSITION {
 			preserve_values = true;
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				int position = (int)FOCUSER_POSITION_ITEM->number.target;
 				if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {

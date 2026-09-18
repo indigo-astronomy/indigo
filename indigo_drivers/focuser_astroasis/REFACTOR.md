@@ -223,3 +223,23 @@ Not applicable: speed control (hidden, SDK field reserved), heater/stall/USB-pow
 - Simulated (fake-SDK) tests, original driver: 18 preservation cases run, 18 passed (ordinary); 18 run, 18 passed (ASan/UBSan); 11 defect reproducers run, 0 passed (all failed as expected).
 - Simulated (fake-SDK) tests, final generated driver: 33 registered cases; final ordinary run 33 run, 33 passed; final ASan/UBSan run 33 run, 33 passed.
 - Hardware tests: 0 run, 0 passed.
+
+## Rejected-change regression coverage (2026-09-18)
+
+A change request that arrives while a motion is already running is now refused with the generator's
+`reject_change` block on `FOCUSER_POSITION` and `FOCUSER_STEPS`, with the condition that the other motion property is BUSY and the message
+shown in the generated driver. The generated guard marks every item for update, sets
+`INDIGO_ALERT_STATE` and publishes the property, so the client receives the actual driver-side values
+instead of an update that carries no items.
+
+Both motion properties are published BUSY together at motion start, so `INDIGO_COPY_*_PROCESS_CHANGE` dropped a concurrent request silently: the client received no update at all and kept showing the refused target. The guard runs before that macro and turns the silent drop into an explicit refusal.
+
+Driver version is now `0x03000009`. Regression coverage is the existing suite in
+`indigo_test/integration/test_focuser_astroasis_sdk.c`, which was re-run after the change.
+
+```sh
+cd indigo_test && ./build/integration/test_focuser_astroasis_sdk
+```
+
+- Simulated tests run: 33; passed: 33.
+- Hardware tests run: 0; passed: 0.

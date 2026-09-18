@@ -235,3 +235,15 @@ This section captures the Bluetooth implementation removed from the pre-refactor
 - The selection encoding is ambiguous when a BLE device name itself ends in `-...`. Preserve the existing format only for compatibility if necessary; otherwise add a migration strategy before changing persisted `.bt` data.
 - Reintroduce Bluetooth as a separate generated logical device or an explicitly supported generator construct. It must not be folded into the USB `sdk` block, because BLE discovery does not originate from a libusb device event.
 - Add hardware-backed tests before enabling it: initial scan, rescan, persisted selection, pairing confirmation, normal disconnect, unexpected loss callback, failed connect/pair, and coexistence with one or more USB EAF devices.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard in `indigo_focuser_asi.driver` are now declared with the generator's `reject_change` block for `FOCUSER_POSITION` and `FOCUSER_STEPS`. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values.
+
+Both properties are set BUSY together at move start, so `INDIGO_COPY_*_PROCESS_CHANGE` dropped a concurrent request silently and the client kept showing the refused target. `focuser_motion_ready()` is kept for the SDK-verified motion check and the compensation path, which perform an SDK call and cannot be expressed as a guard condition.
+
+Covered by `rejected change while moving` in `indigo_test/integration/test_focuser_asi_sdk.c`.
+
+```sh
+cd indigo_test && ./build/integration/test_focuser_asi_sdk
+```

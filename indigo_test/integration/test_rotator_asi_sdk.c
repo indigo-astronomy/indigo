@@ -362,7 +362,7 @@ static void metadata_schema_and_reconnect(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_rotator_asi(INDIGO_DRIVER_INFO, &info));
 	ASSERT_STREQ("indigo_rotator_asi", info.name);
 	ASSERT_STREQ("ZWO CAA Rotator", info.description);
-	ASSERT_EQ_INT(0x03000004, info.version);
+	ASSERT_EQ_INT(0x03000005, info.version);
 	ASSERT_TRUE(find_cached_property("CAA_BEEP_ON_MOVE") == NULL);
 	for (int i = 0; i < 3; i++) {
 		ASSERT_TRUE(connection(true));

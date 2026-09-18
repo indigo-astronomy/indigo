@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000002
+#define DRIVER_VERSION       0x03000003
 #define DRIVER_NAME          "indigo_rotator_optec"
 #define DRIVER_LABEL         "Optec Pyxis Rotator"
 #define ROTATOR_DEVICE_NAME  "Optec Pyxis"
@@ -169,15 +169,6 @@ static void optec_close(indigo_device *device) {
 //- code
 
 //+ rotator.code
-
-static bool optec_operation_idle(indigo_device *device, indigo_property *property) {
-	if (PRIVATE_DATA->motion == OPTEC_NO_MOTION && ROTATOR_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && X_HOME_PROPERTY->state != INDIGO_BUSY_STATE) {
-		return true;
-	}
-	property->state = INDIGO_ALERT_STATE;
-	indigo_update_property(device, property, "Rotator operation is already in progress");
-	return false;
-}
 
 static void motion_finalizer(indigo_device *device) {
 	bool complete = false;
@@ -445,49 +436,69 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_HOME_PROPERTY, property)) {
-		//+ rotator.X_HOME.on_change_request
-		if (!optec_operation_idle(device, X_HOME_PROPERTY)) {
+		if (PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < X_HOME_PROPERTY->count; i++) {
+				X_HOME_PROPERTY->items[i].do_update = true;
+			}
+			X_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_HOME_PROPERTY, "Rotator operation is already in progress");
 			return INDIGO_OK;
 		}
-		//- rotator.X_HOME.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_HOME_PROPERTY, rotator_x_home_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_RATE_PROPERTY, property)) {
-		//+ rotator.X_RATE.on_change_request
-		if (!optec_operation_idle(device, X_RATE_PROPERTY)) {
+		if (PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < X_RATE_PROPERTY->count; i++) {
+				X_RATE_PROPERTY->items[i].do_update = true;
+			}
+			X_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_RATE_PROPERTY, "Rotator operation is already in progress");
 			return INDIGO_OK;
 		}
-		//- rotator.X_RATE.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(X_RATE_PROPERTY, rotator_x_rate_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_ROTATE_PROPERTY, property)) {
-		//+ rotator.X_ROTATE.on_change_request
-		if (!optec_operation_idle(device, X_ROTATE_PROPERTY)) {
+		if (PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < X_ROTATE_PROPERTY->count; i++) {
+				X_ROTATE_PROPERTY->items[i].do_update = true;
+			}
+			X_ROTATE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_ROTATE_PROPERTY, "Rotator operation is already in progress");
 			return INDIGO_OK;
 		}
-		//- rotator.X_ROTATE.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(X_ROTATE_PROPERTY, rotator_x_rotate_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_DIRECTION_PROPERTY, property)) {
-		//+ rotator.ROTATOR_DIRECTION.on_change_request
-		if (!optec_operation_idle(device, ROTATOR_DIRECTION_PROPERTY)) {
+		if (PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < ROTATOR_DIRECTION_PROPERTY->count; i++) {
+				ROTATOR_DIRECTION_PROPERTY->items[i].do_update = true;
+			}
+			ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, "Rotator operation is already in progress");
 			return INDIGO_OK;
 		}
+		//+ rotator.ROTATOR_DIRECTION.on_change_request
 		PRIVATE_DATA->previous_direction_normal = ROTATOR_DIRECTION_NORMAL_ITEM->sw.value;
 		//- rotator.ROTATOR_DIRECTION.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_DIRECTION_PROPERTY, rotator_direction_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
-		//+ rotator.ROTATOR_POSITION.on_change_request
-		if (!optec_operation_idle(device, ROTATOR_POSITION_PROPERTY)) {
+		if (PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < ROTATOR_POSITION_PROPERTY->count; i++) {
+				ROTATOR_POSITION_PROPERTY->items[i].do_update = true;
+			}
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Rotator operation is already in progress");
 			return INDIGO_OK;
 		}
 		if (PRIVATE_DATA->position_invalidated) {
+			for (int i = 0; i < ROTATOR_POSITION_PROPERTY->count; i++) {
+				ROTATOR_POSITION_PROPERTY->items[i].do_update = true;
+			}
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Absolute position is unknown; home the rotator first");
 			return INDIGO_OK;
 		}
-		//- rotator.ROTATOR_POSITION.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ROTATOR_POSITION_PROPERTY, rotator_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {

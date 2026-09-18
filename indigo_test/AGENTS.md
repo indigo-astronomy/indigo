@@ -110,6 +110,7 @@ After validating changes that build tests, run `make -C indigo_test test-clean` 
 - Add new unit executables to `UNIT_TESTS`.
 - Add new integration executables to `INTEGRATION_TESTS`.
 - Add new benchmark executables to `BENCHMARKS`.
+- List every driver archive a test links as a prerequisite of that test's rule, not only inside its `*_TEST_LDFLAGS` variable, so a rebuilt driver relinks the test.
 - Add every new test source or header to its appropriate Xcode project group in `../indigo.xcodeproj/project.pbxproj`.
 - Keep test-specific linker flags local and explicit.
 - Do not add generated binaries or `build/` artifacts to the repository.
@@ -147,10 +148,13 @@ Use an existing entry such as `aux_wcv4ec` (threaded) or `aux_arteskyflat`
    ```
 
 4. Add a rule that links the test executable against the driver archive and
-   depends on the simulator binary plus the shared test headers:
+   depends on the simulator binary, the shared test headers **and the driver
+   archive itself**. The archive must be a prerequisite and not only a link
+   argument, otherwise a rebuilt driver does not relink the test and the run
+   silently exercises the previous driver:
 
    ```make
-   $(INTEGRATION_BUILD)/test_<class>_<device>_simulator: integration/test_<class>_<device>_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/<class>_<device>_simulator | $(INTEGRATION_BUILD)
+   $(INTEGRATION_BUILD)/test_<class>_<device>_simulator: integration/test_<class>_<device>_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/<class>_<device>_simulator $(BUILD_DRIVERS)/indigo_<class>_<device>.a | $(INTEGRATION_BUILD)
    	$(CC) $(TEST_CFLAGS) -o $@ $< $(<CLASS>_<DEVICE>_SIMULATOR_TEST_LDFLAGS)
    ```
 

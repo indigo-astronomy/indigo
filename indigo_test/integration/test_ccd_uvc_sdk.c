@@ -882,6 +882,23 @@ static void short_frame_and_watchdog_recovery(void) {
 	end();
 }
 
+// CCD_MODE reprograms the stream, so it carries a reject_change guard. Without it the request was
+// dropped silently and the client kept showing the mode the camera never switched to.
+static void rejected_mode_change_during_exposure(void) {
+	ASSERT_TRUE(begin(true));
+	atomic_store(&hold_frames, 1);
+	unsigned revision = property_revision(CCD_EXPOSURE_PROPERTY_NAME);
+	indigo_change_number_property_1(&simulator_test_client, device_name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, .01);
+	ASSERT_TRUE(wait_for_property_state_seen_after(CCD_EXPOSURE_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	ASSERT_TRUE(assert_rejected_switch_change(CCD_MODE_PROPERTY_NAME, "4_16x12"));
+	atomic_store(&hold_frames, 0);
+	ASSERT_TRUE(wait_for_property_state_after(CCD_EXPOSURE_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	// A guard must not be sticky once the camera is idle again.
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, device_name, CCD_MODE_PROPERTY_NAME, "4_16x12", true));
+	ASSERT_TRUE(wait_for_property_state(CCD_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
+	end();
+}
+
 static void acquisition_control_failures_and_values(void) {
 	ASSERT_TRUE(begin(true));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, device_name, CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME, 23));
@@ -1140,6 +1157,7 @@ int main(int argc, char **argv) {
 		{ "Frame failure and reacquire", frame_failure_and_reacquire },
 		{ "Empty frame wakeup retries", empty_frame_wakeup_retries },
 		{ "Short frame and watchdog recovery", short_frame_and_watchdog_recovery },
+		{ "Rejected mode change during exposure", rejected_mode_change_during_exposure },
 		{ "Acquisition control failures and values", acquisition_control_failures_and_values },
 		{ "Optional control capability profiles", optional_control_capability_profiles },
 		{ "Exposure overlap abort and reacquire", exposure_overlap_abort_and_reacquire },

@@ -24,7 +24,7 @@ driver asi {
 	label = "ZWO CAA Rotator";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2024-2026 Rumen G. Bogdanovski";
-	version = 4;
+	version = 5;
 	include {
 		#include <stdbool.h>
 		#include <CAA_API.h>
@@ -381,6 +381,10 @@ driver asi {
 		}
 		inherited ROTATOR_POSITION {
 			preserve_values = true;
+			reject_change {
+				condition = ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Rotator is moving";
+			}
 			on_change {
 				double target = ROTATOR_POSITION_ITEM->number.target;
 				if (!rotator_motion_ready(device)) {
@@ -436,6 +440,10 @@ driver asi {
 		inherited ROTATOR_RELATIVE_MOVE {
 			hidden = false;
 			preserve_values = true;
+			reject_change {
+				condition = ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Rotator is moving";
+			}
 			on_change {
 				double delta = ROTATOR_RELATIVE_MOVE_ITEM->number.target;
 				if (!rotator_motion_ready(device)) {

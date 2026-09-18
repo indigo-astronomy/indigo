@@ -277,6 +277,21 @@ static double number_of(int d, const char *name, const char *item) {
 	return result;
 }
 
+static double target_of(int d, const char *name, const char *item) {
+	pthread_mutex_lock(&mutex);
+	int slot = property_slot(d, name);
+	double result = NAN;
+	if (slot >= 0) {
+		for (int i = 0; i < devices[d].properties[slot]->count; i++) {
+			if (!strcmp(devices[d].properties[slot]->items[i].name, item)) {
+				result = devices[d].properties[slot]->items[i].number.target;
+			}
+		}
+	}
+	pthread_mutex_unlock(&mutex);
+	return result;
+}
+
 static double number_max_of(int d, const char *name, const char *item) {
 	pthread_mutex_lock(&mutex);
 	int slot = property_slot(d, name);
@@ -584,7 +599,7 @@ static void stop_driver(void) {
 static void identity_and_property_contract(void) {
 	indigo_driver_info info;
 	CHECK(indigo_ccd_sx(INDIGO_DRIVER_INFO, &info) == INDIGO_OK);
-	CHECK(!strcmp(info.name, "indigo_ccd_sx") && !strcmp(info.description, "Starlight Xpress Camera") && info.version == 0x03000010);
+	CHECK(!strcmp(info.name, "indigo_ccd_sx") && !strcmp(info.description, "Starlight Xpress Camera") && info.version == 0x03000011);
 	CHECK(start_driver());
 	printf("    discovered %d camera(s)\n", camera_count);
 	for (int c = 0; c < camera_count; c++) {
@@ -696,12 +711,25 @@ static void acquisition_units_types_bins_and_roi(void) {
 			CHECK(devices[ccd].frame_width == (unsigned)(width / bin) && devices[ccd].frame_height == (unsigned)(height / bin));
 		}
 		const double invalid[][2] = { { 3, 3 }, { 1, 2 }, { 5, 5 } };
+		const char *bin_items[] = { CCD_BIN_HORIZONTAL_ITEM_NAME, CCD_BIN_VERTICAL_ITEM_NAME };
+		const double accepted[] = { 2, 2 }, restored[] = { 1, 1 };
 		CHECK(set_switch(ccd, CCD_MODE_PROPERTY_NAME, "BIN_1x1", INDIGO_OK_STATE, 5));
+		// An accepted binning commits value and target together; that committed pair is what a refused one has to keep.
+		CHECK(set_numbers(ccd, CCD_BIN_PROPERTY_NAME, 2, bin_items, accepted, INDIGO_OK_STATE, 5));
+		CHECK(number_of(ccd, CCD_BIN_PROPERTY_NAME, CCD_BIN_HORIZONTAL_ITEM_NAME) == 2 && target_of(ccd, CCD_BIN_PROPERTY_NAME, CCD_BIN_HORIZONTAL_ITEM_NAME) == 2);
+		CHECK(number_of(ccd, CCD_BIN_PROPERTY_NAME, CCD_BIN_VERTICAL_ITEM_NAME) == 2 && target_of(ccd, CCD_BIN_PROPERTY_NAME, CCD_BIN_VERTICAL_ITEM_NAME) == 2);
+		CHECK(set_numbers(ccd, CCD_BIN_PROPERTY_NAME, 2, bin_items, restored, INDIGO_OK_STATE, 5));
 		for (int i = 0; i < ARRAY_SIZE(invalid); i++) {
-			const char *items[] = { CCD_BIN_HORIZONTAL_ITEM_NAME, CCD_BIN_VERTICAL_ITEM_NAME };
-			CHECK(set_numbers(ccd, CCD_BIN_PROPERTY_NAME, 2, items, invalid[i], INDIGO_ALERT_STATE, 5));
+			CHECK(set_numbers(ccd, CCD_BIN_PROPERTY_NAME, 2, bin_items, invalid[i], INDIGO_ALERT_STATE, 5));
+			// The refusal precedes every copy, so both the published values and the targets stay on the last accepted pair.
 			CHECK(number_of(ccd, CCD_BIN_PROPERTY_NAME, CCD_BIN_HORIZONTAL_ITEM_NAME) == 1 && number_of(ccd, CCD_BIN_PROPERTY_NAME, CCD_BIN_VERTICAL_ITEM_NAME) == 1);
+			CHECK(target_of(ccd, CCD_BIN_PROPERTY_NAME, CCD_BIN_HORIZONTAL_ITEM_NAME) == 1 && target_of(ccd, CCD_BIN_PROPERTY_NAME, CCD_BIN_VERTICAL_ITEM_NAME) == 1);
 		}
+		// The property has to work again after the refusals.
+		CHECK(set_numbers(ccd, CCD_BIN_PROPERTY_NAME, 2, bin_items, accepted, INDIGO_OK_STATE, 5));
+		CHECK(acquire(ccd, 0.05));
+		CHECK(devices[ccd].frame_width == (unsigned)(width / 2) && devices[ccd].frame_height == (unsigned)(height / 2));
+		CHECK(set_numbers(ccd, CCD_BIN_PROPERTY_NAME, 2, bin_items, restored, INDIGO_OK_STATE, 5));
 		const char *frame_items[] = { CCD_FRAME_LEFT_ITEM_NAME, CCD_FRAME_TOP_ITEM_NAME, CCD_FRAME_WIDTH_ITEM_NAME, CCD_FRAME_HEIGHT_ITEM_NAME };
 		const double roi[] = { 64, 60, 256, 192 };
 		CHECK(set_numbers(ccd, CCD_FRAME_PROPERTY_NAME, 4, frame_items, roi, INDIGO_OK_STATE, 5));

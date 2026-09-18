@@ -76,3 +76,15 @@ Linux and Windows builds/execution and physical hardware remain unverified. Wind
 Final simulated acceptance tests run: 102; passed: 102 (34 cases on each of arm64, x86_64 and ASan/UBSan).
 Total completed registered simulated test executions, including baseline and diagnostic runs: 239; passed: 235; failed: 4 (intermediate failures resolved). Interrupted diagnostic totals are unavailable and excluded. Direct protocol audit runs: 1; passed: 1.
 Hardware tests run: 0; passed: 0.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard in `indigo_rotator_wa.driver` are now declared with the generator's `reject_change` block for `ROTATOR_POSITION_OFFSET`, `ROTATOR_POSITION`, `ROTATOR_RELATIVE_MOVE`, `ROTATOR_DIRECTION`, `ROTATOR_BACKLASH` and `X_SET_ZERO_POSITION`. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values.
+
+The hand-written `wa_idle()` helper only sent a message: the property kept its previous state and the client kept the refused value. The two motion properties refused each other silently, with no update at all.
+
+Covered by `wa_rejected_change` in `indigo_test/integration/test_rotator_wa_simulator.c`.
+
+```sh
+cd indigo_test && ./build/integration/test_rotator_wa_simulator wa_rejected_change
+```

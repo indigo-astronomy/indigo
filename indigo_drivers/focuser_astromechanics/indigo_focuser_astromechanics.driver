@@ -22,7 +22,7 @@ driver astromechanics {
 	label = "ASTROMECHANICS Focuser";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 4;
+	version = 5;
 	serial;
 	// include { }
 	// define { }
@@ -138,6 +138,10 @@ driver astromechanics {
 			}
 		}
 		inherited FOCUSER_STEPS {
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				int direction = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1;
 				int position = (int)FOCUSER_POSITION_ITEM->number.value + direction * (int)FOCUSER_STEPS_ITEM->number.value;
@@ -159,6 +163,10 @@ driver astromechanics {
 			// on_detach { }
 		}
 		inherited FOCUSER_POSITION {
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				int position = (int)FOCUSER_POSITION_ITEM->number.target;
 				astromechanics_start_motion(device, position);

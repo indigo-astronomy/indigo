@@ -400,6 +400,25 @@ static void connect_move_disconnect(void) {
 	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 }
 
+// While the focuser moves, both motion properties carry a reject_change guard. Without it the
+// framework BUSY guard drops the request silently and the client keeps showing the refused target.
+static void rejected_change_while_moving(void) {
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(true));
+	int moves = atomic_load(&move_calls);
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500);
+	ASSERT_TRUE(wait_atomic(&move_calls, moves + 1));
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(assert_rejected_number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900));
+	ASSERT_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
+	ASSERT_EQ_INT(moves + 1, atomic_load(&move_calls));
+	ASSERT_TRUE(finish_motion_at(1500));
+	// A guard must not be sticky once the focuser is idle again.
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900);
+	ASSERT_TRUE(wait_atomic(&move_calls, moves + 2));
+	ASSERT_TRUE(finish_motion_at(900));
+}
+
 static void relative_motion_in_both_directions(void) {
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(true));
@@ -522,6 +541,7 @@ int main(void) {
 		{ "abort confirmation and switch reset", abort_waits_for_stop_and_resets_switch },
 		{ "compensation and temperature recovery", compensation_recovers_without_losing_baseline },
 		{ "connect, move, disconnect", connect_move_disconnect },
+		{ "rejected change while moving", rejected_change_while_moving },
 		{ "relative motion in both directions", relative_motion_in_both_directions },
 		{ "synchronize position without motion", synchronize_position_without_motion },
 		{ "settings and reconnect readback", settings_and_readback },

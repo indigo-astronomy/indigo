@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000003
+#define DRIVER_VERSION       0x03000004
 #define DRIVER_NAME          "indigo_focuser_fc3"
 #define DRIVER_LABEL         "PegasusAstro FocusCube v3 Focuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus FocusCube3"
@@ -377,9 +377,25 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_SPEED_PROPERTY, focuser_speed_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
+		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < FOCUSER_STEPS_PROPERTY->count; i++) {
+				FOCUSER_STEPS_PROPERTY->items[i].do_update = true;
+			}
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
+			return INDIGO_OK;
+		}
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
+		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < FOCUSER_POSITION_PROPERTY->count; i++) {
+				FOCUSER_POSITION_PROPERTY->items[i].do_update = true;
+			}
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
+			return INDIGO_OK;
+		}
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {

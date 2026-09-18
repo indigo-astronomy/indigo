@@ -64,3 +64,15 @@ No hardware test will be performed: no Optec Pyxis 2-inch, 3-inch, or LE device 
 ## Final test summary
 
 Simulated tests run: **10**. Simulated tests passed: **10**. Hardware tests run: **0**. Hardware tests passed: **0**. The ten distinct simulator cases were repeated under normal instrumentation and ASan+UBSan; totals count distinct cases rather than repeated executions. The pre-migration 1/1 smoke baseline is recorded separately above.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard in `indigo_rotator_optec.driver` are now declared with the generator's `reject_change` block for `X_HOME`, `X_RATE`, `X_ROTATE`, `ROTATOR_DIRECTION` and `ROTATOR_POSITION`. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values.
+
+The hand-written `optec_operation_idle()` helper set `INDIGO_ALERT_STATE` and published the message but never marked the items, so the refused value stayed visible in the client. `ROTATOR_POSITION` carries a second guard for the invalidated absolute position; both are now declared blocks tested in the original order.
+
+Covered by `optec_rejected_change` in `indigo_test/integration/test_rotator_optec_simulator.c`.
+
+```sh
+cd indigo_test && ./build/integration/test_rotator_optec_simulator
+```

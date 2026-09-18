@@ -63,3 +63,23 @@ No hardware testing will be performed. This driver is itself an in-process softw
 ## Final test summary
 
 Simulated tests run: **41**. Simulated tests passed: **40**. The one failed execution was the recorded pre-correction expanded test; the final corrected matrix passed **28/28**. Hardware tests run: **0**. Hardware tests passed: **0**.
+
+## Rejected-change regression coverage (2026-09-18)
+
+A change request that arrives while a motion is already running is now refused with the generator's
+`reject_change` block on `DOME_STEPS`, with the condition that `DOME_HORIZONTAL_COORDINATES` is BUSY and the message
+shown in the generated driver. The generated guard marks every item for update, sets
+`INDIGO_ALERT_STATE` and publishes the property, so the client receives the actual driver-side values
+instead of an update that carries no items.
+
+Both motion properties are published BUSY together at motion start, so `INDIGO_COPY_*_PROCESS_CHANGE` dropped a concurrent request silently: the client received no update at all and kept showing the refused target. The guard runs before that macro and turns the silent drop into an explicit refusal.
+
+Driver version is now `0x03000008`. Regression coverage is the existing suite in
+`indigo_test/integration/test_dome_simulator.c`, which was re-run after the change.
+
+```sh
+cd indigo_test && ./build/integration/test_dome_simulator
+```
+
+- Simulated tests run: 7; passed: 7.
+- Hardware tests run: 0; passed: 0.

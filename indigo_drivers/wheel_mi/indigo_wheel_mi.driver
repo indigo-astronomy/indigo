@@ -26,7 +26,7 @@ driver mi {
 	label = "Moravian Instruments SFW";
 	author = "Jakub Smutny <info@gxccd.com>";
 	copyright = "Copyright (c) 2024-2026 Moravian Instruments";
-	version = 4;
+	version = 5;
 	multi_device_support = true;
 	include {
 		#include <ctype.h>
@@ -224,12 +224,11 @@ driver mi {
 			REINIT_ITEM->sw.value = false;
 		}
 		inherited WHEEL_SLOT {
+			reject_change {
+				condition = PRIVATE_DATA->reinit_pending;
+				message = "Wheel reinitialization is in progress";
+			}
 			on_change_request {
-				if (PRIVATE_DATA->reinit_pending) {
-					WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Wheel reinitialization is in progress");
-					return INDIGO_OK;
-				}
 				PRIVATE_DATA->move_pending = true;
 			}
 			on_change {
@@ -254,12 +253,11 @@ driver mi {
 			group = MAIN_GROUP;
 			label = "Commands";
 			rule = INDIGO_AT_MOST_ONE_RULE;
+			reject_change {
+				condition = PRIVATE_DATA->move_pending;
+				message = "Wheel movement is in progress";
+			}
 			on_change_request {
-				if (PRIVATE_DATA->move_pending) {
-					X_MI_SFW_COMMANDS_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, X_MI_SFW_COMMANDS_PROPERTY, "Wheel movement is in progress");
-					return INDIGO_OK;
-				}
 				PRIVATE_DATA->reinit_pending = true;
 			}
 			on_change {

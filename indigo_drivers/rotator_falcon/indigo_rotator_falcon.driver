@@ -26,7 +26,7 @@ driver falcon {
 	label = "PegasusAstro Falcon rotator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 6;
+	version = 7;
 	serial {
 		pattern {
 			product = "FalconRotator";
@@ -195,6 +195,10 @@ driver falcon {
 		}
 		inherited ROTATOR_POSITION {
 			preserve_values = true;
+			reject_change {
+				condition = ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				if (ROTATOR_ON_POSITION_SET_GOTO_ITEM->sw.value) {
@@ -223,6 +227,10 @@ driver falcon {
 			}
 		}
 		inherited ROTATOR_RELATIVE_MOVE {
+			reject_change {
+				condition = ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_RELATIVE_MOVE_PROPERTY, INDIGO_BUSY_STATE, NULL);
 				ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;

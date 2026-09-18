@@ -105,3 +105,15 @@ Framework-owned slot-name/offset storage is checked for visibility/count integra
 
 - Simulated/fake-SDK tests run: 12; passed: 12.
 - Hardware tests run: 0; passed: 0.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard in `indigo_wheel_mi.driver` are now declared with the generator's `reject_change` block for `WHEEL_SLOT` and `X_MI_SFW_COMMANDS`. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values.
+
+Both guards set `INDIGO_ALERT_STATE` and published the message inline but never marked the items, so the refused slot stayed visible in the client. The request-scoped `move_pending` / `reinit_pending` bookkeeping stays in `on_change_request`, which the generator runs after the guard.
+
+Covered by the strengthened `move and reinit mutual BUSY exclusion` case in `indigo_test/integration/test_wheel_mi_sdk.c`, which now also asserts the restored slot value and target.
+
+```sh
+cd indigo_test && ./build/integration/test_wheel_mi_sdk
+```

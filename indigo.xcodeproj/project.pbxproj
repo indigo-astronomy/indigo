@@ -1408,6 +1408,14 @@
 		5920EDB12B8E57DC00BF85F7 /* rpi_ctrl_fake.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = rpi_ctrl_fake.sh; sourceTree = "<group>"; };
 		59292E5620D4224F0042E939 /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
 		592C32D830476069004D5AE6 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260918100000000000 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260918100000000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260918100000000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260918100000000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260918100000000004 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260918100000000005 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260918100000000006 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260918100000000007 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		592C32D93047793D004D5AE6 /* indigo_mount_synscan.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_mount_synscan.driver; sourceTree = "<group>"; };
 		592C3352304B5671004D5AE6 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		592C3353304B5B3F004D5AE6 /* indigo_wheel_asi.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_asi.driver; sourceTree = "<group>"; };
@@ -6911,6 +6919,7 @@
 		593894AF2C4C22B100CEF4A5 /* aux_upb3 */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260918100000000001 /* REFACTOR.md */,
 				593894AE2C4C22B100CEF4A5 /* README.md */,
 				593894AD2C4C22B100CEF4A5 /* indigo_aux_upb3.h */,
 				593894AC2C4C22B100CEF4A5 /* indigo_aux_upb3.c */,
@@ -7148,6 +7157,7 @@
 		5955CB6D2684BEBF00685071 /* focuser_astromechanics */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260918100000000002 /* REFACTOR.md */,
 				5955CB722684BEBF00685071 /* README.md */,
 				5955CB712684BEBF00685071 /* indigo_focuser_astromechanics.h */,
 				5955CB732684BEBF00685071 /* indigo_focuser_astromechanics.c */,
@@ -10632,6 +10642,7 @@
 		59B3489229E728D80062C2EA /* focuser_primaluce */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260918100000000005 /* REFACTOR.md */,
 				59B3489C29E853F60062C2EA /* README.md */,
 				59B3489D29E854070062C2EA /* indigo_focuser_primaluce.h */,
 				59B3489F29E854080062C2EA /* indigo_focuser_primaluce.c */,
@@ -10679,6 +10690,7 @@
 		59B51354297077920075C8A1 /* rotator_falcon */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260918100000000007 /* REFACTOR.md */,
 				59B51356297077920075C8A1 /* README.md */,
 				59B5135A297077920075C8A1 /* indigo_rotator_falcon.h */,
 				59B51355297077920075C8A1 /* indigo_rotator_falcon.c */,
@@ -11268,6 +11280,7 @@
 		59D62CD61E731479004DDD9C /* focuser_usbv3 */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260918100000000006 /* REFACTOR.md */,
 				594107C41EC8DD4900C44F92 /* README.md */,
 				59D62CD91E731490004DDD9C /* indigo_focuser_usbv3.h */,
 				59D62CD81E731490004DDD9C /* indigo_focuser_usbv3.c */,
@@ -14978,6 +14991,7 @@
 		9D6940822180B9F600AB112C /* aux_upb */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260918100000000000 /* REFACTOR.md */,
 				9D69408A2180B9F600AB112C /* README.md */,
 				9D6940832180B9F600AB112C /* indigo_aux_upb.h */,
 				9D6940892180B9F600AB112C /* indigo_aux_upb.c */,
@@ -15382,6 +15396,7 @@
 		9D7FC6162C4906B2004496F2 /* focuser_fc3 */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260918100000000004 /* REFACTOR.md */,
 				9D7FC6152C4906B2004496F2 /* README.md */,
 				9D7FC6132C4906B2004496F2 /* indigo_focuser_fc3.h */,
 				9D7FC6122C4906B2004496F2 /* indigo_focuser_fc3.c */,
@@ -16133,6 +16148,7 @@
 		9DFE1863213586AB00149BDE /* focuser_dmfc */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260918100000000003 /* REFACTOR.md */,
 				9DFE1866213586AB00149BDE /* README.md */,
 				9DFE1864213586AB00149BDE /* indigo_focuser_dmfc.h */,
 				9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */,

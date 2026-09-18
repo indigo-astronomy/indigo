@@ -26,7 +26,7 @@ driver optec {
 	label = "Optec Pyxis Rotator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2022-2026 CloudMakers, s. r. o.";
-	version = 2;
+	version = 3;
 	serial;
 	define {
 		#define OPTEC_RESPONSE_SIZE	64
@@ -125,15 +125,6 @@ driver optec {
 		name = "Optec Pyxis";
 		additional_instances = true;
 		code {
-			static bool optec_operation_idle(indigo_device *device, indigo_property *property) {
-				if (PRIVATE_DATA->motion == OPTEC_NO_MOTION && ROTATOR_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && X_HOME_PROPERTY->state != INDIGO_BUSY_STATE) {
-					return true;
-				}
-				property->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, property, "Rotator operation is already in progress");
-				return false;
-			}
-
 			static void motion_finalizer(indigo_device *device) {
 				bool complete = false;
 				bool failed = false;
@@ -225,10 +216,9 @@ driver optec {
 			group = ROTATOR_MAIN_GROUP;
 			label = "Home";
 			rule = INDIGO_ANY_OF_MANY_RULE;
-			on_change_request {
-				if (!optec_operation_idle(device, X_HOME_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Rotator operation is already in progress";
 			}
 			on_change {
 				bool requested = X_HOME_ITEM->sw.value;
@@ -256,10 +246,9 @@ driver optec {
 			name = "X_RATE";
 			group = ROTATOR_MAIN_GROUP;
 			label = "Rate";
-			on_change_request {
-				if (!optec_operation_idle(device, X_RATE_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Rotator operation is already in progress";
 			}
 			on_change {
 				if (optec_wakeup(device) && optec_ack_command(device, "CTxx%02d", (int)X_RATE_ITEM->number.target) && optec_sleep(device)) {
@@ -276,10 +265,9 @@ driver optec {
 			name = "X_ROTATE";
 			group = ROTATOR_MAIN_GROUP;
 			label = "Rotate";
-			on_change_request {
-				if (!optec_operation_idle(device, X_ROTATE_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Rotator operation is already in progress";
 			}
 			on_change {
 				int steps = (int)X_ROTATE_ITEM->number.target;
@@ -304,10 +292,11 @@ driver optec {
 		inherited ROTATOR_ABORT_MOTION { hidden = true; }
 		inherited ROTATOR_DIRECTION {
 			hidden = false;
+			reject_change {
+				condition = PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Rotator operation is already in progress";
+			}
 			on_change_request {
-				if (!optec_operation_idle(device, ROTATOR_DIRECTION_PROPERTY)) {
-					return INDIGO_OK;
-				}
 				PRIVATE_DATA->previous_direction_normal = ROTATOR_DIRECTION_NORMAL_ITEM->sw.value;
 			}
 			on_change {
@@ -320,15 +309,13 @@ driver optec {
 		}
 		inherited ROTATOR_POSITION {
 			preserve_values = true;
-			on_change_request {
-				if (!optec_operation_idle(device, ROTATOR_POSITION_PROPERTY)) {
-					return INDIGO_OK;
-				}
-				if (PRIVATE_DATA->position_invalidated) {
-					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Absolute position is unknown; home the rotator first");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Rotator operation is already in progress";
+			}
+			reject_change {
+				condition = PRIVATE_DATA->position_invalidated;
+				message = "Absolute position is unknown; home the rotator first";
 			}
 			on_change {
 				int target = (int)ROTATOR_POSITION_ITEM->number.target;

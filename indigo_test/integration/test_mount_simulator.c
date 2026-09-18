@@ -515,6 +515,12 @@ static void mount_park_home_and_parked_guards(void) {
 	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME)->light.value == INDIGO_OK_STATE);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	// A parked mount refuses the abort through a reject_change guard, which also restores the switch.
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
+	SERIAL_CHECK_TRUE(unpark_mount());
+	// A guard must not be sticky once the mount is unparked.
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
 cleanup:
 	stop_serial_driver(&mount_simulator);
 }

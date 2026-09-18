@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_wheel_mi"
 #define DRIVER_LABEL         "Moravian Instruments SFW"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -341,23 +341,29 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
-		//+ wheel.WHEEL_SLOT.on_change_request
 		if (PRIVATE_DATA->reinit_pending) {
+			for (int i = 0; i < WHEEL_SLOT_PROPERTY->count; i++) {
+				WHEEL_SLOT_PROPERTY->items[i].do_update = true;
+			}
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Wheel reinitialization is in progress");
 			return INDIGO_OK;
 		}
+		//+ wheel.WHEEL_SLOT.on_change_request
 		PRIVATE_DATA->move_pending = true;
 		//- wheel.WHEEL_SLOT.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_MI_SFW_COMMANDS_PROPERTY, property)) {
-		//+ wheel.X_MI_SFW_COMMANDS.on_change_request
 		if (PRIVATE_DATA->move_pending) {
+			for (int i = 0; i < X_MI_SFW_COMMANDS_PROPERTY->count; i++) {
+				X_MI_SFW_COMMANDS_PROPERTY->items[i].do_update = true;
+			}
 			X_MI_SFW_COMMANDS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, X_MI_SFW_COMMANDS_PROPERTY, "Wheel movement is in progress");
 			return INDIGO_OK;
 		}
+		//+ wheel.X_MI_SFW_COMMANDS.on_change_request
 		PRIVATE_DATA->reinit_pending = true;
 		//- wheel.X_MI_SFW_COMMANDS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_MI_SFW_COMMANDS_PROPERTY, wheel_x_mi_sfw_commands_handler);
