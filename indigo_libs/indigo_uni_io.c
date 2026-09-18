@@ -1595,7 +1595,7 @@ int indigo_uni_scanf_line(indigo_uni_handle *handle, const char *format, ...) {
 	}
 	char *buffer = indigo_alloc_large_buffer();
 	int count = 0;
-	if (indigo_uni_read_line(handle, buffer, INDIGO_BUFFER_SIZE) > 0) {
+	if (indigo_uni_read_line(handle, buffer, INDIGO_BUFFER_SIZE - 1) > 0) {
 		va_list args;
 		va_start(args, format);
 		count = vsscanf(buffer, format, args);

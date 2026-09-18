@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_wheel_xagyl"
 #define DRIVER_LABEL         "Xagyl Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Xagyl Filter Wheel"
@@ -67,11 +67,11 @@ static bool xagyl_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
 		char buffer[128];
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "I0") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "I0") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1) > 0) {
 			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, buffer);
-			if (indigo_uni_printf(PRIVATE_DATA->handle, "I1") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
+			if (indigo_uni_printf(PRIVATE_DATA->handle, "I1") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1) > 0) {
 				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, buffer);
-				if (indigo_uni_printf(PRIVATE_DATA->handle, "I3") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
+				if (indigo_uni_printf(PRIVATE_DATA->handle, "I3") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1) > 0) {
 					INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, buffer);
 					if (indigo_uni_printf(PRIVATE_DATA->handle, "I8") > 0 && indigo_uni_scanf_line(PRIVATE_DATA->handle, "FilterSlots %d", &PRIVATE_DATA->slot) == 1) {
 						WHEEL_SLOT_ITEM->number.min = 1;

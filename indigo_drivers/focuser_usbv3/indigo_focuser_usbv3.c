@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_focuser_usbv3"
 #define DRIVER_LABEL         "USB_Focus v3 Focuser"
 #define FOCUSER_DEVICE_NAME  "USB_Focus v3"
@@ -74,10 +74,10 @@ static bool usbv3_command(indigo_device *device, char *command, int response, ..
 	long result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
 	va_end(args);
 	if (response && result > 0) {
-		result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+		result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
 		if (*PRIVATE_DATA->response == '*') {
 			PRIVATE_DATA->moving = false;
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
 		}
 	}
 	return result > 0;
@@ -86,6 +86,9 @@ static bool usbv3_command(indigo_device *device, char *command, int response, ..
 static bool usbv3_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle) {
+		// The FQUITx sent by on_disconnect is answered with "*", which nothing reads, so a
+		// reconnect starts with stale lines queued. Drop them before the identity handshake.
+		indigo_uni_discard(PRIVATE_DATA->handle);
 		if (usbv3_command(device, "SWHOIS", true) && !strcmp(PRIVATE_DATA->response, "UFO")) {
 			return true;
 		}

@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_focuser_astromechanics"
 #define DRIVER_LABEL         "ASTROMECHANICS Focuser"
 #define FOCUSER_DEVICE_NAME  "ASTROMECHANICS Focuser"
@@ -69,7 +69,7 @@ static bool astromechanics_command(indigo_device *device, char *command, int res
 		result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
 		va_end(args);
 		if (result > 0 && response > 0) {
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n#", "\n#", INDIGO_DELAY(1));
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n#", "\n#", INDIGO_DELAY(1));
 		}
 	}
 	return result > 0;

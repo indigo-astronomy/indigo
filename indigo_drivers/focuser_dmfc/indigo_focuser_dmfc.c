@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000010
+#define DRIVER_VERSION       0x03000011
 #define DRIVER_NAME          "indigo_focuser_dmfc"
 #define DRIVER_LABEL         "PegasusAstro DMFC Focuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus DMFC"
@@ -91,7 +91,7 @@ static bool dmfc_command(indigo_device *device, char *command, ...) {
 		result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 		va_end(args);
 		if (result > 0 && command[0] != 'C' && command[0] != 'H' && command[0] != 'M' && command[0] != 'G' && command[0] != 'S' && command[0] != 'W') {
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
 		}
 	}
 	return result > 0;

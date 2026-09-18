@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_wheel_optec"
 #define DRIVER_LABEL         "Optec Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Optec Filter Wheel"
@@ -55,7 +55,7 @@ static bool optec_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
 		char reply[8];
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "WSMODE") && indigo_uni_read_section(PRIVATE_DATA->handle, reply, sizeof(reply), "\n", "\r\n", INDIGO_DELAY(5)) == 1 && reply[0] == '!') {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "WSMODE") && indigo_uni_read_section(PRIVATE_DATA->handle, reply, sizeof(reply) - 1, "\n", "\r\n", INDIGO_DELAY(5)) == 1 && reply[0] == '!') {
 			return true;
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
@@ -65,7 +65,7 @@ static bool optec_open(indigo_device *device) {
 
 static bool optec_goto(indigo_device *device, int slot) {
 	char reply[8];
-	if (indigo_uni_printf(PRIVATE_DATA->handle, "WGOTO%d", slot) && indigo_uni_read_section(PRIVATE_DATA->handle, reply, sizeof(reply), "\n", "\r\n", INDIGO_DELAY(20)) == 1 && reply[0] == '*') {
+	if (indigo_uni_printf(PRIVATE_DATA->handle, "WGOTO%d", slot) && indigo_uni_read_section(PRIVATE_DATA->handle, reply, sizeof(reply) - 1, "\n", "\r\n", INDIGO_DELAY(20)) == 1 && reply[0] == '*') {
 		return true;
 	}
 	return false;

@@ -26,7 +26,7 @@ driver nmea {
 	label = "Generic NMEA 0183 GPS";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2017-2026 Rumen G. Bogdanovski";
-	version = 18;
+	version = 19;
 	serial {
 		pattern {
 			product = "GPS";
@@ -187,7 +187,7 @@ driver nmea {
 		additional_instances = true;
 		on_timer {
 			char buffer[128] = { 0 };
-			long length = indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
+			long length = indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1);
 			char **tokens = length > 0 ? nmea_parse(buffer) : NULL;
 
 			if (length > 0 && tokens) {

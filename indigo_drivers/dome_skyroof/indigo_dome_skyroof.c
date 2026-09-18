@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_dome_skyroof"
 #define DRIVER_LABEL         "Interactive Astronomy SkyRoof"
 #define DOME_DEVICE_NAME     "SkyRoof"
@@ -69,7 +69,7 @@ static bool skyroof_write(indigo_device *device, char *command)	{
 }
 
 static bool	skyroof_read(indigo_device *device) {
-	return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\r", "\r", INDIGO_DELAY(1)) > 0;
+	return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r", INDIGO_DELAY(1)) > 0;
 }
 
 static bool skyroof_open(indigo_device *device) {

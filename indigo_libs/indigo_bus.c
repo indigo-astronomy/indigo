@@ -1435,7 +1435,7 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 	if (indigo_uni_write(handle, line, length) < 0) {
 		goto error_return;
 	}
-	if (indigo_uni_read_line(handle, line, sizeof(line)) < 0) {
+	if (indigo_uni_read_line(handle, line, sizeof(line) - 1) < 0) {
 		goto error_return;
 	}
 	int http_result = 0;
@@ -1449,7 +1449,7 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 #endif
 	long content_len = 0;
 	do {
-		if (indigo_uni_read_line(handle, line, sizeof(line)) < 0) {
+		if (indigo_uni_read_line(handle, line, sizeof(line) - 1) < 0) {
 			goto error_return;
 		}
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
@@ -1548,7 +1548,7 @@ bool indigo_upload_http_blob_item(indigo_item *blob_item) {
 	if (indigo_uni_write(handle, blob_item->blob.value, blob_item->blob.size) < 0) {
 		goto error_return;
 	}
-	if (indigo_uni_read_line(handle, line, sizeof(line)) < 0) {
+	if (indigo_uni_read_line(handle, line, sizeof(line) - 1) < 0) {
 		goto error_return;
 	}
 	int http_result = 0;
@@ -1557,7 +1557,7 @@ bool indigo_upload_http_blob_item(indigo_item *blob_item) {
 		goto error_return;
 	}
 	do {
-		if (indigo_uni_read_line(handle, line, sizeof(line)) < 0) {
+		if (indigo_uni_read_line(handle, line, sizeof(line) - 1) < 0) {
 			goto error_return;
 		}
 	} while (line[0] != 0);

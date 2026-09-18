@@ -60,7 +60,7 @@ void indigo_rotator_load_calibration(indigo_device *device) {
 	if (handle != NULL) {
 		double offset = 0;
 		char buffer[128];
-		indigo_uni_read_line(handle, buffer, sizeof(buffer));
+		indigo_uni_read_line(handle, buffer, sizeof(buffer) - 1);
 		offset = atof(buffer);
 		indigo_uni_close(&handle);
 		ROTATOR_POSITION_OFFSET_ITEM->number.value = ROTATOR_POSITION_OFFSET_ITEM->number.target = offset;

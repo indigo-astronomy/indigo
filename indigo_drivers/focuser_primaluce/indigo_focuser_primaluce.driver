@@ -22,7 +22,7 @@ driver primaluce {
 	label = "PrimaluceLab Focuser/Rotator";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 10;
+	version = 11;
 	serial {
 		pattern {
 			product = "CP2102N";
@@ -145,7 +145,7 @@ driver primaluce {
 				return false;
 			}
 			while (true) {
-				result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, MAX_RESPONSE_SIZE, "\n", "\r\n", -1);
+				result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, MAX_RESPONSE_SIZE - 1, "\n", "\r\n", -1);
 				if (result < 1) {
 					return false;
 				}

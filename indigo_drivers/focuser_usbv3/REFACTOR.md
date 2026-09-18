@@ -23,3 +23,21 @@ cd indigo_test && ./build/integration/test_focuser_usbv3_simulator
 
 - Simulated tests run: 1; passed: 1.
 - Hardware tests run: 0; passed: 0.
+
+## Reconnect defect found and fixed (2026-09-18)
+
+`test_focuser_usbv3_motion` failed roughly one run in three at the reconnect step with
+`connect_serial_device()` returning false. `on_disconnect` sends `FQUITx`, which the device answers
+with `*`, and `usbv3_command()` is called there with `response = false`, so nothing reads that
+reply. The bytes stay in the port buffer across close/open, and on reconnect the `SWHOIS` handshake
+read consumed a stale line instead of `UFO`. The driver tolerates exactly one leading `*`, so a
+single stale line was absorbed, but the abort path can leave a second one.
+
+`usbv3_open()` now discards pending input before the identity handshake. A discard inside
+`usbv3_command()` was rejected deliberately: motion completion is signalled by an asynchronous `*`
+that the driver detects in the `FPOSRO` reply, and discarding before every command would drop it on
+real hardware. Tracked as `DRV-197`.
+
+Verified on macOS arm64/x86_64: 12 consecutive `test_focuser_usbv3_motion` runs passed after the
+fix, against 2 of 3 before it. Driver version incremented to 8; the same change also reserves space
+for the terminating NUL in both `indigo_uni_read_section()` calls (`DRV-198`).

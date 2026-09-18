@@ -122,6 +122,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_gps_gpsd_simulator \
 	$(INTEGRATION_BUILD)/test_mount_ioptron_simulator \
 	$(INTEGRATION_BUILD)/test_mount_lx200_simulator \
+	$(INTEGRATION_BUILD)/test_mount_asi_simulator \
 	$(INTEGRATION_BUILD)/test_mount_nexstar_simulator \
 	$(INTEGRATION_BUILD)/test_mount_nexstaraux_simulator \
 	$(INTEGRATION_BUILD)/test_mount_pmc8_simulator \
@@ -132,6 +133,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_polaralign_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_optec_simulator \
+	$(INTEGRATION_BUILD)/test_focuser_lunatico_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_wa_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_astromechanics_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_askar_simulator \
@@ -715,6 +717,13 @@ $(INTEGRATION_BUILD)/mount_lx200_simulator: simulator_common/mount_lx200_simulat
 
 $(INTEGRATION_BUILD)/test_mount_lx200_simulator: integration/test_mount_lx200_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_lx200_simulator $(BUILD_DRIVERS)/indigo_mount_lx200.a | $(INTEGRATION_BUILD)
 	$(CC) $(LX200_TEST_CFLAGS) -o $@ $< $(MOUNT_LX200_SIMULATOR_TEST_LDFLAGS)
+
+MOUNT_ASI_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_asi.a $(TEST_LDFLAGS) -lindigocat
+
+# Shares the LX200 simulator: indigo_mount_asi speaks the LX200 dialect plus the AM-series
+# commands that the simulator's "asi" profile adds.
+$(INTEGRATION_BUILD)/test_mount_asi_simulator: integration/test_mount_asi_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_lx200_simulator $(BUILD_DRIVERS)/indigo_mount_asi.a | $(INTEGRATION_BUILD)
+	$(CC) $(LX200_TEST_CFLAGS) -o $@ $< $(MOUNT_ASI_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_mount_lx200_simulator_sanitize: integration/test_mount_lx200_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h ../indigo_drivers/mount_lx200/indigo_mount_lx200.c $(INTEGRATION_BUILD)/mount_lx200_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/mount_lx200/indigo_mount_lx200.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
@@ -1567,7 +1576,7 @@ $(INTEGRATION_BUILD)/test_aux_skyalert_transport: integration/test_aux_skyalert_
 $(INTEGRATION_BUILD)/aux_cloudwatcher_simulator: ../indigo_drivers/aux_cloudwatcher/aux_cloudwatcher_simulator/aux_cloudwatcher_simulator.c simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/test_aux_cloudwatcher_simulator: integration/test_aux_cloudwatcher_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_cloudwatcher_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_aux_cloudwatcher_simulator: integration/test_aux_cloudwatcher_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_cloudwatcher_simulator $(BUILD_DRIVERS)/indigo_aux_cloudwatcher.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_aux_cloudwatcher.a $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/aux_mgbox_simulator: ../indigo_drivers/aux_mgbox/aux_mgbox_simulator/aux_mgbox_simulator.c simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -1579,7 +1588,7 @@ $(INTEGRATION_BUILD)/test_aux_mgbox_simulator: integration/test_aux_mgbox_simula
 $(INTEGRATION_BUILD)/aux_dragonfly_simulator: ../indigo_drivers/aux_dragonfly/aux_dragonfly_simulator/aux_dragonfly_simulator.c simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/test_aux_dragonfly_simulator: integration/test_aux_dragonfly_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_dragonfly_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_aux_dragonfly_simulator: integration/test_aux_dragonfly_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_dragonfly_simulator $(BUILD_DRIVERS)/indigo_aux_dragonfly.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_aux_dragonfly.a $(TEST_LDFLAGS)
 
 # Opt-in: the Dragonfly protocol uses a loopback UDP socket.
@@ -1628,8 +1637,13 @@ $(BENCHMARK_BUILD)/bench_guider_asi_timing: integration/test_guider_asi_sdk.c in
 $(INTEGRATION_BUILD)/guider_cgusbst4_simulator: ../indigo_drivers/guider_cgusbst4/guider_cgusbst4_simulator/guider_cgusbst4_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/test_guider_cgusbst4_simulator: integration/test_guider_cgusbst4_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/guider_cgusbst4_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_guider_cgusbst4_simulator: integration/test_guider_cgusbst4_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/guider_cgusbst4_simulator $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a -o $@ $(TEST_LDFLAGS)
+
+# opt-in: reproduces DRV-095 (numeric PHD2 dialect), not part of test-integration
+.PHONY: test-guider-cgusbst4-simulator-known-defects
+test-guider-cgusbst4-simulator-known-defects: $(INTEGRATION_BUILD)/test_guider_cgusbst4_simulator
+	$(INTEGRATION_BUILD)/test_guider_cgusbst4_simulator --known-defects
 
 $(INTEGRATION_BUILD)/rotator_lunatico_simulator: ../indigo_drivers/rotator_lunatico/rotator_lunatico_simulator/rotator_lunatico_simulator.c simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
@@ -1641,6 +1655,12 @@ ROTATOR_LUNATICO_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_rotator_lunatico.a $(TES
 
 $(INTEGRATION_BUILD)/test_rotator_lunatico_simulator: integration/test_rotator_lunatico_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_lunatico_simulator $(BUILD_DRIVERS)/indigo_rotator_lunatico.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(ROTATOR_LUNATICO_TEST_LDFLAGS)
+
+FOCUSER_LUNATICO_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_lunatico.a $(TEST_LDFLAGS)
+
+# Shares rotator_lunatico's simulator: both drivers are built from shared/lunatico_shared.c.
+$(INTEGRATION_BUILD)/test_focuser_lunatico_simulator: integration/test_focuser_lunatico_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_lunatico_simulator $(BUILD_DRIVERS)/indigo_focuser_lunatico.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_LUNATICO_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_rotator_lunatico_udp_simulator: integration/test_rotator_lunatico_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_lunatico_udp_simulator $(BUILD_DRIVERS)/indigo_rotator_lunatico.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DLUNATICO_SIMULATOR='"build/integration/rotator_lunatico_udp_simulator"' -o $@ $< $(ROTATOR_LUNATICO_TEST_LDFLAGS)

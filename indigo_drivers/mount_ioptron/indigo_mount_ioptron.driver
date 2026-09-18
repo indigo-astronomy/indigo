@@ -23,7 +23,7 @@ driver ioptron {
 	label = "iOptron Mount";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 50;
+	version = 51;
 	serial {
 		configurable_speed = true;
 	}
@@ -208,9 +208,9 @@ driver ioptron {
 			}
 			if (result >= 0) {
 				if (!strcmp(command, ":V#")) {
-					result = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "#", "#", INDIGO_DELAY(0.1), INDIGO_DELAY(0.1));
+					result = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "#", "#", INDIGO_DELAY(0.1), INDIGO_DELAY(0.1));
 				} else {
-					result = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "#", "#", INDIGO_DELAY(1), INDIGO_DELAY(0.1));
+					result = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "#", "#", INDIGO_DELAY(1), INDIGO_DELAY(0.1));
 				}
 			}
 			if (result > 0) {

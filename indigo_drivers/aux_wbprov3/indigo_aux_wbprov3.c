@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000003
+#define DRIVER_VERSION       0x03000004
 #define DRIVER_NAME          "indigo_aux_wbprov3"
 #define DRIVER_LABEL         "WandererBox Pro V3 Powerbox"
 #define AUX_DEVICE_NAME      "WandererBox Pro V3"
@@ -160,9 +160,9 @@ typedef struct {
 static bool wbprov3_read_status(indigo_device *device) {
 	char status[256] = { 0 };
 	indigo_uni_discard(PRIVATE_DATA->handle);
-	long res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
+	long res = indigo_uni_read_line(PRIVATE_DATA->handle, status, sizeof(status) - 1);
 	if (strncmp(status, DEVICE_ID, strlen(DEVICE_ID))) {   // first part of the message is cleared by tcflush();
-		res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
+		res = indigo_uni_read_line(PRIVATE_DATA->handle, status, sizeof(status) - 1);
 	}
 	if (res > 0) {
 		char *buf;
