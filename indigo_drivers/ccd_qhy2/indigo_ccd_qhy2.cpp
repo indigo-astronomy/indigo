@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001F
+#define DRIVER_VERSION       0x03000020
 #define DRIVER_NAME          "indigo_ccd_qhy2"
 #define DRIVER_LABEL         "QHY CMOS (modern) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -575,15 +575,6 @@ static void qhy2_temperature(indigo_device *device) {
 	}
 }
 
-static bool qhy2_busy(indigo_device *device, indigo_property *property) {
-	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-		property->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, property, "Acquisition in progress");
-		return true;
-	}
-	return false;
-}
-
 static void guider_ra_finalizer(indigo_device *device) {
 	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -1027,75 +1018,102 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_TEMPERATURE_PROPERTY, ccd_temperature_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_GAIN_PROPERTY, property)) {
-		//+ ccd.CCD_GAIN.on_change_request
-		if (qhy2_busy(device, CCD_GAIN_PROPERTY)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < CCD_GAIN_PROPERTY->count; i++) {
+				CCD_GAIN_PROPERTY->items[i].do_update = true;
+			}
+			CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_GAIN_PROPERTY, "Acquisition in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.CCD_GAIN.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_GAIN_PROPERTY, ccd_gain_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_OFFSET_PROPERTY, property)) {
-		//+ ccd.CCD_OFFSET.on_change_request
-		if (qhy2_busy(device, CCD_OFFSET_PROPERTY)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < CCD_OFFSET_PROPERTY->count; i++) {
+				CCD_OFFSET_PROPERTY->items[i].do_update = true;
+			}
+			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_OFFSET_PROPERTY, "Acquisition in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.CCD_OFFSET.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_OFFSET_PROPERTY, ccd_offset_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_GAMMA_PROPERTY, property)) {
-		//+ ccd.CCD_GAMMA.on_change_request
-		if (qhy2_busy(device, CCD_GAMMA_PROPERTY)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < CCD_GAMMA_PROPERTY->count; i++) {
+				CCD_GAMMA_PROPERTY->items[i].do_update = true;
+			}
+			CCD_GAMMA_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_GAMMA_PROPERTY, "Acquisition in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.CCD_GAMMA.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_GAMMA_PROPERTY, ccd_gamma_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
-		//+ ccd.CCD_FRAME.on_change_request
-		if (qhy2_busy(device, CCD_FRAME_PROPERTY)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < CCD_FRAME_PROPERTY->count; i++) {
+				CCD_FRAME_PROPERTY->items[i].do_update = true;
+			}
+			CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_FRAME_PROPERTY, "Acquisition in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.CCD_FRAME.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_FRAME_PROPERTY, ccd_frame_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
-		//+ ccd.CCD_BIN.on_change_request
-		if (qhy2_busy(device, CCD_BIN_PROPERTY)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < CCD_BIN_PROPERTY->count; i++) {
+				CCD_BIN_PROPERTY->items[i].do_update = true;
+			}
+			CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_BIN_PROPERTY, "Acquisition in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.CCD_BIN.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_BIN_PROPERTY, ccd_bin_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_MODE_PROPERTY, property)) {
-		//+ ccd.CCD_MODE.on_change_request
-		if (qhy2_busy(device, CCD_MODE_PROPERTY)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
+				CCD_MODE_PROPERTY->items[i].do_update = true;
+			}
+			CCD_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_MODE_PROPERTY, "Acquisition in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.CCD_MODE.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_MODE_PROPERTY, ccd_mode_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_PIXEL_FORMAT_PROPERTY, property)) {
-		//+ ccd.X_PIXEL_FORMAT.on_change_request
-		if (qhy2_busy(device, X_PIXEL_FORMAT_PROPERTY)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < X_PIXEL_FORMAT_PROPERTY->count; i++) {
+				X_PIXEL_FORMAT_PROPERTY->items[i].do_update = true;
+			}
+			X_PIXEL_FORMAT_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_PIXEL_FORMAT_PROPERTY, "Acquisition in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.X_PIXEL_FORMAT.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_PIXEL_FORMAT_PROPERTY, ccd_x_pixel_format_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_ADVANCED_PROPERTY, property)) {
-		//+ ccd.X_ADVANCED.on_change_request
-		if (qhy2_busy(device, X_ADVANCED_PROPERTY)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < X_ADVANCED_PROPERTY->count; i++) {
+				X_ADVANCED_PROPERTY->items[i].do_update = true;
+			}
+			X_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_ADVANCED_PROPERTY, "Acquisition in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.X_ADVANCED.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(X_ADVANCED_PROPERTY, ccd_x_advanced_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_READ_MODE_PROPERTY, property)) {
-		//+ ccd.X_READ_MODE.on_change_request
-		if (qhy2_busy(device, X_READ_MODE_PROPERTY)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < X_READ_MODE_PROPERTY->count; i++) {
+				X_READ_MODE_PROPERTY->items[i].do_update = true;
+			}
+			X_READ_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_READ_MODE_PROPERTY, "Acquisition in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.X_READ_MODE.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_READ_MODE_PROPERTY, ccd_x_read_mode_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {

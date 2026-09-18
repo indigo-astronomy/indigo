@@ -568,7 +568,30 @@ static void acquisition_conflicts(void) {
 	sw(0, "X_PIXEL_FORMAT", "RAW 8"); ASSERT_TRUE(wait_state(0, "X_PIXEL_FORMAT", INDIGO_ALERT_STATE));
 	number(0, "CCD_BIN", "HORIZONTAL", 2); ASSERT_TRUE(wait_state(0, "CCD_BIN", INDIGO_ALERT_STATE));
 	indigo_property *p = snapshot(0, "CCD_BIN"); ASSERT_TRUE(p); ASSERT_EQ_INT(1, p->items[0].number.value); indigo_release_property(p);
-	sw(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE"); ASSERT_TRUE(wait_state(0, "CCD_ABORT_EXPOSURE", INDIGO_OK_STATE)); end();
+	// A refused control keeps value, target and the SDK parameter, during an exposure and during a stream.
+	const char *guarded[] = { "CCD_GAIN", "CCD_OFFSET", "CCD_GAMMA" };
+	const char *guarded_items[] = { "GAIN", "OFFSET", "GAMMA" };
+	const CONTROL_ID guarded_controls[] = { CONTROL_GAIN, CONTROL_OFFSET, CONTROL_GAMMA };
+	double kept[3] = { 0 };
+	for (int i = 0; i < 3; i++) {
+		p = snapshot(0, guarded[i]); ASSERT_TRUE(p); kept[i] = p->items[0].number.value; indigo_release_property(p);
+		double written = params[guarded_controls[i]];
+		number(0, guarded[i], guarded_items[i], kept[i] + 5); ASSERT_TRUE(wait_state(0, guarded[i], INDIGO_ALERT_STATE));
+		p = snapshot(0, guarded[i]); ASSERT_TRUE(p);
+		ASSERT_EQ_INT((int)kept[i], (int)p->items[0].number.value); ASSERT_EQ_INT((int)kept[i], (int)p->items[0].number.target);
+		indigo_release_property(p); ASSERT_EQ_INT((int)written, (int)params[guarded_controls[i]]);
+	}
+	sw(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE"); ASSERT_TRUE(wait_state(0, "CCD_ABORT_EXPOSURE", INDIGO_OK_STATE));
+	stream_start(-1); ASSERT_TRUE(wait_state(0, "CCD_STREAMING", INDIGO_BUSY_STATE));
+	number(0, "CCD_GAIN", "GAIN", kept[0] + 5); ASSERT_TRUE(wait_state(0, "CCD_GAIN", INDIGO_ALERT_STATE));
+	p = snapshot(0, "CCD_GAIN"); ASSERT_TRUE(p); ASSERT_EQ_INT((int)kept[0], (int)p->items[0].number.value); ASSERT_EQ_INT((int)kept[0], (int)p->items[0].number.target); indigo_release_property(p);
+	sw(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE"); ASSERT_TRUE(wait_state(0, "CCD_ABORT_EXPOSURE", INDIGO_OK_STATE));
+	// The guards are not sticky once the camera is idle.
+	for (int i = 0; i < 3; i++) {
+		number(0, guarded[i], guarded_items[i], kept[i] + 5); ASSERT_TRUE(wait_state(0, guarded[i], INDIGO_OK_STATE));
+		ASSERT_EQ_INT((int)kept[i] + 5, (int)params[guarded_controls[i]]);
+	}
+	end();
 }
 
 static void disconnect_and_sibling_survival(void) {
