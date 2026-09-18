@@ -294,3 +294,13 @@ cd indigo_test && ./build/integration/test_ccd_playerone_sdk "Rejected change"
 ```
 
 The suite has one pre-existing failure unrelated to this change: `Final slow_initialization_and_polling` cleanup reports one `gate_timeouts`, and it reproduces on the unmodified driver.
+
+### Hardware regression (2026-09-18, Mars-C II, no replug)
+
+`indigo_test/hardware/test_ccd_playerone_hw.c` now covers the guards on real hardware. During a 5 s exposure every `reject_change` property is asked for a value it does not hold; `CCD_GAIN`, `CCD_OFFSET`, `CCD_FRAME`, `CCD_MODE`, `CCD_BIN`, `X_PIXEL_FORMAT`, `X_ADVANCED`, `X_PRESETS` and `X_CUSTOM_SUFFIX` each returned ALERT with unchanged values and targets and the `Exposure in progress` message, the exposure still delivered its image, `CCD_GAIN` and `CCD_FRAME` were refused the same way during an unbounded stream, and the guards were not sticky: the refused properties were accepted again once the camera was idle. `X_SENSOR_MODE` is not exposed by Mars-C II and is still pending on a camera that offers it. The suffix, mode, preset and sensor-mode guards are only exercised on the refusal path, so no flash write or sensor reprogramming happens. Because the harness client is in process, the assertions cover the refusal state, the preserved driver values and the message; the generated per-item `do_update` marking is only observable through a protocol adapter and is covered by the fake-SDK suite instead.
+
+```sh
+make -C indigo_test test-ccd-playerone-hw
+```
+
+Result: `Player One hardware: all tests passed`, including pixel formats, ROI/bin, config roundtrip, streaming, guider pulses and driver shutdown/reinitialization. Hotplug was not exercised in this run.
