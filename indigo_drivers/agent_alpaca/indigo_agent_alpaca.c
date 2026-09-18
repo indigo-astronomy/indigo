@@ -24,7 +24,7 @@
  \file indigo_agent_alpaca.c
  */
 
-#define DRIVER_VERSION 0x03000004
+#define DRIVER_VERSION 0x03000005
 #define DRIVER_NAME	"indigo_agent_alpaca"
 
 #include <stdlib.h>
@@ -370,10 +370,17 @@ static bool alpaca_v1_api_handler(indigo_uni_handle *handle, char *method, char 
 	} else if (!strcmp(method, "PUT")) {
 		int content_length = 0;
 		buffer = indigo_alloc_large_buffer();
-		while (indigo_uni_read_line(handle, buffer, INDIGO_BUFFER_SIZE) > 0) {
+		while (indigo_uni_read_line(handle, buffer, INDIGO_BUFFER_SIZE - 1) > 0) {
 			if (!strncasecmp(buffer, "Content-Length:", 15)) {
 				content_length = atoi(buffer + 15);
 			}
+		}
+		// Content-Length is client supplied, so it has to be clamped to the buffer before it is
+		// used as a read length and as an index.
+		if (content_length < 0) {
+			content_length = 0;
+		} else if (content_length > INDIGO_BUFFER_SIZE - 1) {
+			content_length = INDIGO_BUFFER_SIZE - 1;
 		}
 		indigo_uni_read_line(handle, buffer, content_length);
 		buffer[content_length] = 0;

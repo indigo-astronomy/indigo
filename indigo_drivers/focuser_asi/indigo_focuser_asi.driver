@@ -22,7 +22,7 @@ driver asi {
 	label = "ZWO ASI Focuser";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (C) 2016-2026 Rumen G. Bogdanovski";
-	version = 30;
+	version = 31;
 	include {
 		#include <stdbool.h>
 		#include <EAF_focuser.h>
@@ -581,6 +581,10 @@ driver asi {
 		}
 		inherited FOCUSER_POSITION {
 			preserve_values = true;
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Focuser is moving";
+			}
 			on_change {
 				if (!focuser_motion_ready(device)) {
 					return;
@@ -655,6 +659,10 @@ driver asi {
 			}
 		}
 		inherited FOCUSER_STEPS {
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Focuser is moving";
+			}
 			on_change {
 				if (!focuser_motion_ready(device)) {
 					return;

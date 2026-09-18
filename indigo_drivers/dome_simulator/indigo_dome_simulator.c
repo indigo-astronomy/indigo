@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_dome_simulator"
 #define DRIVER_LABEL         "Dome Simulator"
 #define DOME_DEVICE_NAME     DRIVER_LABEL
@@ -304,6 +304,14 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(DOME_HORIZONTAL_COORDINATES_PROPERTY, dome_horizontal_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_STEPS_PROPERTY, property)) {
+		if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < DOME_STEPS_PROPERTY->count; i++) {
+				DOME_STEPS_PROPERTY->items[i].do_update = true;
+			}
+			DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is moving: request can not be completed");
+			return INDIGO_OK;
+		}
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_STEPS_PROPERTY, dome_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_ABORT_MOTION_PROPERTY, property)) {

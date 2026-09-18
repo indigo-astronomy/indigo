@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000013
+#define DRIVER_VERSION       0x03000014
 #define DRIVER_NAME          "indigo_aux_sqm"
 #define DRIVER_LABEL         "Unihedron SQM"
 #define AUX_DEVICE_NAME      "Unihedron SQM"
@@ -81,7 +81,7 @@ static bool sqm_command(indigo_device *device, const char *command) {
 		result = indigo_uni_write(PRIVATE_DATA->handle, command, strlen(command));
 	}
 	if (result > 0) {
-		result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+		result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
 	}
 	return result > 0;
 }

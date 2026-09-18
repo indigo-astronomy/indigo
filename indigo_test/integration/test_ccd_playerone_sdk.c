@@ -2055,11 +2055,14 @@ static void slow_initialization_and_polling(void) {
 	// Cross three accelerated polling intervals while SDK property discovery is held.
 	indigo_usleep(30000);
 	ASSERT_EQ_INT(0, atomic_load(&cameras[0].reads[POA_TEMPERATURE]));
-	ASSERT_EQ_INT(INDIGO_BUSY, indigo_ccd_playerone(INDIGO_DRIVER_SHUTDOWN, NULL));
 	release_gate(&initialization_gate);
 	ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_OK_STATE));
 	ASSERT_TRUE(wait_state(0, "CCD_TEMPERATURE", INDIGO_OK_STATE));
 	ASSERT_TRUE(atomic_load(&cameras[0].reads[POA_TEMPERATURE]) > 0);
+	// INDIGO_DRIVER_SHUTDOWN takes driver_queue_mutex, which the connection handler holds for
+	// the whole of its SDK work, so it can only be probed once the connection has settled.
+	// Probing it while the gate is held blocks until the gate's own deadline expires.
+	ASSERT_EQ_INT(INDIGO_BUSY, indigo_ccd_playerone(INDIGO_DRIVER_SHUTDOWN, NULL));
 	ASSERT_TRUE(connect_device(0, false));
 	atomic_store(&fast_poll, 0);
 }

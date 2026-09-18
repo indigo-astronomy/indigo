@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_wheel_indigo"
 #define DRIVER_LABEL         "PegasusAstro Indigo Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Pegasus Indigo Filter Wheel"
@@ -67,7 +67,7 @@ static bool indigo_command(indigo_device *device, char *command, ...) {
 		result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 		va_end(args);
 		if (result > 0) {
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", COMMAND_TIMEOUT);
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", COMMAND_TIMEOUT);
 		}
 	}
 	return result > 0;

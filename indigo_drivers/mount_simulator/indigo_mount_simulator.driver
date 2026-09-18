@@ -26,7 +26,7 @@ driver simulator {
 	label = "Mount Simulator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 13;
+	version = 14;
 	data {
 		bool parking, parked, going_home, at_home;
 		double ha;
@@ -353,12 +353,9 @@ driver simulator {
 			}
 		}
 		inherited MOUNT_ABORT_MOTION {
-			on_change_request {
-				if (MOUNT_PARK_PARKED_ITEM->sw.value) {
-					MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Mount is parked");
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = MOUNT_PARK_PARKED_ITEM->sw.value;
+				message = "Mount is parked";
 			}
 			on_change {
 				bool manual_motion_in_progress = MOUNT_MOTION_NORTH_ITEM->sw.value || MOUNT_MOTION_SOUTH_ITEM->sw.value || MOUNT_MOTION_EAST_ITEM->sw.value || MOUNT_MOTION_WEST_ITEM->sw.value;

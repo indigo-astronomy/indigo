@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_focuser_usbv3"
 #define DRIVER_LABEL         "USB_Focus v3 Focuser"
 #define FOCUSER_DEVICE_NAME  "USB_Focus v3"
@@ -74,10 +74,10 @@ static bool usbv3_command(indigo_device *device, char *command, int response, ..
 	long result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
 	va_end(args);
 	if (response && result > 0) {
-		result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+		result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
 		if (*PRIVATE_DATA->response == '*') {
 			PRIVATE_DATA->moving = false;
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
 		}
 	}
 	return result > 0;
@@ -86,6 +86,9 @@ static bool usbv3_command(indigo_device *device, char *command, int response, ..
 static bool usbv3_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle) {
+		// The FQUITx sent by on_disconnect is answered with "*", which nothing reads, so a
+		// reconnect starts with stale lines queued. Drop them before the identity handshake.
+		indigo_uni_discard(PRIVATE_DATA->handle);
 		if (usbv3_command(device, "SWHOIS", true) && !strcmp(PRIVATE_DATA->response, "UFO")) {
 			return true;
 		}
@@ -423,9 +426,25 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_SPEED_PROPERTY, focuser_speed_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
+		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < FOCUSER_STEPS_PROPERTY->count; i++) {
+				FOCUSER_STEPS_PROPERTY->items[i].do_update = true;
+			}
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
+			return INDIGO_OK;
+		}
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
+		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < FOCUSER_POSITION_PROPERTY->count; i++) {
+				FOCUSER_POSITION_PROPERTY->items[i].do_update = true;
+			}
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
+			return INDIGO_OK;
+		}
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {

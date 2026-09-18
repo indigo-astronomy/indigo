@@ -42,7 +42,7 @@
 
 typedef enum {
 	MODEL_MEADE,
-	MODEL_ONSTEP, MODEL_10MIC, MODEL_GEMINI, MODEL_STARGO, MODEL_STARGO2, MODEL_AP, MODEL_AGOTINO, MODEL_ZWO, MODEL_NYX, MODEL_OAT, MODEL_TEEN, MODEL_GENERIC
+	MODEL_ONSTEP, MODEL_10MIC, MODEL_GEMINI, MODEL_STARGO, MODEL_STARGO2, MODEL_AP, MODEL_AGOTINO, MODEL_ZWO, MODEL_NYX, MODEL_OAT, MODEL_TEEN, MODEL_GENERIC, MODEL_ASI
 } simulator_model;
 
 typedef struct {
@@ -80,6 +80,12 @@ typedef struct {
 	int focuser_move;
 	int focuser_speed;
 	int aux_value[9];
+	bool meridian_flip;
+	bool meridian_track;
+	int meridian_limit;
+	int max_slew_speed;
+	int tracking_error;
+	int alignment_points;
 } simulator_state;
 
 static simulator_options options = {
@@ -97,6 +103,10 @@ static simulator_state state = {
 	.time_second = 30,
 	.time_offset = 2,
 	.time_dst = 1,
+	.meridian_flip = true,
+	.meridian_limit = 0,
+	.max_slew_speed = 720,
+	.alignment_points = 3,
 	.latitude = "+48*08",
 	.longitude = "-17*06",
 	.high_precision = true,
@@ -133,8 +143,14 @@ static void usage(const char *name) {
 	printf("  -h, --help              Show this help and exit\n");
 }
 
-static const char *model_names[] = { "meade", "onstep", "10mic", "gemini", "stargo", "stargo2", "ap", "agotino", "zwo", "nyx", "oat", "teen", "generic" };
-static const char *products[] = { "Autostar", "On-Step", "10micron", "Losmandy", "Avalon", "Avalon", "AstroPhysics", "aGotino", "AM5", "NYX-101", "OpenAstroTracker", "TeenAstro", "Classic" };
+static const char *model_names[] = { "meade", "onstep", "10mic", "gemini", "stargo", "stargo2", "ap", "agotino", "zwo", "nyx", "oat", "teen", "generic", "asi" };
+static const char *products[] = { "Autostar", "On-Step", "10micron", "Losmandy", "Avalon", "Avalon", "AstroPhysics", "aGotino", "AM5", "NYX-101", "OpenAstroTracker", "TeenAstro", "Classic", "AM5" };
+
+// "asi" is the "zwo" profile plus the AM-series commands and the firmware revision that
+// indigo_mount_asi requires; indigo_mount_lx200 never sends those commands.
+static bool model_is_zwo(void) {
+	return options.model == MODEL_ZWO || options.model == MODEL_ASI;
+}
 
 static bool parse_model(const char *value, simulator_model *model) {
 	for (int i = 0; i < (int)(sizeof(model_names) / sizeof(*model_names)); i++) {
@@ -429,7 +445,33 @@ static void handle_command(const char *command) {
 		snprintf(response, sizeof(response), "%s#", products[options.model]);
 		write_response(response);
 	} else if (!strcmp(command, "GV")) {
-		write_response("1.0.0#");
+		write_response(options.model == MODEL_ASI ? "1.2.4#" : "1.0.0#");
+	} else if (options.model == MODEL_ASI && !strcmp(command, "GTa")) {
+		// meridian settings: auto-flip, track-past, signed degree limit
+		snprintf(response, sizeof(response), "%c%c%+03d#", state.meridian_flip ? '1' : '0', state.meridian_track ? '1' : '0', state.meridian_limit);
+		write_response(response);
+	} else if (options.model == MODEL_ASI && !strncmp(command, "STa", 3) && strlen(command) == 8) {
+		state.meridian_flip = command[3] != '0';
+		state.meridian_track = command[4] != '0';
+		state.meridian_limit = atoi(command + 5);
+		write_response("1");
+	} else if (options.model == MODEL_ASI && !strcmp(command, "GRl")) {
+		snprintf(response, sizeof(response), "%d#", state.max_slew_speed);
+		write_response(response);
+	} else if (options.model == MODEL_ASI && !strncmp(command, "SRl", 3)) {
+		state.max_slew_speed = atoi(command + 3);
+		write_response("1");
+	} else if (options.model == MODEL_ASI && !strcmp(command, "GAT")) {
+		// tracking status: "0", "1" or "e<code>"
+		if (state.tracking_error) {
+			snprintf(response, sizeof(response), "e%d#", state.tracking_error);
+		} else {
+			snprintf(response, sizeof(response), "%d#", state.tracking ? 1 : 0);
+		}
+		write_response(response);
+	} else if (options.model == MODEL_ASI && !strcmp(command, "NSC")) {
+		state.alignment_points = 0;
+		write_response("1");
 	} else if (!strcmp(command, "GVF")) {
 		write_response(options.model == MODEL_ONSTEP ? "OnStep 4.24j#" : "ETX Autostar|A|43Eg|Apr 03 2007@11:25:53#");
 	} else if (!strcmp(command, "GVN")) {
@@ -471,7 +513,7 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "GS")) {
 		write_response("12:00:00#");
 	} else if (!strcmp(command, "GT")) {
-		write_response(options.model == MODEL_ZWO ? (state.tracking_rate == 'L' ? "1#" : state.tracking_rate == 'S' ? "2#" : "0#") : "60.2#");
+		write_response(model_is_zwo() ? (state.tracking_rate == 'L' ? "1#" : state.tracking_rate == 'S' ? "2#" : "0#") : "60.2#");
 	} else if (!strncmp(command, "Sg", 2)) {
 		strncpy(state.longitude, command + 2, sizeof(state.longitude) - 1);
 		write_response("1");
@@ -541,7 +583,7 @@ static void handle_command(const char *command) {
 		write_response(state.slewing ? "S" : state.tracking ? "T" : "N");
 	} else if (!strcmp(command, "hP") || !strcmp(command, "hC") || !strcmp(command, "X362") || !strcmp(command, "Ch") || !strcmp(command, "KA")) {
 		start_reference_motion(strcmp(command, "hC") != 0 || options.model == MODEL_GEMINI);
-		if (options.model == MODEL_ONSTEP || options.model == MODEL_ZWO) { write_response("1"); }
+		if (options.model == MODEL_ONSTEP || model_is_zwo()) { write_response("1"); }
 	} else if (!strcmp(command, "PO") || !strcmp(command, "hW") || !strcmp(command, "X370")) {
 		state.tracking = true;
 		state.slewing = false;
@@ -562,6 +604,9 @@ static void handle_command(const char *command) {
 		state.slew_rate = 'C';
 	} else if (!strcmp(command, "RM")) {
 		state.slew_rate = 'M';
+	} else if (options.model == MODEL_ASI && strlen(command) == 2 && command[0] == 'R' && command[1] >= '0' && command[1] <= '9') {
+		// AM-series numeric slew rates; the driver expects no reply
+		state.slew_rate = command[1] <= '1' ? 'G' : command[1] <= '4' ? 'C' : command[1] <= '7' ? 'M' : 'S';
 	} else if (!strcmp(command, "RS")) {
 		state.slew_rate = 'S';
 	} else if (!strncmp(command, "Mg", 2) || !strcmp(command, "Mn") || !strcmp(command, "Ms") || !strcmp(command, "Mw") || !strcmp(command, "Me") || !strcmp(command, "Qn") || !strcmp(command, "Qs") || !strcmp(command, "Qw") || !strcmp(command, "Qe")) {

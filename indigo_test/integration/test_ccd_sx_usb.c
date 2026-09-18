@@ -586,7 +586,7 @@ static void flood_led_and_property_contract(void) {
 	sx_begin();
 	indigo_driver_info info;
 	SX_CHECK(indigo_ccd_sx(INDIGO_DRIVER_INFO, &info) == INDIGO_OK);
-	SX_CHECK(!strcmp(info.name, "indigo_ccd_sx") && info.version == 0x03000010);
+	SX_CHECK(!strcmp(info.name, "indigo_ccd_sx") && info.version == 0x03000011);
 	assert_device_interface(INDIGO_INTERFACE_CCD);
 	indigo_property *p = find_cached_property("X_CCD_FLOOD_LED");
 	SX_CHECK(p && p->type == INDIGO_SWITCH_VECTOR && p->count == 2 && p->perm == INDIGO_RW_PERM);

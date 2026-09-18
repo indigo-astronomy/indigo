@@ -642,13 +642,16 @@ static void slot_workflows(void) {
 	ASSERT_TRUE(set_slot(0, 1));
 	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
 	ASSERT_EQ_INT(0, atomic_load(&wheels[0].moves));
-	double invalid[] = { 2.5, NAN };
-	for (int i = 0; i < ARRAY_SIZE(invalid); i++) {
-		ASSERT_TRUE(set_slot(0, invalid[i]));
-		ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
-		ASSERT_EQ_INT(0, atomic_load(&wheels[0].moves));
-		ASSERT_NEAR(1, slot_value(0), 0);
-	}
+	// A fractional slot reaches the driver and is refused there; the bus drops non-finite
+	// values before the handler runs, so NAN leaves the slot at its previous value.
+	ASSERT_TRUE(set_slot(0, 2.5));
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&wheels[0].moves));
+	ASSERT_NEAR(1, slot_value(0), 0);
+	ASSERT_TRUE(set_slot(0, NAN));
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&wheels[0].moves));
+	ASSERT_NEAR(1, slot_value(0), 0);
 	ASSERT_TRUE(set_slot(0, 6)); // The bus clamps numeric requests to the advertised range.
 	ASSERT_TRUE(wait_count(&wheels[0].moves, 1));
 	ASSERT_EQ_INT(4, atomic_load(&wheels[0].target));

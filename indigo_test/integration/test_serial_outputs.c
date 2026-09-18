@@ -87,8 +87,10 @@ long output_read(indigo_uni_handle *port, char *buffer, long length, const char 
 	}
 	const char *reply = atomic_exchange(&bad_reply, 0) ? "!invalid" : (TEST_KIND == 1 ? "A" : "*V1.0");
 	long size = strlen(reply);
-	if (size >= length) {
-		size = length - 1;
+	// indigo_uni_read_section() treats length as the payload capacity and stores the
+	// terminating NUL at buffer[length], so a reply of exactly length bytes still fits.
+	if (size > length) {
+		size = length;
 	}
 	memcpy(buffer, reply, size);
 	buffer[size] = 0;

@@ -353,7 +353,7 @@ void indigo_json_parse(indigo_device* device, indigo_client* client) {
 			goto exit_loop;
 		}
 		while ((c = *pointer++) == 0) {
-			long count = context->web_socket ? ws_read(handle, buffer, JSON_BUFFER_SIZE) : indigo_uni_read_line(handle, buffer, JSON_BUFFER_SIZE);
+			long count = context->web_socket ? ws_read(handle, buffer, JSON_BUFFER_SIZE) : indigo_uni_read_line(handle, buffer, JSON_BUFFER_SIZE - 1);
 			if (count <= 0) {
 				goto exit_loop;
 			}

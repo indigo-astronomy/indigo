@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_rotator_asi"
 #define DRIVER_LABEL         "ZWO CAA Rotator"
 #define ROTATOR_DEVICE_NAME  "%s"
@@ -572,12 +572,28 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_DIRECTION_PROPERTY, rotator_direction_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
+		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < ROTATOR_POSITION_PROPERTY->count; i++) {
+				ROTATOR_POSITION_PROPERTY->items[i].do_update = true;
+			}
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Rotator is moving");
+			return INDIGO_OK;
+		}
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ROTATOR_POSITION_PROPERTY, rotator_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_LIMITS_PROPERTY, property)) {
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ROTATOR_LIMITS_PROPERTY, rotator_limits_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_RELATIVE_MOVE_PROPERTY, property)) {
+		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < ROTATOR_RELATIVE_MOVE_PROPERTY->count; i++) {
+				ROTATOR_RELATIVE_MOVE_PROPERTY->items[i].do_update = true;
+			}
+			ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, "Rotator is moving");
+			return INDIGO_OK;
+		}
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ROTATOR_RELATIVE_MOVE_PROPERTY, rotator_relative_move_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {

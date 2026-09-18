@@ -28,7 +28,7 @@ driver wcv4ec {
 	label = "WandererCover V4-EC Cover";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "";
-	version = 5;
+	version = 6;
 	serial;
 	define {
 		#define DEVICE_ID "WandererCoverV4"
@@ -50,16 +50,16 @@ driver wcv4ec {
 			char status[256] = { 0 };
 			indigo_uni_discard(PRIVATE_DATA->handle);
 			PRIVATE_DATA->ready = false;
-			long res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
+			long res = indigo_uni_read_line(PRIVATE_DATA->handle, status, sizeof(status) - 1);
 			if (strncmp(status, DEVICE_ID, strlen(DEVICE_ID))) {   // first part of the message is cleared by tcflush() or "done";
 				if (status[0] == '\0') {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "BRANCH: no id, status= '%s'", status);
-					res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
+					res = indigo_uni_read_line(PRIVATE_DATA->handle, status, sizeof(status) - 1);
 				}
 				if (!strncmp(status, "done", strlen("done"))) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "BRANCH: done");
 					PRIVATE_DATA->ready = true;
-					res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
+					res = indigo_uni_read_line(PRIVATE_DATA->handle, status, sizeof(status) - 1);
 				}
 			}
 			if (res > 0) {
@@ -277,7 +277,7 @@ driver wcv4ec {
 						char status_line[128] = {0};
 						indigo_uni_discard(PRIVATE_DATA->handle);
 						do {
-							indigo_uni_read_line(PRIVATE_DATA->handle, status_line, 128);
+							indigo_uni_read_line(PRIVATE_DATA->handle, status_line, sizeof(status_line) - 1);
 						} while (strncmp(status_line, "OpenSet", strlen("OpenSet")) && strncmp(status_line, "CloseSet", strlen("CloseSet")));
 					} else {
 						AUX_DETECT_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;

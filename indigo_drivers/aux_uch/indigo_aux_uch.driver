@@ -26,7 +26,7 @@ driver uch {
 	label = "PegasusAstro USB Control Hub";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2023-2026 Rumen G. Bogdanovski";
-	version = 4;
+	version = 5;
 	serial {
 		pattern {
 			product = "USB Control Hub";
@@ -48,7 +48,7 @@ driver uch {
 				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 				va_end(args);
 				if (result > 0) {
-					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
 				}
 			}
 			return result > 0;

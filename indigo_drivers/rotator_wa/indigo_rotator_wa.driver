@@ -22,7 +22,7 @@ driver wa {
 	label = "WandererAstro rotator";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2024-2026 Rumen G. Bogdanovski";
-	version = 4;
+	version = 5;
 	multi_device_support = true;
 	serial;
 	include {
@@ -200,14 +200,6 @@ driver wa {
 					wa_finish(device, false);
 				}
 			}
-
-			static bool wa_idle(indigo_device *device, indigo_property *property) {
-				if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_send_message(device, property, "%s cannot change during motion", property->name);
-					return false;
-				}
-				return true;
-			}
 		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
@@ -242,10 +234,9 @@ driver wa {
 		inherited ROTATOR_RAW_POSITION { hidden = false; }
 		inherited ROTATOR_POSITION_OFFSET {
 			hidden = false;
-			on_change_request {
-				if (!wa_idle(device, ROTATOR_POSITION_OFFSET_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Rotator is moving: request can not be completed";
 			}
 			on_change {
 				wa_pivot(device);
@@ -255,10 +246,9 @@ driver wa {
 		}
 		inherited ROTATOR_POSITION {
 			preserve_values = true;
-			on_change_request {
-				if (ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Rotator is moving: request can not be completed";
 			}
 			on_change {
 				if (ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value && !wa_status(device)) {
@@ -287,10 +277,9 @@ driver wa {
 		inherited ROTATOR_RELATIVE_MOVE {
 			hidden = false;
 			preserve_values = true;
-			on_change_request {
-				if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Rotator is moving: request can not be completed";
 			}
 			on_change { wa_start_motion(device, ROTATOR_RELATIVE_MOVE_ITEM->number.target); /* motion_finalizer */ }
 		}
@@ -315,10 +304,9 @@ driver wa {
 		}
 		inherited ROTATOR_DIRECTION {
 			hidden = false;
-			on_change_request {
-				if (!wa_idle(device, ROTATOR_DIRECTION_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Rotator is moving: request can not be completed";
 			}
 			on_change {
 				bool reverse = ROTATOR_DIRECTION_REVERSED_ITEM->sw.value;
@@ -332,10 +320,9 @@ driver wa {
 		inherited ROTATOR_BACKLASH {
 			hidden = false;
 			preserve_values = true;
-			on_change_request {
-				if (!wa_idle(device, ROTATOR_BACKLASH_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Rotator is moving: request can not be completed";
 			}
 			on_change {
 				int tenths = (int)(ROTATOR_BACKLASH_ITEM->number.target * 10);
@@ -352,10 +339,9 @@ driver wa {
 			group = ROTATOR_ADVANCED_GROUP;
 			label = "Set current position as mechanical zero";
 			rule = INDIGO_ONE_OF_MANY_RULE;
-			on_change_request {
-				if (!wa_idle(device, X_SET_ZERO_POSITION_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Rotator is moving: request can not be completed";
 			}
 			on_change {
 				bool requested = X_SET_ZERO_POSITION_ITEM->sw.value;

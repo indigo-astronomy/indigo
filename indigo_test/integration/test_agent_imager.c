@@ -32,9 +32,10 @@
 #include "../test_runner.h"
 
 #define AGENT "Imager Agent"
-#define CAMERA CCD_SIMULATOR_IMAGER_CAMERA_NAME
-#define FOCUSER CCD_SIMULATOR_FOCUSER_NAME
-#define WHEEL CCD_SIMULATOR_WHEEL_NAME
+#define CAMERA "CCD Imager Simulator"
+#define FOCUSER "CCD Imager Simulator (focuser)"
+#define WHEEL "CCD Imager Simulator (wheel)"
+#define BAHTINOV "CCD Bahtinov Mask Simulator"
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define REQUIRE(c) do { if (!(c)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #c); indigo_test_failures++; return false; } } while (0)
 
@@ -412,7 +413,7 @@ static void cleanup(void) {
 		}
 	}
 	if (simulator_started) {
-		const char *names[] = { CAMERA, FOCUSER, WHEEL, CCD_SIMULATOR_BAHTINOV_CAMERA_NAME };
+		const char *names[] = { CAMERA, FOCUSER, WHEEL, BAHTINOV };
 		for (int i = 0; i < ARRAY_SIZE(names); i++) {
 			if (value(names[i], "CONNECTION", "CONNECTED") == 1) {
 				sw(names[i], "CONNECTION", "DISCONNECTED", true, INDIGO_OK_STATE);
@@ -818,7 +819,7 @@ static void additional_instances_and_barrier(void) {
 	ASSERT_TRUE(wait_state(other, "AGENT_START_PROCESS", 0, INDIGO_OK_STATE));
 	ASSERT_TRUE(isnan(value(AGENT, "FILTER_RELATED_AGENT_LIST", AGENT)));
 	ASSERT_TRUE(isnan(value(other, "FILTER_RELATED_AGENT_LIST", other)));
-	ASSERT_TRUE(sw(other, "FILTER_CCD_LIST", CCD_SIMULATOR_BAHTINOV_CAMERA_NAME, true, INDIGO_OK_STATE));
+	ASSERT_TRUE(sw(other, "FILTER_CCD_LIST", BAHTINOV, true, INDIGO_OK_STATE));
 	ASSERT_TRUE(sw(other, "CCD_UPLOAD_MODE", "CLIENT", true, INDIGO_OK_STATE));
 	ASSERT_TRUE(sw(other, "CCD_IMAGE_FORMAT", "RAW", true, INDIGO_OK_STATE));
 	ASSERT_TRUE(num(other, "AGENT_IMAGER_BATCH", "EXPOSURE", 0.1));
@@ -835,7 +836,7 @@ static void additional_instances_and_barrier(void) {
 	ASSERT_TRUE(isnan(value(AGENT, "FILTER_RELATED_AGENT_LIST", AGENT)));
 	ASSERT_TRUE(isnan(value(other, "FILTER_RELATED_AGENT_LIST", other)));
 	ASSERT_EQ_INT(1, blobs(CAMERA));
-	ASSERT_EQ_INT(1, blobs(CCD_SIMULATOR_BAHTINOV_CAMERA_NAME));
+	ASSERT_EQ_INT(1, blobs(BAHTINOV));
 	ASSERT_TRUE(sw(AGENT, "AGENT_IMAGER_BREAKPOINT", "PRE_CAPTURE", false, INDIGO_OK_STATE));
 	ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_BATCH", "EXPOSURE", 2));
 	ASSERT_TRUE(num(other, "AGENT_IMAGER_BATCH", "EXPOSURE", 2));
@@ -904,23 +905,23 @@ static void independent_instances_and_reselection(void) {
 	ASSERT_TRUE(connect_camera());
 	ASSERT_TRUE(num(AGENT, "ADDITIONAL_INSTANCES", "COUNT", 1));
 	const char *other = "Imager Agent #2";
-	ASSERT_TRUE(sw(other, "FILTER_CCD_LIST", CCD_SIMULATOR_BAHTINOV_CAMERA_NAME, true, INDIGO_OK_STATE));
+	ASSERT_TRUE(sw(other, "FILTER_CCD_LIST", BAHTINOV, true, INDIGO_OK_STATE));
 	ASSERT_TRUE(num(other, "AGENT_IMAGER_BATCH", "EXPOSURE", 0.1));
 	ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_BATCH", "EXPOSURE", 1));
 	ASSERT_TRUE(run("PREVIEW", INDIGO_BUSY_STATE));
 	ASSERT_TRUE(sw(other, "AGENT_START_PROCESS", "PREVIEW_1", true, INDIGO_OK_STATE));
 	ASSERT_TRUE(abort_running());
-	ASSERT_EQ_INT(1, blobs(CCD_SIMULATOR_BAHTINOV_CAMERA_NAME));
+	ASSERT_EQ_INT(1, blobs(BAHTINOV));
 	ASSERT_TRUE(sw(other, "FILTER_CCD_LIST", "NONE", true, INDIGO_OK_STATE));
 	ASSERT_TRUE(num(AGENT, "ADDITIONAL_INSTANCES", "COUNT", 0));
 	ASSERT_TRUE(sw(AGENT, "FILTER_CCD_LIST", "NONE", true, INDIGO_OK_STATE));
-	ASSERT_TRUE(sw(AGENT, "FILTER_CCD_LIST", CCD_SIMULATOR_BAHTINOV_CAMERA_NAME, true, INDIGO_OK_STATE));
+	ASSERT_TRUE(sw(AGENT, "FILTER_CCD_LIST", BAHTINOV, true, INDIGO_OK_STATE));
 	ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_BATCH", "EXPOSURE", 0.1));
 	ASSERT_TRUE(run("PREVIEW_1", INDIGO_OK_STATE));
 }
 
 static void bahtinov_preview_and_focus(void) {
-	ASSERT_TRUE(sw(AGENT, "FILTER_CCD_LIST", CCD_SIMULATOR_BAHTINOV_CAMERA_NAME, true, INDIGO_OK_STATE));
+	ASSERT_TRUE(sw(AGENT, "FILTER_CCD_LIST", BAHTINOV, true, INDIGO_OK_STATE));
 	ASSERT_TRUE(connect_focuser());
 	ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_BATCH", "EXPOSURE", 0.1));
 	ASSERT_TRUE(sw(AGENT, "AGENT_IMAGER_FOCUS_ESTIMATOR", "BAHTINOV", true, INDIGO_OK_STATE));

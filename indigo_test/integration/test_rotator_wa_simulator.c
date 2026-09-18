@@ -487,6 +487,29 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// Every property carrying a reject_change guard in indigo_rotator_wa.driver must refuse a change
+// while the rotator moves, keep the driver-side values and be accepted again once motion ends.
+static void wa_rejected_change(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, ROTATOR_WA_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&wa_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(wa_number_change(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 120, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(ROTATOR_POSITION_OFFSET_PROPERTY_NAME, ROTATOR_POSITION_OFFSET_ITEM_NAME, 30));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(ROTATOR_BACKLASH_PROPERTY_NAME, ROTATOR_BACKLASH_ITEM_NAME, 5));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 45));
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(WA_SET_ZERO_POSITION_PROPERTY_NAME, WA_SET_ZERO_POSITION_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wa_switch_change(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy_after(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, 0));
+	// A guard must not be sticky once the rotator is idle again.
+	SERIAL_CHECK_TRUE(wa_number_change(ROTATOR_BACKLASH_PROPERTY_NAME, ROTATOR_BACKLASH_ITEM_NAME, 5, INDIGO_OK_STATE));
+cleanup:
+	if (context.driver_case == &wa_rotator) {
+		stop_serial_driver(&wa_rotator);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void wa_independent_instances(void) {
 	static const simulator_driver_case second = { "WandererAstro rotator", "indigo_rotator_wa", "WandererAstro rotator #2", indigo_rotator_wa, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 	external_serial_simulator simulator = { 0 }, other = { 0 };
@@ -580,6 +603,7 @@ int main(int argc, char *argv[]) {
 		{ "wa_split_frames", wa_split_frames },
 		{ "wa_transport_loss", wa_transport_loss },
 		{ "wa_abort_queued_start", wa_abort_queued_start },
+		{ "wa_rejected_change", wa_rejected_change },
 		{ "wa_independent_instances", wa_independent_instances },
 		{ "wa_metadata_open_failure", wa_metadata_open_failure },
 	};

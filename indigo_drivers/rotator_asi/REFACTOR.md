@@ -252,3 +252,25 @@ Status: Steps 1–7 implemented on 2026-09-07. Step 8 delivered the mandatory ha
 - Public names, property schemas, persistence and multi-device identity/capacity are preserved or explicitly documented as intentional changes.
 - Motion and failure paths publish accurate states; connection, retries and unplug/shutdown leave no stale SDK handles, locks or queued device access.
 - `indigo_test/integration/test_rotator_asi_sdk.c`, its Makefile integration and coverage notes are delivered with the refactoring, and the hardware-free regression suite passes using the same SDK replacement mechanism as `wheel_asi` and `focuser_asi`. Physical CAA checks and any unresolved SDK/generator assumptions are recorded explicitly; compilation alone is not hardware validation.
+
+## Rejected-change regression coverage (2026-09-18)
+
+A change request that arrives while a motion is already running is now refused with the generator's
+`reject_change` block on `ROTATOR_POSITION` and `ROTATOR_RELATIVE_MOVE`, with the condition that the other motion property is BUSY and the message
+shown in the generated driver. The generated guard marks every item for update, sets
+`INDIGO_ALERT_STATE` and publishes the property, so the client receives the actual driver-side values
+instead of an update that carries no items.
+
+Both motion properties are published BUSY together by `rotator_update_motion()`, so `INDIGO_COPY_*_PROCESS_CHANGE` dropped a concurrent request silently. `rotator_motion_ready()` is kept for the SDK-verified motion check, which performs a `CAAIsMoving()` call and cannot be expressed as a guard condition.
+
+The guard was first written against `PRIVATE_DATA->moving` and that was wrong: the flag caches the last `CAAIsMoving()` answer and stays set after a status or position failure aborts a move, so the next legitimate request was refused and the property never reached BUSY again. `move/status/position failures and polling recovery` caught it. A cached SDK value is not a valid guard condition here; the published property state is.
+
+Driver version is now `0x03000005`. Regression coverage is the existing suite in
+`indigo_test/integration/test_rotator_asi_sdk.c`, which was re-run after the change.
+
+```sh
+cd indigo_test && ./build/integration/test_rotator_asi_sdk
+```
+
+- Simulated tests run: 11; passed: 11.
+- Hardware tests run: 0; passed: 0.

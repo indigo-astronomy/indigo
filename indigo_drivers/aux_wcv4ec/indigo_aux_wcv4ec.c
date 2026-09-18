@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_aux_wcv4ec"
 #define DRIVER_LABEL         "WandererCover V4-EC Cover"
 #define AUX_DEVICE_NAME      "WandererCover V4-EC"
@@ -115,16 +115,16 @@ static bool wcv4ec_read_status(indigo_device *device) {
 	char status[256] = { 0 };
 	indigo_uni_discard(PRIVATE_DATA->handle);
 	PRIVATE_DATA->ready = false;
-	long res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
+	long res = indigo_uni_read_line(PRIVATE_DATA->handle, status, sizeof(status) - 1);
 	if (strncmp(status, DEVICE_ID, strlen(DEVICE_ID))) {   // first part of the message is cleared by tcflush() or "done";
 		if (status[0] == '\0') {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "BRANCH: no id, status= '%s'", status);
-			res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
+			res = indigo_uni_read_line(PRIVATE_DATA->handle, status, sizeof(status) - 1);
 		}
 		if (!strncmp(status, "done", strlen("done"))) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "BRANCH: done");
 			PRIVATE_DATA->ready = true;
-			res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
+			res = indigo_uni_read_line(PRIVATE_DATA->handle, status, sizeof(status) - 1);
 		}
 	}
 	if (res > 0) {
@@ -355,7 +355,7 @@ static void aux_detect_open_close_handler(indigo_device *device) {
 			char status_line[128] = {0};
 			indigo_uni_discard(PRIVATE_DATA->handle);
 			do {
-				indigo_uni_read_line(PRIVATE_DATA->handle, status_line, 128);
+				indigo_uni_read_line(PRIVATE_DATA->handle, status_line, sizeof(status_line) - 1);
 			} while (strncmp(status_line, "OpenSet", strlen("OpenSet")) && strncmp(status_line, "CloseSet", strlen("CloseSet")));
 		} else {
 			AUX_DETECT_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;

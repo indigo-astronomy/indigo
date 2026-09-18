@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_rotator_falcon"
 #define DRIVER_LABEL         "PegasusAstro Falcon rotator"
 #define ROTATOR_DEVICE_NAME  "Pegasus Falcon rotator"
@@ -60,7 +60,7 @@ static bool falcon_command(indigo_device *device, char *command, ...) {
 		result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 		va_end(args);
 		if (result > 0) {
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
 		}
 	}
 	return result > 0;
@@ -322,6 +322,14 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
+		if (ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < ROTATOR_POSITION_PROPERTY->count; i++) {
+				ROTATOR_POSITION_PROPERTY->items[i].do_update = true;
+			}
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Another motion operation is pending");
+			return INDIGO_OK;
+		}
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ROTATOR_POSITION_PROPERTY, rotator_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_DIRECTION_PROPERTY, property)) {
@@ -331,6 +339,14 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(ROTATOR_ABORT_MOTION_PROPERTY, rotator_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_RELATIVE_MOVE_PROPERTY, property)) {
+		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < ROTATOR_RELATIVE_MOVE_PROPERTY->count; i++) {
+				ROTATOR_RELATIVE_MOVE_PROPERTY->items[i].do_update = true;
+			}
+			ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, "Another motion operation is pending");
+			return INDIGO_OK;
+		}
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_RELATIVE_MOVE_PROPERTY, rotator_relative_move_handler);
 		return INDIGO_OK;
 	}

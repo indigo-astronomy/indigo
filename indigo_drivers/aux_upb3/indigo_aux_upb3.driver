@@ -26,7 +26,7 @@ driver upb3 {
 	label = "PegasusAstro Ultimate Powerbox v3";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
-	version = 3;
+	version = 5;
 	serial {
 		pattern {
 			pid = 0x9005;
@@ -52,7 +52,7 @@ driver upb3 {
 				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 				va_end(args);
 				if (result > 0) {
-					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
 				}
 			}
 			return result > 0;
@@ -965,6 +965,10 @@ driver upb3 {
 			}
 		}
 		inherited FOCUSER_STEPS {
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				if (upb3_command(device, "SG:%d", (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1))) {
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -977,6 +981,10 @@ driver upb3 {
 			}
 		}
 		inherited FOCUSER_POSITION {
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
 					if (upb3_command(device, "SM:%d", (int)FOCUSER_POSITION_ITEM->number.target)) {

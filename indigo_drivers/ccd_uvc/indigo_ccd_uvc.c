@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000019
+#define DRIVER_VERSION       0x0300001A
 #define DRIVER_NAME          "indigo_ccd_uvc"
 #define DRIVER_LABEL         "UVC Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -578,11 +578,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_MODE_PROPERTY, property)) {
-		//+ ccd.CCD_MODE.on_change_request
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
+				CCD_MODE_PROPERTY->items[i].do_update = true;
+			}
+			CCD_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_MODE_PROPERTY, "Acquisition in progress");
 			return INDIGO_OK;
 		}
-		//- ccd.CCD_MODE.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_MODE_PROPERTY, ccd_mode_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
@@ -951,7 +954,7 @@ indigo_result indigo_ccd_uvc(indigo_driver_action action, indigo_driver_info *in
 #include "indigo_ccd_uvc.h"
 
 indigo_result indigo_ccd_uvc(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "UVC Camera", __FUNCTION__, 0x03000019, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "UVC Camera", __FUNCTION__, 0x0300001A, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

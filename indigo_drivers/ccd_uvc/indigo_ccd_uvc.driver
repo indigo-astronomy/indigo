@@ -20,7 +20,7 @@ driver uvc {
 	label = "UVC Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 25;
+	version = 26;
 	multi_device_support = true;
 	supported_architecture = "!defined(INDIGO_WINDOWS)";
 	include {
@@ -503,10 +503,9 @@ driver uvc {
 			}
 		}
 		inherited CCD_MODE {
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				int selected = -1;

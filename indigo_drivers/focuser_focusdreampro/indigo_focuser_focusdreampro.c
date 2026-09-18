@@ -24,7 +24,7 @@
  \file indigo_focuser_focusdreampro.c
  */
 
-#define DRIVER_VERSION 0x03000006
+#define DRIVER_VERSION 0x03000007
 #define DRIVER_NAME "indigo_focuser_focusdreampro"
 
 #include <stdlib.h>
@@ -153,7 +153,7 @@ static void focuser_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[16];
 	if (!FOCUSER_TEMPERATURE_PROPERTY->hidden) {
-		if (focusdreampro_command(device, "T", response, sizeof(response)) && *response == 'T') {
+		if (focusdreampro_command(device, "T", response, sizeof(response) - 1) && *response == 'T') {
 			double temp = atof(response + 2);
 			if (FOCUSER_TEMPERATURE_ITEM->number.value != temp || FOCUSER_TEMPERATURE_PROPERTY->state != INDIGO_OK_STATE) {
 				FOCUSER_TEMPERATURE_ITEM->number.value = temp;
@@ -165,11 +165,11 @@ static void focuser_timer_callback(indigo_device *device) {
 		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 	}
 	bool moving = false;
-	if (focusdreampro_command(device, "I", response, sizeof(response)) && *response == 'I') {
+	if (focusdreampro_command(device, "I", response, sizeof(response) - 1) && *response == 'I') {
 		moving = !strcmp(response, "I:true");
 	}
 	bool update = false;
-	if (focusdreampro_command(device, "P", response, sizeof(response)) && *response == 'P') {
+	if (focusdreampro_command(device, "P", response, sizeof(response) - 1) && *response == 'P') {
 		int position = atoi(response + 2);
 		if (FOCUSER_POSITION_ITEM->number.value != position) {
 			FOCUSER_POSITION_ITEM->number.value = position;
@@ -209,7 +209,7 @@ static void focuser_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG);
 		if (PRIVATE_DATA->handle != NULL) {
-			if (focusdreampro_command(device, "#", response, sizeof(response))) {
+			if (focusdreampro_command(device, "#", response, sizeof(response) - 1)) {
 				if (!strcmp(response, "FD")) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "FocusDreamPro detected");
 					PRIVATE_DATA->fdp = true;
@@ -226,7 +226,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			}
 		}
 		if (PRIVATE_DATA->handle != NULL) {
-			if (focusdreampro_command(device, "T", response, sizeof(response)) && *response == 'T') {
+			if (focusdreampro_command(device, "T", response, sizeof(response) - 1) && *response == 'T') {
 				if (!strcmp(response, "T:false")) {
 					FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
 				} else {
@@ -236,26 +236,26 @@ static void focuser_connection_handler(indigo_device *device) {
 			} else {
 				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			if (focusdreampro_command(device, "P", response, sizeof(response)) && *response == 'P') {
+			if (focusdreampro_command(device, "P", response, sizeof(response) - 1) && *response == 'P') {
 				FOCUSER_POSITION_ITEM->number.value = atoi(response + 2);
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			snprintf(command, sizeof(command), "X:%d", (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target);
-			if (focusdreampro_command(device, command, response, sizeof(response)) && *response == *command) {
+			if (focusdreampro_command(device, command, response, sizeof(response) - 1) && *response == *command) {
 				FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			snprintf(command, sizeof(command), "S:%d", SPEED[(int)FOCUSER_SPEED_ITEM->number.target]);
-			if (focusdreampro_command(device, command, response, sizeof(response)) && *response == *command) {
+			if (focusdreampro_command(device, command, response, sizeof(response) - 1) && *response == *command) {
 				FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			snprintf(command, sizeof(command), "D:%d", (int)X_FOCUSER_DUTY_CYCLE_ITEM->number.target);
-			if (focusdreampro_command(device, command, response, sizeof(response)) && *response == *command) {
+			if (focusdreampro_command(device, command, response, sizeof(response) - 1) && *response == *command) {
 				X_FOCUSER_DUTY_CYCLE_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				X_FOCUSER_DUTY_CYCLE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -272,7 +272,7 @@ static void focuser_connection_handler(indigo_device *device) {
 	} else {
 		if (PRIVATE_DATA->handle != NULL) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
-			focusdreampro_command(device, "H", response, sizeof(response));
+			focusdreampro_command(device, "H", response, sizeof(response) - 1);
 			indigo_delete_property(device, X_FOCUSER_DUTY_CYCLE_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			indigo_uni_close(&PRIVATE_DATA->handle);
@@ -287,7 +287,7 @@ static void focuser_speed_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16], response[16];
 	snprintf(command, sizeof(command), "S:%d", SPEED[(int)FOCUSER_SPEED_ITEM->number.target]);
-	if (focusdreampro_command(device, command, response, sizeof(response)) && *response == *command) {
+	if (focusdreampro_command(device, command, response, sizeof(response) - 1) && *response == *command) {
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -309,7 +309,7 @@ static void focuser_position_handler(indigo_device *device) {
 	FOCUSER_POSITION_ITEM->number.target = position;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	snprintf(command, sizeof(command), "%c:%d", FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value ? 'R': 'M', position);
-	if (focusdreampro_command(device, command, response, sizeof(response)) && *response == *command) {
+	if (focusdreampro_command(device, command, response, sizeof(response) - 1) && *response == *command) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
@@ -331,7 +331,7 @@ static void focuser_steps_handler(indigo_device *device) {
 		position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
 	}
 	snprintf(command, sizeof(command), "M:%d", position);
-	if (focusdreampro_command(device, command, response, sizeof(response)) && *response == *command) {
+	if (focusdreampro_command(device, command, response, sizeof(response) - 1) && *response == *command) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
@@ -347,7 +347,7 @@ static void focuser_abort_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-		if (focusdreampro_command(device, "H", response, sizeof(response)) && *response == 'H') {
+		if (focusdreampro_command(device, "H", response, sizeof(response) - 1) && *response == 'H') {
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -366,7 +366,7 @@ static void duty_cycle_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16], response[16];
 	snprintf(command, sizeof(command), "D:%d", (int)X_FOCUSER_DUTY_CYCLE_ITEM->number.target);
-	if (focusdreampro_command(device, command, response, sizeof(response)) && *response == *command) {
+	if (focusdreampro_command(device, command, response, sizeof(response) - 1) && *response == *command) {
 		X_FOCUSER_DUTY_CYCLE_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		X_FOCUSER_DUTY_CYCLE_PROPERTY->state = INDIGO_ALERT_STATE;

@@ -22,7 +22,7 @@ driver primaluce {
 	label = "PrimaluceLab Focuser/Rotator";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 9;
+	version = 11;
 	serial {
 		pattern {
 			product = "CP2102N";
@@ -145,7 +145,7 @@ driver primaluce {
 				return false;
 			}
 			while (true) {
-				result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, MAX_RESPONSE_SIZE, "\n", "\r\n", -1);
+				result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, MAX_RESPONSE_SIZE - 1, "\n", "\r\n", -1);
 				if (result < 1) {
 					return false;
 				}
@@ -1314,6 +1314,10 @@ driver primaluce {
 			// on_detach { }
 		}
 		inherited FOCUSER_POSITION {
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				if (!primaluce_command(device, PRIVATE_DATA->is_sestosenso_3 ? "{\"req\":{\"cmd\":{\"MOT1\":{\"GOTO\":%d}}}}" : "{\"req\":{\"cmd\":{\"MOT1\":{\"MOVE_ABS\":{\"STEP\":%d}}}}}", (int)FOCUSER_POSITION_ITEM->number.target)) {
 					INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
@@ -1334,6 +1338,10 @@ driver primaluce {
 			// on_detach { }
 		}
 		inherited FOCUSER_STEPS {
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				int steps = FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ? (int)FOCUSER_STEPS_ITEM->number.target : -(int)FOCUSER_STEPS_ITEM->number.target;
 				FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value + steps;

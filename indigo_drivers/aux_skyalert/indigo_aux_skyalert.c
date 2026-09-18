@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_aux_skyalert"
 #define DRIVER_LABEL         "Interactive Astronomy SkyAlert"
 #define AUX_DEVICE_NAME      "Interactive Astronomy SkyAlert"
@@ -68,11 +68,11 @@ typedef struct {
 //+ code
 
 static bool skyalert_read_value(indigo_device *device, double *value) {
-	return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\r", "\r", INDIGO_DELAY(1)) > 0 && sscanf(PRIVATE_DATA->response, "%lf", value) == 1 && isfinite(*value);
+	return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r", INDIGO_DELAY(1)) > 0 && sscanf(PRIVATE_DATA->response, "%lf", value) == 1 && isfinite(*value);
 }
 
 static bool skyalert_read_record(indigo_device *device) {
-	if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 || indigo_uni_printf(PRIVATE_DATA->handle, "send\r") <= 0 || indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\r", "\r", INDIGO_DELAY(1)) <= 0 || strcmp(PRIVATE_DATA->response, "Data")) {
+	if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 || indigo_uni_printf(PRIVATE_DATA->handle, "send\r") <= 0 || indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r", INDIGO_DELAY(1)) <= 0 || strcmp(PRIVATE_DATA->response, "Data")) {
 		return false;
 	}
 	double values[8];
@@ -82,7 +82,7 @@ static bool skyalert_read_record(indigo_device *device) {
 		}
 	}
 	char firmware[sizeof(PRIVATE_DATA->response)];
-	if (indigo_uni_read_section(PRIVATE_DATA->handle, firmware, sizeof(firmware), "\r", "\r", INDIGO_DELAY(1)) <= 0 || !skyalert_read_value(device, values + 7)) {
+	if (indigo_uni_read_section(PRIVATE_DATA->handle, firmware, sizeof(firmware) - 1, "\r", "\r", INDIGO_DELAY(1)) <= 0 || !skyalert_read_value(device, values + 7)) {
 		return false;
 	}
 	AUX_WEATHER_TEMPERATURE_ITEM->number.value = values[0];

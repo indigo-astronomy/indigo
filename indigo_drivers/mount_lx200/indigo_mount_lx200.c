@@ -25,7 +25,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x03000034
+#define DRIVER_VERSION 0x03000035
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #define NYX_BASE64_THRESHOLD_VERSION "1.32.0"
@@ -387,8 +387,8 @@ static bool meade_simple_reply_command(indigo_device *device, char *command, ...
 			// readout progress part
 			if (result && !strncmp(command, ":SC", 3) && (MOUNT_TYPE_AP_ITEM->sw.value || *PRIVATE_DATA->response == '1')) {
 				char progress[128];
-				indigo_uni_read_section(PRIVATE_DATA->handle, progress, sizeof(progress), "#", "#", INDIGO_DELAY(0.1));
-				indigo_uni_read_section(PRIVATE_DATA->handle, progress, sizeof(progress), "#", "#", INDIGO_DELAY(0.1));
+				indigo_uni_read_section(PRIVATE_DATA->handle, progress, sizeof(progress) - 1, "#", "#", INDIGO_DELAY(0.1));
+				indigo_uni_read_section(PRIVATE_DATA->handle, progress, sizeof(progress) - 1, "#", "#", INDIGO_DELAY(0.1));
 			}
 		}
 	}
@@ -410,7 +410,7 @@ static bool meade_command(indigo_device *device, char *command, ...) {
 		va_end(args);
 	}
 	if (result >= 0) {
-		result = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "#", "#", INDIGO_DELAY(PRIVATE_DATA->timeout), INDIGO_DELAY(0.1));
+		result = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "#", "#", INDIGO_DELAY(PRIVATE_DATA->timeout), INDIGO_DELAY(0.1));
 	}
 	if (result >= 0) {
 		indigo_usleep(50000);
@@ -2157,9 +2157,11 @@ static void meade_update_mount_state(indigo_device *device) {
 			MOUNT_STATE_HOME_ITEM->light.value = INDIGO_BUSY_STATE;
 		}
 	}
-	sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", PRIVATE_DATA->utc_offset);
-	indigo_timetoisogm(time(NULL) - PRIVATE_DATA->time_difference, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+	if (MOUNT_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) { // to avoid race never overwrite the requested time while BUSY
+		sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", PRIVATE_DATA->utc_offset);
+		indigo_timetoisogm(time(NULL) - PRIVATE_DATA->time_difference, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+	}
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);

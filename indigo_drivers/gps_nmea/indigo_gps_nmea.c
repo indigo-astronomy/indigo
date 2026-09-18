@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000013
 #define DRIVER_NAME          "indigo_gps_nmea"
 #define DRIVER_LABEL         "Generic NMEA 0183 GPS"
 #define GPS_DEVICE_NAME      "NMEA GPS"
@@ -230,7 +230,7 @@ static void gps_timer_callback(indigo_device *device) {
 	}
 	//+ gps.on_timer
 	char buffer[128] = { 0 };
-	long length = indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
+	long length = indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1);
 	char **tokens = length > 0 ? nmea_parse(buffer) : NULL;
 
 	if (length > 0 && tokens) {

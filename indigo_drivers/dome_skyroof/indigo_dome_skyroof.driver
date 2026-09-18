@@ -22,7 +22,7 @@ driver skyroof {
 	label = "Interactive Astronomy SkyRoof";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 8;
+	version = 9;
 	serial;
 	// include { }
 	// define { }
@@ -37,7 +37,7 @@ driver skyroof {
 		}
 
 		static bool	skyroof_read(indigo_device *device) {
-			return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\r", "\r", INDIGO_DELAY(1)) > 0;
+			return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r", INDIGO_DELAY(1)) > 0;
 		}
 
 		static bool skyroof_open(indigo_device *device) {

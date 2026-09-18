@@ -179,3 +179,15 @@ This simulator has no hardware target or external manufacturer protocol. The con
 ### Generator-migration final totals
 
 The continuation ran **96** mount-simulator test-case executions and passed **95**. The single failure was the recorded pre-fix generated run; after the BUSY-state correction, final native/ASan arm64 and native/ASan x86_64 validation passed **64/64**. The separate generator architecture suite passed **15/15**. The measurement benchmark completed **120/120** software pulses and is excluded from pass/fail totals. Hardware tests run: **0**. Hardware tests passed: **0**.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard in `indigo_mount_simulator.driver` are now declared with the generator's `reject_change` block for `MOUNT_ABORT_MOTION`. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values.
+
+The parked-mount guard set `INDIGO_ALERT_STATE` and published the message inline but never marked the items, so the refused switch stayed visible in the client.
+
+Covered by the extended `mount_park_home_and_parked_guards` case in `indigo_test/integration/test_mount_simulator.c`.
+
+```sh
+cd indigo_test && ./build/integration/test_mount_simulator
+```

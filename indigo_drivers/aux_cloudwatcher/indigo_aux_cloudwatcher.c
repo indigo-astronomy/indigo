@@ -25,7 +25,7 @@
 
 #include "indigo_aux_cloudwatcher.h"
 
-#define DRIVER_VERSION 0x02000009
+#define DRIVER_VERSION 0x0200000A
 #define AUX_CLOUDWATCHER_NAME  "AAG CloudWatcher"
 
 #define DRIVER_NAME              "indigo_aux_skywatcher"
@@ -373,7 +373,7 @@ static bool aag_command(indigo_device *device, const char *command, char *respon
 			response[index - BLOCK_SIZE] = '\0';
 		} else {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			response[index-1] = '\0';
+			response[index > 0 ? index - 1 : 0] = '\0';
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wrong response %s -> %s", command, response);
 			return false;
 		}
@@ -714,9 +714,9 @@ static bool aag_get_rh_temperature(indigo_device *device, float *rh, float *temp
 	}
 
 	if (precise) {
-		*rh = ((rhi * 125) / 65536) - 6.0;
+		*rh = ((rhi * 125.0) / 65536) - 6.0;
 	} else {
-		*rh = ((rhi * 1.7572) / 100) - 6.0;
+		*rh = (rhi * 1.25) - 6.0;
 	}
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "rhi = %d", rhi);

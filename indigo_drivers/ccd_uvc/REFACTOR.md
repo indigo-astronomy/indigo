@@ -133,3 +133,15 @@ Local macOS service inspection identifies `system/com.apple.cmio.uvcassistantext
 
 - Simulated/fake-SDK tests: 44 run, 44 passed on the final generated driver (20 normal, the same 20 with the generated driver object instrumented by ASan/UBSan, and 4 dedicated defect-regression invocations). The registered suite contains 20 distinct cases. The original-driver characterization baseline was separately 12/12, with four dedicated reproducers failing as expected before the fixes.
 - Hardware tests: 22 executions of the one registered case, 4 complete targeted passes and 1 complete unfiltered pass. The final SV205 run delivered 26 images, covered every advertised YUY2 mode through 3264x2448, controls, both exposure durations, abort/reacquire, finite and indefinite streaming, reconnect and driver reload. macOS device ownership did not block any root run.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard in `indigo_ccd_uvc.driver` are now declared with the generator's `reject_change` block for `CCD_MODE`. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values.
+
+The guard returned `INDIGO_OK` without any update, so a mode change requested during acquisition was dropped silently and the client kept showing a mode the camera never switched to.
+
+Covered by `Rejected mode change during exposure` in `indigo_test/integration/test_ccd_uvc_sdk.c`.
+
+```sh
+cd indigo_test && ./build/integration/test_ccd_uvc_sdk
+```

@@ -92,7 +92,7 @@
 | focuser_ioptron         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 40 / 0 | |
 | focuser_lacerta         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 43 / 0 | |
 | focuser_lakeside        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 16 / 0 | |
-| focuser_lunatico        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | |
+| focuser_lunatico        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ✅ Sim | 11 / 0 | |
 | focuser_mjkzz           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 19 / 0 | |
 | focuser_mjkzz_bt        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ macOS only |
 | focuser_moonlite        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 20 / 0 | |
@@ -115,7 +115,7 @@
 | guider_asi              | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | ⏰ TODO - find SDK for windows |
 | guider_cgusbst4         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 0 / 0 | |
 | guider_gpusb            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
-| mount_asi               | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ❌ No  | 0 / 0 | |
+| mount_asi               | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ Sim | 10 / 0 | |
 | mount_ioptron           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 104 / 0 | |
 | mount_lx200             | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 70 / 0 | |
 | mount_nexstar           | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 13 / 0 | ⏰ TODO - make libnexstar for Windows |
@@ -129,7 +129,7 @@
 | polaralign_simulator    | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 11 / 0 | |
 | rotator_asi             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 11 / 0 | |
 | rotator_falcon          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
-| rotator_lunatico        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 11 / 0 | |
+| rotator_lunatico        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 7 / 0 | |
 | rotator_optec           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 10 / 0 | |
 | rotator_simulator       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
 | rotator_wa              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 34 / 0 | |

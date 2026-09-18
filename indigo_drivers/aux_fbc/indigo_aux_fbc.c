@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_aux_fbc"
 #define DRIVER_LABEL         "Lacerta FBC"
 #define AUX_DEVICE_NAME      "Lacerta FBC"
@@ -83,7 +83,7 @@ static bool fbc_command(indigo_device *device, char *command, int response, ...)
 		result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
 		va_end(args);
 		while (result > 0 && response) {
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
 			if (result > 0 && strncmp("D -", PRIVATE_DATA->response, 3)) {
 				break;
 			}

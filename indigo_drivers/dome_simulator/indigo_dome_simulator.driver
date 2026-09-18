@@ -26,7 +26,7 @@ driver simulator {
 	label = "Dome Simulator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2017-2026 CloudMakers, s. r. o.";
-	version = 7;
+	version = 8;
 	// include { }
 	// define { }
 	data {
@@ -164,6 +164,10 @@ driver simulator {
 			// on_detach { }
 		}
 		inherited DOME_STEPS {
+			reject_change {
+				condition = DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Dome is moving: request can not be completed";
+			}
 			on_change {
 				if (DOME_PARK_PARKED_ITEM->sw.value) {
 					DOME_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;

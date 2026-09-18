@@ -245,3 +245,23 @@ Trace captures count as runs of `reference_trace`; development runs of single ca
 - Simulated tests, original driver: 119 run, 64 passed. Breakdown: pre-existing smoke test 1/1; `simulator_protocol` development runs 3 run, 1 passed (2 test mistakes); first complete characterization run 33 run, 21 passed (12 failures analysed in step 3); reruns after test fixes 5 run, 4 passed and 1/1; defect reproducers 17 run, 0 passed (all failed as expected); NX3-01 rerun 1 run, 0 passed (failed as expected); trace captures 6/6; final harness with promoted reproducers 49 run, 27 passed (22 expected failures, step 10); network cases 3/3.
 - Simulated tests, generated driver: 191 run, 183 passed. Breakdown: `connect_sequence` bring-up 4 run, 1 passed (two generator-order segmentation faults and one identification failure fixed in the `.driver`); first complete run 32 run, 29 passed; defect reproducers 17 run, 15 passed; reruns after fixes 4/4; trace capture 1/1; complete run with the fixture 32/32; final complete run 49/49; opt-in network cases 3/3; ASan + UBSan complete run 49/49.
 - Hardware tests: 0 run, 0 passed.
+
+## Rejected-change regression coverage (2026-09-18)
+
+A change request that arrives while a motion is already running is now refused with the generator's
+`reject_change` block on `DOME_STEPS`, with the condition that `DOME_HORIZONTAL_COORDINATES` is BUSY and the message
+shown in the generated driver. The generated guard marks every item for update, sets
+`INDIGO_ALERT_STATE` and publishes the property, so the client receives the actual driver-side values
+instead of an update that carries no items.
+
+Both motion properties are published BUSY together at motion start, so `INDIGO_COPY_*_PROCESS_CHANGE` dropped a concurrent request silently: the client received no update at all and kept showing the refused target. The guard runs before that macro and turns the silent drop into an explicit refusal.
+
+Driver version is now `0x0300000D`. Regression coverage is the existing suite in
+`indigo_test/integration/test_dome_nexdome3_simulator.c`, which was re-run after the change.
+
+```sh
+cd indigo_test && ./build/integration/test_dome_nexdome3_simulator
+```
+
+- Simulated tests run: 49; passed: 49.
+- Hardware tests run: 0; passed: 0.

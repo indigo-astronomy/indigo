@@ -316,14 +316,14 @@ void indigo_mount_load_alignment_points(indigo_device *device) {
 	if (handle != NULL) {
 		int count;
 		char buffer[1024], name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
-		indigo_uni_read_line(handle, buffer, sizeof(buffer));
+		indigo_uni_read_line(handle, buffer, sizeof(buffer) - 1);
 		sscanf(buffer, "%d", &count);
 		MOUNT_CONTEXT->alignment_point_count = count;
 		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = count;
 		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = count > 0 ? count + 1 : 0;
 		for (int i = 0; i < count; i++) {
 			indigo_alignment_point *point =  MOUNT_CONTEXT->alignment_points + i;
-			indigo_uni_read_line(handle, buffer, sizeof(buffer));
+			indigo_uni_read_line(handle, buffer, sizeof(buffer) - 1);
 			int used;
 			sscanf(buffer, "%d %lg %lg %lg %lg %lg %d", &used, &point->ra, &point->dec, &point->raw_ra, &point->raw_dec, &point->lst, &point->side_of_pier);
 			point->used = used;

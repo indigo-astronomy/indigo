@@ -24,7 +24,7 @@ driver astroasis {
 	label = "Astroasis Oasis Focuser";
 	author = "Frank Chen <frank.chen@astroasis.com>";
 	copyright = "Copyright (C) 2024-2026 Astroasis Vision Technology, Inc.";
-	version = 8;
+	version = 9;
 	supported_architecture = "!defined(__i386__)";
 	include {
 		#include <AOFocus.h>
@@ -395,6 +395,10 @@ driver astroasis {
 		}
 		inherited FOCUSER_POSITION {
 			preserve_values = true;
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				int target = (int)FOCUSER_POSITION_ITEM->number.target;
 				if (target == PRIVATE_DATA->status.position) {
@@ -467,6 +471,10 @@ driver astroasis {
 			}
 		}
 		inherited FOCUSER_STEPS {
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;

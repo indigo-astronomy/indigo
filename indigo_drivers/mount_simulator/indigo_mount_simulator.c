@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_mount_simulator"
 #define DRIVER_LABEL         "Mount Simulator"
 #define MOUNT_DEVICE_NAME    DRIVER_LABEL
@@ -543,13 +543,14 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_RA_PROPERTY, mount_motion_ra_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
-		//+ mount.MOUNT_ABORT_MOTION.on_change_request
 		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+			for (int i = 0; i < MOUNT_ABORT_MOTION_PROPERTY->count; i++) {
+				MOUNT_ABORT_MOTION_PROPERTY->items[i].do_update = true;
+			}
 			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Mount is parked");
 			return INDIGO_OK;
 		}
-		//- mount.MOUNT_ABORT_MOTION.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(MOUNT_ABORT_MOTION_PROPERTY, mount_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {

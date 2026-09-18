@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_rotator_wa"
 #define DRIVER_LABEL         "WandererAstro rotator"
 #define ROTATOR_DEVICE_NAME  "WandererAstro rotator"
@@ -237,14 +237,6 @@ static void wa_start_motion(indigo_device *device, double degrees) {
 	} else {
 		wa_finish(device, false);
 	}
-}
-
-static bool wa_idle(indigo_device *device, indigo_property *property) {
-	if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		indigo_send_message(device, property, "%s cannot change during motion", property->name);
-		return false;
-	}
-	return true;
 }
 
 //- rotator.code
@@ -464,54 +456,72 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, ROTATOR_ON_POSITION_SET_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_OFFSET_PROPERTY, property)) {
-		//+ rotator.ROTATOR_POSITION_OFFSET.on_change_request
-		if (!wa_idle(device, ROTATOR_POSITION_OFFSET_PROPERTY)) {
+		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < ROTATOR_POSITION_OFFSET_PROPERTY->count; i++) {
+				ROTATOR_POSITION_OFFSET_PROPERTY->items[i].do_update = true;
+			}
+			ROTATOR_POSITION_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_POSITION_OFFSET_PROPERTY, "Rotator is moving: request can not be completed");
 			return INDIGO_OK;
 		}
-		//- rotator.ROTATOR_POSITION_OFFSET.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_POSITION_OFFSET_PROPERTY, rotator_position_offset_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
-		//+ rotator.ROTATOR_POSITION.on_change_request
 		if (ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < ROTATOR_POSITION_PROPERTY->count; i++) {
+				ROTATOR_POSITION_PROPERTY->items[i].do_update = true;
+			}
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Rotator is moving: request can not be completed");
 			return INDIGO_OK;
 		}
-		//- rotator.ROTATOR_POSITION.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ROTATOR_POSITION_PROPERTY, rotator_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_RELATIVE_MOVE_PROPERTY, property)) {
-		//+ rotator.ROTATOR_RELATIVE_MOVE.on_change_request
 		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < ROTATOR_RELATIVE_MOVE_PROPERTY->count; i++) {
+				ROTATOR_RELATIVE_MOVE_PROPERTY->items[i].do_update = true;
+			}
+			ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, "Rotator is moving: request can not be completed");
 			return INDIGO_OK;
 		}
-		//- rotator.ROTATOR_RELATIVE_MOVE.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ROTATOR_RELATIVE_MOVE_PROPERTY, rotator_relative_move_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(ROTATOR_ABORT_MOTION_PROPERTY, rotator_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_DIRECTION_PROPERTY, property)) {
-		//+ rotator.ROTATOR_DIRECTION.on_change_request
-		if (!wa_idle(device, ROTATOR_DIRECTION_PROPERTY)) {
+		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < ROTATOR_DIRECTION_PROPERTY->count; i++) {
+				ROTATOR_DIRECTION_PROPERTY->items[i].do_update = true;
+			}
+			ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, "Rotator is moving: request can not be completed");
 			return INDIGO_OK;
 		}
-		//- rotator.ROTATOR_DIRECTION.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_DIRECTION_PROPERTY, rotator_direction_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_BACKLASH_PROPERTY, property)) {
-		//+ rotator.ROTATOR_BACKLASH.on_change_request
-		if (!wa_idle(device, ROTATOR_BACKLASH_PROPERTY)) {
+		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < ROTATOR_BACKLASH_PROPERTY->count; i++) {
+				ROTATOR_BACKLASH_PROPERTY->items[i].do_update = true;
+			}
+			ROTATOR_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_BACKLASH_PROPERTY, "Rotator is moving: request can not be completed");
 			return INDIGO_OK;
 		}
-		//- rotator.ROTATOR_BACKLASH.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ROTATOR_BACKLASH_PROPERTY, rotator_backlash_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_SET_ZERO_POSITION_PROPERTY, property)) {
-		//+ rotator.X_SET_ZERO_POSITION.on_change_request
-		if (!wa_idle(device, X_SET_ZERO_POSITION_PROPERTY)) {
+		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < X_SET_ZERO_POSITION_PROPERTY->count; i++) {
+				X_SET_ZERO_POSITION_PROPERTY->items[i].do_update = true;
+			}
+			X_SET_ZERO_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_SET_ZERO_POSITION_PROPERTY, "Rotator is moving: request can not be completed");
 			return INDIGO_OK;
 		}
-		//- rotator.X_SET_ZERO_POSITION.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_SET_ZERO_POSITION_PROPERTY, rotator_x_set_zero_position_handler);
 		return INDIGO_OK;
 	}

@@ -155,6 +155,30 @@ cleanup:
 	unlink(trace_path);
 }
 
+// Every property carrying a reject_change guard in indigo_rotator_optec.driver must refuse a change
+// while a motion is pending, keep the driver-side values and be accepted again once the rotator idles.
+static void optec_rejected_change(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, ROTATOR_OPTEC_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&optec_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(change_number_after(OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME, 2, INDIGO_OK_STATE));
+	unsigned int busy_revision = property_state_revision(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, optec_rotator.device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 180));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE, busy_revision));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME, 4));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(OPTEC_ROTATE_PROPERTY_NAME, OPTEC_ROTATE_ITEM_NAME, 3));
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(OPTEC_HOME_PROPERTY_NAME, OPTEC_HOME_ITEM_NAME));
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	// A guard must not be sticky once the rotator is idle again.
+	SERIAL_CHECK_TRUE(change_number_after(OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME, 4, INDIGO_OK_STATE));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&optec_rotator);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void optec_controls_home_and_protocol(void) {
 	external_serial_simulator simulator = { 0 };
 	char trace_path[] = "/tmp/rotator-optec-trace.XXXXXX";
@@ -345,6 +369,7 @@ int main(void) {
 		{ "optec_property_contract_and_reconnect", optec_property_contract_and_reconnect },
 		{ "optec_absolute_motion_noop_and_overlap", optec_absolute_motion_noop_and_overlap },
 		{ "optec_controls_home_and_protocol", optec_controls_home_and_protocol },
+		{ "optec_rejected_change", optec_rejected_change },
 		{ "optec_connection_failure_recovers", optec_connection_failure_recovers },
 		{ "optec_setting_failure_recovers", optec_setting_failure_recovers },
 		{ "optec_motion_error_recovers", optec_motion_error_recovers },

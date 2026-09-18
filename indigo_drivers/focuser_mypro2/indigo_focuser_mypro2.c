@@ -23,7 +23,7 @@
  \file indigo_focuser_mypro2.c
  */
 
-#define DRIVER_VERSION 0x03000009
+#define DRIVER_VERSION 0x0300000A
 #define DRIVER_NAME "indigo_focuser_mypro2"
 
 #include <stdlib.h>
@@ -166,7 +166,7 @@ static bool mfp_get_info(indigo_device *device, char *board, char *firmware) {
 	if (!board || !firmware) return false;
 
 	char response[MFP_CMD_LEN]={0};
-	if (mfp_command(device, ":04#", response, sizeof(response), RESPONSE_TIMEOUT)) {
+	if (mfp_command(device, ":04#", response, sizeof(response) - 1, RESPONSE_TIMEOUT)) {
 		char *delim = NULL;
 		if ((delim = strchr(response, '\n'))) {
 			*delim = ' ';
@@ -198,7 +198,7 @@ static bool mfp_command_get_int_value(indigo_device *device, const char *command
 	if (!value) return false;
 
 	char response[MFP_CMD_LEN]={0};
-	if (mfp_command(device, command, response, sizeof(response), RESPONSE_TIMEOUT)) {
+	if (mfp_command(device, command, response, sizeof(response) - 1, RESPONSE_TIMEOUT)) {
 		char format[100];
 		sprintf(format, "%c%%d#", expect);
 		int parsed = sscanf(response, format, value);
@@ -377,7 +377,7 @@ static bool mfp_save_settings(indigo_device *device) {
 
 static bool mfp_get_temperature(indigo_device *device, double *temperature) {
 	char response[MFP_CMD_LEN]={0};
-	if (mfp_command(device, ":06#", response, sizeof(response), RESPONSE_TIMEOUT)) {
+	if (mfp_command(device, ":06#", response, sizeof(response) - 1, RESPONSE_TIMEOUT)) {
 		int parsed = sscanf(response, "Z%lf#", temperature);
 		if (parsed != 1) return false;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, ":06# -> %s = %lf", response, *temperature);
