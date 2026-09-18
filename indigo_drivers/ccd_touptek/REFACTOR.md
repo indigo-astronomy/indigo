@@ -355,3 +355,11 @@ Covered by `Rejected change keeps values` in `indigo_test/integration/test_ccd_t
 ```sh
 cd indigo_test && INDIGO_TEST_FILTER="Rejected change" ./build/integration/test_ccd_touptek_sdk
 ```
+
+## Hardware coverage of the accepted gain and offset path (2026-09-18)
+
+`indigo_test/hardware/test_ccd_touptek_hw.c` now drives `CCD_GAIN` and `CCD_OFFSET` on the physical camera between the short exposures and the abort case. It changes gain to the middle of the reported range, requires `value` and `target` to both hold the requested gain, takes an exposure at that gain, restores the original gain and repeats the value/target check. When `CCD_OFFSET` is exposed, it drives the black level to the opposite limit and back with the same value/target check; the offset scale is a power of two, so both limits map back to an exact offset. Cameras without `FLAG_BLACKLEVEL` hide the property and the test prints that the black level part was skipped.
+
+The refused path stays exclusive to `indigo_test/integration/test_ccd_touptek_sdk.c`, because a real camera cannot be made to fail `put_ExpoAGain()` or `put_Option(OPTION_BLACKLEVEL)` on demand.
+
+Verified on 2026-09-18 with a Touptek GPCMOS01200KMB: the test passes against the current driver (gain 100 -> 550 -> 100, offset 8 -> 248 -> 8), and it fails when either success-path `value = target` assignment is removed from `ccd_gain_handler` or `ccd_offset_handler`.

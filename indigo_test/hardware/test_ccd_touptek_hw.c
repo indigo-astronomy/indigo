@@ -217,6 +217,23 @@ static bool number_value(int d, const char *name, const char *item, double value
 	return wait_state(d, name, before, state);
 }
 
+static bool number_item(int d, const char *name, const char *item, indigo_item *copy) {
+	pthread_mutex_lock(&mutex);
+	int p = slot(d, name);
+	bool found = false;
+	if (p >= 0) {
+		indigo_property *property = devices[d].properties[p];
+		for (int i = 0; i < property->count && !found; i++) {
+			if (!strcmp(property->items[i].name, item)) {
+				*copy = property->items[i];
+				found = true;
+			}
+		}
+	}
+	pthread_mutex_unlock(&mutex);
+	return found;
+}
+
 static unsigned frames(void) {
 	pthread_mutex_lock(&mutex);
 	unsigned result = devices[camera].frames;
@@ -268,6 +285,36 @@ static void hardware_workflows(void) {
 		unsigned before = frames();
 		CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
 		CHECK(frames() == before + 1);
+	}
+	// An accepted gain or offset change must commit value and target together; only a fake SDK can provoke the rejected path.
+	indigo_item gain_item, offset_item;
+	CHECK(number_item(camera, "CCD_GAIN", "GAIN", &gain_item));
+	double original_gain = gain_item.number.value, requested_gain = (double)(int)((gain_item.number.min + gain_item.number.max) / 2);
+	if (requested_gain == original_gain) {
+		requested_gain = gain_item.number.min;
+	}
+	CHECK(number_value(camera, "CCD_GAIN", "GAIN", requested_gain, INDIGO_OK_STATE));
+	CHECK(number_item(camera, "CCD_GAIN", "GAIN", &gain_item));
+	CHECK(gain_item.number.value == requested_gain && gain_item.number.target == requested_gain);
+	unsigned gain_frames = frames();
+	CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
+	CHECK(frames() == gain_frames + 1);
+	CHECK(number_value(camera, "CCD_GAIN", "GAIN", original_gain, INDIGO_OK_STATE));
+	CHECK(number_item(camera, "CCD_GAIN", "GAIN", &gain_item));
+	CHECK(gain_item.number.value == original_gain && gain_item.number.target == original_gain);
+	printf("    gain accepted: %g -> %g -> %g\n", original_gain, requested_gain, gain_item.number.value);
+	if (number_item(camera, "CCD_OFFSET", "OFFSET", &offset_item)) {
+		// The black level scale is a power of two, so both offset limits map back to an exact value.
+		double original_offset = offset_item.number.value, requested_offset = original_offset == offset_item.number.max ? offset_item.number.min : offset_item.number.max;
+		CHECK(number_value(camera, "CCD_OFFSET", "OFFSET", requested_offset, INDIGO_OK_STATE));
+		CHECK(number_item(camera, "CCD_OFFSET", "OFFSET", &offset_item));
+		CHECK(offset_item.number.value == requested_offset && offset_item.number.target == requested_offset);
+		CHECK(number_value(camera, "CCD_OFFSET", "OFFSET", original_offset, INDIGO_OK_STATE));
+		CHECK(number_item(camera, "CCD_OFFSET", "OFFSET", &offset_item));
+		CHECK(offset_item.number.value == original_offset && offset_item.number.target == original_offset);
+		printf("    offset accepted: %g -> %g -> %g\n", original_offset, requested_offset, offset_item.number.value);
+	} else {
+		printf("    CCD_OFFSET is not exposed by this camera, black level accept path skipped\n");
 	}
 	CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 5, INDIGO_BUSY_STATE));
 	// Allow delayed SDK setup to start the physical exposure before aborting it.
