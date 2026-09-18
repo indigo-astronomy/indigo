@@ -48,7 +48,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001E
+#define DRIVER_VERSION       0x0300001F
 #define DRIVER_NAME          "indigo_ccd_mi"
 #define DRIVER_LABEL         "Moravian Instruments Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -690,6 +690,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_READ_MODE_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < CCD_READ_MODE_PROPERTY->count; i++) {
+				CCD_READ_MODE_PROPERTY->items[i].do_update = true;
+			}
+			CCD_READ_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_READ_MODE_PROPERTY, "Acquisition in progress");
+			return INDIGO_OK;
+		}
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_READ_MODE_PROPERTY, ccd_read_mode_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_COOLER_PROPERTY, property)) {
@@ -704,6 +712,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_TEMPERATURE_PROPERTY, ccd_temperature_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_GAIN_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < CCD_GAIN_PROPERTY->count; i++) {
+				CCD_GAIN_PROPERTY->items[i].do_update = true;
+			}
+			CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_GAIN_PROPERTY, "Acquisition in progress");
+			return INDIGO_OK;
+		}
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_GAIN_PROPERTY, ccd_gain_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
@@ -713,6 +729,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, ccd_abort_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			for (int i = 0; i < CCD_BIN_PROPERTY->count; i++) {
+				CCD_BIN_PROPERTY->items[i].do_update = true;
+			}
+			CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_BIN_PROPERTY, "Acquisition in progress");
+			return INDIGO_OK;
+		}
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_BIN_PROPERTY, ccd_bin_handler);
 		return INDIGO_OK;
 	}
