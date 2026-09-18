@@ -25,7 +25,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0300002F
+#define DRIVER_VERSION 0x03000030
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -61,6 +61,10 @@
 #define SAFE_RADIUS_FACTOR (0.9)   /* factor to multiply SELECTION_RADIUS in which the star will not be lost */
 
 #define PPEC_RETAIN_MODEL_PCT (40.0)   /* max worm rotation (% of period) to retain the Predictive PEC model on restart */
+
+#define GUIDE_CYCLE_TIME_SMOOTHING (0.25)     /* how far a new sample pulls the estimate towards it: 0 = ignore it, 1 = jump to it */
+#define GUIDE_CYCLE_TIME_OUTLIER_FACTOR (2.0) /* sample/estimate ratio beyond which a sample is rejected as a one-off stall */
+#define GUIDE_CYCLE_TIME_MAX_REJECTS (3)      /* consecutive rejections after which the cadence is assumed to have really changed */
 
 #define DEVICE_PRIVATE_DATA										((guider_agent_private_data *)device->private_data)
 #define CLIENT_PRIVATE_DATA										((guider_agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
@@ -296,6 +300,9 @@ typedef struct {
 	double corr_resp_dec_s[INDIGO_CORR_RESPONSE_WINDOW]; /* ring buffer of Dec residuals (arcsec) */
 	int corr_resp_count;                                 /* valid samples in the ring (<= INDIGO_CORR_RESPONSE_WINDOW) */
 	int corr_resp_head;                                  /* index of the next write slot */
+	double guide_cycle_time;                             /* smoothed measured duration of one guiding iteration (s), 0 until the first one completes */
+	double guide_cycle_nominal;                          /* exposure + delay the estimate was seeded against, to detect a settings change */
+	int guide_cycle_rejects;                             /* consecutive samples rejected as one-off stalls */
 	void *last_image;
 	long last_image_size;
 	char last_image_url[INDIGO_VALUE_SIZE];
@@ -1672,6 +1679,43 @@ static bool calibrate(indigo_device *device) {
 	return result;
 }
 
+static double nominal_guide_cycle_time(indigo_device *device) {
+	return AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.target + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.target;
+}
+
+/* Update the smoothed guide cycle time from the duration the last cycle actually took.
+   get_guide_cycle_time() hands that estimate to the correction algorithms. */
+static void update_guide_cycle_time(indigo_device *device, double sample) {
+	double nominal = nominal_guide_cycle_time(device);
+	if (sample < nominal) {
+		sample = nominal;
+	}
+	double current = DEVICE_PRIVATE_DATA->guide_cycle_time;
+	bool settings_changed = fabs(nominal - DEVICE_PRIVATE_DATA->guide_cycle_nominal) > 0.001;
+
+	bool outlier = current > 0 && !settings_changed && (sample > GUIDE_CYCLE_TIME_OUTLIER_FACTOR * current || GUIDE_CYCLE_TIME_OUTLIER_FACTOR * sample < current);
+	if (outlier && DEVICE_PRIVATE_DATA->guide_cycle_rejects < GUIDE_CYCLE_TIME_MAX_REJECTS) {
+		DEVICE_PRIVATE_DATA->guide_cycle_rejects++;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guide cycle time sample = %.3fs rejected (estimate = %.3fs, reject %d)", sample, current, DEVICE_PRIVATE_DATA->guide_cycle_rejects);
+		return;
+	}
+	DEVICE_PRIVATE_DATA->guide_cycle_rejects = 0;
+	DEVICE_PRIVATE_DATA->guide_cycle_nominal = nominal;
+	/* re-seed on the first sample, on a settings change, and on an outlier that survived GUIDE_CYCLE_TIME_MAX_REJECTS rejections */
+	if (current <= 0 || settings_changed || outlier) {
+		DEVICE_PRIVATE_DATA->guide_cycle_time = sample;
+	} else {
+		DEVICE_PRIVATE_DATA->guide_cycle_time = current + GUIDE_CYCLE_TIME_SMOOTHING * (sample - current);
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guide cycle time sample = %.3fs, smoothed = %.3fs, nominal = %.3fs", sample, DEVICE_PRIVATE_DATA->guide_cycle_time, nominal);
+}
+
+static double get_guide_cycle_time(indigo_device *device) {
+	double nominal = nominal_guide_cycle_time(device);
+	double measured = DEVICE_PRIVATE_DATA->guide_cycle_time;
+	return measured > nominal ? measured : nominal;
+}
+
 static bool guide(indigo_device *device) {
 	if (AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value == 0 || fabs(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value) > 89) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1703,6 +1747,8 @@ static bool guide(indigo_device *device) {
 	indigo_update_property(device, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, NULL);
 	DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = DEVICE_PRIVATE_DATA->rmse_ra_s_sum = DEVICE_PRIVATE_DATA->rmse_dec_s_sum = DEVICE_PRIVATE_DATA->rmse_count = 0;
 	DEVICE_PRIVATE_DATA->corr_resp_count = DEVICE_PRIVATE_DATA->corr_resp_head = 0;
+	DEVICE_PRIVATE_DATA->guide_cycle_time = DEVICE_PRIVATE_DATA->guide_cycle_nominal = 0;
+	DEVICE_PRIVATE_DATA->guide_cycle_rejects = 0;
 	AGENT_GUIDER_STATS_CORR_RESPONSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_CORR_RESPONSE_DEC_ITEM->number.value = 0;
 	DEVICE_PRIVATE_DATA->hysteresis_prev_drift_ra = DEVICE_PRIVATE_DATA->hysteresis_prev_drift_dec = 0;
 	memset(&DEVICE_PRIVATE_DATA->trend_ra, 0, sizeof(DEVICE_PRIVATE_DATA->trend_ra));
@@ -1732,6 +1778,7 @@ static bool guide(indigo_device *device) {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			break;
 		}
+		double cycle_start = indigo_monotonic_time();
 		if (!capture_and_process_frame(device)) {
 			if (DEVICE_PRIVATE_DATA->no_guiding_star) {
 				if (DEVICE_PRIVATE_DATA->first_frame) {
@@ -1850,7 +1897,7 @@ static bool guide(indigo_device *device) {
 
 		// RA correction
 		if (AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM->sw.value) {
-			correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_ra, avg_drift_ra);
+			correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, get_guide_cycle_time(device), min_error, drift_ra, avg_drift_ra);
 		} else if (AGENT_GUIDER_CORRECTION_MODE_RA_HYSTERESIS_ITEM->sw.value) {
 			correction_ra = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_ra);
 		} else if (AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM->sw.value) {
@@ -1870,14 +1917,14 @@ static bool guide(indigo_device *device) {
 				period <= 0 || !period_fixed,
 				period
 			);
-			double time_step = AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value;
+			/* The horizon the feed-forward term must cover is the real guiding period, not the nominal exposure + delay. */
+			double time_step = get_guide_cycle_time(device);
 			correction_ra = indigo_gp_guider_response(DEVICE_PRIVATE_DATA->ppec_ra, drift_ra, AGENT_GUIDER_STATS_SNR_ITEM->number.value, time_step);
 			AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = 100.0 * indigo_gp_guider_get_learning_progress(DEVICE_PRIVATE_DATA->ppec_ra);
-				AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = indigo_gp_guider_get_period_length(DEVICE_PRIVATE_DATA->ppec_ra);
+			AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = indigo_gp_guider_get_period_length(DEVICE_PRIVATE_DATA->ppec_ra);
 		} else {
 			// should not happen, but just a safety measure fallback to PI if no RA correction mode is selected
-			correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_ra, avg_drift_ra);
-
+			correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, get_guide_cycle_time(device), min_error, drift_ra, avg_drift_ra);
 		}
 		if (correction_ra != 0) {
 			/* Limit correction_ra, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
@@ -1898,7 +1945,7 @@ static bool guide(indigo_device *device) {
 
 		// Dec correction
 		if (AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM->sw.value) {
-			correction_dec = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_dec, avg_drift_dec);
+			correction_dec = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value, get_guide_cycle_time(device), min_error, drift_dec, avg_drift_dec);
 		} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_HYSTERESIS_ITEM->sw.value) {
 			correction_dec = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM->number.value / 100, min_error, drift_dec, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_dec);
 		} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_RESIST_SWITCH_ITEM->sw.value) {
@@ -1907,7 +1954,7 @@ static bool guide(indigo_device *device) {
 			correction_dec = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM->number.value / 100, min_error, drift_dec, &DEVICE_PRIVATE_DATA->trend_dec);
 		} else {
 			// should not happen, but just a safety measure fallback to PI if no Dec correction mode is selected
-			correction_dec = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_dec, avg_drift_dec);
+			correction_dec = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value, get_guide_cycle_time(device), min_error, drift_dec, avg_drift_dec);
 		}
 		if (correction_dec != 0) {
 			/* Limit correction_dec, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
@@ -2089,6 +2136,8 @@ static bool guide(indigo_device *device) {
 		}
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 		write_log_record(device);
+		/* The iteration completed, so its duration is a valid cadence sample. */
+		update_guide_cycle_time(device, indigo_monotonic_time() - cycle_start);
 	}
 	DEVICE_PRIVATE_DATA->silence_warnings = false;
 	/* record stop time so the Predictive PEC model can decide whether it may be
