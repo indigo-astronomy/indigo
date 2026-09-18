@@ -20,7 +20,7 @@ driver iidc {
 	label = "IIDC Compatible Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 16;
+	version = 17;
 	multi_device_support = true;
 	supported_architecture = "defined(INDIGO_LINUX) || defined(INDIGO_MACOS)";
 	include {
@@ -573,10 +573,7 @@ driver iidc {
 				indigo_cancel_pending_handler(device, streaming_finalizer);
 				iidc_stop(device);
 				if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-					CCD_STREAMING_COUNT_ITEM->number.value = 0;
 					indigo_finalize_video_stream(device);
-					CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 				}
 				indigo_ccd_abort_exposure_cleanup(device);
 			}

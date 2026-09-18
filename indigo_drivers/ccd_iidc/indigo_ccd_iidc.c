@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000010
+#define DRIVER_VERSION       0x03000011
 #define DRIVER_NAME          "indigo_ccd_iidc"
 #define DRIVER_LABEL         "IIDC Compatible Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -552,10 +552,7 @@ static void ccd_abort_exposure_handler(indigo_device *device) {
 	indigo_cancel_pending_handler(device, streaming_finalizer);
 	iidc_stop(device);
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-		CCD_STREAMING_COUNT_ITEM->number.value = 0;
 		indigo_finalize_video_stream(device);
-		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 	}
 	indigo_ccd_abort_exposure_cleanup(device);
 	//- ccd.CCD_ABORT_EXPOSURE.on_change
@@ -1019,7 +1016,7 @@ indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *i
 #include "indigo_ccd_iidc.h"
 
 indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "IIDC Compatible Camera", __FUNCTION__, 0x03000010, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "IIDC Compatible Camera", __FUNCTION__, 0x03000011, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

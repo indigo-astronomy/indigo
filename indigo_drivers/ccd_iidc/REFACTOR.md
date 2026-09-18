@@ -114,3 +114,19 @@ Covered by `Rejected change keeps values` in `indigo_test/integration/test_ccd_i
 ```sh
 cd indigo_test && ./build/integration/test_ccd_iidc_sdk "Rejected change"
 ```
+
+## Atik GP hardware regression test (2026-09-18)
+
+`indigo_test/hardware/test_ccd_iidc_hw.c` and `make -C indigo_test test-ccd-iidc-hw` turn the manual Atik GP acceptance run into a repeatable test: discovery and identity, connect, every advertised `CCD_MODE` with one exposure each, `CCD_GAIN` and `CCD_GAMMA`, finite and indefinite streaming with abort, refused geometry changes during acquisition, disconnect/reconnect, driver shutdown/reload and a fresh exposure, plus a check that no frame violated the RAW header contract. `HW_HOTPLUG=1` adds the physical unplug/replug section; it was not exercised in this run.
+
+The accepted control change is checked the same way as the refused one: after `CCD_GAIN` or `CCD_GAMMA` reaches OK, both `value` and `target` must hold the requested number, and the original setting is restored with the same check. The requested number is an advertised limit rather than the midpoint, because the camera can already sit at the midpoint and the check would then compare a value with itself. The refused path of these two properties still needs an injected `dc1394_feature_set_absolute_value()` failure and stays in `test_ccd_iidc_sdk.c`; the `CCD_MODE` and `CCD_FRAME` busy guards, on the other hand, are reachable on hardware and are covered here by requesting a geometry change during indefinite streaming and requiring ALERT with every value and target unchanged. The in-process client sees the driver-side property directly, so the `do_update` item marking of `reject_change` is not observable here and remains covered at protocol level.
+
+Found and fixed (version 16 to 17): aborting an acquisition published `CCD_ABORT_EXPOSURE` in ALERT. The handler settled `CCD_STREAMING` to OK before calling `indigo_ccd_abort_exposure_cleanup()`, so the cleanup saw neither an exposure nor a stream in progress and took its "nothing was running" branch. The handler now only finalizes the video stream and leaves both states to the cleanup, as `ccd_asi` and `ccd_playerone` already do. A consequence of the delegation is that aborting a *finite* stream now reports `CCD_STREAMING` ALERT instead of OK, which is the framework contract for an incomplete stream. Regression: the abort step of the hardware test, which fails when the old handler body is put back.
+
+`MODE_3` (`MONO 16 1280x960`, legacy fixed mode) never delivers a frame on this camera. A standalone program driving libdc1394 directly, without INDIGO, reproduces it with one-shot and with continuous transmission, with the camera default framerate and with an explicitly selected supported one (7.5 fps), so it is a camera/SDK limitation and not a driver defect. Exclude it by name; the default run stays strict:
+
+```sh
+make -C indigo_test test-ccd-iidc-hw HW_SKIP_MODES=MODE_3
+```
+
+Result on 2026-09-18 with Atik GP (Chameleon CMLN-13S2M, USB 1e10:2005): passed, 9 of 10 modes exercised, 0 invalid frames. `make -C indigo_test test-ccd-iidc-sdk` and `test-ccd-iidc-sdk-sanitize` pass unchanged with version 17.
