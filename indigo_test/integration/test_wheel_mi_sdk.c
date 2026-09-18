@@ -494,7 +494,7 @@ static void metadata_and_property_contract(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_wheel_mi(INDIGO_DRIVER_INFO, &info));
 	ASSERT_STREQ("indigo_wheel_mi", info.name);
 	ASSERT_STREQ("Moravian Instruments SFW", info.description);
-	ASSERT_EQ_INT(0x03000004, info.version);
+	ASSERT_EQ_INT(0x03000005, info.version);
 	ASSERT_TRUE(info.multi_device_support);
 	const char *base[] = { INFO_PROPERTY_NAME, CONFIG_PROPERTY_NAME, PROFILE_NAME_PROPERTY_NAME, PROFILE_PROPERTY_NAME, CONNECTION_PROPERTY_NAME };
 	for (int i = 0; i < ARRAY_SIZE(base); i++) {
@@ -688,11 +688,18 @@ static void move_and_reinit_busy_exclusion(void) {
 	ASSERT_TRUE(wait_atomic(&reinit_entered, 1));
 	ASSERT_EQ_INT(INDIGO_BUSY_STATE, property_state(0, COMMANDS_PROPERTY));
 	int calls = atomic_load(&wheels[0].set_calls);
+	double rejected_value = slot_value(0), rejected_target = slot_target(0);
 	ASSERT_TRUE(set_slot(0, 3));
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, property_state(0, WHEEL_SLOT_PROPERTY_NAME));
 	ASSERT_EQ_INT(calls, atomic_load(&wheels[0].set_calls));
+	// The reject_change guard marks every item, so the driver-side slot is forced back to the client.
+	ASSERT_NEAR(rejected_value, slot_value(0), 0.001);
+	ASSERT_NEAR(rejected_target, slot_target(0), 0.001);
 	atomic_store(&release_reinit, true);
 	ASSERT_TRUE(wait_state(0, COMMANDS_PROPERTY, INDIGO_OK_STATE));
+	// A guard must not be sticky once the wheel is idle again.
+	ASSERT_TRUE(set_slot(0, 3));
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
 }
 
 static void disconnect_waits_for_active_sdk_call(void) {

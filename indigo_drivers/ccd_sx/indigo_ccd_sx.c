@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000010
+#define DRIVER_VERSION       0x03000011
 #define DRIVER_NAME          "indigo_ccd_sx"
 #define DRIVER_LABEL         "Starlight Xpress Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -704,6 +704,16 @@ static bool sx_set_cooler(indigo_device *device, bool status, double target, dou
 	return rc >= 0;
 }
 
+// The camera supports symmetric 1x1, 2x2 and 4x4 binning only; the requested pair decides, not the value the property still holds.
+static bool sx_rejected_binning(indigo_device *device, indigo_property *property) {
+	double horizontal = CCD_BIN_HORIZONTAL_ITEM->number.value, vertical = CCD_BIN_VERTICAL_ITEM->number.value;
+	for (int i = 0; i < property->count; i++) {
+		if (!strcmp(property->items[i].name, CCD_BIN_HORIZONTAL_ITEM_NAME)) { horizontal = property->items[i].number.value; }
+		if (!strcmp(property->items[i].name, CCD_BIN_VERTICAL_ITEM_NAME)) { vertical = property->items[i].number.value; }
+	}
+	return !(horizontal == 1 || horizontal == 2 || horizontal == 4) || horizontal != vertical;
+}
+
 static bool sx_guide_relays(indigo_device *device, unsigned short relay_mask) {
 	libusb_device_handle *handle = PRIVATE_DATA->handle;
 	unsigned char *setup_data = PRIVATE_DATA->setup_data;
@@ -1151,18 +1161,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(CCD_FRAME_PROPERTY, ccd_frame_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
-		//+ ccd.CCD_BIN.on_change_request
-		double h = CCD_BIN_HORIZONTAL_ITEM->number.value;
-		double v = CCD_BIN_VERTICAL_ITEM->number.value;
-		for (int i = 0; i < property->count; i++) {
-			if (!strcmp(property->items[i].name, CCD_BIN_HORIZONTAL_ITEM_NAME)) { h = property->items[i].number.value; }
-			if (!strcmp(property->items[i].name, CCD_BIN_VERTICAL_ITEM_NAME)) { v = property->items[i].number.value; }
-		}
-		if (!(h == 1 || h == 2 || h == 4) || h != v) {
-			INDIGO_UPDATE_PROPERTY_STATE(CCD_BIN_PROPERTY, INDIGO_ALERT_STATE, "Unsupported binning");
+		if (sx_rejected_binning(device, property)) {
+			for (int i = 0; i < CCD_BIN_PROPERTY->count; i++) {
+				CCD_BIN_PROPERTY->items[i].do_update = true;
+			}
+			CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_BIN_PROPERTY, "Unsupported binning");
 			return INDIGO_OK;
 		}
-		//- ccd.CCD_BIN.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(CCD_BIN_PROPERTY, ccd_bin_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_COOLER_PROPERTY, property)) {

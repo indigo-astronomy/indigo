@@ -381,3 +381,15 @@ Validation:
 - Hardware, SX LodeStar #0101 on macOS 26.6.2 arm64: the guider case passed 8 consecutive runs (3 plus 5 in a stress loop), where 3.0.0.15 deadlocked in 6 of 8 runs. Measured replacement behaviour: an 800 ms pulse replaced after 200 ms by a 200 ms pulse ends the axis after 0.411 s, 0.421 s and 0.408 s in three runs, and a zero request cancelled a running 3000 ms pulse after 0.313 s, 0.318 s and 0.316 s.
 - The complete hardware suite (identity and property contract, shared lifecycle, acquisition, abort, uncooled profile, guider pulses, guider pulse timing, flood LED, teardown and reload) passed on the LodeStar with 3.0.0.16.
 - Not retested with 3.0.0.16: the SXVR-H694, because it was unplugged when the fix was validated. Its cooling row and the physical hot-plug case therefore remain evidence from 3.0.0.15, whose acquisition, cooling and hot-plug paths are untouched by this fix.
+
+## Binning refusal moved to reject_change (2026-09-18, 3.0.0.17)
+
+`CCD_BIN` accepts 1x1, 2x2 and 4x4 only, and the guard rejecting anything else lived in an `on_change_request` block that published ALERT and returned. Such an update carries no items, so the client kept displaying the binning it had asked for while the camera stayed on the previous one. The guard is now declared with the generator's `reject_change` block, which marks every item for update before publishing ALERT, so the refusal sends the actual driver-side pair back. The condition has to judge the requested values rather than the stored ones, so it calls `sx_rejected_binning(device, property)` in the shared code block; the block's body is the previous test, unchanged.
+
+Hardware coverage in `indigo_test/hardware/test_ccd_sx_hw.c` (`Acquisition units, frame types, bins and ROI`): an accepted 2x2 change must commit `value` and `target` for both items, each refused pair — 3x3, 1x2 and 5x5 — must leave both items' `value` **and** `target` on the last accepted pair, and a 2x2 change accepted after the refusals must still produce a half-sized frame. The `target` half is what the new `target_of()` helper adds; the value half was already asserted. The `do_update` marking itself is not observable from an in-process client, which reads the driver-side property directly, and stays covered at protocol level.
+
+Validation on 2026-09-18 with SXVR-H694 #0201 (2750x2200, 4.54 um, cooler, Star2K, no flood LED; USB 1278:0194):
+
+- `make -C indigo_test test-ccd-sx-hw`: all 9 cases pass with 3.0.0.17, hot-plug excluded as requested.
+- `indigo_test/build/integration/test_ccd_sx_usb`: all 24 groups pass. The expected driver version was updated to `0x03000011` in that file and in the hardware test.
+- Regression evidence: making the refusal copy the requested targets before publishing ALERT fails the new check at `test_ccd_sx_hw.c:726`, while every pre-existing assertion still passes.
