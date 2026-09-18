@@ -20,7 +20,7 @@ driver qhy {
 	label = "QHY CCD (legacy) Camera";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2017-2026 Rumen G. Bogdanovski";
-	version = 31;
+	version = 32;
 	cpp = true;
 	supported_architecture = "!defined(INDIGO_MACOS) || defined(__x86_64__)";
 	include {
@@ -477,15 +477,6 @@ driver qhy {
 			}
 		}
 
-		static bool qhy_busy(indigo_device *device, indigo_property *property) {
-			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-				property->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, property, "Acquisition in progress");
-				return true;
-			}
-			return false;
-		}
-
 		static void guider_ra_finalizer(indigo_device *device) {
 			GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -739,10 +730,9 @@ driver qhy {
 		}
 		inherited CCD_GAIN {
 			preserve_values = true;
-			on_change_request {
-				if (qhy_busy(device, CCD_GAIN_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				if (!qhy_write_control(device, CONTROL_GAIN, CCD_GAIN_ITEM)) {
@@ -752,10 +742,9 @@ driver qhy {
 		}
 		inherited CCD_OFFSET {
 			preserve_values = true;
-			on_change_request {
-				if (qhy_busy(device, CCD_OFFSET_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				if (!qhy_write_control(device, CONTROL_OFFSET, CCD_OFFSET_ITEM)) {
@@ -765,10 +754,9 @@ driver qhy {
 		}
 		inherited CCD_GAMMA {
 			preserve_values = true;
-			on_change_request {
-				if (qhy_busy(device, CCD_GAMMA_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				if (!qhy_write_control(device, CONTROL_GAMMA, CCD_GAMMA_ITEM)) {
@@ -778,10 +766,9 @@ driver qhy {
 		}
 		inherited CCD_FRAME {
 			preserve_values = true;
-			on_change_request {
-				if (qhy_busy(device, CCD_FRAME_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				int bin = CCD_BIN_HORIZONTAL_ITEM->number.value;
@@ -802,10 +789,9 @@ driver qhy {
 		}
 		inherited CCD_BIN {
 			preserve_values = true;
-			on_change_request {
-				if (qhy_busy(device, CCD_BIN_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				int bin = CCD_BIN_HORIZONTAL_ITEM->number.target != CCD_BIN_HORIZONTAL_ITEM->number.value ? CCD_BIN_HORIZONTAL_ITEM->number.target : CCD_BIN_VERTICAL_ITEM->number.target;
@@ -819,10 +805,9 @@ driver qhy {
 			}
 		}
 		inherited CCD_MODE {
-			on_change_request {
-				if (qhy_busy(device, CCD_MODE_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
@@ -852,10 +837,9 @@ driver qhy {
 			persistent = true;
 			item RAW8 { name = "RAW 8"; label = "RAW 8"; }
 			item RAW16 { name = "RAW 16"; label = "RAW 16"; value = true; }
-			on_change_request {
-				if (qhy_busy(device, X_PIXEL_FORMAT_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				for (int i = 0; i < X_PIXEL_FORMAT_PROPERTY->count; i++) {
@@ -875,10 +859,9 @@ driver qhy {
 			group = CCD_ADVANCED_GROUP;
 			persistent = true;
 			preserve_values = true;
-			on_change_request {
-				if (qhy_busy(device, X_ADVANCED_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				for (int i = 0; i < X_ADVANCED_PROPERTY->count; i++) {
@@ -894,10 +877,9 @@ driver qhy {
 			group = CCD_ADVANCED_GROUP;
 			hidden = true;
 			persistent = true;
-			on_change_request {
-				if (qhy_busy(device, X_READ_MODE_PROPERTY)) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Acquisition in progress";
 			}
 			on_change {
 				X_READ_MODE_PROPERTY->state = INDIGO_ALERT_STATE;

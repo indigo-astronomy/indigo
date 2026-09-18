@@ -623,3 +623,16 @@ Artifacts: `/tmp/qhy-legacy-hotplug/hardware-correct-firmware.log`, `/tmp/qhy-le
 ### Xcode SDK header collision fixed (2026-09-12)
 
 The indigo_m1 Xcode header map resolved the unqualified qhyccd.h include in QHY2 to the legacy SDK header, producing eight undeclared-function errors (modern read modes, single-frame timeout and autodetection). Replaying the exact failing Xcode compiler command with include tracing confirmed the legacy path. Both definitions now include their own bin_externals/qhyccd/include/qhyccd.h explicitly and advance to version 31. Generated outputs were refreshed. The same Xcode compiler arguments now select the modern header and compile the QHY2 object successfully. This is an include-selection fix with no lifecycle/property change; hardware retesting is unnecessary.
+
+
+### `reject_change` migration (2026-09-18)
+
+The hand-written `qhy_busy()` helper, called from the `on_change_request` block of `CCD_GAIN`, `CCD_OFFSET`, `CCD_GAMMA`, `CCD_FRAME`, `CCD_BIN`, `CCD_MODE`, `X_PIXEL_FORMAT`, `X_ADVANCED` and `X_READ_MODE`, was replaced by the generator's `reject_change` block with the same condition and message, and the helper was removed. Version increased from 31 to 32 (`0x0300001F` to `0x03000020`). This matches the change already applied to `ccd_qhy2`. The behavioral difference is the per-item `do_update` marking the generator emits and the helper did not; without it the protocol adapter omits unchanged items and a client keeps displaying the value the driver refused.
+
+Regeneration is deterministic; a second run produces byte-identical output. SHA-1 values are `5504b144a49b4c01f6224369ae8233c31a7b8d75`, `ac79c662f85d2a4c7520c1c0a6a0dd7358c5774e` and `69d33765a343401769c4b42cc5b9a3a9dd01d530` for `.cpp`, `.h` and `_main.c`; the `.h` and `_main.c` outputs are unchanged.
+
+Validation: both fake-SDK suites pass, 74 test bodies over `indigo_ccd_qhy` and `indigo_ccd_qhy2` (`make -C indigo_test test-ccd-qhy-sdk`), including the extended `acquisition conflicts` case that asserts a refused `CCD_GAIN`, `CCD_OFFSET` or `CCD_GAMMA` change keeps `value`, `target` and the SDK parameter during an exposure and during a stream, and is accepted again once idle.
+
+Hardware: the `reject` scenario of `indigo_test/hardware/test_ccd_qhy_hw.c` passed against a QHY5III178M under x86_64/Rosetta — all eight exposed guards refused with `Acquisition in progress`, values and targets preserved, the exposure still delivered its image, the stream behaved the same, and the guards were not sticky. `X_READ_MODE` is not exposed for this camera by this driver.
+
+The full scenario set was not completed and is not claimed. It hangs in the `switching` scenario, round 1 RAW 16, with the vendor SDK spinning inside `QHY5IIIBASE::GetSingleFrame` and the disconnect blocked behind it in `indigo_queue_remove`. The identical hang reproduces against the pre-migration driver (`0x0300001F`) rebuilt from stash, so it is unrelated to this change. A QHY5III178M is a modern camera driven through the legacy SDK and is not a suitable device for legacy acceptance; the legacy profile still needs a legacy camera such as the QHY5LII-M used earlier. Note also that the hardware test has no overall watchdog, so an SDK call that never returns blocks the run indefinitely.
