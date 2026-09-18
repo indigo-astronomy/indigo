@@ -158,3 +158,15 @@ make -B -C indigo_test test-ccd-svb-sdk-sanitize
 - Arm64 ThreadSanitizer run, built by overriding `SVB_CCD_SANITIZE_CFLAGS`/`SVB_CCD_SANITIZE_LDFLAGS` with `-fsanitize=thread`: 47 / 47 cases pass, 6 data races reported. The identical run against the pre-change driver reports the same 6 races in the same functions, so the removal introduces none. They are property and private-data races between the driver queue and the master-device queue that the removed mutex never covered: `ccd_connection_handler` versus `ccd_timer_callback`, `ccd_temperature_callback` versus the connection path, one in the test harness itself, and one on the guider RA path. They are recorded here as a pre-existing finding, not fixed by this change, and `libindigo.a` is not instrumented in that build so the happens-before edges inside `indigo_timer.c` are invisible to the detector.
 - Regeneration is deterministic. Final SHA-1 values are `8bbc37c7c3645d5d317d05865a00b3550e67fd2e`, `31802bf3964357cafbbad6b01416aeca13439b37` and `d4e39ae7cdc1bb9f081895f8fbc3b45b7d1b51e2` for `.c`, `.h` and `_main.c`; the `.h` and `_main.c` outputs are unchanged.
 - No hardware was available for this change; the SV305Pro workflow was not repeated.
+
+## Rejected-change hardware regression (2026-09-18, SV305PRO, no replug)
+
+`indigo_test/hardware/test_ccd_svb_hw.c` now covers the `reject_change` guards on real hardware. During a 5 s exposure every guarded property is asked for a value it does not hold; `CCD_GAIN`, `CCD_GAMMA`, `CCD_OFFSET`, `CCD_FRAME`, `CCD_MODE`, `CCD_BIN`, `X_PIXEL_FORMAT` and `X_ADVANCED` each returned ALERT with unchanged values and targets and the `Acquisition in progress` message, the exposure still delivered its image, `CCD_GAIN` and `CCD_FRAME` were refused the same way during an unbounded stream, and the guards were not sticky: the refused properties were accepted again once the camera was idle. `CCD_MODE` is only exercised on the refusal path, because restoring it would reprogram frame and binning together. Because the harness client is in process, the assertions cover the refusal state, the preserved driver values and the message; the generated per-item `do_update` marking is only observable through a protocol adapter and is covered by the fake-SDK suite instead.
+
+```sh
+make -C indigo_test test-ccd-svb-hw
+```
+
+Result: `SVB hardware: all tests passed`, including four pixel formats at bin 1 and 2, ROI/bin, config roundtrip, streaming, guider pulses and driver shutdown/reinitialization. Hotplug was not exercised in this run.
+
+Three earlier attempts failed with `SVB_ERROR_TIMEOUT` (11) in `acquisition_finalizer` on the first readouts, while another INDIGO application had the camera open and immediately after it released it mid-acquisition. A USB replug restored the camera and the run above passed unchanged, so this is a device-state effect of the concurrent claim, not a driver defect; the SV305PRO needs exclusive access for this test.

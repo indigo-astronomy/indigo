@@ -59,6 +59,7 @@ typedef struct {
 	indigo_property_state state;
 } abort_measurement;
 static abort_measurement abort_probe;
+static char last_message_property[INDIGO_NAME_SIZE], last_message_text[INDIGO_VALUE_SIZE];
 static char config_folder[] = "/tmp/indigo_svb_hw_XXXXXX";
 
 const char *svb_test_config_folder(void) {
@@ -185,6 +186,13 @@ static indigo_result update_property(indigo_client *client, indigo_device *devic
 }
 
 static indigo_result report_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// The bus delivers a property message through send_message, not through the update callback.
+	if (property && message && *message) {
+		pthread_mutex_lock(&mutex);
+		snprintf(last_message_property, INDIGO_NAME_SIZE, "%s", property->name);
+		snprintf(last_message_text, INDIGO_VALUE_SIZE, "%s", message);
+		pthread_mutex_unlock(&mutex);
+	}
 	fprintf(stderr, "    message: %s\n", message ? message : "");
 	return INDIGO_OK;
 }
@@ -474,6 +482,164 @@ static indigo_property_state cached_state(const char *name) {
 	return state;
 }
 
+typedef struct {
+	const char *name;
+	bool restore;
+} guarded_property;
+
+// Every property carrying a reject_change guard in indigo_ccd_svb.driver. Restoring the mode would
+// reprogram frame and binning together, so it is only refused here and left in its alert state.
+static const guarded_property guarded_properties[] = {
+	{ "CCD_GAIN", true },
+	{ "CCD_GAMMA", true },
+	{ "CCD_OFFSET", true },
+	{ "CCD_FRAME", true },
+	{ "CCD_MODE", false },
+	{ "CCD_BIN", true },
+	{ "X_PIXEL_FORMAT", true },
+	{ "X_ADVANCED", true }
+};
+
+static void clear_message(void) {
+	pthread_mutex_lock(&mutex);
+	*last_message_property = *last_message_text = 0;
+	pthread_mutex_unlock(&mutex);
+}
+
+static bool message_reported(const char *name, const char *text) {
+	pthread_mutex_lock(&mutex);
+	bool ok = !strcmp(last_message_property, name) && !strcmp(last_message_text, text);
+	pthread_mutex_unlock(&mutex);
+	return ok;
+}
+
+static bool same_values(indigo_property *a, indigo_property *b) {
+	if (!a || !b || a->type != b->type || a->count != b->count) {
+		return false;
+	}
+	for (int i = 0; i < a->count; i++) {
+		indigo_item *x = a->items + i, *y = b->items + i;
+		if (strcmp(x->name, y->name)) {
+			return false;
+		}
+		if (a->type == INDIGO_NUMBER_VECTOR && (x->number.value != y->number.value || x->number.target != y->number.target)) {
+			return false;
+		}
+		if (a->type == INDIGO_SWITCH_VECTOR && x->sw.value != y->sw.value) {
+			return false;
+		}
+		if (a->type == INDIGO_TEXT_VECTOR && strcmp(x->text.value, y->text.value)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+// Requests a value the property does not hold, so an accepted change would be visible in the cache.
+static bool request_other_value(indigo_property *property) {
+	indigo_item *item = property->items;
+	if (property->type == INDIGO_NUMBER_VECTOR) {
+		double value = item->number.value < item->number.max ? item->number.value + 1 : item->number.min;
+		if (value > item->number.max) {
+			value = item->number.max;
+		}
+		if (value == item->number.value) {
+			return false;
+		}
+		indigo_change_number_property_1(&client, devices[camera].name, property->name, item->name, value);
+		return true;
+	}
+	if (property->type == INDIGO_SWITCH_VECTOR) {
+		for (int i = 0; i < property->count; i++) {
+			if (!property->items[i].sw.value) {
+				indigo_change_switch_property_1(&client, devices[camera].name, property->name, property->items[i].name, true);
+				return true;
+			}
+		}
+		return false;
+	}
+	if (property->type == INDIGO_TEXT_VECTOR) {
+		indigo_change_text_property_1(&client, devices[camera].name, property->name, item->name, strcmp(item->text.value, "REJECT") ? "REJECT" : "REJECTED");
+		return true;
+	}
+	return false;
+}
+
+static bool rejected_while_busy(const char *name, const char *phase) {
+	indigo_property *before = snapshot(camera, name);
+	if (!before) {
+		printf("    %s is not exposed by this camera, %s guard skipped\n", name, phase);
+		return true;
+	}
+	if (before->perm != INDIGO_RW_PERM) {
+		printf("    %s is read-only, %s guard skipped\n", name, phase);
+		indigo_release_property(before);
+		return true;
+	}
+	unsigned before_revision = revision(camera, name);
+	clear_message();
+	if (!request_other_value(before)) {
+		printf("    %s holds no alternative value, %s guard skipped\n", name, phase);
+		indigo_release_property(before);
+		return true;
+	}
+	bool refused = wait_state(camera, name, before_revision, INDIGO_ALERT_STATE);
+	indigo_property *after = snapshot(camera, name);
+	bool preserved = same_values(before, after), reported = message_reported(name, "Acquisition in progress");
+	printf("    %s change during %s: refused %s, driver values preserved %s, message %s\n", name, phase, refused ? "PASS" : "FAIL", preserved ? "PASS" : "FAIL", reported ? "PASS" : "FAIL");
+	indigo_release_property(before);
+	indigo_release_property(after);
+	return refused && preserved && reported;
+}
+
+// The in-process client receives the driver properties directly, so this covers the refusal state,
+// the preserved driver values and the message; the generated per-item do_update marking is only
+// observable through a protocol adapter.
+static bool reject_change_guards(void) {
+	indigo_property *saved[ARRAY_SIZE(guarded_properties)] = { 0 };
+	for (int i = 0; i < ARRAY_SIZE(guarded_properties); i++) {
+		saved[i] = guarded_properties[i].restore ? snapshot(camera, guarded_properties[i].name) : NULL;
+	}
+	unsigned before_frames = frames(), exposure_revision = revision(camera, "CCD_EXPOSURE");
+	indigo_change_number_property_1(&client, devices[camera].name, "CCD_EXPOSURE", "EXPOSURE", 5);
+	bool started = wait_state(camera, "CCD_EXPOSURE", exposure_revision, INDIGO_BUSY_STATE), ok = started;
+	for (int i = 0; started && i < ARRAY_SIZE(guarded_properties); i++) {
+		if (cached_state("CCD_EXPOSURE") != INDIGO_BUSY_STATE) {
+			fprintf(stderr, "Exposure ended before %s was tested\n", guarded_properties[i].name);
+			ok = false;
+			break;
+		}
+		// Report every guard in one run; a single refusal failure must not hide the others.
+		ok = rejected_while_busy(guarded_properties[i].name, "exposure") && ok;
+	}
+	bool completed = wait_state(camera, "CCD_EXPOSURE", exposure_revision, INDIGO_OK_STATE) && frames() == before_frames + 1;
+	printf("    exposure completed with its image after the refused changes: %s\n", completed ? "PASS" : "FAIL");
+	ok = ok && completed;
+	// The same guard condition also covers a busy stream, so repeat it for two representative properties.
+	if (completed) {
+		unsigned stream_revision = revision(camera, "CCD_STREAMING");
+		indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.1, -1 });
+		bool streaming = wait_state(camera, "CCD_STREAMING", stream_revision, INDIGO_BUSY_STATE);
+		if (streaming) {
+			ok = rejected_while_busy("CCD_GAIN", "streaming") && ok;
+			ok = rejected_while_busy("CCD_FRAME", "streaming") && ok;
+		}
+		stream_revision = revision(camera, "CCD_STREAMING");
+		ok = switch_value(camera, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE) && ok;
+		ok = wait_state(camera, "CCD_STREAMING", stream_revision, INDIGO_OK_STATE) && streaming && ok;
+	}
+	// A guard must not be sticky: the same properties are accepted again once the camera is idle.
+	for (int i = 0; i < ARRAY_SIZE(guarded_properties); i++) {
+		if (saved[i] && !restore_property(saved[i])) {
+			fprintf(stderr, "%s was not accepted after the acquisition finished\n", guarded_properties[i].name);
+			ok = false;
+		}
+		indigo_release_property(saved[i]);
+	}
+	printf("    reject_change guards: %s\n", ok ? "PASS" : "FAIL");
+	return ok;
+}
+
 static bool abort_latency_trials(void) {
 	indigo_property *saved_format = snapshot(camera, "CCD_IMAGE_FORMAT");
 	indigo_property *saved_upload = snapshot(camera, "CCD_UPLOAD_MODE");
@@ -643,6 +809,7 @@ static void hardware_workflows(void) {
 		CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
 		CHECK(frames() == before + 1);
 	}
+	CHECK(reject_change_guards());
 	CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 5, INDIGO_BUSY_STATE));
 	// Allow delayed SDK setup to start the physical exposure before aborting it.
 	indigo_usleep(500000);
