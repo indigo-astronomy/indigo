@@ -264,6 +264,73 @@ static bool restore(indigo_property *property) {
 	return wait_state(camera, property->name, before, INDIGO_OK_STATE);
 }
 
+static bool same_values(indigo_property *before, indigo_property *after) {
+	if (!before || !after || before->type != after->type || before->count != after->count) {
+		return false;
+	}
+	for (int i = 0; i < before->count; i++) {
+		indigo_item *before_item = before->items + i, *after_item = after->items + i;
+		if (strcmp(before_item->name, after_item->name)) {
+			return false;
+		}
+		if (before->type == INDIGO_NUMBER_VECTOR && (before_item->number.value != after_item->number.value || before_item->number.target != after_item->number.target)) {
+			return false;
+		}
+		if (before->type == INDIGO_SWITCH_VECTOR && before_item->sw.value != after_item->sw.value) {
+			return false;
+		}
+	}
+	return true;
+}
+
+// An accepted change must commit value and target together, so a later refusal has a previous value to fall back to.
+static bool accept_number(int d, const char *name, const char *item, double value) {
+	if (!number_value(d, name, item, value, INDIGO_OK_STATE)) {
+		return false;
+	}
+	indigo_property *after = snapshot(d, name);
+	bool committed = false;
+	if (after) {
+		for (int i = 0; i < after->count; i++) {
+			if (!strcmp(after->items[i].name, item)) {
+				committed = after->items[i].number.value == value && after->items[i].number.target == value;
+			}
+		}
+	}
+	indigo_release_property(after);
+	if (!committed) {
+		fprintf(stderr, "Accepted %s did not commit value and target to %.6g\n", name, value);
+	}
+	return committed;
+}
+
+// A refused change must publish ALERT and leave every value and target of the property untouched.
+static bool reject_number_change(int d, const char *name, const char *item, double value) {
+	printf("Refused %s.%s = %.6g expected\n", name, item, value);
+	indigo_property *before = snapshot(d, name);
+	unsigned revision_before = revision(d, name);
+	indigo_change_number_property_1(&client, devices[d].name, name, item, value);
+	bool result = wait_state(d, name, revision_before, INDIGO_ALERT_STATE);
+	indigo_property *after = snapshot(d, name);
+	result = result && same_values(before, after);
+	indigo_release_property(before);
+	indigo_release_property(after);
+	return result;
+}
+
+static bool reject_switch_change(int d, const char *name, const char *item) {
+	printf("Refused %s.%s = ON expected\n", name, item);
+	indigo_property *before = snapshot(d, name);
+	unsigned revision_before = revision(d, name);
+	indigo_change_switch_property_1(&client, devices[d].name, name, item, true);
+	bool result = wait_state(d, name, revision_before, INDIGO_ALERT_STATE);
+	indigo_property *after = snapshot(d, name);
+	result = result && same_values(before, after);
+	indigo_release_property(before);
+	indigo_release_property(after);
+	return result;
+}
+
 static bool selected(const char *name) {
 	const char *scenario = getenv("ATIK_HW_CASE");
 	return !scenario || !strcmp(scenario, name);
@@ -388,36 +455,41 @@ static void hardware_workflows(void) {
 	if (selected("cooling")) {
 		cooler = snapshot(camera, "CCD_COOLER");
 		temperature = snapshot(camera, "CCD_TEMPERATURE");
-		CHECK(cooler != NULL && temperature != NULL && temperature->perm == INDIGO_RW_PERM);
-		double initial = temperature->items[0].number.value;
-		double target = initial - 3;
-		CHECK(target >= temperature->items[0].number.min);
-		printf("Cooling from %.2f to %.2f C\n", initial, target);
-		CHECK(number_value(camera, "CCD_TEMPERATURE", "TEMPERATURE", target, INDIGO_BUSY_STATE));
-		bool settled = false, power_seen = false;
-		for (int i = 0; i < 1200; i++) {
-			indigo_property *current = snapshot(camera, "CCD_TEMPERATURE");
-			indigo_property *power = snapshot(camera, "CCD_COOLER_POWER");
-			bool failed = !current || !power || current->state == INDIGO_ALERT_STATE || power->state == INDIGO_ALERT_STATE;
-			if (!failed) {
-				power_seen |= power->items[0].number.value > 0;
-				settled = current->state == INDIGO_OK_STATE && current->items[0].number.value <= target + .5 && current->items[0].number.value >= target - .5;
-				if (i % 50 == 0 || settled) {
-					printf("Cooling: %.2f C, power %.0f%%, state %d\n", current->items[0].number.value, power->items[0].number.value, current->state);
+		if (!cooler && !temperature) {
+			// Uncooled models do not define the cooler properties at all; a cooled one must expose both.
+			printf("Cooler is not exposed by this camera; cooling scenario skipped\n");
+		} else {
+			CHECK(cooler != NULL && temperature != NULL && temperature->perm == INDIGO_RW_PERM);
+			double initial = temperature->items[0].number.value;
+			double target = initial - 3;
+			CHECK(target >= temperature->items[0].number.min);
+			printf("Cooling from %.2f to %.2f C\n", initial, target);
+			CHECK(number_value(camera, "CCD_TEMPERATURE", "TEMPERATURE", target, INDIGO_BUSY_STATE));
+			bool settled = false, power_seen = false;
+			for (int i = 0; i < 1200; i++) {
+				indigo_property *current = snapshot(camera, "CCD_TEMPERATURE");
+				indigo_property *power = snapshot(camera, "CCD_COOLER_POWER");
+				bool failed = !current || !power || current->state == INDIGO_ALERT_STATE || power->state == INDIGO_ALERT_STATE;
+				if (!failed) {
+					power_seen |= power->items[0].number.value > 0;
+					settled = current->state == INDIGO_OK_STATE && current->items[0].number.value <= target + .5 && current->items[0].number.value >= target - .5;
+					if (i % 50 == 0 || settled) {
+						printf("Cooling: %.2f C, power %.0f%%, state %d\n", current->items[0].number.value, power->items[0].number.value, current->state);
+					}
 				}
+				indigo_release_property(current);
+				indigo_release_property(power);
+				CHECK(!failed);
+				if (settled && power_seen) {
+					break;
+				}
+				indigo_usleep(100000);
 			}
-			indigo_release_property(current);
-			indigo_release_property(power);
-			CHECK(!failed);
-			if (settled && power_seen) {
-				break;
-			}
-			indigo_usleep(100000);
+			CHECK(settled && power_seen);
+			CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", .1, INDIGO_OK_STATE));
+			CHECK(switch_value(camera, "CCD_COOLER", "OFF", INDIGO_OK_STATE));
+			printf("Cooler warm-up command accepted; original target/state will be restored\n");
 		}
-		CHECK(settled && power_seen);
-		CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", .1, INDIGO_OK_STATE));
-		CHECK(switch_value(camera, "CCD_COOLER", "OFF", INDIGO_OK_STATE));
-		printf("Cooler warm-up command accepted; original target/state will be restored\n");
 	}
 	if (selected("wheel") && wheel >= 0) {
 		CHECK(switch_value(wheel, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
@@ -444,6 +516,52 @@ static void hardware_workflows(void) {
 			indigo_release_property(original);
 			CHECK(passed);
 		}
+	}
+	if (selected("reject")) {
+		indigo_property *offset = snapshot(camera, "CCD_OFFSET"), *presets = snapshot(camera, "X_PRESETS");
+		char preset[INDIGO_NAME_SIZE] = "";
+		bool passed = true;
+		if (gain) {
+			double other = gain->items[0].number.value == gain->items[0].number.min ? gain->items[0].number.max : gain->items[0].number.min;
+			passed = accept_number(camera, "CCD_GAIN", "GAIN", other) && restore(gain);
+		}
+		if (passed && offset) {
+			double other = offset->items[0].number.value == offset->items[0].number.min ? offset->items[0].number.max : offset->items[0].number.min;
+			passed = accept_number(camera, "CCD_OFFSET", "OFFSET", other) && restore(offset);
+		}
+		if (presets) {
+			for (int i = 0; i < presets->count; i++) {
+				if (!presets->items[i].sw.value && !*preset) {
+					snprintf(preset, sizeof(preset), "%s", presets->items[i].name);
+				}
+			}
+		}
+		// Every guarded property has to refuse a change while an exposure is running and publish its actual values.
+		passed = passed && number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 5, INDIGO_BUSY_STATE);
+		if (passed && bins) {
+			passed = reject_number_change(camera, "CCD_BIN", "HORIZONTAL", bins->items[0].number.max);
+		}
+		if (passed && gain) {
+			passed = reject_number_change(camera, "CCD_GAIN", "GAIN", gain->items[0].number.max);
+		}
+		if (passed && offset) {
+			passed = reject_number_change(camera, "CCD_OFFSET", "OFFSET", offset->items[0].number.max);
+		}
+		if (passed && *preset) {
+			passed = reject_switch_change(camera, "X_PRESETS", preset);
+		}
+		passed = passed && switch_value(camera, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE);
+		// The same change is accepted once the exposure is over.
+		if (passed && bins) {
+			passed = number_value(camera, "CCD_BIN", "HORIZONTAL", bins->items[0].number.max, INDIGO_OK_STATE) && restore(bins);
+		}
+		if (passed && gain) {
+			passed = accept_number(camera, "CCD_GAIN", "GAIN", gain->items[0].number.max) && restore(gain);
+		}
+		indigo_release_property(offset);
+		indigo_release_property(presets);
+		CHECK(passed);
+		printf("Guarded properties refused changes during exposure and accepted them afterwards\n");
 	}
 	if (selected("abort")) {
 		CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 5, INDIGO_BUSY_STATE));
@@ -578,7 +696,7 @@ cleanup:
 
 int main(int argc, char **argv) {
 	if (argc != 4 || strcmp(argv[1], "--run") || !getenv("INDIGO_TEST_DEVICE") || !*getenv("INDIGO_TEST_DEVICE")) {
-		fprintf(stderr, "Set INDIGO_TEST_DEVICE to a unique model/name substring and run --run <driver-library> <entry-symbol>. ATIK_HW_CASE optionally selects exposure, frame_types, geometry, settings, cooling, presets, wheel, abort, guide, hotplug, hotplug_idle or hotplug_active.\n");
+		fprintf(stderr, "Set INDIGO_TEST_DEVICE to a unique model/name substring and run --run <driver-library> <entry-symbol>. ATIK_HW_CASE optionally selects exposure, frame_types, geometry, settings, cooling, presets, wheel, reject, abort, guide, hotplug, hotplug_idle or hotplug_active.\n");
 		return 2;
 	}
 	library_path = argv[2];

@@ -189,3 +189,19 @@ Covered by `rejected_change` in `indigo_test/integration/test_ccd_atik_sdk.c`: a
 ```sh
 cd indigo_test && ./build/integration/test_ccd_atik_sdk rejected_change
 ```
+
+## Hardware coverage of the rejected and accepted change (2026-09-18)
+
+`indigo_test/hardware/test_ccd_atik_hw.c` gained an `ATIK_HW_CASE=reject` scenario. It starts a five second exposure and requires every property carrying the `reject_change` guard and exposed by the connected model — `CCD_BIN`, `CCD_GAIN`, `CCD_OFFSET`, `X_PRESETS` — to answer with ALERT and with every value and target unchanged, then aborts and requires the same change to be accepted. Where `CCD_GAIN` or `CCD_OFFSET` exist, the accepted change is also checked to commit `value` and `target` together before and after the guard, which is the state the refusal path falls back to. The refused SDK write itself still needs an injected `ArtemisCameraSpecificOptionSetData()` failure and stays in `test_ccd_atik_sdk.c`. The in-process client reads the driver-side property directly, so the `do_update` item marking that `reject_change` adds is not observable here and remains covered at protocol level.
+
+The `cooling` scenario now skips itself when the model defines neither `CCD_COOLER` nor `CCD_TEMPERATURE`; a model that exposes one of them still has to expose both with a writable temperature. Without this an uncooled camera could not complete a full run.
+
+Result on 2026-09-18 with Atik Titan (USB 20e7:df2e, driver version 0x03000025): a full run without the hot-plug section passed.
+
+```sh
+INDIGO_TEST_DEVICE="Atik Titan" make -C indigo_test test-ccd-atik-hw
+```
+
+It covered exposures from 0.001 to 16.5 seconds, all five frame types, ROI and all four binning modes, both read modes, the refused and then accepted `CCD_BIN` change, abort and reacquire, guider pulses on all four directions including one during an exposure and one after the camera disconnected, disconnect/reconnect, `dlclose`/`dlopen` of the driver with a fresh exposure, and no invalid RAW frame. Titan exposes no cooler, gain, offset or presets, so `CCD_BIN` is the only guard reachable on this model; the gain/offset branches need a model that exposes them.
+
+Regression evidence: removing the busy guard from the generated `CCD_BIN` branch makes the scenario fail, and the binning change accepted mid-exposure corrupted the frame that followed (82x492 instead of 658x492), which is what the guard prevents.
