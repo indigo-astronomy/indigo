@@ -1,0 +1,1574 @@
+// Copyright (C) 2020-2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Lunatico AAG CloudWatcher / PocketCW driver definition
+
+// version history
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
+driver cloudwatcher {
+	label = "AAG CloudWatcher";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
+	copyright = "Copyright (C) 2020-2026 Rumen G. Bogdanovski";
+	version = 12;
+	serial;
+	include {
+		#include <ctype.h>
+		#include <indigo/indigo_client.h>
+	}
+	define {
+		#define DEFAULT_BAUDRATE 9600
+		#define NO_READING       (-100000)
+		#define MAX_LEN          250
+		// Every reply is a sequence of fixed size blocks terminated by a
+		// handshake block; no reply is longer than six blocks.
+		#define BLOCK_SIZE       15
+		#define MAX_BLOCKS       6
+		#define ABS_ZERO         273.15
+		#define NUMBER_OF_READS  5
+		#define REFRESH_INTERVAL 15.0
+
+		#define SETTINGS_GROUP   "Settings"
+		#define THRESHOLDS_GROUP "Tresholds"
+		#define WARNINGS_GROUP   "Warnings"
+		#define WEATHER_GROUP    "Weather"
+		#define SWITCH_GROUP     "Switch Control"
+		#define STATUS_GROUP     "Device status"
+
+		typedef enum {
+			normal,
+			increasing,
+			pulse
+		} heating_algorithm_state;
+
+		typedef struct {
+			int power_voltage;
+			int ir_sky_temperature;
+			int ir_sensor_temperature;
+			int ambient_temperature;     // In newer models there is no ambient temperature sensor so NO_READING is returned.
+			float rh;
+			float rh_temperature;
+			float atm_pressure;
+			float atm_temperature;
+			int rain_frequency;
+			int rain_heater;
+			int rain_sensor_temperature; // used as ambient temperature in models where there is no ambient temperature sensor
+			int raw_sky_quality;         // Raw sky brightness (NO_READING if sensor not installed)
+			int ldr;                     // Ambient light sensor
+			float wind_speed;            // The wind speed (m/s)
+			double read_duration;        // Reading duration (s)
+		} cloudwatcher_data;
+	}
+	data {
+		float firmware;
+		bool anemometer_black;
+		heating_algorithm_state heating_state;
+		double pulse_start_time;
+		double wet_start_time;
+		float desired_sensor_temperature;
+		float sensor_heater_power;
+		char response[BLOCK_SIZE * MAX_BLOCKS];
+	}
+	code {
+		// The protocol is block structured rather than delimited: a reply is a
+		// whole number of 15 byte blocks and ends with a handshake block whose
+		// second byte is XON. indigo_uni_read_section2() cannot express that,
+		// so the reply is assembled block by block here. The new sky darkness
+		// sensor may need up to 15 s per byte in complete darkness.
+		static bool cloudwatcher_command(indigo_device *device, int block_count, const char *format, ...) {
+			assert(block_count > 0 && block_count <= MAX_BLOCKS);
+			char *response = PRIVATE_DATA->response;
+			int max = block_count * BLOCK_SIZE;
+			int index = 0;
+			indigo_uni_discard(PRIVATE_DATA->handle);
+			va_list args;
+			va_start(args, format);
+			long written = indigo_uni_vprintf(PRIVATE_DATA->handle, format, args);
+			va_end(args);
+			if (written <= 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to write to %s", DEVICE_PORT_ITEM->text.value);
+				return false;
+			}
+			while (index < max) {
+				if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(15)) <= 0) {
+					break;
+				}
+				if (indigo_uni_read(PRIVATE_DATA->handle, response + index, 1) < 1) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s", DEVICE_PORT_ITEM->text.value);
+					return false;
+				}
+				index++;
+				// The handshake block ends the reply.
+				if (index >= BLOCK_SIZE && index % BLOCK_SIZE == 0 && response[index - BLOCK_SIZE + 1] == 0x11) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Handshake block received");
+					break;
+				}
+			}
+			// The handshake block itself is not part of the payload.
+			if (index < BLOCK_SIZE || response[index - BLOCK_SIZE] != '!') {
+				response[index > 0 ? index - 1 : 0] = 0;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wrong response -> %s", response);
+				return false;
+			}
+			response[index - BLOCK_SIZE] = 0;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command -> %s", response);
+			return true;
+		}
+
+		static bool cloudwatcher_is_cloudwatcher(indigo_device *device, char *name) {
+			if (!cloudwatcher_command(device, 2, "A!")) {
+				return false;
+			}
+			if (name) {
+				sscanf(PRIVATE_DATA->response, "%*s %15s", name);
+			}
+			return !strncmp(PRIVATE_DATA->response, "!N CloudWatcher", 15) || !strncmp(PRIVATE_DATA->response, "!N PocketCW", 11);
+		}
+
+		static bool cloudwatcher_get_firmware_version(indigo_device *device, char *version) {
+			if (!cloudwatcher_command(device, 2, "B!") || sscanf(PRIVATE_DATA->response, "!V %4s", version) != 1) {
+				return false;
+			}
+			PRIVATE_DATA->firmware = (float)atof(version);
+			return true;
+		}
+
+		static bool cloudwatcher_get_serial_number(indigo_device *device, char *serial_number) {
+			if (!cloudwatcher_command(device, 2, "K!") || sscanf(PRIVATE_DATA->response, "!K %4s", serial_number) != 1) {
+				*serial_number = 0;
+				return false;
+			}
+			for (char *s = serial_number; *s; s++) {
+				if (!isdigit(*s)) {
+					*serial_number = 0;
+					return false;
+				}
+			}
+			return true;
+		}
+
+		static bool cloudwatcher_get_values(indigo_device *device, int *power_voltage, int *ambient_temperature, int *ldr_value, int *rain_sensor_temperature, int *raw_sky_quality) {
+			int zener_v = 0;
+			int ambient_temp = NO_READING;
+			int ldr_r = 0;
+			int rain_sensor_temp = 0;
+			int raw_sq = NO_READING;
+			if (!cloudwatcher_command(device, MAX_BLOCKS, "C!")) {
+				return false;
+			}
+			int record_type, value;
+			for (char *ptr = PRIVATE_DATA->response; *ptr; ptr++) {
+				if (*ptr == '!' && sscanf(ptr + 1, "%d %d", &record_type, &value) == 2) {
+					switch (record_type) {
+						case 3:
+							ambient_temp = value;
+							break;
+						case 4:
+							ldr_r = value;
+							break;
+						case 5:
+							rain_sensor_temp = value;
+							break;
+						case 6:
+							zener_v = value;
+							break;
+						case 8:
+							raw_sq = value;
+							break;
+					}
+				}
+			}
+			*power_voltage = zener_v;
+			*ambient_temperature = ambient_temp;
+			*ldr_value = ldr_r;
+			*rain_sensor_temperature = rain_sensor_temp;
+			*raw_sky_quality = raw_sq;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Values: version = %f, power_voltage = %d, ambient_temperature = %d, ldr_value = %d, rain_sensor_temperature = %d, raw_sky_quaity = %d", PRIVATE_DATA->firmware, zener_v, ambient_temp, ldr_r, rain_sensor_temp, raw_sq);
+			return true;
+		}
+
+		static bool cloudwatcher_get_ir_sky_temperature(indigo_device *device, int *temperature) {
+			return cloudwatcher_command(device, 2, "S!") && sscanf(PRIVATE_DATA->response, "!1 %d", temperature) == 1;
+		}
+
+		static bool cloudwatcher_get_sensor_temperature(indigo_device *device, int *temperature) {
+			return cloudwatcher_command(device, 2, "T!") && sscanf(PRIVATE_DATA->response, "!2 %d", temperature) == 1;
+		}
+
+		static bool cloudwatcher_get_rain_frequency(indigo_device *device, int *rain_frequency) {
+			return cloudwatcher_command(device, 2, "E!") && sscanf(PRIVATE_DATA->response, "!R %d", rain_frequency) == 1;
+		}
+
+		static bool cloudwatcher_set_pwm_duty_cycle(indigo_device *device, int pwm_duty_cycle) {
+			if (pwm_duty_cycle < 0) {
+				pwm_duty_cycle = 0;
+			} else if (pwm_duty_cycle > 1023) {
+				pwm_duty_cycle = 1023;
+			}
+			int new_pwm = 0;
+			if (!cloudwatcher_command(device, 2, "P%04d!", pwm_duty_cycle) || sscanf(PRIVATE_DATA->response, "!Q %d", &new_pwm) != 1) {
+				return false;
+			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pwm_duty_cycle = %d, new_pwm = %d", pwm_duty_cycle, new_pwm);
+			return new_pwm == pwm_duty_cycle;
+		}
+
+		static bool cloudwatcher_get_pwm_duty_cycle(indigo_device *device, int *pwm_duty_cycle) {
+			return cloudwatcher_command(device, 2, "Q!") && sscanf(PRIVATE_DATA->response, "!Q %d", pwm_duty_cycle) == 1;
+		}
+
+		static bool cloudwatcher_get_atm_pressure_temperature(indigo_device *device, float *atm_pressure, float *atm_temperature) {
+			int pressure = 0, temperature = 0;
+			if (!cloudwatcher_command(device, 2, "p!") || sscanf(PRIVATE_DATA->response, "!p %d", &pressure) != 1) {
+				return false;
+			}
+			if (pressure == 65535) {
+				return false; // No sensor
+			}
+			if (!cloudwatcher_command(device, 2, "q!") || sscanf(PRIVATE_DATA->response, "!q %d", &temperature) != 1) {
+				return false;
+			}
+			*atm_pressure = pressure / 16.0;
+			*atm_temperature = temperature / 100.0;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Atmospheric pressure = %f Pa, Temp = %f C", *atm_pressure, *atm_temperature);
+			return true;
+		}
+
+		static bool cloudwatcher_open_switch(indigo_device *device) {
+			return cloudwatcher_command(device, 2, "G!") && PRIVATE_DATA->response[1] == 'X';
+		}
+
+		static bool cloudwatcher_close_switch(indigo_device *device) {
+			return cloudwatcher_command(device, 2, "H!") && PRIVATE_DATA->response[1] == 'Y';
+		}
+
+		static bool cloudwatcher_get_switch(indigo_device *device, bool *closed) {
+			if (!cloudwatcher_command(device, 2, "F!")) {
+				return false;
+			}
+			if (PRIVATE_DATA->response[1] == 'Y') {
+				*closed = true;
+			} else if (PRIVATE_DATA->response[1] == 'X') {
+				*closed = false;
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switch state is unknown");
+				return false;
+			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CLOSED = %s", *closed ? "TRUE" : "FALSE");
+			return true;
+		}
+
+		static bool cloudwatcher_get_rh_temperature(indigo_device *device, float *rh, float *temperature) {
+			if (PRIVATE_DATA->firmware < 5.6) {
+				return false;
+			}
+			int rhi = 0, tempi = 0;
+			bool precise = true;
+			if (!cloudwatcher_command(device, 2, "t!")) {
+				return false;
+			}
+			if (sscanf(PRIVATE_DATA->response, "!th%d", &tempi) != 1) {
+				if (sscanf(PRIVATE_DATA->response, "!t %d", &tempi) != 1) {
+					return false;
+				}
+				precise = false;
+			}
+			if (tempi == 65535) {
+				return false; // No sensor
+			}
+			*temperature = precise ? (float)((tempi * 175.72) / 65536 - 46.85) : (float)(tempi * 1.7572 - 46.85);
+			if (*temperature < -50 || *temperature > 80) {
+				return false;
+			}
+			precise = true;
+			if (!cloudwatcher_command(device, 2, "h!")) {
+				return false;
+			}
+			if (sscanf(PRIVATE_DATA->response, "!hh%d", &rhi) != 1) {
+				if (sscanf(PRIVATE_DATA->response, "!h %d", &rhi) != 1) {
+					return false;
+				}
+				precise = false;
+			}
+			*rh = precise ? (float)((rhi * 125.0) / 65536 - 6.0) : (float)(rhi * 1.25 - 6.0);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "temperature = %f, rh = %f", *temperature, *rh);
+			return true;
+		}
+
+		// The reply carries six 16 bit big endian constants as raw bytes, so
+		// they have to be read through unsigned char.
+		static bool cloudwatcher_get_electrical_constants(indigo_device *device) {
+			if (PRIVATE_DATA->firmware < 3.0) {
+				return false;
+			}
+			if (!cloudwatcher_command(device, 2, "M!") || PRIVATE_DATA->response[1] != 'M') {
+				return false;
+			}
+			const unsigned char *bytes = (const unsigned char *)PRIVATE_DATA->response;
+			X_CONSTANTS_ZENER_VOLTAGE_ITEM->number.value = (256 * bytes[2] + bytes[3]) / 100.0;
+			X_CONSTANTS_LDR_MAX_R_ITEM->number.value = (256 * bytes[4] + bytes[5]) / 1.0;
+			X_CONSTANTS_LDR_PULLUP_R_ITEM->number.value = (256 * bytes[6] + bytes[7]) / 10.0;
+			X_CONSTANTS_RAIN_BETA_ITEM->number.value = (256 * bytes[8] + bytes[9]) / 1.0;
+			X_CONSTANTS_RAIN_R_AT_25_ITEM->number.value = (256 * bytes[10] + bytes[11]) / 10.0;
+			X_CONSTANTS_RAIN_PULLUP_R_ITEM->number.value = (256 * bytes[12] + bytes[13]) / 10.0;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "zener_constant = %f, ldr_max_res = %f, ldr_pull_up_res = %f, rain_beta = %f, rain_res_at_25 = %f, rain_pull_up_res = %f", X_CONSTANTS_ZENER_VOLTAGE_ITEM->number.value, X_CONSTANTS_LDR_MAX_R_ITEM->number.value, X_CONSTANTS_LDR_PULLUP_R_ITEM->number.value, X_CONSTANTS_RAIN_BETA_ITEM->number.value, X_CONSTANTS_RAIN_R_AT_25_ITEM->number.value, X_CONSTANTS_RAIN_PULLUP_R_ITEM->number.value);
+			return true;
+		}
+
+		static bool cloudwatcher_is_anemometer_present(indigo_device *device, bool *present) {
+			if (PRIVATE_DATA->firmware < 5.0) {
+				*present = false;
+				return true;
+			}
+			int value = 0;
+			if (!cloudwatcher_command(device, 2, "v!") || sscanf(PRIVATE_DATA->response, "!v %d", &value) != 1) {
+				return false;
+			}
+			*present = value == 1;
+			return true;
+		}
+
+		static bool cloudwatcher_get_wind_speed(indigo_device *device, float *wind_speed) {
+			if (PRIVATE_DATA->firmware < 5.0) {
+				*wind_speed = 0;
+				return true;
+			}
+			if (!cloudwatcher_command(device, 2, "V!") || sscanf(PRIVATE_DATA->response, "!w %f", wind_speed) != 1) {
+				return false;
+			}
+			// Black cups read low and need the manufacturer's correction.
+			if (PRIVATE_DATA->anemometer_black && *wind_speed != 0) {
+				*wind_speed = *wind_speed * 0.84f + 3;
+			}
+			*wind_speed /= 3.6f; // Convert to m/s
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "wind_speed = %f", *wind_speed);
+			return true;
+		}
+
+		// Mean of the samples within one standard deviation of the mean.
+		static float cloudwatcher_aggregate_floats(const float values[], int count) {
+			float average = 0;
+			for (int i = 0; i < count; i++) {
+				average += values[i];
+			}
+			average /= count;
+			float std_dev = 0;
+			for (int i = 0; i < count; i++) {
+				std_dev += (values[i] - average) * (values[i] - average);
+			}
+			std_dev = sqrtf(std_dev / count);
+			float sum = 0;
+			int used = 0;
+			for (int i = 0; i < count; i++) {
+				if (fabsf(values[i] - average) <= std_dev) {
+					sum += values[i];
+					used++;
+				}
+			}
+			return sum / used;
+		}
+
+		static int cloudwatcher_aggregate_integers(const int values[], int count) {
+			float samples[NUMBER_OF_READS];
+			for (int i = 0; i < count; i++) {
+				samples[i] = (float)values[i];
+			}
+			return (int)cloudwatcher_aggregate_floats(samples, count);
+		}
+
+		static bool cloudwatcher_get_data(indigo_device *device, cloudwatcher_data *data) {
+			int sky_temperature[NUMBER_OF_READS];
+			int ir_sensor_temperature[NUMBER_OF_READS];
+			int rain_frequency[NUMBER_OF_READS];
+			int internal_supply_voltage[NUMBER_OF_READS];
+			int ambient_temperature[NUMBER_OF_READS];
+			int ldr_value[NUMBER_OF_READS];
+			int rain_sensor_temperature[NUMBER_OF_READS];
+			int raw_sky_quality[NUMBER_OF_READS];
+			float wind_speed[NUMBER_OF_READS];
+			data->read_duration = 0;
+			double start = indigo_monotonic_time();
+			for (int i = 0; i < NUMBER_OF_READS; i++) {
+				if (!cloudwatcher_get_ir_sky_temperature(device, sky_temperature + i)) {
+					return false;
+				}
+				if (!cloudwatcher_get_sensor_temperature(device, ir_sensor_temperature + i)) {
+					return false;
+				}
+				if (!cloudwatcher_get_rain_frequency(device, rain_frequency + i)) {
+					return false;
+				}
+				if (!cloudwatcher_get_values(device, internal_supply_voltage + i, ambient_temperature + i, ldr_value + i, rain_sensor_temperature + i, raw_sky_quality + i)) {
+					return false;
+				}
+				if (!cloudwatcher_get_wind_speed(device, wind_speed + i)) {
+					return false;
+				}
+			}
+			if (!cloudwatcher_get_rh_temperature(device, &data->rh, &data->rh_temperature)) {
+				data->rh_temperature = NO_READING;
+				data->rh = NO_READING;
+			}
+			if (!cloudwatcher_get_atm_pressure_temperature(device, &data->atm_pressure, &data->atm_temperature)) {
+				data->atm_pressure = NO_READING;
+				data->atm_temperature = NO_READING;
+			}
+			data->read_duration = indigo_monotonic_time() - start;
+			data->ir_sky_temperature = cloudwatcher_aggregate_integers(sky_temperature, NUMBER_OF_READS);
+			data->ir_sensor_temperature = cloudwatcher_aggregate_integers(ir_sensor_temperature, NUMBER_OF_READS);
+			data->rain_frequency = cloudwatcher_aggregate_integers(rain_frequency, NUMBER_OF_READS);
+			data->power_voltage = cloudwatcher_aggregate_integers(internal_supply_voltage, NUMBER_OF_READS);
+			data->ambient_temperature = cloudwatcher_aggregate_integers(ambient_temperature, NUMBER_OF_READS);
+			data->ldr = cloudwatcher_aggregate_integers(ldr_value, NUMBER_OF_READS);
+			data->rain_sensor_temperature = cloudwatcher_aggregate_integers(rain_sensor_temperature, NUMBER_OF_READS);
+			data->raw_sky_quality = cloudwatcher_aggregate_integers(raw_sky_quality, NUMBER_OF_READS);
+			data->wind_speed = cloudwatcher_aggregate_floats(wind_speed, NUMBER_OF_READS);
+			return cloudwatcher_get_pwm_duty_cycle(device, &data->rain_heater);
+		}
+
+		static bool cloudwatcher_populate_constants(indigo_device *device) {
+			bool constants_read = cloudwatcher_get_electrical_constants(device);
+			X_CONSTANTS_AMBIENT_BETA_ITEM->number.value = 3811;
+			X_CONSTANTS_AMBIENT_R_AT_25_ITEM->number.value = 10;
+			X_CONSTANTS_AMBIENT_PULLUP_R_ITEM->number.value = 9.9;
+			bool present = false;
+			bool anemometer_read = cloudwatcher_is_anemometer_present(device, &present);
+			X_CONSTANTS_ANEMOMETER_STATE_ITEM->number.value = present ? 1 : 0;
+			if (constants_read && anemometer_read) {
+				X_CONSTANTS_PROPERTY->state = INDIGO_OK_STATE;
+				return true;
+			}
+			X_CONSTANTS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_send_message(device, ALERT_PROPERTY, "Failed reading device constants");
+			return false;
+		}
+
+		static void cloudwatcher_process_data(indigo_device *device, const cloudwatcher_data *data) {
+			// Rain sensor temperature
+			float rain_sensor_temp = (float)data->rain_sensor_temperature;
+			if (rain_sensor_temp > 1022) {
+				rain_sensor_temp = 1022;
+			} else if (rain_sensor_temp < 1) {
+				rain_sensor_temp = 1;
+			}
+			rain_sensor_temp = X_CONSTANTS_RAIN_PULLUP_R_ITEM->number.value / ((1023.0 / rain_sensor_temp) - 1.0);
+			rain_sensor_temp = log(rain_sensor_temp / X_CONSTANTS_RAIN_R_AT_25_ITEM->number.value);
+			X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM->number.value = 1.0 / (rain_sensor_temp / X_CONSTANTS_RAIN_BETA_ITEM->number.value + 1.0 / (ABS_ZERO + 25.0)) - ABS_ZERO;
+			// Rain and warning
+			X_SENSOR_RAIN_CYCLES_ITEM->number.value = data->rain_frequency;
+			AUX_RAIN_WARNING_SENSOR_1_ITEM->light.value = AUX_RAIN_THRESHOLD_SENSOR_1_ITEM->number.value > data->rain_frequency ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_RAIN_WARNING_PROPERTY, INDIGO_OK_STATE, NULL);
+			if (data->rain_frequency <= AUX_RAIN_RAINING_THRESHOLD_ITEM->number.value) {
+				indigo_set_switch(AUX_RAIN_PROPERTY, AUX_RAIN_RAINING_ITEM, true);
+			} else if (data->rain_frequency <= AUX_RAIN_WET_THRESHOLD_ITEM->number.value) {
+				indigo_set_switch(AUX_RAIN_PROPERTY, AUX_RAIN_WET_ITEM, true);
+			} else {
+				indigo_set_switch(AUX_RAIN_PROPERTY, AUX_RAIN_DRY_ITEM, true);
+			}
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_RAIN_PROPERTY, INDIGO_OK_STATE, NULL);
+			// Rain heater
+			X_SENSOR_RAIN_HEATER_POWER_ITEM->number.value = 100.0 * data->rain_heater / 1023.0;
+			// Ambient light
+			float ambient_light = (float)data->ldr;
+			if (ambient_light > 1022) {
+				ambient_light = 1022;
+			} else if (ambient_light < 1) {
+				ambient_light = 1;
+			}
+			X_SENSOR_SKY_BRIGHTNESS_KOHM_ITEM->number.value = X_CONSTANTS_LDR_PULLUP_R_ITEM->number.value / ((1023.0 / ambient_light) - 1.0);
+			if (X_SENSOR_SKY_BRIGHTNESS_KOHM_ITEM->number.value >= AUX_SKY_DARK_THRESHOLD_ITEM->number.value) {
+				indigo_set_switch(AUX_SKY_PROPERTY, AUX_SKY_DARK_ITEM, true);
+			} else if (X_SENSOR_SKY_BRIGHTNESS_KOHM_ITEM->number.value >= AUX_SKY_LIGHT_THRESHOLD_ITEM->number.value) {
+				indigo_set_switch(AUX_SKY_PROPERTY, AUX_SKY_LIGHT_ITEM, true);
+			} else {
+				indigo_set_switch(AUX_SKY_PROPERTY, AUX_SKY_VERY_LIGHT_ITEM, true);
+			}
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_SKY_PROPERTY, INDIGO_OK_STATE, NULL);
+			// Ambient temperature and dewpoint
+			float ambient_temperature = (float)data->ambient_temperature;
+			if (ambient_temperature < -200) {
+				// Newer units have no ambient thermistor, so the RH sensor, the
+				// pressure sensor and finally the IR sensor stand in for it.
+				if (data->rh_temperature > -200) {
+					ambient_temperature = data->rh_temperature;
+				} else if (data->atm_temperature > -200) {
+					ambient_temperature = data->atm_temperature;
+				} else {
+					ambient_temperature = data->ir_sensor_temperature / 100.0f;
+				}
+			} else {
+				if (ambient_temperature > 1022) {
+					ambient_temperature = 1022;
+				} else if (ambient_temperature < 1) {
+					ambient_temperature = 1;
+				}
+				ambient_temperature = X_CONSTANTS_AMBIENT_PULLUP_R_ITEM->number.value / ((1023.0 / ambient_temperature) - 1.0);
+				ambient_temperature = log(ambient_temperature / X_CONSTANTS_AMBIENT_R_AT_25_ITEM->number.value);
+				ambient_temperature = 1.0 / (ambient_temperature / X_CONSTANTS_AMBIENT_BETA_ITEM->number.value + 1.0 / (ABS_ZERO + 25.0)) - ABS_ZERO;
+			}
+			X_SENSOR_AMBIENT_TEMPERATURE_ITEM->number.value = AUX_WEATHER_TEMPERATURE_ITEM->number.value = ambient_temperature;
+			if (data->rh != NO_READING) {
+				AUX_WEATHER_HUMIDITY_ITEM->number.value = data->rh;
+				AUX_WEATHER_DEWPOINT_ITEM->number.value = indigo_aux_dewpoint(ambient_temperature, data->rh);
+			} else {
+				AUX_WEATHER_DEWPOINT_ITEM->number.value = -ABS_ZERO;
+				AUX_WEATHER_HUMIDITY_ITEM->number.value = 0;
+			}
+			AUX_WEATHER_PRESSURE_ITEM->number.value = data->atm_pressure != NO_READING ? data->atm_pressure / 100.0 : 0; // Convert to hPa
+			// Sky quality
+			if (data->raw_sky_quality == NO_READING || data->raw_sky_quality == 0) {
+				AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = 0;
+			} else {
+				double mpsas = 19.6 - 2.5 * log10(250000.0 / data->raw_sky_quality);
+				AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = (mpsas - 0.042) + (0.00212 * ambient_temperature);
+				AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = indigo_aux_sky_bortle(AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "raw_sky_quality = %d, sky_brightness = %.2f mpsas (uncorrected %.2f bortle class %f)", data->raw_sky_quality, AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value, mpsas, AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value);
+			}
+			// Dew point warning
+			if (data->rh == NO_READING) {
+				AUX_DEW_WARNING_SENSOR_1_ITEM->light.value = INDIGO_IDLE_STATE;
+				INDIGO_UPDATE_PROPERTY_STATE(AUX_DEW_WARNING_PROPERTY, INDIGO_IDLE_STATE, NULL);
+			} else {
+				AUX_DEW_WARNING_SENSOR_1_ITEM->light.value = ambient_temperature - AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value <= AUX_WEATHER_DEWPOINT_ITEM->number.value ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+				INDIGO_UPDATE_PROPERTY_STATE(AUX_DEW_WARNING_PROPERTY, INDIGO_OK_STATE, NULL);
+			}
+			if (data->rh == NO_READING) {
+				for (int i = 0; i < AUX_HUMIDITY_PROPERTY->count; i++) {
+					AUX_HUMIDITY_PROPERTY->items[i].sw.value = false;
+				}
+				INDIGO_UPDATE_PROPERTY_STATE(AUX_HUMIDITY_PROPERTY, INDIGO_IDLE_STATE, NULL);
+			} else {
+				if (data->rh >= AUX_HUMIDITY_HUMID_THRESHOLD_ITEM->number.value) {
+					indigo_set_switch(AUX_HUMIDITY_PROPERTY, AUX_HUMIDITY_HUMID_ITEM, true);
+				} else if (data->rh >= AUX_HUMIDITY_NORMAL_THRESHOLD_ITEM->number.value) {
+					indigo_set_switch(AUX_HUMIDITY_PROPERTY, AUX_HUMIDITY_NORMAL_ITEM, true);
+				} else {
+					indigo_set_switch(AUX_HUMIDITY_PROPERTY, AUX_HUMIDITY_DRY_ITEM, true);
+				}
+				INDIGO_UPDATE_PROPERTY_STATE(AUX_HUMIDITY_PROPERTY, INDIGO_OK_STATE, NULL);
+			}
+			// Sky temperature
+			float sky_temperature = data->ir_sky_temperature / 100.0f;
+			float ir_sensor_temperature = data->ir_sensor_temperature / 100.0f;
+			X_SENSOR_RAW_SKY_TEMPERATURE_ITEM->number.value = sky_temperature;
+			X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM->number.value = ir_sensor_temperature;
+			float k1 = X_SKY_CORRECTION_K1_ITEM->number.value;
+			float k2 = X_SKY_CORRECTION_K2_ITEM->number.value;
+			float k3 = X_SKY_CORRECTION_K3_ITEM->number.value;
+			float k4 = X_SKY_CORRECTION_K4_ITEM->number.value;
+			float k5 = X_SKY_CORRECTION_K5_ITEM->number.value;
+			X_SENSOR_SKY_TEMPERATURE_ITEM->number.value = AUX_WEATHER_SKY_TEMPERATURE_ITEM->number.value = sky_temperature - ((k1 / 100.0) * (ir_sensor_temperature - k2 / 10.0) + (k3 / 100.0) * pow(exp(k4 / 1000 * ir_sensor_temperature), (k5 / 100.0)));
+			if (AUX_WEATHER_SKY_TEMPERATURE_ITEM->number.value <= AUX_CLOUD_CLEAR_THRESHOLD_ITEM->number.value) {
+				indigo_set_switch(AUX_CLOUD_PROPERTY, AUX_CLOUD_CLEAR_ITEM, true);
+			} else if (AUX_WEATHER_SKY_TEMPERATURE_ITEM->number.value <= AUX_CLOUD_CLOUDY_THRESHOLD_ITEM->number.value) {
+				indigo_set_switch(AUX_CLOUD_PROPERTY, AUX_CLOUD_CLOUDY_ITEM, true);
+			} else {
+				indigo_set_switch(AUX_CLOUD_PROPERTY, AUX_CLOUD_OVERCAST_ITEM, true);
+			}
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_CLOUD_PROPERTY, INDIGO_OK_STATE, NULL);
+			// Wind speed and warning
+			AUX_WEATHER_WIND_SPEED_ITEM->number.value = data->wind_speed;
+			if (X_CONSTANTS_ANEMOMETER_STATE_ITEM->number.value < 1) {
+				AUX_WIND_WARNING_SENSOR_1_ITEM->light.value = INDIGO_IDLE_STATE;
+				INDIGO_UPDATE_PROPERTY_STATE(AUX_WIND_WARNING_PROPERTY, INDIGO_IDLE_STATE, NULL);
+				for (int i = 0; i < AUX_WIND_PROPERTY->count; i++) {
+					AUX_WIND_PROPERTY->items[i].sw.value = false;
+				}
+				INDIGO_UPDATE_PROPERTY_STATE(AUX_WIND_PROPERTY, INDIGO_IDLE_STATE, NULL);
+			} else {
+				AUX_WIND_WARNING_SENSOR_1_ITEM->light.value = AUX_WIND_THRESHOLD_SENSOR_1_ITEM->number.value < data->wind_speed ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+				INDIGO_UPDATE_PROPERTY_STATE(AUX_WIND_WARNING_PROPERTY, INDIGO_OK_STATE, NULL);
+				if (data->wind_speed >= AUX_WIND_STRONG_THRESHOLD_ITEM->number.value) {
+					indigo_set_switch(AUX_WIND_PROPERTY, AUX_WIND_STRONG_ITEM, true);
+				} else if (data->wind_speed >= AUX_WIND_MODERATE_THRESHOLD_ITEM->number.value) {
+					indigo_set_switch(AUX_WIND_PROPERTY, AUX_WIND_MODERATE_ITEM, true);
+				} else {
+					indigo_set_switch(AUX_WIND_PROPERTY, AUX_WIND_CALM_ITEM, true);
+				}
+				INDIGO_UPDATE_PROPERTY_STATE(AUX_WIND_PROPERTY, INDIGO_OK_STATE, NULL);
+			}
+			INDIGO_UPDATE_PROPERTY_STATE(X_SENSOR_READINGS_PROPERTY, INDIGO_OK_STATE, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_WEATHER_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
+
+		// Lunatico's rain sensor heating algorithm: hold the sensor above the
+		// ambient temperature, and once it has been wet for a whole cycle heat
+		// it to the impulse temperature and keep it there for the impulse
+		// duration to dry it.
+		static void cloudwatcher_heating_algorithm(indigo_device *device) {
+			float temp_low = (float)X_RAIN_SENSOR_HEATER_TEMPETATURE_LOW_ITEM->number.value;
+			float temp_high = (float)X_RAIN_SENSOR_HEATER_TEMPETATURE_HIGH_ITEM->number.value;
+			float delta_low = (float)X_RAIN_SENSOR_HEATER_DELTA_LOW_ITEM->number.value;
+			float delta_high = (float)X_RAIN_SENSOR_HEATER_DELTA_HIGH_ITEM->number.value;
+			float heater_impulse_temp = (float)X_RAIN_SENSOR_HEATER_IMPULSE_TEMPERATURE_ITEM->number.value;
+			float impulse_duration = (float)X_RAIN_SENSOR_HEATER_IMPULSE_DURATION_ITEM->number.value;
+			float impulse_cycle = (float)X_RAIN_SENSOR_HEATER_IMPULSE_CYCLE_ITEM->number.value;
+			float min_power = (float)X_RAIN_SENSOR_HEATER_MIN_POWER_ITEM->number.value;
+			float ambient_temp = (float)AUX_WEATHER_TEMPERATURE_ITEM->number.value;
+			float rain_sensor_temp = (float)X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM->number.value;
+			if (PRIVATE_DATA->sensor_heater_power == -1) {
+				PRIVATE_DATA->sensor_heater_power = X_SENSOR_RAIN_HEATER_POWER_ITEM->number.value;
+			}
+			double now = indigo_monotonic_time();
+			if (!AUX_RAIN_DRY_ITEM->sw.value && PRIVATE_DATA->heating_state == normal) {
+				if (PRIVATE_DATA->wet_start_time == -1) {
+					PRIVATE_DATA->wet_start_time = now;
+				} else if (now - PRIVATE_DATA->wet_start_time >= impulse_cycle) {
+					PRIVATE_DATA->wet_start_time = -1;
+					PRIVATE_DATA->heating_state = increasing;
+					PRIVATE_DATA->pulse_start_time = -1;
+				}
+			} else {
+				PRIVATE_DATA->wet_start_time = -1;
+			}
+			if (PRIVATE_DATA->heating_state == pulse && now - PRIVATE_DATA->pulse_start_time > impulse_duration) {
+				PRIVATE_DATA->heating_state = normal;
+				PRIVATE_DATA->wet_start_time = -1;
+				PRIVATE_DATA->pulse_start_time = -1;
+			}
+			if (PRIVATE_DATA->heating_state == normal) {
+				if (ambient_temp < temp_low) {
+					PRIVATE_DATA->desired_sensor_temperature = delta_low;
+				} else if (ambient_temp > temp_high) {
+					PRIVATE_DATA->desired_sensor_temperature = ambient_temp + delta_high;
+				} else {
+					float delta = ((((ambient_temp - temp_low) / (temp_high - temp_low)) * (delta_high - delta_low)) + delta_low);
+					PRIVATE_DATA->desired_sensor_temperature = ambient_temp + delta;
+					if (PRIVATE_DATA->desired_sensor_temperature < temp_low) {
+						PRIVATE_DATA->desired_sensor_temperature = delta_low;
+					}
+				}
+			} else {
+				PRIVATE_DATA->desired_sensor_temperature = ambient_temp + heater_impulse_temp;
+			}
+			if (PRIVATE_DATA->heating_state == increasing) {
+				if (rain_sensor_temp < PRIVATE_DATA->desired_sensor_temperature) {
+					PRIVATE_DATA->sensor_heater_power = 100;
+				} else {
+					PRIVATE_DATA->pulse_start_time = now;
+					PRIVATE_DATA->heating_state = pulse;
+				}
+			}
+			if (PRIVATE_DATA->heating_state == normal || PRIVATE_DATA->heating_state == pulse) {
+				float diff = fabsf(PRIVATE_DATA->desired_sensor_temperature - rain_sensor_temp);
+				float refresh_modifier = sqrtf(REFRESH_INTERVAL / 10.0f);
+				float modifier = 1;
+				if (diff > 8) {
+					modifier = 1.4f / refresh_modifier;
+				} else if (diff > 4) {
+					modifier = 1.2f / refresh_modifier;
+				} else if (diff > 3) {
+					modifier = 1.1f / refresh_modifier;
+				} else if (diff > 2) {
+					modifier = 1.06f / refresh_modifier;
+				} else if (diff > 1) {
+					modifier = 1.04f / refresh_modifier;
+				} else if (diff > 0.5) {
+					modifier = 1.02f / refresh_modifier;
+				} else if (diff > 0.3) {
+					modifier = 1.01f / refresh_modifier;
+				}
+				if (rain_sensor_temp > PRIVATE_DATA->desired_sensor_temperature) {
+					PRIVATE_DATA->sensor_heater_power /= modifier;
+				} else {
+					PRIVATE_DATA->sensor_heater_power *= modifier;
+				}
+			}
+			if (PRIVATE_DATA->sensor_heater_power < min_power) {
+				PRIVATE_DATA->sensor_heater_power = min_power;
+			} else if (PRIVATE_DATA->sensor_heater_power > 100) {
+				PRIVATE_DATA->sensor_heater_power = 100;
+			}
+			cloudwatcher_set_pwm_duty_cycle(device, (int)(PRIVATE_DATA->sensor_heater_power * 1023.0 / 100.0));
+			if (PRIVATE_DATA->heating_state == normal) {
+				indigo_set_switch(X_HEATER_CONTROL_STATE_PROPERTY, X_HEATER_CONTROL_NORMAL_ITEM, true);
+			} else if (PRIVATE_DATA->heating_state == increasing) {
+				indigo_set_switch(X_HEATER_CONTROL_STATE_PROPERTY, X_HEATER_CONTROL_INCREASE_ITEM, true);
+			} else {
+				indigo_set_switch(X_HEATER_CONTROL_STATE_PROPERTY, X_HEATER_CONTROL_PULSE_ITEM, true);
+			}
+			INDIGO_UPDATE_PROPERTY_STATE(X_HEATER_CONTROL_STATE_PROPERTY, INDIGO_OK_STATE, NULL);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Heater state = %d, power = %f", PRIVATE_DATA->heating_state, PRIVATE_DATA->sensor_heater_power);
+		}
+
+		// The runtime properties keep their last values while the device is
+		// disconnected, so they are cleared before they are published again.
+		static void cloudwatcher_reset_properties(indigo_device *device) {
+			X_HEATER_CONTROL_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
+			for (int i = 0; i < X_HEATER_CONTROL_STATE_PROPERTY->count; i++) {
+				X_HEATER_CONTROL_STATE_PROPERTY->items[i].sw.value = false;
+			}
+			X_CONSTANTS_PROPERTY->state = INDIGO_BUSY_STATE;
+			for (int i = 0; i < X_CONSTANTS_PROPERTY->count; i++) {
+				X_CONSTANTS_PROPERTY->items[i].number.value = 0;
+			}
+			X_SENSOR_READINGS_PROPERTY->state = INDIGO_BUSY_STATE;
+			for (int i = 0; i < X_SENSOR_READINGS_PROPERTY->count; i++) {
+				X_SENSOR_READINGS_PROPERTY->items[i].number.value = 0;
+			}
+			AUX_WEATHER_PROPERTY->state = INDIGO_BUSY_STATE;
+			for (int i = 0; i < AUX_WEATHER_PROPERTY->count; i++) {
+				AUX_WEATHER_PROPERTY->items[i].number.value = 0;
+			}
+			AUX_DEW_WARNING_PROPERTY->state = INDIGO_BUSY_STATE;
+			AUX_DEW_WARNING_SENSOR_1_ITEM->light.value = INDIGO_IDLE_STATE;
+			AUX_RAIN_WARNING_PROPERTY->state = INDIGO_BUSY_STATE;
+			AUX_RAIN_WARNING_SENSOR_1_ITEM->light.value = INDIGO_IDLE_STATE;
+			AUX_WIND_WARNING_PROPERTY->state = INDIGO_BUSY_STATE;
+			AUX_WIND_WARNING_SENSOR_1_ITEM->light.value = INDIGO_IDLE_STATE;
+			indigo_property *conditions[] = { AUX_HUMIDITY_PROPERTY, AUX_WIND_PROPERTY, AUX_RAIN_PROPERTY, AUX_CLOUD_PROPERTY, AUX_SKY_PROPERTY };
+			for (int i = 0; i < (int)(sizeof(conditions) / sizeof(conditions[0])); i++) {
+				conditions[i]->state = INDIGO_BUSY_STATE;
+				for (int j = 0; j < conditions[i]->count; j++) {
+					conditions[i]->items[j].sw.value = false;
+				}
+			}
+		}
+
+		static void cloudwatcher_apply_outlet_names(indigo_device *device) {
+			if (IS_CONNECTED) {
+				indigo_delete_property(device, AUX_GPIO_OUTLETS_PROPERTY, NULL);
+			}
+			INDIGO_COPY_NAME(AUX_GPIO_OUTLET_1_ITEM->label, AUX_OUTLET_NAME_1_ITEM->text.value);
+			if (IS_CONNECTED) {
+				indigo_define_property(device, AUX_GPIO_OUTLETS_PROPERTY, NULL);
+			}
+		}
+
+		static bool cloudwatcher_open(indigo_device *device) {
+			char *name = DEVICE_PORT_ITEM->text.value;
+			if (indigo_uni_is_url(name, "cloudwatcher")) {
+				PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_TRACE);
+			} else {
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, DEFAULT_BAUDRATE, INDIGO_LOG_TRACE);
+			}
+			if (PRIVATE_DATA->handle == NULL) {
+				return false;
+			}
+			// PocketCW is Arduino based and resets when the port is opened.
+			indigo_sleep(2);
+			char board[MAX_LEN] = "N/A";
+			if (!cloudwatcher_is_cloudwatcher(device, board)) {
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				return false;
+			}
+			char firmware[MAX_LEN] = "N/A";
+			char serial_number[MAX_LEN] = "N/A";
+			cloudwatcher_get_firmware_version(device, firmware);
+			cloudwatcher_get_serial_number(device, serial_number);
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, board);
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+			INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number);
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			return true;
+		}
+
+		static void cloudwatcher_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+	}
+	aux {
+		name = "AAG CloudWatcher";
+		interface = INDIGO_INTERFACE_AUX_SQM | INDIGO_INTERFACE_AUX_WEATHER;
+		additional_instances = true;
+		on_attach {
+			INFO_PROPERTY->count = 8;
+		}
+		on_connect {
+			cloudwatcher_get_switch(device, &AUX_GPIO_OUTLET_1_ITEM->sw.value);
+			cloudwatcher_reset_properties(device);
+			PRIVATE_DATA->anemometer_black = X_ANEMOMETER_TYPE_BLACK_ITEM->sw.value;
+			PRIVATE_DATA->heating_state = normal;
+			PRIVATE_DATA->pulse_start_time = -1;
+			PRIVATE_DATA->wet_start_time = -1;
+			PRIVATE_DATA->desired_sensor_temperature = 0;
+			PRIVATE_DATA->sensor_heater_power = -1;
+			// The constants are read before the generated code publishes
+			// X_AAG_CONSTANTS, so the first definition already carries them.
+			cloudwatcher_populate_constants(device);
+			indigo_send_message(device, BUSY_PROPERTY, "%s connected, it may take up to 30s to get the first readings", device->name);
+		}
+		on_disconnect {
+			// Leave the heater at the last computed power instead of whatever
+			// the last control cycle happened to write.
+			cloudwatcher_set_pwm_duty_cycle(device, (int)(PRIVATE_DATA->sensor_heater_power * 1023.0 / 100.0));
+		}
+		on_timer {
+			cloudwatcher_data data;
+			if (cloudwatcher_get_data(device, &data)) {
+				cloudwatcher_process_data(device, &data);
+				cloudwatcher_heating_algorithm(device);
+			}
+			bool closed = false;
+			if (cloudwatcher_get_switch(device, &closed) && AUX_GPIO_OUTLET_1_ITEM->sw.value != closed) {
+				AUX_GPIO_OUTLET_1_ITEM->sw.value = closed;
+				INDIGO_UPDATE_PROPERTY_STATE(AUX_GPIO_OUTLETS_PROPERTY, INDIGO_OK_STATE, NULL);
+			}
+			double delay = REFRESH_INTERVAL - data.read_duration;
+			if (delay < 1) {
+				delay = 1;
+			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reading took %.2fs, next reading in %.2fs", data.read_duration, delay);
+			indigo_execute_handler_in(device, delay, aux_timer_callback);
+		}
+		text AUX_OUTLET_NAMES {
+			name = AUX_OUTLET_NAMES_PROPERTY_NAME;
+			group = SWITCH_GROUP;
+			label = "Switch name";
+			always_defined = true;
+			persistent = true;
+			on_change {
+				cloudwatcher_apply_outlet_names(device);
+			}
+			item AUX_OUTLET_NAME_1 {
+				name = AUX_GPIO_OUTLET_NAME_1_ITEM_NAME;
+				label = "Internal switch";
+				value = "Switch";
+			}
+		}
+		switch AUX_GPIO_OUTLETS {
+			name = AUX_GPIO_OUTLETS_PROPERTY_NAME;
+			group = SWITCH_GROUP;
+			label = "Switch outlet";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				if (!(AUX_GPIO_OUTLET_1_ITEM->sw.value ? cloudwatcher_close_switch(device) : cloudwatcher_open_switch(device))) {
+					INDIGO_UPDATE_PROPERTY_STATE(AUX_GPIO_OUTLETS_PROPERTY, INDIGO_ALERT_STATE, "Open/Close switch failed");
+					return;
+				}
+			}
+			item AUX_GPIO_OUTLET_1 {
+				name = AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME;
+				label = "Switch";
+				value = false;
+			}
+		}
+		switch X_HEATER_CONTROL_STATE {
+			name = "X_HEATER_CONTROL_STATE";
+			group = STATUS_GROUP;
+			label = "Heater control state";
+			perm = INDIGO_RO_PERM;
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			item X_HEATER_CONTROL_NORMAL {
+				name = "NORMAL";
+				label = "Normal";
+				value = false;
+			}
+			item X_HEATER_CONTROL_INCREASE {
+				name = "INCREASE";
+				label = "Inscreasing";
+				value = false;
+			}
+			item X_HEATER_CONTROL_PULSE {
+				name = "PULSE";
+				label = "Pulse";
+				value = false;
+			}
+		}
+		number X_SKY_CORRECTION {
+			name = "X_SKY_CORRECTION";
+			group = SETTINGS_GROUP;
+			label = "Sky temperature correction";
+			always_defined = true;
+			persistent = true;
+			on_change { }
+			item X_SKY_CORRECTION_K1 {
+				name = "K1";
+				label = "K1";
+				min = -999;
+				max = 999;
+				step = 0;
+				value = 3;
+			}
+			item X_SKY_CORRECTION_K2 {
+				name = "K2";
+				label = "K2";
+				min = -999;
+				max = 999;
+				step = 0;
+				value = 0;
+			}
+			item X_SKY_CORRECTION_K3 {
+				name = "K3";
+				label = "K3";
+				min = -999;
+				max = 999;
+				step = 0;
+				value = 4;
+			}
+			item X_SKY_CORRECTION_K4 {
+				name = "K4";
+				label = "K4";
+				min = -999;
+				max = 999;
+				step = 0;
+				value = 100;
+			}
+			item X_SKY_CORRECTION_K5 {
+				name = "K5";
+				label = "K5";
+				min = -999;
+				max = 999;
+				step = 0;
+				value = 100;
+			}
+		}
+		number X_CONSTANTS {
+			name = "X_AAG_CONSTANTS";
+			group = STATUS_GROUP;
+			label = "Device Constants";
+			perm = INDIGO_RO_PERM;
+			item X_CONSTANTS_ZENER_VOLTAGE {
+				name = "ZENER_VOLTAGE";
+				label = "Zener voltage (V)";
+				min = -100;
+				max = 100;
+				step = 0;
+				value = 3;
+			}
+			item X_CONSTANTS_LDR_MAX_R {
+				name = "LDR_MAX_R";
+				label = "LDR max R (kΩ)";
+				min = 0;
+				max = 100000;
+				step = 0;
+				value = 1744;
+			}
+			item X_CONSTANTS_LDR_PULLUP_R {
+				name = "LDR_PULLUP_R";
+				label = "LDR Pullup R (kΩ)";
+				min = 0;
+				max = 100000;
+				step = 0;
+				value = 56;
+			}
+			item X_CONSTANTS_RAIN_BETA {
+				name = "RAIN_BETA_FACTOR";
+				label = "Rain Beta factor";
+				min = -100000;
+				max = 100000;
+				step = 0;
+				value = 3450;
+			}
+			item X_CONSTANTS_RAIN_R_AT_25 {
+				name = "RAIN_R_AT_25";
+				label = "Rain R at 25°C (kΩ)";
+				min = 0;
+				max = 100000;
+				step = 0;
+				value = 1;
+			}
+			item X_CONSTANTS_RAIN_PULLUP_R {
+				name = "RAIN_PULLUP_R";
+				label = "Rain Pullup R (kΩ)";
+				min = 0;
+				max = 100000;
+				step = 0;
+				value = 1;
+			}
+			item X_CONSTANTS_AMBIENT_BETA {
+				name = "AMBIENT_BETA_FACTOR";
+				label = "Ambient Beta factor";
+				min = -100000;
+				max = 100000;
+				step = 0;
+				value = 3811;
+			}
+			item X_CONSTANTS_AMBIENT_R_AT_25 {
+				name = "AMBIENT_R_AT_25";
+				label = "Ambient R at 25°C (kΩ)";
+				min = 0;
+				max = 100000;
+				step = 0;
+				value = 10;
+			}
+			item X_CONSTANTS_AMBIENT_PULLUP_R {
+				name = "AMBIENT_PULLUP_R";
+				label = "Ambient Pullup R (kΩ)";
+				min = 0;
+				max = 100000;
+				step = 0;
+				value = 9.9;
+			}
+			item X_CONSTANTS_ANEMOMETER_STATE {
+				name = "ANEMOMETER_STATUS";
+				label = "Anemometer Status";
+				min = 0;
+				max = 10;
+				step = 0;
+				value = 0;
+			}
+		}
+		number X_SENSOR_READINGS {
+			name = AUX_INFO_PROPERTY_NAME;
+			group = WEATHER_GROUP;
+			label = "Sensor Readings";
+			perm = INDIGO_RO_PERM;
+			item X_SENSOR_RAW_SKY_TEMPERATURE {
+				name = "RAW_IR_SKY_TEMPERATURE";
+				label = "Raw infrared sky temperature (°C)";
+				min = -200;
+				max = 80;
+				step = 0;
+				value = 0;
+				format = "%.1f";
+			}
+			item X_SENSOR_SKY_TEMPERATURE {
+				name = "IR_SKY_TEMPERATURE";
+				label = "Infrared sky temperature (°C)";
+				min = -200;
+				max = 80;
+				step = 0;
+				value = 0;
+				format = "%.1f";
+			}
+			item X_SENSOR_IR_SENSOR_TEMPERATURE {
+				name = "IR_SENSOR_TEMPERATURE";
+				label = "Infrared sensor temperature (°C)";
+				min = -200;
+				max = 80;
+				step = 0;
+				value = 0;
+				format = "%.1f";
+			}
+			item X_SENSOR_RAIN_CYCLES {
+				name = "RAIN_CYCLES";
+				label = "Rain (cycles)";
+				min = 0;
+				max = 100000;
+				step = 0;
+				value = 0;
+				format = "%.0f";
+			}
+			item X_SENSOR_RAIN_SENSOR_TEMPERATURE {
+				name = "RAIN_SENSOR_TEMPERATURE";
+				label = "Rain sensor temperature (°C)";
+				min = -200;
+				max = 80;
+				step = 0;
+				value = 0;
+				format = "%.1f";
+			}
+			item X_SENSOR_RAIN_HEATER_POWER {
+				name = "RAIN_SENSOR_HEATER_POWER";
+				label = "Rain sensor heater power (%)";
+				min = 0;
+				max = 100;
+				step = 1;
+				value = 0;
+				format = "%.0f";
+			}
+			item X_SENSOR_SKY_BRIGHTNESS_KOHM {
+				name = "SKY_BRIGHTNES_KOHM";
+				label = "Sky brightness (kΩ)";
+				min = 0;
+				max = 100000;
+				step = 1;
+				value = 0;
+				format = "%.0f";
+			}
+			item X_SENSOR_AMBIENT_TEMPERATURE {
+				name = "AMBIENT_TEMPERATURE";
+				label = "Ambient temperature (°C)";
+				min = -200;
+				max = 80;
+				step = 0;
+				value = 0;
+				format = "%.1f";
+			}
+		}
+		number AUX_WEATHER {
+			name = AUX_WEATHER_PROPERTY_NAME;
+			group = WEATHER_GROUP;
+			label = "Weather conditions";
+			perm = INDIGO_RO_PERM;
+			item AUX_WEATHER_TEMPERATURE {
+				name = AUX_WEATHER_TEMPERATURE_ITEM_NAME;
+				label = "Ambient temperature (°C)";
+				min = -200;
+				max = 80;
+				step = 0;
+				value = 0;
+				format = "%.1f";
+			}
+			item AUX_WEATHER_SKY_TEMPERATURE {
+				name = AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME;
+				label = "Sky temperature (°C)";
+				min = -200;
+				max = 80;
+				step = 1;
+				value = 0;
+				format = "%.1f";
+			}
+			item AUX_WEATHER_DEWPOINT {
+				name = AUX_WEATHER_DEWPOINT_ITEM_NAME;
+				label = "Dewpoint (°C)";
+				min = -200;
+				max = 80;
+				step = 1;
+				value = 0;
+				format = "%.1f";
+			}
+			item AUX_WEATHER_HUMIDITY {
+				name = AUX_WEATHER_HUMIDITY_ITEM_NAME;
+				label = "Relative humidity (%)";
+				min = 0;
+				max = 100;
+				step = 0;
+				value = 0;
+				format = "%.0f";
+			}
+			item AUX_WEATHER_PRESSURE {
+				name = AUX_WEATHER_PRESSURE_ITEM_NAME;
+				label = "Atmospheric pressure (hPa)";
+				min = 0;
+				max = 2000;
+				step = 0;
+				value = 0;
+				format = "%.0f";
+			}
+			item AUX_WEATHER_WIND_SPEED {
+				name = AUX_WEATHER_WIND_SPEED_ITEM_NAME;
+				label = "Wind speed (m/s)";
+				min = 0;
+				max = 200;
+				step = 0;
+				value = 0;
+				format = "%.1f";
+			}
+			item AUX_WEATHER_SKY_BRIGHTNESS {
+				name = AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME;
+				label = "Sky brightness [m/arcsec²]";
+				min = -20;
+				max = 30;
+				step = 0;
+				value = 0;
+				format = "%.2f";
+			}
+			item AUX_WEATHER_SKY_BORTLE_CLASS {
+				name = AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME;
+				label = "Sky Bortle class";
+				min = 1;
+				max = 9;
+				step = 0;
+				value = 0;
+			}
+		}
+		number AUX_DEW_THRESHOLD {
+			name = AUX_DEW_THRESHOLD_PROPERTY_NAME;
+			group = THRESHOLDS_GROUP;
+			label = "Dew warning threshold";
+			always_defined = true;
+			persistent = true;
+			on_change { }
+			item AUX_DEW_THRESHOLD_SENSOR_1 {
+				name = AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME;
+				label = "Temperature difference (°C)";
+				min = 0;
+				max = 9;
+				step = 0;
+				value = 2;
+			}
+		}
+		number AUX_WIND_THRESHOLD {
+			name = AUX_WIND_THRESHOLD_PROPERTY_NAME;
+			group = THRESHOLDS_GROUP;
+			label = "Wind warning threshold";
+			always_defined = true;
+			persistent = true;
+			on_change { }
+			item AUX_WIND_THRESHOLD_SENSOR_1 {
+				name = AUX_WIND_THRESHOLD_SENSOR_1_ITEM_NAME;
+				label = "Wind speed (m/s)";
+				min = 0;
+				max = 50;
+				step = 0;
+				value = 6;
+			}
+		}
+		number AUX_RAIN_THRESHOLD {
+			name = AUX_RAIN_THRESHOLD_PROPERTY_NAME;
+			group = THRESHOLDS_GROUP;
+			label = "Rain warning threshold";
+			always_defined = true;
+			persistent = true;
+			on_change { }
+			item AUX_RAIN_THRESHOLD_SENSOR_1 {
+				name = AUX_RAIN_THRESHOLD_SENSOR_1_ITEM_NAME;
+				label = "Rain (cycles)";
+				min = 0;
+				max = 100000;
+				step = 1;
+				value = 400;
+			}
+		}
+		light AUX_DEW_WARNING {
+			name = AUX_DEW_WARNING_PROPERTY_NAME;
+			group = WARNINGS_GROUP;
+			label = "Dew warning";
+			item AUX_DEW_WARNING_SENSOR_1 {
+				name = AUX_DEW_WARNING_SENSOR_1_ITEM_NAME;
+				label = "Dew warning";
+				value = INDIGO_IDLE_STATE;
+			}
+		}
+		light AUX_RAIN_WARNING {
+			name = AUX_RAIN_WARNING_PROPERTY_NAME;
+			group = WARNINGS_GROUP;
+			label = "Rain warning";
+			item AUX_RAIN_WARNING_SENSOR_1 {
+				name = AUX_RAIN_WARNING_SENSOR_1_ITEM_NAME;
+				label = "Rain warning";
+				value = INDIGO_IDLE_STATE;
+			}
+		}
+		light AUX_WIND_WARNING {
+			name = AUX_WIND_WARNING_PROPERTY_NAME;
+			group = WARNINGS_GROUP;
+			label = "Wind warning";
+			item AUX_WIND_WARNING_SENSOR_1 {
+				name = AUX_WIND_WARNING_SENSOR_1_ITEM_NAME;
+				label = "Wind warning";
+				value = INDIGO_IDLE_STATE;
+			}
+		}
+		number AUX_HUMIDITY_THRESHOLDS {
+			name = AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME;
+			group = THRESHOLDS_GROUP;
+			label = "Relative humidity thresholds (%)";
+			always_defined = true;
+			persistent = true;
+			on_change { }
+			item AUX_HUMIDITY_HUMID_THRESHOLD {
+				name = AUX_HUMIDITY_HUMID_ITEM_NAME;
+				label = "Humid (more than)";
+				min = 0;
+				max = 100;
+				step = 0;
+				value = 60;
+			}
+			item AUX_HUMIDITY_NORMAL_THRESHOLD {
+				name = AUX_HUMIDITY_NORMAL_ITEM_NAME;
+				label = "Normal (more than)";
+				min = 0;
+				max = 100;
+				step = 0;
+				value = 30;
+			}
+		}
+		number AUX_WIND_THRESHOLDS {
+			name = AUX_WIND_THRESHOLDS_PROPERTY_NAME;
+			group = THRESHOLDS_GROUP;
+			label = "Wind thresholds (m/s)";
+			always_defined = true;
+			persistent = true;
+			on_change { }
+			item AUX_WIND_STRONG_THRESHOLD {
+				name = AUX_WIND_STRONG_ITEM_NAME;
+				label = "Strong wind (more than)";
+				min = 0;
+				max = 100;
+				step = 0;
+				value = 10;
+			}
+			item AUX_WIND_MODERATE_THRESHOLD {
+				name = AUX_WIND_MODERATE_ITEM_NAME;
+				label = "Moderate wind (more than)";
+				min = 0;
+				max = 100;
+				step = 0;
+				value = 1;
+			}
+		}
+		number AUX_RAIN_THRESHOLDS {
+			name = AUX_RAIN_THRESHOLDS_PROPERTY_NAME;
+			group = THRESHOLDS_GROUP;
+			label = "Rain sensor thresholds (kΩ)";
+			always_defined = true;
+			persistent = true;
+			on_change { }
+			item AUX_RAIN_RAINING_THRESHOLD {
+				name = AUX_RAIN_RAINING_ITEM_NAME;
+				label = "Raining (less than)";
+				min = 0;
+				max = 100000;
+				step = 0;
+				value = 400;
+			}
+			item AUX_RAIN_WET_THRESHOLD {
+				name = AUX_RAIN_WET_ITEM_NAME;
+				label = "Wet (less than)";
+				min = 0;
+				max = 100000;
+				step = 0;
+				value = 1700;
+			}
+		}
+		number AUX_CLOUD_THRESHOLDS {
+			name = AUX_CLOUD_THRESHOLDS_PROPERTY_NAME;
+			group = THRESHOLDS_GROUP;
+			label = "Cloud thresholds (°C)";
+			always_defined = true;
+			persistent = true;
+			on_change { }
+			item AUX_CLOUD_CLEAR_THRESHOLD {
+				name = AUX_CLOUD_CLEAR_ITEM_NAME;
+				label = "Clear (less than)";
+				min = -200;
+				max = 80;
+				step = 0;
+				value = -15;
+			}
+			item AUX_CLOUD_CLOUDY_THRESHOLD {
+				name = AUX_CLOUD_CLOUDY_ITEM_NAME;
+				label = "Cloudy (less than)";
+				min = -200;
+				max = 80;
+				step = 0;
+				value = 0;
+			}
+		}
+		number AUX_SKY_THRESHOLDS {
+			name = AUX_SKY_THRESHOLDS_PROPERTY_NAME;
+			group = THRESHOLDS_GROUP;
+			label = "Sky darkness threshold (kΩ)";
+			always_defined = true;
+			persistent = true;
+			on_change { }
+			item AUX_SKY_DARK_THRESHOLD {
+				name = AUX_SKY_DARK_ITEM_NAME;
+				label = "Dark (more than)";
+				min = 0;
+				max = 100000;
+				step = 0;
+				value = 2100;
+			}
+			item AUX_SKY_LIGHT_THRESHOLD {
+				name = AUX_SKY_LIGHT_ITEM_NAME;
+				label = "Light (more than)";
+				min = 0;
+				max = 100000;
+				step = 0;
+				value = 6;
+			}
+		}
+		switch AUX_HUMIDITY {
+			name = AUX_HUMIDITY_PROPERTY_NAME;
+			group = WEATHER_GROUP;
+			label = "Humidity condition";
+			perm = INDIGO_RO_PERM;
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			item AUX_HUMIDITY_HUMID {
+				name = AUX_HUMIDITY_HUMID_ITEM_NAME;
+				label = "Humid";
+				value = false;
+			}
+			item AUX_HUMIDITY_NORMAL {
+				name = AUX_HUMIDITY_NORMAL_ITEM_NAME;
+				label = "Normal";
+				value = false;
+			}
+			item AUX_HUMIDITY_DRY {
+				name = AUX_HUMIDITY_DRY_ITEM_NAME;
+				label = "Dry";
+				value = false;
+			}
+		}
+		switch AUX_WIND {
+			name = AUX_WIND_PROPERTY_NAME;
+			group = WEATHER_GROUP;
+			label = "Wind condition";
+			perm = INDIGO_RO_PERM;
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			item AUX_WIND_STRONG {
+				name = AUX_WIND_STRONG_ITEM_NAME;
+				label = "Strong";
+				value = false;
+			}
+			item AUX_WIND_MODERATE {
+				name = AUX_WIND_MODERATE_ITEM_NAME;
+				label = "Moderate";
+				value = false;
+			}
+			item AUX_WIND_CALM {
+				name = AUX_WIND_CALM_ITEM_NAME;
+				label = "Calm";
+				value = false;
+			}
+		}
+		switch AUX_RAIN {
+			name = AUX_RAIN_PROPERTY_NAME;
+			group = WEATHER_GROUP;
+			label = "Rain condition";
+			perm = INDIGO_RO_PERM;
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			item AUX_RAIN_RAINING {
+				name = AUX_RAIN_RAINING_ITEM_NAME;
+				label = "Raining";
+				value = false;
+			}
+			item AUX_RAIN_WET {
+				name = AUX_RAIN_WET_ITEM_NAME;
+				label = "Wet";
+				value = false;
+			}
+			item AUX_RAIN_DRY {
+				name = AUX_RAIN_DRY_ITEM_NAME;
+				label = "Dry";
+				value = false;
+			}
+		}
+		switch AUX_CLOUD {
+			name = AUX_CLOUD_PROPERTY_NAME;
+			group = WEATHER_GROUP;
+			label = "Cloud condition";
+			perm = INDIGO_RO_PERM;
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			item AUX_CLOUD_CLEAR {
+				name = AUX_CLOUD_CLEAR_ITEM_NAME;
+				label = "Clear";
+				value = false;
+			}
+			item AUX_CLOUD_CLOUDY {
+				name = AUX_CLOUD_CLOUDY_ITEM_NAME;
+				label = "Cloudy";
+				value = false;
+			}
+			item AUX_CLOUD_OVERCAST {
+				name = AUX_CLOUD_OVERCAST_ITEM_NAME;
+				label = "Overcast";
+				value = false;
+			}
+		}
+		switch AUX_SKY {
+			name = AUX_SKY_PROPERTY_NAME;
+			group = WEATHER_GROUP;
+			label = "Sky condition";
+			perm = INDIGO_RO_PERM;
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			item AUX_SKY_DARK {
+				name = AUX_SKY_DARK_ITEM_NAME;
+				label = "Dark";
+				value = false;
+			}
+			item AUX_SKY_LIGHT {
+				name = AUX_SKY_LIGHT_ITEM_NAME;
+				label = "Light";
+				value = false;
+			}
+			item AUX_SKY_VERY_LIGHT {
+				name = AUX_SKY_VERY_LIGHT_ITEM_NAME;
+				label = "Very light";
+				value = false;
+			}
+		}
+		switch X_ANEMOMETER_TYPE {
+			name = "X_ANEMOMETER_TYPE";
+			group = SETTINGS_GROUP;
+			label = "Anemometer type (if present)";
+			always_defined = true;
+			persistent = true;
+			on_change {
+				PRIVATE_DATA->anemometer_black = X_ANEMOMETER_TYPE_BLACK_ITEM->sw.value;
+			}
+			item X_ANEMOMETER_TYPE_BLACK {
+				name = "BLACK";
+				label = "Black";
+				value = true;
+			}
+			item X_ANEMOMETER_TYPE_GREY {
+				name = "GREY";
+				label = "Grey";
+				value = false;
+			}
+		}
+		number X_RAIN_SENSOR_HEATER_SETUP {
+			name = "X_RAIN_SENSOR_HEATER_SETUP";
+			group = SETTINGS_GROUP;
+			label = "Rain sensor heater setup";
+			always_defined = true;
+			persistent = true;
+			on_change { }
+			item X_RAIN_SENSOR_HEATER_TEMPETATURE_LOW {
+				name = "TEMPETATURE_LOW";
+				label = "Temperature low (°C)";
+				min = -200;
+				max = 80;
+				step = 0;
+				value = 0;
+			}
+			item X_RAIN_SENSOR_HEATER_TEMPETATURE_HIGH {
+				name = "TEMPETATURE_HIGH";
+				label = "Temperature high (°C)";
+				min = -200;
+				max = 80;
+				step = 0;
+				value = 20;
+			}
+			item X_RAIN_SENSOR_HEATER_DELTA_LOW {
+				name = "TEMPETATURE_DELTA_LOW";
+				label = "Temperature delta low (°C)";
+				min = -200;
+				max = 80;
+				step = 0;
+				value = 6;
+			}
+			item X_RAIN_SENSOR_HEATER_DELTA_HIGH {
+				name = "TEMPETATURE_DELTA_HIGH";
+				label = "Temperature delta high (°C)";
+				min = -200;
+				max = 80;
+				step = 0;
+				value = 4;
+			}
+			item X_RAIN_SENSOR_HEATER_IMPULSE_TEMPERATURE {
+				name = "HEAT_IMPULSE_TEMPETATURE";
+				label = "Heat impulse temperature (°C)";
+				min = -200;
+				max = 80;
+				step = 0;
+				value = 10;
+			}
+			item X_RAIN_SENSOR_HEATER_IMPULSE_DURATION {
+				name = "HEAT_IMPULSE_DURATION";
+				label = "Heat impulse duration (s)";
+				min = 0;
+				max = 1500;
+				step = 0;
+				value = 60;
+			}
+			item X_RAIN_SENSOR_HEATER_IMPULSE_CYCLE {
+				name = "HEAT_IMPULSE_CYCLE";
+				label = "Heat impulse cycle (s)";
+				min = 0;
+				max = 1500;
+				step = 0;
+				value = 600;
+			}
+			item X_RAIN_SENSOR_HEATER_MIN_POWER {
+				name = "HEATER_MIN_POWER";
+				label = "Heater minimum power (%)";
+				min = 10;
+				max = 20;
+				step = 0;
+				value = 10;
+			}
+		}
+	}
+}

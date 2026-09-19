@@ -1,9 +1,9 @@
-// Copyright (C) 2020-2025 Rumen G. Bogdanovski
+// Copyright (C) 2020-2026 Rumen G. Bogdanovski
 // All rights reserved.
-//
-// You can use this software under the terms of 'INDIGO Astronomy
+
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-//
+
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,12 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// version history
-// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
-
-/** INDIGO Lunatico AAG CloudWatcher AUX driver
- \file indigo_aux_cloudwatcher.h
- */
+// This file generated from indigo_aux_cloudwatcher.driver
 
 #ifndef aux_cloudwatcher_h
 #define aux_cloudwatcher_h
@@ -48,4 +43,4 @@ INDIGO_EXTERN indigo_result indigo_aux_cloudwatcher(indigo_driver_action action,
 }
 #endif
 
-#endif /* aux_cloudwatcher_h */
+#endif

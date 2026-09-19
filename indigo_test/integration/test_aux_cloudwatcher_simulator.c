@@ -22,13 +22,142 @@
 #include "serial_simulator_test_common.h"
 #include "aux_test_isolation.h"
 
+#define X_CONSTANTS_PROPERTY_NAME "X_AAG_CONSTANTS"
+#define X_SENSOR_READINGS_PROPERTY_NAME AUX_INFO_PROPERTY_NAME
+#define X_HEATER_CONTROL_STATE_PROPERTY_NAME "X_HEATER_CONTROL_STATE"
+#define X_ANEMOMETER_TYPE_PROPERTY_NAME "X_ANEMOMETER_TYPE"
+#define X_SKY_CORRECTION_PROPERTY_NAME "X_SKY_CORRECTION"
+#define X_RAIN_SENSOR_HEATER_SETUP_PROPERTY_NAME "X_RAIN_SENSOR_HEATER_SETUP"
+
 static const simulator_driver_case primary = { "AAG CloudWatcher", "indigo_aux_cloudwatcher", "AAG CloudWatcher", indigo_aux_cloudwatcher, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+
+// Every driver-defined property of the connected device, so a migration that
+// silently drops or renames one fails here rather than in a value assertion.
+static const char *connected_properties[] = {
+	AUX_GPIO_OUTLETS_PROPERTY_NAME,
+	X_HEATER_CONTROL_STATE_PROPERTY_NAME,
+	X_CONSTANTS_PROPERTY_NAME,
+	X_SENSOR_READINGS_PROPERTY_NAME,
+	AUX_WEATHER_PROPERTY_NAME,
+	AUX_DEW_WARNING_PROPERTY_NAME,
+	AUX_RAIN_WARNING_PROPERTY_NAME,
+	AUX_WIND_WARNING_PROPERTY_NAME,
+	AUX_HUMIDITY_PROPERTY_NAME,
+	AUX_WIND_PROPERTY_NAME,
+	AUX_RAIN_PROPERTY_NAME,
+	AUX_CLOUD_PROPERTY_NAME,
+	AUX_SKY_PROPERTY_NAME
+};
+
+// Published whether or not the device is connected, and saved by CONFIG.SAVE.
+static const char *persistent_properties[] = {
+	AUX_OUTLET_NAMES_PROPERTY_NAME,
+	X_SKY_CORRECTION_PROPERTY_NAME,
+	AUX_DEW_THRESHOLD_PROPERTY_NAME,
+	AUX_RAIN_THRESHOLD_PROPERTY_NAME,
+	AUX_WIND_THRESHOLD_PROPERTY_NAME,
+	AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME,
+	AUX_WIND_THRESHOLDS_PROPERTY_NAME,
+	AUX_RAIN_THRESHOLDS_PROPERTY_NAME,
+	AUX_CLOUD_THRESHOLDS_PROPERTY_NAME,
+	AUX_SKY_THRESHOLDS_PROPERTY_NAME,
+	X_ANEMOMETER_TYPE_PROPERTY_NAME,
+	X_RAIN_SENSOR_HEATER_SETUP_PROPERTY_NAME
+};
+
+static bool number_is(const char *property_name, const char *item_name, double expected, double tolerance) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL) {
+		fprintf(stderr, "%s.%s is not defined\n", property_name, item_name);
+		return false;
+	}
+	if (fabs(item->number.value - expected) > tolerance) {
+		fprintf(stderr, "%s.%s: expected %g, received %g\n", property_name, item_name, expected, item->number.value);
+		return false;
+	}
+	return true;
+}
+
+static bool switch_is(const char *property_name, const char *item_name, bool expected) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL) {
+		fprintf(stderr, "%s.%s is not defined\n", property_name, item_name);
+		return false;
+	}
+	if (item->sw.value != expected) {
+		fprintf(stderr, "%s.%s: expected %s\n", property_name, item_name, expected ? "on" : "off");
+		return false;
+	}
+	return true;
+}
+
+static bool light_is(const char *property_name, const char *item_name, indigo_property_state expected) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL) {
+		fprintf(stderr, "%s.%s is not defined\n", property_name, item_name);
+		return false;
+	}
+	if (item->light.value != expected) {
+		fprintf(stderr, "%s.%s: expected state %d, received %d\n", property_name, item_name, expected, item->light.value);
+		return false;
+	}
+	return true;
+}
+
+// The compliance context remembers every property name it has ever seen, so
+// current visibility is read from the live property cache instead.
+static bool number_metadata_is(const char *property_name, const char *item_name, double min, double max, const char *format) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL) {
+		fprintf(stderr, "%s.%s is not defined\n", property_name, item_name);
+		return false;
+	}
+	if (fabs(item->number.min - min) > .001 || fabs(item->number.max - max) > .001 || strcmp(item->number.format, format)) {
+		fprintf(stderr, "%s.%s: expected [%g, %g] \"%s\", received [%g, %g] \"%s\"\n", property_name, item_name, min, max, format, item->number.min, item->number.max, item->number.format);
+		return false;
+	}
+	return true;
+}
+
+static bool properties_defined(const char * const *names, int count) {
+	for (int i = 0; i < count; i++) {
+		if (find_cached_property(names[i]) == NULL) {
+			fprintf(stderr, "%s is not defined\n", names[i]);
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool properties_undefined(const char * const *names, int count) {
+	for (int i = 0; i < count; i++) {
+		for (int j = 0; j < 50 && find_cached_property(names[i]) != NULL; j++) {
+			indigo_usleep(100000);
+		}
+		if (find_cached_property(names[i]) != NULL) {
+			fprintf(stderr, "%s is still defined\n", names[i]);
+			return false;
+		}
+	}
+	return true;
+}
+
+// The first complete reading of every profile lands on AUX_WEATHER last, so
+// waiting for it gates all of the converted values of one polling cycle.
+static bool first_reading(void) {
+	return wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_OK_STATE);
+}
 
 static void normal(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
 	assert_device_interface(INDIGO_INTERFACE_AUX);
+	SERIAL_CHECK_TRUE(properties_defined(connected_properties, ARRAY_SIZE(connected_properties)));
+	SERIAL_CHECK_TRUE(properties_defined(persistent_properties, ARRAY_SIZE(persistent_properties)));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_PRESSURE_ITEM_NAME, 1000, .01));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_WIND_SPEED_ITEM_NAME, (36 * .84 + 3) / 3.6, .01));
+	// DRV-123 reproducer: the published pressure range has to contain the
+	// values the device can report.
+	SERIAL_CHECK_TRUE(number_metadata_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_PRESSURE_ITEM_NAME, 0, 2000, "%.0f"));
 	SERIAL_CHECK_EQ_INT(indigo_change_switch_property_1(&simulator_test_client, primary.device_name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, true), INDIGO_OK);
 	SERIAL_CHECK_TRUE(aux_wait_switch(AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, true));
 	printf("Data and control assertions passed; checking disconnect/shutdown\n");
@@ -36,11 +165,202 @@ cleanup:
 	aux_stop(&primary);
 }
 
+// The M! reply is a binary block, so the decoded constants pin both the byte
+// order and the per-constant divisors of the v1.1 protocol note.
+static void constants(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_CONSTANTS_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "ZENER_VOLTAGE", 8.68, .001));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "LDR_MAX_R", 868, .001));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "LDR_PULLUP_R", 10, .001));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "RAIN_BETA_FACTOR", 3840, .001));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "RAIN_R_AT_25", 10, .001));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "RAIN_PULLUP_R", 10, .001));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "AMBIENT_BETA_FACTOR", 3811, .001));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "AMBIENT_R_AT_25", 10, .001));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "AMBIENT_PULLUP_R", 9.9, .001));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "ANEMOMETER_STATUS", 1, .001));
+cleanup:
+	aux_stop(&primary);
+}
+
+// DRV-124 reproducer: a factory constant whose low byte exceeds 127 must be
+// decoded as an unsigned byte.
+static void constants_high_bytes(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_CONSTANTS_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "ZENER_VOLTAGE", 8, .001));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "LDR_MAX_R", 1744, .001));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "LDR_PULLUP_R", 56, .001));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "RAIN_BETA_FACTOR", 3450, .001));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "RAIN_R_AT_25", 1, .001));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "RAIN_PULLUP_R", 1, .001));
+cleanup:
+	aux_stop(&primary);
+}
+
+// Raw readings, thermistor conversions and the sky temperature correction of
+// one aggregated cycle, plus the classification each of them feeds.
+static void readings_and_conditions(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(first_reading());
+	SERIAL_CHECK_TRUE(number_is(X_SENSOR_READINGS_PROPERTY_NAME, "RAW_IR_SKY_TEMPERATURE", -12, .001));
+	SERIAL_CHECK_TRUE(number_is(X_SENSOR_READINGS_PROPERTY_NAME, "IR_SENSOR_TEMPERATURE", 20, .001));
+	SERIAL_CHECK_TRUE(number_is(X_SENSOR_READINGS_PROPERTY_NAME, "RAIN_CYCLES", 2500, .001));
+	SERIAL_CHECK_TRUE(number_is(X_SENSOR_READINGS_PROPERTY_NAME, "RAIN_SENSOR_TEMPERATURE", 24.955, .01));
+	SERIAL_CHECK_TRUE(number_is(X_SENSOR_READINGS_PROPERTY_NAME, "SKY_BRIGHTNES_KOHM", 10.0196, .01));
+	SERIAL_CHECK_TRUE(number_is(X_SENSOR_READINGS_PROPERTY_NAME, "AMBIENT_TEMPERATURE", 19.9236, .01));
+	SERIAL_CHECK_TRUE(number_is(X_SENSOR_READINGS_PROPERTY_NAME, "IR_SKY_TEMPERATURE", -12.8956, .01));
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME, 19.9236, .01));
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME, -12.8956, .01));
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_HUMIDITY_ITEM_NAME, 44, .01));
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, 11.1054, .01));
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME, 9, .001));
+	SERIAL_CHECK_TRUE(switch_is(AUX_RAIN_PROPERTY_NAME, AUX_RAIN_DRY_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_LIGHT_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_NORMAL_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_MODERATE_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(light_is(AUX_WIND_WARNING_PROPERTY_NAME, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(light_is(AUX_RAIN_WARNING_PROPERTY_NAME, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(light_is(AUX_DEW_WARNING_PROPERTY_NAME, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_HEATER_CONTROL_STATE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_is(X_HEATER_CONTROL_STATE_PROPERTY_NAME, "NORMAL", true));
+cleanup:
+	aux_stop(&primary);
+}
+
 static void humidity_conversion(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
-	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(first_reading());
 	printf("Humidity: expected 44, received %g\n", cached_number_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_HUMIDITY_ITEM_NAME));
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_HUMIDITY_ITEM_NAME) - 44) < .01);
+cleanup:
+	aux_stop(&primary);
+}
+
+// Firmware 5.6 and later may answer t!/h! with the 16 bit encoding, and this
+// profile also installs the ambient thermistor that newer units drop.
+static void precise_readings(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(first_reading());
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_HUMIDITY_ITEM_NAME, 43.999, .01));
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME, 25.189, .01));
+	SERIAL_CHECK_TRUE(number_is(X_SENSOR_READINGS_PROPERTY_NAME, "AMBIENT_TEMPERATURE", 25.189, .01));
+cleanup:
+	aux_stop(&primary);
+}
+
+// No RH/T, no pressure, no sky quality and no anemometer: the affected values
+// must read zero and the conditions they classify must go idle rather than
+// report a fabricated state.
+static void absent_sensors(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(first_reading());
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_HUMIDITY_ITEM_NAME, 0, .001));
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_PRESSURE_ITEM_NAME, 0, .001));
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_DEWPOINT_ITEM_NAME, -273.15, .001));
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, 0, .001));
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME, 0, .001));
+	// Without the ambient thermistor and without RH/T the IR sensor temperature
+	// is the last ambient fallback.
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME, 20, .001));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "ANEMOMETER_STATUS", 0, .001));
+	SERIAL_CHECK_TRUE(switch_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_DARK_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_HUMIDITY_PROPERTY_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WIND_PROPERTY_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WIND_WARNING_PROPERTY_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_DEW_WARNING_PROPERTY_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(light_is(AUX_WIND_WARNING_PROPERTY_NAME, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(light_is(AUX_DEW_WARNING_PROPERTY_NAME, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, INDIGO_IDLE_STATE));
+cleanup:
+	aux_stop(&primary);
+}
+
+// The opposite end of every threshold: raining, overcast, very light sky,
+// humid air close to the dew point and a calm anemometer.
+static void wet_overcast(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(first_reading());
+	SERIAL_CHECK_TRUE(switch_is(AUX_RAIN_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_OVERCAST_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_VERY_LIGHT_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_CALM_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_WIND_SPEED_ITEM_NAME, 0, .001));
+	SERIAL_CHECK_TRUE(light_is(AUX_RAIN_WARNING_PROPERTY_NAME, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(light_is(AUX_DEW_WARNING_PROPERTY_NAME, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(light_is(AUX_WIND_WARNING_PROPERTY_NAME, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	aux_stop(&primary);
+}
+
+// The anemometer type is latched when the device connects, so the grey
+// calibration has to be selected on the disconnected device.
+static void grey_anemometer(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&primary));
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(find_cached_property(X_ANEMOMETER_TYPE_PROPERTY_NAME) != NULL);
+	SERIAL_CHECK_EQ_INT(indigo_change_switch_property_1(&simulator_test_client, primary.device_name, X_ANEMOMETER_TYPE_PROPERTY_NAME, "GREY", true), INDIGO_OK);
+	SERIAL_CHECK_TRUE(aux_wait_switch(X_ANEMOMETER_TYPE_PROPERTY_NAME, "GREY", true));
+	SERIAL_CHECK_TRUE(switch_is(X_ANEMOMETER_TYPE_PROPERTY_NAME, "BLACK", false));
+	SERIAL_CHECK_TRUE(connect_serial_device(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(first_reading());
+	// Grey cups report km/h directly, black cups need the 0.84x + 3 correction.
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_WIND_SPEED_ITEM_NAME, 36 / 3.6, .01));
+cleanup:
+	aux_stop(&primary);
+}
+
+// Relay names relabel the outlet switch, which the driver republishes so the
+// new label reaches clients that already hold the property.
+static void outlet_names(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_EQ_INT(indigo_change_text_property_1_raw(&simulator_test_client, primary.device_name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_GPIO_OUTLET_NAME_1_ITEM_NAME, "Dome light"), INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_OUTLET_NAMES_PROPERTY_NAME, INDIGO_OK_STATE));
+	for (int i = 0; i < 50; i++) {
+		indigo_item *item = find_cached_item(AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME);
+		if (item != NULL && !strcmp(item->label, "Dome light")) {
+			break;
+		}
+		indigo_usleep(100000);
+	}
+	indigo_item *outlet = find_cached_item(AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME);
+	SERIAL_CHECK_TRUE(outlet != NULL && !strcmp(outlet->label, "Dome light"));
+cleanup:
+	aux_stop(&primary);
+}
+
+// Thresholds are accepted while connected and keep the value the client sent.
+static void threshold_settings(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_EQ_INT(indigo_change_number_property_1(&simulator_test_client, primary.device_name, AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_CLOUD_CLEAR_ITEM_NAME, -20), INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_is(AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_CLOUD_CLEAR_ITEM_NAME, -20, .001));
+	SERIAL_CHECK_EQ_INT(indigo_change_number_property_1(&simulator_test_client, primary.device_name, X_SKY_CORRECTION_PROPERTY_NAME, "K1", 33), INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_SKY_CORRECTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_is(X_SKY_CORRECTION_PROPERTY_NAME, "K1", 33, .001));
+	SERIAL_CHECK_EQ_INT(indigo_change_number_property_1(&simulator_test_client, primary.device_name, X_RAIN_SENSOR_HEATER_SETUP_PROPERTY_NAME, "HEATER_MIN_POWER", 15), INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_RAIN_SENSOR_HEATER_SETUP_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_is(X_RAIN_SENSOR_HEATER_SETUP_PROPERTY_NAME, "HEATER_MIN_POWER", 15, .001));
+cleanup:
+	aux_stop(&primary);
+}
+
+// The connected properties must be withdrawn on disconnect, the always
+// published ones must survive it, and a second connection must publish a fresh
+// reading over the same simulator.
+static void reconnect(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(first_reading());
+	disconnect_serial_device(&primary);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(properties_undefined(connected_properties, ARRAY_SIZE(connected_properties)));
+	SERIAL_CHECK_TRUE(properties_defined(persistent_properties, ARRAY_SIZE(persistent_properties)));
+	SERIAL_CHECK_TRUE(connect_serial_device(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(properties_defined(connected_properties, ARRAY_SIZE(connected_properties)));
+	SERIAL_CHECK_TRUE(first_reading());
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_PRESSURE_ITEM_NAME, 1000, .01));
 cleanup:
 	aux_stop(&primary);
 }
@@ -50,6 +370,7 @@ static void rejected_connection(void) {
 	SERIAL_CHECK_TRUE(aux_reject(&primary, aux_simulator.port));
 	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(properties_undefined(connected_properties, ARRAY_SIZE(connected_properties)));
 cleanup:
 	aux_stop(&primary);
 }
@@ -65,7 +386,17 @@ cleanup:
 int main(void) {
 	const aux_simulated_case tests[] = {
 		{ "normal", normal, "normal" },
+		{ "constants", constants, "normal" },
+		{ "constants_high_bytes", constants_high_bytes, "constants-high" },
+		{ "readings_and_conditions", readings_and_conditions, "normal" },
 		{ "humidity_conversion", humidity_conversion, "normal" },
+		{ "precise_readings", precise_readings, "precise" },
+		{ "absent_sensors", absent_sensors, "no-sensors" },
+		{ "wet_overcast", wet_overcast, "wet-overcast" },
+		{ "grey_anemometer", grey_anemometer, "normal" },
+		{ "outlet_names", outlet_names, "normal" },
+		{ "threshold_settings", threshold_settings, "normal" },
+		{ "reconnect", reconnect, "normal" },
 		{ "wrong_identity", rejected_connection, "wrong-identity" },
 		{ "relay_error", relay_error, "relay-error" },
 		{ "timeout", rejected_connection, "timeout" },

@@ -706,9 +706,11 @@ Source: `indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.c`.
 
 Custom properties: `AUX_CLOUD`, `AUX_CLOUD_THRESHOLDS`, `AUX_DEW_THRESHOLD`, `AUX_DEW_WARNING`, `AUX_GPIO_OUTLETS`, `AUX_HUMIDITY`, `AUX_HUMIDITY_THRESHOLDS`, `AUX_OUTLET_NAMES`, `AUX_RAIN`, `AUX_RAIN_THRESHOLD`, `AUX_RAIN_THRESHOLDS`, `AUX_RAIN_WARNING`, `AUX_SKY`, `AUX_SKY_THRESHOLDS`, `AUX_WIND`, `AUX_WIND_THRESHOLD`, `AUX_WIND_THRESHOLDS`, `AUX_WIND_WARNING`, `X_AAG_CONSTANTS`, `X_ANEMOMETER_TYPE`, `X_HEATER_CONTROL_STATE`, `X_RAIN_SENSOR_HEATER_SETUP`, `X_SKY_CORRECTION`.
 
-Driver-specific use of existing properties: `AUX_INFO`, `AUX_WEATHER`.
+Driver-specific use of existing properties: `AUX_INFO`, `AUX_WEATHER`, `DEVICE_PORT` (serial port or a `cloudwatcher://`, `tcp://` or `udp://` URL).
 
-Source: `indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.c`.
+`AUX_INFO` carries the raw and converted sensor readings of one polling cycle. `AUX_OUTLET_NAMES`, `X_SKY_CORRECTION`, the five threshold properties, `X_ANEMOMETER_TYPE` and `X_RAIN_SENSOR_HEATER_SETUP` are always defined and saved by CONFIG; the outlet, constants, readings, weather, warning and condition properties are connection-dependent. The condition and warning properties go to `INDIGO_IDLE_STATE` when the sensor they classify is not installed.
+
+Source: `indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.driver`.
 
 ### aux_dragonfly
 
