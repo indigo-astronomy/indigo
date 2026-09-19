@@ -1432,7 +1432,11 @@ static void handle_rotator_connect_property(indigo_device *device) {
 				if (!lunatico_get_position(device, &position)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
 				}
-				ROTATOR_POSITION_ITEM->number.value = steps_to_degrees(
+				/* r_current_position has to follow the angle read from the device: the position handler
+				   skips a request that equals it, so a stale 0 here silently swallows the first request
+				   for 0 deg - no command, no error, state OK */
+				ROTATOR_POSITION_ITEM->number.value =
+				PORT_DATA.r_current_position = steps_to_degrees(
 					position,
 					ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
 					ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value

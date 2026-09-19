@@ -77,24 +77,18 @@ static void motion_case(const simulator_driver_case *device) {
 	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
 	indigo_change_number_property_1(&simulator_test_client, device->device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 0);
 	SERIAL_CHECK_TRUE(wait_for_property_not_busy(ROTATOR_POSITION_PROPERTY_NAME));
-	// The angle published straight after the sync is deliberately not asserted here: on the exp and
-	// third ports the driver reports roughly 280 deg after a sync to 0 and only converges on the
-	// requested angle again at the end of the next goto (DRV-210). The goto below is what this
-	// scenario is for, and it is checked end to end.
+	// The sync has to reach the rotator and be read back from it. On a port whose angle is not
+	// already 0 the driver used to skip the request entirely, because it compared the target against
+	// a PORT_DATA.r_current_position that connect never filled in (DRV-210).
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 0, .11));
 	indigo_change_switch_property_1(&simulator_test_client, device->device_name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true);
 	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
 	indigo_change_number_property_1(&simulator_test_client, device->device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20);
 	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
-	// The simulated rotator crawls, and on the non-main ports the sync leaves it most of a turn away
-	// from the target, so the move needs longer than the shared ten second helper allows.
-	bool arrived = false;
-	for (int i = 0; i < 600 && !arrived; i++) {
-		indigo_property *published = find_cached_property(ROTATOR_POSITION_PROPERTY_NAME);
-		arrived = published != NULL && published->state == INDIGO_OK_STATE && fabs(cached_number_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME) - 20) < .11;
-		if (!arrived) { indigo_usleep(100000); }
-	}
-	printf("%s reached %.2f deg\n", device->device_name, cached_number_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME));
-	SERIAL_CHECK_TRUE(arrived);
+	SERIAL_CHECK_TRUE(cached_number_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME) < 20);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20, .11));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	printf("%s synced to 0 and reached %.2f deg\n", device->device_name, cached_number_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME));
 cleanup:
 	aux_stop(device);
 }
