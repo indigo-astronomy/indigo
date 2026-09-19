@@ -21,6 +21,9 @@
 #include <indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.h>
 
 #include "serial_simulator_test_common.h"
+#include <errno.h>
+#include <stdatomic.h>
+#include <sys/wait.h>
 
 #ifndef FOCUSER_MYPRO2_SIMULATOR_EXECUTABLE
 #define FOCUSER_MYPRO2_SIMULATOR_EXECUTABLE "build/integration/focuser_mypro2_simulator"
@@ -43,101 +46,530 @@
 #define X_SETTLE_TIME_PROPERTY_NAME      "X_SETTLE_TIME"
 #define X_SETTLE_TIME_ITEM_NAME          "SETTLE_TIME"
 
-static const simulator_driver_case mypro2_focuser = {
+static const simulator_driver_case mypro2 = {
 	"myFocuserPro2 Focuser",
 	"indigo_focuser_mypro2",
-	FOCUSER_MFP2_NAME,
+	"myFocuserPro2",
 	indigo_focuser_mypro2,
 	false,
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
 
-static void mypro2_focuser_passes_serial_compliance_checks(void) {
-	external_serial_simulator simulator = { 0 };
+static external_serial_simulator fixture;
 
-	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_MYPRO2_SIMULATOR_EXECUTABLE));
-	SERIAL_CHECK_TRUE(start_serial_driver(&mypro2_focuser, simulator.port));
+// ----------------------------------------------------------------- observation
+
+static const char *observed_names[] = {
+	CONNECTION_PROPERTY_NAME,
+	FOCUSER_POSITION_PROPERTY_NAME,
+	FOCUSER_STEPS_PROPERTY_NAME,
+	FOCUSER_ABORT_MOTION_PROPERTY_NAME,
+	FOCUSER_SPEED_PROPERTY_NAME,
+	FOCUSER_TEMPERATURE_PROPERTY_NAME,
+	FOCUSER_LIMITS_PROPERTY_NAME,
+	FOCUSER_DIRECTION_PROPERTY_NAME,
+	FOCUSER_ON_POSITION_SET_PROPERTY_NAME,
+	FOCUSER_REVERSE_MOTION_PROPERTY_NAME,
+	FOCUSER_BACKLASH_PROPERTY_NAME,
+	FOCUSER_MODE_PROPERTY_NAME,
+	FOCUSER_COMPENSATION_PROPERTY_NAME,
+	X_STEP_MODE_PROPERTY_NAME,
+	X_COILS_MODE_PROPERTY_NAME,
+	X_SETTLE_TIME_PROPERTY_NAME
+};
+#define OBSERVED_COUNT ARRAY_SIZE(observed_names)
+static atomic_uint revisions[OBSERVED_COUNT];
+
+static int observed_index(const char *name) {
+	for (int i = 0; i < OBSERVED_COUNT; i++) {
+		if (!strcmp(name, observed_names[i])) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+static indigo_result observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	indigo_result result = simulator_client_update_property(client, device, property, message);
+	int index = context.driver_case && !strcmp(property->device, context.driver_case->device_name) ? observed_index(property->name) : -1;
+	if (index >= 0) {
+		atomic_fetch_add(&revisions[index], 1);
+	}
+	return result;
+}
+
+static unsigned revision_of(const char *name) {
+	int index = observed_index(name);
+	return index >= 0 ? atomic_load(&revisions[index]) : 0;
+}
+
+// Wait for a state the driver published after the request, so a stale value
+// left over from an earlier step cannot pass a check.
+static bool new_state(const char *name, unsigned before, indigo_property_state state) {
+	int index = observed_index(name);
+	for (int i = 0; i < 400; i++) {
+		indigo_property *property = find_cached_property(name);
+		if (index >= 0 && atomic_load(&revisions[index]) > before && property && property->state == state) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	indigo_property *property = find_cached_property(name);
+	fprintf(stderr, "No fresh %s state %d (current %d)\n", name, state, property ? property->state : -1);
+	return false;
+}
+
+static bool number_change(const char *property, const char *item, double value, indigo_property_state state) {
+	unsigned before = revision_of(property);
+	return indigo_change_number_property_1(&simulator_test_client, mypro2.device_name, property, item, value) == INDIGO_OK && new_state(property, before, state);
+}
+
+static bool switch_change(const char *property, const char *item, indigo_property_state state) {
+	unsigned before = revision_of(property);
+	return indigo_change_switch_property_1(&simulator_test_client, mypro2.device_name, property, item, true) == INDIGO_OK && new_state(property, before, state);
+}
+
+static bool number_is(const char *property_name, const char *item_name, double expected, double tolerance) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL || fabs(item->number.value - expected) > tolerance) {
+		fprintf(stderr, "%s.%s: expected %g, received %g\n", property_name, item_name, expected, item ? item->number.value : NAN);
+		return false;
+	}
+	return true;
+}
+
+static bool position_is(double expected, double tolerance) {
+	for (int i = 0; i < 200; i++) {
+		indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+		if (item && fabs(item->number.value - expected) <= tolerance) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	return number_is(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, expected, tolerance);
+}
+
+// Wait until the controller reports a position strictly between the origin and
+// the requested target, so an abort test aborts a move that is really running.
+// The requested target itself does not count: the bus publishes it as the new
+// value as soon as the request is accepted.
+static bool position_in_motion(double origin, double target) {
+	for (int i = 0; i < 400; i++) {
+		indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+		if (item && item->number.value > origin && item->number.value < target) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	fprintf(stderr, "Position never moved between %g and %g (last %g)\n", origin, target, item ? item->number.value : NAN);
+	return false;
+}
+
+static bool switch_is(const char *property_name, const char *item_name, bool expected) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL || item->sw.value != expected) {
+		fprintf(stderr, "%s.%s: expected %s\n", property_name, item_name, expected ? "on" : "off");
+		return false;
+	}
+	return true;
+}
+
+static bool text_item_is(const char *property_name, const char *item_name, const char *expected) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL || strcmp(item->text.value, expected)) {
+		fprintf(stderr, "%s.%s: expected \"%s\", received \"%s\"\n", property_name, item_name, expected, item ? item->text.value : "(none)");
+		return false;
+	}
+	return true;
+}
+
+static bool driver_start(void) {
+	return bring_up_serial_driver(&mypro2) && connect_serial_device(&mypro2, fixture.port);
+}
+
+static void driver_stop(void) {
+	if (context.connected) {
+		disconnect_serial_device(&mypro2);
+	}
+	bool disconnected = !context.connected;
+	indigo_result result = mypro2.entry(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_detach_client(&simulator_test_client);
+	indigo_stop();
+	release_cached_properties();
+	ASSERT_TRUE(disconnected);
+	ASSERT_EQ_INT(INDIGO_OK, result);
+}
+
+// ----------------------------------------------------------------- scenarios
+
+static void metadata(void) {
+	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
-
 	assert_device_interface(INDIGO_INTERFACE_FOCUSER);
 	assert_serial_focuser_class_property_completeness();
 	assert_property_has_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME);
 	assert_property_has_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME);
 	assert_property_has_item(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME);
 	assert_property_has_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME);
-	assert_property_has_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME);
 	assert_property_has_item(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME);
 	assert_property_has_item(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME);
 	assert_property_has_item(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME);
 	assert_property_has_item(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME);
 	assert_property_has_item(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME);
 	assert_property_has_item(X_STEP_MODE_PROPERTY_NAME, X_STEP_MODE_FULL_ITEM_NAME);
-	assert_property_has_item(X_STEP_MODE_PROPERTY_NAME, X_STEP_MODE_HALF_ITEM_NAME);
-	assert_property_has_item(X_STEP_MODE_PROPERTY_NAME, X_STEP_MODE_FOURTH_ITEM_NAME);
-	assert_property_has_item(X_STEP_MODE_PROPERTY_NAME, X_STEP_MODE_EIGTH_ITEM_NAME);
-	assert_property_has_item(X_STEP_MODE_PROPERTY_NAME, X_STEP_MODE_16TH_ITEM_NAME);
-	assert_property_has_item(X_STEP_MODE_PROPERTY_NAME, X_STEP_MODE_32TH_ITEM_NAME);
-	assert_property_has_item(X_STEP_MODE_PROPERTY_NAME, X_STEP_MODE_64TH_ITEM_NAME);
 	assert_property_has_item(X_STEP_MODE_PROPERTY_NAME, X_STEP_MODE_128TH_ITEM_NAME);
 	assert_property_has_item(X_COILS_MODE_PROPERTY_NAME, X_COILS_MODE_IDLE_OFF_ITEM_NAME);
 	assert_property_has_item(X_COILS_MODE_PROPERTY_NAME, X_COILS_MODE_ALWAYS_ON_ITEM_NAME);
 	assert_property_has_item(X_SETTLE_TIME_PROPERTY_NAME, X_SETTLE_TIME_ITEM_NAME);
 	assert_number_item_in_range(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, mypro2_focuser.device_name, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 2));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_SPEED_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mypro2_focuser.device_name, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, mypro2_focuser.device_name, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 12));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_BACKLASH_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mypro2_focuser.device_name, X_STEP_MODE_PROPERTY_NAME, X_STEP_MODE_16TH_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(X_STEP_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mypro2_focuser.device_name, X_COILS_MODE_PROPERTY_NAME, X_COILS_MODE_ALWAYS_ON_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(X_COILS_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, mypro2_focuser.device_name, X_SETTLE_TIME_PROPERTY_NAME, X_SETTLE_TIME_ITEM_NAME, 120));
-	SERIAL_CHECK_TRUE(wait_for_property_state(X_SETTLE_TIME_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, mypro2_focuser.device_name, FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 4));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_COMPENSATION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mypro2_focuser.device_name, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mypro2_focuser.device_name, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mypro2_focuser.device_name, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, mypro2_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mypro2_focuser.device_name, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, mypro2_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1250));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1250, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mypro2_focuser.device_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_DIRECTION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, mypro2_focuser.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 50));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1200, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, mypro2_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mypro2_focuser.device_name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-
+	SERIAL_CHECK_TRUE(text_item_is(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "myFP2"));
+	SERIAL_CHECK_TRUE(text_item_is(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, "3.0"));
+	SERIAL_CHECK_TRUE(find_cached_property(X_STEP_MODE_PROPERTY_NAME)->count == 8);
+	// Everything below is read back from the controller when it connects.
+	SERIAL_CHECK_TRUE(position_is(1000, 0));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 100000, 0));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 0, 0));
+	SERIAL_CHECK_TRUE(number_is(X_SETTLE_TIME_PROPERTY_NAME, X_SETTLE_TIME_ITEM_NAME, 100, 0));
+	SERIAL_CHECK_TRUE(switch_is(X_STEP_MODE_PROPERTY_NAME, X_STEP_MODE_EIGTH_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(X_COILS_MODE_PROPERTY_NAME, X_COILS_MODE_IDLE_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 22.5, .05));
 cleanup:
-	if (context.connected) {
-		stop_serial_driver(&mypro2_focuser);
-	}
-	stop_external_serial_simulator(&simulator);
+	driver_stop();
 }
 
-int main(void) {
-	const indigo_test_case tests[] = {
-		{ "mypro2_focuser_passes_serial_compliance_checks", mypro2_focuser_passes_serial_compliance_checks },
+static void sync_and_goto(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 4000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(4000, 0));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, mypro2.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5000));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(5000, 0));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	// Requesting the position the focuser already holds settles without a move.
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(5000, 0));
+cleanup:
+	driver_stop();
+}
+
+static void relative_move(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 300, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(5300, 0));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(5200, 0));
+cleanup:
+	driver_stop();
+}
+
+// A long move is interrupted; the abort has to settle the motion properties and
+// leave the focuser where it actually stopped, ready for the next move.
+static void abort_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, mypro2.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 90000));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_in_motion(1000, 90000));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	printf("Aborted at %g of 90000\n", stopped);
+	SERIAL_CHECK_TRUE(stopped > 1000 && stopped < 90000);
+	indigo_usleep(1500000);
+	SERIAL_CHECK_TRUE(position_is(stopped, 0));
+	// A fresh move must still be accepted after the abort. The focuser is
+	// synced to a fixed coordinate first, so the follow-up move does not depend
+	// on where the abort happened to stop it.
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(2000, 0));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2300, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(2300, 0));
+cleanup:
+	driver_stop();
+}
+
+// An urgent abort can overtake a move that is still queued; the cancelled move
+// must not start afterwards.
+static void abort_overtakes_start(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, mypro2.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 90000));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	indigo_usleep(1500000);
+	SERIAL_CHECK_TRUE(position_is(stopped, 0));
+cleanup:
+	driver_stop();
+}
+
+static void abort_while_idle(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(1000, 0));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1400, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(1400, 0));
+cleanup:
+	driver_stop();
+}
+
+static void controller_settings(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	for (int speed = 0; speed <= 2; speed++) {
+		SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, speed, INDIGO_OK_STATE));
+	}
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 12, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(X_STEP_MODE_PROPERTY_NAME, X_STEP_MODE_16TH_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_is(X_STEP_MODE_PROPERTY_NAME, X_STEP_MODE_16TH_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_change(X_COILS_MODE_PROPERTY_NAME, X_COILS_MODE_ALWAYS_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_is(X_COILS_MODE_PROPERTY_NAME, X_COILS_MODE_ALWAYS_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(number_change(X_SETTLE_TIME_PROPERTY_NAME, X_SETTLE_TIME_ITEM_NAME, 120, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_is(X_SETTLE_TIME_PROPERTY_NAME, X_SETTLE_TIME_ITEM_NAME, 120, 0));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 50000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 50000, 0));
+	// The settings the driver reads back at connect must be the ones it wrote.
+	disconnect_serial_device(&mypro2);
+	SERIAL_CHECK_TRUE(connect_serial_device(&mypro2, fixture.port));
+	SERIAL_CHECK_TRUE(switch_is(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 12, 0));
+	SERIAL_CHECK_TRUE(switch_is(X_STEP_MODE_PROPERTY_NAME, X_STEP_MODE_16TH_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(X_COILS_MODE_PROPERTY_NAME, X_COILS_MODE_ALWAYS_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(number_is(X_SETTLE_TIME_PROPERTY_NAME, X_SETTLE_TIME_ITEM_NAME, 120, 0));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 50000, 0));
+cleanup:
+	driver_stop();
+}
+
+// Automatic mode withdraws the manual controls and republishes FOCUSER_POSITION
+// read only; manual mode restores them.
+static void focuser_mode(void) {
+	static const char *manual_only[] = {
+		FOCUSER_ON_POSITION_SET_PROPERTY_NAME,
+		FOCUSER_SPEED_PROPERTY_NAME,
+		FOCUSER_REVERSE_MOTION_PROPERTY_NAME,
+		FOCUSER_DIRECTION_PROPERTY_NAME,
+		FOCUSER_STEPS_PROPERTY_NAME,
+		FOCUSER_ABORT_MOTION_PROPERTY_NAME,
+		FOCUSER_BACKLASH_PROPERTY_NAME
 	};
-	return indigo_run_tests("myFocuserPro2 serial simulator integration tests", tests, ARRAY_SIZE(tests));
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, INDIGO_OK_STATE));
+	for (int i = 0; i < ARRAY_SIZE(manual_only); i++) {
+		for (int j = 0; j < 50 && find_cached_property(manual_only[i]) != NULL; j++) {
+			indigo_usleep(100000);
+		}
+		if (find_cached_property(manual_only[i]) != NULL) {
+			fprintf(stderr, "%s is still defined in automatic mode\n", manual_only[i]);
+		}
+		SERIAL_CHECK_TRUE(find_cached_property(manual_only[i]) == NULL);
+	}
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME) != NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME, INDIGO_OK_STATE));
+	for (int i = 0; i < ARRAY_SIZE(manual_only); i++) {
+		for (int j = 0; j < 50 && find_cached_property(manual_only[i]) == NULL; j++) {
+			indigo_usleep(100000);
+		}
+		SERIAL_CHECK_TRUE(find_cached_property(manual_only[i]) != NULL);
+	}
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->perm == INDIGO_RW_PERM);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1300, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(1300, 0));
+cleanup:
+	driver_stop();
+}
+
+// The probe cools by 2 degrees, so automatic mode has to move the focuser by
+// the compensation factor times the temperature difference.
+static void temperature_compensation(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 10, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME, 1, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 20.5, .05));
+	// -2 degrees times 10 steps per degree
+	SERIAL_CHECK_TRUE(position_is(980, 0));
+cleanup:
+	driver_stop();
+}
+
+static void gemini_step_modes(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(text_item_is(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "myFP2Gemini"));
+	// A Gemini board supports full and half step only.
+	SERIAL_CHECK_TRUE(find_cached_property(X_STEP_MODE_PROPERTY_NAME)->count == 2);
+	SERIAL_CHECK_TRUE(switch_change(X_STEP_MODE_PROPERTY_NAME, X_STEP_MODE_HALF_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_is(X_STEP_MODE_PROPERTY_NAME, X_STEP_MODE_HALF_ITEM_NAME, true));
+cleanup:
+	driver_stop();
+}
+
+// A missing DS18B20 answers -127; the property goes idle and no compensation
+// may be applied from an invalid reading.
+static void no_temperature_sensor(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, INDIGO_OK_STATE));
+	indigo_usleep(5000000);
+	SERIAL_CHECK_TRUE(position_is(1000, 0));
+cleanup:
+	driver_stop();
+}
+
+static void silent_controller(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mypro2));
+	SERIAL_CHECK_TRUE(!connect_serial_device(&mypro2, fixture.port));
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(find_cached_property(X_STEP_MODE_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(X_COILS_MODE_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(X_SETTLE_TIME_PROPERTY_NAME) == NULL);
+cleanup:
+	driver_stop();
+}
+
+// DRV-141 reproducer: a failed :01# must be reported, not turned into a
+// successful move by an uninitialised motion flag. The driver has to stay
+// usable afterwards and report the next attempt the same way.
+static void moving_query_fails(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 90000, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 80000, INDIGO_ALERT_STATE));
+cleanup:
+	driver_stop();
+}
+
+// DRV-142 reproducer: a failed maximum position readback must not be reported
+// as OK.
+static void max_position_readback_fails(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 50000, INDIGO_ALERT_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void reconnect(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(find_cached_property(X_STEP_MODE_PROPERTY_NAME) != NULL);
+	disconnect_serial_device(&mypro2);
+	SERIAL_CHECK_TRUE(!context.connected);
+	for (int i = 0; i < 50 && find_cached_property(X_STEP_MODE_PROPERTY_NAME) != NULL; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(find_cached_property(X_STEP_MODE_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(X_COILS_MODE_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(X_SETTLE_TIME_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(connect_serial_device(&mypro2, fixture.port));
+	SERIAL_CHECK_TRUE(find_cached_property(X_STEP_MODE_PROPERTY_NAME) != NULL);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1600, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(1600, 0));
+cleanup:
+	driver_stop();
+}
+
+static void disconnect_during_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, mypro2.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 90000));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_in_motion(1000, 90000));
+	disconnect_serial_device(&mypro2);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_serial_device(&mypro2, fixture.port));
+	// The disconnect halted the controller, so the reconnected driver finds it
+	// stopped short of the requested position.
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) < 90000);
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- runner
+
+typedef struct { const char *name; void (*run)(void); const char *profile; } simulated_case;
+
+int main(void) {
+	const simulated_case cases[] = {
+		{ "metadata", metadata, "normal" },
+		{ "sync_and_goto", sync_and_goto, "normal" },
+		{ "relative_move", relative_move, "normal" },
+		{ "abort_motion", abort_motion, "normal" },
+		{ "abort_overtakes_start", abort_overtakes_start, "normal" },
+		{ "abort_while_idle", abort_while_idle, "normal" },
+		{ "controller_settings", controller_settings, "normal" },
+		{ "focuser_mode", focuser_mode, "normal" },
+		{ "temperature_compensation", temperature_compensation, "temperature-drift" },
+		{ "gemini_step_modes", gemini_step_modes, "gemini" },
+		{ "no_temperature_sensor", no_temperature_sensor, "no-sensor" },
+		{ "silent_controller", silent_controller, "silent" },
+		{ "moving_query_fails", moving_query_fails, "moving-error" },
+		{ "max_position_readback_fails", max_position_readback_fails, "maxpos-error" },
+		{ "reconnect", reconnect, "normal" },
+		{ "disconnect_during_motion", disconnect_during_motion, "normal" }
+	};
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	simulator_test_client.update_property = observe_update;
+	int failures = 0;
+	const char *filter = getenv("MYPRO2_TEST_FILTER");
+	for (int i = 0; i < ARRAY_SIZE(cases); i++) {
+		if (filter && !strstr(cases[i].name, filter)) {
+			continue;
+		}
+		const char *args[] = { "--profile", cases[i].profile, NULL, NULL };
+		if (getenv("MYPRO2_TEST_TRACE") != NULL) {
+			args[2] = "--trace";
+		}
+		if (!start_external_serial_simulator_with_args(&fixture, FOCUSER_MYPRO2_SIMULATOR_EXECUTABLE, args)) {
+			fprintf(stderr, "Simulator startup failed\n");
+			return 1;
+		}
+		fflush(NULL);
+		pid_t child = fork();
+		if (child == 0) {
+			alarm(120);
+			indigo_test_case test = { cases[i].name, cases[i].run };
+			_exit(indigo_run_tests("myFocuserPro2", &test, 1));
+		}
+		int status = 0;
+		if (child > 0) {
+			while (waitpid(child, &status, 0) < 0) {
+				if (errno != EINTR) {
+					status = -1;
+					break;
+				}
+			}
+		}
+		stop_external_serial_simulator(&fixture);
+		if (child < 0 || status == -1 || !WIFEXITED(status) || WEXITSTATUS(status)) {
+			failures++;
+			printf("FAIL: %s (exit=%d, signal=%d)\n", cases[i].name, WIFEXITED(status) ? WEXITSTATUS(status) : -1, WIFSIGNALED(status) ? WTERMSIG(status) : 0);
+		}
+	}
+	printf("myFocuserPro2: %d failing scenarios\n", failures);
+	return failures ? 1 : 0;
 }

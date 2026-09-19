@@ -481,7 +481,7 @@ $(INTEGRATION_BUILD)/focuser_mjkzz_simulator: ../indigo_drivers/focuser_mjkzz/fo
 $(INTEGRATION_BUILD)/focuser_moonlite_simulator: ../indigo_drivers/focuser_moonlite/focuser_moonlite_simulator/focuser_moonlite_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
 
-$(INTEGRATION_BUILD)/focuser_mypro2_simulator: ../indigo_drivers/focuser_mypro2/focuser_mypro2_simulator/focuser_mypro2_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/focuser_mypro2_simulator: ../indigo_drivers/focuser_mypro2/focuser_mypro2_simulator/focuser_mypro2_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/focuser_nfocus_simulator: ../indigo_drivers/focuser_nfocus/focuser_nfocus_simulator/focuser_nfocus_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)

@@ -1192,9 +1192,11 @@ Source: `indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.driver`.
 
 Custom properties: `X_COILS_MODE`, `X_SETTLE_TIME`, `X_STEP_MODE`.
 
-Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`, `DEVICE_PORT` (serial port or an `mfp://`, `tcp://` or `udp://` URL).
 
-Source: `indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.c`.
+`FOCUSER_SPEED` selects the controller's slow, medium or fast motor speed as 0, 1 or 2. `FOCUSER_MODE` set to automatic withdraws `FOCUSER_ON_POSITION_SET`, `FOCUSER_SPEED`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_DIRECTION`, `FOCUSER_STEPS`, `FOCUSER_ABORT_MOTION` and `FOCUSER_BACKLASH` and republishes `FOCUSER_POSITION` read-only; manual mode restores them. `FOCUSER_BACKLASH` drives the controller's separate in and out backlash values with one number. `FOCUSER_LIMITS` writes its maximum to the controller and publishes what the controller confirms; the minimum is fixed at zero. `X_STEP_MODE` is reduced to full and half step on a Gemini board. `X_COILS_MODE` selects whether the coils stay energised while idle, and `X_SETTLE_TIME` is the controller's post-move delay in milliseconds. The three driver-defined properties are connection-dependent and are the ones saved by CONFIG.
+
+Source: `indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.driver`.
 
 ### focuser_nfocus
 

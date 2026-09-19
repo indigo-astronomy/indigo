@@ -1,0 +1,678 @@
+// Copyright (C) 2020-2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// myFocuserPro2 focuser driver definition
+// The command subset is documented in myfocuser2_command_subset.txt.
+
+// version history
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
+driver mypro2 {
+	label = "myFocuserPro2 Focuser";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
+	copyright = "Copyright (C) 2020-2026 Rumen G. Bogdanovski";
+	version = 12;
+	serial {
+		configurable_speed = true;
+	}
+	include {
+		#include <stdarg.h>
+		#include <indigo/indigo_client.h>
+	}
+	define {
+		#define RESPONSE (PRIVATE_DATA->response)
+		#define MFP_CMD_LEN 100
+		#define MFP_BAUDRATE "9600"
+		#define MFP_TIMEOUT 0.3
+		#define MFP_POLL_DELAY 0.5
+		#define MFP_MIN_POSITION 0
+		#define MFP_MAX_POSITION 2000000
+		#define NO_TEMP_READING (-127)
+	}
+	data {
+		char response[MFP_CMD_LEN];
+		int current_position, target_position, max_position;
+		double prev_temp;
+		bool has_temperature_sensor, disconnection_queued;
+	}
+	code {
+		static void focuser_connection_handler(indigo_device *device);
+		static void focuser_position_handler(indigo_device *device);
+		static void focuser_steps_handler(indigo_device *device);
+		static void motion_finalizer(indigo_device *device);
+		static void sync_finalizer(indigo_device *device);
+
+		// A controller reached over the network cannot report a broken link, so
+		// a failed transaction on a TCP handle disconnects the device.
+		static void mypro2_network_disconnection(indigo_device *device) {
+			if (CONNECTION_CONNECTED_ITEM->sw.value) {
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				focuser_connection_handler(device);
+				// the alert state signals the unexpected disconnection
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				indigo_send_message(device, ALERT_PROPERTY, "Device disconnected unexpectedly");
+			}
+		}
+
+		// Requests are ":<code><arguments>#", replies are "<letter><value>#".
+		// Setting commands are not acknowledged at all, so expect_response is
+		// false for them.
+		static bool mypro2_vcommand(indigo_device *device, bool expect_response, const char *format, va_list args) {
+			bool failed = indigo_uni_discard(PRIVATE_DATA->handle) < 0 || indigo_uni_vprintf(PRIVATE_DATA->handle, format, args) <= 0;
+			if (!failed && expect_response) {
+				failed = indigo_uni_read_section(PRIVATE_DATA->handle, RESPONSE, sizeof(PRIVATE_DATA->response) - 1, "#", "", INDIGO_DELAY(MFP_TIMEOUT)) <= 0;
+				if (!failed) {
+					// the Arduino firmware needs a gap between transactions
+					indigo_usleep(50000);
+				}
+			}
+			if (failed && PRIVATE_DATA->handle != NULL && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE && !PRIVATE_DATA->disconnection_queued) {
+				PRIVATE_DATA->disconnection_queued = true;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
+				indigo_execute_handler(device, mypro2_network_disconnection);
+			}
+			return !failed;
+		}
+
+		static bool mypro2_command(indigo_device *device, bool expect_response, const char *format, ...) {
+			va_list args;
+			va_start(args, format);
+			bool result = mypro2_vcommand(device, expect_response, format, args);
+			va_end(args);
+			return result;
+		}
+
+		static bool mypro2_get_int(indigo_device *device, const char *command, char expect, int *value) {
+			char format[8];
+			snprintf(format, sizeof(format), "%c%%d#", expect);
+			if (mypro2_command(device, true, "%s", command) && sscanf(RESPONSE, format, value) == 1) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s = %d", command, RESPONSE, *value);
+				return true;
+			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
+			return false;
+		}
+
+		static bool mypro2_get_position(indigo_device *device, int *position) {
+			return mypro2_get_int(device, ":00#", 'P', position);
+		}
+
+		static bool mypro2_get_temperature(indigo_device *device, double *temperature) {
+			if (mypro2_command(device, true, ":06#") && sscanf(RESPONSE, "Z%lf#", temperature) == 1) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, ":06# -> %s = %lf", RESPONSE, *temperature);
+				return true;
+			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, ":06# failed");
+			return false;
+		}
+
+		// The firmware answers "F<board><separator><version>#"; the separators
+		// are a newline and a carriage return on the boards seen so far.
+		static bool mypro2_get_info(indigo_device *device, char *board, char *firmware) {
+			if (!mypro2_command(device, true, ":04#")) {
+				return false;
+			}
+			for (char *c = RESPONSE; *c; c++) {
+				if (*c == '\n' || *c == '\r') {
+					*c = ' ';
+				} else if (*c == '#') {
+					*c = 0;
+					break;
+				}
+			}
+			if (sscanf(RESPONSE, "F%63s %63s", board, firmware) != 2) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, ":04# failed");
+				return false;
+			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, ":04# -> %s %s", board, firmware);
+			return true;
+		}
+
+		static bool mypro2_set_backlashes(indigo_device *device, int backlash_in, int backlash_out) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set backlash_in = %d, backlash_out = %d", backlash_in, backlash_out);
+			return mypro2_command(device, false, ":77%02d#", backlash_in) && mypro2_command(device, false, ":79%02d#", backlash_out) && mypro2_command(device, false, ":73%1d#", backlash_in > 0 ? 1 : 0) && mypro2_command(device, false, ":75%1d#", backlash_out > 0 ? 1 : 0);
+		}
+
+		static bool mypro2_get_backlashes(indigo_device *device, int *backlash_in, int *backlash_out) {
+			int in_steps = 0, out_steps = 0, in_enabled = 0, out_enabled = 0;
+			if (!mypro2_get_int(device, ":78#", '6', &in_steps) || !mypro2_get_int(device, ":80#", '7', &out_steps) || !mypro2_get_int(device, ":74#", '4', &in_enabled) || !mypro2_get_int(device, ":76#", '5', &out_enabled)) {
+				return false;
+			}
+			*backlash_in = in_enabled ? in_steps : 0;
+			*backlash_out = out_enabled ? out_steps : 0;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Get backlash_in = %d, backlash_out = %d", *backlash_in, *backlash_out);
+			return true;
+		}
+
+		static bool mypro2_update_step_mode(indigo_device *device) {
+			int mode = 0;
+			if (!mypro2_get_int(device, ":29#", 'S', &mode)) {
+				return false;
+			}
+			for (int i = 0; i < X_STEP_MODE_PROPERTY->count; i++) {
+				if (mode == 1 << i) {
+					indigo_set_switch(X_STEP_MODE_PROPERTY, X_STEP_MODE_PROPERTY->items + i, true);
+					return true;
+				}
+			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, ":29# wrong value %d", mode);
+			return false;
+		}
+
+		static bool mypro2_update_coils_mode(indigo_device *device) {
+			int mode = 0;
+			if (!mypro2_get_int(device, ":11#", 'O', &mode)) {
+				return false;
+			}
+			if (mode < 0 || mode >= X_COILS_MODE_PROPERTY->count) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, ":11# wrong value %d", mode);
+				return false;
+			}
+			indigo_set_switch(X_COILS_MODE_PROPERTY, X_COILS_MODE_PROPERTY->items + mode, true);
+			return true;
+		}
+
+		static bool mypro2_update_settle_time(indigo_device *device) {
+			int settle_time = 0;
+			if (!mypro2_get_int(device, ":72#", '3', &settle_time)) {
+				return false;
+			}
+			X_SETTLE_TIME_ITEM->number.value = X_SETTLE_TIME_ITEM->number.target = settle_time;
+			return true;
+		}
+
+		static int mypro2_clamp_position(indigo_device *device, long long position) {
+			if (position > FOCUSER_POSITION_ITEM->number.max) {
+				position = (long long)FOCUSER_POSITION_ITEM->number.max;
+			} else if (position < FOCUSER_POSITION_ITEM->number.min) {
+				position = (long long)FOCUSER_POSITION_ITEM->number.min;
+			}
+			return (int)position;
+		}
+
+		static void mypro2_motion_state(indigo_device *device, indigo_property_state state) {
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+			FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = state;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		}
+
+		static void motion_finalizer(indigo_device *device) {
+			if (!IS_CONNECTED) {
+				return;
+			}
+			int moving = 0, position = 0;
+			bool moving_read = mypro2_get_int(device, ":01#", 'I', &moving);
+			bool position_read = mypro2_get_position(device, &position);
+			if (position_read) {
+				PRIVATE_DATA->current_position = position;
+			}
+			if (!moving_read || !position_read) {
+				mypro2_motion_state(device, INDIGO_ALERT_STATE);
+			} else if (moving == 0 || PRIVATE_DATA->current_position == PRIVATE_DATA->target_position) {
+				mypro2_motion_state(device, INDIGO_OK_STATE);
+			} else {
+				mypro2_motion_state(device, INDIGO_BUSY_STATE);
+				indigo_execute_handler_in(device, MFP_POLL_DELAY, motion_finalizer);
+			}
+		}
+
+		// :31# updates the controller's counter without moving, but the new
+		// coordinate is only readable a moment later.
+		static void sync_finalizer(indigo_device *device) {
+			if (!IS_CONNECTED) {
+				return;
+			}
+			int position = 0;
+			if (mypro2_get_position(device, &position)) {
+				PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
+				mypro2_motion_state(device, INDIGO_OK_STATE);
+			} else {
+				mypro2_motion_state(device, INDIGO_ALERT_STATE);
+			}
+		}
+
+		static void mypro2_start_motion(indigo_device *device, int target) {
+			PRIVATE_DATA->target_position = target;
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+			if (mypro2_command(device, false, ":05%06d#", target)) {
+				mypro2_motion_state(device, INDIGO_BUSY_STATE);
+				indigo_execute_handler_in(device, MFP_POLL_DELAY, motion_finalizer);
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, ":05%06d# failed", target);
+				mypro2_motion_state(device, INDIGO_ALERT_STATE);
+			}
+		}
+
+		static void mypro2_compensate_focus(indigo_device *device, double new_temp) {
+			double temp_difference = new_temp - PRIVATE_DATA->prev_temp;
+			// we do not have a previous temperature reading
+			if (PRIVATE_DATA->prev_temp <= NO_TEMP_READING) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: prev_temp = %f", PRIVATE_DATA->prev_temp);
+				PRIVATE_DATA->prev_temp = new_temp;
+				return;
+			}
+			// we do not have a current temperature reading or the focuser is moving
+			if (new_temp <= NO_TEMP_READING || FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: new_temp = %f, FOCUSER_POSITION_PROPERTY->state = %d", new_temp, FOCUSER_POSITION_PROPERTY->state);
+				return;
+			}
+			if (fabs(temp_difference) < FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value || fabs(temp_difference) >= 100) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating (not needed): temp_difference = %.2f, threshold = %.2f", temp_difference, FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value);
+				return;
+			}
+			int compensation = (int)(temp_difference * FOCUSER_COMPENSATION_ITEM->number.value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: temp_difference = %.2f, compensation = %d, steps/degC = %.0f", temp_difference, compensation, FOCUSER_COMPENSATION_ITEM->number.value);
+			long long target = (long long)PRIVATE_DATA->current_position + compensation;
+			int position = 0;
+			if (mypro2_get_position(device, &position)) {
+				PRIVATE_DATA->current_position = position;
+			}
+			PRIVATE_DATA->prev_temp = new_temp;
+			mypro2_start_motion(device, mypro2_clamp_position(device, target));
+		}
+
+		static bool mypro2_open(indigo_device *device) {
+			char *name = DEVICE_PORT_ITEM->text.value;
+			if (indigo_uni_is_url(name, "mfp")) {
+				PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
+			} else {
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
+			}
+			if (PRIVATE_DATA->handle == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", name);
+				return false;
+			}
+			PRIVATE_DATA->disconnection_queued = false;
+			// myFocuserPro2 resets on RTS, which is manipulated on connect
+			indigo_usleep(INDIGO_DELAY(2));
+			int position = 0;
+			if (mypro2_get_position(device, &position)) {
+				PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
+				return true;
+			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: MyFP2 AF did not respond");
+			indigo_uni_close(&PRIVATE_DATA->handle);
+			return false;
+		}
+
+		static void mypro2_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
+		}
+	}
+	focuser {
+		name = "myFocuserPro2";
+		additional_instances = true;
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, MFP_BAUDRATE);
+		}
+		on_connect {
+			// board-dependent capabilities are restored before every detection
+			X_STEP_MODE_PROPERTY->count = 8;
+			char board[64] = "N/A", firmware[64] = "N/A";
+			if (mypro2_get_info(device, board, firmware)) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, board);
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+			}
+			if (strstr(INFO_DEVICE_MODEL_ITEM->text.value, "Gemini") != NULL) {
+				// Gemini supports full and half step only
+				X_STEP_MODE_PROPERTY->count = 2;
+			}
+			int position = 0;
+			if (mypro2_get_position(device, &position)) {
+				PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
+			}
+			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
+			int backlash_in = 0, backlash_out = 0;
+			if (mypro2_get_backlashes(device, &backlash_in, &backlash_out)) {
+				if (backlash_in != backlash_out) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "backlash_in != backlash_out, using backlash_in as backlash");
+					mypro2_set_backlashes(device, backlash_in, backlash_in);
+				}
+				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = backlash_in;
+			}
+			if (mypro2_get_int(device, ":08#", 'M', &PRIVATE_DATA->max_position)) {
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = PRIVATE_DATA->max_position;
+			}
+			if (!mypro2_command(device, false, ":15%d#", (int)FOCUSER_SPEED_ITEM->number.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, ":15# failed");
+			}
+			FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.value;
+			int reversed = 0;
+			if (mypro2_get_int(device, ":13#", 'R', &reversed)) {
+				indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, reversed ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+			}
+			mypro2_update_coils_mode(device);
+			mypro2_update_step_mode(device);
+			mypro2_update_settle_time(device);
+			PRIVATE_DATA->has_temperature_sensor = true;
+			PRIVATE_DATA->prev_temp = NO_TEMP_READING;
+			if (mypro2_get_temperature(device, &FOCUSER_TEMPERATURE_ITEM->number.value)) {
+				PRIVATE_DATA->prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
+			}
+		}
+		on_disconnect {
+			mypro2_command(device, false, ":27#");
+			mypro2_command(device, false, ":48#");
+			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+		}
+		on_timer {
+			double temperature = NO_TEMP_READING;
+			bool read = mypro2_get_temperature(device, &temperature);
+			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+			if (read) {
+				FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
+			} else {
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (FOCUSER_TEMPERATURE_ITEM->number.value <= NO_TEMP_READING) {
+				// -127 is returned when the DS18B20 is not connected
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
+				if (PRIVATE_DATA->has_temperature_sensor) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected.");
+					indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected.");
+					PRIVATE_DATA->has_temperature_sensor = false;
+				}
+			} else {
+				PRIVATE_DATA->has_temperature_sensor = true;
+				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+			}
+			if (!FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
+				// reset the reference so compensation starts when automatic mode is selected
+				PRIVATE_DATA->prev_temp = NO_TEMP_READING;
+			} else if (read) {
+				mypro2_compensate_focus(device, temperature);
+			}
+			indigo_execute_handler_in(device, 2, focuser_timer_callback);
+		}
+		inherited FOCUSER_TEMPERATURE {
+			hidden = false;
+		}
+		inherited FOCUSER_ON_POSITION_SET {
+			hidden = false;
+		}
+		inherited FOCUSER_MODE {
+			hidden = false;
+			on_change {
+				if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
+					indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
+					indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				} else {
+					indigo_delete_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
+					indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				}
+			}
+		}
+		inherited FOCUSER_COMPENSATION {
+			hidden = false;
+			on_attach {
+				FOCUSER_COMPENSATION_ITEM->number.min = -10000;
+				FOCUSER_COMPENSATION_ITEM->number.max = 10000;
+				FOCUSER_COMPENSATION_PROPERTY->count = 2;
+			}
+			on_change { }
+		}
+		inherited FOCUSER_SPEED {
+			hidden = false;
+			on_attach {
+				FOCUSER_SPEED_ITEM->number.min = 0;
+				FOCUSER_SPEED_ITEM->number.max = 2;
+				FOCUSER_SPEED_ITEM->number.step = 0;
+			}
+			on_change {
+				if (!mypro2_command(device, false, ":15%d#", (int)FOCUSER_SPEED_ITEM->number.target)) {
+					FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_REVERSE_MOTION {
+			hidden = false;
+			on_change {
+				if (!mypro2_command(device, false, ":14%d#", FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? 1 : 0)) {
+					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_BACKLASH {
+			hidden = false;
+			on_attach {
+				FOCUSER_BACKLASH_ITEM->number.min = 0;
+				FOCUSER_BACKLASH_ITEM->number.max = 255;
+			}
+			on_change {
+				int backlash = (int)FOCUSER_BACKLASH_ITEM->number.target;
+				if (mypro2_set_backlashes(device, backlash, backlash)) {
+					FOCUSER_BACKLASH_ITEM->number.value = backlash;
+				} else {
+					FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+					int backlash_in = 0, backlash_out = 0;
+					if (mypro2_get_backlashes(device, &backlash_in, &backlash_out)) {
+						FOCUSER_BACKLASH_ITEM->number.value = backlash_in;
+					}
+				}
+			}
+		}
+		inherited FOCUSER_LIMITS {
+			hidden = false;
+			on_attach {
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = MFP_MIN_POSITION;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = MFP_MIN_POSITION;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = MFP_MIN_POSITION;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 1000;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = MFP_MAX_POSITION;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.step = 1000;
+			}
+			on_change {
+				if (!mypro2_command(device, false, ":07%d#", (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target) || !mypro2_get_int(device, ":08#", 'M', &PRIVATE_DATA->max_position)) {
+					FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = PRIVATE_DATA->max_position;
+			}
+		}
+		inherited FOCUSER_POSITION {
+			preserve_values = true;
+			on_attach {
+				FOCUSER_POSITION_ITEM->number.min = MFP_MIN_POSITION;
+				FOCUSER_POSITION_ITEM->number.max = MFP_MAX_POSITION;
+				FOCUSER_POSITION_ITEM->number.step = 100;
+			}
+			on_change {
+				int target = (int)FOCUSER_POSITION_ITEM->number.target;
+				if (target == PRIVATE_DATA->current_position) {
+					mypro2_motion_state(device, INDIGO_OK_STATE);
+				} else if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
+					if (mypro2_command(device, false, ":31%06d#", target)) {
+						mypro2_motion_state(device, INDIGO_BUSY_STATE);
+						indigo_execute_handler_in(device, MFP_POLL_DELAY, sync_finalizer);
+					} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, ":31%06d# failed", target);
+						mypro2_motion_state(device, INDIGO_ALERT_STATE);
+					}
+				} else {
+					mypro2_start_motion(device, target);
+				}
+			}
+		}
+		inherited FOCUSER_STEPS {
+			on_attach {
+				FOCUSER_STEPS_ITEM->number.min = 0;
+				FOCUSER_STEPS_ITEM->number.step = 1;
+			}
+			on_change {
+				int position = 0;
+				if (mypro2_get_position(device, &position)) {
+					PRIVATE_DATA->current_position = position;
+				}
+				long long steps = (long long)FOCUSER_STEPS_ITEM->number.value;
+				long long target = (long long)PRIVATE_DATA->current_position + (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -steps : steps);
+				mypro2_start_motion(device, mypro2_clamp_position(device, target));
+			}
+		}
+		inherited FOCUSER_ABORT_MOTION {
+			on_change {
+				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+				// an urgent abort can overtake a move that is still queued
+				indigo_cancel_pending_handler(device, focuser_position_handler);
+				indigo_cancel_pending_handler(device, focuser_steps_handler);
+				indigo_cancel_pending_handler(device, motion_finalizer);
+				indigo_cancel_pending_handler(device, sync_finalizer);
+				int position = 0;
+				if (!mypro2_command(device, false, ":27#") || !mypro2_get_position(device, &position)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "abort failed");
+					FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
+				}
+				FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
+				mypro2_motion_state(device, FOCUSER_ABORT_MOTION_PROPERTY->state);
+				FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+				indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+			}
+		}
+		switch X_STEP_MODE {
+			name = "X_STEP_MODE";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Step mode";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				int mode = 1;
+				for (int i = 0; i < X_STEP_MODE_PROPERTY->count; i++) {
+					if (X_STEP_MODE_PROPERTY->items[i].sw.value) {
+						mode = 1 << i;
+						break;
+					}
+				}
+				if (!mypro2_command(device, false, ":30%d#", mode)) {
+					X_STEP_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				if (!mypro2_update_step_mode(device)) {
+					X_STEP_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_STEP_MODE_FULL {
+				name = "FULL";
+				label = "Full step";
+				value = false;
+			}
+			item X_STEP_MODE_HALF {
+				name = "HALF";
+				label = "1/2 step";
+				value = false;
+			}
+			item X_STEP_MODE_FOURTH {
+				name = "FOURTH";
+				label = "1/4 step";
+				value = false;
+			}
+			item X_STEP_MODE_EIGTH {
+				name = "EIGTH";
+				label = "1/8 step";
+				value = false;
+			}
+			item X_STEP_MODE_16TH {
+				name = "16TH";
+				label = "1/16 step";
+				value = false;
+			}
+			item X_STEP_MODE_32TH {
+				name = "32TH";
+				label = "1/32 step";
+				value = false;
+			}
+			item X_STEP_MODE_64TH {
+				name = "64TH";
+				label = "1/64 step";
+				value = false;
+			}
+			item X_STEP_MODE_128TH {
+				name = "128TH";
+				label = "1/128 step";
+				value = false;
+			}
+		}
+		switch X_COILS_MODE {
+			name = "X_COILS_MODE";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Coils Power";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!mypro2_command(device, false, ":12%d#", X_COILS_MODE_ALWAYS_ON_ITEM->sw.value ? 1 : 0)) {
+					X_COILS_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				if (!mypro2_update_coils_mode(device)) {
+					X_COILS_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_COILS_MODE_IDLE_OFF {
+				name = "OFF_WHEN_IDLE";
+				label = "OFF when idle";
+				value = false;
+			}
+			item X_COILS_MODE_ALWAYS_ON {
+				name = "ALWAYS_ON";
+				label = "Always ON";
+				value = false;
+			}
+		}
+		number X_SETTLE_TIME {
+			name = "X_SETTLE_TIME";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Settle time";
+			persistent = true;
+			on_change {
+				if (!mypro2_command(device, false, ":71%d#", (int)X_SETTLE_TIME_ITEM->number.target)) {
+					X_SETTLE_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				if (!mypro2_update_settle_time(device)) {
+					X_SETTLE_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_SETTLE_TIME {
+				name = "SETTLE_TIME";
+				label = "Settle time (ms)";
+				min = 0;
+				max = 255;
+				step = 10;
+				value = 0;
+			}
+		}
+	}
+}
