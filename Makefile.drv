@@ -109,7 +109,17 @@ endif
 	@printf "\n"
 
 ifneq ($(DEFINITION),)
-$(SOURCES): $(DEFINITION) ../../indigo_tools/indigo_generator.c
+# One generator run writes the header, the main stub and the driver source. Giving all three targets
+# the same recipe makes GNU make run that recipe once per out-of-date target, so a parallel build can
+# start a second generator while the first is still writing, or compile a source that is being
+# rewritten - seen as transient parse errors in files that are clean in git. $(SOURCES) is also a
+# wildcard, so hand-written sources in the same directory were pulled into the rule as well.
+# Only the driver source carries the recipe now; the other two outputs are declared to depend on it,
+# so make orders them behind a single run. Grouped targets (&:) would express this directly but need
+# GNU make 4.3, and this tree is built with 3.81.
+GENERATED_SOURCE = $(firstword $(wildcard $(basename $(DEFINITION)).cpp $(basename $(DEFINITION)).c) $(basename $(DEFINITION)).c)
+$(basename $(DEFINITION)).h $(basename $(DEFINITION))_main.c: $(GENERATED_SOURCE)
+$(GENERATED_SOURCE): $(DEFINITION) ../../indigo_tools/indigo_generator.c
 	$(BUILD_BIN)/indigo_generator $(DEFINITION)
 endif
 
