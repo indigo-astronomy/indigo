@@ -21,38 +21,157 @@
 #include <indigo_drivers/focuser_focusdreampro/indigo_focuser_focusdreampro.h>
 
 #include "serial_simulator_test_common.h"
+#include <errno.h>
+#include <stdatomic.h>
+#include <sys/wait.h>
 
 #ifndef FOCUSER_FOCUSDREAMPRO_SIMULATOR_EXECUTABLE
 #define FOCUSER_FOCUSDREAMPRO_SIMULATOR_EXECUTABLE "build/integration/focuser_focusdreampro_simulator"
 #endif
 
-#define FOCUSER_FOCUSDREAMPRO_NAME           "FocusDreamPro"
-#define X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME   "X_FOCUSER_DUTY_CYCLE"
-#define X_FOCUSER_DUTY_CYCLE_ITEM_NAME       "DUTY_CYCLE"
+#define X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME "X_FOCUSER_DUTY_CYCLE"
+#define X_FOCUSER_DUTY_CYCLE_ITEM_NAME     "DUTY_CYCLE"
 
-static const simulator_driver_case focusdreampro_focuser = {
+static const simulator_driver_case focusdreampro = {
 	"AGadget FocusDreamPro Focuser",
 	"indigo_focuser_focusdreampro",
-	FOCUSER_FOCUSDREAMPRO_NAME,
+	"FocusDreamPro",
 	indigo_focuser_focusdreampro,
 	false,
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
 
-static void focusdreampro_focuser_passes_serial_compliance_checks(void) {
-	external_serial_simulator simulator = { 0 };
+static external_serial_simulator fixture;
 
-	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_FOCUSDREAMPRO_SIMULATOR_EXECUTABLE));
-	SERIAL_CHECK_TRUE(start_serial_driver(&focusdreampro_focuser, simulator.port));
+// ----------------------------------------------------------------- observation
+
+static const char *observed_names[] = {
+	CONNECTION_PROPERTY_NAME,
+	FOCUSER_POSITION_PROPERTY_NAME,
+	FOCUSER_STEPS_PROPERTY_NAME,
+	FOCUSER_ABORT_MOTION_PROPERTY_NAME,
+	FOCUSER_SPEED_PROPERTY_NAME,
+	FOCUSER_TEMPERATURE_PROPERTY_NAME,
+	FOCUSER_LIMITS_PROPERTY_NAME,
+	FOCUSER_DIRECTION_PROPERTY_NAME,
+	FOCUSER_ON_POSITION_SET_PROPERTY_NAME,
+	X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME
+};
+#define OBSERVED_COUNT ARRAY_SIZE(observed_names)
+static atomic_uint revisions[OBSERVED_COUNT];
+
+static int observed_index(const char *name) {
+	for (int i = 0; i < OBSERVED_COUNT; i++) {
+		if (!strcmp(name, observed_names[i])) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+static indigo_result observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	indigo_result result = simulator_client_update_property(client, device, property, message);
+	int index = context.driver_case && !strcmp(property->device, context.driver_case->device_name) ? observed_index(property->name) : -1;
+	if (index >= 0) {
+		atomic_fetch_add(&revisions[index], 1);
+	}
+	return result;
+}
+
+static unsigned revision_of(const char *name) {
+	int index = observed_index(name);
+	return index >= 0 ? atomic_load(&revisions[index]) : 0;
+}
+
+// Wait for a state the driver published after the request, so a stale value
+// left over from an earlier step cannot pass a check.
+static bool new_state(const char *name, unsigned before, indigo_property_state state) {
+	int index = observed_index(name);
+	for (int i = 0; i < 400; i++) {
+		indigo_property *property = find_cached_property(name);
+		if (index >= 0 && atomic_load(&revisions[index]) > before && property && property->state == state) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	indigo_property *property = find_cached_property(name);
+	fprintf(stderr, "No fresh %s state %d (current %d)\n", name, state, property ? property->state : -1);
+	return false;
+}
+
+static bool number_change(const char *property, const char *item, double value, indigo_property_state state) {
+	unsigned before = revision_of(property);
+	return indigo_change_number_property_1(&simulator_test_client, focusdreampro.device_name, property, item, value) == INDIGO_OK && new_state(property, before, state);
+}
+
+static bool switch_change(const char *property, const char *item, indigo_property_state state) {
+	unsigned before = revision_of(property);
+	return indigo_change_switch_property_1(&simulator_test_client, focusdreampro.device_name, property, item, true) == INDIGO_OK && new_state(property, before, state);
+}
+
+static bool position_is(double expected, double tolerance) {
+	for (int i = 0; i < 200; i++) {
+		indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+		if (item && fabs(item->number.value - expected) <= tolerance) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	fprintf(stderr, "Position: expected %g, received %g\n", expected, item ? item->number.value : NAN);
+	return false;
+}
+
+// Wait until the controller actually reports movement, so an abort test aborts
+// a running move rather than a request that has not reached the controller yet.
+static bool position_above(double threshold) {
+	for (int i = 0; i < 400; i++) {
+		indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+		if (item && item->number.value > threshold) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	fprintf(stderr, "Position never rose above %g\n", threshold);
+	return false;
+}
+
+static bool text_item_is(const char *property_name, const char *item_name, const char *expected) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL || strcmp(item->text.value, expected)) {
+		fprintf(stderr, "%s.%s: expected \"%s\", received \"%s\"\n", property_name, item_name, expected, item ? item->text.value : "(none)");
+		return false;
+	}
+	return true;
+}
+
+static bool driver_start(void) {
+	return bring_up_serial_driver(&focusdreampro) && connect_serial_device(&focusdreampro, fixture.port);
+}
+
+static void driver_stop(void) {
+	if (context.connected) {
+		disconnect_serial_device(&focusdreampro);
+	}
+	bool disconnected = !context.connected;
+	indigo_result result = focusdreampro.entry(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_detach_client(&simulator_test_client);
+	indigo_stop();
+	release_cached_properties();
+	ASSERT_TRUE(disconnected);
+	ASSERT_EQ_INT(INDIGO_OK, result);
+}
+
+// ----------------------------------------------------------------- scenarios
+
+static void metadata(void) {
+	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
-
 	assert_device_interface(INDIGO_INTERFACE_FOCUSER);
+	assert_serial_focuser_class_property_completeness();
 	assert_property_has_item(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME);
-	assert_property_has_item(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME);
 	assert_property_has_item(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME);
 	assert_property_has_item(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME);
-	assert_property_has_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-	assert_property_has_item(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME);
 	assert_property_has_item(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME);
 	assert_property_has_item(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME);
 	assert_property_has_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME);
@@ -60,43 +179,313 @@ static void focusdreampro_focuser_passes_serial_compliance_checks(void) {
 	assert_property_has_item(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME);
 	assert_property_has_item(X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME, X_FOCUSER_DUTY_CYCLE_ITEM_NAME);
 	assert_number_item_in_range(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focusdreampro_focuser.device_name, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 1));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_SPEED_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focusdreampro_focuser.device_name, X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME, X_FOCUSER_DUTY_CYCLE_ITEM_NAME, 30));
-	SERIAL_CHECK_TRUE(wait_for_property_state(X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME, INDIGO_OK_STATE));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, focusdreampro_focuser.device_name, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focusdreampro_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, focusdreampro_focuser.device_name, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focusdreampro_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1250));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1250, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, focusdreampro_focuser.device_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_DIRECTION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focusdreampro_focuser.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 50));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1200, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, focusdreampro_focuser.device_name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-
+	// The controller has no reversal input, so the property stays hidden.
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_REVERSE_MOTION_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(text_item_is(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "AGadget FocusDreamPro"));
+	indigo_item *speed = find_cached_item(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME);
+	SERIAL_CHECK_TRUE(speed && speed->number.min == 0 && speed->number.max == 5);
+	// The probe reading never changes, and INDIGO suppresses an update that
+	// changes no item, so only the published state is waited for here.
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME) - 21.5) < .05);
 cleanup:
-	if (context.connected) {
-		stop_serial_driver(&focusdreampro_focuser);
-	}
-	stop_external_serial_simulator(&simulator);
+	driver_stop();
 }
 
+static void sync_and_goto(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	// SYNC updates the coordinate without moving, so the position is reached at once.
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 4000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(4000, 1));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focusdreampro.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 9000));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(9000, 1));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+cleanup:
+	driver_stop();
+}
+
+static void relative_move(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 1500, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(6500, 1));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 500, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(6000, 1));
+	// A zero step request is a no-op that still has to settle.
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(6000, 1));
+cleanup:
+	driver_stop();
+}
+
+// The driver clamps both absolute and relative targets into FOCUSER_LIMITS
+// before it sends the move command.
+static void limits_clamp(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 6000, INDIGO_OK_STATE));
+	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focusdreampro.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900000));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(6000, 1));
+cleanup:
+	driver_stop();
+}
+
+// A long move is interrupted; the abort has to settle the motion properties and
+// leave the focuser where it actually stopped, ready for the next move.
+static void abort_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focusdreampro.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 200000));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_above(0));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	printf("Aborted at %g of 200000\n", stopped);
+	SERIAL_CHECK_TRUE(stopped > 0 && stopped < 200000);
+	// Two polling cycles later the focuser must still be where the abort left
+	// it, so the controller really stopped rather than reporting a stale value.
+	indigo_usleep(2500000);
+	SERIAL_CHECK_TRUE(position_is(stopped, 0));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	// A fresh move must still be accepted after the abort.
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(100, 1));
+cleanup:
+	driver_stop();
+}
+
+// Aborting while idle is accepted and does not disturb the motion properties.
+static void abort_while_idle(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 700, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(700, 1));
+cleanup:
+	driver_stop();
+}
+
+// An urgent abort can overtake a move that is still queued behind the polling
+// callback; the cancelled move must not start afterwards.
+static void abort_overtakes_start(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focusdreampro.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 200000));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	indigo_usleep(2500000);
+	SERIAL_CHECK_TRUE(position_is(stopped, 0));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+cleanup:
+	driver_stop();
+}
+
+static void speed_and_duty_cycle(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	for (int speed = 0; speed <= 5; speed++) {
+		SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, speed, INDIGO_OK_STATE));
+	}
+	SERIAL_CHECK_TRUE(number_change(X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME, X_FOCUSER_DUTY_CYCLE_ITEM_NAME, 65, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME, X_FOCUSER_DUTY_CYCLE_ITEM_NAME) - 65) < .01);
+	// The fastest speed still has to move the focuser.
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(2000, 1));
+cleanup:
+	driver_stop();
+}
+
+static void jolo_identity(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(text_item_is(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "ASCOM Jolo focuser"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1200, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(1200, 1));
+cleanup:
+	driver_stop();
+}
+
+static void no_temperature_probe(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_TEMPERATURE_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 800, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(800, 1));
+cleanup:
+	driver_stop();
+}
+
+// DRV-131 reproducer: a probe-less controller must not hide FOCUSER_TEMPERATURE
+// for the rest of the driver's life. The second controller has a probe.
+static void temperature_probe_restored(void) {
+	external_serial_simulator with_probe = { 0 };
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_TEMPERATURE_PROPERTY_NAME) == NULL);
+	disconnect_serial_device(&focusdreampro);
+	const char *args[] = { "--profile", "normal", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&with_probe, FOCUSER_FOCUSDREAMPRO_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(connect_serial_device(&focusdreampro, with_probe.port));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_TEMPERATURE_PROPERTY_NAME) != NULL);
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+	stop_external_serial_simulator(&with_probe);
+}
+
+static void silent_controller(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&focusdreampro));
+	SERIAL_CHECK_TRUE(!connect_serial_device(&focusdreampro, fixture.port));
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(find_cached_property(X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME) == NULL);
+cleanup:
+	driver_stop();
+}
+
+static void temperature_error(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	// A broken probe must not stop the focuser from moving.
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(1500, 1));
+cleanup:
+	driver_stop();
+}
+
+static void move_rejected(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+	// The rejected requests must not have moved anything.
+	SERIAL_CHECK_TRUE(position_is(0, 1));
+cleanup:
+	driver_stop();
+}
+
+static void abort_rejected(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void reconnect(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(find_cached_property(X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME) != NULL);
+	SERIAL_CHECK_TRUE(number_change(X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME, X_FOCUSER_DUTY_CYCLE_ITEM_NAME, 45, INDIGO_OK_STATE));
+	disconnect_serial_device(&focusdreampro);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(find_cached_property(X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(connect_serial_device(&focusdreampro, fixture.port));
+	SERIAL_CHECK_TRUE(find_cached_property(X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME) != NULL);
+	// The duty cycle chosen before the disconnect is re-applied on connect.
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME, X_FOCUSER_DUTY_CYCLE_ITEM_NAME) - 45) < .01);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2500, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(2500, 1));
+cleanup:
+	driver_stop();
+}
+
+// Disconnecting in the middle of a move must stop the controller and tear the
+// driver down without leaving the polling callback running.
+static void disconnect_during_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focusdreampro.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 200000));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	disconnect_serial_device(&focusdreampro);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_serial_device(&focusdreampro, fixture.port));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, revision_of(FOCUSER_POSITION_PROPERTY_NAME) - 1, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- runner
+
+typedef struct { const char *name; void (*run)(void); const char *profile; } simulated_case;
+
 int main(void) {
-	const indigo_test_case tests[] = {
-		{ "focusdreampro_focuser_passes_serial_compliance_checks", focusdreampro_focuser_passes_serial_compliance_checks },
+	const simulated_case cases[] = {
+		{ "metadata", metadata, "normal" },
+		{ "sync_and_goto", sync_and_goto, "normal" },
+		{ "relative_move", relative_move, "normal" },
+		{ "limits_clamp", limits_clamp, "normal" },
+		{ "abort_motion", abort_motion, "normal" },
+		{ "abort_while_idle", abort_while_idle, "normal" },
+		{ "abort_overtakes_start", abort_overtakes_start, "normal" },
+		{ "speed_and_duty_cycle", speed_and_duty_cycle, "normal" },
+		{ "jolo_identity", jolo_identity, "jolo" },
+		{ "no_temperature_probe", no_temperature_probe, "no-temperature" },
+		{ "temperature_probe_restored", temperature_probe_restored, "no-temperature" },
+		{ "silent_controller", silent_controller, "no-identity" },
+		{ "temperature_error", temperature_error, "temperature-error" },
+		{ "move_rejected", move_rejected, "move-error" },
+		{ "abort_rejected", abort_rejected, "abort-error" },
+		{ "reconnect", reconnect, "normal" },
+		{ "disconnect_during_motion", disconnect_during_motion, "normal" }
 	};
-	return indigo_run_tests("FocusDreamPro serial simulator integration tests", tests, ARRAY_SIZE(tests));
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	simulator_test_client.update_property = observe_update;
+	int failures = 0;
+	const char *filter = getenv("FOCUSDREAMPRO_TEST_FILTER");
+	for (int i = 0; i < ARRAY_SIZE(cases); i++) {
+		if (filter && !strstr(cases[i].name, filter)) {
+			continue;
+		}
+		const char *args[] = { "--profile", cases[i].profile, NULL, NULL };
+		if (getenv("FOCUSDREAMPRO_TEST_TRACE") != NULL) {
+			args[2] = "--trace";
+		}
+		if (!start_external_serial_simulator_with_args(&fixture, FOCUSER_FOCUSDREAMPRO_SIMULATOR_EXECUTABLE, args)) {
+			fprintf(stderr, "Simulator startup failed\n");
+			return 1;
+		}
+		fflush(NULL);
+		pid_t child = fork();
+		if (child == 0) {
+			alarm(90);
+			indigo_test_case test = { cases[i].name, cases[i].run };
+			_exit(indigo_run_tests("FocusDreamPro", &test, 1));
+		}
+		int status = 0;
+		if (child > 0) {
+			while (waitpid(child, &status, 0) < 0) {
+				if (errno != EINTR) {
+					status = -1;
+					break;
+				}
+			}
+		}
+		stop_external_serial_simulator(&fixture);
+		if (child < 0 || status == -1 || !WIFEXITED(status) || WEXITSTATUS(status)) {
+			failures++;
+			printf("FAIL: %s (exit=%d, signal=%d)\n", cases[i].name, WIFEXITED(status) ? WEXITSTATUS(status) : -1, WIFSIGNALED(status) ? WTERMSIG(status) : 0);
+		}
+	}
+	printf("FocusDreamPro: %d failing scenarios\n", failures);
+	return failures ? 1 : 0;
 }

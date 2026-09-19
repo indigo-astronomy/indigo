@@ -1126,9 +1126,11 @@ Source: `indigo_drivers/focuser_fli/indigo_focuser_fli.c`.
 
 Custom properties: `X_FOCUSER_DUTY_CYCLE`.
 
-Driver-specific use of existing properties: `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`.
+Driver-specific use of existing properties: `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
 
-Source: `indigo_drivers/focuser_focusdreampro/indigo_focuser_focusdreampro.c`.
+`FOCUSER_SPEED` is an index from 0 to 5 into the controller's per step delay table, so a higher value is a faster focuser. `FOCUSER_LIMITS` is applied by the driver to every absolute and relative target, and its maximum is also written to the controller when the device connects. `FOCUSER_TEMPERATURE` is hidden for a controller that reports no probe and published again for the next controller that has one. `X_FOCUSER_DUTY_CYCLE` is the motor PWM duty cycle in percent; it is the only connection-dependent property and the only one saved by CONFIG.
+
+Source: `indigo_drivers/focuser_focusdreampro/indigo_focuser_focusdreampro.driver`.
 
 ### focuser_ioptron
 

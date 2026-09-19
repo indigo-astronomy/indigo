@@ -457,7 +457,7 @@ $(INTEGRATION_BUILD)/focuser_dmfc_simulator: ../indigo_drivers/focuser_dmfc/focu
 $(INTEGRATION_BUILD)/focuser_dsd_simulator: ../indigo_drivers/focuser_dsd/focuser_dsd_simulator/focuser_dsd_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/focuser_focusdreampro_simulator: ../indigo_drivers/focuser_focusdreampro/focuser_focusdreampro_simulator/focuser_focusdreampro_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/focuser_focusdreampro_simulator: ../indigo_drivers/focuser_focusdreampro/focuser_focusdreampro_simulator/focuser_focusdreampro_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/focuser_ioptron_simulator: ../indigo_drivers/focuser_ioptron/focuser_ioptron_simulator/focuser_ioptron_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)

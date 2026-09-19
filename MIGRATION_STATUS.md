@@ -85,7 +85,7 @@
 | focuser_fc3             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 1 / 0 | |
 | focuser_fcusb           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
 | focuser_fli             | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | |
-| focuser_focusdreampro   | 3️⃣ | ✅ Yes | ❌ No  | ❌ No  | ❌ No  | 1 / 0 | |
+| focuser_focusdreampro   | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | |
 | focuser_ioptron         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 40 / 0 | |
 | focuser_lacerta         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 43 / 0 | |
 | focuser_lakeside        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 16 / 0 | |

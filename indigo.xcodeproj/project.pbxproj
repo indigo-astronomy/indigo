@@ -2700,6 +2700,8 @@
 		C0DE2027091300040000000C /* indigo_rotator_lunatico.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_rotator_lunatico.vcxproj; sourceTree = "<group>"; };
 		C0DE20270913000400000001 /* indigo_focuser_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_lunatico.driver; sourceTree = "<group>"; };
 		C0DE20280919000100000001 /* indigo_aux_cloudwatcher.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_aux_cloudwatcher.driver; sourceTree = "<group>"; };
+		C0DE20280919000200000001 /* indigo_focuser_focusdreampro.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_focusdreampro.driver; sourceTree = "<group>"; };
+		C0DE20280919000200000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20270913000400000002 /* indigo_rotator_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_lunatico.driver; sourceTree = "<group>"; };
 		C0DE20270913000400000003 /* lunatico_shared.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lunatico_shared.h; sourceTree = "<group>"; };
 		C0DE20270913000400000005 /* focuser_lunatico_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_lunatico_simulator.c; sourceTree = "<group>"; };
@@ -13836,7 +13838,9 @@
 		59EFE8A12363481D00ED5337 /* focuser_focusdreampro */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20280919000200000002 /* REFACTOR.md */,
 				59EFE8A32363481E00ED5337 /* README.md */,
+				C0DE20280919000200000001 /* indigo_focuser_focusdreampro.driver */,
 				59EFE8A42363481E00ED5337 /* indigo_focuser_focusdreampro.h */,
 				59EFE8A22363481D00ED5337 /* indigo_focuser_focusdreampro.c */,
 				59EFE8A52363481E00ED5337 /* indigo_focuser_focusdreampro_main.c */,
