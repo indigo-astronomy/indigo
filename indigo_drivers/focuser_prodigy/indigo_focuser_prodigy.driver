@@ -20,7 +20,7 @@ driver prodigy {
 	label = "PegasusAstro Prodigy Microfocuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2022-2026 CloudMakers, s. r. o.";
-	version = 4;
+	version = 5;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -204,6 +204,13 @@ driver prodigy {
 				}
 			}
 		}
+		on_attach {
+			// the base driver serialises only the first four INFO items, so a model and firmware
+			// written at connect never reach a client unless the count is raised (DRV-203)
+			INFO_PROPERTY->count = 6;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		}
 		on_connect {
 			connection_result = prodigy_command(device, true, "A");
 			char *fields[10], *cursor = PRIVATE_DATA->response;
@@ -250,6 +257,9 @@ driver prodigy {
 				PRIVATE_DATA->uncertain = !(prodigy_echo(device, "H", "0") && prodigy_status(device) && !PRIVATE_DATA->moving);
 			}
 			PRIVATE_DATA->active = PRIVATE_DATA->parking = false;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
 		}
 		on_timer {
 			if (!PRIVATE_DATA->rebooting) {

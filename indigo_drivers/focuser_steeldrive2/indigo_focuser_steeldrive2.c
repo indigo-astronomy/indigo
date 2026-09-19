@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_focuser_steeldrive2"
 #define DRIVER_LABEL         "Baader Planetarium SteelDriveII Focuser"
 #define FOCUSER_DEVICE_NAME  "SteelDriveII (focuser)"
@@ -703,6 +703,9 @@ static void focuser_connection_handler(indigo_device *device) {
 			steeldrive2_summary(device);
 		}
 		PRIVATE_DATA->active = PRIVATE_DATA->moving = PRIVATE_DATA->uncertain = PRIVATE_DATA->zeroing = false;
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_update_property(device, INFO_PROPERTY, NULL);
 		//- focuser.on_disconnect
 		indigo_delete_property(device, X_NAME_PROPERTY, NULL);
 		indigo_delete_property(device, X_SAVED_VALUES_PROPERTY, NULL);
@@ -939,6 +942,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
+		//+ focuser.on_attach
+		// the base driver serialises only the first four INFO items, so a model and firmware
+		// written at connect never reach a client unless the count is raised (DRV-203)
+		INFO_PROPERTY->count = 6;
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		//- focuser.on_attach
 		X_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, X_NAME_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Device name", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (X_NAME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -1294,6 +1304,13 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 
 static indigo_result aux_attach(indigo_device *device) {
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_POWERBOX) == INDIGO_OK) {
+		//+ aux.on_attach
+		// the base driver serialises only the first four INFO items, so a model and firmware
+		// written at connect never reach a client unless the count is raised (DRV-203)
+		INFO_PROPERTY->count = 6;
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		//- aux.on_attach
 		AUX_HEATER_OUTLET_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_HEATER_OUTLET_PROPERTY_NAME, "Heating", "Heater outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AUX_HEATER_OUTLET_PROPERTY == NULL) {
 			return INDIGO_FAILED;

@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_focuser_prodigy"
 #define DRIVER_LABEL         "PegasusAstro Prodigy Microfocuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus Prodigy Focuser"
@@ -404,6 +404,9 @@ static void focuser_connection_handler(indigo_device *device) {
 			PRIVATE_DATA->uncertain = !(prodigy_echo(device, "H", "0") && prodigy_status(device) && !PRIVATE_DATA->moving);
 		}
 		PRIVATE_DATA->active = PRIVATE_DATA->parking = false;
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_update_property(device, INFO_PROPERTY, NULL);
 		//- focuser.on_disconnect
 		indigo_delete_property(device, X_FOCUSER_PARK_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
@@ -543,6 +546,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
+		//+ focuser.on_attach
+		// the base driver serialises only the first four INFO items, so a model and firmware
+		// written at connect never reach a client unless the count is raised (DRV-203)
+		INFO_PROPERTY->count = 6;
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		//- focuser.on_attach
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_SPEED_PROPERTY->hidden = false;

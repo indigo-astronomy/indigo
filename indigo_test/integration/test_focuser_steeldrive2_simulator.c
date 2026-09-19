@@ -362,6 +362,16 @@ static void focuser_capabilities(void) {
 	SERIAL_CHECK_TRUE(at_position(!strcmp(current_profile, "alternate") ? 1500 : 1000));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, !strcmp(current_profile, "alternate") ? 5000 : 2000, .01));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, !strcmp(current_profile, "missing_sensor") ? -128 : !strcmp(current_profile, "alternate") ? 22.24 : 22.115, .02));
+	// The model and firmware read at connect live at INFO items 4 and 5, which are serialised only
+	// if the driver raises INFO_PROPERTY->count above the base driver's default of 4 (DRV-203).
+	indigo_property *info = find_cached_property(INFO_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(info != NULL && info->count >= 6);
+	indigo_item *model = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME);
+	indigo_item *firmware = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(model != NULL && firmware != NULL);
+	printf("INFO model='%s' firmware='%s'\n", model->text.value, firmware->text.value);
+	SERIAL_CHECK_TRUE(!strcmp(model->text.value, "Baader Planetarium SteelDriveII"));
+	SERIAL_CHECK_TRUE(!strcmp(firmware->text.value, "0.770"));
 cleanup:
 	driver_stop(&focuser);
 }

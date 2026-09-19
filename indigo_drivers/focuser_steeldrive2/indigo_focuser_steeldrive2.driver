@@ -22,7 +22,7 @@ driver steeldrive2 {
 	label = "Baader Planetarium SteelDriveII Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 14;
+	version = 15;
 	serial;
 	include {
 		#include <ctype.h>
@@ -481,6 +481,13 @@ driver steeldrive2 {
 				return true;
 			}
 		}
+		on_attach {
+			// the base driver serialises only the first four INFO items, so a model and firmware
+			// written at connect never reach a client unless the count is raised (DRV-203)
+			INFO_PROPERTY->count = 6;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		}
 		on_connect {
 			connection_result = steeldrive2_load_focuser(device);
 			if (connection_result) {
@@ -493,6 +500,9 @@ driver steeldrive2 {
 				steeldrive2_summary(device);
 			}
 			PRIVATE_DATA->active = PRIVATE_DATA->moving = PRIVATE_DATA->uncertain = PRIVATE_DATA->zeroing = false;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
 		}
 		on_timer {
 			if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain) {
@@ -771,6 +781,13 @@ driver steeldrive2 {
 	aux {
 		name = "SteelDriveII (aux)";
 		interface = INDIGO_INTERFACE_AUX_POWERBOX;
+		on_attach {
+			// the base driver serialises only the first four INFO items, so a model and firmware
+			// written at connect never reach a client unless the count is raised (DRV-203)
+			INFO_PROPERTY->count = 6;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		}
 		on_connect {
 			connection_result = steeldrive2_read_aux(device, true);
 			if (connection_result) {

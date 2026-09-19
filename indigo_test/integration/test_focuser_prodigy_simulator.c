@@ -277,6 +277,16 @@ static void capabilities(void) {
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 25, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(1, commands("S:500"));
 	SERIAL_CHECK_EQ_INT(1, commands("C:25"));
+	// The model and firmware read at connect live at INFO items 4 and 5, which are serialised only
+	// if the driver raises INFO_PROPERTY->count above the base driver's default of 4 (DRV-203).
+	indigo_property *info = find_cached_property(INFO_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(info != NULL && info->count >= 6);
+	indigo_item *model = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME);
+	indigo_item *firmware = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(model != NULL && firmware != NULL);
+	printf("INFO model='%s' firmware='%s'\n", model->text.value, firmware->text.value);
+	SERIAL_CHECK_TRUE(!strcmp(model->text.value, "Prodigy Microfocuser"));
+	SERIAL_CHECK_TRUE(!strcmp(firmware->text.value, !strcmp(current_profile, "firmware_minor") ? "1.10" : "1.4"));
 cleanup:
 	driver_stop();
 }
