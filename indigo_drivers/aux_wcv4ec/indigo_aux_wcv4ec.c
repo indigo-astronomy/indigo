@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_aux_wcv4ec"
 #define DRIVER_LABEL         "WandererCover V4-EC Cover"
 #define AUX_DEVICE_NAME      "WandererCover V4-EC"
@@ -382,8 +382,8 @@ static void aux_set_open_close_handler(indigo_device *device) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_SET_OPEN_CLOSE_PROPERTY, INDIGO_ALERT_STATE, "Open position can not be smaller than Close + 45");
 		return;
 	}
-	bool success = wcv4ec_command(device, 40000 + (int)(AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.target * 100));
-	success = success && wcv4ec_command(device, 10000 + (int)(AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.target * 100));
+	bool success = wcv4ec_command(device, 40000 + (int)round(AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.target * 100));
+	success = success && wcv4ec_command(device, 10000 + (int)round(AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.target * 100));
 	if (success) {
 		indigo_sleep(1);
 	} else {
@@ -472,8 +472,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		if (AUX_SET_OPEN_CLOSE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_number_item(AUX_SET_OPEN_CLOSE_OPEN_ITEM, AUX_COVER_OPEN_ITEM_NAME, "Set Open [°]", 0, 295, 1, 110);
-		indigo_init_number_item(AUX_SET_OPEN_CLOSE_CLOSE_ITEM, AUX_COVER_CLOSE_ITEM_NAME, "Set Close [°]", 0, 295, 1, 22);
+		indigo_init_number_item(AUX_SET_OPEN_CLOSE_OPEN_ITEM, AUX_COVER_OPEN_ITEM_NAME, "Set Open [°]", 0, 270, 1, 110);
+		indigo_init_number_item(AUX_SET_OPEN_CLOSE_CLOSE_ITEM, AUX_COVER_CLOSE_ITEM_NAME, "Set Close [°]", 0, 20.55, 1, 20);
 		AUX_HEATER_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_HEATER_PROPERTY_NAME, AUX_MAIN_GROUP, "Heater", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (AUX_HEATER_PROPERTY == NULL) {
 			return INDIGO_FAILED;

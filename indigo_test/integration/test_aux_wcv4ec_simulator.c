@@ -172,6 +172,14 @@ static void metadata_and_property_completeness(void) {
 	indigo_item *intensity = find_cached_item(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME);
 	SERIAL_CHECK_TRUE(intensity != NULL && intensity->number.min == 0 && intensity->number.max == 255);
 
+	// The published angle ranges have to be the ones the protocol encodes, otherwise a client can ask
+	// for an angle that reaches the cover as a command it does not implement and silently drops.
+	indigo_item *open_angle = find_cached_item(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME);
+	indigo_item *close_angle = find_cached_item(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME);
+	SERIAL_CHECK_TRUE(open_angle != NULL && close_angle != NULL);
+	SERIAL_CHECK_TRUE(open_angle->number.min == 0 && fabs(open_angle->number.max - 270) < .001);
+	SERIAL_CHECK_TRUE(close_angle->number.min == 0 && fabs(close_angle->number.max - 20.55) < .001);
+
 	// This is a cover, not a powerbox: none of the outlet properties belong to it.
 	assert_not_defined_property(AUX_POWER_OUTLET_PROPERTY_NAME);
 	assert_not_defined_property(AUX_HEATER_OUTLET_PROPERTY_NAME);
@@ -290,6 +298,33 @@ static void changing_one_angle_leaves_the_other_alone(void) {
 		number_of(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME),
 		number_of(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME));
 	SERIAL_CHECK_TRUE(fabs(number_of(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME) - SIMULATED_OPEN_POSITION) < .01);
+cleanup:
+	if (online) { stop_serial_driver(&wcv4ec_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// An angle beyond what the protocol can encode has to be clamped to the limit and actually reach the
+// cover, not be sent as an unimplemented command and silently dropped. Both limits are also the
+// awkward ones for the conversion: 20.55 * 100 is 2054.9999999999998 in binary, so truncating
+// instead of rounding would ask the cover for 20.54 (DRV-205 / DRV-208).
+static void angles_beyond_the_protocol_range_are_clamped_and_applied(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_wcv4ec(&simulator, NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&wcv4ec_aux, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_first_poll());
+	SERIAL_CHECK_TRUE(set_positions(290, 25));
+	SERIAL_CHECK_TRUE(wait_for_confirmed_number(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, 270, .001));
+	SERIAL_CHECK_TRUE(wait_for_confirmed_number(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, 20.55, .001));
+	printf("Requested 290/25 deg, cover holds %.2f/%.2f deg\n",
+		number_of(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME),
+		number_of(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME));
+	// Below zero clamps the other way.
+	SERIAL_CHECK_TRUE(set_positions(-10, -5));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	// 0 and 0 are 45 deg apart at most, so the travel guard refuses them and the angles stand.
+	SERIAL_CHECK_TRUE(wait_for_confirmed_number(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, 270, .001));
 cleanup:
 	if (online) { stop_serial_driver(&wcv4ec_aux); }
 	stop_external_serial_simulator(&simulator);
@@ -484,6 +519,7 @@ int main(void) {
 		{ "configured_angles_round_trip", configured_angles_round_trip },
 		{ "too_small_a_travel_is_refused", too_small_a_travel_is_refused },
 		{ "changing_one_angle_leaves_the_other_alone", changing_one_angle_leaves_the_other_alone },
+		{ "angles_beyond_the_protocol_range_are_clamped_and_applied", angles_beyond_the_protocol_range_are_clamped_and_applied },
 		{ "cover_opens_and_closes", cover_opens_and_closes },
 		{ "reconfiguring_the_travel_is_refused_while_the_cover_moves", reconfiguring_the_travel_is_refused_while_the_cover_moves },
 		{ "autodetect_adopts_the_current_position", autodetect_adopts_the_current_position },

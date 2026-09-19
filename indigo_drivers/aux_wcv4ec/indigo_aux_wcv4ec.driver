@@ -28,7 +28,7 @@ driver wcv4ec {
 	label = "WandererCover V4-EC Cover";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2024-2026 Rumen G. Bogdanovski";
-	version = 7;
+	version = 8;
 	serial;
 	define {
 		#define DEVICE_ID "WandererCoverV4"
@@ -314,8 +314,8 @@ driver wcv4ec {
 					INDIGO_UPDATE_PROPERTY_STATE(AUX_SET_OPEN_CLOSE_PROPERTY, INDIGO_ALERT_STATE, "Open position can not be smaller than Close + 45");
 					return;
 				}
-				bool success = wcv4ec_command(device, 40000 + (int)(AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.target * 100));
-				success = success && wcv4ec_command(device, 10000 + (int)(AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.target * 100));
+				bool success = wcv4ec_command(device, 40000 + (int)round(AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.target * 100));
+				success = success && wcv4ec_command(device, 10000 + (int)round(AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.target * 100));
 				if (success) {
 					indigo_sleep(1);
 				} else {
@@ -323,20 +323,23 @@ driver wcv4ec {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Set open/close failed");
 				}
 			}
+			// the protocol encodes the angles as 40000 + x * 100 and 10000 + x * 100, documented up to
+			// 67000 (270 deg) and 12055 (20.55 deg); anything beyond that is a command the cover does
+			// not implement and silently ignores, so the published range has to stop there (DRV-208)
 			item AUX_SET_OPEN_CLOSE_OPEN {
 				name = AUX_COVER_OPEN_ITEM_NAME;
 				label = "Set Open [°]";
 				value = 110;
 				min = 0;
-				max = 295;
+				max = 270;
 				step = 1;
 			}
 			item AUX_SET_OPEN_CLOSE_CLOSE {
 				name = AUX_COVER_CLOSE_ITEM_NAME;
 				label = "Set Close [°]";
-				value = 22;
+				value = 20;
 				min = 0;
-				max = 295;
+				max = 20.55;
 				step = 1;
 			}
 		}
