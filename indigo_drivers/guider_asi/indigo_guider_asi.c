@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_guider_asi"
 #define DRIVER_LABEL         "ZWO ASI USB-St4 Guider"
 #define GUIDER_DEVICE_NAME   "%s"
@@ -129,16 +129,11 @@ static USB2ST4_ERROR_CODE asi_set_relay(indigo_device *device, int direction, bo
 }
 
 static bool asi_open(indigo_device *device) {
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock");
-		return false;
-	}
 	pthread_mutex_lock(&sdk_mutex);
 	USB2ST4_ERROR_CODE result = USB2ST4Open(PRIVATE_DATA->dev_id);
 	pthread_mutex_unlock(&sdk_mutex);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB2ST4Open(%d) = %d", PRIVATE_DATA->dev_id, result);
 	if (result != USB2ST4_SUCCESS) {
-		indigo_global_unlock(device);
 		return false;
 	}
 	PRIVATE_DATA->active_ra = PRIVATE_DATA->active_dec = NO_DIRECTION;
@@ -151,7 +146,6 @@ static void asi_close(indigo_device *device) {
 	USB2ST4_ERROR_CODE result = USB2ST4Close(PRIVATE_DATA->dev_id);
 	pthread_mutex_unlock(&sdk_mutex);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB2ST4Close(%d) = %d", PRIVATE_DATA->dev_id, result);
-	indigo_global_unlock(device);
 }
 
 static void asi_clear_axis_items(indigo_device *device, bool ra) {
@@ -661,7 +655,7 @@ indigo_result indigo_guider_asi(indigo_driver_action action, indigo_driver_info 
 #include "indigo_guider_asi.h"
 
 indigo_result indigo_guider_asi(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "ZWO ASI USB-St4 Guider", __FUNCTION__, 0x03000007, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "ZWO ASI USB-St4 Guider", __FUNCTION__, 0x03000008, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

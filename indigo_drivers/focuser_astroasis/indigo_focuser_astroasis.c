@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_focuser_astroasis"
 #define DRIVER_LABEL         "Astroasis Oasis Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -150,14 +150,9 @@ static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 //+ code
 
 static bool astroasis_open(indigo_device *device) {
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-		return false;
-	}
 	int res = AOFocuserOpen(PRIVATE_DATA->dev_id);
 	if (res != AO_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserOpen() failed, ret = %d", res);
-		indigo_global_unlock(device);
 		return false;
 	}
 	return true;
@@ -165,7 +160,6 @@ static bool astroasis_open(indigo_device *device) {
 
 static void astroasis_close(indigo_device *device) {
 	AOFocuserClose(PRIVATE_DATA->dev_id);
-	indigo_global_unlock(device);
 }
 
 static bool astroasis_config(indigo_device *device, unsigned int mask, int value) {
@@ -1236,7 +1230,7 @@ indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_drive
 #include "indigo_focuser_astroasis.h"
 
 indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, 0x03000009, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, 0x0300000A, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

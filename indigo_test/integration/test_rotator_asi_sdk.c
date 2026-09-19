@@ -32,7 +32,7 @@ static libusb_hotplug_callback_fn usb_callback;
 static int usb_devices[DEVICE_COUNT];
 static char device_names[DEVICE_COUNT][INDIGO_NAME_SIZE];
 static atomic_int visible_count, attached_mask, attach_attempts, fail_attach, refs[DEVICE_COUNT];
-static atomic_int sdk_handles[DEVICE_COUNT], connections[DEVICE_COUNT], locks[DEVICE_COUNT];
+static atomic_int sdk_handles[DEVICE_COUNT], connections[DEVICE_COUNT];
 static atomic_int open_calls, close_calls, violations, saved_beep;
 static atomic_int position[DEVICE_COUNT], maximum[DEVICE_COUNT], requested[DEVICE_COUNT];
 static atomic_bool motor[DEVICE_COUNT], hand_control[DEVICE_COUNT], reverse[DEVICE_COUNT], beep[DEVICE_COUNT];
@@ -102,20 +102,6 @@ indigo_result caa_test_detach(indigo_device *device) {
 }
 
 void caa_test_usb_start(void) {
-}
-
-indigo_result caa_test_lock(indigo_device *device) {
-	if (atomic_fetch_add(&locks[device_index(device->name)], 1) != 0) {
-		atomic_fetch_add(&violations, 1);
-	}
-	return INDIGO_OK;
-}
-
-indigo_result caa_test_unlock(indigo_device *device) {
-	if (atomic_fetch_sub(&locks[device_index(device->name)], 1) != 1) {
-		atomic_fetch_add(&violations, 1);
-	}
-	return INDIGO_OK;
 }
 
 indigo_result caa_test_base_change(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -362,12 +348,11 @@ static void metadata_schema_and_reconnect(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_rotator_asi(INDIGO_DRIVER_INFO, &info));
 	ASSERT_STREQ("indigo_rotator_asi", info.name);
 	ASSERT_STREQ("ZWO CAA Rotator", info.description);
-	ASSERT_EQ_INT(0x03000005, info.version);
+	ASSERT_EQ_INT(0x03000006, info.version);
 	ASSERT_TRUE(find_cached_property("CAA_BEEP_ON_MOVE") == NULL);
 	for (int i = 0; i < 3; i++) {
 		ASSERT_TRUE(connection(true));
 		ASSERT_EQ_INT(1, atomic_load(&sdk_handles[0]));
-		ASSERT_EQ_INT(1, atomic_load(&locks[0]));
 		assert_device_interface(INDIGO_INTERFACE_ROTATOR);
 		assert_property_has_item("CAA_BEEP_ON_MOVE", "ON");
 		assert_property_has_item("CAA_BEEP_ON_MOVE", "OFF");
@@ -379,7 +364,6 @@ static void metadata_schema_and_reconnect(void) {
 		ASSERT_STREQ("test SDK", find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME)->text.value);
 		ASSERT_TRUE(connection(false));
 		ASSERT_TRUE(find_cached_property("CAA_BEEP_ON_MOVE") == NULL);
-		ASSERT_EQ_INT(0, atomic_load(&locks[0]));
 		ASSERT_EQ_INT(0, atomic_load(&sdk_handles[0]));
 	}
 }
@@ -393,7 +377,6 @@ static void initialization_failures(void) {
 		ASSERT_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 		ASSERT_EQ_INT(closed + (failures[i] != OP_OPEN), atomic_load(&close_calls));
 		ASSERT_EQ_INT(0, atomic_load(&sdk_handles[0]));
-		ASSERT_EQ_INT(0, atomic_load(&locks[0]));
 		ASSERT_FALSE(find_cached_item(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME)->sw.value);
 		atomic_store(&fail[failures[i]], false);
 		ASSERT_TRUE(connection(true));
@@ -582,7 +565,6 @@ static void disconnect_and_unplug_polling(void) {
 	usb_event(0, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT);
 	ASSERT_TRUE(wait_atomic(&refs[0], 0));
 	ASSERT_EQ_INT(0, atomic_load(&sdk_handles[0]));
-	ASSERT_EQ_INT(0, atomic_load(&locks[0]));
 	polls = atomic_load(&calls[OP_STATUS]);
 	indigo_usleep(600000);
 	ASSERT_EQ_INT(polls, atomic_load(&calls[OP_STATUS]));
@@ -689,7 +671,6 @@ static void reset_mock(void) {
 	for (int i = 0; i < DEVICE_COUNT; i++) {
 		atomic_store(&refs[i], 0);
 		atomic_store(&sdk_handles[i], 0);
-		atomic_store(&locks[i], 0);
 		atomic_store(&connections[i], 0);
 		atomic_store(&position[i], 1000);
 		atomic_store(&maximum[i], 36000);
@@ -721,7 +702,7 @@ static bool teardown(void) {
 	}
 	result &= indigo_rotator_asi(INDIGO_DRIVER_SHUTDOWN, NULL) == INDIGO_OK;
 	for (int i = 0; i < DEVICE_COUNT; i++) {
-		result &= wait_atomic(&refs[i], 0) && atomic_load(&sdk_handles[i]) == 0 && atomic_load(&locks[i]) == 0;
+		result &= wait_atomic(&refs[i], 0) && atomic_load(&sdk_handles[i]) == 0;
 	}
 	result &= atomic_load(&open_calls) == atomic_load(&close_calls) && atomic_load(&violations) == 0;
 	if (!result) {
@@ -734,7 +715,7 @@ static bool teardown(void) {
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "metadata, schema and repeated connection", metadata_schema_and_reconnect },
-		{ "failed initialization releases SDK and locks", initialization_failures },
+		{ "failed initialization releases SDK", initialization_failures },
 		{ "fractional absolute/relative motion and overlap", absolute_relative_and_overlap },
 		{ "move/status/position failures and polling recovery", failed_motion_and_polling },
 		{ "sync command and readback failures", synchronization_and_readback },

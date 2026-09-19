@@ -657,15 +657,6 @@ static bool lunatico_open(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
-		if (indigo_try_global_lock(device) != INDIGO_OK) {
-			PRIVATE_DATA->count_open--;
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			return false;
-		}
 		char *name = DEVICE_PORT_ITEM->text.value;
 		if (!indigo_is_device_url(name, "lunatico")) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening local device on port: '%s', baudrate = %d", DEVICE_PORT_ITEM->text.value, atoi(DEVICE_BAUDRATE_ITEM->text.value));
@@ -682,7 +673,6 @@ static bool lunatico_open(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			indigo_global_unlock(device);
 			PRIVATE_DATA->count_open--;
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			return false;
@@ -702,7 +692,6 @@ static bool lunatico_open(indigo_device *device) {
 		if (--PRIVATE_DATA->count_open == 0) {
 			close(PRIVATE_DATA->handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
-			indigo_global_unlock(device);
 			PRIVATE_DATA->handle = 0;
 		}
 		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
@@ -724,7 +713,6 @@ static void lunatico_close(indigo_device *device) {
 	if (--PRIVATE_DATA->count_open == 0) {
 		close(PRIVATE_DATA->handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
-		indigo_global_unlock(device);
 		PRIVATE_DATA->handle = 0;
 	}
 	clear_connected_flag(device);

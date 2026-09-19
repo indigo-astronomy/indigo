@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_wheel_playerone"
 #define DRIVER_LABEL         "Player One Filter Wheel"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -112,13 +112,9 @@ static bool playerone_open(indigo_device *device) {
 		PRIVATE_DATA->count++;
 		return true;
 	}
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		return false;
-	}
 	int res = POAOpenPW(PRIVATE_DATA->dev_handle);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAOpenPW(%d) = %d", PRIVATE_DATA->dev_handle, res);
 	if (res != PW_OK) {
-		indigo_global_unlock(device);
 		return false;
 	}
 	PRIVATE_DATA->count++;
@@ -129,7 +125,6 @@ static void playerone_close(indigo_device *device) {
 	if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
 		int res = POAClosePW(PRIVATE_DATA->dev_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAClosePW(%d) = %d", PRIVATE_DATA->dev_handle, res);
-		indigo_global_unlock(device);
 	}
 }
 

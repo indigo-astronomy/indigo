@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_ccd_dsi"
 #define DRIVER_LABEL         "Meade DSI Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -119,13 +119,8 @@ static void dsi_set_connected_sid(const char *sid, bool connected) {
 static bool dsi_open(indigo_device *device) {
 	// TODO: Split DSI camera initialization into short handler tasks.
 	indigo_set_handler_max_run_time(2);
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-		return false;
-	}
 	PRIVATE_DATA->dsi = dsi_open_camera(PRIVATE_DATA->dev_sid);
 	if (PRIVATE_DATA->dsi == NULL) {
-		indigo_global_unlock(device);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsi_open_camera(%s) = %p", PRIVATE_DATA->dev_sid, PRIVATE_DATA->dsi);
 		return false;
 	}
@@ -135,7 +130,6 @@ static bool dsi_open(indigo_device *device) {
 		if (PRIVATE_DATA->buffer == NULL) {
 			dsi_close_camera(PRIVATE_DATA->dsi);
 			PRIVATE_DATA->dsi = NULL;
-			indigo_global_unlock(device);
 			return false;
 		}
 	}
@@ -190,7 +184,6 @@ static void dsi_close(indigo_device *device) {
 	// TODO: Split DSI camera shutdown into short handler tasks.
 	indigo_set_handler_max_run_time(2);
 	dsi_close_camera(PRIVATE_DATA->dsi);
-	indigo_global_unlock(device);
 	if (PRIVATE_DATA->buffer != NULL) {
 		free(PRIVATE_DATA->buffer);
 		PRIVATE_DATA->buffer = NULL;

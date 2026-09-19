@@ -304,11 +304,11 @@ typedef struct {
 	}\
 }
 
-/** Try to aquire global lock
+/** Deprecated no-op, always returns INDIGO_OK. The file based global lock was keyed by device name, which is assigned per process and therefore neither stable for the same hardware nor unique across different hardware. Kept only for source compatibility with out-of-tree drivers; do not use in new code.
 */
 INDIGO_EXTERN indigo_result indigo_try_global_lock(indigo_device *device);
 
-/** Globally unlock
+/** Deprecated no-op, always returns INDIGO_OK. See indigo_try_global_lock().
 */
 INDIGO_EXTERN indigo_result indigo_global_unlock(indigo_device *device);
 

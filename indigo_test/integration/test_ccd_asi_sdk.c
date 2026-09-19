@@ -82,8 +82,8 @@ static observed_device observed[CAMERAS * 2];
 static pthread_mutex_t observation_mutex = PTHREAD_MUTEX_INITIALIZER;
 static libusb_hotplug_callback_fn usb_callback;
 static int usb_devices[CAMERAS];
-static atomic_int usb_ref_balance[CAMERAS], invalid_usb_unref, usb_refs, attached, lock_count, fail_lock;
-static atomic_int sdk_after_close, blobs, bad_blob, pulse_writes, short_waits, fail_attach, fail_configs, unbalanced_unlock;
+static atomic_int usb_ref_balance[CAMERAS], invalid_usb_unref, usb_refs, attached;
+static atomic_int sdk_after_close, blobs, bad_blob, pulse_writes, short_waits, fail_attach, fail_configs;
 
 typedef struct {
 	bool active;
@@ -391,23 +391,6 @@ static bool wait_count(atomic_int *value, int expected) {
 }
 
 void asi_test_usb_start(void) {
-}
-
-indigo_result asi_test_lock(indigo_device *device) {
-	if (atomic_load(&fail_lock)) {
-		return INDIGO_FAILED;
-	}
-	atomic_fetch_add(&lock_count, 1);
-	return INDIGO_OK;
-}
-
-indigo_result asi_test_unlock(indigo_device *device) {
-	if (atomic_load(&lock_count) == 0) {
-		atomic_fetch_add(&unbalanced_unlock, 1);
-		return INDIGO_FAILED;
-	}
-	atomic_fetch_sub(&lock_count, 1);
-	return INDIGO_OK;
 }
 
 int LIBUSB_CALL asi_test_usb_register(libusb_context *ctx, int events, int flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) {
@@ -1059,7 +1042,6 @@ static void open_init_rollback(void) {
 	cameras[0].open_error = 1;
 	ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
 	ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_ALERT_STATE));
-	ASSERT_EQ_INT(0, lock_count);
 	cameras[0].open_error = 0;
 	cameras[0].init_error = 1;
 	ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
@@ -1619,7 +1601,6 @@ static void unplug_active_and_replug(void) {
 	cameras[0].visible = false;
 	usb_event(0, false);
 	ASSERT_TRUE(wait_count(&attached, 0));
-	ASSERT_EQ_INT(0, lock_count);
 	ASSERT_FALSE(cameras[0].opened);
 	cameras[0].visible = true;
 	usb_event(0, true);
@@ -1729,14 +1710,8 @@ static void control_metadata_rollback(void) {
 		ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
 		ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_ALERT_STATE));
 		ASSERT_FALSE(cameras[0].opened);
-		ASSERT_EQ_INT(0, lock_count);
 		atomic_store(failures[i], 0);
 	}
-	fail_lock = 1;
-	ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
-	ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_ALERT_STATE));
-	ASSERT_FALSE(cameras[0].opened);
-	fail_lock = 0;
 	ASSERT_TRUE(connect_device(0, true));
 	ASSERT_TRUE(take_image(0, 0.01));
 }
@@ -2254,7 +2229,6 @@ static bool begin_fixture(void) {
 	memset(cameras, 0, sizeof(cameras));
 	memset(logical, 0, sizeof(logical));
 	atomic_store(&concurrent_sdk, 0);
-	atomic_store(&unbalanced_unlock, 0);
 	atomic_store(&discovery_fail, 0);
 	atomic_store(&count_fail, 0);
 	memset(request_revisions, 0, sizeof(request_revisions));
@@ -2304,7 +2278,6 @@ static void end_fixture(void) {
 	release_gate(&setup_gate);
 	atomic_store(&fast_poll, 0);
 	atomic_store(&fail_queue, 0);
-	atomic_store(&fail_lock, 0);
 	atomic_store(&fail_register, 0);
 	atomic_store(&fail_descriptor, 0);
 	atomic_store(&wrong_vendor, 0);
@@ -2325,7 +2298,6 @@ static void end_fixture(void) {
 	}
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_asi(INDIGO_DRIVER_SHUTDOWN, NULL));
 	ASSERT_EQ_INT(0, atomic_load(&attached));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	ASSERT_EQ_INT(0, atomic_load(&sdk_after_close));
 	ASSERT_EQ_INT(0, atomic_load(&wrong_single_mode));
 	ASSERT_EQ_INT(0, atomic_load(&wrong_bus_thread));
@@ -2333,7 +2305,6 @@ static void end_fixture(void) {
 	ASSERT_EQ_INT(0, atomic_load(&updates_after_detach));
 	ASSERT_EQ_INT(0, atomic_load(&gate_timeouts));
 	ASSERT_EQ_INT(0, atomic_load(&bad_blob));
-	ASSERT_EQ_INT(0, atomic_load(&unbalanced_unlock));
 	ASSERT_EQ_INT(0, atomic_load(&short_waits));
 	for (int i = 0; i < CAMERAS; i++) {
 		ASSERT_EQ_INT(cameras[i].opens, cameras[i].closes);

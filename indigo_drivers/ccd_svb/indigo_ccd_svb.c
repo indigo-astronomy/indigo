@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000018
+#define DRIVER_VERSION       0x03000019
 #define DRIVER_NAME          "indigo_ccd_svb"
 #define DRIVER_LABEL         "SVBONY Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -232,20 +232,14 @@ static bool pixel_format_supported(indigo_device *device, SVB_IMG_TYPE type) {
 
 static bool svb_open(indigo_device *device) {
 	indigo_lock_master_device(device);
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		indigo_unlock_master_device(device);
-		return false;
-	}
 	SVB_ERROR_CODE result = SVBOpenCamera(PRIVATE_DATA->dev_id);
 	if (result != SVB_SUCCESS) {
-		indigo_global_unlock(device);
 		indigo_unlock_master_device(device);
 		return false;
 	}
 	result = SVBSetAutoSaveParam(PRIVATE_DATA->dev_id, SVB_FALSE);
 	if (result != SVB_SUCCESS) {
 		SVBCloseCamera(PRIVATE_DATA->dev_id);
-		indigo_global_unlock(device);
 		indigo_unlock_master_device(device);
 		return false;
 	}
@@ -255,7 +249,6 @@ static bool svb_open(indigo_device *device) {
 	}
 	if (result != SVB_SUCCESS) {
 		SVBCloseCamera(PRIVATE_DATA->dev_id);
-		indigo_global_unlock(device);
 		indigo_unlock_master_device(device);
 		return false;
 	}
@@ -264,7 +257,6 @@ static bool svb_open(indigo_device *device) {
 	PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 	if (PRIVATE_DATA->buffer == NULL) {
 		SVBCloseCamera(PRIVATE_DATA->dev_id);
-		indigo_global_unlock(device);
 		indigo_unlock_master_device(device);
 		return false;
 	}
@@ -280,7 +272,6 @@ static void svb_close(indigo_device *device) {
 	}
 	free(PRIVATE_DATA->buffer);
 	PRIVATE_DATA->buffer = NULL;
-	indigo_global_unlock(device);
 	indigo_unlock_master_device(device);
 }
 

@@ -23,7 +23,7 @@
  \file indigo_focuser_mypro2.c
  */
 
-#define DRIVER_VERSION 0x0300000A
+#define DRIVER_VERSION 0x0300000B
 #define DRIVER_NAME "indigo_focuser_mypro2"
 
 #include <stdlib.h>
@@ -685,101 +685,92 @@ static void focuser_connect_callback(indigo_device *device) {
 	uint32_t position;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+			char *name = DEVICE_PORT_ITEM->text.value;
+			if (!indigo_uni_is_url(name, "mfp")) {
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
+			} else {
+				PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
+			}
+			/* MFP resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
+			indigo_usleep(2*ONE_SECOND_DELAY);
+
+			if (PRIVATE_DATA->handle == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			} else {
-				char *name = DEVICE_PORT_ITEM->text.value;
-				if (!indigo_uni_is_url(name, "mfp")) {
-					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
+				return;
+			} else if (!mfp_get_position(device, &position)) {  // check if it is MFP Focuser first
+				mfp_close(device);
+				device->is_connected = false;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: MyFP2 AF did not respond");
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				indigo_update_property(device, CONNECTION_PROPERTY, "MyFP2 AF did not respond");
+				return;
+			} else { // Successfully connected
+				char board[MFP_CMD_LEN] = "N/A";
+				char firmware[MFP_CMD_LEN] = "N/A";
+				uint32_t value;
+				if (mfp_get_info(device, board, firmware)) {
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, board);
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+				}
+				if (strstr(INFO_DEVICE_MODEL_ITEM->text.value, "Gemini") != NULL) {
+					// Gemini supports only Full and 1/2 step
+					X_STEP_MODE_PROPERTY->count = 2;
+				}
+
+				mfp_get_position(device, &position);
+				FOCUSER_POSITION_ITEM->number.value = (double)position;
+
+				int backlash_in, backlash_out;
+				if (!mfp_get_backlashes(device, &backlash_in, &backlash_out)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_backlashes(%p) failed", PRIVATE_DATA->handle);
 				} else {
-					PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
+					if (backlash_in != backlash_out) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "backlash_in != backlash_out, using baclash_in as backlash", PRIVATE_DATA->handle);
+						mfp_set_backlashes(device, backlash_in, backlash_in);
+					}
+					FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = (double)backlash_in;
 				}
-				/* MFP resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
-				indigo_usleep(2*ONE_SECOND_DELAY);
 
-				if (PRIVATE_DATA->handle == NULL) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-					indigo_global_unlock(device);
-					return;
-				} else if (!mfp_get_position(device, &position)) {  // check if it is MFP Focuser first
-					mfp_close(device);
-					indigo_global_unlock(device);
-					device->is_connected = false;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: MyFP2 AF did not respond");
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-					indigo_update_property(device, CONNECTION_PROPERTY, "MyFP2 AF did not respond");
-					return;
-				} else { // Successfully connected
-					char board[MFP_CMD_LEN] = "N/A";
-					char firmware[MFP_CMD_LEN] = "N/A";
-					uint32_t value;
-					if (mfp_get_info(device, board, firmware)) {
-						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, board);
-						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
-						indigo_update_property(device, INFO_PROPERTY, NULL);
-					}
-					if (strstr(INFO_DEVICE_MODEL_ITEM->text.value, "Gemini") != NULL) {
-						// Gemini supports only Full and 1/2 step
-						X_STEP_MODE_PROPERTY->count = 2;
-					}
-
-					mfp_get_position(device, &position);
-					FOCUSER_POSITION_ITEM->number.value = (double)position;
-
-					int backlash_in, backlash_out;
-					if (!mfp_get_backlashes(device, &backlash_in, &backlash_out)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_backlashes(%p) failed", PRIVATE_DATA->handle);
-					} else {
-						if (backlash_in != backlash_out) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "backlash_in != backlash_out, using baclash_in as backlash", PRIVATE_DATA->handle);
-							mfp_set_backlashes(device, backlash_in, backlash_in);
-						}
-						FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = (double)backlash_in;
-					}
-
-					if (!mfp_get_max_position(device, &PRIVATE_DATA->max_position)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_max_position(%p) failed", PRIVATE_DATA->handle);
-					}
-					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
-
-					if (!mfp_set_speed(device, (uint32_t)FOCUSER_SPEED_ITEM->number.value)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_set_speed(%p) failed", PRIVATE_DATA->handle);
-					}
-					FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.value;
-
-					mfp_get_reverse(device, &FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
-					FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
-
-					update_coils_mode_switches(device);
-					indigo_define_property(device, X_COILS_MODE_PROPERTY, NULL);
-
-					update_step_mode_switches(device);
-					indigo_define_property(device, X_STEP_MODE_PROPERTY, NULL);
-
-					if (!mfp_get_settle_buffer(device, &value)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_settle_buffer(%p) failed", PRIVATE_DATA->handle);
-					}
-					X_SETTLE_TIME_ITEM->number.value = (double)value;
-					X_SETTLE_TIME_ITEM->number.target = (double)value;
-					indigo_define_property(device, X_SETTLE_TIME_PROPERTY, NULL);
-
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					device->is_connected = true;
-
-					indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
-
-					mfp_get_temperature(device, &FOCUSER_TEMPERATURE_ITEM->number.value);
-					PRIVATE_DATA->prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
-					PRIVATE_DATA->has_temperature_sensor = true;
-					indigo_execute_handler_in(device, 1, temperature_timer_callback);
+				if (!mfp_get_max_position(device, &PRIVATE_DATA->max_position)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_max_position(%p) failed", PRIVATE_DATA->handle);
 				}
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
+
+				if (!mfp_set_speed(device, (uint32_t)FOCUSER_SPEED_ITEM->number.value)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_set_speed(%p) failed", PRIVATE_DATA->handle);
+				}
+				FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.value;
+
+				mfp_get_reverse(device, &FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
+				FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
+
+				update_coils_mode_switches(device);
+				indigo_define_property(device, X_COILS_MODE_PROPERTY, NULL);
+
+				update_step_mode_switches(device);
+				indigo_define_property(device, X_STEP_MODE_PROPERTY, NULL);
+
+				if (!mfp_get_settle_buffer(device, &value)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_settle_buffer(%p) failed", PRIVATE_DATA->handle);
+				}
+				X_SETTLE_TIME_ITEM->number.value = (double)value;
+				X_SETTLE_TIME_ITEM->number.target = (double)value;
+				indigo_define_property(device, X_SETTLE_TIME_PROPERTY, NULL);
+
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				device->is_connected = true;
+
+				indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
+
+				mfp_get_temperature(device, &FOCUSER_TEMPERATURE_ITEM->number.value);
+				PRIVATE_DATA->prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
+				PRIVATE_DATA->has_temperature_sensor = true;
+				indigo_execute_handler_in(device, 1, temperature_timer_callback);
 			}
 		}
 	} else {
@@ -794,7 +785,6 @@ static void focuser_connect_callback(indigo_device *device) {
 			indigo_delete_property(device, X_SETTLE_TIME_PROPERTY, NULL);
 
 			mfp_close(device);
-			indigo_global_unlock(device);
 			device->is_connected = false;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -1155,7 +1145,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_release_property(X_STEP_MODE_PROPERTY);
 	indigo_release_property(X_COILS_MODE_PROPERTY);
 	indigo_release_property(X_SETTLE_TIME_PROPERTY);
-	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	return indigo_focuser_detach(device);

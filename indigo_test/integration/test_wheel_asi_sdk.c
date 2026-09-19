@@ -28,7 +28,7 @@
 static libusb_hotplug_callback_fn usb_callback;
 static int usb_devices[6];
 static atomic_int visible_count = 1, attached_mask, attach_attempts, fail_attach;
-static atomic_int close_calls, lock_count, open_calls, set_position_calls, requested_slot, current_slot;
+static atomic_int close_calls, open_calls, set_position_calls, requested_slot, current_slot;
 static atomic_bool moving, fail_read, fail_info;
 static atomic_int read_calls, calibrate_calls, slots = 5;
 static const simulator_driver_case efw = { "ZWO ASI Filter Wheel", "indigo_wheel_asi", "EFW SDK test 0", indigo_wheel_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
@@ -59,16 +59,6 @@ indigo_result efw_test_detach(indigo_device *device) {
 }
 
 void efw_test_usb_start(void) {
-}
-
-indigo_result efw_test_lock(indigo_device *device) {
-	atomic_fetch_add(&lock_count, 1);
-	return INDIGO_OK;
-}
-
-indigo_result efw_test_unlock(indigo_device *device) {
-	atomic_fetch_sub(&lock_count, 1);
-	return INDIGO_OK;
 }
 
 int LIBUSB_CALL efw_test_usb_register(libusb_context *ctx, int events, int flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) {
@@ -186,7 +176,6 @@ static void connect_change_slot_disconnect(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, efw.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
 	ASSERT_TRUE(wait_for_simulator_connection_state(true));
 	ASSERT_EQ_INT(opened + 1, atomic_load(&open_calls));
-	ASSERT_EQ_INT(1, atomic_load(&lock_count));
 	ASSERT_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 1, 0));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, efw.device_name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 3));
 	ASSERT_TRUE(wait_atomic(&set_position_calls, 1));
@@ -199,7 +188,6 @@ static void connect_change_slot_disconnect(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, efw.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true));
 	ASSERT_TRUE(wait_for_simulator_connection_state(false));
 	ASSERT_EQ_INT(closed + 1, atomic_load(&close_calls));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 }
 
 static bool connection(bool connect) {
@@ -215,19 +203,16 @@ static void initialization_failures(void) {
 	indigo_change_switch_property_1(&simulator_test_client, efw.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
 	ASSERT_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	ASSERT_EQ_INT(closed + 1, atomic_load(&close_calls));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	atomic_store(&fail_info, false);
 	atomic_store(&fail_read, true);
 	indigo_change_switch_property_1(&simulator_test_client, efw.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
 	ASSERT_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	ASSERT_EQ_INT(closed + 2, atomic_load(&close_calls));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	atomic_store(&fail_read, false);
 	atomic_store(&slots, 100);
 	indigo_change_switch_property_1(&simulator_test_client, efw.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
 	ASSERT_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	ASSERT_EQ_INT(closed + 3, atomic_load(&close_calls));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	atomic_store(&slots, 5);
 	ASSERT_TRUE(connection(true));
 	ASSERT_TRUE(connection(false));
@@ -278,7 +263,6 @@ static void calibration_noop_and_interrupted_reconnect(void) {
 	indigo_change_switch_property_1(&simulator_test_client, efw.device_name, "X_CALIBRATE", "START", true);
 	ASSERT_TRUE(wait_atomic(&calibrate_calls, calibrations + 1));
 	ASSERT_TRUE(connection(false));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	ASSERT_TRUE(connection(true));
 	ASSERT_TRUE(wait_for_property_state("X_CALIBRATE", INDIGO_OK_STATE));
 	ASSERT_FALSE(find_cached_item("X_CALIBRATE", "START")->sw.value);

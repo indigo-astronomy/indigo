@@ -26,7 +26,7 @@ driver mi {
 	label = "Moravian Instruments SFW";
 	author = "Jakub Smutny <info@gxccd.com>";
 	copyright = "Copyright (c) 2024-2026 Moravian Instruments";
-	version = 5;
+	version = 6;
 	multi_device_support = true;
 	include {
 		#include <ctype.h>
@@ -91,14 +91,9 @@ driver mi {
 		}
 
 		static bool mi_open(indigo_device *device) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock() failed");
-				return false;
-			}
 			PRIVATE_DATA->wheel = gxfw_initialize_usb(PRIVATE_DATA->eid);
 			if (PRIVATE_DATA->wheel == NULL) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "gxfw_initialize_usb(%d) failed", PRIVATE_DATA->eid);
-				indigo_global_unlock(device);
 				return false;
 			}
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxfw_initialize_usb(%d) succeeded", PRIVATE_DATA->eid);
@@ -112,7 +107,6 @@ driver mi {
 				PRIVATE_DATA->wheel = NULL;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxfw_release() succeeded");
 			}
-			indigo_global_unlock(device);
 			indigo_unlock_master_device(device);
 		}
 	}

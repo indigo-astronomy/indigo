@@ -22,7 +22,7 @@ driver asi {
 	label = "ZWO ASI Focuser";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (C) 2016-2026 Rumen G. Bogdanovski";
-	version = 31;
+	version = 32;
 	include {
 		#include <stdbool.h>
 		#include <EAF_focuser.h>
@@ -116,23 +116,12 @@ driver asi {
 		}
 
 		static bool asi_open(indigo_device *device) {
-			bool result = false;
-			bool global_locked = false;
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-			} else {
-				global_locked = true;
-				int res = EAFOpen(PRIVATE_DATA->dev_id);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
-				if (res != EAF_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unable to open EAF device %d: %d", PRIVATE_DATA->dev_id, res);
-				}
-				result = res == EAF_SUCCESS;
+			int res = EAFOpen(PRIVATE_DATA->dev_id);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
+			if (res != EAF_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unable to open EAF device %d: %d", PRIVATE_DATA->dev_id, res);
 			}
-			if (!result && global_locked) {
-				indigo_global_unlock(device);
-			}
-			return result;
+			return res == EAF_SUCCESS;
 		}
 
 		static void asi_close(indigo_device *device) {
@@ -144,7 +133,6 @@ driver asi {
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFClose(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
-			indigo_global_unlock(device);
 		}
 	}
 	on_init {

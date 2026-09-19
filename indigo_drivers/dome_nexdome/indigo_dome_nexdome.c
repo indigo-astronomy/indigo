@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_dome_nexdome"
 #define DRIVER_LABEL         "NexDome"
 #define DOME_DEVICE_NAME     "NexDome"
@@ -219,10 +219,6 @@ static bool nexdome_get_azimuth(indigo_device *device, double *azimuth, char rep
 }
 
 static bool nexdome_open(indigo_device *device) {
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-		return false;
-	}
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (!indigo_uni_is_url(name, "nexdome")) {
 		PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
@@ -235,7 +231,6 @@ static bool nexdome_open(indigo_device *device) {
 	}
 	if (PRIVATE_DATA->handle == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", name);
-		indigo_global_unlock(device);
 		return false;
 	}
 	char model[32] = "", firmware[32] = "";
@@ -249,13 +244,11 @@ static bool nexdome_open(indigo_device *device) {
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: NexDome did not respond. Are you using the correct firmware?");
 	indigo_send_message(device, CONNECTION_PROPERTY, "NexDome did not respond. Are you using the correct firmware?");
 	indigo_uni_close(&PRIVATE_DATA->handle);
-	indigo_global_unlock(device);
 	return false;
 }
 
 static void nexdome_close(indigo_device *device) {
 	indigo_uni_close(&PRIVATE_DATA->handle);
-	indigo_global_unlock(device);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 }
 

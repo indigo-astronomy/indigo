@@ -26,7 +26,7 @@ driver asi {
 	label = "ZWO ASI USB-St4 Guider";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2017-2026 Rumen G. Bogdanovski";
-	version = 7;
+	version = 8;
 	supported_architecture = "!defined(INDIGO_WINDOWS) && (!defined(INDIGO_MACOS) || defined(__x86_64__))";
 	include {
 		#include <stdbool.h>
@@ -140,16 +140,11 @@ driver asi {
 		}
 
 		static bool asi_open(indigo_device *device) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock");
-				return false;
-			}
 			pthread_mutex_lock(&sdk_mutex);
 			USB2ST4_ERROR_CODE result = USB2ST4Open(PRIVATE_DATA->dev_id);
 			pthread_mutex_unlock(&sdk_mutex);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB2ST4Open(%d) = %d", PRIVATE_DATA->dev_id, result);
 			if (result != USB2ST4_SUCCESS) {
-				indigo_global_unlock(device);
 				return false;
 			}
 			PRIVATE_DATA->active_ra = PRIVATE_DATA->active_dec = NO_DIRECTION;
@@ -162,7 +157,6 @@ driver asi {
 			USB2ST4_ERROR_CODE result = USB2ST4Close(PRIVATE_DATA->dev_id);
 			pthread_mutex_unlock(&sdk_mutex);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB2ST4Close(%d) = %d", PRIVATE_DATA->dev_id, result);
-			indigo_global_unlock(device);
 		}
 
 		static void asi_clear_axis_items(indigo_device *device, bool ra) {

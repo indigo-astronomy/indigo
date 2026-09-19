@@ -25,7 +25,7 @@
 
 #include "indigo_aux_dragonfly.h"
 
-#define DRIVER_VERSION 0x02000005
+#define DRIVER_VERSION 0x02000006
 #define AUX_DRAGONFLY_NAME     "Dragonfly Controller"
 
 #define DRIVER_NAME              "indigo_aux_dragonfly"

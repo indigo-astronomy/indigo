@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_wheel_asi"
 #define DRIVER_LABEL         "ZWO ASI Filter Wheel"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -112,20 +112,9 @@ static void split_device_name(const char *name, char *model, char *custom_suffix
 }
 
 static bool asi_open(indigo_device *device) {
-	bool result = false;
-	bool global_locked = false;
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-	} else {
-		global_locked = true;
-		int res = EFWOpen(PRIVATE_DATA->dev_id);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
-		result = res == EFW_SUCCESS;
-	}
-	if (!result && global_locked) {
-		indigo_global_unlock(device);
-	}
-	return result;
+	int res = EFWOpen(PRIVATE_DATA->dev_id);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
+	return res == EFW_SUCCESS;
 }
 
 static void asi_close(indigo_device *device) {
@@ -133,7 +122,6 @@ static void asi_close(indigo_device *device) {
 		int res = EFWClose(PRIVATE_DATA->dev_id);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWClose(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
-	indigo_global_unlock(device);
 }
 
 //- code

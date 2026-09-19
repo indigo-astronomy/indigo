@@ -71,8 +71,8 @@ static observed_device observed[CAMERAS * 2];
 static pthread_mutex_t observation_mutex = PTHREAD_MUTEX_INITIALIZER;
 static libusb_hotplug_callback_fn usb_callback;
 static int usb_devices[CAMERAS];
-static atomic_int usb_ref_balance[CAMERAS], invalid_usb_unref, usb_refs, attached, lock_count, fail_lock;
-static atomic_int sdk_after_close, blobs, bad_blob, pulse_writes, short_waits, fail_attach, fail_configs, unbalanced_unlock;
+static atomic_int usb_ref_balance[CAMERAS], invalid_usb_unref, usb_refs, attached;
+static atomic_int sdk_after_close, blobs, bad_blob, pulse_writes, short_waits, fail_attach, fail_configs;
 typedef struct {
 	bool active;
 	struct timespec started;
@@ -375,23 +375,6 @@ static bool wait_count(atomic_int *value, int expected) {
 }
 
 void poa_test_usb_start(void) {
-}
-
-indigo_result poa_test_lock(indigo_device *device) {
-	if (atomic_load(&fail_lock)) {
-		return INDIGO_FAILED;
-	}
-	atomic_fetch_add(&lock_count, 1);
-	return INDIGO_OK;
-}
-
-indigo_result poa_test_unlock(indigo_device *device) {
-	if (atomic_load(&lock_count) == 0) {
-		atomic_fetch_add(&unbalanced_unlock, 1);
-		return INDIGO_FAILED;
-	}
-	atomic_fetch_sub(&lock_count, 1);
-	return INDIGO_OK;
 }
 
 int LIBUSB_CALL poa_test_usb_register(libusb_context *ctx, int events, int flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) {
@@ -964,7 +947,6 @@ static void connection_rollback(void) {
 	atomic_store(&cameras[0].open_error, POA_ERROR_ACCESS_DENIED);
 	ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
 	ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_ALERT_STATE));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	atomic_store(&cameras[0].open_error, 0);
 	atomic_store(&cameras[0].init_error, POA_ERROR_OPERATION_FAILED);
 	ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
@@ -1373,7 +1355,7 @@ static void simultaneous_axes_and_zero(void) {
 	ASSERT_TRUE(wait_state(1, "GUIDER_GUIDE_RA", INDIGO_OK_STATE));
 }
 
-static void registration_and_global_lock_failures(void) {
+static void registration_failures(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_playerone(INDIGO_DRIVER_SHUTDOWN, NULL));
 	atomic_store(&fail_register, 1);
 	ASSERT_EQ_INT(INDIGO_FAILED, indigo_ccd_playerone(INDIGO_DRIVER_INIT, NULL));
@@ -1381,10 +1363,6 @@ static void registration_and_global_lock_failures(void) {
 	atomic_store(&fail_register, 0);
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_playerone(INDIGO_DRIVER_INIT, NULL));
 	ASSERT_TRUE(wait_count(&attached, 2));
-	atomic_store(&fail_lock, 1);
-	ASSERT_TRUE(change_switch(0, "CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
-	atomic_store(&fail_lock, 0);
 	ASSERT_TRUE(connect_device(0, true));
 }
 
@@ -2121,7 +2099,6 @@ static void end_fixture(void) {
 	release_gate(&setup_gate);
 	atomic_store(&fast_poll, 0);
 	atomic_store(&fail_queue, 0);
-	atomic_store(&fail_lock, 0);
 	atomic_store(&fail_register, 0);
 	atomic_store(&fail_descriptor, 0);
 	atomic_store(&wrong_vendor, 0);
@@ -2140,7 +2117,6 @@ static void end_fixture(void) {
 	}
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_playerone(INDIGO_DRIVER_SHUTDOWN, NULL));
 	ASSERT_EQ_INT(0, atomic_load(&attached));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	ASSERT_EQ_INT(0, atomic_load(&sdk_after_close));
 	ASSERT_EQ_INT(0, atomic_load(&wrong_single_mode));
 	ASSERT_EQ_INT(0, atomic_load(&wrong_bus_thread));
@@ -2148,7 +2124,6 @@ static void end_fixture(void) {
 	ASSERT_EQ_INT(0, atomic_load(&updates_after_detach));
 	ASSERT_EQ_INT(0, atomic_load(&gate_timeouts));
 	ASSERT_EQ_INT(0, atomic_load(&bad_blob));
-	ASSERT_EQ_INT(0, atomic_load(&unbalanced_unlock));
 	ASSERT_EQ_INT(0, atomic_load(&usb_refs));
 	ASSERT_EQ_INT(0, atomic_load(&invalid_usb_unref));
 	for (int i = 0; i < CAMERAS * 2; i++) {
@@ -2240,7 +2215,7 @@ int main(int argc, char **argv) {
 		{ "Exposure setup errors and recovery", exposure_setup_errors },
 		{ "Suffix boundaries and write failure", suffix_boundaries_and_failure },
 		{ "Simultaneous guide axes zero and errors", simultaneous_axes_and_zero },
-		{ "Registration and global lock rollback", registration_and_global_lock_failures },
+		{ "Registration rollback", registration_failures },
 		{ "Streaming error active removal and replug", stream_errors_and_active_removal },
 		{ "Idle abort publishes completion and resets switch", idle_abort_publishes_completion },
 		{ "Urgent abort overtakes a ready TIME handler", abort_overtakes_ready_time_handler },

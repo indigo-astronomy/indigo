@@ -319,7 +319,7 @@ INDIGO_EXTERN indigo_property *ALERT_PROPERTY;
  */
 typedef struct indigo_device {
 	char name[INDIGO_NAME_SIZE];        ///< device name
-	indigo_uni_handle *lock;            ///< device global lock
+	indigo_uni_handle *lock;            ///< deprecated, unused since the file based global lock was removed
 	bool is_remote;                     ///< is remote device
 	uint16_t gp_bits;                   ///< general purpose bits for driver specific usage
 	void *device_context;               ///< any device specific data

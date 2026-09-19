@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_ccd_atik2"
 #define DRIVER_LABEL         "Atik (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -92,12 +92,8 @@ static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 static void exposure_finalizer(indigo_device *device);
 
 static bool atik2_open(indigo_device *device) {
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		return false;
-	}
 	if (!libatik_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context) || !PRIVATE_DATA->device_context) {
 		PRIVATE_DATA->device_context = NULL;
-		indigo_global_unlock(device);
 		return false;
 	}
 	return true;
@@ -106,7 +102,6 @@ static bool atik2_open(indigo_device *device) {
 static void atik2_close(indigo_device *device) {
 	libatik_close(PRIVATE_DATA->device_context);
 	PRIVATE_DATA->device_context = NULL;
-	indigo_global_unlock(device);
 }
 
 static bool atik2_initialize_ccd(indigo_device *device) {

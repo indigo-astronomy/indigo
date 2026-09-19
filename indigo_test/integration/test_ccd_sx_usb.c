@@ -31,14 +31,14 @@
 
 static int usb_tokens[8];
 #define usb_token usb_tokens[0]
-static atomic_int attached_devices, fail_attach, fail_registration, fail_queue, fail_lock, fail_config, config_allocated, config_freed, fail_descriptor;
+static atomic_int attached_devices, fail_attach, fail_registration, fail_queue, fail_config, config_allocated, config_freed, fail_descriptor;
 static atomic_int connected[2], connection_revision[2];
 static indigo_device *logical_devices[8];
 static indigo_queue *lifecycle_queue;
 static int product = 0x0525;
-static atomic_int physical_open[8], physical_held[8];
+static atomic_int physical_open[8];
 static libusb_hotplug_callback_fn usb_callback;
-static atomic_int refs, opened, closed, held, after_close, bad_protocol, frames, bad_frames, relay_mask;
+static atomic_int refs, opened, closed, after_close, bad_protocol, frames, bad_frames, relay_mask;
 static atomic_int fail_open, fail_claim, fail_command, fail_read, short_read, zero_read, cooler_target, cooler_on, cooler_reads;
 static atomic_int block_attach, attach_entered, attach_release, deregistered, shutdown_started, shutdown_done;
 static atomic_int gate_request, gate_endpoint, gate_entered, gate_release, gate_timeout, concurrent_usb, active_usb[8];
@@ -87,18 +87,6 @@ int LIBUSB_CALL sx_test_register(libusb_context *ctx, int events, int flags, int
 int sx_test_register_sim(libusb_context *ctx, libusb_hotplug_event events, libusb_hotplug_flag flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) { return sx_test_register(ctx, events, flags, vid, pid, cls, callback, data, handle); }
 void LIBUSB_CALL sx_test_deregister(libusb_context *ctx, libusb_hotplug_callback_handle handle) { usb_callback = NULL; atomic_store(&deregistered, 1); }
 int sx_test_deregister_poll(libusb_context *ctx, libusb_hotplug_callback_handle handle) { sx_test_deregister(ctx, handle); return 0; }
-indigo_result sx_test_lock(indigo_device *device) {
-	int index = atoi(strstr(device->name, "#fake-") + 6);
-	if (atomic_load(&fail_lock) || atomic_exchange(&physical_held[index], 1)) { return INDIGO_BUSY; }
-	atomic_fetch_add(&held, 1);
-	return INDIGO_OK;
-}
-indigo_result sx_test_unlock(indigo_device *device) {
-	int index = atoi(strstr(device->name, "#fake-") + 6);
-	atomic_store(&physical_held[index], 0);
-	atomic_fetch_sub(&held, 1);
-	return INDIGO_OK;
-}
 int LIBUSB_CALL sx_test_open(libusb_device *dev, libusb_device_handle **handle) {
 	if (atomic_load(&fail_open)) { return LIBUSB_ERROR_ACCESS; }
 	*handle = (libusb_device_handle *)dev;
@@ -352,7 +340,6 @@ static void sx_end(void) {
 	ASSERT_EQ_INT(atomic_load(&opened), atomic_load(&closed));
 	ASSERT_EQ_INT(atomic_load(&config_allocated), atomic_load(&config_freed));
 	ASSERT_EQ_INT(0, atomic_load(&refs));
-	ASSERT_EQ_INT(0, atomic_load(&held));
 	ASSERT_EQ_INT(0, atomic_load(&after_close));
 	ASSERT_EQ_INT(0, atomic_load(&concurrent_usb));
 	ASSERT_EQ_INT(0, atomic_load(&gate_timeout));
@@ -484,12 +471,12 @@ static bool sx_connect(int index, bool on, int expected) {
 static void initialization_failures_and_retry(void) {
 	model = 0x25; caps = 0x31;
 	sx_start();
-	atomic_int *errors[] = { &fail_lock, &fail_open, &fail_config, &fail_claim, &fail_command, &fail_command, &fail_command, &fail_read, &fail_read, &short_command, &short_reply, &short_reply };
-	int values[] = { 1, 1, 1, 1, 6, 14, 8, 14, 8, 6, 14, 8 };
+	atomic_int *errors[] = { &fail_open, &fail_config, &fail_claim, &fail_command, &fail_command, &fail_command, &fail_read, &fail_read, &short_command, &short_reply, &short_reply };
+	int values[] = { 1, 1, 1, 6, 14, 8, 14, 8, 6, 14, 8 };
 	for (int i = 0; i < ARRAY_SIZE(errors); i++) {
 		atomic_store(errors[i], values[i]);
 		SX_CHECK(sx_connect(0, true, -1));
-		SX_CHECK(!atomic_load(&is_open) && !atomic_load(&held));
+		SX_CHECK(!atomic_load(&is_open));
 		SX_CHECK(atomic_load(&opened) == atomic_load(&closed));
 		SX_CHECK(atomic_load(&config_allocated) == atomic_load(&config_freed));
 		atomic_store(errors[i], 0);
@@ -497,7 +484,7 @@ static void initialization_failures_and_retry(void) {
 		SX_CHECK(sx_connect(0, false, 0));
 	}
 cleanup:
-	atomic_store(&fail_lock, 0); atomic_store(&fail_config, 0); atomic_store(&short_command, 0); atomic_store(&short_reply, 0);
+	atomic_store(&fail_config, 0); atomic_store(&short_command, 0); atomic_store(&short_reply, 0);
 	sx_end();
 }
 
@@ -586,7 +573,7 @@ static void flood_led_and_property_contract(void) {
 	sx_begin();
 	indigo_driver_info info;
 	SX_CHECK(indigo_ccd_sx(INDIGO_DRIVER_INFO, &info) == INDIGO_OK);
-	SX_CHECK(!strcmp(info.name, "indigo_ccd_sx") && info.version == 0x03000011);
+	SX_CHECK(!strcmp(info.name, "indigo_ccd_sx") && info.version == 0x03000012);
 	assert_device_interface(INDIGO_INTERFACE_CCD);
 	indigo_property *p = find_cached_property("X_CCD_FLOOD_LED");
 	SX_CHECK(p && p->type == INDIGO_SWITCH_VECTOR && p->count == 2 && p->perm == INDIGO_RW_PERM);
@@ -893,7 +880,7 @@ static void slow_initialization_and_unsupported_guider(void) {
 	caps = 0;
 	sx_start();
 	SX_CHECK(sx_connect(1, true, -1));
-	SX_CHECK(!atomic_load(&is_open) && atomic_load(&held) == 0);
+	SX_CHECK(!atomic_load(&is_open));
 	SX_CHECK(sx_connect(0, true, 1));
 	SX_CHECK(sx_switch("CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
 	SX_CHECK(sx_expose(0.02, INDIGO_OK_STATE));

@@ -159,9 +159,9 @@
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 
 static libusb_hotplug_callback_fn usb_callback;
-static atomic_int visible, attached, opened, closed, locks, wrong_thread, connection[4];
+static atomic_int visible, attached, opened, closed, wrong_thread, connection[4];
 static atomic_bool moving, fail_open, fail_register, fail_queue, hold_focus;
-static atomic_bool held[TOUPCAM_MAX], handle_open[TOUPCAM_MAX];
+static atomic_bool handle_open[TOUPCAM_MAX];
 static atomic_int bad_handle, calibrations;
 static pthread_t sdk_thread;
 static bool have_thread;
@@ -620,24 +620,9 @@ indigo_result touptek_test_detach(indigo_device *device) {
 }
 
 void touptek_test_usb_start(void) { }
-static int physical_index(indigo_device *device) {
-	if (inventory_mode) { return atoi(strrchr(device->name, '#') + 1) - 1000; }
-	int index = index_for(device->name);
-	return index < 2 ? 0 : index - 1;
-}
 indigo_queue *touptek_test_queue_create(indigo_device *device) {
 	test_driver_queue = atomic_load(&fail_queue) ? NULL : indigo_queue_create(device);
 	return test_driver_queue;
-}
-indigo_result touptek_test_lock(indigo_device *device) {
-	if (atomic_exchange(&held[physical_index(device)], true)) { return INDIGO_BUSY; }
-	atomic_fetch_add(&locks, 1);
-	return INDIGO_OK;
-}
-indigo_result touptek_test_unlock(indigo_device *device) {
-	// Global unlock is idempotent, including the base CCD detach release.
-	if (atomic_exchange(&held[physical_index(device)], false)) { atomic_fetch_sub(&locks, 1); }
-	return INDIGO_OK;
 }
 ssize_t LIBUSB_CALL touptek_test_usb_list(libusb_context *ctx, libusb_device ***list) {
 	*list = calloc(1, sizeof(libusb_device *));
@@ -798,7 +783,6 @@ static void lifecycle(void) {
 		connect_device(3, false);
 		CHECK_TRUE(wait_value(&connection[3], 0));
 		CHECK_EQ_INT(atomic_load(&opened), atomic_load(&closed));
-		CHECK_EQ_INT(atomic_load(&locks), 0);
 		atomic_store(&moving, true);
 		connect_device(2, true);
 		CHECK_TRUE(wait_value(&connection[2], 2));
@@ -820,14 +804,12 @@ static void lifecycle(void) {
 	atomic_store(&fail_open, true);
 	connect_device(0, true);
 	CHECK_TRUE(wait_value(&connection[0], 0));
-	CHECK_EQ_INT(atomic_load(&locks), 0);
 	atomic_store(&fail_open, false);
 	connect_device(0, true);
 	CHECK_TRUE(wait_value(&connection[0], 1));
 	connect_device(0, false);
 	CHECK_TRUE(wait_value(&connection[0], 0));
 	CHECK_EQ_INT(atomic_load(&opened), atomic_load(&closed));
-	CHECK_EQ_INT(atomic_load(&locks), 0);
 	CHECK_EQ_INT(indigo_ccd_touptek(INDIGO_DRIVER_SHUTDOWN, NULL), INDIGO_OK);
 	CHECK_EQ_INT(atomic_load(&bad_handle), 0);
 	CHECK_EQ_INT(atomic_load(&wrong_thread), 0);
@@ -1554,7 +1536,6 @@ static void hotplug_workflows(void) {
 	usb_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
 	CHECK_TRUE(wait_value(&attached, 0));
 	CHECK_EQ_INT(atomic_load(&opened), atomic_load(&closed));
-	CHECK_EQ_INT(atomic_load(&locks), 0);
 	for (int failed = 0; failed < 4; failed++) {
 		atomic_store(&fail_attach_index, failed);
 		atomic_store(&fail_attach, true);
@@ -1728,7 +1709,6 @@ static void hotplug_pending_races(void) {
 		}
 		CHECK_TRUE(wait_value(&attached, 0));
 		CHECK_EQ_INT(atomic_load(&opened), atomic_load(&closed));
-		CHECK_EQ_INT(atomic_load(&locks), 0);
 		atomic_store(&visible, 7);
 		for (int i = 0; i < 32; i++) {
 			usb_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
@@ -1766,7 +1746,6 @@ static void hotplug_pending_races(void) {
 	CHECK_EQ_INT(atomic_load(&attached), 0);
 	CHECK_TRUE(usb_callback == NULL);
 	CHECK_EQ_INT(atomic_load(&opened), atomic_load(&closed));
-	CHECK_EQ_INT(atomic_load(&locks), 0);
 	have_thread = false;
 	CHECK_EQ_INT(indigo_ccd_touptek(INDIGO_DRIVER_INIT, NULL), INDIGO_OK);
 	CHECK_TRUE(wait_value(&attached, 15));
@@ -1779,7 +1758,6 @@ static void hotplug_pending_races(void) {
 	CHECK_EQ_INT(indigo_ccd_touptek(INDIGO_DRIVER_SHUTDOWN, NULL), INDIGO_OK);
 	CHECK_EQ_INT(atomic_load(&attached), 0);
 	CHECK_EQ_INT(atomic_load(&opened), atomic_load(&closed));
-	CHECK_EQ_INT(atomic_load(&locks), 0);
 	CHECK_EQ_INT(atomic_load(&gate_timeouts), 0);
 	CHECK_EQ_INT(atomic_load(&bad_handle), 0);
 	printf("    8 reconnect cycles, 1024 USB notifications, 64 pending shutdown events passed\n");

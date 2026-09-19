@@ -23,7 +23,7 @@ driver playerone {
 	label = "Player One Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 20;
+	version = 21;
 	include {
 		#include <time.h>
 		#include <math.h>
@@ -753,12 +753,8 @@ driver playerone {
 		}
 
 		static bool playerone_open(indigo_device *device) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				return false;
-			}
 			POAErrors result = POAOpenCamera(PRIVATE_DATA->dev_id);
 			if (result != POA_OK) {
-				indigo_global_unlock(device);
 				return false;
 			}
 			result = POAInitCamera(PRIVATE_DATA->dev_id);
@@ -777,7 +773,6 @@ driver playerone {
 			}
 			failed:
 			POACloseCamera(PRIVATE_DATA->dev_id);
-			indigo_global_unlock(device);
 			return false;
 		}
 
@@ -786,7 +781,6 @@ driver playerone {
 			POACloseCamera(PRIVATE_DATA->dev_id);
 			free(PRIVATE_DATA->buffer);
 			PRIVATE_DATA->buffer = NULL;
-			indigo_global_unlock(device);
 			indigo_unlock_master_device(device);
 		}
 

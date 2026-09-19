@@ -1,6 +1,5 @@
 step connect
 prop f0 CONNECTION BUSY
-lock
 sdk f0 Open -> 0
 sdk f0 GetConfig -> 0
 sdk f0 GetConfig -> 0
@@ -102,6 +101,5 @@ step disconnect
 prop f0 CONNECTION BUSY
 sdk f0 StopMove -> 0
 sdk f0 Close -> 0
-unlock
 prop f0 CONNECTION OK DISCONNECTED
 step end

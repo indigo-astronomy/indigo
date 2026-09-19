@@ -35,7 +35,7 @@
 #define OAF_REFERENCE_TRACE_PATH "fixtures/focuser_astroasis/generated_reference_trace.txt"
 #endif
 
-#define EXPECTED_VERSION 0x03000009
+#define EXPECTED_VERSION 0x0300000A
 #define CUSTOM_PREFIX "X_"
 #define BEEP_ON_POWER_UP_NAME CUSTOM_PREFIX "BEEP_ON_POWER_UP_PROPERTY"
 #define BEEP_ON_MOVE_NAME CUSTOM_PREFIX "BEEP_ON_MOVE_PROPERTY"
@@ -157,7 +157,7 @@ static pthread_mutex_t trace_mutex = PTHREAD_MUTEX_INITIALIZER;
 static libusb_hotplug_callback_fn usb_callback;
 static int usb_devices[FOCUSERS];
 static atomic_int usb_ref_balance, usb_register_calls, usb_deregister_calls, usb_register_error, registered_vid, registered_pid, registered_flags, registered_events;
-static atomic_int attached, attach_attempts, fail_attach, invalid_detach, attach_after_shutdown, lock_count, fail_lock;
+static atomic_int attached, attach_attempts, fail_attach, invalid_detach, attach_after_shutdown;
 static atomic_int sdk_after_close, concurrent_calls, late_updates, last_probe = -1, time_scale_percent = 10;
 static atomic_bool scan_reverse, hold_status, status_waiting, driver_stopped;
 static atomic_bool trace_enabled;
@@ -579,21 +579,6 @@ void oaf_test_execute_in(indigo_device *device, double delay, indigo_timer_callb
 }
 
 void oaf_test_usb_start(void) {
-}
-
-indigo_result oaf_test_lock(indigo_device *device) {
-	if (atomic_load(&fail_lock)) {
-		return INDIGO_FAILED;
-	}
-	atomic_fetch_add(&lock_count, 1);
-	trace_printf(false, "lock");
-	return INDIGO_OK;
-}
-
-indigo_result oaf_test_unlock(indigo_device *device) {
-	atomic_fetch_sub(&lock_count, 1);
-	trace_printf(false, "unlock");
-	return INDIGO_OK;
 }
 
 static int focuser_by_name(const char *name) {
@@ -1096,8 +1081,6 @@ static void reset_all(int present) {
 	atomic_store(&fail_attach, 0);
 	atomic_store(&invalid_detach, 0);
 	atomic_store(&attach_after_shutdown, 0);
-	atomic_store(&lock_count, 0);
-	atomic_store(&fail_lock, 0);
 	atomic_store(&sdk_after_close, 0);
 	atomic_store(&concurrent_calls, 0);
 	atomic_store(&late_updates, 0);
@@ -1211,7 +1194,6 @@ static void stop_driver(void) {
 static void finish_test(void) {
 	stop_driver();
 	EXPECT_EQ(0, atomic_load(&attached));
-	EXPECT_EQ(0, atomic_load(&lock_count));
 	EXPECT_EQ(0, atomic_load(&usb_ref_balance));
 	EXPECT_EQ(0, atomic_load(&sdk_after_close));
 	EXPECT_EQ(0, atomic_load(&late_updates));
@@ -1437,12 +1419,10 @@ static void connection_lifecycle_and_shutdown(void) {
 	CHECK_EQ(opens + 1, fake_calls(0, FN_OPEN));
 	CHECK_EQ(configs + 2, fake_calls(0, FN_CONFIG_GET));
 	CHECK_EQ(names + 1, fake_calls(0, FN_BLUETOOTH_GET));
-	CHECK_EQ(1, atomic_load(&lock_count));
 	CHECK(fake_opened(0));
 	CHECK(connect_focuser(0, false));
 	CHECK_EQ(1, fake_calls(0, FN_STOP));
 	CHECK_EQ(closes + 1, fake_calls(0, FN_CLOSE));
-	CHECK_EQ(0, atomic_load(&lock_count));
 	CHECK(!fake_opened(0));
 	CHECK(!is_defined(0, BEEP_ON_MOVE_NAME));
 	CHECK(connect_and_wait_position(0));
@@ -1891,7 +1871,6 @@ static void disconnect_and_removal_during_motion(void) {
 	CHECK(connect_focuser(0, false));
 	CHECK_EQ(1, fake_calls(0, FN_STOP));
 	CHECK(!fake_opened(0));
-	CHECK_EQ(0, atomic_load(&lock_count));
 	int reads = fake_calls(0, FN_STATUS);
 	indigo_usleep((useconds_t)(scaled(3) * 1000000));
 	CHECK_EQ(reads, fake_calls(0, FN_STATUS));
@@ -1905,7 +1884,6 @@ static void disconnect_and_removal_during_motion(void) {
 	usb_event(0, false);
 	CHECK(wait_count(&attached, 0));
 	CHECK(!fake_opened(0));
-	CHECK_EQ(0, atomic_load(&lock_count));
 	CHECK_EQ(2, fake_calls(0, FN_STOP));
 	reads = fake_calls(0, FN_STATUS);
 	indigo_usleep((useconds_t)(scaled(3) * 1000000));
@@ -2036,15 +2014,13 @@ cleanup:
 
 // Regression tests for defects reproduced against the original driver
 
-static void defect_open_failure_releases_lock(void) {
+static void defect_open_failure_allows_reconnect(void) {
 	CHECK(start_driver(1));
 	set_error(0, FN_OPEN, AO_ERROR_BUSY, 0);
 	CHECK(!connect_focuser(0, true));
 	CHECK_EQ(INDIGO_ALERT_STATE, state(0, CONNECTION_PROPERTY_NAME));
-	CHECK_EQ(0, atomic_load(&lock_count));
 	set_error(0, FN_OPEN, 0, 0);
 	CHECK(connect_and_wait_position(0));
-	CHECK_EQ(1, atomic_load(&lock_count));
 cleanup:
 	finish_test();
 }
@@ -2055,7 +2031,6 @@ static void defect_connect_config_failure_closes_sdk(void) {
 	CHECK(!connect_focuser(0, true));
 	CHECK_EQ(INDIGO_ALERT_STATE, state(0, CONNECTION_PROPERTY_NAME));
 	CHECK(!fake_opened(0));
-	CHECK_EQ(0, atomic_load(&lock_count));
 cleanup:
 	finish_test();
 }
@@ -2330,7 +2305,7 @@ int main(int argc, char **argv) {
 		{ "disconnect_and_removal_during_motion", disconnect_and_removal_during_motion },
 		{ "init_shutdown_cycles", init_shutdown_cycles },
 		{ "reference_trace", reference_trace },
-		{ "FOC-01 open_failure_releases_lock", defect_open_failure_releases_lock },
+		{ "FOC-01 open_failure_allows_reconnect", defect_open_failure_allows_reconnect },
 		{ "FOC-02 connect_config_failure_closes_sdk", defect_connect_config_failure_closes_sdk },
 		{ "FOC-03 move_start_failure_alerts", defect_move_start_failure_alerts },
 		{ "FOC-04 limits_update_position_range", defect_limits_update_position_range },

@@ -72,49 +72,12 @@
 pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 indigo_result indigo_try_global_lock(indigo_device *device) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	if (indigo_is_sandboxed) {
-		return INDIGO_OK;
-	}
-	if (device->master_device != NULL) {
-		device = device->master_device;
-	}
-	if (device->lock != NULL) {
-		return INDIGO_FAILED;
-	}
-	char tmp_lock_file[255] = "/tmp/indigo_lock_";
-	strncat(tmp_lock_file, device->name, 250);
-	indigo_uni_handle *handle = indigo_uni_create_file(tmp_lock_file, INDIGO_LOG_DEBUG);
-	if (handle == NULL) {
-		return INDIGO_LOCK_ERROR;
-	}
-	if (!indigo_uni_lock_file(handle)) {
-		indigo_uni_close(&handle);
-		return INDIGO_LOCK_ERROR;
-	}
-	device->lock = handle;
+	// Deprecated no-op kept for source compatibility with out-of-tree drivers.
 	return INDIGO_OK;
-#else
-	return INDIGO_OK;
-#endif
 }
 
 indigo_result indigo_global_unlock(indigo_device *device) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	if (indigo_is_sandboxed) {
-		return INDIGO_OK;
-	}
-	if (device->master_device != NULL) {
-		device = device->master_device;
-	}
-	if (device->lock == NULL) {
-		return INDIGO_FAILED;
-	}
-	indigo_uni_close(&device->lock);
-	char tmp_lock_file[255] = "/tmp/indigo_lock_";
-	strncat(tmp_lock_file, device->name, 250);
-	indigo_uni_remove(tmp_lock_file);
-#endif
+	// Deprecated no-op kept for source compatibility with out-of-tree drivers.
 	return INDIGO_OK;
 }
 

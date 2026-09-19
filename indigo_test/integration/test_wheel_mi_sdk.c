@@ -76,7 +76,7 @@ static libusb_hotplug_callback_fn usb_callback;
 static int usb_devices[MOCK_WHEELS];
 static atomic_int usb_ref_balance[MOCK_WHEELS];
 static atomic_int usb_refs, invalid_usb_unref, attached, attach_attempts, fail_attach;
-static atomic_int lock_count, fail_lock, fail_next_init, sdk_after_close, invalid_release;
+static atomic_int fail_next_init, sdk_after_close, invalid_release;
 static atomic_int descriptor_error, registration_error, fail_queue_create, enumerate_reverse;
 static atomic_int last_probe_index, late_updates;
 static atomic_bool hold_set, release_set, hold_reinit, release_reinit;
@@ -287,19 +287,6 @@ indigo_result miw_test_detach(indigo_device *device) {
 void miw_test_usb_start(void) {
 }
 
-indigo_result miw_test_lock(indigo_device *device) {
-	if (atomic_load(&fail_lock)) {
-		return INDIGO_FAILED;
-	}
-	atomic_fetch_add(&lock_count, 1);
-	return INDIGO_OK;
-}
-
-indigo_result miw_test_unlock(indigo_device *device) {
-	atomic_fetch_sub(&lock_count, 1);
-	return INDIGO_OK;
-}
-
 int LIBUSB_CALL miw_test_usb_register(libusb_context *ctx, int events, int flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) {
 	if (atomic_load(&registration_error)) {
 		return LIBUSB_ERROR_IO;
@@ -494,7 +481,7 @@ static void metadata_and_property_contract(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_wheel_mi(INDIGO_DRIVER_INFO, &info));
 	ASSERT_STREQ("indigo_wheel_mi", info.name);
 	ASSERT_STREQ("Moravian Instruments SFW", info.description);
-	ASSERT_EQ_INT(0x03000005, info.version);
+	ASSERT_EQ_INT(0x03000006, info.version);
 	ASSERT_TRUE(info.multi_device_support);
 	const char *base[] = { INFO_PROPERTY_NAME, CONFIG_PROPERTY_NAME, PROFILE_NAME_PROPERTY_NAME, PROFILE_PROPERTY_NAME, CONNECTION_PROPERTY_NAME };
 	for (int i = 0; i < ARRAY_SIZE(base); i++) {
@@ -541,26 +528,18 @@ static void metadata_and_property_contract(void) {
 }
 
 static void connection_failures_and_optional_metadata(void) {
-	atomic_store(&fail_lock, 1);
-	ASSERT_TRUE(set_switch(0, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
-	ASSERT_TRUE(wait_state(0, CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
-	atomic_store(&fail_lock, 0);
 	atomic_store(&fail_next_init, 1);
 	ASSERT_TRUE(set_switch(0, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
 	ASSERT_TRUE(wait_state(0, CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	atomic_store(&wheels[0].fail_integer, FW_GIP_FILTERS + 1);
 	ASSERT_TRUE(set_switch(0, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
 	ASSERT_TRUE(wait_state(0, CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	atomic_store(&wheels[0].fail_integer, 0);
 	int invalid[] = { 0, -1, 25 };
 	for (int i = 0; i < ARRAY_SIZE(invalid); i++) {
 		atomic_store(&wheels[0].slots, invalid[i]);
 		ASSERT_TRUE(set_switch(0, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
 		ASSERT_TRUE(wait_state(0, CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
-		ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	}
 	atomic_store(&wheels[0].slots, 5);
 	atomic_store(&wheels[0].fail_string, FW_GSP_SERIAL_NUMBER + 1);
@@ -847,8 +826,6 @@ static bool begin_fixture(void) {
 	atomic_store(&attached, 0);
 	atomic_store(&attach_attempts, 0);
 	atomic_store(&fail_attach, 0);
-	atomic_store(&lock_count, 0);
-	atomic_store(&fail_lock, 0);
 	atomic_store(&fail_next_init, 0);
 	atomic_store(&sdk_after_close, 0);
 	atomic_store(&invalid_release, 0);
@@ -889,7 +866,6 @@ static void end_fixture(void) {
 	ASSERT_EQ_INT(0, atomic_load(&attached));
 	ASSERT_EQ_INT(0, atomic_load(&usb_refs));
 	ASSERT_EQ_INT(0, atomic_load(&invalid_usb_unref));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	ASSERT_EQ_INT(0, atomic_load(&sdk_after_close));
 	ASSERT_EQ_INT(0, atomic_load(&invalid_release));
 	for (int i = 0; i < MOCK_WHEELS; i++) {

@@ -48,7 +48,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001F
+#define DRIVER_VERSION       0x03000020
 #define DRIVER_NAME          "indigo_ccd_mi"
 #define DRIVER_LABEL         "Moravian Instruments Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -166,14 +166,9 @@ static bool get_integer(indigo_device *device, int index, int *value) {
 }
 
 static bool mi_open(indigo_device *device) {
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock() failed");
-		return false;
-	}
 	PRIVATE_DATA->camera = gxccd_initialize_usb(PRIVATE_DATA->eid);
 	if (PRIVATE_DATA->camera == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "gxccd_initialize_usb(%d) failed", PRIVATE_DATA->eid);
-		indigo_global_unlock(device);
 		return false;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_initialize_usb(%d) succeeded", PRIVATE_DATA->eid);
@@ -187,7 +182,6 @@ static void mi_close(indigo_device *device) {
 		PRIVATE_DATA->camera = NULL;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_release() succeeded");
 	}
-	indigo_global_unlock(device);
 	indigo_unlock_master_device(device);
 }
 

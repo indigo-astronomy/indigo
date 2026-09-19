@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000013
 #define DRIVER_NAME          "indigo_focuser_dsd"
 #define DRIVER_LABEL         "Deep Sky Dad Focuser"
 #define FOCUSER_DEVICE_NAME  "Focuser DSD AF"
@@ -212,10 +212,6 @@ static bool dsd_get_info(indigo_device *device, char *board, char *firmware) {
 }
 
 static bool dsd_open(indigo_device *device) {
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-		return false;
-	}
 	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
 		// DSD resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover!
@@ -229,13 +225,11 @@ static bool dsd_open(indigo_device *device) {
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
 	}
-	indigo_global_unlock(device);
 	return false;
 }
 
 static void dsd_close(indigo_device *device) {
 	indigo_uni_close(&PRIVATE_DATA->handle);
-	indigo_global_unlock(device);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 }
 

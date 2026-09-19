@@ -127,7 +127,7 @@ static int enumeration_count;
 static indigo_device *logical_devices[CAMERA_COUNT * 3];
 static libusb_hotplug_callback_fn usb_callback;
 static atomic_int attached_count, attach_calls, detach_calls, active_handles, duplicate_release;
-static atomic_int lock_count, fail_lock, fail_attach_kind, fail_register, fail_queue;
+static atomic_int fail_attach_kind, fail_register, fail_queue;
 static atomic_int calls_after_close, concurrent_sdk, sdk_active, blob_count, bad_blob;
 static atomic_int fast_poll, usb_refs, usb_unref_errors;
 static _Atomic double clock_offset;
@@ -255,8 +255,6 @@ static void reset_fake(bool combined) {
 	atomic_store(&detach_calls, 0);
 	atomic_store(&active_handles, 0);
 	atomic_store(&duplicate_release, 0);
-	atomic_store(&lock_count, 0);
-	atomic_store(&fail_lock, 0);
 	atomic_store(&fail_attach_kind, 0);
 	atomic_store(&fail_register, 0);
 	atomic_store(&fail_queue, 0);
@@ -318,19 +316,6 @@ indigo_result mi_test_detach(indigo_device *device) {
 }
 
 void mi_test_usb_start(void) {
-}
-
-indigo_result mi_test_lock(indigo_device *device) {
-	if (atomic_exchange(&fail_lock, 0)) {
-		return INDIGO_FAILED;
-	}
-	atomic_fetch_add(&lock_count, 1);
-	return INDIGO_OK;
-}
-
-indigo_result mi_test_unlock(indigo_device *device) {
-	atomic_fetch_sub(&lock_count, 1);
-	return INDIGO_OK;
 }
 
 indigo_queue *mi_test_queue_create(indigo_device *device) {
@@ -820,17 +805,13 @@ static void shared_connection_orders_and_reconnect(void) {
 	MI_CHECK_EQ(closes + 1, atomic_load(&cameras[0].release_calls));
 	MI_CHECK_TRUE(connect_device(&ccd_case));
 	MI_CHECK_TRUE(disconnect_device(&ccd_case));
-	MI_CHECK_EQ(0, atomic_load(&lock_count));
 	cleanup:
 	fixture_stop();
 }
 
 static void connection_failures_roll_back_and_recover(void) {
 	MI_CHECK_TRUE(fixture_start(false));
-	atomic_store(&fail_lock, 1);
 	select_device(&ccd_case);
-	indigo_change_switch_property_1(&simulator_test_client, ccd_case.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
-	MI_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	atomic_store(&cameras[0].fail_open, 1);
 	indigo_change_switch_property_1(&simulator_test_client, ccd_case.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
 	MI_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
@@ -843,7 +824,6 @@ static void connection_failures_roll_back_and_recover(void) {
 	MI_CHECK_TRUE(!strcmp(find_cached_item(CCD_READ_MODE_PROPERTY_NAME, "READ_MODE0")->label, "Read mode 0"));
 	MI_CHECK_TRUE(disconnect_device(&ccd_case));
 	MI_CHECK_EQ(0, atomic_load(&active_handles));
-	MI_CHECK_EQ(0, atomic_load(&lock_count));
 	MI_CHECK_EQ(0, atomic_load(&duplicate_release));
 	cleanup:
 	fixture_stop();
@@ -1303,7 +1283,6 @@ static void repeated_init_shutdown_and_resource_balance(void) {
 		}
 		fixture_stop();
 		MI_CHECK_EQ(0, atomic_load(&active_handles));
-		MI_CHECK_EQ(0, atomic_load(&lock_count));
 		MI_CHECK_EQ(0, atomic_load(&calls_after_close));
 		MI_CHECK_EQ(0, atomic_load(&usb_unref_errors));
 	}

@@ -24,7 +24,7 @@ driver asi {
 	label = "ZWO CAA Rotator";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2024-2026 Rumen G. Bogdanovski";
-	version = 5;
+	version = 6;
 	include {
 		#include <stdbool.h>
 		#include <CAA_API.h>
@@ -150,14 +150,9 @@ driver asi {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAA device %d is no longer available", PRIVATE_DATA->dev_id);
 				return false;
 			}
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-				return false;
-			}
 			int res = CAAOpen(PRIVATE_DATA->dev_id);
 			if (res != CAA_SUCCESS) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
-				indigo_global_unlock(device);
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
 				PRIVATE_DATA->sdk_open = true;
@@ -179,7 +174,6 @@ driver asi {
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAClose(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
-			indigo_global_unlock(device);
 			PRIVATE_DATA->sdk_open = false;
 			PRIVATE_DATA->moving = false;
 			PRIVATE_DATA->abort_pending = false;

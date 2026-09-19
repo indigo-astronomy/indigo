@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_wheel_astroasis"
 #define DRIVER_LABEL         "Astroasis Oasis Wheel"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -122,13 +122,9 @@ static bool astroasis_open(indigo_device *device) {
 		PRIVATE_DATA->count++;
 		return true;
 	}
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		return false;
-	}
 	int res = OFWOpen(PRIVATE_DATA->dev_id);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
 	if (res != AO_SUCCESS) {
-		indigo_global_unlock(device);
 		return false;
 	}
 	PRIVATE_DATA->count++;
@@ -139,7 +135,6 @@ static void astroasis_close(indigo_device *device) {
 	if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
 		int res = OFWClose(PRIVATE_DATA->dev_id);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWClose(%d) = %d", PRIVATE_DATA->dev_id, res);
-		indigo_global_unlock(device);
 	}
 }
 
@@ -748,7 +743,7 @@ indigo_result indigo_wheel_astroasis(indigo_driver_action action, indigo_driver_
 #include "indigo_wheel_astroasis.h"
 
 indigo_result indigo_wheel_astroasis(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "Astroasis Oasis Wheel", __FUNCTION__, 0x03000004, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "Astroasis Oasis Wheel", __FUNCTION__, 0x03000005, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

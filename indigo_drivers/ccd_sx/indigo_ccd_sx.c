@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000011
+#define DRIVER_VERSION       0x03000012
 #define DRIVER_NAME          "indigo_ccd_sx"
 #define DRIVER_LABEL         "Starlight Xpress Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -182,7 +182,6 @@ typedef struct {
 	unsigned short relay_mask;
 	unsigned char *buffer;
 	unsigned char *odd, *even;
-	bool global_lock;
 	bool can_check_temperature;
 	//- data
 } sx_private_data;
@@ -204,11 +203,6 @@ typedef enum {
 static void sx_close(indigo_device *device);
 
 static bool sx_open(indigo_device *device) {
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-		return false;
-	}
-	PRIVATE_DATA->global_lock = true;
 	int rc = 0;
 	libusb_device *usbdev = PRIVATE_DATA->usbdev;
 	rc = libusb_open(usbdev, &PRIVATE_DATA->handle);
@@ -758,10 +752,6 @@ static void sx_close(indigo_device *device) {
 	PRIVATE_DATA->even = NULL;
 	indigo_safe_free(PRIVATE_DATA->odd);
 	PRIVATE_DATA->odd = NULL;
-	if (PRIVATE_DATA->global_lock) {
-		indigo_global_unlock(device);
-		PRIVATE_DATA->global_lock = false;
-	}
 }
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation

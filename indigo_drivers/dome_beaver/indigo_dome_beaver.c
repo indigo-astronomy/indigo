@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_dome_beaver"
 #define DRIVER_LABEL         "Nexdome Beaver Dome"
 #define DOME_DEVICE_NAME     "Nexdome Beaver Dome"
@@ -256,10 +256,6 @@ static bool beaver_goto_azimuth(indigo_device *device, double azimuth) {
 }
 
 static bool beaver_open(indigo_device *device) {
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock");
-		return false;
-	}
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (!indigo_uni_is_url(name, "nexdome")) {
 		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
@@ -268,7 +264,6 @@ static bool beaver_open(indigo_device *device) {
 	}
 	if (PRIVATE_DATA->handle == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", name);
-		indigo_global_unlock(device);
 		return false;
 	}
 	PRIVATE_DATA->disconnection_queued = false;
@@ -290,13 +285,11 @@ static bool beaver_open(indigo_device *device) {
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", message);
 	indigo_send_message(device, CONNECTION_PROPERTY, "%s", message);
 	indigo_uni_close(&PRIVATE_DATA->handle);
-	indigo_global_unlock(device);
 	return false;
 }
 
 static void beaver_close(indigo_device *device) {
 	indigo_uni_close(&PRIVATE_DATA->handle);
-	indigo_global_unlock(device);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, DOME_DEVICE_NAME);
 	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");

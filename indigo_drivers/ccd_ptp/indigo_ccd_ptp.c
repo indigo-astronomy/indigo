@@ -192,8 +192,7 @@ static void release_camera_properties(indigo_device *device) {
 
 static void handle_connection(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool locked = indigo_try_global_lock(device) == INDIGO_OK;
-		bool opened = locked && ptp_open(device);
+		bool opened = ptp_open(device);
 		bool result = opened;
 		PRIVATE_DATA->session_active = opened;
 		if (result) {
@@ -232,9 +231,6 @@ static void handle_connection(indigo_device *device) {
 				ptp_close(device);
 				PRIVATE_DATA->session_active = false;
 			}
-			if (locked) {
-				indigo_global_unlock(device);
-			}
 			release_camera_properties(device);
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -270,7 +266,6 @@ static void handle_connection(indigo_device *device) {
 		ptp_close(device);
 		PRIVATE_DATA->session_active = false;
 		release_camera_properties(device);
-		indigo_global_unlock(device);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);

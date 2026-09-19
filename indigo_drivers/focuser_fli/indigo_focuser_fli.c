@@ -25,7 +25,7 @@
  */
 
 #define DRIVER_NAME		"indigo_focuser_fli"
-#define DRIVER_VERSION             0x0300000C
+#define DRIVER_VERSION             0x0300000D
 #define FLI_VENDOR_ID              0x0f18
 
 #define POLL_TIME                       1     /* Seconds */
@@ -248,7 +248,6 @@ static void fli_focuser_connect(indigo_device *device) {
 		device->is_connected = true;
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	} else {
-		indigo_global_unlock(device);
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, "Connect failed!");
 	}
@@ -259,20 +258,12 @@ static void focuser_connect_callback(indigo_device *device) {
 		if (!device->is_connected) {
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CONNECTION_PROPERTY, "Connecting to focuser, this may take time!");
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			} else {
-				fli_focuser_connect(device);
-			}
+			fli_focuser_connect(device);
 		}
 	} else {
 		if (device->is_connected) {
 			device->is_connected = false;
 			fli_close(device);
-			indigo_global_unlock(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
@@ -445,7 +436,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		focuser_connect_callback(device);
 	}
-	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	return indigo_focuser_detach(device);

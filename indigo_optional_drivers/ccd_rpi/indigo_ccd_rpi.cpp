@@ -20,7 +20,7 @@
  \file indigo_ccd_rpi.c
  */
 
-#define DRIVER_VERSION 0x001
+#define DRIVER_VERSION 0x002
 #define DRIVER_NAME "indigo_ccd_rpi"
 
 #include <assert.h>
@@ -1065,14 +1065,10 @@ static void ccd_connect_callback(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-			} else {
-				indigo_define_property(device, RPI_AF_PROPERTY, NULL);
-				// Create new camera instance
-				PRIVATE_DATA->pRPiCamera = new RPiCamera();
-				PRIVATE_DATA->pRPiCamera->InitCamera(PRIVATE_DATA->eid);
-			}
+			indigo_define_property(device, RPI_AF_PROPERTY, NULL);
+			// Create new camera instance
+			PRIVATE_DATA->pRPiCamera = new RPiCamera();
+			PRIVATE_DATA->pRPiCamera->InitCamera(PRIVATE_DATA->eid);
 		}
 		RPiCamera *pRPiCamera = PRIVATE_DATA->pRPiCamera;
 		if (pRPiCamera && pRPiCamera->IsCameraAcquired()) {
@@ -1289,7 +1285,6 @@ static void ccd_connect_callback(indigo_device *device) {
 			delete PRIVATE_DATA->pRPiCamera;
 			PRIVATE_DATA->pRPiCamera = nullptr;
 			device->is_connected = false;
-			indigo_global_unlock(device);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}

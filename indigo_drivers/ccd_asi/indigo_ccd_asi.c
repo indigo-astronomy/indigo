@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300003B
+#define DRIVER_VERSION       0x0300003C
 #define DRIVER_NAME          "indigo_ccd_asi"
 #define DRIVER_LABEL         "ZWO ASI Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -275,20 +275,14 @@ static bool pixel_format_supported(indigo_device *device, ASI_IMG_TYPE type) {
 
 static bool asi_open(indigo_device *device) {
 	indigo_lock_master_device(device);
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		indigo_unlock_master_device(device);
-		return false;
-	}
 	ASI_ERROR_CODE result = ASIOpenCamera(PRIVATE_DATA->dev_id);
 	if (result != ASI_SUCCESS) {
-		indigo_global_unlock(device);
 		indigo_unlock_master_device(device);
 		return false;
 	}
 	result = ASIInitCamera(PRIVATE_DATA->dev_id);
 	if (result != ASI_SUCCESS) {
 		ASICloseCamera(PRIVATE_DATA->dev_id);
-		indigo_global_unlock(device);
 		indigo_unlock_master_device(device);
 		return false;
 	}
@@ -307,7 +301,6 @@ static void asi_close(indigo_device *device) {
 	}
 	free(PRIVATE_DATA->buffer);
 	PRIVATE_DATA->buffer = NULL;
-	indigo_global_unlock(device);
 	indigo_unlock_master_device(device);
 }
 

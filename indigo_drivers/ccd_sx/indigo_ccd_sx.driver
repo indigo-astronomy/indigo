@@ -22,7 +22,7 @@ driver sx {
 	label = "Starlight Xpress Camera";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 17;
+	version = 18;
 	libusb {
 		hotplug = true;
 		vid = SX_VENDOR_ID;
@@ -149,7 +149,6 @@ driver sx {
 		unsigned short relay_mask;
 		unsigned char *buffer;
 		unsigned char *odd, *even;
-		bool global_lock;
 		bool can_check_temperature;
 	}
 	code {
@@ -163,11 +162,6 @@ driver sx {
 		static void sx_close(indigo_device *device);
 
 		static bool sx_open(indigo_device *device) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-				return false;
-			}
-			PRIVATE_DATA->global_lock = true;
 			int rc = 0;
 			libusb_device *usbdev = PRIVATE_DATA->usbdev;
 			rc = libusb_open(usbdev, &PRIVATE_DATA->handle);
@@ -717,10 +711,6 @@ driver sx {
 			PRIVATE_DATA->even = NULL;
 			indigo_safe_free(PRIVATE_DATA->odd);
 			PRIVATE_DATA->odd = NULL;
-			if (PRIVATE_DATA->global_lock) {
-				indigo_global_unlock(device);
-				PRIVATE_DATA->global_lock = false;
-			}
 		}
 
 		// -------------------------------------------------------------------------------- INDIGO CCD device implementation

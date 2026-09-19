@@ -52,7 +52,7 @@
 #endif
 
 #ifndef EXPECTED_VERSION
-#define EXPECTED_VERSION 0x03000007
+#define EXPECTED_VERSION 0x03000008
 #endif
 
 #define DEVICE_NAME "Baader Classic Dome"

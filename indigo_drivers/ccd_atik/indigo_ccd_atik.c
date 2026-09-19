@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000025
+#define DRIVER_VERSION       0x03000026
 #define DRIVER_NAME          "indigo_ccd_atik"
 #define DRIVER_LABEL         "Atik Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -129,9 +129,6 @@ static void debug_log(const char *message) {
 }
 
 static bool atik_open(indigo_device *device) {
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		return false;
-	}
 	int count = ArtemisDeviceCount();
 	for (int index = 0; index < count; index++) {
 		char serial[100];
@@ -141,7 +138,6 @@ static bool atik_open(indigo_device *device) {
 		}
 	}
 	if (!PRIVATE_DATA->handle) {
-		indigo_global_unlock(device);
 		return false;
 	}
 	return true;
@@ -150,7 +146,6 @@ static bool atik_open(indigo_device *device) {
 static void atik_close(indigo_device *device) {
 	ArtemisDisconnect(PRIVATE_DATA->handle);
 	PRIVATE_DATA->handle = NULL;
-	indigo_global_unlock(device);
 }
 
 static int atik_stop_exposure(indigo_device *device) {

@@ -116,7 +116,7 @@ Environment: macOS 26.6.2 arm64; test build is the repository universal x86_64/a
 - `make -C indigo_test test-focuser-astroasis-sdk`: 18 run, 18 passed.
 - `make -C indigo_test test-focuser-astroasis-sdk-sanitize` (ASan + UBSan, `detect_leaks=0` because LeakSanitizer is unsupported on this macOS runtime): 18 run, 18 passed, no sanitizer report. Driver sanitizer compilation reports only pre-existing `sprintf` deprecation warnings.
 - `indigo_test/build/integration/test_focuser_astroasis_sdk --known-defects`: 11 run, 11 failed as expected:
-  - FOC-01: lock count 1 after failed open.
+  - FOC-01: lock count 1 after failed open (historical: the global lock was later removed from the driver, see the note below).
   - FOC-02: SDK handle still open after failed connection config read.
   - FOC-03: POSITION reached OK instead of ALERT after `MoveTo` failure.
   - FOC-04: POSITION maximum 10000 after connection read 20000.
@@ -145,7 +145,7 @@ Environment as for the baseline.
 
 Both traces are checked in: `original_reference_trace.txt` (unchanged driver) and `generated_reference_trace.txt` (current contract, compared by the suite). Property names are normalized by removing the `X_` prefix so the traces are comparable.
 
-The ordered SDK and lock trace is identical: connection (`lock`, `Open`, `GetConfig`, `GetConfig`, `GetBluetoothName`), every `MoveTo`/`Move`/`SyncPosition`/`StopMove`/`SetConfig` with its mask and value, the name setters, `FactoryReset`, and disconnection (`StopMove`, `Close`, `unlock`). Every difference is a property publication:
+The ordered SDK trace is identical: connection (`Open`, `GetConfig`, `GetConfig`, `GetBluetoothName`), every `MoveTo`/`Move`/`SyncPosition`/`StopMove`/`SetConfig` with its mask and value, the name setters, `FactoryReset`, and disconnection (`StopMove`, `Close`). The original trace also carries `lock` and `unlock` lines around the session; the file based global lock was later removed from all in-tree drivers, so the generated trace no longer records them. Every other difference is a property publication:
 
 1. Generated asynchronous handlers publish BUSY before queuing work (`INDIGO_COPY_*_PROCESS_CHANGE`), adding a BUSY line for `FOCUSER_REVERSE_MOTION`, `FOCUSER_BACKLASH`, `FOCUSER_LIMITS`, `FOCUSER_ABORT_MOTION`, all custom writable properties, and the no-op GOTO. This is generator semantics required by the queue design and gives clients an immediate acknowledgement.
 2. For GOTO and relative moves the framework publishes `FOCUSER_POSITION` BUSY before the handler publishes `FOCUSER_STEPS` BUSY, so the first two BUSY lines appear as POSITION, STEPS instead of STEPS, POSITION. The subsequent SDK call and completion order are unchanged.
@@ -170,7 +170,7 @@ Every defect below was reproduced by a dedicated case that failed against the or
 
 | ID | Observable impact | Root cause | Fix | Regression test |
 | --- | --- | --- | --- | --- |
-| FOC-01 | After a failed connection open, the global lock stays held; other drivers/clients cannot claim it and later attempts depend on lock re-entry. | Open failure branch set ALERT without `indigo_global_unlock`. | `astroasis_open` releases the lock on open failure; transactional open/close contract. | `FOC-01 open_failure_releases_lock` |
+| FOC-01 | After a failed connection open, the global lock stays held; other drivers/clients cannot claim it and later attempts depend on lock re-entry. | Open failure branch set ALERT without `indigo_global_unlock`. | `astroasis_open` releases the lock on open failure; transactional open/close contract. The file based global lock has since been removed from all in-tree drivers (`indigo_try_global_lock()` / `indigo_global_unlock()` are deprecated no-ops), so the regression test now covers that a failed open leaves the focuser reconnectable. | `FOC-01 open_failure_allows_reconnect` |
 | FOC-02 | A failed config read during connection leaves the SDK handle open and the lock held while CONNECTION reports ALERT. | No `AOFocuserClose`/unlock in the failure path after a successful open. | `on_connect` closes the successful open via `astroasis_close` when the config read fails. | `FOC-02 connect_config_failure_closes_sdk` |
 | FOC-03 | A rejected `MoveTo`/`Move` (manual or temperature compensation) is reported as a successful completed move. | Start result only logged; polling then saw an idle motor and published OK. | Start failure publishes POSITION/STEPS ALERT and schedules no completion poll. | `FOC-03 move_start_failure_alerts` |
 | FOC-04 | Clients see a stale position/steps range after connection or a `FOCUSER_LIMITS` change; requests are clamped to the probe-time maximum. | Maxima were set only at attach from probe-time config. | `focuser_update_limits` applies the connection read and every successful limit write, redefining POSITION/STEPS while connected. | `FOC-04 limits_update_position_range` |
@@ -200,7 +200,7 @@ Focuser class standard (`indigo_test/DRIVER_TESTING_RULES.md`) and shared scope:
 | Metadata, INFO, interface, property inventory, visibility, permissions, ranges, custom names/items/rules/groups/hint, disconnected inventory | `metadata_and_property_inventory` |
 | Discovery probe order, every probe failure with balanced open/close and recovery on arrival, SDK retry, capacity, duplicate/reordered ids, duplicate arrival, names/uniqueness, removal/replug with new id, attach failure | `discovery_probe_order_and_failures`, `delayed_sdk_discovery_retry`, `capacity_and_slot_reuse`, `multiple_focusers_and_removal`, `FOC-11` |
 | INIT/SHUTDOWN idempotence, registration arguments, shutdown refused while connected, re-INIT, failed INIT retry, pending discovery at shutdown | `init_shutdown_cycles`, `connection_lifecycle_and_shutdown`, `FOC-06`, `FOC-07` |
-| Connect/disconnect/reconnect, SDK call order at connection, lock/handle ownership, open/config failures | `connection_lifecycle_and_shutdown`, `FOC-01`, `FOC-02`, `reference_trace` |
+| Connect/disconnect/reconnect, SDK call order at connection, handle ownership, open/config failures | `connection_lifecycle_and_shutdown`, `FOC-01`, `FOC-02`, `reference_trace` |
 | Absolute GOTO, zero/no-op, SYNC without motion, sync/readback failures, measured position vs target | `goto_sync_and_noop`, `FOC-09` |
 | Relative inward/outward steps, sign with device-side reversal, zero steps | `relative_steps_and_direction` |
 | Abort in motion and idle, stop failure, transient/exhausted post-stop communication errors, fresh move after abort, abort overtaking queued start | `abort_motion`, `abort_status_communication_retry`, `urgent_abort_cancels_queued_move` |

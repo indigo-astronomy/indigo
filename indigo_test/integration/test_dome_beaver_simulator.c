@@ -52,7 +52,7 @@
 #endif
 
 #ifndef EXPECTED_VERSION
-#define EXPECTED_VERSION 0x03000005
+#define EXPECTED_VERSION 0x03000006
 #endif
 
 #define DEVICE_NAME "Nexdome Beaver Dome"

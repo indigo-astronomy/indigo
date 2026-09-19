@@ -20,7 +20,7 @@ driver qhy2 {
 	label = "QHY CMOS (modern) Camera";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2017-2026 Rumen G. Bogdanovski";
-	version = 32;
+	version = 33;
 	cpp = true;
 	include {
 		#include "bin_externals/qhyccd/include/qhyccd.h"
@@ -100,13 +100,9 @@ driver qhy2 {
 			indigo_safe_free(PRIVATE_DATA->buffer);
 			PRIVATE_DATA->buffer = NULL;
 			PRIVATE_DATA->buffer_size = 0;
-			indigo_global_unlock(device);
 		}
 
 		static bool qhy2_open(indigo_device *device) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				return false;
-			}
 			// Legacy QHY5L-II needs a rescan before every reopen (vendor SDK workaround).
 			ScanQHYCCD();
 			PRIVATE_DATA->handle = OpenQHYCCD(PRIVATE_DATA->sid);

@@ -24,7 +24,7 @@ driver atik2 {
 	label = "Atik (legacy) Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 9;
+	version = 10;
 	include {
 		#include <limits.h>
 		#include <math.h>
@@ -53,12 +53,8 @@ driver atik2 {
 		static void exposure_finalizer(indigo_device *device);
 
 		static bool atik2_open(indigo_device *device) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				return false;
-			}
 			if (!libatik_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context) || !PRIVATE_DATA->device_context) {
 				PRIVATE_DATA->device_context = NULL;
-				indigo_global_unlock(device);
 				return false;
 			}
 			return true;
@@ -67,7 +63,6 @@ driver atik2 {
 		static void atik2_close(indigo_device *device) {
 			libatik_close(PRIVATE_DATA->device_context);
 			PRIVATE_DATA->device_context = NULL;
-			indigo_global_unlock(device);
 		}
 
 		static bool atik2_initialize_ccd(indigo_device *device) {

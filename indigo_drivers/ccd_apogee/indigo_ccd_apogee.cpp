@@ -24,7 +24,7 @@
  \file indigo_ccd_apogee.cpp
  */
 
-#define DRIVER_VERSION 0x0200000B
+#define DRIVER_VERSION 0x0200000C
 #define DRIVER_NAME	   "indigo_ccd_apogee"
 
 #include <stdlib.h>
@@ -278,11 +278,6 @@ static bool apogee_open(indigo_device *device) {
 	std::string addr;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-		return false;
-	}
 
 	if (!interface.compare("usb")) {
 		addr = GetUsbAddress(PRIVATE_DATA->discovery_string);
@@ -581,7 +576,6 @@ static void apogee_close(indigo_device *device) {
 		delete(PRIVATE_DATA->camera);
 		PRIVATE_DATA->camera = NULL;
 	}
-	indigo_global_unlock(device);
 	if (PRIVATE_DATA->buffer != NULL) {
 		free(PRIVATE_DATA->buffer);
 		PRIVATE_DATA->buffer = NULL;

@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_rotator_asi"
 #define DRIVER_LABEL         "ZWO CAA Rotator"
 #define ROTATOR_DEVICE_NAME  "%s"
@@ -147,14 +147,9 @@ static bool asi_open(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAA device %d is no longer available", PRIVATE_DATA->dev_id);
 		return false;
 	}
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-		return false;
-	}
 	int res = CAAOpen(PRIVATE_DATA->dev_id);
 	if (res != CAA_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
-		indigo_global_unlock(device);
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
 		PRIVATE_DATA->sdk_open = true;
@@ -176,7 +171,6 @@ static void asi_close(indigo_device *device) {
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAClose(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
-	indigo_global_unlock(device);
 	PRIVATE_DATA->sdk_open = false;
 	PRIVATE_DATA->moving = false;
 	PRIVATE_DATA->abort_pending = false;

@@ -55,7 +55,7 @@ static int request_revisions[CAMERAS * 3][PROPERTIES];
 static pthread_mutex_t observation_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int usb_devices[CAMERAS];
 static libusb_hotplug_callback_fn usb_callback;
-static atomic_int attached, updates_after_detach, lock_count, fail_lock, unbalanced_unlock;
+static atomic_int attached, updates_after_detach;
 static atomic_int fail_register, fail_descriptor, wrong_vendor, usb_refs, usb_ref_balance[CAMERAS], invalid_usb_unref;
 static atomic_int blobs, bad_blob, sdk_after_close;
 static _Atomic(const char *) fail_call;
@@ -315,23 +315,6 @@ static bool wait_count(atomic_int *value, int expected) {
 }
 
 void atik_test_usb_start(void) {
-}
-
-indigo_result atik_test_lock(indigo_device *device) {
-	if (atomic_load(&fail_lock)) {
-		return INDIGO_FAILED;
-	}
-	atomic_fetch_add(&lock_count, 1);
-	return INDIGO_OK;
-}
-
-indigo_result atik_test_unlock(indigo_device *device) {
-	if (atomic_load(&lock_count) == 0) {
-		atomic_fetch_add(&unbalanced_unlock, 1);
-		return INDIGO_FAILED;
-	}
-	atomic_fetch_sub(&lock_count, 1);
-	return INDIGO_OK;
 }
 
 int LIBUSB_CALL atik_test_usb_register(libusb_context *ctx, int events, int flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) {
@@ -845,7 +828,7 @@ static void metadata_profiles(void) {
 	}
 	indigo_driver_info info;
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_atik(INDIGO_DRIVER_INFO, &info));
-	ASSERT_EQ_INT(0x03000025, info.version);
+	ASSERT_EQ_INT(0x03000026, info.version);
 	ASSERT_EQ_INT(-1, state(0, "X_PRESETS"));
 	ASSERT_TRUE(connect_device(0, true));
 	const char *props[] = { "CCD_INFO", "CCD_READ_MODE", "CCD_GAIN", "CCD_OFFSET", "X_PRESETS", "X_WINDOW_HEATER", "CCD_TEMPERATURE", "CCD_COOLER", "CCD_COOLER_POWER" };
@@ -913,7 +896,6 @@ static void initialization_failures(void) {
 		fail_call = calls[i];
 		ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
 		ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_ALERT_STATE));
-		ASSERT_EQ_INT(0, lock_count);
 		ASSERT_FALSE(cameras[0].opened);
 		fail_call = NULL;
 		ASSERT_TRUE(connect_device(0, true));
@@ -1266,10 +1248,6 @@ static void discovery_rollback(void) {
 	fail_attach = 0;
 	usb_event(0, true);
 	ASSERT_TRUE(wait_count(&attached, 3));
-	fail_lock = 1;
-	ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
-	ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_ALERT_STATE));
-	fail_lock = 0;
 	ASSERT_TRUE(connect_device(0, true));
 }
 
@@ -1597,7 +1575,7 @@ static void readout_state_failure(void) {
 static void end_fixture(void) {
 	release_gate();
 	fail_call = NULL;
-	fail_attach = fail_register = fail_queue = fail_lock = 0;
+	fail_attach = fail_register = fail_queue = 0;
 	for (int i = CAMERAS * 3 - 1; i >= 0; i--) {
 		if (logical[i] && state(i, "CONNECTION") >= 0) {
 			indigo_property *p = snapshot(i, "CONNECTION");
@@ -1610,7 +1588,6 @@ static void end_fixture(void) {
 	}
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_atik(INDIGO_DRIVER_SHUTDOWN, NULL));
 	ASSERT_EQ_INT(0, attached);
-	ASSERT_EQ_INT(0, lock_count);
 	ASSERT_EQ_INT(0, sdk_after_close);
 	ASSERT_EQ_INT(0, sdk_overlap);
 	ASSERT_EQ_INT(0, sdk_on_bus);

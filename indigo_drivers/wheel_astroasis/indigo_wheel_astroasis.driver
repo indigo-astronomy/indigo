@@ -24,7 +24,7 @@ driver astroasis {
 	label = "Astroasis Oasis Wheel";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2016-2026 Rumen G. Bogdanovski";
-	version = 4;
+	version = 5;
 	supported_architecture = "!defined(__i386__)";
 	include {
 		#include <OasisFilterWheel.h>
@@ -46,13 +46,9 @@ driver astroasis {
 				PRIVATE_DATA->count++;
 				return true;
 			}
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				return false;
-			}
 			int res = OFWOpen(PRIVATE_DATA->dev_id);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
 			if (res != AO_SUCCESS) {
-				indigo_global_unlock(device);
 				return false;
 			}
 			PRIVATE_DATA->count++;
@@ -63,7 +59,6 @@ driver astroasis {
 			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
 				int res = OFWClose(PRIVATE_DATA->dev_id);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWClose(%d) = %d", PRIVATE_DATA->dev_id, res);
-				indigo_global_unlock(device);
 			}
 		}
 

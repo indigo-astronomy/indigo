@@ -342,13 +342,6 @@ static bool lunatico_open(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
-		if (indigo_try_global_lock(device) != INDIGO_OK) {
-			PRIVATE_DATA->count_open--;
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-			return false;
-		}
-
 		char url[INDIGO_VALUE_SIZE];
 		if (strstr(DEVICE_PORT_ITEM->text.value, "://")) {
 			INDIGO_COPY_VALUE(url, DEVICE_PORT_ITEM->text.value);
@@ -362,7 +355,6 @@ static bool lunatico_open(indigo_device *device) {
 
 		if (PRIVATE_DATA->handle < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
-			indigo_global_unlock(device);
 			PRIVATE_DATA->count_open--;
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			return false;
@@ -404,7 +396,6 @@ static void lunatico_close(indigo_device *device) {
 	if (--PRIVATE_DATA->count_open == 0) {
 		close(PRIVATE_DATA->handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
-		indigo_global_unlock(device);
 		PRIVATE_DATA->handle = 0;
 	}
 	clear_connected_flag(device);

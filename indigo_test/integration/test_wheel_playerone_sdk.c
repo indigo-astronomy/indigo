@@ -53,7 +53,7 @@ static pthread_mutex_t observation_mutex = PTHREAD_MUTEX_INITIALIZER;
 static libusb_hotplug_callback_fn usb_callback;
 static int usb_devices[WHEELS];
 static atomic_int usb_ref_balance[WHEELS], invalid_usb_unref;
-static atomic_int attached, attach_attempts, fail_attach, lock_count, fail_lock, usb_refs, sdk_after_close;
+static atomic_int attached, attach_attempts, fail_attach, usb_refs, sdk_after_close;
 static atomic_int enumerate_reverse, descriptor_error, descriptor_product = 0xf001, enumeration_error, invalid_handle;
 static atomic_int reset_ok_updates, reset_deletions, late_updates;
 static atomic_bool accelerate_polling, hold_read, release_read;
@@ -246,19 +246,6 @@ indigo_result pw_test_detach(indigo_device *device) {
 }
 
 void pw_test_usb_start(void) {
-}
-
-indigo_result pw_test_lock(indigo_device *device) {
-	if (atomic_load(&fail_lock)) {
-		return INDIGO_FAILED;
-	}
-	atomic_fetch_add(&lock_count, 1);
-	return INDIGO_OK;
-}
-
-indigo_result pw_test_unlock(indigo_device *device) {
-	atomic_fetch_sub(&lock_count, 1);
-	return INDIGO_OK;
 }
 
 void pw_test_poll(indigo_device *device, double delay, indigo_timer_callback callback) {
@@ -459,7 +446,7 @@ static void properties_and_configuration(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_wheel_playerone(INDIGO_DRIVER_INFO, &info));
 	ASSERT_STREQ("indigo_wheel_playerone", info.name);
 	ASSERT_STREQ("Player One Filter Wheel", info.description);
-	ASSERT_EQ_INT(0x0300000a, info.version);
+	ASSERT_EQ_INT(0x0300000b, info.version);
 	const char *base[] = { INFO_PROPERTY_NAME, CONNECTION_PROPERTY_NAME, CONFIG_PROPERTY_NAME, PROFILE_PROPERTY_NAME, PROFILE_NAME_PROPERTY_NAME };
 	for (int i = 0; i < ARRAY_SIZE(base); i++) {
 		ASSERT_EQ_INT(INDIGO_OK_STATE, state(0, base[i]));
@@ -577,12 +564,11 @@ static void slot_metadata_and_limits(void) {
 }
 
 static void connection_failures(void) {
-	atomic_int *errors[] = { &fail_lock, &wheels[0].open_error, &wheels[0].info_error, &wheels[0].read_error, &wheels[0].suffix_read_error };
+	atomic_int *errors[] = { &wheels[0].open_error, &wheels[0].info_error, &wheels[0].read_error, &wheels[0].suffix_read_error };
 	for (int i = 0; i < ARRAY_SIZE(errors); i++) {
 		atomic_store(errors[i], PW_ERROR_OPERATION_FAILED);
 		ASSERT_TRUE(set_switch(0, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
 		ASSERT_TRUE(wait_state(0, CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
-		ASSERT_EQ_INT(0, atomic_load(&lock_count));
 		ASSERT_FALSE(atomic_load(&wheels[0].opened));
 		ASSERT_EQ_INT(-1, state(0, RESET_PROPERTY));
 		atomic_store(errors[i], 0);
@@ -592,7 +578,6 @@ static void connection_failures(void) {
 		atomic_store(&wheels[0].slots, slots[i]);
 		ASSERT_TRUE(set_switch(0, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
 		ASSERT_TRUE(wait_state(0, CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
-		ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	}
 	atomic_store(&wheels[0].slots, 5);
 	atomic_store(&wheels[0].position, 5);
@@ -715,7 +700,6 @@ static void reset_workflows(void) {
 	ASSERT_TRUE(wait_state(0, RESET_PROPERTY, -1));
 	ASSERT_EQ_INT(1, atomic_load(&reset_ok_updates));
 	ASSERT_EQ_INT(1, atomic_load(&reset_deletions));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	ASSERT_TRUE(connect_wheel(0, true));
 	ASSERT_EQ_INT(INDIGO_OK_STATE, state(0, RESET_PROPERTY));
 }
@@ -783,7 +767,6 @@ static void hotplug_and_identity(void) {
 	ASSERT_TRUE(wait_count(&attached, 4));
 	ASSERT_TRUE(wait_count(&wheels[4].closes, 1));
 	ASSERT_TRUE(atomic_load(&wheels[0].opened));
-	ASSERT_EQ_INT(1, atomic_load(&lock_count));
 	usb_event(5, true);
 	ASSERT_TRUE(wait_count(&attached, 5));
 	ASSERT_TRUE(connect_wheel(5, true));
@@ -812,7 +795,6 @@ static void simultaneous_arrivals_and_sdk_removal(void) {
 	ASSERT_TRUE(wait_count(&attached, 2));
 	ASSERT_EQ_INT(1, atomic_load(&wheels[1].closes));
 	ASSERT_TRUE(atomic_load(&wheels[2].opened));
-	ASSERT_EQ_INT(1, atomic_load(&lock_count));
 	atomic_store(&wheels[0].visible, false);
 	atomic_store(&wheels[2].visible, false);
 	usb_event(2, false); // One notification can observe several SDK removals.
@@ -906,8 +888,6 @@ static bool begin_fixture(void) {
 	atomic_store(&attached, 0);
 	atomic_store(&attach_attempts, 0);
 	atomic_store(&fail_attach, 0);
-	atomic_store(&lock_count, 0);
-	atomic_store(&fail_lock, 0);
 	atomic_store(&usb_refs, 0);
 	atomic_store(&invalid_usb_unref, 0);
 	atomic_store(&sdk_after_close, 0);
@@ -947,7 +927,6 @@ static void end_fixture(void) {
 	for (int i = 0; i < WHEELS; i++) {
 		ASSERT_EQ_INT(0, atomic_load(&usb_ref_balance[i]));
 	}
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	ASSERT_EQ_INT(0, atomic_load(&sdk_after_close));
 	ASSERT_EQ_INT(0, atomic_load(&late_updates));
 	for (int i = 0; i < WHEELS; i++) {

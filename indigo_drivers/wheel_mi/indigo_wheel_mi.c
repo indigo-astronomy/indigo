@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_wheel_mi"
 #define DRIVER_LABEL         "Moravian Instruments SFW"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -132,14 +132,9 @@ static void report_error(indigo_device *device, indigo_property *property, const
 }
 
 static bool mi_open(indigo_device *device) {
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock() failed");
-		return false;
-	}
 	PRIVATE_DATA->wheel = gxfw_initialize_usb(PRIVATE_DATA->eid);
 	if (PRIVATE_DATA->wheel == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "gxfw_initialize_usb(%d) failed", PRIVATE_DATA->eid);
-		indigo_global_unlock(device);
 		return false;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxfw_initialize_usb(%d) succeeded", PRIVATE_DATA->eid);
@@ -153,7 +148,6 @@ static void mi_close(indigo_device *device) {
 		PRIVATE_DATA->wheel = NULL;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxfw_release() succeeded");
 	}
-	indigo_global_unlock(device);
 	indigo_unlock_master_device(device);
 }
 

@@ -35,7 +35,7 @@
 #endif
 extern "C" indigo_result ENTRY(indigo_driver_action, indigo_driver_info *);
 
-static std::atomic<int> opens, closes, active, attached, blobs, after_close, bus_calls, locks, resources;
+static std::atomic<int> opens, closes, active, attached, blobs, after_close, bus_calls, resources;
 static std::atomic<bool> fail_mode, fail_bits;
 static std::atomic<int> fail_open, fail_init, fail_chip, fail_start, fail_read, fail_stop, fail_control;
 static std::atomic<int> malformed, guide_calls, guide_direction, guide_duration, fw_slot, read_mode;
@@ -220,10 +220,6 @@ uint32_t SetQHYCCDReadMode(qhyccd_handle *h, uint32_t n) { valid(h); read_mode =
 
 extern "C" void qhy_test_usb_start(void) { }
 
-extern "C" indigo_result qhy_test_lock(indigo_device *d) { locks++; return INDIGO_OK; }
-
-extern "C" indigo_result qhy_test_unlock(indigo_device *d) { locks--; return INDIGO_OK; }
-
 extern "C" libusb_device *qhy_test_usb_device(libusb_device_handle *h) { return (libusb_device *)&usb_token; }
 
 extern "C" indigo_result qhy_test_usb_path(libusb_device *d, char *path) { strcpy(path, "test"); return INDIGO_OK; }
@@ -398,7 +394,7 @@ static void basic_lifecycle(void) {
 	ASSERT_TRUE(connect(0, false)); ASSERT_EQ_INT(1, active.load());
 	ASSERT_TRUE(connect(1, false)); ASSERT_EQ_INT(1, active.load());
 	ASSERT_TRUE(connect(2, false)); ASSERT_EQ_INT(0, active.load());
-	end(); ASSERT_EQ_INT(opens.load(), closes.load()); ASSERT_EQ_INT(0, locks.load()); ASSERT_EQ_INT(0, resources.load());
+	end(); ASSERT_EQ_INT(opens.load(), closes.load()); ASSERT_EQ_INT(0, resources.load());
 }
 
 static void open_rollback(void) {
@@ -429,7 +425,7 @@ static void initialization_failures(void) {
 		if (stage == 1) { fail_init = 1; }
 		if (stage == 2) { fail_chip = 1; }
 		sw(0, "CONNECTION", "CONNECTED"); ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_ALERT_STATE));
-		ASSERT_EQ_INT(0, active.load()); ASSERT_EQ_INT(0, locks.load());
+		ASSERT_EQ_INT(0, active.load());
 		fail_open = fail_init = fail_chip = 0;
 		ASSERT_TRUE(connect(0, true)); end();
 	}

@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001F
+#define DRIVER_VERSION       0x03000020
 #define DRIVER_NAME          "indigo_focuser_asi"
 #define DRIVER_LABEL         "ZWO ASI Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -143,23 +143,12 @@ static void split_device_name(const char *full_name, char *model, char *suffix) 
 }
 
 static bool asi_open(indigo_device *device) {
-	bool result = false;
-	bool global_locked = false;
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-	} else {
-		global_locked = true;
-		int res = EAFOpen(PRIVATE_DATA->dev_id);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
-		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unable to open EAF device %d: %d", PRIVATE_DATA->dev_id, res);
-		}
-		result = res == EAF_SUCCESS;
+	int res = EAFOpen(PRIVATE_DATA->dev_id);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
+	if (res != EAF_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unable to open EAF device %d: %d", PRIVATE_DATA->dev_id, res);
 	}
-	if (!result && global_locked) {
-		indigo_global_unlock(device);
-	}
-	return result;
+	return res == EAF_SUCCESS;
 }
 
 static void asi_close(indigo_device *device) {
@@ -171,7 +160,6 @@ static void asi_close(indigo_device *device) {
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFClose(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
-	indigo_global_unlock(device);
 }
 
 //- code

@@ -28,7 +28,7 @@
 static libusb_hotplug_callback_fn usb_callback;
 static int usb_devices[11];
 static atomic_int visible_count = 1, attached_mask, attach_attempts, fail_attach;
-static atomic_int move_calls, poll_calls, close_calls, lock_count, position = 100, maximum = 10000, backlash;
+static atomic_int move_calls, poll_calls, close_calls, position = 100, maximum = 10000, backlash;
 static atomic_bool motor, hand_control, fail_poll, fail_position, fail_move, fail_stop, fail_max, fail_backlash, fail_temperature;
 static atomic_int temperature = 10, abort_state;
 static atomic_bool abort_switch, reverse_enabled, beep_enabled;
@@ -81,16 +81,6 @@ indigo_result eaf_test_detach(indigo_device *device) {
 }
 
 void eaf_test_usb_start(void) {
-}
-
-indigo_result eaf_test_lock(indigo_device *device) {
-	atomic_fetch_add(&lock_count, 1);
-	return INDIGO_OK;
-}
-
-indigo_result eaf_test_unlock(indigo_device *device) {
-	atomic_fetch_sub(&lock_count, 1);
-	return INDIGO_OK;
 }
 
 int LIBUSB_CALL eaf_test_usb_register(libusb_context *ctx, int events, int flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) {
@@ -283,13 +273,12 @@ static void set_number(const char *property, const char *item, double value) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, eaf.device_name, property, item, value));
 }
 
-static void failed_connect_releases_sdk_and_lock(void) {
+static void failed_connect_releases_sdk(void) {
 	atomic_store(&fail_position, true);
 	int closed = atomic_load(&close_calls);
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	ASSERT_EQ_INT(closed + 1, atomic_load(&close_calls));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 	atomic_store(&fail_position, false);
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(true));
@@ -385,7 +374,6 @@ static void connect_move_disconnect(void) {
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(true));
 	ASSERT_EQ_INT(opened + 1, atomic_load(&open_calls));
-	ASSERT_EQ_INT(1, atomic_load(&lock_count));
 	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, atomic_load(&position), 0));
 	int moves = atomic_load(&move_calls);
 	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500);
@@ -397,7 +385,6 @@ static void connect_move_disconnect(void) {
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(false));
 	ASSERT_EQ_INT(closed + 1, atomic_load(&close_calls));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 }
 
 // While the focuser moves, both motion properties carry a reject_change guard. Without it the
@@ -439,7 +426,6 @@ static void relative_motion_in_both_directions(void) {
 	ASSERT_TRUE(finish_motion_at(start + 125));
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(false));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 }
 
 static void synchronize_position_without_motion(void) {
@@ -494,7 +480,6 @@ static void settings_and_readback(void) {
 	ASSERT_FALSE(atomic_load(&beep_enabled));
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(false));
-	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 }
 
 static void hotplug_capacity_and_failed_attach_retry(void) {
@@ -535,7 +520,7 @@ int main(void) {
 		return 1;
 	}
 	const indigo_test_case tests[] = {
-		{ "failed connection cleanup", failed_connect_releases_sdk_and_lock },
+		{ "failed connection cleanup", failed_connect_releases_sdk },
 		{ "effective limits and failed readback", limits_and_readback_failures },
 		{ "polling termination and safe retry", polling_failure_and_safe_retry },
 		{ "abort confirmation and switch reset", abort_waits_for_stop_and_resets_switch },

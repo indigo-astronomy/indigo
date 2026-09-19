@@ -29,7 +29,7 @@ driver svb {
 	label = "SVBONY Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>, Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o. and Rumen G. Bogdanovski";
-	version = 24;
+	version = 25;
 	multi_device_support = true;
 	include {
 		#include <assert.h>
@@ -188,20 +188,14 @@ driver svb {
 
 		static bool svb_open(indigo_device *device) {
 			indigo_lock_master_device(device);
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				indigo_unlock_master_device(device);
-				return false;
-			}
 			SVB_ERROR_CODE result = SVBOpenCamera(PRIVATE_DATA->dev_id);
 			if (result != SVB_SUCCESS) {
-				indigo_global_unlock(device);
 				indigo_unlock_master_device(device);
 				return false;
 			}
 			result = SVBSetAutoSaveParam(PRIVATE_DATA->dev_id, SVB_FALSE);
 			if (result != SVB_SUCCESS) {
 				SVBCloseCamera(PRIVATE_DATA->dev_id);
-				indigo_global_unlock(device);
 				indigo_unlock_master_device(device);
 				return false;
 			}
@@ -211,7 +205,6 @@ driver svb {
 			}
 			if (result != SVB_SUCCESS) {
 				SVBCloseCamera(PRIVATE_DATA->dev_id);
-				indigo_global_unlock(device);
 				indigo_unlock_master_device(device);
 				return false;
 			}
@@ -220,7 +213,6 @@ driver svb {
 			PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 			if (PRIVATE_DATA->buffer == NULL) {
 				SVBCloseCamera(PRIVATE_DATA->dev_id);
-				indigo_global_unlock(device);
 				indigo_unlock_master_device(device);
 				return false;
 			}
@@ -236,7 +228,6 @@ driver svb {
 			}
 			free(PRIVATE_DATA->buffer);
 			PRIVATE_DATA->buffer = NULL;
-			indigo_global_unlock(device);
 			indigo_unlock_master_device(device);
 		}
 

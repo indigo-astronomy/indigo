@@ -58,8 +58,8 @@ static int request_revisions[LOGICAL_DEVICES][PROPERTIES];
 static int usb_devices[CAMERAS];
 static libusb_hotplug_callback_fn usb_callback;
 static pthread_mutex_t observation_mutex = PTHREAD_MUTEX_INITIALIZER;
-static atomic_int attached, lock_count, unbalanced_unlock, usb_refs, invalid_usb_unref, updates_after_detach;
-static atomic_int fail_register, fail_descriptor, fail_attach, fail_queue, fail_lock, wrong_vendor, malformed_context, malformed_image, false_wheel_set_result;
+static atomic_int attached, usb_refs, invalid_usb_unref, updates_after_detach;
+static atomic_int fail_register, fail_descriptor, fail_attach, fail_queue, wrong_vendor, malformed_context, malformed_image, false_wheel_set_result;
 static atomic_int blobs, bad_blob, sdk_after_close, sdk_active, sdk_overlap, clock_shift, gates_entered;
 static _Atomic(const char *) fail_call;
 static indigo_queue *driver_queue;
@@ -328,23 +328,6 @@ static bool connect_device(int index, bool connect) {
 void atik2_test_usb_start(void) {
 }
 
-indigo_result atik2_test_lock(indigo_device *device) {
-	if (atomic_load(&fail_lock)) {
-		return INDIGO_FAILED;
-	}
-	atomic_fetch_add(&lock_count, 1);
-	return INDIGO_OK;
-}
-
-indigo_result atik2_test_unlock(indigo_device *device) {
-	if (atomic_load(&lock_count) <= 0) {
-		atomic_fetch_add(&unbalanced_unlock, 1);
-		return INDIGO_FAILED;
-	}
-	atomic_fetch_sub(&lock_count, 1);
-	return INDIGO_OK;
-}
-
 indigo_queue *atik2_test_queue_create(indigo_device *device) {
 	if (atomic_load(&fail_queue)) {
 		return NULL;
@@ -568,7 +551,7 @@ bool libatik_guide_relays(libatik_device_context *context, unsigned short mask) 
 static void metadata_and_properties(void) {
 	indigo_driver_info info = { 0 };
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_atik2(INDIGO_DRIVER_INFO, &info));
-	ASSERT_EQ_INT(0x03000009, info.version);
+	ASSERT_EQ_INT(0x0300000A, info.version);
 	const unsigned interfaces[] = { INDIGO_INTERFACE_CCD, INDIGO_INTERFACE_GUIDER, INDIGO_INTERFACE_WHEEL };
 	for (int i = 0; i < 3; i++) {
 		indigo_property *property = snapshot(i, "INFO");
@@ -612,13 +595,8 @@ static void shared_lifecycle(void) {
 }
 
 static void initialization_failures(void) {
-	fail_lock = 1;
-	ASSERT_TRUE(request_switch(0, "CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
-	ASSERT_EQ_INT(0, lock_count);
-	fail_lock = 0;
 	fail_call = "libatik_open";
 	ASSERT_TRUE(request_switch(0, "CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
-	ASSERT_EQ_INT(0, lock_count);
 	fail_call = NULL;
 	malformed_context = 1;
 	cameras[0].context.width = 0;
@@ -636,7 +614,6 @@ static void shared_connection_rollback(void) {
 	for (int i = 0; i < 3; i++) {
 		fail_call = "libatik_open";
 		ASSERT_TRUE(request_switch(i, "CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
-		ASSERT_EQ_INT(0, lock_count);
 		ASSERT_FALSE(cameras[0].opened);
 		fail_call = NULL;
 		ASSERT_TRUE(connect_device(i, true));
@@ -661,7 +638,6 @@ static void malformed_initialization(void) {
 		double saved = *double_fields[i];
 		*double_fields[i] = i == 2 ? 0 : NAN;
 		ASSERT_TRUE(request_switch(0, "CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
-		ASSERT_EQ_INT(0, lock_count);
 		*double_fields[i] = saved;
 	}
 	int *integer_fields[] = { &cameras[0].context.height, &cameras[0].context.max_bin_hor, &cameras[0].context.max_bin_vert };
@@ -1110,8 +1086,8 @@ static void begin_fixture(void) {
 	clear_observations();
 	memset(cameras, 0, sizeof(cameras));
 	memset(request_revisions, 0, sizeof(request_revisions));
-	attached = lock_count = unbalanced_unlock = usb_refs = invalid_usb_unref = updates_after_detach = 0;
-	fail_register = fail_descriptor = fail_attach = fail_queue = fail_lock = wrong_vendor = malformed_context = malformed_image = false_wheel_set_result = 0;
+	attached = usb_refs = invalid_usb_unref = updates_after_detach = 0;
+	fail_register = fail_descriptor = fail_attach = fail_queue = wrong_vendor = malformed_context = malformed_image = false_wheel_set_result = 0;
 	blobs = bad_blob = sdk_after_close = sdk_active = sdk_overlap = clock_shift = sdk_on_bus = gates_entered = 0;
 	fail_call = NULL;
 	for (int i = 0; i < CAMERAS; i++) {
@@ -1138,7 +1114,7 @@ static void begin_fixture(void) {
 static void end_fixture(void) {
 	release_gate();
 	fail_call = NULL;
-	clock_shift = fail_attach = fail_register = fail_queue = fail_lock = 0;
+	clock_shift = fail_attach = fail_register = fail_queue = 0;
 	for (int i = LOGICAL_DEVICES - 1; i >= 0; i--) {
 		if (logical[i]) {
 			indigo_property *connection = snapshot(i, "CONNECTION");
@@ -1151,8 +1127,6 @@ static void end_fixture(void) {
 	}
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_atik2(INDIGO_DRIVER_SHUTDOWN, NULL));
 	ASSERT_EQ_INT(0, attached);
-	ASSERT_EQ_INT(0, lock_count);
-	ASSERT_EQ_INT(0, unbalanced_unlock);
 	ASSERT_EQ_INT(0, usb_refs);
 	ASSERT_EQ_INT(0, invalid_usb_unref);
 	ASSERT_EQ_INT(0, sdk_after_close);

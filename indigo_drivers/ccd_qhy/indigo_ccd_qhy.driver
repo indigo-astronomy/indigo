@@ -20,7 +20,7 @@ driver qhy {
 	label = "QHY CCD (legacy) Camera";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2017-2026 Rumen G. Bogdanovski";
-	version = 32;
+	version = 33;
 	cpp = true;
 	supported_architecture = "!defined(INDIGO_MACOS) || defined(__x86_64__)";
 	include {
@@ -93,13 +93,9 @@ driver qhy {
 			indigo_safe_free(PRIVATE_DATA->buffer);
 			PRIVATE_DATA->buffer = NULL;
 			PRIVATE_DATA->buffer_size = 0;
-			indigo_global_unlock(device);
 		}
 
 		static bool qhy_open(indigo_device *device) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				return false;
-			}
 			// Legacy QHY5L-II needs a rescan before every reopen (vendor SDK workaround).
 			ScanQHYCCD();
 			PRIVATE_DATA->handle = OpenQHYCCD(PRIVATE_DATA->sid);

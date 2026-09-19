@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000020
+#define DRIVER_VERSION       0x03000021
 #define DRIVER_NAME          "indigo_ccd_qhy"
 #define DRIVER_LABEL         "QHY CCD (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -158,13 +158,9 @@ static void qhy_close(indigo_device *device) {
 	indigo_safe_free(PRIVATE_DATA->buffer);
 	PRIVATE_DATA->buffer = NULL;
 	PRIVATE_DATA->buffer_size = 0;
-	indigo_global_unlock(device);
 }
 
 static bool qhy_open(indigo_device *device) {
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		return false;
-	}
 	// Legacy QHY5L-II needs a rescan before every reopen (vendor SDK workaround).
 	ScanQHYCCD();
 	PRIVATE_DATA->handle = OpenQHYCCD(PRIVATE_DATA->sid);
@@ -1552,7 +1548,7 @@ indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *in
 #include "indigo_ccd_qhy.h"
 
 indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "QHY CCD (legacy) Camera", __FUNCTION__, 0x03000020, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "QHY CCD (legacy) Camera", __FUNCTION__, 0x03000021, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

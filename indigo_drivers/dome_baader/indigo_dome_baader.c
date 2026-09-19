@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_dome_baader"
 #define DRIVER_LABEL         "Baader Classic Dome"
 #define DOME_DEVICE_NAME     "Baader Classic Dome"
@@ -293,10 +293,6 @@ static void baader_emergency_message(int flags, char *message, int size) {
 }
 
 static bool baader_open(indigo_device *device) {
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock");
-		return false;
-	}
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (indigo_uni_is_url(name, "baader")) {
 		PRIVATE_DATA->handle = indigo_uni_open_url(name, BAADER_NETWORK_PORT, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
@@ -317,13 +313,11 @@ static bool baader_open(indigo_device *device) {
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", name);
 	}
-	indigo_global_unlock(device);
 	return false;
 }
 
 static void baader_close(indigo_device *device) {
 	indigo_uni_close(&PRIVATE_DATA->handle);
-	indigo_global_unlock(device);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 }
 

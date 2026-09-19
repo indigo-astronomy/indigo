@@ -25,7 +25,7 @@
 
 #include "indigo_aux_cloudwatcher.h"
 
-#define DRIVER_VERSION 0x0200000A
+#define DRIVER_VERSION 0x0200000B
 #define AUX_CLOUDWATCHER_NAME  "AAG CloudWatcher"
 
 #define DRIVER_NAME              "indigo_aux_skywatcher"
@@ -1175,11 +1175,6 @@ static bool aag_open(indigo_device *device) {
 	if (DEVICE_CONNECTED) return false;
 
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-		return false;
-	}
 
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (!indigo_uni_is_url(name, "nexdome")) {
@@ -1194,7 +1189,6 @@ static bool aag_open(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_global_unlock(device);
 		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 		return false;
 	}
@@ -1212,7 +1206,6 @@ static void aag_close(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	indigo_uni_close(&PRIVATE_DATA->handle);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "indigo_uni_close(%d)", PRIVATE_DATA->handle);
-	indigo_global_unlock(device);
 	PRIVATE_DATA->handle = NULL;
 	clear_connected_flag(device);
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);

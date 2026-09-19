@@ -20,7 +20,7 @@ driver atik {
 	label = "Atik Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 37;
+	version = 38;
 	include {
 		#include <math.h>
 		#include <limits.h>
@@ -63,9 +63,6 @@ driver atik {
 		}
 
 		static bool atik_open(indigo_device *device) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				return false;
-			}
 			int count = ArtemisDeviceCount();
 			for (int index = 0; index < count; index++) {
 				char serial[100];
@@ -75,7 +72,6 @@ driver atik {
 				}
 			}
 			if (!PRIVATE_DATA->handle) {
-				indigo_global_unlock(device);
 				return false;
 			}
 			return true;
@@ -84,7 +80,6 @@ driver atik {
 		static void atik_close(indigo_device *device) {
 			ArtemisDisconnect(PRIVATE_DATA->handle);
 			PRIVATE_DATA->handle = NULL;
-			indigo_global_unlock(device);
 		}
 
 		static int atik_stop_exposure(indigo_device *device) {

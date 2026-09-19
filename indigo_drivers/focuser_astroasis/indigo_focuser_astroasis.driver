@@ -24,7 +24,7 @@ driver astroasis {
 	label = "Astroasis Oasis Focuser";
 	author = "Frank Chen <frank.chen@astroasis.com>";
 	copyright = "Copyright (C) 2024-2026 Astroasis Vision Technology, Inc.";
-	version = 9;
+	version = 10;
 	supported_architecture = "!defined(__i386__)";
 	include {
 		#include <AOFocus.h>
@@ -47,14 +47,9 @@ driver astroasis {
 	}
 	code {
 		static bool astroasis_open(indigo_device *device) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-				return false;
-			}
 			int res = AOFocuserOpen(PRIVATE_DATA->dev_id);
 			if (res != AO_SUCCESS) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserOpen() failed, ret = %d", res);
-				indigo_global_unlock(device);
 				return false;
 			}
 			return true;
@@ -62,7 +57,6 @@ driver astroasis {
 
 		static void astroasis_close(indigo_device *device) {
 			AOFocuserClose(PRIVATE_DATA->dev_id);
-			indigo_global_unlock(device);
 		}
 
 		static bool astroasis_config(indigo_device *device, unsigned int mask, int value) {

@@ -65,8 +65,8 @@ typedef struct {
 } fake_device;
 
 atomic_int asi_present = 1, asi_attached, asi_opened, asi_closed, asi_invalid_io;
-atomic_int asi_fail_open, asi_fail_close, asi_fail_on, asi_fail_off, asi_fail_products, asi_fail_register, asi_fail_get_num, asi_fail_get_id, asi_fail_lock;
-atomic_int asi_relays, asi_opposed_overlap, asi_duplicate_close, asi_after_close, asi_after_detach_update, asi_usb_refs, asi_lock_count;
+atomic_int asi_fail_open, asi_fail_close, asi_fail_on, asi_fail_off, asi_fail_products, asi_fail_register, asi_fail_get_num, asi_fail_get_id;
+atomic_int asi_relays, asi_opposed_overlap, asi_duplicate_close, asi_after_close, asi_after_detach_update, asi_usb_refs;
 double asi_on_time[4], asi_off_time[4];
 
 static fake_device fake_devices[ASI_FAKE_MAX_DEVICES];
@@ -159,14 +159,12 @@ void asi_fake_reset(void) {
 	atomic_store(&asi_fail_register, 0);
 	atomic_store(&asi_fail_get_num, 0);
 	atomic_store(&asi_fail_get_id, 0);
-	atomic_store(&asi_fail_lock, 0);
 	atomic_store(&asi_relays, 0);
 	atomic_store(&asi_opposed_overlap, 0);
 	atomic_store(&asi_duplicate_close, 0);
 	atomic_store(&asi_after_close, 0);
 	atomic_store(&asi_after_detach_update, 0);
 	atomic_store(&asi_usb_refs, 0);
-	atomic_store(&asi_lock_count, 0);
 }
 
 void asi_fake_configure(int slot, int id, int pid, bool present) {
@@ -513,21 +511,6 @@ indigo_result asi_test_update_property(indigo_device *device, indigo_property *p
 	return indigo_update_property(device, property, "%s", formatted);
 }
 
-indigo_result asi_test_lock(indigo_device *device) {
-	(void)device;
-	if (atomic_exchange(&asi_fail_lock, 0)) {
-		return INDIGO_FAILED;
-	}
-	atomic_fetch_add(&asi_lock_count, 1);
-	return INDIGO_OK;
-}
-
-indigo_result asi_test_unlock(indigo_device *device) {
-	(void)device;
-	atomic_fetch_sub(&asi_lock_count, 1);
-	return INDIGO_OK;
-}
-
 static const simulator_driver_case guider7 = { "ZWO ASI USB-St4 Guider", "indigo_guider_asi", "ASI USB-St4 Guider #7", indigo_guider_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 static const simulator_driver_case guider42 = { "ZWO ASI USB-St4 Guider", "indigo_guider_asi", "ASI USB-St4 Guider #42", indigo_guider_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 static bool bus_started, client_attached, driver_initialized;
@@ -535,6 +518,19 @@ static bool bus_started, client_attached, driver_initialized;
 static bool wait_atomic(atomic_int *value, int expected) {
 	for (int i = 0; i < 300; i++) {
 		if (atomic_load(value) == expected) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+// The fake SDK counts opens and closes cumulatively, so equal counters mean every
+// device the test opened has been closed again. Used as a barrier before shutdown
+// after an asynchronous disconnect request.
+static bool wait_all_closed(void) {
+	for (int i = 0; i < 300; i++) {
+		if (atomic_load(&asi_opened) == atomic_load(&asi_closed)) {
 			return true;
 		}
 		indigo_usleep(10000);
@@ -576,7 +572,7 @@ static void cleanup_driver(void) {
 	if (client_attached && driver_initialized) {
 		disconnect_name(guider7.device_name);
 		disconnect_name(guider42.device_name);
-		wait_atomic(&asi_lock_count, 0);
+		wait_all_closed();
 		indigo_result result = indigo_guider_asi(INDIGO_DRIVER_SHUTDOWN, NULL);
 		ASSERT_EQ_INT(INDIGO_OK, result);
 		driver_initialized = false;
@@ -591,7 +587,6 @@ static void cleanup_driver(void) {
 	}
 	release_cached_properties();
 	ASSERT_EQ_INT(0, atomic_load(&asi_attached));
-	ASSERT_EQ_INT(0, atomic_load(&asi_lock_count));
 	ASSERT_EQ_INT(0, atomic_load(&asi_invalid_io));
 	ASSERT_EQ_INT(0, atomic_load(&asi_after_close));
 	ASSERT_EQ_INT(0, atomic_load(&asi_after_detach_update));
@@ -618,7 +613,7 @@ static bool wait_axis_state(bool ra, indigo_property_state state) {
 static void metadata_and_property_contract(void) {
 	indigo_driver_info info = { 0 };
 	ASSERT_EQ_INT(INDIGO_OK, indigo_guider_asi(INDIGO_DRIVER_INFO, &info));
-	ASSERT_EQ_INT(0x03000007, info.version);
+	ASSERT_EQ_INT(0x03000008, info.version);
 	ASSERT_TRUE(!strcmp("ZWO ASI USB-St4 Guider", info.description));
 	ASSERT_TRUE(begin_driver(&guider7, 1));
 	enumerate_simulator_device();
@@ -765,18 +760,11 @@ static void relay_failures_and_recovery(void) {
 
 static void connection_failures_and_balancing(void) {
 	ASSERT_TRUE(begin_driver(&guider7, 1));
-	asi_fail_lock = 1;
-	ASSERT_FALSE(connect_device(&guider7));
-	ASSERT_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
-	ASSERT_EQ_INT(0, asi_lock_count);
 	asi_fail_open = 1;
 	ASSERT_FALSE(connect_device(&guider7));
-	ASSERT_EQ_INT(0, asi_lock_count);
 	ASSERT_TRUE(connect_device(&guider7));
-	ASSERT_EQ_INT(1, asi_lock_count);
 	asi_fail_close = 1;
 	disconnect_serial_device(&guider7);
-	ASSERT_EQ_INT(0, asi_lock_count);
 	ASSERT_EQ_INT(1, asi_opened);
 	ASSERT_EQ_INT(1, asi_closed);
 	ASSERT_TRUE(connect_device(&guider7));
@@ -848,13 +836,10 @@ static void two_device_isolation_and_removal(void) {
 	ASSERT_TRUE(begin_driver(&guider7, 2));
 	ASSERT_TRUE(connect_device(&guider7));
 	ASSERT_TRUE(connect_device(&guider42));
-	ASSERT_EQ_INT(2, asi_lock_count);
 	disconnect_serial_device(&guider7);
 	disconnect_serial_device(&guider42);
-	ASSERT_TRUE(wait_atomic(&asi_lock_count, 0));
 	ASSERT_TRUE(connect_device(&guider42));
 	ASSERT_TRUE(connect_device(&guider7));
-	ASSERT_EQ_INT(2, asi_lock_count);
 	pulse(&guider42, USB2ST4_WEST, 80);
 	ASSERT_TRUE(wait_atomic(&asi_relays, 0));
 	for (int i = 0; i < 200 && asi_fake_device_relays(42) != (1 << USB2ST4_WEST); i++) {
@@ -866,7 +851,7 @@ static void two_device_isolation_and_removal(void) {
 	ASSERT_TRUE(wait_atomic(&asi_attached, 1));
 	ASSERT_TRUE(asi_fake_device_relays(42) == 0 || asi_fake_device_relays(42) == (1 << USB2ST4_WEST));
 	disconnect_name(guider42.device_name);
-	ASSERT_TRUE(wait_atomic(&asi_lock_count, 0));
+	ASSERT_TRUE(wait_all_closed());
 	cleanup_driver();
 }
 
@@ -914,7 +899,6 @@ static void blocked_sdk_serializes_disconnect(void) {
 	ASSERT_EQ_INT(0, asi_closed);
 	asi_fake_release_gate();
 	ASSERT_TRUE(wait_atomic(&asi_closed, 1));
-	ASSERT_TRUE(wait_atomic(&asi_lock_count, 0));
 	ASSERT_EQ_INT(0, asi_relays);
 	cleanup_driver();
 }
@@ -932,7 +916,6 @@ static void blocked_stop_serializes_removal(void) {
 	asi_fake_release_gate();
 	ASSERT_TRUE(wait_atomic(&asi_attached, 0));
 	ASSERT_EQ_INT(0, asi_relays);
-	ASSERT_EQ_INT(0, asi_lock_count);
 	cleanup_driver();
 }
 

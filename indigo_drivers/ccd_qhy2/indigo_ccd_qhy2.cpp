@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000020
+#define DRIVER_VERSION       0x03000021
 #define DRIVER_NAME          "indigo_ccd_qhy2"
 #define DRIVER_LABEL         "QHY CMOS (modern) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -164,13 +164,9 @@ static void qhy2_close(indigo_device *device) {
 	indigo_safe_free(PRIVATE_DATA->buffer);
 	PRIVATE_DATA->buffer = NULL;
 	PRIVATE_DATA->buffer_size = 0;
-	indigo_global_unlock(device);
 }
 
 static bool qhy2_open(indigo_device *device) {
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		return false;
-	}
 	// Legacy QHY5L-II needs a rescan before every reopen (vendor SDK workaround).
 	ScanQHYCCD();
 	PRIVATE_DATA->handle = OpenQHYCCD(PRIVATE_DATA->sid);

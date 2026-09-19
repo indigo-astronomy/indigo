@@ -24,7 +24,7 @@
  \file indigo_ccd_fli.c
  */
 
-#define DRIVER_VERSION 0x03000013
+#define DRIVER_VERSION 0x03000014
 #define DRIVER_NAME		"indigo_ccd_fli"
 
 #include <stdlib.h>
@@ -138,17 +138,10 @@ static bool fli_open(indigo_device *device) {
 	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-		return false;
-	}
 
 	long res = FLIOpen(&(PRIVATE_DATA->dev_id), PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
 	id = PRIVATE_DATA->dev_id;
 	if (res) {
-		indigo_global_unlock(device);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIOpen(%d) = %d", id, res);
@@ -158,7 +151,6 @@ static bool fli_open(indigo_device *device) {
 	res = FLIGetArrayArea(id, &(PRIVATE_DATA->total_area.ul_x), &(PRIVATE_DATA->total_area.ul_y), &(PRIVATE_DATA->total_area.lr_x), &(PRIVATE_DATA->total_area.lr_y));
 	if (res) {
 		FLIClose(id);
-		indigo_global_unlock(device);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetArrayArea(%d) = %d", id, res);
@@ -168,7 +160,6 @@ static bool fli_open(indigo_device *device) {
 	res = FLIGetVisibleArea(id, &(PRIVATE_DATA->visible_area.ul_x), &(PRIVATE_DATA->visible_area.ul_y), &(PRIVATE_DATA->visible_area.lr_x), &(PRIVATE_DATA->visible_area.lr_y));
 	if (res) {
 		FLIClose(id);
-		indigo_global_unlock(device);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetVisibleArea(%d) = %d", id, res);
@@ -391,7 +382,6 @@ static void fli_close(indigo_device *device) {
 	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
-	indigo_global_unlock(device);
 	if (PRIVATE_DATA->buffer != NULL) {
 		free(PRIVATE_DATA->buffer);
 		PRIVATE_DATA->buffer = NULL;

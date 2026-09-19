@@ -24,7 +24,7 @@ driver playerone {
 	label = "Player One Filter Wheel";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2023-2026 Rumen G. Bogdanovski";
-	version = 10;
+	version = 11;
 	include {
 		#include <PlayerOnePW.h>
 	}
@@ -61,13 +61,9 @@ driver playerone {
 				PRIVATE_DATA->count++;
 				return true;
 			}
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				return false;
-			}
 			int res = POAOpenPW(PRIVATE_DATA->dev_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAOpenPW(%d) = %d", PRIVATE_DATA->dev_handle, res);
 			if (res != PW_OK) {
-				indigo_global_unlock(device);
 				return false;
 			}
 			PRIVATE_DATA->count++;
@@ -78,7 +74,6 @@ driver playerone {
 			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
 				int res = POAClosePW(PRIVATE_DATA->dev_handle);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAClosePW(%d) = %d", PRIVATE_DATA->dev_handle, res);
-				indigo_global_unlock(device);
 			}
 		}
 	}

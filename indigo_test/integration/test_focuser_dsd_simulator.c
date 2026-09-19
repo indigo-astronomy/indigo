@@ -51,7 +51,7 @@
 #endif
 
 #ifndef EXPECTED_VERSION
-#define EXPECTED_VERSION 0x03000012
+#define EXPECTED_VERSION 0x03000013
 #endif
 
 #define DEVICE_NAME "Focuser DSD AF"

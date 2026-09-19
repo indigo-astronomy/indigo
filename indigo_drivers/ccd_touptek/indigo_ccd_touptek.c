@@ -38,7 +38,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION											0x0300002e
+#define DRIVER_VERSION											0x0300002f
 #define PRIVATE_DATA												((DRIVER_PRIVATE_DATA *)device->private_data)
 
 #define ADVANCED_GROUP											"Advanced"
@@ -896,17 +896,10 @@ static void ccd_connection_handler(indigo_device *device) {
 	}
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-			} else {
-				char id[66];
-				sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
-				PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
-				if (PRIVATE_DATA->handle == NULL) {
-					indigo_global_unlock(device);
-				}
-			}
+			char id[66];
+			sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
+			PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
 		}
 		if (PRIVATE_DATA->handle) {
 			PRIVATE_DATA->buffer = (char *)indigo_alloc_blob_buffer(3 * (int)CCD_INFO_WIDTH_ITEM->number.value * (int)CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
@@ -1114,7 +1107,6 @@ disconnect:
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 			}
 			PRIVATE_DATA->handle = NULL;
-			indigo_global_unlock(device);
 		}
 		CONNECTION_PROPERTY->state = failed_connection ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 		if (failed_connection) {
@@ -1854,9 +1846,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 	if (X_CCD_LED_PROPERTY) {
 		indigo_release_property(X_CCD_LED_PROPERTY);
 	}
-	if (device == device->master_device) {
-		indigo_global_unlock(device);
-	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
 }
@@ -1877,17 +1866,10 @@ static void guider_connection_handler(indigo_device *device) {
 	}
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-			} else {
-				char id[66];
-				sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
-				PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
-				if (PRIVATE_DATA->handle == NULL) {
-					indigo_global_unlock(device);
-				}
-			}
+			char id[66];
+			sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
+			PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
 		}
 		if (PRIVATE_DATA->handle) {
 			HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_CALLBACK_THREAD), 1);
@@ -1910,7 +1892,6 @@ static void guider_connection_handler(indigo_device *device) {
 			if (PRIVATE_DATA->handle != NULL) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing camera");
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
-				indigo_global_unlock(device);
 			}
 			PRIVATE_DATA->handle = NULL;
 		}
@@ -2028,17 +2009,10 @@ static void wheel_connection_handler(indigo_device *device) {
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-			} else {
-				char id[66];
-				sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
-				PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
-				if (PRIVATE_DATA->handle == NULL) {
-					indigo_global_unlock(device);
-				}
-			}
+			char id[66];
+			sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
+			PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
 		}
 		if (PRIVATE_DATA->handle) {
 			HRESULT result = SDK_CALL(get_HwVersion)(PRIVATE_DATA->handle, INFO_DEVICE_HW_REVISION_ITEM->text.value);
@@ -2067,7 +2041,6 @@ static void wheel_connection_handler(indigo_device *device) {
 		if (--PRIVATE_DATA->count == 0) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing wheel");
 			SDK_CALL(Close)(PRIVATE_DATA->handle);
-			indigo_global_unlock(device);
 			PRIVATE_DATA->handle = NULL;
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -2244,17 +2217,10 @@ static void focuser_connection_handler(indigo_device *device) {
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0) {
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-			} else {
-				char id[66];
-				sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
-				PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
-				if (PRIVATE_DATA->handle == NULL) {
-					indigo_global_unlock(device);
-				}
-			}
+			char id[66];
+			sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
+			PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
 		}
 		if (PRIVATE_DATA->handle) {
 			HRESULT result = SDK_CALL(get_HwVersion)(PRIVATE_DATA->handle, INFO_DEVICE_HW_REVISION_ITEM->text.value);
@@ -2324,7 +2290,6 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (--PRIVATE_DATA->count == 0) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing focuser");
 			SDK_CALL(Close)(PRIVATE_DATA->handle);
-			indigo_global_unlock(device);
 			PRIVATE_DATA->handle = NULL;
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000014
+#define DRIVER_VERSION       0x03000015
 #define DRIVER_NAME          "indigo_ccd_playerone"
 #define DRIVER_LABEL         "Player One Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -829,12 +829,8 @@ static void adjust_preset_switches(indigo_device *device) {
 }
 
 static bool playerone_open(indigo_device *device) {
-	if (indigo_try_global_lock(device) != INDIGO_OK) {
-		return false;
-	}
 	POAErrors result = POAOpenCamera(PRIVATE_DATA->dev_id);
 	if (result != POA_OK) {
-		indigo_global_unlock(device);
 		return false;
 	}
 	result = POAInitCamera(PRIVATE_DATA->dev_id);
@@ -853,7 +849,6 @@ static bool playerone_open(indigo_device *device) {
 	}
 	failed:
 	POACloseCamera(PRIVATE_DATA->dev_id);
-	indigo_global_unlock(device);
 	return false;
 }
 
@@ -862,7 +857,6 @@ static void playerone_close(indigo_device *device) {
 	POACloseCamera(PRIVATE_DATA->dev_id);
 	free(PRIVATE_DATA->buffer);
 	PRIVATE_DATA->buffer = NULL;
-	indigo_global_unlock(device);
 	indigo_unlock_master_device(device);
 }
 
