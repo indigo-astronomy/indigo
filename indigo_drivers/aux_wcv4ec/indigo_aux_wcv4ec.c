@@ -1,4 +1,4 @@
-// 
+// Copyright (c) 2024-2026 Rumen G. Bogdanovski
 // All rights reserved.
 
 // You may use this software under the terms of 'INDIGO Astronomy
@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_aux_wcv4ec"
 #define DRIVER_LABEL         "WandererCover V4-EC Cover"
 #define AUX_DEVICE_NAME      "WandererCover V4-EC"
@@ -246,19 +246,22 @@ static void aux_timer_callback(indigo_device *device) {
 			indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
 		}
 		update = false;
-		if (fabs(AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.value - PRIVATE_DATA->open_position) > 0.01) {
-			AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.value = PRIVATE_DATA->open_position;
-			update = true;
-		}
-		if (fabs(AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.value - PRIVATE_DATA->close_position) > 0.01) {
-			AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.value = PRIVATE_DATA->close_position;
-			update = true;
+		// the targets have to follow the device as well: the change handler writes both angles
+		// from their targets and a client may change only one of them, so a target left at the
+		// compiled-in default would silently reconfigure the other angle. While a change is in
+		// flight the targets belong to the client, so the whole sync is skipped until it lands.
+		if (AUX_SET_OPEN_CLOSE_PROPERTY->state != INDIGO_BUSY_STATE) {
+			if (fabs(AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.value - PRIVATE_DATA->open_position) > 0.01) {
+				AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.value = AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.target = PRIVATE_DATA->open_position;
+				update = true;
+			}
+			if (fabs(AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.value - PRIVATE_DATA->close_position) > 0.01) {
+				AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.value = AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.target = PRIVATE_DATA->close_position;
+				update = true;
+			}
 		}
 		if (update) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"Update open close positions");
-			if (AUX_SET_OPEN_CLOSE_PROPERTY->state == INDIGO_BUSY_STATE) {
-				AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_OK_STATE;
-			}
 			indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, NULL);
 		}
 	}

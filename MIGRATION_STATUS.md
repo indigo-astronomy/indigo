@@ -17,14 +17,14 @@
 | ao_sx                   | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 9 / 0 | |
 | aux_arteskyflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
 | aux_asiair              | 2️⃣ | ⛔ N/A | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ RPi only |
-| aux_astromechanics      | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
+| aux_astromechanics      | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 6 / 0 | |
 | aux_cloudwatcher        | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 5 / 0 | |
 | aux_dragonfly           | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 5 / 0 | |
 | aux_dsusb               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 10 / 0 | |
-| aux_fbc                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
-| aux_flatmaster          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
-| aux_flipflat            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
-| aux_geoptikflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 0 / 0 | |
+| aux_fbc                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 10 / 0 | |
+| aux_flatmaster          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 8 / 0 | |
+| aux_flipflat            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 11 / 0 | |
+| aux_geoptikflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
 | aux_joystick            | 3️⃣ | ❌ No  | ⛔ N/A | ✅ Yes | ✅ HW  | 14 / 2 | |
 | aux_mgbox               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 32 / 0 | |
 | aux_ppb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
@@ -32,14 +32,14 @@
 | aux_rts                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 0 / 0 | |
 | aux_skyalert            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
 | aux_sqm                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
-| aux_svbpowerbox         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
-| aux_uch                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
-| aux_upb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
+| aux_svbpowerbox         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 13 / 0 | |
+| aux_uch                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 10 / 0 | |
+| aux_upb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 4 / 0 | |
 | aux_upb3                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 2 / 0 | |
 | aux_usbdp               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 2 / 0 | |
-| aux_wbplusv3            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
-| aux_wbprov3             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
-| aux_wcv4ec              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
+| aux_wbplusv3            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 17 / 0 | |
+| aux_wbprov3             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 17 / 0 | |
+| aux_wcv4ec              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 14 / 0 | |
 | ccd_altair              | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 1 | ➡️ Touptek |
 | ccd_apogee              | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⏰ TODO - make boost_regex and libapogee for Windows |
 | ccd_asi                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 51 / 1 | |
@@ -57,8 +57,8 @@
 | ccd_pentax              | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | 🚧 Unfinished & stalled |
 | ccd_playerone           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 48 / 1 | |
 | ccd_ptp                 | 3️⃣ | ❌ No  | ❌ No  | ✅ Yes | ✅ HW  | 128 / 4 | |
-| ccd_qhy                 | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ⚠️ HW  | 0 / 1 | ⏰ TODO - make libqhy for Windows |
-| ccd_qhy2                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
+| ccd_qhy                 | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ⚠️ HW  | 37 / 9 | ⏰ TODO - make libqhy for Windows |
+| ccd_qhy2                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 37 / 9 | |
 | ccd_qsi                 | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⏰ TODO - find SDK for windows |
 | ccd_rising              | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
 | ccd_sbig                | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⏰ TODO - find SDK for windows |
@@ -76,12 +76,12 @@
 | dome_nexdome            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 49 / 0 | |
 | dome_nexdome3           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 52 / 0 | |
 | dome_simulator          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 7 / 0 | |
-| dome_skyroof            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 1 / 0 | |
+| dome_skyroof            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 11 / 0 | |
 | dome_talon6ror          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 33 / 0 | |
 | focuser_asi             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 10 / 0 | |
 | focuser_askar           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
 | focuser_astroasis       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 33 / 0 | |
-| focuser_astromechanics  | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
+| focuser_astromechanics  | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 11 / 0 | |
 | focuser_dmfc            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
 | focuser_dsd             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 42 / 0 | |
 | focuser_efa             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 56 / 0 | |
@@ -110,10 +110,10 @@
 | focuser_wemacro         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 22 / 0 | |
 | focuser_wemacro_bt      | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ macOS only |
 | gps_gpsd                | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | ⏰ TODO - make libgps for Windows |
-| gps_nmea                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
+| gps_nmea                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 4 / 0 | `test_gps_nmea_transport.c` carries the protocol coverage |
 | gps_simulator           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 4 / 0 | |
 | guider_asi              | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | ⏰ TODO - find SDK for windows |
-| guider_cgusbst4         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 0 / 0 | |
+| guider_cgusbst4         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 4 / 0 | |
 | guider_gpusb            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
 | mount_asi               | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ Sim | 10 / 0 | |
 | mount_ioptron           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 104 / 0 | |
@@ -128,7 +128,7 @@
 | mount_temma             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 13 / 0 | |
 | polaralign_simulator    | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 11 / 0 | |
 | rotator_asi             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 11 / 0 | |
-| rotator_falcon          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 1 / 0 | |
+| rotator_falcon          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 13 / 0 | `test_rotator_falcon2_simulator.c`, covers both protocol generations |
 | rotator_lunatico        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 7 / 0 | |
 | rotator_optec           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 10 / 0 | |
 | rotator_simulator       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
@@ -141,13 +141,13 @@
 | wheel_indigo            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 5 / 0 | |
 | wheel_manual            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 0 / 0 | |
 | wheel_mi                | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 12 / 0 | ⛔ Unix and Windows SDKs are not compatible |
-| wheel_optec             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 1 / 0 | |
+| wheel_optec             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 8 / 0 | |
 | wheel_playerone         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 12 / 0 | |
 | wheel_qhy               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 3 / 0 | |
-| wheel_quantum           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 1 / 0 | |
+| wheel_quantum           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 8 / 0 | |
 | wheel_sx                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 0 / 0 | ⏰ TODO - make hidapi for Windows |
-| wheel_trutek            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 1 / 0 | |
-| wheel_xagyl             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 1 / 0 | |
+| wheel_trutek            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 8 / 0 | |
+| wheel_xagyl             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 8 / 0 | |
 
 # COOKBOOK for migration to API 3.0 and Windows
 

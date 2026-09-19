@@ -22,7 +22,7 @@ driver xagyl {
 	label = "Xagyl Filter Wheel";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 7;
+	version = 8;
 	serial;
 	// include { }
 	// define { }
@@ -53,6 +53,7 @@ driver xagyl {
 						if (indigo_uni_printf(PRIVATE_DATA->handle, "I3") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1) > 0) {
 							INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, buffer);
 							if (indigo_uni_printf(PRIVATE_DATA->handle, "I8") > 0 && indigo_uni_scanf_line(PRIVATE_DATA->handle, "FilterSlots %d", &PRIVATE_DATA->slot) == 1) {
+								indigo_update_property(device, INFO_PROPERTY, NULL);
 								WHEEL_SLOT_ITEM->number.min = 1;
 								WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot;
 								if (xagyl_query(device)) {
@@ -70,6 +71,10 @@ driver xagyl {
 
 		static void xagyl_close(indigo_device *device) {
 			if (PRIVATE_DATA->handle != NULL) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+				INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "Unknown");
+				indigo_update_property(device, INFO_PROPERTY, NULL);
 				indigo_uni_close(&PRIVATE_DATA->handle);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 			}
@@ -80,6 +85,13 @@ driver xagyl {
 	wheel {
 		name = "Xagyl Filter Wheel";
 		additional_instances = true;
+		on_attach {
+			INFO_PROPERTY->count = 8;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_HW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "Unknown");
+		}
 		code {
 			static void wheel_move_finalizer(indigo_device *device) {
 				if (xagyl_query(device)) {

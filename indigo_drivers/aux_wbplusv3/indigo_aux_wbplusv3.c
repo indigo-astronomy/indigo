@@ -1,4 +1,4 @@
-// 
+// Copyright (c) 2024-2026 Rumen G. Bogdanovski
 // All rights reserved.
 
 // You may use this software under the terms of 'INDIGO Astronomy
@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_aux_wbplusv3"
 #define DRIVER_LABEL         "WandererBox Plus V3 Powerbox"
 #define AUX_DEVICE_NAME      "WandererBox Plus V3"
@@ -397,7 +397,7 @@ static void aux_power_outlet_handler(indigo_device *device) {
 static void aux_power_outlet_voltage_handler(indigo_device *device) {
 	AUX_POWER_OUTLET_VOLTAGE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_POWER_OUTLET_VOLTAGE.on_change
-	wbplusv3_command(device, 20000 + (int)(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target * 10));
+	wbplusv3_command(device, 20000 + (int)round(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target * 10));
 	indigo_sleep(1);
 	//- aux.AUX_POWER_OUTLET_VOLTAGE.on_change
 	indigo_update_property(device, AUX_POWER_OUTLET_VOLTAGE_PROPERTY, NULL);
@@ -415,7 +415,7 @@ static void aux_usb_port_handler(indigo_device *device) {
 static void aux_heater_outlet_handler(indigo_device *device) {
 	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_HEATER_OUTLET.on_change
-	wbplusv3_command(device, 3000 + (int)(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
+	wbplusv3_command(device, 3000 + (int)round(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
 	if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
 		indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
 		indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);

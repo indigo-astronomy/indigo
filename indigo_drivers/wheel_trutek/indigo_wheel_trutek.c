@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_wheel_trutek"
 #define DRIVER_LABEL         "Trutek Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Trutek Filter Wheel"
@@ -138,6 +138,8 @@ static void wheel_slot_handler(indigo_device *device) {
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot = buffer[2];
 			if (PRIVATE_DATA->slot == 0) {
 				indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+			} else {
+				INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
 			}
 		} else {
 			INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, NULL);

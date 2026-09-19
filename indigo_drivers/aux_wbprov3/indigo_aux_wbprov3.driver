@@ -1,4 +1,4 @@
-// 
+// Copyright (c) 2024-2026 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -27,8 +27,8 @@
 driver wbprov3 {
 	label = "WandererBox Pro V3 Powerbox";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
-	copyright = "";
-	version = 4;
+	copyright = "Copyright (c) 2024-2026 Rumen G. Bogdanovski";
+	version = 6;
 	serial;
 	define {
 		#define AUX_GROUP	"Powerbox"
@@ -253,7 +253,7 @@ driver wbprov3 {
 				AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM->number.value = PRIVATE_DATA->probe1_temperature;
 				AUX_TEMPERATURE_SENSORS_SENSOR_3_ITEM->number.value = PRIVATE_DATA->probe2_temperature;
 				AUX_TEMPERATURE_SENSORS_SENSOR_4_ITEM->number.value = PRIVATE_DATA->probe3_temperature;
-				if (PRIVATE_DATA->dht22_temperature < -100 && PRIVATE_DATA->probe1_temperature <-100 && PRIVATE_DATA->probe2_temperature && PRIVATE_DATA->probe3_temperature) {
+				if (PRIVATE_DATA->dht22_temperature < -100 && PRIVATE_DATA->probe1_temperature < -100 && PRIVATE_DATA->probe2_temperature < -100 && PRIVATE_DATA->probe3_temperature < -100) {
 					AUX_TEMPERATURE_SENSORS_PROPERTY->state = INDIGO_IDLE_STATE;
 				} else {
 					AUX_TEMPERATURE_SENSORS_PROPERTY->state = INDIGO_OK_STATE;
@@ -410,7 +410,7 @@ driver wbprov3 {
 			group = AUX_GROUP;
 			label = "Regulated outlets voltage";
 			on_change {
-				wbprov3_command(device, 20000 + (int)(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target * 10));
+				wbprov3_command(device, 20000 + (int)round(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target * 10));
 				indigo_sleep(1);
 			}
 			item AUX_POWER_OUTLET_VOLTAGE_1 {
@@ -483,9 +483,9 @@ driver wbprov3 {
 			group = AUX_GROUP;
 			label = "Heater outlets";
 			on_change {
-				wbprov3_command(device, 5000 + (int)(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
-				wbprov3_command(device, 6000 + (int)(AUX_HEATER_OUTLET_2_ITEM->number.target * 255.0 / 100.0));
-				wbprov3_command(device, 7000 + (int)(AUX_HEATER_OUTLET_3_ITEM->number.target * 255.0 / 100.0));
+				wbprov3_command(device, 5000 + (int)round(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
+				wbprov3_command(device, 6000 + (int)round(AUX_HEATER_OUTLET_2_ITEM->number.target * 255.0 / 100.0));
+				wbprov3_command(device, 7000 + (int)round(AUX_HEATER_OUTLET_3_ITEM->number.target * 255.0 / 100.0));
 				if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
 					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
 					indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);

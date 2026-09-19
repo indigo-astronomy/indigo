@@ -1,4 +1,4 @@
-// 
+// Copyright (c) 2024-2026 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -27,8 +27,8 @@
 driver wbplusv3 {
 	label = "WandererBox Plus V3 Powerbox";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
-	copyright = "";
-	version = 5;
+	copyright = "Copyright (c) 2024-2026 Rumen G. Bogdanovski";
+	version = 6;
 	serial;
 	define {
 		#define AUX_GROUP	"Powerbox"
@@ -305,7 +305,7 @@ driver wbplusv3 {
 			group = AUX_GROUP;
 			label = "Regulated outlets voltage";
 			on_change {
-				wbplusv3_command(device, 20000 + (int)(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target * 10));
+				wbplusv3_command(device, 20000 + (int)round(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target * 10));
 				indigo_sleep(1);
 			}
 			item AUX_POWER_OUTLET_VOLTAGE_1 {
@@ -338,7 +338,7 @@ driver wbplusv3 {
 			group = AUX_GROUP;
 			label = "Heater outlets";
 			on_change {
-				wbplusv3_command(device, 3000 + (int)(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
+				wbplusv3_command(device, 3000 + (int)round(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
 				if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
 					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
 					indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);

@@ -138,6 +138,24 @@ cleanup:
 static void output_commands_and_failures(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&driver, "fake-output"));
 	assert_device_interface(TEST_KIND == 1 ? INDIGO_INTERFACE_GUIDER : (TEST_KIND == 2 ? INDIGO_INTERFACE_AUX_LIGHTBOX : INDIGO_INTERFACE_AUX_SHUTTER));
+	// The AUX class defines no base properties, so the concrete driver's own set is the contract.
+#if TEST_KIND == 1
+	static const char *class_properties[] = { GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_DEC_PROPERTY_NAME };
+#elif TEST_KIND == 2
+	static const char *class_properties[] = { AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_INTENSITY_PROPERTY_NAME };
+#else
+	static const char *class_properties[] = { CCD_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_PROPERTY_NAME };
+#endif
+	assert_defined_properties(class_properties, ARRAY_SIZE(class_properties));
+#if TEST_KIND == 2
+	assert_property_has_item(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME);
+	assert_property_has_item(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME);
+	assert_property_has_item(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME);
+	assert_number_item_in_range(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME);
+	// A flat panel has no cover and no outlets.
+	assert_not_defined_property(AUX_COVER_PROPERTY_NAME);
+	assert_not_defined_property(AUX_POWER_OUTLET_PROPERTY_NAME);
+#endif
 #if TEST_KIND == 1
 	const char *properties[] = { "GUIDER_GUIDE_RA", "GUIDER_GUIDE_RA", "GUIDER_GUIDE_DEC", "GUIDER_GUIDE_DEC" };
 	const char *items[] = { "EAST", "WEST", "NORTH", "SOUTH" };

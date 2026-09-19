@@ -1,4 +1,4 @@
-// 
+// Copyright (c) 2024-2026 Rumen G. Bogdanovski
 // All rights reserved.
 
 // You may use this software under the terms of 'INDIGO Astronomy
@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_aux_wbprov3"
 #define DRIVER_LABEL         "WandererBox Pro V3 Powerbox"
 #define AUX_DEVICE_NAME      "WandererBox Pro V3"
@@ -353,7 +353,7 @@ static void aux_timer_callback(indigo_device *device) {
 		AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM->number.value = PRIVATE_DATA->probe1_temperature;
 		AUX_TEMPERATURE_SENSORS_SENSOR_3_ITEM->number.value = PRIVATE_DATA->probe2_temperature;
 		AUX_TEMPERATURE_SENSORS_SENSOR_4_ITEM->number.value = PRIVATE_DATA->probe3_temperature;
-		if (PRIVATE_DATA->dht22_temperature < -100 && PRIVATE_DATA->probe1_temperature <-100 && PRIVATE_DATA->probe2_temperature && PRIVATE_DATA->probe3_temperature) {
+		if (PRIVATE_DATA->dht22_temperature < -100 && PRIVATE_DATA->probe1_temperature < -100 && PRIVATE_DATA->probe2_temperature < -100 && PRIVATE_DATA->probe3_temperature < -100) {
 			AUX_TEMPERATURE_SENSORS_PROPERTY->state = INDIGO_IDLE_STATE;
 		} else {
 			AUX_TEMPERATURE_SENSORS_PROPERTY->state = INDIGO_OK_STATE;
@@ -501,7 +501,7 @@ static void aux_power_outlet_handler(indigo_device *device) {
 static void aux_power_outlet_voltage_handler(indigo_device *device) {
 	AUX_POWER_OUTLET_VOLTAGE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_POWER_OUTLET_VOLTAGE.on_change
-	wbprov3_command(device, 20000 + (int)(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target * 10));
+	wbprov3_command(device, 20000 + (int)round(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target * 10));
 	indigo_sleep(1);
 	//- aux.AUX_POWER_OUTLET_VOLTAGE.on_change
 	indigo_update_property(device, AUX_POWER_OUTLET_VOLTAGE_PROPERTY, NULL);
@@ -523,9 +523,9 @@ static void aux_usb_port_handler(indigo_device *device) {
 static void aux_heater_outlet_handler(indigo_device *device) {
 	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_HEATER_OUTLET.on_change
-	wbprov3_command(device, 5000 + (int)(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
-	wbprov3_command(device, 6000 + (int)(AUX_HEATER_OUTLET_2_ITEM->number.target * 255.0 / 100.0));
-	wbprov3_command(device, 7000 + (int)(AUX_HEATER_OUTLET_3_ITEM->number.target * 255.0 / 100.0));
+	wbprov3_command(device, 5000 + (int)round(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
+	wbprov3_command(device, 6000 + (int)round(AUX_HEATER_OUTLET_2_ITEM->number.target * 255.0 / 100.0));
+	wbprov3_command(device, 7000 + (int)round(AUX_HEATER_OUTLET_3_ITEM->number.target * 255.0 / 100.0));
 	if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
 		indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
 		indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);

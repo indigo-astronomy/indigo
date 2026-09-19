@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_wheel_xagyl"
 #define DRIVER_LABEL         "Xagyl Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Xagyl Filter Wheel"
@@ -74,6 +74,7 @@ static bool xagyl_open(indigo_device *device) {
 				if (indigo_uni_printf(PRIVATE_DATA->handle, "I3") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1) > 0) {
 					INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, buffer);
 					if (indigo_uni_printf(PRIVATE_DATA->handle, "I8") > 0 && indigo_uni_scanf_line(PRIVATE_DATA->handle, "FilterSlots %d", &PRIVATE_DATA->slot) == 1) {
+						indigo_update_property(device, INFO_PROPERTY, NULL);
 						WHEEL_SLOT_ITEM->number.min = 1;
 						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot;
 						if (xagyl_query(device)) {
@@ -91,6 +92,10 @@ static bool xagyl_open(indigo_device *device) {
 
 static void xagyl_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "Unknown");
+		indigo_update_property(device, INFO_PROPERTY, NULL);
 		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
@@ -162,6 +167,13 @@ static indigo_result wheel_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
+		//+ wheel.on_attach
+		INFO_PROPERTY->count = 8;
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_HW_REVISION_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "Unknown");
+		//- wheel.on_attach
 		WHEEL_SLOT_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return wheel_enumerate_properties(device, NULL, NULL);
