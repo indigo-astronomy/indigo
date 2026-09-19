@@ -1757,11 +1757,22 @@ static void frame_types_and_fractional_countdown(void) {
 	arm_gate(&queue_gate);
 	indigo_execute_handler(logical[0], block_queue);
 	ASSERT_TRUE(wait_count(&queue_gate.entered, 1));
+	// The countdown is a display, and it has to be published in whole seconds derived from a
+	// monotonic deadline. Decrementing the requested duration instead would publish 1.5 and 0.5 for
+	// this 2.5 s exposure (DRV-121 / DRV-122), so every value seen below the requested duration is
+	// checked for being integral rather than only for being smaller.
 	double deadline = indigo_monotonic_time() + 2;
-	while (number_value(0, "CCD_EXPOSURE", "EXPOSURE") >= 2.5 && indigo_monotonic_time() < deadline) {
+	double countdown = number_value(0, "CCD_EXPOSURE", "EXPOSURE");
+	while (countdown >= 2.5 && indigo_monotonic_time() < deadline) {
+		indigo_usleep(10000);
+		countdown = number_value(0, "CCD_EXPOSURE", "EXPOSURE");
+	}
+	ASSERT_TRUE(countdown < 2.5);
+	while (indigo_monotonic_time() < deadline) {
+		countdown = number_value(0, "CCD_EXPOSURE", "EXPOSURE");
+		ASSERT_TRUE(fabs(countdown - round(countdown)) < 1e-6);
 		indigo_usleep(10000);
 	}
-	ASSERT_TRUE(number_value(0, "CCD_EXPOSURE", "EXPOSURE") < 2.5);
 	release_gate(&queue_gate);
 	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
 	ASSERT_EQ_INT(2500000, cameras[0].config[SVB_EXPOSURE]);
