@@ -304,3 +304,35 @@ make -C indigo_test test-ccd-playerone-hw
 ```
 
 Result: `Player One hardware: all tests passed`, including pixel formats, ROI/bin, config roundtrip, streaming, guider pulses and driver shutdown/reinitialization. Hotplug was not exercised in this run.
+
+## Fan power reconciliation (2026-09-19)
+
+`cooler_individual_failures` failed intermittently, about once in twenty runs, on
+`change_switch(0, "CCD_COOLER", "OFF", INDIGO_ALERT_STATE)` with the property in OK instead of ALERT.
+
+The cause was in the driver, not in the test. `playerone_set_cooler()` wrote `POA_FAN_POWER` only inside
+the branch that switches `POA_COOLER`, so the fan followed the cooler only in the cycle that toggled it.
+When the fan write was rejected the helper returned false and the temperature poll published ALERT, but
+the cooler itself had already been switched, so the next poll found `POA_COOLER` equal to the requested
+state, wrote nothing, and published OK again. The camera was left running the fan at the previous power
+with no further attempt to correct it and with the property reporting success - the same rejected write is
+retried on every poll for `POA_TARGET_TEMP`, which is why only the fan showed this. The accelerated poll of
+the failure tests reduced that ALERT to a single 10 ms window, and `wait_state()` samples the cached state
+at the same interval, so it missed it in about 5 % of runs.
+
+The fan is now reconciled on every cycle against `PRIVATE_DATA->fan_power`, the last power the driver
+wrote successfully. A rejected write leaves the field unchanged, so the next poll retries it and the
+property stays in ALERT until the write succeeds. `playerone_open()` resets the field to -1 and the first
+cycle adopts the pairing implied by the current cooler state without writing, so a camera that keeps its
+fan setting across sessions is not given a value it was never asked for. The SDK call sequence is
+unchanged whenever the fan already matches: a successful cooler switch still issues
+`POASetConfig(POA_COOLER)` followed by `POASetConfig(POA_FAN_POWER)`, and no read was added.
+
+Driver version 21 -> 22. No test change was needed.
+
+```sh
+cd indigo_test && for i in $(seq 1 40); do ./build/integration/test_ccd_playerone_sdk cooler_individual_failures; done
+```
+
+Result: 40 of 40 runs passed, against 1 failure in 20 runs before the fix; the full fake-SDK suite passed
+three consecutive times, 49 cases each.

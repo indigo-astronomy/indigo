@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000015
+#define DRIVER_VERSION       0x03000016
 #define DRIVER_NAME          "indigo_ccd_playerone"
 #define DRIVER_LABEL         "Player One Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -129,6 +129,7 @@ typedef struct {
 	double exposure_end;
 	double target_temperature, current_temperature;
 	double cooler_power;
+	int fan_power;
 	unsigned char *buffer;
 	long int buffer_size;
 	bool can_check_temperature, has_temperature_sensor;
@@ -337,14 +338,6 @@ static bool playerone_set_cooler(indigo_device *device, bool status, double targ
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_COOLER, %s)", id, value.boolValue ? "true" : "false");
 		}
-		value.intValue = status ? 100 : 0;
-		res = POASetConfig(id, POA_FAN_POWER, value, false);
-		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_FAN_POWER, %d) > %d", id, value.intValue, res);
-			return false;
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_FAN_POWER, %d)", id, value.intValue);
-		}
 	} else if (status) {
 		res = POAGetConfig(id, POA_TARGET_TEMP, &value, &unused);
 		if (res) {
@@ -363,6 +356,23 @@ static bool playerone_set_cooler(indigo_device *device, bool status, double targ
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_TARGET_TEMP, %d)", id, value.intValue);
 			}
 		}
+	}
+	int fan_power = status ? 100 : 0;
+	if (PRIVATE_DATA->fan_power < 0) {
+		// The camera keeps its fan setting across sessions and the driver only ever changed it
+		// together with the cooler, so adopt the pairing at connect instead of writing a value
+		// the camera was never asked for.
+		PRIVATE_DATA->fan_power = fan_power;
+	} else if (PRIVATE_DATA->fan_power != fan_power) {
+		value.intValue = fan_power;
+		res = POASetConfig(id, POA_FAN_POWER, value, false);
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_FAN_POWER, %d) > %d", id, value.intValue, res);
+			return false;
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_FAN_POWER, %d)", id, value.intValue);
+		}
+		PRIVATE_DATA->fan_power = fan_power;
 	}
 	res = POAGetConfig(id, POA_COOLER_POWER, &value, &unused);
 	if (res) {
@@ -829,6 +839,7 @@ static void adjust_preset_switches(indigo_device *device) {
 }
 
 static bool playerone_open(indigo_device *device) {
+	PRIVATE_DATA->fan_power = -1;
 	POAErrors result = POAOpenCamera(PRIVATE_DATA->dev_id);
 	if (result != POA_OK) {
 		return false;
