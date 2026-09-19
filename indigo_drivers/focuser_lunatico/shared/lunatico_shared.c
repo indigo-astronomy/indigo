@@ -216,6 +216,15 @@ typedef struct {
 static void compensate_focus(indigo_device *device, double new_temp);
 
 static lunatico_device_data device_data[MAX_DEVICES] = {0};
+/* configure_ports() is dispatched with INDIGO_ASYNC from three separate property handlers, so a client
+   changing the model and a port assignment in quick succession runs it on two threads at once over the
+   same device_data[].port[] slots. Without this every create/delete of a port device is a race: both
+   threads can pass the "slot occupied" test and free the same device twice, or one can overwrite the
+   slot while the other attaches, leaving a device registered with the bus that nothing can detach any
+   more. The port lifecycle is therefore serialised at the three places that drive it: configure_ports,
+   INDIGO_DRIVER_INIT and INDIGO_DRIVER_SHUTDOWN. create_port_device() calls delete_port_device()
+   internally, so the lock is taken by the callers and never inside those two. */
+static pthread_mutex_t port_lifecycle_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void create_port_device(int device_index, int port_index, device_type_t type);
 static void delete_port_device(int device_index, int port_index);
@@ -726,6 +735,8 @@ static void lunatico_close(indigo_device *device) {
 static void configure_ports(indigo_device *device) {
 	device_type_t exp_device_type, third_device_type;
 
+	pthread_mutex_lock(&port_lifecycle_mutex);
+
 	if (LA_PORT_EXP_FOCUSER_ITEM->sw.value) {
 		exp_device_type = TYPE_FOCUSER;
 	} else if (LA_PORT_EXP_ROTATOR_ITEM->sw.value){
@@ -752,6 +763,7 @@ static void configure_ports(indigo_device *device) {
 		delete_port_device(0, 1);
 		delete_port_device(0, 2);
 	}
+	pthread_mutex_unlock(&port_lifecycle_mutex);
 }
 
 
@@ -1830,13 +1842,18 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PORT_DATA.f_target_position = %d", PORT_DATA.f_target_position);
 
-	if (!lunatico_goto_position(device, (uint32_t)PORT_DATA.f_target_position, (uint32_t)FOCUSER_BACKLASH_ITEM->number.value)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d, %d, %d) failed", PRIVATE_DATA->handle, PORT_DATA.f_target_position, (uint32_t)FOCUSER_BACKLASH_ITEM->number.value);
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-
 	PORT_DATA.prev_temp = new_temp;
 	FOCUSER_POSITION_ITEM->number.value = PORT_DATA.f_current_position;
+	if (!lunatico_goto_position(device, (uint32_t)PORT_DATA.f_target_position, (uint32_t)FOCUSER_BACKLASH_ITEM->number.value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d, %d, %d) failed", PRIVATE_DATA->handle, PORT_DATA.f_target_position, (uint32_t)FOCUSER_BACKLASH_ITEM->number.value);
+		/* the move never started, so do not poll for it: the poll would find the focuser idle at the
+		   unchanged position and overwrite the failure with OK */
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		return;
+	}
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	indigo_set_timer(device, 0.5, focuser_timer_callback, &PORT_DATA.focuser_timer);
@@ -2392,15 +2409,20 @@ indigo_result DRIVER_ENTRY_POINT(indigo_driver_action action, indigo_driver_info
 			last_action = INDIGO_DRIVER_SHUTDOWN;
 			return INDIGO_FAILED;
 		}
+		pthread_mutex_lock(&port_lifecycle_mutex);
 		create_port_device(0, 0, DEFAULT_DEVICE);
+		pthread_mutex_unlock(&port_lifecycle_mutex);
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
 		if (at_least_one_device_connected() == true) return INDIGO_BUSY;
 		last_action = action;
+		/* this also makes the shutdown wait for a reconfiguration that is still in flight */
+		pthread_mutex_lock(&port_lifecycle_mutex);
 		for (int index = 0; index < MAX_PORTS; index++) {
 			delete_port_device(0, index);
 		}
+		pthread_mutex_unlock(&port_lifecycle_mutex);
 		break;
 
 	case INDIGO_DRIVER_INFO:

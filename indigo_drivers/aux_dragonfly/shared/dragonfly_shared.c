@@ -97,7 +97,7 @@ static bool lunatico_command(indigo_device *device, const char *command, char *r
 				break;
 			}
 			if (PRIVATE_DATA->udp) {
-				result = read(PRIVATE_DATA->handle, response, LUNATICO_CMD_LEN);
+				result = read(PRIVATE_DATA->handle, response, max);
 				if (result < 1) {
 					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
@@ -133,7 +133,7 @@ static bool lunatico_get_info(indigo_device *device, char *board, char *firmware
 	const char *models[6] = { "Error", "Seletek", "Armadillo", "Platypus", "Dragonfly", "Limpet" };
 	int fwmaj, fwmin, model, oper, data;
 	char response[LUNATICO_CMD_LEN]={0};
-	if (lunatico_command(device, "!seletek version#", response, sizeof(response), 0)) {
+	if (lunatico_command(device, "!seletek version#", response, sizeof(response) - 1, 0)) {
 		// !seletek version:2510#
 		int parsed = sscanf(response, "!seletek version:%d#", &data);
 		if (parsed != 1) return false;
@@ -161,7 +161,7 @@ static bool lunatico_command_get_result(indigo_device *device, const char *comma
 	char response_prefix[LUNATICO_CMD_LEN];
 	char format[LUNATICO_CMD_LEN];
 
-	if (lunatico_command(device, command, response, sizeof(response), 0)) {
+	if (lunatico_command(device, command, response, sizeof(response) - 1, 0)) {
 		strncpy(response_prefix, command, LUNATICO_CMD_LEN);
 		char *p = strrchr(response_prefix, '#');
 		if (p) *p = ':';
@@ -230,7 +230,7 @@ static bool lunatico_analog_read_sensors(indigo_device *device, int *sensors) {
 	 char format[LUNATICO_CMD_LEN];
 	 int isensors[8];
 
-	 if (lunatico_command(device, "!relio snanrd 0 0 7#", response, sizeof(response), 0)) {
+	 if (lunatico_command(device, "!relio snanrd 0 0 7#", response, sizeof(response) - 1, 0)) {
 		sprintf(format, "!relio snanrd 0 0 7:%%d,%%d,%%d,%%d,%%d,%%d,%%d,%%d#");
 		int parsed = sscanf(response, format, isensors, isensors+1, isensors+2, isensors+3, isensors+4, isensors+5, isensors+6, isensors+7);
 		if (parsed != 8) return false;
@@ -291,7 +291,7 @@ static bool lunatico_read_relays(indigo_device *device, bool *relays) {
 	char format[LUNATICO_CMD_LEN];
 	int irelays[8];
 
-	if (lunatico_command(device, "!relio rldgrd 0 0 7#", response, sizeof(response), 0)) {
+	if (lunatico_command(device, "!relio rldgrd 0 0 7#", response, sizeof(response) - 1, 0)) {
 		sprintf(format, "!relio rldgrd 0 0 7:%%d,%%d,%%d,%%d,%%d,%%d,%%d,%%d#");
 		int parsed = sscanf(response, format, irelays, irelays+1, irelays+2, irelays+3, irelays+4, irelays+5, irelays+6, irelays+7);
 		if (parsed != 8) return false;
