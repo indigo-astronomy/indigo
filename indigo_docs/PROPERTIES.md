@@ -512,14 +512,6 @@ Agent drivers define these properties on top of the common agent filter properti
 
 Source: `indigo_drivers/agent_alpaca/indigo_agent_alpaca.c`.
 
-### ASTAP agent
-
-| Property name | Type | RO | Items | Comments |
-| ----- | ----- | ----- | ----- | ----- |
-| AGENT_ASTAP_INDEX | switch | no | dynamic ASTAP index names | Installed ASTAP index management. Also updates `AGENT_PLATESOLVER_USE_INDEX`. |
-
-Source: `indigo_drivers/agent_astap/indigo_agent_astap.c`.
-
 ### Astrometry agent
 
 | Property name | Type | RO | Items | Comments |
@@ -671,7 +663,7 @@ Source: `indigo_drivers/agent_mount/indigo_agent_mount.c`.
 | AGENT_PLATESOLVER_IMAGE_OUTPUT | blob | yes | IMAGE | Solver output image. |
 | CCD_PREVIEW, CCD_PREVIEW_IMAGE, CCD_JPEG_SETTINGS, CCD_JPEG_STRETCH_PRESETS | mixed | mixed | see CCD property sections | Reuses CCD preview and JPEG properties for plate-solver image preview. |
 
-Source: `indigo_libs/indigo_platesolver.c`; used by `indigo_drivers/agent_solver/indigo_agent_solver.c`, `indigo_drivers/agent_astap/indigo_agent_astap.c`, and `indigo_drivers/agent_astrometry/indigo_agent_astrometry.c`.
+Source: `indigo_libs/indigo_platesolver.c`; used by `indigo_drivers/agent_solver/indigo_agent_solver.c` and `indigo_drivers/agent_astrometry/indigo_agent_astrometry.c`.
 
 ### Scripting agent
 

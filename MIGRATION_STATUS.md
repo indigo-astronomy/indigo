@@ -12,8 +12,6 @@
 | agent_mount             | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 69 / 0 | |
 | agent_scripting         | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 60 / 0 | |
 | agent_astrometry        | 2️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Sim | 31 / 0 | |
-| agent_astap             | 2️⃣ | ❌ No  | ⛔ N/A | ❌ No  | ❌ No  | 0 / 0 | ⛔ Needs fork() & pipes |
-| agent_snoop             | 2️⃣ | ❌ No  | ⛔ N/A | ❌ No  | ❌ No  | 0 / 0 | 🚧 Obsolete |
 | ao_sx                   | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 9 / 0 | |
 | aux_arteskyflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
 | aux_asiair              | 2️⃣ | ⛔ N/A | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ RPi only |

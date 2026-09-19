@@ -172,7 +172,6 @@
 #include "aux_geoptikflat/indigo_aux_geoptikflat.h"
 #include "ccd_svb/indigo_ccd_svb.h"
 #include "ccd_svb2/indigo_ccd_svb2.h"
-#include "agent_astap/indigo_agent_astap.h"
 #include "rotator_optec/indigo_rotator_optec.h"
 #include "mount_starbook/indigo_mount_starbook.h"
 #include "ccd_playerone/indigo_ccd_playerone.h"
@@ -217,7 +216,6 @@
 #ifdef INDIGO_LINUX
 #include "ccd_gphoto2/indigo_ccd_gphoto2.h"
 #endif
-#include "agent_snoop/indigo_agent_snoop.h"
 #include "agent_scripting/indigo_agent_scripting.h"
 #endif
 
@@ -227,14 +225,12 @@ driver_entry_point static_drivers[] = {
 #ifdef STATIC_DRIVERS
 	indigo_agent_alpaca,
 	indigo_agent_astrometry,
-	indigo_agent_astap,
 	indigo_agent_auxiliary,
 	indigo_agent_guider,
 	indigo_agent_imager,
 	indigo_agent_config,
 	indigo_agent_scripting,
 	indigo_agent_mount,
-	indigo_agent_snoop,
 	indigo_agent_test,
 	indigo_ao_sx,
 	indigo_aux_arteskyflat,
