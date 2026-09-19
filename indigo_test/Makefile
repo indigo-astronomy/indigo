@@ -135,6 +135,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_rotator_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_optec_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_lunatico_simulator \
+	$(INTEGRATION_BUILD)/test_rotator_lunatico_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_wa_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_astromechanics_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_askar_simulator \
@@ -1664,24 +1665,35 @@ $(INTEGRATION_BUILD)/test_guider_cgusbst4_simulator: integration/test_guider_cgu
 test-guider-cgusbst4-simulator-known-defects: $(INTEGRATION_BUILD)/test_guider_cgusbst4_simulator
 	$(INTEGRATION_BUILD)/test_guider_cgusbst4_simulator --known-defects
 
-$(INTEGRATION_BUILD)/rotator_lunatico_simulator: ../indigo_drivers/rotator_lunatico/rotator_lunatico_simulator/rotator_lunatico_simulator.c simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+LUNATICO_SIMULATOR_SOURCES = ../indigo_drivers/focuser_lunatico/focuser_lunatico_simulator/lunatico_simulator_common.h simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h simulator_common/serial_motion.h
+
+$(INTEGRATION_BUILD)/focuser_lunatico_simulator: ../indigo_drivers/focuser_lunatico/focuser_lunatico_simulator/focuser_lunatico_simulator.c $(LUNATICO_SIMULATOR_SOURCES) | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
-$(INTEGRATION_BUILD)/rotator_lunatico_udp_simulator: ../indigo_drivers/rotator_lunatico/rotator_lunatico_simulator/rotator_lunatico_simulator.c simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/rotator_lunatico_simulator: ../indigo_drivers/rotator_lunatico/rotator_lunatico_simulator/rotator_lunatico_simulator.c $(LUNATICO_SIMULATOR_SOURCES) | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
+
+$(INTEGRATION_BUILD)/rotator_lunatico_udp_simulator: ../indigo_drivers/rotator_lunatico/rotator_lunatico_simulator/rotator_lunatico_simulator.c $(LUNATICO_SIMULATOR_SOURCES) | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DSIM_UDP=1 -o $@ $< -lm
 
 ROTATOR_LUNATICO_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_rotator_lunatico.a $(TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_rotator_lunatico_simulator: integration/test_rotator_lunatico_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_lunatico_simulator $(BUILD_DRIVERS)/indigo_rotator_lunatico.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_rotator_lunatico_simulator: integration/test_rotator_lunatico_simulator.c integration/aux_test_isolation.h integration/lunatico_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_lunatico_simulator $(BUILD_DRIVERS)/indigo_rotator_lunatico.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(ROTATOR_LUNATICO_TEST_LDFLAGS)
 
 FOCUSER_LUNATICO_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_lunatico.a $(TEST_LDFLAGS)
 
-# Shares rotator_lunatico's simulator: both drivers are built from shared/lunatico_shared.c.
-$(INTEGRATION_BUILD)/test_focuser_lunatico_simulator: integration/test_focuser_lunatico_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_lunatico_simulator $(BUILD_DRIVERS)/indigo_focuser_lunatico.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_focuser_lunatico_simulator: integration/test_focuser_lunatico_simulator.c integration/aux_test_isolation.h integration/lunatico_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_lunatico_simulator $(BUILD_DRIVERS)/indigo_focuser_lunatico.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_LUNATICO_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_rotator_lunatico_udp_simulator: integration/test_rotator_lunatico_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_lunatico_udp_simulator $(BUILD_DRIVERS)/indigo_rotator_lunatico.a | $(INTEGRATION_BUILD)
+# opt-in sanitizer builds, driver compiled into the test, not part of test-integration
+$(INTEGRATION_BUILD)/test_focuser_lunatico_simulator_asan: integration/test_focuser_lunatico_simulator.c ../indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.c integration/aux_test_isolation.h integration/lunatico_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_lunatico_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.c $(TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_rotator_lunatico_simulator_asan: integration/test_rotator_lunatico_simulator.c ../indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.c integration/aux_test_isolation.h integration/lunatico_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_lunatico_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.c $(TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_rotator_lunatico_udp_simulator: integration/test_rotator_lunatico_simulator.c integration/aux_test_isolation.h integration/lunatico_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_lunatico_udp_simulator $(BUILD_DRIVERS)/indigo_rotator_lunatico.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DLUNATICO_SIMULATOR='"build/integration/rotator_lunatico_udp_simulator"' -o $@ $< $(ROTATOR_LUNATICO_TEST_LDFLAGS)
 
 .PHONY: test-rotator-lunatico-udp

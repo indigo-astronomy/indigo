@@ -622,6 +622,8 @@
 		598FE27D2614F91B00E0DA21 /* indigo_dome_talon6ror.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D8BBEF2613B4A200B904EE /* indigo_dome_talon6ror.c */; };
 		59910B3530554BB600FB1C2F /* indigo_ccd_qhy2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 59910B3230554BB600FB1C2F /* indigo_ccd_qhy2.cpp */; };
 		59910B3730554BB600FB1C2F /* indigo_ccd_qhy2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 59910B3230554BB600FB1C2F /* indigo_ccd_qhy2.cpp */; };
+		59910CCA305F0D4C00FB1C2F /* lunatico_shared.c in Sources */ = {isa = PBXBuildFile; fileRef = 59910CC8305F0D3900FB1C2F /* lunatico_shared.c */; };
+		59910CCB305F0D4C00FB1C2F /* lunatico_shared.c in Sources */ = {isa = PBXBuildFile; fileRef = 59910CC8305F0D3900FB1C2F /* lunatico_shared.c */; };
 		599150D329EF2AC900E63C3B /* libstarshootg.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CD0EF29805E30003243AE /* libstarshootg.dylib */; };
 		599150D429EF2AC900E63C3B /* libstarshootg.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CD0EF29805E30003243AE /* libstarshootg.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */; };
@@ -1441,8 +1443,6 @@
 		5931B7242535F726008F74A1 /* remote_server_client.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = remote_server_client.c; sourceTree = "<group>"; };
 		5931B7272535FA8A008F74A1 /* libindigo.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libindigo.dylib; path = build/lib/libindigo.dylib; sourceTree = "<group>"; };
 		5931B72B2535FAE0008F74A1 /* indigo_ccd_simulator.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = indigo_ccd_simulator.dylib; path = build/drivers/indigo_ccd_simulator.dylib; sourceTree = "<group>"; };
-		5932879D2409AC3E00ED61C0 /* lunatico_main_shared.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = lunatico_main_shared.c; path = shared/lunatico_main_shared.c; sourceTree = "<group>"; };
-		5932879E2409AC3E00ED61C0 /* lunatico_shared.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = lunatico_shared.c; path = shared/lunatico_shared.c; sourceTree = "<group>"; };
 		593287A22409ACC700ED61C0 /* indigo_rotator_lunatico.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_rotator_lunatico.c; sourceTree = "<group>"; };
 		593287A32409ACC700ED61C0 /* indigo_rotator_lunatico_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_rotator_lunatico_main.c; sourceTree = "<group>"; };
 		593287A42409ACC700ED61C0 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -2695,6 +2695,18 @@
 		59910C6E305EF74800FB1C2F /* dragonfly_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dragonfly_simulator_common.h; sourceTree = "<group>"; };
 		59910C6F305EF9B500FB1C2F /* indigo_aux_dragonfly.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_aux_dragonfly.driver; sourceTree = "<group>"; };
 		59910C70305EFA4E00FB1C2F /* indigo_dome_dragonfly.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_dome_dragonfly.driver; sourceTree = "<group>"; };
+		59910CC7305F0D3900FB1C2F /* lunatico_main_shared.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = lunatico_main_shared.c; sourceTree = "<group>"; };
+		C0DE2027091300040000000B /* indigo_focuser_lunatico.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_focuser_lunatico.vcxproj; sourceTree = "<group>"; };
+		C0DE2027091300040000000C /* indigo_rotator_lunatico.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_rotator_lunatico.vcxproj; sourceTree = "<group>"; };
+		C0DE20270913000400000001 /* indigo_focuser_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_lunatico.driver; sourceTree = "<group>"; };
+		C0DE20270913000400000002 /* indigo_rotator_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_lunatico.driver; sourceTree = "<group>"; };
+		C0DE20270913000400000003 /* lunatico_shared.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lunatico_shared.h; sourceTree = "<group>"; };
+		C0DE20270913000400000005 /* focuser_lunatico_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_lunatico_simulator.c; sourceTree = "<group>"; };
+		C0DE20270913000400000006 /* lunatico_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lunatico_simulator_common.h; sourceTree = "<group>"; };
+		C0DE2027091300040000000A /* rotator_lunatico_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = rotator_lunatico_simulator.c; sourceTree = "<group>"; };
+		C0DE20270913000400000007 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20270913000400000008 /* lunatico_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lunatico_test_common.h; sourceTree = "<group>"; };
+		59910CC8305F0D3900FB1C2F /* lunatico_shared.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = lunatico_shared.c; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -2766,8 +2778,6 @@
 		5996615622CF3E0F00330652 /* aux_ppb_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = aux_ppb_simulator.ino; sourceTree = "<group>"; };
 		5996615722CF3E0F00330652 /* 99-indigo_aux_ppb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_aux_ppb.rules"; sourceTree = "<group>"; };
 		5996615922CF55E800330652 /* .editorconfig */ = {isa = PBXFileReference; lastKnownFileType = text; path = .editorconfig; sourceTree = "<group>"; };
-		5996BBE7240BE8A900AC68C4 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
-		5996BBE8240BE9F200AC68C4 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_sx.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		5999FB671DA40B380084BBF8 /* indigo_ccd_sx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_sx.h; sourceTree = "<group>"; };
 		5999FB691DA40B380084BBF8 /* indigo_ccd_sx_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_sx_main.c; sourceTree = "<group>"; };
@@ -6875,10 +6885,13 @@
 			isa = PBXGroup;
 			children = (
 				593287A42409ACC700ED61C0 /* README.md */,
-				5996BBE8240BE9F200AC68C4 /* Makefile.inc */,
+				C0DE20270913000400000007 /* REFACTOR.md */,
+				C0DE20270913000400000002 /* indigo_rotator_lunatico.driver */,
 				593287A52409ACC700ED61C0 /* indigo_rotator_lunatico.h */,
 				593287A22409ACC700ED61C0 /* indigo_rotator_lunatico.c */,
 				593287A32409ACC700ED61C0 /* indigo_rotator_lunatico_main.c */,
+				C0DE20270913000400000009 /* rotator_lunatico_simulator */,
+				C0DE2027091300040000000C /* indigo_rotator_lunatico.vcxproj */,
 			);
 			path = rotator_lunatico;
 			sourceTree = "<group>";
@@ -8909,6 +8922,33 @@
 				59910BF1305B1CD600FB1C2F /* gps_gpsd_simulator.c */,
 			);
 			path = gps_gpsd_simulator;
+			sourceTree = "<group>";
+		};
+		C0DE20270913000400000004 /* focuser_lunatico_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20270913000400000006 /* lunatico_simulator_common.h */,
+				C0DE20270913000400000005 /* focuser_lunatico_simulator.c */,
+			);
+			path = focuser_lunatico_simulator;
+			sourceTree = "<group>";
+		};
+		C0DE20270913000400000009 /* rotator_lunatico_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE2027091300040000000A /* rotator_lunatico_simulator.c */,
+			);
+			path = rotator_lunatico_simulator;
+			sourceTree = "<group>";
+		};
+		59910CC9305F0D3900FB1C2F /* shared */ = {
+			isa = PBXGroup;
+			children = (
+				59910CC7305F0D3900FB1C2F /* lunatico_main_shared.c */,
+				59910CC8305F0D3900FB1C2F /* lunatico_shared.c */,
+				C0DE20270913000400000003 /* lunatico_shared.h */,
+			);
+			path = shared;
 			sourceTree = "<group>";
 		};
 		5992F7B01E1EC84B0035242E /* ccd_fli */ = {
@@ -13810,12 +13850,13 @@
 			children = (
 				59F1AD0F23FB15A400008F02 /* README.md */,
 				0CCCD046232F755B98098609 /* REFACTOR.md */,
-				5996BBE7240BE8A900AC68C4 /* Makefile.inc */,
-				5932879E2409AC3E00ED61C0 /* lunatico_shared.c */,
+				C0DE20270913000400000001 /* indigo_focuser_lunatico.driver */,
 				59F1AD1123FB15A400008F02 /* indigo_focuser_lunatico.h */,
 				59F1AD0E23FB15A400008F02 /* indigo_focuser_lunatico.c */,
-				5932879D2409AC3E00ED61C0 /* lunatico_main_shared.c */,
 				59F1AD1023FB15A400008F02 /* indigo_focuser_lunatico_main.c */,
+				59910CC9305F0D3900FB1C2F /* shared */,
+				C0DE20270913000400000004 /* focuser_lunatico_simulator */,
+				C0DE2027091300040000000B /* indigo_focuser_lunatico.vcxproj */,
 			);
 			path = focuser_lunatico;
 			sourceTree = "<group>";
@@ -14031,6 +14072,7 @@
 				592C33AE304F6126004D5AE6 /* test_rotator_asi_sdk.c */,
 				59FEFFC7301E6891007FB62D /* test_rotator_falcon2_simulator.c */,
 				59910A5C305289D700FB1C2F /* test_rotator_lunatico_simulator.c */,
+				C0DE20270913000400000008 /* lunatico_test_common.h */,
 				94BE8552FF00DAB86CD2672A /* test_focuser_lunatico_simulator.c */,
 				5984A384303CDA7400D581D2 /* test_rotator_optec_simulator.c */,
 				59FA7BFB301D3F5A00A35CFB /* test_rotator_simulator.c */,
@@ -17174,6 +17216,7 @@
 				598A1BEC259BA94A00C0B34C /* indigo_ccd_dsi.c in Sources */,
 				59111CE5285F503400E57194 /* indigocat_dso.c in Sources */,
 				598A1BEE259BA94A00C0B34C /* indigo_focuser_driver.c in Sources */,
+				59910CCB305F0D4C00FB1C2F /* lunatico_shared.c in Sources */,
 				598A1BEF259BA94A00C0B34C /* indigo_io.c in Sources */,
 				9D1541EC2F2A0ACD00B7045F /* indigo_agent_solver.c in Sources */,
 				598A1BF1259BA94A00C0B34C /* DDHidAppleRemote.m in Sources */,
@@ -17291,6 +17334,7 @@
 				5911B6D922633DBE00D6B9EC /* indigo_agent_guider.c in Sources */,
 				59111CFB285F504300E57194 /* indigocat_saturn.c in Sources */,
 				5951E149235CDC0400D2DEF1 /* indigo_aux_usbdp.c in Sources */,
+				59910CCA305F0D4C00FB1C2F /* lunatico_shared.c in Sources */,
 				599C9A4E1DA022E3008BBCC1 /* indigo_bus.c in Sources */,
 				59BBD186218236C4008199D6 /* indigo_ccd_altair.c in Sources */,
 				59F4EC731E941D2500CC7772 /* indigo_ccd_sbig.c in Sources */,

@@ -52,7 +52,6 @@
 | ccd_mi                  | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 17 / 1 | ⛔ Unix and Windows SDKs are not compatible |
 | ccd_ogma                | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
 | ccd_omegonpro           | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
-| ccd_pentax              | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | 🚧 Unfinished & stalled |
 | ccd_playerone           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 48 / 1 | |
 | ccd_ptp                 | 3️⃣ | ❌ No  | ❌ No  | ✅ Yes | ✅ HW  | 128 / 4 | |
 | ccd_qhy                 | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ⚠️ HW  | 37 / 9 | ⏰ TODO - make libqhy for Windows |
@@ -90,7 +89,7 @@
 | focuser_ioptron         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 40 / 0 | |
 | focuser_lacerta         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 43 / 0 | |
 | focuser_lakeside        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 16 / 0 | |
-| focuser_lunatico        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ✅ Sim | 11 / 0 | |
+| focuser_lunatico        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 50 / 0 | |
 | focuser_mjkzz           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 19 / 0 | |
 | focuser_mjkzz_bt        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ macOS only |
 | focuser_moonlite        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 20 / 0 | |
@@ -127,7 +126,7 @@
 | polaralign_simulator    | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 11 / 0 | |
 | rotator_asi             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 11 / 0 | |
 | rotator_falcon          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 13 / 0 | `test_rotator_falcon2_simulator.c`, covers both protocol generations |
-| rotator_lunatico        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 7 / 0 | |
+| rotator_lunatico        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 27 / 0 | |
 | rotator_optec           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 10 / 0 | |
 | rotator_simulator       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
 | rotator_wa              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 34 / 0 | |

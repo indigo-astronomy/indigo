@@ -1156,11 +1156,17 @@ Source: `indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.driver`.
 
 ### focuser_lunatico / rotator_lunatico shared
 
-Custom properties: `AUX_GPIO_SENSORS`, `AUX_OUTLET_NAMES`, `AUX_SENSOR_NAMES`, `LA_MOTOR_TYPE`, `LA_MOTOR_WIRING`, `LA_POWER_CONTROL`, `LA_STEP_MODE`, `LA_TEMPERATURE_SENSOR`, `LUNATICO_MODEL`, `LUNATICO_PORT_EXP_CONFIG`, `LUNATICO_PORT_THIRD_CONFIG`.
+Custom properties: `AUX_GPIO_SENSORS`, `AUX_OUTLET_NAMES`, `AUX_POWER_OUTLET`, `AUX_SENSOR_NAMES`, `X_FOCUSER_MOTOR_TYPE`, `X_FOCUSER_MOTOR_WIRING`, `X_FOCUSER_POWER_CONTROL`, `X_FOCUSER_STEP_MODE`, `X_FOCUSER_TEMPERATURE_SENSOR`, `X_ROTATOR_MOTOR_TYPE`, `X_ROTATOR_MOTOR_WIRING`, `X_ROTATOR_POWER_CONTROL`, `X_ROTATOR_STEP_MODE`.
 
-Driver-specific use of existing properties: `AUX_POWER_OUTLET`, `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`, `ROTATOR_BACKLASH`, `ROTATOR_DIRECTION`, `ROTATOR_LIMITS`, `ROTATOR_STEPS_PER_REVOLUTION`.
+Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`, `ROTATOR_BACKLASH`, `ROTATOR_DIRECTION`, `ROTATOR_LIMITS`, `ROTATOR_STEPS_PER_REVOLUTION`.
 
-Source: `indigo_drivers/focuser_lunatico/shared/lunatico_shared.c`.
+Each driver exposes seven logical devices: the Main port in the driver's own class, and the Exp and Third ports as a focuser, a rotator and a powerbox each. A port carries one stepper and one DB9 connector, so the devices of one port are mutually exclusive and the first one to connect claims it. Only the Main device publishes `DEVICE_PORT`, `DEVICE_PORTS` and `DEVICE_BAUDRATE`; the other devices open the controller through it.
+
+The motor settings are per port and are therefore published by every stepper device, qualified by class: step mode (full or half), coil current for moving and for standing still as a percentage the driver scales into the controller's 0...1023 range, motor wiring (Lunatico or RF/Moonlite, combined with `FOCUSER_REVERSE_MOTION` or `ROTATOR_DIRECTION` into one controller value) and motor type (unipolar, bipolar, DC or step-dir). `X_FOCUSER_TEMPERATURE_SENSOR` selects the internal or the external probe and exists on focuser devices only.
+
+`FOCUSER_SPEED` is a step rate in kHz that the driver sends as a microsecond range. `FOCUSER_LIMITS` and `ROTATOR_LIMITS` are the controller's software limits; a range spanning the full travel deletes them instead of writing a degenerate one. `FOCUSER_BACKLASH` and `ROTATOR_BACKLASH` are passed to the controller with each absolute move and are not applied to relative steps. Rotator angles are converted to steps against `ROTATOR_STEPS_PER_REVOLUTION` with `ROTATOR_LIMITS.MIN_POSITION` as the zero offset, and changing either of those re-syncs the controller's counter so the reported angle does not move. The powerbox outlets and GPIO sensors are addressed with horizontally flipped DB9 pins, so outlet 1 drives pin 4 and sensor 1 reads pin 8.
+
+Source: `indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.driver`, `indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.driver`, `indigo_drivers/focuser_lunatico/shared/lunatico_shared.c`.
 
 ### focuser_mjkzz
 

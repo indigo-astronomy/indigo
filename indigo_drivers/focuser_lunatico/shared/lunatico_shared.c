@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2025 Rumen G. Bogdanovski
+// Copyright (C) 2020-2026 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -18,2408 +18,932 @@
 
 // version history
 // 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// 3.0 refactoring to indigo_generator by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Lunatico Armadillo, Platypus etc. focuser driver
+/** INDIGO Lunatico Astronomia shared implementation
  \file lunatico_shared.c
  */
 
-#define FOCUSER_LUNATICO_NAME    "Focuser Lunatico"
-#define ROTATOR_LUNATICO_NAME    "Rotator Lunatico"
-#define AUX_LUNATICO_NAME        "Powerbox Lunatico"
+// Transport, identity, port ownership, stepper, temperature and powerbox
+// implementation shared by indigo_focuser_lunatico and indigo_rotator_lunatico.
+// Both .driver definitions include this file from their code { } block, so it is
+// emitted into the generated low level code section where the private data type
+// and the inherited property macros are already known.
+//
+// Each physical port is represented by a focuser, a rotator and a powerbox
+// logical device, because the generator attaches every declared device block
+// statically. The hardware has one stepper and one DB9 connector per port, so
+// the three devices of a port share one lunatico_port_state and only the one
+// that claimed the port may talk to it.
+//
+// The driver-specific properties of a port live in the shared private data of
+// the generated driver, so each logical device has to declare its own handles;
+// the helpers below therefore take the property as an argument instead of using
+// a macro, which keeps one implementation for all of them.
 
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <math.h>
-#include <assert.h>
-#include <errno.h>
-#include <pthread.h>
-#include <stdbool.h>
-#include <sys/time.h>
+// The port index is stored in the general purpose bits of the logical device by
+// its on_attach block.
+#define PORT_INDEX                  ((int)(device->gp_bits & 0x0F))
+#define PORT_STATE                  (PRIVATE_DATA->port[PORT_INDEX])
 
-#include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_usb_utils.h>
-#include <indigo/indigo_io.h>
-#include <indigo/indigo_client.h>
-#include <indigo/indigo_aux_driver.h>
+static const char *lunatico_port_name[LUNATICO_PORTS] = { "Main", "Exp", "Third" };
 
-#define DEFAULT_BAUDRATE            "115200"
+// --------------------------------------------------------------------------------- Transport
 
-#define MAX_PORTS  3
-#define MAX_DEVICES 4
-
-#define DEVICE_CONNECTED_MASK            0x80
-#define PORT_INDEX_MASK                  0x0F
-
-#define DEVICE_CONNECTED                 (device->gp_bits & DEVICE_CONNECTED_MASK)
-
-#define is_connected(dev)                ((dev) && (dev)->gp_bits & DEVICE_CONNECTED_MASK)
-#define set_connected_flag(dev)          ((dev)->gp_bits |= DEVICE_CONNECTED_MASK)
-#define clear_connected_flag(dev)        ((dev)->gp_bits &= ~DEVICE_CONNECTED_MASK)
-
-#define get_port_index(dev)              ((dev)->gp_bits & PORT_INDEX_MASK)
-#define set_port_index(dev, index)       ((dev)->gp_bits = ((dev)->gp_bits & ~PORT_INDEX_MASK) | (PORT_INDEX_MASK & index))
-
-#define device_exists(device_index, port_index) (device_data[device_index].port[port_index] != NULL)
-
-#define PRIVATE_DATA                    ((lunatico_private_data *)device->private_data)
-#define PORT_DATA                       (PRIVATE_DATA->port_data[get_port_index(device)])
-
-#define LA_MODEL_PROPERTY               (PORT_DATA.model_property)
-#define LA_MODEL_LIMPET_ITEM            (LA_MODEL_PROPERTY->items+0)
-#define LA_MODEL_ARMADILLO_ITEM         (LA_MODEL_PROPERTY->items+1)
-#define LA_MODEL_PLATYPUS_ITEM          (LA_MODEL_PROPERTY->items+2)
-
-#define LA_MODEL_PROPERTY_NAME          "LUNATICO_MODEL"
-#define LA_MODEL_LIMPET_ITEM_NAME       "LIMPET"
-#define LA_MODEL_ARMADILLO_ITEM_NAME    "ARMADILLO"
-#define LA_MODEL_PLATYPUS_ITEM_NAME     "PLATYPUS"
-
-#define LA_PORT_EXP_CONFIG_PROPERTY    (PORT_DATA.port_exp_config)
-#define LA_PORT_EXP_FOCUSER_ITEM       (LA_PORT_EXP_CONFIG_PROPERTY->items+0)
-#define LA_PORT_EXP_ROTATOR_ITEM       (LA_PORT_EXP_CONFIG_PROPERTY->items+1)
-#define LA_PORT_EXP_AUX_POWERBOX_ITEM  (LA_PORT_EXP_CONFIG_PROPERTY->items+2)
-
-#define LA_PORT_THIRD_CONFIG_PROPERTY    (PORT_DATA.port_third_config)
-#define LA_PORT_THIRD_FOCUSER_ITEM       (LA_PORT_THIRD_CONFIG_PROPERTY->items+0)
-#define LA_PORT_THIRD_ROTATOR_ITEM       (LA_PORT_THIRD_CONFIG_PROPERTY->items+1)
-#define LA_PORT_THIRD_AUX_POWERBOX_ITEM  (LA_PORT_THIRD_CONFIG_PROPERTY->items+2)
-
-#define LA_PORT_EXP_CONFIG_PROPERTY_NAME        "LUNATICO_PORT_EXP_CONFIG"
-#define LA_PORT_THIRD_CONFIG_PROPERTY_NAME      "LUNATICO_PORT_THIRD_CONFIG"
-#define LA_PORT_CONFIG_FOCUSER_ITEM_NAME        "FOCUSER"
-#define LA_PORT_CONFIG_ROTATOR_ITEM_NAME        "ROTATOR"
-#define LA_PORT_CONFIG_AUX_POWERBOX_ITEM_NAME   "AUX_POWERBOX"
-
-
-#define LA_STEP_MODE_PROPERTY          (PORT_DATA.step_mode_property)
-#define LA_STEP_MODE_FULL_ITEM         (LA_STEP_MODE_PROPERTY->items+0)
-#define LA_STEP_MODE_HALF_ITEM         (LA_STEP_MODE_PROPERTY->items+1)
-
-#define LA_STEP_MODE_PROPERTY_NAME     "LA_STEP_MODE"
-#define LA_STEP_MODE_FULL_ITEM_NAME    "FULL"
-#define LA_STEP_MODE_HALF_ITEM_NAME    "HALF"
-
-#define LA_POWER_CONTROL_PROPERTY         (PORT_DATA.current_control_property)
-#define LA_POWER_CONTROL_MOVE_ITEM        (LA_POWER_CONTROL_PROPERTY->items+0)
-#define LA_POWER_CONTROL_STOP_ITEM        (LA_POWER_CONTROL_PROPERTY->items+1)
-
-#define LA_POWER_CONTROL_PROPERTY_NAME    "LA_POWER_CONTROL"
-#define LA_POWER_CONTROL_MOVE_ITEM_NAME   "MOVE_POWER"
-#define LA_POWER_CONTROL_STOP_ITEM_NAME   "STOP_POWER"
-
-#define LA_TEMPERATURE_SENSOR_PROPERTY      (PORT_DATA.temperature_sensor_property)
-#define LA_TEMPERATURE_SENSOR_INTERNAL_ITEM (LA_TEMPERATURE_SENSOR_PROPERTY->items+0)
-#define LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM (LA_TEMPERATURE_SENSOR_PROPERTY->items+1)
-
-#define LA_TEMPERATURE_SENSOR_PROPERTY_NAME        "LA_TEMPERATURE_SENSOR"
-#define LA_TEMPERATURE_SENSOR_INTERNAL_ITEM_NAME   "INTERNAL"
-#define LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM_NAME   "EXTERNAL"
-
-#define LA_WIRING_PROPERTY          (PORT_DATA.wiring_property)
-#define LA_WIRING_LUNATICO_ITEM     (LA_WIRING_PROPERTY->items+0)
-#define LA_WIRING_MOONLITE_ITEM     (LA_WIRING_PROPERTY->items+1)
-
-#define LA_WIRING_PROPERTY_NAME        "LA_MOTOR_WIRING"
-#define LA_WIRING_LUNATICO_ITEM_NAME   "LUNATICO"
-#define LA_WIRING_MOONLITE_ITEM_NAME   "MOONLITE"
-
-#define LA_MOTOR_TYPE_PROPERTY         (PORT_DATA.motor_type_property)
-#define LA_MOTOR_TYPE_UNIPOLAR_ITEM    (LA_MOTOR_TYPE_PROPERTY->items+0)
-#define LA_MOTOR_TYPE_BIPOLAR_ITEM     (LA_MOTOR_TYPE_PROPERTY->items+1)
-#define LA_MOTOR_TYPE_DC_ITEM          (LA_MOTOR_TYPE_PROPERTY->items+2)
-#define LA_MOTOR_TYPE_STEP_DIR_ITEM    (LA_MOTOR_TYPE_PROPERTY->items+3)
-
-#define LA_MOTOR_TYPE_PROPERTY_NAME        "LA_MOTOR_TYPE"
-#define LA_MOTOR_TYPE_UNIPOLAR_ITEM_NAME   "UNIPOLAR"
-#define LA_MOTOR_TYPE_BIPOLAR_ITEM_NAME    "BIPOLAR"
-#define LA_MOTOR_TYPE_DC_ITEM_NAME         "DC"
-#define LA_MOTOR_TYPE_STEP_DIR_ITEM_NAME   "STEP_DIR"
-
-#define AUX_POWERBOX_GROUP	"Powerbox"
-
-#define AUX_OUTLET_NAMES_PROPERTY      (PORT_DATA.outlet_names_property)
-#define AUX_OUTLET_NAME_1_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 0)
-#define AUX_OUTLET_NAME_2_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 1)
-#define AUX_OUTLET_NAME_3_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 2)
-#define AUX_OUTLET_NAME_4_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 3)
-
-#define AUX_POWER_OUTLET_PROPERTY      (PORT_DATA.power_outlet_property)
-#define AUX_POWER_OUTLET_1_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 0)
-#define AUX_POWER_OUTLET_2_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 1)
-#define AUX_POWER_OUTLET_3_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 2)
-#define AUX_POWER_OUTLET_4_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 3)
-
-#define AUX_SENSORS_GROUP	"Sensors"
-
-#define AUX_SENSOR_NAMES_PROPERTY      (PORT_DATA.sensor_names_property)
-#define AUX_SENSOR_NAME_1_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 0)
-#define AUX_SENSOR_NAME_2_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 1)
-#define AUX_SENSOR_NAME_3_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 2)
-#define AUX_SENSOR_NAME_4_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 3)
-
-#define AUX_GPIO_SENSORS_PROPERTY     (PORT_DATA.sensors_property)
-#define AUX_GPIO_SENSOR_1_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 0)
-#define AUX_GPIO_SENSOR_2_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 1)
-#define AUX_GPIO_SENSOR_3_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 2)
-#define AUX_GPIO_SENSOR_4_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 3)
-
-
-typedef enum {
-	TYPE_FOCUSER = 0,
-	TYPE_ROTATOR = 1,
-	TYPE_AUX     = 2
-} device_type_t;
-
-
-static const char *port_name[3] = { "Main", "Exp", "Third" };
-
-typedef struct {
-	int f_current_position,
-	    f_target_position,
-	    backlash,
-	    temperature_sensor_index;
-	device_type_t device_type;
-	double r_target_position, r_current_position, prev_temp;
-	bool has_temperature_sensor;
-	indigo_timer *focuser_timer;
-	indigo_timer *rotator_timer;
-	indigo_timer *temperature_timer;
-	indigo_timer *sensors_timer;
-	indigo_property *step_mode_property,
-	                *current_control_property,
-	                *model_property,
-	                *port_exp_config,
-	                *port_third_config,
-	                *temperature_sensor_property,
-	                *wiring_property,
-	                *motor_type_property,
-	                *outlet_names_property,
-	                *power_outlet_property,
-	                *sensor_names_property,
-	                *sensors_property;
-} lunatico_port_data;
-
-typedef struct {
-	int handle;
-	int count_open;
-	bool udp;
-	pthread_mutex_t port_mutex;
-	lunatico_port_data port_data[MAX_PORTS];
-} lunatico_private_data;
-
-typedef struct {
-	indigo_device *port[MAX_PORTS];
-	lunatico_private_data *private_data;
-} lunatico_device_data;
-
-static void compensate_focus(indigo_device *device, double new_temp);
-
-static lunatico_device_data device_data[MAX_DEVICES] = {0};
-/* configure_ports() is dispatched with INDIGO_ASYNC from three separate property handlers, so a client
-   changing the model and a port assignment in quick succession runs it on two threads at once over the
-   same device_data[].port[] slots. Without this every create/delete of a port device is a race: both
-   threads can pass the "slot occupied" test and free the same device twice, or one can overwrite the
-   slot while the other attaches, leaving a device registered with the bus that nothing can detach any
-   more. The port lifecycle is therefore serialised at the three places that drive it: configure_ports,
-   INDIGO_DRIVER_INIT and INDIGO_DRIVER_SHUTDOWN. create_port_device() calls delete_port_device()
-   internally, so the lock is taken by the callers and never inside those two. */
-static pthread_mutex_t port_lifecycle_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-static void create_port_device(int device_index, int port_index, device_type_t type);
-static void delete_port_device(int device_index, int port_index);
-
-/* Linatico Astronomia device Commands ======================================================================== */
-
-#define LUNATICO_CMD_LEN 100
-
-typedef enum {
-	MODEL_SELETEK = 1,
-	MODEL_ARMADILLO = 2,
-	MODEL_PLATYPUS = 3,
-	MODEL_DRAGONFLY = 4,
-	MODEL_LIMPET = 5
-} lunatico_model_t;
-
-typedef enum {
-	STEP_MODE_FULL = 0,
-	STEP_MODE_HALF = 1,
-} step_mode_t;
-
-typedef enum {
-	MW_LUNATICO_NORMAL = 0,
-	MW_LUNATICO_REVERSED = 1,
-	MW_MOONLITE_NORMAL = 2,
-	MW_MOONLITE_REVERSED = 3
-} wiring_t;
-
-typedef enum {
-	MT_UNIPOLAR = 0,
-	MT_BIPOLAR = 1,
-	MT_DC = 2,
-	MT_STEP_DIR = 3
-} motor_types_t;
-
-#define NO_TEMP_READING                (-25)
-
-
-static bool lunatico_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
-	char c;
-	char buff[LUNATICO_CMD_LEN];
-	struct timeval tv;
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	// flush
-	while (true) {
-		fd_set readout;
-		FD_ZERO(&readout);
-		FD_SET(PRIVATE_DATA->handle, &readout);
-		tv.tv_sec = 0;
-		tv.tv_usec = 100000;
-		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0) {
-			break;
-		}
-		if (result < 0) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-		if (PRIVATE_DATA->udp) {
-			result = read(PRIVATE_DATA->handle, buff, LUNATICO_CMD_LEN);
-			if (result < 1) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
+// Send one SLP request and read its reply. A serial reply is delimited by '#',
+// which indigo_uni_read_section2() keeps in the buffer, so the reply can be
+// matched against the echoed request. A UDP reply is always exactly one
+// datagram and a read on a UDP handle consumes the whole datagram no matter how
+// few bytes were requested, so the delimited reader cannot be used there.
+static bool lunatico_vcommand(indigo_device *device, const char *format, va_list args) {
+	vsnprintf(PRIVATE_DATA->command, sizeof(PRIVATE_DATA->command), format, args);
+	*PRIVATE_DATA->response = 0;
+	long result = indigo_uni_discard(PRIVATE_DATA->handle);
+	if (result >= 0) {
+		result = indigo_uni_write(PRIVATE_DATA->handle, PRIVATE_DATA->command, (long)strlen(PRIVATE_DATA->command));
+	}
+	if (result > 0) {
+		if (PRIVATE_DATA->handle->type == INDIGO_UDP_HANDLE) {
+			result = indigo_uni_wait_for_data(PRIVATE_DATA->handle, LUNATICO_REPLY_TIMEOUT);
+			if (result > 0) {
+				result = indigo_uni_read_available(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1);
+				if (result > 0) {
+					PRIVATE_DATA->response[result] = 0;
+				}
 			}
-			break;
 		} else {
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
+			result = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "#", NULL, LUNATICO_REPLY_TIMEOUT, LUNATICO_BYTE_TIMEOUT);
 		}
 	}
-
-	// write command
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	if (sleep > 0) {
-		usleep(sleep);
+	if (result <= 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "'%s' -> no reply", PRIVATE_DATA->command);
+		return false;
 	}
-
-	// read responce
-	if (response != NULL) {
-		long index = 0;
-		int timeout = 3;
-		while (index < max) {
-			fd_set readout;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			tv.tv_sec = timeout;
-			tv.tv_usec = 100000;
-			timeout = 0;
-			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0) {
-				break;
-			}
-			if (PRIVATE_DATA->udp) {
-				result = read(PRIVATE_DATA->handle, response, max);
-				if (result < 1) {
-					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-					return false;
-				}
-				index = result;
-				break;
-			} else {
-				result = read(PRIVATE_DATA->handle, &c, 1);
-				if (result < 1) {
-					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-					return false;
-				}
-				response[index++] = c;
-				if (c == '#') {
-					break;
-				}
-			}
-		}
-		response[index] = '\0';
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' -> '%s'", PRIVATE_DATA->command, PRIVATE_DATA->response);
 	return true;
 }
 
-
-static bool lunatico_get_info(indigo_device *device, char *board, char *firmware) {
-	if (!board || !firmware) return false;
-
-	const char *models[6] = { "Error", "Seletek", "Armadillo", "Platypus", "Dragonfly", "Limpet" };
-	int fwmaj, fwmin, model, oper, data;
-	char response[LUNATICO_CMD_LEN]={0};
-	if (lunatico_command(device, "!seletek version#", response, sizeof(response) - 1, 100)) {
-		// !seletek version:2510#
-		int parsed = sscanf(response, "!seletek version:%d#", &data);
-		if (parsed != 1) return false;
-		oper = data / 10000;		// 0 normal, 1 bootloader
-		model = (data / 1000) % 10;	// 1 seletek, etc.
-		fwmaj = (data / 100) % 10;
-		fwmin = (data % 100);
-		if (oper >= 2) oper = 2;
-		if (model > 5) model = 0;
-		sprintf(board, "%s", models[model]);
-		sprintf(firmware, "%d.%d", fwmaj, fwmin);
-
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "!seletek version# -> %s = %s %s", response, board, firmware);
-		return true;
+// The controller echoes the request without its trailing '#' and appends
+// ':<value>#', so the expected reply is derived from the request itself.
+static bool lunatico_parse_value(indigo_device *device, int32_t *value) {
+	char format[LUNATICO_CMD_LEN + 8];
+	int length = (int)strlen(PRIVATE_DATA->command);
+	snprintf(format, sizeof(format), "%.*s:%%d#", length > 0 ? length - 1 : 0, PRIVATE_DATA->command);
+	if (sscanf(PRIVATE_DATA->response, format, value) != 1) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "'%s' -> '%s' is not a valid reply", PRIVATE_DATA->command, PRIVATE_DATA->response);
+		return false;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	return true;
+}
+
+static bool lunatico_command_value(indigo_device *device, int32_t *value, const char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	bool result = lunatico_vcommand(device, format, args);
+	va_end(args);
+	return result && lunatico_parse_value(device, value);
+}
+
+// Every setting and motion command answers ':0#' when it was accepted and
+// ':-1#' when the controller rejected it.
+static bool lunatico_command_ok(indigo_device *device, const char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	bool result = lunatico_vcommand(device, format, args);
+	va_end(args);
+	int32_t value = -1;
+	return result && lunatico_parse_value(device, &value) && value == 0;
+}
+
+// --------------------------------------------------------------------------------- Identity
+
+// !seletek version:<MOPFF># where M is the operating mode (2 is the boot
+// loader), O the model, P the firmware major and FF the firmware minor version.
+static bool lunatico_version(indigo_device *device, int *mode, int *model) {
+	static const char *models[] = { "Error", "Seletek", "Armadillo", "Platypus", "Dragonfly", "Limpet" };
+	int32_t value = 0;
+	if (!lunatico_command_value(device, &value, "!seletek version#")) {
+		return false;
+	}
+	*mode = value / 10000;
+	if (*mode >= 2) {
+		*mode = 2;
+	}
+	*model = (value / 1000) % 10;
+	if (*model > 5 || *model < 0) {
+		*model = 0;
+	}
+	snprintf(PRIVATE_DATA->board, sizeof(PRIVATE_DATA->board), "%s", models[*model]);
+	snprintf(PRIVATE_DATA->firmware, sizeof(PRIVATE_DATA->firmware), "%d.%d", (value / 100) % 10, value % 100);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' -> %s %s", PRIVATE_DATA->response, PRIVATE_DATA->board, PRIVATE_DATA->firmware);
+	return true;
+}
+
+// Read the identity once for the whole controller. Each logical device copies it
+// into its own INFO property when it connects.
+static bool lunatico_identify(indigo_device *device) {
+	int mode = 0, model = 0;
+	if (!lunatico_version(device, &mode, &model)) {
+		return false;
+	}
+	PRIVATE_DATA->model = model;
+	return true;
+}
+
+static void lunatico_publish_identity(indigo_device *device) {
+	INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->board);
+	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
+	indigo_update_property(device, INFO_PROPERTY, NULL);
+}
+
+// How many ports the reported model has. A controller in boot loader mode has
+// none, so the connection is refused.
+static bool lunatico_port_exists(indigo_device *device) {
+	int mode = 0, model = 0;
+	if (!lunatico_version(device, &mode, &model) || mode == 2) {
+		return false;
+	}
+	int ports = 0;
+	switch (model) {
+		case MODEL_SELETEK:
+		case MODEL_ARMADILLO:
+			ports = 2;
+			break;
+		case MODEL_PLATYPUS:
+			ports = 3;
+			break;
+		case MODEL_LIMPET:
+			ports = 1;
+			break;
+		default:
+			ports = 0;
+			break;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' -> %d ports, %s port exists = %d", PRIVATE_DATA->response, ports, lunatico_port_name[PORT_INDEX], PORT_INDEX < ports);
+	return PORT_INDEX < ports;
+}
+
+// --------------------------------------------------------------------------------- Connection
+
+static bool lunatico_open(indigo_device *device) {
+	char *name = DEVICE_PORT_ITEM->text.value;
+	if (indigo_uni_is_url(name, "lunatico")) {
+		char url[INDIGO_VALUE_SIZE];
+		const char *host = strstr(name, "://");
+		snprintf(url, sizeof(url), "udp://%s", host == NULL ? name : host + 3);
+		PRIVATE_DATA->handle = indigo_uni_open_url(url, LUNATICO_UDP_PORT, INDIGO_UDP_HANDLE, INDIGO_LOG_DEBUG);
+	} else {
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
+	}
+	if (PRIVATE_DATA->handle != NULL) {
+		if (lunatico_identify(device)) {
+			return true;
+		}
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "'%s' does not answer as a Lunatico controller", name);
+		indigo_uni_close(&PRIVATE_DATA->handle);
+	}
 	return false;
 }
 
-
-static bool lunatico_check_port_existance(indigo_device *device, bool *exists) {
-	if (!exists) return false;
-
-	int model, oper, data;
-	char response[LUNATICO_CMD_LEN]={0};
-	if (lunatico_command(device, "!seletek version#", response, sizeof(response) - 1, 100)) {
-		int parsed = sscanf(response, "!seletek version:%d#", &data);
-		if (parsed != 1) return false;
-
-		oper = data / 10000;
-		if (oper == 2) return false;
-
-		model = (data / 1000) % 10;	// 1 seletek, etc.
-		if (model > 5) model = 0;
-
-		/* if devce is "Seletek", "Armadillo" etc... */
-		if (model == MODEL_SELETEK && get_port_index(device) < 2) *exists = true;
-		else if (model == MODEL_ARMADILLO && get_port_index(device) < 2) *exists = true;
-		else if (model == MODEL_PLATYPUS && get_port_index(device) < 3) *exists = true;
-		else if (model == MODEL_LIMPET && get_port_index(device) < 1) *exists = true;
-		else *exists = false;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "!seletek version# -> %s, port exists = %d", response, *exists);
-		return true;
-	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
-	return false;
+static void lunatico_close(indigo_device *device) {
+	indigo_uni_close(&PRIVATE_DATA->handle);
+	*PRIVATE_DATA->board = 0;
+	*PRIVATE_DATA->firmware = 0;
+	PRIVATE_DATA->model = 0;
 }
 
-
-static bool lunatico_command_get_result(indigo_device *device, const char *command, int32_t *result) {
-	if (!result) return false;
-
-	char response[LUNATICO_CMD_LEN]={0};
-	char response_prefix[LUNATICO_CMD_LEN];
-	char format[LUNATICO_CMD_LEN];
-
-	if (lunatico_command(device, command, response, sizeof(response) - 1, 100)) {
-		strncpy(response_prefix, command, LUNATICO_CMD_LEN);
-		char *p = strrchr(response_prefix, '#');
-		if (p) *p = ':';
-		sprintf(format, "%s%%d#", response_prefix);
-		int parsed = sscanf(response, format, result);
-		if (parsed != 1) return false;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s = %d", command, response, *result);
-		return true;
+// A port carries one stepper and one DB9 connector, so the focuser, rotator and
+// powerbox device of a port are mutually exclusive. The port also has to exist
+// on the controller that actually answered.
+static bool lunatico_claim_port(indigo_device *device) {
+	if (PORT_STATE.owner != NULL && PORT_STATE.owner != device) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s port is already used by %s", lunatico_port_name[PORT_INDEX], PORT_STATE.owner->name);
+		indigo_send_message(device, ALERT_PROPERTY, "The %s port is already used by %s", lunatico_port_name[PORT_INDEX], PORT_STATE.owner->name);
+		return false;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
-	return false;
+	if (!lunatico_port_exists(device)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response or the %s port does not exist on this hardware", lunatico_port_name[PORT_INDEX]);
+		indigo_send_message(device, ALERT_PROPERTY, "No response or the %s port does not exist on this hardware", lunatico_port_name[PORT_INDEX]);
+		return false;
+	}
+	PORT_STATE.owner = device;
+	return true;
 }
 
+static void lunatico_release_port(indigo_device *device) {
+	if (PORT_STATE.owner == device) {
+		PORT_STATE.owner = NULL;
+	}
+}
+
+// --------------------------------------------------------------------------------- Stepper commands
+
+static bool lunatico_get_position(indigo_device *device, int32_t *position) {
+	if (!lunatico_command_value(device, position, "!step getpos %d#", PORT_INDEX)) {
+		return false;
+	}
+	return *position >= 0;
+}
+
+static bool lunatico_sync_position(indigo_device *device, int32_t position) {
+	return lunatico_command_ok(device, "!step setpos %d %d#", PORT_INDEX, position);
+}
+
+static bool lunatico_goto_position(indigo_device *device, int32_t position, int32_t backlash) {
+	return lunatico_command_ok(device, "!step goto %d %d %d#", PORT_INDEX, position, backlash);
+}
 
 static bool lunatico_stop(indigo_device *device) {
-	char command[LUNATICO_CMD_LEN];
-	int res;
-
-	snprintf(command, LUNATICO_CMD_LEN, "!step stop %d#", get_port_index(device));
-	if (!lunatico_command_get_result(device, command, &res)) return false;
-	if (res != 0) return false;
-	return true;
+	return lunatico_command_ok(device, "!step stop %d#", PORT_INDEX);
 }
-
-
-static bool lunatico_sync_position(indigo_device *device, uint32_t position) {
-	char command[LUNATICO_CMD_LEN];
-	int res;
-
-	snprintf(command, LUNATICO_CMD_LEN, "!step setpos %d %d#", get_port_index(device), position);
-	if (!lunatico_command_get_result(device, command, &res)) return false;
-	if (res != 0) return false;
-	return true;
-}
-
-
-static bool lunatico_get_position(indigo_device *device, int32_t *pos) {
-	char command[LUNATICO_CMD_LEN]={0};
-	bool res;
-
-	sprintf(command, "!step getpos %d#", get_port_index(device));
-	res = lunatico_command_get_result(device, command, pos);
-	if ((res == false) || (*pos < 0)) return false;
-	else return true;
-}
-
-
-static bool lunatico_goto_position(indigo_device *device, uint32_t position, uint32_t backlash) {
-	char command[LUNATICO_CMD_LEN];
-	int res;
-
-	snprintf(command, LUNATICO_CMD_LEN, "!step goto %d %d %d#", get_port_index(device), position, backlash);
-	if (!lunatico_command_get_result(device, command, &res)) return false;
-	if (res != 0) return false;
-	return true;
-}
-
-/* not used now... maybe use it for relative goto */
-/*
-static bool lunatico_goto_position_relative(indigo_device *device, uint32_t position) {
-	char command[LUNATICO_CMD_LEN];
-	int res;
-
-	snprintf(command, LUNATICO_CMD_LEN, "!step gopr %d %d#", get_port_index(device), position);
-	if (!lunatico_command_get_result(device, command, &res)) return false;
-	if (res != 0) return false;
-	return true;
-}
-*/
 
 static bool lunatico_is_moving(indigo_device *device, bool *is_moving) {
-	char command[LUNATICO_CMD_LEN];
-	int res;
-
-	snprintf(command, LUNATICO_CMD_LEN, "!step ismoving %d#", get_port_index(device));
-	if (!lunatico_command_get_result(device, command, &res)) return false;
-	if (res < 0) return false;
-
-	if (res == 0) *is_moving = false;
-	else *is_moving = true;
-
+	int32_t value = 0;
+	if (!lunatico_command_value(device, &value, "!step ismoving %d#", PORT_INDEX) || value < 0) {
+		return false;
+	}
+	*is_moving = value != 0;
 	return true;
 }
 
-static bool lunatico_get_temperature(indigo_device *device, int sensor_index, double *temperature) {
-	if (!temperature) return false;
+static bool lunatico_set_step(indigo_device *device, lunatico_step_mode mode) {
+	return lunatico_command_ok(device, "!step halfstep %d %d#", PORT_INDEX, mode == STEP_MODE_HALF ? 1 : 0);
+}
 
-	char command[LUNATICO_CMD_LEN];
-	int value;
-	double idC1 = 261;
-	double idC2 = 250;
-	double idF = 1.8;
+static bool lunatico_set_wiring(indigo_device *device, lunatico_wiring wiring) {
+	return lunatico_command_ok(device, "!step wiremode %d %d#", PORT_INDEX, wiring);
+}
 
-	snprintf(command, LUNATICO_CMD_LEN, "!read temps %d#", sensor_index);
-	if (!lunatico_command_get_result(device, command, &value)) return false;
+static bool lunatico_set_motor_type(indigo_device *device, lunatico_motor_type type) {
+	return lunatico_command_ok(device, "!step model %d %d#", PORT_INDEX, type);
+}
 
-	if (sensor_index != 0) { // not insternal
-		idC1 = 192;
-		idC2 = 0;
-		idF = 1.7;
+static bool lunatico_set_move_power(indigo_device *device, double percent) {
+	return lunatico_command_ok(device, "!step movepow %d %d#", PORT_INDEX, (int)(percent * LUNATICO_POWER_SCALE));
+}
+
+static bool lunatico_set_stop_power(indigo_device *device, double percent) {
+	return lunatico_command_ok(device, "!step stoppow %d %d#", PORT_INDEX, (int)(percent * LUNATICO_POWER_SCALE));
+}
+
+static bool lunatico_set_limits(indigo_device *device, int32_t min, int32_t max) {
+	return lunatico_command_ok(device, "!step setswlimits %d %d %d#", PORT_INDEX, min, max);
+}
+
+static bool lunatico_delete_limits(indigo_device *device) {
+	return lunatico_command_ok(device, "!step delswlimits %d#", PORT_INDEX);
+}
+
+// The controller is configured in microseconds per step; the driver exposes a
+// step rate in kHz.
+static bool lunatico_set_speed(indigo_device *device, double speed_khz) {
+	if (speed_khz <= 0.00001) {
+		return false;
 	}
+	int speed_us = (int)(1000 / speed_khz);
+	if (speed_us < LUNATICO_MIN_SPEED_US || speed_us > LUNATICO_MAX_SPEED_US) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Speed out of range %.3f", speed_khz);
+		return false;
+	}
+	return lunatico_command_ok(device, "!step speedrangeus %d %d %d#", PORT_INDEX, speed_us, speed_us);
+}
 
+// idC1, idC2 and idF are the manufacturer's conversion constants; the internal
+// and the external sensor use different ones.
+static bool lunatico_get_temperature(indigo_device *device, int sensor, double *temperature) {
+	int32_t value = 0;
+	if (!lunatico_command_value(device, &value, "!read temps %d#", sensor)) {
+		return false;
+	}
+	double idC1 = sensor == 0 ? 261 : 192;
+	double idC2 = sensor == 0 ? 250 : 0;
+	double idF = sensor == 0 ? 1.8 : 1.7;
 	*temperature = (((value - idC1) * idF) - idC2) / 10;
 	return true;
 }
 
-
-static bool lunatico_set_step(indigo_device *device, step_mode_t mode) {
-	char command[LUNATICO_CMD_LEN];
-	int res;
-
-	snprintf(command, LUNATICO_CMD_LEN, "!step halfstep %d %d#", get_port_index(device), mode ? 1 : 0);
-	if (!lunatico_command_get_result(device, command, &res)) return false;
-	if (res != 0) return false;
-	return true;
-}
-
-
-static bool lunatico_set_wiring(indigo_device *device, wiring_t wiring) {
-	char command[LUNATICO_CMD_LEN];
-	int res;
-
-	snprintf(command, LUNATICO_CMD_LEN, "!step wiremode %d %d#", get_port_index(device), wiring);
-	if (!lunatico_command_get_result(device, command, &res)) return false;
-	if (res != 0) return false;
-	return true;
-}
-
-
-static bool lunatico_set_motor_type(indigo_device *device, motor_types_t type) {
-	char command[LUNATICO_CMD_LEN];
-	int res;
-
-	snprintf(command, LUNATICO_CMD_LEN, "!step model %d %d#", get_port_index(device), type);
-	if (!lunatico_command_get_result(device, command, &res)) return false;
-	if (res != 0) return false;
-	return true;
-}
-
-
-static bool lunatico_set_move_power(indigo_device *device, double power_percent) {
-	char command[LUNATICO_CMD_LEN];
-	int res;
-
-	int power = (int)(power_percent * 10.23);
-
-	snprintf(command, LUNATICO_CMD_LEN, "!step movepow %d %d#", get_port_index(device), power);
-	if (!lunatico_command_get_result(device, command, &res)) return false;
-	if (res != 0) return false;
-	return true;
-}
-
-
-static bool lunatico_set_stop_power(indigo_device *device, double power_percent) {
-	char command[LUNATICO_CMD_LEN];
-	int res;
-
-	int power = (int)(power_percent * 10.23);
-
-	snprintf(command, LUNATICO_CMD_LEN, "!step stoppow %d %d#", get_port_index(device), power);
-	if (!lunatico_command_get_result(device, command, &res)) return false;
-	if (res != 0) return false;
-	return true;
-}
-
-
-static bool lunatico_set_limits(indigo_device *device, uint32_t min, uint32_t max) {
-	char command[LUNATICO_CMD_LEN];
-	int res;
-
-	snprintf(command, LUNATICO_CMD_LEN, "!step setswlimits %d %d %d#", get_port_index(device), min, max);
-	if (!lunatico_command_get_result(device, command, &res)) return false;
-	if (res != 0) return false;
-	return true;
-}
-
-
-static bool lunatico_delete_limits(indigo_device *device) {
-	char command[LUNATICO_CMD_LEN];
-	int res;
-
-	snprintf(command, LUNATICO_CMD_LEN, "!step delswlimits %d#", get_port_index(device));
-	if (!lunatico_command_get_result(device, command, &res)) return false;
-	if (res != 0) return false;
-	return true;
-}
-
-
-static bool lunatico_set_speed(indigo_device *device, double speed_khz) {
-	char command[LUNATICO_CMD_LEN];
-	int res;
-
-	if (speed_khz <= 0.00001) return false;
-	int speed_us = (int)(1000 / speed_khz);
-	if ((speed_us < 50) || (speed_us > 500000)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Speed out of range %.3f", speed_khz);
-		return false;
-	}
-
-	snprintf(command, LUNATICO_CMD_LEN, "!step speedrangeus %d %d %d#", get_port_index(device), speed_us, speed_us);
-	if (!lunatico_command_get_result(device, command, &res)) return false;
-	if (res != 0) return false;
-	return true;
-}
-
+// --------------------------------------------------------------------------------- Powerbox commands
 
 static bool lunatico_enable_power_outlet(indigo_device *device, int pin, bool enable) {
-	char command[LUNATICO_CMD_LEN];
-	int res;
-	if (pin < 1 || pin > 4) return false;
-
-	snprintf(command, LUNATICO_CMD_LEN, "!write dig %d %d %d#", get_port_index(device), pin, enable ? 1 : 0);
-	if (!lunatico_command_get_result(device, command, &res)) return false;
-	if (res != 0) return false;
-	return true;
+	if (pin < 1 || pin > 4) {
+		return false;
+	}
+	return lunatico_command_ok(device, "!write dig %d %d %d#", PORT_INDEX, pin, enable ? 1 : 0);
 }
 
-
-static bool lunatico_read_sensor(indigo_device *device, int pin, int *sensor_value) {
-	if (!sensor_value) return false;
-
-	char command[LUNATICO_CMD_LEN];
-	int value;
-
-	if (pin < 5 || pin > 8) return false;
-
-	snprintf(command, LUNATICO_CMD_LEN, "!read an %d %d#", get_port_index(device), pin);
-	if (!lunatico_command_get_result(device, command, &value)) return false;
-	if (value >= 0) {
-		*sensor_value = value;
-		return true;
+static bool lunatico_read_sensor(indigo_device *device, int pin, int32_t *value) {
+	if (pin < 5 || pin > 8) {
+		return false;
 	}
+	if (!lunatico_command_value(device, value, "!read an %d %d#", PORT_INDEX, pin)) {
+		return false;
+	}
+	return *value >= 0;
+}
+
+// --------------------------------------------------------------------------------- Settings
+
+// The driver-specific settings of a port are declared once per logical device,
+// so every helper takes the property it belongs to. The item order of each
+// property is fixed by the .driver definitions.
+
+static bool lunatico_apply_step_mode(indigo_device *device, indigo_property *step_mode) {
+	return lunatico_set_step(device, (step_mode->items + 1)->sw.value ? STEP_MODE_HALF : STEP_MODE_FULL);
+}
+
+static bool lunatico_apply_power_control(indigo_device *device, indigo_property *power_control) {
+	if (!lunatico_set_move_power(device, (power_control->items + 0)->number.value)) {
+		return false;
+	}
+	return lunatico_set_stop_power(device, (power_control->items + 1)->number.value);
+}
+
+static bool lunatico_apply_motor_type(indigo_device *device, indigo_property *motor_type) {
+	for (int i = 0; i < motor_type->count; i++) {
+		if ((motor_type->items + i)->sw.value) {
+			return lunatico_set_motor_type(device, (lunatico_motor_type)i);
+		}
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported motor type");
 	return false;
 }
 
-// --------------------------------------------------------------------------------- Common stuff
-
-static bool lunatico_open(indigo_device *device) {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OPEN REQUESTED: %d -> %d, count_open = %d", PRIVATE_DATA->handle, DEVICE_CONNECTED, PRIVATE_DATA->count_open);
-	if (DEVICE_CONNECTED) return false;
-
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	if (PRIVATE_DATA->count_open++ == 0) {
-		char *name = DEVICE_PORT_ITEM->text.value;
-		if (!indigo_is_device_url(name, "lunatico")) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening local device on port: '%s', baudrate = %d", DEVICE_PORT_ITEM->text.value, atoi(DEVICE_BAUDRATE_ITEM->text.value));
-			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
-			PRIVATE_DATA->udp = false;
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening network device on host: %s", DEVICE_PORT_ITEM->text.value);
-			indigo_network_protocol proto = INDIGO_PROTOCOL_UDP;
-			PRIVATE_DATA->handle = indigo_open_network_device(name, 10000, &proto);
-			PRIVATE_DATA->udp = true;
-		}
-		if (PRIVATE_DATA->handle < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			PRIVATE_DATA->count_open--;
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
+// Item 0 of the wiring property is the Lunatico wiring, item 1 the RF/Moonlite
+// one; the reversed flag comes from FOCUSER_REVERSE_MOTION or ROTATOR_DIRECTION.
+static bool lunatico_apply_wiring(indigo_device *device, indigo_property *wiring, bool reversed) {
+	if ((wiring->items + 0)->sw.value) {
+		return lunatico_set_wiring(device, reversed ? MW_LUNATICO_REVERSED : MW_LUNATICO_NORMAL);
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-
-	bool exists = false;
-	/* check if the current port exists */
-	lunatico_check_port_existance(device, &exists);
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	if (!exists) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce or port does not exist on this hardware");
-		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		indigo_update_property(device, CONNECTION_PROPERTY, "No response or port does not exist on this hardware");
-		if (--PRIVATE_DATA->count_open == 0) {
-			close(PRIVATE_DATA->handle);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = 0;
-		}
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-		return false;
+	if ((wiring->items + 1)->sw.value) {
+		return lunatico_set_wiring(device, reversed ? MW_MOONLITE_REVERSED : MW_MOONLITE_NORMAL);
 	}
-	set_connected_flag(device);
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	return true;
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported motor wiring");
+	return false;
 }
 
-
-static void lunatico_close(indigo_device *device) {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CLOSE REQUESTED: %d -> %d, count_open = %d", PRIVATE_DATA->handle, DEVICE_CONNECTED, PRIVATE_DATA->count_open);
-	if (!DEVICE_CONNECTED) {
-		return;
-	}
-
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	if (--PRIVATE_DATA->count_open == 0) {
-		close(PRIVATE_DATA->handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
-	}
-	clear_connected_flag(device);
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+static void lunatico_apply_temperature_sensor(indigo_device *device, indigo_property *sensor) {
+	PORT_STATE.temperature_sensor = (sensor->items + 1)->sw.value ? 1 : 0;
 }
 
-
-static void configure_ports(indigo_device *device) {
-	device_type_t exp_device_type, third_device_type;
-
-	pthread_mutex_lock(&port_lifecycle_mutex);
-
-	if (LA_PORT_EXP_FOCUSER_ITEM->sw.value) {
-		exp_device_type = TYPE_FOCUSER;
-	} else if (LA_PORT_EXP_ROTATOR_ITEM->sw.value){
-		exp_device_type = TYPE_ROTATOR;
-	} else {
-		exp_device_type = TYPE_AUX;
-	}
-
-	if (LA_PORT_THIRD_FOCUSER_ITEM->sw.value) {
-		third_device_type = TYPE_FOCUSER;
-	} else if (LA_PORT_THIRD_ROTATOR_ITEM->sw.value) {
-		third_device_type = TYPE_ROTATOR;
-	} else {
-		third_device_type = TYPE_AUX;
-	}
-
-	if (LA_MODEL_PLATYPUS_ITEM->sw.value) {
-		create_port_device(0, 1, exp_device_type);
-		create_port_device(0, 2, third_device_type);
-	} else if (LA_MODEL_ARMADILLO_ITEM->sw.value) {
-		create_port_device(0, 1, exp_device_type);
-		delete_port_device(0, 2);
-	} else if (LA_MODEL_LIMPET_ITEM->sw.value) {
-		delete_port_device(0, 1);
-		delete_port_device(0, 2);
-	}
-	pthread_mutex_unlock(&port_lifecycle_mutex);
-}
-
-
-static int lunatico_init_properties(indigo_device *device) {
-	// -------------------------------------------------------------------------------- DEVICE_PORT
-	DEVICE_PORT_PROPERTY->hidden = false;
-	// -------------------------------------------------------------------------------- DEVICE_PORTS
-	DEVICE_PORTS_PROPERTY->hidden = false;
-	indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-	// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
-	DEVICE_BAUDRATE_PROPERTY->hidden = false;
-	INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE);
-	// --------------------------------------------------------------------------------
-	INFO_PROPERTY->count = 6;
-	// --------------------------------------------------------------------------------
-	LA_MODEL_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MODEL_PROPERTY_NAME, "Configuration", "Device model", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-	if (LA_MODEL_PROPERTY == NULL)
-		return INDIGO_FAILED;
-	indigo_init_switch_item(LA_MODEL_LIMPET_ITEM, LA_MODEL_LIMPET_ITEM_NAME, "Limpet (1 port)", true);
-	indigo_init_switch_item(LA_MODEL_ARMADILLO_ITEM, LA_MODEL_ARMADILLO_ITEM_NAME, "Seletek/Armadillo (2 ports)", false);
-	indigo_init_switch_item(LA_MODEL_PLATYPUS_ITEM, LA_MODEL_PLATYPUS_ITEM_NAME, "Platypus (3 ports)", false);
-	if (get_port_index(device) != 0) LA_MODEL_PROPERTY->hidden = true;
-	// -------------------------------------------------------------------------- LA_PORT_EXP_CONFIG_PROPERTY
-	LA_PORT_EXP_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_PORT_EXP_CONFIG_PROPERTY_NAME, "Configuration", "Exp port", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-	if (LA_PORT_EXP_CONFIG_PROPERTY == NULL)
-		return INDIGO_FAILED;
-	indigo_init_switch_item(LA_PORT_EXP_FOCUSER_ITEM, LA_PORT_CONFIG_FOCUSER_ITEM_NAME, "Focuser", true);
-	indigo_init_switch_item(LA_PORT_EXP_ROTATOR_ITEM, LA_PORT_CONFIG_ROTATOR_ITEM_NAME, "Rotator", false);
-	indigo_init_switch_item(LA_PORT_EXP_AUX_POWERBOX_ITEM, LA_PORT_CONFIG_AUX_POWERBOX_ITEM_NAME, "Powerbox/GPIO", false);
-	if (get_port_index(device) != 0) LA_PORT_EXP_CONFIG_PROPERTY->hidden = true;
-	// -------------------------------------------------------------------------- LA_PORT_THIRD_CONFIG_PROPERTY
-	LA_PORT_THIRD_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_PORT_THIRD_CONFIG_PROPERTY_NAME, "Configuration", "Third port", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-	if (LA_PORT_THIRD_CONFIG_PROPERTY == NULL)
-		return INDIGO_FAILED;
-	indigo_init_switch_item(LA_PORT_THIRD_FOCUSER_ITEM, LA_PORT_CONFIG_FOCUSER_ITEM_NAME, "Focuser", true);
-	indigo_init_switch_item(LA_PORT_THIRD_ROTATOR_ITEM, LA_PORT_CONFIG_ROTATOR_ITEM_NAME, "Rotator", false);
-	indigo_init_switch_item(LA_PORT_THIRD_AUX_POWERBOX_ITEM, LA_PORT_CONFIG_AUX_POWERBOX_ITEM_NAME, "Powerbox/GPIO", false);
-	if (get_port_index(device) != 0) LA_PORT_THIRD_CONFIG_PROPERTY->hidden = true;
-	// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
-	LA_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_STEP_MODE_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-	if (LA_STEP_MODE_PROPERTY == NULL)
-		return INDIGO_FAILED;
-	LA_STEP_MODE_PROPERTY->hidden = false;
-	indigo_init_switch_item(LA_STEP_MODE_FULL_ITEM, LA_STEP_MODE_FULL_ITEM_NAME, "Full step", true);
-	indigo_init_switch_item(LA_STEP_MODE_HALF_ITEM, LA_STEP_MODE_HALF_ITEM_NAME, "1/2 step", false);
-	if (PORT_DATA.device_type == TYPE_AUX) LA_STEP_MODE_PROPERTY->hidden = true;
-	//--------------------------------------------------------------------------- CURRENT_CONTROL_PROPERTY
-	LA_POWER_CONTROL_PROPERTY = indigo_init_number_property(NULL, device->name, LA_POWER_CONTROL_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Coils current control", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-	if (LA_POWER_CONTROL_PROPERTY == NULL)
-		return INDIGO_FAILED;
-	indigo_init_number_item(LA_POWER_CONTROL_MOVE_ITEM, LA_POWER_CONTROL_MOVE_ITEM_NAME, "Move power (%)", 0, 100, 1, 100);
-	indigo_init_number_item(LA_POWER_CONTROL_STOP_ITEM, LA_POWER_CONTROL_STOP_ITEM_NAME, "Stop power (%)", 0, 100, 1, 0);
-	if (PORT_DATA.device_type == TYPE_AUX) LA_POWER_CONTROL_PROPERTY->hidden = true;
-	//--------------------------------------------------------------------------- TEMPERATURE_SENSOR_PROPERTY
-	LA_TEMPERATURE_SENSOR_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_TEMPERATURE_SENSOR_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Temperature Sensor in use", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-	if (LA_TEMPERATURE_SENSOR_PROPERTY == NULL)
-		return INDIGO_FAILED;
-	indigo_init_switch_item(LA_TEMPERATURE_SENSOR_INTERNAL_ITEM, LA_TEMPERATURE_SENSOR_INTERNAL_ITEM_NAME, "Internal sensor", true);
-	indigo_init_switch_item(LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM, LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM_NAME, "External Sensor", false);
-	if (PORT_DATA.device_type != TYPE_FOCUSER) LA_TEMPERATURE_SENSOR_PROPERTY->hidden = true;
-	//--------------------------------------------------------------------------- WIRING_PROPERTY
-	LA_WIRING_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_WIRING_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Motor wiring", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-	if (LA_WIRING_PROPERTY == NULL)
-		return INDIGO_FAILED;
-	indigo_init_switch_item(LA_WIRING_LUNATICO_ITEM, LA_WIRING_LUNATICO_ITEM_NAME, "Lunatico", true);
-	indigo_init_switch_item(LA_WIRING_MOONLITE_ITEM, LA_WIRING_MOONLITE_ITEM_NAME, "RF/Moonlite", false);
-	if (PORT_DATA.device_type == TYPE_AUX) LA_WIRING_PROPERTY->hidden = true;
-	//--------------------------------------------------------------------------- LA_MOTOR_TYPE_PROPERTY
-	LA_MOTOR_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MOTOR_TYPE_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Motor type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
-	if (LA_MOTOR_TYPE_PROPERTY == NULL)
-		return INDIGO_FAILED;
-	indigo_init_switch_item(LA_MOTOR_TYPE_UNIPOLAR_ITEM, LA_MOTOR_TYPE_UNIPOLAR_ITEM_NAME, "Unipolar", true);
-	indigo_init_switch_item(LA_MOTOR_TYPE_BIPOLAR_ITEM, LA_MOTOR_TYPE_BIPOLAR_ITEM_NAME, "Bipolar", false);
-	indigo_init_switch_item(LA_MOTOR_TYPE_DC_ITEM, LA_MOTOR_TYPE_DC_ITEM_NAME, "DC", false);
-	indigo_init_switch_item(LA_MOTOR_TYPE_STEP_DIR_ITEM, LA_MOTOR_TYPE_STEP_DIR_ITEM_NAME, "Step-dir", false);
-	if (PORT_DATA.device_type == TYPE_AUX) LA_MOTOR_TYPE_PROPERTY->hidden = true;
-	// -------------------------------------------------------------------------------- OUTLET_NAMES
-	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_POWERBOX_GROUP, "Power outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
-	if (AUX_OUTLET_NAMES_PROPERTY == NULL)
-		return INDIGO_FAILED;
-	indigo_init_text_item(AUX_OUTLET_NAME_1_ITEM, AUX_POWER_OUTLET_NAME_1_ITEM_NAME, "DB9 Pin 1", "Power #1");
-	indigo_init_text_item(AUX_OUTLET_NAME_2_ITEM, AUX_POWER_OUTLET_NAME_2_ITEM_NAME, "DB9 Pin 2", "Power #2");
-	indigo_init_text_item(AUX_OUTLET_NAME_3_ITEM, AUX_POWER_OUTLET_NAME_3_ITEM_NAME, "DB9 Pin 3", "Power #3");
-	indigo_init_text_item(AUX_OUTLET_NAME_4_ITEM, AUX_POWER_OUTLET_NAME_4_ITEM_NAME, "DB9 Pin 4", "Power #4");
-	if (PORT_DATA.device_type != TYPE_AUX) AUX_OUTLET_NAMES_PROPERTY->hidden = true;
-	// -------------------------------------------------------------------------------- POWER OUTLETS
-	AUX_POWER_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWERBOX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 4);
-	if (AUX_POWER_OUTLET_PROPERTY == NULL)
-		return INDIGO_FAILED;
-	indigo_init_switch_item(AUX_POWER_OUTLET_1_ITEM, AUX_POWER_OUTLET_1_ITEM_NAME, "Power #1", false);
-	indigo_init_switch_item(AUX_POWER_OUTLET_2_ITEM, AUX_POWER_OUTLET_2_ITEM_NAME, "Power #2", false);
-	indigo_init_switch_item(AUX_POWER_OUTLET_3_ITEM, AUX_POWER_OUTLET_3_ITEM_NAME, "Power #3", false);
-	indigo_init_switch_item(AUX_POWER_OUTLET_4_ITEM, AUX_POWER_OUTLET_4_ITEM_NAME, "Power #4", false);
-	if (PORT_DATA.device_type != TYPE_AUX) AUX_POWER_OUTLET_PROPERTY->hidden = true;
-	// -------------------------------------------------------------------------------- SENSOR_NAMES
-	AUX_SENSOR_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_SENSOR_NAMES_PROPERTY_NAME, AUX_SENSORS_GROUP, "Sensor names", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
-	if (AUX_SENSOR_NAMES_PROPERTY == NULL)
-		return INDIGO_FAILED;
-	indigo_init_text_item(AUX_SENSOR_NAME_1_ITEM, AUX_GPIO_SENSOR_NAME_1_ITEM_NAME, "DB9 Pin 6", "Sensor #1");
-	indigo_init_text_item(AUX_SENSOR_NAME_2_ITEM, AUX_GPIO_SENSOR_NAME_2_ITEM_NAME, "DB9 Pin 7", "Sensor #2");
-	indigo_init_text_item(AUX_SENSOR_NAME_3_ITEM, AUX_GPIO_SENSOR_NAME_3_ITEM_NAME, "DB9 Pin 8", "Sensor #3");
-	indigo_init_text_item(AUX_SENSOR_NAME_4_ITEM, AUX_GPIO_SENSOR_NAME_4_ITEM_NAME, "DB9 Pin 9", "Sensor #4");
-	if (PORT_DATA.device_type != TYPE_AUX) AUX_SENSOR_NAMES_PROPERTY->hidden = true;
-	// -------------------------------------------------------------------------------- GPIO_SENSORS
-	AUX_GPIO_SENSORS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_GPIO_SENSORS_PROPERTY_NAME, AUX_SENSORS_GROUP, "GPIO sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 4);
-	if (AUX_GPIO_SENSORS_PROPERTY == NULL)
-		return INDIGO_FAILED;
-	indigo_init_number_item(AUX_GPIO_SENSOR_1_ITEM, AUX_GPIO_SENSOR_NAME_1_ITEM_NAME, "Sensor #1", 0, 1024, 1, 0);
-	indigo_init_number_item(AUX_GPIO_SENSOR_2_ITEM, AUX_GPIO_SENSOR_NAME_2_ITEM_NAME, "Sensor #2", 0, 1024, 1, 0);
-	indigo_init_number_item(AUX_GPIO_SENSOR_3_ITEM, AUX_GPIO_SENSOR_NAME_3_ITEM_NAME, "Sensor #3", 0, 1024, 1, 0);
-	indigo_init_number_item(AUX_GPIO_SENSOR_4_ITEM, AUX_GPIO_SENSOR_NAME_4_ITEM_NAME, "Sensor #4", 0, 1024, 1, 0);
-	if (PORT_DATA.device_type != TYPE_AUX) AUX_GPIO_SENSORS_PROPERTY->hidden = true;
-	//---------------------------------------------------------------------------
-	indigo_define_property(device, LA_MODEL_PROPERTY, NULL);
-	indigo_define_property(device, LA_PORT_EXP_CONFIG_PROPERTY, NULL);
-	indigo_define_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
-	indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
-	indigo_define_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
-	return INDIGO_OK;
-}
-
-
-static indigo_result lunatico_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (DEVICE_CONNECTED) {
-		INDIGO_DEFINE_MATCHING_PROPERTY(LA_STEP_MODE_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(LA_POWER_CONTROL_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(LA_TEMPERATURE_SENSOR_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(LA_WIRING_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(LA_MOTOR_TYPE_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_POWER_OUTLET_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_GPIO_SENSORS_PROPERTY);
-	}
-	INDIGO_DEFINE_MATCHING_PROPERTY(LA_MODEL_PROPERTY);
-	INDIGO_DEFINE_MATCHING_PROPERTY(LA_PORT_EXP_CONFIG_PROPERTY);
-	INDIGO_DEFINE_MATCHING_PROPERTY(LA_PORT_THIRD_CONFIG_PROPERTY);
-	INDIGO_DEFINE_MATCHING_PROPERTY(AUX_OUTLET_NAMES_PROPERTY);
-	INDIGO_DEFINE_MATCHING_PROPERTY(AUX_SENSOR_NAMES_PROPERTY);
-	return INDIGO_OK;
-}
-
-
-static void lunatico_init_device(indigo_device *device) {
-	char board[LUNATICO_CMD_LEN] = "N/A";
-	char firmware[LUNATICO_CMD_LEN] = "N/A";
-	if (lunatico_get_info(device, board, firmware)) {
-		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, board);
-		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
-		indigo_update_property(device, INFO_PROPERTY, NULL);
-	}
-
+// The configuration the original driver applied from lunatico_init_device(), in
+// the same order: delete the software limits, write both coil currents, the
+// motor type and the step mode. Each failure is logged and does not abort the
+// connection, which is the behaviour of the driver this replaces.
+static void lunatico_configure_port(indigo_device *device, indigo_property *power_control, indigo_property *motor_type, indigo_property *step_mode) {
 	if (!lunatico_delete_limits(device)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_delete_limits(%d) failed", PRIVATE_DATA->handle);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_delete_limits() failed");
 	}
-
-	if (!lunatico_set_move_power(device, LA_POWER_CONTROL_MOVE_ITEM->number.value)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_move_power(%d) failed", PRIVATE_DATA->handle);
+	if (!lunatico_apply_power_control(device, power_control)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_apply_power_control() failed");
 	}
-	if (!lunatico_set_stop_power(device, LA_POWER_CONTROL_STOP_ITEM->number.value)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_stop_power(%d) failed", PRIVATE_DATA->handle);
+	if (!lunatico_apply_motor_type(device, motor_type)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_apply_motor_type() failed");
 	}
-	indigo_define_property(device, LA_POWER_CONTROL_PROPERTY, NULL);
-
-
-	if (LA_TEMPERATURE_SENSOR_INTERNAL_ITEM->sw.value) {
-		PORT_DATA.temperature_sensor_index = 0;
-	} else {
-		PORT_DATA.temperature_sensor_index = 1;
-	}
-	indigo_define_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
-
-	indigo_define_property(device, LA_WIRING_PROPERTY, NULL);
-
-	bool success = false;
-	if (LA_MOTOR_TYPE_UNIPOLAR_ITEM->sw.value) {
-			success = lunatico_set_motor_type(device, MT_UNIPOLAR);
-	} else if (LA_MOTOR_TYPE_BIPOLAR_ITEM->sw.value) {
-			success = lunatico_set_motor_type(device, MT_BIPOLAR);
-	} else if (LA_MOTOR_TYPE_DC_ITEM->sw.value) {
-			success = lunatico_set_motor_type(device, MT_DC);
-	} else if (LA_MOTOR_TYPE_STEP_DIR_ITEM->sw.value) {
-			success = lunatico_set_motor_type(device, MT_STEP_DIR);
-	}
-	if (!success) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_motor_type(%d) failed", PRIVATE_DATA->handle);
-	}
-	indigo_define_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
-
-	step_mode_t mode = STEP_MODE_FULL;
-	if (LA_STEP_MODE_HALF_ITEM->sw.value) {
-		mode = STEP_MODE_HALF;
-	}
-	if (!lunatico_set_step(device, mode)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_step(%d, %d) failed", PRIVATE_DATA->handle, mode);
-	}
-	indigo_define_property(device, LA_STEP_MODE_PROPERTY, NULL);
-}
-
-
-static indigo_result lunatico_detach(indigo_device *device) {
-	assert(device != NULL);
-	indigo_release_property(LA_STEP_MODE_PROPERTY);
-	indigo_release_property(LA_POWER_CONTROL_PROPERTY);
-	indigo_release_property(LA_TEMPERATURE_SENSOR_PROPERTY);
-	indigo_release_property(LA_WIRING_PROPERTY);
-	indigo_release_property(LA_MOTOR_TYPE_PROPERTY);
-	indigo_release_property(AUX_POWER_OUTLET_PROPERTY);
-	indigo_release_property(AUX_GPIO_SENSORS_PROPERTY);
-	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-
-	indigo_delete_property(device, LA_MODEL_PROPERTY, NULL);
-	indigo_release_property(LA_MODEL_PROPERTY);
-
-	indigo_delete_property(device, LA_PORT_EXP_CONFIG_PROPERTY, NULL);
-	indigo_release_property(LA_PORT_EXP_CONFIG_PROPERTY);
-
-	indigo_delete_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
-	indigo_release_property(LA_PORT_THIRD_CONFIG_PROPERTY);
-
-	indigo_delete_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
-	indigo_release_property(AUX_OUTLET_NAMES_PROPERTY);
-
-	indigo_delete_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
-	indigo_release_property(AUX_SENSOR_NAMES_PROPERTY);
-	return INDIGO_OK;
-}
-
-
-static void lunatico_save_properties(indigo_device *device) {
-	indigo_save_property(device, NULL, LA_MODEL_PROPERTY);
-	indigo_save_property(device, NULL, LA_PORT_EXP_CONFIG_PROPERTY);
-	indigo_save_property(device, NULL, LA_PORT_THIRD_CONFIG_PROPERTY);
-	indigo_save_property(device, NULL, LA_STEP_MODE_PROPERTY);
-	indigo_save_property(device, NULL, LA_POWER_CONTROL_PROPERTY);
-	indigo_save_property(device, NULL, LA_TEMPERATURE_SENSOR_PROPERTY);
-	indigo_save_property(device, NULL, LA_WIRING_PROPERTY);
-	indigo_save_property(device, NULL, LA_MOTOR_TYPE_PROPERTY);
-	indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);
-	indigo_save_property(device, NULL, AUX_SENSOR_NAMES_PROPERTY);
-}
-
-
-static void lunatico_delete_properties(indigo_device *device) {
-	indigo_delete_property(device, LA_STEP_MODE_PROPERTY, NULL);
-	indigo_delete_property(device, LA_POWER_CONTROL_PROPERTY, NULL);
-	indigo_delete_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
-	indigo_delete_property(device, LA_WIRING_PROPERTY, NULL);
-	indigo_delete_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
-	indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-	indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
-}
-
-
-static indigo_result lunatico_common_update_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (indigo_property_match_changeable(LA_MODEL_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- LA_MODEL
-		indigo_property_copy_values(LA_MODEL_PROPERTY, property, false);
-		LA_MODEL_PROPERTY->state = INDIGO_OK_STATE;
-		INDIGO_ASYNC(configure_ports, device);
-		indigo_update_property(device, LA_MODEL_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(LA_PORT_EXP_CONFIG_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- LA_PORT_EXP_CONFIG_PROPERTY
-		indigo_property_copy_values(LA_PORT_EXP_CONFIG_PROPERTY, property, false);
-		LA_PORT_EXP_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-		INDIGO_ASYNC(configure_ports, device);
-		indigo_update_property(device, LA_PORT_EXP_CONFIG_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(LA_PORT_THIRD_CONFIG_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- LA_PORT_THIRD_CONFIG_PROPERTY
-		indigo_property_copy_values(LA_PORT_THIRD_CONFIG_PROPERTY, property, false);
-		LA_PORT_THIRD_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-		INDIGO_ASYNC(configure_ports, device);
-		indigo_update_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(LA_STEP_MODE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- LA_STEP_MODE_PROPERTY
-		indigo_property_copy_values(LA_STEP_MODE_PROPERTY, property, false);
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-
-		LA_STEP_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		step_mode_t mode = STEP_MODE_FULL;
-		if (LA_STEP_MODE_FULL_ITEM->sw.value) {
-			mode = STEP_MODE_FULL;
-		} else if (LA_STEP_MODE_HALF_ITEM->sw.value) {
-			mode = STEP_MODE_HALF;
-		}
-		if (!lunatico_set_step(device, mode)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_step(%d, %d) failed", PRIVATE_DATA->handle, mode);
-			LA_STEP_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, LA_STEP_MODE_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(LA_POWER_CONTROL_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- LA_POWER_CONTROL_PROPERTY
-		indigo_property_copy_values(LA_POWER_CONTROL_PROPERTY, property, false);
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		LA_POWER_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
-
-		if (!lunatico_set_move_power(device, LA_POWER_CONTROL_MOVE_ITEM->number.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_move_power(%d) failed", PRIVATE_DATA->handle);
-			LA_POWER_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, LA_POWER_CONTROL_PROPERTY, NULL);
-			return INDIGO_OK;
-		}
-		if (!lunatico_set_stop_power(device, LA_POWER_CONTROL_STOP_ITEM->number.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_stop_power(%d) failed", PRIVATE_DATA->handle);
-			LA_POWER_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, LA_POWER_CONTROL_PROPERTY, NULL);
-			return INDIGO_OK;
-		}
-
-		indigo_update_property(device, LA_POWER_CONTROL_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(LA_TEMPERATURE_SENSOR_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- LA_TEMPERATURE_SENSOR
-		indigo_property_copy_values(LA_TEMPERATURE_SENSOR_PROPERTY, property, false);
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		LA_TEMPERATURE_SENSOR_PROPERTY->state = INDIGO_OK_STATE;
-		if (LA_TEMPERATURE_SENSOR_INTERNAL_ITEM->sw.value) {
-			PORT_DATA.temperature_sensor_index = 0;
-		} else {
-			PORT_DATA.temperature_sensor_index = 1;
-		}
-		indigo_update_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(LA_MOTOR_TYPE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- LA_MOTOR_TYPE_PROPERTY
-		bool success = true;
-		indigo_property_copy_values(LA_MOTOR_TYPE_PROPERTY, property, false);
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		LA_MOTOR_TYPE_PROPERTY->state = INDIGO_OK_STATE;
-		if (LA_MOTOR_TYPE_UNIPOLAR_ITEM->sw.value) {
-				success = lunatico_set_motor_type(device, MT_UNIPOLAR);
-		} else if (LA_MOTOR_TYPE_BIPOLAR_ITEM->sw.value) {
-				success = lunatico_set_motor_type(device, MT_BIPOLAR);
-		} else if (LA_MOTOR_TYPE_DC_ITEM->sw.value) {
-				success = lunatico_set_motor_type(device, MT_DC);
-		} else if (LA_MOTOR_TYPE_STEP_DIR_ITEM->sw.value) {
-				success = lunatico_set_motor_type(device, MT_STEP_DIR);
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported Motor type");
-			LA_MOTOR_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		if (!success) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_motor_type() failed");
-			LA_MOTOR_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONFIG
-		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			lunatico_save_properties(device);
-		}
-	}
-	return INDIGO_OK;
-}
-
-// --------------------------------------------------------------------------------- INDIGO AUX Powerbox device implementation
-
-static void sensors_timer_callback(indigo_device *device) {
-	int sensor_value;
-	bool success;
-
-	AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_OK_STATE;
-
-	/* NOTE: Pins are hrizontally flipped on the newer devices with female DB9 connectors.
-	   We reverse them here, so that there is no issue for the users with these devices.
-	*/
-	if (!(success = lunatico_read_sensor(device, 8, &sensor_value))) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_sensor(%d) failed", PRIVATE_DATA->handle);
-		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		AUX_GPIO_SENSOR_1_ITEM->number.value = (double)sensor_value;
-	}
-
-	if ((success) && (!(success = lunatico_read_sensor(device, 7, &sensor_value)))) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_sensor(%d) failed", PRIVATE_DATA->handle);
-		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		AUX_GPIO_SENSOR_2_ITEM->number.value = (double)sensor_value;
-	}
-
-	if ((success) && (!(success = lunatico_read_sensor(device, 6, &sensor_value)))) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_sensor(%d) failed", PRIVATE_DATA->handle);
-		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		AUX_GPIO_SENSOR_3_ITEM->number.value = (double)sensor_value;
-	}
-
-	if ((success) && (!(success = lunatico_read_sensor(device, 5, &sensor_value)))) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_sensor(%d) failed", PRIVATE_DATA->handle);
-		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		AUX_GPIO_SENSOR_4_ITEM->number.value = (double)sensor_value;
-	}
-	indigo_update_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
-	indigo_reschedule_timer(device, 3, &PORT_DATA.sensors_timer);
-}
-
-
-static bool set_power_outlets(indigo_device *device) {
-	bool success = true;
-	/* NOTE: Pins are hrizontally flipped on the newer devices with female DB9 connectors.
-	   We reverse them here, so that there is no issue for the users with these devices.
-	*/
-	if (!lunatico_enable_power_outlet(device, 4, AUX_POWER_OUTLET_1_ITEM->sw.value)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_enable_power_outlet(%d) failed", PRIVATE_DATA->handle);
-		success = false;
-	}
-	if (!lunatico_enable_power_outlet(device, 3, AUX_POWER_OUTLET_2_ITEM->sw.value)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_enable_power_outlet(%d) failed", PRIVATE_DATA->handle);
-		success = false;
-	}
-	if (!lunatico_enable_power_outlet(device, 2, AUX_POWER_OUTLET_3_ITEM->sw.value)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_enable_power_outlet(%d) failed", PRIVATE_DATA->handle);
-		success = false;
-	}
-	if (!lunatico_enable_power_outlet(device, 1, AUX_POWER_OUTLET_4_ITEM->sw.value)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_enable_power_outlet(%d) failed", PRIVATE_DATA->handle);
-		success = false;
-	}
-	return success;
-}
-
-
-static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	lunatico_enumerate_properties(device, client, property);
-	return indigo_aux_enumerate_properties(device, client, property);
-}
-
-
-static indigo_result aux_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(PRIVATE_DATA != NULL);
-	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_GPIO | INDIGO_INTERFACE_AUX_POWERBOX) == INDIGO_OK) {
-		// --------------------------------------------------------------------------------
-		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
-		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return aux_enumerate_properties(device, NULL, NULL);
-	}
-	return INDIGO_FAILED;
-}
-
-static void handle_aux_connect_property(indigo_device *device) {
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!DEVICE_CONNECTED) {
-			if (lunatico_open(device)) {
-				char board[LUNATICO_CMD_LEN] = "N/A";
-				char firmware[LUNATICO_CMD_LEN] = "N/A";
-				if (lunatico_get_info(device, board, firmware)) {
-					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, board);
-					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
-					indigo_update_property(device, INFO_PROPERTY, NULL);
-				}
-				indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-				indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
-				set_power_outlets(device);
-				indigo_set_timer(device, 0, sensors_timer_callback, &PORT_DATA.sensors_timer);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			}
-		}
-	} else {
-		if (DEVICE_CONNECTED) {
-			indigo_cancel_timer_sync(device, &PORT_DATA.sensors_timer);
-			lunatico_delete_properties(device);
-			lunatico_close(device);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
-	}
-	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
-}
-
-
-static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
-	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property))
-			return INDIGO_OK;
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, handle_aux_connect_property, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(AUX_OUTLET_NAMES_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
-		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
-		if (DEVICE_CONNECTED) {
-			indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-		}
-		snprintf(AUX_POWER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_1_ITEM->text.value);
-		snprintf(AUX_POWER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_2_ITEM->text.value);
-		snprintf(AUX_POWER_OUTLET_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_3_ITEM->text.value);
-		snprintf(AUX_POWER_OUTLET_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_4_ITEM->text.value);
-		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
-		if (DEVICE_CONNECTED) {
-			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-		}
-		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(AUX_POWER_OUTLET_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- AUX_POWER_OUTLET
-		indigo_property_copy_values(AUX_POWER_OUTLET_PROPERTY, property, false);
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-
-		if (set_power_outlets(device) == true) {
-			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(AUX_SENSOR_NAMES_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- AUX_SENSOR_NAMES
-		indigo_property_copy_values(AUX_SENSOR_NAMES_PROPERTY, property, false);
-		if (DEVICE_CONNECTED) {
-			indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
-		}
-		snprintf(AUX_GPIO_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_1_ITEM->text.value);
-		snprintf(AUX_GPIO_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_2_ITEM->text.value);
-		snprintf(AUX_GPIO_SENSOR_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_3_ITEM->text.value);
-		snprintf(AUX_GPIO_SENSOR_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_4_ITEM->text.value);
-		AUX_SENSOR_NAMES_PROPERTY->state = INDIGO_OK_STATE;
-		if (DEVICE_CONNECTED) {
-			indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
-		}
-		indigo_update_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
-		return INDIGO_OK;
-	}
-	// --------------------------------------------------------------------------------
-	lunatico_common_update_property(device, client, property);
-	return indigo_aux_change_property(device, client, property);
-}
-
-
-static indigo_result aux_detach(indigo_device *device) {
-	if (DEVICE_CONNECTED) {
-		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		handle_aux_connect_property(device);
-	}
-	lunatico_detach(device);
-	return indigo_aux_detach(device);
-}
-
-
-// -------------------------------------------------------------------------------- INDIGO rotator device implementation
-static int degrees_to_steps(double degrees, int steps_rev, double min) {
-	double deg = degrees;
-	while (deg >= (360 - min)) deg -= 360;
-	deg -= min;
-	int steps = (int)(deg * steps_rev / 360.0);
-	while (steps < 0) steps += steps_rev;
-	while (steps >= steps_rev) steps -= steps_rev;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s(): %.3f deg => %d steps (deg = %.3f, steps_rev = %d, min = %.3f)", __FUNCTION__, degrees, steps, deg, steps_rev, min);
-	return steps;
-}
-
-
-static double steps_to_degrees(int steps, int steps_rev, double min) {
-	if (steps_rev == 0) return 0;
-	int st = steps;
-	while (st >= steps_rev) st -= steps_rev;
-	st += (int)(steps_rev * min / 360);
-	double degrees = st * 360.0 / steps_rev;
-	while (degrees < 0) degrees += 360;
-	while (degrees >= 360) degrees -= 360;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s(): %d steps => %.3f deg (st = %d, steps_rev = %d, min = %.3f)", __FUNCTION__, steps, degrees, st, steps_rev, min);
-	return degrees;
-}
-
-
-static void lunatico_sync_to_current(indigo_device *device) {
-	double steps = degrees_to_steps(
-		ROTATOR_POSITION_ITEM->number.value,
-		ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-		ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-	);
-	if (!lunatico_sync_position(device, steps)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_sync_position(%d) failed", PRIVATE_DATA->handle);
+	if (!lunatico_apply_step_mode(device, step_mode)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_apply_step_mode() failed");
 	}
 }
 
+// --------------------------------------------------------------------------------- Focuser device
 
-static void rotator_timer_callback(indigo_device *device) {
-	bool moving;
-	int32_t position = 0;
-	bool success = false;
-
-	if (!(success = lunatico_is_moving(device, &moving))) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_is_moving(%d) failed", PRIVATE_DATA->handle);
-		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-
-	if ((success) && (!(success = lunatico_get_position(device, &position)))) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
-		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		PORT_DATA.r_current_position = steps_to_degrees(
-			position,
-			ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-		);
-	}
-
-	if (success) {
-		ROTATOR_POSITION_ITEM->number.value = PORT_DATA.r_current_position;
-		if ((!moving) || (PORT_DATA.r_current_position == PORT_DATA.r_target_position)) {
-			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			PORT_DATA.focuser_timer = NULL;
-		} else {
-			indigo_reschedule_timer(device, 0.5, &(PORT_DATA.focuser_timer));
-		}
-	} else {
-		PORT_DATA.focuser_timer = NULL;
-	}
-	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-}
-
-
-static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	lunatico_enumerate_properties(device, client, property);
-	return indigo_rotator_enumerate_properties(device, client, property);
-}
-
-
-static indigo_result rotator_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(PRIVATE_DATA != NULL);
-	if (indigo_rotator_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		// --------------------------------------------------------------------------------
-		ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.min = 100;
-		ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.max = 100000;
-		ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value = ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.target = 3600;
-		ROTATOR_STEPS_PER_REVOLUTION_PROPERTY->hidden = false;
-		// --------------------------------------------------------------------------------
-		ROTATOR_DIRECTION_PROPERTY->hidden = false;
-		// --------------------------------------------------------------------------------
-		ROTATOR_BACKLASH_PROPERTY->hidden = false;
-		// --------------------------------------------------------------------------------
-		ROTATOR_LIMITS_MIN_POSITION_ITEM->number.min = -180;
-		ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value = ROTATOR_LIMITS_MIN_POSITION_ITEM->number.target = -180;
-		ROTATOR_LIMITS_MIN_POSITION_ITEM->number.max = 360;
-		ROTATOR_LIMITS_MAX_POSITION_ITEM->number.min = -180;
-		ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value = ROTATOR_LIMITS_MAX_POSITION_ITEM->number.target = 180;
-		ROTATOR_LIMITS_MAX_POSITION_ITEM->number.max = 360;
-		ROTATOR_LIMITS_PROPERTY->hidden = false;
-		// --------------------------------------------------------------------------------
-		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
-		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return rotator_enumerate_properties(device, NULL, NULL);
-	}
-	return INDIGO_FAILED;
-}
-
-
-static void handle_rotator_connect_property(indigo_device *device) {
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!DEVICE_CONNECTED) {
-			if (lunatico_open(device)) {
-				lunatico_init_device(device);
-
-				int32_t position = 0;
-				if (!lunatico_get_position(device, &position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
-				}
-				/* r_current_position has to follow the angle read from the device: the position handler
-				   skips a request that equals it, so a stale 0 here silently swallows the first request
-				   for 0 deg - no command, no error, state OK */
-				ROTATOR_POSITION_ITEM->number.value =
-				PORT_DATA.r_current_position = steps_to_degrees(
-					position,
-					ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-					ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-				);
-
-				lunatico_sync_to_current(device);
-
-				if (!lunatico_set_speed(device, 0.1)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_speed(%d) failed", PRIVATE_DATA->handle);
-				}
-
-				bool success = false;
-				if (LA_WIRING_LUNATICO_ITEM->sw.value) {
-					if (ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
-						success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
-					} else {
-						success = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
-					}
-				} else if (LA_WIRING_MOONLITE_ITEM->sw.value) {
-					if (ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
-						success = lunatico_set_wiring(device, MW_MOONLITE_NORMAL);
-					} else {
-						success = lunatico_set_wiring(device, MW_MOONLITE_REVERSED);
-					}
-				}
-				if (!success) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring(%d) failed", PRIVATE_DATA->handle);
-				}
-
-				int min_steps = degrees_to_steps(
-					ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value,
-					ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-					ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-				);
-				int max_steps = degrees_to_steps(
-					ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value,
-					ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-					ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-				);
-				if (max_steps == min_steps) {
-					success = lunatico_delete_limits(device);
-				} else {
-					success = lunatico_set_limits(device, min_steps, max_steps);
-				}
-				if (!success) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_limits(%d) failed", PRIVATE_DATA->handle);
-				}
-
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-
-				indigo_set_timer(device, 0.1, rotator_timer_callback, &PORT_DATA.rotator_timer);
-			}
-		}
-	} else {
-		if (DEVICE_CONNECTED) {
-			indigo_cancel_timer_sync(device, &PORT_DATA.rotator_timer);
-			lunatico_delete_properties(device);
-			lunatico_close(device);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
-	}
-	indigo_rotator_change_property(device, NULL, CONNECTION_PROPERTY);
-}
-
-
-static indigo_result rotator_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
-	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property))
-			return INDIGO_OK;
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, handle_rotator_connect_property, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- ROTATOR_POSITION
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		double current_position = ROTATOR_POSITION_ITEM->number.value;
-		indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
-
-		int min_steps = degrees_to_steps(
-			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value,
-			ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-		);
-		int max_steps = degrees_to_steps(
-			ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value,
-			ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-		);
-		int steps_position = degrees_to_steps(
-			ROTATOR_POSITION_ITEM->number.target,
-			ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-		);
-
-		/* Make sure we do not go in the forbidden area */
-		if ((max_steps != min_steps) && (steps_position > max_steps || steps_position < min_steps)) {
-			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			ROTATOR_POSITION_ITEM->number.value = current_position;
-			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Requested position is not in the limits.");
-			return INDIGO_OK;
-		}
-
-		/* We do not want to go in the forbidden area */
-		if (ROTATOR_POSITION_ITEM->number.target == PORT_DATA.r_current_position) {
-			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-		} else { /* GOTO position */
-			ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			PORT_DATA.r_target_position = ROTATOR_POSITION_ITEM->number.target;
-			ROTATOR_POSITION_ITEM->number.value = PORT_DATA.r_current_position;
-			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-			if (ROTATOR_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
-				ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-				if (!lunatico_goto_position(device, steps_position, (uint32_t)ROTATOR_BACKLASH_ITEM->number.value)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d, %d, %d) failed", PRIVATE_DATA->handle, PORT_DATA.r_target_position, (uint32_t)ROTATOR_BACKLASH_ITEM->number.value);
-					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-				} else {
-					indigo_set_timer(device, 0.5, rotator_timer_callback, &PORT_DATA.focuser_timer);
-				}
-			} else { /* RESET CURRENT POSITION */
-				ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-				if (!lunatico_sync_position(device, steps_position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_sync_position(%d, %d) failed", PRIVATE_DATA->handle, PORT_DATA.r_target_position);
-					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				if (!lunatico_get_position(device, &steps_position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
-					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
-					ROTATOR_POSITION_ITEM->number.value =
-					PORT_DATA.r_current_position = steps_to_degrees(
-						steps_position,
-						ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-						ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-					);
-				}
-				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-			}
-		}
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- ROTATOR_ABORT_MOTION
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		indigo_property_copy_values(ROTATOR_ABORT_MOTION_PROPERTY, property, false);
-		ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_cancel_timer(device, &PORT_DATA.rotator_timer);
-
-		if (!lunatico_stop(device)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_stop(%d) failed", PRIVATE_DATA->handle);
-			ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		int32_t position = 0;
-		if (!lunatico_get_position(device, &position)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
-			ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else {
-			PORT_DATA.r_current_position =
-				steps_to_degrees(
-					position,
-					ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-					ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-				);
-		}
-		ROTATOR_POSITION_ITEM->number.value = PORT_DATA.r_current_position;
-		ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
-		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-		indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(ROTATOR_DIRECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- ROTATOR_DIRECTION_PROPERTY
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		indigo_property_copy_values(ROTATOR_DIRECTION_PROPERTY, property, false);
-		ROTATOR_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
-		bool success = true;
-		if (LA_WIRING_LUNATICO_ITEM->sw.value) {
-			if (ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
-				success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
-			} else {
-				success = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
-			}
-		} else if (LA_WIRING_MOONLITE_ITEM->sw.value) {
-			if (ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
-				success = lunatico_set_wiring(device, MW_MOONLITE_NORMAL);
-			} else {
-				success = lunatico_set_wiring(device, MW_MOONLITE_REVERSED);
-			}
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported Motor wiring");
-			ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		if (!success) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring() failed");
-			ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(LA_WIRING_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- LA_WIRING_PROPERTY
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		indigo_property_copy_values(LA_WIRING_PROPERTY, property, false);
-		LA_WIRING_PROPERTY->state = INDIGO_OK_STATE;
-		bool success = true;
-		if (LA_WIRING_LUNATICO_ITEM->sw.value) {
-			if (ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
-				success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
-			} else {
-				success = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
-			}
-		} else if (LA_WIRING_MOONLITE_ITEM->sw.value) {
-			if (ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
-				success = lunatico_set_wiring(device, MW_MOONLITE_NORMAL);
-			} else {
-				success = lunatico_set_wiring(device, MW_MOONLITE_REVERSED);
-			}
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported Motor wiring");
-			LA_WIRING_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		if (!success) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring() failed");
-			LA_WIRING_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, LA_WIRING_PROPERTY, NULL);
-		return INDIGO_OK;
-	// -------------------------------------------------------------------------------- ROTATOR_LIMITS_PROPERTY
-	} else if (indigo_property_match_changeable(ROTATOR_LIMITS_PROPERTY, property)) {
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		indigo_property_copy_values(ROTATOR_LIMITS_PROPERTY, property, false);
-		ROTATOR_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
-
-		bool success;
-		int min_steps = degrees_to_steps(
-			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value,
-			ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-		);
-		int max_steps = degrees_to_steps(
-			ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value,
-			ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-		);
-		if (max_steps == min_steps) {
-			success = lunatico_delete_limits(device);
-		} else {
-			success = lunatico_set_limits(device, min_steps, max_steps);
-		}
-		if (!success) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_limits(%d) failed", PRIVATE_DATA->handle);
-			ROTATOR_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-
-		lunatico_sync_to_current(device);
-
-		indigo_update_property(device, ROTATOR_LIMITS_PROPERTY, NULL);
-		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- ROTATOR_STEPS_PER_REVOLUTION
-	} else if (indigo_property_match_changeable(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property)) {
-		indigo_property_copy_values(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property, false);
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		ROTATOR_STEPS_PER_REVOLUTION_PROPERTY->state = INDIGO_OK_STATE;
-
-		lunatico_sync_to_current(device);
-
-		indigo_update_property(device, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONFIG
-		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			indigo_save_property(device, NULL, ROTATOR_DIRECTION_PROPERTY);
-		}
-		// --------------------------------------------------------------------------------
-	}
-	lunatico_common_update_property(device, client, property);
-	return indigo_rotator_change_property(device, client, property);
-}
-
-
-static indigo_result rotator_detach(indigo_device *device) {
-	if (DEVICE_CONNECTED) {
-		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		handle_rotator_connect_property(device);
-	}
-	lunatico_detach(device);
-	return indigo_rotator_detach(device);
-}
-
-
-// -------------------------------------------------------------------------------- INDIGO focuser device implementation
-static void focuser_timer_callback(indigo_device *device) {
-	bool moving;
-	int32_t position = 0;
-	bool success = false;
-
-	if (!(success = lunatico_is_moving(device, &moving))) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_is_moving(%d) failed", PRIVATE_DATA->handle);
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-
-	if ((success) && (!(success = lunatico_get_position(device, &position)))) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		PORT_DATA.f_current_position = (double)position;
-	}
-
-	if (success) {
-		FOCUSER_POSITION_ITEM->number.value = PORT_DATA.f_current_position;
-		if ((!moving) || (PORT_DATA.f_current_position == PORT_DATA.f_target_position)) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-			PORT_DATA.focuser_timer = NULL;
-		} else {
-			indigo_reschedule_timer(device, 0.5, &(PORT_DATA.focuser_timer));
-		}
-	} else {
-		PORT_DATA.focuser_timer = NULL;
-	}
+static void lunatico_focuser_motion_state(indigo_device *device, indigo_property_state state) {
+	FOCUSER_POSITION_PROPERTY->state = state;
+	FOCUSER_STEPS_PROPERTY->state = state;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 }
 
+// Bounded progress check of a focuser move. It reschedules itself while the
+// controller reports motion and publishes the outcome once, so no handler ever
+// waits for the motor.
+static void focuser_motion_finalizer(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	bool moving = false;
+	int32_t position = 0;
+	if (!lunatico_is_moving(device, &moving)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_is_moving() failed");
+		lunatico_focuser_motion_state(device, INDIGO_ALERT_STATE);
+		return;
+	}
+	if (!lunatico_get_position(device, &position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position() failed");
+		lunatico_focuser_motion_state(device, INDIGO_ALERT_STATE);
+		return;
+	}
+	PORT_STATE.focuser_position = position;
+	FOCUSER_POSITION_ITEM->number.value = position;
+	if (!moving || position == PORT_STATE.focuser_target) {
+		lunatico_focuser_motion_state(device, INDIGO_OK_STATE);
+		return;
+	}
+	lunatico_focuser_motion_state(device, INDIGO_BUSY_STATE);
+	indigo_execute_handler_in(device, LUNATICO_MOTION_POLL, focuser_motion_finalizer);
+}
 
-static void temperature_timer_callback(indigo_device *device) {
-	double temp;
+// Start an absolute move to an already clamped target. Returns true when the
+// move started and its completion still has to be polled.
+static bool lunatico_focuser_start_move(indigo_device *device, int32_t target, int32_t backlash) {
+	PORT_STATE.focuser_target = target;
+	FOCUSER_POSITION_ITEM->number.value = PORT_STATE.focuser_position;
+	lunatico_focuser_motion_state(device, INDIGO_BUSY_STATE);
+	if (!lunatico_goto_position(device, target, backlash)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d, %d) failed", target, backlash);
+		// The move never started, so it must not be polled: the poll would find
+		// the focuser idle at the unchanged position and overwrite the failure.
+		lunatico_focuser_motion_state(device, INDIGO_ALERT_STATE);
+		return false;
+	}
+	return true;
+}
 
-	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-	if (!lunatico_get_temperature(device, PORT_DATA.temperature_sensor_index, &temp)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_temperature(%d) -> %f failed", PRIVATE_DATA->handle, temp);
-		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+static int32_t lunatico_focuser_clamp(indigo_device *device, double target) {
+	if (target > FOCUSER_POSITION_ITEM->number.max) {
+		return (int32_t)FOCUSER_POSITION_ITEM->number.max;
+	}
+	if (target < FOCUSER_POSITION_ITEM->number.min) {
+		return (int32_t)FOCUSER_POSITION_ITEM->number.min;
+	}
+	return (int32_t)target;
+}
+
+// FOCUSER_POSITION either starts a move or, in SYNC mode, writes the
+// controller's position counter and reads it back. Returns true when a move
+// started and still has to be polled.
+static bool lunatico_focuser_position(indigo_device *device) {
+	int32_t target = (int32_t)FOCUSER_POSITION_ITEM->number.target;
+	if (target == PORT_STATE.focuser_position) {
+		lunatico_focuser_motion_state(device, INDIGO_OK_STATE);
+		return false;
+	}
+	if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
+		return lunatico_focuser_start_move(device, target, (int32_t)FOCUSER_BACKLASH_ITEM->number.value);
+	}
+	indigo_property_state state = INDIGO_OK_STATE;
+	if (!lunatico_sync_position(device, target)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_sync_position(%d) failed", target);
+		state = INDIGO_ALERT_STATE;
+	}
+	int32_t position = 0;
+	if (!lunatico_get_position(device, &position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position() failed");
+		state = INDIGO_ALERT_STATE;
 	} else {
-		FOCUSER_TEMPERATURE_ITEM->number.value = temp;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "lunatico_get_temperature(%d) -> %f succeeded", PRIVATE_DATA->handle, FOCUSER_TEMPERATURE_ITEM->number.value);
+		PORT_STATE.focuser_position = position;
+		FOCUSER_POSITION_ITEM->number.value = position;
 	}
-
-	if (FOCUSER_TEMPERATURE_ITEM->number.value <= NO_TEMP_READING) { /* -127 is returned when the sensor is not connected */
-		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
-		if (PORT_DATA.has_temperature_sensor) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected.");
-			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected.");
-			PORT_DATA.has_temperature_sensor = false;
-		}
-	} else {
-		PORT_DATA.has_temperature_sensor = true;
-		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-	}
-	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
-		compensate_focus(device, temp);
-	} else {
-		/* reset temp so that the compensation starts when auto mode is selected */
-		PORT_DATA.prev_temp = NO_TEMP_READING;
-	}
-
-	indigo_reschedule_timer(device, 3, &(PORT_DATA.temperature_timer));
-}
-
-
-static void compensate_focus(indigo_device *device, double new_temp) {
-	int compensation;
-	double temp_difference = new_temp - PORT_DATA.prev_temp;
-
-	/* we do not have previous temperature reading */
-	if (PORT_DATA.prev_temp <= NO_TEMP_READING) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: PORT_DATA.prev_temp = %f", PORT_DATA.prev_temp);
-		PORT_DATA.prev_temp = new_temp;
-		return;
-	}
-
-	/* we do not have current temperature reading or focuser is moving */
-	if ((new_temp <= NO_TEMP_READING) || (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: new_temp = %f, FOCUSER_POSITION_PROPERTY->state = %d", new_temp, FOCUSER_POSITION_PROPERTY->state);
-		return;
-	}
-
-	/* temperature difference if more than 1 degree so compensation needed */
-	if ((fabs(temp_difference) >= 1.0) && (fabs(temp_difference) < 100)) {
-		compensation = (int)(temp_difference * FOCUSER_COMPENSATION_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: temp_difference = %.2f, Compensation = %d, steps/degC = %.1f", temp_difference, compensation, FOCUSER_COMPENSATION_ITEM->number.value);
-	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating (not needed): temp_difference = %f", temp_difference);
-		return;
-	}
-
-	PORT_DATA.f_target_position = PORT_DATA.f_current_position - compensation;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: PORT_DATA.f_current_position = %d, PORT_DATA.f_target_position = %d", PORT_DATA.f_current_position, PORT_DATA.f_target_position);
-
-	int32_t current_position = 0;
-	if (!lunatico_get_position(device, &current_position)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
-	}
-	PORT_DATA.f_current_position = (double)current_position;
-
-	/* Make sure we do not attempt to go beyond the limits */
-	if (FOCUSER_POSITION_ITEM->number.max < PORT_DATA.f_target_position) {
-		PORT_DATA.f_target_position = FOCUSER_POSITION_ITEM->number.max;
-	} else if (FOCUSER_POSITION_ITEM->number.min > PORT_DATA.f_target_position) {
-		PORT_DATA.f_target_position = FOCUSER_POSITION_ITEM->number.min;
-	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PORT_DATA.f_target_position = %d", PORT_DATA.f_target_position);
-
-	PORT_DATA.prev_temp = new_temp;
-	FOCUSER_POSITION_ITEM->number.value = PORT_DATA.f_current_position;
-	if (!lunatico_goto_position(device, (uint32_t)PORT_DATA.f_target_position, (uint32_t)FOCUSER_BACKLASH_ITEM->number.value)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d, %d, %d) failed", PRIVATE_DATA->handle, PORT_DATA.f_target_position, (uint32_t)FOCUSER_BACKLASH_ITEM->number.value);
-		/* the move never started, so do not poll for it: the poll would find the focuser idle at the
-		   unchanged position and overwrite the failure with OK */
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		return;
-	}
-	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	indigo_set_timer(device, 0.5, focuser_timer_callback, &PORT_DATA.focuser_timer);
-}
-
-
-static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	lunatico_enumerate_properties(device, client, property);
-	return indigo_focuser_enumerate_properties(device, client, property);
-}
-
-
-static indigo_result focuser_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(PRIVATE_DATA != NULL);
-	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
-
-		FOCUSER_LIMITS_PROPERTY->hidden = false;
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 1;
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 100000;
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.step = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min;
-
-		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = 0;
-		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max;
-		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.step = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min;
-
-		FOCUSER_BACKLASH_PROPERTY->hidden = false;
-		FOCUSER_BACKLASH_ITEM->number.max = 200;
-		FOCUSER_BACKLASH_ITEM->number.step = 5;
-		FOCUSER_BACKLASH_ITEM->number.min = FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = 0;
-
-		FOCUSER_SPEED_PROPERTY->hidden = false;
-		FOCUSER_SPEED_ITEM->number.min = .002;
-		FOCUSER_SPEED_ITEM->number.max = 20;
-		FOCUSER_SPEED_ITEM->number.step = 0.1;
-		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 0.1;
-		strcpy(FOCUSER_SPEED_ITEM->label, "Speed (kHz)");
-
-		FOCUSER_POSITION_ITEM->number.min = 0;
-		FOCUSER_POSITION_ITEM->number.step = 100;
-		FOCUSER_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max;
-
-		FOCUSER_STEPS_ITEM->number.min = 0;
-		FOCUSER_STEPS_ITEM->number.step = 1;
-
-		FOCUSER_MODE_PROPERTY->hidden = false;
-		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
-		FOCUSER_COMPENSATION_ITEM->number.min = -10000;
-		FOCUSER_COMPENSATION_ITEM->number.max = 10000;
-
-		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
-		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
-
-		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
-		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return focuser_enumerate_properties(device, NULL, NULL);
-	}
-	return INDIGO_FAILED;
-}
-
-
-static void handle_focuser_connect_property(indigo_device *device) {
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!DEVICE_CONNECTED) {
-			if (lunatico_open(device)) {
-				lunatico_init_device(device);
-
-				int32_t position = 0;
-				if (!lunatico_get_position(device, &position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
-				}
-				FOCUSER_POSITION_ITEM->number.value = (double)position;
-
-				if (!lunatico_set_speed(device, FOCUSER_SPEED_ITEM->number.target)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_speed(%d) failed", PRIVATE_DATA->handle);
-				}
-
-				bool success = false;
-				if (LA_WIRING_LUNATICO_ITEM->sw.value) {
-					if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
-						success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
-					} else {
-						success= lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
-					}
-				} else if (LA_WIRING_MOONLITE_ITEM->sw.value) {
-					if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
-						success = lunatico_set_wiring(device, MW_MOONLITE_NORMAL);
-					} else {
-						success = lunatico_set_wiring(device, MW_MOONLITE_REVERSED);
-					}
-				}
-				if (!success) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring(%d) failed", PRIVATE_DATA->handle);
-				}
-
-				if (FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value == FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max &&
-					FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value == FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min) {
-					success = lunatico_delete_limits(device);
-				} else {
-					success = lunatico_set_limits(device, FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value, FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value);
-				}
-				if (!success) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_limits(%d) failed", PRIVATE_DATA->handle);
-				}
-
-				lunatico_get_temperature(device, 0, &FOCUSER_TEMPERATURE_ITEM->number.value);
-				PORT_DATA.prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
-				PORT_DATA.has_temperature_sensor = true;
-				indigo_set_timer(device, 1, temperature_timer_callback, &PORT_DATA.temperature_timer);
-
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_set_timer(device, 0.5, focuser_timer_callback, &PORT_DATA.focuser_timer);
-			}
-		}
-	} else {
-		if (DEVICE_CONNECTED) {
-			indigo_cancel_timer_sync(device, &PORT_DATA.focuser_timer);
-			indigo_cancel_timer_sync(device, &PORT_DATA.temperature_timer);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PORT_DATA.temperature_timer == %p", PORT_DATA.temperature_timer);
-			lunatico_delete_properties(device);
-			lunatico_close(device);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
-	}
-	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
-}
-
-
-//static void handle_focuser_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
-//	if (client && property) indigo_focuser_change_property(device, client, property);
-//}
-
-
-static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
-	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property))
-			return INDIGO_OK;
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, handle_focuser_connect_property, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
-		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		bool success = true;
-		if (LA_WIRING_LUNATICO_ITEM->sw.value) {
-			if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
-				success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
-			} else {
-				success = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
-			}
-		} else if (LA_WIRING_MOONLITE_ITEM->sw.value) {
-			if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
-				success = lunatico_set_wiring(device, MW_MOONLITE_NORMAL);
-			} else {
-				success = lunatico_set_wiring(device, MW_MOONLITE_REVERSED);
-			}
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported Motor wiring");
-			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		if (!success) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring() failed");
-			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
-		if (FOCUSER_POSITION_ITEM->number.target < 0 || FOCUSER_POSITION_ITEM->number.target > FOCUSER_POSITION_ITEM->number.max) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else if (FOCUSER_POSITION_ITEM->number.target == PORT_DATA.f_current_position) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else { /* GOTO position */
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			PORT_DATA.f_target_position = FOCUSER_POSITION_ITEM->number.target;
-			FOCUSER_POSITION_ITEM->number.value = PORT_DATA.f_current_position;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-				if (!lunatico_goto_position(device, (uint32_t)PORT_DATA.f_target_position, (uint32_t)FOCUSER_BACKLASH_ITEM->number.value)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d, %d, %d) failed", PRIVATE_DATA->handle, PORT_DATA.f_target_position, (uint32_t)FOCUSER_BACKLASH_ITEM->number.value);
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-				} else {
-					indigo_set_timer(device, 0.5, focuser_timer_callback, &PORT_DATA.focuser_timer);
-				}
-			} else { /* RESET CURRENT POSITION */
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-				if (!lunatico_sync_position(device, PORT_DATA.f_target_position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_sync_position(%d, %d) failed", PRIVATE_DATA->handle, PORT_DATA.f_target_position);
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				int32_t position = 0;
-				if (!lunatico_get_position(device, &position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
-					FOCUSER_POSITION_ITEM->number.value = PORT_DATA.f_current_position = (double)position;
-				}
-				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			}
-		}
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
-		int success = true;
-		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
-		int max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
-		int min_position = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
-
-		if (max_position < min_position) {
-			FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, "Minimum value can not be bigger then maximum");
-			return INDIGO_OK;
-		}
-		if (FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target == FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max &&
-			FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target == FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min) {
-			success = lunatico_delete_limits(device);
-		} else {
-			success = lunatico_set_limits(device, min_position, max_position);
-		}
-		if (!success) {
-			FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_SPEED_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_SPEED
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
-		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-
-		if (!lunatico_set_speed(device, FOCUSER_SPEED_ITEM->number.target)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_speed(%d) failed", PRIVATE_DATA->handle);
-			FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-
-		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_STEPS
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		if (FOCUSER_STEPS_ITEM->number.value < 0 || FOCUSER_STEPS_ITEM->number.value > FOCUSER_STEPS_ITEM->number.max) {
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else {
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			int32_t position = 0;
-			if (!lunatico_get_position(device, &position)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
-			} else {
-				PORT_DATA.f_current_position = (double)position;
-			}
-
-			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-				PORT_DATA.f_target_position = PORT_DATA.f_current_position - FOCUSER_STEPS_ITEM->number.value;
-			} else {
-				PORT_DATA.f_target_position = PORT_DATA.f_current_position + FOCUSER_STEPS_ITEM->number.value;
-			}
-
-			// Make sure we do not attempt to go beyond the limits
-			if (FOCUSER_POSITION_ITEM->number.max < PORT_DATA.f_target_position) {
-				PORT_DATA.f_target_position = FOCUSER_POSITION_ITEM->number.max;
-			} else if (FOCUSER_POSITION_ITEM->number.min > PORT_DATA.f_target_position) {
-				PORT_DATA.f_target_position = FOCUSER_POSITION_ITEM->number.min;
-			}
-
-			FOCUSER_POSITION_ITEM->number.value = PORT_DATA.f_current_position;
-			if (!lunatico_goto_position(device, (uint32_t)PORT_DATA.f_target_position, 0)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d, %d, 0) failed", PRIVATE_DATA->handle, PORT_DATA.f_target_position);
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			} else {
-				indigo_set_timer(device, 0.5, focuser_timer_callback, &PORT_DATA.focuser_timer);
-			}
-		}
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_cancel_timer(device, &PORT_DATA.focuser_timer);
-
-		if (!lunatico_stop(device)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_stop(%d) failed", PRIVATE_DATA->handle);
-			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		int32_t position = 0;
-		if (!lunatico_get_position(device, &position)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
-			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else {
-			PORT_DATA.f_current_position = (double)position;
-		}
-		FOCUSER_POSITION_ITEM->number.value = PORT_DATA.f_current_position;
-		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_COMPENSATION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION_PROPERTY
-		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
-		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
-		if (DEVICE_CONNECTED) {
-			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
-		}
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_BACKLASH_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH_PROPERTY
-		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
-		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
-		if (DEVICE_CONNECTED) {
-			indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
-		}
-		return INDIGO_OK;
-	// -------------------------------------------------------------------------------- FOCUSER_MODE
-	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
-		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
-		if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
-			indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
-			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else {
-			indigo_delete_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
-			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		}
-		FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(LA_WIRING_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- LA_WIRING_PROPERTY
-		bool success = true;
-		indigo_property_copy_values(LA_WIRING_PROPERTY, property, false);
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		LA_WIRING_PROPERTY->state = INDIGO_OK_STATE;
-		if (LA_WIRING_LUNATICO_ITEM->sw.value) {
-			if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
-				success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
-			} else {
-				success = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
-			}
-		} else if (LA_WIRING_MOONLITE_ITEM->sw.value) {
-			if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
-				success = lunatico_set_wiring(device, MW_MOONLITE_NORMAL);
-			} else {
-				success = lunatico_set_wiring(device, MW_MOONLITE_REVERSED);
-			}
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported Motor wiring");
-			LA_WIRING_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		if (!success) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring() failed");
-			LA_WIRING_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, LA_WIRING_PROPERTY, NULL);
-		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
-	}
-	lunatico_common_update_property(device, client, property);
-	return indigo_focuser_change_property(device, client, property);
-}
-
-
-static indigo_result focuser_detach(indigo_device *device) {
-	if (DEVICE_CONNECTED) {
-		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		handle_focuser_connect_property(device);
-	}
-	lunatico_detach(device);
-	return indigo_focuser_detach(device);
-}
-
-
-// --------------------------------------------------------------------------------
-
-static void create_port_device(int device_index, int port_index, device_type_t device_type) {
-	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
-		FOCUSER_LUNATICO_NAME,
-		focuser_attach,
-		focuser_enumerate_properties,
-		focuser_change_property,
-		NULL,
-		focuser_detach
-	);
-
-	static indigo_device rotator_template = INDIGO_DEVICE_INITIALIZER(
-		ROTATOR_LUNATICO_NAME,
-		rotator_attach,
-		rotator_enumerate_properties,
-		rotator_change_property,
-		NULL,
-		rotator_detach
-	);
-
-	static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(
-		AUX_LUNATICO_NAME,
-		aux_attach,
-		aux_enumerate_properties,
-		aux_change_property,
-		NULL,
-		aux_detach
-	);
-
-	if (port_index >= MAX_PORTS) {
-		return;
-	}
-	if (device_index >= MAX_DEVICES) {
-		return;
-	}
-	if (device_data[device_index].port[port_index] != NULL) {
-		if ((device_data[device_index].private_data) && (device_data[device_index].private_data->port_data[port_index].device_type == device_type)) {
-				return;
-		} else {
-				delete_port_device(device_index, port_index);
-		}
-	}
-
-	if (device_data[device_index].private_data == NULL) {
-		device_data[device_index].private_data = indigo_safe_malloc(sizeof(lunatico_private_data));
-		pthread_mutex_init(&device_data[device_index].private_data->port_mutex, NULL);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: PRIVATE_DATA");
-	}
-
-	if (device_type == TYPE_FOCUSER) {
-		device_data[device_index].port[port_index] = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
-		sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", FOCUSER_LUNATICO_NAME, port_name[port_index]);
-		device_data[device_index].private_data->port_data[port_index].device_type = TYPE_FOCUSER;
-	} else if (device_type == TYPE_ROTATOR) {
-		device_data[device_index].port[port_index] = indigo_safe_malloc_copy(sizeof(indigo_device), &rotator_template);
-		sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", ROTATOR_LUNATICO_NAME, port_name[port_index]);
-		device_data[device_index].private_data->port_data[port_index].device_type = TYPE_ROTATOR;
-	} else {
-		device_data[device_index].port[port_index] = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
-		sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", AUX_LUNATICO_NAME, port_name[port_index]);
-		device_data[device_index].private_data->port_data[port_index].device_type = TYPE_AUX;
-	}
-	set_port_index(device_data[device_index].port[port_index], port_index);
-	device_data[device_index].port[port_index]->private_data = device_data[device_index].private_data;
-	indigo_attach_device(device_data[device_index].port[port_index]);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: Device with port index = %d", get_port_index(device_data[device_index].port[port_index]));
-}
-
-
-static void delete_port_device(int device_index, int port_index) {
-	if (port_index >= MAX_PORTS) {
-		return;
-	}
-	if (device_index >= MAX_DEVICES) {
-		return;
-	}
-
-	if (device_data[device_index].port[port_index] != NULL) {
-		indigo_detach_device(device_data[device_index].port[port_index]);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "REMOVE: Device with port index = %d", get_port_index(device_data[device_index].port[port_index]));
-		free(device_data[device_index].port[port_index]);
-		device_data[device_index].port[port_index] = NULL;
-	}
-
-	for (int i = 0; i < MAX_PORTS; i++) {
-		if (device_data[device_index].port[i] != NULL) {
-			return;
-		}
-	}
-
-	if (device_data[device_index].private_data != NULL) {
-		free(device_data[device_index].private_data);
-		device_data[device_index].private_data = NULL;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "REMOVE: PRIVATE_DATA");
-	}
-}
-
-
-static bool at_least_one_device_connected() {
-	for (int p_index = 0; p_index < MAX_PORTS; p_index++) {
-		for (int d_index = 0; d_index < MAX_DEVICES; d_index++) {
-			if (is_connected(device_data[d_index].port[p_index])) return true;
-		}
-	}
+	lunatico_focuser_motion_state(device, state);
 	return false;
 }
 
-
-indigo_result DRIVER_ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info) {
-
-	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-
-	SET_DRIVER_INFO(info, DRIVER_INFO, __FUNCTION__, DRIVER_VERSION, false, last_action);
-
-	if (action == last_action)
-		return INDIGO_OK;
-
-	switch (action) {
-	case INDIGO_DRIVER_INIT:
-		last_action = action;
-		if (indigo_driver_initialized(CONFLICTING_DRIVER)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver %s is already loaded", CONFLICTING_DRIVER);
-			last_action = INDIGO_DRIVER_SHUTDOWN;
-			return INDIGO_FAILED;
-		}
-		pthread_mutex_lock(&port_lifecycle_mutex);
-		create_port_device(0, 0, DEFAULT_DEVICE);
-		pthread_mutex_unlock(&port_lifecycle_mutex);
-		break;
-
-	case INDIGO_DRIVER_SHUTDOWN:
-		if (at_least_one_device_connected() == true) return INDIGO_BUSY;
-		last_action = action;
-		/* this also makes the shutdown wait for a reconfiguration that is still in flight */
-		pthread_mutex_lock(&port_lifecycle_mutex);
-		for (int index = 0; index < MAX_PORTS; index++) {
-			delete_port_device(0, index);
-		}
-		pthread_mutex_unlock(&port_lifecycle_mutex);
-		break;
-
-	case INDIGO_DRIVER_INFO:
-		break;
+// A relative move is issued as an absolute move to a target derived from the
+// measured position, with no backlash compensation. Returns true when the move
+// started and still has to be polled.
+static bool lunatico_focuser_steps(indigo_device *device) {
+	int32_t position = 0;
+	if (!lunatico_get_position(device, &position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position() failed");
+	} else {
+		PORT_STATE.focuser_position = position;
 	}
+	double steps = FOCUSER_STEPS_ITEM->number.value;
+	double target = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? PORT_STATE.focuser_position - steps : PORT_STATE.focuser_position + steps;
+	return lunatico_focuser_start_move(device, lunatico_focuser_clamp(device, target), 0);
+}
 
-	return INDIGO_OK;
+static void lunatico_focuser_abort(indigo_device *device) {
+	indigo_property_state state = INDIGO_OK_STATE;
+	if (!lunatico_stop(device)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_stop() failed");
+		state = INDIGO_ALERT_STATE;
+	}
+	int32_t position = 0;
+	if (!lunatico_get_position(device, &position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position() failed");
+		state = INDIGO_ALERT_STATE;
+	} else {
+		PORT_STATE.focuser_position = position;
+	}
+	FOCUSER_POSITION_ITEM->number.value = PORT_STATE.focuser_position;
+	lunatico_focuser_motion_state(device, INDIGO_OK_STATE);
+	// The generated handler suppresses its epilogue because this block schedules
+	// a finalizer, so the abort publishes its own outcome.
+	FOCUSER_ABORT_MOTION_PROPERTY->state = state;
+	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+}
+
+// FOCUSER_LIMITS are the controller's software limits; the full range removes
+// them instead of writing a degenerate one.
+static void lunatico_focuser_limits(indigo_device *device) {
+	int32_t min = (int32_t)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
+	int32_t max = (int32_t)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+	if (max < min) {
+		FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, "Minimum value can not be bigger then maximum");
+		return;
+	}
+	bool result;
+	if (FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target == FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max && FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target == FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min) {
+		result = lunatico_delete_limits(device);
+	} else {
+		result = lunatico_set_limits(device, min, max);
+	}
+	if (!result) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_limits() failed");
+		FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+}
+
+// Temperature compensation. It is driven by the temperature poll and only moves
+// the focuser when the reading is valid, the focuser is idle and the change is
+// at least one degree.
+static void lunatico_focuser_compensate(indigo_device *device, double temperature) {
+	if (PORT_STATE.previous_temperature <= NO_TEMP_READING) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: no previous temperature");
+		PORT_STATE.previous_temperature = temperature;
+		return;
+	}
+	if (temperature <= NO_TEMP_READING || FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: temperature = %f, FOCUSER_POSITION state = %d", temperature, FOCUSER_POSITION_PROPERTY->state);
+		return;
+	}
+	double difference = temperature - PORT_STATE.previous_temperature;
+	if (fabs(difference) < 1.0 || fabs(difference) >= 100) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: difference = %f", difference);
+		return;
+	}
+	int compensation = (int)(difference * FOCUSER_COMPENSATION_ITEM->number.value);
+	int32_t target = lunatico_focuser_clamp(device, PORT_STATE.focuser_position - compensation);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: difference = %.2f, compensation = %d, target = %d", difference, compensation, target);
+	int32_t position = 0;
+	if (!lunatico_get_position(device, &position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position() failed");
+	} else {
+		PORT_STATE.focuser_position = position;
+	}
+	PORT_STATE.previous_temperature = temperature;
+	if (lunatico_focuser_start_move(device, target, (int32_t)FOCUSER_BACKLASH_ITEM->number.value)) {
+		indigo_execute_handler_in(device, LUNATICO_MOTION_POLL, focuser_motion_finalizer);
+	}
+}
+
+// The focuser temperature poll. A reading at or below NO_TEMP_READING means no
+// sensor is connected, which is reported as IDLE and announced once.
+static void lunatico_focuser_poll_temperature(indigo_device *device) {
+	double temperature = NO_TEMP_READING;
+	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+	if (!lunatico_get_temperature(device, PORT_STATE.temperature_sensor, &temperature)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_temperature() failed");
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
+	}
+	if (FOCUSER_TEMPERATURE_ITEM->number.value <= NO_TEMP_READING) {
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
+		if (PORT_STATE.has_temperature_sensor) {
+			PORT_STATE.has_temperature_sensor = false;
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected.");
+		}
+	} else {
+		PORT_STATE.has_temperature_sensor = true;
+		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+	}
+	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
+		lunatico_focuser_compensate(device, temperature);
+	} else {
+		// Reset the reference so compensation starts from the reading that
+		// follows the switch to automatic mode.
+		PORT_STATE.previous_temperature = NO_TEMP_READING;
+	}
+}
+
+// FOCUSER_MODE takes the manual controls away in automatic mode and makes the
+// position read-only.
+static void lunatico_focuser_mode(indigo_device *device) {
+	if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
+		indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
+		indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	} else {
+		indigo_delete_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
+		indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
+}
+
+// The focuser connection sequence, in the order the original driver used.
+static bool lunatico_focuser_connect(indigo_device *device, indigo_property *power_control, indigo_property *motor_type, indigo_property *step_mode, indigo_property *wiring, indigo_property *temperature_sensor) {
+	if (!lunatico_claim_port(device)) {
+		return false;
+	}
+	lunatico_publish_identity(device);
+	lunatico_apply_temperature_sensor(device, temperature_sensor);
+	lunatico_configure_port(device, power_control, motor_type, step_mode);
+	int32_t position = 0;
+	if (!lunatico_get_position(device, &position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position() failed");
+	}
+	PORT_STATE.focuser_position = PORT_STATE.focuser_target = position;
+	FOCUSER_POSITION_ITEM->number.value = position;
+	if (!lunatico_set_speed(device, FOCUSER_SPEED_ITEM->number.target)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_speed() failed");
+	}
+	if (!lunatico_apply_wiring(device, wiring, !FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_apply_wiring() failed");
+	}
+	bool result;
+	if (FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value == FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max && FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value == FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min) {
+		result = lunatico_delete_limits(device);
+	} else {
+		result = lunatico_set_limits(device, (int32_t)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value, (int32_t)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value);
+	}
+	if (!result) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_limits() failed");
+	}
+	double temperature = NO_TEMP_READING;
+	if (lunatico_get_temperature(device, 0, &temperature)) {
+		FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
+	}
+	PORT_STATE.previous_temperature = FOCUSER_TEMPERATURE_ITEM->number.value;
+	PORT_STATE.has_temperature_sensor = true;
+	// The original driver published the initial position from a one-shot poll
+	// scheduled 0.5 s after the connection; the same poll is kept so an axis
+	// that is already moving when the driver connects is still followed.
+	indigo_execute_handler_in(device, LUNATICO_MOTION_POLL, focuser_motion_finalizer);
+	return true;
+}
+
+// --------------------------------------------------------------------------------- Rotator device
+
+static int lunatico_degrees_to_steps(double degrees, int steps_per_revolution, double minimum) {
+	double deg = degrees;
+	while (deg >= (360 - minimum)) {
+		deg -= 360;
+	}
+	deg -= minimum;
+	int steps = (int)(deg * steps_per_revolution / 360.0);
+	while (steps < 0) {
+		steps += steps_per_revolution;
+	}
+	while (steps >= steps_per_revolution) {
+		steps -= steps_per_revolution;
+	}
+	return steps;
+}
+
+static double lunatico_steps_to_degrees(int steps, int steps_per_revolution, double minimum) {
+	if (steps_per_revolution == 0) {
+		return 0;
+	}
+	int st = steps;
+	while (st >= steps_per_revolution) {
+		st -= steps_per_revolution;
+	}
+	st += (int)(steps_per_revolution * minimum / 360);
+	double degrees = st * 360.0 / steps_per_revolution;
+	while (degrees < 0) {
+		degrees += 360;
+	}
+	while (degrees >= 360) {
+		degrees -= 360;
+	}
+	return degrees;
+}
+
+static int lunatico_rotator_steps(indigo_device *device, double degrees) {
+	return lunatico_degrees_to_steps(degrees, (int)ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value, ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value);
+}
+
+static double lunatico_rotator_degrees(indigo_device *device, int steps) {
+	return lunatico_steps_to_degrees(steps, (int)ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value, ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value);
+}
+
+// Both the limits and the steps per revolution change the degree to step
+// mapping, so the controller's counter has to be re-synced to the angle the
+// driver is showing.
+static void lunatico_rotator_resync(indigo_device *device) {
+	if (!lunatico_sync_position(device, lunatico_rotator_steps(device, ROTATOR_POSITION_ITEM->number.value))) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_sync_position() failed");
+	}
+}
+
+static void rotator_motion_finalizer(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	bool moving = false;
+	int32_t position = 0;
+	if (!lunatico_is_moving(device, &moving)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_is_moving() failed");
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		return;
+	}
+	if (!lunatico_get_position(device, &position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position() failed");
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		return;
+	}
+	PORT_STATE.rotator_position = lunatico_rotator_degrees(device, position);
+	ROTATOR_POSITION_ITEM->number.value = PORT_STATE.rotator_position;
+	ROTATOR_POSITION_PROPERTY->state = !moving || PORT_STATE.rotator_position == PORT_STATE.rotator_target ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
+	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+	if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_execute_handler_in(device, LUNATICO_MOTION_POLL, rotator_motion_finalizer);
+	}
+}
+
+// Returns true when a move started and its completion still has to be polled.
+static bool lunatico_rotator_position(indigo_device *device) {
+	double current = PORT_STATE.rotator_position;
+	int minimum = lunatico_rotator_steps(device, ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value);
+	int maximum = lunatico_rotator_steps(device, ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value);
+	int target = lunatico_rotator_steps(device, ROTATOR_POSITION_ITEM->number.target);
+	if (minimum != maximum && (target > maximum || target < minimum)) {
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		ROTATOR_POSITION_ITEM->number.value = current;
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Requested position is not in the limits.");
+		return false;
+	}
+	if (ROTATOR_POSITION_ITEM->number.target == current) {
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		return false;
+	}
+	if (ROTATOR_ON_POSITION_SET_GOTO_ITEM->sw.value) {
+		PORT_STATE.rotator_target = ROTATOR_POSITION_ITEM->number.target;
+		ROTATOR_POSITION_ITEM->number.value = current;
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		if (!lunatico_goto_position(device, target, (int32_t)ROTATOR_BACKLASH_ITEM->number.value)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d) failed", target);
+			// The move never started, so it must not be polled.
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			return false;
+		}
+		return true;
+	}
+	indigo_property_state state = INDIGO_OK_STATE;
+	if (!lunatico_sync_position(device, target)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_sync_position(%d) failed", target);
+		state = INDIGO_ALERT_STATE;
+	}
+	int32_t position = 0;
+	if (!lunatico_get_position(device, &position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position() failed");
+		state = INDIGO_ALERT_STATE;
+	} else {
+		PORT_STATE.rotator_position = lunatico_rotator_degrees(device, position);
+		ROTATOR_POSITION_ITEM->number.value = PORT_STATE.rotator_position;
+	}
+	ROTATOR_POSITION_PROPERTY->state = state;
+	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+	return false;
+}
+
+static void lunatico_rotator_abort(indigo_device *device) {
+	indigo_property_state state = INDIGO_OK_STATE;
+	if (!lunatico_stop(device)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_stop() failed");
+		state = INDIGO_ALERT_STATE;
+	}
+	int32_t position = 0;
+	if (!lunatico_get_position(device, &position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position() failed");
+		state = INDIGO_ALERT_STATE;
+	} else {
+		PORT_STATE.rotator_position = lunatico_rotator_degrees(device, position);
+	}
+	ROTATOR_POSITION_ITEM->number.value = PORT_STATE.rotator_position;
+	ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+	// The generated handler suppresses its epilogue because this block schedules
+	// a finalizer, so the abort publishes its own outcome.
+	ROTATOR_ABORT_MOTION_PROPERTY->state = state;
+	ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
+	indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
+}
+
+static void lunatico_rotator_limits(indigo_device *device) {
+	int minimum = lunatico_rotator_steps(device, ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value);
+	int maximum = lunatico_rotator_steps(device, ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value);
+	bool result;
+	if (minimum == maximum) {
+		result = lunatico_delete_limits(device);
+	} else {
+		result = lunatico_set_limits(device, minimum, maximum);
+	}
+	if (!result) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_limits() failed");
+		ROTATOR_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	lunatico_rotator_resync(device);
+}
+
+static bool lunatico_rotator_connect(indigo_device *device, indigo_property *power_control, indigo_property *motor_type, indigo_property *step_mode, indigo_property *wiring) {
+	if (!lunatico_claim_port(device)) {
+		return false;
+	}
+	lunatico_publish_identity(device);
+	lunatico_configure_port(device, power_control, motor_type, step_mode);
+	int32_t position = 0;
+	if (!lunatico_get_position(device, &position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position() failed");
+	}
+	// The current angle has to follow what the controller reports: the position
+	// handler skips a request that equals it, so a stale 0 here would silently
+	// swallow the first request for 0 deg.
+	PORT_STATE.rotator_position = PORT_STATE.rotator_target = lunatico_rotator_degrees(device, position);
+	ROTATOR_POSITION_ITEM->number.value = PORT_STATE.rotator_position;
+	lunatico_rotator_resync(device);
+	if (!lunatico_set_speed(device, 0.1)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_speed() failed");
+	}
+	if (!lunatico_apply_wiring(device, wiring, !ROTATOR_DIRECTION_NORMAL_ITEM->sw.value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_apply_wiring() failed");
+	}
+	int minimum = lunatico_rotator_steps(device, ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value);
+	int maximum = lunatico_rotator_steps(device, ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value);
+	bool result;
+	if (minimum == maximum) {
+		result = lunatico_delete_limits(device);
+	} else {
+		result = lunatico_set_limits(device, minimum, maximum);
+	}
+	if (!result) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_limits() failed");
+	}
+	indigo_execute_handler_in(device, LUNATICO_MOTION_POLL, rotator_motion_finalizer);
+	return true;
+}
+
+// --------------------------------------------------------------------------------- Powerbox device
+
+// The DB9 pins are horizontally flipped on the devices with a female connector,
+// so they are reversed here and the user sees outlet 1 on pin 1 of the male
+// pinout: outlet item 1 writes pin 4 and sensor item 1 reads pin 8.
+static bool lunatico_apply_outlets(indigo_device *device, indigo_property *outlets) {
+	bool result = true;
+	for (int i = 0; i < outlets->count; i++) {
+		if (!lunatico_enable_power_outlet(device, 4 - i, (outlets->items + i)->sw.value)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_enable_power_outlet(%d) failed", 4 - i);
+			result = false;
+		}
+	}
+	return result;
+}
+
+static void lunatico_poll_sensors(indigo_device *device, indigo_property *sensors) {
+	sensors->state = INDIGO_OK_STATE;
+	for (int i = 0; i < sensors->count; i++) {
+		int32_t value = 0;
+		if (!lunatico_read_sensor(device, 8 - i, &value)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_sensor(%d) failed", 8 - i);
+			sensors->state = INDIGO_ALERT_STATE;
+			break;
+		}
+		(sensors->items + i)->number.value = value;
+	}
+	indigo_update_property(device, sensors, NULL);
+}
+
+// Renaming an outlet or a sensor relabels the corresponding item, so the
+// property has to be redefined for the new labels to reach the client.
+static void lunatico_apply_names(indigo_device *device, indigo_property *names, indigo_property *target) {
+	if (IS_CONNECTED) {
+		indigo_delete_property(device, target, NULL);
+	}
+	for (int i = 0; i < target->count && i < names->count; i++) {
+		snprintf((target->items + i)->label, INDIGO_NAME_SIZE, "%s", (names->items + i)->text.value);
+	}
+	if (IS_CONNECTED) {
+		indigo_define_property(device, target, NULL);
+	}
+}
+
+static bool lunatico_aux_connect(indigo_device *device, indigo_property *outlets) {
+	if (!lunatico_claim_port(device)) {
+		return false;
+	}
+	lunatico_publish_identity(device);
+	lunatico_apply_outlets(device, outlets);
+	return true;
 }

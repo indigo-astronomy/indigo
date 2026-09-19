@@ -240,6 +240,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_dome_talon6ror", "in
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_dragonfly", "indigo_drivers\aux_dragonfly\indigo_aux_dragonfly.vcxproj", "{2A1F6C4B-9D3E-4A07-9F52-6C8B71D4E011}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_lunatico", "indigo_drivers\focuser_lunatico\indigo_focuser_lunatico.vcxproj", "{7D3A5E12-4B68-4C90-8E71-2F9A6C5B7D31}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_rotator_lunatico", "indigo_drivers\rotator_lunatico\indigo_rotator_lunatico.vcxproj", "{B4F27C08-6A91-4E35-9D2C-7E183A5F9C42}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_dome_dragonfly", "indigo_drivers\dome_dragonfly\indigo_dome_dragonfly.vcxproj", "{6E0B94A7-3C15-4D88-A2F1-58B7C3E9D022}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_guider_cgusbst4", "indigo_drivers\guider_cgusbst4\indigo_guider_cgusbst4.vcxproj", "{184308A2-C4DF-4EE9-AE99-CD4916E29CBC}"
@@ -1190,6 +1194,18 @@ Global
 		{2A1F6C4B-9D3E-4A07-9F52-6C8B71D4E011}.Release|ARM64.Build.0 = Release|ARM64
 		{2A1F6C4B-9D3E-4A07-9F52-6C8B71D4E011}.Release|x64.ActiveCfg = Release|x64
 		{2A1F6C4B-9D3E-4A07-9F52-6C8B71D4E011}.Release|x64.Build.0 = Release|x64
+		{7D3A5E12-4B68-4C90-8E71-2F9A6C5B7D31}.Debug|x64.ActiveCfg = Debug|x64
+		{7D3A5E12-4B68-4C90-8E71-2F9A6C5B7D31}.Debug|x64.Build.0 = Debug|x64
+		{7D3A5E12-4B68-4C90-8E71-2F9A6C5B7D31}.Release|ARM64.ActiveCfg = Release|ARM64
+		{7D3A5E12-4B68-4C90-8E71-2F9A6C5B7D31}.Release|ARM64.Build.0 = Release|ARM64
+		{7D3A5E12-4B68-4C90-8E71-2F9A6C5B7D31}.Release|x64.ActiveCfg = Release|x64
+		{7D3A5E12-4B68-4C90-8E71-2F9A6C5B7D31}.Release|x64.Build.0 = Release|x64
+		{B4F27C08-6A91-4E35-9D2C-7E183A5F9C42}.Debug|x64.ActiveCfg = Debug|x64
+		{B4F27C08-6A91-4E35-9D2C-7E183A5F9C42}.Debug|x64.Build.0 = Debug|x64
+		{B4F27C08-6A91-4E35-9D2C-7E183A5F9C42}.Release|ARM64.ActiveCfg = Release|ARM64
+		{B4F27C08-6A91-4E35-9D2C-7E183A5F9C42}.Release|ARM64.Build.0 = Release|ARM64
+		{B4F27C08-6A91-4E35-9D2C-7E183A5F9C42}.Release|x64.ActiveCfg = Release|x64
+		{B4F27C08-6A91-4E35-9D2C-7E183A5F9C42}.Release|x64.Build.0 = Release|x64
 		{6E0B94A7-3C15-4D88-A2F1-58B7C3E9D022}.Debug|ARM64.ActiveCfg = Debug|ARM64
 		{6E0B94A7-3C15-4D88-A2F1-58B7C3E9D022}.Debug|ARM64.Build.0 = Debug|ARM64
 		{6E0B94A7-3C15-4D88-A2F1-58B7C3E9D022}.Debug|x64.ActiveCfg = Debug|x64

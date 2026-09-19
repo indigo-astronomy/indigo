@@ -1,0 +1,1056 @@
+// Copyright (c) 2020-2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Lunatico Astronomia Limpet / Seletek / Armadillo / Platypus focuser driver definition
+
+// version history
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
+// The controller has one, two or three DB9 ports, and each port can drive a
+// focuser, a rotator or a powerbox. The generator attaches every declared device
+// block statically, so every port is declared in all of the classes it supports
+// and the user connects the logical devices that match the hardware. A port
+// carries one stepper and one connector, so the devices of one port are mutually
+// exclusive: the first one to connect claims the port and the others are refused
+// while it holds it. The focuser on the Main port is what distinguishes this
+// driver from indigo_rotator_lunatico, with which it shares
+// shared/lunatico_shared.c.
+
+driver lunatico {
+	label = "Lunatico Astronomia Focuser";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
+	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
+	version = 13;
+	multi_device_support = true;
+	serial {
+		configurable_speed = true;
+	}
+	include {
+		#include <indigo/indigo_client.h>
+	}
+	define {
+		#include "shared/lunatico_shared.h"
+
+		#define CONFLICTING_DRIVER "indigo_rotator_lunatico"
+	}
+	data {
+		char command[LUNATICO_CMD_LEN];
+		char response[LUNATICO_CMD_LEN];
+		char board[INDIGO_VALUE_SIZE];
+		char firmware[INDIGO_VALUE_SIZE];
+		int model;
+		lunatico_port_state port[LUNATICO_PORTS];
+	}
+	code {
+		#include "shared/lunatico_shared.c"
+	}
+	on_init {
+		// Both drivers drive the same controller over the same connection, so
+		// they must not be loaded at the same time.
+		if (indigo_driver_initialized(CONFLICTING_DRIVER)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver %s is already loaded", CONFLICTING_DRIVER);
+			last_action = INDIGO_DRIVER_SHUTDOWN;
+			return INDIGO_FAILED;
+		}
+	}
+
+	focuser {
+		id = focuser_main;
+		name = "Focuser Lunatico (Main)";
+		on_attach {
+			device->gp_bits = 0;
+			INFO_PROPERTY->count = 6;
+			INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, LUNATICO_BAUDRATE);
+		}
+		on_connect {
+			connection_result = lunatico_focuser_connect(device, X_FOCUSER_POWER_CONTROL_MAIN_PROPERTY, X_FOCUSER_MOTOR_TYPE_MAIN_PROPERTY, X_FOCUSER_STEP_MODE_MAIN_PROPERTY, X_FOCUSER_MOTOR_WIRING_MAIN_PROPERTY, X_FOCUSER_TEMPERATURE_SENSOR_MAIN_PROPERTY);
+		}
+		on_disconnect {
+			lunatico_release_port(device);
+		}
+		on_timer {
+			lunatico_focuser_poll_temperature(device);
+			indigo_execute_handler_in(device, LUNATICO_SENSOR_POLL, focuser_main_timer_callback);
+		}
+		inherited FOCUSER_TEMPERATURE { hidden = false; }
+		inherited FOCUSER_ON_POSITION_SET { hidden = false; }
+		inherited FOCUSER_SPEED {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				FOCUSER_SPEED_ITEM->number.min = .002;
+				FOCUSER_SPEED_ITEM->number.max = 20;
+				FOCUSER_SPEED_ITEM->number.step = .1;
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = .1;
+				strcpy(FOCUSER_SPEED_ITEM->label, "Speed (kHz)");
+			}
+			on_change {
+				if (!lunatico_set_speed(device, FOCUSER_SPEED_ITEM->number.target)) {
+					FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_LIMITS {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 1;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 100000;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = 100000;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.step = 1;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = 0;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 100000;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = 0;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.step = 1;
+			}
+			on_change {
+				lunatico_focuser_limits(device);
+			}
+		}
+		inherited FOCUSER_BACKLASH {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				FOCUSER_BACKLASH_ITEM->number.min = 0;
+				FOCUSER_BACKLASH_ITEM->number.max = 200;
+				FOCUSER_BACKLASH_ITEM->number.step = 5;
+				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = 0;
+			}
+			on_change { }
+		}
+		inherited FOCUSER_COMPENSATION {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				FOCUSER_COMPENSATION_ITEM->number.min = -10000;
+				FOCUSER_COMPENSATION_ITEM->number.max = 10000;
+			}
+			on_change { }
+		}
+		inherited FOCUSER_MODE {
+			hidden = false;
+			on_change {
+				lunatico_focuser_mode(device);
+			}
+		}
+		inherited FOCUSER_REVERSE_MOTION {
+			hidden = false;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_wiring(device, X_FOCUSER_MOTOR_WIRING_MAIN_PROPERTY, !FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value)) {
+					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_POSITION {
+			on_attach {
+				FOCUSER_POSITION_ITEM->number.min = 0;
+				FOCUSER_POSITION_ITEM->number.max = 100000;
+				FOCUSER_POSITION_ITEM->number.step = 100;
+			}
+			on_change {
+				if (lunatico_focuser_position(device)) {
+					indigo_execute_handler_in(device, LUNATICO_MOTION_POLL, focuser_motion_finalizer);
+				}
+			}
+		}
+		inherited FOCUSER_STEPS {
+			on_attach {
+				FOCUSER_STEPS_ITEM->number.min = 0;
+				FOCUSER_STEPS_ITEM->number.step = 1;
+			}
+			on_change {
+				if (lunatico_focuser_steps(device)) {
+					indigo_execute_handler_in(device, LUNATICO_MOTION_POLL, focuser_motion_finalizer);
+				}
+			}
+		}
+		inherited FOCUSER_ABORT_MOTION {
+			on_change {
+				// An urgent abort can overtake a queued move, so the start
+				// handlers of this device are cancelled together with the
+				// completion poll they would have scheduled.
+				indigo_cancel_pending_handler(device, focuser_main_focuser_position_handler);
+				indigo_cancel_pending_handler(device, focuser_main_focuser_steps_handler);
+				indigo_cancel_pending_handler(device, focuser_motion_finalizer);
+				lunatico_focuser_abort(device);
+			}
+		}
+		switch X_FOCUSER_STEP_MODE_MAIN {
+			name = "X_FOCUSER_STEP_MODE";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Step mode";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_step_mode(device, X_FOCUSER_STEP_MODE_MAIN_PROPERTY)) {
+					X_FOCUSER_STEP_MODE_MAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_FOCUSER_STEP_MODE_MAIN_FULL { name = "FULL"; label = "Full step"; value = true; }
+			item X_FOCUSER_STEP_MODE_MAIN_HALF { name = "HALF"; label = "1/2 step"; value = false; }
+		}
+		number X_FOCUSER_POWER_CONTROL_MAIN {
+			name = "X_FOCUSER_POWER_CONTROL";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Coils current control";
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_power_control(device, X_FOCUSER_POWER_CONTROL_MAIN_PROPERTY)) {
+					X_FOCUSER_POWER_CONTROL_MAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_FOCUSER_POWER_CONTROL_MAIN_MOVE { name = "MOVE_POWER"; label = "Move power (%)"; min = 0; max = 100; step = 1; value = 100; }
+			item X_FOCUSER_POWER_CONTROL_MAIN_STOP { name = "STOP_POWER"; label = "Stop power (%)"; min = 0; max = 100; step = 1; value = 0; }
+		}
+		switch X_FOCUSER_MOTOR_WIRING_MAIN {
+			name = "X_FOCUSER_MOTOR_WIRING";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Motor wiring";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_wiring(device, X_FOCUSER_MOTOR_WIRING_MAIN_PROPERTY, !FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value)) {
+					X_FOCUSER_MOTOR_WIRING_MAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_FOCUSER_MOTOR_WIRING_MAIN_LUNATICO { name = "LUNATICO"; label = "Lunatico"; value = true; }
+			item X_FOCUSER_MOTOR_WIRING_MAIN_MOONLITE { name = "MOONLITE"; label = "RF/Moonlite"; value = false; }
+		}
+		switch X_FOCUSER_MOTOR_TYPE_MAIN {
+			name = "X_FOCUSER_MOTOR_TYPE";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Motor type";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_motor_type(device, X_FOCUSER_MOTOR_TYPE_MAIN_PROPERTY)) {
+					X_FOCUSER_MOTOR_TYPE_MAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_FOCUSER_MOTOR_TYPE_MAIN_UNIPOLAR { name = "UNIPOLAR"; label = "Unipolar"; value = true; }
+			item X_FOCUSER_MOTOR_TYPE_MAIN_BIPOLAR { name = "BIPOLAR"; label = "Bipolar"; value = false; }
+			item X_FOCUSER_MOTOR_TYPE_MAIN_DC { name = "DC"; label = "DC"; value = false; }
+			item X_FOCUSER_MOTOR_TYPE_MAIN_STEP_DIR { name = "STEP_DIR"; label = "Step-dir"; value = false; }
+		}
+		switch X_FOCUSER_TEMPERATURE_SENSOR_MAIN {
+			name = "X_FOCUSER_TEMPERATURE_SENSOR";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Temperature sensor in use";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				lunatico_apply_temperature_sensor(device, X_FOCUSER_TEMPERATURE_SENSOR_MAIN_PROPERTY);
+			}
+			item X_FOCUSER_TEMPERATURE_SENSOR_MAIN_INTERNAL { name = "INTERNAL"; label = "Internal sensor"; value = true; }
+			item X_FOCUSER_TEMPERATURE_SENSOR_MAIN_EXTERNAL { name = "EXTERNAL"; label = "External sensor"; value = false; }
+		}
+	}
+
+	focuser {
+		id = focuser_exp;
+		name = "Focuser Lunatico (Exp)";
+		on_attach {
+			device->gp_bits = 1;
+			INFO_PROPERTY->count = 6;
+		}
+		on_connect {
+			connection_result = lunatico_focuser_connect(device, X_FOCUSER_POWER_CONTROL_EXP_PROPERTY, X_FOCUSER_MOTOR_TYPE_EXP_PROPERTY, X_FOCUSER_STEP_MODE_EXP_PROPERTY, X_FOCUSER_MOTOR_WIRING_EXP_PROPERTY, X_FOCUSER_TEMPERATURE_SENSOR_EXP_PROPERTY);
+		}
+		on_disconnect {
+			lunatico_release_port(device);
+		}
+		on_timer {
+			lunatico_focuser_poll_temperature(device);
+			indigo_execute_handler_in(device, LUNATICO_SENSOR_POLL, focuser_exp_timer_callback);
+		}
+		inherited FOCUSER_TEMPERATURE { hidden = false; }
+		inherited FOCUSER_ON_POSITION_SET { hidden = false; }
+		inherited FOCUSER_SPEED {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				FOCUSER_SPEED_ITEM->number.min = .002;
+				FOCUSER_SPEED_ITEM->number.max = 20;
+				FOCUSER_SPEED_ITEM->number.step = .1;
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = .1;
+				strcpy(FOCUSER_SPEED_ITEM->label, "Speed (kHz)");
+			}
+			on_change {
+				if (!lunatico_set_speed(device, FOCUSER_SPEED_ITEM->number.target)) {
+					FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_LIMITS {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 1;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 100000;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = 100000;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.step = 1;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = 0;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 100000;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = 0;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.step = 1;
+			}
+			on_change {
+				lunatico_focuser_limits(device);
+			}
+		}
+		inherited FOCUSER_BACKLASH {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				FOCUSER_BACKLASH_ITEM->number.min = 0;
+				FOCUSER_BACKLASH_ITEM->number.max = 200;
+				FOCUSER_BACKLASH_ITEM->number.step = 5;
+				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = 0;
+			}
+			on_change { }
+		}
+		inherited FOCUSER_COMPENSATION {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				FOCUSER_COMPENSATION_ITEM->number.min = -10000;
+				FOCUSER_COMPENSATION_ITEM->number.max = 10000;
+			}
+			on_change { }
+		}
+		inherited FOCUSER_MODE {
+			hidden = false;
+			on_change {
+				lunatico_focuser_mode(device);
+			}
+		}
+		inherited FOCUSER_REVERSE_MOTION {
+			hidden = false;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_wiring(device, X_FOCUSER_MOTOR_WIRING_EXP_PROPERTY, !FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value)) {
+					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_POSITION {
+			on_attach {
+				FOCUSER_POSITION_ITEM->number.min = 0;
+				FOCUSER_POSITION_ITEM->number.max = 100000;
+				FOCUSER_POSITION_ITEM->number.step = 100;
+			}
+			on_change {
+				if (lunatico_focuser_position(device)) {
+					indigo_execute_handler_in(device, LUNATICO_MOTION_POLL, focuser_motion_finalizer);
+				}
+			}
+		}
+		inherited FOCUSER_STEPS {
+			on_attach {
+				FOCUSER_STEPS_ITEM->number.min = 0;
+				FOCUSER_STEPS_ITEM->number.step = 1;
+			}
+			on_change {
+				if (lunatico_focuser_steps(device)) {
+					indigo_execute_handler_in(device, LUNATICO_MOTION_POLL, focuser_motion_finalizer);
+				}
+			}
+		}
+		inherited FOCUSER_ABORT_MOTION {
+			on_change {
+				// An urgent abort can overtake a queued move, so the start
+				// handlers of this device are cancelled together with the
+				// completion poll they would have scheduled.
+				indigo_cancel_pending_handler(device, focuser_exp_focuser_position_handler);
+				indigo_cancel_pending_handler(device, focuser_exp_focuser_steps_handler);
+				indigo_cancel_pending_handler(device, focuser_motion_finalizer);
+				lunatico_focuser_abort(device);
+			}
+		}
+		switch X_FOCUSER_STEP_MODE_EXP {
+			name = "X_FOCUSER_STEP_MODE";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Step mode";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_step_mode(device, X_FOCUSER_STEP_MODE_EXP_PROPERTY)) {
+					X_FOCUSER_STEP_MODE_EXP_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_FOCUSER_STEP_MODE_EXP_FULL { name = "FULL"; label = "Full step"; value = true; }
+			item X_FOCUSER_STEP_MODE_EXP_HALF { name = "HALF"; label = "1/2 step"; value = false; }
+		}
+		number X_FOCUSER_POWER_CONTROL_EXP {
+			name = "X_FOCUSER_POWER_CONTROL";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Coils current control";
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_power_control(device, X_FOCUSER_POWER_CONTROL_EXP_PROPERTY)) {
+					X_FOCUSER_POWER_CONTROL_EXP_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_FOCUSER_POWER_CONTROL_EXP_MOVE { name = "MOVE_POWER"; label = "Move power (%)"; min = 0; max = 100; step = 1; value = 100; }
+			item X_FOCUSER_POWER_CONTROL_EXP_STOP { name = "STOP_POWER"; label = "Stop power (%)"; min = 0; max = 100; step = 1; value = 0; }
+		}
+		switch X_FOCUSER_MOTOR_WIRING_EXP {
+			name = "X_FOCUSER_MOTOR_WIRING";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Motor wiring";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_wiring(device, X_FOCUSER_MOTOR_WIRING_EXP_PROPERTY, !FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value)) {
+					X_FOCUSER_MOTOR_WIRING_EXP_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_FOCUSER_MOTOR_WIRING_EXP_LUNATICO { name = "LUNATICO"; label = "Lunatico"; value = true; }
+			item X_FOCUSER_MOTOR_WIRING_EXP_MOONLITE { name = "MOONLITE"; label = "RF/Moonlite"; value = false; }
+		}
+		switch X_FOCUSER_MOTOR_TYPE_EXP {
+			name = "X_FOCUSER_MOTOR_TYPE";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Motor type";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_motor_type(device, X_FOCUSER_MOTOR_TYPE_EXP_PROPERTY)) {
+					X_FOCUSER_MOTOR_TYPE_EXP_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_FOCUSER_MOTOR_TYPE_EXP_UNIPOLAR { name = "UNIPOLAR"; label = "Unipolar"; value = true; }
+			item X_FOCUSER_MOTOR_TYPE_EXP_BIPOLAR { name = "BIPOLAR"; label = "Bipolar"; value = false; }
+			item X_FOCUSER_MOTOR_TYPE_EXP_DC { name = "DC"; label = "DC"; value = false; }
+			item X_FOCUSER_MOTOR_TYPE_EXP_STEP_DIR { name = "STEP_DIR"; label = "Step-dir"; value = false; }
+		}
+		switch X_FOCUSER_TEMPERATURE_SENSOR_EXP {
+			name = "X_FOCUSER_TEMPERATURE_SENSOR";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Temperature sensor in use";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				lunatico_apply_temperature_sensor(device, X_FOCUSER_TEMPERATURE_SENSOR_EXP_PROPERTY);
+			}
+			item X_FOCUSER_TEMPERATURE_SENSOR_EXP_INTERNAL { name = "INTERNAL"; label = "Internal sensor"; value = true; }
+			item X_FOCUSER_TEMPERATURE_SENSOR_EXP_EXTERNAL { name = "EXTERNAL"; label = "External sensor"; value = false; }
+		}
+	}
+
+	rotator {
+		id = rotator_exp;
+		name = "Rotator Lunatico (Exp)";
+		on_attach {
+			device->gp_bits = 1;
+			INFO_PROPERTY->count = 6;
+		}
+		on_connect {
+			connection_result = lunatico_rotator_connect(device, X_ROTATOR_POWER_CONTROL_EXP_PROPERTY, X_ROTATOR_MOTOR_TYPE_EXP_PROPERTY, X_ROTATOR_STEP_MODE_EXP_PROPERTY, X_ROTATOR_MOTOR_WIRING_EXP_PROPERTY);
+		}
+		on_disconnect {
+			lunatico_release_port(device);
+		}
+		inherited ROTATOR_STEPS_PER_REVOLUTION {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.min = 100;
+				ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.max = 100000;
+				ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value = ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.target = 3600;
+			}
+			on_change {
+				lunatico_rotator_resync(device);
+			}
+		}
+		inherited ROTATOR_DIRECTION {
+			hidden = false;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_wiring(device, X_ROTATOR_MOTOR_WIRING_EXP_PROPERTY, !ROTATOR_DIRECTION_NORMAL_ITEM->sw.value)) {
+					ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited ROTATOR_BACKLASH {
+			hidden = false;
+			persistent = true;
+			on_change { }
+		}
+		inherited ROTATOR_LIMITS {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				ROTATOR_LIMITS_MIN_POSITION_ITEM->number.min = -180;
+				ROTATOR_LIMITS_MIN_POSITION_ITEM->number.max = 360;
+				ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value = ROTATOR_LIMITS_MIN_POSITION_ITEM->number.target = -180;
+				ROTATOR_LIMITS_MAX_POSITION_ITEM->number.min = -180;
+				ROTATOR_LIMITS_MAX_POSITION_ITEM->number.max = 360;
+				ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value = ROTATOR_LIMITS_MAX_POSITION_ITEM->number.target = 180;
+			}
+			on_change {
+				lunatico_rotator_limits(device);
+			}
+		}
+		inherited ROTATOR_POSITION {
+			on_change {
+				if (lunatico_rotator_position(device)) {
+					indigo_execute_handler_in(device, LUNATICO_MOTION_POLL, rotator_motion_finalizer);
+				}
+			}
+		}
+		inherited ROTATOR_ABORT_MOTION {
+			on_change {
+				// An urgent abort can overtake a queued move, so the start
+				// handler of this device is cancelled together with the
+				// completion poll it would have scheduled.
+				indigo_cancel_pending_handler(device, rotator_exp_rotator_position_handler);
+				indigo_cancel_pending_handler(device, rotator_motion_finalizer);
+				lunatico_rotator_abort(device);
+			}
+		}
+		switch X_ROTATOR_STEP_MODE_EXP {
+			name = "X_ROTATOR_STEP_MODE";
+			group = ROTATOR_ADVANCED_GROUP;
+			label = "Step mode";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_step_mode(device, X_ROTATOR_STEP_MODE_EXP_PROPERTY)) {
+					X_ROTATOR_STEP_MODE_EXP_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_ROTATOR_STEP_MODE_EXP_FULL { name = "FULL"; label = "Full step"; value = true; }
+			item X_ROTATOR_STEP_MODE_EXP_HALF { name = "HALF"; label = "1/2 step"; value = false; }
+		}
+		number X_ROTATOR_POWER_CONTROL_EXP {
+			name = "X_ROTATOR_POWER_CONTROL";
+			group = ROTATOR_ADVANCED_GROUP;
+			label = "Coils current control";
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_power_control(device, X_ROTATOR_POWER_CONTROL_EXP_PROPERTY)) {
+					X_ROTATOR_POWER_CONTROL_EXP_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_ROTATOR_POWER_CONTROL_EXP_MOVE { name = "MOVE_POWER"; label = "Move power (%)"; min = 0; max = 100; step = 1; value = 100; }
+			item X_ROTATOR_POWER_CONTROL_EXP_STOP { name = "STOP_POWER"; label = "Stop power (%)"; min = 0; max = 100; step = 1; value = 0; }
+		}
+		switch X_ROTATOR_MOTOR_WIRING_EXP {
+			name = "X_ROTATOR_MOTOR_WIRING";
+			group = ROTATOR_ADVANCED_GROUP;
+			label = "Motor wiring";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_wiring(device, X_ROTATOR_MOTOR_WIRING_EXP_PROPERTY, !ROTATOR_DIRECTION_NORMAL_ITEM->sw.value)) {
+					X_ROTATOR_MOTOR_WIRING_EXP_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_ROTATOR_MOTOR_WIRING_EXP_LUNATICO { name = "LUNATICO"; label = "Lunatico"; value = true; }
+			item X_ROTATOR_MOTOR_WIRING_EXP_MOONLITE { name = "MOONLITE"; label = "RF/Moonlite"; value = false; }
+		}
+		switch X_ROTATOR_MOTOR_TYPE_EXP {
+			name = "X_ROTATOR_MOTOR_TYPE";
+			group = ROTATOR_ADVANCED_GROUP;
+			label = "Motor type";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_motor_type(device, X_ROTATOR_MOTOR_TYPE_EXP_PROPERTY)) {
+					X_ROTATOR_MOTOR_TYPE_EXP_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_ROTATOR_MOTOR_TYPE_EXP_UNIPOLAR { name = "UNIPOLAR"; label = "Unipolar"; value = true; }
+			item X_ROTATOR_MOTOR_TYPE_EXP_BIPOLAR { name = "BIPOLAR"; label = "Bipolar"; value = false; }
+			item X_ROTATOR_MOTOR_TYPE_EXP_DC { name = "DC"; label = "DC"; value = false; }
+			item X_ROTATOR_MOTOR_TYPE_EXP_STEP_DIR { name = "STEP_DIR"; label = "Step-dir"; value = false; }
+		}
+	}
+
+	aux {
+		id = aux_exp;
+		name = "Powerbox Lunatico (Exp)";
+		interface = INDIGO_INTERFACE_AUX_GPIO | INDIGO_INTERFACE_AUX_POWERBOX;
+		on_attach {
+			device->gp_bits = 1;
+			INFO_PROPERTY->count = 6;
+		}
+		on_connect {
+			connection_result = lunatico_aux_connect(device, AUX_POWER_OUTLET_EXP_PROPERTY);
+		}
+		on_disconnect {
+			lunatico_release_port(device);
+		}
+		on_timer {
+			lunatico_poll_sensors(device, AUX_GPIO_SENSORS_EXP_PROPERTY);
+			indigo_execute_handler_in(device, LUNATICO_SENSOR_POLL, aux_exp_timer_callback);
+		}
+		text AUX_OUTLET_NAMES_EXP {
+			name = AUX_OUTLET_NAMES_PROPERTY_NAME;
+			group = AUX_POWERBOX_GROUP;
+			label = "Power outlet names";
+			always_defined = true;
+			persistent = true;
+			on_change {
+				lunatico_apply_names(device, AUX_OUTLET_NAMES_EXP_PROPERTY, AUX_POWER_OUTLET_EXP_PROPERTY);
+			}
+			item AUX_OUTLET_NAME_EXP_1 { name = AUX_POWER_OUTLET_NAME_1_ITEM_NAME; label = "DB9 Pin 1"; value = "Power #1"; }
+			item AUX_OUTLET_NAME_EXP_2 { name = AUX_POWER_OUTLET_NAME_2_ITEM_NAME; label = "DB9 Pin 2"; value = "Power #2"; }
+			item AUX_OUTLET_NAME_EXP_3 { name = AUX_POWER_OUTLET_NAME_3_ITEM_NAME; label = "DB9 Pin 3"; value = "Power #3"; }
+			item AUX_OUTLET_NAME_EXP_4 { name = AUX_POWER_OUTLET_NAME_4_ITEM_NAME; label = "DB9 Pin 4"; value = "Power #4"; }
+		}
+		switch AUX_POWER_OUTLET_EXP {
+			name = AUX_POWER_OUTLET_PROPERTY_NAME;
+			group = AUX_POWERBOX_GROUP;
+			label = "Power outlets";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				if (!lunatico_apply_outlets(device, AUX_POWER_OUTLET_EXP_PROPERTY)) {
+					AUX_POWER_OUTLET_EXP_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item AUX_POWER_OUTLET_EXP_1 { name = AUX_POWER_OUTLET_1_ITEM_NAME; label = "Power #1"; value = false; }
+			item AUX_POWER_OUTLET_EXP_2 { name = AUX_POWER_OUTLET_2_ITEM_NAME; label = "Power #2"; value = false; }
+			item AUX_POWER_OUTLET_EXP_3 { name = AUX_POWER_OUTLET_3_ITEM_NAME; label = "Power #3"; value = false; }
+			item AUX_POWER_OUTLET_EXP_4 { name = AUX_POWER_OUTLET_4_ITEM_NAME; label = "Power #4"; value = false; }
+		}
+		text AUX_SENSOR_NAMES_EXP {
+			name = AUX_SENSOR_NAMES_PROPERTY_NAME;
+			group = AUX_SENSORS_GROUP;
+			label = "Sensor names";
+			always_defined = true;
+			persistent = true;
+			on_change {
+				lunatico_apply_names(device, AUX_SENSOR_NAMES_EXP_PROPERTY, AUX_GPIO_SENSORS_EXP_PROPERTY);
+			}
+			item AUX_SENSOR_NAME_EXP_1 { name = AUX_GPIO_SENSOR_NAME_1_ITEM_NAME; label = "DB9 Pin 6"; value = "Sensor #1"; }
+			item AUX_SENSOR_NAME_EXP_2 { name = AUX_GPIO_SENSOR_NAME_2_ITEM_NAME; label = "DB9 Pin 7"; value = "Sensor #2"; }
+			item AUX_SENSOR_NAME_EXP_3 { name = AUX_GPIO_SENSOR_NAME_3_ITEM_NAME; label = "DB9 Pin 8"; value = "Sensor #3"; }
+			item AUX_SENSOR_NAME_EXP_4 { name = AUX_GPIO_SENSOR_NAME_4_ITEM_NAME; label = "DB9 Pin 9"; value = "Sensor #4"; }
+		}
+		number AUX_GPIO_SENSORS_EXP {
+			name = AUX_GPIO_SENSORS_PROPERTY_NAME;
+			group = AUX_SENSORS_GROUP;
+			label = "GPIO sensors";
+			perm = INDIGO_RO_PERM;
+			item AUX_GPIO_SENSOR_EXP_1 { name = AUX_GPIO_SENSOR_NAME_1_ITEM_NAME; label = "Sensor #1"; min = 0; max = 1024; step = 1; value = 0; }
+			item AUX_GPIO_SENSOR_EXP_2 { name = AUX_GPIO_SENSOR_NAME_2_ITEM_NAME; label = "Sensor #2"; min = 0; max = 1024; step = 1; value = 0; }
+			item AUX_GPIO_SENSOR_EXP_3 { name = AUX_GPIO_SENSOR_NAME_3_ITEM_NAME; label = "Sensor #3"; min = 0; max = 1024; step = 1; value = 0; }
+			item AUX_GPIO_SENSOR_EXP_4 { name = AUX_GPIO_SENSOR_NAME_4_ITEM_NAME; label = "Sensor #4"; min = 0; max = 1024; step = 1; value = 0; }
+		}
+	}
+
+	focuser {
+		id = focuser_third;
+		name = "Focuser Lunatico (Third)";
+		on_attach {
+			device->gp_bits = 2;
+			INFO_PROPERTY->count = 6;
+		}
+		on_connect {
+			connection_result = lunatico_focuser_connect(device, X_FOCUSER_POWER_CONTROL_THIRD_PROPERTY, X_FOCUSER_MOTOR_TYPE_THIRD_PROPERTY, X_FOCUSER_STEP_MODE_THIRD_PROPERTY, X_FOCUSER_MOTOR_WIRING_THIRD_PROPERTY, X_FOCUSER_TEMPERATURE_SENSOR_THIRD_PROPERTY);
+		}
+		on_disconnect {
+			lunatico_release_port(device);
+		}
+		on_timer {
+			lunatico_focuser_poll_temperature(device);
+			indigo_execute_handler_in(device, LUNATICO_SENSOR_POLL, focuser_third_timer_callback);
+		}
+		inherited FOCUSER_TEMPERATURE { hidden = false; }
+		inherited FOCUSER_ON_POSITION_SET { hidden = false; }
+		inherited FOCUSER_SPEED {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				FOCUSER_SPEED_ITEM->number.min = .002;
+				FOCUSER_SPEED_ITEM->number.max = 20;
+				FOCUSER_SPEED_ITEM->number.step = .1;
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = .1;
+				strcpy(FOCUSER_SPEED_ITEM->label, "Speed (kHz)");
+			}
+			on_change {
+				if (!lunatico_set_speed(device, FOCUSER_SPEED_ITEM->number.target)) {
+					FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_LIMITS {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 1;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 100000;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = 100000;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.step = 1;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = 0;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 100000;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = 0;
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.step = 1;
+			}
+			on_change {
+				lunatico_focuser_limits(device);
+			}
+		}
+		inherited FOCUSER_BACKLASH {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				FOCUSER_BACKLASH_ITEM->number.min = 0;
+				FOCUSER_BACKLASH_ITEM->number.max = 200;
+				FOCUSER_BACKLASH_ITEM->number.step = 5;
+				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = 0;
+			}
+			on_change { }
+		}
+		inherited FOCUSER_COMPENSATION {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				FOCUSER_COMPENSATION_ITEM->number.min = -10000;
+				FOCUSER_COMPENSATION_ITEM->number.max = 10000;
+			}
+			on_change { }
+		}
+		inherited FOCUSER_MODE {
+			hidden = false;
+			on_change {
+				lunatico_focuser_mode(device);
+			}
+		}
+		inherited FOCUSER_REVERSE_MOTION {
+			hidden = false;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_wiring(device, X_FOCUSER_MOTOR_WIRING_THIRD_PROPERTY, !FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value)) {
+					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_POSITION {
+			on_attach {
+				FOCUSER_POSITION_ITEM->number.min = 0;
+				FOCUSER_POSITION_ITEM->number.max = 100000;
+				FOCUSER_POSITION_ITEM->number.step = 100;
+			}
+			on_change {
+				if (lunatico_focuser_position(device)) {
+					indigo_execute_handler_in(device, LUNATICO_MOTION_POLL, focuser_motion_finalizer);
+				}
+			}
+		}
+		inherited FOCUSER_STEPS {
+			on_attach {
+				FOCUSER_STEPS_ITEM->number.min = 0;
+				FOCUSER_STEPS_ITEM->number.step = 1;
+			}
+			on_change {
+				if (lunatico_focuser_steps(device)) {
+					indigo_execute_handler_in(device, LUNATICO_MOTION_POLL, focuser_motion_finalizer);
+				}
+			}
+		}
+		inherited FOCUSER_ABORT_MOTION {
+			on_change {
+				// An urgent abort can overtake a queued move, so the start
+				// handlers of this device are cancelled together with the
+				// completion poll they would have scheduled.
+				indigo_cancel_pending_handler(device, focuser_third_focuser_position_handler);
+				indigo_cancel_pending_handler(device, focuser_third_focuser_steps_handler);
+				indigo_cancel_pending_handler(device, focuser_motion_finalizer);
+				lunatico_focuser_abort(device);
+			}
+		}
+		switch X_FOCUSER_STEP_MODE_THIRD {
+			name = "X_FOCUSER_STEP_MODE";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Step mode";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_step_mode(device, X_FOCUSER_STEP_MODE_THIRD_PROPERTY)) {
+					X_FOCUSER_STEP_MODE_THIRD_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_FOCUSER_STEP_MODE_THIRD_FULL { name = "FULL"; label = "Full step"; value = true; }
+			item X_FOCUSER_STEP_MODE_THIRD_HALF { name = "HALF"; label = "1/2 step"; value = false; }
+		}
+		number X_FOCUSER_POWER_CONTROL_THIRD {
+			name = "X_FOCUSER_POWER_CONTROL";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Coils current control";
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_power_control(device, X_FOCUSER_POWER_CONTROL_THIRD_PROPERTY)) {
+					X_FOCUSER_POWER_CONTROL_THIRD_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_FOCUSER_POWER_CONTROL_THIRD_MOVE { name = "MOVE_POWER"; label = "Move power (%)"; min = 0; max = 100; step = 1; value = 100; }
+			item X_FOCUSER_POWER_CONTROL_THIRD_STOP { name = "STOP_POWER"; label = "Stop power (%)"; min = 0; max = 100; step = 1; value = 0; }
+		}
+		switch X_FOCUSER_MOTOR_WIRING_THIRD {
+			name = "X_FOCUSER_MOTOR_WIRING";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Motor wiring";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_wiring(device, X_FOCUSER_MOTOR_WIRING_THIRD_PROPERTY, !FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value)) {
+					X_FOCUSER_MOTOR_WIRING_THIRD_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_FOCUSER_MOTOR_WIRING_THIRD_LUNATICO { name = "LUNATICO"; label = "Lunatico"; value = true; }
+			item X_FOCUSER_MOTOR_WIRING_THIRD_MOONLITE { name = "MOONLITE"; label = "RF/Moonlite"; value = false; }
+		}
+		switch X_FOCUSER_MOTOR_TYPE_THIRD {
+			name = "X_FOCUSER_MOTOR_TYPE";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Motor type";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_motor_type(device, X_FOCUSER_MOTOR_TYPE_THIRD_PROPERTY)) {
+					X_FOCUSER_MOTOR_TYPE_THIRD_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_FOCUSER_MOTOR_TYPE_THIRD_UNIPOLAR { name = "UNIPOLAR"; label = "Unipolar"; value = true; }
+			item X_FOCUSER_MOTOR_TYPE_THIRD_BIPOLAR { name = "BIPOLAR"; label = "Bipolar"; value = false; }
+			item X_FOCUSER_MOTOR_TYPE_THIRD_DC { name = "DC"; label = "DC"; value = false; }
+			item X_FOCUSER_MOTOR_TYPE_THIRD_STEP_DIR { name = "STEP_DIR"; label = "Step-dir"; value = false; }
+		}
+		switch X_FOCUSER_TEMPERATURE_SENSOR_THIRD {
+			name = "X_FOCUSER_TEMPERATURE_SENSOR";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Temperature sensor in use";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				lunatico_apply_temperature_sensor(device, X_FOCUSER_TEMPERATURE_SENSOR_THIRD_PROPERTY);
+			}
+			item X_FOCUSER_TEMPERATURE_SENSOR_THIRD_INTERNAL { name = "INTERNAL"; label = "Internal sensor"; value = true; }
+			item X_FOCUSER_TEMPERATURE_SENSOR_THIRD_EXTERNAL { name = "EXTERNAL"; label = "External sensor"; value = false; }
+		}
+	}
+
+	rotator {
+		id = rotator_third;
+		name = "Rotator Lunatico (Third)";
+		on_attach {
+			device->gp_bits = 2;
+			INFO_PROPERTY->count = 6;
+		}
+		on_connect {
+			connection_result = lunatico_rotator_connect(device, X_ROTATOR_POWER_CONTROL_THIRD_PROPERTY, X_ROTATOR_MOTOR_TYPE_THIRD_PROPERTY, X_ROTATOR_STEP_MODE_THIRD_PROPERTY, X_ROTATOR_MOTOR_WIRING_THIRD_PROPERTY);
+		}
+		on_disconnect {
+			lunatico_release_port(device);
+		}
+		inherited ROTATOR_STEPS_PER_REVOLUTION {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.min = 100;
+				ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.max = 100000;
+				ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value = ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.target = 3600;
+			}
+			on_change {
+				lunatico_rotator_resync(device);
+			}
+		}
+		inherited ROTATOR_DIRECTION {
+			hidden = false;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_wiring(device, X_ROTATOR_MOTOR_WIRING_THIRD_PROPERTY, !ROTATOR_DIRECTION_NORMAL_ITEM->sw.value)) {
+					ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited ROTATOR_BACKLASH {
+			hidden = false;
+			persistent = true;
+			on_change { }
+		}
+		inherited ROTATOR_LIMITS {
+			hidden = false;
+			persistent = true;
+			on_attach {
+				ROTATOR_LIMITS_MIN_POSITION_ITEM->number.min = -180;
+				ROTATOR_LIMITS_MIN_POSITION_ITEM->number.max = 360;
+				ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value = ROTATOR_LIMITS_MIN_POSITION_ITEM->number.target = -180;
+				ROTATOR_LIMITS_MAX_POSITION_ITEM->number.min = -180;
+				ROTATOR_LIMITS_MAX_POSITION_ITEM->number.max = 360;
+				ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value = ROTATOR_LIMITS_MAX_POSITION_ITEM->number.target = 180;
+			}
+			on_change {
+				lunatico_rotator_limits(device);
+			}
+		}
+		inherited ROTATOR_POSITION {
+			on_change {
+				if (lunatico_rotator_position(device)) {
+					indigo_execute_handler_in(device, LUNATICO_MOTION_POLL, rotator_motion_finalizer);
+				}
+			}
+		}
+		inherited ROTATOR_ABORT_MOTION {
+			on_change {
+				// An urgent abort can overtake a queued move, so the start
+				// handler of this device is cancelled together with the
+				// completion poll it would have scheduled.
+				indigo_cancel_pending_handler(device, rotator_third_rotator_position_handler);
+				indigo_cancel_pending_handler(device, rotator_motion_finalizer);
+				lunatico_rotator_abort(device);
+			}
+		}
+		switch X_ROTATOR_STEP_MODE_THIRD {
+			name = "X_ROTATOR_STEP_MODE";
+			group = ROTATOR_ADVANCED_GROUP;
+			label = "Step mode";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_step_mode(device, X_ROTATOR_STEP_MODE_THIRD_PROPERTY)) {
+					X_ROTATOR_STEP_MODE_THIRD_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_ROTATOR_STEP_MODE_THIRD_FULL { name = "FULL"; label = "Full step"; value = true; }
+			item X_ROTATOR_STEP_MODE_THIRD_HALF { name = "HALF"; label = "1/2 step"; value = false; }
+		}
+		number X_ROTATOR_POWER_CONTROL_THIRD {
+			name = "X_ROTATOR_POWER_CONTROL";
+			group = ROTATOR_ADVANCED_GROUP;
+			label = "Coils current control";
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_power_control(device, X_ROTATOR_POWER_CONTROL_THIRD_PROPERTY)) {
+					X_ROTATOR_POWER_CONTROL_THIRD_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_ROTATOR_POWER_CONTROL_THIRD_MOVE { name = "MOVE_POWER"; label = "Move power (%)"; min = 0; max = 100; step = 1; value = 100; }
+			item X_ROTATOR_POWER_CONTROL_THIRD_STOP { name = "STOP_POWER"; label = "Stop power (%)"; min = 0; max = 100; step = 1; value = 0; }
+		}
+		switch X_ROTATOR_MOTOR_WIRING_THIRD {
+			name = "X_ROTATOR_MOTOR_WIRING";
+			group = ROTATOR_ADVANCED_GROUP;
+			label = "Motor wiring";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_wiring(device, X_ROTATOR_MOTOR_WIRING_THIRD_PROPERTY, !ROTATOR_DIRECTION_NORMAL_ITEM->sw.value)) {
+					X_ROTATOR_MOTOR_WIRING_THIRD_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_ROTATOR_MOTOR_WIRING_THIRD_LUNATICO { name = "LUNATICO"; label = "Lunatico"; value = true; }
+			item X_ROTATOR_MOTOR_WIRING_THIRD_MOONLITE { name = "MOONLITE"; label = "RF/Moonlite"; value = false; }
+		}
+		switch X_ROTATOR_MOTOR_TYPE_THIRD {
+			name = "X_ROTATOR_MOTOR_TYPE";
+			group = ROTATOR_ADVANCED_GROUP;
+			label = "Motor type";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				if (!lunatico_apply_motor_type(device, X_ROTATOR_MOTOR_TYPE_THIRD_PROPERTY)) {
+					X_ROTATOR_MOTOR_TYPE_THIRD_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_ROTATOR_MOTOR_TYPE_THIRD_UNIPOLAR { name = "UNIPOLAR"; label = "Unipolar"; value = true; }
+			item X_ROTATOR_MOTOR_TYPE_THIRD_BIPOLAR { name = "BIPOLAR"; label = "Bipolar"; value = false; }
+			item X_ROTATOR_MOTOR_TYPE_THIRD_DC { name = "DC"; label = "DC"; value = false; }
+			item X_ROTATOR_MOTOR_TYPE_THIRD_STEP_DIR { name = "STEP_DIR"; label = "Step-dir"; value = false; }
+		}
+	}
+
+	aux {
+		id = aux_third;
+		name = "Powerbox Lunatico (Third)";
+		interface = INDIGO_INTERFACE_AUX_GPIO | INDIGO_INTERFACE_AUX_POWERBOX;
+		on_attach {
+			device->gp_bits = 2;
+			INFO_PROPERTY->count = 6;
+		}
+		on_connect {
+			connection_result = lunatico_aux_connect(device, AUX_POWER_OUTLET_THIRD_PROPERTY);
+		}
+		on_disconnect {
+			lunatico_release_port(device);
+		}
+		on_timer {
+			lunatico_poll_sensors(device, AUX_GPIO_SENSORS_THIRD_PROPERTY);
+			indigo_execute_handler_in(device, LUNATICO_SENSOR_POLL, aux_third_timer_callback);
+		}
+		text AUX_OUTLET_NAMES_THIRD {
+			name = AUX_OUTLET_NAMES_PROPERTY_NAME;
+			group = AUX_POWERBOX_GROUP;
+			label = "Power outlet names";
+			always_defined = true;
+			persistent = true;
+			on_change {
+				lunatico_apply_names(device, AUX_OUTLET_NAMES_THIRD_PROPERTY, AUX_POWER_OUTLET_THIRD_PROPERTY);
+			}
+			item AUX_OUTLET_NAME_THIRD_1 { name = AUX_POWER_OUTLET_NAME_1_ITEM_NAME; label = "DB9 Pin 1"; value = "Power #1"; }
+			item AUX_OUTLET_NAME_THIRD_2 { name = AUX_POWER_OUTLET_NAME_2_ITEM_NAME; label = "DB9 Pin 2"; value = "Power #2"; }
+			item AUX_OUTLET_NAME_THIRD_3 { name = AUX_POWER_OUTLET_NAME_3_ITEM_NAME; label = "DB9 Pin 3"; value = "Power #3"; }
+			item AUX_OUTLET_NAME_THIRD_4 { name = AUX_POWER_OUTLET_NAME_4_ITEM_NAME; label = "DB9 Pin 4"; value = "Power #4"; }
+		}
+		switch AUX_POWER_OUTLET_THIRD {
+			name = AUX_POWER_OUTLET_PROPERTY_NAME;
+			group = AUX_POWERBOX_GROUP;
+			label = "Power outlets";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				if (!lunatico_apply_outlets(device, AUX_POWER_OUTLET_THIRD_PROPERTY)) {
+					AUX_POWER_OUTLET_THIRD_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item AUX_POWER_OUTLET_THIRD_1 { name = AUX_POWER_OUTLET_1_ITEM_NAME; label = "Power #1"; value = false; }
+			item AUX_POWER_OUTLET_THIRD_2 { name = AUX_POWER_OUTLET_2_ITEM_NAME; label = "Power #2"; value = false; }
+			item AUX_POWER_OUTLET_THIRD_3 { name = AUX_POWER_OUTLET_3_ITEM_NAME; label = "Power #3"; value = false; }
+			item AUX_POWER_OUTLET_THIRD_4 { name = AUX_POWER_OUTLET_4_ITEM_NAME; label = "Power #4"; value = false; }
+		}
+		text AUX_SENSOR_NAMES_THIRD {
+			name = AUX_SENSOR_NAMES_PROPERTY_NAME;
+			group = AUX_SENSORS_GROUP;
+			label = "Sensor names";
+			always_defined = true;
+			persistent = true;
+			on_change {
+				lunatico_apply_names(device, AUX_SENSOR_NAMES_THIRD_PROPERTY, AUX_GPIO_SENSORS_THIRD_PROPERTY);
+			}
+			item AUX_SENSOR_NAME_THIRD_1 { name = AUX_GPIO_SENSOR_NAME_1_ITEM_NAME; label = "DB9 Pin 6"; value = "Sensor #1"; }
+			item AUX_SENSOR_NAME_THIRD_2 { name = AUX_GPIO_SENSOR_NAME_2_ITEM_NAME; label = "DB9 Pin 7"; value = "Sensor #2"; }
+			item AUX_SENSOR_NAME_THIRD_3 { name = AUX_GPIO_SENSOR_NAME_3_ITEM_NAME; label = "DB9 Pin 8"; value = "Sensor #3"; }
+			item AUX_SENSOR_NAME_THIRD_4 { name = AUX_GPIO_SENSOR_NAME_4_ITEM_NAME; label = "DB9 Pin 9"; value = "Sensor #4"; }
+		}
+		number AUX_GPIO_SENSORS_THIRD {
+			name = AUX_GPIO_SENSORS_PROPERTY_NAME;
+			group = AUX_SENSORS_GROUP;
+			label = "GPIO sensors";
+			perm = INDIGO_RO_PERM;
+			item AUX_GPIO_SENSOR_THIRD_1 { name = AUX_GPIO_SENSOR_NAME_1_ITEM_NAME; label = "Sensor #1"; min = 0; max = 1024; step = 1; value = 0; }
+			item AUX_GPIO_SENSOR_THIRD_2 { name = AUX_GPIO_SENSOR_NAME_2_ITEM_NAME; label = "Sensor #2"; min = 0; max = 1024; step = 1; value = 0; }
+			item AUX_GPIO_SENSOR_THIRD_3 { name = AUX_GPIO_SENSOR_NAME_3_ITEM_NAME; label = "Sensor #3"; min = 0; max = 1024; step = 1; value = 0; }
+			item AUX_GPIO_SENSOR_THIRD_4 { name = AUX_GPIO_SENSOR_NAME_4_ITEM_NAME; label = "Sensor #4"; min = 0; max = 1024; step = 1; value = 0; }
+		}
+	}
+
+}
