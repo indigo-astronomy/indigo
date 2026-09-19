@@ -1,0 +1,665 @@
+// Copyright (c) 2020-2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Lunatico Astronomia Dragonfly roll-off roof driver definition
+
+// version history
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
+driver dragonfly {
+	label = "Lunatico Dragonfly Dome";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
+	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
+	version = 8;
+	// The controller is reached over UDP, so DEVICE_PORT carries a host name or
+	// a URL and no serial port list is published.
+	serial {
+		no_ports = true;
+	}
+	include {
+		#include <indigo/indigo_client.h>
+	}
+	define {
+		#include "../aux_dragonfly/shared/dragonfly_shared.h"
+
+		// Relays 1...3 and sensors 1, 2 and 8 drive the roof, so the relay
+		// device exposes relays 4...8 and sensors 3...7 only.
+		#define RELAY_FIRST  3
+		#define RELAY_COUNT  5
+		#define SENSOR_FIRST 2
+		#define SENSOR_COUNT 5
+
+		#define CONFLICTING_DRIVER "indigo_aux_dragonfly"
+
+		// Roof wiring, see README.md. In the one button wiring relay 1 toggles
+		// the roof, in the three button wiring it stops it.
+		#define OPEN_CLOSE_RELAY 0
+		#define STOP_RELAY       0
+		#define OPEN_RELAY       1
+		#define CLOSE_RELAY      2
+		#define OPENED_SENSOR    0
+		#define CLOSED_SENSOR    1
+		#define PARK_SENSOR      7
+
+		// Authentication expires about 30 s after the last command.
+		#define KEEP_ALIVE_INTERVAL 10
+		// Sensor poll interval while the roof is moving.
+		#define ROOF_POLL_INTERVAL  1
+
+		typedef enum {
+			ROOF_OPENED = 1,
+			ROOF_CLOSED,
+			ROOF_OPENING,
+			ROOF_STOPPED_WHILE_OPENING,
+			ROOF_CLOSING,
+			ROOF_STOPPED_WHILE_CLOSING,
+			ROOF_OPENING_OR_CLOSING,
+			ROOF_UNKNOWN
+		} roof_state_t;
+	}
+	data {
+		char command[DRAGONFLY_CMD_LEN];
+		char response[DRAGONFLY_CMD_LEN];
+		char board[INDIGO_VALUE_SIZE];
+		char firmware[INDIGO_VALUE_SIZE];
+		double relay_pulse_until[DRAGONFLY_CHANNELS];
+		roof_state_t roof_state;
+		double roof_deadline;
+	}
+	code {
+		#include "../aux_dragonfly/shared/dragonfly_shared.c"
+	}
+	on_init {
+		// The relay driver exposes all eight channels of the same controller,
+		// so the two drivers must not be loaded at the same time.
+		if (indigo_driver_initialized(CONFLICTING_DRIVER)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver %s is already loaded", CONFLICTING_DRIVER);
+			last_action = INDIGO_DRIVER_SHUTDOWN;
+			return INDIGO_FAILED;
+		}
+	}
+	// on_shutdown { }
+	dome {
+		name = "Dome Dragonfly";
+		code {
+			static void dome_shutter_handler(indigo_device *device);
+			static void dome_shutter_finalizer(indigo_device *device);
+
+			// Seed the shutter from the end sensors when the session opens. A
+			// roof that is neither open nor closed is reported as unknown.
+			static void dome_seed_roof_state(indigo_device *device) {
+				int sensors[DRAGONFLY_CHANNELS];
+				DOME_SHUTTER_OPENED_ITEM->sw.value = false;
+				DOME_SHUTTER_CLOSED_ITEM->sw.value = false;
+				PRIVATE_DATA->roof_state = ROOF_UNKNOWN;
+				DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+				if (dragonfly_read_sensors(device, sensors)) {
+					bool opened = sensors[OPENED_SENSOR] > DRAGONFLY_SENSOR_THRESHOLD;
+					bool closed = sensors[CLOSED_SENSOR] > DRAGONFLY_SENSOR_THRESHOLD;
+					if (opened && !closed) {
+						DOME_SHUTTER_OPENED_ITEM->sw.value = true;
+						PRIVATE_DATA->roof_state = ROOF_OPENED;
+						DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+					} else if (!opened && closed) {
+						DOME_SHUTTER_CLOSED_ITEM->sw.value = true;
+						PRIVATE_DATA->roof_state = ROOF_CLOSED;
+						DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+					}
+				}
+			}
+
+			// Drive the configured wiring and publish the start of the motion.
+			// Returns true when the roof was actually started.
+			static bool dome_start_motion(indigo_device *device) {
+				int relay = OPEN_CLOSE_RELAY;
+				const char *message = NULL;
+				roof_state_t state = ROOF_UNKNOWN;
+				bool hold = false;
+				if (X_DOME_BUTTON_FUNCTION_1_BUTTON_ITEM->sw.value) {
+					if (PRIVATE_DATA->roof_state == ROOF_OPENED && DOME_SHUTTER_CLOSED_ITEM->sw.value) {
+						state = ROOF_CLOSING;
+						message = "Roof is closing...";
+					} else if (PRIVATE_DATA->roof_state == ROOF_CLOSED && DOME_SHUTTER_OPENED_ITEM->sw.value) {
+						state = ROOF_OPENING;
+						message = "Roof is opening...";
+					} else {
+						// The roof position is unknown, so push the button and
+						// find out where it ends up.
+						state = ROOF_OPENING_OR_CLOSING;
+						message = "Roof is either opening or closing...";
+					}
+				} else {
+					// The push and hold wiring keeps the contact closed for the
+					// whole travel, the three button wiring releases it.
+					hold = X_DOME_BUTTON_FUNCTION_2_BUTTONS_ITEM->sw.value;
+					if (PRIVATE_DATA->roof_state != ROOF_CLOSED && DOME_SHUTTER_CLOSED_ITEM->sw.value) {
+						relay = CLOSE_RELAY;
+						state = ROOF_CLOSING;
+						message = "Roof is closing...";
+					} else if (PRIVATE_DATA->roof_state != ROOF_OPENED && DOME_SHUTTER_OPENED_ITEM->sw.value) {
+						relay = OPEN_RELAY;
+						state = ROOF_OPENING;
+						message = "Roof is opening...";
+					} else {
+						INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_OK_STATE, NULL);
+						return false;
+					}
+				}
+				if (!dragonfly_set_relay(device, relay, true)) {
+					INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, "Can not move the roof, did you authorize?");
+					return false;
+				}
+				PRIVATE_DATA->roof_state = state;
+				PRIVATE_DATA->roof_deadline = indigo_monotonic_time() + X_DOME_SETTINGS_OPEN_CLOSE_TIMEOUT_ITEM->number.value;
+				INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_BUSY_STATE, message);
+				// Momentary button emulation. The contact must be released as one
+				// transaction, otherwise a cancelled or delayed release would
+				// leave the button latched, so this bounded wait is deliberate.
+				indigo_usleep(INDIGO_DELAY(X_DOME_SETTINGS_BUTTON_PULSE_ITEM->number.value));
+				if (!hold) {
+					dragonfly_set_relay(device, relay, false);
+				}
+				return true;
+			}
+
+			// Turning both direction relays off is safe in every wiring.
+			static void dome_release_direction_relays(indigo_device *device) {
+				dragonfly_set_relay(device, OPEN_RELAY, false);
+				dragonfly_set_relay(device, CLOSE_RELAY, false);
+			}
+
+			static void dome_shutter_finalizer(indigo_device *device) {
+				int sensors[DRAGONFLY_CHANNELS];
+				if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE) {
+					return;
+				}
+				if (indigo_monotonic_time() > PRIVATE_DATA->roof_deadline) {
+					dome_release_direction_relays(device);
+					PRIVATE_DATA->roof_state = ROOF_UNKNOWN;
+					DOME_SHUTTER_OPENED_ITEM->sw.value = false;
+					DOME_SHUTTER_CLOSED_ITEM->sw.value = false;
+					INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, "Open / Close timed out.");
+					return;
+				}
+				if (dragonfly_read_sensors(device, sensors)) {
+					bool opened = sensors[OPENED_SENSOR] > DRAGONFLY_SENSOR_THRESHOLD;
+					bool closed = sensors[CLOSED_SENSOR] > DRAGONFLY_SENSOR_THRESHOLD;
+					if (opened || closed) {
+						dome_release_direction_relays(device);
+					}
+					if (opened && !closed) {
+						PRIVATE_DATA->roof_state = ROOF_OPENED;
+						DOME_SHUTTER_OPENED_ITEM->sw.value = true;
+						DOME_SHUTTER_CLOSED_ITEM->sw.value = false;
+						INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_OK_STATE, "Roof is open.");
+						return;
+					}
+					if (!opened && closed) {
+						PRIVATE_DATA->roof_state = ROOF_CLOSED;
+						DOME_SHUTTER_OPENED_ITEM->sw.value = false;
+						DOME_SHUTTER_CLOSED_ITEM->sw.value = true;
+						INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_OK_STATE, "Roof is closed.");
+						return;
+					}
+					if (opened && closed) {
+						PRIVATE_DATA->roof_state = ROOF_UNKNOWN;
+						DOME_SHUTTER_OPENED_ITEM->sw.value = false;
+						DOME_SHUTTER_CLOSED_ITEM->sw.value = false;
+						INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, "Roof shows quantum properties, it is both opened and closed.");
+						return;
+					}
+				}
+				indigo_execute_handler_in(device, ROOF_POLL_INTERVAL, dome_shutter_finalizer);
+			}
+		}
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, "udp://dragonfly");
+			INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->label, "Device URL");
+			INDIGO_COPY_VALUE(DOME_SHUTTER_PROPERTY->label, "Shutter / Roof");
+			INDIGO_COPY_VALUE(DOME_SHUTTER_OPENED_ITEM->label, "Shutter / Roof opened");
+			INDIGO_COPY_VALUE(DOME_SHUTTER_CLOSED_ITEM->label, "Shutter / Roof closed");
+		}
+		on_timer {
+			dragonfly_keep_alive(device);
+			indigo_execute_handler_in(device, KEEP_ALIVE_INTERVAL, dome_timer_callback);
+		}
+		on_connect {
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->board);
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			dragonfly_authenticate(device, AUTHENTICATION_PASSWORD_ITEM->text.value);
+			dome_seed_roof_state(device);
+		}
+		// on_disconnect { }
+		// on_detach { }
+		inherited AUTHENTICATION {
+			on_attach {
+				AUTHENTICATION_PROPERTY->count = 1;
+			}
+			on_change {
+				dragonfly_authenticate(device, *AUTHENTICATION_PASSWORD_ITEM->text.value == 0 ? NULL : AUTHENTICATION_PASSWORD_ITEM->text.value);
+			}
+			// on_detach { }
+		}
+		inherited DOME_SHUTTER {
+			on_change {
+				int sensors[DRAGONFLY_CHANNELS];
+				bool parked = false;
+				if (dragonfly_read_sensors(device, sensors) && sensors[PARK_SENSOR] > (int)X_DOME_SETTINGS_PARK_THRESHOLD_ITEM->number.value) {
+					parked = true;
+					bool opened = sensors[OPENED_SENSOR] > DRAGONFLY_SENSOR_THRESHOLD;
+					bool closed = sensors[CLOSED_SENSOR] > DRAGONFLY_SENSOR_THRESHOLD;
+					// A roof that reached an end position by hand gives control
+					// back, one that left an end position by hand takes it away.
+					if (opened && PRIVATE_DATA->roof_state != ROOF_OPENED) {
+						PRIVATE_DATA->roof_state = ROOF_OPENED;
+					} else if (closed && PRIVATE_DATA->roof_state != ROOF_CLOSED) {
+						PRIVATE_DATA->roof_state = ROOF_CLOSED;
+					} else if ((!closed && PRIVATE_DATA->roof_state == ROOF_CLOSED) || (!opened && PRIVATE_DATA->roof_state == ROOF_OPENED)) {
+						INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, "The roof seems to be moved by hand, the driver will regain control when opened or closed position is reached.");
+						return;
+					}
+				}
+				if ((PRIVATE_DATA->roof_state == ROOF_OPENED && DOME_SHUTTER_OPENED_ITEM->sw.value) || (PRIVATE_DATA->roof_state == ROOF_CLOSED && DOME_SHUTTER_CLOSED_ITEM->sw.value) || (!DOME_SHUTTER_OPENED_ITEM->sw.value && !DOME_SHUTTER_CLOSED_ITEM->sw.value)) {
+					INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_OK_STATE, NULL);
+					return;
+				}
+				if (!parked) {
+					if (PRIVATE_DATA->roof_state == ROOF_OPENED) {
+						indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
+					} else if (PRIVATE_DATA->roof_state == ROOF_CLOSED) {
+						indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
+					} else {
+						DOME_SHUTTER_OPENED_ITEM->sw.value = false;
+						DOME_SHUTTER_CLOSED_ITEM->sw.value = false;
+					}
+					INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, "Can not move the roof, mount is not parked!");
+					return;
+				}
+				if (dome_start_motion(device)) {
+					indigo_execute_handler_in(device, X_DOME_SETTINGS_READ_SENSORS_DELAY_ITEM->number.value, dome_shutter_finalizer);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited DOME_ABORT_MOTION {
+			on_change {
+				DOME_ABORT_MOTION_ITEM->sw.value = false;
+				if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_cancel_pending_handler(device, dome_shutter_handler);
+					indigo_cancel_pending_handler(device, dome_shutter_finalizer);
+					if (dragonfly_set_relay(device, OPEN_RELAY, false)) {
+						dragonfly_set_relay(device, CLOSE_RELAY, false);
+						PRIVATE_DATA->roof_state = PRIVATE_DATA->roof_state == ROOF_CLOSING ? ROOF_STOPPED_WHILE_CLOSING : ROOF_STOPPED_WHILE_OPENING;
+						if (!X_DOME_BUTTON_FUNCTION_2_BUTTONS_ITEM->sw.value) {
+							// Push and release wirings need the stop button.
+							dragonfly_set_relay(device, STOP_RELAY, true);
+							indigo_usleep(INDIGO_DELAY(X_DOME_SETTINGS_BUTTON_PULSE_ITEM->number.value));
+							dragonfly_set_relay(device, STOP_RELAY, false);
+						}
+						INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, "Roof Stopped.");
+					} else {
+						INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, "Can not stop the roof, did you authorize?");
+					}
+				}
+				INDIGO_UPDATE_PROPERTY_STATE(DOME_ABORT_MOTION_PROPERTY, INDIGO_OK_STATE, NULL);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited DOME_SPEED {
+			hidden = true;
+		}
+		inherited DOME_DIRECTION {
+			hidden = true;
+		}
+		inherited DOME_HORIZONTAL_COORDINATES {
+			hidden = true;
+		}
+		inherited DOME_STEPS {
+			hidden = true;
+		}
+		inherited DOME_PARK {
+			hidden = true;
+		}
+		inherited DOME_DIMENSION {
+			hidden = true;
+		}
+		inherited DOME_SLAVING_PARAMETERS {
+			hidden = true;
+		}
+		number X_DOME_SETTINGS {
+			name = "X_DOME_SETTINGS";
+			group = "Settings";
+			label = "Dome Settings";
+			always_defined = true;
+			persistent = true;
+			on_change { }
+			// on_attach { }
+			// on_detach { }
+			item X_DOME_SETTINGS_BUTTON_PULSE {
+				name = "BUTTON_PULSE_LENGTH";
+				label = "Open/Close push duration (sec)";
+				min = 0;
+				max = 3;
+				step = 0.5;
+				value = 0.5;
+			}
+			item X_DOME_SETTINGS_READ_SENSORS_DELAY {
+				name = "READ_SENSORS_DELAY";
+				label = "Read sensors delay after push (sec)";
+				min = 0;
+				max = 6;
+				step = 0.5;
+				value = 2.5;
+			}
+			item X_DOME_SETTINGS_OPEN_CLOSE_TIMEOUT {
+				name = "OPEN_CLOSE_TIMEOUT";
+				label = "Open/Close timeout (sec)";
+				min = 0;
+				max = 300;
+				step = 1;
+				value = 60;
+			}
+			item X_DOME_SETTINGS_PARK_THRESHOLD {
+				name = "PARK_SENSOR_THRESHOLD";
+				label = "Mount park sensor threshold";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 512;
+			}
+		}
+		switch X_DOME_BUTTON_FUNCTION {
+			name = "X_DOME_BUTTON_FUNCTION";
+			group = "Settings";
+			label = "Buttons Function Settings";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			always_defined = true;
+			persistent = true;
+			on_change { }
+			// on_attach { }
+			// on_detach { }
+			item X_DOME_BUTTON_FUNCTION_1_BUTTON {
+				name = "1_BUTTON_PUSH";
+				label = "1 Button, push (relay #1-open/close/stop)";
+				value = true;
+			}
+			item X_DOME_BUTTON_FUNCTION_2_BUTTONS {
+				name = "2_BUTTONS_PUSH_HOLD";
+				label = "2 Buttons, push and hold (relays: #2-open, #3-close)";
+				value = false;
+			}
+			item X_DOME_BUTTON_FUNCTION_3_BUTTONS {
+				name = "3_BUTTONS_PUSH";
+				label = "3 Buttons, push (relays: #1-stop, #2-open, #3-close)";
+				value = false;
+			}
+		}
+	}
+	aux {
+		name = "Dragonfly Controller";
+		interface = INDIGO_INTERFACE_AUX_GPIO;
+		on_attach {
+			INFO_PROPERTY->count = 6;
+		}
+		on_timer {
+			dragonfly_update_sensors(device);
+			indigo_execute_handler_in(device, 1, aux_timer_callback);
+		}
+		on_connect {
+			dragonfly_attach_relays(device);
+		}
+		on_disconnect {
+			for (int i = 0; i < RELAY_COUNT; i++) {
+				PRIVATE_DATA->relay_pulse_until[i] = 0;
+			}
+		}
+		// on_detach { }
+		inherited AUTHENTICATION {
+			on_attach {
+				AUTHENTICATION_PROPERTY->count = 1;
+			}
+			on_change {
+				dragonfly_authenticate(device, *AUTHENTICATION_PASSWORD_ITEM->text.value == 0 ? NULL : AUTHENTICATION_PASSWORD_ITEM->text.value);
+			}
+			// on_detach { }
+		}
+		text AUX_OUTLET_NAMES {
+			name = AUX_OUTLET_NAMES_PROPERTY_NAME;
+			group = AUX_RELAYS_GROUP;
+			label = "Relay names";
+			always_defined = true;
+			persistent = true;
+			on_change {
+				dragonfly_apply_outlet_names(device);
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_OUTLET_NAME_4 {
+				name = AUX_GPIO_OUTLET_NAME_4_ITEM_NAME;
+				label = "Relay 4";
+				value = "Relay #4";
+			}
+			item AUX_OUTLET_NAME_5 {
+				name = AUX_GPIO_OUTLET_NAME_5_ITEM_NAME;
+				label = "Relay 5";
+				value = "Relay #5";
+			}
+			item AUX_OUTLET_NAME_6 {
+				name = AUX_GPIO_OUTLET_NAME_6_ITEM_NAME;
+				label = "Relay 6";
+				value = "Relay #6";
+			}
+			item AUX_OUTLET_NAME_7 {
+				name = AUX_GPIO_OUTLET_NAME_7_ITEM_NAME;
+				label = "Relay 7";
+				value = "Relay #7";
+			}
+			item AUX_OUTLET_NAME_8 {
+				name = AUX_GPIO_OUTLET_NAME_8_ITEM_NAME;
+				label = "Relay 8";
+				value = "Relay #8";
+			}
+		}
+		switch AUX_GPIO_OUTLETS {
+			name = AUX_GPIO_OUTLETS_PROPERTY_NAME;
+			group = AUX_RELAYS_GROUP;
+			label = "Relay outlets";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				if (dragonfly_set_outlets(device)) {
+					INDIGO_UPDATE_PROPERTY_STATE(AUX_GPIO_OUTLETS_PROPERTY, INDIGO_OK_STATE, NULL);
+				} else {
+					INDIGO_UPDATE_PROPERTY_STATE(AUX_GPIO_OUTLETS_PROPERTY, INDIGO_ALERT_STATE, "Relay operation failed, did you authorize?");
+				}
+				double delay = dragonfly_pulse_delay(device);
+				if (delay >= 0) {
+					// One finalizer serves every relay of this device, so a pulse
+					// started while another is running replaces its wake-up.
+					indigo_cancel_pending_handler(device, relay_pulse_finalizer);
+					indigo_execute_handler_in(device, delay, relay_pulse_finalizer);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_GPIO_OUTLET_4 {
+				name = AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME;
+				label = "Relay #4";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_5 {
+				name = AUX_GPIO_OUTLETS_OUTLET_5_ITEM_NAME;
+				label = "Relay #5";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_6 {
+				name = AUX_GPIO_OUTLETS_OUTLET_6_ITEM_NAME;
+				label = "Relay #6";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_7 {
+				name = AUX_GPIO_OUTLETS_OUTLET_7_ITEM_NAME;
+				label = "Relay #7";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_8 {
+				name = AUX_GPIO_OUTLETS_OUTLET_8_ITEM_NAME;
+				label = "Relay #8";
+				value = false;
+			}
+		}
+		number AUX_OUTLET_PULSE_LENGTHS {
+			name = AUX_OUTLET_PULSE_LENGTHS_PROPERTY_NAME;
+			group = AUX_RELAYS_GROUP;
+			label = "Relay pulse lengths (ms)";
+			on_change { }
+			// on_attach { }
+			// on_detach { }
+			item AUX_OUTLET_PULSE_LENGTHS_4 {
+				name = AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME;
+				label = "Relay #4";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_5 {
+				name = AUX_GPIO_OUTLETS_OUTLET_5_ITEM_NAME;
+				label = "Relay #5";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_6 {
+				name = AUX_GPIO_OUTLETS_OUTLET_6_ITEM_NAME;
+				label = "Relay #6";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_7 {
+				name = AUX_GPIO_OUTLETS_OUTLET_7_ITEM_NAME;
+				label = "Relay #7";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_8 {
+				name = AUX_GPIO_OUTLETS_OUTLET_8_ITEM_NAME;
+				label = "Relay #8";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+		}
+		text AUX_SENSOR_NAMES {
+			name = AUX_SENSOR_NAMES_PROPERTY_NAME;
+			group = AUX_SENSORS_GROUP;
+			label = "Sensor names";
+			always_defined = true;
+			persistent = true;
+			on_change {
+				dragonfly_apply_sensor_names(device);
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_SENSOR_NAME_3 {
+				name = AUX_GPIO_SENSOR_NAME_3_ITEM_NAME;
+				label = "Sensor 3";
+				value = "Sensor #3";
+			}
+			item AUX_SENSOR_NAME_4 {
+				name = AUX_GPIO_SENSOR_NAME_4_ITEM_NAME;
+				label = "Sensor 4";
+				value = "Sensor #4";
+			}
+			item AUX_SENSOR_NAME_5 {
+				name = AUX_GPIO_SENSOR_NAME_5_ITEM_NAME;
+				label = "Sensor 5";
+				value = "Sensor #5";
+			}
+			item AUX_SENSOR_NAME_6 {
+				name = AUX_GPIO_SENSOR_NAME_6_ITEM_NAME;
+				label = "Sensor 6";
+				value = "Sensor #6";
+			}
+			item AUX_SENSOR_NAME_7 {
+				name = AUX_GPIO_SENSOR_NAME_7_ITEM_NAME;
+				label = "Sensor 7";
+				value = "Sensor #7";
+			}
+		}
+		number AUX_GPIO_SENSORS {
+			name = AUX_GPIO_SENSORS_PROPERTY_NAME;
+			group = AUX_SENSORS_GROUP;
+			label = "Sensors";
+			perm = INDIGO_RO_PERM;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+			item AUX_GPIO_SENSOR_3 {
+				name = AUX_GPIO_SENSOR_NAME_3_ITEM_NAME;
+				label = "Sensor #3";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_4 {
+				name = AUX_GPIO_SENSOR_NAME_4_ITEM_NAME;
+				label = "Sensor #4";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_5 {
+				name = AUX_GPIO_SENSOR_NAME_5_ITEM_NAME;
+				label = "Sensor #5";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_6 {
+				name = AUX_GPIO_SENSOR_NAME_6_ITEM_NAME;
+				label = "Sensor #6";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_7 {
+				name = AUX_GPIO_SENSOR_NAME_7_ITEM_NAME;
+				label = "Sensor #7";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+		}
+	}
+}

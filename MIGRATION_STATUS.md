@@ -17,7 +17,7 @@
 | aux_asiair              | 2️⃣ | ⛔ N/A | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ RPi only |
 | aux_astromechanics      | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 6 / 0 | |
 | aux_cloudwatcher        | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ HW  | 5 / 0 | |
-| aux_dragonfly           | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 5 / 0 | |
+| aux_dragonfly           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | |
 | aux_dsusb               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 10 / 0 | |
 | aux_fbc                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 10 / 0 | |
 | aux_flatmaster          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 8 / 0 | |
@@ -70,7 +70,7 @@
 | ccd_uvc                 | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 20 / 1 | ⛔ libuvc is Unix only |
 | dome_baader             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 46 / 0 | |
 | dome_beaver             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 49 / 0 | |
-| dome_dragonfly          | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | |
+| dome_dragonfly          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 22 / 0 | |
 | dome_nexdome            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 49 / 0 | |
 | dome_nexdome3           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 52 / 0 | |
 | dome_simulator          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 7 / 0 | |

@@ -67,7 +67,13 @@ static int run_aux_simulated(const char *suite, const char *executable, const au
 	const char *filter = getenv("AUX_TEST_FILTER");
 	for (int i = 0; i < count; i++) {
 		if (filter && !strstr(tests[i].name, filter)) { continue; }
-		const char *args[] = { "--profile", tests[i].profile, NULL };
+		// AUX_TEST_TRACE makes every simulator log the ordered protocol
+		// exchange to stderr, which is how the driver reference traces
+		// required by indigo_drivers/AGENTS.override.md are captured.
+		const char *args[] = { "--profile", tests[i].profile, NULL, NULL };
+		if (getenv("AUX_TEST_TRACE") != NULL) {
+			args[2] = "--trace";
+		}
 		if (!start_external_serial_simulator_with_args(&aux_simulator, executable, args)) { fprintf(stderr, "Simulator startup failed\n"); return 1; }
 		fflush(NULL);
 		pid_t child = fork();

@@ -714,7 +714,11 @@ Source: `indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.c`.
 
 Custom properties: `AUX_GPIO_OUTLETS`, `AUX_GPIO_SENSORS`, `AUX_OUTLET_NAMES`, `AUX_OUTLET_PULSE_LENGTHS`, `AUX_SENSOR_NAMES`.
 
-Source: `indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.c`.
+Driver-specific use of existing properties: `AUTHENTICATION` (password only), `DEVICE_PORT` (controller host name or URL).
+
+All eight relays and all eight analog sensor inputs of the controller are exposed. `AUX_OUTLET_NAMES` and `AUX_SENSOR_NAMES` are always defined and saved by CONFIG; the outlet, pulse-length and sensor properties are connection-dependent.
+
+Sources: `indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.driver`, `indigo_drivers/aux_dragonfly/shared/dragonfly_shared.c`.
 
 ### aux_dsusb
 
@@ -996,11 +1000,13 @@ Source: `indigo_drivers/dome_beaver/indigo_dome_beaver.driver`.
 
 ### dome_dragonfly
 
-Custom properties: `AUX_GPIO_OUTLETS`, `AUX_GPIO_SENSORS`, `AUX_OUTLET_NAMES`, `AUX_OUTLET_PULSE_LENGTHS`, `AUX_SENSOR_NAMES`, `LA_DOME_BUTTON_FUNCTION`, `LA_DOME_SETTINGS`.
+Custom properties: `AUX_GPIO_OUTLETS`, `AUX_GPIO_SENSORS`, `AUX_OUTLET_NAMES`, `AUX_OUTLET_PULSE_LENGTHS`, `AUX_SENSOR_NAMES`, `X_DOME_BUTTON_FUNCTION`, `X_DOME_SETTINGS`.
 
-Driver-specific use of existing properties: `DOME_DIMENSION`, `DOME_DIRECTION`, `DOME_HORIZONTAL_COORDINATES`, `DOME_PARK`, `DOME_SLAVING_PARAMETERS`, `DOME_SPEED`, `DOME_STEPS`.
+Driver-specific use of existing properties: `AUTHENTICATION` (password only), `DEVICE_PORT` (controller host name or URL, dome device only), `DOME_DIMENSION`, `DOME_DIRECTION`, `DOME_HORIZONTAL_COORDINATES`, `DOME_PARK`, `DOME_SHUTTER`, `DOME_SLAVING_PARAMETERS`, `DOME_SPEED`, `DOME_STEPS`.
 
-Source: `indigo_drivers/dome_dragonfly/indigo_dome_dragonfly.c`.
+Two logical devices share one controller. `Dome Dragonfly` owns `X_DOME_SETTINGS` (`BUTTON_PULSE_LENGTH`, `READ_SENSORS_DELAY`, `OPEN_CLOSE_TIMEOUT`, `PARK_SENSOR_THRESHOLD`) and `X_DOME_BUTTON_FUNCTION` (`1_BUTTON_PUSH`, `2_BUTTONS_PUSH_HOLD`, `3_BUTTONS_PUSH`), both always defined and saved by CONFIG, and drives relays 1…3 with sensors 1, 2 and 8. `Dragonfly Controller` exposes the remaining relays 4…8 and sensors 3…7 through the AUX properties and has no `DEVICE_PORT` of its own. `X_DOME_SETTINGS` and `X_DOME_BUTTON_FUNCTION` replace the pre-3.0 names `LA_DOME_SETTINGS` and `LA_DOME_BUTTON_FUNCTION`; their item names are unchanged.
+
+Sources: `indigo_drivers/dome_dragonfly/indigo_dome_dragonfly.driver`, `indigo_drivers/aux_dragonfly/shared/dragonfly_shared.c`.
 
 ### dome_nexdome
 

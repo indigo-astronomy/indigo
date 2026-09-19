@@ -1559,7 +1559,10 @@ long indigo_uni_read_section2(indigo_uni_handle *handle, char *buffer, long leng
 				break;
 		}
 		bool ignored = false;
-		for (const char *s = ignore; *s; s++) {
+		// Both lists are documented as optional, so NULL means 'nothing to
+		// ignore' and 'no terminator', not an empty string the caller has to
+		// supply.
+		for (const char *s = ignore; s != NULL && *s; s++) {
 			if (c == *s) {
 				ignored = true;
 				break;
@@ -1568,7 +1571,7 @@ long indigo_uni_read_section2(indigo_uni_handle *handle, char *buffer, long leng
 		if (!ignored) {
 			buffer[bytes_read++] = c;
 		}
-		for (const char *s = terminators; *s; s++) {
+		for (const char *s = terminators; s != NULL && *s; s++) {
 			if (c == *s) {
 				terminated = true;
 				break;

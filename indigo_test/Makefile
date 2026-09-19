@@ -44,6 +44,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_protocol_xml \
 	$(UNIT_BUILD)/test_timer \
 	$(UNIT_BUILD)/test_token \
+	$(UNIT_BUILD)/test_uni_io \
 	$(UNIT_BUILD)/test_raw_image
 INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_qhy2_sdk \
@@ -327,6 +328,9 @@ $(UNIT_BUILD)/test_base64: unit/test_base64.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_md5: unit/test_md5.c test_runner.h | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+$(UNIT_BUILD)/test_uni_io: unit/test_uni_io.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_dome_azimuth: unit/test_dome_azimuth.c test_runner.h | $(UNIT_BUILD)
@@ -1585,16 +1589,27 @@ $(INTEGRATION_BUILD)/aux_mgbox_simulator: ../indigo_drivers/aux_mgbox/aux_mgbox_
 $(INTEGRATION_BUILD)/test_aux_mgbox_simulator: integration/test_aux_mgbox_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_mgbox_simulator $(BUILD_DRIVERS)/indigo_aux_mgbox.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_aux_mgbox.a $(TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/aux_dragonfly_simulator: ../indigo_drivers/aux_dragonfly/aux_dragonfly_simulator/aux_dragonfly_simulator.c simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/aux_dragonfly_simulator: ../indigo_drivers/aux_dragonfly/aux_dragonfly_simulator/aux_dragonfly_simulator.c ../indigo_drivers/aux_dragonfly/aux_dragonfly_simulator/dragonfly_simulator_common.h simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/test_aux_dragonfly_simulator: integration/test_aux_dragonfly_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_dragonfly_simulator $(BUILD_DRIVERS)/indigo_aux_dragonfly.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_aux_dragonfly.a $(TEST_LDFLAGS)
 
+$(INTEGRATION_BUILD)/dome_dragonfly_simulator: ../indigo_drivers/dome_dragonfly/dome_dragonfly_simulator/dome_dragonfly_simulator.c ../indigo_drivers/aux_dragonfly/aux_dragonfly_simulator/dragonfly_simulator_common.h simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
+$(INTEGRATION_BUILD)/test_dome_dragonfly_simulator: integration/test_dome_dragonfly_simulator.c integration/aux_test_isolation.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/dome_dragonfly_simulator $(BUILD_DRIVERS)/indigo_dome_dragonfly.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_dome_dragonfly.a $(TEST_LDFLAGS)
+
 # Opt-in: the Dragonfly protocol uses a loopback UDP socket.
 .PHONY: test-aux-dragonfly-simulator
 test-aux-dragonfly-simulator: $(INTEGRATION_BUILD)/test_aux_dragonfly_simulator
 	./$(INTEGRATION_BUILD)/test_aux_dragonfly_simulator
+
+# Opt-in: the Dragonfly protocol uses a loopback UDP socket.
+.PHONY: test-dome-dragonfly-simulator
+test-dome-dragonfly-simulator: $(INTEGRATION_BUILD)/test_dome_dragonfly_simulator
+	./$(INTEGRATION_BUILD)/test_dome_dragonfly_simulator
 
 # Instrument the unchanged driver itself, not only the test executable.
 $(INTEGRATION_BUILD)/test_aux_cloudwatcher_simulator_asan: integration/test_aux_cloudwatcher_simulator.c ../indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.c integration/aux_test_isolation.h $(INTEGRATION_BUILD)/aux_cloudwatcher_simulator | $(INTEGRATION_BUILD)
@@ -1605,8 +1620,12 @@ $(INTEGRATION_BUILD)/test_aux_mgbox_simulator_asan: integration/test_aux_mgbox_s
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_mgbox/indigo_aux_mgbox.c $(TEST_LDFLAGS)
 
 # Instrument the unchanged driver itself, not only the test executable.
-$(INTEGRATION_BUILD)/test_aux_dragonfly_simulator_asan: integration/test_aux_dragonfly_simulator.c ../indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.c integration/aux_test_isolation.h $(INTEGRATION_BUILD)/aux_dragonfly_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_aux_dragonfly_simulator_asan: integration/test_aux_dragonfly_simulator.c ../indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.c ../indigo_drivers/aux_dragonfly/shared/dragonfly_shared.h ../indigo_drivers/aux_dragonfly/shared/dragonfly_shared.c integration/aux_test_isolation.h $(INTEGRATION_BUILD)/aux_dragonfly_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.c $(TEST_LDFLAGS)
+
+# Instrument the unchanged driver itself, not only the test executable.
+$(INTEGRATION_BUILD)/test_dome_dragonfly_simulator_asan: integration/test_dome_dragonfly_simulator.c ../indigo_drivers/dome_dragonfly/indigo_dome_dragonfly.c ../indigo_drivers/aux_dragonfly/shared/dragonfly_shared.h ../indigo_drivers/aux_dragonfly/shared/dragonfly_shared.c integration/aux_test_isolation.h $(INTEGRATION_BUILD)/dome_dragonfly_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/dome_dragonfly/indigo_dome_dragonfly.c $(TEST_LDFLAGS)
 
 # The production ASI USB-ST4 implementation excludes macOS arm64. Test its
 # supported x86_64 branch unchanged (Rosetta is required on Apple Silicon).

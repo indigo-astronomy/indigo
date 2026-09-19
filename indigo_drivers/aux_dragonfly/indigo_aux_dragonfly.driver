@@ -1,0 +1,411 @@
+// Copyright (c) 2020-2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Lunatico Astronomia Dragonfly relay controller driver definition
+
+// version history
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
+driver dragonfly {
+	label = "Lunatico Dragonfly Relay Controller";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
+	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
+	version = 7;
+	// The controller is reached over UDP, so DEVICE_PORT carries a host name or
+	// a URL and no serial port list is published.
+	serial {
+		no_ports = true;
+	}
+	include {
+		#include <indigo/indigo_client.h>
+	}
+	define {
+		#include "shared/dragonfly_shared.h"
+
+		// This driver exposes all eight relays and all eight sensor inputs.
+		#define RELAY_FIRST  0
+		#define RELAY_COUNT  8
+		#define SENSOR_FIRST 0
+		#define SENSOR_COUNT 8
+
+		#define CONFLICTING_DRIVER "indigo_dome_dragonfly"
+	}
+	data {
+		char command[DRAGONFLY_CMD_LEN];
+		char response[DRAGONFLY_CMD_LEN];
+		char board[INDIGO_VALUE_SIZE];
+		char firmware[INDIGO_VALUE_SIZE];
+		double relay_pulse_until[DRAGONFLY_CHANNELS];
+	}
+	code {
+		#include "shared/dragonfly_shared.c"
+	}
+	on_init {
+		// The dome driver drives relays 1...3 and sensors 1, 2 and 8 of the same
+		// controller, so the two drivers must not be loaded at the same time.
+		if (indigo_driver_initialized(CONFLICTING_DRIVER)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver %s is already loaded", CONFLICTING_DRIVER);
+			last_action = INDIGO_DRIVER_SHUTDOWN;
+			return INDIGO_FAILED;
+		}
+	}
+	// on_shutdown { }
+	aux {
+		name = "Dragonfly Controller";
+		interface = INDIGO_INTERFACE_AUX_GPIO;
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, "udp://dragonfly");
+			INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->label, "Device URL");
+		}
+		on_timer {
+			dragonfly_update_sensors(device);
+			indigo_execute_handler_in(device, 1, aux_timer_callback);
+		}
+		on_connect {
+			dragonfly_attach_relays(device);
+		}
+		on_disconnect {
+			for (int i = 0; i < RELAY_COUNT; i++) {
+				PRIVATE_DATA->relay_pulse_until[i] = 0;
+			}
+		}
+		// on_detach { }
+		inherited AUTHENTICATION {
+			on_attach {
+				AUTHENTICATION_PROPERTY->count = 1;
+			}
+			on_change {
+				dragonfly_authenticate(device, *AUTHENTICATION_PASSWORD_ITEM->text.value == 0 ? NULL : AUTHENTICATION_PASSWORD_ITEM->text.value);
+			}
+			// on_detach { }
+		}
+		text AUX_OUTLET_NAMES {
+			name = AUX_OUTLET_NAMES_PROPERTY_NAME;
+			group = AUX_RELAYS_GROUP;
+			label = "Relay names";
+			always_defined = true;
+			persistent = true;
+			on_change {
+				dragonfly_apply_outlet_names(device);
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_OUTLET_NAME_1 {
+				name = AUX_GPIO_OUTLET_NAME_1_ITEM_NAME;
+				label = "Relay 1";
+				value = "Relay #1";
+			}
+			item AUX_OUTLET_NAME_2 {
+				name = AUX_GPIO_OUTLET_NAME_2_ITEM_NAME;
+				label = "Relay 2";
+				value = "Relay #2";
+			}
+			item AUX_OUTLET_NAME_3 {
+				name = AUX_GPIO_OUTLET_NAME_3_ITEM_NAME;
+				label = "Relay 3";
+				value = "Relay #3";
+			}
+			item AUX_OUTLET_NAME_4 {
+				name = AUX_GPIO_OUTLET_NAME_4_ITEM_NAME;
+				label = "Relay 4";
+				value = "Relay #4";
+			}
+			item AUX_OUTLET_NAME_5 {
+				name = AUX_GPIO_OUTLET_NAME_5_ITEM_NAME;
+				label = "Relay 5";
+				value = "Relay #5";
+			}
+			item AUX_OUTLET_NAME_6 {
+				name = AUX_GPIO_OUTLET_NAME_6_ITEM_NAME;
+				label = "Relay 6";
+				value = "Relay #6";
+			}
+			item AUX_OUTLET_NAME_7 {
+				name = AUX_GPIO_OUTLET_NAME_7_ITEM_NAME;
+				label = "Relay 7";
+				value = "Relay #7";
+			}
+			item AUX_OUTLET_NAME_8 {
+				name = AUX_GPIO_OUTLET_NAME_8_ITEM_NAME;
+				label = "Relay 8";
+				value = "Relay #8";
+			}
+		}
+		switch AUX_GPIO_OUTLETS {
+			name = AUX_GPIO_OUTLETS_PROPERTY_NAME;
+			group = AUX_RELAYS_GROUP;
+			label = "Relay outlets";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				if (dragonfly_set_outlets(device)) {
+					INDIGO_UPDATE_PROPERTY_STATE(AUX_GPIO_OUTLETS_PROPERTY, INDIGO_OK_STATE, NULL);
+				} else {
+					INDIGO_UPDATE_PROPERTY_STATE(AUX_GPIO_OUTLETS_PROPERTY, INDIGO_ALERT_STATE, "Relay operation failed, did you authorize?");
+				}
+				double delay = dragonfly_pulse_delay(device);
+				if (delay >= 0) {
+					// One finalizer serves every relay of this device, so a pulse
+					// started while another is running replaces its wake-up.
+					indigo_cancel_pending_handler(device, relay_pulse_finalizer);
+					indigo_execute_handler_in(device, delay, relay_pulse_finalizer);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_GPIO_OUTLET_1 {
+				name = AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME;
+				label = "Relay #1";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_2 {
+				name = AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME;
+				label = "Relay #2";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_3 {
+				name = AUX_GPIO_OUTLETS_OUTLET_3_ITEM_NAME;
+				label = "Relay #3";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_4 {
+				name = AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME;
+				label = "Relay #4";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_5 {
+				name = AUX_GPIO_OUTLETS_OUTLET_5_ITEM_NAME;
+				label = "Relay #5";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_6 {
+				name = AUX_GPIO_OUTLETS_OUTLET_6_ITEM_NAME;
+				label = "Relay #6";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_7 {
+				name = AUX_GPIO_OUTLETS_OUTLET_7_ITEM_NAME;
+				label = "Relay #7";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_8 {
+				name = AUX_GPIO_OUTLETS_OUTLET_8_ITEM_NAME;
+				label = "Relay #8";
+				value = false;
+			}
+		}
+		number AUX_OUTLET_PULSE_LENGTHS {
+			name = AUX_OUTLET_PULSE_LENGTHS_PROPERTY_NAME;
+			group = AUX_RELAYS_GROUP;
+			label = "Relay pulse lengths (ms)";
+			on_change { }
+			// on_attach { }
+			// on_detach { }
+			item AUX_OUTLET_PULSE_LENGTHS_1 {
+				name = AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME;
+				label = "Relay #1";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_2 {
+				name = AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME;
+				label = "Relay #2";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_3 {
+				name = AUX_GPIO_OUTLETS_OUTLET_3_ITEM_NAME;
+				label = "Relay #3";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_4 {
+				name = AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME;
+				label = "Relay #4";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_5 {
+				name = AUX_GPIO_OUTLETS_OUTLET_5_ITEM_NAME;
+				label = "Relay #5";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_6 {
+				name = AUX_GPIO_OUTLETS_OUTLET_6_ITEM_NAME;
+				label = "Relay #6";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_7 {
+				name = AUX_GPIO_OUTLETS_OUTLET_7_ITEM_NAME;
+				label = "Relay #7";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_8 {
+				name = AUX_GPIO_OUTLETS_OUTLET_8_ITEM_NAME;
+				label = "Relay #8";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+		}
+		text AUX_SENSOR_NAMES {
+			name = AUX_SENSOR_NAMES_PROPERTY_NAME;
+			group = AUX_SENSORS_GROUP;
+			label = "Sensor names";
+			always_defined = true;
+			persistent = true;
+			on_change {
+				dragonfly_apply_sensor_names(device);
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_SENSOR_NAME_1 {
+				name = AUX_GPIO_SENSOR_NAME_1_ITEM_NAME;
+				label = "Sensor 1";
+				value = "Sensor #1";
+			}
+			item AUX_SENSOR_NAME_2 {
+				name = AUX_GPIO_SENSOR_NAME_2_ITEM_NAME;
+				label = "Sensor 2";
+				value = "Sensor #2";
+			}
+			item AUX_SENSOR_NAME_3 {
+				name = AUX_GPIO_SENSOR_NAME_3_ITEM_NAME;
+				label = "Sensor 3";
+				value = "Sensor #3";
+			}
+			item AUX_SENSOR_NAME_4 {
+				name = AUX_GPIO_SENSOR_NAME_4_ITEM_NAME;
+				label = "Sensor 4";
+				value = "Sensor #4";
+			}
+			item AUX_SENSOR_NAME_5 {
+				name = AUX_GPIO_SENSOR_NAME_5_ITEM_NAME;
+				label = "Sensor 5";
+				value = "Sensor #5";
+			}
+			item AUX_SENSOR_NAME_6 {
+				name = AUX_GPIO_SENSOR_NAME_6_ITEM_NAME;
+				label = "Sensor 6";
+				value = "Sensor #6";
+			}
+			item AUX_SENSOR_NAME_7 {
+				name = AUX_GPIO_SENSOR_NAME_7_ITEM_NAME;
+				label = "Sensor 7";
+				value = "Sensor #7";
+			}
+			item AUX_SENSOR_NAME_8 {
+				name = AUX_GPIO_SENSOR_NAME_8_ITEM_NAME;
+				label = "Sensor 8";
+				value = "Sensor #8";
+			}
+		}
+		number AUX_GPIO_SENSORS {
+			name = AUX_GPIO_SENSORS_PROPERTY_NAME;
+			group = AUX_SENSORS_GROUP;
+			label = "Sensors";
+			perm = INDIGO_RO_PERM;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+			item AUX_GPIO_SENSOR_1 {
+				name = AUX_GPIO_SENSOR_NAME_1_ITEM_NAME;
+				label = "Sensor #1";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_2 {
+				name = AUX_GPIO_SENSOR_NAME_2_ITEM_NAME;
+				label = "Sensor #2";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_3 {
+				name = AUX_GPIO_SENSOR_NAME_3_ITEM_NAME;
+				label = "Sensor #3";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_4 {
+				name = AUX_GPIO_SENSOR_NAME_4_ITEM_NAME;
+				label = "Sensor #4";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_5 {
+				name = AUX_GPIO_SENSOR_NAME_5_ITEM_NAME;
+				label = "Sensor #5";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_6 {
+				name = AUX_GPIO_SENSOR_NAME_6_ITEM_NAME;
+				label = "Sensor #6";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_7 {
+				name = AUX_GPIO_SENSOR_NAME_7_ITEM_NAME;
+				label = "Sensor #7";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_8 {
+				name = AUX_GPIO_SENSOR_NAME_8_ITEM_NAME;
+				label = "Sensor #8";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+		}
+	}
+}
