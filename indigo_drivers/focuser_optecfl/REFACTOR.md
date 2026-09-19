@@ -1,8 +1,8 @@
 # Optec FocusLynx driver refactoring
 
-Status: complete, 2026-09-12. Baseline version 0x02000001, completed version 0x02000002. The driver remains hand-written and README remains unchanged.
+Status: migrated to `indigo_generator` on 2026-09-20. Version 0x03000003. The hand-written refactoring recorded below completed on 2026-09-12 at version 0x02000002; README remains unchanged.
 
-Generator migration is **deferred by explicit user decision**. The generator derives every emitted symbol from the device class (`device->type` in `parse_device_block`, `indigo_tools/indigo_generator.c:757`), so two `focuser` blocks would collide on `focuser_attach`, `focuser_connection_handler`, `FOCUSER_DEVICE_NAME` and the `focuser.*` code-block markers. The DSL has no device-block identifier and no `.driver` in the repository declares two blocks of one class. FocusLynx is one hub with two focusers behind a single serial port, so the topology cannot be expressed without a generator change; that change was offered and declined. The driver therefore stays hand-written.
+The 2026-09-12 pass deferred the generator migration because the generator derived every emitted symbol from the device class, so two `focuser` blocks would have collided on `focuser_attach`, `focuser_connection_handler`, `FOCUSER_DEVICE_NAME` and the `focuser.*` code-block markers. The DSL has since gained a device-block `id`, documented in `indigo_docs/DRIVER_GENERATOR_MIGRATION.md`, which names the generated symbols independently of the class, so the blocker is gone and the migration was carried out.
 
 Scope agreed with the user: protocol audit, simulator completion, **replacement of timers by handler queues**, correctness fixes found during the audit, and full automated test coverage. No generator edits, no `.driver` file, no hardware testing.
 
@@ -119,3 +119,48 @@ Complete. `indigo_test/Makefile` declares the simulator's dependency on `serial_
 ### Verification status
 
 The hand-written driver and simulator build successfully with the repository macOS toolchain. The complete 44-scenario simulator suite passes (`OPTECFL: 0 failing scenarios`). The same complete suite also passes when the production driver is compiled with AddressSanitizer. Leak detection is unavailable in Apple's AddressSanitizer runtime, so the ASan run covers address, bounds and lifetime instrumentation but not leak reporting. The expected error log lines during the run are deliberate hub/configuration/secondary-connect fault injections. Xcode project syntax was validated after adding `REFACTOR.md`; README was not modified. Hardware behavior and Windows execution remain unverified.
+
+## Step 8 — generator migration (2026-09-20)
+
+### What changed
+
+`indigo_focuser_optecfl.driver` declares the hub as two `focuser` blocks with `id = focuser_1` and `id = focuser_2`, so the generator emits `focuser_1_attach`, `focuser_2_attach` and the rest without collisions. The generator owns the device templates, the shared private data, the `master_device` link, the shared connection reference count, property allocation and release, change dispatch, the connected-property define/delete and the `INDIGO_DRIVER_INIT`/`SHUTDOWN` lifecycle. Every helper written in step 3 to 5 moved unchanged into the shared `code` block, so the protocol layer, the block reader, the field parsers and the motion, sync, type and abort logic are the same code as before.
+
+Both logical focusers publish `X_FOCUSER_TYPE`. A property id is unique per driver in the generator, so each device declares its own `X_FOCUSER_1_TYPE` and `X_FOCUSER_2_TYPE` with the same published name, exactly as `focuser_lunatico` declares its per-port properties, and `optecfl_type_property()` resolves the right one from the focuser number. The focuser number itself is set in each device's `on_attach` into `device->gp_bits`, as before.
+
+`optecfl_open()` and `optecfl_close()` no longer touch `PRIVATE_DATA->count`; the generator owns it and calls them only for the first connect and the last disconnect. The per-focuser `GETCONFIG` moved from `optecfl_open()` into `on_connect`, where it assigns the generator-provided `connection_result`, so a failed configuration read rolls the attempt back through the generated handler instead of through hand-written code. The hub firmware string is stored in private data and copied into each device's `INFO` on connect, so both focusers report it rather than only the one that happened to open the port.
+
+### Intentional differences
+
+- **One shared `DEVICE_PORT`.** The generator publishes `DEVICE_PORT` and `DEVICE_PORTS` on the master device only, which is the INDIGO model for a shared connection and the same change `focuser_lunatico` made. Previously each logical focuser had its own port property and both had to be pointed at the same hub. `indigo_test/integration/test_focuser_optecfl_simulator.c` was updated to the new contract, which is why `focuser_2_lifecycle` and `reverse_connection_order` fail when the updated suite is run against the pre-migration driver; every other scenario still passes against it.
+- **`multi_device_support` is now true.** The driver has always exposed two logical devices; the metadata flag now says so.
+- **The first status poll runs immediately.** The generator starts the timer callback at the end of a successful connection instead of one second later. This is the only systematic difference in the reference trace: 38 of 44 scenarios gain one `<FxGETSTATUS>` block directly after `<FxGETCONFIG>`.
+- **`FOCUSER_ABORT_MOTION` is urgent.** The generator dispatches it with `INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE` instead of the previous `INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME`, so an abort can overtake a move that is still queued. The abort handler therefore cancels the pending position and steps handlers, which is why `abort_during_motion` and `move_after_abort` no longer show the `<F1MA040000>` that the pre-migration trace contains for them.
+
+### Found defects
+
+- `DRV-151` (`optecfl_status_field`, reproduced). Observable impact: a status poll landing between the acceptance of a `FOCUSER_POSITION` change and the execution of its handler overwrote `FOCUSER_POSITION_ITEM->number.target` with the controller's current target, so the driver then commanded a move to the old target instead of the requested one. The migrated driver made this reproducible because the generator starts polling immediately: under the `split` profile the trace showed `<F1MA000000>` for a request to move to 1200. Root cause: the poll adopted the controller's `Targ Pos` unconditionally. Fix: `Targ Pos` is adopted only while `FOCUSER_POSITION_PROPERTY` is not BUSY, which is exactly the window in which the driver is not the one driving the move. Regression test: `split_replies`, which fails without the fix and passes with it; externally induced motion is still adopted, as `external_motion_observed` asserts.
+
+- `DRV-152` (`optecfl_status_field` and the move request guard, reproduced). Observable impact: a status poll running between the acceptance of a move request and the execution of its handler cleared the BUSY state that guards against overlapping motion, so a second move request sent in that window was accepted and a second `MA` command reached the controller. The immediate first poll made this reproducible: `overlap_rejected` saw two `<F1MA` commands in roughly one run in four. Root cause: BUSY was owned only by the property state, which the poll is free to clear as soon as the controller reports that it is not moving, and the controller is not moving yet while the request is still queued. Fix: a `move_pending` flag per focuser is set in `on_change_request`, cleared when the handler runs, and both the poll's BUSY-to-OK transition and a `reject_change` guard consult it. The guard also covers the generated BUSY check, so a request that the generated branch would drop never reaches `on_change_request` and cannot leave the flag set. Regression test: `overlap_rejected`, which now waits for measured motion progress before sending the overlapping request and passed six consecutive runs.
+
+- `TST-001` (`indigo_test/integration/simulator_test_common.h`, reproduced). Observable impact: AddressSanitizer reported a heap-use-after-free in the shared compliance harness during `disconnect_during_motion`. The property cache freed a cached copy when the bus thread delivered a delete or a re-definition, while a test thread could still be holding the pointer that `find_cached_property()` had just returned. Root cause: no ownership handover between the two threads. Fix: a replaced or deleted copy is retired into a 512-entry ring instead of being freed, and the ring is released with the rest of the cache at teardown, so a pointer a reader holds stays valid for hundreds of later cache operations. This is harness-only and benefits every simulator test.
+
+### Test coverage
+
+The suite grew from 44 to 45 scenarios. `abort_overtakes_start` is new and covers the urgent abort racing a queued move. `abort_during_motion`, `move_after_abort` and `abort_failure_reported` now wait for measured motion progress before aborting, so they abort a move that is demonstrably running rather than one that may still be queued, and `abort_overtakes_start` samples the stop point one poll after the abort settles because the abort publishes the last polled position. `overlap_rejected` waits for the first move command to reach the controller and for measured motion progress before sending the overlapping request, instead of sleeping a fixed 300 ms. The runner gained an `OPTECFL_TEST_TRACE` environment variable that collects the per-scenario command journals into one ordered protocol trace.
+
+### Verification (2026-09-20, macOS 15 arm64)
+
+- `../../build/bin/indigo_generator indigo_focuser_optecfl.driver` run twice: the second run reproduces the first output byte for byte.
+- `make -C indigo_drivers/focuser_optecfl -f ../../Makefile.drv` — universal x86_64 + arm64, no errors, no warnings.
+- `./build/integration/test_focuser_optecfl_simulator` — 45 scenarios, 45 passed, run twice.
+- `./build/integration/test_focuser_optecfl_simulator_asan` — 45 scenarios, 45 passed, no sanitizer report.
+- The aux_cloudwatcher, focuser_focusdreampro and focuser_mypro2 suites were re-run after the harness change in `simulator_test_common.h` and all pass, so the retirement ring does not affect other tests.
+- Reference trace comparison over the 44 pre-existing scenarios: 40 differ, every one of them accounted for by the four intentional differences above; the remaining 4 are identical.
+- No `MAX_DEVICES` override, no build products in the diff, driver version raised from `0x02000002` to `0x03000003`.
+- Linux and Windows builds were not run in this environment; only the macOS universal build is validated.
+
+### Final test summary
+
+- Simulated tests: 135 executed, 135 passed (45 ordinary scenarios run twice and the same 45 under AddressSanitizer).
+- Hardware tests: 0 executed, 0 passed.

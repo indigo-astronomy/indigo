@@ -1228,7 +1228,9 @@ Driver-specific use of existing properties: `FOCUSER_LIMITS`, `FOCUSER_ON_POSITI
 
 `FOCUSER_LIMITS` is read-only in effect: the maximum position is reported by the controller and follows the configured device type. `FOCUSER_REVERSE_MOTION` is resolved by the driver because the FocusLynx protocol has no reverse command. `FOCUSER_SPEED` is hidden. Sync through `FOCUSER_ON_POSITION_SET` is refused for device types that must home. `FOCUSER_COMPENSATION` and `FOCUSER_MODE` are not implemented.
 
-Source: `indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.c`.
+The driver exposes the hub's two logical focusers as `Optec FocusLynx #1` and `Optec FocusLynx #2`. They share one serial connection, so only the first device publishes `DEVICE_PORT` and `DEVICE_PORTS`; the second one opens the hub through it. Both publish their own `X_FOCUSER_TYPE`.
+
+Source: `indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.driver`.
 
 ### focuser_primaluce
 

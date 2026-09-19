@@ -32,8 +32,8 @@
 
 #define X_FOCUSER_TYPE_PROPERTY_NAME "X_FOCUSER_TYPE"
 
-static const simulator_driver_case optecfl_focuser_1 = { "Optec FocusLynx Focuser", "indigo_focuser_optecfl", "Optec FocusLynx #1", indigo_focuser_optecfl, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
-static const simulator_driver_case optecfl_focuser_2 = { "Optec FocusLynx Focuser", "indigo_focuser_optecfl", "Optec FocusLynx #2", indigo_focuser_optecfl, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static const simulator_driver_case optecfl_focuser_1 = { "Optec FocusLynx Focuser", "indigo_focuser_optecfl", "Optec FocusLynx #1", indigo_focuser_optecfl, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static const simulator_driver_case optecfl_focuser_2 = { "Optec FocusLynx Focuser", "indigo_focuser_optecfl", "Optec FocusLynx #2", indigo_focuser_optecfl, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 
 static external_serial_simulator fixture;
 static char fixture_dir[] = "/tmp/indigo-optecfl.XXXXXX";
@@ -176,11 +176,13 @@ static bool connect_device(const simulator_driver_case *driver_case) {
 	if (!has_defined_property(CONNECTION_PROPERTY_NAME)) {
 		return false;
 	}
-	if (has_defined_property(DEVICE_PORT_PROPERTY_NAME)) {
-		if (indigo_change_text_property_1_raw(&simulator_test_client, driver_case->device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, fixture.port) != INDIGO_OK || !wait_for_property_state(DEVICE_PORT_PROPERTY_NAME, INDIGO_OK_STATE)) {
-			return false;
-		}
+	// Both logical focusers share one hub behind one serial port, which only
+	// the first device publishes, so the port is always pointed at the
+	// simulator through that device.
+	if (indigo_change_text_property_1_raw(&simulator_test_client, optecfl_focuser_1.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, fixture.port) != INDIGO_OK) {
+		return false;
 	}
+	indigo_usleep(100000);
 	int index = observed_index(CONNECTION_PROPERTY_NAME);
 	unsigned before = atomic_load(&revisions[index]);
 	if (indigo_change_switch_property_1(&simulator_test_client, driver_case->device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true) != INDIGO_OK) {
@@ -511,11 +513,28 @@ cleanup:
 }
 
 // The framework BUSY guard must drop a second request instead of queueing it.
+// The journal is written by the simulator, so a command the driver has just
+// queued needs a bounded wait before it can be counted.
+static bool wait_for_command(const char *prefix, int minimum) {
+	for (int retry = 0; retry < 200; retry++) {
+		if (commands(prefix) >= minimum) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	fprintf(stderr, "Only %d %s commands\n", commands(prefix), prefix);
+	return false;
+}
+
 static void overlap_rejected(void) {
 	SERIAL_CHECK_TRUE(start_single());
 	SERIAL_CHECK_TRUE(goto_position(20000, INDIGO_BUSY_STATE));
+	// The first move has to be demonstrably running before the overlapping
+	// request is sent, otherwise the command count proves nothing.
+	SERIAL_CHECK_TRUE(wait_for_command("<F1MA", 1));
+	SERIAL_CHECK_TRUE(wait_for_motion_progress(20000));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, optecfl_focuser_1.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 100));
-	indigo_usleep(300000);
+	indigo_usleep(500000);
 	SERIAL_CHECK_EQ_INT(1, commands("<F1MA"));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
 cleanup:
@@ -564,10 +583,31 @@ cleanup:
 static void abort_during_motion(void) {
 	SERIAL_CHECK_TRUE(start_single());
 	SERIAL_CHECK_TRUE(goto_position(40000, INDIGO_BUSY_STATE));
+	// Abort a move that is demonstrably running, not one that is still queued.
+	SERIAL_CHECK_TRUE(wait_for_motion_progress(40000));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(1, commands("<F1HALT>"));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(position_value() < 40000);
+	SERIAL_CHECK_TRUE(position_value() > 0 && position_value() < 40000);
+cleanup:
+	driver_down();
+}
+
+// The urgent abort can overtake a move that is still queued behind the polling
+// callback. Whether the move command reached the controller or was cancelled,
+// the focuser has to be standing still afterwards.
+static void abort_overtakes_start(void) {
+	SERIAL_CHECK_TRUE(start_single());
+	SERIAL_CHECK_TRUE(goto_position(40000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	// The abort settles the property from the last polled position, so the
+	// true stop point arrives with the next poll; sample after that.
+	indigo_usleep(2000000);
+	double stopped = position_value();
+	indigo_usleep(2000000);
+	SERIAL_CHECK_TRUE(position_value() == stopped);
+	SERIAL_CHECK_TRUE(stopped < 40000);
 cleanup:
 	driver_down();
 }
@@ -584,6 +624,7 @@ cleanup:
 static void abort_failure_reported(void) {
 	SERIAL_CHECK_TRUE(start_single());
 	SERIAL_CHECK_TRUE(goto_position(40000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_motion_progress(40000));
 	SERIAL_CHECK_TRUE(fault("<F1HALT>", "reply=NOPE"));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_ALERT_STATE));
 cleanup:
@@ -593,6 +634,7 @@ cleanup:
 static void move_after_abort(void) {
 	SERIAL_CHECK_TRUE(start_single());
 	SERIAL_CHECK_TRUE(goto_position(40000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_motion_progress(40000));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(goto_position(600, INDIGO_BUSY_STATE));
@@ -658,7 +700,7 @@ static void sibling_survives_failed_connect(void) {
 	SERIAL_CHECK_TRUE(fault("<F2GETCONFIG>", "silent"));
 	reset_simulator_context(&optecfl_focuser_2);
 	enumerate_simulator_device();
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, optecfl_focuser_2.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, fixture.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, optecfl_focuser_1.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, fixture.port));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, optecfl_focuser_2.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	// The first focuser must still be usable on the shared handle.
@@ -829,6 +871,7 @@ int main(void) {
 		{ "sync_rejected_for_optec_type", sync_rejected_for_optec_type, "normal" },
 		{ "sync_accepted_for_other_type", sync_accepted_for_other_type, "normal" },
 		{ "abort_during_motion", abort_during_motion, "normal" },
+		{ "abort_overtakes_start", abort_overtakes_start, "normal" },
 		{ "abort_while_idle", abort_while_idle, "normal" },
 		{ "abort_failure_reported", abort_failure_reported, "normal" },
 		{ "move_after_abort", move_after_abort, "normal" },
@@ -886,6 +929,27 @@ int main(void) {
 			}
 		}
 		stop_external_serial_simulator(&fixture);
+		// OPTECFL_TEST_TRACE collects the per scenario command journals into one
+		// ordered protocol trace, which is how the reference trace required by
+		// indigo_drivers/AGENTS.override.md is captured.
+		const char *trace = getenv("OPTECFL_TEST_TRACE");
+		if (trace != NULL) {
+			FILE *target = fopen(trace, i == 0 ? "w" : "a");
+			FILE *journal = fopen(event_path, "r");
+			if (target != NULL) {
+				fprintf(target, "== %s\n", cases[i].name);
+				if (journal != NULL) {
+					char line[512];
+					while (fgets(line, sizeof(line), journal) != NULL) {
+						fputs(line, target);
+					}
+				}
+				fclose(target);
+			}
+			if (journal != NULL) {
+				fclose(journal);
+			}
+		}
 		if (child < 0 || !WIFEXITED(status) || WEXITSTATUS(status)) {
 			fprintf(stderr, "FAIL %s (status %d)\n", cases[i].name, status);
 			failures++;

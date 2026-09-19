@@ -33,6 +33,7 @@
 #include "../test_runner.h"
 
 #define MAX_DEFINED_PROPERTIES 128
+#define RETIRED_PROPERTIES 512
 #define ARRAY_SIZE(array) ((int)(sizeof(array) / sizeof((array)[0])))
 
 typedef indigo_result (*simulator_driver_entry)(indigo_driver_action action, indigo_driver_info *info);
@@ -60,6 +61,12 @@ typedef struct {
 	int defined_property_count;
 	char defined_properties[MAX_DEFINED_PROPERTIES][INDIGO_NAME_SIZE];
 	indigo_property *cached_properties[MAX_DEFINED_PROPERTIES];
+	// A property that is replaced or deleted is retired rather than freed,
+	// because a test thread may still be reading the copy it found while the
+	// bus thread processes the delete. The ring is long enough that a retired
+	// copy is only released after hundreds of later cache operations.
+	indigo_property *retired_properties[RETIRED_PROPERTIES];
+	int retired_property_index;
 	atomic_uint property_revisions[MAX_DEFINED_PROPERTIES];
 	atomic_uint property_state_revisions[MAX_DEFINED_PROPERTIES][4];
 	bool connected;
@@ -153,12 +160,21 @@ static indigo_item *find_cached_item(const char *property_name, const char *item
 	return NULL;
 }
 
+static void retire_property(indigo_property *property) {
+	int index = context.retired_property_index;
+	if (context.retired_properties[index] != NULL) {
+		indigo_release_property(context.retired_properties[index]);
+	}
+	context.retired_properties[index] = property;
+	context.retired_property_index = (index + 1) % RETIRED_PROPERTIES;
+}
+
 static void cache_property(indigo_property *property) {
 	indigo_property *cached_property = find_cached_property(property->name);
 	if (cached_property != NULL) {
 		for (int i = 0; i < MAX_DEFINED_PROPERTIES; i++) {
 			if (context.cached_properties[i] == cached_property) {
-				indigo_release_property(context.cached_properties[i]);
+				retire_property(context.cached_properties[i]);
 				context.cached_properties[i] = indigo_copy_property(NULL, property);
 				ASSERT_TRUE(context.cached_properties[i] != NULL);
 				break;
@@ -215,7 +231,7 @@ static void cache_property_update(indigo_property *property) {
 static void uncache_property(indigo_property *property) {
 	for (int i = 0; i < MAX_DEFINED_PROPERTIES; i++) {
 		if (context.cached_properties[i] != NULL && !strcmp(context.cached_properties[i]->name, property->name)) {
-			indigo_release_property(context.cached_properties[i]);
+			retire_property(context.cached_properties[i]);
 			context.cached_properties[i] = NULL;
 			return;
 		}
@@ -229,6 +245,13 @@ static void release_cached_properties(void) {
 			context.cached_properties[i] = NULL;
 		}
 	}
+	for (int i = 0; i < RETIRED_PROPERTIES; i++) {
+		if (context.retired_properties[i] != NULL) {
+			indigo_release_property(context.retired_properties[i]);
+			context.retired_properties[i] = NULL;
+		}
+	}
+	context.retired_property_index = 0;
 }
 
 static void record_defined_property(const char *name) {

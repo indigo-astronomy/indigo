@@ -2702,6 +2702,7 @@
 		C0DE20280919000100000001 /* indigo_aux_cloudwatcher.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_aux_cloudwatcher.driver; sourceTree = "<group>"; };
 		C0DE20280919000200000001 /* indigo_focuser_focusdreampro.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_focusdreampro.driver; sourceTree = "<group>"; };
 		C0DE20280920000100000001 /* indigo_focuser_mypro2.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_mypro2.driver; sourceTree = "<group>"; };
+		C0DE20280920000200000001 /* indigo_focuser_optecfl.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_optecfl.driver; sourceTree = "<group>"; };
 		C0DE20280920000100000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20280919000200000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20270913000400000002 /* indigo_rotator_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_lunatico.driver; sourceTree = "<group>"; };
@@ -16068,6 +16069,7 @@
 			children = (
 				9DF312BA2C255D3800A35CE3 /* README.md */,
 				59C0FE1A3120A11B00C0FFEE /* REFACTOR.md */,
+				C0DE20280920000200000001 /* indigo_focuser_optecfl.driver */,
 				9DF312B92C255D3800A35CE3 /* indigo_focuser_optecfl.h */,
 				9DF312B82C255D3800A35CE3 /* indigo_focuser_optecfl.c */,
 				9DF312B72C255D3800A35CE3 /* indigo_focuser_optecfl_main.c */,
