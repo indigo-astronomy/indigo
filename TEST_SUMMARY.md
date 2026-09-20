@@ -12,7 +12,8 @@
 
 # focuser_primaluce (PrimaluceLab Focuser/Rotator)
 
-2026-09-20 13:46 3.0.0.13 mac arm64 simulator 35/35 OK
+2026-09-20 19:45 3.0.0.13 mac arm64 simulator 35/35 OK
+2026-09-20 19:54 3.0.0.13 mac arm64 SESTO SENSO 2 18/18 OK
 
 # focuser_prodigy (PegasusAstro Prodigy Microfocuser)
 

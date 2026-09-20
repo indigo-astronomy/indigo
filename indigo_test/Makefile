@@ -1359,6 +1359,20 @@ $(TEST_BUILD)/hardware/mount_synscan_hw_driver.o: ../indigo_drivers/mount_synsca
 $(TEST_BUILD)/hardware/test_mount_synscan_hw: hardware/test_mount_synscan_hw.c test_runner.h $(TEST_BUILD)/hardware/mount_synscan_hw_driver.o | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< $(TEST_BUILD)/hardware/mount_synscan_hw_driver.o -o $@ $(TEST_LDFLAGS) -lindigocat
 
+# A physically connected PrimaluceLab focuser is opt-in and excluded from normal integration tests.
+# PRIMALUCE_HW_PORT selects the serial port and defaults to the port the driver detects through its
+# CP2102N match pattern. The test physically moves the draw tube by PRIMALUCE_HW_TRAVEL steps
+# (default 3000) from wherever it starts and returns it there. Set PRIMALUCE_HW_CALIBRATE=1 to
+# additionally run the calibration procedure, which drives the draw tube to both end stops.
+.PHONY: test-focuser-primaluce-hw
+test-focuser-primaluce-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_primaluce_hw
+	$(TEST_BUILD)/hardware/test_focuser_primaluce_hw --run
+
+FOCUSER_PRIMALUCE_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_primaluce.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_focuser_primaluce_hw: hardware/test_focuser_primaluce_hw.c test_runner.h $(BUILD_DRIVERS)/indigo_focuser_primaluce.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_PRIMALUCE_HW_TEST_LDFLAGS)
+
 # Physical UVC camera hardware is opt-in and excluded from normal integration tests.
 .PHONY: test-ccd-uvc-hw
 test-ccd-uvc-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_uvc_hw
