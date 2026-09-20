@@ -43,3 +43,7 @@ Driver is developed and tested with:
 ## Comments
 
 This driver is provided only as a temporary solution until Atik will provide Apple Silicon support in their SDK.
+
+## Testing
+
+2026-09-20 21:31 3.0.0.11 mac arm64 fake SDK 24/24 OK

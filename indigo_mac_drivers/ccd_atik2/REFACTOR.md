@@ -90,3 +90,10 @@ Non-applicable unless the implementation changes: streaming, Bayer/color convers
 ## Remaining hardware gaps
 
 This Atik One exposes no guider, so electrical guide direction and pulse timing remain untested. Physical USB removal/replug was not requested during this run; the fake suite covers idle, active-exposure and blocked-readout removal, but this is not physical evidence. Optical image quality, shutter behavior (`libatik` flags did not expose a shutter), cooling accuracy/full warm-up, multiple cameras, other Atik models and non-macOS platforms remain unverified.
+
+## Overlapping guide pulses (2026-09-20)
+
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true` and zero both axis
+items in `on_change_request`, replacing the earlier workaround that forced the property state back
+to `INDIGO_OK_STATE` so the BUSY-guarded dispatch macro would let the request through. Behaviour is
+unchanged; the existing guider replacement coverage passes unmodified.
