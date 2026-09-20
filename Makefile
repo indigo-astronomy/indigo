@@ -109,6 +109,13 @@ else
 		INSTALL_ROOT = $(INDIGO_ROOT)/install
 	endif
 	ifeq ($(OS_DETECTED),Linux)
+		# uname -m reports the kernel architecture, not the userland one: a 32-bit
+		# getconf LONG_BIT reflects the actual userland bitness.
+		ifeq ($(ARCH_DETECTED),aarch64)
+			ifeq ($(shell getconf LONG_BIT 2>/dev/null),32)
+				ARCH_DETECTED = armv7l
+			endif
+		endif
 		ifeq ($(ARCH_DETECTED),armv6l)
 			ARCH_DETECTED = arm
 			DEBIAN_ARCH = armhf
