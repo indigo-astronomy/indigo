@@ -894,9 +894,13 @@ Source: `indigo_drivers/ccd_dsi/indigo_ccd_dsi.c`.
 
 Custom properties: `FLI_CAMERA_MODE`, `FLI_NFLUSHES`.
 
+`FLI_NFLUSHES` is the number of pre-exposure flushes the camera performs; it is written to the SDK on connect and on every change, and it is rejected while an exposure is running. `FLI_CAMERA_MODE` is a one-of-many switch enumerating the download modes the camera reports through `FLIGetCameraModeString()`; it is hidden on cameras that report none, its item count is restored to the declared maximum on every connect, and it is rejected while an exposure is running.
+
 Driver-specific use of existing properties: `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_RBI_FLUSH`, `CCD_RBI_FLUSH_ENABLE`, `CCD_TEMPERATURE`.
 
-Source: `indigo_drivers/ccd_fli/indigo_ccd_fli.c`.
+`CCD_COOLER_POWER` is read-only and updated from `FLIGetCoolerPower()` together with `CCD_TEMPERATURE`. `CCD_RBI_FLUSH` and `CCD_RBI_FLUSH_ENABLE` are hidden on cameras that do not accept the RBI flush frame type.
+
+Source: `indigo_drivers/ccd_fli/indigo_ccd_fli.driver`.
 
 ### ccd_iidc
 
@@ -1120,7 +1124,9 @@ Source: `indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.c`.
 
 Driver-specific use of existing properties: `FOCUSER_SPEED`.
 
-Source: `indigo_drivers/focuser_fli/indigo_focuser_fli.c`.
+`FOCUSER_SPEED` is hidden — the SDK exposes no speed control. `FOCUSER_POSITION->number.max` is taken from `FLIGetFocuserExtent()` on connect, and moves longer than 4000 steps are split into several SDK commands.
+
+Source: `indigo_drivers/focuser_fli/indigo_focuser_fli.driver`.
 
 ### focuser_focusdreampro
 
@@ -1468,7 +1474,9 @@ Source: `indigo_drivers/wheel_atik/indigo_wheel_atik.c`.
 
 Driver-specific use of existing properties: `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
 
-Source: `indigo_drivers/wheel_fli/indigo_wheel_fli.c`.
+The item counts of both properties are set from `FLIGetFilterCount()` on connect. A wheel that has never been homed reports position `-1`, which is normalised to slot 1.
+
+Source: `indigo_drivers/wheel_fli/indigo_wheel_fli.driver`.
 
 ### wheel_indigo
 

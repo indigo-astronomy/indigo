@@ -1,9 +1,9 @@
-// Copyright (c) 2017-2025 Rumen G. Bogdanovski
+// Copyright (C) 2016-2026 Rumen G. Bogdanovski
 // All rights reserved.
-//
-// You can use this software under the terms of 'INDIGO Astronomy
+
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-//
+
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,680 +16,606 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// version history
-// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
-// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// This file generated from indigo_focuser_fli.driver
 
-/** INDIGO FLI focuser driver
- \file indigo_focuser_fli.c
- */
-
-#define DRIVER_NAME		"indigo_focuser_fli"
-#define DRIVER_VERSION             0x0300000D
-#define FLI_VENDOR_ID              0x0f18
-
-#define POLL_TIME                       1     /* Seconds */
-
-#define MAX_STEPS_AT_ONCE            4000
+#pragma mark - Includes
 
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
+
+//+ include
 
 #include <libfli.h>
 
+//- include
+
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_focuser_driver.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_usb_utils.h>
 
 #include "indigo_focuser_fli.h"
 
-#define PRIVATE_DATA		((fli_private_data *)device->private_data)
+#pragma mark - Common definitions
 
-// gp_bits is used as boolean
-#define is_connected            gp_bits
+#define DRIVER_VERSION       0x0300000B
+#define DRIVER_NAME          "indigo_focuser_fli"
+#define DRIVER_LABEL         "FLI Focuser"
+#define FOCUSER_DEVICE_NAME  "%s"
+#define MAX_DEVICES          5
+#define PRIVATE_DATA         ((fli_private_data *)device->private_data)
+
+//+ define
+
+#define FLI_VENDOR_ID        0x0f18
+#define FLI_ENUM_DOMAIN      (FLIDOMAIN_USB | FLIDEVICE_FOCUSER)
+#define FLI_MAX_ENUMERATED   32
+// Focusers with a short travel accept at most this many steps per command.
+#define FLI_MAX_STEPS_AT_ONCE 4000
+#define FLI_POLL_DELAY       0.5
+#define FLI_HOME_TIMEOUT_CYCLES 300
+
+//- define
+
+#pragma mark - Private data definition
 
 typedef struct {
+	libusb_device *usbdev;
+	//+ data
 	flidev_t dev_id;
 	char dev_file_name[PATH_MAX];
 	char dev_name[PATH_MAX];
 	flidomain_t domain;
 	long zero_position;
-	long steps_to_go;     /* some focusers can not do full extent stpes in one go use this for the second move call */
-	indigo_timer *focuser_timer;
-	pthread_mutex_t usb_mutex;
+	long target_position;
+	// Some focusers accept only a limited number of steps per command, so a
+	// long move is issued in chunks and this holds what is still owed.
+	long steps_to_go;
+	//- data
 } fli_private_data;
 
-static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
+#pragma mark - Low level code
 
-// -------------------------------------------------------------------------------- INDIGO focuser device implementation
+static indigo_queue *driver_queue = NULL;
+static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-static void fli_close(indigo_device *device) {
-	pthread_mutex_lock(&indigo_device_enumeration_mutex);
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	long res = FLIClose(PRIVATE_DATA->dev_id);
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
-	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+//+ code
+
+// The SDK enumerates through a list that has to be created, walked and
+// deleted; the results are kept here for the plug and unplug handlers,
+// which the generated driver queue serialises.
+static flidomain_t enumerated_domains[FLI_MAX_ENUMERATED];
+static char enumerated_file_names[FLI_MAX_ENUMERATED][PATH_MAX];
+static char enumerated_device_names[FLI_MAX_ENUMERATED][PATH_MAX];
+static int enumerated_count;
+
+static int fli_enumerate(void) {
+	enumerated_count = 0;
+	long result = FLICreateList(FLI_ENUM_DOMAIN);
+	if (result) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLICreateList(%d) = %ld", FLI_ENUM_DOMAIN, result);
+		return 0;
 	}
+	result = FLIListFirst(enumerated_domains, enumerated_file_names[0], PATH_MAX, enumerated_device_names[0], PATH_MAX);
+	while (result == 0) {
+		enumerated_count++;
+		if (enumerated_count == FLI_MAX_ENUMERATED) {
+			break;
+		}
+		result = FLIListNext(enumerated_domains + enumerated_count, enumerated_file_names[enumerated_count], PATH_MAX, enumerated_device_names[enumerated_count], PATH_MAX);
+	}
+	FLIDeleteList();
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d device(s) enumerated", enumerated_count);
+	return enumerated_count;
 }
 
+static bool fli_is_enumerated(const char *file_name) {
+	int count = fli_enumerate();
+	for (int i = 0; i < count; i++) {
+		if (!strncmp(enumerated_file_names[i], file_name, PATH_MAX)) {
+			return true;
+		}
+	}
+	return false;
+}
 
-static void focuser_timer_callback(indigo_device *device) {
-	if (!device->is_connected) {
+static void motion_finalizer(indigo_device *device);
+
+static void fli_motion_state(indigo_device *device, indigo_property_state state) {
+	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = state;
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+}
+
+// Everything the focuser needs is read here, so a device that cannot be
+// identified releases the SDK handle inside the failed attempt.
+static bool fli_open(indigo_device *device) {
+	long result = FLIOpen(&PRIVATE_DATA->dev_id, PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
+	if (result) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIOpen('%s') = %ld", PRIVATE_DATA->dev_file_name, result);
+		return false;
+	}
+	if (FLIGetModel(PRIVATE_DATA->dev_id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE) != 0) {
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->dev_name);
+	}
+	bool homed = FLIHomeDevice(PRIVATE_DATA->dev_id) == 0;
+	if (homed) {
+		// Homing is bounded: a focuser that never reports the end of it
+		// must not hold the connection forever.
+		long status = 0;
+		homed = false;
+		for (int i = 0; i < FLI_HOME_TIMEOUT_CYCLES; i++) {
+			if (FLIGetDeviceStatus(PRIVATE_DATA->dev_id, &status) != 0) {
+				break;
+			}
+			if (!(status & FLI_FOCUSER_STATUS_MOVING_MASK)) {
+				homed = (status & FLI_FOCUSER_STATUS_HOME) != 0;
+				break;
+			}
+			indigo_usleep(100000);
+		}
+	}
+	if (!homed) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser home position not found");
+		FLIClose(PRIVATE_DATA->dev_id);
+		PRIVATE_DATA->dev_id = -1;
+		return false;
+	}
+	long position = 0, extent = 0;
+	if (FLIGetStepperPosition(PRIVATE_DATA->dev_id, &position) != 0 || FLIGetFocuserExtent(PRIVATE_DATA->dev_id, &extent) != 0 || extent <= 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser position or extent could not be read");
+		FLIClose(PRIVATE_DATA->dev_id);
+		PRIVATE_DATA->dev_id = -1;
+		return false;
+	}
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Focuser extent %ld", extent);
+	PRIVATE_DATA->zero_position = position;
+	PRIVATE_DATA->target_position = 0;
+	PRIVATE_DATA->steps_to_go = 0;
+	FOCUSER_POSITION_ITEM->number.min = 0;
+	FOCUSER_POSITION_ITEM->number.max = extent;
+	FOCUSER_POSITION_ITEM->number.step = 1;
+	FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = 0;
+	FOCUSER_STEPS_ITEM->number.min = 0;
+	FOCUSER_STEPS_ITEM->number.max = extent;
+	FOCUSER_STEPS_ITEM->number.step = 1;
+	FOCUSER_STEPS_ITEM->number.value = FOCUSER_STEPS_ITEM->number.target = 0;
+	if (FLIGetSerialString(PRIVATE_DATA->dev_id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE) != 0) {
+		INFO_DEVICE_SERIAL_NUM_ITEM->text.value[0] = 0;
+	}
+	long firmware_revision = 0, hardware_revision = 0;
+	if (FLIGetFWRevision(PRIVATE_DATA->dev_id, &firmware_revision) == 0) {
+		snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%ld", firmware_revision);
+	} else {
+		INFO_DEVICE_FW_REVISION_ITEM->text.value[0] = 0;
+	}
+	if (FLIGetHWRevision(PRIVATE_DATA->dev_id, &hardware_revision) == 0) {
+		snprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%ld", hardware_revision);
+	} else {
+		INFO_DEVICE_HW_REVISION_ITEM->text.value[0] = 0;
+	}
+	indigo_update_property(device, INFO_PROPERTY, NULL);
+	return true;
+}
+
+// Issues at most FLI_MAX_STEPS_AT_ONCE steps and remembers the rest.
+static bool fli_step(indigo_device *device, long steps) {
+	PRIVATE_DATA->steps_to_go = 0;
+	if (labs(steps) > FLI_MAX_STEPS_AT_ONCE) {
+		long sign = steps >= 0 ? 1 : -1;
+		PRIVATE_DATA->steps_to_go = steps - sign * FLI_MAX_STEPS_AT_ONCE;
+		steps = sign * FLI_MAX_STEPS_AT_ONCE;
+	}
+	long result = FLIStepMotorAsync(PRIVATE_DATA->dev_id, steps);
+	if (result) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIStepMotorAsync(%ld, %ld) = %ld", (long)PRIVATE_DATA->dev_id, steps, result);
+		PRIVATE_DATA->steps_to_go = 0;
+		return false;
+	}
+	return true;
+}
+
+static void fli_start_motion(indigo_device *device, long target) {
+	long position = 0;
+	if (FLIGetStepperPosition(PRIVATE_DATA->dev_id, &position) != 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetStepperPosition(%ld) failed", (long)PRIVATE_DATA->dev_id);
+		fli_motion_state(device, INDIGO_ALERT_STATE);
 		return;
 	}
-	long steps_remaining;
-	long value;
-	flidev_t id = PRIVATE_DATA->dev_id;
-
-	long res;
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	res = FLIGetStepperPosition(id, &value);
-	value -= PRIVATE_DATA->zero_position;
-	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetStepperPosition(%d) = %d", id, res);
-		FOCUSER_POSITION_ITEM->number.value = 0;
-	} else {
-		FOCUSER_POSITION_ITEM->number.value = value;
+	position -= PRIVATE_DATA->zero_position;
+	if (target < FOCUSER_POSITION_ITEM->number.min) {
+		target = (long)FOCUSER_POSITION_ITEM->number.min;
+	} else if (target > FOCUSER_POSITION_ITEM->number.max) {
+		target = (long)FOCUSER_POSITION_ITEM->number.max;
 	}
-	res = FLIGetStepsRemaining(id, &steps_remaining);
-	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetStepsRemaining(%d) = %d", id, res);
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		FOCUSER_STEPS_ITEM->number.value = steps_remaining + labs(PRIVATE_DATA->steps_to_go);
-		if (steps_remaining) {
-			indigo_set_timer(device, POLL_TIME, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
-		} else if (PRIVATE_DATA->steps_to_go) {
-			int steps = (int)PRIVATE_DATA->steps_to_go;
-			if (labs(steps) > MAX_STEPS_AT_ONCE) {
-				int sign = (steps >= 0) ? 1 : -1;
-				PRIVATE_DATA->steps_to_go = steps;
-				steps = sign * MAX_STEPS_AT_ONCE;
-				PRIVATE_DATA->steps_to_go -= steps;
-			} else {
-				PRIVATE_DATA->steps_to_go = 0;
-			}
-			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, steps);
-			if (res) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIStepMotorAsync(%d) = %d", id, res);
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			indigo_set_timer(device, POLL_TIME, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+	PRIVATE_DATA->target_position = target;
+	FOCUSER_POSITION_ITEM->number.value = position;
+	FOCUSER_POSITION_ITEM->number.target = target;
+	FOCUSER_STEPS_ITEM->number.value = labs(target - position);
+	if (target == position) {
+		fli_motion_state(device, INDIGO_OK_STATE);
+		return;
+	}
+	if (!fli_step(device, target - position)) {
+		fli_motion_state(device, INDIGO_ALERT_STATE);
+		return;
+	}
+	fli_motion_state(device, INDIGO_BUSY_STATE);
+	indigo_execute_handler_in(device, FLI_POLL_DELAY, motion_finalizer);
+}
+
+static void motion_finalizer(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	long position = 0, steps_remaining = 0;
+	if (FLIGetStepperPosition(PRIVATE_DATA->dev_id, &position) != 0 || FLIGetStepsRemaining(PRIVATE_DATA->dev_id, &steps_remaining) != 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser progress could not be read");
+		PRIVATE_DATA->steps_to_go = 0;
+		fli_motion_state(device, INDIGO_ALERT_STATE);
+		return;
+	}
+	position -= PRIVATE_DATA->zero_position;
+	FOCUSER_POSITION_ITEM->number.value = position;
+	FOCUSER_STEPS_ITEM->number.value = labs(steps_remaining) + labs(PRIVATE_DATA->steps_to_go);
+	if (steps_remaining != 0) {
+		fli_motion_state(device, INDIGO_BUSY_STATE);
+		indigo_execute_handler_in(device, FLI_POLL_DELAY, motion_finalizer);
+	} else if (PRIVATE_DATA->steps_to_go != 0) {
+		if (fli_step(device, PRIVATE_DATA->steps_to_go)) {
+			fli_motion_state(device, INDIGO_BUSY_STATE);
+			indigo_execute_handler_in(device, FLI_POLL_DELAY, motion_finalizer);
 		} else {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+			fli_motion_state(device, INDIGO_ALERT_STATE);
 		}
-	}
-	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-}
-
-
-static indigo_result focuser_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(PRIVATE_DATA != NULL);
-	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
-		/* Use all info property fields */
-		INFO_PROPERTY->count = 8;
-		FOCUSER_SPEED_PROPERTY->hidden = true;
-		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
-
-		INDIGO_COPY_VALUE(FOCUSER_STEPS_ITEM->label, "Relative move (steps)");
-		return indigo_focuser_enumerate_properties(device, NULL, NULL);
-	}
-	return INDIGO_FAILED;
-}
-
-
-static void fli_focuser_connect(indigo_device *device) {
-	flidev_t id;
-	pthread_mutex_lock(&indigo_device_enumeration_mutex);
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	long res = FLIOpen(&id, PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
-	if (!res) {
-		PRIVATE_DATA->dev_id = id;
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
-		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetModel(%d) = %d", id, res);
-		}
-
-		/* TODO: Do not home if Atlas Focuser */
-		res = FLIHomeDevice(id);
-		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIHomeDevice(%d) = %d", id, res);
-		}
-
-		long value;
-		//do {
-		//	indigo_usleep(100000);
-		//	res = FLIGetStepsRemaining(id, &value);
-		//	if (res) {
-		//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetDeviceStatus(%d) = %d", id, res);
-		//	}
-		//	//INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser steps left %d", value);
-		//} while (value != 0);  /* wait while finding home position */
-
-		do {
-			indigo_usleep(100000);
-			res = FLIGetDeviceStatus(id, &value);
-			if (res) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetDeviceStatus(%d) = %d", id, res);
-			}
-			//INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetDeviceStatus(%d) = %d", id, res);
-		} while (value & FLI_FOCUSER_STATUS_MOVING_MASK);  /* wait while moving */
-
-		if (!(value & FLI_FOCUSER_STATUS_HOME)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser home position not found (status = %d)", value);
-		}
-
-		res = FLIGetStepperPosition(id, &value);
-		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetStepperPosition(%d) = %d", id, res);
-			value = 0;
-		}
-		PRIVATE_DATA->zero_position = value;
-
-		res = FLIGetFocuserExtent(id, &value);
-		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetFocuserExtent(%d) = %d", id, res);
-			value = 1000;
-		}
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Focuser Extent %d", value);
-		FOCUSER_POSITION_ITEM->number.max = value;
-		FOCUSER_POSITION_ITEM->number.min = 0;
-		FOCUSER_POSITION_ITEM->number.value = 0;
-		FOCUSER_POSITION_ITEM->number.step = 1;
-
-		FOCUSER_STEPS_ITEM->number.max = value;
-		FOCUSER_STEPS_ITEM->number.min = 0;
-		FOCUSER_STEPS_ITEM->number.value = 0;
-		FOCUSER_STEPS_ITEM->number.step = 1;
-
-		res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
-		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetSerialString(%d) = %d", id, res);
-		}
-
-		long hw_rev, fw_rev;
-		res = FLIGetFWRevision(id, &fw_rev);
-		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetFWRevision(%d) = %d", id, res);
-		}
-
-		res = FLIGetHWRevision(id, &hw_rev);
-		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetHWRevision(%d) = %d", id, res);
-		}
-
-		sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
-		sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
-
-		indigo_update_property(device, INFO_PROPERTY, NULL);
-
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, "Connected");
-		device->is_connected = true;
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	} else {
-		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, "Connect failed!");
+		fli_motion_state(device, position == PRIVATE_DATA->target_position ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
 	}
 }
 
-static void focuser_connect_callback(indigo_device *device) {
+static void fli_close(indigo_device *device) {
+	long result = FLIClose(PRIVATE_DATA->dev_id);
+	if (result) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIClose(%ld) = %ld", (long)PRIVATE_DATA->dev_id, result);
+	}
+	PRIVATE_DATA->dev_id = -1;
+}
+
+//- code
+
+#pragma mark - High level code (focuser)
+
+static void focuser_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, "Connecting to focuser, this may take time!");
-			fli_focuser_connect(device);
+		bool connection_result = true;
+		connection_result = fli_open(device);
+		if (connection_result) {
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
+		} else {
+			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s", device->name);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (device->is_connected) {
-			device->is_connected = false;
-			fli_close(device);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		indigo_cancel_pending_handlers(device);
+		//+ focuser.on_disconnect
+		PRIVATE_DATA->steps_to_go = 0;
+		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+		//- focuser.on_disconnect
+		fli_close(device);
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
+static void focuser_position_handler(indigo_device *device) {
+	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_POSITION.on_change
+	fli_start_motion(device, (long)FOCUSER_POSITION_ITEM->number.target);
+	//- focuser.FOCUSER_POSITION.on_change
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+}
+
+static void focuser_steps_handler(indigo_device *device) {
+	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_STEPS.on_change
+	long steps = (long)FOCUSER_STEPS_ITEM->number.target;
+	long position = 0;
+	if (FLIGetStepperPosition(PRIVATE_DATA->dev_id, &position) != 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetStepperPosition(%ld) failed", (long)PRIVATE_DATA->dev_id);
+		fli_motion_state(device, INDIGO_ALERT_STATE);
+	} else {
+		position -= PRIVATE_DATA->zero_position;
+		fli_start_motion(device, FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? position - steps : position + steps);
+	}
+	//- focuser.FOCUSER_STEPS.on_change
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+}
+
+static void focuser_abort_motion_handler(indigo_device *device) {
+	//+ focuser.FOCUSER_ABORT_MOTION.on_change
+	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+		// An urgent abort can overtake a move that is still queued.
+		indigo_cancel_pending_handler(device, focuser_position_handler);
+		indigo_cancel_pending_handler(device, focuser_steps_handler);
+		indigo_cancel_pending_handler(device, motion_finalizer);
+		PRIVATE_DATA->steps_to_go = 0;
+		// A zero step move is how the SDK stops the motor.
+		long result = FLIStepMotorAsync(PRIVATE_DATA->dev_id, 0);
+		long position = 0;
+		if (result != 0 || FLIGetStepperPosition(PRIVATE_DATA->dev_id, &position) != 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser could not be stopped");
+			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			fli_motion_state(device, INDIGO_ALERT_STATE);
+		} else {
+			position -= PRIVATE_DATA->zero_position;
+			PRIVATE_DATA->target_position = position;
+			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+			FOCUSER_STEPS_ITEM->number.value = 0;
+			fli_motion_state(device, INDIGO_OK_STATE);
+		}
+	}
+	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+	//- focuser.FOCUSER_ABORT_MOTION.on_change
+}
+
+#pragma mark - Device API (focuser)
+
+static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
+static indigo_result focuser_attach(indigo_device *device) {
+	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		//+ focuser.on_attach
+		INFO_PROPERTY->count = 8;
+		INDIGO_COPY_VALUE(FOCUSER_STEPS_ITEM->label, "Relative move (steps)");
+		//- focuser.on_attach
+		FOCUSER_SPEED_PROPERTY->hidden = true;
+		FOCUSER_POSITION_PROPERTY->hidden = false;
+		FOCUSER_STEPS_PROPERTY->hidden = false;
+		FOCUSER_ABORT_MOTION_PROPERTY->hidden = false;
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return focuser_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	return indigo_focuser_enumerate_properties(device, client, property);
+}
+
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
-	long res;
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-	// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property))
-			return INDIGO_OK;
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, focuser_connect_callback, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-	// -------------------------------------------------------------------------------- FOCUSER_STEPS
-		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		res = 0;
-		long value = 0;
-		long current_value;
-		if (FOCUSER_STEPS_ITEM->number.value >= 0) {
-			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-				value = -1 * (long)(FOCUSER_STEPS_ITEM->number.value);
-			} else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
-				value = (long)(FOCUSER_STEPS_ITEM->number.value);
-			}
-
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			res = FLIGetStepperPosition(PRIVATE_DATA->dev_id, &current_value);
-			if (res) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetStepperPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
-			}
-			current_value -= PRIVATE_DATA->zero_position;
-
-			/* do not go over the max extent */
-			if (FOCUSER_POSITION_ITEM->number.max < (current_value + value)) {
-				value -= current_value + value - (long)FOCUSER_POSITION_ITEM->number.max;
-				FOCUSER_STEPS_ITEM->number.value = (double)labs(value);
-			}
-
-			/* do not go below 0 */
-			if ((current_value + value) < 0) {
-				value -= current_value + value;
-				FOCUSER_STEPS_ITEM->number.value = (double)labs(value);
-			}
-
-			PRIVATE_DATA->steps_to_go = 0;
-			/* focusers with max < 10000 can only go 4095 steps at once */
-			if ((FOCUSER_POSITION_ITEM->number.max < 10000) && (labs(value) > MAX_STEPS_AT_ONCE)) {
-				int sign = (value >= 0) ? 1 : -1;
-				PRIVATE_DATA->steps_to_go = value;
-				value = sign * MAX_STEPS_AT_ONCE;
-				PRIVATE_DATA->steps_to_go -= value;
-			}
-
-			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, value);
-			if (res) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIStepMotorAsync(%d) = %d", PRIVATE_DATA->dev_id, res);
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			}
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			indigo_set_timer(device, POLL_TIME, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, focuser_connection_handler, &driver_queue_mutex);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-	// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
-		res = 0;
-		long value = 0;
-		if ((FOCUSER_POSITION_ITEM->number.target >= 0) &&
-		    (FOCUSER_POSITION_ITEM->number.target <= FOCUSER_POSITION_ITEM->number.max)) {
-			res = FLIGetStepperPosition(PRIVATE_DATA->dev_id, &value);
-			if (res) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetStepperPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
-			}
-			value -= PRIVATE_DATA->zero_position;
-			value = (long)FOCUSER_POSITION_ITEM->number.target - value;
-
-			PRIVATE_DATA->steps_to_go = 0;
-			/* focusers with max < 10000 can only go 4095 steps at once */
-			if ((FOCUSER_POSITION_ITEM->number.max < 10000) && (labs(value) > MAX_STEPS_AT_ONCE)) {
-				int sign = (value >= 0) ? 1 : -1;
-				PRIVATE_DATA->steps_to_go = value;
-				value = sign * MAX_STEPS_AT_ONCE;
-				PRIVATE_DATA->steps_to_go -= value;
-			}
-
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, value);
-			if (res) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIStepMotorAsync(%d) = %d", PRIVATE_DATA->dev_id, res);
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			}
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			indigo_set_timer(device, POLL_TIME, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
-		}
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-	// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
-		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
-			PRIVATE_DATA->steps_to_go = 0;
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, 0);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			if (res) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIStepMotorAsync(%d) = %d", PRIVATE_DATA->dev_id, res);
-			}
-		}
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, "Focuser stopped");
-
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- FOCUSER_MODE
-	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
-		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
-		if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
-			indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
-			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else {
-			indigo_delete_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
-			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		}
-		FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
-		return INDIGO_OK;
-	// ---------------------------------------------------------------------------
 	}
 	return indigo_focuser_change_property(device, client, property);
 }
 
 static indigo_result focuser_detach(indigo_device *device) {
-	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		focuser_connect_callback(device);
+		focuser_connection_handler(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-
 	return indigo_focuser_detach(device);
 }
 
-// -------------------------------------------------------------------------------- hot-plug support
+#pragma mark - Device templates
 
-#define MAX_DEVICES                   32
+static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(FOCUSER_DEVICE_NAME, focuser_attach, focuser_enumerate_properties, focuser_change_property, NULL, focuser_detach);
 
-static const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_FOCUSER;
-static int num_devices = 0;
-static char fli_file_names[MAX_DEVICES][PATH_MAX] = {""};
-static char fli_dev_names[MAX_DEVICES][PATH_MAX] = {""};
-static flidomain_t fli_domains[MAX_DEVICES] = {0};
+#pragma mark - Hot-plug code
 
-static indigo_device *devices[MAX_DEVICES] = {NULL};
+static indigo_device *devices[MAX_DEVICES];
 
-
-static void enumerate_devices() {
-	/* There is a mem leak heree!!! 8,192 constant + 20 bytes on every new connected device */
-	num_devices = 0;
-	long res = FLICreateList(enum_domain);
-	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLICreateList(%d) = %d", enum_domain , res);
-	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLICreateList(%d) = %d", enum_domain , res);
+static indigo_result verify_devices_disconnected(void) {
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		VERIFY_NOT_CONNECTED(devices[i]);
 	}
-	res = FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], PATH_MAX, fli_dev_names[num_devices], PATH_MAX);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIListFirst(-> %d, -> '%s', ->'%s') = %d", fli_domains[num_devices], fli_file_names[num_devices], fli_dev_names[num_devices], res);
-	if (res == 0) {
-		do {
-			num_devices++;
-			res = FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], PATH_MAX, fli_dev_names[num_devices], PATH_MAX);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIListNext(-> %d, -> '%s', ->'%s') = %d", fli_domains[num_devices], fli_file_names[num_devices], fli_dev_names[num_devices], res);
-		} while ((res == 0) && (num_devices < MAX_DEVICES));
-	}
-	res = FLIDeleteList();
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIDeleteList() = %d", res);
+	return INDIGO_OK;
 }
 
-static int find_plugged_device(char *fname) {
-	enumerate_devices();
-	for (int dev_no = 0; dev_no < num_devices; dev_no++) {
-		bool found = false;
-		for(int slot = 0; slot < MAX_DEVICES; slot++) {
-			indigo_device *device = devices[slot];
-			if (device == NULL) {
+static void process_plug_event_handler(indigo_device *device, void *data) {
+	indigo_set_handler_max_run_time(1);
+	libusb_device *dev = (libusb_device *)data;
+	bool dev_ref_transferred = false;
+	fli_private_data *private_data = NULL;
+	bool plug_result = true;
+	char name[INDIGO_NAME_SIZE] = DRIVER_LABEL;
+	private_data = (fli_private_data *)indigo_safe_malloc(sizeof(fli_private_data));
+	private_data->usbdev = dev;
+	struct libusb_device_descriptor descriptor;
+	if (!(libusb_get_device_descriptor(dev, &descriptor) == LIBUSB_SUCCESS && descriptor.idVendor == FLI_VENDOR_ID)) {
+		plug_result = false;
+	}
+	if (plug_result) {
+		//+ sdk.plug
+		plug_result = false;
+		int count = fli_enumerate();
+		for (int i = 0; i < count; i++) {
+			bool attached = false;
+			for (int slot = 0; slot < MAX_DEVICES; slot++) {
+				if (devices[slot] != NULL && !strncmp(((fli_private_data *)devices[slot]->private_data)->dev_file_name, enumerated_file_names[i], PATH_MAX)) {
+					attached = true;
+					break;
+				}
+			}
+			if (attached) {
 				continue;
 			}
-			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], PATH_MAX)) {
-				found = true;
+			private_data->dev_id = -1;
+			private_data->domain = enumerated_domains[i];
+			snprintf(private_data->dev_file_name, PATH_MAX, "%s", enumerated_file_names[i]);
+			snprintf(private_data->dev_name, PATH_MAX, "%s", enumerated_device_names[i]);
+			snprintf(name, INDIGO_NAME_SIZE, "%s", enumerated_device_names[i]);
+			indigo_make_name_unique(name, "%s", enumerated_file_names[i]);
+			plug_result = true;
+			break;
+		}
+		//- sdk.plug
+	}
+	if (plug_result) {
+		indigo_device *focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
+		focuser->private_data = private_data;
+		snprintf(focuser->name, INDIGO_NAME_SIZE, "%s", name);
+		bool focuser_attached = false;
+		for (int j = 0; j < MAX_DEVICES; j++) {
+			if (devices[j] == NULL) {
+				devices[j] = focuser;
+				if (indigo_attach_device(focuser) == INDIGO_OK) {
+					dev_ref_transferred = true;
+					focuser_attached = true;
+				} else {
+					devices[j] = NULL;
+				}
 				break;
 			}
 		}
-		if (found) {
-			continue;
-		} else {
-			assert(fname!=NULL);
-			strncpy(fname, fli_file_names[dev_no], PATH_MAX);
-			return dev_no;
+		if (!focuser_attached) {
+			indigo_safe_free(focuser);
 		}
 	}
-	return -1;
-}
-
-static int find_available_device_slot() {
-	for(int slot = 0; slot < MAX_DEVICES; slot++) {
-		if (devices[slot] == NULL) return slot;
+	if (!dev_ref_transferred) {
+		indigo_safe_free(private_data);
+		libusb_unref_device(dev);
 	}
-	return -1;
 }
 
-
-static int find_device_slot(char *fname) {
-	for(int slot = 0; slot < MAX_DEVICES; slot++) {
-		indigo_device *device = devices[slot];
-		if (device == NULL) {
-			continue;
-		}
-		if (!strncmp(PRIVATE_DATA->dev_file_name, fname, 255)) return slot;
-	}
-	return -1;
-}
-
-
-static int find_unplugged_device(char *fname) {
-	enumerate_devices();
-	for(int slot = 0; slot < MAX_DEVICES; slot++) {
-		bool found = false;
-		indigo_device *device = devices[slot];
-		if (device == NULL) {
-			continue;
-		}
-		for (int dev_no = 0; dev_no < num_devices; dev_no++) {
-			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], PATH_MAX)) {
-				found = true;
-				break;
+static void process_unplug_event_handler(indigo_device *device, void *data) {
+	libusb_device *dev = (libusb_device *)data;
+	fli_private_data *private_data = NULL;
+	fli_private_data *removed[MAX_DEVICES];
+	int removed_count = 0;
+	for (int j = MAX_DEVICES - 1; j >= 0; j--) {
+		if (devices[j] != NULL) {
+			indigo_device *device = devices[j];
+			private_data = PRIVATE_DATA;
+			bool unplug_result = private_data->usbdev == dev;
+			if (last_action != INDIGO_DRIVER_SHUTDOWN) {
+				//+ sdk.unplug_match
+				unplug_result = !fli_is_enumerated(private_data->dev_file_name);
+				//- sdk.unplug_match
+			}
+			if (unplug_result) {
+				private_data = PRIVATE_DATA;
+				indigo_detach_device(device);
+				indigo_safe_free(device);
+				devices[j] = NULL;
+				bool recorded = false;
+				for (int k = 0; k < removed_count; k++) {
+					if (removed[k] == private_data) {
+						recorded = true;
+						break;
+					}
+				}
+				if (!recorded) {
+					removed[removed_count++] = private_data;
+				}
 			}
 		}
-		if (found) {
-			continue;
-		} else {
-			assert(fname!=NULL);
-			strncpy(fname, PRIVATE_DATA->dev_file_name, PATH_MAX);
-			return slot;
-		}
 	}
-	return -1;
-}
-
-static void process_plug_event(indigo_device *unused) {
-	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
-		"",
-		focuser_attach,
-		indigo_focuser_enumerate_properties,
-		focuser_change_property,
-		NULL,
-		focuser_detach
-		);
-
-	pthread_mutex_lock(&indigo_device_enumeration_mutex);
-	int slot = find_available_device_slot();
-	if (slot < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
-		return;
+	for (int k = 0; k < removed_count; k++) {
+		libusb_unref_device(removed[k]->usbdev);
+		indigo_safe_free(removed[k]);
 	}
-
-	char file_name[PATH_MAX];
-	int idx = find_plugged_device(file_name);
-	if (idx < 0) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI Camera plugged.");
-		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
-		return;
-	}
-	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
-	sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' @ %s attached", device->name , fli_file_names[idx]);
-	fli_private_data *private_data = indigo_safe_malloc(sizeof(fli_private_data));
-	private_data->dev_id = 0;
-	private_data->domain = fli_domains[idx];
-	strncpy(private_data->dev_file_name, fli_file_names[idx], PATH_MAX);
-	strncpy(private_data->dev_name, fli_dev_names[idx], PATH_MAX);
-	device->private_data = private_data;
-	indigo_attach_device(device);
-	devices[slot]=device;
-	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
-}
-
-static void process_unplug_event(indigo_device *unused) {
-	pthread_mutex_lock(&indigo_device_enumeration_mutex);
-	int slot, id;
-	char file_name[PATH_MAX];
-	bool removed = false;
-	while ((id = find_unplugged_device(file_name)) != -1) {
-		slot = find_device_slot(file_name);
-		if (slot < 0) {
-			continue;
-		}
-		indigo_device **device = &devices[slot];
-		if (*device == NULL) {
-			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
-			return;
-		}
-		indigo_device *device_to_detach = *device;
-		*device = NULL;
-		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
-		indigo_detach_device(device_to_detach);
-		free(device_to_detach->private_data);
-		free(device_to_detach);
-		pthread_mutex_lock(&indigo_device_enumeration_mutex);
-		removed = true;
-	}
-	if (!removed) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI Camera unplugged!");
-	}
-	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+	libusb_unref_device(dev);
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-
-	struct libusb_device_descriptor descriptor;
-
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			libusb_get_device_descriptor(dev, &descriptor);
-			if (descriptor.idVendor != FLI_VENDOR_ID) {
-				break;
-			}
-			indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_plug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			indigo_set_timer(NULL, 0.5, process_unplug_event, NULL);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_unplug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
+		default:
+			break;
 	}
 	return 0;
-};
-static void remove_all_devices() {
-	int i;
-	for(i = 0; i < MAX_DEVICES; i++) {
-		indigo_device **device = &devices[i];
-		if (*device == NULL) {
-			continue;
-		}
-		indigo_detach_device(*device);
-		free((*device)->private_data);
-		free(*device);
-		*device = NULL;
-	}
 }
 
 static libusb_hotplug_callback_handle callback_handle;
 
-INDIGO_EXTERN void (*debug_ext)(int level, char *format, va_list arg);
-
-static void _debug_ext(int level, char *format, va_list arg) {
-	if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
-		char _format[1024];
-		snprintf(_format, sizeof(_format), "FLISDK: %s", format);
-		INDIGO_DEBUG_DRIVER(indigo_debug(_format, arg));
-	}
-}
+#pragma mark - Main code
 
 indigo_result indigo_focuser_fli(indigo_driver_action action, indigo_driver_info *info) {
-	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "FLI Focuser", __FUNCTION__, DRIVER_VERSION, true, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
-			debug_ext = _debug_ext;
-			FLISetDebugLevel(NULL, FLIDEBUG_ALL);
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			indigo_start_usb_event_handler();
-			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, FLI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
-			INDIGO_DEBUG_DRIVER(indigo_debug("libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK"));
-			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
-
-		case INDIGO_DRIVER_SHUTDOWN:
 			for (int i = 0; i < MAX_DEVICES; i++) {
-				VERIFY_NOT_CONNECTED(devices[i]);
+				devices[i] = NULL;
+			}
+			driver_queue = indigo_queue_create(NULL);
+			if (driver_queue == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create driver queue");
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
+			indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
+			indigo_start_usb_event_handler();
+			int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, FLI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			if (rc < 0) {
+				indigo_queue_delete(&driver_queue);
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
+			break;
+
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
+			pthread_mutex_lock(&driver_queue_mutex);
+			indigo_result shutdown_result = verify_devices_disconnected();
+			pthread_mutex_unlock(&driver_queue_mutex);
+			if (shutdown_result != INDIGO_OK) {
+				return shutdown_result;
 			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
-			INDIGO_DEBUG_DRIVER(indigo_debug("libusb_hotplug_deregister_callback"));
-			remove_all_devices();
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+			indigo_queue_drain(driver_queue);
+			for (int i = 0; i < MAX_DEVICES; i++) {
+				if (devices[i] != NULL) {
+					indigo_device *device = devices[i];
+					process_unplug_event_handler(NULL, libusb_ref_device(PRIVATE_DATA->usbdev));
+				}
+			}
+			indigo_queue_delete(&driver_queue);
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

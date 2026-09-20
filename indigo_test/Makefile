@@ -73,6 +73,9 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_aux_rts_transport \
 	$(INTEGRATION_BUILD)/test_generator_architecture \
 	$(INTEGRATION_BUILD)/test_wheel_playerone_sdk \
+	$(INTEGRATION_BUILD)/test_wheel_fli_sdk \
+	$(INTEGRATION_BUILD)/test_focuser_fli_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_fli_sdk \
 	$(INTEGRATION_BUILD)/test_wheel_mi_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_atik_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_atik2_sdk \
@@ -2045,3 +2048,57 @@ test-ccd-ptp-ica-sanitize: $(INTEGRATION_BUILD)/test_ccd_ptp_ica_sanitize
 test-ccd-ptp-ica: $(INTEGRATION_BUILD)/test_ccd_ptp_ica
 	$(INTEGRATION_BUILD)/test_ccd_ptp_ica
 endif
+
+FLI_SDK_TEST_INCLUDE = -I../indigo_drivers/wheel_fli/externals/libfli-1.999.1-180223
+FLI_SDK_TEST_REPLACEMENTS = -Dindigo_attach_device=fli_test_attach -Dindigo_detach_device=fli_test_detach -Dindigo_start_usb_event_handler=fli_test_usb_start -Dlibusb_hotplug_register_callback=fli_test_usb_register -Dlibusb_hotplug_register_callback_sim=fli_test_usb_register_sim -Dlibusb_hotplug_deregister_callback=fli_test_usb_deregister -Dlibusb_hotplug_deregister_callback_poll=fli_test_usb_deregister_poll -Dlibusb_ref_device=fli_test_usb_ref -Dlibusb_unref_device=fli_test_usb_unref -Dlibusb_get_device_descriptor=fli_test_usb_descriptor
+
+$(INTEGRATION_BUILD)/wheel_fli_sdk_driver.o: ../indigo_drivers/wheel_fli/indigo_wheel_fli.c ../indigo_drivers/wheel_fli/indigo_wheel_fli.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(FLI_SDK_TEST_INCLUDE) $(FLI_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_wheel_fli_sdk: integration/test_wheel_fli_sdk.c integration/fli_fake_sdk.h integration/fli_sdk_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_fli_sdk_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(FLI_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/wheel_fli_sdk_driver.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+.PHONY: test-wheel-fli-sdk
+test-wheel-fli-sdk: $(INTEGRATION_BUILD)/test_wheel_fli_sdk
+	$(INTEGRATION_BUILD)/test_wheel_fli_sdk
+
+FLI_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address -fno-omit-frame-pointer
+FLI_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address
+
+$(INTEGRATION_BUILD)/wheel_fli_sdk_driver_asan.o: ../indigo_drivers/wheel_fli/indigo_wheel_fli.c ../indigo_drivers/wheel_fli/indigo_wheel_fli.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(FLI_SANITIZE_CFLAGS) $(FLI_SDK_TEST_INCLUDE) $(FLI_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_wheel_fli_sdk_asan: integration/test_wheel_fli_sdk.c integration/fli_fake_sdk.h integration/fli_sdk_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_fli_sdk_driver_asan.o | $(INTEGRATION_BUILD)
+	$(CC) $(FLI_SANITIZE_CFLAGS) $(FLI_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/wheel_fli_sdk_driver_asan.o -o $@ $(FLI_SANITIZE_LDFLAGS) -lusb-1.0
+
+$(INTEGRATION_BUILD)/focuser_fli_sdk_driver.o: ../indigo_drivers/focuser_fli/indigo_focuser_fli.c ../indigo_drivers/focuser_fli/indigo_focuser_fli.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(FLI_SDK_TEST_INCLUDE) $(FLI_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_focuser_fli_sdk: integration/test_focuser_fli_sdk.c integration/fli_fake_sdk.h integration/fli_sdk_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_fli_sdk_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(FLI_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/focuser_fli_sdk_driver.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+.PHONY: test-focuser-fli-sdk
+test-focuser-fli-sdk: $(INTEGRATION_BUILD)/test_focuser_fli_sdk
+	$(INTEGRATION_BUILD)/test_focuser_fli_sdk
+
+$(INTEGRATION_BUILD)/focuser_fli_sdk_driver_asan.o: ../indigo_drivers/focuser_fli/indigo_focuser_fli.c ../indigo_drivers/focuser_fli/indigo_focuser_fli.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(FLI_SANITIZE_CFLAGS) $(FLI_SDK_TEST_INCLUDE) $(FLI_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_focuser_fli_sdk_asan: integration/test_focuser_fli_sdk.c integration/fli_fake_sdk.h integration/fli_sdk_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_fli_sdk_driver_asan.o | $(INTEGRATION_BUILD)
+	$(CC) $(FLI_SANITIZE_CFLAGS) $(FLI_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/focuser_fli_sdk_driver_asan.o -o $@ $(FLI_SANITIZE_LDFLAGS) -lusb-1.0
+
+$(INTEGRATION_BUILD)/ccd_fli_sdk_driver.o: ../indigo_drivers/ccd_fli/indigo_ccd_fli.c ../indigo_drivers/ccd_fli/indigo_ccd_fli.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(FLI_SDK_TEST_INCLUDE) $(FLI_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_fli_sdk: integration/test_ccd_fli_sdk.c integration/fli_fake_sdk.h integration/fli_sdk_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_fli_sdk_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(FLI_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_fli_sdk_driver.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+.PHONY: test-ccd-fli-sdk
+test-ccd-fli-sdk: $(INTEGRATION_BUILD)/test_ccd_fli_sdk
+	$(INTEGRATION_BUILD)/test_ccd_fli_sdk
+
+$(INTEGRATION_BUILD)/ccd_fli_sdk_driver_asan.o: ../indigo_drivers/ccd_fli/indigo_ccd_fli.c ../indigo_drivers/ccd_fli/indigo_ccd_fli.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(FLI_SANITIZE_CFLAGS) $(FLI_SDK_TEST_INCLUDE) $(FLI_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_fli_sdk_asan: integration/test_ccd_fli_sdk.c integration/fli_fake_sdk.h integration/fli_sdk_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_fli_sdk_driver_asan.o | $(INTEGRATION_BUILD)
+	$(CC) $(FLI_SANITIZE_CFLAGS) $(FLI_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_fli_sdk_driver_asan.o -o $@ $(FLI_SANITIZE_LDFLAGS) -lusb-1.0

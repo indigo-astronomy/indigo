@@ -2703,6 +2703,17 @@
 		C0DE20280919000200000001 /* indigo_focuser_focusdreampro.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_focusdreampro.driver; sourceTree = "<group>"; };
 		C0DE20280920000100000001 /* indigo_focuser_mypro2.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_mypro2.driver; sourceTree = "<group>"; };
 		C0DE20280920000200000001 /* indigo_focuser_optecfl.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_optecfl.driver; sourceTree = "<group>"; };
+		C0DE20290920000500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE202A0920000500000002 /* indigo_wheel_fli.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_wheel_fli.driver; sourceTree = "<group>"; };
+		C0DE202B0920000500000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE202C0920000500000004 /* indigo_focuser_fli.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_fli.driver; sourceTree = "<group>"; };
+		C0DE202D0920000500000005 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE202E0920000500000006 /* indigo_ccd_fli.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_fli.driver; sourceTree = "<group>"; };
+		C0DE202F0920000500000007 /* fli_fake_sdk.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fli_fake_sdk.h; sourceTree = "<group>"; };
+		C0DE20300920000500000008 /* fli_sdk_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fli_sdk_test_common.h; sourceTree = "<group>"; };
+		C0DE20310920000500000009 /* test_wheel_fli_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_fli_sdk.c; sourceTree = "<group>"; };
+		C0DE20320920000500000010 /* test_focuser_fli_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_fli_sdk.c; sourceTree = "<group>"; };
+		C0DE20330920000500000011 /* test_ccd_fli_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_fli_sdk.c; sourceTree = "<group>"; };
 		C0DE20280920000100000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20280919000200000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20270913000400000002 /* indigo_rotator_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_lunatico.driver; sourceTree = "<group>"; };
@@ -6685,6 +6696,8 @@
 			children = (
 				5918E26C1F8C0645005D6300 /* README.md */,
 				5917AC4A21A3588800AC018A /* Makefile.inc */,
+				C0DE202B0920000500000003 /* REFACTOR.md */,
+				C0DE202C0920000500000004 /* indigo_focuser_fli.driver */,
 				591FAB791E391B1C0076BD6E /* indigo_focuser_fli.h */,
 				591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */,
 				591FAB771E391B1C0076BD6E /* indigo_focuser_fli_main.c */,
@@ -8964,6 +8977,8 @@
 			children = (
 				5918E26E1F8C06C0005D6300 /* README.md */,
 				59D96DD121A30EA90069A64C /* Makefile.inc */,
+				C0DE202D0920000500000005 /* REFACTOR.md */,
+				C0DE202E0920000500000006 /* indigo_ccd_fli.driver */,
 				5992F7B31E1EC8A20035242E /* indigo_ccd_fli.h */,
 				5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */,
 				5992F7B11E1EC8A20035242E /* indigo_ccd_fli_main.c */,
@@ -8977,6 +8992,8 @@
 			children = (
 				5918E26D1F8C06AF005D6300 /* README.md */,
 				5917AC4921A3586D00AC018A /* Makefile.inc */,
+				C0DE20290920000500000001 /* REFACTOR.md */,
+				C0DE202A0920000500000002 /* indigo_wheel_fli.driver */,
 				5992F7BA1E1EC9390035242E /* indigo_wheel_fli.h */,
 				5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */,
 				5992F7BB1E1EC9580035242E /* indigo_wheel_fli_main.c */,
@@ -13964,6 +13981,8 @@
 				59910A59305289D700FB1C2F /* abort_queue_test_common.h */,
 				2D7262A5A6EB6D2BF8614DCA /* aux_test_isolation.h */,
 				C0DE20260908000300000001 /* ccd_test_noise.h */,
+				C0DE202F0920000500000007 /* fli_fake_sdk.h */,
+				C0DE20300920000500000008 /* fli_sdk_test_common.h */,
 				59FEFFC6301E6891007FB62D /* serial_simulator_test_common.h */,
 				59FA7BF6301D3F5A00A35CFB /* simulator_test_common.h */,
 				9D56D3593058283B00725436 /* test_agent_astrometry.c */,
@@ -14007,6 +14026,7 @@
 				C0DE20260911000200000001 /* test_ccd_baccam_sdk.c */,
 				C0DE20260911000300000001 /* test_ccd_bresser_sdk.c */,
 				59910A5B305289D700FB1C2F /* test_ccd_countdown.c */,
+				C0DE20330920000500000011 /* test_ccd_fli_sdk.c */,
 				C0DE20260915000200000001 /* test_ccd_iidc_sdk.c */,
 				C0DE20260911000400000001 /* test_ccd_mallin_sdk.c */,
 				C0DE20260911000500000001 /* test_ccd_meade_sdk.c */,
@@ -14053,6 +14073,7 @@
 				5984A32A303B9D9700D581D2 /* test_focuser_nfocus_simulator.c */,
 				5984A32C303B9E6400D581D2 /* test_focuser_nstep_simulator.c */,
 				5984A32E303B9F6700D581D2 /* test_focuser_optec_simulator.c */,
+				C0DE20320920000500000010 /* test_focuser_fli_sdk.c */,
 				59FEFFD3301E7820007FB62D /* test_focuser_optecfl_simulator.c */,
 				5984A330303BA08F00D581D2 /* test_focuser_primaluce_simulator.c */,
 				5984A332303BA26100D581D2 /* test_focuser_prodigy_simulator.c */,
@@ -14092,6 +14113,7 @@
 				E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */,
 				592C3393304F46D1004D5AE6 /* test_wheel_asi_sdk.c */,
 				59910A353050AC2600FB1C2F /* test_wheel_astroasis_sdk.c */,
+				C0DE20310920000500000009 /* test_wheel_fli_sdk.c */,
 				5984A389303CDD9100D581D2 /* test_wheel_indigo_simulator.c */,
 				5560F867DB1B8995E921356D /* test_wheel_indigo_transport.c */,
 				9664C6C95BD6AB4220114A5E /* test_wheel_manual.c */,
