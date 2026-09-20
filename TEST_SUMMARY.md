@@ -1,3 +1,7 @@
+# ccd_atik (Atik Camera)
+
+2026-09-20 21:29 3.0.0.39 mac arm64 fake SDK 40/40 OK
+
 # ccd_simulator (Camera Simulator)
 
 2026-09-20 20:22 3.0.0.27 mac arm64 simulator 19/19 OK
@@ -39,13 +43,21 @@
 
 2026-09-20 20:52 3.0.0.8 mac arm64 fake SDK 15/15 OK
 
+# mount_ioptron (iOptron Mount)
+
+2026-09-20 21:29 3.0.0.53 mac arm64 simulator 104/104 OK
+
+# mount_lx200 (LX200 Mount)
+
+2026-09-20 21:29 3.0.0.56 mac arm64 simulator 70/70 OK
+
 # mount_nexstar (Nexstar Mount)
 
 2026-09-20 20:44 3.0.0.34 mac arm64 simulator 13/13 OK
 
 # mount_nexstaraux (NexStar AUX Mount)
 
-2026-09-20 14:45 3.0.0.13 mac arm64 simulator 30/30 OK
+2026-09-20 21:29 3.0.0.14 mac arm64 simulator 30/30 OK
 
 # mount_pmc8 (PMC Eight Mount)
 

@@ -205,3 +205,11 @@ INDIGO_TEST_DEVICE="Atik Titan" make -C indigo_test test-ccd-atik-hw
 It covered exposures from 0.001 to 16.5 seconds, all five frame types, ROI and all four binning modes, both read modes, the refused and then accepted `CCD_BIN` change, abort and reacquire, guider pulses on all four directions including one during an exposure and one after the camera disconnected, disconnect/reconnect, `dlclose`/`dlopen` of the driver with a fresh exposure, and no invalid RAW frame. Titan exposes no cooler, gain, offset or presets, so `CCD_BIN` is the only guard reachable on this model; the gain/offset branches need a model that exposes them.
 
 Regression evidence: removing the busy guard from the generated `CCD_BIN` branch makes the scenario fail, and the binning change accepted mid-exposure corrupted the frame that followed (82x492 instead of 658x492), which is what the guard prevents.
+
+## Overlapping guide pulses (2026-09-20)
+
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true` and zero both axis
+items in `on_change_request`, replacing the earlier workaround that forced the property state back
+to `INDIGO_OK_STATE` so the BUSY-guarded dispatch macro would let the request through. Behaviour is
+unchanged; the driver now uses the same pattern as every other INDIGO driver that exposes a guider.
+`guide_axes_and_replacement` already covered the replacement and passes unmodified.

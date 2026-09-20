@@ -20,7 +20,7 @@ driver atik {
 	label = "Atik Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 38;
+	version = 39;
 	include {
 		#include <math.h>
 		#include <limits.h>
@@ -613,9 +613,12 @@ driver atik {
 			}
 		}
 		inherited GUIDER_GUIDE_RA {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 			on_change_request {
-				// Guide requests replace a pulse on the same axis, including zero/stop.
-				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
 			}
 			on_change {
 				indigo_cancel_pending_handler(device, guider_ra_finalizer);
@@ -639,9 +642,12 @@ driver atik {
 			}
 		}
 		inherited GUIDER_GUIDE_DEC {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 			on_change_request {
-				// Guide requests replace a pulse on the same axis, including zero/stop.
-				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
 			}
 			on_change {
 				indigo_cancel_pending_handler(device, guider_dec_finalizer);

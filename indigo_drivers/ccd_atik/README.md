@@ -38,3 +38,7 @@ and pending Titan/One/11000A/Horizon hardware tests are recorded in `REFACTOR.md
 Version 0x03000020 renames `ATIK_PRESETS` to `X_PRESETS` and
 `ATIK_WINDOW_HEATER` to `X_WINDOW_HEATER`; update client scripts accordingly.
 Standard property and custom item names are unchanged.
+
+## Testing
+
+2026-09-20 21:29 3.0.0.39 mac arm64 fake SDK 40/40 OK
