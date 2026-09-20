@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_focuser_usbv3"
 #define DRIVER_LABEL         "USB_Focus v3 Focuser"
 #define FOCUSER_DEVICE_NAME  "USB_Focus v3"
@@ -226,10 +226,8 @@ static void focuser_connection_handler(indigo_device *device) {
 static void focuser_x_focuser_step_size_handler(indigo_device *device) {
 	X_FOCUSER_STEP_SIZE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_FOCUSER_STEP_SIZE.on_change
-	if (X_FOCUSER_FULL_STEP_ITEM->sw.value) {
-		usbv3_command(device, "SMSTPF", false);
-	} else {
-		usbv3_command(device, "SMSTPD", false);
+	if (!usbv3_command(device, X_FOCUSER_FULL_STEP_ITEM->sw.value ? "SMSTPF" : "SMSTPD", false)) {
+		X_FOCUSER_STEP_SIZE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.X_FOCUSER_STEP_SIZE.on_change
 	indigo_update_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
@@ -238,9 +236,9 @@ static void focuser_x_focuser_step_size_handler(indigo_device *device) {
 static void focuser_compensation_handler(indigo_device *device) {
 	FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_COMPENSATION.on_change
-	usbv3_command(device, "FLX%03d", true, abs((int)FOCUSER_COMPENSATION_ITEM->number.target));
-	usbv3_command(device, "FZSIG%d", true, FOCUSER_COMPENSATION_ITEM->number.target < 0 ? 0 : 1);
-	usbv3_command(device, "SMA%03d", true, (int)FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.target);
+	if (!usbv3_command(device, "FLX%03d", true, abs((int)FOCUSER_COMPENSATION_ITEM->number.target)) || !usbv3_command(device, "FZSIG%d", true, FOCUSER_COMPENSATION_ITEM->number.target < 0 ? 0 : 1) || !usbv3_command(device, "SMA%03d", true, (int)FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.target)) {
+		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- focuser.FOCUSER_COMPENSATION.on_change
 	indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 }
@@ -250,11 +248,16 @@ static void focuser_mode_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_MODE.on_change
 	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
 		indigo_cancel_pending_handler(device, focuser_timer_callback);
-		usbv3_command(device, "FAUTOM", true);
+		if (!usbv3_command(device, "FAUTOM", true)) {
+			FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	} else {
-		usbv3_command(device, "FMANUA", true);					
-		if (sscanf(PRIVATE_DATA->response, "P=%lf", &FOCUSER_POSITION_ITEM->number.value) == 1) {
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		if (usbv3_command(device, "FMANUA", true)) {
+			if (sscanf(PRIVATE_DATA->response, "P=%lf", &FOCUSER_POSITION_ITEM->number.value) == 1) {
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			}
+		} else {
+			FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_execute_priority_handler(device, 100, focuser_timer_callback);
 	}
@@ -265,7 +268,9 @@ static void focuser_mode_handler(indigo_device *device) {
 static void focuser_speed_handler(indigo_device *device) {
 	FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_SPEED.on_change
-	usbv3_command(device, "SMO%03u", false, (int)FOCUSER_SPEED_ITEM->number.target);
+	if (!usbv3_command(device, "SMO%03u", false, (int)FOCUSER_SPEED_ITEM->number.target)) {
+		FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- focuser.FOCUSER_SPEED.on_change
 	indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 }
@@ -337,7 +342,9 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 static void focuser_limits_handler(indigo_device *device) {
 	FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_LIMITS.on_change
-	usbv3_command(device, "M%05u", false, (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target);
+	if (!usbv3_command(device, "M%05u", false, (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target)) {
+		FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- focuser.FOCUSER_LIMITS.on_change
 	indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
 }

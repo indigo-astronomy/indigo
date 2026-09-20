@@ -245,7 +245,7 @@ FOCUSER_PRIMALUCE_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_prima
 FOCUSER_PRODIGY_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_prodigy.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_ROBOFOCUS_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_robofocus.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_STEELDRIVE2_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_steeldrive2.a $(TEST_LDFLAGS) -lindigocat
-FOCUSER_USBV3_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_usbv3.a $(TEST_LDFLAGS) -lindigocat
+FOCUSER_USBV3_SIMULATOR_TEST_LDFLAGS = $(INTEGRATION_BUILD)/focuser_usbv3_test_driver.o $(TEST_LDFLAGS) -lindigocat
 FOCUSER_WEMACRO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_wemacro.a $(TEST_LDFLAGS) -lindigocat
 AUX_SVBPOWERBOX_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_svbpowerbox.a $(TEST_LDFLAGS) -lindigocat
 AUX_WBPLUSV3_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_wbplusv3.a $(TEST_LDFLAGS) -lindigocat
@@ -941,7 +941,10 @@ $(INTEGRATION_BUILD)/test_focuser_steeldrive2_simulator: integration/test_focuse
 $(INTEGRATION_BUILD)/test_focuser_steeldrive2_simulator_asan: integration/test_focuser_steeldrive2_simulator.c ../indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_steeldrive2_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.c $(TEST_LDFLAGS) -lindigocat
 
-$(INTEGRATION_BUILD)/test_focuser_usbv3_simulator: integration/test_focuser_usbv3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_usbv3_simulator $(BUILD_DRIVERS)/indigo_focuser_usbv3.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/focuser_usbv3_test_driver.o: ../indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.c | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=usbv3_test_config_folder -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_focuser_usbv3_simulator: integration/test_focuser_usbv3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_usbv3_simulator $(INTEGRATION_BUILD)/focuser_usbv3_test_driver.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_USBV3_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_wemacro_simulator: integration/test_focuser_wemacro_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_wemacro_simulator $(BUILD_DRIVERS)/indigo_focuser_wemacro.a | $(INTEGRATION_BUILD)

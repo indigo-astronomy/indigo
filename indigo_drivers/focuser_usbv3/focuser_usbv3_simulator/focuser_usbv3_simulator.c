@@ -28,11 +28,13 @@ typedef struct {
 	bool headless;
 	bool trace;
 	const char *ready_file;
+	const char *profile;
 } simulator_options;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
+	.profile = "normal",
 	.ready_file = NULL
 };
 
@@ -52,6 +54,9 @@ static int firmware = 305;
 static bool moving = false;
 static bool automatic = false;
 static double temperature = 22.5;
+static const char *identity = "UFO";
+static bool report_config = true;
+static FILE *events = NULL;
 
 static void usage(const char *name) {
 	printf("USB_Focus v3 serial simulator\n");
@@ -59,7 +64,13 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
+	printf("  --profile <name>        normal, configured, no-handshake, bad-config or\n");
+	printf("                          external-motion, default is normal\n");
 	printf("  -h, --help              Show this help and exit\n");
+	printf("\n");
+	printf("INDIGO_USBV3_EVENTS names a file receiving every accepted request, one per line.\n");
+	printf("INDIGO_USBV3_FAULT names a file holding '<command prefix> <silent|garbage|close>'\n");
+	printf("which is applied once to the next matching request and then removed.\n");
 }
 
 static void signal_handler(int sig) {
@@ -87,6 +98,12 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--profile")) {
+			if (++i == argc) {
+				fprintf(stderr, "--profile requires a name\n");
+				return false;
+			}
+			options.profile = argv[i];
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -115,6 +132,54 @@ static void clamp_position(void) {
 	}
 }
 
+// The controller state a scenario needs is selected once at startup, so a
+// connecting driver reads back exactly the configuration under test.
+static void apply_profile(void) {
+	if (!strcmp(options.profile, "configured")) {
+		direction = 1;
+		stepmode = 1;
+		speed = 7;
+		steps_per_degree = -25;
+		threshold = 3;
+		firmware = 310;
+		max_position = 30000;
+		position = target_position = 5000;
+		serial_motion_sync(&motion, position);
+	} else if (!strcmp(options.profile, "no-handshake")) {
+		identity = "XXX";
+	} else if (!strcmp(options.profile, "bad-config")) {
+		report_config = false;
+	} else if (!strcmp(options.profile, "external-motion")) {
+		target_position = 1200;
+		serial_motion_start(&motion, target_position, 500);
+		moving = true;
+	}
+}
+
+// One-shot fault injection. The control file names a command prefix and the way
+// the next matching request has to misbehave, so a test can fail exactly one
+// transaction without disturbing the rest of the session.
+static const char *pending_fault(const char *command) {
+	static char action[32];
+	const char *path = getenv("INDIGO_USBV3_FAULT");
+	if (path == NULL) {
+		return NULL;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return NULL;
+	}
+	char prefix[32] = { 0 };
+	action[0] = '\0';
+	bool matched = fscanf(file, "%31s %31s", prefix, action) == 2 && !strncmp(command, prefix, strlen(prefix));
+	fclose(file);
+	if (!matched) {
+		return NULL;
+	}
+	unlink(path);
+	return action;
+}
+
 static void handle_command(const char *command) {
 	position = (int)serial_motion_update(&motion);
 	char response[128] = { 0 };
@@ -122,11 +187,36 @@ static void handle_command(const char *command) {
 	if (options.trace) {
 		fprintf(stderr, "<- %s\n", command);
 	}
-
+	if (events != NULL) {
+		fprintf(events, "%s\n", command);
+		fflush(events);
+	}
+	const char *fault = pending_fault(command);
+	if (fault != NULL) {
+		if (!strcmp(fault, "close")) {
+			running = 0;
+			if (serial_fd >= 0) {
+				close(serial_fd);
+				serial_fd = -1;
+			}
+			return;
+		}
+		if (!strcmp(fault, "silent")) {
+			return;
+		}
+		if (!strcmp(fault, "garbage")) {
+			send_line("ERR");
+			return;
+		}
+	}
 	if (!strcmp(command, "SWHOIS")) {
-		send_line("UFO");
+		send_line(identity);
 	} else if (!strcmp(command, "SGETAL")) {
-		snprintf(response, sizeof(response), "C=%d-%d-%d-%d-%d-%d-%d", direction, stepmode, speed, steps_per_degree, threshold, firmware, max_position);
+		if (report_config) {
+			snprintf(response, sizeof(response), "C=%d-%d-%d-%d-%d-%d-%d", direction, stepmode, speed, abs(steps_per_degree), threshold, firmware, max_position);
+		} else {
+			snprintf(response, sizeof(response), "ERR");
+		}
 		send_line(response);
 	} else if (!strcmp(command, "FPOSRO")) {
 		if (moving && motion.duration == 0) {
@@ -231,6 +321,9 @@ int main(int argc, char *argv[]) {
 	if (!parse_args(argc, argv)) {
 		return 1;
 	}
+	apply_profile();
+	const char *journal = getenv("INDIGO_USBV3_EVENTS");
+	events = journal == NULL ? NULL : fopen(journal, "w");
 	signal(SIGTERM, signal_handler);
 	signal(SIGINT, signal_handler);
 
@@ -249,6 +342,9 @@ int main(int argc, char *argv[]) {
 	run_protocol_loop();
 	if (serial_fd >= 0) {
 		close(serial_fd);
+	}
+	if (events != NULL) {
+		fclose(events);
 	}
 	return 0;
 }

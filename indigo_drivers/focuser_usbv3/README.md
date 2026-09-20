@@ -22,3 +22,7 @@ indigo_server indigo_focuser_usbv3
 ## Status: Stable
 
 Driver is developed and tested with the physical hardware.
+
+## Testing
+
+2026-09-20 14:03 simulator 27/27 OK
