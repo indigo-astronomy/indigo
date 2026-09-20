@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300003C
+#define DRIVER_VERSION       0x0300003D
 #define DRIVER_NAME          "indigo_ccd_asi"
 #define DRIVER_LABEL         "ZWO ASI Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1703,6 +1703,13 @@ static void guider_connection_handler(indigo_device *device) {
 
 static void guider_guide_ra_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_RA.on_change
+	// A new request replaces the running pulse, so the relays of this axis are
+	// released and the finaliser of the superseded pulse is dropped first.
+	indigo_cancel_pending_handler(device, guider_ra_finalizer);
+	ASIPulseGuideOff(PRIVATE_DATA->dev_id, ASI_GUIDE_EAST);
+	ASIPulseGuideOff(PRIVATE_DATA->dev_id, ASI_GUIDE_WEST);
+	PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] = false;
+	PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST] = false;
 	ASI_ERROR_CODE res;
 	int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 	if (duration > 0) {
@@ -1740,6 +1747,13 @@ static void guider_guide_ra_handler(indigo_device *device) {
 
 static void guider_guide_dec_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_DEC.on_change
+	// A new request replaces the running pulse, so the relays of this axis are
+	// released and the finaliser of the superseded pulse is dropped first.
+	indigo_cancel_pending_handler(device, guider_dec_finalizer);
+	ASIPulseGuideOff(PRIVATE_DATA->dev_id, ASI_GUIDE_NORTH);
+	ASIPulseGuideOff(PRIVATE_DATA->dev_id, ASI_GUIDE_SOUTH);
+	PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] = false;
+	PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] = false;
 	ASI_ERROR_CODE res;
 	int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 	if (duration > 0) {
@@ -1802,10 +1816,18 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
+		//+ guider.GUIDER_GUIDE_RA.on_change_request
+		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+		//- guider.GUIDER_GUIDE_RA.on_change_request
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
+		//+ guider.GUIDER_GUIDE_DEC.on_change_request
+		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+		//- guider.GUIDER_GUIDE_DEC.on_change_request
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	}
 	return indigo_guider_change_property(device, client, property);

@@ -29,7 +29,7 @@ driver asi {
 	label = "ZWO ASI Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o. and Rumen G. Bogdanovski";
-	version = 60;
+	version = 61;
 	include {
 		#include <assert.h>
 		#include <math.h>
@@ -1473,7 +1473,21 @@ driver asi {
 			indigo_unlock_master_device(device);
 		}
 		inherited GUIDER_GUIDE_RA {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
+			on_change_request {
+				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+			}
 			on_change {
+				// A new request replaces the running pulse, so the relays of this axis are
+				// released and the finaliser of the superseded pulse is dropped first.
+				indigo_cancel_pending_handler(device, guider_ra_finalizer);
+				ASIPulseGuideOff(PRIVATE_DATA->dev_id, ASI_GUIDE_EAST);
+				ASIPulseGuideOff(PRIVATE_DATA->dev_id, ASI_GUIDE_WEST);
+				PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] = false;
+				PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST] = false;
 				ASI_ERROR_CODE res;
 				int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 				if (duration > 0) {
@@ -1509,7 +1523,21 @@ driver asi {
 			}
 		}
 		inherited GUIDER_GUIDE_DEC {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
+			on_change_request {
+				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+			}
 			on_change {
+				// A new request replaces the running pulse, so the relays of this axis are
+				// released and the finaliser of the superseded pulse is dropped first.
+				indigo_cancel_pending_handler(device, guider_dec_finalizer);
+				ASIPulseGuideOff(PRIVATE_DATA->dev_id, ASI_GUIDE_NORTH);
+				ASIPulseGuideOff(PRIVATE_DATA->dev_id, ASI_GUIDE_SOUTH);
+				PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] = false;
+				PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] = false;
 				ASI_ERROR_CODE res;
 				int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 				if (duration > 0) {

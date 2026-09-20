@@ -1196,6 +1196,35 @@ static void guide_all_axes_and_disconnect(void) {
 		ASSERT_TRUE(wait_state(1, property, INDIGO_OK_STATE));
 		ASSERT_EQ_INT(0, cameras[0].relays);
 	}
+
+	// A pulse arriving while another one on the same axis is still running replaces it, so the
+	// elapsed time has to follow the second request. Measuring the duration is the point of these
+	// two cases: waiting only for the property to leave BUSY passes even when the second request
+	// is discarded, which is how this behaviour went unverified before.
+	double started = indigo_monotonic_time();
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[1].name, "GUIDER_GUIDE_DEC", "NORTH", 2000));
+	ASSERT_TRUE(wait_state(1, "GUIDER_GUIDE_DEC", INDIGO_BUSY_STATE));
+	indigo_usleep(500000);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[1].name, "GUIDER_GUIDE_DEC", "NORTH", 600));
+	ASSERT_TRUE(wait_state(1, "GUIDER_GUIDE_DEC", INDIGO_OK_STATE));
+	// Replacing finishes about 500 + 600 ms after the first request; keeping the superseded pulse
+	// would run the full 2000 ms.
+	double replaced = (indigo_monotonic_time() - started) * 1000.0;
+	printf("    2000 ms north pulse replaced after 500 ms by a 600 ms north pulse finished in %.0f ms\n", replaced);
+	ASSERT_TRUE(replaced > 900 && replaced < 1700);
+	ASSERT_EQ_INT(0, cameras[0].relays);
+
+	started = indigo_monotonic_time();
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[1].name, "GUIDER_GUIDE_DEC", "NORTH", 2000));
+	ASSERT_TRUE(wait_state(1, "GUIDER_GUIDE_DEC", INDIGO_BUSY_STATE));
+	indigo_usleep(500000);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[1].name, "GUIDER_GUIDE_DEC", "SOUTH", 300));
+	ASSERT_TRUE(wait_state(1, "GUIDER_GUIDE_DEC", INDIGO_OK_STATE));
+	double reversed = (indigo_monotonic_time() - started) * 1000.0;
+	printf("    2000 ms north pulse replaced after 500 ms by a 300 ms south pulse finished in %.0f ms\n", reversed);
+	ASSERT_TRUE(reversed > 600 && reversed < 1400);
+	ASSERT_EQ_INT(0, cameras[0].relays);
+
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[1].name, "GUIDER_GUIDE_RA", "EAST", 1000));
 	ASSERT_TRUE(wait_state(1, "GUIDER_GUIDE_RA", INDIGO_BUSY_STATE));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[1].name, "GUIDER_GUIDE_DEC", "NORTH", 1000));

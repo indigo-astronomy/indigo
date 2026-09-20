@@ -404,3 +404,21 @@ Covered by `Edges rejected_change_alerts_and_keeps_values` in `indigo_test/integ
 ```sh
 make -C indigo_test test-ccd-asi-sdk
 ```
+
+## Overlapping guide pulses (2026-09-20)
+
+A guide pulse requested while another pulse on the same axis was still running was silently
+discarded: the generated change branch dispatched both guide properties through the BUSY-guarded
+`INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE` macro, so the second request never reached the handler.
+Both properties now declare `accept_while_busy = true` and zero both axis items in
+`on_change_request`.
+
+The handler previously called `ASIPulseGuideOn()` for the new direction without stopping the old
+one, so a reversal would have left both relays of the axis asserted and the stale finaliser would
+have ended the new pulse early. It now releases both relays of the axis with `ASIPulseGuideOff()`,
+clears the matching `guide_relays[]` entries and drops the pending finaliser before starting the
+replacement.
+
+The guider lifecycle test gained two duration-measuring cases: a 2000 ms pulse replaced after 500 ms
+by a 600 ms pulse in the same direction (1111 ms measured) and by a 300 ms pulse in the opposite
+direction (815 ms), both also confirming the relays are released afterwards.

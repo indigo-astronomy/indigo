@@ -66,3 +66,7 @@ Custom properties now follow the INDIGO `X_` naming convention: `PIXEL_FORMAT` b
 The bundled SDK can report `ASI_EXP_FAILED` after shortening an exposure or stopping a long stream on ASI120MC-S. The driver retries that failed snapshot at most three times, preserving its requested duration and dark/light setting. Each retry stops the failed exposure and waits 150 ms on the handler queue before restarting. Abort and disconnect cancel pending retries; exhausted retries and other SDK failures remain ALERT.
 
 After aborting a long snapshot, ASI120 video frames may initially arrive more slowly than the new exposure setting. Video readout allows at least five seconds per frame while individual SDK reads remain bounded to 20 ms. This allowance does not change the requested exposure duration.
+
+## Testing
+
+2026-09-20 21:31 3.0.0.61 mac arm64 fake SDK 51/51 OK
