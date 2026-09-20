@@ -551,7 +551,7 @@ bool libatik_guide_relays(libatik_device_context *context, unsigned short mask) 
 static void metadata_and_properties(void) {
 	indigo_driver_info info = { 0 };
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_atik2(INDIGO_DRIVER_INFO, &info));
-	ASSERT_EQ_INT(0x0300000A, info.version);
+	ASSERT_EQ_INT(INDIGO_DRIVER_API_3, INDIGO_DRIVER_API_GENERATION(info.version));
 	const unsigned interfaces[] = { INDIGO_INTERFACE_CCD, INDIGO_INTERFACE_GUIDER, INDIGO_INTERFACE_WHEEL };
 	for (int i = 0; i < 3; i++) {
 		indigo_property *property = snapshot(i, "INFO");

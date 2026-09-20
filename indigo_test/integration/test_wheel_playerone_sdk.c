@@ -446,7 +446,7 @@ static void properties_and_configuration(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_wheel_playerone(INDIGO_DRIVER_INFO, &info));
 	ASSERT_STREQ("indigo_wheel_playerone", info.name);
 	ASSERT_STREQ("Player One Filter Wheel", info.description);
-	ASSERT_EQ_INT(0x0300000b, info.version);
+	ASSERT_EQ_INT(INDIGO_DRIVER_API_3, INDIGO_DRIVER_API_GENERATION(info.version));
 	const char *base[] = { INFO_PROPERTY_NAME, CONNECTION_PROPERTY_NAME, CONFIG_PROPERTY_NAME, PROFILE_PROPERTY_NAME, PROFILE_NAME_PROPERTY_NAME };
 	for (int i = 0; i < ARRAY_SIZE(base); i++) {
 		ASSERT_EQ_INT(INDIGO_OK_STATE, state(0, base[i]));

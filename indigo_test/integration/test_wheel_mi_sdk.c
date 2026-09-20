@@ -481,7 +481,7 @@ static void metadata_and_property_contract(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_wheel_mi(INDIGO_DRIVER_INFO, &info));
 	ASSERT_STREQ("indigo_wheel_mi", info.name);
 	ASSERT_STREQ("Moravian Instruments SFW", info.description);
-	ASSERT_EQ_INT(0x03000006, info.version);
+	ASSERT_EQ_INT(INDIGO_DRIVER_API_3, INDIGO_DRIVER_API_GENERATION(info.version));
 	ASSERT_TRUE(info.multi_device_support);
 	const char *base[] = { INFO_PROPERTY_NAME, CONFIG_PROPERTY_NAME, PROFILE_NAME_PROPERTY_NAME, PROFILE_PROPERTY_NAME, CONNECTION_PROPERTY_NAME };
 	for (int i = 0; i < ARRAY_SIZE(base); i++) {

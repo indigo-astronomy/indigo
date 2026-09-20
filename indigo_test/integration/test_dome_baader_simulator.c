@@ -51,8 +51,8 @@
 #define BAADER_REFERENCE_TRACE_PATH "fixtures/dome_baader/generated_reference_trace.txt"
 #endif
 
-#ifndef EXPECTED_VERSION
-#define EXPECTED_VERSION 0x03000008
+#ifndef EXPECTED_API_GENERATION
+#define EXPECTED_API_GENERATION INDIGO_DRIVER_API_3
 #endif
 
 #define DEVICE_NAME "Baader Classic Dome"
@@ -1026,7 +1026,7 @@ static void metadata_before_connection(void) {
 	CHECK_EQ(INDIGO_OK, indigo_dome_baader(INDIGO_DRIVER_INFO, &info));
 	CHECK_STR(EXPECTED_LABEL, info.description);
 	CHECK_STR("indigo_dome_baader", info.name);
-	CHECK_EQ(EXPECTED_VERSION, info.version);
+	CHECK_EQ(EXPECTED_API_GENERATION, INDIGO_DRIVER_API_GENERATION(info.version));
 	CHECK(!info.multi_device_support);
 	CHECK(driver_up());
 	assert_device_interface(INDIGO_INTERFACE_DOME);
@@ -1748,7 +1748,7 @@ static void bdr09_version_is_valid(void) {
 	indigo_driver_info info = { 0 };
 	CHECK_EQ(INDIGO_OK, indigo_dome_baader(INDIGO_DRIVER_INFO, &info));
 	fprintf(stderr, "driver version 0x%08x\n", info.version);
-	CHECK_EQ(0x03000000, info.version & 0xFF000000);
+	CHECK_EQ(INDIGO_DRIVER_API_3, INDIGO_DRIVER_API_GENERATION(info.version));
 cleanup:
 	;
 }

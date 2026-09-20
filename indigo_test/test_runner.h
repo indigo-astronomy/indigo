@@ -89,6 +89,14 @@ static const char *indigo_current_test_name = NULL;
 	} \
 } while (0)
 
+// Driver build numbers are bumped on every behaviour fix, so a test that pins the exact
+// DRIVER_VERSION fails on the next bump for no reason and has to be edited along with the driver.
+// Assert the API generation a driver reports instead: the top byte of DRIVER_VERSION, which only
+// changes when the driver is migrated to another INDIGO driver API.
+#define INDIGO_DRIVER_API_GENERATION(version) ((version) & 0xFF000000)
+#define INDIGO_DRIVER_API_2 0x02000000
+#define INDIGO_DRIVER_API_3 0x03000000
+
 static int indigo_run_tests(const char *suite_name, const indigo_test_case *tests, int count) {
 	int initial_failures = indigo_test_failures;
 	printf("Running %s\n", suite_name);

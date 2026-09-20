@@ -598,7 +598,7 @@ static void ioptron_driver_metadata_and_base_properties(void) {
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_mount_ioptron(INDIGO_DRIVER_INFO, &info));
 	SERIAL_CHECK_TRUE(!strcmp(info.name, "indigo_mount_ioptron"));
 	SERIAL_CHECK_TRUE(!strcmp(info.description, "iOptron Mount"));
-	SERIAL_CHECK_TRUE(info.version >= 0x03000032 && !info.multi_device_support);
+	SERIAL_CHECK_TRUE(INDIGO_DRIVER_API_GENERATION(info.version) == INDIGO_DRIVER_API_3 && !info.multi_device_support);
 	SERIAL_CHECK_EQ_INT(INDIGO_DRIVER_SHUTDOWN, info.status);
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&ioptron_mount));
 	fixture.driver = true;

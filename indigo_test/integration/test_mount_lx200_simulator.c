@@ -1109,7 +1109,7 @@ static void lx200_driver_metadata_and_base_properties(void) {
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_mount_lx200(INDIGO_DRIVER_INFO, &info));
 	SERIAL_CHECK_TRUE(!strcmp(info.name, "indigo_mount_lx200"));
 	SERIAL_CHECK_TRUE(!strcmp(info.description, "LX200 Mount"));
-	SERIAL_CHECK_TRUE(info.version >= 0x03000034 && !info.multi_device_support);
+	SERIAL_CHECK_TRUE(INDIGO_DRIVER_API_GENERATION(info.version) == INDIGO_DRIVER_API_3 && !info.multi_device_support);
 	SERIAL_CHECK_EQ_INT(INDIGO_DRIVER_SHUTDOWN, info.status);
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_mount));
 	online = true;

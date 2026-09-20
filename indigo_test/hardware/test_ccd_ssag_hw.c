@@ -324,7 +324,7 @@ static void physical_acceptance(void) {
 	CHECK(indigo_attach_client(&client) == INDIGO_OK);
 	indigo_driver_info info;
 	CHECK(indigo_ccd_ssag(INDIGO_DRIVER_INFO, &info) == INDIGO_OK);
-	CHECK(info.version == 0x0300000D);
+	CHECK(INDIGO_DRIVER_API_GENERATION(info.version) == INDIGO_DRIVER_API_3);
 	CHECK(indigo_ccd_ssag(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	initialized = true;
 	CHECK(ensure_discovery());

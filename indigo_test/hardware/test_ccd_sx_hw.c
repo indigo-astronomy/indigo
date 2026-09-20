@@ -599,7 +599,7 @@ static void stop_driver(void) {
 static void identity_and_property_contract(void) {
 	indigo_driver_info info;
 	CHECK(indigo_ccd_sx(INDIGO_DRIVER_INFO, &info) == INDIGO_OK);
-	CHECK(!strcmp(info.name, "indigo_ccd_sx") && !strcmp(info.description, "Starlight Xpress Camera") && info.version == 0x03000011);
+	CHECK(!strcmp(info.name, "indigo_ccd_sx") && !strcmp(info.description, "Starlight Xpress Camera") && INDIGO_DRIVER_API_GENERATION(info.version) == INDIGO_DRIVER_API_3);
 	CHECK(start_driver());
 	printf("    discovered %d camera(s)\n", camera_count);
 	for (int c = 0; c < camera_count; c++) {

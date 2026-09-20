@@ -50,8 +50,8 @@
 #define DSD_PROPERTY_PREFIX "X_"
 #endif
 
-#ifndef EXPECTED_VERSION
-#define EXPECTED_VERSION 0x03000013
+#ifndef EXPECTED_API_GENERATION
+#define EXPECTED_API_GENERATION INDIGO_DRIVER_API_3
 #endif
 
 #define DEVICE_NAME "Focuser DSD AF"
@@ -874,7 +874,7 @@ static void metadata_before_connection(void) {
 	CHECK_EQ(INDIGO_OK, indigo_focuser_dsd(INDIGO_DRIVER_INFO, &info));
 	CHECK_STR(EXPECTED_LABEL, info.description);
 	CHECK_STR("indigo_focuser_dsd", info.name);
-	CHECK_EQ(EXPECTED_VERSION, info.version);
+	CHECK_EQ(EXPECTED_API_GENERATION, INDIGO_DRIVER_API_GENERATION(info.version));
 	CHECK(!info.multi_device_support);
 	CHECK(driver_up());
 	assert_device_interface(INDIGO_INTERFACE_FOCUSER);

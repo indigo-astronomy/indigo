@@ -37,7 +37,7 @@
 #endif
 
 #define DEVICE_NAME "GPSD Client"
-#define EXPECTED_VERSION 0x03000005
+#define EXPECTED_API_GENERATION INDIGO_DRIVER_API_3
 #define EXPECTED_LABEL "GPS Service Daemon (GPSD) Client"
 #define PROPERTIES 48
 #define WAIT_STEPS 500
@@ -641,7 +641,7 @@ static void metadata_and_properties(void) {
 	CHECK_EQ(INDIGO_OK, indigo_gps_gpsd(INDIGO_DRIVER_INFO, &info));
 	CHECK_STR("indigo_gps_gpsd", info.name);
 	CHECK_STR(EXPECTED_LABEL, info.description);
-	CHECK_EQ(EXPECTED_VERSION, info.version);
+	CHECK_EQ(EXPECTED_API_GENERATION, INDIGO_DRIVER_API_GENERATION(info.version));
 	CHECK(!info.multi_device_support);
 	reset_state();
 	CHECK(start_external_serial_simulator(&simulator, GPS_GPSD_SIMULATOR_EXECUTABLE));

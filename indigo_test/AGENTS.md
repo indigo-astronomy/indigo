@@ -67,6 +67,25 @@ After validating changes that build tests, run `make -C indigo_test test-clean` 
 - Avoid long sleeps. Use bounded polling helpers for asynchronous bus or simulator behavior.
 - Never change any file outside indigo_test folder.
 
+## Driver Version Assertions
+
+Never assert an exact `DRIVER_VERSION`. Driver build numbers are bumped on every behaviour fix, so
+a pinned value turns the next ordinary driver change into an unrelated test failure that has to be
+chased and edited by hand.
+
+Assert the API generation the driver reports instead, using the helpers in `test_runner.h`:
+
+```c
+ASSERT_EQ_INT(INDIGO_DRIVER_API_3, INDIGO_DRIVER_API_GENERATION(info.version));
+```
+
+`INDIGO_DRIVER_API_GENERATION()` masks out everything but the top byte of `DRIVER_VERSION`, which
+only changes when a driver is migrated to another INDIGO driver API. Where a test needs the value
+per build configuration, define `EXPECTED_API_GENERATION` as `INDIGO_DRIVER_API_2` or
+`INDIGO_DRIVER_API_3` rather than a full version constant.
+
+The same applies to any other value the driver bumps routinely. Assert the contract, not the build.
+
 ## Unit Test Rules
 
 - Unit tests should be deterministic and hardware-free.

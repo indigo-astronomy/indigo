@@ -613,7 +613,7 @@ static bool wait_axis_state(bool ra, indigo_property_state state) {
 static void metadata_and_property_contract(void) {
 	indigo_driver_info info = { 0 };
 	ASSERT_EQ_INT(INDIGO_OK, indigo_guider_asi(INDIGO_DRIVER_INFO, &info));
-	ASSERT_EQ_INT(0x03000008, info.version);
+	ASSERT_EQ_INT(INDIGO_DRIVER_API_3, INDIGO_DRIVER_API_GENERATION(info.version));
 	ASSERT_TRUE(!strcmp("ZWO ASI USB-St4 Guider", info.description));
 	ASSERT_TRUE(begin_driver(&guider7, 1));
 	enumerate_simulator_device();

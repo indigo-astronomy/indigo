@@ -35,7 +35,7 @@
 #define OAF_REFERENCE_TRACE_PATH "fixtures/focuser_astroasis/generated_reference_trace.txt"
 #endif
 
-#define EXPECTED_VERSION 0x0300000A
+#define EXPECTED_API_GENERATION INDIGO_DRIVER_API_3
 #define CUSTOM_PREFIX "X_"
 #define BEEP_ON_POWER_UP_NAME CUSTOM_PREFIX "BEEP_ON_POWER_UP_PROPERTY"
 #define BEEP_ON_MOVE_NAME CUSTOM_PREFIX "BEEP_ON_MOVE_PROPERTY"
@@ -1237,7 +1237,7 @@ static void metadata_and_property_inventory(void) {
 	CHECK_EQ(INDIGO_OK, indigo_focuser_astroasis(INDIGO_DRIVER_INFO, &info));
 	CHECK_STR("indigo_focuser_astroasis", info.name);
 	CHECK_STR("Astroasis Oasis Focuser", info.description);
-	CHECK_EQ(EXPECTED_VERSION, info.version);
+	CHECK_EQ(EXPECTED_API_GENERATION, INDIGO_DRIVER_API_GENERATION(info.version));
 	CHECK(!info.multi_device_support);
 	reset_all(2);
 	snprintf(fakes[1].friendly, sizeof(fakes[1].friendly), "%s", "");

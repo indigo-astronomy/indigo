@@ -432,7 +432,7 @@ static void schema_and_lifecycle(void) {
 	indigo_driver_info info;
 	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_scripting(INDIGO_DRIVER_INFO, &info));
 	ASSERT_STREQ("indigo_agent_scripting", info.name);
-	ASSERT_EQ_INT(0x0300000D, info.version);
+	ASSERT_EQ_INT(INDIGO_DRIVER_API_3, INDIGO_DRIVER_API_GENERATION(info.version));
 	ASSERT_FALSE(info.multi_device_support);
 	unsigned before = revision(RUN);
 	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_scripting(INDIGO_DRIVER_INIT, NULL));

@@ -587,7 +587,7 @@ static void schema_and_metadata(void) {
 	indigo_driver_info info = { 0 };
 	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_astrometry(INDIGO_DRIVER_INFO, &info));
 	ASSERT_STREQ("indigo_agent_astrometry", info.name);
-	ASSERT_EQ_INT(0x02000017, info.version);
+	ASSERT_EQ_INT(INDIGO_DRIVER_API_2, INDIGO_DRIVER_API_GENERATION(info.version));
 	const struct { const char *name; int type; int perm; int count; } expected[] = {
 		{ INDEX_41, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 13 },
 		{ INDEX_42, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 20 },

@@ -52,7 +52,7 @@
 
 #ifdef NEXDOME3_ORIGINAL_DRIVER
 #define NEXDOME3_REFERENCE_TRACE_PATH "fixtures/dome_nexdome3/original_reference_trace.txt"
-#define EXPECTED_VERSION 0x02000000B
+#define EXPECTED_API_GENERATION INDIGO_DRIVER_API_2
 #define FIND_HOME_PROPERTY "NEXDOME_FIND_HOME"
 #define HOME_POSITION_PROPERTY "NEXDOME_HOME_POSITION"
 #define THRESHOLD_PROPERTY "NEXDOME_MOVE_THRESHOLD"
@@ -65,7 +65,7 @@
 #define XB_PROPERTY "NEXDOME_XB_STATE"
 #else
 #define NEXDOME3_REFERENCE_TRACE_PATH "fixtures/dome_nexdome3/generated_reference_trace.txt"
-#define EXPECTED_VERSION 0x0300000E
+#define EXPECTED_API_GENERATION INDIGO_DRIVER_API_3
 #define FIND_HOME_PROPERTY "X_FIND_HOME"
 #define HOME_POSITION_PROPERTY "X_HOME_POSITION"
 #define THRESHOLD_PROPERTY "X_MOVE_THRESHOLD"
@@ -1174,7 +1174,7 @@ static void metadata_before_connection(void) {
 	CHECK_EQ(INDIGO_OK, indigo_dome_nexdome3(INDIGO_DRIVER_INFO, &info));
 	CHECK_STR(EXPECTED_LABEL, info.description);
 	CHECK_STR("indigo_dome_nexdome3", info.name);
-	CHECK_EQ(EXPECTED_VERSION, info.version);
+	CHECK_EQ(EXPECTED_API_GENERATION, INDIGO_DRIVER_API_GENERATION(info.version));
 	CHECK(!info.multi_device_support);
 	CHECK(driver_up());
 	assert_device_interface(INDIGO_INTERFACE_DOME);

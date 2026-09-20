@@ -51,7 +51,7 @@
 
 #ifdef NEXDOME_ORIGINAL_DRIVER
 #define NEXDOME_REFERENCE_TRACE_PATH "fixtures/dome_nexdome/original_reference_trace.txt"
-#define EXPECTED_VERSION 0x020000009
+#define EXPECTED_API_GENERATION INDIGO_DRIVER_API_2
 #define REVERSED_PROPERTY "NEXDOME_REVERSED"
 #define RESET_PROPERTY "NEXDOME_RESET_SHUTTER_COMM"
 #define FIND_HOME_PROPERTY "NEXDOME_FIND_HOME"
@@ -60,7 +60,7 @@
 #define POWER_PROPERTY "NEXDOME_POWER"
 #else
 #define NEXDOME_REFERENCE_TRACE_PATH "fixtures/dome_nexdome/generated_reference_trace.txt"
-#define EXPECTED_VERSION 0x0300000C
+#define EXPECTED_API_GENERATION INDIGO_DRIVER_API_3
 #define REVERSED_PROPERTY "X_REVERSED"
 #define RESET_PROPERTY "X_RESET_SHUTTER_COMM"
 #define FIND_HOME_PROPERTY "X_FIND_HOME"
@@ -1162,7 +1162,7 @@ static void metadata_before_connection(void) {
 	CHECK_EQ(INDIGO_OK, indigo_dome_nexdome(INDIGO_DRIVER_INFO, &info));
 	CHECK_STR(EXPECTED_LABEL, info.description);
 	CHECK_STR("indigo_dome_nexdome", info.name);
-	CHECK_EQ(EXPECTED_VERSION, info.version);
+	CHECK_EQ(EXPECTED_API_GENERATION, INDIGO_DRIVER_API_GENERATION(info.version));
 	CHECK(!info.multi_device_support);
 	CHECK(driver_up());
 	assert_device_interface(INDIGO_INTERFACE_DOME);

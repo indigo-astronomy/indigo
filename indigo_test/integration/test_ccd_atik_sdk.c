@@ -828,7 +828,7 @@ static void metadata_profiles(void) {
 	}
 	indigo_driver_info info;
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_atik(INDIGO_DRIVER_INFO, &info));
-	ASSERT_EQ_INT(0x03000026, info.version);
+	ASSERT_EQ_INT(INDIGO_DRIVER_API_3, INDIGO_DRIVER_API_GENERATION(info.version));
 	ASSERT_EQ_INT(-1, state(0, "X_PRESETS"));
 	ASSERT_TRUE(connect_device(0, true));
 	const char *props[] = { "CCD_INFO", "CCD_READ_MODE", "CCD_GAIN", "CCD_OFFSET", "X_PRESETS", "X_WINDOW_HEATER", "CCD_TEMPERATURE", "CCD_COOLER", "CCD_COOLER_POWER" };
