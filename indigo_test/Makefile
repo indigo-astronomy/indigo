@@ -227,7 +227,7 @@ WHEEL_QHY_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_qhy.a $(TEST_LD
 WHEEL_OPTEC_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_optec.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_FC3_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_fc3.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_EFA_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_efa.a $(TEST_LDFLAGS) -lindigocat
-FOCUSER_DMFC_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_dmfc.a $(TEST_LDFLAGS) -lindigocat
+FOCUSER_DMFC_SIMULATOR_TEST_LDFLAGS = $(INTEGRATION_BUILD)/focuser_dmfc_test_driver.o $(TEST_LDFLAGS) -lindigocat
 FOCUSER_DSD_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_dsd.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_FOCUSDREAMPRO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_focusdreampro.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_IOPTRON_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_ioptron.a $(TEST_LDFLAGS) -lindigocat
@@ -838,7 +838,10 @@ $(INTEGRATION_BUILD)/test_focuser_efa_simulator: integration/test_focuser_efa_si
 $(INTEGRATION_BUILD)/test_focuser_efa_simulator_asan: integration/test_focuser_efa_simulator.c ../indigo_drivers/focuser_efa/indigo_focuser_efa.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_efa_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_efa/indigo_focuser_efa.c $(TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_dmfc_simulator: integration/test_focuser_dmfc_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_dmfc_simulator $(BUILD_DRIVERS)/indigo_focuser_dmfc.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/focuser_dmfc_test_driver.o: ../indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.c | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=dmfc_test_config_folder -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_focuser_dmfc_simulator: integration/test_focuser_dmfc_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_dmfc_simulator $(INTEGRATION_BUILD)/focuser_dmfc_test_driver.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_DMFC_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_dsd_simulator: integration/test_focuser_dsd_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/focuser_dsd/original_reference_trace.txt fixtures/focuser_dsd/generated_reference_trace.txt $(INTEGRATION_BUILD)/focuser_dsd_simulator $(BUILD_DRIVERS)/indigo_focuser_dsd.a | $(INTEGRATION_BUILD)

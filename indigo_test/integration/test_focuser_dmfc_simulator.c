@@ -21,12 +21,13 @@
 #include <indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.h>
 
 #include "serial_simulator_test_common.h"
+#include <errno.h>
+#include <sys/wait.h>
 
 #ifndef FOCUSER_DMFC_SIMULATOR_EXECUTABLE
 #define FOCUSER_DMFC_SIMULATOR_EXECUTABLE "build/integration/focuser_dmfc_simulator"
 #endif
 
-#define FOCUSER_DMFC_NAME                         "Pegasus DMFC"
 #define X_FOCUSER_MOTOR_TYPE_PROPERTY_NAME       "X_FOCUSER_MOTOR_TYPE"
 #define X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM_NAME   "STEPPER"
 #define X_FOCUSER_MOTOR_TYPE_DC_ITEM_NAME        "DC"
@@ -37,23 +38,234 @@
 #define X_FOCUSER_LED_ENABLED_ITEM_NAME          "ENABLED"
 #define X_FOCUSER_LED_DISABLED_ITEM_NAME         "DISABLED"
 
+static char config_folder[] = "/tmp/indigo-dmfc-config-XXXXXX";
+
+// The driver saves FOCUSER_LIMITS through the framework, so the CONFIG
+// roundtrip is redirected into a scratch directory instead of the user profile.
+const char *dmfc_test_config_folder(void) {
+	return config_folder;
+}
+
 static const simulator_driver_case dmfc_focuser = {
 	"PegasusAstro DMFC Focuser",
 	"indigo_focuser_dmfc",
-	FOCUSER_DMFC_NAME,
+	"Pegasus DMFC",
 	indigo_focuser_dmfc,
 	false,
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
 
-static void dmfc_focuser_passes_serial_compliance_checks(void) {
-	external_serial_simulator simulator = { 0 };
+static external_serial_simulator fixture;
+static char fixture_directory[] = "/tmp/indigo-dmfc.XXXXXX";
+static char event_path[PATH_MAX], fault_path[PATH_MAX];
 
-	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_DMFC_SIMULATOR_EXECUTABLE));
-	SERIAL_CHECK_TRUE(start_serial_driver(&dmfc_focuser, simulator.port));
+// ----------------------------------------------------------------- fixtures
+
+// Arm a one-shot controller fault. The simulator applies it to the next
+// request whose text starts with command and then removes the control file.
+static bool fault(const char *command, const char *action) {
+	char temporary[PATH_MAX + 8];
+	snprintf(temporary, sizeof(temporary), "%s.tmp", fault_path);
+	FILE *file = fopen(temporary, "w");
+	if (file == NULL) {
+		return false;
+	}
+	fprintf(file, "%s %s\n", command, action);
+	fclose(file);
+	return rename(temporary, fault_path) == 0;
+}
+
+static int commands(const char *prefix) {
+	FILE *file = fopen(event_path, "r");
+	if (file == NULL) {
+		return -1;
+	}
+	char line[256];
+	int count = 0;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		if (!strncmp(line, prefix, strlen(prefix))) {
+			count++;
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+static void print_journal(const char *reason) {
+	fprintf(stderr, "%s, journal holds:\n", reason);
+	FILE *file = fopen(event_path, "r");
+	if (file == NULL) {
+		fprintf(stderr, "  (no journal at %s)\n", event_path);
+		return;
+	}
+	char line[256];
+	while (fgets(line, sizeof(line), file) != NULL) {
+		fprintf(stderr, "  %s", line);
+	}
+	fclose(file);
+}
+
+// The driver publishes a property state as soon as its write returns, so the
+// controller may not have logged the request yet. Every journal assertion
+// therefore waits for the simulator to catch up.
+static bool wait_for_commands(const char *prefix, int expected) {
+	for (int i = 0; i < 200; i++) {
+		if (commands(prefix) >= expected) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	char reason[64];
+	snprintf(reason, sizeof(reason), "Fewer than %d '%s' requests", expected, prefix);
+	print_journal(reason);
+	return false;
+}
+
+// Argument of the most recent request with the given prefix, so a test can
+// assert the value and the sign the driver actually put on the wire.
+static long last_argument(const char *prefix) {
+	FILE *file = fopen(event_path, "r");
+	if (file == NULL) {
+		return LONG_MIN;
+	}
+	char line[256];
+	long value = LONG_MIN;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		if (!strncmp(line, prefix, strlen(prefix))) {
+			value = atol(line + strlen(prefix));
+		}
+	}
+	fclose(file);
+	return value;
+}
+
+static bool last_argument_is(const char *prefix, long expected) {
+	for (int i = 0; i < 200; i++) {
+		if (last_argument(prefix) == expected) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	char reason[64];
+	snprintf(reason, sizeof(reason), "'%s' argument is not %ld", prefix, expected);
+	print_journal(reason);
+	return false;
+}
+
+// ----------------------------------------------------------------- helpers
+
+static bool number_change(const char *property, const char *item, double value, indigo_property_state state) {
+	unsigned int revision = property_revision(property);
+	return indigo_change_number_property_1(&simulator_test_client, dmfc_focuser.device_name, property, item, value) == INDIGO_OK && wait_for_property_state_after(property, state, revision);
+}
+
+static bool switch_change(const char *property, const char *item, indigo_property_state state) {
+	unsigned int revision = property_revision(property);
+	return indigo_change_switch_property_1(&simulator_test_client, dmfc_focuser.device_name, property, item, true) == INDIGO_OK && wait_for_property_state_after(property, state, revision);
+}
+
+static bool number_is(const char *property_name, const char *item_name, double expected, double tolerance) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL || fabs(item->number.value - expected) > tolerance) {
+		fprintf(stderr, "%s.%s: expected %g, received %g\n", property_name, item_name, expected, item == NULL ? NAN : item->number.value);
+		return false;
+	}
+	return true;
+}
+
+static bool switch_is(const char *property_name, const char *item_name, bool expected) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL || item->sw.value != expected) {
+		fprintf(stderr, "%s.%s: expected %s\n", property_name, item_name, expected ? "on" : "off");
+		return false;
+	}
+	return true;
+}
+
+static bool text_is(const char *property_name, const char *item_name, const char *expected) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL || strcmp(item->text.value, expected)) {
+		fprintf(stderr, "%s.%s: expected \"%s\", received \"%s\"\n", property_name, item_name, expected, item == NULL ? "(none)" : item->text.value);
+		return false;
+	}
+	return true;
+}
+
+static bool position_is(double expected) {
+	return wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, expected, 1);
+}
+
+// Wait until the controller reports a position strictly between origin and
+// target, so an abort really interrupts a running motion. The requested target
+// itself does not count, because the bus publishes it as soon as the request is
+// accepted.
+static bool position_in_motion(double origin, double target) {
+	for (int i = 0; i < 400; i++) {
+		indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+		if (item != NULL && item->number.value > origin && item->number.value < target) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	fprintf(stderr, "Position never moved between %g and %g\n", origin, target);
+	return false;
+}
+
+static bool goto_position(double position, indigo_property_state state) {
+	return switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE) && number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, position, state);
+}
+
+static bool sync_position(double position) {
+	return switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE) && number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, position, INDIGO_OK_STATE);
+}
+
+static bool driver_up(void) {
+	return bring_up_serial_driver(&dmfc_focuser);
+}
+
+static bool driver_start(void) {
+	return driver_up() && connect_serial_device(&dmfc_focuser, fixture.port);
+}
+
+static void driver_stop(void) {
+	if (context.connected) {
+		disconnect_serial_device(&dmfc_focuser);
+	}
+	tear_down_serial_driver(&dmfc_focuser);
+}
+
+// ----------------------------------------------------------------- identity and lifecycle
+
+static void metadata(void) {
+	assert_simulator_driver_info(&dmfc_focuser);
+	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
-
 	assert_device_interface(INDIGO_INTERFACE_FOCUSER);
+	// The handshake identifies the controller, then the status line replaces
+	// the model with the name the firmware reports.
+	SERIAL_CHECK_TRUE(wait_for_commands("#", 1));
+	SERIAL_CHECK_TRUE(wait_for_commands("V", 1));
+	SERIAL_CHECK_TRUE(wait_for_commands("A", 1));
+	// INFO is published during the handshake, before the status line is parsed,
+	// so the identity the driver ended up with is read through a fresh
+	// enumeration rather than from the update sent while connecting.
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "DMFCN"));
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, "2.6"));
+cleanup:
+	driver_stop();
+}
+
+static void property_contract(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	reset_simulator_context(&dmfc_focuser);
+	enumerate_simulator_device();
+	// Driver defined properties appear only with a connected controller.
+	SERIAL_CHECK_TRUE(!has_defined_property(X_FOCUSER_MOTOR_TYPE_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(X_FOCUSER_ENCODER_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(X_FOCUSER_LED_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(connect_serial_device(&dmfc_focuser, fixture.port));
+	assert_serial_focuser_class_property_completeness();
 	assert_property_has_item(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME);
 	assert_property_has_item(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME);
 	assert_property_has_item(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME);
@@ -75,51 +287,525 @@ static void dmfc_focuser_passes_serial_compliance_checks(void) {
 	assert_property_has_item(X_FOCUSER_LED_PROPERTY_NAME, X_FOCUSER_LED_ENABLED_ITEM_NAME);
 	assert_property_has_item(X_FOCUSER_LED_PROPERTY_NAME, X_FOCUSER_LED_DISABLED_ITEM_NAME);
 	assert_number_item_in_range(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, dmfc_focuser.device_name, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 500));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_SPEED_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, dmfc_focuser.device_name, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 25));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_BACKLASH_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dmfc_focuser.device_name, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dmfc_focuser.device_name, X_FOCUSER_MOTOR_TYPE_PROPERTY_NAME, X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(X_FOCUSER_MOTOR_TYPE_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dmfc_focuser.device_name, X_FOCUSER_ENCODER_PROPERTY_NAME, X_FOCUSER_ENCODER_DISABLED_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(X_FOCUSER_ENCODER_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dmfc_focuser.device_name, X_FOCUSER_LED_PROPERTY_NAME, X_FOCUSER_LED_ENABLED_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(X_FOCUSER_LED_PROPERTY_NAME, INDIGO_OK_STATE));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dmfc_focuser.device_name, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, dmfc_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dmfc_focuser.device_name, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, dmfc_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1250));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1250, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dmfc_focuser.device_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_DIRECTION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, dmfc_focuser.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 50));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1200, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dmfc_focuser.device_name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-
+	// FOCUSER_MODE and FOCUSER_COMPENSATION stay hidden, the controller has no
+	// temperature compensation of its own.
+	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_MODE_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_COMPENSATION_PROPERTY_NAME));
+	indigo_item *speed = find_cached_item(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME);
+	SERIAL_CHECK_TRUE(speed != NULL && speed->number.min == 100 && speed->number.max == 1000);
+	indigo_item *steps = find_cached_item(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME);
+	SERIAL_CHECK_TRUE(steps != NULL && steps->number.min == 1 && steps->number.max == 9999999);
+	indigo_item *backlash = find_cached_item(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME);
+	SERIAL_CHECK_TRUE(backlash != NULL && backlash->number.min == 0 && backlash->number.max == 9999);
+	// Values below come from the status line the controller answered.
+	SERIAL_CHECK_TRUE(position_is(50));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 22.4, .05));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 100, 0));
+	SERIAL_CHECK_TRUE(switch_is(X_FOCUSER_MOTOR_TYPE_PROPERTY_NAME, X_FOCUSER_MOTOR_TYPE_DC_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(X_FOCUSER_LED_PROPERTY_NAME, X_FOCUSER_LED_DISABLED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(X_FOCUSER_ENCODER_PROPERTY_NAME, X_FOCUSER_ENCODER_ENABLED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME, true));
 cleanup:
-	if (context.connected) {
-		stop_serial_driver(&dmfc_focuser);
-	}
-	stop_external_serial_simulator(&simulator);
+	driver_stop();
 }
 
-int main(void) {
-	const indigo_test_case tests[] = {
-		{ "dmfc_focuser_passes_serial_compliance_checks", dmfc_focuser_passes_serial_compliance_checks },
+// Every field of the status line has to reach its property, so the scenario
+// connects to a controller whose settings all differ from the defaults.
+static void status_readback(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_is(X_FOCUSER_MOTOR_TYPE_PROPERTY_NAME, X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(X_FOCUSER_LED_PROPERTY_NAME, X_FOCUSER_LED_ENABLED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(X_FOCUSER_ENCODER_PROPERTY_NAME, X_FOCUSER_ENCODER_DISABLED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 42, 0));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, -5.5, .05));
+	SERIAL_CHECK_TRUE(position_is(1234));
+cleanup:
+	driver_stop();
+}
+
+// A controller that answers the handshake with something other than OK_ must
+// not be reported as connected, and must leave no driver properties behind.
+static void handshake_rejected(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(!connect_serial_device(&dmfc_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, context.last_connection_state);
+	SERIAL_CHECK_TRUE(find_cached_property(X_FOCUSER_MOTOR_TYPE_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(X_FOCUSER_ENCODER_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(X_FOCUSER_LED_PROPERTY_NAME) == NULL);
+	// A second attempt must fail the same way instead of inheriting state.
+	SERIAL_CHECK_TRUE(!connect_serial_device(&dmfc_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(!context.connected);
+cleanup:
+	driver_stop();
+}
+
+// A controller that does not answer the handshake at all fails the same way,
+// and the port must be released so the next attempt can succeed.
+static void handshake_timeout(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(fault("#", "silent"));
+	SERIAL_CHECK_TRUE(!connect_serial_device(&dmfc_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_serial_device(&dmfc_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(goto_position(400, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(400));
+cleanup:
+	driver_stop();
+}
+
+// The status query is optional; a controller that refuses it still connects,
+// but the driver must keep the values it knows instead of inventing new ones.
+static void status_query_failure(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "DMFC Focuser"));
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, "2.6"));
+	// The polling loop supplies the position even without the status line.
+	SERIAL_CHECK_TRUE(position_is(50));
+	SERIAL_CHECK_TRUE(goto_position(700, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(700));
+cleanup:
+	driver_stop();
+}
+
+static void repeated_init_shutdown(void) {
+	for (int i = 0; i < 3; i++) {
+		SERIAL_CHECK_TRUE(driver_start());
+		disconnect_serial_device(&dmfc_focuser);
+		SERIAL_CHECK_TRUE(!context.connected);
+		tear_down_serial_driver(&dmfc_focuser);
+	}
+	return;
+cleanup:
+	driver_stop();
+}
+
+static void shutdown_rejected_while_connected(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, dmfc_focuser.entry(INDIGO_DRIVER_SHUTDOWN, NULL));
+	// The rejected shutdown must leave the connected device fully operational.
+	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(300));
+cleanup:
+	driver_stop();
+}
+
+static void reconnect(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_position(800));
+	disconnect_serial_device(&dmfc_focuser);
+	SERIAL_CHECK_TRUE(!context.connected);
+	for (int i = 0; i < 50 && find_cached_property(X_FOCUSER_MOTOR_TYPE_PROPERTY_NAME) != NULL; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(find_cached_property(X_FOCUSER_MOTOR_TYPE_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(X_FOCUSER_ENCODER_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(X_FOCUSER_LED_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(connect_serial_device(&dmfc_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(find_cached_property(X_FOCUSER_MOTOR_TYPE_PROPERTY_NAME) != NULL);
+	// The reconnected driver reads the synced coordinate back from the device.
+	SERIAL_CHECK_TRUE(position_is(800));
+	SERIAL_CHECK_TRUE(goto_position(1000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(1000));
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- motion
+
+static void sync_and_goto(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_position(4000));
+	SERIAL_CHECK_TRUE(last_argument_is("W:", 4000));
+	SERIAL_CHECK_TRUE(position_is(4000));
+	// A sync is a coordinate update, it must not command a motion.
+	SERIAL_CHECK_EQ_INT(0, commands("M:"));
+	SERIAL_CHECK_EQ_INT(0, commands("G:"));
+	SERIAL_CHECK_TRUE(goto_position(5000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("M:", 5000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(5000));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+cleanup:
+	driver_stop();
+}
+
+// Requesting the position the focuser already holds is still a GOTO for this
+// controller; it has to settle without leaving the property busy.
+static void goto_no_op(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_position(2000));
+	SERIAL_CHECK_TRUE(goto_position(2000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(2000));
+cleanup:
+	driver_stop();
+}
+
+// Relative moves are sent as a signed step count, inward positive.
+static void relative_move(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_position(3000));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 600, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("G:", 600));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(3600));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 1000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("G:", -1000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(2600));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+// The driver, not the controller, enforces FOCUSER_LIMITS on an absolute move.
+static void limits_clamp_goto(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_position(1000));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME, 500, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 1500, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(goto_position(9000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("M:", 1500));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(1500));
+	SERIAL_CHECK_TRUE(goto_position(-9000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("M:", 500));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(500));
+	// The clamp applies to a sync as well.
+	SERIAL_CHECK_TRUE(sync_position(9000));
+	SERIAL_CHECK_TRUE(last_argument_is("W:", 1500));
+cleanup:
+	driver_stop();
+}
+
+static void motion_progress_and_abort(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_position(1000));
+	SERIAL_CHECK_TRUE(goto_position(90000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("M:", 90000));
+	// The absolute move publishes the relative one as busy as well, so a client
+	// cannot start a second motion through the other property.
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_in_motion(1000, 90000));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_commands("H", 1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	// The value published with the abort is the last polled one, so the
+	// settled coordinate is taken from the poll that follows it.
+	indigo_usleep(1500000);
+	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	printf("Aborted at %g of 90000\n", stopped);
+	SERIAL_CHECK_TRUE(stopped > 1000 && stopped < 90000);
+	// Nothing may keep moving once the abort was acknowledged.
+	indigo_usleep(2000000);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) - stopped) <= 1);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	// A fresh move has to be accepted right after the abort.
+	SERIAL_CHECK_TRUE(sync_position(2000));
+	SERIAL_CHECK_TRUE(goto_position(2400, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(2400));
+cleanup:
+	driver_stop();
+}
+
+static void abort_while_idle(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_position(1200));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(1200));
+	SERIAL_CHECK_TRUE(goto_position(1600, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(1600));
+cleanup:
+	driver_stop();
+}
+
+// A second motion request that arrives while one is running is refused, and
+// the refusal must restore the values the driver actually holds.
+static void overlap_rejected(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_position(1000));
+	SERIAL_CHECK_TRUE(goto_position(90000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
+	SERIAL_CHECK_EQ_INT(0, commands("G:"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+	// The same guard protects a running relative move from an absolute request.
+	SERIAL_CHECK_TRUE(sync_position(1000));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 80000, INDIGO_BUSY_STATE));
+	int absolute_moves = commands("M:");
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000));
+	SERIAL_CHECK_EQ_INT(absolute_moves, commands("M:"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+// The controller is already moving when the driver connects, so the status
+// line and the polling loop, not a driver request, drive the motion properties.
+static void external_motion_observed(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(position_in_motion(50, 3000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(3000));
+	// The driver never commanded that motion.
+	SERIAL_CHECK_EQ_INT(0, commands("M:"));
+	SERIAL_CHECK_EQ_INT(0, commands("G:"));
+cleanup:
+	driver_stop();
+}
+
+static void disconnect_during_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_position(1000));
+	SERIAL_CHECK_TRUE(goto_position(6000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_in_motion(1000, 6000));
+	disconnect_serial_device(&dmfc_focuser);
+	SERIAL_CHECK_TRUE(!context.connected);
+	// Polling must stop with the connection; no further request may be sent.
+	int polls = commands("P");
+	indigo_usleep(2500000);
+	SERIAL_CHECK_EQ_INT(polls, commands("P"));
+	// The controller kept running, so the reconnected driver simply reads the
+	// motion it missed back from the device.
+	SERIAL_CHECK_TRUE(connect_serial_device(&dmfc_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(6000));
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- settings
+
+static void controller_settings(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 500, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("S:", 500));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("C:", 25));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("N:", 1));
+	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_MOTOR_TYPE_PROPERTY_NAME, X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("R:", 1));
+	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_ENCODER_PROPERTY_NAME, X_FOCUSER_ENCODER_DISABLED_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("E:", 1));
+	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_LED_PROPERTY_NAME, X_FOCUSER_LED_ENABLED_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("L:", 1));
+	// What the driver wrote has to be what it reads back on the next connect.
+	disconnect_serial_device(&dmfc_focuser);
+	SERIAL_CHECK_TRUE(connect_serial_device(&dmfc_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 25, 0));
+	SERIAL_CHECK_TRUE(switch_is(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(X_FOCUSER_MOTOR_TYPE_PROPERTY_NAME, X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(X_FOCUSER_ENCODER_PROPERTY_NAME, X_FOCUSER_ENCODER_DISABLED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(X_FOCUSER_LED_PROPERTY_NAME, X_FOCUSER_LED_ENABLED_ITEM_NAME, true));
+	// The controller keeps the disabled encoder, so a move is still reported.
+	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_ENCODER_PROPERTY_NAME, X_FOCUSER_ENCODER_ENABLED_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("E:", 0));
+cleanup:
+	driver_stop();
+}
+
+// Each settings command is acknowledged by the controller, so a lost
+// acknowledgement has to surface as ALERT rather than a silent success.
+static void settings_reported_failures(void) {
+	static const struct { const char *command; const char *property; const char *item; } switches[] = {
+		{ "R:", X_FOCUSER_MOTOR_TYPE_PROPERTY_NAME, X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM_NAME },
+		{ "E:", X_FOCUSER_ENCODER_PROPERTY_NAME, X_FOCUSER_ENCODER_DISABLED_ITEM_NAME },
+		{ "L:", X_FOCUSER_LED_PROPERTY_NAME, X_FOCUSER_LED_ENABLED_ITEM_NAME },
+		{ "N:", FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME }
 	};
-	return indigo_run_tests("DMFC serial simulator integration tests", tests, ARRAY_SIZE(tests));
+	SERIAL_CHECK_TRUE(driver_start());
+	for (int i = 0; i < ARRAY_SIZE(switches); i++) {
+		SERIAL_CHECK_TRUE(fault(switches[i].command, "silent"));
+		SERIAL_CHECK_TRUE(switch_change(switches[i].property, switches[i].item, INDIGO_ALERT_STATE));
+	}
+	// A garbled acknowledgement is still an answer, so the driver accepts it.
+	SERIAL_CHECK_TRUE(fault("L:", "garbage"));
+	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_LED_PROPERTY_NAME, X_FOCUSER_LED_DISABLED_ITEM_NAME, INDIGO_OK_STATE));
+	// Every control keeps working once the controller answers again.
+	for (int i = 0; i < ARRAY_SIZE(switches); i++) {
+		SERIAL_CHECK_TRUE(switch_change(switches[i].property, switches[i].item, INDIGO_OK_STATE));
+	}
+cleanup:
+	driver_stop();
+}
+
+// FOCUSER_LIMITS is the one setting the driver persists itself.
+static void limits_configuration_roundtrip(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME, 250, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 3750, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME, INDIGO_OK_STATE));
+	disconnect_serial_device(&dmfc_focuser);
+	tear_down_serial_driver(&dmfc_focuser);
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 9999999, 0));
+	SERIAL_CHECK_TRUE(switch_change(CONFIG_PROPERTY_NAME, CONFIG_LOAD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 3750, 0));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME, 250, 0));
+	// The restored limits have to govern the next absolute move.
+	SERIAL_CHECK_TRUE(goto_position(9000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("M:", 3750));
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- polling and transport
+
+static void temperature_polling(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 22.4, .05));
+	int before = commands("T");
+	SERIAL_CHECK_TRUE(before >= 1);
+	indigo_usleep(2500000);
+	SERIAL_CHECK_TRUE(commands("T") > before);
+	SERIAL_CHECK_TRUE(commands("P") > 1);
+	SERIAL_CHECK_TRUE(commands("I") > 1);
+cleanup:
+	driver_stop();
+}
+
+// A lost poll answer must not corrupt the published position, and the loop has
+// to keep running so the next poll recovers.
+static void poll_failure_recovery(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_position(1500));
+	SERIAL_CHECK_TRUE(fault("P", "silent"));
+	indigo_usleep(1500000);
+	SERIAL_CHECK_TRUE(position_is(1500));
+	SERIAL_CHECK_TRUE(fault("I", "garbage"));
+	indigo_usleep(1500000);
+	SERIAL_CHECK_TRUE(position_is(1500));
+	int polls = commands("P");
+	indigo_usleep(2500000);
+	SERIAL_CHECK_TRUE(commands("P") > polls);
+	SERIAL_CHECK_TRUE(goto_position(1900, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(1900));
+cleanup:
+	driver_stop();
+}
+
+// Losing the transport has to be reported on every request, including the ones
+// the protocol leaves unacknowledged, instead of being published as success.
+static void transport_loss(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_position(1000));
+	// The controller drops the line while answering a temperature poll; the
+	// logged poll is the gate that says the port is gone.
+	int polls = commands("T");
+	SERIAL_CHECK_TRUE(fault("T", "close"));
+	SERIAL_CHECK_TRUE(wait_for_commands("T", polls + 1));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 30, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 600, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_LED_PROPERTY_NAME, X_FOCUSER_LED_ENABLED_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(goto_position(2000, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_ALERT_STATE));
+	// The driver must still release the dead handle cleanly.
+	disconnect_serial_device(&dmfc_focuser);
+	SERIAL_CHECK_TRUE(!context.connected);
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- runner
+
+typedef struct { const char *name; void (*run)(void); const char *profile; } simulated_case;
+
+int main(void) {
+	const simulated_case cases[] = {
+		{ "metadata", metadata, "normal" },
+		{ "property_contract", property_contract, "normal" },
+		{ "status_readback", status_readback, "configured" },
+		{ "handshake_rejected", handshake_rejected, "no-handshake" },
+		{ "handshake_timeout", handshake_timeout, "normal" },
+		{ "status_query_failure", status_query_failure, "bad-status" },
+		{ "repeated_init_shutdown", repeated_init_shutdown, "normal" },
+		{ "shutdown_rejected_while_connected", shutdown_rejected_while_connected, "normal" },
+		{ "reconnect", reconnect, "normal" },
+		{ "sync_and_goto", sync_and_goto, "normal" },
+		{ "goto_no_op", goto_no_op, "normal" },
+		{ "relative_move", relative_move, "normal" },
+		{ "limits_clamp_goto", limits_clamp_goto, "normal" },
+		{ "motion_progress_and_abort", motion_progress_and_abort, "normal" },
+		{ "abort_while_idle", abort_while_idle, "normal" },
+		{ "overlap_rejected", overlap_rejected, "normal" },
+		{ "external_motion_observed", external_motion_observed, "external-motion" },
+		{ "disconnect_during_motion", disconnect_during_motion, "normal" },
+		{ "controller_settings", controller_settings, "normal" },
+		{ "settings_reported_failures", settings_reported_failures, "normal" },
+		{ "limits_configuration_roundtrip", limits_configuration_roundtrip, "normal" },
+		{ "temperature_polling", temperature_polling, "normal" },
+		{ "poll_failure_recovery", poll_failure_recovery, "normal" },
+		{ "transport_loss", transport_loss, "normal" }
+	};
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	if (mkdtemp(fixture_directory) == NULL || mkdtemp(config_folder) == NULL) {
+		fprintf(stderr, "Cannot create fixture directory\n");
+		return 1;
+	}
+	snprintf(event_path, sizeof(event_path), "%s/events.log", fixture_directory);
+	snprintf(fault_path, sizeof(fault_path), "%s/fault", fixture_directory);
+	setenv("INDIGO_DMFC_EVENTS", event_path, 1);
+	setenv("INDIGO_DMFC_FAULT", fault_path, 1);
+	const char *filter = getenv("DMFC_TEST_FILTER");
+	int failures = 0;
+	for (int i = 0; i < ARRAY_SIZE(cases); i++) {
+		if (filter != NULL && strstr(cases[i].name, filter) == NULL) {
+			continue;
+		}
+		unlink(fault_path);
+		const char *arguments[] = { "--profile", cases[i].profile, NULL, NULL };
+		if (getenv("DMFC_TEST_TRACE") != NULL) {
+			arguments[2] = "--trace";
+		}
+		if (!start_external_serial_simulator_with_args(&fixture, FOCUSER_DMFC_SIMULATOR_EXECUTABLE, arguments)) {
+			fprintf(stderr, "Simulator startup failed\n");
+			failures++;
+			break;
+		}
+		fflush(NULL);
+		pid_t child = fork();
+		if (child == 0) {
+			alarm(120);
+			indigo_test_case test = { cases[i].name, cases[i].run };
+			_exit(indigo_run_tests("Pegasus DMFC", &test, 1));
+		}
+		int status = 0;
+		if (child > 0) {
+			while (waitpid(child, &status, 0) < 0) {
+				if (errno != EINTR) {
+					status = -1;
+					break;
+				}
+			}
+		}
+		stop_external_serial_simulator(&fixture);
+		if (child < 0 || status == -1 || !WIFEXITED(status) || WEXITSTATUS(status)) {
+			failures++;
+			printf("FAIL: %s (exit=%d, signal=%d)\n", cases[i].name, WIFEXITED(status) ? WEXITSTATUS(status) : -1, WIFSIGNALED(status) ? WTERMSIG(status) : 0);
+		}
+	}
+	unlink(fault_path);
+	unlink(event_path);
+	rmdir(fixture_directory);
+	unsetenv("INDIGO_DMFC_EVENTS");
+	unsetenv("INDIGO_DMFC_FAULT");
+	printf("Pegasus DMFC: %d failing scenarios\n", failures);
+	return failures ? 1 : 0;
 }

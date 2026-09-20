@@ -79,7 +79,7 @@
 | focuser_askar           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
 | focuser_astroasis       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 33 / 0 | |
 | focuser_astromechanics  | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 11 / 0 | |
-| focuser_dmfc            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 1 / 0 | |
+| focuser_dmfc            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 25 / 0 | |
 | focuser_dsd             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 42 / 0 | |
 | focuser_efa             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 56 / 0 | |
 | focuser_fc3             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 1 / 0 | |
