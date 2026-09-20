@@ -1300,3 +1300,83 @@ explicitly approved before implementation, as the root `AGENTS.md` requires. D2 
 other generated mount drivers, all regenerated with their version incremented. D4 was made an
 opt-in generator attribute precisely so that the twenty other drivers sharing the same dispatch
 were left untouched.
+
+## Step 12 validation results
+
+Date: 2026-09-20
+
+Hardware acceptance run against the AZ-GTi, final run of the session, all cases passing:
+
+```
+make -C indigo_test test-mount-synscan-hw
+```
+
+Measured values from that run, for the record:
+
+- Identity: `Sky-Watcher SynScan`, `AZGTi`, firmware `3.16`.
+- Tracking holds the reported right ascension to 0.0014 degrees over 12 s; a stopped axis lets it
+  run away 0.0501 degrees over the same interval, against a sidereal expectation of 0.050.
+- Manual motion at the centring rate over 3 s: RA west -0.395 degrees, RA east +0.425, DEC north
+  +0.411, DEC south -0.407. Both axes move in both directions with the correct sign.
+- SYNC changed the reported coordinates without moving either axis; the raw declination was
+  identical before and after.
+- A three-degree slew arrived at RA 14.17953 DEC 57.00000 against a target of RA 14.17936 DEC
+  57.00000, and the requested post-slew tracking was started.
+- A slew aborted at the moment it was accepted left the mount at its starting declination, 40
+  degrees short of the abandoned target, reported `INDIGO_ALERT_STATE`, and accepted a fresh slew
+  immediately afterwards.
+- Park refused tracking, both motion axes and a goto, stopped the RA axis, and unparked cleanly.
+- Home reached the configured home position, stopped tracking and lit `MOUNT_STATE.HOME`.
+- Guide pulse travel, eight one-second pulses per direction at the 50 % guide rate, differential
+  between the two directions -0.0347 degrees against an expectation of about -0.033.
+- Guide pulse replacement: a 2000 ms north pulse replaced after 500 ms by a 600 ms north pulse
+  finished in 1239 ms; a 2500 ms north pulse replaced after 500 ms by a 500 ms south pulse
+  finished in 1231 ms; a 3000 ms north pulse replaced after 500 ms by a 500 ms north pulse
+  finished in 1168 ms. All three follow the new request, not the superseded one.
+- An unreachable endpoint was refused in 3.1 s, which is the three UDP attempts at one second each,
+  and the real mount was usable immediately afterwards.
+- No `Failed to read` occurred anywhere in the run, against three occurrences in the nine runs made
+  before D5 was fixed.
+
+Guide pulse duration accuracy, five samples per duration, mount tracking, guide rate 50 %:
+
+| Axis | Requested | Mean error | Mean absolute error | Min | Max |
+| --- | --- | --- | --- | --- | --- |
+| RA | 100 ms | +314.0 ms | 314.0 ms | +300.5 ms | +344.6 ms |
+| RA | 250 ms | +312.9 ms | 312.9 ms | +307.8 ms | +316.6 ms |
+| RA | 500 ms | +339.7 ms | 339.7 ms | +317.1 ms | +395.5 ms |
+| RA | 1000 ms | +310.8 ms | 310.8 ms | +292.1 ms | +327.9 ms |
+| RA | 2000 ms | +310.0 ms | 310.0 ms | +286.5 ms | +343.0 ms |
+| DEC | 100 ms | +173.1 ms | 173.1 ms | +138.8 ms | +186.8 ms |
+| DEC | 250 ms | +182.6 ms | 182.6 ms | +152.4 ms | +201.1 ms |
+| DEC | 500 ms | +183.5 ms | 183.5 ms | +167.8 ms | +207.9 ms |
+| DEC | 1000 ms | +183.6 ms | 183.6 ms | +151.9 ms | +208.9 ms |
+| DEC | 2000 ms | +166.7 ms | 166.7 ms | +143.2 ms | +198.7 ms |
+
+The error is a systematic overshoot, never an early finish, and it is independent of the requested
+duration, which is consistent with the fixed cost of the stop-and-restore work each finalizer does
+at the deadline. See the guide pulse accuracy section above for the mechanism. This is
+public-property completion timing, not an electrical measurement of the ST4 output.
+
+## Final test summary
+
+- Simulated tests run: 18. Passed: 18.
+  - `indigo_test/integration/test_mount_synscan_simulator.c`, run with
+    `./build/integration/test_mount_synscan_simulator` from `indigo_test`.
+  - Includes the three regression tests added by this validation:
+    `synscan_mount_keeps_state_when_parked_request_is_refused` for D2, the duration measurements in
+    `synscan_guider_passes_serial_compliance_checks` for D4, and
+    `synscan_mount_survives_lost_udp_replies` for D5.
+- Hardware tests run: 16. Passed: 16.
+  - `indigo_test/hardware/test_mount_synscan_hw.c`, run with
+    `make -C indigo_test test-mount-synscan-hw` against a Sky-Watcher AZ-GTi, firmware 3.16,
+    reached over UDP at `synscan://192.168.111.139:11880` through the driver's own broadcast
+    autodetection.
+  - Of the 16, one case, `synscan_runs_autohome`, reports the controller autohome procedure as not
+    applicable because this AZ-GTi has no home indexer on either axis. It is counted as passed
+    because the capability gate is what it verifies on this unit; the procedure itself remains
+    covered against the simulator.
+- Defects found during hardware validation: 5. Fixed: 5. Open: 0.
+  - D1 firmware string, D2 parked-request state, D3 slew reported finished before it started,
+    D4 overlapping guide pulses discarded, D5 a lost UDP reply silencing the session.
+- Driver version: 1 before this validation, 4 after.
