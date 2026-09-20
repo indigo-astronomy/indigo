@@ -85,3 +85,16 @@ cd indigo_test && ./build/integration/test_mount_nexstaraux_simulator
 
 - Simulated tests run: 30; passed: 30.
 - Hardware tests run: 0; passed: 0.
+
+## Overlapping guide pulses (2026-09-20)
+
+A guide pulse requested while another pulse on the same axis was still running was silently
+discarded. `GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true` and zero
+both axis items in `on_change_request`, and each handler drops the finaliser of the pulse it
+replaces; without that the superseded finaliser would stop the axis on the old deadline, in the
+middle of the new pulse.
+
+`guider_pulses` gained two duration-measuring cases: a 2000 ms pulse replaced after 500 ms by a
+600 ms pulse in the same direction (1106 ms measured) and by a 300 ms pulse in the opposite
+direction (805 ms), the second also confirming the `ALT_MOVE_NEG` request reaches the motor
+controller.
