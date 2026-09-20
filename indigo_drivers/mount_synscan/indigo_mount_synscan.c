@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -2227,11 +2227,6 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_RA.on_change
 	double duration = 0;
 	int direction = 0;
-	if (PRIVATE_DATA->guide_ra_direction < 0 && GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
-		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
-	} else if (PRIVATE_DATA->guide_ra_direction > 0 && GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
-		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
-	}
 	if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
 		duration = GUIDER_GUIDE_EAST_ITEM->number.value / 1000.0;
 		direction = -1;
@@ -2274,11 +2269,6 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_DEC.on_change
 	double duration = 0;
 	int direction = 0;
-	if (PRIVATE_DATA->guide_dec_direction < 0 && GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
-		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
-	} else if (PRIVATE_DATA->guide_dec_direction > 0 && GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
-		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-	}
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 		duration = GUIDER_GUIDE_NORTH_ITEM->number.value / 1000.0;
 		direction = -1;
@@ -2345,9 +2335,17 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
+		//+ guider.GUIDER_GUIDE_RA.on_change_request
+		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+		//- guider.GUIDER_GUIDE_RA.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+		//+ guider.GUIDER_GUIDE_DEC.on_change_request
+		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+		//- guider.GUIDER_GUIDE_DEC.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_RATE_PROPERTY, property)) {

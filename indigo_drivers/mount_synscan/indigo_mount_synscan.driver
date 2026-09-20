@@ -24,7 +24,7 @@ driver synscan {
 	label = "SynScan Mount";
 	author = "CloudMakers, s. r. o. based on INDIGO 2.0 code by David Hulse";
 	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
-	version = 4;
+	version = 5;
 	serial {
 		configurable_speed = true;
 	}
@@ -1967,14 +1967,13 @@ driver synscan {
 			// A pulse arriving while another one on this axis is still running replaces it,
 			// so the change branch must take the request instead of discarding it as busy.
 			accept_while_busy = true;
+			on_change_request {
+				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+			}
 				on_change {
 					double duration = 0;
 					int direction = 0;
-					if (PRIVATE_DATA->guide_ra_direction < 0 && GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
-						GUIDER_GUIDE_EAST_ITEM->number.value = 0;
-					} else if (PRIVATE_DATA->guide_ra_direction > 0 && GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
-						GUIDER_GUIDE_WEST_ITEM->number.value = 0;
-					}
 					if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
 						duration = GUIDER_GUIDE_EAST_ITEM->number.value / 1000.0;
 						direction = -1;
@@ -2018,14 +2017,13 @@ driver synscan {
 			// A pulse arriving while another one on this axis is still running replaces it,
 			// so the change branch must take the request instead of discarding it as busy.
 			accept_while_busy = true;
+			on_change_request {
+				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+			}
 				on_change {
 					double duration = 0;
 					int direction = 0;
-					if (PRIVATE_DATA->guide_dec_direction < 0 && GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
-						GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
-					} else if (PRIVATE_DATA->guide_dec_direction > 0 && GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
-						GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-					}
 					if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 						duration = GUIDER_GUIDE_NORTH_ITEM->number.value / 1000.0;
 						direction = -1;

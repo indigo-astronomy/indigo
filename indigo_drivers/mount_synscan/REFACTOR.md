@@ -1380,3 +1380,19 @@ public-property completion timing, not an electrical measurement of the ST4 outp
   - D1 firmware string, D2 parked-request state, D3 slew reported finished before it started,
     D4 overlapping guide pulses discarded, D5 a lost UDP reply silencing the session.
 - Driver version: 1 before this validation, 4 after.
+
+## Overlapping guide pulses, unified pattern (2026-09-20)
+
+The replacement behaviour introduced with `accept_while_busy` is unchanged, but the way the
+superseded item is dropped now matches the other twenty INDIGO guiders. `on_change` used to work out
+which item was stale from `PRIVATE_DATA->guide_ra_direction` / `guide_dec_direction`; both axis items
+are now zeroed in `on_change_request` before `indigo_property_copy_values()` runs, so only the
+requested direction is set when the handler starts. The direction fields are still maintained and
+used for the axis rate and the resume decision, they are simply no longer consulted to disambiguate
+the request.
+
+`synscan_guider_passes_serial_compliance_checks` is unchanged and still measures both replacements:
+1123 ms for a 2000 ms pulse replaced after 500 ms by a 600 ms pulse in the same direction and 911 ms
+for the same pulse replaced by a 300 ms pulse in the opposite direction.
+
+Re-validated on the simulator only. The AZ-GTi hardware run recorded earlier was not repeated.
