@@ -29,7 +29,7 @@ driver ssag {
 	label = "SSAG/QHY5 Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 13;
+	version = 14;
 	multi_device_support = true;
 	libusb {
 		hotplug = true;
@@ -71,8 +71,6 @@ driver ssag {
 		atomic_int exposure_state;
 		bool ra_guiding;
 		bool dec_guiding;
-		atomic_bool ra_replacement;
-		atomic_bool dec_replacement;
 	}
 	code {
 		typedef enum {
@@ -464,20 +462,16 @@ driver ssag {
 			}
 		}
 		inherited GUIDER_GUIDE_RA {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 			on_change_request {
-				bool replacement = GUIDER_GUIDE_RA_PROPERTY->state == INDIGO_BUSY_STATE;
-				atomic_store(&PRIVATE_DATA->ra_replacement, replacement);
-				if (!replacement) {
-					indigo_cancel_pending_handler(device, guider_guide_ra_handler);
-				}
-				indigo_cancel_pending_handler(device, guider_ra_finalizer);
 				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
 				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
-				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			on_change {
 				indigo_cancel_pending_handler(device, guider_ra_finalizer);
-				bool ok = !atomic_exchange(&PRIVATE_DATA->ra_replacement, false) || ssag_cancel_guide(device, true);
+				bool ok = !PRIVATE_DATA->ra_guiding || ssag_cancel_guide(device, true);
 				PRIVATE_DATA->ra_guiding = false;
 				int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 				guide_direction direction = GUIDE_EAST;
@@ -500,20 +494,16 @@ driver ssag {
 			}
 		}
 		inherited GUIDER_GUIDE_DEC {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 			on_change_request {
-				bool replacement = GUIDER_GUIDE_DEC_PROPERTY->state == INDIGO_BUSY_STATE;
-				atomic_store(&PRIVATE_DATA->dec_replacement, replacement);
-				if (!replacement) {
-					indigo_cancel_pending_handler(device, guider_guide_dec_handler);
-				}
-				indigo_cancel_pending_handler(device, guider_dec_finalizer);
 				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
 				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
-				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			on_change {
 				indigo_cancel_pending_handler(device, guider_dec_finalizer);
-				bool ok = !atomic_exchange(&PRIVATE_DATA->dec_replacement, false) || ssag_cancel_guide(device, false);
+				bool ok = !PRIVATE_DATA->dec_guiding || ssag_cancel_guide(device, false);
 				PRIVATE_DATA->dec_guiding = false;
 				int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 				guide_direction direction = GUIDE_NORTH;

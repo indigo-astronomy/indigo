@@ -100,3 +100,15 @@ Electrical ST4 relay timing was not measured because no external relay instrumen
 ## Non-applicable capabilities
 
 Streaming, ROI, binning, cooler, temperature, offset, mode selection and FITS-header-specific controls are neither implemented nor exposed by this fixed-format camera driver. Generic framework numeric validation is intentionally not duplicated. These items are therefore outside the applicable CCD class test matrix.
+
+## Overlapping guide pulses (2026-09-20)
+
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true` and `on_change_request`
+is reduced to zeroing both axis items, matching every other INDIGO driver that exposes a guider.
+
+The driver used to detect a replacement by reading the property state in `on_change_request` and
+passing the answer to the handler through the `ra_replacement` / `dec_replacement` atomics. With the
+property state now owned by the dispatch macro that no longer works, so the handler decides from the
+`ra_guiding` / `dec_guiding` flag it already maintains and the two atomics were removed. The
+`ssag_cancel_guide()` call that stops an in-flight pulse on the device is therefore still made
+exactly when a pulse is actually running.

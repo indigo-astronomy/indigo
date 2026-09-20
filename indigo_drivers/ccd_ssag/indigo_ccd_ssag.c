@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_ccd_ssag"
 #define DRIVER_LABEL         "SSAG/QHY5 Camera"
 #define CCD_DEVICE_NAME      "SSAG%s"
@@ -91,8 +91,6 @@ typedef struct {
 	atomic_int exposure_state;
 	bool ra_guiding;
 	bool dec_guiding;
-	atomic_bool ra_replacement;
-	atomic_bool dec_replacement;
 	//- data
 } ssag_private_data;
 
@@ -613,7 +611,7 @@ static void guider_connection_handler(indigo_device *device) {
 static void guider_guide_ra_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_RA.on_change
 	indigo_cancel_pending_handler(device, guider_ra_finalizer);
-	bool ok = !atomic_exchange(&PRIVATE_DATA->ra_replacement, false) || ssag_cancel_guide(device, true);
+	bool ok = !PRIVATE_DATA->ra_guiding || ssag_cancel_guide(device, true);
 	PRIVATE_DATA->ra_guiding = false;
 	int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 	guide_direction direction = GUIDE_EAST;
@@ -639,7 +637,7 @@ static void guider_guide_ra_handler(indigo_device *device) {
 static void guider_guide_dec_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_DEC.on_change
 	indigo_cancel_pending_handler(device, guider_dec_finalizer);
-	bool ok = !atomic_exchange(&PRIVATE_DATA->dec_replacement, false) || ssag_cancel_guide(device, false);
+	bool ok = !PRIVATE_DATA->dec_guiding || ssag_cancel_guide(device, false);
 	PRIVATE_DATA->dec_guiding = false;
 	int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 	guide_direction direction = GUIDE_NORTH;
@@ -694,31 +692,17 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		//+ guider.GUIDER_GUIDE_RA.on_change_request
-		bool replacement = GUIDER_GUIDE_RA_PROPERTY->state == INDIGO_BUSY_STATE;
-		atomic_store(&PRIVATE_DATA->ra_replacement, replacement);
-		if (!replacement) {
-			indigo_cancel_pending_handler(device, guider_guide_ra_handler);
-		}
-		indigo_cancel_pending_handler(device, guider_ra_finalizer);
 		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
-		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		//- guider.GUIDER_GUIDE_RA.on_change_request
-		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		//+ guider.GUIDER_GUIDE_DEC.on_change_request
-		bool replacement = GUIDER_GUIDE_DEC_PROPERTY->state == INDIGO_BUSY_STATE;
-		atomic_store(&PRIVATE_DATA->dec_replacement, replacement);
-		if (!replacement) {
-			indigo_cancel_pending_handler(device, guider_guide_dec_handler);
-		}
-		indigo_cancel_pending_handler(device, guider_dec_finalizer);
 		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		//- guider.GUIDER_GUIDE_DEC.on_change_request
-		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	}
 	return indigo_guider_change_property(device, client, property);
