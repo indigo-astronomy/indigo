@@ -32,12 +32,11 @@ To calibrate Sesto Senso 2 focuser:
 * once the outhermost position is reached, click "End",
 * disconnect and connect again.
 
-## Status: Work in progress
+## Status: Stable
 
 Tested with Sesto Senso 2.
 
 As PrimaluceLab never answered any email both simulator and driver are based only on publicly available information :(
-
 
 ## Testing
 
