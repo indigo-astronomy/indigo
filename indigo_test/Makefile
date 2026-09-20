@@ -1407,6 +1407,18 @@ WHEEL_SX_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_sx.a $(TEST_LDFLAGS) -l
 $(TEST_BUILD)/hardware/test_wheel_sx_hw: hardware/test_wheel_sx_hw.c test_runner.h $(BUILD_DRIVERS)/indigo_wheel_sx.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(WHEEL_SX_HW_TEST_LDFLAGS)
 
+# Physical Starlight Xpress AO hardware is opt-in and excluded from normal integration tests. The
+# optical element physically moves, always inside the +/-50 step range the driver advertises, and
+# every scenario centres it again. Set AO_SX_HW_PORT to override the port the driver detected.
+.PHONY: test-ao-sx-hw
+test-ao-sx-hw: check-lib $(TEST_BUILD)/hardware/test_ao_sx_hw
+	$(TEST_BUILD)/hardware/test_ao_sx_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+AO_SX_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_ao_sx.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_ao_sx_hw: hardware/test_ao_sx_hw.c test_runner.h $(BUILD_DRIVERS)/indigo_ao_sx.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(AO_SX_HW_TEST_LDFLAGS)
+
 # Physical UVC camera hardware is opt-in and excluded from normal integration tests.
 .PHONY: test-ccd-uvc-hw
 test-ccd-uvc-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_uvc_hw

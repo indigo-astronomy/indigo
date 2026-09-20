@@ -30,7 +30,9 @@ static indigo_uni_handle handle;
 static atomic_int opens, closes, invalid_io, requests, fail_open, failure;
 static char command[32];
 static char failed_command;
-static atomic_bool hold_read, read_entered, release_read;
+// Reads are gated one at a time so a scenario can stop the device queue inside a chosen
+// transaction: the n-th gated read blocks until reads_released passes n.
+static atomic_int hold_reads, reads_entered, reads_released;
 static pthread_mutex_t transport_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 indigo_uni_handle *ao_test_open(const char *port, int level) {
@@ -75,9 +77,10 @@ long ao_test_read(indigo_uni_handle *port, char *buffer, long length, const char
 	if (ao_test_discard(port) < 0) {
 		return -1;
 	}
-	if (atomic_exchange(&hold_read, false)) {
-		atomic_store(&read_entered, true);
-		while (!atomic_load(&release_read)) {
+	if (atomic_load(&hold_reads) > 0) {
+		atomic_fetch_sub(&hold_reads, 1);
+		int index = atomic_fetch_add(&reads_entered, 1);
+		while (atomic_load(&reads_released) <= index) {
 			indigo_usleep(1000);
 		}
 	}
@@ -183,9 +186,15 @@ cleanup:
 	ASSERT_EQ_INT(opens, closes);
 }
 
-static bool wait_read_gate(void) {
+static void gate_reads(int count) {
+	atomic_store(&reads_entered, 0);
+	atomic_store(&reads_released, 0);
+	atomic_store(&hold_reads, count);
+}
+
+static bool wait_read_gate(int count) {
 	for (int i = 0; i < 2000; i++) {
-		if (read_entered) {
+		if (atomic_load(&reads_entered) >= count) {
 			return true;
 		}
 		indigo_usleep(1000);
@@ -193,27 +202,34 @@ static bool wait_read_gate(void) {
 	return false;
 }
 
+static void release_read_gate(int count) {
+	atomic_store(&reads_released, count);
+}
+
+static void clear_read_gate(void) {
+	atomic_store(&hold_reads, 0);
+	atomic_store(&reads_released, 1000000);
+}
+
 static void queued_correction_reset_and_disconnect(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&ao, "fake"));
-	read_entered = release_read = false;
-	hold_read = true;
+	gate_reads(1);
 	indigo_change_number_property_1(&simulator_test_client, ao.device_name, AO_GUIDE_RA_PROPERTY_NAME, "EAST", 20);
-	SERIAL_CHECK_TRUE(wait_read_gate());
+	SERIAL_CHECK_TRUE(wait_read_gate(1));
 	indigo_change_number_property_1(&simulator_test_client, ao.device_name, AO_GUIDE_DEC_PROPERTY_NAME, "SOUTH", 20);
 	indigo_change_switch_property_1(&simulator_test_client, ao.device_name, AO_RESET_PROPERTY_NAME, "CENTER", true);
 	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(AO_RESET_PROPERTY_NAME)->state);
-	release_read = true;
+	release_read_gate(1);
 	SERIAL_CHECK_TRUE(wait_for_property_state(AO_RESET_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(command_is("K"));
 	SERIAL_CHECK_TRUE(wait_for_property_state(AO_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(AO_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
-	read_entered = release_read = false;
-	hold_read = true;
+	gate_reads(1);
 	indigo_change_number_property_1(&simulator_test_client, ao.device_name, AO_GUIDE_RA_PROPERTY_NAME, "WEST", 20);
-	SERIAL_CHECK_TRUE(wait_read_gate());
+	SERIAL_CHECK_TRUE(wait_read_gate(1));
 	indigo_change_switch_property_1(&simulator_test_client, ao.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
 	SERIAL_CHECK_EQ_INT(1, opens - closes);
-	release_read = true;
+	release_read_gate(1);
 	SERIAL_CHECK_TRUE(wait_for_simulator_connection_state(false));
 	SERIAL_CHECK_EQ_INT(opens, closes);
 	int before = requests;
@@ -225,11 +241,71 @@ static void queued_correction_reset_and_disconnect(void) {
 	indigo_change_number_property_1(&simulator_test_client, ao.device_name, AO_GUIDE_RA_PROPERTY_NAME, "EAST", 10);
 	SERIAL_CHECK_TRUE(wait_for_property_state(AO_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE));
 cleanup:
-	release_read = true;
-	hold_read = false;
+	clear_read_gate();
 	stop_serial_driver(&ao);
 	ASSERT_EQ_INT(opens, closes);
 	ASSERT_EQ_INT(0, invalid_io);
+}
+
+// A reset that finishes while a correction is still queued behind it must not publish that
+// correction as completed. Reproducer for ASX-002.
+static void reset_does_not_complete_a_queued_correction(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&ao, "fake"));
+	// The reset holds the device queue inside its own read, so the correction requested next is
+	// accepted, published busy and left waiting.
+	gate_reads(2);
+	indigo_change_switch_property_1(&simulator_test_client, ao.device_name, AO_RESET_PROPERTY_NAME, "CENTER", true);
+	SERIAL_CHECK_TRUE(wait_read_gate(1));
+	indigo_change_number_property_1(&simulator_test_client, ao.device_name, AO_GUIDE_RA_PROPERTY_NAME, "WEST", 20);
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(AO_GUIDE_RA_PROPERTY_NAME)->state);
+	// Let the reset finish and stop the correction inside its own read, so what the reset published
+	// for AO_GUIDE_RA can be read without racing the correction's own completion.
+	release_read_gate(1);
+	SERIAL_CHECK_TRUE(wait_for_property_state(AO_RESET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_read_gate(2));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(AO_GUIDE_RA_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(20, (int)find_cached_item(AO_GUIDE_RA_PROPERTY_NAME, "WEST")->number.value);
+	// The axis with nothing queued is the one the reset may clear.
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(AO_GUIDE_DEC_PROPERTY_NAME)->state);
+	release_read_gate(2);
+	SERIAL_CHECK_TRUE(wait_for_property_state(AO_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(command_is("GW00020"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AO_GUIDE_RA_PROPERTY_NAME, "WEST", 0, 0));
+cleanup:
+	clear_read_gate();
+	stop_serial_driver(&ao);
+	ASSERT_EQ_INT(opens, closes);
+	ASSERT_EQ_INT(0, invalid_io);
+}
+
+// The identity read at open belongs to the device that owns the port, whichever logical device
+// opened or closed it. Reproducer for ASX-001.
+static void identity_follows_the_shared_connection(void) {
+	for (int order = 0; order < 2; order++) {
+		const simulator_driver_case *first = order ? &guider : &ao;
+		const simulator_driver_case *second = order ? &ao : &guider;
+		SERIAL_CHECK_TRUE(order ? start_shared_serial_device(first, ao.device_name, "fake") : start_serial_driver(first, "fake"));
+		SERIAL_CHECK_TRUE(connect_serial_device(second, NULL));
+		reset_simulator_context(&ao);
+		enumerate_simulator_device();
+		SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME)->text.value, "StarlightXpress AO"));
+		SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME)->text.value, "123"));
+		// Whichever device releases the last reference, the AO must stop advertising a unit it is no
+		// longer connected to.
+		disconnect_serial_device(first);
+		disconnect_serial_device(second);
+		SERIAL_CHECK_EQ_INT(opens, closes);
+		reset_simulator_context(&ao);
+		enumerate_simulator_device();
+		SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME)->text.value, "Unknown"));
+		SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME)->text.value, "Unknown"));
+		tear_down_serial_driver(&ao);
+	}
+	return;
+cleanup:
+	disconnect_serial_device(&guider);
+	disconnect_serial_device(&ao);
+	tear_down_serial_driver(&ao);
 }
 
 static void shared_connection_orders(void) {
@@ -304,7 +380,9 @@ int main(void) {
 		{ "handshake and initial status rollback", initialization_rollback },
 		{ "shared handle in both connection orders", shared_connection_orders },
 		{ "guider errors and 10 ms quantization", guider_errors_and_quantization },
-		{ "queued axes, reset and disconnect", queued_correction_reset_and_disconnect }
+		{ "queued axes, reset and disconnect", queued_correction_reset_and_disconnect },
+		{ "reset does not complete a queued correction", reset_does_not_complete_a_queued_correction },
+		{ "identity follows the shared connection", identity_follows_the_shared_connection }
 	};
 	if (getenv("INDIGO_TEST_QUEUE_ONLY")) {
 		return indigo_run_tests("SX AO queue", tests + 5, 1);

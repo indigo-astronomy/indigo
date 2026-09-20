@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_ao_sx"
 #define DRIVER_LABEL         "StarlightXpress AO"
 #define AO_DEVICE_NAME       "SX AO"
@@ -69,7 +69,13 @@ static bool sx_command(indigo_device *device, char *command, int response, ...) 
 	return response > 0 ? result == response : result > 0;
 }
 
+// The port and the identity belong to the master device, but the generated reference counting
+// calls the close helper with whichever logical device released the last reference, so both
+// helpers step up to the master before touching DEVICE_PORT or INFO.
 static bool sx_open(indigo_device *device) {
+	if (device->master_device != NULL) {
+		device = device->master_device;
+	}
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
 		if (sx_command(device, "X", 1) && PRIVATE_DATA->response[0] == 'Y') {
@@ -86,6 +92,9 @@ static bool sx_open(indigo_device *device) {
 }
 
 static void sx_close(indigo_device *device) {
+	if (device->master_device != NULL) {
+		device = device->master_device;
+	}
 	INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 	indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -182,8 +191,15 @@ static void ao_reset_handler(indigo_device *device) {
 	bool requested = AO_CENTER_ITEM->sw.value || AO_UNJAM_ITEM->sw.value;
 	if (requested) {
 		if (sx_command(device, AO_CENTER_ITEM->sw.value ? "K" : "R", 1) && PRIVATE_DATA->response[0] == 'K') {
-			INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
-			INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+			// A centred mechanism clears a limit reported on either axis, but a correction
+			// requested while the reset held the queue is still waiting to be sent and has to
+			// publish its own outcome.
+			if (AO_GUIDE_DEC_PROPERTY->state != INDIGO_BUSY_STATE) {
+				INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+			}
+			if (AO_GUIDE_RA_PROPERTY->state != INDIGO_BUSY_STATE) {
+				INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+			}
 		} else {
 			AO_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
