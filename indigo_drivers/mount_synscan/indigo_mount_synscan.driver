@@ -1964,7 +1964,6 @@ driver synscan {
 		}
 		// on_detach { }
 		inherited GUIDER_GUIDE_RA {
-			accept_while_busy = true;
 			// A pulse arriving while another one on this axis is still running replaces it,
 			// so the change branch must take the request instead of discarding it as busy.
 			accept_while_busy = true;
@@ -2016,7 +2015,6 @@ driver synscan {
 			// on_detach { }
 		}
 		inherited GUIDER_GUIDE_DEC {
-			accept_while_busy = true;
 			// A pulse arriving while another one on this axis is still running replaces it,
 			// so the change branch must take the request instead of discarding it as busy.
 			accept_while_busy = true;
