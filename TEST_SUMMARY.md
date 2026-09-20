@@ -1,10 +1,34 @@
+# ccd_asi (ZWO ASI Camera)
+
+2026-09-20 21:31 3.0.0.61 mac arm64 fake SDK 51/51 OK
+
 # ccd_atik (Atik Camera)
 
 2026-09-20 21:29 3.0.0.39 mac arm64 fake SDK 40/40 OK
 
+# ccd_mi (Moravian Instruments Camera)
+
+2026-09-20 21:31 3.0.0.33 mac arm64 fake SDK 17/17 OK
+
+# ccd_playerone (Player One Camera)
+
+2026-09-20 21:31 3.0.0.23 mac arm64 fake SDK 48/48 OK
+
 # ccd_simulator (Camera Simulator)
 
 2026-09-20 20:22 3.0.0.27 mac arm64 simulator 19/19 OK
+
+# ccd_ssag (SSAG/QHY5 Camera)
+
+2026-09-20 21:31 3.0.0.14 mac arm64 fake SDK 13/13 OK
+
+# ccd_svb (SVBONY Camera)
+
+2026-09-20 21:31 3.0.0.26 mac arm64 fake SDK 47/47 OK
+
+# ccd_sx (Starlight Xpress Camera)
+
+2026-09-20 21:31 3.0.0.19 mac arm64 fake SDK 24/24 OK
 
 # focuser_dmfc (PegasusAstro DMFC Focuser)
 
@@ -87,3 +111,7 @@
 # wheel_sx (Starlight Xpress Filter Wheel)
 
 2026-09-20 15:00 3.0.0.5 mac arm64 fake SDK 17/17 OK
+
+# ccd_atik2 (Atik (legacy) Camera)
+
+2026-09-20 21:31 3.0.0.11 mac arm64 fake SDK 24/24 OK

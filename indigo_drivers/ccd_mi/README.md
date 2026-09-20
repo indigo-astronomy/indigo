@@ -33,3 +33,7 @@ Driver is developed and tested with:
 * MI C3-61000
 * MI C4-16000
 * MI C5A-100M
+
+## Testing
+
+2026-09-20 21:31 3.0.0.33 mac arm64 fake SDK 17/17 OK

@@ -23,7 +23,7 @@ driver mi {
 	label = "Moravian Instruments Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 32;
+	version = 33;
 	multi_device_support = true;
 	include {
 		#include <ctype.h>
@@ -662,7 +662,17 @@ driver mi {
 			indigo_unlock_master_device(device);
 		}
 		inherited GUIDER_GUIDE_RA {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
+			on_change_request {
+				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+			}
 			on_change {
+				// A new request replaces the running pulse, so the finaliser of the superseded
+				// one must not end the new pulse on the old deadline.
+				indigo_cancel_pending_handler(device, guider_ra_finalizer);
 				int duration = GUIDER_GUIDE_EAST_ITEM->number.value > 0 ? GUIDER_GUIDE_EAST_ITEM->number.value : -(int)GUIDER_GUIDE_WEST_ITEM->number.value;
 				int16_t ra = (int16_t)duration;
 				int16_t dec = remaining_pulse(PRIVATE_DATA->guider_dec_end, PRIVATE_DATA->guider_dec_duration);
@@ -682,7 +692,17 @@ driver mi {
 			}
 		}
 		inherited GUIDER_GUIDE_DEC {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
+			on_change_request {
+				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+			}
 			on_change {
+				// A new request replaces the running pulse, so the finaliser of the superseded
+				// one must not end the new pulse on the old deadline.
+				indigo_cancel_pending_handler(device, guider_dec_finalizer);
 				int duration = GUIDER_GUIDE_NORTH_ITEM->number.value > 0 ? GUIDER_GUIDE_NORTH_ITEM->number.value : -(int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 				int16_t ra = remaining_pulse(PRIVATE_DATA->guider_ra_end, PRIVATE_DATA->guider_ra_duration);
 				int16_t dec = (int16_t)duration;

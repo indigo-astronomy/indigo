@@ -142,3 +142,21 @@ Hardware result on 2026-09-18 with the G0-0300 (USB `1347:0412`): all scenarios 
 - Simulated/fake-SDK tests run: 17; passed: 17.
 - Manual hardware scenarios run: 14; passed: 14.
 - Persistent automated hardware tests run: 1; passed: 1.
+
+## Overlapping guide pulses (2026-09-20)
+
+A guide pulse requested while another pulse on the same axis was still running was silently
+discarded: the generated change branch dispatched both guide properties through the BUSY-guarded
+`INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE` macro, so the second request never reached the handler.
+Both properties now declare `accept_while_busy = true` and zero both axis items in
+`on_change_request`, and each handler drops the finaliser of the pulse it replaces.
+
+Without that cancellation the superseded finaliser would clear `guider_ra_end` / `guider_ra_duration`
+and publish OK in the middle of the new pulse. `remaining_pulse()` only ever covered the *other*
+axis, which `gxccd_move_telescope()` requires in every call; it never covered a replacement on the
+same axis.
+
+`guider_directions_overlap_failure_and_timing` gained two duration-measuring cases: a 2000 ms pulse
+replaced after 500 ms by a 600 ms pulse in the same direction (1130 ms measured) and by a 300 ms
+pulse in the opposite direction (812 ms), the second also asserting the signed duration handed to
+`gxccd_move_telescope()` turns negative.

@@ -1110,6 +1110,35 @@ static void guider_directions_overlap_failure_and_timing(void) {
 	atomic_store(&cameras[0].fail_guide, 1);
 	indigo_change_number_property_1(&simulator_test_client, guider_case.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 30);
 	MI_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	atomic_store(&cameras[0].fail_guide, 0);
+
+	// A pulse arriving while another one on the same axis is still running replaces it, so the
+	// elapsed time has to follow the second request. Measuring the duration is the point of these
+	// two cases: waiting only for the property to leave BUSY passes even when the second request
+	// is discarded, which is how this behaviour went unverified before.
+	double started = indigo_monotonic_time();
+	indigo_change_number_property_1(&simulator_test_client, guider_case.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2000);
+	MI_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(500000);
+	indigo_change_number_property_1(&simulator_test_client, guider_case.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 600);
+	MI_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+	// Replacing finishes about 500 + 600 ms after the first request; keeping the superseded pulse
+	// would run the full 2000 ms.
+	double replaced = (indigo_monotonic_time() - started) * 1000.0;
+	printf("    2000 ms north pulse replaced after 500 ms by a 600 ms north pulse finished in %.0f ms\n", replaced);
+	MI_CHECK_TRUE(replaced > 900 && replaced < 1700);
+
+	started = indigo_monotonic_time();
+	indigo_change_number_property_1(&simulator_test_client, guider_case.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2000);
+	MI_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(500000);
+	indigo_change_number_property_1(&simulator_test_client, guider_case.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 300);
+	MI_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+	// gxccd_move_telescope() takes a signed duration, so the reversed pulse has to arrive negative.
+	MI_CHECK_TRUE(cameras[0].dec < 0);
+	double reversed = (indigo_monotonic_time() - started) * 1000.0;
+	printf("    2000 ms north pulse replaced after 500 ms by a 300 ms south pulse finished in %.0f ms\n", reversed);
+	MI_CHECK_TRUE(reversed > 600 && reversed < 1400);
 	cleanup:
 	fixture_stop();
 }
