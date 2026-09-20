@@ -27,3 +27,7 @@ indigo_server indigo_wheel_sx
 Driver is developed and tested with:
 
 * SX filter wheel
+
+## Testing
+
+2026-09-20 15:00 fake SDK 17/17 OK
