@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <limits.h>
+#include <math.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -36,22 +37,32 @@ typedef struct {
 	bool headless;
 	bool trace;
 	const char *ready_file;
+	const char *profile;
 } simulator_options;
 
+// A slew and a rate move are both modelled as a signed speed in units per
+// second, so MC_SLEW_DONE can report a motion that really takes time.
 typedef struct {
-	uint32_t position;
-	uint32_t target;
+	double position;
+	double target;
+	double speed;
 	bool slewing;
+	bool tracking;
 	uint8_t guide_rate;
 } axis_state;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = false,
-	.ready_file = NULL
+	.ready_file = NULL,
+	.profile = "normal"
 };
-static axis_state azm = { 0x800000, 0x800000, false, 0x80 };
-static axis_state alt = { 0x000000, 0x000000, false, 0x80 };
+static axis_state azm = { 0x800000, 0x800000, 0, false, false, 0x80 };
+static axis_state alt = { 0x000000, 0x000000, 0, false, false, 0x80 };
+static bool answer_version = true;
+static double slew_rate = 0x200000;
+static FILE *events = NULL;
+static double last_update;
 static const char *simulator_name = "mount_nexstaraux";
 static volatile sig_atomic_t running = 1;
 static int server_fd = -1;
@@ -63,7 +74,12 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after TCP setup\n");
 	printf("  --trace                 Log protocol packets\n");
+	printf("  --profile <name>        normal, no-version or slow-slew, default is normal\n");
 	printf("  -h, --help              Show this help and exit\n");
+	printf("\n");
+	printf("INDIGO_NEXSTARAUX_EVENTS names a file receiving '<dst> <cmd> <data>' per request.\n");
+	printf("INDIGO_NEXSTARAUX_FAULT names a file holding '<dst> <cmd> <silent|garbage|close>'\n");
+	printf("which is applied once to the next matching request and then removed.\n");
 }
 
 static bool parse_args(int argc, char *argv[]) {
@@ -82,6 +98,12 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--profile")) {
+			if (++i == argc) {
+				fprintf(stderr, "--profile requires a name\n");
+				return false;
+			}
+			options.profile = argv[i];
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -101,6 +123,76 @@ static void signal_handler(int sig) {
 		close(server_fd);
 		server_fd = -1;
 	}
+}
+
+static double now_seconds(void) {
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return tv.tv_sec + tv.tv_usec / 1e6;
+}
+
+static void apply_profile(void) {
+	if (!strcmp(options.profile, "no-version")) {
+		answer_version = false;
+	} else if (!strcmp(options.profile, "slow-slew")) {
+		slew_rate = 0x8000;
+	}
+}
+
+static void advance_axis(axis_state *axis, double elapsed) {
+	if (axis->slewing) {
+		double remaining = axis->target - axis->position;
+		double step = axis->speed * elapsed;
+		if (fabs(step) >= fabs(remaining)) {
+			axis->position = axis->target;
+			axis->slewing = false;
+			axis->speed = 0;
+		} else {
+			axis->position += step;
+		}
+	} else if (axis->speed != 0) {
+		axis->position += axis->speed * elapsed;
+	}
+	while (axis->position < 0) {
+		axis->position += 0x1000000;
+	}
+	while (axis->position >= 0x1000000) {
+		axis->position -= 0x1000000;
+	}
+}
+
+static void advance_motion(void) {
+	double current = now_seconds();
+	double elapsed = current - last_update;
+	last_update = current;
+	if (elapsed <= 0) {
+		return;
+	}
+	advance_axis(&azm, elapsed);
+	advance_axis(&alt, elapsed);
+}
+
+// One-shot fault injection. The control file names the destination and the
+// command of the request that has to misbehave.
+static const char *pending_fault(uint8_t dst, uint8_t command) {
+	static char action[32];
+	const char *path = getenv("INDIGO_NEXSTARAUX_FAULT");
+	if (path == NULL) {
+		return NULL;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return NULL;
+	}
+	unsigned fault_dst = 0, fault_command = 0;
+	action[0] = '\0';
+	bool matched = fscanf(file, "%x %x %31s", &fault_dst, &fault_command, action) == 3 && fault_dst == dst && fault_command == command;
+	fclose(file);
+	if (!matched) {
+		return NULL;
+	}
+	unlink(path);
+	return action;
 }
 
 static uint8_t checksum(const uint8_t *data, size_t length) {
@@ -165,22 +257,32 @@ static axis_state *axis_for(uint8_t dst) {
 static void handle_axis_command(uint8_t src, uint8_t dst, uint8_t command, const uint8_t *data, size_t data_length) {
 	axis_state *axis = axis_for(dst);
 	uint8_t reply[4] = { 0 };
+	uint32_t position;
 	if (axis == NULL) {
 		return;
 	}
+	advance_motion();
 	switch (command) {
 		case 0x01:
-			reply[0] = (uint8_t)(axis->position >> 16);
-			reply[1] = (uint8_t)(axis->position >> 8);
-			reply[2] = (uint8_t)axis->position;
+			position = (uint32_t)axis->position;
+			reply[0] = (uint8_t)(position >> 16);
+			reply[1] = (uint8_t)(position >> 8);
+			reply[2] = (uint8_t)position;
 			send_reply(dst, src, command, reply, 3);
 			break;
 		case 0x02:
 		case 0x17:
 			if (data_length >= 3) {
 				axis->target = ((uint32_t)data[0] << 16) | ((uint32_t)data[1] << 8) | data[2];
-				axis->position = axis->target;
-				axis->slewing = false;
+				// The shorter way round the 24 bit circle is the one the mount takes.
+				double delta = axis->target - axis->position;
+				if (delta > 0x800000) {
+					axis->target -= 0x1000000;
+				} else if (delta < -0x800000) {
+					axis->target += 0x1000000;
+				}
+				axis->slewing = axis->target != axis->position;
+				axis->speed = axis->slewing ? (axis->target > axis->position ? slew_rate : -slew_rate) : 0;
 			}
 			send_reply(dst, src, command, NULL, 0);
 			break;
@@ -189,13 +291,26 @@ static void handle_axis_command(uint8_t src, uint8_t dst, uint8_t command, const
 				axis->position = ((uint32_t)data[0] << 16) | ((uint32_t)data[1] << 8) | data[2];
 				axis->target = axis->position;
 				axis->slewing = false;
+				axis->speed = 0;
 			}
 			send_reply(dst, src, command, NULL, 0);
 			break;
 		case 0x06:
 		case 0x07:
+			// A zero guide rate stops the sidereal drive.
+			axis->tracking = data_length >= 2 && (data[0] != 0 || data[1] != 0);
+			send_reply(dst, src, command, NULL, 0);
+			break;
 		case 0x24:
 		case 0x25:
+			// A rate move overrides a slew; rate zero stops the axis.
+			axis->slewing = false;
+			if (data_length >= 1 && data[0] != 0) {
+				axis->speed = (command == 0x24 ? 1 : -1) * data[0] * 0x8000;
+			} else {
+				axis->speed = 0;
+			}
+			axis->target = axis->position;
 			send_reply(dst, src, command, NULL, 0);
 			break;
 		case 0x13:
@@ -213,6 +328,9 @@ static void handle_axis_command(uint8_t src, uint8_t dst, uint8_t command, const
 			send_reply(dst, src, command, reply, 1);
 			break;
 		case 0xFE:
+			if (!answer_version) {
+				break;
+			}
 			reply[0] = 3;
 			reply[1] = 6;
 			send_reply(dst, src, command, reply, 2);
@@ -237,6 +355,39 @@ static void handle_packet(const uint8_t *packet, size_t length) {
 	uint8_t command = packet[4];
 	const uint8_t *data = packet + 5;
 	size_t data_length = payload_length - 3;
+	if (events != NULL) {
+		fprintf(events, "%02X %02X", dst, command);
+		for (size_t i = 0; i < data_length; i++) {
+			fprintf(events, " %02X", data[i]);
+		}
+		fprintf(events, "\n");
+		fflush(events);
+	}
+	const char *fault = pending_fault(dst, command);
+	if (fault != NULL) {
+		if (!strcmp(fault, "close")) {
+			running = 0;
+			if (client_fd >= 0) {
+				close(client_fd);
+				client_fd = -1;
+			}
+			if (server_fd >= 0) {
+				close(server_fd);
+				server_fd = -1;
+			}
+			return;
+		}
+		if (!strcmp(fault, "silent")) {
+			return;
+		}
+		if (!strcmp(fault, "garbage")) {
+			// An answer for a command nobody asked about, which the driver has
+			// to skip instead of accepting as its own reply.
+			uint8_t noise[3] = { 0xDE, 0xAD, 0xBE };
+			send_reply(dst, src, 0x7F, noise, 3);
+			return;
+		}
+	}
 	handle_axis_command(src, dst, command, data, data_length);
 }
 
@@ -277,6 +428,10 @@ int main(int argc, char *argv[]) {
 	if (!parse_args(argc, argv)) {
 		return 2;
 	}
+	apply_profile();
+	last_update = now_seconds();
+	const char *journal = getenv("INDIGO_NEXSTARAUX_EVENTS");
+	events = journal == NULL ? NULL : fopen(journal, "w");
 	int port = 0;
 	server_fd = open_server_socket(&port);
 	if (server_fd < 0) {
@@ -310,9 +465,10 @@ int main(int argc, char *argv[]) {
 		fd_set readfds;
 		FD_ZERO(&readfds);
 		FD_SET(client_fd, &readfds);
-		struct timeval timeout = { 0, 100000 };
+		struct timeval timeout = { 0, 20000 };
 		int selected = select(client_fd + 1, &readfds, NULL, NULL, &timeout);
 		if (selected <= 0) {
+			advance_motion();
 			continue;
 		}
 		ssize_t count = read(client_fd, buffer + used, sizeof(buffer) - used);
@@ -345,6 +501,9 @@ int main(int argc, char *argv[]) {
 	}
 	if (server_fd >= 0) {
 		close(server_fd);
+	}
+	if (events != NULL) {
+		fclose(events);
 	}
 	return 0;
 }

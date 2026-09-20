@@ -27,3 +27,7 @@ Use URL in form nexstar://[host[:port]] to connect to the mount over network (if
 ## Status: Stable
 
 Driver is developed and tested with SkyPortal WiFi module and NextStar 4SE mount in EQ mode
+
+## Testing
+
+2026-09-20 14:45 simulator 30/30 OK
