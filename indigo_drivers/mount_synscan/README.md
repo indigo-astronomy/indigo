@@ -32,6 +32,5 @@ Use URL in form synscan://host:port to connect to the mount over UDP (default po
 
 ## Testing
 
-2026-09-20 15:35 SkyWatcher AZ-GTi 16/8 Failed
 2026-09-20 15:52 simulator 18/18 OK
 2026-09-20 15:56 SkyWatcher AZ-GTi 16/16 OK
