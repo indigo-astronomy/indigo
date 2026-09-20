@@ -5656,6 +5656,7 @@
 		DF10000000000000000005 /* test_uni_io.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_uni_io.c; sourceTree = "<group>"; };
 		E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_usb_outputs.c; sourceTree = "<group>"; };
 		C0DE20260920000000000002 /* test_wheel_hid.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_hid.c; sourceTree = "<group>"; };
+		C0DE20260920000000000005 /* test_guider_gpusb_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_guider_gpusb_sdk.c; sourceTree = "<group>"; };
 		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
 		FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_simulator_common.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -14113,6 +14114,7 @@
 				7330D4CDFA32AB370C17EF61 /* test_serial_outputs.c */,
 				E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */,
 				C0DE20260920000000000002 /* test_wheel_hid.c */,
+				C0DE20260920000000000005 /* test_guider_gpusb_sdk.c */,
 				592C3393304F46D1004D5AE6 /* test_wheel_asi_sdk.c */,
 				59910A353050AC2600FB1C2F /* test_wheel_astroasis_sdk.c */,
 				C0DE20310920000500000009 /* test_wheel_fli_sdk.c */,

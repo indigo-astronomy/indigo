@@ -24,3 +24,7 @@ indigo_server indigo_guider_gpusb
 ## Status: Stable
 
 Tested with physical device.
+
+## Testing
+
+2026-09-20 15:17 fake SDK 15/15 OK
