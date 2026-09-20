@@ -27,4 +27,4 @@ Tested with physical device.
 
 ## Testing
 
-2026-09-20 15:17 3.0.0.7 mac arm64 fake SDK 15/15 OK
+2026-09-20 20:52 3.0.0.8 mac arm64 fake SDK 15/15 OK

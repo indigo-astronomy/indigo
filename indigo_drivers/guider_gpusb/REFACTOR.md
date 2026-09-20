@@ -67,3 +67,20 @@ cd indigo_test && ./build/integration/test_guider_gpusb_sdk
 
 - Simulated tests run: 15; passed: 15.
 - Hardware tests run: 0; passed: 0.
+
+## Overlapping guide pulses (2026-09-20)
+
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true`, replacing the
+earlier workaround that forced the property state back to `INDIGO_OK_STATE` in `on_change_request`
+so the BUSY-guarded dispatch macro would let the request through. `on_change_request` is now only
+the two item-zeroing lines, matching every other INDIGO driver that exposes a guider.
+
+The `indigo_cancel_pending_handler(device, guider_guide_<axis>_handler)` call that used to sit in
+`on_change_request` was removed. It runs on the bus thread, where `indigo_queue_remove()` does not
+skip its blocking wait and therefore blocks until a running handler finishes; the same pattern hung
+the mount_nexstar suite. Dropping it means two requests arriving inside the queue latency can queue
+two handlers that both act on the already-overwritten item values, so the same relay mask can be
+written twice. The resulting pulse is still the second request's, with a single finaliser.
+
+Behaviour is unchanged and the existing `same_axis_replacement`, `simultaneous_axes`,
+`zero_request_stops` and relay-failure cases still pass unmodified.

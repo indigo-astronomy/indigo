@@ -26,7 +26,7 @@ driver gpusb {
 	label = "Shoestring GPUSB guider";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 7;
+	version = 8;
 	libusb {
 		hotplug = true;
 		vid = GPUSB_VID;
@@ -76,11 +76,12 @@ driver gpusb {
 	guider {
 		name = "%s";
 		inherited GUIDER_GUIDE_DEC {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 			on_change_request {
-				indigo_cancel_pending_handler(device, guider_guide_dec_handler);
 				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
 				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
-				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			on_change {
 				int requested_mask = PRIVATE_DATA->relay_mask & ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
@@ -108,11 +109,12 @@ driver gpusb {
 			}
 		}
 		inherited GUIDER_GUIDE_RA {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 			on_change_request {
-				indigo_cancel_pending_handler(device, guider_guide_ra_handler);
 				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
 				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
-				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			on_change {
 				int requested_mask = PRIVATE_DATA->relay_mask & ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
