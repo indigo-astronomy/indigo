@@ -22,3 +22,7 @@ indigo_server indigo_focuser_fc3
 ## Status: Stable
 
 Tested with simulator
+
+## Testing
+
+2026-09-20 13:30 simulator 27/27 OK

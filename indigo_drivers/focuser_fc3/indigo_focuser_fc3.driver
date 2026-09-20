@@ -26,7 +26,7 @@ driver fc3 {
 	label = "PegasusAstro FocusCube v3 Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2024-2026 CloudMakers, s. r. o.";
-	version = 5;
+	version = 6;
 	serial {
 		pattern {
 			pid = 0x9000;
@@ -247,6 +247,7 @@ driver fc3 {
 					}
 					FOCUSER_POSITION_ITEM->number.target = position;
 					if (fc3_command(device, "FM:%d", position)) {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 						FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 					} else {
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;

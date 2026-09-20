@@ -42,12 +42,14 @@ typedef struct {
 	bool headless;
 	bool trace;
 	const char *ready_file;
+	const char *profile;
 } simulator_options;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
-	.ready_file = NULL
+	.ready_file = NULL,
+	.profile = "normal"
 };
 
 static void usage(const char *name) {
@@ -59,7 +61,13 @@ static void usage(const char *name) {
 	printf("  --model <focuscube3>    Select simulated model, default is focuscube3\n");
 	printf("  --device-id <id>        Override FocusCube 3 device id\n");
 	printf("  --firmware <version>    Override firmware version\n");
+	printf("  --profile <name>        normal, configured, no-handshake, bad-status or\n");
+	printf("                          external-motion, default is normal\n");
 	printf("  -h, --help              Show this help and exit\n");
+	printf("\n");
+	printf("INDIGO_FC3_EVENTS names a file receiving every accepted request, one per line.\n");
+	printf("INDIGO_FC3_FAULT names a file holding '<command prefix> <silent|garbage|close>'\n");
+	printf("which is applied once to the next matching request and then removed.\n");
 }
 
 // ----------------------------------------------------------------- state
@@ -76,6 +84,7 @@ static int speed = 400;
 static char id[32] = "AA000000";
 static char fw[32] = "1.4.1";
 static double temperature = 23.5;
+static FILE *events = NULL;
 
 static void signal_handler(int sig) {
 	(void)sig;
@@ -140,12 +149,56 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			snprintf(fw, sizeof(fw), "%s", argv[i]);
+		} else if (!strcmp(argv[i], "--profile")) {
+			if (++i == argc) {
+				fprintf(stderr, "--profile requires a name\n");
+				return false;
+			}
+			options.profile = argv[i];
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
 		}
 	}
 	return true;
+}
+
+// The controller state a scenario needs is selected once at startup, so a
+// connecting driver reads back exactly the configuration under test.
+static void apply_profile(void) {
+	if (!strcmp(options.profile, "configured")) {
+		position = target = 1234;
+		backlash = 42;
+		direction = 1;
+		speed = 750;
+		temperature = -3.25;
+	} else if (!strcmp(options.profile, "external-motion")) {
+		target = 5000;
+	}
+}
+
+// One-shot fault injection. The control file names a command prefix and the
+// way the next matching request has to misbehave, so a test can fail exactly
+// one transaction without disturbing the rest of the session.
+static const char *pending_fault(const char *command) {
+	static char action[32];
+	const char *path = getenv("INDIGO_FC3_FAULT");
+	if (path == NULL) {
+		return NULL;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return NULL;
+	}
+	char prefix[32] = { 0 };
+	action[0] = '\0';
+	bool matched = fscanf(file, "%31s %31s", prefix, action) == 2 && !strncmp(command, prefix, strlen(prefix));
+	fclose(file);
+	if (!matched) {
+		return NULL;
+	}
+	unlink(path);
+	return action;
 }
 
 // ----------------------------------------------------------------- protocol
@@ -213,10 +266,39 @@ static bool sim_printf(int handle, const char *format, ...) {
 
 static void dispatch_command(int handle, const char *buffer) {
 	pthread_mutex_lock(&state_mutex);
+	if (events != NULL) {
+		fprintf(events, "%s\n", buffer);
+		fflush(events);
+	}
+	const char *fault = pending_fault(buffer);
+	if (fault != NULL) {
+		if (!strcmp(fault, "close")) {
+			running = 0;
+			if (serial_fd >= 0) {
+				close(serial_fd);
+				serial_fd = -1;
+			}
+			pthread_mutex_unlock(&state_mutex);
+			return;
+		}
+		if (!strcmp(fault, "silent")) {
+			pthread_mutex_unlock(&state_mutex);
+			return;
+		}
+		if (!strcmp(fault, "garbage")) {
+			sim_printf(handle, "ERR\n");
+			pthread_mutex_unlock(&state_mutex);
+			return;
+		}
+	}
 	if (!strcmp(buffer, "F#") || !strcmp(buffer, "##")) {
-		sim_printf(handle, "FC3_%s_A\n", id);
+		sim_printf(handle, strcmp(options.profile, "no-handshake") ? "FC3_%s_A\n" : "ERR_%s\n", id);
 	} else if (!strcmp(buffer, "FA")) {
-		sim_printf(handle, "FC3:%d:%d:%.2f:%d:%d\n", position, target == position ? 0 : 1, temperature, direction, backlash);
+		if (!strcmp(options.profile, "bad-status")) {
+			sim_printf(handle, "ERR\n");
+		} else {
+			sim_printf(handle, "FC3:%d:%d:%.2f:%d:%d\n", position, target == position ? 0 : 1, temperature, direction, backlash);
+		}
 	} else if (!strncmp(buffer, "FN:", 3)) {
 		target = position = atoi(buffer + 3);
 		sim_printf(handle, "%s\n", buffer);
@@ -261,6 +343,10 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
+	apply_profile();
+	const char *journal = getenv("INDIGO_FC3_EVENTS");
+	events = journal == NULL ? NULL : fopen(journal, "w");
+
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 
@@ -296,5 +382,8 @@ int main(int argc, char *argv[]) {
 		serial_fd = -1;
 	}
 	pthread_join(thread, NULL);
+	if (events != NULL) {
+		fclose(events);
+	}
 	return 0;
 }

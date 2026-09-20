@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_focuser_fc3"
 #define DRIVER_LABEL         "PegasusAstro FocusCube v3 Focuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus FocusCube3"
@@ -266,6 +266,7 @@ static void focuser_position_handler(indigo_device *device) {
 		}
 		FOCUSER_POSITION_ITEM->number.target = position;
 		if (fc3_command(device, "FM:%d", position)) {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;

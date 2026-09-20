@@ -225,7 +225,7 @@ WHEEL_QUANTUM_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_quantum.a $
 WHEEL_TRUTEK_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_trutek.a $(TEST_LDFLAGS) -lindigocat
 WHEEL_QHY_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_qhy.a $(TEST_LDFLAGS) -lindigocat
 WHEEL_OPTEC_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_optec.a $(TEST_LDFLAGS) -lindigocat
-FOCUSER_FC3_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_fc3.a $(TEST_LDFLAGS) -lindigocat
+FOCUSER_FC3_SIMULATOR_TEST_LDFLAGS = $(INTEGRATION_BUILD)/focuser_fc3_test_driver.o $(TEST_LDFLAGS) -lindigocat
 FOCUSER_EFA_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_efa.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_DMFC_SIMULATOR_TEST_LDFLAGS = $(INTEGRATION_BUILD)/focuser_dmfc_test_driver.o $(TEST_LDFLAGS) -lindigocat
 FOCUSER_DSD_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_dsd.a $(TEST_LDFLAGS) -lindigocat
@@ -829,7 +829,10 @@ $(INTEGRATION_BUILD)/test_wheel_qhy_simulator: integration/test_wheel_qhy_simula
 $(INTEGRATION_BUILD)/test_wheel_optec_simulator: integration/test_wheel_optec_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_optec_simulator $(BUILD_DRIVERS)/indigo_wheel_optec.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(WHEEL_OPTEC_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_fc3_simulator: integration/test_focuser_fc3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_fc3_simulator $(BUILD_DRIVERS)/indigo_focuser_fc3.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/focuser_fc3_test_driver.o: ../indigo_drivers/focuser_fc3/indigo_focuser_fc3.c | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=fc3_test_config_folder -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_focuser_fc3_simulator: integration/test_focuser_fc3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_fc3_simulator $(INTEGRATION_BUILD)/focuser_fc3_test_driver.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_FC3_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_efa_simulator: integration/test_focuser_efa_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_efa_simulator $(BUILD_DRIVERS)/indigo_focuser_efa.a | $(INTEGRATION_BUILD)
