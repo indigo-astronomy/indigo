@@ -27,9 +27,17 @@
 
 2026-09-20 14:03 3.0.0.9 mac arm64 simulator 27/27 OK
 
+# guider_asi (ZWO ASI USB-St4 Guider)
+
+2026-09-20 20:52 3.0.0.9 mac arm64 fake SDK 17/17 OK
+
+# guider_cgusbst4 (CG-USB-ST4 Adapter)
+
+2026-09-20 20:52 3.0.0.7 mac arm64 simulator 4/4 OK
+
 # guider_gpusb (Shoestring GPUSB guider)
 
-2026-09-20 15:17 3.0.0.7 mac arm64 fake SDK 15/15 OK
+2026-09-20 20:52 3.0.0.8 mac arm64 fake SDK 15/15 OK
 
 # mount_nexstar (Nexstar Mount)
 

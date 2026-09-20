@@ -26,7 +26,7 @@ driver cgusbst4 {
 	label = "CG-USB-ST4 Adapter";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 6;
+	version = 7;
 	serial {
 		pattern {
 			product = "USB to ST4 Astrogene_1000";
@@ -84,11 +84,12 @@ driver cgusbst4 {
 	guider {
 		name = "CG-USB-ST4 Adapter";
 		inherited GUIDER_GUIDE_DEC {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 			on_change_request {
-				indigo_cancel_pending_handler(device, guider_guide_dec_handler);
 				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
 				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
-				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			on_change {
 				int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
@@ -111,11 +112,12 @@ driver cgusbst4 {
 			}
 		}
 		inherited GUIDER_GUIDE_RA {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 			on_change_request {
-				indigo_cancel_pending_handler(device, guider_guide_ra_handler);
 				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
 				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
-				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			on_change {
 				int duration = GUIDER_GUIDE_EAST_ITEM->number.value;

@@ -36,3 +36,15 @@ driver relinks the test instead of leaving a stale archive in place.
 
 - Simulated tests: 5 executed, 4 passed (1 known-defect reproducer excluded from the default suite).
 - Hardware tests: 0 executed, 0 passed.
+
+## Overlapping guide pulses (2026-09-20)
+
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true`, replacing the
+earlier workaround that forced the property state back to `INDIGO_OK_STATE` in `on_change_request`
+so the BUSY-guarded dispatch macro would let the request through. `on_change_request` is now only
+the two item-zeroing lines, matching every other INDIGO driver that exposes a guider.
+
+The `indigo_cancel_pending_handler(device, guider_guide_<axis>_handler)` call that used to sit in
+`on_change_request` was removed because it runs on the bus thread, where `indigo_queue_remove()`
+blocks until a running handler finishes. The finaliser cancellation in `on_change` runs on the
+device queue thread, where that wait is skipped, and is what actually implements the replacement.
