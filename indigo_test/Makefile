@@ -69,6 +69,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_aux_dsusb_sdk \
 	$(INTEGRATION_BUILD)/test_aux_joystick_hid \
 	$(INTEGRATION_BUILD)/test_aux_rpio_sysfs \
+	$(INTEGRATION_BUILD)/test_aux_asiair_sysfs \
 	$(INTEGRATION_BUILD)/test_focuser_primaluce_motion \
 	$(INTEGRATION_BUILD)/test_focuser_usbv3_motion \
 	$(INTEGRATION_BUILD)/test_focuser_dmfc_motion \
@@ -1350,9 +1351,28 @@ test-ccd-uvc-sdk-sanitize: $(INTEGRATION_BUILD)/test_ccd_uvc_sdk_sanitize
 # synscan://, which exercises the driver's UDP autodetection. The test physically moves both axes.
 # Set SYNSCAN_HW_AUTOHOME=1 to additionally run the controller autohome procedure, which drives
 # both axes to their home index.
-.PHONY: test-mount-synscan-hw
+.PHONY: test-aux-rpio-hw test-aux-asiair-hw test-mount-synscan-hw
 test-mount-synscan-hw: check-lib $(TEST_BUILD)/hardware/test_mount_synscan_hw
 	$(TEST_BUILD)/hardware/test_mount_synscan_hw --run
+
+# The physical Raspberry Pi GPIO test switches all eight outputs of the 40-pin
+# header, so it is opt-in and nothing may be connected to the header. It runs
+# only on a Raspberry Pi and verifies every pin through the pinctrl tool rather
+# than through the sysfs files the driver writes.
+test-aux-rpio-hw: check-lib $(TEST_BUILD)/hardware/test_aux_rpio_hw
+	$(TEST_BUILD)/hardware/test_aux_rpio_hw --run
+
+$(TEST_BUILD)/hardware/test_aux_rpio_hw: hardware/test_aux_rpio_hw.c test_runner.h ../build/drivers/indigo_aux_rpio.a Makefile | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_aux_rpio.a -o $@ $(TEST_LDFLAGS)
+
+# The physical ASIAIR power port test switches all four ports of the 40-pin
+# header, so it is opt-in and nothing may be connected to the header. It runs on
+# a bare Raspberry Pi as well, because the ports are ordinary header pins.
+test-aux-asiair-hw: check-lib $(TEST_BUILD)/hardware/test_aux_asiair_hw
+	$(TEST_BUILD)/hardware/test_aux_asiair_hw --run
+
+$(TEST_BUILD)/hardware/test_aux_asiair_hw: hardware/test_aux_asiair_hw.c test_runner.h ../build/drivers/indigo_aux_asiair.a Makefile | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_aux_asiair.a -o $@ $(TEST_LDFLAGS)
 
 $(TEST_BUILD)/hardware/mount_synscan_hw_driver.o: ../indigo_drivers/mount_synscan/indigo_mount_synscan.c ../indigo_drivers/mount_synscan/indigo_mount_synscan.h Makefile | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=synscan_test_config_folder -c $< -o $@
@@ -1568,16 +1588,16 @@ test-aux-joystick-hid-asan: $(INTEGRATION_BUILD)/test_aux_joystick_hid_asan
 # The Raspberry Pi GPIO driver reaches the hardware only through sysfs files, so
 # the whole boundary is replaced by the fake in test_aux_rpio_sysfs.c. stat is
 # replaced through a function-like macro so that struct stat is left alone.
-AUX_RPIO_SYSFS_TEST_REPLACEMENTS = -Dopen=rpio_test_open -Dclose=rpio_test_close -Dread=rpio_test_read -Dwrite=rpio_test_write -D'stat(path,buffer)=rpio_test_stat(path,buffer)' -Dindigo_usleep=rpio_test_usleep
+AUX_RPIO_SYSFS_TEST_REPLACEMENTS = -Dopen=sysfs_test_open -Dclose=sysfs_test_close -Dread=sysfs_test_read -Dwrite=sysfs_test_write -Dopendir=sysfs_test_opendir -Dreaddir=sysfs_test_readdir -Dclosedir=sysfs_test_closedir -D'stat(path,buffer)=sysfs_test_stat(path,buffer)' -Dindigo_usleep=sysfs_test_usleep
 AUX_RPIO_SYSFS_TEST_CFLAGS = $(TEST_CFLAGS) $(AUX_RPIO_SYSFS_TEST_REPLACEMENTS)
 
-$(INTEGRATION_BUILD)/aux_rpio_sysfs.o: ../indigo_linux_drivers/aux_rpio/indigo_aux_rpio.c | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/aux_rpio_sysfs.o: ../indigo_linux_drivers/aux_rpio/indigo_aux_rpio.c ../indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.h ../indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(AUX_RPIO_SYSFS_TEST_CFLAGS) -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_aux_rpio_sysfs: integration/test_aux_rpio_sysfs.c $(INTEGRATION_BUILD)/aux_rpio_sysfs.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_aux_rpio_sysfs: integration/test_aux_rpio_sysfs.c $(INTEGRATION_BUILD)/aux_rpio_sysfs.o integration/sysfs_gpio_fake.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/aux_rpio_sysfs.o -o $@ $(TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/aux_rpio_sysfs_asan.o: ../indigo_linux_drivers/aux_rpio/indigo_aux_rpio.c | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/aux_rpio_sysfs_asan.o: ../indigo_linux_drivers/aux_rpio/indigo_aux_rpio.c ../indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.h ../indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(AUX_RPIO_SYSFS_TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_aux_rpio_sysfs_asan: integration/test_aux_rpio_sysfs.c $(INTEGRATION_BUILD)/aux_rpio_sysfs_asan.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
@@ -1590,6 +1610,30 @@ test-aux-rpio-sysfs: $(INTEGRATION_BUILD)/test_aux_rpio_sysfs
 
 test-aux-rpio-sysfs-asan: $(INTEGRATION_BUILD)/test_aux_rpio_sysfs_asan
 	ASAN_OPTIONS=detect_leaks=0 $(INTEGRATION_BUILD)/test_aux_rpio_sysfs_asan
+
+# The ZWO ASIAIR power port driver shares the sysfs boundary and its fake with
+# the Raspberry Pi GPIO driver.
+AUX_ASIAIR_SYSFS_TEST_CFLAGS = $(TEST_CFLAGS) $(AUX_RPIO_SYSFS_TEST_REPLACEMENTS)
+
+$(INTEGRATION_BUILD)/aux_asiair_sysfs.o: ../indigo_linux_drivers/aux_asiair/indigo_aux_asiair.c ../indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.h ../indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(AUX_ASIAIR_SYSFS_TEST_CFLAGS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_aux_asiair_sysfs: integration/test_aux_asiair_sysfs.c $(INTEGRATION_BUILD)/aux_asiair_sysfs.o integration/sysfs_gpio_fake.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/aux_asiair_sysfs.o -o $@ $(TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/aux_asiair_sysfs_asan.o: ../indigo_linux_drivers/aux_asiair/indigo_aux_asiair.c ../indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.h ../indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(AUX_ASIAIR_SYSFS_TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_aux_asiair_sysfs_asan: integration/test_aux_asiair_sysfs.c $(INTEGRATION_BUILD)/aux_asiair_sysfs_asan.o integration/sysfs_gpio_fake.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $< $(INTEGRATION_BUILD)/aux_asiair_sysfs_asan.o -o $@ $(TEST_LDFLAGS) -fsanitize=address,undefined
+
+.PHONY: test-aux-asiair-sysfs test-aux-asiair-sysfs-asan
+
+test-aux-asiair-sysfs: $(INTEGRATION_BUILD)/test_aux_asiair_sysfs
+	$(INTEGRATION_BUILD)/test_aux_asiair_sysfs
+
+test-aux-asiair-sysfs-asan: $(INTEGRATION_BUILD)/test_aux_asiair_sysfs_asan
+	ASAN_OPTIONS=detect_leaks=0 $(INTEGRATION_BUILD)/test_aux_asiair_sysfs_asan
 
 $(INTEGRATION_BUILD)/focuser_fcusb_usb_output.o: ../indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.c | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $(USB_OUTPUT_REPLACEMENTS) -c $< -o $@

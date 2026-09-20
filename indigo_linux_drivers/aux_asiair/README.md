@@ -38,3 +38,11 @@ This driver supports the 4 power ports on the ASIAIR PRO and Plus RPi models
 ```
 $ sudo echo "dtoverlay=pwm-2chan" >>/boot/config.txt
 ```
+
+NOTE: As of version 3.0.0.4 PWM is opt-in, enable the X_AUX_PWM property. The existence of a PWM chip does not mean that a header pin is routed to it, so the driver no longer assumes it and Outputs #1 and #4 work as plain GPIO until PWM is switched on.
+On a Raspberry Pi 5 the pwm-2chan overlay does not route any header pin to the RP1 PWM controller, so PWM is not usable on that model.
+
+## Testing
+
+2026-09-20 22:35 3.0.0.4 linux arm64 fake SDK 16/16 OK
+2026-09-20 22:35 3.0.0.4 linux arm64 Raspberry Pi 5 3/3 OK

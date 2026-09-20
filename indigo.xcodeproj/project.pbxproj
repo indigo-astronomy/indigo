@@ -2694,6 +2694,13 @@
 		59910BF9305C6FAA00FB1C2F /* test_ccd_sx_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_sx_hw.c; sourceTree = "<group>"; };
 		59910C6E305EF74800FB1C2F /* dragonfly_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dragonfly_simulator_common.h; sourceTree = "<group>"; };
 		59910C6F305EF9B500FB1C2F /* indigo_aux_dragonfly.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_aux_dragonfly.driver; sourceTree = "<group>"; };
+		33F305E4453F448EB7D989BA /* indigo_aux_rpio.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_aux_rpio.driver; sourceTree = "<group>"; };
+		3163F39E82A1476FAC756087 /* indigo_aux_asiair.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_aux_asiair.driver; sourceTree = "<group>"; };
+		76F8AA906122440EB263392A /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		DCCFA6E358C148A8B5E8ED16 /* rpio_sysfs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = rpio_sysfs.h; sourceTree = "<group>"; };
+		842F7CE01D284EB1AA9EBECA /* rpio_sysfs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = rpio_sysfs.c; sourceTree = "<group>"; };
+		F4B0667386AC4C429100A248 /* sysfs_gpio_fake.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sysfs_gpio_fake.h; sourceTree = "<group>"; };
+		F2CA338B73DF48C78B5B7267 /* test_aux_asiair_sysfs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_asiair_sysfs.c; sourceTree = "<group>"; };
 		59910C70305EFA4E00FB1C2F /* indigo_dome_dragonfly.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_dome_dragonfly.driver; sourceTree = "<group>"; };
 		59910CC7305F0D3900FB1C2F /* lunatico_main_shared.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = lunatico_main_shared.c; sourceTree = "<group>"; };
 		59910CC8305F0D3900FB1C2F /* lunatico_shared.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = lunatico_shared.c; sourceTree = "<group>"; };
@@ -4847,6 +4854,8 @@
 		59E2DA60263837EE00D3D4B5 /* jdpostct.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = jdpostct.c; path = externals/libjpeg/jdpostct.c; sourceTree = "<group>"; };
 		59E2DA682638384900D3D4B5 /* Protocol_V3.10.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V3.10.pdf; sourceTree = "<group>"; };
 		59E4ADBA30600C0A002B1629 /* test_mount_synscan_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_synscan_hw.c; sourceTree = "<group>"; };
+		31394FFC665B4AD088017127 /* test_aux_rpio_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_rpio_hw.c; sourceTree = "<group>"; };
+		BB585B0FF8074EBCA4FB2400 /* test_aux_asiair_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_asiair_hw.c; sourceTree = "<group>"; };
 		C0DE20260920190000000001 /* test_focuser_primaluce_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_primaluce_hw.c; sourceTree = "<group>"; };
 		59E4ADBB3060448A002B1629 /* TEST_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TEST_SUMMARY.md; sourceTree = "<group>"; };
 		59E4FE432DCCD21700A10A06 /* indigo_focuser_usbv3.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_focuser_usbv3.driver; sourceTree = "<group>"; };
@@ -8968,6 +8977,15 @@
 			path = gps_gpsd_simulator;
 			sourceTree = "<group>";
 		};
+		B2E7B1AF872E4D83934DFA94 /* shared */ = {
+			isa = PBXGroup;
+			children = (
+				842F7CE01D284EB1AA9EBECA /* rpio_sysfs.c */,
+				DCCFA6E358C148A8B5E8ED16 /* rpio_sysfs.h */,
+			);
+			path = shared;
+			sourceTree = "<group>";
+		};
 		59910CC9305F0D3900FB1C2F /* shared */ = {
 			isa = PBXGroup;
 			children = (
@@ -10916,9 +10934,11 @@
 			children = (
 				59C0C7502564652D00916E8D /* README.md */,
 				F03E2D230D06433C8E608E74 /* REFACTOR.md */,
+				33F305E4453F448EB7D989BA /* indigo_aux_rpio.driver */,
 				59C0C74F2564652D00916E8D /* indigo_aux_rpio.h */,
 				59C0C7512564652D00916E8D /* indigo_aux_rpio.c */,
 				59C0C7522564652D00916E8D /* indigo_aux_rpio_main.c */,
+				B2E7B1AF872E4D83934DFA94 /* shared */,
 			);
 			path = aux_rpio;
 			sourceTree = "<group>";
@@ -14016,6 +14036,8 @@
 				5907ACEA301E9F1B0009AA99 /* test_aux_flipflat_simulator.c */,
 				C0DE20260914C00100000002 /* test_aux_joystick_hid.c */,
 				49B981AB4CBB4A2489DD7064 /* test_aux_rpio_sysfs.c */,
+				F2CA338B73DF48C78B5B7267 /* test_aux_asiair_sysfs.c */,
+				F4B0667386AC4C429100A248 /* sysfs_gpio_fake.h */,
 				9B2B121EFA1F4F77BCDD8053 /* test_aux_mgbox_simulator.c */,
 				5984A2FA303B77B300D581D2 /* test_aux_ppb_simulator.c */,
 				5984A2FC303B796D00D581D2 /* test_aux_skyalert_simulator.c */,
@@ -14530,6 +14552,8 @@
 			isa = PBXGroup;
 			children = (
 				59E4ADBA30600C0A002B1629 /* test_mount_synscan_hw.c */,
+				31394FFC665B4AD088017127 /* test_aux_rpio_hw.c */,
+				BB585B0FF8074EBCA4FB2400 /* test_aux_asiair_hw.c */,
 				C0DE20260920190000000001 /* test_focuser_primaluce_hw.c */,
 				59910BF8305C6FAA00FB1C2F /* test_ccd_atik_hw.c */,
 				59910BF9305C6FAA00FB1C2F /* test_ccd_sx_hw.c */,
@@ -15436,6 +15460,8 @@
 			isa = PBXGroup;
 			children = (
 				9D74A55C2D4B660400A31003 /* README.md */,
+				76F8AA906122440EB263392A /* REFACTOR.md */,
+				3163F39E82A1476FAC756087 /* indigo_aux_asiair.driver */,
 				9D74A5592D4B660400A31003 /* indigo_aux_asiair.h */,
 				9D74A55A2D4B660400A31003 /* indigo_aux_asiair.c */,
 				9D74A55B2D4B660400A31003 /* indigo_aux_asiair_main.c */,

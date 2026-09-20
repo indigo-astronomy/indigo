@@ -702,6 +702,14 @@ Driver-specific use of existing properties: `AUX_WEATHER`.
 
 Source: `indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.c`.
 
+### aux_asiair
+
+Custom properties: `AUX_GPIO_OUTLETS`, `AUX_GPIO_OUTLET_DUTY_CYCLES`, `AUX_GPIO_OUTLET_FREQUENCIES`, `AUX_OUTLET_NAMES`, `AUX_OUTLET_PULSE_LENGTHS`, `X_AUX_PWM`.
+
+The four power ports of an ASIAIR PRO or Plus are exposed. `AUX_OUTLET_NAMES`, `AUX_OUTLET_PULSE_LENGTHS`, the PWM properties and `X_AUX_PWM` are saved by CONFIG; `AUX_OUTLET_NAMES` and `X_AUX_PWM` are always defined and the rest are connection-dependent. `X_AUX_PWM` selects whether Output #1 and Output #4 are driven as PWM channels and defaults to disabled, because the presence of a PWM chip does not mean that any header pin is routed to it; it is read at connect time, so a change applies to the next connection. `AUX_GPIO_OUTLET_FREQUENCIES` and `AUX_GPIO_OUTLET_DUTY_CYCLES` stay hidden unless PWM is in use.
+
+Sources: `indigo_linux_drivers/aux_asiair/indigo_aux_asiair.driver`, `indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.c`.
+
 ### aux_cloudwatcher
 
 Custom properties: `AUX_CLOUD`, `AUX_CLOUD_THRESHOLDS`, `AUX_DEW_THRESHOLD`, `AUX_DEW_WARNING`, `AUX_GPIO_OUTLETS`, `AUX_HUMIDITY`, `AUX_HUMIDITY_THRESHOLDS`, `AUX_OUTLET_NAMES`, `AUX_RAIN`, `AUX_RAIN_THRESHOLD`, `AUX_RAIN_THRESHOLDS`, `AUX_RAIN_WARNING`, `AUX_SKY`, `AUX_SKY_THRESHOLDS`, `AUX_WIND`, `AUX_WIND_THRESHOLD`, `AUX_WIND_THRESHOLDS`, `AUX_WIND_WARNING`, `X_AAG_CONSTANTS`, `X_ANEMOMETER_TYPE`, `X_HEATER_CONTROL_STATE`, `X_RAIN_SENSOR_HEATER_SETUP`, `X_SKY_CORRECTION`.
@@ -785,6 +793,14 @@ Custom properties: `AUX_OUTLET_NAMES`, `AUX_SAVE_OUTLET_STATES_AS_DEFAULT`, `X_A
 Driver-specific use of existing properties: `AUX_DEW_CONTROL`, `AUX_HEATER_OUTLET`, `AUX_INFO`, `AUX_POWER_OUTLET`, `AUX_POWER_OUTLET_STATE`, `AUX_WEATHER`.
 
 Source: `indigo_drivers/aux_ppb/indigo_aux_ppb.c`.
+
+### aux_rpio
+
+Custom properties: `AUX_GPIO_OUTLETS`, `AUX_GPIO_OUTLET_DUTY_CYCLES`, `AUX_GPIO_OUTLET_FREQUENCIES`, `AUX_GPIO_SENSORS`, `AUX_OUTLET_NAMES`, `AUX_OUTLET_PULSE_LENGTHS`, `AUX_SENSOR_NAMES`, `X_AUX_PWM`.
+
+Eight outputs and eight inputs of the Raspberry Pi 40-pin header are exposed. `AUX_OUTLET_NAMES`, `AUX_SENSOR_NAMES`, `AUX_OUTLET_PULSE_LENGTHS`, the PWM properties and `X_AUX_PWM` are saved by CONFIG; `AUX_OUTLET_NAMES`, `AUX_SENSOR_NAMES` and `X_AUX_PWM` are always defined and the rest are connection-dependent. `X_AUX_PWM` selects whether Output #1 and Output #2 are driven as PWM channels and defaults to disabled, because the presence of a PWM chip does not mean that any header pin is routed to it; it is read at connect time, so a change applies to the next connection. `AUX_GPIO_OUTLET_FREQUENCIES` and `AUX_GPIO_OUTLET_DUTY_CYCLES` stay hidden unless PWM is in use. `AUX_GPIO_SENSORS` is polled once per second.
+
+Sources: `indigo_linux_drivers/aux_rpio/indigo_aux_rpio.driver`, `indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.c`.
 
 ### aux_rts
 

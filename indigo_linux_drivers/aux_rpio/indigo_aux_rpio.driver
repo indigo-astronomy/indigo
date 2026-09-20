@@ -1,0 +1,639 @@
+// Copyright (C) 2020-2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Raspberry Pi GPIO AUX driver definition
+
+// version history
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
+driver rpio {
+	label = "Raspberry Pi GPIO";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
+	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
+	version = 9;
+	// The pins are reached through sysfs files, so the driver has no transport
+	// of its own and exposes one static device.
+	include {
+		#include <dirent.h>
+		#include <fcntl.h>
+		#include <sys/stat.h>
+		#include <unistd.h>
+	}
+	define {
+		#include "shared/rpio_sysfs.h"
+
+		#define AUX_RELAYS_GROUP     "Pin Control"
+		#define AUX_SENSORS_GROUP    "Inputs"
+		#define OUTPUT_COUNT         8
+		#define INPUT_COUNT          8
+		// Outputs #1 and #2 are driven as PWM channels when a PWM chip is found.
+		#define PWM_COUNT            2
+	}
+	data {
+		rpio_sysfs sysfs;
+		double pulse_until[OUTPUT_COUNT];
+	}
+	code {
+		#include "shared/rpio_sysfs.c"
+
+		static const int rpio_output_pins[OUTPUT_COUNT] = { 18, 12, 13, 26, 16, 5, 6, 21 };
+		static const int rpio_input_pins[INPUT_COUNT] = { 19, 17, 27, 22, 23, 24, 25, 20 };
+		// PWM channel 0 drives Output #1 and channel 1 drives Output #2.
+		static const int rpio_pwm_lines[PWM_COUNT] = { 0, 1 };
+
+		static void rpio_apply_outlet_names(indigo_device *device) {
+			if (IS_CONNECTED) {
+				indigo_delete_property(device, AUX_GPIO_OUTLETS_PROPERTY, NULL);
+				indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+				indigo_delete_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
+				indigo_delete_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
+			}
+			for (int i = 0; i < OUTPUT_COUNT; i++) {
+				const char *name = (AUX_OUTLET_NAMES_PROPERTY->items + i)->text.value;
+				INDIGO_COPY_VALUE((AUX_GPIO_OUTLETS_PROPERTY->items + i)->label, name);
+				INDIGO_COPY_VALUE((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->label, name);
+				if (i < PWM_COUNT) {
+					INDIGO_COPY_VALUE((AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->items + i)->label, name);
+					INDIGO_COPY_VALUE((AUX_GPIO_OUTLET_DUTY_PROPERTY->items + i)->label, name);
+				}
+			}
+			if (IS_CONNECTED) {
+				indigo_define_property(device, AUX_GPIO_OUTLETS_PROPERTY, NULL);
+				indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+				indigo_define_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
+				indigo_define_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
+			}
+		}
+
+		static void rpio_apply_sensor_names(indigo_device *device) {
+			if (IS_CONNECTED) {
+				indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+			}
+			for (int i = 0; i < INPUT_COUNT; i++) {
+				INDIGO_COPY_VALUE((AUX_GPIO_SENSORS_PROPERTY->items + i)->label, (AUX_SENSOR_NAMES_PROPERTY->items + i)->text.value);
+			}
+			if (IS_CONNECTED) {
+				indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+			}
+		}
+
+		// The shortest remaining pulse, or a negative value when none is running.
+		static double rpio_pulse_delay(indigo_device *device) {
+			double now = indigo_monotonic_time();
+			double delay = -1;
+			for (int i = 0; i < OUTPUT_COUNT; i++) {
+				if (PRIVATE_DATA->pulse_until[i] > 0) {
+					double remaining = PRIVATE_DATA->pulse_until[i] - now;
+					if (remaining < 0) {
+						remaining = 0;
+					}
+					if (delay < 0 || remaining < delay) {
+						delay = remaining;
+					}
+				}
+			}
+			return delay;
+		}
+
+		// One finalizer serves every output of the device: it switches off each
+		// output whose pulse has elapsed and rearms itself for the next deadline.
+		static void relay_pulse_finalizer(indigo_device *device) {
+			double now = indigo_monotonic_time();
+			bool updated = false;
+			for (int i = 0; i < OUTPUT_COUNT; i++) {
+				if (PRIVATE_DATA->pulse_until[i] > 0 && now >= PRIVATE_DATA->pulse_until[i]) {
+					PRIVATE_DATA->pulse_until[i] = 0;
+					rpio_sysfs_write_output(&PRIVATE_DATA->sysfs, i, false);
+					(AUX_GPIO_OUTLETS_PROPERTY->items + i)->sw.value = false;
+					updated = true;
+				}
+			}
+			if (updated) {
+				indigo_update_property(device, AUX_GPIO_OUTLETS_PROPERTY, NULL);
+			}
+			double delay = rpio_pulse_delay(device);
+			if (delay >= 0) {
+				indigo_execute_handler_in(device, delay, relay_pulse_finalizer);
+			}
+		}
+
+		// Write only the outputs whose requested state differs from the state the
+		// pins report. An output with a non-zero pulse length is pulsed when it is
+		// switched on and no pulse is already running for it.
+		static bool rpio_set_outlets(indigo_device *device) {
+			int values[OUTPUT_COUNT];
+			if (!rpio_sysfs_read_outputs(&PRIVATE_DATA->sysfs, values)) {
+				return false;
+			}
+			bool result = true;
+			for (int i = 0; i < OUTPUT_COUNT; i++) {
+				indigo_item *outlet = AUX_GPIO_OUTLETS_PROPERTY->items + i;
+				double length = (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value;
+				bool pulse_running = PRIVATE_DATA->pulse_until[i] > 0;
+				if (outlet->sw.value == (values[i] != 0)) {
+					continue;
+				}
+				if (length > 0 && outlet->sw.value && !pulse_running) {
+					if (rpio_sysfs_write_output(&PRIVATE_DATA->sysfs, i, true)) {
+						PRIVATE_DATA->pulse_until[i] = indigo_monotonic_time() + length / 1000;
+					} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Output #%d pulse failed, did you authorize?", i + 1);
+						result = false;
+					}
+				} else if (length == 0 || (!outlet->sw.value && !pulse_running)) {
+					if (!rpio_sysfs_write_output(&PRIVATE_DATA->sysfs, i, outlet->sw.value)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Output #%d write failed, did you authorize?", i + 1);
+						result = false;
+					}
+				}
+			}
+			return result;
+		}
+
+		static void rpio_update_sensors(indigo_device *device) {
+			int values[INPUT_COUNT];
+			if (rpio_sysfs_read_inputs(&PRIVATE_DATA->sysfs, values)) {
+				for (int i = 0; i < INPUT_COUNT; i++) {
+					(AUX_GPIO_SENSORS_PROPERTY->items + i)->number.value = values[i];
+				}
+				AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_update_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+			if (!PRIVATE_DATA->sysfs.pwm_present) {
+				return;
+			}
+			bool ok = true;
+			for (int i = 0; i < PWM_COUNT; i++) {
+				double frequency = 0;
+				double duty = 0;
+				if (rpio_sysfs_get_pwm(&PRIVATE_DATA->sysfs, i, &frequency, &duty)) {
+					indigo_item *frequency_item = AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->items + i;
+					indigo_item *duty_item = AUX_GPIO_OUTLET_DUTY_PROPERTY->items + i;
+					frequency_item->number.value = frequency_item->number.target = frequency;
+					duty_item->number.value = duty_item->number.target = duty;
+				} else {
+					ok = false;
+				}
+			}
+			AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = AUX_GPIO_OUTLET_DUTY_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
+			indigo_update_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
+		}
+
+		// Program both channels from the stored targets. Used on connect and
+		// whenever a frequency or a duty cycle changes.
+		static bool rpio_apply_pwm(indigo_device *device) {
+			bool result = true;
+			for (int i = 0; i < PWM_COUNT; i++) {
+				double frequency = (AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->items + i)->number.target;
+				double duty = (AUX_GPIO_OUTLET_DUTY_PROPERTY->items + i)->number.target;
+				if (!rpio_sysfs_set_pwm(&PRIVATE_DATA->sysfs, i, frequency, duty)) {
+					result = false;
+				} else {
+					// A running channel has to be restarted for a new period.
+					rpio_sysfs_restart_pwm(&PRIVATE_DATA->sysfs, i);
+				}
+			}
+			return result;
+		}
+	}
+	aux {
+		name = "Raspberry Pi GPIO";
+		interface = INDIGO_INTERFACE_AUX_GPIO;
+		on_attach {
+			INFO_PROPERTY->count = 5;
+		}
+		on_timer {
+			rpio_update_sensors(device);
+			indigo_execute_handler_in(device, 1, aux_timer_callback);
+		}
+		on_connect {
+			rpio_sysfs sysfs = { rpio_output_pins, OUTPUT_COUNT, rpio_input_pins, INPUT_COUNT, rpio_pwm_lines, X_AUX_PWM_ENABLED_ITEM->sw.value ? PWM_COUNT : 0, 0, -1, false };
+			PRIVATE_DATA->sysfs = sysfs;
+			rpio_sysfs_resolve(&PRIVATE_DATA->sysfs);
+			// The existence of a PWM chip says nothing about whether any header pin
+			// is routed to it, so PWM is used only when it is asked for.
+			if (X_AUX_PWM_ENABLED_ITEM->sw.value && !PRIVATE_DATA->sysfs.pwm_present) {
+				indigo_send_message(device, ALERT_PROPERTY, "PWM is enabled but no PWM chip was found, Outputs #1 and #2 stay plain GPIO");
+			} else if (PRIVATE_DATA->sysfs.pwm_present) {
+				indigo_send_message(device, IDLE_PROPERTY, "PWM drives Outputs #1 and #2");
+			}
+			AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->hidden = AUX_GPIO_OUTLET_DUTY_PROPERTY->hidden = !PRIVATE_DATA->sysfs.pwm_present;
+			connection_result = rpio_sysfs_export_all(&PRIVATE_DATA->sysfs);
+			if (connection_result) {
+				int values[OUTPUT_COUNT];
+				connection_result = rpio_sysfs_read_outputs(&PRIVATE_DATA->sysfs, values);
+				if (connection_result) {
+					for (int i = 0; i < OUTPUT_COUNT; i++) {
+						(AUX_GPIO_OUTLETS_PROPERTY->items + i)->sw.value = values[i] != 0;
+						PRIVATE_DATA->pulse_until[i] = 0;
+					}
+					if (PRIVATE_DATA->sysfs.pwm_present) {
+						rpio_apply_pwm(device);
+					}
+				} else {
+					rpio_sysfs_unexport_all(&PRIVATE_DATA->sysfs);
+				}
+			}
+		}
+		on_disconnect {
+			for (int i = 0; i < OUTPUT_COUNT; i++) {
+				PRIVATE_DATA->pulse_until[i] = 0;
+			}
+			rpio_sysfs_unexport_all(&PRIVATE_DATA->sysfs);
+		}
+		text AUX_OUTLET_NAMES {
+			name = AUX_OUTLET_NAMES_PROPERTY_NAME;
+			group = AUX_RELAYS_GROUP;
+			label = "Output names";
+			always_defined = true;
+			persistent = true;
+			on_change {
+				rpio_apply_outlet_names(device);
+			}
+			item AUX_OUTLET_NAME_1 {
+				name = AUX_GPIO_OUTLET_NAME_1_ITEM_NAME;
+				label = "Output 1";
+				value = "Output #1";
+			}
+			item AUX_OUTLET_NAME_2 {
+				name = AUX_GPIO_OUTLET_NAME_2_ITEM_NAME;
+				label = "Output 2";
+				value = "Output #2";
+			}
+			item AUX_OUTLET_NAME_3 {
+				name = AUX_GPIO_OUTLET_NAME_3_ITEM_NAME;
+				label = "Output 3";
+				value = "Output #3";
+			}
+			item AUX_OUTLET_NAME_4 {
+				name = AUX_GPIO_OUTLET_NAME_4_ITEM_NAME;
+				label = "Output 4";
+				value = "Output #4";
+			}
+			item AUX_OUTLET_NAME_5 {
+				name = AUX_GPIO_OUTLET_NAME_5_ITEM_NAME;
+				label = "Output 5";
+				value = "Output #5";
+			}
+			item AUX_OUTLET_NAME_6 {
+				name = AUX_GPIO_OUTLET_NAME_6_ITEM_NAME;
+				label = "Output 6";
+				value = "Output #6";
+			}
+			item AUX_OUTLET_NAME_7 {
+				name = AUX_GPIO_OUTLET_NAME_7_ITEM_NAME;
+				label = "Output 7";
+				value = "Output #7";
+			}
+			item AUX_OUTLET_NAME_8 {
+				name = AUX_GPIO_OUTLET_NAME_8_ITEM_NAME;
+				label = "Output 8";
+				value = "Output #8";
+			}
+		}
+		switch AUX_GPIO_OUTLETS {
+			name = AUX_GPIO_OUTLETS_PROPERTY_NAME;
+			group = AUX_RELAYS_GROUP;
+			label = "Outputs";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				if (rpio_set_outlets(device)) {
+					INDIGO_UPDATE_PROPERTY_STATE(AUX_GPIO_OUTLETS_PROPERTY, INDIGO_OK_STATE, NULL);
+				} else {
+					INDIGO_UPDATE_PROPERTY_STATE(AUX_GPIO_OUTLETS_PROPERTY, INDIGO_ALERT_STATE, "Output operation failed, did you authorize?");
+				}
+				double delay = rpio_pulse_delay(device);
+				if (delay >= 0) {
+					// One finalizer serves every output, so a pulse started while
+					// another is running replaces its wake-up.
+					indigo_cancel_pending_handler(device, relay_pulse_finalizer);
+					indigo_execute_handler_in(device, delay, relay_pulse_finalizer);
+				}
+			}
+			item AUX_GPIO_OUTLET_1 {
+				name = AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME;
+				label = "Output #1";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_2 {
+				name = AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME;
+				label = "Output #2";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_3 {
+				name = AUX_GPIO_OUTLETS_OUTLET_3_ITEM_NAME;
+				label = "Output #3";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_4 {
+				name = AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME;
+				label = "Output #4";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_5 {
+				name = AUX_GPIO_OUTLETS_OUTLET_5_ITEM_NAME;
+				label = "Output #5";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_6 {
+				name = AUX_GPIO_OUTLETS_OUTLET_6_ITEM_NAME;
+				label = "Output #6";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_7 {
+				name = AUX_GPIO_OUTLETS_OUTLET_7_ITEM_NAME;
+				label = "Output #7";
+				value = false;
+			}
+			item AUX_GPIO_OUTLET_8 {
+				name = AUX_GPIO_OUTLETS_OUTLET_8_ITEM_NAME;
+				label = "Output #8";
+				value = false;
+			}
+		}
+		number AUX_OUTLET_PULSE_LENGTHS {
+			name = AUX_OUTLET_PULSE_LENGTHS_PROPERTY_NAME;
+			group = AUX_RELAYS_GROUP;
+			label = "Output pulse lengths (ms)";
+			persistent = true;
+			on_change { }
+			item AUX_OUTLET_PULSE_LENGTHS_1 {
+				name = AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME;
+				label = "Output #1";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_2 {
+				name = AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME;
+				label = "Output #2";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_3 {
+				name = AUX_GPIO_OUTLETS_OUTLET_3_ITEM_NAME;
+				label = "Output #3";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_4 {
+				name = AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME;
+				label = "Output #4";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_5 {
+				name = AUX_GPIO_OUTLETS_OUTLET_5_ITEM_NAME;
+				label = "Output #5";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_6 {
+				name = AUX_GPIO_OUTLETS_OUTLET_6_ITEM_NAME;
+				label = "Output #6";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_7 {
+				name = AUX_GPIO_OUTLETS_OUTLET_7_ITEM_NAME;
+				label = "Output #7";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+			item AUX_OUTLET_PULSE_LENGTHS_8 {
+				name = AUX_GPIO_OUTLETS_OUTLET_8_ITEM_NAME;
+				label = "Output #8";
+				min = 0;
+				max = 100000;
+				step = 100;
+				value = 0;
+			}
+		}
+		switch X_AUX_PWM {
+			name = "X_AUX_PWM";
+			group = AUX_RELAYS_GROUP;
+			label = "PWM on Outputs #1 and #2";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			always_defined = true;
+			persistent = true;
+			on_change {
+				if (IS_CONNECTED) {
+					indigo_send_message(device, IDLE_PROPERTY, "The PWM setting takes effect on the next connection");
+				}
+			}
+			item X_AUX_PWM_ENABLED {
+				name = "ENABLED";
+				label = "Enabled";
+				value = false;
+			}
+			item X_AUX_PWM_DISABLED {
+				name = "DISABLED";
+				label = "Disabled";
+				value = true;
+			}
+		}
+		number AUX_GPIO_OUTLET_FREQUENCIES {
+			name = AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY_NAME;
+			group = AUX_RELAYS_GROUP;
+			label = "PWM Frequencies (Hz)";
+			persistent = true;
+			on_change {
+				rpio_apply_pwm(device);
+			}
+			item AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1 {
+				name = AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME;
+				label = "Output #1";
+				min = 0.5;
+				max = 1000000;
+				step = 100;
+				value = 100;
+			}
+			item AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2 {
+				name = AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME;
+				label = "Output #2";
+				min = 0.5;
+				max = 1000000;
+				step = 100;
+				value = 100;
+			}
+		}
+		number AUX_GPIO_OUTLET_DUTY {
+			name = AUX_GPIO_OUTLET_DUTY_PROPERTY_NAME;
+			group = AUX_RELAYS_GROUP;
+			label = "PWM Duty cycles (%)";
+			persistent = true;
+			on_change {
+				rpio_apply_pwm(device);
+			}
+			item AUX_GPIO_OUTLET_DUTY_OUTLET_1 {
+				name = AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME;
+				label = "Output #1";
+				min = 0;
+				max = 100;
+				step = 1;
+				value = 100;
+			}
+			item AUX_GPIO_OUTLET_DUTY_OUTLET_2 {
+				name = AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME;
+				label = "Output #2";
+				min = 0;
+				max = 100;
+				step = 1;
+				value = 100;
+			}
+		}
+		text AUX_SENSOR_NAMES {
+			name = AUX_SENSOR_NAMES_PROPERTY_NAME;
+			group = AUX_SENSORS_GROUP;
+			label = "Input names";
+			always_defined = true;
+			persistent = true;
+			on_change {
+				rpio_apply_sensor_names(device);
+			}
+			item AUX_SENSOR_NAME_1 {
+				name = AUX_GPIO_SENSOR_NAME_1_ITEM_NAME;
+				label = "Input 1";
+				value = "Input #1";
+			}
+			item AUX_SENSOR_NAME_2 {
+				name = AUX_GPIO_SENSOR_NAME_2_ITEM_NAME;
+				label = "Input 2";
+				value = "Input #2";
+			}
+			item AUX_SENSOR_NAME_3 {
+				name = AUX_GPIO_SENSOR_NAME_3_ITEM_NAME;
+				label = "Input 3";
+				value = "Input #3";
+			}
+			item AUX_SENSOR_NAME_4 {
+				name = AUX_GPIO_SENSOR_NAME_4_ITEM_NAME;
+				label = "Input 4";
+				value = "Input #4";
+			}
+			item AUX_SENSOR_NAME_5 {
+				name = AUX_GPIO_SENSOR_NAME_5_ITEM_NAME;
+				label = "Input 5";
+				value = "Input #5";
+			}
+			item AUX_SENSOR_NAME_6 {
+				name = AUX_GPIO_SENSOR_NAME_6_ITEM_NAME;
+				label = "Input 6";
+				value = "Input #6";
+			}
+			item AUX_SENSOR_NAME_7 {
+				name = AUX_GPIO_SENSOR_NAME_7_ITEM_NAME;
+				label = "Input 7";
+				value = "Input #7";
+			}
+			item AUX_SENSOR_NAME_8 {
+				name = AUX_GPIO_SENSOR_NAME_8_ITEM_NAME;
+				label = "Input 8";
+				value = "Input #8";
+			}
+		}
+		number AUX_GPIO_SENSORS {
+			name = AUX_GPIO_SENSORS_PROPERTY_NAME;
+			group = AUX_SENSORS_GROUP;
+			label = "Inputs";
+			perm = INDIGO_RO_PERM;
+			// on_change { }
+			item AUX_GPIO_SENSOR_1 {
+				name = AUX_GPIO_SENSOR_NAME_1_ITEM_NAME;
+				label = "Input #1";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_2 {
+				name = AUX_GPIO_SENSOR_NAME_2_ITEM_NAME;
+				label = "Input #2";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_3 {
+				name = AUX_GPIO_SENSOR_NAME_3_ITEM_NAME;
+				label = "Input #3";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_4 {
+				name = AUX_GPIO_SENSOR_NAME_4_ITEM_NAME;
+				label = "Input #4";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_5 {
+				name = AUX_GPIO_SENSOR_NAME_5_ITEM_NAME;
+				label = "Input #5";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_6 {
+				name = AUX_GPIO_SENSOR_NAME_6_ITEM_NAME;
+				label = "Input #6";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_7 {
+				name = AUX_GPIO_SENSOR_NAME_7_ITEM_NAME;
+				label = "Input #7";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+			item AUX_GPIO_SENSOR_8 {
+				name = AUX_GPIO_SENSOR_NAME_8_ITEM_NAME;
+				label = "Input #8";
+				min = 0;
+				max = 1024;
+				step = 1;
+				value = 0;
+			}
+		}
+	}
+}

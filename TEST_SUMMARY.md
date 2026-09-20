@@ -43,3 +43,13 @@
 # wheel_sx (Starlight Xpress Filter Wheel)
 
 2026-09-20 15:00 3.0.0.5 mac arm64 fake SDK 17/17 OK
+
+# aux_asiair (ZWO Power Ports ASIAIR)
+
+2026-09-20 22:35 3.0.0.4 linux arm64 fake SDK 16/16 OK
+2026-09-20 22:35 3.0.0.4 linux arm64 Raspberry Pi 5 3/3 OK
+
+# aux_rpio (Raspberry Pi GPIO)
+
+2026-09-20 22:35 3.0.0.9 linux arm64 fake SDK 19/19 OK
+2026-09-20 22:35 3.0.0.9 linux arm64 Raspberry Pi 5 4/4 OK

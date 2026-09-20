@@ -1,12 +1,16 @@
 # Raspberry Pi GPIO AUX driver refactoring and validation record
 
-Status: audit and baseline recorded on 2026-09-20. No production change has been made yet.
+Status: refactoring complete on 2026-09-20. Migrated to the generator, every recorded defect
+fixed, hardware-free suite and physical Raspberry Pi 5 test both green.
 
 ## Environment
 
 All work for this record runs on the target hardware, not on a development host:
 
-- Raspberry Pi 5 Model B Rev 1.0, `pinctrl-rp1` 40-pin header controller.
+- Raspberry Pi 5 Model B Rev 1.0, `pinctrl-rp1` 40-pin header controller. The machine has both an
+  SD card and an external USB SSD and its `BOOT_ORDER` is `0xf146`, so it prefers the USB disk.
+  A reboot taken during this work therefore moved it from the SD card system to the SSD system;
+  the work was copied across and continued on the SSD.
 - Debian GNU/Linux 12 (bookworm), kernel `6.12.87+rpt-rpi-2712`, aarch64.
 - gcc 12.2.0, GNU Make 4.3.
 
@@ -81,20 +85,27 @@ No existing tests could be run as a baseline, because none exist.
 
 ## Hardware-test decision
 
-Hardware testing **will** be performed, on the Raspberry Pi 5 described above, but only in a
-strictly non-destructive form: reading the sysfs topology and confirming which interfaces exist.
-No test in this record drives the physical header pins. The Pi is an in-service INDIGO Sky host and
-unknown equipment may be attached to the 40-pin connector, so toggling real outputs is out of
-scope. Every functional scenario runs against a fake sysfs tree.
+Hardware testing **was** performed on the Raspberry Pi 5 described above, in two stages.
 
-Planned hardware scenarios:
+The first stage was non-destructive inspection only, decided before implementation because the Pi
+is an in-service INDIGO Sky host and equipment could have been attached to the 40-pin connector:
 
 1. Enumerate `/sys/class/gpio/gpiochip*` and record `base`, `ngpio` and `label`.
 2. Enumerate `/sys/class/pwm/pwmchip*` and record `npwm` and the backing platform device.
-3. Confirm, without exporting, that the driver's hardcoded numbering cannot address the header on
-   this model.
+3. Confirm, without exporting, that the driver's hardcoded numbering cannot address the header.
 
-Results are in the found-defects section below.
+The second stage became possible once the owner confirmed that nothing is connected to the header.
+`indigo_test/hardware/test_aux_rpio_hw.c` drives the real pins through the real driver, and every
+assertion is verified with the `pinctrl` tool, which reads the pin controller registers, rather
+than through the sysfs files the driver itself writes. The test is opt-in, excluded from the normal
+integration target, and refuses to run without `--run`:
+
+```sh
+make -C indigo_test test-aux-rpio-hw
+```
+
+It found two defects that neither the source audit nor the fake could reveal. Both are recorded
+below as D9a and D15.
 
 ## Found defects
 
@@ -246,6 +257,73 @@ Numbering is stable; each entry gets a regression test before it is fixed.
 - Regression test: connect, disconnect, and assert that no further sysfs read is recorded and that
   the disconnect completes without waiting.
 
+### D9a The bounded wait replacing the sleep waited for the wrong condition
+
+- Impact: connect failed outright on real hardware. `Failed to open
+  /sys/class/gpio/gpio584/direction for writing`, followed by a full rollback of six output, eight
+  input and two PWM exports.
+- Discovery: reproduced on hardware, on the first run of the hardware test. The fake could not
+  show it, because a fake file has no owner.
+- Root cause: the D9 fix waited for the direction file to be **openable for reading**. A freshly
+  exported node appears owned by `root` and is only handed to the `gpio` group once udev has
+  processed the event, so the file exists and is readable well before it is writable. This is what
+  the original fixed one second sleep was really waiting for; removing it without understanding
+  what it hid turned a slow connect into a broken one.
+- Fix: wait for the direction file to be writable, not merely present.
+- Regression test: covered by the hardware test, which connects on a real Pi. The fake models
+  permissions no better than any file-backed fake would, so no simulated reproducer is claimed.
+
+### D15 PWM is assumed to be routed to the header whenever a PWM chip exists
+
+- Impact: two of the eight outputs are silently dead. Measured on the target:
+
+  ```
+  output #1 (GPIO 18): DEAD
+  output #2 (GPIO 12): DEAD
+  output #3 (GPIO 13): switches
+  output #4 (GPIO 26): switches
+  output #5 (GPIO 16): switches
+  output #6 (GPIO  5): switches
+  output #7 (GPIO  6): switches
+  output #8 (GPIO 21): switches
+  6 of 8 outputs reach the header
+  ```
+
+  The driver reports the outputs as switched and publishes `INDIGO_OK_STATE`; nothing in the
+  property state tells the user that two ports do nothing.
+- Discovery: reproduced on hardware. Not reachable through the fake, which cannot model the
+  difference between a PWM controller existing and a PWM controller being wired to a pin.
+- Root cause: the driver decides that PWM is available from the existence of a PWM chip and then
+  hands Outputs #1 and #2 to PWM channels instead of exporting them as GPIO. On this machine
+  `dtoverlay=pwm-2chan` **is** present in `/boot/firmware/config.txt` and the RP1 controller
+  `pwm@9c000` is enabled, so the chip exists, but no header pin is routed to it. Verified directly:
+  PWM channel 0 programmed to 100 Hz at 100 percent duty and enabled leaves GPIO 12, 14 and 15 at
+  function `none`, so the channel drives nothing. On a Raspberry Pi 5 the overlay needs its
+  `pins-12-13` variant, and the channel to pin mapping is different from a Raspberry Pi 4 in any
+  case. The existence of a chip is therefore not evidence that the two outputs are PWM backed.
+- Fix: **applied.** PWM is now opt-in through `X_AUX_PWM`, a persistent, always defined switch that
+  defaults to disabled and is read at connect time. With it off the driver never looks for a PWM
+  chip and drives all eight outputs as plain GPIO; with it on the behavior is exactly what it was.
+  Two alternatives were considered and rejected: probing the routing through the GPIO character
+  device (`GPIO_V2_GET_LINEINFO_IOCTL` reports whether a line is claimed and by whom) is the more
+  automatic answer, but its decisive branch cannot be validated on this machine at all, because no
+  overlay routes a header pin to PWM on RP1, and it would reintroduce the character device that
+  was deliberately not used; and leaving the behavior documented keeps a silent failure.
+- Related documentation defect: `README.md` tells the user to add `dtoverlay=pwm-2chan`, which is
+  correct up to a Raspberry Pi 4 and does nothing useful on a Raspberry Pi 5.
+- Re-verified from a clean boot, because the first measurement was taken after the pins had been
+  exported by earlier test runs and sysfs GPIO overrides the pin function. Immediately after a
+  reboot, with the driver never started, GPIO 12, 13, 18 and 19 all read function `none`, and
+  programming PWM channel 0 and channel 1 to 100 Hz at 100 percent duty and enabling them leaves
+  all four unchanged. `dtoverlay -h pwm-2chan` advertises `pin` defaulting to 18 and `pin2` to 19
+  with Alt5 functions, which are BCM pin functions; the RP1 pin controller of a Raspberry Pi 5 has
+  a different mux and the overlay does not take effect on it. The controller is enabled and the
+  chip is present, but nothing reaches a header pin.
+- Regression test: `PWM is off by default` in the simulated suite asserts that a present PWM chip
+  is not used and that all eight outputs are exported as GPIO, and `outputs drive the physical
+  pins` in the hardware test now measures eight of eight outputs switching on the real header,
+  where it measured six before the fix.
+
 ### D13 PWM properties updated when no PWM is present
 
 - Impact: `AUX_GPIO_OUTLET_FREQUENCIES` and `AUX_GPIO_OUTLET_DUTY` are published on every poll even
@@ -311,19 +389,123 @@ Each step is independently verifiable and is marked here with its result as soon
    read as driver behavior.
 4. **Reference trace.** Record the ordered sysfs interactions of the original driver through the
    fake and normalize it for later comparison. — pending
-5. **Fix D1 to D3**, the numbering and PWM resolution defects. — pending
-6. **Fix D4 to D9**, the correctness defects, one at a time. — pending
-7. **Clean up D10 to D13.** — pending
-8. **Generator migration.** Reverse-extract `indigo_aux_rpio.driver`, regenerate, and confirm the
-   characterization suite and reference trace still match. — pending
-9. **Project and status registration.** Xcode groups, `MIGRATION_STATUS.md`, `PROPERTIES.md`. — pending
-10. **Final verification.** Strict build, sanitizer run, full suite, driver version bump, diff
-    audit, test records. — pending
+4b. **Reference trace.** — done. Recorded through the harness:
+
+    ```sh
+    INDIGO_SIMULATOR_TRACE_DIR=/tmp/rpio_trace ./build/integration/test_aux_rpio_sysfs
+    ```
+
+    `connect_exports_every_pin.events`, 78 ordered events, md5
+    `74d21b5cf3db1317680b12be339b1794`. The trace is normalized: it carries no timestamps, no
+    addresses and no descriptor numbers, only the ordered sysfs interactions.
+
+5. **Shared sysfs layer.** — done. The hardware boundary moved to
+   `shared/rpio_sysfs.h` and `shared/rpio_sysfs.c`, which `aux_asiair` includes the way
+   `dome_dragonfly` includes `aux_dragonfly/shared`. It resolves the controller base and the PWM
+   chip, checks every write, terminates every read, rolls back a failed export and maps PWM
+   channels to output lines through an explicit table, because the ASIAIR drives its first and
+   its fourth output from channels 0 and 1 rather than the first two.
+6. **Generator migration.** — done. `indigo_aux_rpio.driver` is the source of truth and the
+   checked-in `.c`, `.h` and `_main.c` are regenerated from it. The driver has no transport, so it
+   is a virtual driver in generator terms, like `wheel_manual`. The migration also removes whole
+   classes of hand-written code and with them several defects: the generator owns the connection
+   switch on a failed connect (D7), the property definition and deletion, the `IS_CONNECTED` guard
+   at the head of the poll callback (D14) and the single pulse finalizer that replaces the eight
+   duplicated callbacks (D10). The vestigial serial state and the stray `fprintf` disappeared with
+   the hand-written file (D11, D12).
+7. **Suite green against the refactored driver.** — done, 18 of 18 pass. Four harness defects were
+   found and fixed on the way and none of them were driver defects; they are listed under
+   "Harness defects" below.
+8. **Sanitizers.** — done.
+
+   ```sh
+   make -C indigo_test test-aux-rpio-sysfs-asan
+   ```
+
+   AddressSanitizer and UndefinedBehaviorSanitizer report nothing; exit status 0.
+9. **Project and status registration.** — done. `MIGRATION_STATUS.md` updated; the new `.driver`,
+   the shared sources, `REFACTOR.md` and both test sources are registered in
+   `indigo.xcodeproj/project.pbxproj`. No property was added or removed, so `PROPERTIES.md` needs
+   no change.
+10. **Final verification.** — done. Driver version raised from `0x02000007` to `0x03000008`; the
+    driver builds with no warnings; regenerating from the `.driver` input reproduces the checked-in
+    `.c` byte for byte.
+
+    Scope of the verification run: **only the two driver suites were run**, on instruction. The
+    repository-wide `make -C indigo_test test` target was not completed, so no claim is made about
+    it. Two observations from the part of it that did run before it was stopped, both unrelated to
+    this driver and both pre-existing on this host, because nothing under `indigo_libs/` or
+    `indigo_test/unit/` was touched:
+
+    - `unit/test_timer.c` fails two cases on this platform,
+      `timer_scheduler_restarts_after_fork_during_callback` and
+      `cancel_all_timers_from_timer_callback_does_not_deadlock`.
+    - `test_ccd_qhy_sdk` does not link on Debian without `libhidapi-dev`, because the test links
+      `-lhidapi` while the in-tree build produces `libhidapi-hidraw` and `libhidapi-libusb`.
+
+## Defect status
+
+| Defect | Status |
+| --- | --- |
+| D1 hardcoded sysfs pin numbering | fixed, controller base resolved from the chip labels |
+| D2 hardcoded `pwmchip0` | fixed, the first chip with enough channels is used |
+| D3 PWM channel to pin mapping | still assumed, but no longer reached unless PWM is asked for, see D15 |
+| D4 unchecked `write()` | fixed |
+| D5 unterminated buffer passed to `atoi` | fixed |
+| D6 division by zero in the PWM readback | fixed |
+| D7 failed connect leaks pins and clears the switch | fixed, rollback plus generator-owned switch |
+| D8 pulse length passed as the pin value | fixed, not observable, see its entry |
+| D9 one second blocking sleep | fixed, bounded wait for the direction file |
+| D10 eight duplicated pulse callbacks | fixed, one finalizer |
+| D11 vestigial serial state | fixed, gone with the hand-written driver |
+| D12 `fprintf` instead of the INDIGO log | fixed |
+| D13 PWM properties updated with no PWM | fixed |
+| D14 the input poller survives disconnect | fixed, the generated callback returns when not connected |
+| D9a the bounded wait waited for readability | fixed, it waits for writability |
+| D15 PWM routing inferred from chip existence | fixed, PWM is opt-in through `X_AUX_PWM` |
+
+### D3 is still an assumption, but it is now opt-in
+
+The mapping between a PWM channel and the pin it drives comes from the device tree overlay and is
+not discoverable from sysfs, and the hardware run turned this from an audit finding into a measured
+one: on this Raspberry Pi 5 no header pin is routed to the enabled PWM controller at all. The
+driver still assumes the documented mapping when PWM is switched on, which is unchanged behavior
+for the Raspberry Pi 4 the driver was written for. What changed is that nobody gets that assumption
+by accident any more. Confirming the mapping on a Raspberry Pi 5, or finding an overlay that routes
+RP1 PWM to a header pin at all, remains open and needs hardware this record did not have.
+
+## Harness defects
+
+Found while building the suite. None of them were driver defects, and they are recorded so the
+numbers above are not misread.
+
+1. The fake left a freshly exported pin in direction `out`; the kernel leaves it `in`.
+2. A cleanup path tore the driver down twice when a connection was expected to fail, because
+   `start_serial_driver()` already tears down on failure. That corrupted the bus for later cases.
+3. A blanket rename made the cleanup helper call itself.
+4. The fake matched sysfs paths with `sscanf`, which reports how many conversions succeeded rather
+   than whether the whole format matched, so `gpiochip571/ngpio` satisfied a `gpiochip%d/label`
+   format and `gpio19/value` satisfied a `gpio%d/direction` format. This one silently produced
+   wrong readings and was responsible for most of the remaining failures. Every indexed path is now
+   matched exactly.
+
+One limitation of the shared harness is worth recording: `assert_not_defined_property()` answers
+whether a property was **ever** defined, because the shared client removes a deleted property from
+its cache but keeps the name in the defined list. A property that has to be gone at a given moment
+must be checked against the cache instead, which is what `assert_property_deleted()` in the test
+does.
 
 ## Final test summary
 
-- Simulated tests: 18 executed, 6 passed. This is the pre-migration baseline against the unmodified
-  driver, not a completion claim. The 12 failures are the recorded expected baseline failures for
-  D1, D5, D7, D9 and D14 above.
-- Hardware tests: 3 executed, 3 passed. Non-destructive topology inspection only, as decided
-  above; no physical pin was driven.
+- Simulated tests: 19 executed, 19 passed. The pre-migration baseline against the unmodified driver
+  was 18 executed, 6 passed; the 12 failures were the recorded expected baseline failures for D1,
+  D5, D7, D9 and D14, and all of them now pass.
+- Hardware tests: 4 executed, 4 passed, on a Raspberry Pi 5 Model B Rev 1.0 with nothing connected
+  to the 40-pin header, and repeated twice with identical results. All eight outputs physically
+  switch, measured through `pinctrl` rather than through the driver's own interface. Before the
+  D15 fix the same test measured six of eight. Three non-destructive topology inspections were run
+  before this stage and all three passed.
+
+  The hardware run is what validated the central fix of this refactoring: with the controller base
+  resolved at 571, the driver claims and drives real pins on a Raspberry Pi 5, which it could not
+  do at all before.

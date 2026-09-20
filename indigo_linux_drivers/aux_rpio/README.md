@@ -52,7 +52,15 @@ Driver is developed and tested with:
 ```
 $ sudo echo "dtoverlay=pwm-2chan" >>/boot/config.txt
 ```
+
+NOTE: As of version 3.0.0.9 PWM is opt-in, enable the X_AUX_PWM property. The existence of a PWM chip does not mean that a header pin is routed to it, so the driver no longer assumes it and Outputs #1 and #2 work as plain GPIO until PWM is switched on.
+On a Raspberry Pi 5 the pwm-2chan overlay does not route any header pin to the RP1 PWM controller, so PWM is not usable on that model.
 NOTE: As of version 2.0.0.3 pins GPIO 02 and GPIO 03 are not used by the driver, as they are the default I2C pins.
 GPIO 19 and GPIO 20 are used instead.
 
 NOTE: As of version 2.0.0.4 output pin GPIO 19 is replaced with GPIO 21 for AsiAir compatibility. GPIO 04 is replaced with GPIO 19 as it was always "1".
+
+## Testing
+
+2026-09-20 22:35 3.0.0.9 linux arm64 fake SDK 19/19 OK
+2026-09-20 22:35 3.0.0.9 linux arm64 Raspberry Pi 5 4/4 OK
