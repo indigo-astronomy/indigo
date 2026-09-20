@@ -112,3 +112,27 @@ Covered by the `rejected_change` scenario in `indigo_test/integration/test_focus
 ```sh
 cd indigo_test && PRODIGY_TEST_FILTER=rejected_change ./build/integration/test_focuser_prodigy_simulator
 ```
+
+## Coverage review (2026-09-20)
+
+The suite was reviewed against the focuser class standard in
+`indigo_test/DRIVER_TESTING_RULES.md` as part of the repository wide test coverage pass. It already
+meets the standard: `indigo_test/integration/test_focuser_prodigy_simulator.c` runs 55 scenarios,
+each in its own forked process against a freshly started simulator, and covers capability discovery
+and firmware branches, connection rejection on every field of the identity and status replies,
+lifecycle and additional instances, absolute and relative motion, limits, sync, park and its abort
+and failure paths, refused overlapping requests, abort including the queued abort of a running
+operation, stop and start failures, stalled motion, malformed, partial, overlong and silent poll
+replies, temperature readback, the power box outputs and their failures, labels, the shared device,
+reboot, disconnect during motion and transport loss.
+
+No new scenario was added. The only change was recording the result, which was missing from
+`MIGRATION_STATUS.md` and from the driver `README.md`.
+
+```sh
+make -C indigo_test build/integration/test_focuser_prodigy_simulator
+cd indigo_test && ./build/integration/test_focuser_prodigy_simulator
+```
+
+- Simulated tests run: 55; passed: 55.
+- Hardware tests run: 0; passed: 0.

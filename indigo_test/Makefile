@@ -59,6 +59,10 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ao_sx_transport \
 	$(INTEGRATION_BUILD)/test_gps_nmea_transport  $(INTEGRATION_BUILD)/test_aux_upb_simulator  \
 	$(INTEGRATION_BUILD)/test_wheel_atik_usb \
+	$(INTEGRATION_BUILD)/test_wheel_atik_hid \
+	$(INTEGRATION_BUILD)/test_wheel_sx_hid \
+	$(INTEGRATION_BUILD)/test_guider_gpusb_sdk \
+	$(INTEGRATION_BUILD)/test_focuser_fcusb_sdk \
 	$(INTEGRATION_BUILD)/test_wheel_sx_usb \
 	$(INTEGRATION_BUILD)/test_guider_gpusb_usb \
 	$(INTEGRATION_BUILD)/test_focuser_fcusb_usb \
@@ -1563,6 +1567,38 @@ $(INTEGRATION_BUILD)/wheel_sx_usb_output.o: ../indigo_drivers/wheel_sx/indigo_wh
 
 $(INTEGRATION_BUILD)/test_wheel_sx_usb: integration/test_usb_outputs.c $(INTEGRATION_BUILD)/wheel_sx_usb_output.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) -DTEST_KIND=4 -DTEST_ENTRY=indigo_wheel_sx -DTEST_NAME='"SX Filter Wheel #1"' $< $(INTEGRATION_BUILD)/wheel_sx_usb_output.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+FCUSB_SDK_REPLACEMENTS = -Dindigo_queue_create=fcusb_queue_create -Dindigo_attach_device=fcusb_attach_device -Dindigo_detach_device=fcusb_detach_device -Dindigo_start_usb_event_handler=fcusb_usb_start -Dlibusb_hotplug_register_callback=fcusb_usb_register -Dlibusb_hotplug_deregister_callback=fcusb_usb_deregister -Dlibusb_hotplug_register_callback_sim=fcusb_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=fcusb_usb_deregister_poll -Dlibusb_ref_device=fcusb_usb_ref -Dlibusb_unref_device=fcusb_usb_unref -Dindigo_get_usb_path=fcusb_usb_path -Dindigo_uni_config_folder=fcusb_test_config_folder
+
+$(INTEGRATION_BUILD)/focuser_fcusb_sdk.o: ../indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.c | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $(FCUSB_SDK_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_focuser_fcusb_sdk: integration/test_focuser_fcusb_sdk.c $(INTEGRATION_BUILD)/focuser_fcusb_sdk.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $< $(INTEGRATION_BUILD)/focuser_fcusb_sdk.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+GPUSB_SDK_REPLACEMENTS = -Dindigo_queue_create=gpusb_queue_create -Dindigo_attach_device=gpusb_attach_device -Dindigo_detach_device=gpusb_detach_device -Dindigo_start_usb_event_handler=gpusb_usb_start -Dlibusb_hotplug_register_callback=gpusb_usb_register -Dlibusb_hotplug_deregister_callback=gpusb_usb_deregister -Dlibusb_hotplug_register_callback_sim=gpusb_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=gpusb_usb_deregister_poll -Dlibusb_ref_device=gpusb_usb_ref -Dlibusb_unref_device=gpusb_usb_unref -Dindigo_get_usb_path=gpusb_usb_path
+
+$(INTEGRATION_BUILD)/guider_gpusb_sdk.o: ../indigo_drivers/guider_gpusb/indigo_guider_gpusb.c | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $(GPUSB_SDK_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_guider_gpusb_sdk: integration/test_guider_gpusb_sdk.c $(INTEGRATION_BUILD)/guider_gpusb_sdk.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $< $(INTEGRATION_BUILD)/guider_gpusb_sdk.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+WHEEL_HID_REPLACEMENTS = -Dindigo_queue_create=wheel_queue_create -Dindigo_attach_device=wheel_attach_device -Dindigo_detach_device=wheel_detach_device -Dindigo_start_usb_event_handler=wheel_usb_start -Dlibusb_hotplug_register_callback=wheel_usb_register -Dlibusb_hotplug_deregister_callback=wheel_usb_deregister -Dlibusb_hotplug_register_callback_sim=wheel_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=wheel_usb_deregister_poll -Dlibusb_ref_device=wheel_usb_ref -Dlibusb_unref_device=wheel_usb_unref -Dindigo_get_usb_path=wheel_usb_path -Dindigo_uni_open_hid=wheel_hid_open -Dindigo_uni_close=wheel_hid_close
+
+WHEEL_SX_HID_REPLACEMENTS = $(WHEEL_HID_REPLACEMENTS) -Dindigo_uni_read=wheel_hid_read -Dindigo_uni_write=wheel_hid_write
+
+$(INTEGRATION_BUILD)/wheel_sx_hid.o: ../indigo_drivers/wheel_sx/indigo_wheel_sx.c | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(WHEEL_SX_HID_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_wheel_sx_hid: integration/test_wheel_hid.c $(INTEGRATION_BUILD)/wheel_sx_hid.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -DTEST_KIND=1 -DTEST_ENTRY=indigo_wheel_sx -DTEST_DRIVER='"indigo_wheel_sx"' -DTEST_LABEL='"Starlight Xpress Filter Wheel"' -DTEST_NAME='"SX Filter Wheel #1"' $< $(INTEGRATION_BUILD)/wheel_sx_hid.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+$(INTEGRATION_BUILD)/wheel_atik_hid.o: ../indigo_drivers/wheel_atik/indigo_wheel_atik.c | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $(WHEEL_HID_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_wheel_atik_hid: integration/test_wheel_hid.c $(INTEGRATION_BUILD)/wheel_atik_hid.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) -DTEST_KIND=2 -DTEST_ENTRY=indigo_wheel_atik -DTEST_DRIVER='"indigo_wheel_atik"' -DTEST_LABEL='"Atik Filter Wheel"' -DTEST_NAME='"Atik Filter Wheel #1"' $< $(INTEGRATION_BUILD)/wheel_atik_hid.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
 $(INTEGRATION_BUILD)/wheel_atik_usb_output.o: ../indigo_drivers/wheel_atik/indigo_wheel_atik.c | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $(USB_OUTPUT_REPLACEMENTS) -c $< -o $@

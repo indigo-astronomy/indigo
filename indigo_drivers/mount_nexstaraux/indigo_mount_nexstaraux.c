@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_mount_nexstaraux"
 #define DRIVER_LABEL         "NexStar AUX Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar AUX"
@@ -122,6 +122,16 @@ static void mount_park_handler(indigo_device *device);
 
 static bool nexstaraux_validate_handle(indigo_device *device);
 
+// A bare read on a socket with a receive timeout reports the timeout as a
+// read error, which latches on the handle and silently fails every later
+// transfer. Waiting for data first keeps a missing answer recoverable.
+static bool nexstaraux_read(indigo_device *device, unsigned char *buffer, long length) {
+	if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(1)) <= 0) {
+		return false;
+	}
+	return indigo_uni_read(PRIVATE_DATA->handle, buffer, length) == length;
+}
+
 static bool nexstaraux_command(indigo_device *device, targets src, targets dst, commands cmd, unsigned char *data, int length, unsigned char *reply) {
 	if (!nexstaraux_validate_handle(device)) {
 		return false;
@@ -144,27 +154,24 @@ static bool nexstaraux_command(indigo_device *device, targets src, targets dst, 
 	if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, length + 3) > 0) {
 		while (true) {
 			for (int i = 0; i < 10; i++) {
-				if (indigo_uni_read(PRIVATE_DATA->handle, reply, 1) == 1) {
-					if (*reply == 0x3b) {
-						break;
-					}
-				} else {
+				if (!nexstaraux_read(device, reply, 1)) {
 					return false;
+				}
+				if (*reply == 0x3b) {
+					break;
 				}
 			}
 			if (*reply != 0x3b) {
 				return false;
 			}
-			if (indigo_uni_read(PRIVATE_DATA->handle, reply + 1, 1) == 1) {
-				if (indigo_uni_read(PRIVATE_DATA->handle, (char *)(reply + 2), reply[1] + 1) > 0) {
-					if (buffer[4] != reply[4] || buffer[2] != reply[3] || buffer[3] != reply[2]) {
-						continue;
-					}
-					return true;
-				} else {
-					return false;
-				}
+			if (!nexstaraux_read(device, reply + 1, 1) || !nexstaraux_read(device, reply + 2, reply[1] + 1)) {
+				return false;
 			}
+			// An answer to another request is skipped, not mistaken for this one.
+			if (buffer[4] != reply[4] || buffer[2] != reply[3] || buffer[3] != reply[2]) {
+				continue;
+			}
+			return true;
 		}
 	}
 	return false;
@@ -228,7 +235,8 @@ static bool nexstaraux_validate_handle(indigo_device *device) {
 	}
 	if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
 		nexstaraux_close(device);
-		indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
+		// The mount is its own master and has no master_device pointer.
+		indigo_execute_handler(device->master_device == NULL ? device : device->master_device, indigo_disconnect_slave_devices);
 		return false;
 	}
 	return true;
@@ -440,23 +448,13 @@ static void mount_slew_finalizer(indigo_device *device) {
 //+ guider.code
 
 static void guider_guide_dec_finalizer(indigo_device *device) {
-	if (nexstaraux_guide_ra(device, 0)) {
-		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, nexstaraux_guide_dec(device, 0) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 
 static void guider_guide_ra_finalizer(indigo_device *device) {
-	if (nexstaraux_guide_dec(device, 0)) {
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
-	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, nexstaraux_guide_ra(device, 0) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 
 //- guider.code
@@ -584,6 +582,14 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 
 static void mount_park_handler(indigo_device *device) {
 	//+ mount.MOUNT_PARK.on_change
+	if (MOUNT_PARK_UNPARKED_ITEM->sw.value) {
+		// Unparking only releases the mount; there is nothing to slew to.
+		PRIVATE_DATA->parking = PRIVATE_DATA->parked = false;
+		MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
+		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_PARK_PROPERTY, INDIGO_OK_STATE, NULL);
+		return;
+	}
 	MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 	double ra = fmod(indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) + 24, 24);
 	double dec = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value > 0 ? 90 : -90;
@@ -894,13 +900,14 @@ static void guider_guide_ra_handler(indigo_device *device) {
 		direction = -1;
 		duration = (unsigned)GUIDER_GUIDE_WEST_ITEM->number.value;
 	}
-	if (nexstaraux_guide_ra(device, direction)) {
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, duration / 1000, guider_guide_ra_finalizer);
-	} else {
-		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+	if (nexstaraux_guide_ra(device, direction)) {
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, duration / 1000.0, guider_guide_ra_finalizer);
+	} else {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	}
 	//- guider.GUIDER_GUIDE_RA.on_change
 }
 
@@ -916,14 +923,14 @@ static void guider_guide_dec_handler(indigo_device *device) {
 		direction = -1;
 		duration = (unsigned)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 	}
-	if (nexstaraux_guide_dec(device, direction)) {
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, duration / 1000, guider_guide_dec_finalizer);
-	} else {
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+	if (nexstaraux_guide_dec(device, direction)) {
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, duration / 1000.0, guider_guide_dec_finalizer);
+	} else {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	}
 	//- guider.GUIDER_GUIDE_DEC.on_change
 }
 

@@ -5607,6 +5607,10 @@
 		C0DE20260918100000000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260918100000000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260918100000000004 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260920000000000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260920000000000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260920000000000004 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260920000000000007 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260918100000000005 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260918100000000006 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260918100000000007 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
@@ -5653,6 +5657,9 @@
 		DF10000000000000000004 /* test_dome_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_dragonfly_simulator.c; sourceTree = "<group>"; };
 		DF10000000000000000005 /* test_uni_io.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_uni_io.c; sourceTree = "<group>"; };
 		E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_usb_outputs.c; sourceTree = "<group>"; };
+		C0DE20260920000000000002 /* test_wheel_hid.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_hid.c; sourceTree = "<group>"; };
+		C0DE20260920000000000005 /* test_guider_gpusb_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_guider_gpusb_sdk.c; sourceTree = "<group>"; };
+		C0DE20260920000000000006 /* test_focuser_fcusb_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_fcusb_sdk.c; sourceTree = "<group>"; };
 		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
 		FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_simulator_common.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -7037,6 +7044,7 @@
 		593CFE3F1DFC89F5003B63D4 /* wheel_atik */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260920000000000004 /* REFACTOR.md */,
 				594107C91EC8E50100C44F92 /* README.md */,
 				593CFE421DFC8A12003B63D4 /* indigo_wheel_atik.h */,
 				593CFE411DFC8A12003B63D4 /* indigo_wheel_atik.c */,
@@ -8406,6 +8414,7 @@
 		5981C8D51DC14DB900C7705F /* focuser_fcusb */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260920000000000007 /* REFACTOR.md */,
 				594107C71EC8E21A00C44F92 /* README.md */,
 				9DAC59D71DC24E1400AE410D /* indigo_focuser_fcusb.h */,
 				9DAC59D61DC24E1400AE410D /* indigo_focuser_fcusb.c */,
@@ -9244,6 +9253,7 @@
 		599AD89B2552F64A0008D481 /* mount_nexstaraux */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260920000000000001 /* REFACTOR.md */,
 				599AD89F2552F64A0008D481 /* README.md */,
 				599AD89D2552F64A0008D481 /* indigo_mount_nexstaraux.h */,
 				599AD8A02552F64A0008D481 /* indigo_mount_nexstaraux.c */,
@@ -10959,6 +10969,7 @@
 		59C8E7F71DBBDF2200AA3F0A /* wheel_sx */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260920000000000003 /* REFACTOR.md */,
 				594107CC1EC8E8AB00C44F92 /* README.md */,
 				590929A62AF667200040B8FC /* 99-sx_wheel.rules */,
 				59C8E7FA1DBBDF7400AA3F0A /* indigo_wheel_sx.h */,
@@ -14106,6 +14117,9 @@
 				5984A387303CDBBE00D581D2 /* test_rotator_wa_simulator.c */,
 				7330D4CDFA32AB370C17EF61 /* test_serial_outputs.c */,
 				E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */,
+				C0DE20260920000000000002 /* test_wheel_hid.c */,
+				C0DE20260920000000000005 /* test_guider_gpusb_sdk.c */,
+				C0DE20260920000000000006 /* test_focuser_fcusb_sdk.c */,
 				592C3393304F46D1004D5AE6 /* test_wheel_asi_sdk.c */,
 				59910A353050AC2600FB1C2F /* test_wheel_astroasis_sdk.c */,
 				C0DE20310920000500000009 /* test_wheel_fli_sdk.c */,

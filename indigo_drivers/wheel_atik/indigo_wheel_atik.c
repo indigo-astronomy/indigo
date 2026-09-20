@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_wheel_atik"
 #define DRIVER_LABEL         "Atik Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Atik Filter Wheel"
@@ -81,7 +81,20 @@ static bool atik_query(indigo_device *device) {
 
 static bool atik_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_hid(ATIK_VENDOR_ID, ATIK_PRODUC_ID, INDIGO_LOG_DEBUG | BINARY_LOG);
-	return PRIVATE_DATA->handle != NULL;
+	if (PRIVATE_DATA->handle != NULL) {
+		// The wheel needs a moment after power up before it reports a slot.
+		for (int i = 0; i < 10; i++) {
+			if (!atik_query(device)) {
+				break;
+			}
+			if (PRIVATE_DATA->current_slot > 0) {
+				return true;
+			}
+			indigo_sleep(1);
+		}
+		indigo_uni_close(&PRIVATE_DATA->handle);
+	}
+	return false;
 }
 
 static void atik_close(indigo_device *device) {
@@ -121,21 +134,9 @@ static void wheel_connection_handler(indigo_device *device) {
 		connection_result = atik_open(device);
 		if (connection_result) {
 			//+ wheel.on_connect
-			connection_result = false;
-			for (int i = 0; i < 10; i++) {
-				if (!atik_query(device)) {
-					break;
-				}
-				if (PRIVATE_DATA->current_slot > 0) {
-					connection_result = true;
-					break;
-				}
-				indigo_sleep(1);
-			}
-			if (connection_result) {
-				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count;
-				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot;
-			}
+			WHEEL_SLOT_ITEM->number.min = 1;
+			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count;
+			WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->target_slot = PRIVATE_DATA->current_slot;
 			//- wheel.on_connect
 		}
 		if (connection_result) {

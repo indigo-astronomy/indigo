@@ -21,11 +21,34 @@
 #include <indigo_drivers/mount_nexstaraux/indigo_mount_nexstaraux.h>
 
 #include "serial_simulator_test_common.h"
-#include "abort_queue_test_common.h"
+#include <errno.h>
+#include <sys/wait.h>
 
 #ifndef MOUNT_NEXSTARAUX_SIMULATOR_EXECUTABLE
 #define MOUNT_NEXSTARAUX_SIMULATOR_EXECUTABLE "build/integration/mount_nexstaraux_simulator"
 #endif
+
+// Destinations and commands of the AUX protocol, as the journal records them.
+#define AZM_GET_POSITION      "10 01"
+#define ALT_GET_POSITION      "11 01"
+#define AZM_GOTO_FAST         "10 02"
+#define ALT_GOTO_FAST         "11 02"
+#define AZM_SET_POSITION      "10 04"
+#define ALT_SET_POSITION      "11 04"
+#define AZM_SET_POS_GUIDERATE "10 06"
+#define AZM_SET_NEG_GUIDERATE "10 07"
+#define AZM_SLEW_DONE         "10 13"
+#define AZM_GOTO_SLOW         "10 17"
+#define ALT_GOTO_SLOW         "11 17"
+#define AZM_MOVE_POS          "10 24"
+#define AZM_MOVE_NEG          "10 25"
+#define ALT_MOVE_POS          "11 24"
+#define ALT_MOVE_NEG          "11 25"
+#define AZM_SET_GUIDE_RATE    "10 46"
+#define ALT_SET_GUIDE_RATE    "11 46"
+#define AZM_GET_GUIDE_RATE    "10 47"
+#define AZM_GET_VER           "10 fe"
+#define ALT_GET_VER           "11 fe"
 
 static const simulator_driver_case nexstaraux_mount = {
 	"NexStar AUX Mount",
@@ -45,70 +68,822 @@ static const simulator_driver_case nexstaraux_guider = {
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
 
-static void nexstaraux_mount_passes_tcp_compliance_checks(void) {
-	external_serial_simulator simulator = { 0 };
+static external_serial_simulator fixture;
+static char fixture_directory[] = "/tmp/indigo-nexstaraux.XXXXXX";
+static char event_path[PATH_MAX], fault_path[PATH_MAX];
 
-	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_NEXSTARAUX_SIMULATOR_EXECUTABLE));
-	SERIAL_CHECK_TRUE(start_serial_driver(&nexstaraux_mount, simulator.port));
+// ----------------------------------------------------------------- fixtures
+
+// Arm a one-shot controller fault on the next request to a destination.
+static bool fault(const char *destination_and_command, const char *action) {
+	char temporary[PATH_MAX + 8];
+	snprintf(temporary, sizeof(temporary), "%s.tmp", fault_path);
+	FILE *file = fopen(temporary, "w");
+	if (file == NULL) {
+		return false;
+	}
+	fprintf(file, "%s %s\n", destination_and_command, action);
+	fclose(file);
+	return rename(temporary, fault_path) == 0;
+}
+
+static int requests(const char *prefix) {
+	FILE *file = fopen(event_path, "r");
+	if (file == NULL) {
+		return -1;
+	}
+	char line[256];
+	int count = 0;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		if (!strncasecmp(line, prefix, strlen(prefix))) {
+			count++;
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+static void print_journal(const char *reason) {
+	fprintf(stderr, "%s, journal holds:\n", reason);
+	FILE *file = fopen(event_path, "r");
+	if (file == NULL) {
+		fprintf(stderr, "  (no journal at %s)\n", event_path);
+		return;
+	}
+	char line[256];
+	while (fgets(line, sizeof(line), file) != NULL) {
+		fprintf(stderr, "  %s", line);
+	}
+	fclose(file);
+}
+
+// The driver publishes a property state as soon as its transaction returns, so
+// the mount may not have logged the request yet.
+static bool wait_for_requests(const char *prefix, int expected) {
+	for (int i = 0; i < 200; i++) {
+		if (requests(prefix) >= expected) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	char reason[96];
+	snprintf(reason, sizeof(reason), "Fewer than %d '%s' requests", expected, prefix);
+	print_journal(reason);
+	return false;
+}
+
+// The payload of the most recent request with the given destination and
+// command, so a test can assert the value the driver put on the wire.
+static bool wait_for_payload(const char *prefix, const char *payload) {
+	char expected[128];
+	snprintf(expected, sizeof(expected), "%s %s", prefix, payload);
+	for (int attempt = 0; attempt < 200; attempt++) {
+		FILE *file = fopen(event_path, "r");
+		if (file != NULL) {
+			char line[256];
+			while (fgets(line, sizeof(line), file) != NULL) {
+				line[strcspn(line, "\r\n")] = '\0';
+				if (!strcasecmp(line, expected)) {
+					fclose(file);
+					return true;
+				}
+			}
+			fclose(file);
+		}
+		indigo_usleep(25000);
+	}
+	char reason[160];
+	snprintf(reason, sizeof(reason), "'%s' was never requested", expected);
+	print_journal(reason);
+	return false;
+}
+
+// ----------------------------------------------------------------- helpers
+
+static const char *device_name(void) {
+	return context.driver_case == NULL ? nexstaraux_mount.device_name : context.driver_case->device_name;
+}
+
+static bool state_seen(const char *property, indigo_property_state state, unsigned int revision) {
+	if (wait_for_property_state_seen_after(property, state, revision)) {
+		return true;
+	}
+	indigo_property *cached = find_cached_property(property);
+	fprintf(stderr, "%s never published state %d (current %d)\n", property, state, cached == NULL ? -1 : cached->state);
+	return false;
+}
+
+static bool number_change(const char *property, const char *item, double value, indigo_property_state state) {
+	unsigned int revision = property_state_revision(property, state);
+	return indigo_change_number_property_1(&simulator_test_client, device_name(), property, item, value) == INDIGO_OK && state_seen(property, state, revision);
+}
+
+static bool switch_change(const char *property, const char *item, indigo_property_state state) {
+	unsigned int revision = property_state_revision(property, state);
+	return indigo_change_switch_property_1(&simulator_test_client, device_name(), property, item, true) == INDIGO_OK && state_seen(property, state, revision);
+}
+
+static bool coordinates_change(double ra, double dec, indigo_property_state state) {
+	static const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double values[] = { ra, dec };
+	unsigned int revision = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, state);
+	return indigo_change_number_property(&simulator_test_client, device_name(), MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, values) == INDIGO_OK && state_seen(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, state, revision);
+}
+
+static bool number_is(const char *property_name, const char *item_name, double expected, double tolerance) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL || fabs(item->number.value - expected) > tolerance) {
+		fprintf(stderr, "%s.%s: expected %g, received %g\n", property_name, item_name, expected, item == NULL ? NAN : item->number.value);
+		return false;
+	}
+	return true;
+}
+
+static bool switch_is(const char *property_name, const char *item_name, bool expected) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL || item->sw.value != expected) {
+		fprintf(stderr, "%s.%s: expected %s\n", property_name, item_name, expected ? "on" : "off");
+		return false;
+	}
+	return true;
+}
+
+static bool text_is(const char *property_name, const char *item_name, const char *expected) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL || strcmp(item->text.value, expected)) {
+		fprintf(stderr, "%s.%s: expected \"%s\", received \"%s\"\n", property_name, item_name, expected, item == NULL ? "(none)" : item->text.value);
+		return false;
+	}
+	return true;
+}
+
+// The mount reports its position continuously, so a coordinate is only settled
+// once the property is no longer busy and the readback matches.
+static bool coordinates_are(double ra, double dec, double tolerance) {
+	for (int i = 0; i < 600; i++) {
+		indigo_property *property = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+		indigo_item *ra_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+		indigo_item *dec_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+		if (property != NULL && ra_item != NULL && dec_item != NULL && property->state == INDIGO_OK_STATE && fabs(ra_item->number.value - ra) <= tolerance && fabs(dec_item->number.value - dec) <= tolerance) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	indigo_item *ra_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	indigo_item *dec_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	indigo_property *property = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	fprintf(stderr, "Mount did not settle at %g / %g (value %g / %g, state %d)\n", ra, dec, ra_item == NULL ? NAN : ra_item->number.value, dec_item == NULL ? NAN : dec_item->number.value, property == NULL ? -1 : property->state);
+	return false;
+}
+
+static bool driver_up(void) {
+	return bring_up_serial_driver(&nexstaraux_mount);
+}
+
+static bool connect_mount(void) {
+	return connect_serial_device(&nexstaraux_mount, fixture.port);
+}
+
+// The guider shares the mount's connection, which only the mount publishes.
+static bool connect_guider(void) {
+	if (indigo_change_text_property_1_raw(&simulator_test_client, nexstaraux_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, fixture.port) != INDIGO_OK) {
+		return false;
+	}
+	indigo_usleep(100000);
+	return connect_serial_device(&nexstaraux_guider, NULL);
+}
+
+static bool driver_start(void) {
+	return driver_up() && connect_mount();
+}
+
+static void driver_stop(void) {
+	disconnect_serial_device(&nexstaraux_guider);
+	disconnect_serial_device(&nexstaraux_mount);
+	tear_down_serial_driver(&nexstaraux_mount);
+}
+
+// The mount is unparked and pointed at a known place before every motion test,
+// so the assertions do not depend on where the simulator happened to start.
+static bool prepare_mount(double ra, double dec) {
+	return switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, INDIGO_OK_STATE) && switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE) && coordinates_change(ra, dec, INDIGO_OK_STATE) && coordinates_are(ra, dec, .05);
+}
+
+// ----------------------------------------------------------------- identity and lifecycle
+
+static void metadata(void) {
+	assert_simulator_driver_info(&nexstaraux_mount);
+	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
-
 	assert_device_interface(INDIGO_INTERFACE_MOUNT);
-	assert_property_has_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_VENDOR_ITEM_NAME);
-	assert_property_has_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME);
-	assert_property_has_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME);
+	// Both motor controllers are asked for their firmware while connecting.
+	SERIAL_CHECK_TRUE(wait_for_requests(ALT_GET_VER, 1));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GET_VER, 1));
+	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_VENDOR_ITEM_NAME, "Celestron"));
+	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "NexStar AUX"));
+	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME, "3.6 / 3.6"));
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, "3.6 / 3.6"));
+cleanup:
+	driver_stop();
+}
+
+static void property_contract(void) {
+	static const char *connected_properties[] = {
+		MOUNT_INFO_PROPERTY_NAME,
+		GEOGRAPHIC_COORDINATES_PROPERTY_NAME,
+		MOUNT_LST_TIME_PROPERTY_NAME,
+		MOUNT_PARK_PROPERTY_NAME,
+		MOUNT_SLEW_RATE_PROPERTY_NAME,
+		MOUNT_MOTION_DEC_PROPERTY_NAME,
+		MOUNT_MOTION_RA_PROPERTY_NAME,
+		MOUNT_TRACK_RATE_PROPERTY_NAME,
+		MOUNT_TRACKING_PROPERTY_NAME,
+		MOUNT_GUIDE_RATE_PROPERTY_NAME,
+		MOUNT_ON_COORDINATES_SET_PROPERTY_NAME,
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME,
+		MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME,
+		MOUNT_ABORT_MOTION_PROPERTY_NAME,
+		MOUNT_EPOCH_PROPERTY_NAME,
+		MOUNT_STATE_PROPERTY_NAME
+	};
+	SERIAL_CHECK_TRUE(driver_start());
+	assert_defined_properties(connected_properties, ARRAY_SIZE(connected_properties));
 	assert_property_has_item(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME);
 	assert_property_has_item(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME);
+	assert_property_has_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	assert_property_has_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	assert_property_has_item(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME);
+	assert_property_has_item(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME);
+	assert_property_has_item(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME);
+	assert_property_has_item(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME);
 	assert_property_has_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME);
 	assert_property_has_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME);
-	assert_property_has_item(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME);
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstaraux_mount.device_name, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50));
-	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_GUIDE_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstaraux_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstaraux_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-
-	SERIAL_CHECK_TRUE(check_queued_abort(nexstaraux_mount.device_name, "MOUNT_PARK", "PARKED", 0, true, "MOUNT_ABORT_MOTION", "ABORT_MOTION", true));
-
+	assert_property_has_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME);
+	assert_property_has_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME);
+	assert_property_has_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME);
+	// The mount has neither a park position nor a home command of its own.
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_PARK_SET_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_PARK_POSITION_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_HOME_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+	// The reported state is read only, and only TRACK and SYNC are offered.
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_STATE_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
+	SERIAL_CHECK_EQ_INT(2, find_cached_property(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME)->count);
+	SERIAL_CHECK_EQ_INT(2, find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME)->count);
+	// Connecting stops the sidereal drive and reads the guide rates back.
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GET_GUIDE_RATE, 1));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(number_is(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50, 1));
+	SERIAL_CHECK_TRUE(number_is(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 50, 1));
 cleanup:
-	if (context.connected) {
-		stop_serial_driver(&nexstaraux_mount);
-	}
-	stop_external_serial_simulator(&simulator);
+	driver_stop();
 }
 
-static void nexstaraux_guider_passes_tcp_compliance_checks(void) {
-	external_serial_simulator simulator = { 0 };
+// A motor controller that does not answer the firmware query is not a mount.
+static void handshake_rejected(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(!connect_mount());
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, context.last_connection_state);
+	SERIAL_CHECK_TRUE(!connect_mount());
+	SERIAL_CHECK_TRUE(!context.connected);
+cleanup:
+	driver_stop();
+}
 
-	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_NEXSTARAUX_SIMULATOR_EXECUTABLE));
-	SERIAL_CHECK_TRUE(start_shared_serial_device_with_master_case(&nexstaraux_guider, &nexstaraux_mount, simulator.port));
-	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+// A single lost firmware answer fails the connection, and the port has to be
+// released so the next attempt can succeed.
+static void handshake_timeout(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(fault(ALT_GET_VER, "silent"));
+	SERIAL_CHECK_TRUE(!connect_mount());
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_mount());
+	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "NexStar AUX"));
+cleanup:
+	driver_stop();
+}
 
+static void repeated_init_shutdown(void) {
+	for (int i = 0; i < 3; i++) {
+		SERIAL_CHECK_TRUE(driver_start());
+		disconnect_serial_device(&nexstaraux_mount);
+		SERIAL_CHECK_TRUE(!context.connected);
+		tear_down_serial_driver(&nexstaraux_mount);
+	}
+	return;
+cleanup:
+	driver_stop();
+}
+
+static void shutdown_rejected_while_connected(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, nexstaraux_mount.entry(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+cleanup:
+	driver_stop();
+}
+
+static void reconnect(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	disconnect_serial_device(&nexstaraux_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_mount());
+	// The mount keeps its coordinates across the reconnect.
+	SERIAL_CHECK_TRUE(coordinates_are(5, 20, .05));
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- slew and sync
+
+// A sync writes both encoders and must not command a slew.
+static void sync_coordinates(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_change(3.5, 45, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_SET_POSITION, 1));
+	SERIAL_CHECK_TRUE(wait_for_requests(ALT_SET_POSITION, 1));
+	SERIAL_CHECK_EQ_INT(0, requests(AZM_GOTO_FAST));
+	SERIAL_CHECK_EQ_INT(0, requests(AZM_GOTO_SLOW));
+	SERIAL_CHECK_TRUE(coordinates_are(3.5, 45, .05));
+	// A southern declination is written as the 24 bit angle the mount uses.
+	SERIAL_CHECK_TRUE(coordinates_change(12, -30, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(12, -30, .05));
+cleanup:
+	driver_stop();
+}
+
+// A slew is a fast approach followed by a slow one, then the sidereal drive is
+// switched on and the coordinates settle at the target.
+static void slew_to_coordinates(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GOTO_FAST, 1));
+	SERIAL_CHECK_TRUE(wait_for_requests(ALT_GOTO_FAST, 1));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_SLEW_DONE, 1));
+	// The second, slow approach is what finishes the slew.
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GOTO_SLOW, 1));
+	SERIAL_CHECK_TRUE(wait_for_requests(ALT_GOTO_SLOW, 1));
+	SERIAL_CHECK_TRUE(coordinates_are(4, 35, .1));
+	// Tracking is turned on when the mount arrives.
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+cleanup:
+	driver_stop();
+}
+
+// A slew the motor controller refuses must be reported, not published as a
+// motion that never ends.
+static void slew_command_failure(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault(AZM_GOTO_FAST, "silent"));
+	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_ALERT_STATE));
+	// The mount stays usable once the controller answers again.
+	SERIAL_CHECK_TRUE(coordinates_change(3, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(3, 20, .1));
+cleanup:
+	driver_stop();
+}
+
+// A sync the motor controller refuses must be reported as well.
+static void sync_command_failure(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault(ALT_SET_POSITION, "silent"));
+	SERIAL_CHECK_TRUE(coordinates_change(3.5, 45, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(coordinates_change(3.5, 45, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(3.5, 45, .05));
+cleanup:
+	driver_stop();
+}
+
+// An aborted slew is reported as interrupted and both axes are stopped.
+static void abort_slew(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(coordinates_change(14, -20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GOTO_FAST, 1));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "00 00 00"));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_POS, "00 00 00"));
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	// A fresh slew has to be accepted right after the abort.
+	SERIAL_CHECK_TRUE(coordinates_change(3, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(3, 20, .1));
+cleanup:
+	driver_stop();
+}
+
+static void abort_while_idle(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(5, 20, .05));
+cleanup:
+	driver_stop();
+}
+
+// A stop the motor controller refuses must be reported.
+static void abort_command_failure(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(fault(AZM_MOVE_POS, "silent"));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- manual motion
+
+// Each direction is a rate move on its own axis, and releasing the direction
+// stops that axis.
+static void manual_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "02"));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_NEG, "02"));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_POS, "09"));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_NEG, "09"));
+	// Deselecting the direction stops the axis with a zero rate.
+	SERIAL_CHECK_TRUE(indigo_change_switch_property_1(&simulator_test_client, nexstaraux_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_POS, "00"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+// The guide rate selects the slowest manual rate.
+static void manual_motion_rates(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "01"));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "05"));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+// A rate move the motor controller refuses must be reported.
+static void manual_motion_failure(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(fault(AZM_MOVE_POS, "silent"));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fault(ALT_MOVE_NEG, "silent"));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- tracking, park and rates
+
+// The sidereal drive is a guide rate on the azimuth axis, and its sign follows
+// the hemisphere the mount was told it stands in.
+static void tracking(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_POS_GUIDERATE, "FF FF"));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_POS_GUIDERATE, "FF FE"));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_POS_GUIDERATE, "FF FD"));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_POS_GUIDERATE, "00 00"));
+	// South of the equator the drive turns the other way.
+	SERIAL_CHECK_TRUE(number_change(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, -33, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_NEG_GUIDERATE, "FF FF"));
+cleanup:
+	driver_stop();
+}
+
+// A tracking command the motor controller refuses must be reported.
+static void tracking_failure(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(fault(AZM_SET_POS_GUIDERATE, "silent"));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+// Parking slews to the pole and reports the mount as parked.
+static void park_and_unpark(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	// The park position is the pole of the hemisphere the mount stands in.
+	SERIAL_CHECK_TRUE(number_change(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	unsigned int parked = property_state_revision(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GOTO_FAST, 1));
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, parked));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	// A parked mount points at the pole and does not track.
+	SERIAL_CHECK_TRUE(number_is(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 90, 1));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+cleanup:
+	driver_stop();
+}
+
+// Aborting a park leaves the mount unparked instead of pretending it arrived.
+static void abort_park(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	unsigned int alerts = property_state_revision(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GOTO_FAST, 1));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+cleanup:
+	driver_stop();
+}
+
+// The guide rate is a byte scaled to a percentage on both axes.
+static void guide_rate(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 75, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_GUIDE_RATE, "C0"));
+	SERIAL_CHECK_TRUE(number_change(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_SET_GUIDE_RATE, "40"));
+	// What the driver wrote has to be what it reads back on the next connect.
+	disconnect_serial_device(&nexstaraux_mount);
+	SERIAL_CHECK_TRUE(connect_mount());
+	SERIAL_CHECK_TRUE(number_is(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 75, 1));
+	SERIAL_CHECK_TRUE(number_is(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 25, 1));
+	SERIAL_CHECK_TRUE(fault(AZM_SET_GUIDE_RATE, "silent"));
+	SERIAL_CHECK_TRUE(number_change(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50, INDIGO_ALERT_STATE));
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- polling and transport
+
+// The mount is polled for its position, and a lost answer must not corrupt the
+// published coordinates.
+static void coordinate_polling(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	int polls = requests(AZM_GET_POSITION);
+	SERIAL_CHECK_TRUE(polls >= 1);
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GET_POSITION, polls + 2));
+	SERIAL_CHECK_TRUE(fault(ALT_GET_POSITION, "silent"));
+	indigo_usleep(1500000);
+	SERIAL_CHECK_TRUE(coordinates_are(5, 20, .05));
+	polls = requests(AZM_GET_POSITION);
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GET_POSITION, polls + 1));
+cleanup:
+	driver_stop();
+}
+
+// A reply for a command nobody asked about has to be skipped rather than
+// accepted as the answer to the request in flight.
+static void stale_reply_skipped(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(fault(AZM_GET_POSITION, "garbage"));
+	indigo_usleep(1500000);
+	// The driver recovers on the next poll instead of publishing the noise.
+	SERIAL_CHECK_TRUE(coordinates_are(5, 20, .05));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_change(6, 25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(6, 25, .05));
+cleanup:
+	driver_stop();
+}
+
+// Losing the transport has to be reported instead of being published as
+// success, and the driver must still release the dead socket.
+static void transport_loss(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(fault(AZM_GET_POSITION, "close"));
+	indigo_usleep(1500000);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(number_change(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 60, INDIGO_ALERT_STATE));
+	disconnect_serial_device(&nexstaraux_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- guider
+
+static void guider_metadata(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_guider());
 	assert_device_interface(INDIGO_INTERFACE_GUIDER);
-	assert_property_has_item(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME);
-	assert_property_has_item(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME);
 	assert_property_has_item(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME);
 	assert_property_has_item(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME);
+	assert_property_has_item(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME);
+	assert_property_has_item(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME);
 	assert_property_has_item(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME);
 	assert_property_has_item(GUIDER_RATE_PROPERTY_NAME, GUIDER_DEC_RATE_ITEM_NAME);
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 50));
-	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100));
-	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
-
+	SERIAL_CHECK_EQ_INT(2, find_cached_property(GUIDER_RATE_PROPERTY_NAME)->count);
+	SERIAL_CHECK_TRUE(number_is(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 50, 1));
+	SERIAL_CHECK_TRUE(number_is(GUIDER_RATE_PROPERTY_NAME, GUIDER_DEC_RATE_ITEM_NAME, 50, 1));
 cleanup:
-	if (context.connected) {
-		stop_serial_driver(&nexstaraux_guider);
-	}
-	stop_external_serial_simulator(&simulator);
+	driver_stop();
 }
 
+// Each pulse moves its own axis and stops that same axis when it expires.
+static void guider_pulses(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_guider());
+	unsigned int ra_done = property_state_revision(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "01"));
+	SERIAL_CHECK_TRUE(state_seen(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE, ra_done));
+	// The azimuth axis is the one that gets stopped, not the altitude axis.
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "00"));
+	SERIAL_CHECK_EQ_INT(0, requests(ALT_MOVE_POS));
+	SERIAL_CHECK_TRUE(number_is(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 0, 0));
+	ra_done = property_state_revision(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_NEG, "01"));
+	SERIAL_CHECK_TRUE(state_seen(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE, ra_done));
+	unsigned int dec_done = property_state_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_POS, "01"));
+	SERIAL_CHECK_TRUE(state_seen(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE, dec_done));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_POS, "00"));
+	dec_done = property_state_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_NEG, "01"));
+	SERIAL_CHECK_TRUE(state_seen(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE, dec_done));
+	SERIAL_CHECK_TRUE(number_is(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0));
+cleanup:
+	driver_stop();
+}
+
+// A pulse the motor controller refuses must be reported.
+static void guider_pulse_failure(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_guider());
+	SERIAL_CHECK_TRUE(fault(AZM_MOVE_POS, "silent"));
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 200, INDIGO_ALERT_STATE));
+	unsigned int ra_done = property_state_revision(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(state_seen(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE, ra_done));
+cleanup:
+	driver_stop();
+}
+
+static void guider_rate(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_guider());
+	SERIAL_CHECK_TRUE(number_change(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 75, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_GUIDE_RATE, "C0"));
+	SERIAL_CHECK_TRUE(number_change(GUIDER_RATE_PROPERTY_NAME, GUIDER_DEC_RATE_ITEM_NAME, 25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_SET_GUIDE_RATE, "40"));
+	SERIAL_CHECK_TRUE(fault(AZM_SET_GUIDE_RATE, "silent"));
+	SERIAL_CHECK_TRUE(number_change(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 50, INDIGO_ALERT_STATE));
+cleanup:
+	driver_stop();
+}
+
+// Both logical devices share one socket; either may be connected alone and
+// neither disconnect may close the other's handle.
+static void shared_connection(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(connect_guider());
+	reset_simulator_context(&nexstaraux_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	// The mount keeps working after the guider is disconnected.
+	disconnect_serial_device(&nexstaraux_guider);
+	reset_simulator_context(&nexstaraux_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(coordinates_are(5, 20, .05));
+	// And the guider keeps working after the mount is disconnected.
+	SERIAL_CHECK_TRUE(connect_guider());
+	disconnect_serial_device(&nexstaraux_mount);
+	reset_simulator_context(&nexstaraux_guider);
+	enumerate_simulator_device();
+	unsigned int dec_done = property_state_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(state_seen(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE, dec_done));
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- runner
+
+typedef struct { const char *name; void (*run)(void); const char *profile; } simulated_case;
+
 int main(void) {
-	const indigo_test_case tests[] = {
-		{ "nexstaraux_mount_passes_tcp_compliance_checks", nexstaraux_mount_passes_tcp_compliance_checks },
-		{ "nexstaraux_guider_passes_tcp_compliance_checks", nexstaraux_guider_passes_tcp_compliance_checks }
+	const simulated_case cases[] = {
+		{ "metadata", metadata, "normal" },
+		{ "property_contract", property_contract, "normal" },
+		{ "handshake_rejected", handshake_rejected, "no-version" },
+		{ "handshake_timeout", handshake_timeout, "normal" },
+		{ "repeated_init_shutdown", repeated_init_shutdown, "normal" },
+		{ "shutdown_rejected_while_connected", shutdown_rejected_while_connected, "normal" },
+		{ "reconnect", reconnect, "normal" },
+		{ "sync_coordinates", sync_coordinates, "normal" },
+		{ "slew_to_coordinates", slew_to_coordinates, "normal" },
+		{ "slew_command_failure", slew_command_failure, "normal" },
+		{ "sync_command_failure", sync_command_failure, "normal" },
+		{ "abort_slew", abort_slew, "normal" },
+		{ "abort_while_idle", abort_while_idle, "normal" },
+		{ "abort_command_failure", abort_command_failure, "normal" },
+		{ "manual_motion", manual_motion, "normal" },
+		{ "manual_motion_rates", manual_motion_rates, "normal" },
+		{ "manual_motion_failure", manual_motion_failure, "normal" },
+		{ "tracking", tracking, "normal" },
+		{ "tracking_failure", tracking_failure, "normal" },
+		{ "park_and_unpark", park_and_unpark, "normal" },
+		{ "abort_park", abort_park, "normal" },
+		{ "guide_rate", guide_rate, "normal" },
+		{ "coordinate_polling", coordinate_polling, "normal" },
+		{ "stale_reply_skipped", stale_reply_skipped, "normal" },
+		{ "transport_loss", transport_loss, "normal" },
+		{ "guider_metadata", guider_metadata, "normal" },
+		{ "guider_pulses", guider_pulses, "normal" },
+		{ "guider_pulse_failure", guider_pulse_failure, "normal" },
+		{ "guider_rate", guider_rate, "normal" },
+		{ "shared_connection", shared_connection, "normal" }
 	};
-	return indigo_run_tests("NexStar AUX mount TCP simulator integration tests", tests, ARRAY_SIZE(tests));
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	if (mkdtemp(fixture_directory) == NULL) {
+		fprintf(stderr, "Cannot create fixture directory\n");
+		return 1;
+	}
+	snprintf(event_path, sizeof(event_path), "%s/events.log", fixture_directory);
+	snprintf(fault_path, sizeof(fault_path), "%s/fault", fixture_directory);
+	setenv("INDIGO_NEXSTARAUX_EVENTS", event_path, 1);
+	setenv("INDIGO_NEXSTARAUX_FAULT", fault_path, 1);
+	const char *filter = getenv("NEXSTARAUX_TEST_FILTER");
+	int failures = 0;
+	for (int i = 0; i < ARRAY_SIZE(cases); i++) {
+		if (filter != NULL && strstr(cases[i].name, filter) == NULL) {
+			continue;
+		}
+		unlink(fault_path);
+		const char *arguments[] = { "--profile", cases[i].profile, NULL, NULL };
+		if (getenv("NEXSTARAUX_TEST_TRACE") != NULL) {
+			arguments[2] = "--trace";
+		}
+		if (!start_external_serial_simulator_with_args(&fixture, MOUNT_NEXSTARAUX_SIMULATOR_EXECUTABLE, arguments)) {
+			fprintf(stderr, "Simulator startup failed\n");
+			failures++;
+			break;
+		}
+		fflush(NULL);
+		pid_t child = fork();
+		if (child == 0) {
+			alarm(120);
+			indigo_test_case test = { cases[i].name, cases[i].run };
+			_exit(indigo_run_tests("NexStar AUX", &test, 1));
+		}
+		int status = 0;
+		if (child > 0) {
+			while (waitpid(child, &status, 0) < 0) {
+				if (errno != EINTR) {
+					status = -1;
+					break;
+				}
+			}
+		}
+		stop_external_serial_simulator(&fixture);
+		if (child < 0 || status == -1 || !WIFEXITED(status) || WEXITSTATUS(status)) {
+			failures++;
+			printf("FAIL: %s (exit=%d, signal=%d)\n", cases[i].name, WIFEXITED(status) ? WEXITSTATUS(status) : -1, WIFSIGNALED(status) ? WTERMSIG(status) : 0);
+		}
+	}
+	unlink(fault_path);
+	unlink(event_path);
+	rmdir(fixture_directory);
+	unsetenv("INDIGO_NEXSTARAUX_EVENTS");
+	unsetenv("INDIGO_NEXSTARAUX_FAULT");
+	printf("NexStar AUX: %d failing scenarios\n", failures);
+	return failures ? 1 : 0;
 }

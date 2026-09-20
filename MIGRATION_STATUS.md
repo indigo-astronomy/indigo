@@ -83,7 +83,7 @@
 | focuser_dsd             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 42 / 0 | |
 | focuser_efa             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 56 / 0 | |
 | focuser_fc3             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 28 / 0 | |
-| focuser_fcusb           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
+| focuser_fcusb           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 17 / 0 | |
 | focuser_fli             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | |
 | focuser_focusdreampro   | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | |
 | focuser_ioptron         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 40 / 0 | |
@@ -99,7 +99,7 @@
 | focuser_optec           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 16 / 0 | |
 | focuser_optecfl         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 45 / 0 | |
 | focuser_primaluce       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 35 / 0 | |
-| focuser_prodigy         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 0 / 0 | |
+| focuser_prodigy         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 55 / 0 | |
 | focuser_qhy             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 30 / 0 | |
 | focuser_robofocus       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 18 / 0 | |
 | focuser_steeldrive2     | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 49 / 0 | |
@@ -111,12 +111,12 @@
 | gps_simulator           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 4 / 0 | |
 | guider_asi              | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | ⏰ TODO - find SDK for windows |
 | guider_cgusbst4         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 4 / 0 | |
-| guider_gpusb            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
+| guider_gpusb            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 15 / 0 | |
 | mount_asi               | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ Sim | 10 / 0 | |
 | mount_ioptron           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 104 / 0 | |
 | mount_lx200             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 70 / 0 | |
 | mount_nexstar           | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 13 / 0 | ⏰ TODO - make libnexstar for Windows |
-| mount_nexstaraux        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 2 / 0 | |
+| mount_nexstaraux        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 30 / 0 | |
 | mount_pmc8              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 11 / 0 | |
 | mount_rainbow           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 12 / 0 | |
 | mount_simulator         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 16 / 0 | |
@@ -133,7 +133,7 @@
 | system_ascol            | 2️⃣ | ❌ No  | ⛔ N/A | ❌ No  | ❌ No  | 0 / 0 | |
 | wheel_asi               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 5 / 0 | |
 | wheel_astroasis         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 10 / 0 | |
-| wheel_atik              | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ❌ No  | 0 / 0 | ⏰ TODO - make libatik for Windows |
+| wheel_atik              | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | ⏰ TODO - make libatik for Windows |
 | wheel_fli               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 14 / 0 | |
 | wheel_indigo            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 5 / 0 | |
 | wheel_manual            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 0 / 0 | |
@@ -142,7 +142,7 @@
 | wheel_playerone         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 12 / 0 | |
 | wheel_qhy               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 3 / 0 | |
 | wheel_quantum           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 8 / 0 | |
-| wheel_sx                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 0 / 0 | ⏰ TODO - make hidapi for Windows |
+| wheel_sx                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 17 / 0 | ⏰ TODO - make hidapi for Windows |
 | wheel_trutek            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 8 / 0 | |
 | wheel_xagyl             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 8 / 0 | |
 
