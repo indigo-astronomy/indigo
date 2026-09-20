@@ -38,3 +38,7 @@ Tested with Sesto Senso 2.
 
 As PrimaluceLab never answered any email both simulator and driver are based only on publicly available information :(
 
+
+## Testing
+
+2026-09-20 13:46 simulator 35/35 OK

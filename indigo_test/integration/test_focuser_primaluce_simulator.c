@@ -21,6 +21,8 @@
 #include <indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.h>
 
 #include "serial_simulator_test_common.h"
+#include <errno.h>
+#include <sys/wait.h>
 
 #ifndef FOCUSER_PRIMALUCE_SIMULATOR_EXECUTABLE
 #define FOCUSER_PRIMALUCE_SIMULATOR_EXECUTABLE "build/integration/focuser_primaluce_simulator"
@@ -30,24 +32,38 @@
 #define PRIMALUCE_ROTATOR_NAME             "PrimaluceLab Rotator"
 #define X_CONFIG_PROPERTY_NAME             "X_CONFIG"
 #define X_CONFIG_M1ACC_ITEM_NAME           "M1ACC"
+#define X_CONFIG_M1SPD_ITEM_NAME           "M1SPD"
+#define X_CONFIG_M1HOLD_ITEM_NAME          "M1HOLD"
 #define X_STATE_PROPERTY_NAME              "X_STATE"
 #define X_STATE_MOTOR_TEMP_ITEM_NAME       "MOTOR_TEMP"
 #define X_STATE_VIN_12V_ITEM_NAME          "VIN_12V"
+#define X_STATE_VIN_USB_ITEM_NAME          "VIN_USB"
 #define X_WIFI_PROPERTY_NAME               "X_WIFI"
 #define X_WIFI_OFF_ITEM_NAME               "OFF"
 #define X_WIFI_AP_ITEM_NAME                "AP"
+#define X_WIFI_STA_ITEM_NAME               "STA"
 #define X_WIFI_AP_PROPERTY_NAME            "X_WIFI_AP"
 #define X_WIFI_AP_SSID_ITEM_NAME           "AP_SSID"
 #define X_WIFI_AP_PASSWORD_ITEM_NAME       "AP_PASSWORD"
 #define X_LEDS_PROPERTY_NAME               "X_LEDS"
+#define X_LEDS_OFF_ITEM_NAME               "OFF"
 #define X_LEDS_DIM_ITEM_NAME               "DIM"
+#define X_LEDS_ON_ITEM_NAME                "ON"
 #define X_RUNPRESET_PROPERTY_NAME          "X_RUNPRESET"
+#define X_RUNPRESET_L_ITEM_NAME            "L"
 #define X_RUNPRESET_M_ITEM_NAME            "M"
+#define X_RUNPRESET_L_PROPERTY_NAME        "X_RUNPRESET_L"
+#define X_RUNPRESET_M_PROPERTY_NAME        "X_RUNPRESET_M"
+#define X_RUNPRESET_S_PROPERTY_NAME        "X_RUNPRESET_S"
+#define X_RUNPRESET_1_PROPERTY_NAME        "X_RUNPRESET_1"
+#define X_RUNPRESET_2_PROPERTY_NAME        "X_RUNPRESET_2"
+#define X_RUNPRESET_3_PROPERTY_NAME        "X_RUNPRESET_3"
 #define X_HOLD_CURR_PROPERTY_NAME          "X_HOLD_CURR"
 #define X_HOLD_CURR_OFF_ITEM_NAME          "OFF"
 #define X_HOLD_CURR_ON_ITEM_NAME           "ON"
 #define X_CALIBRATE_F_PROPERTY_NAME        "X_CALIBRATE"
 #define X_CALIBRATE_F_START_ITEM_NAME      "START"
+#define X_CALIBRATE_F_END_ITEM_NAME        "END"
 #define X_CALIBRATE_R_PROPERTY_NAME        "X_CALIBRATE_A"
 #define X_CALIBRATE_R_START_ITEM_NAME      "START"
 
@@ -69,93 +85,890 @@ static const simulator_driver_case primaluce_rotator = {
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
 
-static void primaluce_focuser_passes_serial_compliance_checks(void) {
-	external_serial_simulator simulator = { 0 };
+static external_serial_simulator fixture;
+static char fixture_directory[] = "/tmp/indigo-primaluce.XXXXXX";
+static char event_path[PATH_MAX], fault_path[PATH_MAX];
 
-	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_PRIMALUCE_SIMULATOR_EXECUTABLE));
-	SERIAL_CHECK_TRUE(start_serial_driver(&primaluce_focuser, simulator.port));
+// ----------------------------------------------------------------- fixtures
+
+// Arm a one-shot controller fault. The simulator applies it to the next request
+// containing key and then removes the control file.
+static bool fault(const char *key, const char *action) {
+	char temporary[PATH_MAX + 8];
+	snprintf(temporary, sizeof(temporary), "%s.tmp", fault_path);
+	FILE *file = fopen(temporary, "w");
+	if (file == NULL) {
+		return false;
+	}
+	fprintf(file, "%s %s\n", key, action);
+	fclose(file);
+	return rename(temporary, fault_path) == 0;
+}
+
+static int requests(const char *fragment) {
+	FILE *file = fopen(event_path, "r");
+	if (file == NULL) {
+		return -1;
+	}
+	char line[4096];
+	int count = 0;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		if (strstr(line, fragment) != NULL) {
+			count++;
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+static void print_journal(const char *reason) {
+	fprintf(stderr, "%s, journal holds:\n", reason);
+	FILE *file = fopen(event_path, "r");
+	if (file == NULL) {
+		fprintf(stderr, "  (no journal at %s)\n", event_path);
+		return;
+	}
+	char line[4096];
+	while (fgets(line, sizeof(line), file) != NULL) {
+		fprintf(stderr, "  %s", line);
+	}
+	fclose(file);
+}
+
+// The driver publishes a property state as soon as its transaction returns, so
+// the controller may not have logged the request yet.
+static bool wait_for_requests(const char *fragment, int expected) {
+	for (int i = 0; i < 200; i++) {
+		if (requests(fragment) >= expected) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	char reason[128];
+	snprintf(reason, sizeof(reason), "Fewer than %d requests containing '%s'", expected, fragment);
+	print_journal(reason);
+	return false;
+}
+
+// ----------------------------------------------------------------- helpers
+
+static const char *device_name(void) {
+	return context.driver_case == NULL ? PRIMALUCE_FOCUSER_NAME : context.driver_case->device_name;
+}
+
+static bool state_seen(const char *property, indigo_property_state state, unsigned int revision) {
+	if (wait_for_property_state_seen_after(property, state, revision)) {
+		return true;
+	}
+	indigo_property *cached = find_cached_property(property);
+	fprintf(stderr, "%s never published state %d (current %d)\n", property, state, cached == NULL ? -1 : cached->state);
+	return false;
+}
+
+static bool number_change(const char *property, const char *item, double value, indigo_property_state state) {
+	unsigned int revision = property_state_revision(property, state);
+	return indigo_change_number_property_1(&simulator_test_client, device_name(), property, item, value) == INDIGO_OK && state_seen(property, state, revision);
+}
+
+static bool switch_change(const char *property, const char *item, indigo_property_state state) {
+	unsigned int revision = property_state_revision(property, state);
+	return indigo_change_switch_property_1(&simulator_test_client, device_name(), property, item, true) == INDIGO_OK && state_seen(property, state, revision);
+}
+
+static bool text_change(const char *property, const char *item, const char *value, indigo_property_state state) {
+	unsigned int revision = property_state_revision(property, state);
+	return indigo_change_text_property_1_raw(&simulator_test_client, device_name(), property, item, value) == INDIGO_OK && state_seen(property, state, revision);
+}
+
+static bool rejected_number_change(const char *property, const char *item, double value) {
+	indigo_item *cached = find_cached_item(property, item);
+	if (cached == NULL) {
+		fprintf(stderr, "Missing number item %s.%s\n", property, item);
+		return false;
+	}
+	double target = cached->number.target;
+	unsigned int revision = property_state_revision(property, INDIGO_ALERT_STATE);
+	if (indigo_change_number_property_1(&simulator_test_client, device_name(), property, item, value) != INDIGO_OK || !state_seen(property, INDIGO_ALERT_STATE, revision)) {
+		return false;
+	}
+	cached = find_cached_item(property, item);
+	if (cached == NULL || cached->number.target != target) {
+		fprintf(stderr, "Refused %s.%s target %g was replaced by %g\n", property, item, target, cached == NULL ? NAN : cached->number.target);
+		return false;
+	}
+	return true;
+}
+
+static bool number_is(const char *property_name, const char *item_name, double expected, double tolerance) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL || fabs(item->number.value - expected) > tolerance) {
+		fprintf(stderr, "%s.%s: expected %g, received %g\n", property_name, item_name, expected, item == NULL ? NAN : item->number.value);
+		return false;
+	}
+	return true;
+}
+
+static bool switch_is(const char *property_name, const char *item_name, bool expected) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL || item->sw.value != expected) {
+		fprintf(stderr, "%s.%s: expected %s\n", property_name, item_name, expected ? "on" : "off");
+		return false;
+	}
+	return true;
+}
+
+static bool text_is(const char *property_name, const char *item_name, const char *expected) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL || strcmp(item->text.value, expected)) {
+		fprintf(stderr, "%s.%s: expected \"%s\", received \"%s\"\n", property_name, item_name, expected, item == NULL ? "(none)" : item->text.value);
+		return false;
+	}
+	return true;
+}
+
+// A settled focuser: the controller reported the coordinate and stopped.
+static bool position_is(double expected) {
+	for (int i = 0; i < 400; i++) {
+		indigo_property *property = find_cached_property(FOCUSER_POSITION_PROPERTY_NAME);
+		indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+		if (property != NULL && item != NULL && property->state == INDIGO_OK_STATE && fabs(item->number.value - expected) <= 1) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	indigo_property *property = find_cached_property(FOCUSER_POSITION_PROPERTY_NAME);
+	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	fprintf(stderr, "Focuser did not settle at %g (value %g, state %d)\n", expected, item == NULL ? NAN : item->number.value, property == NULL ? -1 : property->state);
+	return false;
+}
+
+static bool rotator_position_is(double expected) {
+	for (int i = 0; i < 400; i++) {
+		indigo_property *property = find_cached_property(ROTATOR_POSITION_PROPERTY_NAME);
+		indigo_item *item = find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
+		if (property != NULL && item != NULL && property->state == INDIGO_OK_STATE && fabs(item->number.value - expected) <= 1) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	indigo_property *property = find_cached_property(ROTATOR_POSITION_PROPERTY_NAME);
+	indigo_item *item = find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
+	fprintf(stderr, "Rotator did not settle at %g (value %g, state %d)\n", expected, item == NULL ? NAN : item->number.value, property == NULL ? -1 : property->state);
+	return false;
+}
+
+// Wait until the controller reports a position between origin and target, so an
+// abort really interrupts a running motion.
+static bool position_in_motion(double origin, double target) {
+	for (int i = 0; i < 400; i++) {
+		indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+		if (item != NULL && ((item->number.value > origin && item->number.value < target) || (item->number.value < origin && item->number.value > target))) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	fprintf(stderr, "Position never moved between %g and %g\n", origin, target);
+	return false;
+}
+
+static bool driver_up(void) {
+	return bring_up_serial_driver(&primaluce_focuser);
+}
+
+static bool connect_focuser(void) {
+	return connect_serial_device(&primaluce_focuser, fixture.port);
+}
+
+// The rotator shares the focuser's port, which only the focuser publishes.
+static bool connect_rotator(void) {
+	if (indigo_change_text_property_1_raw(&simulator_test_client, PRIMALUCE_FOCUSER_NAME, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, fixture.port) != INDIGO_OK) {
+		return false;
+	}
+	indigo_usleep(100000);
+	return connect_serial_device(&primaluce_rotator, NULL);
+}
+
+static bool driver_start(void) {
+	return driver_up() && connect_focuser();
+}
+
+static void driver_stop(void) {
+	disconnect_serial_device(&primaluce_rotator);
+	disconnect_serial_device(&primaluce_focuser);
+	tear_down_serial_driver(&primaluce_focuser);
+}
+
+// ----------------------------------------------------------------- identity and lifecycle
+
+static void metadata(void) {
+	assert_simulator_driver_info(&primaluce_focuser);
+	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
-
 	assert_device_interface(INDIGO_INTERFACE_FOCUSER);
+	// The handshake asks for the model and the firmware before the full state.
+	SERIAL_CHECK_TRUE(wait_for_requests("\"MODNAME\"", 1));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"SWVERS\"", 1));
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "SESTOSENSO2"));
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, "3.10 / 3.10"));
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_SERIAL_NUM_ITEM_NAME, "SESTOSENSO20716"));
+cleanup:
+	driver_stop();
+}
+
+static void property_contract(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	reset_simulator_context(&primaluce_focuser);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(!has_defined_property(X_CONFIG_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(X_STATE_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(connect_focuser());
 	assert_serial_focuser_class_property_completeness();
 	assert_property_has_item(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME);
+	assert_property_has_item(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME);
+	assert_property_has_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	assert_property_has_item(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME);
 	assert_property_has_item(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME);
 	assert_property_has_item(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME);
 	assert_property_has_item(X_CONFIG_PROPERTY_NAME, X_CONFIG_M1ACC_ITEM_NAME);
+	assert_property_has_item(X_CONFIG_PROPERTY_NAME, X_CONFIG_M1HOLD_ITEM_NAME);
 	assert_property_has_item(X_STATE_PROPERTY_NAME, X_STATE_MOTOR_TEMP_ITEM_NAME);
 	assert_property_has_item(X_STATE_PROPERTY_NAME, X_STATE_VIN_12V_ITEM_NAME);
 	assert_property_has_item(X_WIFI_PROPERTY_NAME, X_WIFI_OFF_ITEM_NAME);
 	assert_property_has_item(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME);
+	assert_property_has_item(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME);
 	assert_property_has_item(X_WIFI_AP_PROPERTY_NAME, X_WIFI_AP_SSID_ITEM_NAME);
 	assert_property_has_item(X_WIFI_AP_PROPERTY_NAME, X_WIFI_AP_PASSWORD_ITEM_NAME);
+	assert_property_has_item(X_LEDS_PROPERTY_NAME, X_LEDS_OFF_ITEM_NAME);
 	assert_property_has_item(X_LEDS_PROPERTY_NAME, X_LEDS_DIM_ITEM_NAME);
+	assert_property_has_item(X_LEDS_PROPERTY_NAME, X_LEDS_ON_ITEM_NAME);
+	assert_property_has_item(X_RUNPRESET_PROPERTY_NAME, X_RUNPRESET_L_ITEM_NAME);
 	assert_property_has_item(X_RUNPRESET_PROPERTY_NAME, X_RUNPRESET_M_ITEM_NAME);
 	assert_property_has_item(X_HOLD_CURR_PROPERTY_NAME, X_HOLD_CURR_OFF_ITEM_NAME);
 	assert_property_has_item(X_HOLD_CURR_PROPERTY_NAME, X_HOLD_CURR_ON_ITEM_NAME);
 	assert_property_has_item(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME);
 	assert_number_item_in_range(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, primaluce_focuser.device_name, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 12));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_BACKLASH_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, primaluce_focuser.device_name, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 0));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_SPEED_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primaluce_focuser.device_name, X_WIFI_PROPERTY_NAME, X_WIFI_OFF_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(X_WIFI_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primaluce_focuser.device_name, X_LEDS_PROPERTY_NAME, X_LEDS_DIM_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(X_LEDS_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primaluce_focuser.device_name, X_HOLD_CURR_PROPERTY_NAME, X_HOLD_CURR_OFF_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(X_HOLD_CURR_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primaluce_focuser.device_name, X_RUNPRESET_PROPERTY_NAME, X_RUNPRESET_M_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(X_RUNPRESET_PROPERTY_NAME, INDIGO_OK_STATE));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, primaluce_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18100));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18100, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primaluce_focuser.device_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_DIRECTION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, primaluce_focuser.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 25));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18125, 1));
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, primaluce_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18500));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primaluce_focuser.device_name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-
-cleanup:
-	if (context.connected) {
-		stop_serial_driver(&primaluce_focuser);
+	// The station WiFi settings are not offered; only the access point is.
+	SERIAL_CHECK_TRUE(!has_defined_property("X_WIFI_STA"));
+	// The configuration read from the controller is reported, never written.
+	SERIAL_CHECK_TRUE(find_cached_property(X_CONFIG_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
+	SERIAL_CHECK_TRUE(find_cached_property(X_STATE_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
+	// A SestoSenso reports two supply voltages, so USB stays out of X_STATE.
+	SERIAL_CHECK_EQ_INT(2, find_cached_property(X_STATE_PROPERTY_NAME)->count);
+	// Everything below is what the controller reported while connecting.
+	SERIAL_CHECK_TRUE(position_is(18075));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 22.5, .005));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 0, 0));
+	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_MOTOR_TEMP_ITEM_NAME, 37.12, .005));
+	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_VIN_12V_ITEM_NAME, 13.98, .005));
+	SERIAL_CHECK_TRUE(number_is(X_CONFIG_PROPERTY_NAME, X_CONFIG_M1SPD_ITEM_NAME, 2, 0));
+	SERIAL_CHECK_TRUE(number_is(X_CONFIG_PROPERTY_NAME, X_CONFIG_M1HOLD_ITEM_NAME, 3, 0));
+	SERIAL_CHECK_TRUE(number_is(X_RUNPRESET_L_PROPERTY_NAME, X_CONFIG_M1ACC_ITEM_NAME, 10, 0));
+	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(X_LEDS_PROPERTY_NAME, X_LEDS_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(X_HOLD_CURR_PROPERTY_NAME, X_HOLD_CURR_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_AP_PROPERTY_NAME, X_WIFI_AP_SSID_ITEM_NAME, "SESTOSENSO20716"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_AP_PROPERTY_NAME, X_WIFI_AP_PASSWORD_ITEM_NAME, "primalucelab"));
+	// The driver defined properties disappear again when the device is closed.
+	disconnect_serial_device(&primaluce_focuser);
+	for (int i = 0; i < 50 && find_cached_property(X_CONFIG_PROPERTY_NAME) != NULL; i++) {
+		indigo_usleep(100000);
 	}
-	stop_external_serial_simulator(&simulator);
+	SERIAL_CHECK_TRUE(find_cached_property(X_CONFIG_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(X_STATE_PROPERTY_NAME) == NULL);
+cleanup:
+	driver_stop();
 }
 
-static void primaluce_rotator_passes_serial_compliance_checks(void) {
-	external_serial_simulator simulator = { 0 };
+// An Esatto has no adjustable run configuration but reports the USB supply.
+static void esatto_profile(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "ESATTO"));
+	SERIAL_CHECK_EQ_INT(3, find_cached_property(X_STATE_PROPERTY_NAME)->count);
+	assert_property_has_item(X_STATE_PROPERTY_NAME, X_STATE_VIN_USB_ITEM_NAME);
+	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_VIN_USB_ITEM_NAME, 5.2, .005));
+	SERIAL_CHECK_TRUE(!has_defined_property(X_CONFIG_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(X_RUNPRESET_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(X_RUNPRESET_L_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(X_RUNPRESET_1_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(X_HOLD_CURR_PROPERTY_NAME));
+	// The focuser calibration stays available on an Esatto.
+	SERIAL_CHECK_TRUE(has_defined_property(X_CALIBRATE_F_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18200));
+cleanup:
+	driver_stop();
+}
 
-	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_PRIMALUCE_SIMULATOR_EXECUTABLE));
-	SERIAL_CHECK_TRUE(start_shared_serial_device(&primaluce_rotator, primaluce_focuser.device_name, simulator.port));
+// A SestoSenso 3 speaks a different move command and reports the motor state
+// through a separate query.
+static void sestosenso3_profile(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "SESTOSENSO3"));
+	SERIAL_CHECK_TRUE(has_defined_property(X_CONFIG_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18400, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"GOTO\":18400", 1));
+	SERIAL_CHECK_EQ_INT(0, requests("\"MOVE_ABS\""));
+	SERIAL_CHECK_TRUE(position_is(18400));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"STATUS\":{\"MST\"", 1));
+cleanup:
+	driver_stop();
+}
+
+// Older firmware reports only ABS_POS_STEP, so the driver has to fall back to
+// it for both the readback and the completion check.
+static void no_abs_pos_profile(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(18075));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"ABS_POS_STEP\"", 1));
+	SERIAL_CHECK_TRUE(position_is(18300));
+cleanup:
+	driver_stop();
+}
+
+// A controller that does not report a motor speed must not offer one.
+static void no_speed_profile(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_SPEED_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18150, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18150));
+cleanup:
+	driver_stop();
+}
+
+// Anything that is not a SestoSenso or an Esatto is refused.
+static void unsupported_device(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(!connect_focuser());
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, context.last_connection_state);
+	SERIAL_CHECK_TRUE(find_cached_property(X_CONFIG_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(!connect_focuser());
+	SERIAL_CHECK_TRUE(!context.connected);
+cleanup:
+	driver_stop();
+}
+
+// A controller that does not answer the identity request is not usable, and
+// the port has to be released so the next attempt can succeed.
+static void handshake_timeout(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(fault("\"MODNAME\"", "silent"));
+	SERIAL_CHECK_TRUE(!connect_focuser());
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_focuser());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18200));
+cleanup:
+	driver_stop();
+}
+
+// Firmware older than 3.05 is reported but still accepted.
+static void old_firmware(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, "3.00 / 3.10"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18200));
+cleanup:
+	driver_stop();
+}
+
+// A controller that asks for calibration and reports a motor error still
+// connects; the driver only passes the notices on.
+static void needs_calibration(void) {
+	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(position_is(18075));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18200));
+cleanup:
+	driver_stop();
+}
 
+static void repeated_init_shutdown(void) {
+	for (int i = 0; i < 3; i++) {
+		SERIAL_CHECK_TRUE(driver_start());
+		disconnect_serial_device(&primaluce_focuser);
+		SERIAL_CHECK_TRUE(!context.connected);
+		tear_down_serial_driver(&primaluce_focuser);
+	}
+	return;
+cleanup:
+	driver_stop();
+}
+
+static void shutdown_rejected_while_connected(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, primaluce_focuser.entry(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18200));
+cleanup:
+	driver_stop();
+}
+
+static void reconnect(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18500, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18500));
+	disconnect_serial_device(&primaluce_focuser);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "N/A"));
+	SERIAL_CHECK_TRUE(connect_focuser());
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "SESTOSENSO2"));
+	SERIAL_CHECK_TRUE(position_is(18500));
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- focuser motion
+
+static void absolute_move(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 19000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"STEP\":19000", 1));
+	SERIAL_CHECK_TRUE(position_is(19000));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	// Moving to where the focuser already stands settles without a new command.
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 19000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(19000));
+cleanup:
+	driver_stop();
+}
+
+// A relative move is turned into an absolute one; outward counts up.
+static void relative_move(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(18075));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 425, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"STEP\":18500", 1));
+	SERIAL_CHECK_TRUE(position_is(18500));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"STEP\":18200", 1));
+	SERIAL_CHECK_TRUE(position_is(18200));
+cleanup:
+	driver_stop();
+}
+
+// An inward move longer than the remaining travel stops at zero.
+static void relative_move_clamped(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(18075));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"STEP\":0", 1));
+cleanup:
+	driver_stop();
+}
+
+static void abort_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 90000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_in_motion(18075, 90000));
+	unsigned int position_alerts = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"MOT_STOP\"", 1));
+	// An interrupted move is reported as such, not as a completed one.
+	SERIAL_CHECK_TRUE(state_seen(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, position_alerts));
+	indigo_usleep(1500000);
+	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	printf("Aborted at %g of 90000\n", stopped);
+	SERIAL_CHECK_TRUE(stopped > 18075 && stopped < 90000);
+	// A fresh move has to be accepted right after the abort.
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18100, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18100));
+cleanup:
+	driver_stop();
+}
+
+static void abort_while_idle(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(18075));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18200));
+cleanup:
+	driver_stop();
+}
+
+// A second motion request that arrives while one is running is refused.
+static void overlap_rejected(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 90000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_in_motion(18075, 90000));
+	int relative_moves = requests("\"STEP\":18");
+	SERIAL_CHECK_TRUE(rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
+	SERIAL_CHECK_EQ_INT(relative_moves, requests("\"STEP\":18"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+// A move the controller does not acknowledge must not be published as busy.
+static void move_command_failures(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(fault("\"MOVE_ABS\"", "silent"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18300, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fault("\"MOVE_ABS\"", "garbage"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18350, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fault("\"MOT_STOP\"", "silent"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_ALERT_STATE));
+	// The driver stays usable after each rejected transaction.
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18300));
+cleanup:
+	driver_stop();
+}
+
+// The controller is already moving when the driver connects.
+static void external_motion_observed(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_in_motion(18075, 20000));
+	SERIAL_CHECK_EQ_INT(0, requests("\"MOVE_ABS\""));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 20000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(20000));
+cleanup:
+	driver_stop();
+}
+
+static void disconnect_during_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 90000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_in_motion(18075, 90000));
+	disconnect_serial_device(&primaluce_focuser);
+	SERIAL_CHECK_TRUE(!context.connected);
+	int polls = requests("\"ABS_POS\"");
+	indigo_usleep(2000000);
+	SERIAL_CHECK_EQ_INT(polls, requests("\"ABS_POS\""));
+	SERIAL_CHECK_TRUE(connect_focuser());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18100, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18100));
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- focuser settings
+
+static void controller_settings(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 12, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"BKLASH\":12", 1));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"SPEED\":0", 1));
+	SERIAL_CHECK_TRUE(switch_change(X_HOLD_CURR_PROPERTY_NAME, X_HOLD_CURR_OFF_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"HOLDCURR_STATUS\":0", 1));
+	SERIAL_CHECK_TRUE(switch_change(X_LEDS_PROPERTY_NAME, X_LEDS_DIM_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"DIMLEDS\":\"low\"", 1));
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_OFF_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"AP_SET_STATUS\":\"off\"", 1));
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_AP_PROPERTY_NAME, X_WIFI_AP_SSID_ITEM_NAME, "INDIGO-AP", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"SSID\":\"INDIGO-AP\"", 1));
+	// The settings the driver reads back on the next connect must be the ones
+	// it wrote.
+	disconnect_serial_device(&primaluce_focuser);
+	SERIAL_CHECK_TRUE(connect_focuser());
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 12, 0));
+	SERIAL_CHECK_TRUE(switch_is(X_HOLD_CURR_PROPERTY_NAME, X_HOLD_CURR_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(X_LEDS_PROPERTY_NAME, X_LEDS_DIM_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_OFF_ITEM_NAME, true));
+cleanup:
+	driver_stop();
+}
+
+// A preset reprograms the run configuration, which the driver reads back.
+static void run_preset(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(X_RUNPRESET_PROPERTY_NAME, X_RUNPRESET_M_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"RUNPRESET\":\"medium\"", 1));
+	SERIAL_CHECK_TRUE(number_is(X_CONFIG_PROPERTY_NAME, X_CONFIG_M1SPD_ITEM_NAME, 2, 0));
+	// The momentary preset item is released again.
+	SERIAL_CHECK_TRUE(switch_is(X_RUNPRESET_PROPERTY_NAME, X_RUNPRESET_M_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(switch_change(X_RUNPRESET_PROPERTY_NAME, X_RUNPRESET_L_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"RUNPRESET\":\"light\"", 1));
+cleanup:
+	driver_stop();
+}
+
+// Every settings command is acknowledged, so a lost acknowledgement has to
+// surface as ALERT rather than a silent success.
+static void settings_reported_failures(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(fault("\"BKLASH\"", "silent"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 30, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fault("\"SPEED\"", "garbage"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 0, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fault("\"HOLDCURR_STATUS\"", "silent"));
+	SERIAL_CHECK_TRUE(switch_change(X_HOLD_CURR_PROPERTY_NAME, X_HOLD_CURR_OFF_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fault("\"DIMLEDS\"", "silent"));
+	SERIAL_CHECK_TRUE(switch_change(X_LEDS_PROPERTY_NAME, X_LEDS_OFF_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fault("\"AP_SET_STATUS\"", "silent"));
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_OFF_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fault("\"RUNPRESET\"", "silent"));
+	SERIAL_CHECK_TRUE(switch_change(X_RUNPRESET_PROPERTY_NAME, X_RUNPRESET_M_ITEM_NAME, INDIGO_ALERT_STATE));
+	// Every control keeps working once the controller answers again.
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 30, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(X_HOLD_CURR_PROPERTY_NAME, X_HOLD_CURR_OFF_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(X_LEDS_PROPERTY_NAME, X_LEDS_OFF_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+// The calibration walks the controller through its documented sequence and
+// finishes by reading the new coordinate back.
+static void focuser_calibration(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"Init\"", 1));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_DIR\":\"normal\"", 1));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"StoreAsMinPos\"", 1));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"GoOutToFindMaxPos\"", 1));
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"StoreAsMaxPos\"", 1));
+	SERIAL_CHECK_TRUE(switch_is(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, false));
+	// A failed step is reported instead of being published as a calibration.
+	SERIAL_CHECK_TRUE(fault("\"CAL_FOCUSER\":\"Init\"", "silent"));
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	driver_stop();
+}
+
+// The status poll refreshes the probe and the supply readings.
+static void status_polling(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(wait_for_requests("\"EXT_T\"", 1));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 22.5, .005));
+	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_MOTOR_TEMP_ITEM_NAME, 37.12, .005));
+	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_VIN_12V_ITEM_NAME, 13.98, .005));
+	// A lost poll answer must not corrupt the published readings.
+	SERIAL_CHECK_TRUE(fault("\"EXT_T\"", "silent"));
+	indigo_usleep(1000000);
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 22.5, .005));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18200));
+cleanup:
+	driver_stop();
+}
+
+// Losing the transport has to be reported on every request.
+static void transport_loss(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	int polls = requests("\"MODNAME\"");
+	SERIAL_CHECK_TRUE(fault("\"BKLASH\"", "close"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 30, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(polls, requests("\"MODNAME\""));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18300, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_change(X_LEDS_PROPERTY_NAME, X_LEDS_OFF_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_ALERT_STATE));
+	// The driver must still release the dead handle cleanly.
+	disconnect_serial_device(&primaluce_focuser);
+	SERIAL_CHECK_TRUE(!context.connected);
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- rotator
+
+static void rotator_metadata(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_rotator());
 	assert_device_interface(INDIGO_INTERFACE_ROTATOR);
 	assert_property_has_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
 	assert_property_has_item(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME);
 	assert_property_has_item(X_CALIBRATE_R_PROPERTY_NAME, X_CALIBRATE_R_START_ITEM_NAME);
 	assert_number_item_in_range(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primaluce_rotator.device_name, ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-
+	// The rotator has no coordinate reset of its own.
+	SERIAL_CHECK_TRUE(find_cached_property(ROTATOR_ON_POSITION_SET_PROPERTY_NAME) == NULL);
+	// Connecting the rotator switches the ARCO port on.
+	SERIAL_CHECK_TRUE(wait_for_requests("\"ARCO\":1", 1));
+	SERIAL_CHECK_TRUE(number_is(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 0, 0));
 cleanup:
-	if (context.connected) {
-		stop_serial_driver(&primaluce_rotator);
-	}
-	stop_external_serial_simulator(&simulator);
+	driver_stop();
 }
 
+// Disconnecting the rotator switches the ARCO port off again.
+static void rotator_lifecycle(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_rotator());
+	disconnect_serial_device(&primaluce_rotator);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(wait_for_requests("\"ARCO\":0", 1));
+	SERIAL_CHECK_TRUE(connect_rotator());
+	SERIAL_CHECK_TRUE(wait_for_requests("\"ARCO\":1", 2));
+cleanup:
+	driver_stop();
+}
+
+// Both logical devices share one serial connection; either may be connected
+// alone and neither disconnect may close the other's handle.
+static void shared_connection(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(connect_rotator());
+	reset_simulator_context(&primaluce_focuser);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18200));
+	// The focuser keeps working after the rotator is disconnected.
+	disconnect_serial_device(&primaluce_rotator);
+	reset_simulator_context(&primaluce_focuser);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18300));
+	// And the rotator keeps working after the focuser is disconnected.
+	SERIAL_CHECK_TRUE(connect_rotator());
+	disconnect_serial_device(&primaluce_focuser);
+	reset_simulator_context(&primaluce_rotator);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void rotator_move(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_rotator());
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 45, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"DEG\":45", 1));
+	SERIAL_CHECK_TRUE(rotator_position_is(45));
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 10, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"DEG\":10", 1));
+	SERIAL_CHECK_TRUE(rotator_position_is(10));
+cleanup:
+	driver_stop();
+}
+
+static void rotator_abort(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_rotator());
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 300, INDIGO_BUSY_STATE));
+	unsigned int alerts = property_state_revision(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"MOT2\":{\"MOT_STOP\"", 1));
+	SERIAL_CHECK_TRUE(state_seen(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	// A failed stop is reported instead of being published as a stop.
+	SERIAL_CHECK_TRUE(fault("\"MOT2\":{\"MOT_STOP\"", "silent"));
+	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void rotator_calibration(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_rotator());
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_R_PROPERTY_NAME, X_CALIBRATE_R_START_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_STATUS\":\"exec\"", 1));
+	SERIAL_CHECK_TRUE(switch_is(X_CALIBRATE_R_PROPERTY_NAME, X_CALIBRATE_R_START_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(fault("\"CAL_STATUS\":\"exec\"", "silent"));
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_R_PROPERTY_NAME, X_CALIBRATE_R_START_ITEM_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void rotator_move_failure(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_rotator());
+	SERIAL_CHECK_TRUE(fault("\"MOT2\":{\"MOVE_ABS\"", "silent"));
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 30, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(rotator_position_is(30));
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- runner
+
+typedef struct { const char *name; void (*run)(void); const char *profile; } simulated_case;
+
 int main(void) {
-	const indigo_test_case tests[] = {
-		{ "primaluce_focuser_passes_serial_compliance_checks", primaluce_focuser_passes_serial_compliance_checks },
-		{ "primaluce_rotator_passes_serial_compliance_checks", primaluce_rotator_passes_serial_compliance_checks }
+	const simulated_case cases[] = {
+		{ "metadata", metadata, "normal" },
+		{ "property_contract", property_contract, "normal" },
+		{ "esatto_profile", esatto_profile, "esatto" },
+		{ "sestosenso3_profile", sestosenso3_profile, "sestosenso3" },
+		{ "no_abs_pos_profile", no_abs_pos_profile, "no-abs-pos" },
+		{ "no_speed_profile", no_speed_profile, "no-speed" },
+		{ "unsupported_device", unsupported_device, "unsupported" },
+		{ "handshake_timeout", handshake_timeout, "normal" },
+		{ "old_firmware", old_firmware, "old-firmware" },
+		{ "needs_calibration", needs_calibration, "needs-calibration" },
+		{ "repeated_init_shutdown", repeated_init_shutdown, "normal" },
+		{ "shutdown_rejected_while_connected", shutdown_rejected_while_connected, "normal" },
+		{ "reconnect", reconnect, "normal" },
+		{ "absolute_move", absolute_move, "normal" },
+		{ "relative_move", relative_move, "normal" },
+		{ "relative_move_clamped", relative_move_clamped, "normal" },
+		{ "abort_motion", abort_motion, "normal" },
+		{ "abort_while_idle", abort_while_idle, "normal" },
+		{ "overlap_rejected", overlap_rejected, "normal" },
+		{ "move_command_failures", move_command_failures, "normal" },
+		{ "external_motion_observed", external_motion_observed, "external-motion" },
+		{ "disconnect_during_motion", disconnect_during_motion, "normal" },
+		{ "controller_settings", controller_settings, "normal" },
+		{ "run_preset", run_preset, "normal" },
+		{ "settings_reported_failures", settings_reported_failures, "normal" },
+		{ "focuser_calibration", focuser_calibration, "normal" },
+		{ "status_polling", status_polling, "normal" },
+		{ "transport_loss", transport_loss, "normal" },
+		{ "rotator_metadata", rotator_metadata, "normal" },
+		{ "rotator_lifecycle", rotator_lifecycle, "normal" },
+		{ "shared_connection", shared_connection, "normal" },
+		{ "rotator_move", rotator_move, "normal" },
+		{ "rotator_abort", rotator_abort, "normal" },
+		{ "rotator_calibration", rotator_calibration, "normal" },
+		{ "rotator_move_failure", rotator_move_failure, "normal" }
 	};
-	return indigo_run_tests("PrimaLuceLab serial simulator integration tests", tests, ARRAY_SIZE(tests));
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	if (mkdtemp(fixture_directory) == NULL) {
+		fprintf(stderr, "Cannot create fixture directory\n");
+		return 1;
+	}
+	snprintf(event_path, sizeof(event_path), "%s/events.log", fixture_directory);
+	snprintf(fault_path, sizeof(fault_path), "%s/fault", fixture_directory);
+	setenv("INDIGO_PRIMALUCE_EVENTS", event_path, 1);
+	setenv("INDIGO_PRIMALUCE_FAULT", fault_path, 1);
+	const char *filter = getenv("PRIMALUCE_TEST_FILTER");
+	int failures = 0;
+	for (int i = 0; i < ARRAY_SIZE(cases); i++) {
+		if (filter != NULL && strstr(cases[i].name, filter) == NULL) {
+			continue;
+		}
+		unlink(fault_path);
+		const char *arguments[] = { "--profile", cases[i].profile, NULL, NULL };
+		if (getenv("PRIMALUCE_TEST_TRACE") != NULL) {
+			arguments[2] = "--trace";
+		}
+		if (!start_external_serial_simulator_with_args(&fixture, FOCUSER_PRIMALUCE_SIMULATOR_EXECUTABLE, arguments)) {
+			fprintf(stderr, "Simulator startup failed\n");
+			failures++;
+			break;
+		}
+		fflush(NULL);
+		pid_t child = fork();
+		if (child == 0) {
+			alarm(120);
+			indigo_test_case test = { cases[i].name, cases[i].run };
+			_exit(indigo_run_tests("PrimaluceLab", &test, 1));
+		}
+		int status = 0;
+		if (child > 0) {
+			while (waitpid(child, &status, 0) < 0) {
+				if (errno != EINTR) {
+					status = -1;
+					break;
+				}
+			}
+		}
+		stop_external_serial_simulator(&fixture);
+		if (child < 0 || status == -1 || !WIFEXITED(status) || WEXITSTATUS(status)) {
+			failures++;
+			printf("FAIL: %s (exit=%d, signal=%d)\n", cases[i].name, WIFEXITED(status) ? WEXITSTATUS(status) : -1, WIFSIGNALED(status) ? WTERMSIG(status) : 0);
+		}
+	}
+	unlink(fault_path);
+	unlink(event_path);
+	rmdir(fixture_directory);
+	unsetenv("INDIGO_PRIMALUCE_EVENTS");
+	unsetenv("INDIGO_PRIMALUCE_FAULT");
+	printf("PrimaluceLab: %d failing scenarios\n", failures);
+	return failures ? 1 : 0;
 }

@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -323,6 +323,7 @@ static char *SET_MOT1_BKLASH[] = { "res", "set", "MOT1", "BKLASH", NULL };
 static char *GET_MOT1_SPEED[] = { "res", "get", "MOT1", "SPEED", NULL };
 static char *SET_MOT1_SPEED[] = { "res", "set", "MOT1", "SPEED", NULL };
 static char *GET_MOT1_MST[] = { "res", "get", "MOT1", "STATUS", "MST", NULL };
+static char *GET_MOT2_MST[] = { "res", "get", "MOT2", "STATUS", "MST", NULL };
 static char *CMD_MOT1_STEP[] = { "res", "cmd", "MOT1", "STEP", NULL };
 static char *CMD_MOT1_GOTO[] = { "res", "cmd", "MOT1", "GOTO", NULL };
 //static char *CMD_MOT1_MOVE_REL[] = { "res", "cmd", "MOT1", "MOVE_REL", NULL };
@@ -336,7 +337,7 @@ static char *GET_VIN_12V[] = { "res", "get", "VIN_12V", NULL };
 static char *GET_VIN_USB[] = { "res", "get", "VIN_USB", NULL };
 static char *GET_MOT1_NTC_T[] = { "res", "get", "MOT1", "NTC_T", NULL };
 static char *GET_MOT1_ERROR[] = { "res", "get", "MOT1", "ERROR", NULL };
-static char *GET_MOT2_ERROR[] = { "res", "get", "MOT1", "ERROR", NULL };
+static char *GET_MOT2_ERROR[] = { "res", "get", "MOT2", "ERROR", NULL };
 static char *GET_WIFIAP_STATUS[] = { "res", "get", "WIFIAP", "STATUS", NULL };
 static char *GET_WIFIAP_SSID[] = { "res", "get", "WIFIAP", "SSID", NULL };
 static char *GET_WIFIAP_PWD[] = { "res", "get", "WIFIAP", "PWD", NULL };
@@ -571,8 +572,9 @@ static void focuser_movement_finalizer(indigo_device *device) {
 static void rotator_movement_finalizer(indigo_device *device) {
 	if (primaluce_command(device, PRIVATE_DATA->has_abs_pos ? "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS\":\"DEG\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS_DEG\":\"\",\"STATUS\":\"\"}}}}")) {
 		ROTATOR_POSITION_ITEM->number.value = get_number(device, PRIVATE_DATA->has_abs_pos ? GET_MOT2_ABS_POS : GET_MOT2_ABS_POS_DEG);
-		if (strcmp(get_string(device, CMD_MOT2_STEP), "stop")) {
-			indigo_execute_handler(device, rotator_movement_finalizer);
+		char *state = get_string(device, GET_MOT2_MST);
+		if (state != NULL && strcmp(state, "stop")) {
+			indigo_execute_handler_in(device, 0.2, rotator_movement_finalizer);
 		} else {
 			for (int i = 0; i < 10; i++) {
 				indigo_usleep(100000);
@@ -587,9 +589,12 @@ static void rotator_movement_finalizer(indigo_device *device) {
 			if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 				ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		}
+	} else {
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	}
-	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 }
 
 //- rotator.code
@@ -1477,6 +1482,7 @@ static void rotator_connection_handler(indigo_device *device) {
 }
 
 static void rotator_x_calibrate_r_handler(indigo_device *device) {
+	X_CALIBRATE_R_PROPERTY->state = INDIGO_OK_STATE;
 	//+ rotator.X_CALIBRATE_R.on_change
 	if (X_CALIBRATE_R_START_ITEM->sw.value) {
 		X_CALIBRATE_R_START_ITEM->sw.value = false;
@@ -1487,23 +1493,26 @@ static void rotator_x_calibrate_r_handler(indigo_device *device) {
 			if (state == NULL || strcmp(state, "done")) {
 				INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_ALERT_STATE, NULL);
 			} else {
-				indigo_execute_handler(device, rotator_movement_finalizer);
+				// The controller runs the calibration on its own and only
+				// acknowledges the request, so the command completes here.
+				INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_OK_STATE, NULL);
 			}
 		}
 	}
 	//- rotator.X_CALIBRATE_R.on_change
+	indigo_update_property(device, X_CALIBRATE_R_PROPERTY, NULL);
 }
 
 static void rotator_position_handler(indigo_device *device) {
 	//+ rotator.ROTATOR_POSITION.on_change
-	if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT2\":{\"MOVE_ABS\":{\"DEG\":%g}}}}}", FOCUSER_POSITION_ITEM->number.target)) {
+	if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT2\":{\"MOVE_ABS\":{\"DEG\":%g}}}}}", ROTATOR_POSITION_ITEM->number.target)) {
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, X_CALIBRATE_R_PROPERTY, NULL);
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	} else {
 		char *state = get_string(device, CMD_MOT2_STEP);
 		if (state == NULL || strcmp(state, "done")) {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		} else {
 			indigo_execute_handler(device, rotator_movement_finalizer);
 		}

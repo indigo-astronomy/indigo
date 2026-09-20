@@ -23,12 +23,14 @@ typedef struct {
 	bool headless;
 	bool trace;
 	const char *ready_file;
+	const char *profile;
 } simulator_options;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
-	.ready_file = NULL
+	.ready_file = NULL,
+	.profile = "normal"
 };
 
 static volatile sig_atomic_t running = 1;
@@ -45,6 +47,13 @@ static int speed = 0;
 static int hold_current = 1;
 static const char *wifi_status = "on";
 static const char *led_status = "on";
+static const char *model = "SESTOSENSO2";
+static const char *firmware = "3.10";
+static bool report_abs_pos = true;
+static bool report_speed = true;
+static int calibration_restart = 0;
+static const char *motor_error = "";
+static FILE *events = NULL;
 
 static void usage(const char *name) {
 	printf("PrimaLuceLab SestoSenso/Esatto/Arco simulator\n");
@@ -52,7 +61,14 @@ static void usage(const char *name) {
 	printf("  --headless              Disable interactive output suitable for terminals\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
+	printf("  --profile <name>        normal, esatto, sestosenso3, no-abs-pos, no-speed,\n");
+	printf("                          unsupported, old-firmware, needs-calibration or\n");
+	printf("                          external-motion, default is normal\n");
 	printf("  -h, --help              Show this help and exit\n");
+	printf("\n");
+	printf("INDIGO_PRIMALUCE_EVENTS names a file receiving every accepted request.\n");
+	printf("INDIGO_PRIMALUCE_FAULT names a file holding '<key> <silent|garbage|close>' which is\n");
+	printf("applied once to the next request containing that key and then removed.\n");
 }
 
 static void signal_handler(int sig) {
@@ -80,12 +96,65 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--profile")) {
+			if (++i == argc) {
+				fprintf(stderr, "--profile requires a name\n");
+				return false;
+			}
+			options.profile = argv[i];
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
 		}
 	}
 	return true;
+}
+
+// The controller identity and capabilities a scenario needs are selected once
+// at startup, so a connecting driver reads back exactly the profile under test.
+static void apply_profile(void) {
+	if (!strcmp(options.profile, "esatto")) {
+		model = "ESATTO";
+	} else if (!strcmp(options.profile, "sestosenso3")) {
+		model = "SESTOSENSO3";
+	} else if (!strcmp(options.profile, "unsupported")) {
+		model = "ARCO";
+	} else if (!strcmp(options.profile, "old-firmware")) {
+		firmware = "3.00";
+	} else if (!strcmp(options.profile, "no-abs-pos")) {
+		report_abs_pos = false;
+	} else if (!strcmp(options.profile, "no-speed")) {
+		report_speed = false;
+	} else if (!strcmp(options.profile, "needs-calibration")) {
+		calibration_restart = 1;
+		motor_error = "MOT1 needs attention";
+	} else if (!strcmp(options.profile, "external-motion")) {
+		serial_motion_start(&focus_motion, 20000, 500);
+	}
+}
+
+// One-shot fault injection. The control file names a fragment of a request and
+// the way the next request containing it has to misbehave, so a test can fail
+// exactly one transaction without disturbing the rest of the session.
+static const char *pending_fault(const char *command) {
+	static char action[32];
+	const char *path = getenv("INDIGO_PRIMALUCE_FAULT");
+	if (path == NULL) {
+		return NULL;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return NULL;
+	}
+	char key[64] = { 0 };
+	action[0] = '\0';
+	bool matched = fscanf(file, "%63s %31s", key, action) == 2 && strstr(command, key) != NULL;
+	fclose(file);
+	if (!matched) {
+		return NULL;
+	}
+	unlink(path);
+	return action;
 }
 
 static bool sim_printf(int handle, const char *format, ...) {
@@ -175,31 +244,63 @@ static void update_motion(void) {
 }
 
 static void send_state(int handle) {
+	char mot1_abs_pos[64] = { 0 };
+	char mot1_speed[32] = { 0 };
 	update_motion();
+	// A SestoSenso 3 reports ABS_POS, older firmware only ABS_POS_STEP, and a
+	// model without an adjustable speed omits SPEED altogether.
+	if (report_abs_pos) {
+		snprintf(mot1_abs_pos, sizeof(mot1_abs_pos), "\"ABS_POS\":%d,", focuser_position);
+	}
+	if (report_speed) {
+		snprintf(mot1_speed, sizeof(mot1_speed), "\"SPEED\":%d,", speed);
+	}
 	sim_printf(handle,
 		"{\"res\":{\"get\":{"
-		"\"MODNAME\":\"SESTOSENSO2\",\"SN\":\"SESTOSENSO20716\","
-		"\"SWVERS\":{\"SWAPP\":\"3.10\",\"SWWEB\":\"3.10\"},"
+		"\"MODNAME\":\"%s\",\"SN\":\"SESTOSENSO20716\","
+		"\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"3.10\"},"
 		"\"WIFIAP\":{\"SSID\":\"SESTOSENSO20716\",\"PWD\":\"primalucelab\",\"STATUS\":\"%s\"},"
 		"\"WIFISTA\":{\"SSID\":\"MySSID\",\"PWD\":\"MyPassword\"},"
-		"\"EXT_T\":\"22.50\",\"VIN_12V\":\"13.98\",\"VIN_USB\":\"5.20\",\"DIMLEDS\":\"%s\",\"ARCO\":1,\"CALRESTART\":{\"MOT1\":0,\"MOT2\":0},"
-		"\"MOT1\":{\"ABS_POS\":%d,\"ABS_POS_STEP\":%d,\"SPEED\":%d,\"BKLASH\":%d,"
-		"\"STATUS\":{\"MST\":\"%s\"},\"NTC_T\":\"37.12\",\"ERROR\":\"\",\"CALRESTART\":0,"
+		"\"EXT_T\":\"22.50\",\"VIN_12V\":\"13.98\",\"VIN_USB\":\"5.20\",\"DIMLEDS\":\"%s\",\"ARCO\":1,\"CALRESTART\":{\"MOT1\":%d,\"MOT2\":%d},"
+		"\"MOT1\":{%s\"ABS_POS_STEP\":%d,%s\"BKLASH\":%d,"
+		"\"STATUS\":{\"MST\":\"%s\"},\"NTC_T\":\"37.12\",\"ERROR\":\"%s\",\"CALRESTART\":%d,"
 		"\"FnRUN_ACC\":1,\"FnRUN_DEC\":1,\"FnRUN_SPD\":2,\"FnRUN_CURR_ACC\":7,\"FnRUN_CURR_DEC\":7,\"FnRUN_CURR_SPD\":7,\"FnRUN_CURR_HOLD\":3,"
 		"\"HOLDCURR_STATUS\":%d},"
 		"\"RUNPRESET_L\":{\"M1ACC\":10},\"RUNPRESET_M\":{\"M1SPD\":6},\"RUNPRESET_S\":{\"M1DEC\":1},"
 		"\"RUNPRESET_1\":{\"M1HOLD\":3},\"RUNPRESET_2\":{\"M1CSPD\":5},\"RUNPRESET_3\":{\"M1CDEC\":7},"
-		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"STATUS\":{\"MST\":\"%s\"},\"ERROR\":\"\",\"CALRESTART\":0,\"CAL_STATUS\":\"stop\"}"
+		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"STATUS\":{\"MST\":\"%s\"},\"ERROR\":\"\",\"CALRESTART\":%d,\"CAL_STATUS\":\"stop\"}"
 		"}}}\n",
-		wifi_status, led_status, focuser_position, focuser_position, speed, backlash, focus_motion.duration > 0 ? "move" : "stop", hold_current, rotator_position, rotator_position, rotate_motion.duration > 0 ? "move" : "stop");
+		model, firmware, wifi_status, led_status, calibration_restart, calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 ? "move" : "stop", motor_error, calibration_restart, hold_current, rotator_position, rotator_position, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart);
 }
 
 static void dispatch_command(int handle, const char *command) {
 	update_motion();
+	if (events != NULL) {
+		fprintf(events, "%s\n", command);
+		fflush(events);
+	}
+	const char *fault = pending_fault(command);
+	if (fault != NULL) {
+		if (!strcmp(fault, "close")) {
+			running = 0;
+			if (serial_fd >= 0) {
+				close(serial_fd);
+				serial_fd = -1;
+			}
+			return;
+		}
+		if (!strcmp(fault, "silent")) {
+			return;
+		}
+		if (!strcmp(fault, "garbage")) {
+			sim_printf(handle, "\"Error: invalid cmd\"\n");
+			return;
+		}
+	}
 	if (strstr(command, "\"MODNAME\"") != NULL) {
-		sim_printf(handle, "{\"res\":{\"get\":{\"MODNAME\":\"SESTOSENSO2\"}}}\n");
+		sim_printf(handle, "{\"res\":{\"get\":{\"MODNAME\":\"%s\"}}}\n", model);
 	} else if (strstr(command, "\"SWVERS\"") != NULL) {
-		sim_printf(handle, "{\"res\":{\"get\":{\"SWVERS\":{\"SWAPP\":\"3.10\",\"SWWEB\":\"3.10\"}}}}\n");
+		sim_printf(handle, "{\"res\":{\"get\":{\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"3.10\"}}}}\n", firmware);
 	} else if (strstr(command, "\"get\"") != NULL) {
 		send_state(handle);
 	} else if (strstr(command, "\"BKLASH\"") != NULL) {
@@ -263,6 +364,10 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
+	apply_profile();
+	const char *journal = getenv("INDIGO_PRIMALUCE_EVENTS");
+	events = journal == NULL ? NULL : fopen(journal, "w");
+
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 
@@ -295,6 +400,9 @@ int main(int argc, char *argv[]) {
 
 	if (serial_fd >= 0) {
 		close(serial_fd);
+	}
+	if (events != NULL) {
+		fclose(events);
 	}
 	return 0;
 }
