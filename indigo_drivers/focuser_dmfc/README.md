@@ -25,4 +25,4 @@ indigo_server indigo_focuser_dmfc
 
 ## Testing
 
-2026-09-20 12:20 simulator 25/25 OK
+2026-09-20 12:30 simulator 25/25 OK
