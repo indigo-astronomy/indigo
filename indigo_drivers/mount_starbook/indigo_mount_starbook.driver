@@ -22,7 +22,7 @@ driver starbook {
 	label = "Vixen StarBook Mount";
 	author = "Koji Tsunoda <tsunoda@astroarts.co.jp>, generator migration by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2017-2026 Koji Tsunoda";
-	version = 6;
+	version = 7;
 	serial {
 	}
 	include {
@@ -614,8 +614,12 @@ driver starbook {
 			GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 		}
 		inherited GUIDER_GUIDE_DEC {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 			on_change_request {
-				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
 			}
 			on_change {
 				indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
@@ -640,8 +644,12 @@ driver starbook {
 			}
 		}
 		inherited GUIDER_GUIDE_RA {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 			on_change_request {
-				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
 			}
 			on_change {
 				indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);

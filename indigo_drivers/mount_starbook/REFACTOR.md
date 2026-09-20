@@ -69,3 +69,17 @@ The final normal run measured software property completion from request submissi
 ## Final summary
 
 Distinct simulator tests run/passed: **11/11**. Hardware tests run/passed: **0/0**. The simulator suite was repeated under ASan+UBSan. Native Windows/Linux compilation and physical firmware/mechanics/guide-output behavior remain unverified and are not claimed.
+
+## Overlapping guide pulses (2026-09-20)
+
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true` and zero both axis
+items in `on_change_request`, replacing the earlier workaround that forced the property state back
+to `INDIGO_OK_STATE` so the BUSY-guarded dispatch macro would let the request through. Zeroing the
+items also closes a gap the workaround left open: a reversing request kept the superseded direction
+set, so the handler picked the stale direction and re-sent `MOVEPULSE` the wrong way. The driver
+now uses the same pattern as every other INDIGO driver that exposes a guider.
+
+`starbook_guider_passes_http_compliance_checks` gained two duration-measuring cases: a 2000 ms
+pulse replaced after 500 ms by a 600 ms pulse in the same direction, and the same pulse replaced by
+a 300 ms pulse in the opposite direction. Waiting only for the property to leave BUSY passes even
+when the second request is discarded, so the replacement was not covered before.

@@ -24,3 +24,7 @@ Driver is developed and tested with:
 
 * Vixen StarBook (firmware v1.2)
 * Vixen StarBook Ten (firmware v4.20)
+
+## Testing
+
+2026-09-20 20:49 3.0.0.7 mac arm64 simulator 11/11 OK
