@@ -191,3 +191,15 @@ Covered by the extended `mount_park_home_and_parked_guards` case in `indigo_test
 ```sh
 cd indigo_test && ./build/integration/test_mount_simulator
 ```
+
+## Overlapping guide pulses (2026-09-20)
+
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true` and zero both axis
+items in `on_change_request`, replacing the earlier workaround that forced the property state back
+to `INDIGO_OK_STATE` so the BUSY-guarded dispatch macro would let the request through. The
+behaviour is unchanged; the driver now uses the same pattern as every other INDIGO driver that
+exposes a guider, instead of defeating the guard by lying about the property state.
+
+`guider_pending_disconnect_and_replacement` gained a duration-measuring case: a 2000 ms pulse
+replaced after 500 ms by a 600 ms pulse in the same direction has to finish after about 1100 ms,
+not 2000 ms. The existing reversing-replacement assertions were kept.

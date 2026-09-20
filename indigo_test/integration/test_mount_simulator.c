@@ -423,6 +423,23 @@ static void guider_pending_disconnect_and_replacement(void) {
 	SERIAL_CHECK_TRUE(find_cached_property(GUIDER_GUIDE_RA_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME) - 400) < 0.001);
 	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+	// A pulse arriving while another one on the same axis is still running replaces it, so the
+	// elapsed time has to follow the second request. Measuring the duration is the point of this
+	// case: waiting only for the property to leave BUSY passes even when the second request is
+	// discarded.
+	double started = indigo_monotonic_time();
+	indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2000);
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(500000);
+	indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 600);
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0.001));
+	// Replacing finishes about 500 + 600 ms after the first request; keeping the superseded pulse
+	// would run the full 2000 ms.
+	double replaced = (indigo_monotonic_time() - started) * 1000.0;
+	printf("    2000 ms north pulse replaced after 500 ms by a 600 ms north pulse finished in %.0f ms\n", replaced);
+	SERIAL_CHECK_TRUE(replaced > 900 && replaced < 1700);
+
 	indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 300);
 	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	disconnect_serial_device(&mount_guider_simulator);
