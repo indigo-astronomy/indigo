@@ -64,3 +64,13 @@ Completion requires every applicable Guider Driver Test Standard row to map to n
 
 - Latest complete simulated/fake-SDK validation: 32 tests executed, 32 passed (16 ordinary and 16 ASan+UBSan cases). The benchmark mode compiled from the same test source completed 80/80 measured samples.
 - Hardware tests: 0 executed, 0 passed.
+
+## Overlapping guide pulses (2026-09-20)
+
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true`, replacing the
+earlier workaround that forced the property state back to `INDIGO_OK_STATE` in `on_change_request`
+so the BUSY-guarded dispatch macro would let the request through. `on_change_request` is now only
+the two item-zeroing lines, matching every other INDIGO driver that exposes a guider.
+
+Behaviour is unchanged: `asi_change_axis()` already stopped the active relay and re-armed the
+deadline, so replacement worked once the request reached the handler.

@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_guider_asi"
 #define DRIVER_LABEL         "ZWO ASI USB-St4 Guider"
 #define GUIDER_DEVICE_NAME   "%s"
@@ -323,17 +323,15 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		//+ guider.GUIDER_GUIDE_DEC.on_change_request
 		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		//- guider.GUIDER_GUIDE_DEC.on_change_request
-		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		//+ guider.GUIDER_GUIDE_RA.on_change_request
 		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
-		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		//- guider.GUIDER_GUIDE_RA.on_change_request
-		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
 		return INDIGO_OK;
 	}
 	return indigo_guider_change_property(device, client, property);
@@ -655,7 +653,7 @@ indigo_result indigo_guider_asi(indigo_driver_action action, indigo_driver_info 
 #include "indigo_guider_asi.h"
 
 indigo_result indigo_guider_asi(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "ZWO ASI USB-St4 Guider", __FUNCTION__, 0x03000008, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "ZWO ASI USB-St4 Guider", __FUNCTION__, 0x03000009, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif
