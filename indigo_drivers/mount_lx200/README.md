@@ -46,3 +46,7 @@ Driver is developed and tested with:
 * ZWO AM5
 * Pegasus NYX-101
 * Simulators
+
+## Testing
+
+2026-09-20 21:29 3.0.0.56 mac arm64 simulator 70/70 OK

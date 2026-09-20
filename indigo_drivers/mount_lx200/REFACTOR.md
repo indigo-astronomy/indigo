@@ -610,3 +610,18 @@ Final simulated acceptance tests for this migration: 140 run, 140 passed
 representative x86_64 runs and the narrow per-case reruns are additional
 passing checks, separate from that matrix.
 Final hardware tests: 0 run, 0 passed.
+
+## Overlapping guide pulses (2026-09-20)
+
+A guide pulse requested while another pulse on the same axis was still running was silently
+discarded. `GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true` and zero
+both axis items in `on_change_request`, and each handler drops the finaliser of the pulse it
+replaces so the superseded deadline cannot end the new pulse early. The cancellation sits in
+`on_change`, where it runs on the device queue thread and `indigo_queue_remove()` skips its blocking
+wait.
+
+`lx200_guider_directions_overlap_and_timing` carried the comment "Same-axis BUSY requests are
+ignored" and asserted that `Mgs0100` was never sent, which recorded the discard as expected
+behaviour. It now asserts the command is sent and adds two duration-measuring cases: a 2000 ms pulse
+replaced after 500 ms by a 600 ms pulse in the same direction (1446 ms measured) and by a 300 ms
+pulse in the opposite direction (917 ms).

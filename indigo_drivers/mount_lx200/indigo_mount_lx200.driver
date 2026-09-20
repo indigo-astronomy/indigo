@@ -23,7 +23,7 @@ driver lx200 {
 	label = "LX200 Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 55;
+	version = 56;
 	serial {
 		configurable_speed = true;
 		// NYX_TEMPLATE_INDEX - Pegasus Astro NYX mount
@@ -2720,7 +2720,17 @@ driver lx200 {
 			}
 		}
 		inherited GUIDER_GUIDE_DEC {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
+			on_change_request {
+				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+			}
 			on_change {
+				// A new request replaces the running pulse, so the finaliser of the superseded
+				// one must not end the new pulse on the old deadline.
+				indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
 				int north = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 				int south = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 				if ((north > 0 || south > 0) && !meade_guide_dec(device, north, south)) {
@@ -2738,7 +2748,17 @@ driver lx200 {
 			}
 		}
 		inherited GUIDER_GUIDE_RA {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
+			on_change_request {
+				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+			}
 			on_change {
+				// A new request replaces the running pulse, so the finaliser of the superseded
+				// one must not end the new pulse on the old deadline.
+				indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
 				int west = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 				int east = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 				if ((west > 0 || east > 0) && !meade_guide_ra(device, west, east)) {
