@@ -262,6 +262,26 @@ in its `indigo_<name>.c`; more than one means multiple logical devices. The
 master is the device that unhides `DEVICE_PORT` (`DEVICE_PORT_PROPERTY->hidden
 = false`); the others open via `device->master_device`.
 
+## Recording Test Runs
+
+After every driver test run, record the outcome in that driver's `README.md`:
+
+- Add a `## Testing` section if the file does not have one yet.
+- Append one line per run to that section, in the form `<timestamp> <type> <result>`:
+  - `<timestamp>` is the date and time of the run in `YYYY-MM-DD HH:MM` format.
+  - `<type>` is `simulator`, `fake SDK`, or the name of the hardware used for the test.
+  - `<result>` is `<total tests>/<passed tests>` followed by `OK` if all tests passed or `Failed` if any test failed.
+- Record no other details in that section.
+
+Example:
+
+```markdown
+## Testing
+
+2026-09-20 14:32 simulator 12/12 OK
+2026-09-20 15:04 Optec FocusLynx 12/11 Failed
+```
+
 ## Documentation
 
 - Update the relevant driver's `REFACTOR.md` when adding meaningful new test coverage or deferring known work.
