@@ -29,7 +29,8 @@ driver asi {
 	label = "ZWO ASI Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o. and Rumen G. Bogdanovski";
-	version = 61;
+	version = 62;
+	multi_device_support = true;
 	include {
 		#include <assert.h>
 		#include <math.h>
@@ -547,6 +548,13 @@ driver asi {
 
 		static void ccd_temperature_callback(indigo_device *device) {
 			if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+				return;
+			}
+			if (!IS_CONNECTED) {
+				// The poll is started from the connection handler, which runs on the driver queue,
+				// so the first call can arrive before the final CONNECTION state is published and
+				// the CCD properties are defined. Wait instead of dropping the whole poll chain.
+				indigo_execute_handler_in(device, 0.5, ccd_temperature_callback);
 				return;
 			}
 			if (PRIVATE_DATA->can_check_temperature) {
@@ -1077,6 +1085,9 @@ driver asi {
 			indigo_lock_master_device(device);
 			connection_result = initialize_camera(device);
 			indigo_unlock_master_device(device);
+			if (connection_result && PRIVATE_DATA->has_temperature_sensor) {
+				indigo_execute_handler_in(device, 0.5, ccd_temperature_callback);
+			}
 		}
 		on_disconnect {
 			indigo_lock_master_device(device);
@@ -1085,11 +1096,6 @@ driver asi {
 			}
 			PRIVATE_DATA->can_check_temperature = false;
 			indigo_unlock_master_device(device);
-		}
-		on_timer {
-			if (PRIVATE_DATA->has_temperature_sensor) {
-				ccd_temperature_callback(device);
-			}
 		}
 		inherited CCD_EXPOSURE {
 			on_change_request {

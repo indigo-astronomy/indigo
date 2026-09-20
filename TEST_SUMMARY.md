@@ -6,6 +6,8 @@
 # ccd_asi (ZWO ASI Camera)
 
 2026-09-20 21:31 3.0.0.61 mac arm64 fake SDK 51/51 OK
+2026-09-21 00:23 3.0.0.62 mac arm64 ASI294MC Pro 28/28 OK
+2026-09-21 00:26 3.0.0.62 mac arm64 ASI120MC-S 28/28 OK
 
 # ccd_atik (Atik Camera)
 
@@ -116,6 +118,11 @@
 # mount_temma (Takahashi Temma Mount)
 
 2026-09-20 20:27 3.0.0.13 mac arm64 simulator 13/13 OK
+
+# wheel_asi (ZWO ASI Filter Wheel)
+
+2026-09-21 00:34 3.0.0.15 mac arm64 fake SDK 5/5 OK
+2026-09-21 00:42 3.0.0.15 mac arm64 ASI EFW mini 16/16 OK
 
 # wheel_atik (Atik Filter Wheel)
 

@@ -413,3 +413,64 @@ Goal: refactor the ASI filter wheel driver into a generator-friendly INDIGO 3.0 
 - Preserve one-based INDIGO slot values and zero-based SDK calls.
 - Preserve mutex coverage around SDK global enumeration/open/close and hot-plug id reservation paths.
 - Prefer generator ownership of wheel attach/change/detach boilerplate after migration.
+
+## Physical hardware acceptance — ASI EFW mini, version 15 / 0x0300000F (2026-09-21)
+
+Environment: macOS 26.6.2 (Darwin 25.6.0) arm64, universal arm64/x86_64 driver built with
+`make -C indigo_drivers/wheel_asi -f ../../Makefile.drv all`, arm64 runtime only. Bundled EFW SDK
+reports `1, 8, 5`. Device: ZWO EFW mini, five slots, published as `EFW`. Source is this working tree
+over `6744df013`; no production change was needed for this driver.
+
+New opt-in harness `indigo_test/hardware/test_wheel_asi_hw.c`, target `make -C indigo_test
+test-wheel-asi-hw` (`HW_HOTPLUG=1` adds the operator-driven cable scenarios, `HW_DEBUG=1` raises the
+log level). The wheel physically turns in every scenario, the session restores the slot it started
+on, and calibration runs exactly once as the class standard requires.
+
+| Acceptance (wheel hardware acceptance, `indigo_test/DRIVER_TESTING_RULES.md`) | Case | Result |
+| --- | --- | --- |
+| Identity, model, SDK version, discovered slot count | `asi_reports_identity_and_capabilities` | PASS — `indigo_wheel_asi`, API generation 3, model `EFW`, five slots |
+| Published property contract, `X_` naming, hidden port/simulation properties, slot table bounds | `asi_publishes_the_property_contract` | PASS — `WHEEL_SLOT` 1..5, both slot tables five items, `X_CALIBRATE` and `X_CUSTOM_SUFFIX` one item each |
+| Move to every slot with device position readback | `asi_selects_every_slot` | PASS |
+| Boundary slots and the wrap between them | `asi_selects_the_slot_boundaries` | PASS |
+| Reselecting the slot the wheel already sits on | `asi_reselects_the_current_slot` | PASS — answered from driver state in exactly two publications, no `EFWSetPosition` |
+| Repeated selection | `asi_repeats_a_selection` | PASS |
+| BUSY while turning, OK on arrival | `asi_publishes_busy_while_turning` | PASS |
+| Overlapping request behaviour | `asi_ignores_an_overlapping_request` | PASS — framework drops the request, the wheel does not move afterwards |
+| Calibration refused while the wheel is turning | `asi_refuses_calibration_while_turning` | PASS — ALERT with "Wheel is busy", switch left off |
+| Clearing the calibration switch | `asi_clears_the_calibration_switch` | PASS — no-op answered OK |
+| Calibration once, completion and positioning afterwards | `asi_calibrates` | PASS — finished on slot 1, positioning works after |
+| Interrupt an active operation, reconnect, select a slot | `asi_disconnects_while_turning` | PASS — reconnect resolves the unknown position and reports the slot the wheel stopped on |
+| Reconnect rebuilds slot count and position | `asi_reconnects` | PASS |
+| Driver-owned persistent setting, restored | `asi_writes_and_restores_the_custom_suffix` | PASS as unsupported — `EFWSetID` returns `EFW_ERROR_NOT_SUPPORTED` (8) on this firmware; the driver publishes ALERT with the documented message and keeps the previous suffix |
+| SHUTDOWN refused while connected | `asi_rejects_shutdown_while_connected` | PASS — `INDIGO_BUSY`, driver still operational |
+| SHUTDOWN/INIT and fresh operation | `asi_reinitializes` | PASS |
+
+Not run and why:
+
+- Physical hot-plug (`asi_survives_transport_loss`, `asi_survives_transport_loss_while_turning`) is
+  implemented but was explicitly excluded from this session, which ran unattended and cannot pull a
+  cable. Run it with `HW_HOTPLUG=1` when an operator is present.
+- Flash suffix naming across a replug cannot be shown on this wheel at all: its firmware does not
+  implement the EFW id.
+- Multiple wheels, Linux and Windows runtimes and Intel hardware were not available.
+
+## Found defects
+
+No defect was found in `indigo_wheel_asi` by this hardware pass. Two expectations in the new harness
+were wrong on the first run and were corrected in the test, not in the driver:
+
+- The harness asserted that the slot published while the wheel turns is the slot the wheel is still
+  on. Both the requested slot, from the framework change prologue, and the current slot, from the
+  driver's half-second readback, are legitimate there; only `INDIGO_BUSY_STATE` says the wheel has
+  not arrived. The case now checks that the published slot is valid while turning and equals the
+  request once the turn completes.
+- The harness treated a refused `X_CUSTOM_SUFFIX` write as a failure. An EFW whose firmware does not
+  implement the flash id is a documented unsupported-capability case; the case now requires ALERT
+  plus an unchanged published suffix for that firmware.
+
+## Final test summary
+
+- Simulated (fake SDK) tests: 5 run, 5 passed — `make -C indigo_test test-wheel-asi-sdk` equivalent,
+  `build/integration/test_wheel_asi_sdk`, 2026-09-21.
+- Hardware tests: 16 run, 16 passed — `build/hardware/test_wheel_asi_hw --run` against the ASI EFW
+  mini, 2026-09-21. Two further hot-plug cases exist and were not run; they need an operator.
