@@ -23,3 +23,7 @@ indigo_server indigo_wheel_atik
 ## Status: Stable
 
 Driver is developed without access to the physical hardware.
+
+## Testing
+
+2026-09-20 15:00 fake SDK 17/17 OK
