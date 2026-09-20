@@ -34,6 +34,10 @@ typedef struct {
 
 static int indigo_test_failures = 0;
 
+// Name of the test case currently executing, or NULL outside indigo_run_tests().
+// Shared helpers use it to label per-case diagnostic artifacts.
+static const char *indigo_current_test_name = NULL;
+
 #define ASSERT_TRUE(condition) do { \
 	if (!(condition)) { \
 		fprintf(stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #condition); \
@@ -90,7 +94,9 @@ static int indigo_run_tests(const char *suite_name, const indigo_test_case *test
 	printf("Running %s\n", suite_name);
 	for (int i = 0; i < count; i++) {
 		int before = indigo_test_failures;
+		indigo_current_test_name = tests[i].name;
 		tests[i].function();
+		indigo_current_test_name = NULL;
 		if (indigo_test_failures == before) {
 			printf("  PASS %s\n", tests[i].name);
 		} else {

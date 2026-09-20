@@ -5408,6 +5408,7 @@
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
 		9DB918001DF8546800678721 /* indigo_mount_lx200.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200.c; sourceTree = "<group>"; usesTabs = 1; wrapsLines = 0; };
 		9DB918011DF8546800678721 /* indigo_mount_lx200.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_lx200.h; sourceTree = "<group>"; };
+		C0DE20260920BEEF00000001 /* indigo_mount_lx200.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_mount_lx200.driver; sourceTree = "<group>"; };
 		9DB918051DF8647800678721 /* Meade-2010.10.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Meade-2010.10.pdf"; sourceTree = "<group>"; };
 		9DB918061DFEA42E00678721 /* indigo_io.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_io.c; sourceTree = "<group>"; };
 		9DB918071DFEA42E00678721 /* indigo_io.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_io.h; sourceTree = "<group>"; };
@@ -15820,6 +15821,7 @@
 				9DB918011DF8546800678721 /* indigo_mount_lx200.h */,
 				9DB918001DF8546800678721 /* indigo_mount_lx200.c */,
 				9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */,
+				C0DE20260920BEEF00000001 /* indigo_mount_lx200.driver */,
 				9DB918051DF8647800678721 /* Meade-2010.10.pdf */,
 				5964D75521F7888C0059AEA8 /* AstroPhysics-D.pdf */,
 				5964D75421F788170059AEA8 /* AstroPhysics-G.pdf */,

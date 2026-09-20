@@ -152,12 +152,50 @@ static bool start_external_serial_simulator(external_serial_simulator *simulator
 	return start_external_serial_simulator_with_args(simulator, executable, NULL);
 }
 
+// Opt-in reference-trace capture. When INDIGO_SIMULATOR_TRACE_DIR names an
+// existing directory, the simulator command event log of every fixture is
+// copied out before teardown as <test case>-<n>.events, so a refactoring can
+// be compared against a recorded pre-change trace.
+static void capture_simulator_trace(external_serial_simulator *simulator) {
+	const char *trace_directory = getenv("INDIGO_SIMULATOR_TRACE_DIR");
+	if (trace_directory == NULL || *trace_directory == 0 || *simulator->ready_file == 0) {
+		return;
+	}
+	static const char *last_test_name = NULL;
+	static int sequence = 0;
+	const char *test_name = indigo_current_test_name == NULL ? "unnamed" : indigo_current_test_name;
+	if (last_test_name != test_name) {
+		last_test_name = test_name;
+		sequence = 0;
+	}
+	char source_path[PATH_MAX], target_path[PATH_MAX];
+	snprintf(source_path, sizeof(source_path), "%s.events", simulator->ready_file);
+	snprintf(target_path, sizeof(target_path), "%s/%s-%d.events", trace_directory, test_name, sequence++);
+	FILE *source = fopen(source_path, "r");
+	if (source == NULL) {
+		return;
+	}
+	FILE *target = fopen(target_path, "w");
+	if (target == NULL) {
+		fclose(source);
+		return;
+	}
+	char buffer[4096];
+	size_t read_size;
+	while ((read_size = fread(buffer, 1, sizeof(buffer), source)) > 0) {
+		fwrite(buffer, 1, read_size, target);
+	}
+	fclose(target);
+	fclose(source);
+}
+
 static void stop_external_serial_simulator(external_serial_simulator *simulator) {
 	if (simulator->pid > 0) {
 		kill(simulator->pid, SIGTERM);
 		waitpid(simulator->pid, NULL, 0);
 		simulator->pid = 0;
 	}
+	capture_simulator_trace(simulator);
 	remove_simulator_directory(simulator->directory);
 	memset(simulator, 0, sizeof(*simulator));
 }

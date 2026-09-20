@@ -52,6 +52,7 @@ Run `make all` from the repository root first if `build/lib/libindigo` or the re
 - `make -C indigo_test test-integration` runs bus and simulator-driver integration tests only.
 - `make -C indigo_test benchmark` builds and runs the benchmarks. They are not part of `test`.
 - `make -C indigo_test test-clean` removes generated `indigo_test/build` binaries and dSYM files.
+- Setting `INDIGO_SIMULATOR_TRACE_DIR=<dir>` on a serial simulator test run copies every fixture's simulator command event log into that directory as `<test case>-<n>.events`. Use it to record a reference trace before a driver refactoring and to compare the ordered protocol interactions afterwards.
 
 After validating changes that build tests, run `make -C indigo_test test-clean` unless the user asks to keep build artifacts.
 

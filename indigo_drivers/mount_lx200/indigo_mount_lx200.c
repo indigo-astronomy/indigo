@@ -1,9 +1,9 @@
 // Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
-//
-// You can use this software under the terms of 'INDIGO Astronomy
+
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-//
+
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -15,186 +15,68 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
-// version history
-// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
-// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// This file generated from indigo_mount_lx200.driver
 
-/** INDIGO LX200 driver
- \file indigo_mount_lx200.c
- */
-
-#define DRIVER_VERSION 0x03000035
-#define DRIVER_NAME	"indigo_mount_lx200"
-
-#define NYX_BASE64_THRESHOLD_VERSION "1.32.0"
+#pragma mark - Includes
 
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
+
+//+ include
+
 #include <ctype.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <time.h>
+
+#include <indigo/indigo_base64.h>
+
+//- include
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_uni_io.h>
+#include <indigo/indigo_mount_driver.h>
 #include <indigo/indigo_align.h>
-#include <indigo/indigo_base64.h>
+#include <indigo/indigo_guider_driver.h>
+#include <indigo/indigo_focuser_driver.h>
+#include <indigo/indigo_aux_driver.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_mount_lx200.h"
 
+#pragma mark - Common definitions
+
+#define DRIVER_VERSION       0x03000036
+#define DRIVER_NAME          "indigo_mount_lx200"
+#define DRIVER_LABEL         "LX200 Mount"
+#define MOUNT_DEVICE_NAME    "Mount LX200"
+#define GUIDER_DEVICE_NAME   "Mount LX200 (guider)"
+#define FOCUSER_DEVICE_NAME  "Mount LX200 (focuser)"
+#define AUX_DEVICE_NAME      "Mount LX200 (aux)"
+#define PRIVATE_DATA         ((lx200_private_data *)device->private_data)
+
+//+ define
+
+#define NYX_BASE64_THRESHOLD_VERSION "1.32.0"
+
 #ifndef MAX
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MAX(a,               b) ((a) > (b) ? (a) : (b))
 #endif
 
 #ifndef MIN
-#define MIN(a,b)	((a) < (b) ? (a) : (b))
+#define MIN(a,b)             ((a) < (b) ? (a) : (b))
 #endif
 
-#define PRIVATE_DATA				((lx200_private_data *)device->private_data)
-
-#define MOUNT_TYPE_PROPERTY							(PRIVATE_DATA->mount_type_property)
-#define MOUNT_TYPE_DETECT_ITEM					(MOUNT_TYPE_PROPERTY->items+0)
-#define MOUNT_TYPE_MEADE_ITEM						(MOUNT_TYPE_PROPERTY->items+1)
-#define MOUNT_TYPE_10MICRONS_ITEM				(MOUNT_TYPE_PROPERTY->items+2)
-#define MOUNT_TYPE_GEMINI_ITEM				 	(MOUNT_TYPE_PROPERTY->items+3)
-#define MOUNT_TYPE_STARGO_ITEM					(MOUNT_TYPE_PROPERTY->items+4)
-#define MOUNT_TYPE_STARGO2_ITEM					(MOUNT_TYPE_PROPERTY->items+5)
-#define MOUNT_TYPE_AP_ITEM							(MOUNT_TYPE_PROPERTY->items+6)
-#define MOUNT_TYPE_ON_STEP_ITEM					(MOUNT_TYPE_PROPERTY->items+7)
-#define MOUNT_TYPE_AGOTINO_ITEM					(MOUNT_TYPE_PROPERTY->items+8)
-#define MOUNT_TYPE_ZWO_ITEM				 			(MOUNT_TYPE_PROPERTY->items+9)
-#define MOUNT_TYPE_NYX_ITEM				 			(MOUNT_TYPE_PROPERTY->items+10)
-#define MOUNT_TYPE_OAT_ITEM				 			(MOUNT_TYPE_PROPERTY->items+11)
-#define MOUNT_TYPE_TEEN_ASTRO_ITEM			(MOUNT_TYPE_PROPERTY->items+12)
-#define MOUNT_TYPE_GENERIC_ITEM         (MOUNT_TYPE_PROPERTY->items+13)
-
-
-#define MOUNT_TYPE_PROPERTY_NAME				"X_MOUNT_TYPE"
-#define MOUNT_TYPE_DETECT_ITEM_NAME			"DETECT"
-#define MOUNT_TYPE_MEADE_ITEM_NAME			"MEADE"
-#define MOUNT_TYPE_10MICRONS_ITEM_NAME	"10MIC"
-#define MOUNT_TYPE_GEMINI_ITEM_NAME			"GEMINI"
-#define MOUNT_TYPE_STARGO_ITEM_NAME			"STARGO"
-#define MOUNT_TYPE_STARGO2_ITEM_NAME		"STARGO2"
-#define MOUNT_TYPE_AP_ITEM_NAME					"AP"
-#define MOUNT_TYPE_ON_STEP_ITEM_NAME		"ONSTEP"
-#define MOUNT_TYPE_AGOTINO_ITEM_NAME		"AGOTINO"
-#define MOUNT_TYPE_ZWO_ITEM_NAME				"ZWO_AM"
-#define MOUNT_TYPE_NYX_ITEM_NAME				"NYX"
-#define MOUNT_TYPE_OAT_ITEM_NAME				"OAT"
-#define MOUNT_TYPE_TEEN_ASTRO_ITEM_NAME	"TEEN_ASTRO"
-#define MOUNT_TYPE_GENERIC_ITEM_NAME		"GENERIC"
-
-#define MOUNT_MODE_PROPERTY							(PRIVATE_DATA->alignment_mode_property)
-#define EQUATORIAL_ITEM									(MOUNT_MODE_PROPERTY->items+0)
-#define ALTAZ_MODE_ITEM									(MOUNT_MODE_PROPERTY->items+1)
-
-#define MOUNT_MODE_PROPERTY_NAME				"X_MOUNT_MODE"
-#define EQUATORIAL_ITEM_NAME						"EQUATORIAL"
-#define ALTAZ_MODE_ITEM_NAME						"ALTAZ"
-
-#define ZWO_BUZZER_PROPERTY							(PRIVATE_DATA->zwo_buzzer_property)
-#define ZWO_BUZZER_OFF_ITEM							(ZWO_BUZZER_PROPERTY->items+0)
-#define ZWO_BUZZER_LOW_ITEM							(ZWO_BUZZER_PROPERTY->items+1)
-#define ZWO_BUZZER_HIGH_ITEM						(ZWO_BUZZER_PROPERTY->items+2)
-
-#define ZWO_BUZZER_PROPERTY_NAME				"X_ZWO_BUZZER"
-#define ZWO_BUZZER_OFF_ITEM_NAME				"OFF"
-#define ZWO_BUZZER_LOW_ITEM_NAME				"LOW"
-#define ZWO_BUZZER_HIGH_ITEM_NAME				"HIGH"
-
-#define NYX_WIFI_AP_PROPERTY						(PRIVATE_DATA->nyx_wifi_ap_property)
-#define NYX_WIFI_AP_SSID_ITEM						(NYX_WIFI_AP_PROPERTY->items+0)
-#define NYX_WIFI_AP_PASSWORD_ITEM				(NYX_WIFI_AP_PROPERTY->items+1)
-
-#define NYX_WIFI_AP_PROPERTY_NAME				"X_NYX_WIFI_AP"
-#define NYX_WIFI_AP_SSID_ITEM_NAME			"AP_SSID"
-#define NYX_WIFI_AP_PASSWORD_ITEM_NAME	"AP_PASSWORD"
-
-#define NYX_WIFI_CL_PROPERTY						(PRIVATE_DATA->nyx_wifi_cl_property)
-#define NYX_WIFI_CL_SSID_ITEM						(NYX_WIFI_CL_PROPERTY->items+0)
-#define NYX_WIFI_CL_PASSWORD_ITEM				(NYX_WIFI_CL_PROPERTY->items+1)
-
-#define NYX_WIFI_CL_PROPERTY_NAME				"X_NYX_WIFI_CL"
-#define NYX_WIFI_CL_SSID_ITEM_NAME			"CL_SSID"
-#define NYX_WIFI_CL_PASSWORD_ITEM_NAME	"CL_PASSWORD"
-
-#define NYX_WIFI_RESET_PROPERTY					(PRIVATE_DATA->nyx_wifi_reset_property)
-#define NYX_WIFI_RESET_ITEM							(NYX_WIFI_RESET_PROPERTY->items+0)
-
-#define NYX_WIFI_RESET_PROPERTY_NAME		"X_NYX_WIFI_RESET"
-#define NYX_WIFI_RESET_ITEM_NAME				"RESET"
-
-#define NYX_LEVELER_PROPERTY						(PRIVATE_DATA->nyx_leveler_property)
-#define NYX_LEVELER_PITCH_ITEM						(NYX_LEVELER_PROPERTY->items+0)
-#define NYX_LEVELER_ROLL_ITEM						(NYX_LEVELER_PROPERTY->items+1)
-#define NYX_LEVELER_COMPASS_ITEM				(NYX_LEVELER_PROPERTY->items+2)
-
-#define NYX_LEVELER_PROPERTY_NAME				"X_NYX_LEVELER"
-#define NYX_LEVELER_PITCH_ITEM_NAME			"PITCH"
-#define NYX_LEVELER_ROLL_ITEM_NAME			"ROLL"
-#define NYX_LEVELER_COMPASS_ITEM_NAME		"COMPASS"
-
-// OnStep-only properties
-#define ONSTEP_PREFERRED_PIER_SIDE_PROPERTY			(PRIVATE_DATA->onstep_preferred_pier_side_property)
-#define ONSTEP_PREFERRED_PIER_SIDE_EAST_ITEM		(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->items+0)
-#define ONSTEP_PREFERRED_PIER_SIDE_WEST_ITEM		(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->items+1)
-#define ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM		(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->items+2)
-#define ONSTEP_PREFERRED_PIER_SIDE_AUTO_ITEM		(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->items+3)
-
-#define ONSTEP_PREFERRED_PIER_SIDE_PROPERTY_NAME	"X_ONSTEP_PREFERRED_PIER_SIDE"
-#define ONSTEP_PREFERRED_PIER_SIDE_EAST_ITEM_NAME	"EAST"
-#define ONSTEP_PREFERRED_PIER_SIDE_WEST_ITEM_NAME	"WEST"
-#define ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM_NAME	"BEST"
-#define ONSTEP_PREFERRED_PIER_SIDE_AUTO_ITEM_NAME	"AUTO"
-
-#define ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY			(PRIVATE_DATA->onstep_auto_meridian_flip_property)
-#define ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM		(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->items+0)
-#define ONSTEP_AUTO_MERIDIAN_FLIP_DISABLED_ITEM		(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->items+1)
-
-#define ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY_NAME		"X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP"
-#define ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM_NAME	"ENABLED"
-#define ONSTEP_AUTO_MERIDIAN_FLIP_DISABLED_ITEM_NAME	"DISABLED"
-
-#define ONSTEP_MERIDIAN_LIMITS_PROPERTY				(PRIVATE_DATA->onstep_meridian_limits_property)
-#define ONSTEP_MERIDIAN_LIMITS_EAST_ITEM			(ONSTEP_MERIDIAN_LIMITS_PROPERTY->items+0)
-#define ONSTEP_MERIDIAN_LIMITS_WEST_ITEM			(ONSTEP_MERIDIAN_LIMITS_PROPERTY->items+1)
-
-#define ONSTEP_MERIDIAN_LIMITS_PROPERTY_NAME		"X_ONSTEP_MERIDIAN_LIMITS"
-#define ONSTEP_MERIDIAN_LIMITS_EAST_ITEM_NAME		"EAST"
-#define ONSTEP_MERIDIAN_LIMITS_WEST_ITEM_NAME		"WEST"
-
-#define ONSTEP_ALTITUDE_LIMITS_PROPERTY				(PRIVATE_DATA->onstep_altitude_limits_property)
-#define ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM			(ONSTEP_ALTITUDE_LIMITS_PROPERTY->items+0)
-#define ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM		(ONSTEP_ALTITUDE_LIMITS_PROPERTY->items+1)
-
-#define ONSTEP_ALTITUDE_LIMITS_PROPERTY_NAME		"X_ALTITUDE_LIMITS"
-#define ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM_NAME	"HORIZON"
-#define ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM_NAME	"OVERHEAD"
-
-#define AUX_WEATHER_PROPERTY            (PRIVATE_DATA->weather_property)
-#define AUX_WEATHER_TEMPERATURE_ITEM    (AUX_WEATHER_PROPERTY->items + 0)
-#define AUX_WEATHER_PRESSURE_ITEM				(AUX_WEATHER_PROPERTY->items + 1)
-
-#define AUX_INFO_PROPERTY								(PRIVATE_DATA->aux_info_property)
-#define AUX_INFO_VOLTAGE_ITEM						(AUX_INFO_PROPERTY->items + 0)
-
 // Onstep has eight auxiliary device slots (1-indexed) which can have user defined purposes
-#define ONSTEP_AUX_DEVICE_COUNT					8
-#define AUX_GROUP												"Powerbox"
-#define AUX_POWER_OUTLET_PROPERTY				(PRIVATE_DATA->power_outlet_property)
-#define AUX_HEATER_OUTLET_PROPERTY			(PRIVATE_DATA->heater_outlet_property)
+#define ONSTEP_AUX_DEVICE_COUNT 8
+#define AUX_GROUP            "Powerbox"
 #define ONSTEP_AUX_HEATER_OUTLET_MAPPING (PRIVATE_DATA->onstep_aux_heater_outlet_slot_mapping)
-#define ONSTEP_AUX_POWER_OUTLET_MAPPING	(PRIVATE_DATA->onstep_aux_power_outlet_slot_mapping)
+#define ONSTEP_AUX_POWER_OUTLET_MAPPING (PRIVATE_DATA->onstep_aux_power_outlet_slot_mapping)
 
-#define IS_PARKED (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PROPERTY->count == 2 && MOUNT_PARK_PARKED_ITEM->sw.value)
+#define IS_PARKED            (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PROPERTY->count == 2 && MOUNT_PARK_PARKED_ITEM->sw.value)
 
-#define NYX_TEMPLATE_INDEX	0
-#define ZWO_TEMPLATE_INDEX	1
+#define NYX_TEMPLATE_INDEX   0
+#define ZWO_TEMPLATE_INDEX   1
 
 typedef enum {
 	ONSTEP_AUX_NONE = 0, 		// Auxiliary slot is disabled
@@ -203,26 +85,162 @@ typedef enum {
 	//TODO implement Momentary Switch, Dew Heater and Intervalometer
 } onstep_aux_device_purpose;
 
+//- define
+
+#pragma mark - Property definitions
+
+#define MOUNT_TYPE_PROPERTY             (PRIVATE_DATA->mount_type_property)
+#define MOUNT_TYPE_DETECT_ITEM          (MOUNT_TYPE_PROPERTY->items + 0)
+#define MOUNT_TYPE_MEADE_ITEM           (MOUNT_TYPE_PROPERTY->items + 1)
+#define MOUNT_TYPE_10MICRONS_ITEM       (MOUNT_TYPE_PROPERTY->items + 2)
+#define MOUNT_TYPE_GEMINI_ITEM          (MOUNT_TYPE_PROPERTY->items + 3)
+#define MOUNT_TYPE_STARGO_ITEM          (MOUNT_TYPE_PROPERTY->items + 4)
+#define MOUNT_TYPE_STARGO2_ITEM         (MOUNT_TYPE_PROPERTY->items + 5)
+#define MOUNT_TYPE_AP_ITEM              (MOUNT_TYPE_PROPERTY->items + 6)
+#define MOUNT_TYPE_ON_STEP_ITEM         (MOUNT_TYPE_PROPERTY->items + 7)
+#define MOUNT_TYPE_AGOTINO_ITEM         (MOUNT_TYPE_PROPERTY->items + 8)
+#define MOUNT_TYPE_ZWO_ITEM             (MOUNT_TYPE_PROPERTY->items + 9)
+#define MOUNT_TYPE_NYX_ITEM             (MOUNT_TYPE_PROPERTY->items + 10)
+#define MOUNT_TYPE_OAT_ITEM             (MOUNT_TYPE_PROPERTY->items + 11)
+#define MOUNT_TYPE_TEEN_ASTRO_ITEM      (MOUNT_TYPE_PROPERTY->items + 12)
+#define MOUNT_TYPE_GENERIC_ITEM         (MOUNT_TYPE_PROPERTY->items + 13)
+
+#define MOUNT_TYPE_PROPERTY_NAME        "X_MOUNT_TYPE"
+#define MOUNT_TYPE_DETECT_ITEM_NAME     "DETECT"
+#define MOUNT_TYPE_MEADE_ITEM_NAME      "MEADE"
+#define MOUNT_TYPE_10MICRONS_ITEM_NAME  "10MIC"
+#define MOUNT_TYPE_GEMINI_ITEM_NAME     "GEMINI"
+#define MOUNT_TYPE_STARGO_ITEM_NAME     "STARGO"
+#define MOUNT_TYPE_STARGO2_ITEM_NAME    "STARGO2"
+#define MOUNT_TYPE_AP_ITEM_NAME         "AP"
+#define MOUNT_TYPE_ON_STEP_ITEM_NAME    "ONSTEP"
+#define MOUNT_TYPE_AGOTINO_ITEM_NAME    "AGOTINO"
+#define MOUNT_TYPE_ZWO_ITEM_NAME        "ZWO_AM"
+#define MOUNT_TYPE_NYX_ITEM_NAME        "NYX"
+#define MOUNT_TYPE_OAT_ITEM_NAME        "OAT"
+#define MOUNT_TYPE_TEEN_ASTRO_ITEM_NAME "TEEN_ASTRO"
+#define MOUNT_TYPE_GENERIC_ITEM_NAME    "GENERIC"
+
+#define MOUNT_MODE_PROPERTY            (PRIVATE_DATA->alignment_mode_property)
+#define EQUATORIAL_ITEM                (MOUNT_MODE_PROPERTY->items + 0)
+#define ALTAZ_MODE_ITEM                (MOUNT_MODE_PROPERTY->items + 1)
+
+#define MOUNT_MODE_PROPERTY_NAME       "X_MOUNT_MODE"
+#define EQUATORIAL_ITEM_NAME           "EQUATORIAL"
+#define ALTAZ_MODE_ITEM_NAME           "ALTAZ"
+
+#define ZWO_BUZZER_PROPERTY            (PRIVATE_DATA->zwo_buzzer_property)
+#define ZWO_BUZZER_OFF_ITEM            (ZWO_BUZZER_PROPERTY->items + 0)
+#define ZWO_BUZZER_LOW_ITEM            (ZWO_BUZZER_PROPERTY->items + 1)
+#define ZWO_BUZZER_HIGH_ITEM           (ZWO_BUZZER_PROPERTY->items + 2)
+
+#define ZWO_BUZZER_PROPERTY_NAME       "X_ZWO_BUZZER"
+#define ZWO_BUZZER_OFF_ITEM_NAME       "OFF"
+#define ZWO_BUZZER_LOW_ITEM_NAME       "LOW"
+#define ZWO_BUZZER_HIGH_ITEM_NAME      "HIGH"
+
+#define NYX_WIFI_AP_PROPERTY           (PRIVATE_DATA->nyx_wifi_ap_property)
+#define NYX_WIFI_AP_SSID_ITEM          (NYX_WIFI_AP_PROPERTY->items + 0)
+#define NYX_WIFI_AP_PASSWORD_ITEM      (NYX_WIFI_AP_PROPERTY->items + 1)
+
+#define NYX_WIFI_AP_PROPERTY_NAME      "X_NYX_WIFI_AP"
+#define NYX_WIFI_AP_SSID_ITEM_NAME     "AP_SSID"
+#define NYX_WIFI_AP_PASSWORD_ITEM_NAME "AP_PASSWORD"
+
+#define NYX_WIFI_CL_PROPERTY           (PRIVATE_DATA->nyx_wifi_cl_property)
+#define NYX_WIFI_CL_SSID_ITEM          (NYX_WIFI_CL_PROPERTY->items + 0)
+#define NYX_WIFI_CL_PASSWORD_ITEM      (NYX_WIFI_CL_PROPERTY->items + 1)
+
+#define NYX_WIFI_CL_PROPERTY_NAME      "X_NYX_WIFI_CL"
+#define NYX_WIFI_CL_SSID_ITEM_NAME     "CL_SSID"
+#define NYX_WIFI_CL_PASSWORD_ITEM_NAME "CL_PASSWORD"
+
+#define NYX_WIFI_RESET_PROPERTY        (PRIVATE_DATA->nyx_wifi_reset_property)
+#define NYX_WIFI_RESET_ITEM            (NYX_WIFI_RESET_PROPERTY->items + 0)
+
+#define NYX_WIFI_RESET_PROPERTY_NAME   "X_NYX_WIFI_RESET"
+#define NYX_WIFI_RESET_ITEM_NAME       "RESET"
+
+#define NYX_LEVELER_PROPERTY           (PRIVATE_DATA->nyx_leveler_property)
+#define NYX_LEVELER_PITCH_ITEM         (NYX_LEVELER_PROPERTY->items + 0)
+#define NYX_LEVELER_ROLL_ITEM          (NYX_LEVELER_PROPERTY->items + 1)
+#define NYX_LEVELER_COMPASS_ITEM       (NYX_LEVELER_PROPERTY->items + 2)
+
+#define NYX_LEVELER_PROPERTY_NAME      "X_NYX_LEVELER"
+#define NYX_LEVELER_PITCH_ITEM_NAME    "PITCH"
+#define NYX_LEVELER_ROLL_ITEM_NAME     "ROLL"
+#define NYX_LEVELER_COMPASS_ITEM_NAME  "COMPASS"
+
+#define ONSTEP_PREFERRED_PIER_SIDE_PROPERTY       (PRIVATE_DATA->onstep_preferred_pier_side_property)
+#define ONSTEP_PREFERRED_PIER_SIDE_EAST_ITEM      (ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->items + 0)
+#define ONSTEP_PREFERRED_PIER_SIDE_WEST_ITEM      (ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->items + 1)
+#define ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM      (ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->items + 2)
+#define ONSTEP_PREFERRED_PIER_SIDE_AUTO_ITEM      (ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->items + 3)
+
+#define ONSTEP_PREFERRED_PIER_SIDE_PROPERTY_NAME  "X_ONSTEP_PREFERRED_PIER_SIDE"
+#define ONSTEP_PREFERRED_PIER_SIDE_EAST_ITEM_NAME "EAST"
+#define ONSTEP_PREFERRED_PIER_SIDE_WEST_ITEM_NAME "WEST"
+#define ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM_NAME "BEST"
+#define ONSTEP_PREFERRED_PIER_SIDE_AUTO_ITEM_NAME "AUTO"
+
+#define ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY           (PRIVATE_DATA->onstep_auto_meridian_flip_property)
+#define ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM       (ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->items + 0)
+#define ONSTEP_AUTO_MERIDIAN_FLIP_DISABLED_ITEM      (ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->items + 1)
+
+#define ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY_NAME      "X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP"
+#define ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM_NAME  "ENABLED"
+#define ONSTEP_AUTO_MERIDIAN_FLIP_DISABLED_ITEM_NAME "DISABLED"
+
+#define ONSTEP_MERIDIAN_LIMITS_PROPERTY       (PRIVATE_DATA->onstep_meridian_limits_property)
+#define ONSTEP_MERIDIAN_LIMITS_EAST_ITEM      (ONSTEP_MERIDIAN_LIMITS_PROPERTY->items + 0)
+#define ONSTEP_MERIDIAN_LIMITS_WEST_ITEM      (ONSTEP_MERIDIAN_LIMITS_PROPERTY->items + 1)
+
+#define ONSTEP_MERIDIAN_LIMITS_PROPERTY_NAME  "X_ONSTEP_MERIDIAN_LIMITS"
+#define ONSTEP_MERIDIAN_LIMITS_EAST_ITEM_NAME "EAST"
+#define ONSTEP_MERIDIAN_LIMITS_WEST_ITEM_NAME "WEST"
+
+#define ONSTEP_ALTITUDE_LIMITS_PROPERTY           (PRIVATE_DATA->onstep_altitude_limits_property)
+#define ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM       (ONSTEP_ALTITUDE_LIMITS_PROPERTY->items + 0)
+#define ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM      (ONSTEP_ALTITUDE_LIMITS_PROPERTY->items + 1)
+
+#define ONSTEP_ALTITUDE_LIMITS_PROPERTY_NAME      "X_ALTITUDE_LIMITS"
+#define ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM_NAME  "HORIZON"
+#define ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM_NAME "OVERHEAD"
+
+#define AUX_WEATHER_PROPERTY           (PRIVATE_DATA->weather_property)
+#define AUX_WEATHER_TEMPERATURE_ITEM   (AUX_WEATHER_PROPERTY->items + 0)
+#define AUX_WEATHER_PRESSURE_ITEM      (AUX_WEATHER_PROPERTY->items + 1)
+
+#define AUX_INFO_PROPERTY              (PRIVATE_DATA->aux_info_property)
+#define AUX_INFO_VOLTAGE_ITEM          (AUX_INFO_PROPERTY->items + 0)
+
+#define AUX_HEATER_OUTLET_PROPERTY     (PRIVATE_DATA->heater_outlet_property)
+#define AUX_HEATER_OUTLET_1_ITEM       (AUX_HEATER_OUTLET_PROPERTY->items + 0)
+#define AUX_HEATER_OUTLET_2_ITEM       (AUX_HEATER_OUTLET_PROPERTY->items + 1)
+#define AUX_HEATER_OUTLET_3_ITEM       (AUX_HEATER_OUTLET_PROPERTY->items + 2)
+#define AUX_HEATER_OUTLET_4_ITEM       (AUX_HEATER_OUTLET_PROPERTY->items + 3)
+#define AUX_HEATER_OUTLET_5_ITEM       (AUX_HEATER_OUTLET_PROPERTY->items + 4)
+#define AUX_HEATER_OUTLET_6_ITEM       (AUX_HEATER_OUTLET_PROPERTY->items + 5)
+#define AUX_HEATER_OUTLET_7_ITEM       (AUX_HEATER_OUTLET_PROPERTY->items + 6)
+#define AUX_HEATER_OUTLET_8_ITEM       (AUX_HEATER_OUTLET_PROPERTY->items + 7)
+
+#define AUX_POWER_OUTLET_PROPERTY      (PRIVATE_DATA->power_outlet_property)
+#define AUX_POWER_OUTLET_1_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 0)
+#define AUX_POWER_OUTLET_2_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 1)
+#define AUX_POWER_OUTLET_3_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 2)
+#define AUX_POWER_OUTLET_4_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 3)
+#define AUX_POWER_OUTLET_5_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 4)
+#define AUX_POWER_OUTLET_6_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 5)
+#define AUX_POWER_OUTLET_7_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 6)
+#define AUX_POWER_OUTLET_8_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 7)
+
+#pragma mark - Private data definition
+
 typedef struct {
+	int count;
 	indigo_uni_handle *handle;
-	int device_count;
-	char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
-	double lastRA, lastDec;
-	bool motioned;
-	bool coordinate_read_failed;
-	char lastUTC[INDIGO_VALUE_SIZE];
-	char product[64];
-	bool slewing, tracking, parked, parking, homed, homing;
-	double timeout;
-	char response[128];
-	bool use_dst_commands;
-	long time_difference;
-	int utc_offset;
-	bool focus_aborted;
-	int onstep_aux_power_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];	// maps power outlet property item index to onstep aux slot
-	int onstep_aux_heater_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];	// maps heater outlet property item index to onstep aux slot
-	indigo_property *alignment_mode_property;
 	indigo_property *mount_type_property;
+	indigo_property *alignment_mode_property;
 	indigo_property *zwo_buzzer_property;
 	indigo_property *nyx_wifi_ap_property;
 	indigo_property *nyx_wifi_cl_property;
@@ -234,9 +252,30 @@ typedef struct {
 	indigo_property *onstep_altitude_limits_property;
 	indigo_property *weather_property;
 	indigo_property *aux_info_property;
-	indigo_property *power_outlet_property;
 	indigo_property *heater_outlet_property;
+	indigo_property *power_outlet_property;
+	//+ data
+	char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
+	double lastRA, lastDec;
+	bool coordinate_read_failed;
+	char product[64];
+	bool slewing, tracking, parked, parking, homed, homing;
+	bool goto_issued;
+	bool park_allowed, unpark_allowed, home_allowed;
+	double timeout;
+	char response[128];
+	bool use_dst_commands;
+	long time_difference;
+	int utc_offset;
+	bool focus_aborted;
+	int onstep_aux_power_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];	// maps power outlet property item index to onstep aux slot
+	int onstep_aux_heater_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];	// maps heater outlet property item index to onstep aux slot
+	//- data
 } lx200_private_data;
+
+#pragma mark - Low level code
+
+//+ code
 
 // Compare two version strings in the format "major.minor.patch"
 // Returns: -1 if version1 < version2, 0 if equal, 1 if version1 > version2
@@ -438,7 +477,7 @@ static void keep_alive_callback(indigo_device *device) {
 	}
 }
 
-static bool meade_open(indigo_device *device) {
+static bool lx200_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (!indigo_uni_is_url(name, "lx200")) {
 		if (device->matched_pattern_index == NYX_TEMPLATE_INDEX) {
@@ -493,12 +532,11 @@ static bool meade_open(indigo_device *device) {
 	}
 }
 
-static void meade_close(indigo_device *device) {
+static void lx200_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
-	PRIVATE_DATA->device_count = 0;
 }
 
 static bool meade_validate_handle(indigo_device *device) {
@@ -506,7 +544,7 @@ static bool meade_validate_handle(indigo_device *device) {
 		return false;
 	}
 	if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
-		meade_close(device);
+		lx200_close(device);
 		indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
 		return false;
 	}
@@ -1968,6 +2006,7 @@ static void meade_init_mount(indigo_device *device) {
 	ONSTEP_ALTITUDE_LIMITS_PROPERTY->hidden = true;
 	PRIVATE_DATA->use_dst_commands = false;
 	PRIVATE_DATA->slewing = PRIVATE_DATA->tracking = PRIVATE_DATA->parking = PRIVATE_DATA->parked = PRIVATE_DATA->homing = PRIVATE_DATA->homed = false;
+	PRIVATE_DATA->goto_issued = false;
 	if (MOUNT_TYPE_MEADE_ITEM->sw.value) {
 		meade_init_meade_mount(device);
 		meade_update_meade_state(device);
@@ -2101,8 +2140,13 @@ static void meade_update_mount_state(indigo_device *device) {
 	if (PRIVATE_DATA->coordinate_read_failed) {
 		MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
 	} else if (PRIVATE_DATA->slewing) {
+		// a running slew (driver or hand controller initiated) completes when it stops
+		PRIVATE_DATA->goto_issued = true;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
+	} else if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE && !PRIVATE_DATA->goto_issued) {
+		// a GOTO was accepted but its slew command has not been sent yet
 	} else {
+		PRIVATE_DATA->goto_issued = false;
 		if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
 			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -2171,139 +2215,25 @@ static void meade_update_mount_state(indigo_device *device) {
 	indigo_update_coordinates(device, NULL);
 }
 
-// ---------------------------------------------------------------------- mount specific properties
+//- code
 
-static void zwo_buzzer_callback(indigo_device *device) {
-	bool result = false;
-	if (ZWO_BUZZER_OFF_ITEM->sw.value) {
-		result = meade_no_reply_command(device, ":SBu0#");
-	} else if (ZWO_BUZZER_LOW_ITEM->sw.value) {
-		result = meade_no_reply_command(device, ":SBu1#");
-	} else if (ZWO_BUZZER_HIGH_ITEM->sw.value) {
-		result = meade_no_reply_command(device, ":SBu2#");
-	}
-	ZWO_BUZZER_PROPERTY->state = result ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-	indigo_update_property(device, ZWO_BUZZER_PROPERTY, NULL);
+//+ guider.code
+
+static void guider_guide_dec_finalizer(indigo_device *device) {
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
 }
 
-static void nyx_ap_callback(indigo_device *device) {
-	NYX_WIFI_AP_PROPERTY->state = INDIGO_ALERT_STATE;
-	NYX_WIFI_AP_SSID_ITEM->text.value[25] = 0;
-	NYX_WIFI_AP_PASSWORD_ITEM->text.value[30] = 0;
-	if (meade_simple_reply_command(device, ":WA%s#", NYX_WIFI_AP_SSID_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
-		if (meade_simple_reply_command(device, ":WB%s#", NYX_WIFI_AP_PASSWORD_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
-			if (meade_simple_reply_command(device, ":WLC#") && *PRIVATE_DATA->response == '1') {
-				indigo_send_message(device, OK_PROPERTY, "Created access point with SSID %s", NYX_WIFI_AP_SSID_ITEM->text.value);
-				NYX_WIFI_AP_PROPERTY->state = INDIGO_OK_STATE;
-			}
-		}
-	}
-	indigo_update_property(device, NYX_WIFI_AP_PROPERTY, NULL);
+static void guider_guide_ra_finalizer(indigo_device *device) {
+	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
 }
 
-static void nyx_cl_callback(indigo_device *device) {
-	char ssid[345] = "";
-	char password[345] = "";
-	bool encode = false;
-	NYX_WIFI_CL_SSID_ITEM->text.value[25] = 0;
-	NYX_WIFI_CL_PASSWORD_ITEM->text.value[30] = 0;
-	if (compare_versions(MOUNT_INFO_FIRMWARE_ITEM->text.value, NYX_BASE64_THRESHOLD_VERSION) >= 0) {
-		base64_encode((unsigned char *)ssid, (unsigned char *)NYX_WIFI_CL_SSID_ITEM->text.value, (long)strlen(NYX_WIFI_CL_SSID_ITEM->text.value));
-		base64_encode((unsigned char *)password, (unsigned char*)NYX_WIFI_CL_PASSWORD_ITEM->text.value, (long)strlen(NYX_WIFI_CL_PASSWORD_ITEM->text.value));
-		encode = true;
-	}
-	if (meade_simple_reply_command(device, ":WS%s#", encode ? ssid : NYX_WIFI_CL_SSID_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
-		if (meade_simple_reply_command(device, ":WP%s#", encode ? password : NYX_WIFI_CL_PASSWORD_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
-			if (meade_no_reply_command(device, ":WLC#")) {
-				indigo_send_message(device, IDLE_PROPERTY, "WiFi reset!");
-				NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
-				if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
-					indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
-				}
-				return;
-			}
-		}
-	}
-	NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
-	indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
-}
+//- guider.code
 
-static void nyx_reset_callback(indigo_device *device) {
-	if (meade_no_reply_command(device, ":WLZ#")) {
-		indigo_send_message(device, IDLE_PROPERTY, "WiFi reset!");
-		NYX_WIFI_RESET_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
-		if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
-			indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
-		}
-		return;
-	}
-	NYX_WIFI_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
-	indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
-}
+//+ aux.code
 
-static void onstep_preferred_pier_side_callback(indigo_device *device) {
-	char cmd[16];
-	if (ONSTEP_PREFERRED_PIER_SIDE_EAST_ITEM->sw.value)
-		strncpy(cmd, ":SX96,E#", sizeof(cmd));
-	else if (ONSTEP_PREFERRED_PIER_SIDE_WEST_ITEM->sw.value)
-		strncpy(cmd, ":SX96,W#", sizeof(cmd));
-	else if (ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM->sw.value)
-		strncpy(cmd, ":SX96,B#", sizeof(cmd));
-	else
-		strncpy(cmd, ":SX96,A#", sizeof(cmd));
-	ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->state = (meade_simple_reply_command(device, cmd) && *PRIVATE_DATA->response == '1') ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-	indigo_update_property(device, ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, NULL);
-}
-
-static void onstep_auto_meridian_flip_callback(indigo_device *device) {
-	char cmd[16];
-	strncpy(cmd, ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM->sw.value ? ":SX95,1#" : ":SX95,0#", sizeof(cmd));
-	ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->state = (meade_simple_reply_command(device, cmd) && *PRIVATE_DATA->response == '1') ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-	indigo_update_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
-}
-
-static void onstep_meridian_limits_callback(indigo_device *device) {
-	char command[64];
-	snprintf(command, sizeof(command), ":SXE9,%d#", (int)round(ONSTEP_MERIDIAN_LIMITS_EAST_ITEM->number.target * 4.0));
-	bool ok = meade_simple_reply_command(device, command) && *PRIVATE_DATA->response == '1';
-	if (ok) {
-		snprintf(command, sizeof(command), ":SXEA,%d#", (int)round(ONSTEP_MERIDIAN_LIMITS_WEST_ITEM->number.target * 4.0));
-		ok = meade_simple_reply_command(device, command) && *PRIVATE_DATA->response == '1';
-	}
-	if (ok) {
-		ONSTEP_MERIDIAN_LIMITS_EAST_ITEM->number.value = ONSTEP_MERIDIAN_LIMITS_EAST_ITEM->number.target;
-		ONSTEP_MERIDIAN_LIMITS_WEST_ITEM->number.value = ONSTEP_MERIDIAN_LIMITS_WEST_ITEM->number.target;
-		ONSTEP_MERIDIAN_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		ONSTEP_MERIDIAN_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	indigo_update_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
-}
-
-static void onstep_altitude_limits_callback(indigo_device *device) {
-	char command[64];
-	snprintf(command, sizeof(command), ":Sh%+d#", (int)round(ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.target));
-	bool ok = meade_simple_reply_command(device, command) && *PRIVATE_DATA->response == '1';
-	if (ok) {
-		snprintf(command, sizeof(command), ":So%d#", (int)round(ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.target));
-		ok = meade_simple_reply_command(device, command) && *PRIVATE_DATA->response == '1';
-	}
-	if (ok) {
-		ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.value = ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.target;
-		ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.value = ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.target;
-		ONSTEP_ALTITUDE_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		ONSTEP_ALTITUDE_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	indigo_update_property(device, ONSTEP_ALTITUDE_LIMITS_PROPERTY, NULL);
-}
-
-static void nyx_aux_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED) {
-		return;
-	}
+static void nyx_aux_update(indigo_device *device) {
 	bool updateWeather = false;
 	bool updateInfo = false;
 	if (meade_command(device, ":GX9A#")) {
@@ -2328,20 +2258,14 @@ static void nyx_aux_timer_callback(indigo_device *device) {
 		}
 	}
 	if (updateWeather) {
-		AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(AUX_WEATHER_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	if (updateInfo) {
-		AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(AUX_INFO_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
-	indigo_execute_handler_in(device, 10, nyx_aux_timer_callback);
 }
 
-static void onstep_aux_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED) {
-		return;
-	}
+static void onstep_aux_update(indigo_device *device) {
 	if (AUX_HEATER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
 		bool do_update = false;
 		for (int i = 0; i < AUX_HEATER_OUTLET_PROPERTY->count; i++) {
@@ -2360,8 +2284,7 @@ static void onstep_aux_timer_callback(indigo_device *device) {
 			}
 		}
 		if (do_update) {
-			AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_HEATER_OUTLET_PROPERTY, INDIGO_OK_STATE, NULL);
 		}
 	}
 	if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -2381,40 +2304,93 @@ static void onstep_aux_timer_callback(indigo_device *device) {
 			}
 		}
 		if (do_update && AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
-			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_POWER_OUTLET_PROPERTY, INDIGO_OK_STATE, NULL);
 		}
 	}
-	indigo_execute_handler_in(device, 2, onstep_aux_timer_callback);
 }
 
+static bool onstep_aux_discover(indigo_device *device) {
+	// first we request Onstep to list active aux slots
+	if (!meade_command(device, ":GXY0#")) {
+		return false;
+	}
+	// Onstep responds with a string like "11000000" to indicate that the first and second aux device is enabled
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep active device string: %s", PRIVATE_DATA->response);
+	char active_slots[ONSTEP_AUX_DEVICE_COUNT];
+	memcpy(active_slots, PRIVATE_DATA->response, sizeof(active_slots));
+	// in the first pass over the active devices we count how many auxiliary devices of each purpose we have
+	AUX_HEATER_OUTLET_PROPERTY->count = 0;
+	AUX_POWER_OUTLET_PROPERTY->count = 0;
+	for (int i = 0; i < ONSTEP_AUX_DEVICE_COUNT; i++) {
+		if (active_slots[i] != '1') {
+			continue;
+		}
+		// Now we get the name and purpose of each active aux device, it is one-indexed
+		meade_command(device, ":GXY%d#", i + 1);
+		// Onstep responds with a string like "my switch,2" where the part before "," is the name and after the purpose as int
+		char *comma = strchr(PRIVATE_DATA->response, ',');
+		if (comma == NULL) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Onstep AUX Device at slot %d invalid PRIVATE_DATA->response", i + 1);
+			continue;
+		}
+		*comma++ = '\0';
+		char *name = PRIVATE_DATA->response;
+		onstep_aux_device_purpose purpose = *comma - '0';
+		if (purpose == ONSTEP_AUX_ANALOG) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Heater Outlet at slot %d with name %s", i + 1, name);
+			strcpy(AUX_HEATER_OUTLET_PROPERTY->items[AUX_HEATER_OUTLET_PROPERTY->count].label, name);
+			ONSTEP_AUX_HEATER_OUTLET_MAPPING[AUX_HEATER_OUTLET_PROPERTY->count++] = i + 1;
+		} else if (purpose == ONSTEP_AUX_SWITCH) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Power Outlet Device at slot %d with name %s and purpose switch", i + 1, name);
+			strcpy(AUX_POWER_OUTLET_PROPERTY->items[AUX_POWER_OUTLET_PROPERTY->count].label, name);
+			ONSTEP_AUX_POWER_OUTLET_MAPPING[AUX_POWER_OUTLET_PROPERTY->count++] = i + 1;
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Device at index %d not recognized", i + 1);
+		}
+	}
+	return true;
+}
 
-// ---------------------------------------------------------------------- generic mount device implementation
+//- aux.code
 
-static void position_timer_callback(indigo_device *device) {
+#pragma mark - High level code (mount)
+
+static void mount_timer_callback(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	//+ mount.on_timer
 	if (PRIVATE_DATA->handle != NULL) {
 		meade_update_mount_state(device);
-		indigo_execute_handler_in(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? 0.5 : 1, position_timer_callback);
+		indigo_execute_handler_in(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? 0.5 : 1, mount_timer_callback);
 	}
+	//- mount.on_timer
 }
 
-static void mount_connect_callback(indigo_device *device) {
+static void mount_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		if (PRIVATE_DATA->device_count++ == 0) {
-			connection_result = meade_open(device);
+		if (PRIVATE_DATA->count == 0) {
+			connection_result = lx200_open(device);
 		}
 		if (connection_result) {
-			if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
-				if (!meade_detect_mount(device)) {
-					connection_result = false;
-					indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
-				}
+			PRIVATE_DATA->count++;
+		}
+		if (connection_result) {
+			//+ mount.on_connect
+			if (MOUNT_TYPE_DETECT_ITEM->sw.value && !meade_detect_mount(device)) {
+				connection_result = false;
+				indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
 			}
+			if (connection_result) {
+				meade_init_mount(device);
+				MOUNT_TYPE_PROPERTY->perm = INDIGO_RO_PERM;
+				indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
+				indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
+			}
+			//- mount.on_connect
 		}
 		if (connection_result) {
-			meade_init_mount(device);
-			// initialize target
 			indigo_define_property(device, MOUNT_MODE_PROPERTY, NULL);
 			indigo_define_property(device, ZWO_BUZZER_PROPERTY, NULL);
 			indigo_define_property(device, NYX_WIFI_AP_PROPERTY, NULL);
@@ -2425,21 +2401,25 @@ static void mount_connect_callback(indigo_device *device) {
 			indigo_define_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
 			indigo_define_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
 			indigo_define_property(device, ONSTEP_ALTITUDE_LIMITS_PROPERTY, NULL);
-			MOUNT_TYPE_PROPERTY->perm = INDIGO_RO_PERM;
-			indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
+			indigo_execute_handler(device, mount_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_execute_handler(device, position_timer_callback);
+			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (--PRIVATE_DATA->device_count <= 0) {
-				meade_close(device);
+			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
+				lx200_close(device);
 			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		meade_stop(device);
 		indigo_cancel_pending_handlers(device);
+		//+ mount.on_disconnect
+		meade_stop(device);
+		MOUNT_TYPE_PROPERTY->perm = INDIGO_RW_PERM;
+		indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
+		indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
+		//- mount.on_disconnect
 		indigo_delete_property(device, MOUNT_MODE_PROPERTY, NULL);
 		indigo_delete_property(device, ZWO_BUZZER_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_AP_PROPERTY, NULL);
@@ -2450,18 +2430,186 @@ static void mount_connect_callback(indigo_device *device) {
 		indigo_delete_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
 		indigo_delete_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
 		indigo_delete_property(device, ONSTEP_ALTITUDE_LIMITS_PROPERTY, NULL);
-		MOUNT_TYPE_PROPERTY->perm = INDIGO_RW_PERM;
-		indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
-		indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		if (--PRIVATE_DATA->device_count <= 0) {
-			meade_close(device);
+		if (--PRIVATE_DATA->count == 0) {
+			lx200_close(device);
 		}
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
-static void mount_park_callback(indigo_device *device) {
+static void mount_type_handler(indigo_device *device) {
+	MOUNT_TYPE_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_TYPE.on_change
+	if (MOUNT_TYPE_STARGO2_ITEM->sw.value) {
+		strcpy(DEVICE_PORT_ITEM->text.value, "lx200://StarGo2.local:9624");
+		INDIGO_UPDATE_PROPERTY_STATE(DEVICE_PORT_PROPERTY, INDIGO_OK_STATE, NULL);
+	}
+	//- mount.MOUNT_TYPE.on_change
+	indigo_update_property(device, MOUNT_TYPE_PROPERTY, NULL);
+}
+
+static void mount_zwo_buzzer_handler(indigo_device *device) {
+	ZWO_BUZZER_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.ZWO_BUZZER.on_change
+	bool result = false;
+	if (ZWO_BUZZER_OFF_ITEM->sw.value) {
+		result = meade_no_reply_command(device, ":SBu0#");
+	} else if (ZWO_BUZZER_LOW_ITEM->sw.value) {
+		result = meade_no_reply_command(device, ":SBu1#");
+	} else if (ZWO_BUZZER_HIGH_ITEM->sw.value) {
+		result = meade_no_reply_command(device, ":SBu2#");
+	}
+	if (!result) {
+		ZWO_BUZZER_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	//- mount.ZWO_BUZZER.on_change
+	indigo_update_property(device, ZWO_BUZZER_PROPERTY, NULL);
+}
+
+static void mount_nyx_wifi_ap_handler(indigo_device *device) {
+	//+ mount.NYX_WIFI_AP.on_change
+	NYX_WIFI_AP_PROPERTY->state = INDIGO_ALERT_STATE;
+	NYX_WIFI_AP_SSID_ITEM->text.value[25] = 0;
+	NYX_WIFI_AP_PASSWORD_ITEM->text.value[30] = 0;
+	if (meade_simple_reply_command(device, ":WA%s#", NYX_WIFI_AP_SSID_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
+		if (meade_simple_reply_command(device, ":WB%s#", NYX_WIFI_AP_PASSWORD_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
+			if (meade_simple_reply_command(device, ":WLC#") && *PRIVATE_DATA->response == '1') {
+				indigo_send_message(device, OK_PROPERTY, "Created access point with SSID %s", NYX_WIFI_AP_SSID_ITEM->text.value);
+				NYX_WIFI_AP_PROPERTY->state = INDIGO_OK_STATE;
+			}
+		}
+	}
+	//- mount.NYX_WIFI_AP.on_change
+	indigo_update_property(device, NYX_WIFI_AP_PROPERTY, NULL);
+}
+
+static void mount_nyx_wifi_cl_handler(indigo_device *device) {
+	NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.NYX_WIFI_CL.on_change
+	char ssid[345] = "";
+	char password[345] = "";
+	bool encode = false;
+	NYX_WIFI_CL_SSID_ITEM->text.value[25] = 0;
+	NYX_WIFI_CL_PASSWORD_ITEM->text.value[30] = 0;
+	if (compare_versions(MOUNT_INFO_FIRMWARE_ITEM->text.value, NYX_BASE64_THRESHOLD_VERSION) >= 0) {
+		base64_encode((unsigned char *)ssid, (unsigned char *)NYX_WIFI_CL_SSID_ITEM->text.value, (long)strlen(NYX_WIFI_CL_SSID_ITEM->text.value));
+		base64_encode((unsigned char *)password, (unsigned char*)NYX_WIFI_CL_PASSWORD_ITEM->text.value, (long)strlen(NYX_WIFI_CL_PASSWORD_ITEM->text.value));
+		encode = true;
+	}
+	if (meade_simple_reply_command(device, ":WS%s#", encode ? ssid : NYX_WIFI_CL_SSID_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
+		if (meade_simple_reply_command(device, ":WP%s#", encode ? password : NYX_WIFI_CL_PASSWORD_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
+			if (meade_no_reply_command(device, ":WLC#")) {
+				indigo_send_message(device, IDLE_PROPERTY, "WiFi reset!");
+				INDIGO_UPDATE_PROPERTY_STATE(NYX_WIFI_CL_PROPERTY, INDIGO_OK_STATE, NULL);
+				if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
+					indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
+				}
+				return;
+			}
+		}
+	}
+	NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
+	//- mount.NYX_WIFI_CL.on_change
+	indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
+}
+
+static void mount_nyx_wifi_reset_handler(indigo_device *device) {
+	NYX_WIFI_RESET_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.NYX_WIFI_RESET.on_change
+	if (meade_no_reply_command(device, ":WLZ#")) {
+		indigo_send_message(device, IDLE_PROPERTY, "WiFi reset!");
+		INDIGO_UPDATE_PROPERTY_STATE(NYX_WIFI_RESET_PROPERTY, INDIGO_OK_STATE, NULL);
+		if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
+			indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
+		}
+		return;
+	}
+	NYX_WIFI_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+	//- mount.NYX_WIFI_RESET.on_change
+	indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
+}
+
+static void mount_onstep_preferred_pier_side_handler(indigo_device *device) {
+	ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.ONSTEP_PREFERRED_PIER_SIDE.on_change
+	char cmd[16];
+	if (ONSTEP_PREFERRED_PIER_SIDE_EAST_ITEM->sw.value) {
+		strncpy(cmd, ":SX96,E#", sizeof(cmd));
+	} else if (ONSTEP_PREFERRED_PIER_SIDE_WEST_ITEM->sw.value) {
+		strncpy(cmd, ":SX96,W#", sizeof(cmd));
+	} else if (ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM->sw.value) {
+		strncpy(cmd, ":SX96,B#", sizeof(cmd));
+	} else {
+		strncpy(cmd, ":SX96,A#", sizeof(cmd));
+	}
+	if (!(meade_simple_reply_command(device, cmd) && *PRIVATE_DATA->response == '1')) {
+		ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	//- mount.ONSTEP_PREFERRED_PIER_SIDE.on_change
+	indigo_update_property(device, ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, NULL);
+}
+
+static void mount_onstep_auto_meridian_flip_handler(indigo_device *device) {
+	ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.ONSTEP_AUTO_MERIDIAN_FLIP.on_change
+	char cmd[16];
+	strncpy(cmd, ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM->sw.value ? ":SX95,1#" : ":SX95,0#", sizeof(cmd));
+	if (!(meade_simple_reply_command(device, cmd) && *PRIVATE_DATA->response == '1')) {
+		ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	//- mount.ONSTEP_AUTO_MERIDIAN_FLIP.on_change
+	indigo_update_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
+}
+
+static void mount_onstep_meridian_limits_handler(indigo_device *device) {
+	ONSTEP_MERIDIAN_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.ONSTEP_MERIDIAN_LIMITS.on_change
+	char command[64];
+	snprintf(command, sizeof(command), ":SXE9,%d#", (int)round(ONSTEP_MERIDIAN_LIMITS_EAST_ITEM->number.target * 4.0));
+	bool ok = meade_simple_reply_command(device, command) && *PRIVATE_DATA->response == '1';
+	if (ok) {
+		snprintf(command, sizeof(command), ":SXEA,%d#", (int)round(ONSTEP_MERIDIAN_LIMITS_WEST_ITEM->number.target * 4.0));
+		ok = meade_simple_reply_command(device, command) && *PRIVATE_DATA->response == '1';
+	}
+	if (ok) {
+		ONSTEP_MERIDIAN_LIMITS_EAST_ITEM->number.value = ONSTEP_MERIDIAN_LIMITS_EAST_ITEM->number.target;
+		ONSTEP_MERIDIAN_LIMITS_WEST_ITEM->number.value = ONSTEP_MERIDIAN_LIMITS_WEST_ITEM->number.target;
+	} else {
+		ONSTEP_MERIDIAN_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	//- mount.ONSTEP_MERIDIAN_LIMITS.on_change
+	indigo_update_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
+}
+
+static void mount_onstep_altitude_limits_handler(indigo_device *device) {
+	ONSTEP_ALTITUDE_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.ONSTEP_ALTITUDE_LIMITS.on_change
+	char command[64];
+	snprintf(command, sizeof(command), ":Sh%+d#", (int)round(ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.target));
+	bool ok = meade_simple_reply_command(device, command) && *PRIVATE_DATA->response == '1';
+	if (ok) {
+		snprintf(command, sizeof(command), ":So%d#", (int)round(ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.target));
+		ok = meade_simple_reply_command(device, command) && *PRIVATE_DATA->response == '1';
+	}
+	if (ok) {
+		ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.value = ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.target;
+		ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.value = ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.target;
+	} else {
+		ONSTEP_ALTITUDE_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	//- mount.ONSTEP_ALTITUDE_LIMITS.on_change
+	indigo_update_property(device, ONSTEP_ALTITUDE_LIMITS_PROPERTY, NULL);
+}
+
+static void mount_park_handler(indigo_device *device) {
+	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_PARK.on_change
+	if (!((PRIVATE_DATA->park_allowed && MOUNT_PARK_PARKED_ITEM->sw.value) || (PRIVATE_DATA->unpark_allowed && MOUNT_PARK_UNPARKED_ITEM->sw.value))) {
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+		return;
+	}
 	if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 		if (MOUNT_PARK_PROPERTY->count == 1) {
 			MOUNT_PARK_PARKED_ITEM->sw.value = false;
@@ -2470,255 +2618,279 @@ static void mount_park_callback(indigo_device *device) {
 			if (MOUNT_TYPE_AP_ITEM->sw.value) {
 				PRIVATE_DATA->parked = true;
 			}
-			if (!(MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value)) {
-				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+			if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
+				MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
 		} else {
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		MOUNT_STATE_PARK_ITEM->light.value = MOUNT_PARK_PROPERTY->state;
 	} else if (MOUNT_PARK_UNPARKED_ITEM->sw.value) {
 		if (meade_unpark(device)) {
 			if (MOUNT_TYPE_AP_ITEM->sw.value) {
 				PRIVATE_DATA->parked = false;
 			}
-			if (!(MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value)) {
-				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-				MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
+			if (MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value) {
+				MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
 		} else {
-			MOUNT_STATE_PARK_ITEM->light.value = MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
 	MOUNT_STATE_PARK_ITEM->light.value = MOUNT_PARK_PROPERTY->state;
 	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+	//- mount.MOUNT_PARK.on_change
 	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 }
 
-static void mount_park_set_callback(indigo_device *device) {
+static void mount_park_set_handler(indigo_device *device) {
+	MOUNT_PARK_SET_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_PARK_SET.on_change
 	if (MOUNT_PARK_SET_CURRENT_ITEM->sw.value) {
 		MOUNT_PARK_SET_CURRENT_ITEM->sw.value = false;
 		if (meade_park_set(device)) {
-			MOUNT_PARK_SET_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_PARK_SET_PROPERTY, "Current position set as park position");
+			indigo_send_message(device, OK_PROPERTY, "Current position set as park position");
 		} else {
 			MOUNT_PARK_SET_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_PARK_SET_PROPERTY, "Setting park position failed");
+			indigo_send_message(device, ALERT_PROPERTY, "Setting park position failed");
 		}
 	}
+	//- mount.MOUNT_PARK_SET.on_change
+	indigo_update_property(device, MOUNT_PARK_SET_PROPERTY, NULL);
 }
 
-static void mount_home_callback(indigo_device *device) {
-	if (MOUNT_HOME_ITEM->sw.value) {
-		if (MOUNT_HOME_PROPERTY->count == 1) {
-			indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
-		}
-		if (!meade_home(device)) {
-			MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
+static void mount_home_handler(indigo_device *device) {
+	MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_HOME.on_change
+	if (!(PRIVATE_DATA->home_allowed && MOUNT_HOME_ITEM->sw.value)) {
+		indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
+		return;
+	}
+	MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+	if (MOUNT_HOME_PROPERTY->count == 1) {
+		indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
+	}
+	if (!meade_home(device)) {
+		MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	MOUNT_STATE_HOME_ITEM->light.value = MOUNT_HOME_PROPERTY->state;
 	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+	//- mount.MOUNT_HOME.on_change
 	indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 }
 
-static void mount_home_set_callback(indigo_device *device) {
+static void mount_home_set_handler(indigo_device *device) {
+	MOUNT_HOME_SET_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_HOME_SET.on_change
 	if (MOUNT_HOME_SET_CURRENT_ITEM->sw.value) {
 		MOUNT_HOME_SET_CURRENT_ITEM->sw.value = false;
 		if (meade_home_set(device)) {
-			MOUNT_HOME_SET_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_HOME_SET_PROPERTY, "Current position set as home");
+			indigo_send_message(device, OK_PROPERTY, "Current position set as home");
 		} else {
 			MOUNT_HOME_SET_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_HOME_SET_PROPERTY, "Setting home position failed");
+			indigo_send_message(device, ALERT_PROPERTY, "Setting home position failed");
 		}
 	}
+	//- mount.MOUNT_HOME_SET.on_change
+	indigo_update_property(device, MOUNT_HOME_SET_PROPERTY, NULL);
 }
 
-static void mount_geo_coords_callback(indigo_device *device) {
-	if (meade_set_site(device, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value)) {
-		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
+static void mount_geographic_coordinates_handler(indigo_device *device) {
+	MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_GEOGRAPHIC_COORDINATES.on_change
+	if (!meade_set_site(device, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value)) {
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	//- mount.MOUNT_GEOGRAPHIC_COORDINATES.on_change
 	indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 }
 
-static void mount_eq_coords_callback(indigo_device *device) {
-	char message[50] = "";
+static void mount_equatorial_coordinates_handler(indigo_device *device) {
+	if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+		indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		return;
+	}
+	//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 		if (meade_set_tracking_rate(device) && meade_slew(device, ra, dec)) {
 			indigo_usleep(500000); // wait for the mount to start slewing to get correct state in the position timer
+			PRIVATE_DATA->goto_issued = true;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
-			strcpy(message, "Slew failed");
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_send_message(device, ALERT_PROPERTY, "Slew failed");
 		}
 	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 		if (meade_sync(device, ra, dec)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			strcpy(message, "Sync failed");
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_send_message(device, ALERT_PROPERTY, "Sync failed");
 		}
 	}
-	if (*message == '\0') {
-		indigo_update_coordinates(device, NULL);
-	} else {
-		indigo_update_coordinates(device, message);
-	}
+	//- mount.MOUNT_EQUATORIAL_COORDINATES.on_change
+	indigo_update_coordinates(device, NULL);
 }
 
-static void mount_abort_callback(indigo_device *device) {
+static void mount_abort_motion_handler(indigo_device *device) {
+	MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_ABORT_MOTION.on_change
 	if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
 		MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 		if (meade_stop(device)) {
 			PRIVATE_DATA->lastMotionNS = PRIVATE_DATA->lastMotionWE = 0;
 			MOUNT_MOTION_NORTH_ITEM->sw.value = false;
 			MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
-			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
 			MOUNT_MOTION_WEST_ITEM->sw.value = false;
 			MOUNT_MOTION_EAST_ITEM->sw.value = false;
-			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
+			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_RA_PROPERTY, INDIGO_OK_STATE, NULL);
 		} else {
 			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Failed to abort");
 		}
 	}
+	//- mount.MOUNT_ABORT_MOTION.on_change
+	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 }
 
-static void mount_motion_dec_callback(indigo_device *device) {
+static void mount_motion_dec_handler(indigo_device *device) {
+	if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+		indigo_send_message(device, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked!");
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		return;
+	}
+	MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_MOTION_DEC.on_change
 	if (meade_set_slew_rate(device) && meade_motion_dec(device)) {
 		if (PRIVATE_DATA->lastMotionNS) {
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-		} else {
-			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else {
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	//- mount.MOUNT_MOTION_DEC.on_change
 	indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 }
 
-static void mount_motion_ra_callback(indigo_device *device) {
+static void mount_motion_ra_handler(indigo_device *device) {
+	if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+		indigo_send_message(device, MOUNT_MOTION_RA_PROPERTY, "Mount is parked!");
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		return;
+	}
+	MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_MOTION_RA.on_change
 	if (meade_set_slew_rate(device) && meade_motion_ra(device)) {
 		if (PRIVATE_DATA->lastMotionWE) {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-		} else {
-			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else {
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	//- mount.MOUNT_MOTION_RA.on_change
 	indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 }
 
-static void mount_set_host_time_callback(indigo_device *device) {
+static void mount_set_host_time_handler(indigo_device *device) {
 	MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_SET_HOST_TIME.on_change
 	if (MOUNT_SET_HOST_TIME_ITEM->sw.value) {
 		MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
 		time_t secs = time(NULL);
 		if (meade_set_utc(device, secs, indigo_get_utc_offset())) {
 			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_UTC_TIME_PROPERTY, INDIGO_OK_STATE, NULL);
 		} else {
 			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
+	//- mount.MOUNT_SET_HOST_TIME.on_change
 	indigo_update_property(device, MOUNT_SET_HOST_TIME_PROPERTY, NULL);
 }
 
-static void mount_set_utc_time_callback(indigo_device *device) {
+static void mount_utc_time_handler(indigo_device *device) {
 	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_UTC_TIME.on_change
 	time_t secs = indigo_isogmtotime(MOUNT_UTC_ITEM->text.value);
 	if (secs == -1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Wrong date/time format!");
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		int offset = atoi(MOUNT_UTC_OFFSET_ITEM->text.value);
-		if (!meade_set_utc(device, secs, offset)) {
-			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
+	} else if (!meade_set_utc(device, secs, atoi(MOUNT_UTC_OFFSET_ITEM->text.value))) {
+		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	//- mount.MOUNT_UTC_TIME.on_change
 	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 }
 
-static void mount_tracking_callback(indigo_device *device) {
+static void mount_tracking_handler(indigo_device *device) {
+	if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+		indigo_send_message(device, MOUNT_TRACKING_PROPERTY, "Mount is parked!");
+		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_TRACKING_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		return;
+	}
+	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_TRACKING.on_change
 	if (meade_set_tracking(device, MOUNT_TRACKING_ON_ITEM->sw.value)) {
 		MOUNT_STATE_TRACKING_ITEM->light.value = MOUNT_TRACKING_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		MOUNT_TRACKING_PROPERTY->state = MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_ALERT_STATE;
+		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+		MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_ALERT_STATE;
 	}
+	//- mount.MOUNT_TRACKING.on_change
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 }
 
-static void mount_track_rate_callback(indigo_device *device) {
-	if (meade_set_tracking_rate(device)) {
-		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
+static void mount_track_rate_handler(indigo_device *device) {
+	MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_TRACK_RATE.on_change
+	if (!meade_set_tracking_rate(device)) {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	//- mount.MOUNT_TRACK_RATE.on_change
 	indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
 }
 
-static void mount_pec_callback(indigo_device *device) {
-	if (meade_pec(device, MOUNT_PEC_ENABLED_ITEM->sw.value)) {
-		MOUNT_PEC_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
+static void mount_pec_handler(indigo_device *device) {
+	MOUNT_PEC_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_PEC.on_change
+	if (!meade_pec(device, MOUNT_PEC_ENABLED_ITEM->sw.value)) {
 		MOUNT_PEC_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	//- mount.MOUNT_PEC.on_change
 	indigo_update_property(device, MOUNT_PEC_PROPERTY, NULL);
 }
 
-static void mount_guide_rate_callback(indigo_device *device) {
+static void mount_guide_rate_handler(indigo_device *device) {
+	MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_GUIDE_RATE.on_change
 	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
 		MOUNT_GUIDE_RATE_DEC_ITEM->number.value = MOUNT_GUIDE_RATE_DEC_ITEM->number.target = MOUNT_GUIDE_RATE_RA_ITEM->number.value = MOUNT_GUIDE_RATE_RA_ITEM->number.target;
 	}
-	if (meade_set_guide_rate(device, (int)MOUNT_GUIDE_RATE_RA_ITEM->number.target, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target)) {
-		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
+	if (!meade_set_guide_rate(device, (int)MOUNT_GUIDE_RATE_RA_ITEM->number.target, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target)) {
 		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	//- mount.MOUNT_GUIDE_RATE.on_change
 	indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
 }
+
+#pragma mark - Device API (mount)
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
 static indigo_result mount_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(PRIVATE_DATA != NULL);
 	if (indigo_mount_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
-		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
-		// -------------------------------------------------------------------------------- MOUNT_STATE
-		MOUNT_STATE_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- DEVICE_PORT
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		DEVICE_PORT_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- ALIGNMENT_MODE
-		MOUNT_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Mount mode", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (MOUNT_MODE_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
-		MOUNT_MODE_PROPERTY->hidden = true;
-		indigo_init_switch_item(EQUATORIAL_ITEM, EQUATORIAL_ITEM_NAME, "Equatorial mode", false);
-		indigo_init_switch_item(ALTAZ_MODE_ITEM, ALTAZ_MODE_ITEM_NAME, "Alt/Az mode", false);
-		// -------------------------------------------------------------------------------- MOUNT_TYPE
+		//+ mount.on_attach
+		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
+		//- mount.on_attach
 		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 14);
 		if (MOUNT_TYPE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -2737,48 +2909,49 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_TYPE_OAT_ITEM, MOUNT_TYPE_OAT_ITEM_NAME, "OpenAstroTech", false);
 		indigo_init_switch_item(MOUNT_TYPE_TEEN_ASTRO_ITEM, MOUNT_TYPE_TEEN_ASTRO_ITEM_NAME, "Teen Astro", false);
 		indigo_init_switch_item(MOUNT_TYPE_GENERIC_ITEM, MOUNT_TYPE_GENERIC_ITEM_NAME, "Generic", false);
-		// ---------------------------------------------------------------------------- ZWO_BUZZER
+		MOUNT_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Mount mode", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (MOUNT_MODE_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(EQUATORIAL_ITEM, EQUATORIAL_ITEM_NAME, "Equatorial mode", false);
+		indigo_init_switch_item(ALTAZ_MODE_ITEM, ALTAZ_MODE_ITEM_NAME, "Alt/Az mode", false);
+		MOUNT_MODE_PROPERTY->hidden = true;
 		ZWO_BUZZER_PROPERTY = indigo_init_switch_property(NULL, device->name, ZWO_BUZZER_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Buzzer volume", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (ZWO_BUZZER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		ZWO_BUZZER_PROPERTY->hidden = true;
 		indigo_init_switch_item(ZWO_BUZZER_OFF_ITEM, ZWO_BUZZER_OFF_ITEM_NAME, "Off", false);
 		indigo_init_switch_item(ZWO_BUZZER_LOW_ITEM, ZWO_BUZZER_LOW_ITEM_NAME, "Low", false);
 		indigo_init_switch_item(ZWO_BUZZER_HIGH_ITEM, ZWO_BUZZER_HIGH_ITEM_NAME, "High", false);
-		// ---------------------------------------------------------------------------- NYX_WIFI_AP
+		ZWO_BUZZER_PROPERTY->hidden = true;
 		NYX_WIFI_AP_PROPERTY = indigo_init_text_property(NULL, device->name, NYX_WIFI_AP_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "AP WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (NYX_WIFI_AP_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		NYX_WIFI_AP_PROPERTY->hidden = true;
 		indigo_init_text_item(NYX_WIFI_AP_SSID_ITEM, NYX_WIFI_AP_SSID_ITEM_NAME, "SSID", "");
 		indigo_init_text_item(NYX_WIFI_AP_PASSWORD_ITEM, NYX_WIFI_AP_PASSWORD_ITEM_NAME, "Password", "");
-		// ---------------------------------------------------------------------------- NYX_WIFI_CL
+		NYX_WIFI_AP_PROPERTY->hidden = true;
 		NYX_WIFI_CL_PROPERTY = indigo_init_text_property(NULL, device->name, NYX_WIFI_CL_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Client WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (NYX_WIFI_CL_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		NYX_WIFI_CL_PROPERTY->hidden = true;
 		indigo_init_text_item(NYX_WIFI_CL_SSID_ITEM, NYX_WIFI_CL_SSID_ITEM_NAME, "SSID", "");
 		indigo_init_text_item(NYX_WIFI_CL_PASSWORD_ITEM, NYX_WIFI_CL_PASSWORD_ITEM_NAME, "Password", "");
-		// ---------------------------------------------------------------------------- NYX_WIFI_RESET
+		NYX_WIFI_CL_PROPERTY->hidden = true;
 		NYX_WIFI_RESET_PROPERTY = indigo_init_switch_property(NULL, device->name, NYX_WIFI_RESET_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Reset WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		if (NYX_WIFI_RESET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		NYX_WIFI_RESET_PROPERTY->hidden = true;
 		indigo_init_switch_item(NYX_WIFI_RESET_ITEM, NYX_WIFI_RESET_ITEM_NAME, "Reset", false);
-		// ---------------------------------------------------------------------------- NYX_LEVELER
+		NYX_WIFI_RESET_PROPERTY->hidden = true;
 		NYX_LEVELER_PROPERTY = indigo_init_number_property(NULL, device->name, NYX_LEVELER_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Leveler", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
 		if (NYX_LEVELER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		NYX_LEVELER_PROPERTY->hidden = true;
 		indigo_init_number_item(NYX_LEVELER_PITCH_ITEM, NYX_LEVELER_PITCH_ITEM_NAME, "Pitch [°]", 0, 360, 0, 0);
 		indigo_init_number_item(NYX_LEVELER_ROLL_ITEM, NYX_LEVELER_ROLL_ITEM_NAME, "Roll [°]", 0, 360, 0, 0);
 		indigo_init_number_item(NYX_LEVELER_COMPASS_ITEM, NYX_LEVELER_COMPASS_ITEM_NAME, "Compass [°]", 0, 360, 0, 0);
-		// ---------------------------------------------------------------------------- ONSTEP_PREFERRED_PIER_SIDE
+		NYX_LEVELER_PROPERTY->hidden = true;
 		ONSTEP_PREFERRED_PIER_SIDE_PROPERTY = indigo_init_switch_property(NULL, device->name, ONSTEP_PREFERRED_PIER_SIDE_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Meridian flip preferred pier side", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (ONSTEP_PREFERRED_PIER_SIDE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -2788,7 +2961,6 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM, ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM_NAME, "Best", false);
 		indigo_init_switch_item(ONSTEP_PREFERRED_PIER_SIDE_AUTO_ITEM, ONSTEP_PREFERRED_PIER_SIDE_AUTO_ITEM_NAME, "Auto", true);
 		ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->hidden = true;
-		// ---------------------------------------------------------------------------- ONSTEP_AUTO_MERIDIAN_FLIP
 		ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY = indigo_init_switch_property(NULL, device->name, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Automatic meridian flip at limit", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -2796,7 +2968,6 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM, ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM_NAME, "Enabled", false);
 		indigo_init_switch_item(ONSTEP_AUTO_MERIDIAN_FLIP_DISABLED_ITEM, ONSTEP_AUTO_MERIDIAN_FLIP_DISABLED_ITEM_NAME, "Disabled", true);
 		ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->hidden = true;
-		// ---------------------------------------------------------------------------- ONSTEP_MERIDIAN_LIMITS
 		ONSTEP_MERIDIAN_LIMITS_PROPERTY = indigo_init_number_property(NULL, device->name, ONSTEP_MERIDIAN_LIMITS_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Meridian limits", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (ONSTEP_MERIDIAN_LIMITS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -2804,7 +2975,6 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_number_item(ONSTEP_MERIDIAN_LIMITS_EAST_ITEM, ONSTEP_MERIDIAN_LIMITS_EAST_ITEM_NAME, "Limit past meridian, East of pier [°]", -270, 270, 0.25, 0);
 		indigo_init_number_item(ONSTEP_MERIDIAN_LIMITS_WEST_ITEM, ONSTEP_MERIDIAN_LIMITS_WEST_ITEM_NAME, "Limit past meridian, West of pier [°]", -270, 270, 0.25, 0);
 		ONSTEP_MERIDIAN_LIMITS_PROPERTY->hidden = true;
-		// ---------------------------------------------------------------------------- ONSTEP_ALTITUDE_LIMITS
 		ONSTEP_ALTITUDE_LIMITS_PROPERTY = indigo_init_number_property(NULL, device->name, ONSTEP_ALTITUDE_LIMITS_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Altitude limits", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (ONSTEP_ALTITUDE_LIMITS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -2812,8 +2982,22 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_number_item(ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM, ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM_NAME, "Horizon limit, min altitude [°]", -30, 30, 1, 0);
 		indigo_init_number_item(ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM, ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM_NAME, "Overhead limit, max altitude [°]", 60, 90, 1, 90);
 		ONSTEP_ALTITUDE_LIMITS_PROPERTY->hidden = true;
-		// --------------------------------------------------------------------------------
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
+		MOUNT_STATE_PROPERTY->hidden = false;
+		MOUNT_PARK_PROPERTY->hidden = false;
+		MOUNT_PARK_SET_PROPERTY->hidden = true;
+		MOUNT_HOME_PROPERTY->hidden = true;
+		MOUNT_HOME_SET_PROPERTY->hidden = true;
+		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->hidden = false;
+		MOUNT_ABORT_MOTION_PROPERTY->hidden = false;
+		MOUNT_MOTION_DEC_PROPERTY->hidden = false;
+		MOUNT_MOTION_RA_PROPERTY->hidden = false;
+		MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
+		MOUNT_UTC_TIME_PROPERTY->hidden = true;
+		MOUNT_TRACKING_PROPERTY->hidden = false;
+		MOUNT_TRACK_RATE_PROPERTY->hidden = false;
+		MOUNT_PEC_PROPERTY->hidden = true;
+		MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return mount_enumerate_properties(device, NULL, NULL);
 	}
@@ -2821,7 +3005,6 @@ static indigo_result mount_attach(indigo_device *device) {
 }
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_TYPE_PROPERTY);
 	if (IS_CONNECTED) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_MODE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(ZWO_BUZZER_PROPERTY);
@@ -2834,244 +3017,119 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		INDIGO_DEFINE_MATCHING_PROPERTY(ONSTEP_MERIDIAN_LIMITS_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(ONSTEP_ALTITUDE_LIMITS_PROPERTY);
 	}
+	INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_TYPE_PROPERTY);
 	return indigo_mount_enumerate_properties(device, client, property);
 }
 
 static indigo_result mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property))
-			return INDIGO_OK;
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_execute_handler(device, mount_connect_callback);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_PARK_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_PARK
-		MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
-		if ((!PRIVATE_DATA->parked && !PRIVATE_DATA->parking && !PRIVATE_DATA->homing && MOUNT_PARK_PARKED_ITEM->sw.value) || (PRIVATE_DATA->parked && !PRIVATE_DATA->parking && !PRIVATE_DATA->homing && MOUNT_PARK_UNPARKED_ITEM->sw.value)) {
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
-			indigo_execute_handler(device, mount_park_callback);
-		} else {
-			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_handler(device, mount_connection_handler);
 		}
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_PARK_SET_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_PARK_SET
-		indigo_property_copy_values(MOUNT_PARK_SET_PROPERTY, property, false);
-		MOUNT_PARK_SET_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_PARK_SET_PROPERTY, NULL);
-		indigo_execute_handler(device, mount_park_set_callback);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_HOME_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_HOME
-		MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_property_copy_values(MOUNT_HOME_PROPERTY, property, false);
-		if (!PRIVATE_DATA->parked && !PRIVATE_DATA->parking && !PRIVATE_DATA->homing && !PRIVATE_DATA->homed && MOUNT_HOME_ITEM->sw.value) {
-			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
-			indigo_execute_handler(device, mount_home_callback);
-		} else {
-			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
-		}
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_HOME_SET_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_HOME_SET
-		indigo_property_copy_values(MOUNT_HOME_SET_PROPERTY, property, false);
-		MOUNT_HOME_SET_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_HOME_SET_PROPERTY, NULL);
-		indigo_execute_handler(device, mount_home_set_callback);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPHIC_COORDINATES
-		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
-		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-		indigo_execute_handler(device, mount_geo_coords_callback);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
-		if (IS_PARKED) {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
-		} else {
-			PRIVATE_DATA->motioned = false; // WTF?
-			indigo_property_copy_targets(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-			// Update to busy moved to callback to avoid race condition with position timer
-			indigo_execute_handler(device, mount_eq_coords_callback);
-		}
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
-		PRIVATE_DATA->motioned = true; // WTF?
-		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
-		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
-		indigo_execute_priority_handler(device, INDIGO_TASK_PRIORITY_URGENT, mount_abort_callback);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_MOTION_DEC_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_MOTION_DEC
-		if (IS_PARKED) {
-			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked!");
-		} else {
-			indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
-			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-			indigo_execute_handler(device, mount_motion_dec_callback);
-		}
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_MOTION_RA_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_MOTION_RA
-		if (IS_PARKED) {
-			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, "Mount is parked!");
-		} else {
-			indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
-			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-			indigo_execute_handler(device, mount_motion_ra_callback);
-		}
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_SET_HOST_TIME_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_SET_HOST_TIME_PROPERTY
-		indigo_property_copy_values(MOUNT_SET_HOST_TIME_PROPERTY, property, false);
-		MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_SET_HOST_TIME_PROPERTY, NULL);
-		indigo_execute_handler(device, mount_set_host_time_callback);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_UTC_TIME_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_UTC_TIME_PROPERTY
-		indigo_property_copy_values(MOUNT_UTC_TIME_PROPERTY, property, false);
-		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-		indigo_execute_handler(device, mount_set_utc_time_callback);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_TRACKING
-		if (IS_PARKED) {
-			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Mount is parked!");
-		} else {
-			MOUNT_TRACKING_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
-			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-			indigo_execute_handler(device, mount_tracking_callback);
-		}
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_TRACK_RATE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
-		indigo_property_copy_values(MOUNT_TRACK_RATE_PROPERTY, property, false);
-		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
-		indigo_execute_handler(device, mount_track_rate_callback);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_PEC_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_PEC
-		if (IS_PARKED) {
-			MOUNT_PEC_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_PEC_PROPERTY, "Mount is parked!");
-		} else {
-			indigo_property_copy_values(MOUNT_PEC_PROPERTY, property, false);
-			MOUNT_PEC_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_PEC_PROPERTY, NULL);
-			indigo_execute_handler(device, mount_pec_callback);
-		}
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_GUIDE_RATE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_GUIDE_RATE
-		indigo_property_copy_values(MOUNT_GUIDE_RATE_PROPERTY, property, false);
-		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
-		indigo_execute_handler(device, mount_guide_rate_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TYPE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_TYPE
-		indigo_property_copy_values(MOUNT_TYPE_PROPERTY, property, false);
-		MOUNT_TYPE_PROPERTY->state = INDIGO_OK_STATE;
-		if (MOUNT_TYPE_STARGO2_ITEM->sw.value) {
-			strcpy(DEVICE_PORT_ITEM->text.value, "lx200://StarGo2.local:9624");
-			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
-		}
-		indigo_update_property(device, MOUNT_TYPE_PROPERTY, NULL);
+		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(MOUNT_TYPE_PROPERTY, mount_type_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ZWO_BUZZER_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- ZWO_BUZZER
-		indigo_property_copy_values(ZWO_BUZZER_PROPERTY, property, false);
-		ZWO_BUZZER_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, ZWO_BUZZER_PROPERTY, NULL);
-		indigo_execute_handler(device, zwo_buzzer_callback);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(ZWO_BUZZER_PROPERTY, mount_zwo_buzzer_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(NYX_WIFI_AP_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- NYX_WIFI_AP
-		indigo_property_copy_values(NYX_WIFI_AP_PROPERTY, property, false);
-		NYX_WIFI_AP_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, NYX_WIFI_AP_PROPERTY, NULL);
-		indigo_execute_handler(device, nyx_ap_callback);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(NYX_WIFI_AP_PROPERTY, mount_nyx_wifi_ap_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(NYX_WIFI_CL_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- NYX_WIFI_CL
-		indigo_property_copy_values(NYX_WIFI_CL_PROPERTY, property, false);
-		NYX_WIFI_CL_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
-		indigo_execute_handler(device, nyx_cl_callback);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(NYX_WIFI_CL_PROPERTY, mount_nyx_wifi_cl_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(NYX_WIFI_RESET_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- NYX_WIFI_RESET
-		indigo_property_copy_values(NYX_WIFI_RESET_PROPERTY, property, false);
-		NYX_WIFI_RESET_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
-		indigo_execute_handler(device, nyx_reset_callback);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(NYX_WIFI_RESET_PROPERTY, mount_nyx_wifi_reset_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- ONSTEP_PREFERRED_PIER_SIDE
-		indigo_property_copy_values(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, property, false);
-		ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, NULL);
-		indigo_execute_handler(device, onstep_preferred_pier_side_callback);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, mount_onstep_preferred_pier_side_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- ONSTEP_AUTO_MERIDIAN_FLIP
-		indigo_property_copy_values(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, property, false);
-		ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
-		indigo_execute_handler(device, onstep_auto_meridian_flip_callback);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, mount_onstep_auto_meridian_flip_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ONSTEP_MERIDIAN_LIMITS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- ONSTEP_MERIDIAN_LIMITS
-		indigo_property_copy_targets(ONSTEP_MERIDIAN_LIMITS_PROPERTY, property, false);
-		ONSTEP_MERIDIAN_LIMITS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
-		indigo_execute_handler(device, onstep_meridian_limits_callback);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ONSTEP_MERIDIAN_LIMITS_PROPERTY, mount_onstep_meridian_limits_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ONSTEP_ALTITUDE_LIMITS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- ONSTEP_ALTITUDE_LIMITS
-		indigo_property_copy_targets(ONSTEP_ALTITUDE_LIMITS_PROPERTY, property, false);
-		ONSTEP_ALTITUDE_LIMITS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, ONSTEP_ALTITUDE_LIMITS_PROPERTY, NULL);
-		indigo_execute_handler(device, onstep_altitude_limits_callback);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ONSTEP_ALTITUDE_LIMITS_PROPERTY, mount_onstep_altitude_limits_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_PARK_PROPERTY, property)) {
+		//+ mount.MOUNT_PARK.on_change_request
+		PRIVATE_DATA->park_allowed = !PRIVATE_DATA->parked && !PRIVATE_DATA->parking && !PRIVATE_DATA->homing;
+		PRIVATE_DATA->unpark_allowed = PRIVATE_DATA->parked && !PRIVATE_DATA->parking && !PRIVATE_DATA->homing;
+		//- mount.MOUNT_PARK.on_change_request
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PARK_PROPERTY, mount_park_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_PARK_SET_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PARK_SET_PROPERTY, mount_park_set_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_HOME_PROPERTY, property)) {
+		//+ mount.MOUNT_HOME.on_change_request
+		PRIVATE_DATA->home_allowed = !PRIVATE_DATA->parked && !PRIVATE_DATA->parking && !PRIVATE_DATA->homing && !PRIVATE_DATA->homed;
+		//- mount.MOUNT_HOME.on_change_request
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_HOME_PROPERTY, mount_home_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_HOME_SET_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_HOME_SET_PROPERTY, mount_home_set_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, mount_geographic_coordinates_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, mount_equatorial_coordinates_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(MOUNT_ABORT_MOTION_PROPERTY, mount_abort_motion_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_MOTION_DEC_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_DEC_PROPERTY, mount_motion_dec_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_MOTION_RA_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_RA_PROPERTY, mount_motion_ra_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_SET_HOST_TIME_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_SET_HOST_TIME_PROPERTY, mount_set_host_time_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_UTC_TIME_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_UTC_TIME_PROPERTY, mount_utc_time_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_TRACKING_PROPERTY, mount_tracking_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_TRACK_RATE_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_TRACK_RATE_PROPERTY, mount_track_rate_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_PEC_PROPERTY, property)) {
+		if (IS_PARKED) {
+			for (int i = 0; i < MOUNT_PEC_PROPERTY->count; i++) {
+				MOUNT_PEC_PROPERTY->items[i].do_update = true;
+			}
+			MOUNT_PEC_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_PEC_PROPERTY, "Mount is parked!");
+			return INDIGO_OK;
+		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PEC_PROPERTY, mount_pec_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_GUIDE_RATE_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_GUIDE_RATE_PROPERTY, mount_guide_rate_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, MOUNT_TYPE_PROPERTY);
 		}
-		// --------------------------------------------------------------------------------
 	}
 	return indigo_mount_change_property(device, client, property);
 }
 
 static indigo_result mount_detach(indigo_device *device) {
-	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		mount_connect_callback(device);
+		mount_connection_handler(device);
 	}
+	indigo_release_property(MOUNT_TYPE_PROPERTY);
 	indigo_release_property(MOUNT_MODE_PROPERTY);
 	indigo_release_property(ZWO_BUZZER_PROPERTY);
 	indigo_release_property(NYX_WIFI_AP_PROPERTY);
@@ -3082,325 +3140,425 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY);
 	indigo_release_property(ONSTEP_MERIDIAN_LIMITS_PROPERTY);
 	indigo_release_property(ONSTEP_ALTITUDE_LIMITS_PROPERTY);
-	indigo_release_property(MOUNT_TYPE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }
 
-// ---------------------------------------------------------------------- guider device implementation
+#pragma mark - High level code (guider)
 
-static indigo_result guider_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(PRIVATE_DATA != NULL);
-	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		GUIDER_GUIDE_NORTH_ITEM->number.max = GUIDER_GUIDE_SOUTH_ITEM->number.max = GUIDER_GUIDE_EAST_ITEM->number.max = GUIDER_GUIDE_WEST_ITEM->number.max = 3000;
-		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_guider_enumerate_properties(device, NULL, NULL);
-	}
-	return INDIGO_FAILED;
-}
-
-static void guider_connect_callback(indigo_device *device) {
+static void guider_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool result = true;
-		if (PRIVATE_DATA->device_count++ == 0) {
-			result = meade_open(device->master_device);
+		bool connection_result = true;
+		if (PRIVATE_DATA->count == 0) {
+			connection_result = lx200_open(device->master_device);
 		}
-		if (result) {
-			if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
-				if (!meade_detect_mount(device->master_device)) {
-					result = false;
-					indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
-				}
+		if (connection_result) {
+			PRIVATE_DATA->count++;
+		}
+		if (connection_result) {
+			//+ guider.on_connect
+			if (MOUNT_TYPE_DETECT_ITEM->sw.value && !meade_detect_mount(device->master_device)) {
+				connection_result = false;
+				indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
 			}
+			//- guider.on_connect
 		}
-		if (result) {
+		if (connection_result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (--PRIVATE_DATA->device_count <= 0) {
-				meade_close(device->master_device);
+			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
+				lx200_close(device);
 			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
-		if (--PRIVATE_DATA->device_count == 0) {
-			meade_close(device);
+		if (--PRIVATE_DATA->count == 0) {
+			lx200_close(device);
 		}
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
-static void guider_guide_dec_finish_callback(indigo_device *device) {
-	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-}
-
-static void guider_guide_dec_callback(indigo_device *device) {
+static void guider_guide_dec_handler(indigo_device *device) {
+	//+ guider.GUIDER_GUIDE_DEC.on_change
 	int north = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 	int south = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 	if ((north > 0 || south > 0) && !meade_guide_dec(device, north, south)) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, "Guide command failed");
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_ALERT_STATE, "Guide command failed");
 		return;
 	}
 	if (north > 0) {
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)north) / 1000.0, guider_guide_dec_finish_callback);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)north) / 1000.0, guider_guide_dec_finalizer);
 	} else if (south > 0) {
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)south) / 1000.0, guider_guide_dec_finish_callback);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)south) / 1000.0, guider_guide_dec_finalizer);
 	} else {
-		guider_guide_dec_finish_callback(device);
+		guider_guide_dec_finalizer(device);
 	}
+	//- guider.GUIDER_GUIDE_DEC.on_change
 }
 
-static void guider_guide_ra_finish_callback(indigo_device *device) {
-	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
-	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-}
-
-static void guider_guide_ra_callback(indigo_device *device) {
+static void guider_guide_ra_handler(indigo_device *device) {
+	//+ guider.GUIDER_GUIDE_RA.on_change
 	int west = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 	int east = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 	if ((west > 0 || east > 0) && !meade_guide_ra(device, west, east)) {
 		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
-		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, "Guide command failed");
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_ALERT_STATE, "Guide command failed");
 		return;
 	}
 	if (west > 0) {
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)west) / 1000.0, guider_guide_ra_finish_callback);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)west) / 1000.0, guider_guide_ra_finalizer);
 	} else if (east > 0) {
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)east) / 1000.0, guider_guide_ra_finish_callback);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)east) / 1000.0, guider_guide_ra_finalizer);
 	} else {
-		guider_guide_ra_finish_callback(device);
+		guider_guide_ra_finalizer(device);
 	}
+	//- guider.GUIDER_GUIDE_RA.on_change
+}
+
+#pragma mark - Device API (guider)
+
+static indigo_result guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
+static indigo_result guider_attach(indigo_device *device) {
+	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		//+ guider.on_attach
+		GUIDER_GUIDE_NORTH_ITEM->number.max = GUIDER_GUIDE_SOUTH_ITEM->number.max = GUIDER_GUIDE_EAST_ITEM->number.max = GUIDER_GUIDE_WEST_ITEM->number.max = 3000;
+		//- guider.on_attach
+		GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
+		GUIDER_GUIDE_RA_PROPERTY->hidden = false;
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return guider_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	return indigo_guider_enumerate_properties(device, client, property);
 }
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property)) {
-			return INDIGO_OK;
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_handler(device, guider_connection_handler);
 		}
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_execute_handler(device, guider_connect_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
-		if (GUIDER_GUIDE_DEC_PROPERTY->state != INDIGO_BUSY_STATE) {
-			indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
-			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-			indigo_execute_handler(device, guider_guide_dec_callback);
-		}
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
-		if (GUIDER_GUIDE_RA_PROPERTY->state != INDIGO_BUSY_STATE) {
-			indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
-			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-			indigo_execute_handler(device, guider_guide_ra_callback);
-		}
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
 		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
 	}
 	return indigo_guider_change_property(device, client, property);
 }
 
 static indigo_result guider_detach(indigo_device *device) {
-	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		guider_connect_callback(device);
+		guider_connection_handler(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
 
-// ---------------------------------------------------------------------- focuser device implementation
+#pragma mark - High level code (focuser)
 
-static indigo_result focuser_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(PRIVATE_DATA != NULL);
-	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		FOCUSER_POSITION_PROPERTY->hidden = true;
-		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
-		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_focuser_enumerate_properties(device, NULL, NULL);
-	}
-	return INDIGO_FAILED;
-}
-
-static void focuser_connect_callback(indigo_device *device) {
+static void focuser_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool result = true;
-		if (PRIVATE_DATA->device_count++ == 0) {
-			result = meade_open(device->master_device);
+		bool connection_result = true;
+		if (PRIVATE_DATA->count == 0) {
+			connection_result = lx200_open(device->master_device);
 		}
-		if (result) {
-			if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
-				if (!meade_detect_mount(device->master_device)) {
-					result = false;
-					indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
+		if (connection_result) {
+			PRIVATE_DATA->count++;
+		}
+		if (connection_result) {
+			//+ focuser.on_connect
+			if (MOUNT_TYPE_DETECT_ITEM->sw.value && !meade_detect_mount(device->master_device)) {
+				connection_result = false;
+				indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
+			}
+			if (connection_result) {
+				if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value) {
+					FOCUSER_SPEED_ITEM->number.min = 1;
+					FOCUSER_SPEED_ITEM->number.value = 1;
+					FOCUSER_SPEED_ITEM->number.target = 1;
+					FOCUSER_SPEED_ITEM->number.max = 2;
+					FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					connection_result = false;
 				}
 			}
+			//- focuser.on_connect
 		}
-		if (result) {
-			if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value) {
-				FOCUSER_SPEED_ITEM->number.min = FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
-				FOCUSER_SPEED_ITEM->number.max = 2;
-				FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				if (--PRIVATE_DATA->device_count <= 0) {
-					meade_close(device->master_device);
-				}
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
+		if (connection_result) {
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (--PRIVATE_DATA->device_count <= 0) {
-				meade_close(device->master_device);
+			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
+				lx200_close(device);
 			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
-		if (--PRIVATE_DATA->device_count == 0) {
-			meade_close(device);
+		if (--PRIVATE_DATA->count == 0) {
+			lx200_close(device);
 		}
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
-static void focuser_steps_callback(indigo_device *device) {
+static void focuser_steps_handler(indigo_device *device) {
+	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_STEPS.on_change
 	int steps = (int)(FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ^ FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? -FOCUSER_STEPS_ITEM->number.value : FOCUSER_STEPS_ITEM->number.value);
-	if (meade_focus_rel(device, FOCUSER_SPEED_ITEM->number.value == FOCUSER_SPEED_ITEM->number.min, steps)) {
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
+	if (!meade_focus_rel(device, FOCUSER_SPEED_ITEM->number.value == FOCUSER_SPEED_ITEM->number.min, steps)) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	//- focuser.FOCUSER_STEPS.on_change
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 }
 
-static void focuser_abort_callback(indigo_device *device) {
+static void focuser_abort_motion_handler(indigo_device *device) {
+	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_ABORT_MOTION.on_change
 	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		PRIVATE_DATA->focus_aborted = true;
 	}
-	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	//- focuser.FOCUSER_ABORT_MOTION.on_change
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 }
 
+#pragma mark - Device API (focuser)
+
+static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
+static indigo_result focuser_attach(indigo_device *device) {
+	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		//+ focuser.on_attach
+		FOCUSER_POSITION_PROPERTY->hidden = true;
+		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
+		//- focuser.on_attach
+		FOCUSER_SPEED_PROPERTY->hidden = false;
+		FOCUSER_STEPS_PROPERTY->hidden = false;
+		FOCUSER_ABORT_MOTION_PROPERTY->hidden = false;
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return focuser_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	return indigo_focuser_enumerate_properties(device, client, property);
+}
+
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property))
-			return INDIGO_OK;
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_execute_handler(device, focuser_connect_callback);
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_handler(device, focuser_connection_handler);
+		}
 		return INDIGO_OK;
-	// -------------------------------------------------------------------------------- FOCUSER_SPEED
 	} else if (indigo_property_match_changeable(FOCUSER_SPEED_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 		return INDIGO_OK;
-	// -------------------------------------------------------------------------------- FOCUSER_STEPS
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		if (FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
-			indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_execute_handler(device, focuser_steps_callback);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-		focuser_abort_callback(device);
+		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
 	}
 	return indigo_focuser_change_property(device, client, property);
 }
 
 static indigo_result focuser_detach(indigo_device *device) {
-	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		focuser_connect_callback(device);
+		focuser_connection_handler(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
 
+#pragma mark - High level code (aux)
+
+static void aux_timer_callback(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	//+ aux.on_timer
+	if (MOUNT_TYPE_NYX_ITEM->sw.value) {
+		nyx_aux_update(device);
+		indigo_execute_handler_in(device, 10, aux_timer_callback);
+	} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+		onstep_aux_update(device);
+		indigo_execute_handler_in(device, 2, aux_timer_callback);
+	}
+	//- aux.on_timer
+}
+
+static void aux_connection_handler(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		bool connection_result = true;
+		if (PRIVATE_DATA->count == 0) {
+			connection_result = lx200_open(device->master_device);
+		}
+		if (connection_result) {
+			PRIVATE_DATA->count++;
+		}
+		if (connection_result) {
+			//+ aux.on_connect
+			if (MOUNT_TYPE_DETECT_ITEM->sw.value && !meade_detect_mount(device->master_device)) {
+				connection_result = false;
+				indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
+			}
+			if (connection_result) {
+				AUX_WEATHER_PROPERTY->hidden = true;
+				AUX_INFO_PROPERTY->hidden = true;
+				AUX_HEATER_OUTLET_PROPERTY->hidden = true;
+				AUX_POWER_OUTLET_PROPERTY->hidden = true;
+				if (MOUNT_TYPE_NYX_ITEM->sw.value) {
+					AUX_WEATHER_PROPERTY->hidden = false;
+					AUX_INFO_PROPERTY->hidden = false;
+				} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+					onstep_aux_discover(device);
+					AUX_HEATER_OUTLET_PROPERTY->hidden = false;
+					AUX_POWER_OUTLET_PROPERTY->hidden = false;
+				} else {
+					connection_result = false;
+				}
+			}
+			//- aux.on_connect
+		}
+		if (connection_result) {
+			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
+			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
+			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+			indigo_execute_handler(device, aux_timer_callback);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+		} else {
+			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
+				lx200_close(device);
+			}
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		indigo_cancel_pending_handlers(device);
+		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+		if (--PRIVATE_DATA->count == 0) {
+			lx200_close(device);
+		}
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
+static void aux_heater_outlet_handler(indigo_device *device) {
+	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+	//+ aux.AUX_HEATER_OUTLET.on_change
+	for (int i = 0; i < AUX_HEATER_OUTLET_PROPERTY->count; i++) {
+		indigo_item *item = AUX_HEATER_OUTLET_PROPERTY->items + i;
+		int val = MIN((int) round(item->number.target * 2.56), 255);
+		int slot = ONSTEP_AUX_HEATER_OUTLET_MAPPING[i];
+		meade_simple_reply_command(device, ":SXX%d,V%d#", slot, val);
+		if (PRIVATE_DATA->response[0] == '1') {
+			item->number.value = item->number.target;
+		} else {
+			AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	}
+	//- aux.AUX_HEATER_OUTLET.on_change
+	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+}
+
+static void aux_power_outlet_handler(indigo_device *device) {
+	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+	//+ aux.AUX_POWER_OUTLET.on_change
+	for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+		indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
+		bool val = item->sw.value;
+		int slot = ONSTEP_AUX_POWER_OUTLET_MAPPING[i];
+		if (!meade_simple_reply_command(device, ":SXX%d,V%d#", slot, val) || PRIVATE_DATA->response[0] != '1') {
+			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	}
+	//- aux.AUX_POWER_OUTLET.on_change
+	indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+}
+
+#pragma mark - Device API (aux)
+
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
 static indigo_result aux_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(PRIVATE_DATA != NULL);
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER) == INDIGO_OK) {
-		// -------------------------------------------------------------------------------- AUX_WEATHER
 		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, "Info", "Weather info", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
 		if (AUX_WEATHER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		AUX_WEATHER_PROPERTY->hidden = true;
 		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [C]", -50, 100, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_PRESSURE_ITEM, AUX_WEATHER_PRESSURE_ITEM_NAME, "Pressure [mb]", 0, 2000, 0, 0);
-		// -------------------------------------------------------------------------------- AUX_INFO
+		AUX_WEATHER_PROPERTY->hidden = true;
 		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, "Info", "Info", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 		if (AUX_INFO_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		AUX_INFO_PROPERTY->hidden = true;
 		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 15, 0, 0);
-		// -------------------------------------------------------------------------------- AUX_HEATER_OUTLET
+		AUX_INFO_PROPERTY->hidden = true;
 		AUX_HEATER_OUTLET_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Heater outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
 		if (AUX_HEATER_OUTLET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		char name[32];
-		char label[32];
-		for (int i = 0; i < 8; i++) {
-			snprintf(name, sizeof(name), AUX_HEATER_OUTLET_ITEM_NAME, i + 1);
-			snprintf(label, sizeof(label), "Heater #%d [%%]", i + 1);
-			indigo_init_number_item(AUX_HEATER_OUTLET_PROPERTY->items + i, name, label, 0, 100, 1, 0);
-		}
+		indigo_init_number_item(AUX_HEATER_OUTLET_1_ITEM, AUX_HEATER_OUTLET_1_ITEM_NAME, "Heater #1 [%]", 0, 100, 1, 0);
+		indigo_init_number_item(AUX_HEATER_OUTLET_2_ITEM, AUX_HEATER_OUTLET_2_ITEM_NAME, "Heater #2 [%]", 0, 100, 1, 0);
+		indigo_init_number_item(AUX_HEATER_OUTLET_3_ITEM, AUX_HEATER_OUTLET_3_ITEM_NAME, "Heater #3 [%]", 0, 100, 1, 0);
+		indigo_init_number_item(AUX_HEATER_OUTLET_4_ITEM, AUX_HEATER_OUTLET_4_ITEM_NAME, "Heater #4 [%]", 0, 100, 1, 0);
+		indigo_init_number_item(AUX_HEATER_OUTLET_5_ITEM, AUX_HEATER_OUTLET_5_ITEM_NAME, "Heater #5 [%]", 0, 100, 1, 0);
+		indigo_init_number_item(AUX_HEATER_OUTLET_6_ITEM, AUX_HEATER_OUTLET_6_ITEM_NAME, "Heater #6 [%]", 0, 100, 1, 0);
+		indigo_init_number_item(AUX_HEATER_OUTLET_7_ITEM, AUX_HEATER_OUTLET_7_ITEM_NAME, "Heater #7 [%]", 0, 100, 1, 0);
+		indigo_init_number_item(AUX_HEATER_OUTLET_8_ITEM, AUX_HEATER_OUTLET_8_ITEM_NAME, "Heater #8 [%]", 0, 100, 1, 0);
 		AUX_HEATER_OUTLET_PROPERTY->hidden = true;
-		// -------------------------------------------------------------------------------- AUX_POWER_OUTLET
 		AUX_POWER_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 8);
 		if (AUX_POWER_OUTLET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		for (int i = 0; i < 8; i++) {
-			snprintf(name, sizeof(name), AUX_POWER_OUTLET_ITEM_NAME, i + 1);
-			snprintf(label, sizeof(label), "Outlet #%d", i + 1);
-			indigo_init_switch_item(AUX_POWER_OUTLET_PROPERTY->items + i, name, label, true);
-		}
+		indigo_init_switch_item(AUX_POWER_OUTLET_1_ITEM, AUX_POWER_OUTLET_1_ITEM_NAME, "Outlet #1", true);
+		indigo_init_switch_item(AUX_POWER_OUTLET_2_ITEM, AUX_POWER_OUTLET_2_ITEM_NAME, "Outlet #2", true);
+		indigo_init_switch_item(AUX_POWER_OUTLET_3_ITEM, AUX_POWER_OUTLET_3_ITEM_NAME, "Outlet #3", true);
+		indigo_init_switch_item(AUX_POWER_OUTLET_4_ITEM, AUX_POWER_OUTLET_4_ITEM_NAME, "Outlet #4", true);
+		indigo_init_switch_item(AUX_POWER_OUTLET_5_ITEM, AUX_POWER_OUTLET_5_ITEM_NAME, "Outlet #5", true);
+		indigo_init_switch_item(AUX_POWER_OUTLET_6_ITEM, AUX_POWER_OUTLET_6_ITEM_NAME, "Outlet #6", true);
+		indigo_init_switch_item(AUX_POWER_OUTLET_7_ITEM, AUX_POWER_OUTLET_7_ITEM_NAME, "Outlet #7", true);
+		indigo_init_switch_item(AUX_POWER_OUTLET_8_ITEM, AUX_POWER_OUTLET_8_ITEM_NAME, "Outlet #8", true);
 		AUX_POWER_OUTLET_PROPERTY->hidden = true;
-		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return aux_enumerate_properties(device, NULL, NULL);
 	}
@@ -3417,165 +3575,28 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	return indigo_aux_enumerate_properties(device, client, property);
 }
 
-static void aux_connect_handler(indigo_device *device) {
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool result = true;
-		if (PRIVATE_DATA->device_count++ == 0) {
-			result = meade_open(device->master_device);
-		}
-		if (result) {
-			if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
-				if (!meade_detect_mount(device->master_device)) {
-					result = false;
-					indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
-				}
-			}
-		}
-		if (result) {
-			if (MOUNT_TYPE_NYX_ITEM->sw.value) {
-				AUX_WEATHER_PROPERTY->hidden = false;
-				AUX_INFO_PROPERTY->hidden = false;
-				indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
-				indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_execute_handler(device, nyx_aux_timer_callback);
-			} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
-				// first we request Onstep to list active aux slots
-				meade_command(device, ":GXY0#");
-				// Onstep responds with a string like "11000000" to indicate that the first and second aux device is enabled
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep active device string: %s", PRIVATE_DATA->response);
-				char active_slots[ONSTEP_AUX_DEVICE_COUNT];
-				memcpy(active_slots, PRIVATE_DATA->response, sizeof(active_slots));
-				// in the first pass over the active devices we count how many auxiliary devices of each purpose we have
-				AUX_HEATER_OUTLET_PROPERTY->count = 0;
-				AUX_POWER_OUTLET_PROPERTY->count = 0;
-				for (int i = 0; i < ONSTEP_AUX_DEVICE_COUNT; i++) {
-					bool active = active_slots[i] == '1';
-					if (active) {
-						// Now we get the name and purpose of each active aux device, it is one-indexed
-						meade_command(device, ":GXY%d#", i + 1);
-						// Onstep responds with a string like "my switch,2" where the part before "," is the name and after the purpose as int
-						char *comma = strchr(PRIVATE_DATA->response, ',');
-						if (comma == NULL) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "Onstep AUX Device at slot %d invalid PRIVATE_DATA->response", i + 1);
-							continue;
-						}
-						*comma++ = '\0';
-						char *name = PRIVATE_DATA->response;
-						onstep_aux_device_purpose purpose = *comma - '0';
-						if (purpose == ONSTEP_AUX_ANALOG) {
-							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Heater Outlet at slot %d with name %s", i + 1, name);
-							strcpy(AUX_HEATER_OUTLET_PROPERTY->items[AUX_HEATER_OUTLET_PROPERTY->count].label, name);
-							ONSTEP_AUX_HEATER_OUTLET_MAPPING[AUX_HEATER_OUTLET_PROPERTY->count++] = i + 1;
-						} else if (purpose == ONSTEP_AUX_SWITCH) {
-							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Power Outlet Device at slot %d with name %s and purpose switch", i + 1, name);
-							strcpy(AUX_POWER_OUTLET_PROPERTY->items[AUX_POWER_OUTLET_PROPERTY->count].label, name);
-							ONSTEP_AUX_POWER_OUTLET_MAPPING[AUX_POWER_OUTLET_PROPERTY->count++] = i + 1;
-						} else {
-							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Device at index %d not recognized", i + 1);
-						}
-					}
-				}
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				AUX_HEATER_OUTLET_PROPERTY->hidden = false;
-				AUX_POWER_OUTLET_PROPERTY->hidden = false;
-				indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-				indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-				indigo_execute_handler(device, onstep_aux_timer_callback);
-			} else {
-				if (--PRIVATE_DATA->device_count <= 0) {
-					meade_close(device->master_device);
-				}
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
-		} else {
-			if (--PRIVATE_DATA->device_count <= 0) {
-				meade_close(device->master_device);
-			}
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		}
-	} else {
-		indigo_cancel_pending_handlers(device);
-		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
-		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
-		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-		indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-		if (--PRIVATE_DATA->device_count == 0) {
-			meade_close(device);
-		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	}
-	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
-}
-
-static void aux_heater_outlet_handler(indigo_device *device) {
-	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
-	for (int i = 0; i < AUX_HEATER_OUTLET_PROPERTY->count; i++) {
-		indigo_item *item = AUX_HEATER_OUTLET_PROPERTY->items + i;
-		int val = MIN((int) round(item->number.target * 2.56), 255);
-		int slot = ONSTEP_AUX_HEATER_OUTLET_MAPPING[i];
-		meade_simple_reply_command(device, ":SXX%d,V%d#", slot, val);
-		if (PRIVATE_DATA->response[0] == '1') {
-			item->number.value = item->number.target;
-		} else {
-			AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-	}
-	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-}
-
-static void aux_power_outlet_handler(indigo_device *device) {
-	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
-	for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
-		indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
-		bool val = item->sw.value;
-		int slot = ONSTEP_AUX_POWER_OUTLET_MAPPING[i];
-		if (!meade_simple_reply_command(device, ":SXX%d,V%d#", slot, val) || PRIVATE_DATA->response[0] != '1') {
-			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-	}
-	indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-}
-
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property))
-			return INDIGO_OK;
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_execute_handler(device, aux_connect_handler);
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_handler(device, aux_connection_handler);
+		}
 		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
-	}
-	if (indigo_property_match_changeable(AUX_HEATER_OUTLET_PROPERTY, property)) {
-		AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_property_copy_targets(AUX_HEATER_OUTLET_PROPERTY, property, false);
-		indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-		indigo_execute_handler(device, aux_heater_outlet_handler);
+	} else if (indigo_property_match_changeable(AUX_HEATER_OUTLET_PROPERTY, property)) {
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(AUX_HEATER_OUTLET_PROPERTY, aux_heater_outlet_handler);
 		return INDIGO_OK;
-	}
-	if (indigo_property_match_changeable(AUX_POWER_OUTLET_PROPERTY, property)) {
-		AUX_POWER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_property_copy_values(AUX_POWER_OUTLET_PROPERTY, property, false);
-		indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-		indigo_execute_handler(device, aux_power_outlet_handler);
+	} else if (indigo_property_match_changeable(AUX_POWER_OUTLET_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_POWER_OUTLET_PROPERTY, aux_power_outlet_handler);
 		return INDIGO_OK;
 	}
 	return indigo_aux_change_property(device, client, property);
 }
 
 static indigo_result aux_detach(indigo_device *device) {
-	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		aux_connect_handler(device);
+		aux_connection_handler(device);
 	}
 	indigo_release_property(AUX_WEATHER_PROPERTY);
 	indigo_release_property(AUX_INFO_PROPERTY);
@@ -3585,122 +3606,93 @@ static indigo_result aux_detach(indigo_device *device) {
 	return indigo_aux_detach(device);
 }
 
-// --------------------------------------------------------------------------------
+#pragma mark - Device templates
 
-static lx200_private_data *private_data = NULL;
+static indigo_device mount_template = INDIGO_DEVICE_INITIALIZER(MOUNT_DEVICE_NAME, mount_attach, mount_enumerate_properties, mount_change_property, NULL, mount_detach);
 
-static indigo_device *mount = NULL;
-static indigo_device *mount_guider = NULL;
-static indigo_device *mount_focuser = NULL;
-static indigo_device *mount_aux = NULL;
+static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(GUIDER_DEVICE_NAME, guider_attach, guider_enumerate_properties, guider_change_property, NULL, guider_detach);
+
+static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(FOCUSER_DEVICE_NAME, focuser_attach, focuser_enumerate_properties, focuser_change_property, NULL, focuser_detach);
+
+static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(AUX_DEVICE_NAME, aux_attach, aux_enumerate_properties, aux_change_property, NULL, aux_detach);
+
+#pragma mark - Main code
 
 indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info *info) {
-	static indigo_device mount_template = INDIGO_DEVICE_INITIALIZER(
-		MOUNT_LX200_NAME,
-		mount_attach,
-		mount_enumerate_properties,
-		mount_change_property,
-		NULL,
-		mount_detach
-	);
-	static indigo_device mount_guider_template = INDIGO_DEVICE_INITIALIZER(
-		MOUNT_LX200_GUIDER_NAME,
-		guider_attach,
-		indigo_guider_enumerate_properties,
-		guider_change_property,
-		NULL,
-		guider_detach
-	);
-	static indigo_device mount_focuser_template = INDIGO_DEVICE_INITIALIZER(
-		MOUNT_LX200_FOCUSER_NAME,
-		focuser_attach,
-		indigo_focuser_enumerate_properties,
-		focuser_change_property,
-		NULL,
-		focuser_detach
-	 );
-	static indigo_device mount_aux_template = INDIGO_DEVICE_INITIALIZER(
-		MOUNT_LX200_AUX_NAME,
-		aux_attach,
-		aux_enumerate_properties,
-		aux_change_property,
-		NULL,
-		aux_detach
-	 );
-
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+	static lx200_private_data *private_data = NULL;
+	static indigo_device *mount = NULL;
+	static indigo_device *guider = NULL;
+	static indigo_device *focuser = NULL;
+	static indigo_device *aux = NULL;
 
-	static indigo_device_match_pattern patterns[3] = { 0 };
-	// Pegasus Astro NYX mount
-	strcpy(patterns[NYX_TEMPLATE_INDEX].vendor_string, "Pegasus Astro");
-	strcpy(patterns[NYX_TEMPLATE_INDEX].product_string, "NYX");
-	// ZWO AM mount
-	patterns[ZWO_TEMPLATE_INDEX].vendor_id = 0x03C3;
-	patterns[ZWO_TEMPLATE_INDEX].product_id = 0x4001;
-
-	INDIGO_REGISER_MATCH_PATTERNS(mount_template, patterns, 3);
-
-	SET_DRIVER_INFO(info, "LX200 Mount", __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			tzset();
-			private_data = indigo_safe_malloc(sizeof(lx200_private_data));
-			mount = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
+			static indigo_device_match_pattern patterns[3] = { 0 };
+			strcpy(patterns[0].product_string, "NYX");
+			strcpy(patterns[0].vendor_string, "Pegasus Astro");
+			patterns[1].vendor_id = 0x03C3;
+			patterns[1].product_id = 0x4001;
+			INDIGO_REGISER_MATCH_PATTERNS(mount_template, patterns, 3);
+			private_data = (lx200_private_data *)indigo_safe_malloc(sizeof(lx200_private_data));
+			mount = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 			mount->private_data = private_data;
-			mount->master_device = mount;
 			indigo_attach_device(mount);
-			mount_guider = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_guider_template);
-			mount_guider->private_data = private_data;
-			mount_guider->master_device = mount;
-			indigo_attach_device(mount_guider);
-			mount_focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_focuser_template);
-			mount_focuser->private_data = private_data;
-			mount_focuser->master_device = mount;
-			indigo_attach_device(mount_focuser);
-			mount_aux = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_aux_template);
-			mount_aux->private_data = private_data;
-			mount_aux->master_device = mount;
-			indigo_attach_device(mount_aux);
+			guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
+			guider->private_data = private_data;
+			guider->master_device = mount;
+			indigo_attach_device(guider);
+			focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
+			focuser->private_data = private_data;
+			focuser->master_device = mount;
+			indigo_attach_device(focuser);
+			aux = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
+			aux->private_data = private_data;
+			aux->master_device = mount;
+			indigo_attach_device(aux);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(mount);
-			VERIFY_NOT_CONNECTED(mount_guider);
-			VERIFY_NOT_CONNECTED(mount_focuser);
-			VERIFY_NOT_CONNECTED(mount_aux);
+			VERIFY_NOT_CONNECTED(guider);
+			VERIFY_NOT_CONNECTED(focuser);
+			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
+			if (aux != NULL) {
+				indigo_detach_device(aux);
+				indigo_safe_free(aux);
+				aux = NULL;
+			}
+			if (focuser != NULL) {
+				indigo_detach_device(focuser);
+				indigo_safe_free(focuser);
+				focuser = NULL;
+			}
+			if (guider != NULL) {
+				indigo_detach_device(guider);
+				indigo_safe_free(guider);
+				guider = NULL;
+			}
 			if (mount != NULL) {
 				indigo_detach_device(mount);
-				free(mount);
+				indigo_safe_free(mount);
 				mount = NULL;
 			}
-			if (mount_guider != NULL) {
-				indigo_detach_device(mount_guider);
-				free(mount_guider);
-				mount_guider = NULL;
-			}
-			if (mount_focuser != NULL) {
-				indigo_detach_device(mount_focuser);
-				free(mount_focuser);
-				mount_focuser = NULL;
-			}
-			if (mount_aux != NULL) {
-				indigo_detach_device(mount_aux);
-				free(mount_aux);
-				mount_aux = NULL;
-			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

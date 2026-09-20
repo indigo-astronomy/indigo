@@ -26,6 +26,13 @@
 #define MOUNT_LX200_SIMULATOR_EXECUTABLE "build/integration/mount_lx200_simulator"
 #endif
 
+// The generated public header exposes only the driver entry point, so the
+// logical device names are spelled out here.
+#define MOUNT_LX200_NAME                 "Mount LX200"
+#define MOUNT_LX200_GUIDER_NAME          "Mount LX200 (guider)"
+#define MOUNT_LX200_FOCUSER_NAME         "Mount LX200 (focuser)"
+#define MOUNT_LX200_AUX_NAME             "Mount LX200 (aux)"
+
 #define MOUNT_TYPE_PROPERTY_NAME         "X_MOUNT_TYPE"
 #define MOUNT_TYPE_ON_STEP_ITEM_NAME     "ONSTEP"
 #define MOUNT_MODE_PROPERTY_NAME         "X_MOUNT_MODE"
@@ -84,8 +91,12 @@ static uint64_t lx_monotonic_ns(void) {
 }
 
 static atomic_uint_fast64_t guide_completed[2];
+static atomic_int mount_coordinates_state = INDIGO_OK_STATE;
 
 static indigo_result timed_client_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, lx200_mount.device_name) && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
+		atomic_store(&mount_coordinates_state, property->state);
+	}
 	if (!strcmp(property->device, lx200_guider.device_name) && property->state == INDIGO_OK_STATE) {
 		int axis = !strcmp(property->name, GUIDER_GUIDE_RA_PROPERTY_NAME) ? 0 : !strcmp(property->name, GUIDER_GUIDE_DEC_PROPERTY_NAME) ? 1 : -1;
 		if (axis >= 0) {
@@ -154,6 +165,18 @@ static bool inject_reply(external_serial_simulator *simulator, const char *comma
 	fprintf(file, "%s\t%s\n", command, reply);
 	fclose(file);
 	return rename(temporary, path) == 0;
+}
+
+// The single-device property cache follows one logical device, so secondary
+// device tests observe the master slew through the shared client instead.
+static bool wait_for_mount_slew_end(void) {
+	for (int i = 0; i < 200; i++) {
+		if (atomic_load(&mount_coordinates_state) != INDIGO_BUSY_STATE) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
 }
 
 static bool lx_coordinates(double ra, double dec, indigo_property_state state) {
@@ -526,6 +549,7 @@ static void lx200_guider_directions_overlap_and_timing(void) {
 			if (workload) {
 				const char *coordinate_items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 				double coordinates[] = { direction % 2 ? 2 : 22, direction % 2 ? 70 : -70 };
+				SERIAL_CHECK_TRUE(wait_for_mount_slew_end());
 				int before = event_count(&simulator, "MS", NULL);
 				SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, coordinate_items, coordinates));
 				SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", before));
@@ -1198,7 +1222,10 @@ static void lx200_shared_aux_lifecycle(void) {
 	check_shared_secondary(&lx200_aux);
 }
 
-static void lx200_goto_overlap_replaces_target(void) {
+// A running GOTO owns MOUNT_EQUATORIAL_COORDINATES until it completes: the
+// generated change branch refuses an overlapping request instead of retargeting
+// the mount mid-slew, and the next request is accepted once the slew is over.
+static void lx200_goto_busy_refuses_overlap(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
 	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
@@ -1207,6 +1234,13 @@ static void lx200_goto_overlap_replaces_target(void) {
 	SERIAL_CHECK_TRUE(lx_coordinates(22, -70, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", 0));
 	int before = event_count(&simulator, "MS", NULL);
+	const char *coordinate_items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double overlapping[] = { 1, 70 };
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, coordinate_items, overlapping));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 22, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -70, 0.001));
+	SERIAL_CHECK_EQ_INT(before, event_count(&simulator, "MS", NULL));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(lx_coordinates(1, 70, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", before));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
@@ -1532,7 +1566,7 @@ int main(int argc, char **argv) {
 		{ "lx200_manual_reversal_and_axis_stops", lx200_manual_reversal_and_axis_stops },
 		{ "lx200_shared_focuser_lifecycle", lx200_shared_focuser_lifecycle },
 		{ "lx200_shared_aux_lifecycle", lx200_shared_aux_lifecycle },
-		{ "lx200_goto_overlap_replaces_target", lx200_goto_overlap_replaces_target },
+		{ "lx200_goto_busy_refuses_overlap", lx200_goto_busy_refuses_overlap },
 		{ "lx200_home_onstep", lx200_home_onstep },
 		{ "lx200_home_stargo", lx200_home_stargo },
 		{ "lx200_home_zwo", lx200_home_zwo },
