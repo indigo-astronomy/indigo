@@ -188,14 +188,31 @@ $(LIBHIDAPI).a:
 
 libftd2xx: $(BUILD_LIB)/libftd2xx.a
 
+# The vendor archive embeds its own libusb build. INDIGO links its own
+# libusb-1.0, so these members are removed to avoid duplicate symbols. The macOS
+# 1.4.35 archive carries libusb 1.0.29, which renamed poll_posix to events_posix
+# and added strerror; the Linux archives are still 1.4.6 and use the old names.
+# The lists differ because macOS ar fails on a member that is not in the archive
+# while GNU ar only warns.
+FTD2XX_LIBUSB_OBJECTS = core.o descriptor.o io.o hotplug.o sync.o darwin_usb.o poll_posix.o threads_posix.o
+FTD2XX_LIBUSB_OBJECTS_MACOS = core.o descriptor.o io.o hotplug.o sync.o strerror.o darwin_usb.o events_posix.o threads_posix.o
+
 $(BUILD_LIB)/libftd2xx.a:
 	install -d $(BUILD_LIB)
 ifeq ($(OS_DETECTED),Darwin)
-	hdiutil attach -noverify -noautoopen $(BIN_EXTERNALS)/D2XX1.4.4.dmg
-	cp /Volumes/release/D2XX/ftd2xx.h /Volumes/release/D2XX/WinTypes.h $(BUILD_INCLUDE)
-	cp /Volumes/release/D2XX/libftd2xx.a $(BUILD_LIB)
-	hdiutil detach /Volumes/release
-	rm -rf /tmp/D2XX1.4.4.dmg
+	rm -rf /tmp/indigo_d2xx
+	hdiutil attach -readonly -noverify -noautoopen $(BIN_EXTERNALS)/D2XX1.4.35.dmg -mountpoint /tmp/indigo_d2xx
+	install -m 0644 /tmp/indigo_d2xx/release/ftd2xx.h /tmp/indigo_d2xx/release/WinTypes.h $(BUILD_INCLUDE)
+	install -m 0644 /tmp/indigo_d2xx/release/build/libftd2xx.a $(BUILD_LIB)
+	hdiutil detach /tmp/indigo_d2xx
+	rm -rf /tmp/indigo_d2xx
+	# The macOS archive is universal, so every slice is stripped separately and
+	# the result is recombined.
+	rm -rf /tmp/indigo_d2xx_thin
+	mkdir -p /tmp/indigo_d2xx_thin
+	for arch in `lipo -archs $(BUILD_LIB)/libftd2xx.a`; do lipo -thin $$arch $(BUILD_LIB)/libftd2xx.a -output /tmp/indigo_d2xx_thin/$$arch.a && ar -d /tmp/indigo_d2xx_thin/$$arch.a $(FTD2XX_LIBUSB_OBJECTS_MACOS) && ranlib /tmp/indigo_d2xx_thin/$$arch.a; done
+	lipo -create /tmp/indigo_d2xx_thin/*.a -output $(BUILD_LIB)/libftd2xx.a
+	rm -rf /tmp/indigo_d2xx_thin
 endif
 ifeq ($(OS_DETECTED),Linux)
 ifeq ($(ARCH_DETECTED),arm)
@@ -222,8 +239,8 @@ ifeq ($(ARCH_DETECTED),x64)
 	cp /tmp/release/build/libftd2xx.a $(BUILD_LIB)
 	rm -rf /tmp/libftd2xx-x86_64-1.4.6.tgz /tmp/release
 endif
+	ar -d $(BUILD_LIB)/libftd2xx.a $(FTD2XX_LIBUSB_OBJECTS)
 endif
-	ar -d $(BUILD_LIB)/libftd2xx.a core.o descriptor.o io.o hotplug.o sync.o darwin_usb.o poll_posix.o threads_posix.o
 
 #---------------------------------------------------------------------
 #

@@ -1,0 +1,812 @@
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Original driver by Peter Polakovic <peter.polakovic@cloudmakers.eu>,
+// reworked in 2020 by Rumen G. Bogdanovski <rumenastro@gmail.com>.
+// INDIGO 3.0 generator migration and test-driven refactoring in 2026.
+
+driver qsi {
+	label = "QSI Camera";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
+	version = 15;
+	cpp = true;
+	multi_device_support = true;
+	include {
+		#include <math.h>
+		#include <stdexcept>
+		#include <string>
+		#include "qsiapi.h"
+		#include "QSIError.h"
+	}
+	define {
+		#define QSI_VENDOR_ID             0x0403
+		#define QSI_PRODUCT_ID1           0xEB48
+		#define QSI_PRODUCT_ID2           0xEB49
+		#define QSI_TEMPERATURE_PERIOD    5
+		#define QSI_READOUT_POLL_PERIOD   0.005
+		#define QSI_READOUT_TIMEOUT       60
+		#define QSI_WHEEL_POLL_PERIOD     0.1
+		#define QSI_WHEEL_TIMEOUT         60
+	}
+	data {
+		char serial[INDIGO_NAME_SIZE];
+		char model[INDIGO_NAME_SIZE];
+		char wheel_name[INDIGO_NAME_SIZE];
+		long width, height;
+		double pixel_width, pixel_height;
+		short max_bin_x, max_bin_y;
+		double min_exposure, max_exposure;
+		bool power_of_two_binning;
+		bool has_shutter;
+		bool can_set_temperature;
+		bool can_get_cooler_power;
+		bool can_set_gain;
+		bool cooler_on;
+		int gain;
+		int fan_mode;
+		int readout_speed;
+		int anti_bloom;
+		int pre_exposure_flush;
+		bool has_filter_wheel;
+		int filter_count;
+		int wheel_slot;
+		double wheel_deadline;
+		bool can_check_temperature;
+		bool exposure_active;
+		double readout_deadline;
+		int image_width, image_height;
+		unsigned short *buffer;
+	}
+	code {
+		// The vendor SDK exposes one global camera object and allows a single
+		// connected camera at a time; every logical device shares it.
+		static QSICamera cam;
+		static char qsi_last_error[INDIGO_VALUE_SIZE];
+
+		// The SDK defaults to structured exceptions (CCDCamera.cpp sets
+		// m_bStructuredExceptions, lib/wincompat.h throws from Error()), but the
+		// same calls report through their return code when that mode is off, so
+		// both channels are handled.
+		template<typename operation_type> static bool qsi_call(const char *operation, operation_type call) {
+			try {
+				int result = call();
+				if (result != QSI_OK) {
+					snprintf(qsi_last_error, sizeof(qsi_last_error), "%s failed (0x%08x)", operation, (unsigned)result);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", qsi_last_error);
+					return false;
+				}
+				return true;
+			} catch (std::runtime_error &error) {
+				snprintf(qsi_last_error, sizeof(qsi_last_error), "%s failed: %s", operation, error.what());
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", qsi_last_error);
+				return false;
+			}
+		}
+
+		#define QSI_CALL(operation, call) qsi_call(operation, [&]() -> int { return (call); })
+
+		static bool qsi_enumerate(std::string *serials, std::string *descriptions, int *count) {
+			*count = 0;
+			if (!QSI_CALL("get_AvailableCameras", cam.get_AvailableCameras(serials, descriptions, *count))) {
+				return false;
+			}
+			if (*count < 0 || *count > QSICamera::MAXCAMERAS) {
+				*count = 0;
+				return false;
+			}
+			return true;
+		}
+
+		// Reads the shared capability set in the same order as the pre-migration
+		// driver, so the recorded SDK reference trace stays unchanged.
+		static bool qsi_read_capabilities(indigo_device *device) {
+			std::string model("");
+			if (!QSI_CALL("get_ModelNumber", cam.get_ModelNumber(model))) {
+				return false;
+			}
+			INDIGO_COPY_NAME(PRIVATE_DATA->model, model.c_str());
+			if (!QSI_CALL("get_CameraXSize", cam.get_CameraXSize(&PRIVATE_DATA->width)) || !QSI_CALL("get_CameraYSize", cam.get_CameraYSize(&PRIVATE_DATA->height))) {
+				return false;
+			}
+			if (!QSI_CALL("get_PixelSizeX", cam.get_PixelSizeX(&PRIVATE_DATA->pixel_width)) || !QSI_CALL("get_PixelSizeY", cam.get_PixelSizeY(&PRIVATE_DATA->pixel_height))) {
+				return false;
+			}
+			if (PRIVATE_DATA->width <= 0 || PRIVATE_DATA->height <= 0 || !isfinite(PRIVATE_DATA->pixel_width) || !isfinite(PRIVATE_DATA->pixel_height) || (size_t)PRIVATE_DATA->width > (SIZE_MAX - FITS_HEADER_SIZE) / 2 / (size_t)PRIVATE_DATA->height) {
+				snprintf(qsi_last_error, sizeof(qsi_last_error), "Invalid camera geometry");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", qsi_last_error);
+				return false;
+			}
+			if (!QSI_CALL("get_CanSetCCDTemperature", cam.get_CanSetCCDTemperature(&PRIVATE_DATA->can_set_temperature)) || !QSI_CALL("get_HasShutter", cam.get_HasShutter(&PRIVATE_DATA->has_shutter))) {
+				return false;
+			}
+			if (!QSI_CALL("get_MinExposureTime", cam.get_MinExposureTime(&PRIVATE_DATA->min_exposure)) || !QSI_CALL("get_MaxExposureTime", cam.get_MaxExposureTime(&PRIVATE_DATA->max_exposure))) {
+				return false;
+			}
+			if (!QSI_CALL("get_HasFilterWheel", cam.get_HasFilterWheel(&PRIVATE_DATA->has_filter_wheel))) {
+				return false;
+			}
+			PRIVATE_DATA->filter_count = 0;
+			if (PRIVATE_DATA->has_filter_wheel && !QSI_CALL("get_FilterCount", cam.get_FilterCount(PRIVATE_DATA->filter_count))) {
+				return false;
+			}
+			if (!QSI_CALL("get_CanSetGain", cam.get_CanSetGain(&PRIVATE_DATA->can_set_gain))) {
+				return false;
+			}
+			PRIVATE_DATA->gain = QSICamera::CameraGainHigh;
+			if (PRIVATE_DATA->can_set_gain) {
+				QSICamera::CameraGain gain = QSICamera::CameraGainHigh;
+				if (!QSI_CALL("get_CameraGain", cam.get_CameraGain(&gain))) {
+					return false;
+				}
+				PRIVATE_DATA->gain = (int)gain;
+			}
+			if (!QSI_CALL("get_MaxBinX", cam.get_MaxBinX(&PRIVATE_DATA->max_bin_x)) || !QSI_CALL("get_MaxBinY", cam.get_MaxBinY(&PRIVATE_DATA->max_bin_y)) || !QSI_CALL("get_PowerOfTwoBinning", cam.get_PowerOfTwoBinning(&PRIVATE_DATA->power_of_two_binning))) {
+				return false;
+			}
+			if (PRIVATE_DATA->max_bin_x < 1 || PRIVATE_DATA->max_bin_y < 1) {
+				snprintf(qsi_last_error, sizeof(qsi_last_error), "Invalid binning limits");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", qsi_last_error);
+				return false;
+			}
+			QSICamera::FanMode fan_mode = QSICamera::fanQuiet;
+			if (!QSI_CALL("get_FanMode", cam.get_FanMode(fan_mode))) {
+				return false;
+			}
+			PRIVATE_DATA->fan_mode = (int)fan_mode;
+			PRIVATE_DATA->cooler_on = false;
+			if (PRIVATE_DATA->can_set_temperature && !QSI_CALL("get_CoolerOn", cam.get_CoolerOn(&PRIVATE_DATA->cooler_on))) {
+				return false;
+			}
+			if (!QSI_CALL("get_CanGetCoolerPower", cam.get_CanGetCoolerPower(&PRIVATE_DATA->can_get_cooler_power))) {
+				return false;
+			}
+			QSICamera::ReadoutSpeed readout_speed = QSICamera::HighImageQuality;
+			if (!QSI_CALL("get_ReadoutSpeed", cam.get_ReadoutSpeed(readout_speed))) {
+				return false;
+			}
+			PRIVATE_DATA->readout_speed = (int)readout_speed;
+			QSICamera::AntiBloom anti_bloom = QSICamera::AntiBloomNormal;
+			if (!QSI_CALL("get_AntiBlooming", cam.get_AntiBlooming(&anti_bloom))) {
+				return false;
+			}
+			PRIVATE_DATA->anti_bloom = (int)anti_bloom;
+			QSICamera::PreExposureFlush pre_exposure_flush = QSICamera::FlushNormal;
+			if (!QSI_CALL("get_PreExposureFlush", cam.get_PreExposureFlush(&pre_exposure_flush))) {
+				return false;
+			}
+			PRIVATE_DATA->pre_exposure_flush = (int)pre_exposure_flush;
+			return true;
+		}
+
+		static void qsi_close(indigo_device *device) {
+			indigo_lock_master_device(device);
+			// The SDK connection and the blob buffer are released unconditionally,
+			// so a failing disconnect cannot strand either of them.
+			QSI_CALL("put_Connected(false)", cam.put_Connected(false));
+			indigo_safe_free(PRIVATE_DATA->buffer);
+			PRIVATE_DATA->buffer = NULL;
+			PRIVATE_DATA->exposure_active = false;
+			PRIVATE_DATA->can_check_temperature = true;
+			indigo_unlock_master_device(device);
+		}
+
+		static bool qsi_open(indigo_device *device) {
+			indigo_lock_master_device(device);
+			bool connected = false;
+			bool adopted = false;
+			bool result = QSI_CALL("get_Connected", cam.get_Connected(&connected));
+			if (result && connected) {
+				// Only one QSI camera can be open at a time.
+				std::string selected("");
+				QSI_CALL("get_SelectCamera", cam.get_SelectCamera(selected));
+				if (!strcmp(selected.c_str(), PRIVATE_DATA->serial)) {
+					// A previous disconnect failed and left this camera claimed by
+					// the SDK. Adopting that session is the only recovery short of
+					// reloading the driver.
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Reusing the SDK session of camera #%s", PRIVATE_DATA->serial);
+					adopted = true;
+				} else {
+					snprintf(qsi_last_error, sizeof(qsi_last_error), "Camera #%s is already connected, to use #%s disconnect it first.", selected.c_str(), PRIVATE_DATA->serial);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", qsi_last_error);
+					result = false;
+				}
+			}
+			if (result && !adopted) {
+				std::string serial(PRIVATE_DATA->serial);
+				result = QSI_CALL("put_SelectCamera", cam.put_SelectCamera(serial)) && QSI_CALL("put_IsMainCamera", cam.put_IsMainCamera(true)) && QSI_CALL("put_Connected(true)", cam.put_Connected(true));
+			}
+			if (result) {
+				result = qsi_read_capabilities(device);
+				if (result) {
+					PRIVATE_DATA->buffer = (unsigned short *)indigo_alloc_blob_buffer(2 * PRIVATE_DATA->width * PRIVATE_DATA->height + FITS_HEADER_SIZE);
+					result = PRIVATE_DATA->buffer != NULL;
+				}
+				if (!result) {
+					// Roll back the SDK connection, otherwise the camera stays
+					// claimed and can never be opened again.
+					QSI_CALL("put_Connected(false)", cam.put_Connected(false));
+					indigo_safe_free(PRIVATE_DATA->buffer);
+					PRIVATE_DATA->buffer = NULL;
+				}
+			}
+			PRIVATE_DATA->exposure_active = false;
+			PRIVATE_DATA->can_check_temperature = true;
+			indigo_unlock_master_device(device);
+			return result;
+		}
+
+		// Discovery has to know whether a camera carries a filter wheel before the
+		// logical devices are attached. The SDK allows one open camera, so a camera
+		// arriving while another one is connected cannot be probed; it is then
+		// assumed to have a wheel and the wheel connection handler validates it.
+		static bool qsi_probe(qsi_private_data *private_data) {
+			bool connected = false;
+			if (!QSI_CALL("get_Connected", cam.get_Connected(&connected))) {
+				return false;
+			}
+			if (connected) {
+				private_data->has_filter_wheel = true;
+				private_data->filter_count = 0;
+				return true;
+			}
+			std::string serial(private_data->serial);
+			if (!QSI_CALL("put_SelectCamera", cam.put_SelectCamera(serial)) || !QSI_CALL("put_Connected(true)", cam.put_Connected(true))) {
+				return false;
+			}
+			bool has_filter_wheel = false;
+			int filter_count = 0;
+			bool result = QSI_CALL("get_HasFilterWheel", cam.get_HasFilterWheel(&has_filter_wheel));
+			if (result && has_filter_wheel) {
+				result = QSI_CALL("get_FilterCount", cam.get_FilterCount(filter_count));
+			}
+			QSI_CALL("put_Connected(false)", cam.put_Connected(false));
+			if (!result) {
+				return false;
+			}
+			private_data->has_filter_wheel = has_filter_wheel && filter_count > 0;
+			private_data->filter_count = filter_count;
+			return true;
+		}
+	}
+	on_init {
+		std::string info("");
+		QSI_CALL("get_DriverInfo", cam.get_DriverInfo(info));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "QSIAPI version: %s", info.c_str());
+	}
+	sdk {
+		hotplug = true;
+		discovery_retries = 6;
+		vid = QSI_VENDOR_ID;
+		plug {
+			plug_result = false;
+			if (descriptor.idProduct == QSI_PRODUCT_ID1 || descriptor.idProduct == QSI_PRODUCT_ID2) {
+				std::string serials[QSICamera::MAXCAMERAS];
+				std::string descriptions[QSICamera::MAXCAMERAS];
+				int count = 0;
+				if (qsi_enumerate(serials, descriptions, &count)) {
+					for (int i = 0; i < count; i++) {
+						char serial[INDIGO_NAME_SIZE];
+						INDIGO_COPY_NAME(serial, serials[i].c_str());
+						bool duplicate = false;
+						int available = 0;
+						for (int j = 0; j < MAX_DEVICES; j++) {
+							if (devices[j] == NULL) {
+								available++;
+							} else if (!strcmp(((qsi_private_data *)devices[j]->private_data)->serial, serial)) {
+								duplicate = true;
+							}
+						}
+						if (duplicate) {
+							continue;
+						}
+						INDIGO_COPY_NAME(private_data->serial, serial);
+						if (!qsi_probe(private_data)) {
+							break;
+						}
+						if (available < 1 + (private_data->has_filter_wheel ? 1 : 0)) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "No free device slot for camera #%s", serial);
+							break;
+						}
+						char description[INDIGO_NAME_SIZE];
+						INDIGO_COPY_NAME(description, descriptions[i].c_str());
+						snprintf(name, INDIGO_NAME_SIZE, "%s #%s", description, serial);
+						snprintf(private_data->wheel_name, INDIGO_NAME_SIZE, "%s (wheel) #%s", description, serial);
+						plug_result = true;
+						break;
+					}
+				}
+			}
+		}
+		unplug_match {
+			std::string serials[QSICamera::MAXCAMERAS];
+			std::string descriptions[QSICamera::MAXCAMERAS];
+			int count = 0;
+			unplug_result = false;
+			if (qsi_enumerate(serials, descriptions, &count)) {
+				bool found = false;
+				for (int i = 0; i < count; i++) {
+					if (!strcmp(serials[i].c_str(), private_data->serial)) {
+						found = true;
+						break;
+					}
+				}
+				// A failed or incomplete enumeration is inconclusive, never proof
+				// that the camera is gone.
+				unplug_result = !found;
+			}
+		}
+	}
+	ccd {
+		name = "%s";
+		code {
+			static void exposure_finalizer(indigo_device *device);
+
+			static void qsi_exposure_failed(indigo_device *device) {
+				PRIVATE_DATA->exposure_active = false;
+				PRIVATE_DATA->can_check_temperature = true;
+				indigo_ccd_failure_cleanup(device);
+				CCD_EXPOSURE_ITEM->number.value = 0;
+				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "%s", qsi_last_error);
+			}
+
+			static void qsi_abort_exposure(indigo_device *device) {
+				bool can_abort = false;
+				if (QSI_CALL("get_CanAbortExposure", cam.get_CanAbortExposure(&can_abort)) && can_abort) {
+					QSI_CALL("AbortExposure", cam.AbortExposure());
+				}
+			}
+
+			static void exposure_finalizer(indigo_device *device) {
+				if (!IS_CONNECTED || !PRIVATE_DATA->exposure_active) {
+					return;
+				}
+				bool ready = false;
+				if (!QSI_CALL("get_ImageReady", cam.get_ImageReady(&ready))) {
+					qsi_exposure_failed(device);
+					return;
+				}
+				if (!ready) {
+					if (indigo_monotonic_time() < PRIVATE_DATA->readout_deadline) {
+						indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, QSI_READOUT_POLL_PERIOD, exposure_finalizer);
+					} else {
+						qsi_abort_exposure(device);
+						snprintf(qsi_last_error, sizeof(qsi_last_error), "Image readout timed out");
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", qsi_last_error);
+						qsi_exposure_failed(device);
+					}
+					return;
+				}
+				int width = 0, height = 0, element_size = 0;
+				if (!QSI_CALL("get_ImageArraySize", cam.get_ImageArraySize(width, height, element_size))) {
+					qsi_exposure_failed(device);
+					return;
+				}
+				if (width != PRIVATE_DATA->image_width || height != PRIVATE_DATA->image_height) {
+					snprintf(qsi_last_error, sizeof(qsi_last_error), "Unexpected image size %d x %d", width, height);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", qsi_last_error);
+					qsi_exposure_failed(device);
+					return;
+				}
+				if (!QSI_CALL("get_ImageArray", cam.get_ImageArray(PRIVATE_DATA->buffer + FITS_HEADER_SIZE / 2))) {
+					qsi_exposure_failed(device);
+					return;
+				}
+				PRIVATE_DATA->exposure_active = false;
+				PRIVATE_DATA->can_check_temperature = true;
+				CCD_EXPOSURE_ITEM->number.value = 0;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Image %d x %d", width, height);
+				indigo_process_image(device, PRIVATE_DATA->buffer, width, height, 16, true, true, NULL, false);
+				CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			}
+
+			static bool qsi_initialize_ccd(indigo_device *device) {
+				snprintf(INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_NAME_SIZE, "QSI %s", PRIVATE_DATA->model);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->width;
+				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->height;
+				CCD_FRAME_LEFT_ITEM->number.value = CCD_FRAME_LEFT_ITEM->number.target = 0;
+				CCD_FRAME_TOP_ITEM->number.value = CCD_FRAME_TOP_ITEM->number.target = 0;
+				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA->pixel_width;
+				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->pixel_height;
+				CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = PRIVATE_DATA->max_bin_x;
+				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = PRIVATE_DATA->max_bin_y;
+				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
+				CCD_EXPOSURE_ITEM->number.min = PRIVATE_DATA->min_exposure;
+				CCD_EXPOSURE_ITEM->number.max = PRIVATE_DATA->max_exposure;
+				CCD_BIN_PROPERTY->perm = CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+				CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.target = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+				CCD_BIN_HORIZONTAL_ITEM->number.max = PRIVATE_DATA->max_bin_x;
+				CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = CCD_BIN_VERTICAL_ITEM->number.min = 1;
+				CCD_BIN_VERTICAL_ITEM->number.max = PRIVATE_DATA->max_bin_y;
+				int max_bin = PRIVATE_DATA->max_bin_x > PRIVATE_DATA->max_bin_y ? PRIVATE_DATA->max_bin_y : PRIVATE_DATA->max_bin_x;
+				CCD_MODE_PROPERTY = indigo_resize_property(CCD_MODE_PROPERTY, max_bin);
+				CCD_MODE_PROPERTY->count = 0;
+				for (int bin = 1; bin <= max_bin; bin = PRIVATE_DATA->power_of_two_binning ? (bin * 2) : (bin + 1)) {
+					char name[32], label[128];
+					snprintf(name, sizeof(name), "BIN_%dx%d", bin, bin);
+					snprintf(label, sizeof(label), "RAW 16 %dx%d", (int)(PRIVATE_DATA->width / bin), (int)(PRIVATE_DATA->height / bin));
+					indigo_init_switch_item(CCD_MODE_ITEM + (CCD_MODE_PROPERTY->count++), name, label, bin == 1);
+				}
+				CCD_GAIN_PROPERTY->hidden = !PRIVATE_DATA->can_set_gain;
+				if (PRIVATE_DATA->can_set_gain) {
+					CCD_GAIN_ITEM->number.min = QSICamera::CameraGainHigh;
+					CCD_GAIN_ITEM->number.max = QSICamera::CameraGainAuto;
+					CCD_GAIN_ITEM->number.step = 1;
+					CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = PRIVATE_DATA->gain;
+				}
+				CCD_TEMPERATURE_PROPERTY->hidden = CCD_COOLER_PROPERTY->hidden = !PRIVATE_DATA->can_set_temperature;
+				if (PRIVATE_DATA->can_set_temperature) {
+					CCD_TEMPERATURE_PROPERTY->perm = CCD_COOLER_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_TEMPERATURE_ITEM->number.min = -60;
+					CCD_TEMPERATURE_ITEM->number.max = 60;
+					CCD_TEMPERATURE_ITEM->number.step = 1;
+					indigo_set_switch(CCD_COOLER_PROPERTY, PRIVATE_DATA->cooler_on ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
+				}
+				CCD_COOLER_POWER_PROPERTY->hidden = !PRIVATE_DATA->can_get_cooler_power;
+				X_QSI_FAN_MODE_PROPERTY->hidden = false;
+				switch (PRIVATE_DATA->fan_mode) {
+					case QSICamera::fanOff:
+						indigo_set_switch(X_QSI_FAN_MODE_PROPERTY, X_QSI_FAN_MODE_OFF_ITEM, true);
+						break;
+					case QSICamera::fanQuiet:
+						indigo_set_switch(X_QSI_FAN_MODE_PROPERTY, X_QSI_FAN_MODE_QUIET_ITEM, true);
+						break;
+					case QSICamera::fanFull:
+						indigo_set_switch(X_QSI_FAN_MODE_PROPERTY, X_QSI_FAN_MODE_FULL_ITEM, true);
+						break;
+					default:
+						X_QSI_FAN_MODE_PROPERTY->hidden = true;
+						break;
+				}
+				X_QSI_READOUT_SPEED_PROPERTY->hidden = false;
+				switch (PRIVATE_DATA->readout_speed) {
+					case QSICamera::HighImageQuality:
+						indigo_set_switch(X_QSI_READOUT_SPEED_PROPERTY, X_QSI_READOUT_HQ_ITEM, true);
+						break;
+					case QSICamera::FastReadout:
+						indigo_set_switch(X_QSI_READOUT_SPEED_PROPERTY, X_QSI_READOUT_FAST_ITEM, true);
+						break;
+					default:
+						X_QSI_READOUT_SPEED_PROPERTY->hidden = true;
+						break;
+				}
+				X_QSI_ANTI_BLOOM_PROPERTY->hidden = false;
+				switch (PRIVATE_DATA->anti_bloom) {
+					case QSICamera::AntiBloomNormal:
+						indigo_set_switch(X_QSI_ANTI_BLOOM_PROPERTY, X_QSI_ANTI_BLOOM_NORMAL_ITEM, true);
+						break;
+					case QSICamera::AntiBloomHigh:
+						indigo_set_switch(X_QSI_ANTI_BLOOM_PROPERTY, X_QSI_ANTI_BLOOM_HIGH_ITEM, true);
+						break;
+					default:
+						X_QSI_ANTI_BLOOM_PROPERTY->hidden = true;
+						break;
+				}
+				X_QSI_PRE_EXPOSURE_FLUSH_PROPERTY->hidden = false;
+				switch (PRIVATE_DATA->pre_exposure_flush) {
+					case QSICamera::FlushNone:
+						indigo_set_switch(X_QSI_PRE_EXPOSURE_FLUSH_PROPERTY, X_QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM, true);
+						break;
+					case QSICamera::FlushModest:
+						indigo_set_switch(X_QSI_PRE_EXPOSURE_FLUSH_PROPERTY, X_QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM, true);
+						break;
+					case QSICamera::FlushNormal:
+						indigo_set_switch(X_QSI_PRE_EXPOSURE_FLUSH_PROPERTY, X_QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM, true);
+						break;
+					case QSICamera::FlushAggressive:
+						indigo_set_switch(X_QSI_PRE_EXPOSURE_FLUSH_PROPERTY, X_QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM, true);
+						break;
+					case QSICamera::FlushVeryAggressive:
+						indigo_set_switch(X_QSI_PRE_EXPOSURE_FLUSH_PROPERTY, X_QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM, true);
+						break;
+					default:
+						X_QSI_PRE_EXPOSURE_FLUSH_PROPERTY->hidden = true;
+						break;
+				}
+				return true;
+			}
+		}
+		on_attach {
+			INFO_PROPERTY->count = 8;
+			INDIGO_COPY_NAME(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, PRIVATE_DATA->serial);
+		}
+		on_connect {
+			connection_result = qsi_initialize_ccd(device);
+		}
+		on_disconnect {
+			if (PRIVATE_DATA->exposure_active) {
+				qsi_abort_exposure(device);
+				PRIVATE_DATA->exposure_active = false;
+			}
+			indigo_ccd_failure_cleanup(device);
+			CCD_EXPOSURE_ITEM->number.value = 0;
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		on_timer {
+			// The pre-migration driver deliberately kept the SDK idle between
+			// exposure start and image handoff; that is preserved.
+			if (PRIVATE_DATA->can_check_temperature) {
+				double temperature = 0;
+				if (QSI_CALL("get_CCDTemperature", cam.get_CCDTemperature(&temperature))) {
+					CCD_TEMPERATURE_ITEM->number.value = temperature;
+					// BUSY means "cooling towards the target". The generated change
+					// dispatch rejects a request while the property is BUSY, so an
+					// idle cooler must leave the property in OK.
+					CCD_TEMPERATURE_PROPERTY->state = !CCD_COOLER_PROPERTY->hidden && CCD_COOLER_ON_ITEM->sw.value && fabs(temperature - CCD_TEMPERATURE_ITEM->number.target) > 0.2 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+					indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+				} else {
+					CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "%s", qsi_last_error);
+				}
+				bool can_get_cooler_power = false;
+				if (QSI_CALL("get_CanGetCoolerPower", cam.get_CanGetCoolerPower(&can_get_cooler_power)) && can_get_cooler_power) {
+					double power = 0;
+					if (QSI_CALL("get_CoolerPower", cam.get_CoolerPower(&power))) {
+						CCD_COOLER_POWER_ITEM->number.value = power;
+						CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+					} else {
+						CCD_COOLER_POWER_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, "%s", qsi_last_error);
+					}
+				}
+			}
+			indigo_execute_handler_in(device, QSI_TEMPERATURE_PERIOD, ccd_timer_callback);
+		}
+		inherited CCD_EXPOSURE {
+			on_change {
+				indigo_use_shortest_exposure_if_bias(device);
+				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				indigo_ccd_exposure_setup(device);
+				int bin_x = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+				int bin_y = (int)CCD_BIN_VERTICAL_ITEM->number.value;
+				PRIVATE_DATA->image_width = (int)CCD_FRAME_WIDTH_ITEM->number.value / bin_x;
+				PRIVATE_DATA->image_height = (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin_y;
+				bool light = !(CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value);
+				PRIVATE_DATA->can_check_temperature = false;
+				if (!QSI_CALL("put_StartX", cam.put_StartX((long)(CCD_FRAME_LEFT_ITEM->number.value / bin_x))) || !QSI_CALL("put_StartY", cam.put_StartY((long)(CCD_FRAME_TOP_ITEM->number.value / bin_y))) || !QSI_CALL("put_NumX", cam.put_NumX(PRIVATE_DATA->image_width)) || !QSI_CALL("put_NumY", cam.put_NumY(PRIVATE_DATA->image_height)) || !QSI_CALL("put_BinX", cam.put_BinX((short)bin_x)) || !QSI_CALL("put_BinY", cam.put_BinY((short)bin_y)) || !QSI_CALL("StartExposure", cam.StartExposure(CCD_EXPOSURE_ITEM->number.target, light))) {
+					qsi_exposure_failed(device);
+					return;
+				}
+				PRIVATE_DATA->exposure_active = true;
+				PRIVATE_DATA->readout_deadline = indigo_monotonic_time() + CCD_EXPOSURE_ITEM->number.target + QSI_READOUT_TIMEOUT;
+				indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.target, exposure_finalizer); // exposure_finalizer publishes completion.
+			}
+		}
+		inherited CCD_ABORT_EXPOSURE {
+			on_change {
+				indigo_cancel_pending_handler(device, ccd_exposure_handler);
+				indigo_cancel_pending_handler(device, exposure_finalizer);
+				if (PRIVATE_DATA->exposure_active) {
+					qsi_abort_exposure(device);
+					PRIVATE_DATA->exposure_active = false;
+				}
+				PRIVATE_DATA->can_check_temperature = true;
+				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_ccd_abort_exposure_cleanup(device);
+				}
+			}
+		}
+		inherited CCD_COOLER {
+			on_change {
+				if (!QSI_CALL("put_CoolerOn", cam.put_CoolerOn(CCD_COOLER_ON_ITEM->sw.value))) {
+					CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited CCD_TEMPERATURE {
+			preserve_values = true;
+			on_change {
+				if (!CCD_COOLER_PROPERTY->hidden && CCD_COOLER_OFF_ITEM->sw.value && QSI_CALL("put_CoolerOn", cam.put_CoolerOn(true))) {
+					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
+					CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+				}
+				if (QSI_CALL("put_SetCCDTemperature", cam.put_SetCCDTemperature(CCD_TEMPERATURE_ITEM->number.target))) {
+					CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
+				} else {
+					CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited CCD_GAIN {
+			preserve_values = true;
+			on_change {
+				if (QSI_CALL("put_CameraGain", cam.put_CameraGain((QSICamera::CameraGain)(int)CCD_GAIN_ITEM->number.target))) {
+					CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target;
+					PRIVATE_DATA->gain = (int)CCD_GAIN_ITEM->number.value;
+				} else {
+					CCD_GAIN_ITEM->number.target = CCD_GAIN_ITEM->number.value;
+					CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		switch X_QSI_READOUT_SPEED {
+			name = "X_QSI_READOUT_SPEED";
+			label = "CCD readout speed";
+			group = CCD_ADVANCED_GROUP;
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			persistent = true;
+			item X_QSI_READOUT_HQ { name = "HIGH_QUALITY"; label = "High Quality"; }
+			item X_QSI_READOUT_FAST { name = "FAST_READOUT"; label = "Fast Readout"; }
+			on_change {
+				QSICamera::ReadoutSpeed readout_speed = X_QSI_READOUT_FAST_ITEM->sw.value ? QSICamera::FastReadout : QSICamera::HighImageQuality;
+				if (QSI_CALL("put_ReadoutSpeed", cam.put_ReadoutSpeed(readout_speed))) {
+					PRIVATE_DATA->readout_speed = (int)readout_speed;
+				} else {
+					X_QSI_READOUT_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		switch X_QSI_ANTI_BLOOM {
+			name = "X_QSI_ANTI_BLOOM";
+			label = "Antiblooming";
+			group = CCD_ADVANCED_GROUP;
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			persistent = true;
+			item X_QSI_ANTI_BLOOM_NORMAL { name = "NORMAL"; label = "Normal"; }
+			item X_QSI_ANTI_BLOOM_HIGH { name = "HIGH"; label = "High"; }
+			on_change {
+				QSICamera::AntiBloom anti_bloom = X_QSI_ANTI_BLOOM_HIGH_ITEM->sw.value ? QSICamera::AntiBloomHigh : QSICamera::AntiBloomNormal;
+				if (QSI_CALL("put_AntiBlooming", cam.put_AntiBlooming(anti_bloom))) {
+					PRIVATE_DATA->anti_bloom = (int)anti_bloom;
+				} else {
+					X_QSI_ANTI_BLOOM_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		switch X_QSI_PRE_EXPOSURE_FLUSH {
+			name = "X_QSI_PRE_EXPOSURE_FLUSH";
+			label = "Pre-exposure flush";
+			group = CCD_ADVANCED_GROUP;
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			persistent = true;
+			item X_QSI_PRE_EXPOSURE_FLUSH_NONE { name = "NONE"; label = "Off"; }
+			item X_QSI_PRE_EXPOSURE_FLUSH_MODEST { name = "MODEST"; label = "Modest"; }
+			item X_QSI_PRE_EXPOSURE_FLUSH_NORMAL { name = "NORMAL"; label = "Normal"; }
+			item X_QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE { name = "AGGRESSIVE"; label = "Aggressive"; }
+			item X_QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE { name = "VERY_AGGRESSIVE"; label = "Very aggressive"; }
+			on_change {
+				QSICamera::PreExposureFlush pre_exposure_flush = QSICamera::FlushNormal;
+				if (X_QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM->sw.value) {
+					pre_exposure_flush = QSICamera::FlushNone;
+				} else if (X_QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM->sw.value) {
+					pre_exposure_flush = QSICamera::FlushModest;
+				} else if (X_QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM->sw.value) {
+					pre_exposure_flush = QSICamera::FlushAggressive;
+				} else if (X_QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM->sw.value) {
+					pre_exposure_flush = QSICamera::FlushVeryAggressive;
+				}
+				if (QSI_CALL("put_PreExposureFlush", cam.put_PreExposureFlush(pre_exposure_flush))) {
+					PRIVATE_DATA->pre_exposure_flush = (int)pre_exposure_flush;
+				} else {
+					X_QSI_PRE_EXPOSURE_FLUSH_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		switch X_QSI_FAN_MODE {
+			name = "X_QSI_FAN_MODE";
+			label = "Fan mode";
+			group = CCD_COOLER_GROUP;
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			persistent = true;
+			item X_QSI_FAN_MODE_OFF { name = "OFF"; label = "Off"; }
+			item X_QSI_FAN_MODE_QUIET { name = "QUIET"; label = "Quiet"; }
+			item X_QSI_FAN_MODE_FULL { name = "FULL_SPEED"; label = "Full speed"; }
+			on_change {
+				QSICamera::FanMode fan_mode = QSICamera::fanQuiet;
+				if (X_QSI_FAN_MODE_OFF_ITEM->sw.value) {
+					fan_mode = QSICamera::fanOff;
+				} else if (X_QSI_FAN_MODE_FULL_ITEM->sw.value) {
+					fan_mode = QSICamera::fanFull;
+				}
+				if (QSI_CALL("put_FanMode", cam.put_FanMode(fan_mode))) {
+					PRIVATE_DATA->fan_mode = (int)fan_mode;
+				} else {
+					X_QSI_FAN_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+	}
+	wheel {
+		name = "%s";
+		name_value = private_data->wheel_name;
+		attach_if = ccd_attached && private_data->has_filter_wheel;
+		code {
+			// Handlers and finalizers already run with the master device mutex held
+			// by the handler queue, so they must not lock it again.
+			static void wheel_move_finalizer(indigo_device *device) {
+				if (!IS_CONNECTED) {
+					return;
+				}
+				short position = -1;
+				bool result = QSI_CALL("get_Position", cam.get_Position(&position));
+				if (!result) {
+					WHEEL_SLOT_ITEM->number.target = WHEEL_SLOT_ITEM->number.value;
+					WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, WHEEL_SLOT_PROPERTY, "%s", qsi_last_error);
+					return;
+				}
+				if (position < 0) {
+					if (indigo_monotonic_time() < PRIVATE_DATA->wheel_deadline) {
+						indigo_execute_handler_in(device, QSI_WHEEL_POLL_PERIOD, wheel_move_finalizer);
+					} else {
+						WHEEL_SLOT_ITEM->number.target = WHEEL_SLOT_ITEM->number.value;
+						WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Filter wheel did not reach the requested slot");
+					}
+					return;
+				}
+				PRIVATE_DATA->wheel_slot = position + 1;
+				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->wheel_slot;
+				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+			}
+		}
+		on_attach {
+			INFO_PROPERTY->count = 8;
+			INDIGO_COPY_NAME(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, PRIVATE_DATA->serial);
+		}
+		on_connect {
+			indigo_lock_master_device(device);
+			snprintf(INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_NAME_SIZE, "QSI %s", PRIVATE_DATA->model);
+			int filter_count = PRIVATE_DATA->filter_count;
+			connection_result = filter_count > 0 && filter_count <= WHEEL_SLOT_NAME_PROPERTY->allocated_count;
+			if (!connection_result) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera #%s has no usable filter wheel", PRIVATE_DATA->serial);
+			} else {
+				short position = -1;
+				connection_result = QSI_CALL("get_Position", cam.get_Position(&position));
+				if (connection_result) {
+					WHEEL_SLOT_ITEM->number.min = 1;
+					WHEEL_SLOT_ITEM->number.max = filter_count;
+					WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = filter_count;
+					PRIVATE_DATA->wheel_slot = position >= 0 ? position + 1 : 1;
+					WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->wheel_slot;
+				}
+			}
+			indigo_unlock_master_device(device);
+		}
+		inherited WHEEL_SLOT {
+			preserve_values = true;
+			on_change {
+				int slot = (int)WHEEL_SLOT_ITEM->number.target;
+				short position = -1;
+				bool result = QSI_CALL("get_Position", cam.get_Position(&position));
+				if (result && position == slot - 1) {
+					PRIVATE_DATA->wheel_slot = slot;
+					WHEEL_SLOT_ITEM->number.value = slot;
+					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+				} else if (result && QSI_CALL("put_Position", cam.put_Position((short)(slot - 1)))) {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+					PRIVATE_DATA->wheel_deadline = indigo_monotonic_time() + QSI_WHEEL_TIMEOUT;
+					indigo_execute_handler_in(device, QSI_WHEEL_POLL_PERIOD, wheel_move_finalizer); // wheel_move_finalizer publishes completion.
+				} else {
+					WHEEL_SLOT_ITEM->number.target = WHEEL_SLOT_ITEM->number.value;
+					WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+			}
+		}
+	}
+}

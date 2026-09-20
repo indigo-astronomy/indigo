@@ -48,6 +48,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_raw_image
 INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_qhy2_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_qsi_sdk \
 	$(INTEGRATION_BUILD)/test_guider_asi_sdk \
 	$(INTEGRATION_BUILD)/test_guider_cgusbst4_simulator \
 	$(INTEGRATION_BUILD)/test_aux_cloudwatcher_simulator \
@@ -1959,6 +1960,26 @@ $(INTEGRATION_BUILD)/ccd_qhy_sdk_framework.o: ../indigo_libs/indigo_driver.c Mak
 # Build only: physical acceptance requires explicit --run, library and device selection.
 $(TEST_BUILD)/hardware/test_ccd_qhy_hw: hardware/test_ccd_qhy_hw.c test_runner.h | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS)
+
+# QSI compiles against its own real SDK header and a fake QSICamera implementation.
+QSI_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include
+QSI_SDK_TEST_REPLACEMENTS = -Dindigo_start_usb_event_handler=qsi_test_usb_start -Dindigo_attach_device=qsi_test_attach -Dindigo_detach_device=qsi_test_detach -Dlibusb_hotplug_register_callback_sim=qsi_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=qsi_test_usb_deregister_poll -Dlibusb_hotplug_register_callback=qsi_test_usb_register -Dlibusb_hotplug_deregister_callback=qsi_test_usb_deregister -Dlibusb_ref_device=qsi_test_usb_ref -Dlibusb_unref_device=qsi_test_usb_unref -Dlibusb_get_device_descriptor=qsi_test_usb_descriptor -Dindigo_usleep=qsi_test_usleep -Dindigo_monotonic_time=qsi_test_clock
+QSI_TEST_CFLAGS = $(TEST_CFLAGS)
+QSI_TEST_CXXFLAGS = $(filter-out -std=gnu11,$(QSI_TEST_CFLAGS)) -std=gnu++11
+QSI_TEST_LDFLAGS = $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/ccd_qsi_sdk_driver.o: ../indigo_drivers/ccd_qsi/indigo_ccd_qsi.cpp ../indigo_drivers/ccd_qsi/indigo_ccd_qsi.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(QSI_TEST_CXXFLAGS) $(QSI_SDK_TEST_INCLUDE) $(QSI_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/ccd_qsi_fake_sdk.o: integration/qsi_fake_sdk.cpp integration/qsi_fake_sdk.h integration/ccd_test_noise.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(QSI_TEST_CXXFLAGS) $(QSI_SDK_TEST_INCLUDE) -Iintegration -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_qsi_sdk: integration/test_ccd_qsi_sdk.c integration/qsi_fake_sdk.h integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_qsi_sdk_driver.o $(INTEGRATION_BUILD)/ccd_qsi_fake_sdk.o | $(INTEGRATION_BUILD)
+	$(CC) $(QSI_TEST_CFLAGS) $(QSI_SDK_TEST_INCLUDE) -Iintegration $< $(INTEGRATION_BUILD)/ccd_qsi_sdk_driver.o $(INTEGRATION_BUILD)/ccd_qsi_fake_sdk.o -o $@ $(QSI_TEST_LDFLAGS)
+
+.PHONY: test-ccd-qsi-sdk
+test-ccd-qsi-sdk: $(INTEGRATION_BUILD)/test_ccd_qsi_sdk
+	$(INTEGRATION_BUILD)/test_ccd_qsi_sdk
 
 ATIK_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_atik/bin_externals/libatikcameras/include
 ATIK_SDK_TEST_REPLACEMENTS = -Dindigo_queue_create=atik_test_queue_create -Dindigo_execute_handler_in=atik_test_execute_in -Dindigo_monotonic_time=atik_test_monotonic_time -Dlibusb_hotplug_register_callback_sim=atik_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=atik_test_usb_deregister_poll -Dindigo_start_usb_event_handler=atik_test_usb_start -Dindigo_attach_device=atik_test_attach -Dindigo_detach_device=atik_test_detach -Dlibusb_hotplug_register_callback=atik_test_usb_register -Dlibusb_hotplug_deregister_callback=atik_test_usb_deregister -Dlibusb_ref_device=atik_test_usb_ref -Dlibusb_unref_device=atik_test_usb_unref -Dlibusb_get_device_descriptor=atik_test_usb_descriptor

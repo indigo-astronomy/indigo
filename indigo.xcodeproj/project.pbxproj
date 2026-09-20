@@ -2696,33 +2696,6 @@
 		59910C6F305EF9B500FB1C2F /* indigo_aux_dragonfly.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_aux_dragonfly.driver; sourceTree = "<group>"; };
 		59910C70305EFA4E00FB1C2F /* indigo_dome_dragonfly.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_dome_dragonfly.driver; sourceTree = "<group>"; };
 		59910CC7305F0D3900FB1C2F /* lunatico_main_shared.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = lunatico_main_shared.c; sourceTree = "<group>"; };
-		C0DE2027091300040000000B /* indigo_focuser_lunatico.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_focuser_lunatico.vcxproj; sourceTree = "<group>"; };
-		C0DE2027091300040000000C /* indigo_rotator_lunatico.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_rotator_lunatico.vcxproj; sourceTree = "<group>"; };
-		C0DE20270913000400000001 /* indigo_focuser_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_lunatico.driver; sourceTree = "<group>"; };
-		C0DE20280919000100000001 /* indigo_aux_cloudwatcher.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_aux_cloudwatcher.driver; sourceTree = "<group>"; };
-		C0DE20280919000200000001 /* indigo_focuser_focusdreampro.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_focusdreampro.driver; sourceTree = "<group>"; };
-		C0DE20280920000100000001 /* indigo_focuser_mypro2.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_mypro2.driver; sourceTree = "<group>"; };
-		C0DE20280920000200000001 /* indigo_focuser_optecfl.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_optecfl.driver; sourceTree = "<group>"; };
-		C0DE20290920000500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
-		C0DE202A0920000500000002 /* indigo_wheel_fli.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_wheel_fli.driver; sourceTree = "<group>"; };
-		C0DE202B0920000500000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
-		C0DE202C0920000500000004 /* indigo_focuser_fli.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_fli.driver; sourceTree = "<group>"; };
-		C0DE202D0920000500000005 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
-		C0DE202E0920000500000006 /* indigo_ccd_fli.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_fli.driver; sourceTree = "<group>"; };
-		C0DE202F0920000500000007 /* fli_fake_sdk.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fli_fake_sdk.h; sourceTree = "<group>"; };
-		C0DE20300920000500000008 /* fli_sdk_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fli_sdk_test_common.h; sourceTree = "<group>"; };
-		C0DE20310920000500000009 /* test_wheel_fli_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_fli_sdk.c; sourceTree = "<group>"; };
-		C0DE20320920000500000010 /* test_focuser_fli_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_fli_sdk.c; sourceTree = "<group>"; };
-		C0DE20330920000500000011 /* test_ccd_fli_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_fli_sdk.c; sourceTree = "<group>"; };
-		C0DE20280920000100000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
-		C0DE20280919000200000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
-		C0DE20270913000400000002 /* indigo_rotator_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_lunatico.driver; sourceTree = "<group>"; };
-		C0DE20270913000400000003 /* lunatico_shared.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lunatico_shared.h; sourceTree = "<group>"; };
-		C0DE20270913000400000005 /* focuser_lunatico_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_lunatico_simulator.c; sourceTree = "<group>"; };
-		C0DE20270913000400000006 /* lunatico_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lunatico_simulator_common.h; sourceTree = "<group>"; };
-		C0DE2027091300040000000A /* rotator_lunatico_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = rotator_lunatico_simulator.c; sourceTree = "<group>"; };
-		C0DE20270913000400000007 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
-		C0DE20270913000400000008 /* lunatico_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lunatico_test_common.h; sourceTree = "<group>"; };
 		59910CC8305F0D3900FB1C2F /* lunatico_shared.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = lunatico_shared.c; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
@@ -5408,7 +5381,6 @@
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
 		9DB918001DF8546800678721 /* indigo_mount_lx200.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200.c; sourceTree = "<group>"; usesTabs = 1; wrapsLines = 0; };
 		9DB918011DF8546800678721 /* indigo_mount_lx200.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_lx200.h; sourceTree = "<group>"; };
-		C0DE20260920BEEF00000001 /* indigo_mount_lx200.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_mount_lx200.driver; sourceTree = "<group>"; };
 		9DB918051DF8647800678721 /* Meade-2010.10.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Meade-2010.10.pdf"; sourceTree = "<group>"; };
 		9DB918061DFEA42E00678721 /* indigo_io.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_io.c; sourceTree = "<group>"; };
 		9DB918071DFEA42E00678721 /* indigo_io.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_io.h; sourceTree = "<group>"; };
@@ -5477,7 +5449,7 @@
 		9DF4FD582DC4973A00302AA0 /* aux_wbplusv3_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_wbplusv3_simulator.c; sourceTree = "<group>"; };
 		9DF4FD5B2DC4A4F700302AA0 /* aux_wbprov3_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_wbprov3_simulator.c; sourceTree = "<group>"; };
 		9DF4FD5E2DC4BCD300302AA0 /* aux_wcv4ec_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_wcv4ec_simulator.c; sourceTree = "<group>"; };
-		9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi_main.cpp; sourceTree = "<group>"; };
+		9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_qsi_main.c; sourceTree = "<group>"; };
 		9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi.cpp; sourceTree = "<group>"; };
 		9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qsi.h; sourceTree = "<group>"; };
 		9DFA59842361D92600326A74 /* flatmaster.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = flatmaster.rules; sourceTree = "<group>"; };
@@ -5563,6 +5535,13 @@
 		C0DE20260913D50000000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260913D50000000002 /* test_aux_dsusb_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_dsusb_sdk.c; sourceTree = "<group>"; };
 		C0DE20260914003000000001 /* indigo_ccd_mi.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_ccd_mi.driver; sourceTree = "<group>"; };
+		C0DE20260920003000000001 /* indigo_ccd_qsi.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_ccd_qsi.driver; sourceTree = "<group>"; };
+		C0DE20260920003000000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260920003000000003 /* qsi_fake_sdk.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = qsi_fake_sdk.h; sourceTree = "<group>"; };
+		C0DE20260920003000000004 /* qsi_fake_sdk.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = qsi_fake_sdk.cpp; sourceTree = "<group>"; };
+		C0DE20260920003000000005 /* test_ccd_qsi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_qsi_sdk.c; sourceTree = "<group>"; };
+		C0DE20260920003000000006 /* original_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = original_reference_trace.txt; sourceTree = "<group>"; };
+		C0DE20260920003000000007 /* generated_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = generated_reference_trace.txt; sourceTree = "<group>"; };
 		C0DE20260914003000000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260914003000000003 /* test_ccd_mi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_mi_sdk.c; sourceTree = "<group>"; };
 		C0DE20260914003100000001 /* indigo_wheel_mi.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_mi.driver; sourceTree = "<group>"; };
@@ -5630,6 +5609,34 @@
 		C0DE20260918100000000005 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260918100000000006 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260918100000000007 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260920BEEF00000001 /* indigo_mount_lx200.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_mount_lx200.driver; sourceTree = "<group>"; };
+		C0DE20270913000400000001 /* indigo_focuser_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_lunatico.driver; sourceTree = "<group>"; };
+		C0DE20270913000400000002 /* indigo_rotator_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_lunatico.driver; sourceTree = "<group>"; };
+		C0DE20270913000400000003 /* lunatico_shared.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lunatico_shared.h; sourceTree = "<group>"; };
+		C0DE20270913000400000005 /* focuser_lunatico_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_lunatico_simulator.c; sourceTree = "<group>"; };
+		C0DE20270913000400000006 /* lunatico_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lunatico_simulator_common.h; sourceTree = "<group>"; };
+		C0DE20270913000400000007 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20270913000400000008 /* lunatico_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lunatico_test_common.h; sourceTree = "<group>"; };
+		C0DE2027091300040000000A /* rotator_lunatico_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = rotator_lunatico_simulator.c; sourceTree = "<group>"; };
+		C0DE2027091300040000000B /* indigo_focuser_lunatico.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_focuser_lunatico.vcxproj; sourceTree = "<group>"; };
+		C0DE2027091300040000000C /* indigo_rotator_lunatico.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_rotator_lunatico.vcxproj; sourceTree = "<group>"; };
+		C0DE20280919000100000001 /* indigo_aux_cloudwatcher.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_aux_cloudwatcher.driver; sourceTree = "<group>"; };
+		C0DE20280919000200000001 /* indigo_focuser_focusdreampro.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_focusdreampro.driver; sourceTree = "<group>"; };
+		C0DE20280919000200000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20280920000100000001 /* indigo_focuser_mypro2.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_mypro2.driver; sourceTree = "<group>"; };
+		C0DE20280920000100000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20280920000200000001 /* indigo_focuser_optecfl.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_optecfl.driver; sourceTree = "<group>"; };
+		C0DE20290920000500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE202A0920000500000002 /* indigo_wheel_fli.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_wheel_fli.driver; sourceTree = "<group>"; };
+		C0DE202B0920000500000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE202C0920000500000004 /* indigo_focuser_fli.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_fli.driver; sourceTree = "<group>"; };
+		C0DE202D0920000500000005 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE202E0920000500000006 /* indigo_ccd_fli.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_fli.driver; sourceTree = "<group>"; };
+		C0DE202F0920000500000007 /* fli_fake_sdk.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fli_fake_sdk.h; sourceTree = "<group>"; };
+		C0DE20300920000500000008 /* fli_sdk_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fli_sdk_test_common.h; sourceTree = "<group>"; };
+		C0DE20310920000500000009 /* test_wheel_fli_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_fli_sdk.c; sourceTree = "<group>"; };
+		C0DE20320920000500000010 /* test_focuser_fli_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_fli_sdk.c; sourceTree = "<group>"; };
+		C0DE20330920000500000011 /* test_ccd_fli_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_fli_sdk.c; sourceTree = "<group>"; };
 		C0DE26060912F10000000000 /* Origin678C.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = Origin678C.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000001 /* QHY26800A.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY26800A.img; sourceTree = "<group>"; };
 		C0DE26060912F10000000002 /* QHY585.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY585.img; sourceTree = "<group>"; };
@@ -8944,23 +8951,6 @@
 				59910BF1305B1CD600FB1C2F /* gps_gpsd_simulator.c */,
 			);
 			path = gps_gpsd_simulator;
-			sourceTree = "<group>";
-		};
-		C0DE20270913000400000004 /* focuser_lunatico_simulator */ = {
-			isa = PBXGroup;
-			children = (
-				C0DE20270913000400000006 /* lunatico_simulator_common.h */,
-				C0DE20270913000400000005 /* focuser_lunatico_simulator.c */,
-			);
-			path = focuser_lunatico_simulator;
-			sourceTree = "<group>";
-		};
-		C0DE20270913000400000009 /* rotator_lunatico_simulator */ = {
-			isa = PBXGroup;
-			children = (
-				C0DE2027091300040000000A /* rotator_lunatico_simulator.c */,
-			);
-			path = rotator_lunatico_simulator;
 			sourceTree = "<group>";
 		};
 		59910CC9305F0D3900FB1C2F /* shared */ = {
@@ -13983,6 +13973,8 @@
 				2D7262A5A6EB6D2BF8614DCA /* aux_test_isolation.h */,
 				C0DE20260908000300000001 /* ccd_test_noise.h */,
 				C0DE202F0920000500000007 /* fli_fake_sdk.h */,
+				C0DE20260920003000000003 /* qsi_fake_sdk.h */,
+				C0DE20260920003000000004 /* qsi_fake_sdk.cpp */,
 				C0DE20300920000500000008 /* fli_sdk_test_common.h */,
 				59FEFFC6301E6891007FB62D /* serial_simulator_test_common.h */,
 				59FA7BF6301D3F5A00A35CFB /* simulator_test_common.h */,
@@ -14032,6 +14024,7 @@
 				C0DE20260911000400000001 /* test_ccd_mallin_sdk.c */,
 				C0DE20260911000500000001 /* test_ccd_meade_sdk.c */,
 				C0DE20260914003000000003 /* test_ccd_mi_sdk.c */,
+				C0DE20260920003000000005 /* test_ccd_qsi_sdk.c */,
 				C0DE20260911000600000001 /* test_ccd_ogma_sdk.c */,
 				C0DE20260911000700000001 /* test_ccd_omegonpro_sdk.c */,
 				C0DE20260908000200000002 /* test_ccd_playerone_sdk.c */,
@@ -14146,6 +14139,7 @@
 		59FA7C07301D439A00A35CFB /* fixtures */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260920003000000008 /* ccd_qsi */,
 				C0DE20260916C0C000000005 /* ccd_uvc */,
 				C0DE20260917F0F000000003 /* dome_baader */,
 				C0DE20260917F1F000000003 /* dome_beaver */,
@@ -16131,10 +16125,12 @@
 			isa = PBXGroup;
 			children = (
 				591C3F4A1F8A883F002B5596 /* README.md */,
+				C0DE20260920003000000002 /* REFACTOR.md */,
 				5917AC4C21A35F9000AC018A /* Makefile.inc */,
+				C0DE20260920003000000001 /* indigo_ccd_qsi.driver */,
 				9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */,
 				9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */,
-				9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */,
+				9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.c */,
 				5917AC4D21A3625D00AC018A /* bin_externals */,
 			);
 			path = ccd_qsi;
@@ -16218,6 +16214,15 @@
 				C0DE20260914C00100000004 /* joystick.h */,
 			);
 			path = linux;
+			sourceTree = "<group>";
+		};
+		C0DE20260920003000000008 /* ccd_qsi */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20260920003000000006 /* original_reference_trace.txt */,
+				C0DE20260920003000000007 /* generated_reference_trace.txt */,
+			);
+			path = ccd_qsi;
 			sourceTree = "<group>";
 		};
 		C0DE20260916A0A500000004 /* focuser_astroasis */ = {
@@ -16306,6 +16311,23 @@
 				C0DE20260917F4F000000005 /* generated_reference_trace.txt */,
 			);
 			path = dome_talon6ror;
+			sourceTree = "<group>";
+		};
+		C0DE20270913000400000004 /* focuser_lunatico_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20270913000400000006 /* lunatico_simulator_common.h */,
+				C0DE20270913000400000005 /* focuser_lunatico_simulator.c */,
+			);
+			path = focuser_lunatico_simulator;
+			sourceTree = "<group>";
+		};
+		C0DE20270913000400000009 /* rotator_lunatico_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE2027091300040000000A /* rotator_lunatico_simulator.c */,
+			);
+			path = rotator_lunatico_simulator;
 			sourceTree = "<group>";
 		};
 		DF10000000000000000010 /* dome_dragonfly_simulator */ = {

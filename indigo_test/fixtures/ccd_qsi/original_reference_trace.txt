@@ -1,0 +1,64 @@
+get_DriverInfo
+get_AvailableCameras=1
+# connect ccd
+get_AvailableCameras=1
+get_Connected=false
+put_SelectCamera(00600123)
+put_IsMainCamera(true)
+put_Connected(true)
+get_ModelNumber=683ws
+get_CameraXSize=96
+get_CameraYSize=64
+get_PixelSizeX=5.40
+get_PixelSizeY=5.40
+get_CanSetCCDTemperature=true
+get_HasShutter=true
+get_MinExposureTime=0.030
+get_MaxExposureTime=3600.000
+get_HasFilterWheel=true
+get_FilterCount=5
+get_CanSetGain=true
+get_CameraGain=0
+get_MaxBinX=4
+get_MaxBinY=4
+get_PowerOfTwoBinning=false
+get_FanMode=1
+get_CoolerOn=false
+get_CanGetCoolerPower=true
+get_ReadoutSpeed=0
+get_AntiBlooming=0
+get_PreExposureFlush=2
+[periodic temperature poll]
+# connect wheel
+get_Position=0
+# move wheel
+get_Position=0
+put_Position(2)
+get_Position=2
+# configure frame
+[periodic temperature poll]
+# expose
+put_StartX(8)
+put_StartY(4)
+put_NumX(16)
+put_NumY(12)
+put_BinX(2)
+put_BinY(2)
+StartExposure(0.050,light)
+get_ImageReady=true
+get_ImageArraySize=16x12
+get_ImageArray
+[periodic temperature poll]
+# controls
+put_ReadoutSpeed(1)
+[periodic temperature poll]
+put_AntiBlooming(1)
+[periodic temperature poll]
+put_PreExposureFlush(1)
+[periodic temperature poll]
+put_FanMode(2)
+[periodic temperature poll]
+put_CoolerOn(true)
+[periodic temperature poll]
+# disconnect
+put_Connected(false)

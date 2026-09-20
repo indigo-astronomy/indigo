@@ -944,6 +944,16 @@ Pixel-format, bin and mode inventories follow SDK capabilities. Cooler/power and
 
 Source: `indigo_drivers/ccd_qhy/indigo_ccd_qhy.driver` and `indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.driver`, with independently generated C++ implementations in the same directories.
 
+### ccd_qsi
+
+Custom properties: `X_QSI_READOUT_SPEED` (HIGH_QUALITY / FAST_READOUT), `X_QSI_ANTI_BLOOM` (NORMAL / HIGH), `X_QSI_PRE_EXPOSURE_FLUSH` (NONE / MODEST / NORMAL / AGGRESSIVE / VERY_AGGRESSIVE) and `X_QSI_FAN_MODE` (OFF / QUIET / FULL_SPEED). All four are persistent. They replace the pre-3.0 names `QSI_READOUT_SPEED`, `QSI_ANTI_BLOOM`, `QSI_PRE_EXPOSURE_FLUSH` and `QSI_FAN_MODE`; the legacy names are not aliases. Each one is hidden when the SDK reports a value outside its documented enumeration, and each one is re-read from the camera at every connection.
+
+Driver-specific use of existing properties: `CCD_INFO`, `CCD_FRAME`, `CCD_BIN`, `CCD_MODE`, `CCD_EXPOSURE`, `CCD_ABORT_EXPOSURE`, `CCD_FRAME_TYPE`, `CCD_GAIN`, `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_TEMPERATURE`, `WHEEL_SLOT`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+`CCD_MODE` lists equal bins only, doubling when the camera reports power-of-two binning. `CCD_GAIN` maps 0/1/2 to the SDK high/low/auto camera gain and is visible only when the camera can set gain. `CCD_TEMPERATURE` and `CCD_COOLER` are visible only when the camera can set its CCD temperature, and `CCD_COOLER_POWER` only when it can report cooler power. `CCD_TEMPERATURE` is `BUSY` only while the cooler is enabled and the measured temperature has not reached the target. The optional internal filter wheel is a separate logical device sharing the camera session, and its public slot is the SDK position plus one. The vendor SDK allows only one connected camera and one filter wheel at a time.
+
+Source: `indigo_drivers/ccd_qsi/indigo_ccd_qsi.driver`.
+
 ### ccd_sbig
 
 Custom properties: `SBIG_ABG_STATE`, `SBIG_ADD_AO`, `SBIG_ADD_WHEEL`, `SBIG_FREEZE_TEC`.
