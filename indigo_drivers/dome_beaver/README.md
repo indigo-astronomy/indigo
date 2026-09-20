@@ -25,3 +25,7 @@ indigo_server indigo_dome_beaver
 
 Driver is developed and tested with:
 * Beaver Controller.
+
+## Testing
+
+2026-09-20 22:31 3.0.0.7 mac arm64 simulator 47/47 OK

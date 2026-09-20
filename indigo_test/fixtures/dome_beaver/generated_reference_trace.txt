@@ -43,8 +43,8 @@ S TX !dome gotoaz 180.000000:0#
 S POLL [dome status:257] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
 S POLL [dome status:256] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
 S POLL [dome status:256] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
-U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
 U DOME_STEPS BUSY STEPS=0/0
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
 U DOME_HORIZONTAL_COORDINATES OK AZ=180/180
 U DOME_STEPS OK STEPS=0/0
 ## steps clockwise 30
@@ -128,8 +128,8 @@ S TX !dome gotoaz 200.000000:0#
 S POLL [dome status:257] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
 S POLL [dome status:256] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
 S POLL [dome status:256] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
-U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
 U DOME_STEPS BUSY STEPS=10/10
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
 U DOME_HOME OK
 U DOME_HORIZONTAL_COORDINATES OK AZ=200/200
 U DOME_STEPS OK STEPS=10/10
@@ -141,8 +141,8 @@ S RX !dome abort 1#
 S TX !dome abort #:##
 S POLL [dome status:#] [dome getaz:#] [dome atpark:#] [dome athome:#] [dome shutterstatus:#] [seletek getfailurecode:#] [dome sendtoshutter "seletek getfailurecode":#]
 S POLL [dome status:#] [dome getaz:#] [dome shutterstatus:#] [seletek getfailurecode:#] [dome sendtoshutter "seletek getfailurecode":#]
-U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
 U DOME_STEPS BUSY STEPS=#/#
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
 U DOME_ABORT_MOTION BUSY ABORT_MOTION
 U DOME_SHUTTER OK CLOSED
 U DOME_ABORT_MOTION OK
@@ -154,8 +154,8 @@ S TX !dome gotoaz 300.000000:0#
 S POLL [dome status:257] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
 S POLL [dome status:256] [dome getaz:#] [dome atpark:0] [dome athome:0] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
 S POLL [dome status:256] [dome getaz:#] [dome shutterstatus:1] [seletek getfailurecode:0] [dome sendtoshutter "seletek getfailurecode":0]
-U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
 U DOME_STEPS BUSY STEPS=10/10
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
 U DOME_HORIZONTAL_COORDINATES OK AZ=300/300
 U DOME_STEPS OK STEPS=10/10
 ## abort idle

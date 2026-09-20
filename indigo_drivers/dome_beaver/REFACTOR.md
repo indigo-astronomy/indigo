@@ -246,3 +246,28 @@ Covered by the `rejected_change` scenario in `indigo_test/integration/test_dome_
 ```sh
 cd indigo_test && BEAVER_TEST_FILTER=rejected_change ./build/integration/test_dome_beaver_simulator
 ```
+
+## Rejected DOME_STEPS change was invisible (2026-09-20)
+
+`rejected_change_alerts_and_keeps_values` failed with "DOME_STEPS did not settle in ALERT". The
+`reject_change` branch did run — the client received the "Dome is moving: request can not be
+completed" message — but the property was published as BUSY, so the rejection never became
+observable and the status poll kept republishing BUSY for the rest of the rotation.
+
+Two threads wrote `DOME_STEPS_PROPERTY->state` without any ordering. The generated `reject_change`
+branch runs on the bus thread inside `change_property`, while `DOME_HORIZONTAL_COORDINATES.on_change`
+runs on the device queue. `INDIGO_COPY_VALUES_PROCESS_CHANGE` publishes BUSY synchronously and only
+then queues the handler, so `wait_state(DOME_HORIZONTAL_COORDINATES, BUSY)` in the test succeeds
+before the handler has run at all; the test's `DOME_STEPS` request then lands exactly while the
+handler is starting, and the handler's `state = INDIGO_BUSY_STATE` overwrote the ALERT the rejection
+had just assigned.
+
+The claim on `DOME_STEPS` moved from the queued handler into `on_change_request`, which runs on the
+bus thread like the rejection branch, so the two are now strictly ordered. Rotation still owns
+`DOME_STEPS` while it runs. The remaining writes to that state on the rotation path only ever set
+ALERT, which is what the rejection publishes anyway, so they cannot reintroduce the defect.
+
+`fixtures/dome_beaver/generated_reference_trace.txt` was regenerated: `U DOME_STEPS BUSY` now
+precedes `U DOME_HORIZONTAL_COORDINATES BUSY` in four places. No serial command changed.
+
+47/47 simulator scenarios pass.
