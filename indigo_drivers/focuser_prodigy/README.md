@@ -27,3 +27,7 @@ Measured position remains separate from the requested target. Both software limi
 ## License
 
 INDIGO Astronomy open-source license.
+
+## Testing
+
+2026-09-20 15:10 simulator 55/55 OK
