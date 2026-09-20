@@ -267,20 +267,49 @@ master is the device that unhides `DEVICE_PORT` (`DEVICE_PORT_PROPERTY->hidden
 After every driver test run, record the outcome in that driver's `README.md`:
 
 - Add a `## Testing` section if the file does not have one yet.
-- Append one line per run to that section, in the form `<timestamp> <type> <result>`:
+- Write one line per run to that section, in the form
+  `<timestamp> <version> <os> <architecture> <type> <result>`:
   - `<timestamp>` is the date and time of the run in `YYYY-MM-DD HH:MM` format.
+  - `<version>` is the version of the tested driver, written the way INDIGO
+    reports it, e.g. `3.0.0.17` for `DRIVER_VERSION` `0x03000011`, which a
+    generated driver gets from `version = 17;` in its `.driver` source.
+  - `<os>` is the operating system the test ran on: `mac`, `linux` or `windows`.
+  - `<architecture>` is the CPU architecture the test ran on, e.g. `x86`, `x64`,
+    `arm` or `arm64`.
   - `<type>` is `simulator`, `fake SDK`, or the name of the hardware used for the test.
   - `<result>` is `<total tests>/<passed tests>` followed by `OK` if all tests passed or `Failed` if any test failed.
+- Keep only the latest run of each configuration: replace the existing line that
+  has the same `<os>`, `<architecture>` and `<type>` instead of appending a
+  second one, and append a new line only when the section has no line for that
+  configuration yet. Lines of all other configurations stay untouched, so every
+  tested configuration keeps its most recent result. The `<version>` is not part
+  of the match, a newer run of the same configuration replaces the older one
+  even when the driver version changed.
+- Keep the lines ordered by timestamp, oldest first.
 - Record no other details in that section.
 
-Example:
+Example, after a simulator run on 2026-09-20 14:32, an Optec FocusLynx run on
+2026-09-20 15:04, and a second simulator run on 2026-09-21 09:15 that replaces
+the first one because it has the same operating system, architecture and type:
 
 ```markdown
 ## Testing
 
-2026-09-20 14:32 simulator 12/12 OK
-2026-09-20 15:04 Optec FocusLynx 12/11 Failed
+2026-09-20 15:04 3.0.0.7 mac arm64 Optec FocusLynx 12/11 Failed
+2026-09-21 09:15 3.0.0.8 mac arm64 simulator 12/12 OK
 ```
+
+After updating the `README.md`, run `tools/make_test_summary.py` from the
+project root:
+
+```bash
+python3 tools/make_test_summary.py
+```
+
+It collects the `## Testing` sections of all drivers into `TEST_SUMMARY.md` in
+the project root. Recording a test run is not finished until the script has
+been run, so commit the regenerated `TEST_SUMMARY.md` together with the
+`README.md` change, as part of the same test run.
 
 ## Documentation
 

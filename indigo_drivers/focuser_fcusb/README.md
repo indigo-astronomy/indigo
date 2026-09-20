@@ -31,4 +31,4 @@ Driver is tested with the physical hardware.
 
 ## Testing
 
-2026-09-20 15:23 fake SDK 17/17 OK
+2026-09-20 15:23 3.0.0.8 mac arm64 fake SDK 17/17 OK

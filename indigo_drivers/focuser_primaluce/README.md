@@ -40,4 +40,4 @@ As PrimaluceLab never answered any email both simulator and driver are based onl
 
 ## Testing
 
-2026-09-20 13:46 simulator 35/35 OK
+2026-09-20 13:46 3.0.0.13 mac arm64 simulator 35/35 OK
