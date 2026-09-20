@@ -1,3 +1,7 @@
+# ccd_simulator (Camera Simulator)
+
+2026-09-20 20:22 3.0.0.27 mac arm64 simulator 19/19 OK
+
 # focuser_dmfc (PegasusAstro DMFC Focuser)
 
 2026-09-20 12:30 3.0.0.17 mac arm64 simulator 25/25 OK
@@ -27,14 +31,26 @@
 
 2026-09-20 15:17 3.0.0.7 mac arm64 fake SDK 15/15 OK
 
+# mount_nexstar (Nexstar Mount)
+
+2026-09-20 20:44 3.0.0.34 mac arm64 simulator 13/13 OK
+
 # mount_nexstaraux (NexStar AUX Mount)
 
 2026-09-20 14:45 3.0.0.13 mac arm64 simulator 30/30 OK
+
+# mount_simulator (Mount Simulator)
+
+2026-09-20 20:23 3.0.0.16 mac arm64 simulator 16/16 OK
 
 # mount_synscan (SynScan Mount)
 
 2026-09-20 15:52 3.0.0.4 mac arm64 simulator 18/18 OK
 2026-09-20 15:56 3.0.0.4 mac arm64 SkyWatcher AZ-GTi 16/16 OK
+
+# mount_temma (Takahashi Temma Mount)
+
+2026-09-20 20:27 3.0.0.13 mac arm64 simulator 13/13 OK
 
 # wheel_atik (Atik Filter Wheel)
 

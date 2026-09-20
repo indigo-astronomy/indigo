@@ -24,7 +24,7 @@ driver nexstar {
 	label = "Nexstar Mount";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>, generator migration by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 Rumen G. Bogdanovski";
-	version = 33;
+	version = 34;
 	serial {
 		pattern {
 			vendor = "Prolific";
@@ -1001,6 +1001,13 @@ driver nexstar {
 			PRIVATE_DATA->guiding_in_progress = false;
 		}
 		inherited GUIDER_GUIDE_RA {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
+			on_change_request {
+				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+			}
 			on_change {
 				indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
 				int duration = 0;
@@ -1020,6 +1027,13 @@ driver nexstar {
 			}
 		}
 		inherited GUIDER_GUIDE_DEC {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
+			on_change_request {
+				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+			}
 			on_change {
 				indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
 				int duration = 0;

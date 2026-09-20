@@ -36,3 +36,7 @@ This driver uses libnexstar library https://sourceforge.net/projects/libnexstar/
 A non-standard switch property "Tracking mode" is provided by this driver for fork mounts. It is set to "auto" by default and in such case driver tries to guess the mode from tracking mode reported by the hand controller. If the mount is not tracking, error is reported.
 
 A non-standard switch property "Guider rate" is provided by this driver.
+
+## Testing
+
+2026-09-20 20:44 3.0.0.34 mac arm64 simulator 13/13 OK

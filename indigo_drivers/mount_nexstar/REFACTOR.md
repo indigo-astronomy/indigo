@@ -84,3 +84,29 @@
 - Simulated functional test executions: **26 run, 26 passed** (13 normal plus the same 13 under ASan/UBSan).
 - Timing samples: **96 measured successfully**, plus 24 warm-ups; timing data is reported as measurement rather than pass/fail behavior.
 - Hardware tests: **0 run, 0 passed**. No compatible physical NexStar/SynScan mount was available, so hardware motion, electrical ST4 behavior and Windows runtime remain explicitly unverified.
+
+## Overlapping guide pulses (2026-09-20)
+
+A guide pulse requested while another pulse on the same axis was still running was silently
+discarded: the generated change branch dispatched both guide properties through the BUSY-guarded
+`INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE` macro, so the second request never reached the
+handler and the `indigo_cancel_pending_handler()` call the handler already carried was unreachable.
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true` and zero both axis
+items in `on_change_request`, which is the pattern shared by every INDIGO driver that exposes a
+guider.
+
+The finaliser cancellation stays in `on_change`. It runs there on the device queue thread, where
+`indigo_queue_remove()` skips its blocking wait; the same call from `on_change_request` runs on the
+bus thread, where it blocks until a running handler finishes. Cancelling the pending *handler* from
+`on_change_request` was tried and hung this suite, so it was not adopted.
+
+`nexstar_celestron_guider_passes_serial_compliance_checks` asserted zero `50 02 10 25` events after
+a reversing request, which recorded the discard. It now asserts the negative-guiderate command is
+actually sent, and adds two duration-measuring cases: a 2000 ms pulse replaced after 500 ms by a
+600 ms pulse in the same direction, and the same pulse replaced by a 300 ms pulse in the opposite
+direction.
+
+Because the request is now accepted while the property is BUSY, two requests arriving inside the
+queue latency can queue two handlers that both act on the already-overwritten item values, so the
+same command can reach the mount twice. The resulting pulse is still the second request's, with a
+single finaliser; only the redundant command is observable.

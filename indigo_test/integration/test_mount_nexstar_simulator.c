@@ -811,12 +811,44 @@ static void nexstar_celestron_guider_passes_serial_compliance_checks(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
 	revision = property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 100));
-	indigo_usleep(100000);
-	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "50 02 10 25"));
+	// The reversing request replaces the running eastward pulse, so the mount has to be driven
+	// negatively and then stopped. Before overlapping pulses were accepted this assertion read
+	// zero negative-guiderate commands, which recorded the request being discarded.
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "50 02 10 25", 1));
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE, revision));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 0, 0.001));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 0, 0.001));
+	// nexstar_stop_axis() always stops with a positive-direction rate of zero.
 	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "50 02 10 24", 1));
+
+	// A pulse arriving while another one on the same axis is still running replaces it, so the
+	// elapsed time has to follow the second request. Measuring the duration is the point of these
+	// two cases: waiting only for the property to leave BUSY passes even when the second request
+	// is discarded, which is how this behaviour went unverified before.
+	double started = indigo_monotonic_time();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 600));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0.001));
+	// Replacing finishes about 500 + 600 ms after the first request; keeping the superseded pulse
+	// would run the full 2000 ms.
+	double replaced = (indigo_monotonic_time() - started) * 1000.0;
+	printf("    2000 ms north pulse replaced after 500 ms by a 600 ms north pulse finished in %.0f ms\n", replaced);
+	SERIAL_CHECK_TRUE(replaced > 900 && replaced < 1700);
+
+	started = indigo_monotonic_time();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 300));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 0, 0.001));
+	double reversed = (indigo_monotonic_time() - started) * 1000.0;
+	printf("    2000 ms north pulse replaced after 500 ms by a 300 ms south pulse finished in %.0f ms\n", reversed);
+	SERIAL_CHECK_TRUE(reversed > 600 && reversed < 1400);
 	SERIAL_CHECK_TRUE(pulse_and_wait(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(pulse_and_wait(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(pulse_and_wait(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100));
