@@ -929,3 +929,374 @@ Remaining deferred validation after generator migration:
 - Validate real hardware mount behavior for coordinate precision, side-of-pier transitions, goto completion, home completion, park/unpark completion, persisted park restore, autohome and PPEC.
 - Validate real hardware guider behavior for RA rate restoration, same-direction pulse extension and same-axis opposite-direction pulse cancellation.
 - Validate shutdown/unload against real hardware during long-running slews and guide pulses; simulator-backed connect/disconnect and UDP cleanup are covered by integration tests.
+
+## Step 12 results - AZ-GTi hardware validation
+
+Date: 2026-09-20
+
+### Hardware test decision
+
+Hardware testing was performed. The device is a Sky-Watcher AZ-GTi reached over the network:
+
+- model code `0xA5`, reported as `AZGTi`;
+- motor controller firmware `3.16`;
+- vendor string `Sky-Watcher SynScan`;
+- transport: SynScan UDP on port 11880, at `synscan://192.168.111.139:11880`;
+- the address was found by the driver's own UDP broadcast autodetection, started from `synscan://`.
+
+Controller capabilities as reported by the extended feature inquiry on this unit:
+
+- auxiliary encoders: supported, `MOUNT_USE_ENCODERS` defined;
+- AZ/EQ operating mode: supported, `MOUNT_OPERATING_MODE` defined;
+- snap port: supported, `Mount SynScan (aux)` defines `CCD_EXPOSURE` and `CCD_ABORT_EXPOSURE`;
+- polarscope LED: not supported, `POLARSCOPE` stays hidden;
+- PPEC: not supported, `MOUNT_PEC` and `MOUNT_PEC_TRAINING` stay hidden;
+- home indexer: not supported on either axis, `MOUNT_AUTOHOME` and `MOUNT_AUTOHOME_SETTINGS` stay hidden.
+
+The capability gating was therefore exercised in both directions on one physical unit: four optional
+properties defined and four correctly withheld.
+
+### Test infrastructure added
+
+- `indigo_test/hardware/test_mount_synscan_hw.c` holds the opt-in acceptance suite. It is named
+  after the driver, as required, and registers one case per acceptance scenario.
+- `indigo_test/Makefile` gained the `test-mount-synscan-hw` target plus the driver object and test
+  binary rules. The driver object is compiled with `indigo_uni_config_folder` redirected to a
+  temporary directory, the same override the simulator test uses, so a run never writes a park
+  file into the user's own INDIGO configuration folder.
+- The test source is registered in `indigo.xcodeproj/project.pbxproj`.
+- The suite is opt-in and is not reachable from `test`, `test-unit` or `test-integration`.
+
+Environment variables: `SYNSCAN_HW_URL` (default `synscan://`), `SYNSCAN_HW_LATITUDE` and
+`SYNSCAN_HW_LONGITUDE` (default 48 / 17), `SYNSCAN_HW_DECLINATION` (default 60),
+`SYNSCAN_HW_AUTOHOME` and `SYNSCAN_HW_DEBUG`.
+
+The suite physically moves both axes. Slews are relative to the pointing found at start-up, the
+park and home positions are set to the current pointing so those workflows run without a large
+rotation, and the starting pointing, tracking state, guide rates, park position, home position,
+slew rate, track rate and coordinate-set action are restored before the session disconnects.
+
+### Scenario to test mapping
+
+The mount hardware acceptance checklist of `indigo_test/DRIVER_TESTING_RULES.md` maps onto the
+registered cases as follows.
+
+| Acceptance scenario | Test case |
+| --- | --- |
+| Discovery and connection | `synscan_discovers_and_connects` |
+| Model, firmware and capability readback | `synscan_reports_identity_and_capabilities` |
+| Coordinate and status readback | `synscan_reads_coordinates_and_state` |
+| Tracking on/off, track rates, guide rates | `synscan_tracking_and_rates` |
+| Manual motion in both axes, stop, abort, fresh command | `synscan_manual_motion` |
+| SYNC without motion, small reachable slew, post-slew tracking | `synscan_syncs_and_slews` |
+| Abort during a slew followed by a fresh command | `synscan_aborts_slew_and_recovers` |
+| Park, parked-request rejection, unpark | `synscan_parks_and_unparks` |
+| Home and post-home tracking state | `synscan_homes` |
+| Controller autohome procedure | `synscan_runs_autohome` |
+| Snap port shutter and abort | `synscan_controls_snap_port` |
+| Guide pulses, rejection, extension, opposite-direction cancel | `synscan_guides` |
+| Guide pulse duration accuracy | `synscan_guide_pulse_accuracy` |
+| Disconnect/reconnect, both connection orders, shared ownership | `synscan_reconnects` |
+| Unreachable mount refused cleanly, then recovery | `synscan_reports_unreachable_mount` |
+| Driver INIT/SHUTDOWN cycle and fresh operation | `synscan_reinitializes` |
+
+Scenarios that are not applicable or not covered on this unit, with the reason:
+
+- Autohome could not be exercised: this AZ-GTi reports no home indexer on either axis, so the
+  driver correctly withholds `MOUNT_AUTOHOME`. The case detects that and reports it as not
+  applicable rather than passing silently. Autohome remains covered against the simulator by
+  `synscan_mount_autohome_finds_home_index`.
+- PPEC and PPEC training could not be exercised for the same reason: the controller reports no
+  PPEC support, so `MOUNT_PEC` and `MOUNT_PEC_TRAINING` stay hidden. Simulator coverage exists.
+- Polarscope brightness could not be exercised: no polarscope LED on this controller.
+- Side-of-pier transitions were not forced. The AZ-GTi used here is a single-arm mount and the
+  driver reports a constant side; provoking a meridian flip needs an equatorial head such as the
+  EQ6 the simulator models.
+- Transport loss during active work was not injected. The SynScan network transport is UDP and has
+  no session to drop, and the driver deliberately treats a UDP timeout as a temporary failure
+  rather than a disconnect. The reachable failure mode, an unreachable endpoint, is covered by
+  `synscan_reports_unreachable_mount`; cable loss on the serial transport is covered against the
+  simulator by `synscan_mount_disconnects_after_serial_loss`.
+- Multiple physical mounts were not exercised; only one unit was available.
+
+## Found defects
+
+### D1 - MOUNT_INFO.FIRMWARE published with a leading space
+
+- Observable impact: on the AZ-GTi the driver published `MOUNT_INFO.FIRMWARE` as `" 3.16"`. Clients
+  show the value verbatim, so the firmware appeared indented in every UI and any exact string
+  comparison against `"3.16"` failed.
+- Reproduced on hardware, not only by source audit: the first hardware run printed
+  `Sky-Watcher SynScan AZGTi, firmware  3.16`.
+- Root cause: `synscan_set_model_info()` formatted the version with `"%2d.%02d"`. The width of 2
+  pads any single-digit release number with a space. The behaviour was inherited from the INDIGO
+  2.0 driver, which used `"%2d.%02d.%02d"`, so it is not a regression of this refactoring, but it
+  is still wrong.
+- Fix: format with `"%d.%02d"` in `indigo_mount_synscan.driver` and regenerate. Driver version
+  bumped from 1 to 2.
+- Regression test: `synscan_reports_identity_and_capabilities` asserts the model, vendor and
+  firmware items are non-empty and prints them; the hardware run now reports `firmware 3.16`.
+  The simulator suite covers the same code path through
+  `synscan_mount_passes_serial_compliance_checks` and `synscan_mount_reports_new_model_codes`.
+
+### D2 - a request refused because the mount is parked kept the refused values
+
+- Observable impact: park the mount, then request `MOUNT_TRACKING.ON`. The driver correctly
+  answered `INDIGO_ALERT_STATE` with the message `Mount is parked!`, but `MOUNT_TRACKING` kept
+  `ON = true` and `OFF = false` afterwards, and nothing later corrected it. The RA axis was
+  verifiably stopped at that moment: the reported right ascension ran away at the sidereal rate,
+  0.046 degrees over 12 s against an expected 0.050. A parked mount therefore published itself as
+  tracking. The same applied to `MOUNT_MOTION_RA` and `MOUNT_MOTION_DEC`, whose direction item
+  stayed set, and to `MOUNT_EQUATORIAL_COORDINATES`, whose target stayed at the refused target.
+- Reproduced on hardware in the third hardware run, after the peer session that had been sharing
+  the mount was stopped, so it is not an artefact of concurrent access.
+- This violates the rule in `indigo_test/DRIVER_TESTING_RULES.md` that a failed request must not
+  overwrite accepted values with invalid output. It matters operationally because agents read
+  these switches as mount state.
+- Root cause: the park guard was emitted only at the top of the generated handler. By the time the
+  handler ran, `INDIGO_COPY_VALUES_PROCESS_CHANGE` had already copied the client's requested values
+  into the driver's property, set `INDIGO_BUSY_STATE` and published it. The guard published
+  `INDIGO_ALERT_STATE` and returned without undoing that copy.
+- The defect was generator-owned, not specific to this driver, so the fix was proposed and
+  explicitly approved by the user before being implemented, as required by the root `AGENTS.md`.
+- Fix, in `indigo_tools/indigo_generator.c`: the guard is now emitted in two places.
+  - An admission check in the `change_property` branch, before the values are copied. It marks every
+    item for update, sets `INDIGO_ALERT_STATE`, publishes with the `Mount is parked!` message and
+    returns without scheduling the handler. This reuses the shape the generator already emits for
+    `reject_change` conditions, so a refused request leaves the driver's own state intact and no
+    spurious `INDIGO_BUSY_STATE` is published.
+  - The original check at the top of the handler is retained as a safety net. A request admitted
+    while the mount was still unparked can reach the hardware after a park request has been
+    accepted, because the park switch flips when the park request is copied in its own change
+    branch, before the park slew starts. Without the handler check that admitted request would
+    start an axis on a mount the user had just told to park. Both checks are required; neither is
+    redundant.
+- Affected drivers, all regenerated with their `version` incremented: `mount_synscan`,
+  `mount_ioptron`, `mount_lx200`, `mount_nexstar`, `mount_nexstaraux`, `mount_pmc8`,
+  `mount_rainbow`, `mount_simulator`, `mount_starbook`, `mount_temma`. `mount_mxhd` is
+  hand-written and already performed the check in `change_property` before copying, so it was not
+  affected and was not changed.
+- Regression test: `synscan_mount_keeps_state_when_parked_request_is_refused` in
+  `indigo_test/integration/test_mount_synscan_simulator.c`. It parks the mount, confirms tracking
+  is reported off, then requests tracking on and both motion directions, and asserts that each is
+  refused with `INDIGO_ALERT_STATE` while the refused items keep the driver's values. The test was
+  verified to fail against a build with the admission check removed and to pass with it in place.
+  On hardware, `synscan_parks_and_unparks` checks the published tracking state immediately after
+  the park completes and then exercises the same three refusals.
+- Documentation updated: `indigo_docs/DRIVER_GENERATOR_MIGRATION.md` now describes both guards and
+  why each is needed, and `indigo_test/DRIVER_TESTING_RULES.md` states that a parked-request
+  refusal must leave the refused property holding the driver's own state.
+
+## Guide pulse duration accuracy
+
+Required by `indigo_drivers/AGENTS.override.md` for every driver exposing a guider interface.
+
+Measurement method: the test issues a pulse through `GUIDER_GUIDE_RA` or `GUIDER_GUIDE_DEC` and
+measures wall-clock time from the moment the change request is submitted to the bus until the
+property is republished in `INDIGO_OK_STATE` by the driver's finalizer. Timing is taken from
+`indigo_monotonic_time()` inside the test. Five samples per duration, on both axes, with the mount
+tracking at the sidereal rate and the guide rate set to 50 %. The workload is the idle driver: the
+mount poll handler runs on the same queue, no slew is in progress.
+
+**This measures public-property completion timing over the UDP transport and the driver's
+finalizer. It is not an electrical measurement of the ST4 relay output and must not be presented
+as one.** The transport itself contributes: a measured round trip to this mount over Wi-Fi was
+9.1 ms minimum, 10.4 ms median, 21.2 ms maximum, with 1 packet lost out of 60.
+
+Results are recorded in the final test summary below, together with the root cause of the
+systematic overshoot.
+
+The overshoot is systematic rather than random, and it differs per axis because the two finalizers
+do different work at the deadline:
+
+- `guider_guide_dec_finalizer()` calls `synscan_stop_axis_and_wait()`, which sends `:K2` and then
+  polls `:f2` until the axis reports stopped. `synscan_wait_axis_stopped()` sleeps 100 ms between
+  status queries, so the completion is quantised to that poll interval plus the axis deceleration.
+- `guider_guide_ra_finalizer()` calls `synscan_slew_axis_at_rate()` to restore the tracking rate.
+  Because the guide rate and the tracking rate differ, the cached axis configuration does not
+  match, so that path stops the axis with `synscan_stop_axis_and_wait()` first, then issues `:G1`,
+  `:I1` and `:J1`. It therefore pays the same 100 ms-quantised stop-and-wait as DEC plus three
+  further command round trips.
+
+This is a property of the SynScan protocol as the driver currently uses it: the motor controller
+requires a stopped axis before the step period is changed, and the driver must confirm the stop.
+Reducing it would mean changing the manner in which the driver issues protocol commands, which
+`indigo_drivers/AGENTS.override.md` gates behind a dedicated characterization test and an
+original-driver reference-trace comparison. That work is not part of this hardware validation and
+is recorded here as a known characteristic, not as a fixed defect.
+
+Practical consequence for autoguiding, so the number is not left uninterpreted: at the 50 % guide
+rate used here an RA overshoot of about 300 ms adds roughly 300 ms x 0.5 x sidereal, about 2.2
+arcseconds, of extra correction beyond the requested pulse. For short pulses that is a large
+relative error, and a guiding agent tuning against this driver should be aware of it.
+
+### D3 - an accepted coordinate slew could be reported as finished before it started
+
+- Observable impact: immediately after a goto request was accepted, `MOUNT_EQUATORIAL_COORDINATES`
+  could go `INDIGO_BUSY_STATE` and then back to `INDIGO_OK_STATE` while still carrying the old
+  pointing, before the mount had moved at all. A client that treats the property leaving BUSY as
+  arrival, which is how the INDIGO mount agent sequences a slew, would conclude the slew finished
+  instantly and move on while the mount was only starting to turn.
+- Reproduced on hardware, intermittently: it occurred in the third and sixth hardware runs and not
+  in the others, which matches a race whose window is the duration of one poll cycle once per
+  second. In both failing runs the mount was still at the starting declination after the property
+  had reported OK.
+- Root cause: `synscan_update_mount_coordinates()` derives the coordinate property state from
+  `PRIVATE_DATA->global_mode`, and `global_mode` only became `SYNSCAN_GLOBAL_SLEWING` inside
+  `mount_equatorial_coordinates_handler()`. The generated change branch publishes BUSY and queues
+  that handler, but the mount poll performs several UDP transactions per cycle, so a poll already
+  executing when the request arrived finished afterwards, still saw `SYNSCAN_GLOBAL_IDLE`, and
+  republished the property as OK over the BUSY the change branch had just published.
+- Fix: claim the slew synchronously in the change branch through an `on_change_request` block in
+  `indigo_mount_synscan.driver`, which the generator emits before the values are copied and before
+  the handler is scheduled. The block sets `global_mode` to `SYNSCAN_GLOBAL_SLEWING` under exactly
+  the condition in which the generated branch will schedule the handler: the coordinate-set action
+  is not SYNC, the global mode is idle, and the property is not already BUSY. A SYNC performs no
+  motion and must not claim a slew, and the idle and not-BUSY conditions keep a request arriving
+  during a park or home from relabelling that operation as a slew. The handler continues to set the
+  mode itself, so the assignment is idempotent.
+- Regression test: `synscan_syncs_and_slews` on hardware now runs the slew through
+  `slew_reports_busy_until_arrival()`, which samples the property across several poll cycles after
+  the request is accepted and fails if it reports OK while the mount is not yet at the target
+  declination. The ordinary arrival waits in the suite were also changed to require the reported
+  pointing to match the request rather than trusting the property state alone, so no other
+  scenario can be satisfied by a stale OK.
+- Not reproducible against the serial simulator: the simulator answers fast enough that the poll
+  cycle does not overlap the request in the way the networked mount's latency produces, so this
+  defect is covered by the hardware suite only. That is recorded here rather than worked around.
+
+### D4 - overlapping guide pulses were silently discarded
+
+- Observable impact: a guide pulse request arriving while another pulse on the same axis was still
+  running never reached the driver. The client got no update, no message and no alert, and the
+  running pulse ended on its original deadline. `README.md` described overlapping pulses as
+  extending the active pulse and an opposite-direction pulse as cancelling it; neither happened.
+- Reproduced on hardware: a 1500 ms north pulse followed after 700 ms by a second 1500 ms north
+  pulse finished in 1658 ms, which is the first pulse's own 1500 ms plus the usual DEC finalizer
+  overhead. The second request had no effect at all.
+- Root cause: the generated change branch dispatched `GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC`
+  through `INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE`, which is guarded by
+  `if (p->state != INDIGO_BUSY_STATE)`. An active pulse holds the property in `INDIGO_BUSY_STATE`,
+  so the second request was never copied and the handler was never scheduled. The deadline
+  arithmetic in the `.driver` `on_change` blocks was therefore unreachable in exactly the
+  situation it was written for.
+- Why the existing simulator coverage did not catch it: the guider case in
+  `indigo_test/integration/test_mount_synscan_simulator.c` issued a 200 ms pulse followed
+  immediately by a 400 ms pulse and then only waited for the item to return to zero. It never
+  measured how long the pulse actually lasted, so it passed whether the second request took effect
+  or was dropped. Step 9 of this document recorded that case as covering "same-direction DEC guide
+  pulse extension"; that claim was too strong and is corrected here.
+- Chosen behaviour, decided by the user: an overlapping pulse **replaces** the running one. The
+  axis runs for the new duration in the new direction, measured from the new request. Replacement
+  is simpler than the extension rule the driver previously attempted to implement and never
+  achieved, and it is what a guiding agent issuing a correction actually wants.
+- Fix, in three parts:
+  - `indigo_libs/indigo/indigo_bus.h` gained `INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME`,
+    the unguarded counterpart of the existing priority dispatch, alongside the unguarded
+    `INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME` that `MOUNT_MOTION_*` already uses for the same
+    reason.
+  - `indigo_tools/indigo_generator.c` gained an opt-in property attribute `accept_while_busy`. A
+    `GUIDER_GUIDE_RA` or `GUIDER_GUIDE_DEC` property that sets it is dispatched through the
+    unguarded macro; every other property, and every driver that does not opt in, keeps the
+    previous BUSY-guarded dispatch. The flag is off by default deliberately: 21 generated drivers
+    dispatch guide-pulse properties and their handlers were not written to be re-entered, so a
+    global change would have altered the 20 that could not be tested here. `mount_synscan` is the
+    only driver that opts in; spot-regenerating `guider_asi`, `ccd_asi`, `mount_ioptron` and
+    `mount_lx200` produced no diff, confirming the attribute is inert when unset.
+  - `indigo_mount_synscan.driver` opts both pulse properties in and implements replacement: the
+    handler cancels the pending finalizer of the pulse it supersedes and sets the deadline to the
+    new one unconditionally, instead of keeping the later of the two deadlines.
+- Regression tests, both of which were verified to fail against a build with the opt-in removed:
+  - `synscan_guider_passes_serial_compliance_checks` in the simulator suite now measures the
+    elapsed time of two overlapping sequences. A 2000 ms north pulse replaced after 500 ms by a
+    600 ms north pulse must finish in about 1100 ms; without the fix it took 2057 ms. A 2000 ms
+    north pulse replaced after 500 ms by a 300 ms south pulse must finish in about 900 ms.
+  - `synscan_guides` in the hardware suite runs the same two sequences against the mount. The
+    second pulse is deliberately shorter than the remainder of the first, so replacing and keeping
+    the superseded deadline cannot produce the same elapsed time.
+- Driver version bumped to 3.
+
+### D5 - a single lost UDP reply silenced the mount for the rest of the session
+
+- Observable impact: one datagram lost on the way back from the mount permanently disabled the
+  connection. Every later command failed, the mount stopped responding to anything, and the driver
+  kept reporting itself connected the whole time. Only an explicit disconnect and reconnect
+  restored it. On the Wi-Fi link to this AZ-GTi, where a measurement of 60 probes showed roughly
+  two percent loss, this happened within a few minutes of use.
+- Reproduced on hardware repeatedly: it struck three of the nine hardware runs made during this
+  validation, each time with the same signature. A single
+  `Failed to read (Resource temporarily unavailable)` line appeared, after which every scenario
+  failed with the affected property in `INDIGO_ALERT_STATE`, and the run recovered only at the
+  reconnect scenario near the end. The first two occurrences were initially misread as flaky
+  Wi-Fi; the third made the pattern unambiguous, because a link that had genuinely dropped would
+  not have come back at the exact moment the driver reopened its socket.
+- Root cause: `read_data()` in `indigo_libs/indigo_uni_io.c` returns -1 immediately when
+  `handle->last_error` is set, and it sets `last_error` from `errno` whenever the underlying
+  `read()` fails. A UDP socket carrying a receive timeout returns `EAGAIN` on a timeout, so a
+  missing reply latched `EAGAIN` onto the handle. From that point every read *and* write on that
+  handle failed without touching the socket. The driver's own UDP retry, three attempts per
+  command, could not help: attempts two and three hit the latch rather than the network.
+- The same defect was found independently in `mount_nexstaraux` while this validation was running
+  and fixed there in commit `aaee12f9e`. The remedy used here is the same one.
+- Fix: in `synscan_read_response()` the UDP branch now calls `indigo_uni_wait_for_data()` with the
+  command timeout before it reads. A reply that never arrives is detected without issuing a read,
+  so nothing latches on the handle and the existing retry loop can actually retry. The serial
+  branch already used `indigo_uni_read_section2()` with explicit timeouts and was never affected.
+- Driver version bumped to 4.
+- Regression test: `synscan_mount_survives_lost_udp_replies` in
+  `indigo_test/integration/test_mount_synscan_simulator.c`. The SynScan simulator gained a
+  `--drop-nth-reply <n>` option that executes a command normally but withholds its reply, which is
+  what a datagram lost on the way back looks like to the driver. The test connects over UDP to a
+  simulator dropping every seventh reply, a far worse rate than the real link, and then runs
+  several further transactions. It was verified to fail against a build with the
+  `indigo_uni_wait_for_data()` call removed, reproducing the exact hardware signature: the
+  connection itself fails after the first `Failed to read (Resource temporarily unavailable)`.
+- Worth noting for other drivers: any driver that reads from a `indigo_uni_handle` with a socket
+  receive timeout through a bare `indigo_uni_read()` has this defect. Two have now been found.
+
+## Final test summary
+
+Date: 2026-09-20. Driver version at completion: 4.
+
+Simulated tests, hardware free, `indigo_test/integration/test_mount_synscan_simulator.c`:
+
+- total run: 18
+- passed: 18
+- failed: 0
+
+Hardware tests, physical Sky-Watcher AZ-GTi reached over UDP at
+`synscan://192.168.111.139:11880`, `indigo_test/hardware/test_mount_synscan_hw.c`:
+
+- total run: 16
+- passed: 16
+- failed: 0
+
+Guide pulse duration accuracy, hardware, 5 samples per duration per axis, mount tracking at the
+sidereal rate with a 50 % guide rate. Public-property completion timing over the UDP transport, not
+an electrical measurement of the ST4 output:
+
+| Axis | Requested | Mean error | Mean absolute error | Min | Max |
+| --- | --- | --- | --- | --- | --- |
+| RA | 100 ms | +317.2 ms | 317.2 ms | +290.0 ms | +356.6 ms |
+| RA | 250 ms | +339.9 ms | 339.9 ms | +310.0 ms | +385.1 ms |
+| RA | 500 ms | +343.9 ms | 343.9 ms | +311.6 ms | +364.4 ms |
+| RA | 1000 ms | +324.2 ms | 324.2 ms | +288.7 ms | +370.0 ms |
+| RA | 2000 ms | +344.0 ms | 344.0 ms | +329.1 ms | +364.0 ms |
+| DEC | 100 ms | +183.2 ms | 183.2 ms | +174.2 ms | +191.1 ms |
+| DEC | 250 ms | +180.8 ms | 180.8 ms | +150.0 ms | +214.4 ms |
+| DEC | 500 ms | +170.1 ms | 170.1 ms | +149.8 ms | +193.3 ms |
+| DEC | 1000 ms | +169.8 ms | 169.8 ms | +161.7 ms | +177.6 ms |
+| DEC | 2000 ms | +179.6 ms | 179.6 ms | +149.8 ms | +207.8 ms |
+
+The error is a systematic overrun, never an early finish, and is independent of the requested
+duration, which is consistent with the root cause recorded in the guide pulse accuracy section
+above: the finalizer must stop or re-rate the axis at the deadline, and that costs a
+100 ms-quantised stop-and-wait plus, on RA, three further command round trips.
+
+Defects found and fixed during this validation: D1, D2, D3, D4, D5. None are left open.
+
+D2 and D4 required changes to `indigo_tools/indigo_generator.c`, both proposed to the user and
+explicitly approved before implementation, as the root `AGENTS.md` requires. D2 also changed nine
+other generated mount drivers, all regenerated with their version incremented. D4 was made an
+opt-in generator attribute precisely so that the twenty other drivers sharing the same dispatch
+were left untouched.

@@ -82,6 +82,14 @@ static bool start_udp_simulator(external_serial_simulator *simulator, int port) 
 	return start_external_serial_simulator_with_args(simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE, arguments);
 }
 
+static bool start_lossy_udp_simulator(external_serial_simulator *simulator, int port, int drop_nth) {
+	char port_text[16], drop_text[16];
+	const char *arguments[] = { "--udp-port", port_text, "--drop-nth-reply", drop_text, NULL };
+	snprintf(port_text, sizeof(port_text), "%d", port);
+	snprintf(drop_text, sizeof(drop_text), "%d", drop_nth);
+	return start_external_serial_simulator_with_args(simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE, arguments);
+}
+
 static bool start_model_simulator(external_serial_simulator *simulator, const char *model_code) {
 	const char *arguments[] = { "--model-code", model_code, NULL };
 	return start_external_serial_simulator_with_args(simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE, arguments);
@@ -318,6 +326,49 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A parked mount refuses motion, tracking and goto requests. The refusal must not leave the
+// requested values in the property: the driver has to keep publishing the state the hardware is
+// actually in, so a client cannot read a parked mount as tracking.
+static void synscan_mount_keeps_state_when_parked_request_is_refused(void) {
+	const char *park_position_items[] = {
+		MOUNT_PARK_POSITION_HA_ITEM_NAME,
+		MOUNT_PARK_POSITION_DEC_ITEM_NAME
+	};
+	double park_position_values[] = {
+		0,
+		0
+	};
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_POSITION_PROPERTY_NAME, ARRAY_SIZE(park_position_items), park_position_items, park_position_values));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, false));
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_RA_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false));
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void synscan_mount_hides_autohome_without_both_home_indexers(void) {
 	external_serial_simulator simulator = { 0 };
 
@@ -544,15 +595,34 @@ static void synscan_guider_passes_serial_compliance_checks(void) {
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_ALERT_STATE));
 
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 200));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 400));
+	// A pulse arriving while another one on the same axis is still running replaces it, so the
+	// elapsed time has to follow the second request. Measuring the duration is the point of these
+	// two cases: waiting only for the property to leave BUSY passes even when the second request
+	// is discarded, which is how this behaviour went unverified before.
+	double started = indigo_monotonic_time();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 600));
 	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0.001));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 400));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 100));
+	// Replacing finishes about 500 + 600 ms after the first request; keeping the superseded pulse
+	// would run the full 2000 ms.
+	double replaced = (indigo_monotonic_time() - started) * 1000.0;
+	printf("    2000 ms north pulse replaced after 500 ms by a 600 ms north pulse finished in %.0f ms\n", replaced);
+	SERIAL_CHECK_TRUE(replaced > 900 && replaced < 1700);
+
+	started = indigo_monotonic_time();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 300));
 	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0.001));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 0, 0.001));
+	double reversed = (indigo_monotonic_time() - started) * 1000.0;
+	printf("    2000 ms north pulse replaced after 500 ms by a 300 ms south pulse finished in %.0f ms\n", reversed);
+	SERIAL_CHECK_TRUE(reversed > 600 && reversed < 1400);
 
 cleanup:
 	if (context.connected) {
@@ -638,6 +708,38 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A datagram lost on the way back from the mount must cost one retry, not the session. The driver
+// reads UDP replies through a handle whose receive timeout is reported as a read error, and that
+// error latches, so a bare read would make every later transfer fail without touching the socket
+// while the mount still reported itself connected.
+static void synscan_mount_survives_lost_udp_replies(void) {
+	external_serial_simulator simulator = { 0 };
+	char url[INDIGO_VALUE_SIZE];
+	int port = 11881;
+
+	// Every seventh reply is dropped, a far worse loss rate than the roughly two percent measured
+	// on the Wi-Fi link to the real mount, so a normal session loses several answers.
+	SERIAL_CHECK_TRUE(start_lossy_udp_simulator(&simulator, port, 7));
+	snprintf(url, sizeof(url), "synscan://127.0.0.1:%d", port);
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, url));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+
+	// The mount has to keep answering afterwards. Each of these is a fresh transaction, so a
+	// latched handle would fail all of them.
+	for (int i = 0; i < 6; i++) {
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, i % 2 ? MOUNT_TRACKING_OFF_ITEM_NAME : MOUNT_TRACKING_ON_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	}
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void synscan_mount_connects_with_udp_autodetection(void) {
 	external_serial_simulator simulator = { 0 };
 
@@ -681,6 +783,7 @@ int main(void) {
 		{ "synscan_pec_training_disconnect", synscan_pec_training_disconnect },
 		{ "synscan_mount_passes_serial_compliance_checks", synscan_mount_passes_serial_compliance_checks },
 		{ "synscan_mount_parks_after_axis_status_initialized_reply", synscan_mount_parks_after_axis_status_initialized_reply },
+		{ "synscan_mount_keeps_state_when_parked_request_is_refused", synscan_mount_keeps_state_when_parked_request_is_refused },
 		{ "synscan_mount_hides_autohome_without_both_home_indexers", synscan_mount_hides_autohome_without_both_home_indexers },
 		{ "synscan_mount_uses_aux_encoders_for_coordinates", synscan_mount_uses_aux_encoders_for_coordinates },
 		{ "synscan_mount_tracks_after_coordinate_slew_when_requested", synscan_mount_tracks_after_coordinate_slew_when_requested },
@@ -693,6 +796,7 @@ int main(void) {
 		{ "synscan_mount_disconnects_after_serial_loss", synscan_mount_disconnects_after_serial_loss },
 		{ "synscan_mount_reports_failed_serial_connection", synscan_mount_reports_failed_serial_connection },
 		{ "synscan_mount_connects_with_explicit_udp_url", synscan_mount_connects_with_explicit_udp_url },
+		{ "synscan_mount_survives_lost_udp_replies", synscan_mount_survives_lost_udp_replies },
 		{ "synscan_mount_connects_with_udp_autodetection", synscan_mount_connects_with_udp_autodetection }
 	};
 	int result = 0;

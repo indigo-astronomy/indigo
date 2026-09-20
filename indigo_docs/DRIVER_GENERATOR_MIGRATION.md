@@ -434,10 +434,17 @@ which is the right choice for read-only or pass-through properties.
 
 By default, every generated property change branch finishes with `return INDIGO_OK`, so a property handled by the driver-specific callback is not passed to the base type handler. Set `pass_through_change = true` on a property when the generated branch should still run but then continue to the final `indigo_<type>_change_property(device, client, property)` call.
 
-Four mount-specific properties receive special treatment in the generated change handlers: MOUNT_EQUATORIAL_COORDINATES, MOUNT_MOTION_RA, MOUNT_MOTION_DEC, and MOUNT_TRACKING.
-For each of these, the generator inserts a park-state guard at the very top of the handler — before any user-supplied on_change code runs.
-The guard checks whether MOUNT_PARK_PROPERTY is active and the mount is in the parked state; if so, it sends an alert message ("Mount is parked!"), sets the property state to INDIGO_ALERT_STATE, and returns immediately.
-This ensures that slewing, tracking, or motion commands are silently rejected while the mount is parked, without requiring the driver author to replicate this logic manually.
+Four mount-specific properties receive special treatment: MOUNT_EQUATORIAL_COORDINATES, MOUNT_MOTION_RA, MOUNT_MOTION_DEC, and MOUNT_TRACKING.
+For each of these the generator emits a park-state guard in two places, and both are needed.
+
+The first is an admission check in the `change_property` branch, before the requested values are copied into the property and before any user-supplied on_change_request code runs.
+It checks whether MOUNT_PARK_PROPERTY is active and the mount is in the parked state; if so, it marks every item for update, sets the property state to INDIGO_ALERT_STATE, publishes the property with the message "Mount is parked!", and returns INDIGO_OK without scheduling the handler.
+Because it runs before the copy, a request refused this way leaves the property holding the driver's own state instead of the refused values, so a parked mount cannot report itself as tracking or moving, and no intermediate INDIGO_BUSY_STATE is published.
+
+The second is the same check at the top of the generated handler, before any user-supplied on_change code runs.
+It covers the request that was admitted while the mount was still unparked but only reaches the hardware after a park request has been accepted.
+The park switch flips as soon as the park request is copied in its own change branch, which happens before the park slew starts, so re-reading it in the handler keeps the axes still in that window.
+This ensures that slewing, tracking, or motion commands are rejected while the mount is parked, without requiring the driver author to replicate either check manually.
 
 MOUNT_EQUATORIAL_COORDINATES has an additional distinction in how the handler is finalised.
 For every other property the generator appends a call to indigo_update_property() at the end of the handler (unless a custom _finalizer is detected in the on_change block).

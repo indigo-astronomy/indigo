@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000001
+#define DRIVER_VERSION       0x03000004
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -317,6 +317,15 @@ static synscan_response_result synscan_read_response(indigo_device *device, char
 	char buffer[32] = { 0 };
 	long count;
 	if (PRIVATE_DATA->udp) {
+		// Wait for the datagram before reading it. A bare read on a socket with a receive
+		// timeout reports the timeout as a read error, which latches on the handle and
+		// makes every later read and write fail without touching the socket, so a single
+		// lost reply would silence the mount for the rest of the session and the retry
+		// below could never recover it.
+		if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, SYNSCAN_COMMAND_TIMEOUT) <= 0) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No SynScan response before timeout");
+			return SYNSCAN_RESPONSE_IO_ERROR;
+		}
 		count = indigo_uni_read(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1);
 	} else {
 		count = indigo_uni_read_section2(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1, "\r", "", SYNSCAN_COMMAND_TIMEOUT, SYNSCAN_NEXT_BYTE_TIMEOUT);
@@ -1178,7 +1187,7 @@ static void synscan_set_model_info(indigo_device *device, long version) {
 	int model = (int)((version >> 16) & 0xFF);
 	PRIVATE_DATA->model_code = model;
 	PRIVATE_DATA->snap_port_supported = synscan_has_snap_port(model);
-	snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d", release, revision);
+	snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%d.%02d", release, revision);
 	snprintf(MOUNT_INFO_VENDOR_ITEM->text.value, INDIGO_VALUE_SIZE, "Sky-Watcher SynScan");
 	switch (model) {
 	case 0x00:
@@ -2066,18 +2075,61 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_HOME_PROPERTY, mount_home_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
+		if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+			for (int i = 0; i < MOUNT_EQUATORIAL_COORDINATES_PROPERTY->count; i++) {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->items[i].do_update = true;
+			}
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
+			return INDIGO_OK;
+		}
+		//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change_request
+		// Claim the slew here, in the change branch, not in the handler. The handler runs
+		// on the device queue behind the mount poll, and the poll derives the coordinate
+		// state from the global mode, so a poll already in flight when the request was
+		// accepted would republish OK over the BUSY this change branch publishes and a
+		// client would see the slew finish before it started. The condition matches the
+		// one under which the generated branch actually schedules the handler.
+		if (!MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value && PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+			PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_SLEWING;
+		}
+		//- mount.MOUNT_EQUATORIAL_COORDINATES.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, mount_equatorial_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {
+		if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+			for (int i = 0; i < MOUNT_TRACKING_PROPERTY->count; i++) {
+				MOUNT_TRACKING_PROPERTY->items[i].do_update = true;
+			}
+			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Mount is parked!");
+			return INDIGO_OK;
+		}
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_TRACKING_PROPERTY, mount_tracking_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TRACK_RATE_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_TRACK_RATE_PROPERTY, mount_track_rate_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_RA_PROPERTY, property)) {
+		if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+			for (int i = 0; i < MOUNT_MOTION_RA_PROPERTY->count; i++) {
+				MOUNT_MOTION_RA_PROPERTY->items[i].do_update = true;
+			}
+			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, "Mount is parked!");
+			return INDIGO_OK;
+		}
 		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_RA_PROPERTY, mount_motion_ra_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_DEC_PROPERTY, property)) {
+		if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+			for (int i = 0; i < MOUNT_MOTION_DEC_PROPERTY->count; i++) {
+				MOUNT_MOTION_DEC_PROPERTY->items[i].do_update = true;
+			}
+			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked!");
+			return INDIGO_OK;
+		}
 		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_DEC_PROPERTY, mount_motion_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
@@ -2199,12 +2251,13 @@ static void guider_guide_ra_handler(indigo_device *device) {
 		return;
 	}
 	double guide_rate = tracking_rate + direction * GUIDER_RATE_ITEM->number.value * tracking_rate / 100.0;
-	double deadline = synscan_now() + duration;
-	if (PRIVATE_DATA->guide_ra_direction != 0 && PRIVATE_DATA->guide_ra_direction != direction) {
-		PRIVATE_DATA->guide_ra_deadline = deadline;
-	} else if (deadline > PRIVATE_DATA->guide_ra_deadline) {
-		PRIVATE_DATA->guide_ra_deadline = deadline;
+	// A pulse arriving while another one is still running replaces it, in either
+	// direction, so the deadline is always the new one and the finalizer of the
+	// replaced pulse must not fire on the old schedule.
+	if (PRIVATE_DATA->guide_ra_deadline > 0) {
+		indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
 	}
+	PRIVATE_DATA->guide_ra_deadline = synscan_now() + duration;
 	PRIVATE_DATA->guide_ra_direction = direction;
 	PRIVATE_DATA->guide_ra_resume_rate = tracking_rate;
 	bool ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, guide_rate);
@@ -2240,12 +2293,13 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	}
 	double tracking_rate = PRIVATE_DATA->current_tracking_rate != 0 ? PRIVATE_DATA->current_tracking_rate : SIDEREAL_RATE;
 	double guide_rate = direction * GUIDER_DEC_RATE_ITEM->number.value * tracking_rate / 100.0;
-	double deadline = synscan_now() + duration;
-	if (PRIVATE_DATA->guide_dec_direction != 0 && PRIVATE_DATA->guide_dec_direction != direction) {
-		PRIVATE_DATA->guide_dec_deadline = deadline;
-	} else if (deadline > PRIVATE_DATA->guide_dec_deadline) {
-		PRIVATE_DATA->guide_dec_deadline = deadline;
+	// A pulse arriving while another one is still running replaces it, in either
+	// direction, so the deadline is always the new one and the finalizer of the
+	// replaced pulse must not fire on the old schedule.
+	if (PRIVATE_DATA->guide_dec_deadline > 0) {
+		indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
 	}
+	PRIVATE_DATA->guide_dec_deadline = synscan_now() + duration;
 	PRIVATE_DATA->guide_dec_direction = direction;
 	bool ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_DEC, guide_rate);
 	PRIVATE_DATA->dec_axis_mode = ok ? SYNSCAN_AXIS_GUIDING : SYNSCAN_AXIS_IDLE;
@@ -2291,10 +2345,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_RATE_PROPERTY, property)) {
 		indigo_property_copy_values(GUIDER_RATE_PROPERTY, property, false);

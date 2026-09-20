@@ -61,7 +61,7 @@ typedef struct reject_type {
 typedef struct property_type {
 	struct property_type *next;
 	char type[12], id[128], handle[128], name[128], define_name[128], pointer[128], handler[64], label[256], group[32],  perm[32], rule[32], hidden[64];
-	bool always_defined, handle_change, asynchronous_change, persistent, preserve_values, pass_through_change;
+	bool always_defined, handle_change, asynchronous_change, persistent, preserve_values, pass_through_change, accept_while_busy;
 	int max_name_length;
 	code_type *code, *on_attach, *on_change_request, *on_change, *on_detach;
 	reject_type *rejects;
@@ -715,6 +715,9 @@ bool parse_property_block(device_type *device, property_type **properties) {
 				continue;
 			}
 			if (parse_bool_attribute("pass_through_change", &property->pass_through_change)) {
+				continue;
+			}
+			if (parse_bool_attribute("accept_while_busy", &property->accept_while_busy)) {
 				continue;
 			}
 			if (parse_code_block("code", &property->code)) {
@@ -1696,6 +1699,10 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 //	write_line("// %s change handler", property->id);
 	write_line("");
 	write_line("static void %s(indigo_device *device) {", property->handler);
+	// The matching admission check in the change branch refuses a request that arrives while the
+	// mount is already parked. This one is the safety net for the request that was admitted just
+	// before a park request was accepted and is only now reaching the hardware: the park switch
+	// flips when the park request is copied, so re-reading it here keeps the axes still.
 	if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES") || !strcmp(property->id, "MOUNT_MOTION_DEC") || !strcmp(property->id, "MOUNT_MOTION_RA") || !strcmp(property->id, "MOUNT_TRACKING")) {
 		write_line("\tif (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {");
 		write_line("\t\tindigo_send_message(device, %s, \"Mount is parked!\");", property->handle);
@@ -1892,6 +1899,21 @@ void write_c_change_property(device_type *device) {
 			persistent |= property->persistent;
 			if (property->type[0] != 'i' || property->on_change) {
 				write_line("\t} else if (indigo_property_match_changeable(%s, property)) {", property->handle);
+				// A parked mount refuses motion, tracking and goto requests. This is an admission
+				// check on the request, so it runs before the requested values are copied into the
+				// property; a refused request must leave the driver's own state untouched. The
+				// handler keeps its own copy of the check for a request admitted just before a
+				// park request was accepted.
+				if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES") || !strcmp(property->id, "MOUNT_MOTION_DEC") || !strcmp(property->id, "MOUNT_MOTION_RA") || !strcmp(property->id, "MOUNT_TRACKING")) {
+					write_line("\t\tif (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {");
+					write_line("\t\t\tfor (int i = 0; i < %s->count; i++) {", property->handle);
+					write_line("\t\t\t\t%s->items[i].do_update = true;", property->handle);
+					write_line("\t\t\t}");
+					write_line("\t\t\t%s->state = INDIGO_ALERT_STATE;", property->handle);
+					write_line("\t\t\tindigo_update_property(device, %s, \"Mount is parked!\");", property->handle);
+					write_line("\t\t\treturn INDIGO_OK;");
+					write_line("\t\t}");
+				}
 				for (reject_type *reject = property->rejects; reject; reject = reject->next) {
 					write_line("\t\tif (%s) {", reject->condition);
 					write_line("\t\t\tfor (int i = 0; i < %s->count; i++) {", property->handle);
@@ -1919,7 +1941,12 @@ void write_c_change_property(device_type *device) {
 						} else if (!strncmp(property->id, "MOUNT_MOTION", 12)) {
 							write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(%s, %s);", property->handle, property->handler);
 						} else if (!strcmp(property->id, "GUIDER_GUIDE_RA") || !strcmp(property->id, "GUIDER_GUIDE_DEC")) {
-							write_line("\t\tINDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(%s, %s);", property->handle, property->handler);
+							// With accept_while_busy a guide pulse is taken even while another pulse
+							// on the same axis is still running, so the driver can replace it; the
+							// BUSY-guarded variant would discard the request without telling the
+							// client. A driver that opts in owns the replacement, including
+							// cancelling the finalizer of the pulse it supersedes.
+							write_line("\t\tINDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE%s(%s, %s);", property->accept_while_busy ? "_ANYTIME" : "", property->handle, property->handler);
 						} else {
 							write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
 						}
@@ -3296,6 +3323,9 @@ void write_definition_source(void) {
 			}
 			if (property->pass_through_change) {
 				write_line("\t\t\tpass_through_change = true;");
+			}
+			if (property->accept_while_busy) {
+				write_line("\t\t\taccept_while_busy = true;");
 			}
 			if (property->on_change) {
 				write_line("\t\t\ton_change {");

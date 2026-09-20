@@ -4845,6 +4845,7 @@
 		59E2DA5F263837EE00D3D4B5 /* jmemnobs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = jmemnobs.c; path = externals/libjpeg/jmemnobs.c; sourceTree = "<group>"; };
 		59E2DA60263837EE00D3D4B5 /* jdpostct.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = jdpostct.c; path = externals/libjpeg/jdpostct.c; sourceTree = "<group>"; };
 		59E2DA682638384900D3D4B5 /* Protocol_V3.10.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V3.10.pdf; sourceTree = "<group>"; };
+		59E4ADBA30600C0A002B1629 /* test_mount_synscan_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_synscan_hw.c; sourceTree = "<group>"; };
 		59E4FE432DCCD21700A10A06 /* indigo_focuser_usbv3.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_focuser_usbv3.driver; sourceTree = "<group>"; };
 		59E5A29323C1231F00E8BBBF /* CHANGELOG.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; wrapsLines = 1; };
 		59E5A29523C1238400E8BBBF /* RainbowAstro_191217.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = RainbowAstro_191217.pdf; sourceTree = "<group>"; };
@@ -14507,6 +14508,7 @@
 		9D239B3E30500558002E0722 /* hardware */ = {
 			isa = PBXGroup;
 			children = (
+				59E4ADBA30600C0A002B1629 /* test_mount_synscan_hw.c */,
 				59910BF8305C6FAA00FB1C2F /* test_ccd_atik_hw.c */,
 				59910BF9305C6FAA00FB1C2F /* test_ccd_sx_hw.c */,
 				C0DE20260911000100000003 /* test_ccd_asi_hw.c */,

@@ -1340,6 +1340,21 @@ $(INTEGRATION_BUILD)/test_ccd_uvc_sdk_sanitize: integration/test_ccd_uvc_sdk.c i
 test-ccd-uvc-sdk-sanitize: $(INTEGRATION_BUILD)/test_ccd_uvc_sdk_sanitize
 	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_ccd_uvc_sdk_sanitize
 
+# A physically connected SynScan mount is opt-in and excluded from normal integration tests. The
+# mount is reached over the network; SYNSCAN_HW_URL selects the address and defaults to
+# synscan://, which exercises the driver's UDP autodetection. The test physically moves both axes.
+# Set SYNSCAN_HW_AUTOHOME=1 to additionally run the controller autohome procedure, which drives
+# both axes to their home index.
+.PHONY: test-mount-synscan-hw
+test-mount-synscan-hw: check-lib $(TEST_BUILD)/hardware/test_mount_synscan_hw
+	$(TEST_BUILD)/hardware/test_mount_synscan_hw --run
+
+$(TEST_BUILD)/hardware/mount_synscan_hw_driver.o: ../indigo_drivers/mount_synscan/indigo_mount_synscan.c ../indigo_drivers/mount_synscan/indigo_mount_synscan.h Makefile | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=synscan_test_config_folder -c $< -o $@
+
+$(TEST_BUILD)/hardware/test_mount_synscan_hw: hardware/test_mount_synscan_hw.c test_runner.h $(TEST_BUILD)/hardware/mount_synscan_hw_driver.o | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< $(TEST_BUILD)/hardware/mount_synscan_hw_driver.o -o $@ $(TEST_LDFLAGS) -lindigocat
+
 # Physical UVC camera hardware is opt-in and excluded from normal integration tests.
 .PHONY: test-ccd-uvc-hw
 test-ccd-uvc-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_uvc_hw

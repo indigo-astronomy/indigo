@@ -24,7 +24,7 @@ driver synscan {
 	label = "SynScan Mount";
 	author = "CloudMakers, s. r. o. based on INDIGO 2.0 code by David Hulse";
 	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
-	version = 1;
+	version = 4;
 	serial {
 		configurable_speed = true;
 	}
@@ -253,6 +253,15 @@ driver synscan {
 			char buffer[32] = { 0 };
 			long count;
 			if (PRIVATE_DATA->udp) {
+				// Wait for the datagram before reading it. A bare read on a socket with a receive
+				// timeout reports the timeout as a read error, which latches on the handle and
+				// makes every later read and write fail without touching the socket, so a single
+				// lost reply would silence the mount for the rest of the session and the retry
+				// below could never recover it.
+				if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, SYNSCAN_COMMAND_TIMEOUT) <= 0) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No SynScan response before timeout");
+					return SYNSCAN_RESPONSE_IO_ERROR;
+				}
 				count = indigo_uni_read(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1);
 			} else {
 				count = indigo_uni_read_section2(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1, "\r", "", SYNSCAN_COMMAND_TIMEOUT, SYNSCAN_NEXT_BYTE_TIMEOUT);
@@ -1114,7 +1123,7 @@ driver synscan {
 			int model = (int)((version >> 16) & 0xFF);
 			PRIVATE_DATA->model_code = model;
 			PRIVATE_DATA->snap_port_supported = synscan_has_snap_port(model);
-			snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d", release, revision);
+			snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%d.%02d", release, revision);
 			snprintf(MOUNT_INFO_VENDOR_ITEM->text.value, INDIGO_VALUE_SIZE, "Sky-Watcher SynScan");
 			switch (model) {
 			case 0x00:
@@ -1543,6 +1552,17 @@ driver synscan {
 		}
 		inherited MOUNT_EQUATORIAL_COORDINATES {
 			preserve_values = true;
+			on_change_request {
+				// Claim the slew here, in the change branch, not in the handler. The handler runs
+				// on the device queue behind the mount poll, and the poll derives the coordinate
+				// state from the global mode, so a poll already in flight when the request was
+				// accepted would republish OK over the BUSY this change branch publishes and a
+				// client would see the slew finish before it started. The condition matches the
+				// one under which the generated branch actually schedules the handler.
+				if (!MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value && PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+					PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_SLEWING;
+				}
+			}
 			on_change {
 				if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 					MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
@@ -1944,6 +1964,10 @@ driver synscan {
 		}
 		// on_detach { }
 		inherited GUIDER_GUIDE_RA {
+			accept_while_busy = true;
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 				on_change {
 					double duration = 0;
 					int direction = 0;
@@ -1971,12 +1995,13 @@ driver synscan {
 						return;
 					}
 					double guide_rate = tracking_rate + direction * GUIDER_RATE_ITEM->number.value * tracking_rate / 100.0;
-					double deadline = synscan_now() + duration;
-					if (PRIVATE_DATA->guide_ra_direction != 0 && PRIVATE_DATA->guide_ra_direction != direction) {
-						PRIVATE_DATA->guide_ra_deadline = deadline;
-					} else if (deadline > PRIVATE_DATA->guide_ra_deadline) {
-						PRIVATE_DATA->guide_ra_deadline = deadline;
+					// A pulse arriving while another one is still running replaces it, in either
+					// direction, so the deadline is always the new one and the finalizer of the
+					// replaced pulse must not fire on the old schedule.
+					if (PRIVATE_DATA->guide_ra_deadline > 0) {
+						indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
 					}
+					PRIVATE_DATA->guide_ra_deadline = synscan_now() + duration;
 					PRIVATE_DATA->guide_ra_direction = direction;
 					PRIVATE_DATA->guide_ra_resume_rate = tracking_rate;
 					bool ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, guide_rate);
@@ -1991,6 +2016,10 @@ driver synscan {
 			// on_detach { }
 		}
 		inherited GUIDER_GUIDE_DEC {
+			accept_while_busy = true;
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 				on_change {
 					double duration = 0;
 					int direction = 0;
@@ -2013,12 +2042,13 @@ driver synscan {
 					}
 					double tracking_rate = PRIVATE_DATA->current_tracking_rate != 0 ? PRIVATE_DATA->current_tracking_rate : SIDEREAL_RATE;
 					double guide_rate = direction * GUIDER_DEC_RATE_ITEM->number.value * tracking_rate / 100.0;
-					double deadline = synscan_now() + duration;
-					if (PRIVATE_DATA->guide_dec_direction != 0 && PRIVATE_DATA->guide_dec_direction != direction) {
-						PRIVATE_DATA->guide_dec_deadline = deadline;
-					} else if (deadline > PRIVATE_DATA->guide_dec_deadline) {
-						PRIVATE_DATA->guide_dec_deadline = deadline;
+					// A pulse arriving while another one is still running replaces it, in either
+					// direction, so the deadline is always the new one and the finalizer of the
+					// replaced pulse must not fire on the old schedule.
+					if (PRIVATE_DATA->guide_dec_deadline > 0) {
+						indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
 					}
+					PRIVATE_DATA->guide_dec_deadline = synscan_now() + duration;
 					PRIVATE_DATA->guide_dec_direction = direction;
 					bool ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_DEC, guide_rate);
 					PRIVATE_DATA->dec_axis_mode = ok ? SYNSCAN_AXIS_GUIDING : SYNSCAN_AXIS_IDLE;
