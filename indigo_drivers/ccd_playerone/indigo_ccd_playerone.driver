@@ -23,7 +23,7 @@ driver playerone {
 	label = "Player One Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 22;
+	version = 23;
 	include {
 		#include <time.h>
 		#include <math.h>
@@ -1649,8 +1649,12 @@ driver playerone {
 			indigo_unlock_master_device(device);
 		}
 		inherited GUIDER_GUIDE_RA {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 			on_change_request {
-				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
 			}
 			on_change {
 				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -1675,8 +1679,12 @@ driver playerone {
 			}
 		}
 		inherited GUIDER_GUIDE_DEC {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 			on_change_request {
-				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
 			}
 			on_change {
 				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;

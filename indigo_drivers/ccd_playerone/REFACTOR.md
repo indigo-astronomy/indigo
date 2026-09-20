@@ -336,3 +336,11 @@ cd indigo_test && for i in $(seq 1 40); do ./build/integration/test_ccd_playeron
 
 Result: 40 of 40 runs passed, against 1 failure in 20 runs before the fix; the full fake-SDK suite passed
 three consecutive times, 49 cases each.
+
+## Overlapping guide pulses (2026-09-20)
+
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true` and zero both axis
+items in `on_change_request`, replacing the earlier workaround that forced the property state back
+to `INDIGO_OK_STATE` so the BUSY-guarded dispatch macro would let the request through. Behaviour is
+unchanged: the handler already released both relays of the axis and cancelled the pending finaliser
+before starting the replacement.
