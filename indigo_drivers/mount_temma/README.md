@@ -22,3 +22,7 @@ indigo_server indigo_mount_temma
 
 Driver is developed and tested with:
 * Takahashi Temma EM-11
+
+## Testing
+
+2026-09-20 20:27 3.0.0.13 mac arm64 simulator 13/13 OK

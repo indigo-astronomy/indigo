@@ -58,3 +58,18 @@ Hardware-only gaps remain physical relay timing, mechanical motion/pointing/trac
 ## Final test summary
 
 Simulated tests run: **13**. Simulated tests passed: **13**. Hardware tests run: **0**. Hardware tests passed: **0**. The complete simulator suite was repeated under normal instrumentation and ASan+UBSan; the totals count distinct driver integration cases, not repeated executions. A physical Temma mount remains required to validate relay output, mechanics, pointing/tracking and firmware-specific behavior.
+
+## Overlapping guide pulses (2026-09-20)
+
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true` and zero both axis
+items in `on_change_request`, replacing the earlier workaround that forced the property state back
+to `INDIGO_OK_STATE` so the BUSY-guarded dispatch macro would let the request through. Zeroing both
+items also closes a gap the old workaround left open: a reversing request kept the superseded
+direction set, so `temma_update_motion()` could be handed both bits of one axis. The driver now
+uses the same pattern as every other INDIGO driver that exposes a guider.
+
+`temma_guider_directions_replacement_axes_and_zero` gained two duration-measuring cases: a 2000 ms
+pulse replaced after 500 ms by a 600 ms pulse in the same direction, and the same pulse replaced by
+a 300 ms pulse in the opposite direction. The existing assertions only waited for a state
+transition, which passes even when the driver keeps the superseded pulse running to its own
+deadline.
