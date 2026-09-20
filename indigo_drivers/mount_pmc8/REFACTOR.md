@@ -680,3 +680,20 @@ Goal: refactor the PMC-Eight mount driver into a generator-friendly INDIGO 3.0 s
 - Migrate direct transport I/O to `indigo_uni_io` as part of the refactor.
 - Treat `indigo_uni_io` as the target transport layer for serial, UDP and TCP paths, not just as a cleanup after generator migration.
 - Keep the existing simulator-backed integration test as the primary hardware-free regression check.
+
+## Overlapping guide pulses (2026-09-20)
+
+A guide pulse requested while another pulse on the same axis was still running was silently
+discarded: the generated change branch dispatched both guide properties through the BUSY-guarded
+`INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE` macro, so the second request never reached the handler
+and the `indigo_cancel_pending_handler()` call the handler already carried was unreachable.
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true` and zero both axis
+items in `on_change_request`.
+
+The finaliser cancellation stays in `on_change`, where it runs on the device queue thread and
+`indigo_queue_remove()` skips its blocking wait; the same call from `on_change_request` would run on
+the bus thread and block there until a running handler finished.
+
+`pmc8_guider_passes_serial_compliance_checks` gained two duration-measuring cases: a 2000 ms pulse
+replaced after 500 ms by a 600 ms pulse in the same direction, and the same pulse replaced by a
+300 ms pulse in the opposite direction.

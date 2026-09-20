@@ -28,3 +28,7 @@ Use URL in form tcp://host:port or udp://host:port to connect to the mount over 
 ## Status: Stable
 
 Driver is developed and tested with iEXOS-100
+
+## Testing
+
+2026-09-20 20:49 3.0.0.11 mac arm64 simulator 11/11 OK

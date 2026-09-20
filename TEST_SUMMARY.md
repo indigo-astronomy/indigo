@@ -39,9 +39,17 @@
 
 2026-09-20 14:45 3.0.0.13 mac arm64 simulator 30/30 OK
 
+# mount_pmc8 (PMC Eight Mount)
+
+2026-09-20 20:49 3.0.0.11 mac arm64 simulator 11/11 OK
+
 # mount_simulator (Mount Simulator)
 
 2026-09-20 20:23 3.0.0.16 mac arm64 simulator 16/16 OK
+
+# mount_starbook (Vixen StarBook Mount)
+
+2026-09-20 20:49 3.0.0.7 mac arm64 simulator 11/11 OK
 
 # mount_synscan (SynScan Mount)
 
