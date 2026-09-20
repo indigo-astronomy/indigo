@@ -23,3 +23,6 @@ indigo_server indigo_focuser_dmfc
 
 ## Status: Stable
 
+## Testing
+
+2026-09-20 12:20 simulator 25/25 OK
