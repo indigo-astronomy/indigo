@@ -22,7 +22,7 @@ driver sx {
 	label = "Starlight Xpress Camera";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 18;
+	version = 19;
 	libusb {
 		hotplug = true;
 		vid = SX_VENDOR_ID;
@@ -1038,11 +1038,12 @@ driver sx {
 			GUIDER_GUIDE_DEC_PROPERTY->state = GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		inherited GUIDER_GUIDE_DEC {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 			on_change_request {
 				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
 				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
-				// Accept a replacing or cancelling request while the previous pulse is still running.
-				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			on_change {
 				// A new request replaces the running pulse, a zero request just cancels it.
@@ -1068,11 +1069,12 @@ driver sx {
 			}
 		}
 		inherited GUIDER_GUIDE_RA {
+			// A pulse arriving while another one on this axis is still running replaces it,
+			// so the change branch must take the request instead of discarding it as busy.
+			accept_while_busy = true;
 			on_change_request {
 				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
 				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
-				// Accept a replacing or cancelling request while the previous pulse is still running.
-				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			on_change {
 				// A new request replaces the running pulse, a zero request just cancels it.

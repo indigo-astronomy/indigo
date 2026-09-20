@@ -32,3 +32,7 @@ Driver is developed and tested with:
 * SX Loderstar
 * SX Lodestar X2
 * SX H694
+
+## Testing
+
+2026-09-20 21:31 3.0.0.19 mac arm64 fake SDK 24/24 OK

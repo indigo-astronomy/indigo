@@ -393,3 +393,11 @@ Validation on 2026-09-18 with SXVR-H694 #0201 (2750x2200, 4.54 um, cooler, Star2
 - `make -C indigo_test test-ccd-sx-hw`: all 9 cases pass with 3.0.0.17, hot-plug excluded as requested.
 - `indigo_test/build/integration/test_ccd_sx_usb`: all 24 groups pass. The expected driver version was updated to `0x03000011` in that file and in the hardware test.
 - Regression evidence: making the refusal copy the requested targets before publishing ALERT fails the new check at `test_ccd_sx_hw.c:726`, while every pre-existing assertion still passes.
+
+## Overlapping guide pulses (2026-09-20)
+
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true` and zero both axis
+items in `on_change_request`, replacing the earlier workaround that forced the property state back
+to `INDIGO_OK_STATE` so the BUSY-guarded dispatch macro would let the request through. Behaviour is
+unchanged; the driver now uses the same pattern as every other INDIGO driver that exposes a guider.
+`Guider replacement errors and disconnect` already covered the replacement and passes unmodified.
