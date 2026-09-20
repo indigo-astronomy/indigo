@@ -22,7 +22,7 @@ driver baader {
 	label = "Baader Classic Dome";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
-	version = 8;
+	version = 9;
 	serial;
 	include {
 		#include <math.h>
@@ -501,6 +501,15 @@ driver baader {
 			on_attach {
 				DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RW_PERM;
 			}
+			on_change_request {
+				// Rotation owns DOME_STEPS while it runs. This must happen on the bus thread, where
+				// the DOME_STEPS reject branch runs too, otherwise the queued handler can overwrite
+				// an ALERT the rejection has just published and the rejection becomes invisible.
+				if (!DOME_PARK_PARKED_ITEM->sw.value) {
+					DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+				}
+			}
 			on_change {
 				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 				// keep the framework BUSY guard closed while the device command runs
@@ -529,8 +538,6 @@ driver baader {
 				PRIVATE_DATA->target_position = target;
 				PRIVATE_DATA->rotation_active = true;
 				PRIVATE_DATA->rotation_emergency = baader_known_emergency(device);
-				DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 			}
 		}
 		inherited DOME_STEPS {

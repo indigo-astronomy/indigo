@@ -30,6 +30,14 @@
 
 2026-09-20 21:31 3.0.0.19 mac arm64 fake SDK 24/24 OK
 
+# dome_baader (Baader Classic Dome)
+
+2026-09-20 22:31 3.0.0.9 mac arm64 simulator 44/44 OK
+
+# dome_beaver (Nexdome Beaver Dome)
+
+2026-09-20 22:31 3.0.0.7 mac arm64 simulator 47/47 OK
+
 # focuser_dmfc (PegasusAstro DMFC Focuser)
 
 2026-09-20 12:30 3.0.0.17 mac arm64 simulator 25/25 OK

@@ -266,3 +266,21 @@ Covered by the `rejected_change` scenario in `indigo_test/integration/test_dome_
 ```sh
 cd indigo_test && BAADER_TEST_FILTER=rejected_change ./build/integration/test_dome_baader_simulator
 ```
+
+## Rejected DOME_STEPS change could be lost (2026-09-20)
+
+The driver had the same unsynchronised write to `DOME_STEPS_PROPERTY->state` that was found in
+dome_beaver: the generated `reject_change` branch runs on the bus thread inside `change_property`,
+while `DOME_HORIZONTAL_COORDINATES.on_change` claimed `DOME_STEPS` as BUSY from the device queue. A
+rejection arriving in that window is overwritten and never becomes observable.
+
+Unlike dome_beaver the defect did not reproduce here, because the claim came after
+`baader_goto_azimuth()` and its serial round-trip gave the rejection time to publish first. That is
+timing, not design, so the fix was applied identically: the claim moved into `on_change_request`,
+which runs on the bus thread like the rejection branch. Rotation still owns `DOME_STEPS` while it
+runs, and the remaining writes on that path only ever set ALERT.
+
+`fixtures/dome_baader/generated_reference_trace.txt` was regenerated: `U DOME_STEPS BUSY` now
+precedes `U DOME_HORIZONTAL_COORDINATES BUSY` in three places. No serial command changed.
+
+44/44 simulator scenarios pass.

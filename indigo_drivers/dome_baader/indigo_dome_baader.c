@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_dome_baader"
 #define DRIVER_LABEL         "Baader Classic Dome"
 #define DOME_DEVICE_NAME     "Baader Classic Dome"
@@ -588,8 +588,6 @@ static void dome_horizontal_coordinates_handler(indigo_device *device) {
 	PRIVATE_DATA->target_position = target;
 	PRIVATE_DATA->rotation_active = true;
 	PRIVATE_DATA->rotation_emergency = baader_known_emergency(device);
-	DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 	//- dome.DOME_HORIZONTAL_COORDINATES.on_change
 	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 }
@@ -815,6 +813,15 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
+		//+ dome.DOME_HORIZONTAL_COORDINATES.on_change_request
+		// Rotation owns DOME_STEPS while it runs. This must happen on the bus thread, where
+		// the DOME_STEPS reject branch runs too, otherwise the queued handler can overwrite
+		// an ALERT the rejection has just published and the rejection becomes invisible.
+		if (!DOME_PARK_PARKED_ITEM->sw.value) {
+			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+		}
+		//- dome.DOME_HORIZONTAL_COORDINATES.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_HORIZONTAL_COORDINATES_PROPERTY, dome_horizontal_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_STEPS_PROPERTY, property)) {
