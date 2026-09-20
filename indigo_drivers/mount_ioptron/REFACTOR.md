@@ -387,3 +387,26 @@ cases: 104 (101 serial + 3 TCP), all passing in the final ordinary and
 sanitized runs.
 
 Hardware tests: 0 run, 0 passed.
+
+## Overlapping guide pulses (2026-09-20)
+
+A guide pulse requested while another pulse on the same axis was still running was silently
+discarded: the generated change branch dispatched both guide properties through the BUSY-guarded
+`INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE` macro, so the second request never reached the handler.
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true` and zero both axis
+items in `on_change_request`, and each handler drops the finaliser of the pulse it replaces.
+
+Without that cancellation the superseded finaliser would end the new pulse on the old deadline, and
+on `HC_8406` it would send `:Qe#` / `:Qn#` into the replacement. The cancellation sits in
+`on_change`, where it runs on the device queue thread and `indigo_queue_remove()` skips its blocking
+wait; from `on_change_request` it would run on the bus thread and block until a running handler
+finished.
+
+`ioptron_guider_directions_overlap_and_timing` asserted that `Ms00100` was never sent after a
+reversing request, which recorded the discard as expected behaviour. It now asserts the command is
+sent and adds two duration-measuring cases: a 2000 ms pulse replaced after 500 ms by a 600 ms pulse
+in the same direction (1259 ms measured) and by a 300 ms pulse in the opposite direction (1044 ms).
+
+Because the request is now accepted while the property is BUSY, two requests arriving inside the
+queue latency can queue two handlers that both act on the already-overwritten item values, so the
+same command can reach the mount twice. The resulting pulse is still the second request's.

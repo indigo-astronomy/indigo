@@ -1695,13 +1695,43 @@ static void ioptron_guider_directions_overlap_and_timing(void) {
 			enumerate_simulator_device();
 		}
 	}
-	// Same-axis requests while BUSY are ignored; the other axis stays independent.
+	// A same-axis request while BUSY replaces the running pulse and reaches the mount; the other
+	// axis stays independent. Before overlapping pulses were accepted this block asserted the
+	// opposite, that Ms00100 was never sent, which recorded the request being discarded.
 	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 500, INDIGO_BUSY_STATE));
 	int before = event_count(simulator, "Ms00100");
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ioptron_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 100, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(before, event_count(simulator, "Ms00100"));
+	SERIAL_CHECK_TRUE(event_count(simulator, "Ms00100") > before);
+
+	// The elapsed time has to follow the second request. Measuring the duration is the point of
+	// these two cases: waiting only for the property to leave BUSY passes even when the second
+	// request is discarded, which is how this behaviour went unverified before.
+	double replacement_started = indigo_monotonic_time();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ioptron_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ioptron_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 600));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0.001));
+	// Replacing finishes about 500 + 600 ms after the first request; keeping the superseded pulse
+	// would run the full 2000 ms.
+	double replaced = (indigo_monotonic_time() - replacement_started) * 1000.0;
+	printf("    2000 ms north pulse replaced after 500 ms by a 600 ms north pulse finished in %.0f ms\n", replaced);
+	SERIAL_CHECK_TRUE(replaced > 900 && replaced < 1700);
+
+	replacement_started = indigo_monotonic_time();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ioptron_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ioptron_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 300));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 0, 0.001));
+	double reversed = (indigo_monotonic_time() - replacement_started) * 1000.0;
+	printf("    2000 ms north pulse replaced after 500 ms by a 300 ms south pulse finished in %.0f ms\n", reversed);
+	SERIAL_CHECK_TRUE(reversed > 600 && reversed < 1400);
 	for (int i = 0; i < samples; i++) {
 		for (int j = i + 1; j < samples; j++) {
 			if (errors[j] < errors[i]) {

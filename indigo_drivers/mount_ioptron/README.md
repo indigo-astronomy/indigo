@@ -36,3 +36,7 @@ Driver is tested and verified with:
 * iEQ 45 Pro
 * GEM28
 * HEM27
+
+## Testing
+
+2026-09-20 21:29 3.0.0.53 mac arm64 simulator 104/104 OK
