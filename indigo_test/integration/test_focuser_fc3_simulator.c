@@ -480,6 +480,7 @@ cleanup:
 static void relative_move(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(sync_position(3000));
+	SERIAL_CHECK_TRUE(position_is(3000));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 600, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(last_argument_is("FG:", -600));
@@ -512,6 +513,34 @@ static void limits_clamp_goto(void) {
 	// A sync is a coordinate update and is not clamped by the driver.
 	SERIAL_CHECK_TRUE(sync_position(9000));
 	SERIAL_CHECK_TRUE(last_argument_is("FN:", 9000));
+cleanup:
+	driver_stop();
+}
+
+// A relative move is clamped so it stops at the limit the move approaches.
+static void limits_clamp_steps(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_position(1000));
+	// The relative move is clamped against the last position the controller
+	// reported, so the scenario waits for that readback first.
+	SERIAL_CHECK_TRUE(position_is(1000));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME, 800, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 1300, INDIGO_OK_STATE));
+	// Inward counts down, so the request is cut at the minimum.
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 5000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("FG:", -200));
+	SERIAL_CHECK_TRUE(position_is(800));
+	// Outward counts up, so the request is cut at the maximum.
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 5000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("FG:", 500));
+	SERIAL_CHECK_TRUE(position_is(1300));
+	// A move that stays inside the interval is passed through unchanged.
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(last_argument_is("FG:", -100));
+	SERIAL_CHECK_TRUE(position_is(1200));
 cleanup:
 	driver_stop();
 }
@@ -817,6 +846,7 @@ int main(void) {
 		{ "sync_and_goto", sync_and_goto, "normal" },
 		{ "relative_move", relative_move, "normal" },
 		{ "limits_clamp_goto", limits_clamp_goto, "normal" },
+		{ "limits_clamp_steps", limits_clamp_steps, "normal" },
 		{ "motion_progress_and_abort", motion_progress_and_abort, "normal" },
 		{ "short_moves_settle", short_moves_settle, "normal" },
 		{ "abort_while_idle", abort_while_idle, "normal" },
