@@ -25,3 +25,7 @@ indigo_server indigo_ccd_svb
 Driver is developed and tested with:
 * SV305Pro
 * SV405CC
+
+## Testing
+
+2026-09-20 21:31 3.0.0.26 mac arm64 fake SDK 47/47 OK

@@ -170,3 +170,15 @@ make -C indigo_test test-ccd-svb-hw
 Result: `SVB hardware: all tests passed`, including four pixel formats at bin 1 and 2, ROI/bin, config roundtrip, streaming, guider pulses and driver shutdown/reinitialization. Hotplug was not exercised in this run.
 
 Three earlier attempts failed with `SVB_ERROR_TIMEOUT` (11) in `acquisition_finalizer` on the first readouts, while another INDIGO application had the camera open and immediately after it released it mid-acquisition. A USB replug restored the camera and the run above passed unchanged, so this is a device-state effect of the concurrent claim, not a driver defect; the SV305PRO needs exclusive access for this test.
+
+## Overlapping guide pulses (2026-09-20)
+
+A guide pulse requested while another pulse on the same axis was still running was silently
+discarded: the generated change branch dispatched both guide properties through the BUSY-guarded
+`INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE` macro, so the second request never reached the handler
+and the `indigo_cancel_pending_handler()` call the handler already carried was unreachable. Both
+properties now declare `accept_while_busy = true` and zero both axis items in `on_change_request`.
+
+The guider lifecycle test gained two duration-measuring cases: a 2000 ms pulse replaced after 500 ms
+by a 600 ms pulse in the same direction (1110 ms measured) and by a 300 ms pulse in the opposite
+direction (820 ms), both also confirming the relays are released afterwards.
