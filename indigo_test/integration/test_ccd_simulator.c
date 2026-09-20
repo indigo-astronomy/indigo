@@ -720,6 +720,37 @@ cleanup:
 
 static void simulator_guider_replacement_and_simultaneous_axes(void) {
 	start_connected_simulator(&ccd_guider_simulator);
+	// A pulse arriving while another one on the same axis is still running replaces it, so the
+	// elapsed time has to follow the second request. Measuring the duration is the point of these
+	// two cases: waiting only for the property to leave BUSY passes even when the second request
+	// is discarded, which is how this behaviour went unverified before.
+	double started = indigo_monotonic_time();
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ccd_guider_simulator.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 2000));
+	ASSERT_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(500000);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ccd_guider_simulator.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 600));
+	ASSERT_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_RA_PROPERTY_NAME));
+	ASSERT_TRUE(wait_for_number_item_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 0, 0.001));
+	// Replacing finishes about 500 + 600 ms after the first request; keeping the superseded pulse
+	// would run the full 2000 ms.
+	double replaced = (indigo_monotonic_time() - started) * 1000.0;
+	printf("    2000 ms east pulse replaced after 500 ms by a 600 ms east pulse finished in %.0f ms\n", replaced);
+	ASSERT_TRUE(replaced > 900 && replaced < 1700);
+
+	// Reversing direction mid-pulse must drop the superseded item as well, otherwise the stale
+	// east request would restart the axis eastwards.
+	started = indigo_monotonic_time();
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ccd_guider_simulator.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 2000));
+	ASSERT_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(500000);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ccd_guider_simulator.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 300));
+	ASSERT_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_RA_PROPERTY_NAME));
+	ASSERT_TRUE(wait_for_number_item_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 0, 0.001));
+	ASSERT_TRUE(wait_for_number_item_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 0, 0.001));
+	double reversed = (indigo_monotonic_time() - started) * 1000.0;
+	printf("    2000 ms east pulse replaced after 500 ms by a 300 ms west pulse finished in %.0f ms\n", reversed);
+	ASSERT_TRUE(reversed > 600 && reversed < 1400);
+
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ccd_guider_simulator.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 500));
 	ASSERT_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ccd_guider_simulator.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 50));

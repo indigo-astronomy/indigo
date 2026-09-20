@@ -88,3 +88,23 @@ No hardware testing will be performed. This is a software-only simulator with no
 
 - Simulated tests run/passed: 76/76 final validation scenario executions (19 native final, 19 arm64, 19 x86_64 and 19 arm64 ASan/UBSan); additionally 18/18 generator architecture scenarios passed. The separate guider benchmark completed 96 measured samples and 24 warm-ups and is not counted as a pass/fail test.
 - Hardware tests run/passed: 0/0 (not applicable; explicitly not performed).
+
+## Overlapping guide pulses (2026-09-20)
+
+A guide pulse requested while another pulse on the same axis is still running now replaces the
+running one instead of being discarded. The generated change branch dispatched both guide
+properties through the BUSY-guarded `INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE` macro, so the
+second request never reached the handler; the `indigo_cancel_pending_handler()` call the handler
+already carried was unreachable. `GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare
+`accept_while_busy = true` and zero both axis items in `on_change_request`, so a reversing request
+cannot leave the superseded direction set. This is the same pattern used by every other INDIGO
+driver that exposes a guider.
+
+`simulator_guider_replacement_and_simultaneous_axes` was extended with two duration-measuring
+cases, because waiting only for the property to leave BUSY passes even when the second request is
+discarded: a 2000 ms pulse replaced after 500 ms by a 600 ms pulse in the same direction, and the
+same pulse replaced by a 300 ms pulse in the opposite direction. Against the pre-change driver the
+first case measures the full 2000 ms and fails; against the fixed driver it measures about 1100 ms.
+Partial travel of a replaced pulse is not added to the simulated image offset, because the
+finalizer of the superseded pulse never runs; the simulated guiding error therefore lags slightly
+behind a real mount when a client replaces pulses mid-flight.
