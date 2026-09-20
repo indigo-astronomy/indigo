@@ -118,7 +118,8 @@
 
 # wheel_sx (Starlight Xpress Filter Wheel)
 
-2026-09-20 15:00 3.0.0.5 mac arm64 fake SDK 17/17 OK
+2026-09-20 23:02 3.0.0.6 mac arm64 fake SDK 17/17 OK
+2026-09-20 23:09 3.0.0.6 mac arm64 SX filter wheel 12/12 OK
 
 # ccd_atik2 (Atik (legacy) Camera)
 

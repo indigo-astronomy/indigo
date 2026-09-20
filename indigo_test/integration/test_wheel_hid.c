@@ -391,7 +391,35 @@ cleanup:
 	driver_stop();
 }
 
-// A wheel that has not finished finding its first slot is not usable yet.
+#if TEST_KIND == 1
+
+// A turning Starlight Xpress wheel answers the query with slot 0 and a valid slot count, which a
+// client sees whenever it connects during a move or right after power up. The driver connects,
+// publishes the slot as busy and resolves it from the wheel itself, without commanding anything.
+// Refusing that connection was the defect the hardware run found.
+static void unknown_initial_slot(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	atomic_store(&current_slot, 0);
+	atomic_store(&target_slot, 3);
+	atomic_store(&pending_polls, 3);
+	SERIAL_CHECK_TRUE(connect_wheel());
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	// The slot count is readable even while the slot is not, so the property contract is complete.
+	indigo_item *slot = find_cached_item(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME);
+	SERIAL_CHECK_TRUE(slot != NULL && slot->number.min == 1 && slot->number.max == 7);
+	SERIAL_CHECK_EQ_INT(7, find_cached_property(WHEEL_SLOT_NAME_PROPERTY_NAME)->count);
+	SERIAL_CHECK_TRUE(slot_is(3));
+	SERIAL_CHECK_EQ_INT(0, sets);
+	// The wheel is fully usable once it has arrived.
+	SERIAL_CHECK_TRUE(select_slot(5, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(slot_is(5));
+cleanup:
+	driver_stop();
+}
+
+#else
+
+// The Atik wheel is probed until it reports a slot, so a wheel that never finds one is refused.
 static void unknown_initial_slot(void) {
 	SERIAL_CHECK_TRUE(driver_up());
 	atomic_store(&current_slot, 0);
@@ -408,6 +436,8 @@ static void unknown_initial_slot(void) {
 cleanup:
 	driver_stop();
 }
+
+#endif
 
 static void open_failure(void) {
 	SERIAL_CHECK_TRUE(driver_up());

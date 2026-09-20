@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_wheel_sx"
 #define DRIVER_LABEL         "Starlight Xpress Filter Wheel"
 #define WHEEL_DEVICE_NAME    "SX Filter Wheel"
@@ -85,7 +85,10 @@ static bool sx_message(indigo_device *device, int a, int b) {
 static bool sx_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_hid(SX_VENDOR_ID, SX_PRODUCT_ID, INDIGO_LOG_DEBUG | BINARY_LOG);
 	if (PRIVATE_DATA->handle != NULL) {
-		if (sx_message(device, 0, 0) && PRIVATE_DATA->current_slot > 0) {
+		// A wheel that is still turning answers the query with slot 0 and a valid slot
+		// count, so only the count has to be readable here. The slot is resolved by the
+		// movement finalizer once the wheel arrives.
+		if (sx_message(device, 0, 0)) {
 			return true;
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
@@ -107,8 +110,13 @@ static void wheel_move_finalizer(indigo_device *device) {
 	} else {
 		if (PRIVATE_DATA->current_slot > 0) {
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+			// A zero target means the wheel was already turning when the driver
+			// connected, so wherever it stops is the slot to publish.
+			if (PRIVATE_DATA->target_slot == 0) {
+				WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->target_slot = PRIVATE_DATA->current_slot;
+			}
 		}
-		if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
+		if (PRIVATE_DATA->current_slot > 0 && PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		} else if (--PRIVATE_DATA->motion_polls <= 0) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -132,7 +140,16 @@ static void wheel_connection_handler(indigo_device *device) {
 			//+ wheel.on_connect
 			WHEEL_SLOT_ITEM->number.min = 1;
 			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->count;
-			WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->target_slot = PRIVATE_DATA->current_slot;
+			PRIVATE_DATA->target_slot = PRIVATE_DATA->current_slot;
+			if (PRIVATE_DATA->current_slot > 0) {
+				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot;
+			} else {
+				// Connected while the wheel is turning: keep the last known slot published as busy
+				// until the finalizer reads the slot the wheel settles on.
+				PRIVATE_DATA->motion_polls = 120;
+				WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+			}
 			//- wheel.on_connect
 		}
 		if (connection_result) {
