@@ -5548,6 +5548,7 @@
 		C0DE20260914B00100000002 /* test_agent_scripting_sequencer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scripting_sequencer.c; sourceTree = "<group>"; };
 		C0DE20260914C00100000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260914C00100000002 /* test_aux_joystick_hid.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_joystick_hid.c; sourceTree = "<group>"; };
+		49B981AB4CBB4A2489DD7064 /* test_aux_rpio_sysfs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_rpio_sysfs.c; sourceTree = "<group>"; };
 		C0DE20260914C00100000003 /* malloc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = malloc.h; sourceTree = "<group>"; };
 		C0DE20260914C00100000004 /* joystick.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = joystick.h; sourceTree = "<group>"; };
 		C0DE20260915000100000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
@@ -14014,6 +14015,7 @@
 				5907ACE8301E93D30009AA99 /* test_aux_flatmaster_simulator.c */,
 				5907ACEA301E9F1B0009AA99 /* test_aux_flipflat_simulator.c */,
 				C0DE20260914C00100000002 /* test_aux_joystick_hid.c */,
+				49B981AB4CBB4A2489DD7064 /* test_aux_rpio_sysfs.c */,
 				9B2B121EFA1F4F77BCDD8053 /* test_aux_mgbox_simulator.c */,
 				5984A2FA303B77B300D581D2 /* test_aux_ppb_simulator.c */,
 				5984A2FC303B796D00D581D2 /* test_aux_skyalert_simulator.c */,

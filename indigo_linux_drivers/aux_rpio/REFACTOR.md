@@ -182,13 +182,15 @@ Numbering is stable; each entry gets a regression test before it is fixed.
 
 ### D8 Pulse length is passed as the pin value
 
-- Impact: currently benign, but any non-boolean interpretation of the argument is wrong, and for a
-  PWM line the pulse length is handed to `rpio_pwm_set_enable()` as its enable value.
+- Impact: none observable. Found by source audit only.
 - Root cause: `set_gpio_outlets()` calls
   `rpio_set_output_line(i, (int)pulse_length_item->number.value, pwm)` where the second argument is
   the pin value.
 - Fix: pass `1`.
-- Regression test: assert the value written to the fake for a pulsed output.
+- Regression test: **not possible at the boundary.** Both sinks reduce the argument to a boolean
+  (`char val = value ? '1' : '0'`), so every non-zero pulse length produces exactly the same sysfs
+  write as `1`. No test can distinguish the two, so this stays an audit finding and is fixed for
+  clarity, not to repair observable behavior.
 
 ### D9 One second blocking sleep in the connect path
 
@@ -219,6 +221,31 @@ Numbering is stable; each entry gets a regression test before it is fixed.
 - Root cause: `rpio_set_input()` reports a failed direction write with `fprintf`.
 - Fix: use `INDIGO_DRIVER_ERROR`.
 
+### D14 The input poller survives disconnect
+
+- Impact: severe. After a disconnect the one second poll keeps running, keeps reading pins that the
+  same disconnect has already unexported, and keeps touching a device the driver is about to free.
+  `indigo_cancel_timer_sync()` in the disconnect branch does not reliably stop it.
+- Discovery: reproduced, not audited. Consecutive test cases interfere with each other. After a
+  case that connects successfully, the framework log keeps printing
+  `rpio_pin_read:483: Failed to open gpio19 value for reading` once per second while the *next*
+  case is running, and `disconnect_serial_device()` then times out after its full five seconds.
+  With the poller of the previous device still running, later cases fail non-deterministically:
+  `outputs are written and read back`, `pulsed output returns to zero`,
+  `inputs are polled and published`, `PWM channels are programmed when present` and
+  `plain GPIO is used when no PWM chip is present` all fail or pass depending on timing. Those five
+  failures are collateral of this one defect, not five separate defects.
+- Root cause: `sensors_timer_callback()` re-arms itself with `indigo_reschedule_timer()` as its last
+  statement, with no check that the device is still connected. The disconnect branch cancels the
+  timer while that callback is in flight, and the re-arm at the end of the in-flight callback
+  reinstates it. `indigo_reschedule_timer()` logs nothing in this case: the log contains no
+  `Attempt to reschedule timer without reference!` line, so the reference was valid again by the
+  time the callback re-armed it.
+- Fix: gate the re-arm on the connection state the disconnect path clears before cancelling, so a
+  cancelled poller cannot reinstate itself.
+- Regression test: connect, disconnect, and assert that no further sysfs read is recorded and that
+  the disconnect completes without waiting.
+
 ### D13 PWM properties updated when no PWM is present
 
 - Impact: `AUX_GPIO_OUTLET_FREQUENCIES` and `AUX_GPIO_OUTLET_DUTY` are published on every poll even
@@ -230,16 +257,58 @@ Numbering is stable; each entry gets a regression test before it is fixed.
 Each step is independently verifiable and is marked here with its result as soon as it runs.
 
 1. **Record this audit and baseline.** — done, this file.
-2. **Fake sysfs harness.** Add a hardware-free harness under `indigo_test/` that bind mounts a
-   generated sysfs tree over `/sys/class/gpio` and `/sys/class/pwm` inside an unprivileged mount
-   namespace, so the unmodified driver is exercised through its real code path. Verified feasible
-   on the target: `unshare --map-root-user --mount` plus `mount --bind` works without root and
-   without touching the real interfaces. — pending
-3. **Characterization suite against the original driver.** Full AUX class coverage per
-   `DRIVER_TESTING_RULES.md`: metadata and interface bit, property contract before and after
-   connect, connect/disconnect/reconnect, INIT/SHUTDOWN, outputs, pulses, sensors polling, PWM
-   frequency and duty, names persistence, and the failure injection points listed above. Every
-   defect above gets a reproducer, recorded as an expected baseline failure. — pending
+2. **Fake sysfs harness.** — done. A mount namespace was evaluated first and does work on the
+   target (`unshare --map-root-user --mount` plus `mount --bind` needs no root), but the repository
+   already has a better idiom for exactly this shape of driver: `test_aux_joystick_hid` recompiles
+   the driver with `-Dopen=..._test_open` and friends and supplies the system calls from the test.
+   `indigo_test/integration/test_aux_rpio_sysfs.c` follows that idiom and models the kernel side of
+   sysfs: export creates a pin node that defaults to direction `in`, direction and value behave
+   like their real counterparts, PWM channels are exported and programmed, and every interaction is
+   appended to an ordered, timestamp-free trace. `stat` is replaced through a function-like macro so
+   that `struct stat` is left alone. The harness needs no privileges, no namespace and no real
+   hardware, and it runs on any platform the rest of the suite runs on.
+3. **Characterization suite against the original driver.** — done, 18 cases. Baseline run against
+   the unmodified driver, on the target:
+
+   ```sh
+   make -C indigo_test build/integration/test_aux_rpio_sysfs
+   cd indigo_test && ./build/integration/test_aux_rpio_sysfs
+   ```
+
+   Result: **6 passed, 12 failed**.
+
+   | Case | Baseline | Meaning |
+   | --- | --- | --- |
+   | driver metadata, interface and property contract | pass | behavior to preserve |
+   | connect exports and configures every pin | pass | behavior to preserve |
+   | pins are offset by the controller base | fail | D1 |
+   | outputs are written and read back | fail | collateral of D14 |
+   | pulsed output returns to zero | fail | collateral of D14 |
+   | inputs are polled and published | fail | collateral of D14 |
+   | PWM channels are programmed when present | fail | collateral of D14 |
+   | plain GPIO is used when no PWM chip is present | fail | collateral of D14 |
+   | failed PWM readback is not written back | pass | D6 not reachable through this path |
+   | rejected export fails the connection cleanly | pass | D4 and D7 not reached on the first export |
+   | failed connect rolls back exported pins | fail | D7 |
+   | empty value read is an error | fail | D5 |
+   | connect does not sleep for a fixed second | fail | D9, measured 1000000 us in one call |
+   | connect tolerates a late direction file | fail | collateral of D14 |
+   | names are applied to labels | pass | behavior to preserve |
+   | disconnect unexports and reconnect works | fail | D14 |
+   | shutdown is rejected while connected | pass | behavior to preserve |
+   | repeated initialization and shutdown | pass | behavior to preserve |
+
+   The five collateral failures are all caused by D14 and are expected to clear once it is fixed;
+   they are not counted as separate defects. Two cases that were written as reproducers pass
+   against the original driver, which is recorded honestly above rather than presented as coverage
+   of D4, D6 and D7.
+
+   Three harness defects were found and fixed while establishing this baseline, and none of them
+   were driver defects: the fake first left an exported pin in direction `out` instead of the
+   kernel default `in`; the cleanup path tore a driver down twice when a connection was expected to
+   fail, because `start_serial_driver()` already tears down on failure; and a blanket rename made
+   the cleanup helper call itself. They are recorded here so the baseline numbers above are not
+   read as driver behavior.
 4. **Reference trace.** Record the ordered sysfs interactions of the original driver through the
    fake and normalize it for later comparison. — pending
 5. **Fix D1 to D3**, the numbering and PWM resolution defects. — pending
@@ -253,6 +322,8 @@ Each step is independently verifiable and is marked here with its result as soon
 
 ## Final test summary
 
-- Simulated tests: 0 executed, 0 passed.
+- Simulated tests: 18 executed, 6 passed. This is the pre-migration baseline against the unmodified
+  driver, not a completion claim. The 12 failures are the recorded expected baseline failures for
+  D1, D5, D7, D9 and D14 above.
 - Hardware tests: 3 executed, 3 passed. Non-destructive topology inspection only, as decided
   above; no physical pin was driven.
