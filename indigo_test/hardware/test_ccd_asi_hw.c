@@ -381,22 +381,71 @@ static bool all_frame_types(void) {
 	return ok;
 }
 
-static bool format_geometry_and_controls(void) {
+static indigo_property_state property_state(int d, const char *name) {
+	pthread_mutex_lock(&mutex);
+	int p = slot(d, name);
+	indigo_property_state state = p < 0 ? INDIGO_IDLE_STATE : devices[d].properties[p]->state;
+	pthread_mutex_unlock(&mutex);
+	return state;
+}
+
+// Waits for the next publication of a property regardless of the state it carries. Values a poll
+// fills in, such as the measured temperature, are only known after such a publication.
+static bool wait_revision(int d, const char *name, unsigned after, double timeout) {
+	double deadline = indigo_monotonic_time() + timeout;
+	while (indigo_monotonic_time() < deadline) {
+		if (revision(d, name) > after) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "    timeout: %s %s was not published again\n", devices[d].name, name);
+	return false;
+}
+
+// Connects a device unless it is already connected. The framework answers a request for a device
+// that is already connected without publishing anything, so a revision gated wait would time out.
+static bool connect_device(int d) {
+	if (d < 0) {
+		return true;
+	}
+	indigo_property *connection = snapshot(d, "CONNECTION");
+	bool connected = false;
+	for (int i = 0; connection && i < connection->count; i++) {
+		if (!strcmp(connection->items[i].name, "CONNECTED")) {
+			connected = connection->items[i].sw.value;
+		}
+	}
+	indigo_release_property(connection);
+	return connected || switch_value(d, "CONNECTION", "CONNECTED", INDIGO_OK_STATE);
+}
+
+// Puts the camera back into the state every acquisition scenario expects: images delivered to this
+// client as raw blobs and local files written into the temporary configuration directory.
+static bool prepare_client_raw(void) {
+	return set_local_directory() && switch_value(camera, "CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE) && switch_value(camera, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE);
+}
+
+// Every pixel format the camera advertises has to deliver exactly one frame.
+static bool exercise_pixel_formats(void) {
 	indigo_property *pixel = snapshot(camera, "X_PIXEL_FORMAT");
-	indigo_property *frame = snapshot(camera, "CCD_FRAME");
-	indigo_property *bin = snapshot(camera, "CCD_BIN");
-	indigo_property *gain = snapshot(camera, "CCD_GAIN");
-	indigo_property *offset = snapshot(camera, "CCD_OFFSET");
-	indigo_property *type = snapshot(camera, "CCD_FRAME_TYPE");
-	bool ok = pixel && frame && bin;
+	bool ok = pixel != NULL;
 	for (int i = 0; ok && i < pixel->count; i++) {
 		printf("    hardware pixel format: %s\n", pixel->items[i].name);
 		unsigned before = frames();
 		ok = switch_value(camera, "X_PIXEL_FORMAT", pixel->items[i].name, INDIGO_OK_STATE) && number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE) && frames() == before + 1;
 	}
-	if (ok) {
-		ok = switch_value(camera, "X_PIXEL_FORMAT", pixel->items[0].name, INDIGO_OK_STATE);
-	}
+	ok = restore_property(pixel) && ok;
+	indigo_release_property(pixel);
+	return ok;
+}
+
+// A nonzero ROI at every supported bin, checking the geometry of the delivered frame rather than
+// only the accepted property value.
+static bool exercise_bins_and_roi(void) {
+	indigo_property *frame = snapshot(camera, "CCD_FRAME");
+	indigo_property *bin = snapshot(camera, "CCD_BIN");
+	bool ok = frame && bin;
 	for (int factor = 1; ok && factor <= 2 && factor <= bin->items[0].number.max; factor++) {
 		unsigned before = revision(camera, "CCD_BIN");
 		indigo_change_number_property(&client, devices[camera].name, "CCD_BIN", 2, (const char *[]){ "HORIZONTAL", "VERTICAL" }, (double[]){ factor, factor });
@@ -409,8 +458,25 @@ static bool format_geometry_and_controls(void) {
 		pthread_mutex_unlock(&mutex);
 		printf("    hardware ROI 256x256 at 16,24, bin %d: %s\n", factor, ok ? "PASS" : "FAIL");
 	}
-#ifndef ASI_DYNAMIC_DRIVER
-	if (ok && gain && gain->perm == INDIGO_RW_PERM) {
+	// Binning bounds the frame, so it has to be restored first.
+	ok = restore_property(bin) && ok;
+	ok = restore_property(frame) && ok;
+	indigo_release_property(bin);
+	indigo_release_property(frame);
+	return ok;
+}
+
+// A driver owned SDK setting survives CONFIG SAVE and comes back on CONFIG LOAD.
+static bool exercise_configuration_roundtrip(void) {
+#ifdef ASI_DYNAMIC_DRIVER
+	printf("    configuration roundtrip: not applicable to the dynamic loader build\n");
+	return true;
+#else
+	indigo_property *gain = snapshot(camera, "CCD_GAIN");
+	bool ok = gain != NULL;
+	if (ok && gain->perm != INDIGO_RW_PERM) {
+		printf("    CCD_GAIN is read only on this camera, nothing to save\n");
+	} else if (ok) {
 		double value = gain->items[0].number.value;
 		double changed = value < gain->items[0].number.max ? value + 1 : value - 1;
 		ok = number_value(camera, "CCD_GAIN", "GAIN", changed, INDIGO_OK_STATE) && switch_value(camera, "CONFIG", "SAVE", INDIGO_OK_STATE) && restore_property(gain) && switch_value(camera, "CONFIG", "LOAD", INDIGO_OK_STATE);
@@ -419,37 +485,32 @@ static bool format_geometry_and_controls(void) {
 		indigo_release_property(loaded);
 		printf("    hardware gain/config roundtrip in temporary directory: %s\n", ok ? "PASS" : "FAIL");
 	}
-#endif
-	if (ok && offset && offset->perm == INDIGO_RW_PERM) {
-		ok = number_value(camera, "CCD_OFFSET", "OFFSET", offset->items[0].number.value < offset->items[0].number.max ? offset->items[0].number.value + 1 : offset->items[0].number.value - 1, INDIGO_OK_STATE);
-	}
-	if (ok) {
-		ok = all_frame_types() && switch_value(camera, "CCD_FRAME_TYPE", "LIGHT", INDIGO_OK_STATE);
-	}
-	if (ok) {
-		printf("    completed long exposure with concurrent guider commands\n");
-		unsigned before = revision(camera, "CCD_EXPOSURE");
-		indigo_change_number_property_1(&client, devices[camera].name, "CCD_EXPOSURE", "EXPOSURE", 5);
-		ok = wait_state(camera, "CCD_EXPOSURE", before, INDIGO_BUSY_STATE) && number_value(guider, "GUIDER_GUIDE_RA", "EAST", 100, INDIGO_OK_STATE) && number_value(guider, "GUIDER_GUIDE_DEC", "NORTH", 100, INDIGO_OK_STATE) && wait_state(camera, "CCD_EXPOSURE", before, INDIGO_OK_STATE);
-	}
-	indigo_property *restore[] = { bin, frame, pixel, gain, offset, type };
-	for (int i = 0; i < ARRAY_SIZE(restore); i++) {
-		if (!restore_property(restore[i])) {
-			ok = false;
-		}
-		indigo_release_property(restore[i]);
-	}
+	ok = restore_property(gain) && ok;
+	indigo_release_property(gain);
 	return ok;
+#endif
 }
 
-static bool additional_controls_and_cooling(void) {
+// A long exposure completes while the guider of the same camera is pulsed, which is the shared
+// session the two logical devices have to survive.
+static bool exercise_guided_long_exposure(void) {
+	unsigned before = revision(camera, "CCD_EXPOSURE");
+	indigo_change_number_property_1(&client, devices[camera].name, "CCD_EXPOSURE", "EXPOSURE", 5);
+	bool ok = wait_state(camera, "CCD_EXPOSURE", before, INDIGO_BUSY_STATE);
+	if (guider < 0) {
+		printf("    no ST4 port, only the long exposure is exercised\n");
+	} else {
+		ok = ok && number_value(guider, "GUIDER_GUIDE_RA", "EAST", 100, INDIGO_OK_STATE) && number_value(guider, "GUIDER_GUIDE_DEC", "NORTH", 100, INDIGO_OK_STATE);
+	}
+	return ok && wait_state(camera, "CCD_EXPOSURE", before, INDIGO_OK_STATE);
+}
+
+// Every writable advanced SDK control, plus gamma and offset. A control the SDK refuses has to end
+// in ALERT with the original value still published, not silently report success.
+static bool exercise_advanced_controls(void) {
 	indigo_property *advanced = snapshot(camera, "X_ADVANCED");
-	indigo_property *gain = snapshot(camera, "CCD_GAIN");
 	indigo_property *gamma = snapshot(camera, "CCD_GAMMA");
 	indigo_property *offset = snapshot(camera, "CCD_OFFSET");
-	indigo_property *presets = snapshot(camera, "X_PRESETS");
-	indigo_property *temperature = snapshot(camera, "CCD_TEMPERATURE");
-	indigo_property *cooler = snapshot(camera, "CCD_COOLER");
 	bool ok = true;
 	if (advanced && advanced->perm == INDIGO_RW_PERM) {
 		for (int i = 0; ok && i < advanced->count; i++) {
@@ -480,21 +541,63 @@ static bool additional_controls_and_cooling(void) {
 				ok = ok && ready;
 			}
 		}
+	} else {
+		printf("    X_ADVANCED is not writable on this camera\n");
 	}
 	if (ok && gamma && gamma->perm == INDIGO_RW_PERM) {
 		ok = number_value(camera, "CCD_GAMMA", "GAMMA", gamma->items->number.value < gamma->items->number.max ? gamma->items->number.value + 1 : gamma->items->number.value - 1, INDIGO_OK_STATE);
 	}
-	if (ok && presets) {
-		for (int i = 0; ok && i < presets->count; i++) {
-			ok = switch_value(camera, "X_PRESETS", presets->items[i].name, INDIGO_OK_STATE);
-			printf("    preset %s: %s\n", presets->items[i].name, ok ? "PASS" : "FAIL");
-		}
+	if (ok && offset && offset->perm == INDIGO_RW_PERM) {
+		ok = number_value(camera, "CCD_OFFSET", "OFFSET", offset->items[0].number.value < offset->items[0].number.max ? offset->items[0].number.value + 1 : offset->items[0].number.value - 1, INDIGO_OK_STATE);
 	}
-	if (ok && temperature && cooler && temperature->perm == INDIGO_RW_PERM && cooler->perm == INDIGO_RW_PERM) {
+	indigo_property *saved[] = { advanced, gamma, offset };
+	for (int i = 0; i < ARRAY_SIZE(saved); i++) {
+		ok = restore_property(saved[i]) && ok;
+		indigo_release_property(saved[i]);
+	}
+	return ok;
+}
+
+// Each gain/offset preset the driver publishes is applied on the camera.
+static bool exercise_presets(void) {
+	indigo_property *presets = snapshot(camera, "X_PRESETS");
+	indigo_property *gain = snapshot(camera, "CCD_GAIN");
+	indigo_property *offset = snapshot(camera, "CCD_OFFSET");
+	bool ok = presets != NULL;
+	for (int i = 0; ok && i < presets->count; i++) {
+		ok = switch_value(camera, "X_PRESETS", presets->items[i].name, INDIGO_OK_STATE);
+		printf("    preset %s: %s\n", presets->items[i].name, ok ? "PASS" : "FAIL");
+	}
+	indigo_release_property(presets);
+	indigo_property *saved[] = { gain, offset };
+	for (int i = 0; i < ARRAY_SIZE(saved); i++) {
+		ok = restore_property(saved[i]) && ok;
+		indigo_release_property(saved[i]);
+	}
+	return ok;
+}
+
+// A cooled camera settles on a new target and reports power; an uncooled one only publishes the
+// sensor temperature, which makes this row not applicable.
+static bool exercise_cooling(void) {
+	indigo_property *temperature = snapshot(camera, "CCD_TEMPERATURE");
+	indigo_property *cooler = snapshot(camera, "CCD_COOLER");
+	bool ok = true;
+	if (temperature && cooler && temperature->perm == INDIGO_RW_PERM && cooler->perm == INDIGO_RW_PERM) {
 		ok = switch_value(camera, "CCD_COOLER", "OFF", INDIGO_OK_STATE);
 		// OFF lets the normal poll settle the measured-temperature property before a new target.
 		ok = ok && wait_state(camera, "CCD_TEMPERATURE", 0, INDIGO_OK_STATE);
-		double target = fmax(temperature->items->number.min, fmin(temperature->items->number.max, floor(temperature->items->number.value) - 1));
+		// The measured temperature is only filled in by the cooler poll, so the new target has to
+		// come from a freshly published measurement and not from the value the property was
+		// defined with.
+		unsigned polled = revision(camera, "CCD_TEMPERATURE");
+		ok = ok && wait_revision(camera, "CCD_TEMPERATURE", polled, 20);
+		indigo_property *measured = snapshot(camera, "CCD_TEMPERATURE");
+		ok = ok && measured != NULL && measured->count;
+		double now = ok ? measured->items->number.value : 0;
+		indigo_release_property(measured);
+		printf("    measured %.1f, original target %.1f, range %.1f .. %.1f\n", now, temperature->items->number.target, temperature->items->number.min, temperature->items->number.max);
+		double target = fmax(temperature->items->number.min, fmin(temperature->items->number.max, floor(now) - 1));
 		ok = ok && number_value(camera, "CCD_TEMPERATURE", "TEMPERATURE", target, INDIGO_BUSY_STATE) && switch_value(camera, "CCD_COOLER", "ON", INDIGO_OK_STATE);
 		double deadline = indigo_monotonic_time() + 60;
 		bool cooled = false;
@@ -522,8 +625,8 @@ static bool additional_controls_and_cooling(void) {
 		if (restored) {
 			restored = switch_value(camera, "CCD_COOLER", "ON", INDIGO_OK_STATE);
 			// Target is applied on the next normal poll after ON.
-			double deadline = indigo_monotonic_time() + 6;
-			while (indigo_monotonic_time() < deadline) {
+			double settle = indigo_monotonic_time() + 6;
+			while (indigo_monotonic_time() < settle) {
 				indigo_usleep(10000);
 			}
 		}
@@ -532,24 +635,27 @@ static bool additional_controls_and_cooling(void) {
 		ok = ok && restored;
 	} else {
 		printf("    cooling: sensor-only or unavailable\n");
+		ok = temperature == NULL || wait_state(camera, "CCD_TEMPERATURE", 0, INDIGO_OK_STATE);
 	}
-	indigo_property *saved[] = { advanced, gain, gamma, offset };
-	for (int i = 0; i < ARRAY_SIZE(saved); i++) {
-		ok = restore_property(saved[i]) && ok;
-		indigo_release_property(saved[i]);
-	}
-	indigo_release_property(presets);
 	indigo_release_property(temperature);
 	indigo_release_property(cooler);
 	return ok;
 }
 
-static bool fractional_and_long_streams(void) {
+// Fractional durations longer than a second are their own timing branch in the driver.
+static bool exercise_fractional_exposures(void) {
+	unsigned before = frames();
 	bool ok = number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 1.5, INDIGO_OK_STATE) && number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 2.5, INDIGO_OK_STATE);
+	return ok && frames() == before + 2;
+}
+
+// Streaming at a frame duration above the two-second video branch, aborted from BUSY, followed by a
+// fresh snapshot to prove the stream released the camera.
+static bool exercise_long_frame_stream(void) {
 	unsigned before = frames(), changed = revision(camera, "CCD_STREAMING");
 	indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double[]){ 2.5, -1 });
-	ok = ok && wait_state(camera, "CCD_STREAMING", changed, INDIGO_BUSY_STATE);
-	double deadline = indigo_monotonic_time() + 20;
+	bool ok = wait_state(camera, "CCD_STREAMING", changed, INDIGO_BUSY_STATE);
+	double deadline = indigo_monotonic_time() + 30;
 	while (ok && frames() < before + 3 && indigo_monotonic_time() < deadline) {
 		indigo_usleep(10000);
 	}
@@ -558,42 +664,233 @@ static bool fractional_and_long_streams(void) {
 	ok = switch_value(camera, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE) && ok;
 	printf("    long indefinite video: frames %u, terminal abort %.3f s, %s\n", frames() - before, indigo_monotonic_time() - sent, ok ? "PASS" : "FAIL");
 	before = frames();
-	ok = ok && number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE) && frames() == before + 1;
-	if (!ok && getenv("INDIGO_ASI_DIAGNOSE_RETRY")) {
-		for (int attempt = 1; attempt <= 3; attempt++) {
-			bool recovered = number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE);
-			printf("    diagnostic fresh request %d: %s\n", attempt, recovered ? "PASS" : "FAIL");
-			if (recovered) {
-				break;
-			}
-		}
-	}
-	return ok;
+	return ok && number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE) && frames() == before + 1;
 }
 
-static bool guide_overlap_and_disconnect(void) {
+// Repeated short exposures, each publishing exactly one frame.
+static bool exercise_repeated_exposures(void) {
+	for (int i = 0; i < 3; i++) {
+		unsigned before = frames();
+		if (!number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE) || frames() != before + 1) {
+			return false;
+		}
+	}
+	return true;
+}
+
+// A long exposure is aborted from BUSY and the camera acquires again immediately afterwards.
+static bool exercise_abort_and_reacquire(void) {
+	bool ok = number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 5, INDIGO_BUSY_STATE);
+	// Allow delayed SDK setup to start the physical exposure before aborting it.
+	indigo_usleep(500000);
+	unsigned before = frames();
+	ok = ok && switch_value(camera, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE) && wait_state(camera, "CCD_EXPOSURE", 0, INDIGO_ALERT_STATE);
+	// An aborted exposure must not publish a frame.
+	ok = ok && frames() == before;
+	before = frames();
+	return ok && number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE) && frames() == before + 1;
+}
+
+// A finite stream delivers exactly the requested number of frames and finishes on its own.
+static bool exercise_exact_stream(void) {
+	unsigned before = frames(), stream_revision = revision(camera, "CCD_STREAMING");
+	indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double[]){ 0.1, 5 });
+	bool ok = wait_state(camera, "CCD_STREAMING", stream_revision, INDIGO_OK_STATE);
+	return ok && frames() == before + 5;
+}
+
+// A sustained indefinite stream keeps delivering frames and stops on abort.
+static bool exercise_sustained_stream(void) {
+	unsigned stream_revision = revision(camera, "CCD_STREAMING"), before = frames();
+	indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double[]){ 0.1, -1 });
+	bool ok = wait_state(camera, "CCD_STREAMING", stream_revision, INDIGO_BUSY_STATE);
+	for (int i = 0; i < 1000; i++) {
+		indigo_usleep(10000);
+	}
+	ok = ok && frames() >= before + 3;
+	printf("    sustained stream: %u frames in approximately 10 seconds\n", frames() - before);
+	stream_revision = revision(camera, "CCD_STREAMING");
+	ok = ok && switch_value(camera, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE) && wait_state(camera, "CCD_STREAMING", stream_revision, INDIGO_OK_STATE);
+	// The stopped stream must not publish anything else.
+	unsigned settled = frames();
+	indigo_usleep(1500000);
+	return ok && frames() == settled;
+}
+
+// All four relay directions, each completing and resetting its own item.
+static bool exercise_guide_directions(void) {
 	if (guider < 0) {
+		printf("    no ST4 port, guide pulses are not applicable\n");
 		return true;
 	}
-	bool ok = number_value(guider, "GUIDER_GUIDE_RA", "EAST", 1000, INDIGO_BUSY_STATE) && number_value(guider, "GUIDER_GUIDE_DEC", "NORTH", 1500, INDIGO_BUSY_STATE);
-	// The framework silently ignores same-axis requests while BUSY; no new revision is expected.
-	ok = ok && indigo_change_number_property_1(&client, devices[guider].name, "GUIDER_GUIDE_RA", "WEST", 100) == INDIGO_OK;
+	const char *axes[] = { "GUIDER_GUIDE_RA", "GUIDER_GUIDE_RA", "GUIDER_GUIDE_DEC", "GUIDER_GUIDE_DEC" };
+	const char *directions[] = { "EAST", "WEST", "NORTH", "SOUTH" };
+	for (int i = 0; i < 4; i++) {
+		if (!number_value(guider, axes[i], directions[i], 100, INDIGO_OK_STATE)) {
+			return false;
+		}
+		indigo_property *axis = snapshot(guider, axes[i]);
+		bool cleared = axis != NULL;
+		for (int j = 0; axis && j < axis->count; j++) {
+			cleared = cleared && axis->items[j].number.value == 0;
+		}
+		indigo_release_property(axis);
+		if (!cleared) {
+			fprintf(stderr, "    %s.%s did not reset to 0 after the pulse\n", axes[i], directions[i]);
+			return false;
+		}
+	}
+	return true;
+}
+
+// Both axes pulse at the same time and complete independently of each other.
+static bool exercise_simultaneous_guide_axes(void) {
+	if (guider < 0) {
+		printf("    no ST4 port, simultaneous axes are not applicable\n");
+		return true;
+	}
+	unsigned ra_before = revision(guider, "GUIDER_GUIDE_RA"), dec_before = revision(guider, "GUIDER_GUIDE_DEC");
+	indigo_change_number_property_1(&client, devices[guider].name, "GUIDER_GUIDE_RA", "EAST", 1000);
+	bool ok = wait_state(guider, "GUIDER_GUIDE_RA", ra_before, INDIGO_BUSY_STATE);
+	indigo_change_number_property_1(&client, devices[guider].name, "GUIDER_GUIDE_DEC", "NORTH", 1500);
+	ok = ok && wait_state(guider, "GUIDER_GUIDE_DEC", dec_before, INDIGO_BUSY_STATE);
+	unsigned ra_busy = revision(guider, "GUIDER_GUIDE_RA"), dec_busy = revision(guider, "GUIDER_GUIDE_DEC");
+	// Completing the shorter RA pulse must not end the DEC pulse that is still running.
+	ok = ok && wait_state(guider, "GUIDER_GUIDE_RA", ra_busy, INDIGO_OK_STATE);
+	ok = ok && property_state(guider, "GUIDER_GUIDE_DEC") == INDIGO_BUSY_STATE;
+	ok = ok && wait_state(guider, "GUIDER_GUIDE_DEC", dec_busy, INDIGO_OK_STATE);
+	// A zero request is a no-op that settles immediately.
+	return ok && number_value(guider, "GUIDER_GUIDE_RA", "EAST", 0, INDIGO_OK_STATE) && number_value(guider, "GUIDER_GUIDE_DEC", "NORTH", 0, INDIGO_OK_STATE);
+}
+
+// A pulse requested while another pulse on the same axis is still running replaces it: the driver
+// accepts the request, zeroes both items of the axis, releases both relays and runs the new
+// duration instead of the remainder of the superseded one.
+static bool exercise_guide_replacement(void) {
+	if (guider < 0) {
+		printf("    no ST4 port, guide pulse replacement is not applicable\n");
+		return true;
+	}
+	bool ok = number_value(guider, "GUIDER_GUIDE_RA", "EAST", 2000, INDIGO_BUSY_STATE);
+	indigo_usleep(500000);
+	unsigned before = revision(guider, "GUIDER_GUIDE_RA");
+	double sent = indigo_monotonic_time();
+	indigo_change_number_property_1(&client, devices[guider].name, "GUIDER_GUIDE_RA", "WEST", 300);
+	ok = ok && wait_state(guider, "GUIDER_GUIDE_RA", before, INDIGO_BUSY_STATE);
 	indigo_property *ra = snapshot(guider, "GUIDER_GUIDE_RA");
 	bool east = false, west = false;
 	for (int i = 0; ra && i < ra->count; i++) {
 		if (!strcmp(ra->items[i].name, "EAST")) {
-			east = ra->items[i].number.value == 1000;
+			east = ra->items[i].number.value == 0;
 		}
 		if (!strcmp(ra->items[i].name, "WEST")) {
-			west = ra->items[i].number.value == 0;
+			west = ra->items[i].number.value == 300;
 		}
 	}
 	indigo_release_property(ra);
-	ok = ok && east && west && wait_state(guider, "GUIDER_GUIDE_RA", 0, INDIGO_OK_STATE) && wait_state(guider, "GUIDER_GUIDE_DEC", 0, INDIGO_OK_STATE);
-	ok = ok && number_value(guider, "GUIDER_GUIDE_RA", "EAST", 0, INDIGO_OK_STATE) && number_value(guider, "GUIDER_GUIDE_DEC", "NORTH", 0, INDIGO_OK_STATE);
-	ok = ok && number_value(guider, "GUIDER_GUIDE_RA", "WEST", 1000, INDIGO_BUSY_STATE) && disconnect_device(guider);
-	ok = ok && number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE) && switch_value(guider, "CONNECTION", "CONNECTED", INDIGO_OK_STATE) && number_value(guider, "GUIDER_GUIDE_RA", "WEST", 100, INDIGO_OK_STATE);
-	printf("    simultaneous guide axes, BUSY reversal rejection, zero requests and guider disconnect with surviving CCD: %s\n", ok ? "PASS" : "FAIL");
+	ok = ok && east && west;
+	unsigned busy = revision(guider, "GUIDER_GUIDE_RA");
+	ok = ok && wait_state(guider, "GUIDER_GUIDE_RA", busy, INDIGO_OK_STATE);
+	double elapsed = indigo_monotonic_time() - sent;
+	printf("    replacement pulse completed %.3f s after the request\n", elapsed);
+	// The replacement runs its own 300 ms; the stale finaliser of the 2000 ms pulse must neither
+	// end it early nor keep the axis busy for the rest of the superseded duration.
+	ok = ok && elapsed > 0.2 && elapsed < 1.2;
+	ra = snapshot(guider, "GUIDER_GUIDE_RA");
+	bool cleared = ra != NULL;
+	for (int i = 0; ra && i < ra->count; i++) {
+		cleared = cleared && ra->items[i].number.value == 0;
+	}
+	indigo_release_property(ra);
+	ok = ok && cleared;
+	// A reversal on the same axis is the other replacement direction.
+	ok = ok && number_value(guider, "GUIDER_GUIDE_RA", "WEST", 2000, INDIGO_BUSY_STATE);
+	indigo_usleep(500000);
+	before = revision(guider, "GUIDER_GUIDE_RA");
+	sent = indigo_monotonic_time();
+	indigo_change_number_property_1(&client, devices[guider].name, "GUIDER_GUIDE_RA", "EAST", 300);
+	ok = ok && wait_state(guider, "GUIDER_GUIDE_RA", before, INDIGO_BUSY_STATE);
+	busy = revision(guider, "GUIDER_GUIDE_RA");
+	ok = ok && wait_state(guider, "GUIDER_GUIDE_RA", busy, INDIGO_OK_STATE);
+	elapsed = indigo_monotonic_time() - sent;
+	printf("    reversal pulse completed %.3f s after the request\n", elapsed);
+	return ok && elapsed > 0.2 && elapsed < 1.2;
+}
+
+// Disconnecting the guider with a pulse pending cancels the driver work and releases the relays
+// without closing the camera session its sibling still uses.
+static bool exercise_guider_disconnect_during_pulse(void) {
+	if (guider < 0) {
+		printf("    no ST4 port, guider disconnect is not applicable\n");
+		return true;
+	}
+	bool ok = number_value(guider, "GUIDER_GUIDE_RA", "WEST", 1000, INDIGO_BUSY_STATE) && disconnect_device(guider);
+	unsigned before = frames();
+	ok = ok && number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE) && frames() == before + 1;
+	return ok && connect_device(guider) && number_value(guider, "GUIDER_GUIDE_RA", "WEST", 100, INDIGO_OK_STATE);
+}
+
+// Disconnecting the camera leaves the guider operational on the same shared session.
+static bool exercise_ccd_disconnect_with_live_guider(void) {
+	bool ok = disconnect_device(camera);
+	if (guider < 0) {
+		printf("    no ST4 port, only the camera disconnect is exercised\n");
+	} else {
+		ok = ok && number_value(guider, "GUIDER_GUIDE_RA", "EAST", 100, INDIGO_OK_STATE);
+	}
+	ok = ok && connect_device(camera) && prepare_client_raw();
+	unsigned before = frames();
+	return ok && number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE) && frames() == before + 1;
+}
+
+// The camera may be connected before the guider as well as after it.
+static bool exercise_ccd_first_connection_order(void) {
+	bool ok = disconnect_device(camera) && disconnect_device(guider);
+	ok = ok && connect_device(camera) && connect_device(guider) && prepare_client_raw();
+	unsigned before = frames();
+	ok = ok && number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE) && frames() == before + 1;
+	if (guider >= 0) {
+		ok = ok && number_value(guider, "GUIDER_GUIDE_RA", "EAST", 100, INDIGO_OK_STATE);
+	}
+	return ok;
+}
+
+// A full reconnect rebuilds the properties and the camera acquires again.
+static bool exercise_reconnect(void) {
+	bool ok = disconnect_device(guider) && disconnect_device(camera);
+	ok = ok && connect_device(guider) && connect_device(camera) && prepare_client_raw();
+	indigo_property *info = snapshot(camera, "CCD_INFO");
+	ok = ok && info && info->count >= 2;
+	indigo_release_property(info);
+	unsigned before = frames();
+	return ok && number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE) && frames() == before + 1;
+}
+
+// A change request refused because the camera is acquiring has to come back as ALERT carrying the
+// values the driver kept, and the same request has to be accepted once acquisition finished.
+static bool exercise_rejected_changes_during_acquisition(void) {
+	indigo_property *gain = snapshot(camera, "CCD_GAIN");
+	if (!gain || gain->perm != INDIGO_RW_PERM) {
+		printf("    CCD_GAIN is read only on this camera, no refusable control\n");
+		indigo_release_property(gain);
+		return true;
+	}
+	double original = gain->items[0].number.value;
+	double rejected = original < gain->items[0].number.max ? original + 1 : original - 1;
+	unsigned before = revision(camera, "CCD_EXPOSURE");
+	indigo_change_number_property_1(&client, devices[camera].name, "CCD_EXPOSURE", "EXPOSURE", 5);
+	bool ok = wait_state(camera, "CCD_EXPOSURE", before, INDIGO_BUSY_STATE);
+	unsigned gain_before = revision(camera, "CCD_GAIN");
+	indigo_change_number_property_1(&client, devices[camera].name, "CCD_GAIN", "GAIN", rejected);
+	ok = ok && wait_state(camera, "CCD_GAIN", gain_before, INDIGO_ALERT_STATE);
+	indigo_property *refused = snapshot(camera, "CCD_GAIN");
+	ok = ok && refused && refused->count && refused->items[0].number.value == original && refused->items[0].number.target == original;
+	printf("    refused gain during acquisition: value %.0f target %.0f, expected %.0f: %s\n", refused && refused->count ? refused->items[0].number.value : -1, refused && refused->count ? refused->items[0].number.target : -1, original, ok ? "PASS" : "FAIL");
+	indigo_release_property(refused);
+	ok = ok && wait_state(camera, "CCD_EXPOSURE", before, INDIGO_OK_STATE);
+	ok = ok && number_value(camera, "CCD_GAIN", "GAIN", rejected, INDIGO_OK_STATE);
+	ok = restore_property(gain) && ok;
+	indigo_release_property(gain);
 	return ok;
 }
 
@@ -625,7 +922,7 @@ static bool physical_cycle(const char *phase) {
 	}
 	if (ok) {
 		printf("HOTPLUG_REMOVED [%s]: reconnect the same USB camera now\n", phase);
-		ok = wait_presence(true) && switch_value(camera, "CONNECTION", "CONNECTED", INDIGO_OK_STATE) && switch_value(guider, "CONNECTION", "CONNECTED", INDIGO_OK_STATE) && switch_value(camera, "CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE) && switch_value(camera, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE);
+		ok = wait_presence(true) && connect_device(camera) && connect_device(guider) && switch_value(camera, "CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE) && switch_value(camera, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE);
 	}
 	unsigned before = frames();
 	ok = ok && number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE) && frames() == before + 1 && number_value(guider, "GUIDER_GUIDE_RA", "EAST", 100, INDIGO_OK_STATE);
@@ -672,25 +969,6 @@ static bool suffix_acceptance(void) {
 	}
 	printf("    original suffix restoration: %s\n", restored ? "PASS" : "FAIL");
 	return ok && restored;
-}
-
-static bool complete_physical_acceptance(void) {
-	if (!physical_cycle("idle")) {
-		return false;
-	}
-	unsigned before = revision(camera, "CCD_EXPOSURE");
-	indigo_change_number_property_1(&client, devices[camera].name, "CCD_EXPOSURE", "EXPOSURE", 120);
-	if (!wait_state(camera, "CCD_EXPOSURE", before, INDIGO_BUSY_STATE) || !physical_cycle("long exposure")) {
-		return false;
-	}
-	if (guider >= 0) {
-		before = revision(guider, "GUIDER_GUIDE_RA");
-		indigo_change_number_property_1(&client, devices[guider].name, "GUIDER_GUIDE_RA", "EAST", 60000);
-		if (!wait_state(guider, "GUIDER_GUIDE_RA", before, INDIGO_BUSY_STATE) || !physical_cycle("guiding")) {
-			return false;
-		}
-	}
-	return suffix_acceptance();
 }
 
 static indigo_property_state cached_state(const char *name) {
@@ -800,12 +1078,46 @@ static bool abort_latency_trials(void) {
 	return ok && format_restored && upload_restored;
 }
 
-static void hardware_workflows(void) {
-	bool initialized = false, agent_initialized = false;
-	CHECK(indigo_start() == INDIGO_OK);
-	CHECK(indigo_attach_client(&client) == INDIGO_OK);
-	CHECK(driver_entry(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
-	initialized = true;
+// The eight-byte flash suffix is written and restored inside one session. The camera only renames
+// itself on replug, so the name check across a cable cycle stays in the opt-in --suffix case.
+static bool exercise_custom_suffix(void) {
+	indigo_property *suffix = snapshot(camera, "X_CUSTOM_SUFFIX");
+	if (!suffix || !suffix->count) {
+		printf("    X_CUSTOM_SUFFIX is not published, the flash id is unsupported\n");
+		indigo_release_property(suffix);
+		return true;
+	}
+	char original[INDIGO_VALUE_SIZE];
+	snprintf(original, sizeof(original), "%s", suffix->items[0].text.value);
+	indigo_release_property(suffix);
+	printf("    original suffix: '%s'\n", original);
+	bool ok = set_suffix(TEST_SUFFIX);
+	indigo_property *written = snapshot(camera, "X_CUSTOM_SUFFIX");
+	ok = ok && written && written->count && !strcmp(written->items[0].text.value, TEST_SUFFIX);
+	indigo_release_property(written);
+	// The device keeps its current name until it is replugged.
+	ok = ok && strstr(devices[camera].name, "#" TEST_SUFFIX) == NULL;
+	// Always restore after the first flash write, including a failed assertion.
+	bool restored = set_suffix(original);
+	indigo_property *back = snapshot(camera, "X_CUSTOM_SUFFIX");
+	restored = restored && back && back->count && !strcmp(back->items[0].text.value, original);
+	indigo_release_property(back);
+	printf("    suffix write: %s, restoration to '%s': %s\n", ok ? "PASS" : "FAIL", original, restored ? "PASS" : "FAIL");
+	return ok && restored;
+}
+
+static bool driver_initialized;
+
+// Brings the driver up and selects the camera the session runs against. INDIGO_TEST_DEVICE picks one
+// when more than one ASI camera is attached.
+static bool begin_session(void) {
+	if (indigo_start() != INDIGO_OK || indigo_attach_client(&client) != INDIGO_OK) {
+		return false;
+	}
+	if (driver_entry(INDIGO_DRIVER_INIT, NULL) != INDIGO_OK) {
+		return false;
+	}
+	driver_initialized = true;
 	// Let initial USB enumeration settle before selecting a unique camera.
 	for (int i = 0; i < 500; i++) {
 		indigo_usleep(10000);
@@ -833,191 +1145,14 @@ static void hardware_workflows(void) {
 	if (matches != 1) {
 		fprintf(stderr, "Expected one camera; found %d matches. Set INDIGO_TEST_DEVICE to an exact discovered name when needed.\n", matches);
 		camera = -1;
+		return false;
 	}
-	CHECK(camera >= 0);
-	printf("    selected: %s, guider: %s\n", devices[camera].name, guider < 0 ? "not available (SKIP guider workflows)" : devices[guider].name);
-	if (abort_latency_only) {
-		if (!abort_agent_only) {
-			CHECK(switch_value(camera, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
-		}
-		if (abort_agent_only) {
-			CHECK(indigo_agent_imager(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
-			agent_initialized = true;
-			for (int d = 0; d < MAX_DEVICES; d++) {
-				if (!strcmp(devices[d].name, "Imager Agent")) {
-					imager = d;
-				}
-			}
-			CHECK(imager >= 0);
-			CHECK(switch_value(imager, "FILTER_CCD_LIST", devices[camera].name, INDIGO_OK_STATE));
-			unsigned features_revision = revision(imager, "AGENT_PROCESS_FEATURES");
-			indigo_change_switch_property_1(&client, devices[imager].name, "AGENT_PROCESS_FEATURES", "ENABLE_DITHERING", false);
-			CHECK(wait_state(imager, "AGENT_PROCESS_FEATURES", features_revision, INDIGO_OK_STATE));
-		}
-		CHECK(abort_latency_trials());
-		goto cleanup;
-	}
-	CHECK(switch_value(guider, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
-	CHECK(switch_value(camera, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
-	CHECK(set_local_directory());
-	CHECK(switch_value(camera, "CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE));
-	CHECK(switch_value(camera, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
-	const char *phase = getenv("INDIGO_TEST_PHASE");
-	if (phase && !strcmp(phase, "frame-types")) {
-		CHECK(all_frame_types());
-		goto cleanup;
-	}
-	if (phase && !strcmp(phase, "guider")) {
-		CHECK(guide_overlap_and_disconnect());
-		goto cleanup;
-	}
-	if (phase && !strcmp(phase, "acceptance")) {
-		CHECK(complete_physical_acceptance());
-		goto cleanup;
-	}
-	if (phase && !strncmp(phase, "hotplug", 7)) {
-		if (!strcmp(phase, "hotplug-exposure")) {
-			CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 120, INDIGO_BUSY_STATE));
-		} else if (!strcmp(phase, "hotplug-guide")) {
-			CHECK(guider >= 0);
-			CHECK(number_value(guider, "GUIDER_GUIDE_RA", "EAST", 60000, INDIGO_BUSY_STATE));
-			CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 120, INDIGO_BUSY_STATE));
-		} else if (!strcmp(phase, "hotplug-stream")) {
-			unsigned before = frames(), changed = revision(camera, "CCD_STREAMING");
-			indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double[]){ 0.1, -1 });
-			CHECK(wait_state(camera, "CCD_STREAMING", changed, INDIGO_BUSY_STATE));
-			double deadline = indigo_monotonic_time() + 20;
-			while (frames() < before + 3 && indigo_monotonic_time() < deadline) {
-				indigo_usleep(10000);
-			}
-			CHECK(frames() >= before + 3);
-		}
-		CHECK(physical_cycle(phase));
-		goto cleanup;
-	}
-	if (phase && !strcmp(phase, "reload")) {
-		CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
-		goto reload_driver;
-	}
-	if (phase && (!strcmp(phase, "fractional") || !strcmp(phase, "controls"))) {
-		if (!strcmp(phase, "controls")) {
-			CHECK(additional_controls_and_cooling());
-		}
-		CHECK(fractional_and_long_streams());
-		goto cleanup;
-	}
-	if (suffix_only) {
-		CHECK(suffix_acceptance());
-		goto cleanup;
-	}
-	CHECK(format_geometry_and_controls());
-	CHECK(additional_controls_and_cooling());
-	CHECK(fractional_and_long_streams());
-	for (int i = 0; i < 3; i++) {
-		unsigned before = frames();
-		CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
-		CHECK(frames() == before + 1);
-	}
-	CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 5, INDIGO_BUSY_STATE));
-	// Allow delayed SDK setup to start the physical exposure before aborting it.
-	indigo_usleep(500000);
-	CHECK(switch_value(camera, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
-	CHECK(wait_state(camera, "CCD_EXPOSURE", 0, INDIGO_ALERT_STATE));
-	unsigned before = frames(), stream_revision = revision(camera, "CCD_STREAMING");
-	indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double[]){ 0.1, 5 });
-	CHECK(wait_state(camera, "CCD_STREAMING", stream_revision, INDIGO_OK_STATE));
-	CHECK(frames() == before + 5);
-	stream_revision = revision(camera, "CCD_STREAMING");
-	before = frames();
-	indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double[]){ 0.1, -1 });
-	CHECK(wait_state(camera, "CCD_STREAMING", stream_revision, INDIGO_BUSY_STATE));
-	for (int i = 0; i < 1000; i++) {
-		indigo_usleep(10000);
-	}
-	CHECK(frames() >= before + 3);
-	printf("    sustained stream: %u frames in approximately 10 seconds\n", frames() - before);
-	CHECK(switch_value(camera, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
-	CHECK(wait_state(camera, "CCD_STREAMING", stream_revision, INDIGO_OK_STATE));
-	const char *axes[] = { "GUIDER_GUIDE_RA", "GUIDER_GUIDE_RA", "GUIDER_GUIDE_DEC", "GUIDER_GUIDE_DEC" };
-	const char *directions[] = { "EAST", "WEST", "NORTH", "SOUTH" };
-	for (int i = 0; i < 4; i++) {
-		CHECK(number_value(guider, axes[i], directions[i], 100, INDIGO_OK_STATE));
-	}
-	CHECK(guide_overlap_and_disconnect());
-	CHECK(switch_value(camera, "CONNECTION", "DISCONNECTED", INDIGO_OK_STATE));
-	CHECK(number_value(guider, "GUIDER_GUIDE_RA", "EAST", 100, INDIGO_OK_STATE));
-	CHECK(switch_value(guider, "CONNECTION", "DISCONNECTED", INDIGO_OK_STATE));
-	CHECK(switch_value(camera, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
-	CHECK(switch_value(guider, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
-	before = frames();
-	CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
-	CHECK(frames() == before + 1);
-	if (hotplug) {
-		before = frames();
-		stream_revision = revision(camera, "CCD_STREAMING");
-		indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double[]){ 0.1, -1 });
-		CHECK(wait_state(camera, "CCD_STREAMING", stream_revision, INDIGO_BUSY_STATE));
-		for (int i = 0; i < 3000 && frames() < before + 3; i++) {
-			indigo_usleep(10000);
-		}
-		CHECK(frames() >= before + 3);
-		printf("HOTPLUG_READY: unplug USB camera now: %s\n", devices[camera].name);
-		CHECK(wait_presence(false));
-		printf("HOTPLUG_REMOVED: reconnect the same USB camera now\n");
-		CHECK(wait_presence(true));
-		CHECK(switch_value(camera, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
-		CHECK(switch_value(guider, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
-		CHECK(set_local_directory());
-		CHECK(switch_value(camera, "CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE));
-		CHECK(switch_value(camera, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
-		before = frames();
-		CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
-		CHECK(frames() == before + 1);
-		CHECK(number_value(guider, "GUIDER_GUIDE_RA", "EAST", 100, INDIGO_OK_STATE));
-		printf("HOTPLUG_RECOVERED: exposure and guide pulse succeeded after replug\n");
-	}
-	if (acceptance) {
-		CHECK(complete_physical_acceptance());
-	}
-reload_driver:
-	CHECK(disconnect_device(camera));
-	CHECK(disconnect_device(guider));
-	CHECK(driver_entry(INDIGO_DRIVER_SHUTDOWN, NULL) == INDIGO_OK);
-	initialized = false;
-#ifdef ASI_DYNAMIC_DRIVER
-	CHECK(dlclose(driver_library) == 0);
-	driver_library = NULL;
-	driver_entry = NULL;
-	CHECK(load_driver_library());
-	printf("    Dynamic driver dlclose/dlopen completed\n");
-#endif
-	CHECK(driver_entry(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
-	initialized = true;
-	CHECK(wait_presence(true));
-	CHECK(switch_value(camera, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
-	CHECK(switch_value(guider, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
-	CHECK(set_local_directory());
-	CHECK(switch_value(camera, "CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE));
-	CHECK(switch_value(camera, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
-	before = frames();
-	CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
-	CHECK(frames() == before + 1);
-#ifdef ASI_DYNAMIC_DRIVER
-	printf("    Fresh exposure after dynamic driver reload: PASS\n");
-#else
-	printf("    Driver shutdown/reinitialization: fresh queue and exposure succeeded (SDK library remains loaded)\n");
-#endif
-	pthread_mutex_lock(&mutex);
-	unsigned invalid = devices[camera].invalid_frames;
-	pthread_mutex_unlock(&mutex);
-	CHECK(invalid == 0);
-cleanup:
-	if (agent_initialized) {
-		indigo_change_switch_property_1(&client, devices[imager].name, "AGENT_ABORT_PROCESS", "ABORT", true);
-		if (indigo_agent_imager(INDIGO_DRIVER_SHUTDOWN, NULL) != INDIGO_OK) {
-			indigo_test_failures++;
-		}
-	}
+	printf("    selected: %s, guider: %s\n", devices[camera].name, guider < 0 ? "not available (guider scenarios not applicable)" : devices[guider].name);
+	// The guider is connected first, so the camera joins an already open session.
+	return connect_device(guider) && connect_device(camera) && prepare_client_raw();
+}
+
+static void end_session(void) {
 	if (camera >= 0) {
 		// Abort any unfinished acquisition before disconnecting; disconnected properties may be unchanged.
 		indigo_change_switch_property_1(&client, devices[camera].name, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true);
@@ -1025,30 +1160,330 @@ cleanup:
 			indigo_test_failures++;
 		}
 	}
-	if (guider >= 0) {
-		if (!disconnect_device(guider)) {
-			indigo_test_failures++;
-		}
-	}
-	if (initialized && driver_entry(INDIGO_DRIVER_SHUTDOWN, NULL) != INDIGO_OK) {
+	if (guider >= 0 && !disconnect_device(guider)) {
 		indigo_test_failures++;
 	}
+	if (driver_initialized && driver_entry(INDIGO_DRIVER_SHUTDOWN, NULL) != INDIGO_OK) {
+		indigo_test_failures++;
+	}
+	driver_initialized = false;
 	indigo_detach_client(&client);
 	indigo_stop();
 }
 
+static void asi_reports_identity_and_capabilities(void) {
+	indigo_driver_info info = { 0 };
+	ASSERT_TRUE(driver_entry(INDIGO_DRIVER_INFO, &info) == INDIGO_OK);
+	ASSERT_STREQ("ZWO ASI Camera", info.description);
+	ASSERT_EQ_INT(INDIGO_DRIVER_API_3, INDIGO_DRIVER_API_GENERATION(info.version));
+	ASSERT_TRUE(info.multi_device_support);
+	ASSERT_TRUE((devices[camera].interface & INDIGO_INTERFACE_CCD) != 0);
+	if (guider >= 0) {
+		ASSERT_TRUE((devices[guider].interface & INDIGO_INTERFACE_GUIDER) != 0);
+		ASSERT_TRUE(devices[guider].master == devices[camera].device);
+	}
+	indigo_property *device_info = snapshot(camera, "INFO");
+	ASSERT_TRUE(device_info != NULL);
+	for (int i = 0; i < device_info->count; i++) {
+		printf("    INFO.%s = %s\n", device_info->items[i].name, device_info->items[i].text.value);
+	}
+	bool driver_name = false, model = false;
+	for (int i = 0; i < device_info->count; i++) {
+		if (!strcmp(device_info->items[i].name, "DEVICE_DRIVER")) {
+			driver_name = !strcmp(device_info->items[i].text.value, "indigo_ccd_asi");
+		}
+		if (!strcmp(device_info->items[i].name, "DEVICE_MODEL")) {
+			model = *device_info->items[i].text.value != 0;
+		}
+	}
+	indigo_release_property(device_info);
+	ASSERT_TRUE(driver_name);
+	ASSERT_TRUE(model);
+	indigo_property *ccd_info = snapshot(camera, "CCD_INFO");
+	ASSERT_TRUE(ccd_info != NULL);
+	double width = 0, height = 0;
+	for (int i = 0; i < ccd_info->count; i++) {
+		if (!strcmp(ccd_info->items[i].name, "WIDTH")) {
+			width = ccd_info->items[i].number.value;
+		}
+		if (!strcmp(ccd_info->items[i].name, "HEIGHT")) {
+			height = ccd_info->items[i].number.value;
+		}
+	}
+	indigo_release_property(ccd_info);
+	printf("    sensor %.0f x %.0f\n", width, height);
+	ASSERT_TRUE(width > 0 && height > 0);
+}
+
+static void asi_publishes_the_property_contract(void) {
+	const char *required[] = { "INFO", "CONFIG", "PROFILE", "CONNECTION", "CCD_INFO", "CCD_EXPOSURE", "CCD_ABORT_EXPOSURE", "CCD_FRAME", "CCD_BIN", "CCD_MODE", "CCD_FRAME_TYPE", "CCD_IMAGE_FORMAT", "CCD_UPLOAD_MODE", "CCD_IMAGE", "CCD_LOCAL_MODE", "CCD_STREAMING", "X_PIXEL_FORMAT", "X_ADVANCED", "X_PRESETS", "X_CUSTOM_SUFFIX" };
+	for (int i = 0; i < ARRAY_SIZE(required); i++) {
+		pthread_mutex_lock(&mutex);
+		bool found = slot(camera, required[i]) >= 0;
+		pthread_mutex_unlock(&mutex);
+		if (!found) {
+			fprintf(stderr, "    %s is not published\n", required[i]);
+		}
+		ASSERT_TRUE(found);
+	}
+	// The camera is found over USB, so it has no port properties and is not a simulator.
+	const char *hidden[] = { "DEVICE_PORT", "DEVICE_PORTS", "SIMULATION" };
+	for (int i = 0; i < ARRAY_SIZE(hidden); i++) {
+		pthread_mutex_lock(&mutex);
+		bool found = slot(camera, hidden[i]) >= 0;
+		pthread_mutex_unlock(&mutex);
+		if (found) {
+			fprintf(stderr, "    %s is published but should stay hidden\n", hidden[i]);
+		}
+		ASSERT_FALSE(found);
+	}
+	indigo_property *exposure = snapshot(camera, "CCD_EXPOSURE");
+	ASSERT_TRUE(exposure && exposure->count);
+	printf("    CCD_EXPOSURE range %.6f .. %.3f s\n", exposure->items[0].number.min, exposure->items[0].number.max);
+	bool sane = exposure->items[0].number.min >= 0 && exposure->items[0].number.max > exposure->items[0].number.min;
+	indigo_release_property(exposure);
+	ASSERT_TRUE(sane);
+	if (guider >= 0) {
+		pthread_mutex_lock(&mutex);
+		bool ra = slot(guider, "GUIDER_GUIDE_RA") >= 0, dec = slot(guider, "GUIDER_GUIDE_DEC") >= 0;
+		pthread_mutex_unlock(&mutex);
+		ASSERT_TRUE(ra && dec);
+	}
+}
+
+static void asi_exposes_every_pixel_format(void) {
+	ASSERT_TRUE(exercise_pixel_formats());
+}
+
+static void asi_exposes_bins_and_roi(void) {
+	ASSERT_TRUE(exercise_bins_and_roi());
+}
+
+static void asi_exposes_every_frame_type(void) {
+	ASSERT_TRUE(all_frame_types());
+}
+
+static void asi_saves_and_loads_configuration(void) {
+	ASSERT_TRUE(exercise_configuration_roundtrip());
+}
+
+static void asi_writes_advanced_controls(void) {
+	ASSERT_TRUE(exercise_advanced_controls());
+}
+
+static void asi_applies_presets(void) {
+	ASSERT_TRUE(exercise_presets());
+}
+
+static void asi_controls_cooling(void) {
+	ASSERT_TRUE(exercise_cooling());
+}
+
+static void asi_takes_repeated_short_exposures(void) {
+	ASSERT_TRUE(exercise_repeated_exposures());
+}
+
+static void asi_takes_fractional_exposures(void) {
+	ASSERT_TRUE(exercise_fractional_exposures());
+}
+
+static void asi_guides_during_a_long_exposure(void) {
+	ASSERT_TRUE(exercise_guided_long_exposure());
+}
+
+static void asi_aborts_a_long_exposure_and_reacquires(void) {
+	ASSERT_TRUE(exercise_abort_and_reacquire());
+}
+
+static void asi_streams_an_exact_frame_count(void) {
+	ASSERT_TRUE(exercise_exact_stream());
+}
+
+static void asi_streams_indefinitely_and_stops(void) {
+	ASSERT_TRUE(exercise_sustained_stream());
+}
+
+static void asi_streams_long_frames_and_stops(void) {
+	ASSERT_TRUE(exercise_long_frame_stream());
+}
+
+static void asi_pulses_every_guide_direction(void) {
+	ASSERT_TRUE(exercise_guide_directions());
+}
+
+static void asi_guides_on_both_axes_simultaneously(void) {
+	ASSERT_TRUE(exercise_simultaneous_guide_axes());
+}
+
+static void asi_replaces_an_overlapping_guide_pulse(void) {
+	ASSERT_TRUE(exercise_guide_replacement());
+}
+
+static void asi_disconnects_the_guider_during_a_pulse(void) {
+	ASSERT_TRUE(exercise_guider_disconnect_during_pulse());
+}
+
+static void asi_disconnects_the_ccd_with_a_live_guider(void) {
+	ASSERT_TRUE(exercise_ccd_disconnect_with_live_guider());
+}
+
+static void asi_connects_the_ccd_before_the_guider(void) {
+	ASSERT_TRUE(exercise_ccd_first_connection_order());
+}
+
+static void asi_reconnects(void) {
+	ASSERT_TRUE(exercise_reconnect());
+}
+
+static void asi_rejects_changes_during_acquisition(void) {
+	ASSERT_TRUE(exercise_rejected_changes_during_acquisition());
+}
+
+static void asi_writes_and_restores_the_custom_suffix(void) {
+	ASSERT_TRUE(exercise_custom_suffix());
+}
+
+static void asi_rejects_shutdown_while_connected(void) {
+	ASSERT_TRUE(connect_device(camera));
+	ASSERT_TRUE(driver_entry(INDIGO_DRIVER_SHUTDOWN, NULL) == INDIGO_BUSY);
+	// The refused shutdown must leave the driver fully operational.
+	ASSERT_TRUE(prepare_client_raw());
+	unsigned before = frames();
+	ASSERT_TRUE(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(before + 1, frames());
+}
+
+static void asi_reinitializes(void) {
+	ASSERT_TRUE(disconnect_device(camera));
+	ASSERT_TRUE(disconnect_device(guider));
+	ASSERT_TRUE(driver_entry(INDIGO_DRIVER_SHUTDOWN, NULL) == INDIGO_OK);
+	driver_initialized = false;
+#ifdef ASI_DYNAMIC_DRIVER
+	ASSERT_TRUE(dlclose(driver_library) == 0);
+	driver_library = NULL;
+	driver_entry = NULL;
+	ASSERT_TRUE(load_driver_library());
+	printf("    dynamic driver dlclose/dlopen completed\n");
+#endif
+	ASSERT_TRUE(driver_entry(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
+	driver_initialized = true;
+	ASSERT_TRUE(wait_presence(true));
+	ASSERT_TRUE(connect_device(camera));
+	ASSERT_TRUE(connect_device(guider));
+	ASSERT_TRUE(prepare_client_raw());
+	unsigned before = frames();
+	ASSERT_TRUE(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(before + 1, frames());
+#ifdef ASI_DYNAMIC_DRIVER
+	printf("    fresh exposure after dynamic driver reload: PASS\n");
+#else
+	printf("    driver shutdown/reinitialization: fresh queue and exposure succeeded (SDK library remains loaded)\n");
+#endif
+}
+
+static void asi_delivered_only_valid_frames(void) {
+	pthread_mutex_lock(&mutex);
+	unsigned invalid = devices[camera].invalid_frames, total = devices[camera].frames;
+	pthread_mutex_unlock(&mutex);
+	printf("    %u frames delivered, %u malformed\n", total, invalid);
+	ASSERT_TRUE(total > 0);
+	ASSERT_EQ_INT(0, invalid);
+}
+
+static void asi_survives_transport_loss_while_idle(void) {
+	ASSERT_TRUE(physical_cycle("idle"));
+}
+
+static void asi_survives_transport_loss_during_exposure(void) {
+	unsigned before = revision(camera, "CCD_EXPOSURE");
+	indigo_change_number_property_1(&client, devices[camera].name, "CCD_EXPOSURE", "EXPOSURE", 120);
+	ASSERT_TRUE(wait_state(camera, "CCD_EXPOSURE", before, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(physical_cycle("long exposure"));
+}
+
+static void asi_survives_transport_loss_during_streaming(void) {
+	unsigned before = frames(), changed = revision(camera, "CCD_STREAMING");
+	indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double[]){ 0.1, -1 });
+	ASSERT_TRUE(wait_state(camera, "CCD_STREAMING", changed, INDIGO_BUSY_STATE));
+	double deadline = indigo_monotonic_time() + 20;
+	while (frames() < before + 3 && indigo_monotonic_time() < deadline) {
+		indigo_usleep(10000);
+	}
+	ASSERT_TRUE(frames() >= before + 3);
+	ASSERT_TRUE(physical_cycle("streaming"));
+}
+
+static void asi_survives_transport_loss_during_guiding(void) {
+	if (guider < 0) {
+		printf("    no ST4 port, removal during guiding is not applicable\n");
+		return;
+	}
+	unsigned before = revision(guider, "GUIDER_GUIDE_RA");
+	indigo_change_number_property_1(&client, devices[guider].name, "GUIDER_GUIDE_RA", "EAST", 60000);
+	ASSERT_TRUE(wait_state(guider, "GUIDER_GUIDE_RA", before, INDIGO_BUSY_STATE));
+	unsigned exposure_before = revision(camera, "CCD_EXPOSURE");
+	indigo_change_number_property_1(&client, devices[camera].name, "CCD_EXPOSURE", "EXPOSURE", 120);
+	ASSERT_TRUE(wait_state(camera, "CCD_EXPOSURE", exposure_before, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(physical_cycle("guiding"));
+}
+
+static void asi_writes_the_flash_suffix_across_replug(void) {
+	ASSERT_TRUE(suffix_acceptance());
+}
+
+static void asi_measures_abort_latency(void) {
+	if (abort_agent_only) {
+		ASSERT_TRUE(indigo_agent_imager(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
+		for (int d = 0; d < MAX_DEVICES; d++) {
+			if (!strcmp(devices[d].name, "Imager Agent")) {
+				imager = d;
+			}
+		}
+		ASSERT_TRUE(imager >= 0);
+		ASSERT_TRUE(switch_value(imager, "FILTER_CCD_LIST", devices[camera].name, INDIGO_OK_STATE));
+		unsigned features_revision = revision(imager, "AGENT_PROCESS_FEATURES");
+		indigo_change_switch_property_1(&client, devices[imager].name, "AGENT_PROCESS_FEATURES", "ENABLE_DITHERING", false);
+		ASSERT_TRUE(wait_state(imager, "AGENT_PROCESS_FEATURES", features_revision, INDIGO_OK_STATE));
+	}
+	bool ok = abort_latency_trials();
+	if (abort_agent_only) {
+		indigo_change_switch_property_1(&client, devices[imager].name, "AGENT_ABORT_PROCESS", "ABORT", true);
+		if (indigo_agent_imager(INDIGO_DRIVER_SHUTDOWN, NULL) != INDIGO_OK) {
+			indigo_test_failures++;
+		}
+		imager = -1;
+	}
+	ASSERT_TRUE(ok);
+}
+
 int main(int argc, char **argv) {
-	if ((argc != 2 && argc != 3) || strcmp(argv[1], "--run") || (argc == 3 && strcmp(argv[2], "--hotplug") && strcmp(argv[2], "--acceptance") && strcmp(argv[2], "--suffix") && strcmp(argv[2], "--abort-latency") && strcmp(argv[2], "--abort-agent") && strcmp(argv[2], "--abort-previews"))) {
-		fprintf(stderr, "Physical camera test: --run [--hotplug|--acceptance|--suffix|--abort-latency|--abort-agent|--abort-previews].\n");
+	bool run = false;
+	const char *filter = NULL;
+	for (int i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--run")) {
+			run = true;
+		} else if (!strcmp(argv[i], "--hotplug")) {
+			hotplug = true;
+		} else if (!strcmp(argv[i], "--acceptance")) {
+			acceptance = hotplug = true;
+		} else if (!strcmp(argv[i], "--suffix")) {
+			suffix_only = true;
+		} else if (!strcmp(argv[i], "--abort-latency")) {
+			abort_latency_only = true;
+		} else if (!strcmp(argv[i], "--abort-agent")) {
+			abort_latency_only = abort_agent_only = true;
+		} else if (!strcmp(argv[i], "--abort-previews")) {
+			abort_latency_only = abort_agent_only = abort_previews_only = true;
+		} else if (!strcmp(argv[i], "--debug")) {
+			indigo_set_log_level(INDIGO_LOG_DEBUG);
+		} else {
+			filter = argv[i];
+		}
+	}
+	if (!run) {
+		fprintf(stderr, "This test operates a physical ZWO ASI camera. Run with --run [--hotplug|--acceptance|--suffix|--abort-latency|--abort-agent|--abort-previews] [--debug] [name filter].\n");
 		return 2;
 	}
-	suffix_only = argc == 3 && !strcmp(argv[2], "--suffix");
-	abort_previews_only = argc == 3 && !strcmp(argv[2], "--abort-previews");
-	abort_agent_only = abort_previews_only || (argc == 3 && !strcmp(argv[2], "--abort-agent"));
-	abort_latency_only = abort_agent_only || (argc == 3 && !strcmp(argv[2], "--abort-latency"));
-	hotplug = argc == 3 && !suffix_only && !abort_latency_only;
-
-	acceptance = argc == 3 && !strcmp(argv[2], "--acceptance");
 	setvbuf(stdout, NULL, _IONBF, 0);
 	client = (indigo_client){ .name = "ASI hardware test", .version = INDIGO_VERSION_CURRENT, .define_property = define_property, .update_property = update_property, .delete_property = delete_property, .send_message = report_message };
 	if (!mkdtemp(config_folder)) {
@@ -1059,11 +1494,83 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 #endif
-	const indigo_test_case tests[] = { { abort_latency_only ? "Physical camera abort latency" : "Physical camera exposure, streaming, guider and reconnect", hardware_workflows } };
-	int result = indigo_run_tests("ASI hardware", tests, 1);
+	// The dynamic loader build only proves that the driver can be unloaded and reloaded, so it runs
+	// the identity, property and acquisition checks plus the reload itself.
+	const indigo_test_case tests[] = {
+		{ "asi_reports_identity_and_capabilities", asi_reports_identity_and_capabilities },
+		{ "asi_publishes_the_property_contract", asi_publishes_the_property_contract },
+#ifndef ASI_DYNAMIC_DRIVER
+		{ "asi_exposes_every_pixel_format", asi_exposes_every_pixel_format },
+		{ "asi_exposes_bins_and_roi", asi_exposes_bins_and_roi },
+		{ "asi_exposes_every_frame_type", asi_exposes_every_frame_type },
+		{ "asi_saves_and_loads_configuration", asi_saves_and_loads_configuration },
+		{ "asi_writes_advanced_controls", asi_writes_advanced_controls },
+		{ "asi_applies_presets", asi_applies_presets },
+		{ "asi_controls_cooling", asi_controls_cooling },
+		{ "asi_takes_fractional_exposures", asi_takes_fractional_exposures },
+		{ "asi_guides_during_a_long_exposure", asi_guides_during_a_long_exposure },
+		{ "asi_aborts_a_long_exposure_and_reacquires", asi_aborts_a_long_exposure_and_reacquires },
+		{ "asi_streams_an_exact_frame_count", asi_streams_an_exact_frame_count },
+		{ "asi_streams_indefinitely_and_stops", asi_streams_indefinitely_and_stops },
+		{ "asi_streams_long_frames_and_stops", asi_streams_long_frames_and_stops },
+		{ "asi_pulses_every_guide_direction", asi_pulses_every_guide_direction },
+		{ "asi_guides_on_both_axes_simultaneously", asi_guides_on_both_axes_simultaneously },
+		{ "asi_replaces_an_overlapping_guide_pulse", asi_replaces_an_overlapping_guide_pulse },
+		{ "asi_disconnects_the_guider_during_a_pulse", asi_disconnects_the_guider_during_a_pulse },
+		{ "asi_disconnects_the_ccd_with_a_live_guider", asi_disconnects_the_ccd_with_a_live_guider },
+		{ "asi_connects_the_ccd_before_the_guider", asi_connects_the_ccd_before_the_guider },
+		{ "asi_rejects_changes_during_acquisition", asi_rejects_changes_during_acquisition },
+		{ "asi_writes_and_restores_the_custom_suffix", asi_writes_and_restores_the_custom_suffix },
+		{ "asi_rejects_shutdown_while_connected", asi_rejects_shutdown_while_connected },
+#endif
+		{ "asi_takes_repeated_short_exposures", asi_takes_repeated_short_exposures },
+		{ "asi_reconnects", asi_reconnects },
+		{ "asi_reinitializes", asi_reinitializes },
+		{ "asi_delivered_only_valid_frames", asi_delivered_only_valid_frames }
+	};
+	const indigo_test_case hotplug_tests[] = {
+		{ "asi_survives_transport_loss_while_idle", asi_survives_transport_loss_while_idle },
+		{ "asi_survives_transport_loss_during_exposure", asi_survives_transport_loss_during_exposure },
+		{ "asi_survives_transport_loss_during_streaming", asi_survives_transport_loss_during_streaming },
+		{ "asi_survives_transport_loss_during_guiding", asi_survives_transport_loss_during_guiding }
+	};
+	const indigo_test_case suffix_tests[] = { { "asi_writes_the_flash_suffix_across_replug", asi_writes_the_flash_suffix_across_replug } };
+	const indigo_test_case abort_tests[] = { { "asi_measures_abort_latency", asi_measures_abort_latency } };
+	int result = 1;
+	if (!begin_session()) {
+		indigo_test_failures++;
+		goto cleanup;
+	}
+	if (abort_latency_only) {
+		result = indigo_run_tests("ASI hardware", abort_tests, ARRAY_SIZE(abort_tests));
+	} else if (suffix_only) {
+		result = indigo_run_tests("ASI hardware", suffix_tests, ARRAY_SIZE(suffix_tests));
+	} else {
+		int matched = 0;
+		indigo_test_case selected[ARRAY_SIZE(tests) + ARRAY_SIZE(hotplug_tests) + ARRAY_SIZE(suffix_tests)];
+		for (int i = 0; i < ARRAY_SIZE(tests); i++) {
+			if (filter == NULL || strstr(tests[i].name, filter)) {
+				selected[matched++] = tests[i];
+			}
+		}
+		if (hotplug) {
+			for (int i = 0; i < ARRAY_SIZE(hotplug_tests); i++) {
+				if (filter == NULL || strstr(hotplug_tests[i].name, filter)) {
+					selected[matched++] = hotplug_tests[i];
+				}
+			}
+		}
+		if (acceptance && (filter == NULL || strstr(suffix_tests[0].name, filter))) {
+			selected[matched++] = suffix_tests[0];
+		}
+		result = matched ? indigo_run_tests("ASI hardware", selected, matched) : 1;
+	}
+cleanup:
+	end_session();
 	for (int d = 0; d < MAX_DEVICES; d++) {
 		for (int p = 0; p < MAX_PROPERTIES; p++) {
 			indigo_release_property(devices[d].properties[p]);
+			devices[d].properties[p] = NULL;
 		}
 	}
 	DIR *dir = opendir(config_folder);
@@ -1084,5 +1591,5 @@ int main(int argc, char **argv) {
 		result = 1;
 	}
 #endif
-	return result;
+	return indigo_test_failures ? 1 : result;
 }

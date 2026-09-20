@@ -164,7 +164,9 @@ indigo_queue *asi_test_queue_create(indigo_device *device) {
 }
 
 void asi_test_execute_in(indigo_device *device, double delay, indigo_timer_callback callback) {
-	if (delay == 5) {
+	// The driver starts the temperature poll from its connection handler with a short delay and
+	// reschedules it every five seconds afterwards; both schedule the same callback.
+	if (delay == 5 || delay == 0.5) {
 		temperature_handler = callback;
 		if (atomic_load(&fast_poll)) {
 			delay = 0.01;

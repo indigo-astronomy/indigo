@@ -422,3 +422,130 @@ replacement.
 The guider lifecycle test gained two duration-measuring cases: a 2000 ms pulse replaced after 500 ms
 by a 600 ms pulse in the same direction (1111 ms measured) and by a 300 ms pulse in the opposite
 direction (815 ms), both also confirming the relays are released afterwards.
+
+## Hardware retest — version 62 / 0x0300003E (2026-09-21)
+
+Full physical acceptance rerun on both available cameras after the driver had advanced from the
+version 58 record above to 61. Environment: macOS 26.6.2 (Darwin 25.6.0) arm64, universal
+arm64/x86_64 driver and test binaries, arm64 runtime only, bundled ASI SDK 1.41. Source is this
+working tree over `6744df013`. Cameras: ZWO ASI294MC Pro (cooled, colour, no ST4) and
+ZWO ASI120MC-S (uncooled, colour, ST4).
+
+`indigo_test/hardware/test_ccd_asi_hw.c` was restructured from one monolithic workflow into
+independently named and independently reported cases, following `test_wheel_sx_hw.c` and
+`test_ccd_sx_hw.c`. The scenario bodies are the ones the version 58 acceptance used, split per
+scenario; the opt-in entry points are unchanged in meaning: `--run` runs the 28 non-hot-plug cases,
+`--hotplug` appends the four cable-cycle cases, `--acceptance` appends the flash-suffix replug case,
+`--suffix` and `--abort-latency` / `--abort-agent` / `--abort-previews` select those cases alone, and
+a trailing argument filters cases by name substring.
+
+Commands:
+
+```sh
+make -C indigo_test build/hardware/test_ccd_asi_hw build/hardware/test_ccd_asi_reload_hw
+INDIGO_TEST_DEVICE="ZWO ASI294MC Pro" indigo_test/build/hardware/test_ccd_asi_hw --run
+INDIGO_TEST_DEVICE="ZWO ASI120MC-S" indigo_test/build/hardware/test_ccd_asi_hw --run
+INDIGO_TEST_DEVICE="ZWO ASI294MC Pro" indigo_test/build/hardware/test_ccd_asi_reload_hw --run
+INDIGO_TEST_DEVICE="ZWO ASI120MC-S" indigo_test/build/hardware/test_ccd_asi_reload_hw --run
+make -C indigo_test test-ccd-asi-sdk
+```
+
+Results: 28/28 on the ASI294MC Pro, 28/28 on the ASI120MC-S, 6/6 on each camera for the dynamic
+`dlclose`/`dlopen` reload target, 51/51 fake SDK cases.
+
+| Acceptance | Case | Result |
+| --- | --- | --- |
+| H01 identity, shared connection, both connection orders, sibling survival, reconnect, INIT/SHUTDOWN | `asi_reports_identity_and_capabilities`, `asi_publishes_the_property_contract`, `asi_disconnects_the_guider_during_a_pulse`, `asi_disconnects_the_ccd_with_a_live_guider`, `asi_connects_the_ccd_before_the_guider`, `asi_reconnects`, `asi_rejects_shutdown_while_connected`, `asi_reinitializes` | PASS on both. ASI294 has no ST4, so the guider rows are reported as not applicable by the cases themselves |
+| H02 pixel formats, bins, ROI, frame types, fractional and long exposures, payload integrity | `asi_exposes_every_pixel_format`, `asi_exposes_bins_and_roi`, `asi_exposes_every_frame_type`, `asi_takes_fractional_exposures`, `asi_takes_repeated_short_exposures`, `asi_guides_during_a_long_exposure`, `asi_delivered_only_valid_frames` | PASS on both. All four formats, bins 1 and 2, 256x256 at 16,24, five frame types, 1.5 s and 2.5 s, no malformed frame in the whole session |
+| H03 abort and streaming | `asi_aborts_a_long_exposure_and_reacquires`, `asi_streams_an_exact_frame_count`, `asi_streams_indefinitely_and_stops`, `asi_streams_long_frames_and_stops` | PASS on both. Exact five-frame stream, ~113 frames in 10 s on the ASI294 and ~118 on the ASI120, terminal abort 0.347 s and 2.500 s respectively |
+| H04 controls, presets, configuration | `asi_writes_advanced_controls`, `asi_applies_presets`, `asi_saves_and_loads_configuration`, `asi_rejects_changes_during_acquisition` | PASS on both. The ASI120 SDK still refuses `OverCLK` and `HighSpeedMode`; ALERT with the unchanged readback is asserted. Gain refused during an exposure returns ALERT with the driver's own value and target, and is accepted again afterwards |
+| H05 cooling | `asi_controls_cooling` | PASS on both. ASI294 settles on a target one degree below the measured temperature with power readback and restores the original cooler and target; the ASI120 is sensor-only and the case reports it |
+| H06 guiding | `asi_pulses_every_guide_direction`, `asi_guides_on_both_axes_simultaneously`, `asi_replaces_an_overlapping_guide_pulse`, `asi_disconnects_the_guider_during_a_pulse` | PASS on the ASI120, not applicable on the ASI294. A 300 ms pulse replacing a running 2000 ms pulse completed 0.324 s after the request, a reversal 0.318 s, both with the relays released afterwards |
+| H07 physical unplug/replug | `asi_survives_transport_loss_*` behind `--hotplug` | NOT RUN — excluded from this unattended session, the cases need an operator at the cable |
+| H08 flash suffix and driver reload | `asi_writes_and_restores_the_custom_suffix`, `asi_reinitializes`, `test_ccd_asi_reload_hw` | PASS on both. The in-session case writes the eight-byte suffix, confirms the accepted value, confirms the name only changes on replug and restores the original. The replug name check stays in `--suffix` |
+
+Unavailable and unchanged from the version 58 record: Linux and Windows runtimes, Intel runtime,
+monochrome and non-S USB2 models, multiple identical models, and any external electrical ST4 timing
+measurement.
+
+## Found defects — hardware retest (2026-09-21)
+
+### ASI-D01 — the driver stopped advertising multi-device support
+
+Observable impact: `indigo_ccd_asi(INDIGO_DRIVER_INFO, &info)` reported
+`info.multi_device_support == false`, so a server or client deciding from the driver's own metadata
+would not offer additional device instances for this driver. The original hand-written driver
+reported `true` at the migration baseline `d373999270f5070ced1a7d5fcd3958adf357a696`
+(`SET_DRIVER_INFO(info, "ZWO ASI Camera", __FUNCTION__, DRIVER_VERSION, true, last_action)`), and
+the baseline inventory in this document records "multi-device support advertised". Nothing in this
+plan decided to drop it.
+
+Root cause: the migration did not carry the flag into the generator input. The generator emits
+`false` unless the `.driver` declares `multi_device_support = true;`, which `ccd_svb` does and
+`ccd_asi` did not.
+
+Fix: `multi_device_support = true;` added to `indigo_ccd_asi.driver`; the regenerated driver reports
+`true` again. Version 61 -> 62.
+
+Regression test: `asi_reports_identity_and_capabilities` in
+`indigo_test/hardware/test_ccd_asi_hw.c` asserts `info.multi_device_support`. The assertion failed
+against the pre-fix driver on the ASI294MC Pro and passes after the fix; the case also runs in the
+dynamic reload build, which loads the shipped shared object.
+
+### ASI-D02 — the temperature and cooler poll could fail to start for the whole session
+
+Observable impact: reproduced on the ASI294MC Pro. After a successful connect the driver never
+published `CCD_TEMPERATURE` or `CCD_COOLER_POWER` again, so the measured temperature stayed at the
+0.0 the property was defined with, cooler power stayed 0, and `CCD_COOLER` / `CCD_TEMPERATURE`
+requests were accepted but never reached the SDK, because the driver performs all cooler work from
+its periodic poll. The camera was then uncontrollable for the rest of the session while looking
+connected and healthy. It failed on 2 of 3 consecutive attempts, and the surviving run is the reason
+the version 58 acceptance did not catch it: the first poll happened to win the race there, and the
+scenario sequence at the time left enough time between connect and the cooling checks for a later
+publication to mask a lost first call.
+
+Root cause: the poll chain was started by the generated one-shot `on_timer` call. The generated
+hot-plug connection handler runs on the per-driver queue and emits
+`indigo_execute_handler(device, ccd_timer_callback)` immediately before it assigns
+`CONNECTION_PROPERTY->state = INDIGO_OK_STATE`. `ccd_timer_callback` runs on the device master
+queue, which is a different thread, and its generated prologue is `if (!IS_CONNECTED) return;` —
+`IS_CONNECTED` requires `CONNECTION_PROPERTY->state == INDIGO_OK_STATE`. Waking the device queue
+hands the CPU to it, so the callback frequently observes the still-BUSY connection state and returns.
+`ccd_temperature_callback` reschedules itself only from inside itself, so that single dropped call
+kills the poll permanently. Confirmed in the debug log: in a passing run the first
+`ASIGetControlValue(1, ASI_TEMPERATURE)` appears immediately after "Connected to", and in a failing
+run no such call appears at all.
+
+Fix: the driver now owns the start of the poll. `indigo_ccd_asi.driver` schedules
+`ccd_temperature_callback` from `ccd.on_connect` when a temperature sensor was discovered, and
+`ccd_temperature_callback` reschedules itself in half a second instead of returning when
+`CONNECTION` has not reached `INDIGO_OK_STATE` yet, so the first call cannot be lost and cannot
+publish before the CCD properties are defined. The now-unused `ccd.on_timer` block was removed, which
+also removes the generated call that loses the race. Version 61 -> 62.
+
+Regression test: `asi_controls_cooling` in `indigo_test/hardware/test_ccd_asi_hw.c` now derives its
+new target from a freshly published measurement — it waits for a new `CCD_TEMPERATURE` revision
+through `wait_revision()` — instead of from the cached definition value, so a poll that never runs
+fails the case deterministically with "CCD_TEMPERATURE was not published again". It failed on the
+pre-fix driver and passed on three consecutive runs after the fix. The fake SDK suite keeps its
+coverage: `asi_test_execute_in()` in `indigo_test/integration/test_ccd_asi_sdk.c` now captures the
+poll callback from the 0.5 s schedule as well as the 5 s one, and all 51 cases pass.
+
+This is a generator-level hazard, not an ASI-specific one: any generated hot-plug driver whose
+`on_timer` block starts a self-rescheduling chain can lose it the same way. It is recorded as
+`DRV-211` in `indigo_drivers/REVIEW.md` because fixing the generator needs explicit approval.
+
+### Harness expectation corrected, not a driver defect
+
+The hardware test still asserted the pre-`89a4fab1c` guide contract, where a same-axis pulse arriving
+while another was running was silently discarded. The driver deliberately replaces the running pulse
+now (see "Overlapping guide pulses" above), so the stale assertion failed on the ASI120MC-S. The
+scenario was rewritten as `asi_replaces_an_overlapping_guide_pulse`, which asserts the new contract
+and measures that the replacement runs its own duration.
+
+## Final test summary — 2026-09-21
+
+- Simulated (fake SDK) tests: 51 run, 51 passed.
+- Hardware tests: 68 run, 68 passed — 28 on the ASI294MC Pro, 28 on the ASI120MC-S and 6 dynamic
+  reload cases per camera. Four physical hot-plug cases and the flash-suffix replug case exist and
+  were not run; they need an operator at the cable.
