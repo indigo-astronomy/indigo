@@ -22,3 +22,7 @@ indigo_server indigo_aux_wbprov3
 ## Status: Stable
 
 Tested with physical device.
+
+## Testing
+
+2026-09-21 19:43 3.0.0.6 mac arm64 simulator 17/17 OK
