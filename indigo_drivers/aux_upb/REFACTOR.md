@@ -63,5 +63,33 @@ Driver version is now `0x0300001C`.
 cd indigo_test && ./build/integration/test_aux_upb_simulator
 ```
 
+## Hardware acceptance (2026-09-21)
+
+`indigo_test/hardware/test_aux_upb_hw.c` runs the AUX acceptance checklist against a physically
+connected box. It switches the power outlets, so it is opt-in and never part of an automatic run;
+every outlet, heater, dew mode and USB control it touches is captured at the start of the session
+and restored before it disconnects.
+
+Device: Pegasus Ultimate Powerbox v1, firmware 1.4, on `/dev/cu.usbserial-PA36T4RB`, macOS arm64.
+Reported 12.3 V and 0.10 A. Run with all four outlets free, as confirmed by the operator.
+
+```sh
+cd indigo_test && UPB_HW_PORT=/dev/cu.usbserial-PA36T4RB make test-aux-upb-hw
+```
+
+Covered: identity and the model dependent inventory, the property contract, the sensor readings and
+their polling, all four power outlets switched and restored with readback across a status poll, the
+outlet state light and current, both heater outlets, dew control, the USB hub control, outlet
+renaming, the shared focuser logical device with the powerbox connection surviving its close,
+reconnect and driver reinitialization.
+
+Not covered on this box: the environmental probe reads 0 C and 0 %RH because none is attached, so
+the weather values are only checked for plausibility rather than against a reference; the variable
+voltage outlet and the per port USB switching are v2 features this box does not have; the focuser
+has no motor attached, so only its contract, position readback and an idle abort were exercised, not
+motion; physical hot-plug was not part of the run.
+
+## Final test summary
+
 - Simulated tests run: 36; passed: 36. Sanitizer run (ASan + UBSan, arm64): 36 run, 36 passed.
-- Hardware tests run: 0; passed: 0. No Ultimate Powerbox was available.
+- Hardware tests run: 14; passed: 14. Pegasus Ultimate Powerbox v1, firmware 1.4.

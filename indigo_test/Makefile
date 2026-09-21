@@ -1397,6 +1397,17 @@ $(TEST_BUILD)/hardware/test_mount_synscan_hw: hardware/test_mount_synscan_hw.c t
 # CP2102N match pattern. The test physically moves the draw tube by PRIMALUCE_HW_TRAVEL steps
 # (default 3000) from wherever it starts and returns it there. Set PRIMALUCE_HW_CALIBRATE=1 to
 # additionally run the calibration procedure, which drives the draw tube to both end stops.
+.PHONY: test-aux-upb-hw
+# Physical hardware is opt-in, deliberately excluded from test/test-integration. This one switches
+# the power outlets of the connected box, so it is never part of an automatic run.
+test-aux-upb-hw: check-lib $(TEST_BUILD)/hardware/test_aux_upb_hw
+	$(TEST_BUILD)/hardware/test_aux_upb_hw --run
+
+AUX_UPB_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_upb.a $(TEST_LDFLAGS) -lusb-1.0
+
+$(TEST_BUILD)/hardware/test_aux_upb_hw: hardware/test_aux_upb_hw.c test_runner.h $(BUILD_DRIVERS)/indigo_aux_upb.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_UPB_HW_TEST_LDFLAGS)
+
 .PHONY: test-focuser-primaluce-hw
 test-focuser-primaluce-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_primaluce_hw
 	$(TEST_BUILD)/hardware/test_focuser_primaluce_hw --run
