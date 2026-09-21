@@ -61,6 +61,7 @@
 | ccd_sx | 2026-09-21 14:15 | 3.0.0.20 | mac arm64 | fake SDK | 24 / 24 | ✅ OK |
 | ccd_touptek | 2026-09-21 21:02 | 3.0.0.49 | mac arm64 | Touptek GPCMOS01200KMB | 28 / 28 | ✅ OK |
 | ccd_touptek | 2026-09-21 12:38 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
+| ccd_touptek | 2026-09-22 00:14 | 3.0.0.49 | linux arm64 | Touptek GPCMOS01200KMB | 6 / 6 | ✅ OK |
 | ccd_uvc | 2026-09-21 14:12 | 3.0.0.26 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
 | ccd_uvc | 2026-09-21 20:24 | 3.0.0.27 | linux arm64 | SVBONY SV205 | 11 / 11 | ✅ OK |
 | ccd_uvc | 2026-09-21 20:26 | 3.0.0.27 | linux arm64 | Creative Live! Cam Sync HD VF0770 | 11 / 11 | ✅ OK |
