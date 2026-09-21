@@ -24,3 +24,7 @@ indigo_server indigo_gps_gpsd
 
 ## NOTE!
 This driver does not configure or control GPS Service Daemon (GPSD). It just handles the data received from a running GPSD.
+
+## Testing
+
+2026-09-21 17:06 3.0.0.5 mac arm64 simulator 17/17 OK

@@ -57,6 +57,7 @@
 | focuser_primaluce | 2026-09-20 19:54 | 3.0.0.13 | mac arm64 | SESTO SENSO 2 | 18 / 18 | ✅ OK |
 | focuser_prodigy | 2026-09-20 15:10 | 3.0.0.5 | mac arm64 | simulator | 55 / 55 | ✅ OK |
 | focuser_usbv3 | 2026-09-20 14:03 | 3.0.0.9 | mac arm64 | simulator | 27 / 27 | ✅ OK |
+| gps_gpsd | 2026-09-21 17:06 | 3.0.0.5 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 | gps_nmea | 2026-09-21 17:06 | 3.0.0.19 | mac arm64 | simulator | 4 / 4 | ✅ OK |
 | gps_simulator | 2026-09-21 17:06 | 3.0.0.9 | mac arm64 | simulator | 4 / 4 | ✅ OK |
 | guider_asi | 2026-09-21 10:47 | 3.0.0.10 | mac arm64 | fake SDK | 16 / 16 | ✅ OK |
