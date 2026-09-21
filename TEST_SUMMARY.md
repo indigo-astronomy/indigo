@@ -85,6 +85,7 @@
 | wheel_astroasis | 2026-09-21 14:16 | 3.0.0.5 | mac arm64 | fake SDK | 10 / 10 | ✅ OK |
 | wheel_atik | 2026-09-21 14:17 | 3.0.0.6 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
 | wheel_fli | 2026-09-21 14:17 | 3.0.0.11 | mac arm64 | fake SDK | 14 / 14 | ✅ OK |
+| wheel_indigo | 2026-09-21 17:13 | 3.0.0.7 | mac arm64 | simulator | 5 / 5 | ✅ OK |
 | wheel_manual | 2026-09-21 10:55 | 3.0.0.6 | mac arm64 | simulator | 2 / 2 | ✅ OK |
 | wheel_mi | 2026-09-21 14:17 | 3.0.0.6 | mac arm64 | fake SDK | 12 / 12 | ✅ OK |
 | wheel_playerone | 2026-09-21 14:18 | 3.0.0.12 | mac arm64 | fake SDK | 12 / 12 | ✅ OK |
