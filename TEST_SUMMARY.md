@@ -91,5 +91,6 @@
 | wheel_optec | 2026-09-21 17:13 | 3.0.0.7 | mac arm64 | simulator | 8 / 8 | ✅ OK |
 | wheel_playerone | 2026-09-21 14:18 | 3.0.0.12 | mac arm64 | fake SDK | 12 / 12 | ✅ OK |
 | wheel_qhy | 2026-09-21 17:13 | 3.0.0.10 | mac arm64 | simulator | 3 / 3 | ✅ OK |
+| wheel_quantum | 2026-09-21 17:14 | 3.0.0.5 | mac arm64 | simulator | 8 / 8 | ✅ OK |
 | wheel_sx | 2026-09-20 23:09 | 3.0.0.6 | mac arm64 | SX filter wheel | 12 / 12 | ✅ OK |
 | wheel_sx | 2026-09-21 14:18 | 3.0.0.6 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
