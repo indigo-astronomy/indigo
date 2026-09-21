@@ -54,7 +54,7 @@
 | focuser_usbv3 | 2026-09-20 14:03 | 3.0.0.9 | mac arm64 | simulator | 27 / 27 | ✅ OK |
 | guider_asi | 2026-09-21 10:47 | 3.0.0.10 | mac arm64 | fake SDK | 16 / 16 | ✅ OK |
 | guider_cgusbst4 | 2026-09-20 20:52 | 3.0.0.7 | mac arm64 | simulator | 4 / 4 | ✅ OK |
-| guider_gpusb | 2026-09-21 10:48 | 3.0.0.9 | mac arm64 | fake SDK | 15 / 15 | ✅ OK |
+| guider_gpusb | 2026-09-21 14:42 | 3.0.0.9 | mac arm64 | fake SDK | 19 / 19 | ✅ OK |
 | mount_ioptron | 2026-09-20 21:29 | 3.0.0.53 | mac arm64 | simulator | 104 / 104 | ✅ OK |
 | mount_lx200 | 2026-09-20 21:29 | 3.0.0.56 | mac arm64 | simulator | 70 / 70 | ✅ OK |
 | mount_nexstar | 2026-09-20 20:44 | 3.0.0.34 | mac arm64 | simulator | 13 / 13 | ✅ OK |
