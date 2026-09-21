@@ -110,6 +110,16 @@ For CCD, mount, wheel, focuser, rotator, guider, AO and GPS validation, follow t
 - Every driver refactoring must include full applicable test coverage of its supported capabilities and driver-specific behavior, using the class standard as the acceptance checklist. Cover protocol commands and readback, property transitions, failure/recovery paths, lifecycle and concurrency; a smoke test alone is not completion. Record the scenario-to-test mapping and justify non-applicable cases or hardware-only gaps in the driver's `REFACTOR.md`.
 - Audit the simulator as part of each refactoring against the supplied manufacturer protocol documentation (including bundled XLSX documents). For serial simulators with motion, use `indigo_test/simulator_common/serial_motion.h` unless a documented protocol requirement cannot be represented by it. Validate elapsed-time motion, stop and sync through the simulator protocol; do not count testing the shared helper itself as driver coverage.
 
+### Requested Test Runs
+
+- Every requested test run is one of four modes: interactive simulator, non-interactive simulator, interactive hardware, non-interactive hardware. If the request does not identify the mode unambiguously, ask before running anything; never assume a mode.
+- In all modes, run and repeat the tests according to this file, `indigo_drivers/AGENTS.override.md` and `indigo_test/AGENTS.md`. Every rerun after a fix repeats the full requested scope, not only the failing case, and the run is finished only when that full scope is clean.
+- Non-interactive simulator run: exercise the driver through the simulator, fake SDK, fake USB or another hardware-free backend. Fix every defect found, rerun, then commit the result. Do not push.
+- Interactive simulator run: same execution, but do not change code on your own. Report each defect with a proposed fix, wait for the user's approval, implement the approved fix, rerun, then commit. Do not push.
+- Non-interactive hardware run: exercise the driver against the physical device. Fix every defect found, rerun, then commit the result. Do not push.
+- Interactive hardware run: same execution against the physical device, with every fix proposed and approved before it is implemented, then rerun and commit. Do not push. Before the run starts, ask whether physical hot-plug (unplug/replug) is part of it; if it is, request each plug/unplug action at the point it is needed and record its result, and if it is not, state in the report that hot-plug coverage was not established.
+- Commit the verified result of a finished run; never push it. Report defects that stay unfixed, scope that was skipped, and any hardware-only gaps instead of reporting the run as passed.
+
 ## Repository Hygiene
 
 - Do not modify any `README.md` file without the user's explicit approval.
