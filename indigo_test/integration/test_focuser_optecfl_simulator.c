@@ -896,6 +896,9 @@ int main(void) {
 	const int count = (int)(sizeof(cases) / sizeof(cases[0]));
 	const char *filter = getenv("OPTECFL_TEST_FILTER");
 	int failures = 0;
+	// Every scenario runs in a forked child that ends with _exit(), so a fully buffered stdout
+	// would drop its per case result whenever the output is redirected to a file.
+	setvbuf(stdout, NULL, _IOLBF, 0);
 	simulator_test_client.update_property = observe_update;
 	if (!mkdtemp(fixture_dir)) {
 		fprintf(stderr, "Cannot create fixture directory\n");
