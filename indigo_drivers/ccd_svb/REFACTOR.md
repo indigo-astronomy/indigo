@@ -182,3 +182,17 @@ properties now declare `accept_while_busy = true` and zero both axis items in `o
 The guider lifecycle test gained two duration-measuring cases: a 2000 ms pulse replaced after 500 ms
 by a 600 ms pulse in the same direction (1110 ms measured) and by a 300 ms pulse in the opposite
 direction (820 ms), both also confirming the relays are released afterwards.
+
+## Silent change refusal during acquisition (DRV-214, 2026-09-21)
+
+Observable impact: a `CCD_STREAMING` request arriving while `CCD_EXPOSURE` was BUSY, and a `CCD_EXPOSURE` request arriving while `CCD_STREAMING` was BUSY, both returned `INDIGO_OK` without publishing anything. A client that waits for a response cannot tell that from a lost request,
+and `config_restore` in `indigo_libs/indigo_driver.c` dispatches saved properties one at a time and
+waits for each answer, so an unanswered property used to cost every setting after it in the file
+(TT-D03 / DRV-213). Found by a static sweep of every `change_property` body in the repository, not by
+a failing test.
+
+Root cause: the two `on_change_request` blocks in `indigo_ccd_svb.driver` refused the cross-property interlock with a bare `return INDIGO_OK;`.
+
+Fix: both are now `reject_change` blocks, so the refusal is published with `INDIGO_ALERT_STATE` and a message and the client gets its unchanged values back. Version 27 -> 28.
+
+Regression test: `Edges rejected_change_alerts_and_keeps_values` in `indigo_test/integration/test_ccd_svb_sdk.c` now requests streaming during an exposure and requires `CCD_STREAMING` to reach `INDIGO_ALERT_STATE`. Against the pre-fix driver it fails at that assertion; the suite is 47/47 after the fix.
