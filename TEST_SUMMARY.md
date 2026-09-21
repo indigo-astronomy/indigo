@@ -40,7 +40,7 @@
 | ccd_touptek | 2026-09-21 10:04 | 3.0.0.48 | mac arm64 | Touptek GPCMOS01200KMB | 28 / 27 | ❌ Failed |
 | ccd_touptek | 2026-09-21 12:38 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_uvc | 2026-09-21 14:12 | 3.0.0.26 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
-| dome_baader | 2026-09-20 22:31 | 3.0.0.9 | mac arm64 | simulator | 44 / 44 | ✅ OK |
+| dome_baader | 2026-09-21 15:27 | 3.0.0.9 | mac arm64 | simulator | 44 / 44 | ✅ OK |
 | dome_beaver | 2026-09-20 22:31 | 3.0.0.7 | mac arm64 | simulator | 47 / 47 | ✅ OK |
 | dome_simulator | 2026-09-21 12:43 | 3.0.0.8 | mac arm64 | simulator | 7 / 7 | ✅ OK |
 | focuser_asi | 2026-09-21 14:19 | 3.0.0.34 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
