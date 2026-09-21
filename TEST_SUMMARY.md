@@ -202,7 +202,7 @@
 
 # ccd_atik2 (Atik (legacy) Camera)
 
-2026-09-21 10:43 3.0.0.13 mac arm64 fake SDK 24/24 OK
+2026-09-21 13:51 3.0.0.13 mac arm64 fake SDK 24/24 OK
 
 # aux_asiair (ZWO Power Ports ASIAIR)
 
