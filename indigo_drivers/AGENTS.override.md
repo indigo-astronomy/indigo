@@ -2,7 +2,7 @@
 
 ## Scope and precedence
 
-- These instructions apply to every driver subtree under `indigo_drivers/`.
+- These instructions apply to every driver subtree under `indigo_drivers/`, except `ccd_apogee`, `ccd_sbig`, `mount_asi` and `system_ascol`, which must never be modified (see the root `AGENTS.md` scope rule).
 - Follow the repository-root `AGENTS.md` as well. This file specializes its rules for driver refactoring; it does not relax repository-wide requirements, generated-driver rules, testing standards, formatting, or repository hygiene.
 - Read the relevant repository and driver documentation named by the root instructions before changing behavior. For automated tests, also follow `indigo_test/AGENTS.md` and `indigo_test/DRIVER_TESTING_RULES.md`.
 
