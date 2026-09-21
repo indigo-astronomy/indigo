@@ -28,3 +28,7 @@ indigo_server indigo_aux_flipflat
 ## Status: Stable
 
 Tested with physical Flip-Flat device
+
+## Testing
+
+2026-09-21 19:34 3.0.0.9 mac arm64 simulator 11/11 OK
