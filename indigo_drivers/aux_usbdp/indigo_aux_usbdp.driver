@@ -26,7 +26,7 @@ driver usbdp {
 	label = "USB Dewpoint";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2019-2026 Rumen G. Bogdanovski";
-	version = 10;
+	version = 11;
 	serial;
 	define {
 		#define AUX_GROUP "Auxiliary"
@@ -71,6 +71,14 @@ driver usbdp {
 				}
 			}
 			return result > 0;
+		}
+
+		// A change request accepted while the status frame was in flight has already copied the
+		// client's values and published BUSY, so the frame must not overwrite them: the queued
+		// handler would then send the stale values back to the controller. The check sits at each
+		// assignment, after the reply has been read.
+		static bool usbdp_adopt(indigo_property *property) {
+			return property->state != INDIGO_BUSY_STATE;
 		}
 
 		static bool usbdp_open(indigo_device *device) {
@@ -162,7 +170,7 @@ driver usbdp {
 							AUX_TEMPERATURE_SENSOR_2_ITEM->number.value = temp_ch2;
 							updateSensors = true;
 						}
-						if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != auto_mode) {
+						if (usbdp_adopt(AUX_DEW_CONTROL_PROPERTY) && AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != auto_mode) {
 							if (auto_mode) {
 								indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
 							} else {
@@ -170,7 +178,7 @@ driver usbdp {
 							}
 							updateAutoHeater = true;
 						}
-						if (((int)(AUX_HEATER_OUTLET_1_ITEM->number.value) != output_ch1) ||  ((int)(AUX_HEATER_OUTLET_2_ITEM->number.value) != output_ch2) || ((int)(AUX_HEATER_OUTLET_3_ITEM->number.value) != output_ch3)) {
+						if (usbdp_adopt(AUX_HEATER_OUTLET_PROPERTY) && ((int)(AUX_HEATER_OUTLET_1_ITEM->number.value) != output_ch1) ||  ((int)(AUX_HEATER_OUTLET_2_ITEM->number.value) != output_ch2) || ((int)(AUX_HEATER_OUTLET_3_ITEM->number.value) != output_ch3)) {
 							AUX_HEATER_OUTLET_1_ITEM->number.value = output_ch1;
 							AUX_HEATER_OUTLET_2_ITEM->number.value = output_ch2;
 							AUX_HEATER_OUTLET_3_ITEM->number.value = output_ch3;
@@ -203,18 +211,18 @@ driver usbdp {
 							AUX_HEATER_OUTLET_STATE_3_ITEM->light.value = channel_3_state;
 							updateHeaterOutletState = true;
 						}
-						if (((int)(AUX_CALLIBRATION_SENSOR_1_ITEM->number.value) != cal_ch1) || ((int)(AUX_CALLIBRATION_SENSOR_2_ITEM->number.value) != cal_ch2) || ((int)(AUX_CALLIBRATION_SENSOR_3_ITEM->number.value) != cal_amb)) {
+						if (usbdp_adopt(AUX_CALLIBRATION_PROPERTY) && ((int)(AUX_CALLIBRATION_SENSOR_1_ITEM->number.value) != cal_ch1) || ((int)(AUX_CALLIBRATION_SENSOR_2_ITEM->number.value) != cal_ch2) || ((int)(AUX_CALLIBRATION_SENSOR_3_ITEM->number.value) != cal_amb)) {
 							AUX_CALLIBRATION_SENSOR_1_ITEM->number.value = cal_ch1;
 							AUX_CALLIBRATION_SENSOR_2_ITEM->number.value = cal_ch2;
 							AUX_CALLIBRATION_SENSOR_3_ITEM->number.value = cal_amb;
 							updateCallibration = true;
 						}
-						if (((int)(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value) != threshold_ch1) || ((int)(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value) != threshold_ch2)) {
+						if (usbdp_adopt(AUX_DEW_THRESHOLD_PROPERTY) && ((int)(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value) != threshold_ch1) || ((int)(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value) != threshold_ch2)) {
 							AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value = threshold_ch1;
 							AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value = threshold_ch2;
 							updateThreshold = true;
 						}
-						if (PRIVATE_DATA->requested_aggressivity != aggressivity) {
+						if (usbdp_adopt(AUX_HEATER_AGGRESSIVITY_PROPERTY) && PRIVATE_DATA->requested_aggressivity != aggressivity) {
 							switch (aggressivity) {
 							case(1):
 								indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_1_ITEM, true);
@@ -232,7 +240,7 @@ driver usbdp {
 							PRIVATE_DATA->requested_aggressivity = aggressivity;
 							updateAggressivity = true;
 						}
-						if (AUX_LINK_CH_2AND3_LINKED_ITEM->sw.value != ch2_3_linked) {
+						if (usbdp_adopt(AUX_LINK_CH_2AND3_PROPERTY) && AUX_LINK_CH_2AND3_LINKED_ITEM->sw.value != ch2_3_linked) {
 							if (ch2_3_linked) {
 								indigo_set_switch(AUX_LINK_CH_2AND3_PROPERTY, AUX_LINK_CH_2AND3_LINKED_ITEM, true);
 							} else {

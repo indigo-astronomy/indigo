@@ -23,6 +23,7 @@
 | aux_upb | 2026-09-21 22:38 | 3.0.0.28 | mac arm64 | simulator | 37 / 37 | ✅ OK |
 | aux_upb | 2026-09-21 21:46 | 3.0.0.28 | mac arm64 | Pegasus UPB v1 | 14 / 14 | ✅ OK |
 | aux_upb3 | 2026-09-21 22:12 | 3.0.0.5 | mac arm64 | simulator | 29 / 29 | ✅ OK |
+| aux_usbdp | 2026-09-21 23:40 | 3.0.0.11 | mac arm64 | simulator | 16 / 16 | ✅ OK |
 | aux_wbplusv3 | 2026-09-21 19:41 | 3.0.0.6 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 | aux_wbprov3 | 2026-09-21 19:43 | 3.0.0.6 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 | aux_wcv4ec | 2026-09-21 19:45 | 3.0.0.8 | mac arm64 | simulator | 15 / 15 | ✅ OK |

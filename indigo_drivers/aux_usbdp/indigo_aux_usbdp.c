@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_aux_usbdp"
 #define DRIVER_LABEL         "USB Dewpoint"
 #define AUX_DEVICE_NAME      "USB Dewpoint"
@@ -174,6 +174,14 @@ static bool usbdp_command(indigo_device *device, char *command, ...) {
 	return result > 0;
 }
 
+// A change request accepted while the status frame was in flight has already copied the
+// client's values and published BUSY, so the frame must not overwrite them: the queued
+// handler would then send the stale values back to the controller. The check sits at each
+// assignment, after the reply has been read.
+static bool usbdp_adopt(indigo_property *property) {
+	return property->state != INDIGO_BUSY_STATE;
+}
+
 static bool usbdp_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
@@ -267,7 +275,7 @@ static void aux_timer_callback(indigo_device *device) {
 					AUX_TEMPERATURE_SENSOR_2_ITEM->number.value = temp_ch2;
 					updateSensors = true;
 				}
-				if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != auto_mode) {
+				if (usbdp_adopt(AUX_DEW_CONTROL_PROPERTY) && AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != auto_mode) {
 					if (auto_mode) {
 						indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
 					} else {
@@ -275,7 +283,7 @@ static void aux_timer_callback(indigo_device *device) {
 					}
 					updateAutoHeater = true;
 				}
-				if (((int)(AUX_HEATER_OUTLET_1_ITEM->number.value) != output_ch1) ||  ((int)(AUX_HEATER_OUTLET_2_ITEM->number.value) != output_ch2) || ((int)(AUX_HEATER_OUTLET_3_ITEM->number.value) != output_ch3)) {
+				if (usbdp_adopt(AUX_HEATER_OUTLET_PROPERTY) && ((int)(AUX_HEATER_OUTLET_1_ITEM->number.value) != output_ch1) ||  ((int)(AUX_HEATER_OUTLET_2_ITEM->number.value) != output_ch2) || ((int)(AUX_HEATER_OUTLET_3_ITEM->number.value) != output_ch3)) {
 					AUX_HEATER_OUTLET_1_ITEM->number.value = output_ch1;
 					AUX_HEATER_OUTLET_2_ITEM->number.value = output_ch2;
 					AUX_HEATER_OUTLET_3_ITEM->number.value = output_ch3;
@@ -308,18 +316,18 @@ static void aux_timer_callback(indigo_device *device) {
 					AUX_HEATER_OUTLET_STATE_3_ITEM->light.value = channel_3_state;
 					updateHeaterOutletState = true;
 				}
-				if (((int)(AUX_CALLIBRATION_SENSOR_1_ITEM->number.value) != cal_ch1) || ((int)(AUX_CALLIBRATION_SENSOR_2_ITEM->number.value) != cal_ch2) || ((int)(AUX_CALLIBRATION_SENSOR_3_ITEM->number.value) != cal_amb)) {
+				if (usbdp_adopt(AUX_CALLIBRATION_PROPERTY) && ((int)(AUX_CALLIBRATION_SENSOR_1_ITEM->number.value) != cal_ch1) || ((int)(AUX_CALLIBRATION_SENSOR_2_ITEM->number.value) != cal_ch2) || ((int)(AUX_CALLIBRATION_SENSOR_3_ITEM->number.value) != cal_amb)) {
 					AUX_CALLIBRATION_SENSOR_1_ITEM->number.value = cal_ch1;
 					AUX_CALLIBRATION_SENSOR_2_ITEM->number.value = cal_ch2;
 					AUX_CALLIBRATION_SENSOR_3_ITEM->number.value = cal_amb;
 					updateCallibration = true;
 				}
-				if (((int)(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value) != threshold_ch1) || ((int)(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value) != threshold_ch2)) {
+				if (usbdp_adopt(AUX_DEW_THRESHOLD_PROPERTY) && ((int)(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value) != threshold_ch1) || ((int)(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value) != threshold_ch2)) {
 					AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value = threshold_ch1;
 					AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value = threshold_ch2;
 					updateThreshold = true;
 				}
-				if (PRIVATE_DATA->requested_aggressivity != aggressivity) {
+				if (usbdp_adopt(AUX_HEATER_AGGRESSIVITY_PROPERTY) && PRIVATE_DATA->requested_aggressivity != aggressivity) {
 					switch (aggressivity) {
 					case(1):
 						indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_1_ITEM, true);
@@ -337,7 +345,7 @@ static void aux_timer_callback(indigo_device *device) {
 					PRIVATE_DATA->requested_aggressivity = aggressivity;
 					updateAggressivity = true;
 				}
-				if (AUX_LINK_CH_2AND3_LINKED_ITEM->sw.value != ch2_3_linked) {
+				if (usbdp_adopt(AUX_LINK_CH_2AND3_PROPERTY) && AUX_LINK_CH_2AND3_LINKED_ITEM->sw.value != ch2_3_linked) {
 					if (ch2_3_linked) {
 						indigo_set_switch(AUX_LINK_CH_2AND3_PROPERTY, AUX_LINK_CH_2AND3_LINKED_ITEM, true);
 					} else {

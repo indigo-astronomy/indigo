@@ -1550,6 +1550,7 @@
 		5951E142235CDBD900D2DEF1 /* indigo_aux_usbdp_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_usbdp_main.c; sourceTree = "<group>"; };
 		5951E144235CDBD900D2DEF1 /* aux_usbdp_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = aux_usbdp_simulator.ino; sourceTree = "<group>"; };
 		5951E145235CDBD900D2DEF1 /* protocol.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = protocol.txt; sourceTree = "<group>"; };
+		C0DE20260921000600000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		5951E146235CDBD900D2DEF1 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5951E148235CDBD900D2DEF1 /* indigo_aux_usbdp.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_usbdp.c; sourceTree = "<group>"; };
 		595200652DBC19E00027566F /* indigo_focuser_fcusb.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_focuser_fcusb.driver; sourceTree = "<group>"; };
@@ -7176,6 +7177,7 @@
 			isa = PBXGroup;
 			children = (
 				5951E146235CDBD900D2DEF1 /* README.md */,
+				C0DE20260921000600000001 /* REFACTOR.md */,
 				5951E141235CDBD900D2DEF1 /* indigo_aux_usbdp.h */,
 				5951E148235CDBD900D2DEF1 /* indigo_aux_usbdp.c */,
 				5951E142235CDBD900D2DEF1 /* indigo_aux_usbdp_main.c */,

@@ -59,8 +59,18 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
+	printf("  --slow-status <ms>      Hold the status reply, so a change can land during a poll\n");
+	printf("  --fault <cmd> <mode>    Answer <cmd> with invalid|short|silent|close\n");
+	printf("  --fault-once <cmd> <mode>       The same, but only the first time\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
+
+// Delay applied before the status reply, so a test can issue a change request while
+// the driver's poll is still waiting for it and exercise that race deterministically.
+static int slow_status_ms = 0;
+// Fault injection: the named command answers with MODE instead of its reply.
+static const char *fault_command, *fault_mode;
+static bool fault_once;
 
 static bool parse_args(int argc, char *argv[]) {
 	for (int i = 1; i < argc; i++) {
@@ -72,6 +82,24 @@ static bool parse_args(int argc, char *argv[]) {
 			options.trace = false;
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
+		} else if (!strcmp(argv[i], "--slow-status")) {
+			if (++i == argc) {
+				fprintf(stderr, "--slow-status requires a delay in milliseconds\n");
+				return false;
+			}
+			slow_status_ms = atoi(argv[i]);
+		} else if (!strcmp(argv[i], "--fault") || !strcmp(argv[i], "--fault-once")) {
+			fault_once = !strcmp(argv[i], "--fault-once");
+			if (i + 2 >= argc) {
+				fprintf(stderr, "%s requires a command and a mode\n", argv[i]);
+				return false;
+			}
+			fault_command = argv[++i];
+			fault_mode = argv[++i];
+			if (strcmp(fault_mode, "invalid") && strcmp(fault_mode, "short") && strcmp(fault_mode, "silent") && strcmp(fault_mode, "close")) {
+				fprintf(stderr, "Unknown fault mode '%s'\n", fault_mode);
+				return false;
+			}
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -178,7 +206,31 @@ static int sim_read_command(int fd, char *buffer, size_t length) {
 	return (int)used;
 }
 
+static bool inject_fault(int fd, const char *cmd) {
+	if (fault_command == NULL || strcmp(cmd, fault_command)) {
+		return false;
+	}
+	if (fault_once) {
+		fault_command = NULL;
+	}
+	if (!strcmp(fault_mode, "invalid")) {
+		sim_printf(fd, "invalid\n");
+	} else if (!strcmp(fault_mode, "short")) {
+		sim_printf(fd, "##1.0/2.0**\n");
+	} else if (!strcmp(fault_mode, "close")) {
+		close(fd);
+	}
+	// "silent" answers nothing at all.
+	return true;
+}
+
 static void dispatch_command(int fd, const char *cmd) {
+	if (inject_fault(fd, cmd)) {
+		return;
+	}
+	if (slow_status_ms > 0 && !strcmp(cmd, "SGETAL")) {
+		usleep((useconds_t)slow_status_ms * 1000);
+	}
 	if (!strcmp(cmd, "SWHOIS")) {
 		if (options.model == MODEL_V1) {
 			sim_printf(fd, "UDP\n");

@@ -25,3 +25,7 @@ Driver is developed and tested with:
 * USB_Dewpoint Arduino simulator for V1 and V2
 * USB_Dewpoint V1
 * USB_Dewpoint V2
+
+## Testing
+
+2026-09-21 23:40 3.0.0.11 mac arm64 simulator 16/16 OK

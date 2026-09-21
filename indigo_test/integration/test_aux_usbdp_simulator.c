@@ -51,6 +51,43 @@ static const simulator_driver_case usbdp_case = {
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
 
+// ---------------------------------------------------------------- utilities
+
+static bool start_usbdp(external_serial_simulator *simulator, const char * const *arguments) {
+	return start_external_serial_simulator_with_args(simulator, AUX_USBDP_SIMULATOR_EXECUTABLE, arguments);
+}
+
+static bool start_model(external_serial_simulator *simulator, const char *model) {
+	const char *arguments[] = { "--model", model, NULL };
+	return start_usbdp(simulator, arguments) && start_serial_driver(&usbdp_case, simulator->port);
+}
+
+static bool wait_for_switch_item_value(const char *property_name, const char *item_name, bool expected) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *item = find_cached_item(property_name, item_name);
+		if (item != NULL && item->sw.value == expected) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	indigo_item *item = find_cached_item(property_name, item_name);
+	fprintf(stderr, "Switch %s.%s is %s, expected %s\n", property_name, item_name, item == NULL ? "missing" : item->sw.value ? "on" : "off", expected ? "on" : "off");
+	return false;
+}
+
+static bool set_switch(const char *property_name, const char *item_name, bool value) {
+	return indigo_change_switch_property_1(&simulator_test_client, usbdp_case.device_name, property_name, item_name, value) == INDIGO_OK;
+}
+
+static bool set_number(const char *property_name, const char *item_name, double value) {
+	return indigo_change_number_property_1(&simulator_test_client, usbdp_case.device_name, property_name, item_name, value) == INDIGO_OK;
+}
+
+// The change dispatch drops a request that arrives while the property is still BUSY.
+static bool settle(const char *property_name) {
+	return wait_for_property_state(property_name, INDIGO_OK_STATE);
+}
+
 static void usbdp_v2_passes_serial_compliance_checks(void) {
 	external_serial_simulator simulator = { 0 };
 	const char * const arguments[] = { "--model", "v2", NULL };
@@ -135,10 +172,259 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// ------------------------------------------------------------------ v2 controls
+
+static void each_heater_holds_its_own_duty_cycle(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_model(&simulator, "v2"));
+	static const char * const items[] = { AUX_HEATER_OUTLET_1_ITEM_NAME, AUX_HEATER_OUTLET_2_ITEM_NAME, AUX_HEATER_OUTLET_3_ITEM_NAME };
+	for (int i = 0; i < 3; i++) {
+		SERIAL_CHECK_TRUE(settle(AUX_HEATER_OUTLET_PROPERTY_NAME));
+		SERIAL_CHECK_TRUE(set_number(AUX_HEATER_OUTLET_PROPERTY_NAME, items[i], 20 * (i + 1)));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, items[i], 20 * (i + 1), 0.5));
+	}
+	// Setting the later channels must not have disturbed the earlier ones.
+	for (int i = 0; i < 3; i++) {
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, items[i], 20 * (i + 1), 0.5));
+	}
+cleanup:
+	stop_serial_driver(&usbdp_case);
+	stop_external_serial_simulator(&simulator);
+}
+
+static void dew_control_round_trips(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_model(&simulator, "v2"));
+	SERIAL_CHECK_TRUE(set_switch(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(settle(AUX_DEW_CONTROL_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(set_switch(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, true));
+cleanup:
+	stop_serial_driver(&usbdp_case);
+	stop_external_serial_simulator(&simulator);
+}
+
+static void calibration_offsets_round_trip(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_model(&simulator, "v2"));
+	static const char * const items[] = { AUX_CALLIBRATION_SENSOR_1_ITEM_NAME, AUX_CALLIBRATION_SENSOR_2_ITEM_NAME, AUX_CALLIBRATION_SENSOR_3_ITEM_NAME };
+	for (int i = 0; i < 3; i++) {
+		SERIAL_CHECK_TRUE(settle(AUX_CALLIBRATION_PROPERTY_NAME));
+		SERIAL_CHECK_TRUE(set_number(AUX_CALLIBRATION_PROPERTY_NAME, items[i], i + 1));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_CALLIBRATION_PROPERTY_NAME, items[i], i + 1, 0.5));
+	}
+cleanup:
+	stop_serial_driver(&usbdp_case);
+	stop_external_serial_simulator(&simulator);
+}
+
+static void dew_thresholds_round_trip(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_model(&simulator, "v2"));
+	SERIAL_CHECK_TRUE(settle(AUX_DEW_THRESHOLD_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(set_number(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, 5));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, 5, 0.5));
+	SERIAL_CHECK_TRUE(settle(AUX_DEW_THRESHOLD_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(set_number(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_2_ITEM_NAME, 7));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_2_ITEM_NAME, 7, 0.5));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, 5, 0.5));
+cleanup:
+	stop_serial_driver(&usbdp_case);
+	stop_external_serial_simulator(&simulator);
+}
+
+static void channel_link_round_trips(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_model(&simulator, "v2"));
+	SERIAL_CHECK_TRUE(set_switch(AUX_LINK_CH_2AND3_PROPERTY_NAME, AUX_LINK_CH_2AND3_LINKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_LINK_CH_2AND3_PROPERTY_NAME, AUX_LINK_CH_2AND3_LINKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(settle(AUX_LINK_CH_2AND3_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(set_switch(AUX_LINK_CH_2AND3_PROPERTY_NAME, AUX_LINK_CH_2AND3_NOT_LINKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_LINK_CH_2AND3_PROPERTY_NAME, AUX_LINK_CH_2AND3_NOT_LINKED_ITEM_NAME, true));
+cleanup:
+	stop_serial_driver(&usbdp_case);
+	stop_external_serial_simulator(&simulator);
+}
+
+static void heater_aggressivity_round_trips(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_model(&simulator, "v2"));
+	static const char * const items[] = {
+		AUX_HEATER_AGGRESSIVITY_2_ITEM_NAME, AUX_HEATER_AGGRESSIVITY_5_ITEM_NAME,
+		AUX_HEATER_AGGRESSIVITY_10_ITEM_NAME, AUX_HEATER_AGGRESSIVITY_1_ITEM_NAME
+	};
+	for (int i = 0; i < 4; i++) {
+		SERIAL_CHECK_TRUE(settle(AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME));
+		SERIAL_CHECK_TRUE(set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME, items[i], true));
+		SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME, items[i], true));
+	}
+cleanup:
+	stop_serial_driver(&usbdp_case);
+	stop_external_serial_simulator(&simulator);
+}
+
+// USBDP-01: a status frame that was in flight when a change was accepted must not
+// overwrite the requested values; the queued handler would then send the stale ones
+// back to the controller.
+static void a_change_survives_a_status_frame_in_flight(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "v2", "--slow-status", "700", NULL };
+	SERIAL_CHECK_TRUE(start_usbdp(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&usbdp_case, simulator.port));
+	for (int attempt = 0; attempt < 4; attempt++) {
+		double target = attempt % 2 == 0 ? 40 : 70;
+		SERIAL_CHECK_TRUE(settle(AUX_HEATER_OUTLET_PROPERTY_NAME));
+		SERIAL_CHECK_TRUE(set_number(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME, target));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME, target, 0.5));
+		// Let the status frame that was in flight publish before the value is trusted.
+		indigo_usleep(1500000);
+		double value = cached_number_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME);
+		if (value != target) {
+			fprintf(stderr, "Heater reverted to %g after the request for %g\n", value, target);
+		}
+		SERIAL_CHECK_TRUE(value == target);
+	}
+cleanup:
+	stop_serial_driver(&usbdp_case);
+	stop_external_serial_simulator(&simulator);
+}
+
+// ------------------------------------------------------------------ failures
+
+static void unknown_identity_is_refused(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--fault", "SWHOIS", "invalid", NULL };
+	SERIAL_CHECK_TRUE(start_usbdp(&simulator, arguments));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&usbdp_case));
+	SERIAL_CHECK_TRUE(!connect_serial_device(&usbdp_case, simulator.port));
+	SERIAL_CHECK_TRUE(!context.connected);
+cleanup:
+	tear_down_serial_driver(&usbdp_case);
+	stop_external_serial_simulator(&simulator);
+}
+
+static void silent_identity_is_refused(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--fault", "SWHOIS", "silent", NULL };
+	SERIAL_CHECK_TRUE(start_usbdp(&simulator, arguments));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&usbdp_case));
+	SERIAL_CHECK_TRUE(!connect_serial_device(&usbdp_case, simulator.port));
+	SERIAL_CHECK_TRUE(!context.connected);
+cleanup:
+	tear_down_serial_driver(&usbdp_case);
+	stop_external_serial_simulator(&simulator);
+}
+
+static void vanished_port_is_refused(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "v2", NULL };
+	SERIAL_CHECK_TRUE(start_usbdp(&simulator, arguments));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&usbdp_case));
+	stop_external_serial_simulator(&simulator);
+	SERIAL_CHECK_TRUE(!connect_serial_device(&usbdp_case, simulator.port));
+	SERIAL_CHECK_TRUE(!context.connected);
+cleanup:
+	tear_down_serial_driver(&usbdp_case);
+}
+
+// One unparsable status frame must not become a bogus reading.
+static void malformed_status_frame_is_ignored(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "v2", "--fault-once", "SGETAL", "short", NULL };
+	SERIAL_CHECK_TRUE(start_usbdp(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&usbdp_case, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME, 20.0, 0.2));
+	SERIAL_CHECK_TRUE(settle(AUX_HEATER_OUTLET_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(set_number(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME, 30));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME, 30, 0.5));
+cleanup:
+	stop_serial_driver(&usbdp_case);
+	stop_external_serial_simulator(&simulator);
+}
+
+// ------------------------------------------------------------------ lifecycle
+
+// Disconnecting stops the heaters on purpose - the controller would otherwise keep
+// driving them with nothing watching - so the contract across a reconnect is that the
+// heaters come back off and the controller is controllable again, not that the duty
+// cycle survives.
+static void disconnect_stops_the_heaters_and_reconnect_resumes_polling(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_model(&simulator, "v2"));
+	SERIAL_CHECK_TRUE(settle(AUX_HEATER_OUTLET_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(set_number(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_2_ITEM_NAME, 55));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_2_ITEM_NAME, 55, 0.5));
+	disconnect_serial_device(&usbdp_case);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_serial_device(&usbdp_case, NULL));
+	// The status frame the poll reads back has to show every heater stopped.
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME, 0, 0.5));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_2_ITEM_NAME, 0, 0.5));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_3_ITEM_NAME, 0, 0.5));
+	// Polling resumed, so the sensors are published again and the controller still obeys.
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME, 20.0, 0.2));
+	SERIAL_CHECK_TRUE(settle(AUX_HEATER_OUTLET_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(set_number(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_2_ITEM_NAME, 35));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_2_ITEM_NAME, 35, 0.5));
+cleanup:
+	stop_serial_driver(&usbdp_case);
+	stop_external_serial_simulator(&simulator);
+}
+
+static void repeated_disconnect_is_tolerated(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = true;
+	SERIAL_CHECK_TRUE(start_model(&simulator, "v2"));
+	disconnect_serial_device(&usbdp_case);
+	SERIAL_CHECK_TRUE(!context.connected);
+	disconnect_serial_device(&usbdp_case);
+	SERIAL_CHECK_TRUE(!context.connected);
+	online = false;
+	tear_down_serial_driver(&usbdp_case);
+cleanup:
+	if (online) {
+		stop_serial_driver(&usbdp_case);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void shutdown_is_refused_while_connected(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_model(&simulator, "v2"));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_aux_usbdp(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_TRUE(context.connected);
+cleanup:
+	stop_serial_driver(&usbdp_case);
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
+	// The driver's persistent properties would otherwise be saved into, and restored from, the
+	// user's own configuration; a stored duty cycle then overwrites what a case just requested.
+	if (!indigo_test_use_private_home()) {
+		return 1;
+	}
 	const indigo_test_case tests[] = {
 		{ "usbdp_v2_passes_serial_compliance_checks", usbdp_v2_passes_serial_compliance_checks },
 		{ "usbdp_v1_passes_serial_compliance_checks", usbdp_v1_passes_serial_compliance_checks },
+		{ "each_heater_holds_its_own_duty_cycle", each_heater_holds_its_own_duty_cycle },
+		{ "dew_control_round_trips", dew_control_round_trips },
+		{ "calibration_offsets_round_trip", calibration_offsets_round_trip },
+		{ "dew_thresholds_round_trip", dew_thresholds_round_trip },
+		{ "channel_link_round_trips", channel_link_round_trips },
+		{ "heater_aggressivity_round_trips", heater_aggressivity_round_trips },
+		{ "a_change_survives_a_status_frame_in_flight", a_change_survives_a_status_frame_in_flight },
+		{ "unknown_identity_is_refused", unknown_identity_is_refused },
+		{ "silent_identity_is_refused", silent_identity_is_refused },
+		{ "vanished_port_is_refused", vanished_port_is_refused },
+		{ "malformed_status_frame_is_ignored", malformed_status_frame_is_ignored },
+		{ "disconnect_stops_the_heaters_and_reconnect_resumes_polling", disconnect_stops_the_heaters_and_reconnect_resumes_polling },
+		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
+		{ "shutdown_is_refused_while_connected", shutdown_is_refused_while_connected },
 	};
-	return indigo_run_tests("USB Dewpoint serial simulator integration tests", tests, ARRAY_SIZE(tests));
+	int result = indigo_run_tests("USB Dewpoint serial simulator integration tests", tests, ARRAY_SIZE(tests));
+	indigo_test_remove_private_home();
+	return result;
 }
