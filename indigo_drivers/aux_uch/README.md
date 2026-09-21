@@ -22,3 +22,7 @@ indigo_server indigo_aux_uch
 ## Status: Stable
 
 Tested with physical device.
+
+## Testing
+
+2026-09-21 19:38 3.0.0.5 mac arm64 simulator 10/10 OK
