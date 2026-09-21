@@ -406,7 +406,6 @@ static void focuser_main_connection_handler(indigo_device *device) {
 			indigo_define_property(device, X_FOCUSER_MOTOR_WIRING_MAIN_PROPERTY, NULL);
 			indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_MAIN_PROPERTY, NULL);
 			indigo_define_property(device, X_FOCUSER_TEMPERATURE_SENSOR_MAIN_PROPERTY, NULL);
-			indigo_execute_handler(device, focuser_main_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", FOCUSER_MAIN_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -434,6 +433,9 @@ static void focuser_main_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, focuser_main_timer_callback);
+	}
 }
 
 static void focuser_main_focuser_speed_handler(indigo_device *device) {
@@ -777,7 +779,6 @@ static void focuser_exp_connection_handler(indigo_device *device) {
 			indigo_define_property(device, X_FOCUSER_MOTOR_WIRING_EXP_PROPERTY, NULL);
 			indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_EXP_PROPERTY, NULL);
 			indigo_define_property(device, X_FOCUSER_TEMPERATURE_SENSOR_EXP_PROPERTY, NULL);
-			indigo_execute_handler(device, focuser_exp_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", FOCUSER_EXP_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -805,6 +806,9 @@ static void focuser_exp_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, focuser_exp_timer_callback);
+	}
 }
 
 static void focuser_exp_focuser_speed_handler(indigo_device *device) {
@@ -1414,7 +1418,6 @@ static void aux_exp_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			indigo_define_property(device, AUX_POWER_OUTLET_EXP_PROPERTY, NULL);
 			indigo_define_property(device, AUX_GPIO_SENSORS_EXP_PROPERTY, NULL);
-			indigo_execute_handler(device, aux_exp_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_EXP_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -1439,6 +1442,9 @@ static void aux_exp_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, aux_exp_timer_callback);
+	}
 }
 
 static void aux_exp_aux_outlet_names_exp_handler(indigo_device *device) {
@@ -1597,7 +1603,6 @@ static void focuser_third_connection_handler(indigo_device *device) {
 			indigo_define_property(device, X_FOCUSER_MOTOR_WIRING_THIRD_PROPERTY, NULL);
 			indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_THIRD_PROPERTY, NULL);
 			indigo_define_property(device, X_FOCUSER_TEMPERATURE_SENSOR_THIRD_PROPERTY, NULL);
-			indigo_execute_handler(device, focuser_third_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", FOCUSER_THIRD_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -1625,6 +1630,9 @@ static void focuser_third_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, focuser_third_timer_callback);
+	}
 }
 
 static void focuser_third_focuser_speed_handler(indigo_device *device) {
@@ -2234,7 +2242,6 @@ static void aux_third_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			indigo_define_property(device, AUX_POWER_OUTLET_THIRD_PROPERTY, NULL);
 			indigo_define_property(device, AUX_GPIO_SENSORS_THIRD_PROPERTY, NULL);
-			indigo_execute_handler(device, aux_third_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_THIRD_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -2259,6 +2266,9 @@ static void aux_third_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, aux_third_timer_callback);
+	}
 }
 
 static void aux_third_aux_outlet_names_third_handler(indigo_device *device) {

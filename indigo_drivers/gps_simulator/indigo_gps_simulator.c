@@ -140,7 +140,6 @@ static void gps_connection_handler(indigo_device *device) {
 		GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 		GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
 		//- gps.on_connect
-		indigo_execute_handler(device, gps_timer_callback);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 	} else {
@@ -149,6 +148,9 @@ static void gps_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_gps_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, gps_timer_callback);
+	}
 }
 
 #pragma mark - Device API (gps)

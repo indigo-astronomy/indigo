@@ -23,7 +23,7 @@ driver mi {
 	label = "Moravian Instruments Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 33;
+	version = 34;
 	multi_device_support = true;
 	include {
 		#include <ctype.h>

@@ -833,7 +833,6 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_define_property(device, X_RUNPRESET_PROPERTY, NULL);
 			indigo_define_property(device, X_HOLD_CURR_PROPERTY, NULL);
 			indigo_define_property(device, X_CALIBRATE_F_PROPERTY, NULL);
-			indigo_execute_handler(device, focuser_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -868,6 +867,9 @@ static void focuser_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, focuser_timer_callback);
+	}
 }
 
 static void focuser_x_wifi_handler(indigo_device *device) {

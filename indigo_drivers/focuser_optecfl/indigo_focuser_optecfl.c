@@ -524,7 +524,6 @@ static void focuser_1_connection_handler(indigo_device *device) {
 		}
 		if (connection_result) {
 			indigo_define_property(device, X_FOCUSER_1_TYPE_PROPERTY, NULL);
-			indigo_execute_handler(device, focuser_1_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", FOCUSER_1_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -545,6 +544,9 @@ static void focuser_1_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, focuser_1_timer_callback);
+	}
 }
 
 static void focuser_1_focuser_position_handler(indigo_device *device) {
@@ -761,7 +763,6 @@ static void focuser_2_connection_handler(indigo_device *device) {
 		}
 		if (connection_result) {
 			indigo_define_property(device, X_FOCUSER_2_TYPE_PROPERTY, NULL);
-			indigo_execute_handler(device, focuser_2_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", FOCUSER_2_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -782,6 +783,9 @@ static void focuser_2_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, focuser_2_timer_callback);
+	}
 }
 
 static void focuser_2_focuser_position_handler(indigo_device *device) {

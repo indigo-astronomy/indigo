@@ -29,7 +29,7 @@ driver svb {
 	label = "SVBONY Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>, Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o. and Rumen G. Bogdanovski";
-	version = 26;
+	version = 27;
 	multi_device_support = true;
 	include {
 		#include <assert.h>

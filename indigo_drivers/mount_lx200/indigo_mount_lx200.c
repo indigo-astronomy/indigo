@@ -2401,7 +2401,6 @@ static void mount_connection_handler(indigo_device *device) {
 			indigo_define_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
 			indigo_define_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
 			indigo_define_property(device, ONSTEP_ALTITUDE_LIMITS_PROPERTY, NULL);
-			indigo_execute_handler(device, mount_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -2437,6 +2436,9 @@ static void mount_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, mount_timer_callback);
+	}
 }
 
 static void mount_type_handler(indigo_device *device) {
@@ -3501,7 +3503,6 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-			indigo_execute_handler(device, aux_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -3525,6 +3526,9 @@ static void aux_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, aux_timer_callback);
+	}
 }
 
 static void aux_heater_outlet_handler(indigo_device *device) {

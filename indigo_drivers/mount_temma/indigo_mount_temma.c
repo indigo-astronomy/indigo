@@ -329,7 +329,6 @@ static void mount_connection_handler(indigo_device *device) {
 			indigo_define_property(device, CORRECTION_SPEED_PROPERTY, NULL);
 			indigo_define_property(device, HIGH_SPEED_PROPERTY, NULL);
 			indigo_define_property(device, ZENITH_PROPERTY, NULL);
-			indigo_execute_handler(device, mount_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -363,6 +362,9 @@ static void mount_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, mount_timer_callback);
+	}
 }
 
 static void mount_correction_speed_handler(indigo_device *device) {

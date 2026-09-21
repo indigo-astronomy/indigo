@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_aux_dsusb"
 #define DRIVER_LABEL         "Shoestring DSUSB shutter release"
 #define AUX_DEVICE_NAME      "%s"
@@ -159,7 +159,6 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, X_CONFIG_PROPERTY, NULL);
-			indigo_execute_handler(device, aux_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 		} else {
@@ -181,6 +180,9 @@ static void aux_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, aux_timer_callback);
+	}
 }
 
 static void aux_ccd_abort_exposure_handler(indigo_device *device) {

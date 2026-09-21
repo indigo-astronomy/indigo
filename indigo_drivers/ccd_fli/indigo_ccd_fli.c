@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_ccd_fli"
 #define DRIVER_LABEL         "FLI Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -466,7 +466,6 @@ static void ccd_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			indigo_define_property(device, FLI_NFLUSHES_PROPERTY, NULL);
 			indigo_define_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
-			indigo_execute_handler(device, ccd_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 		} else {
@@ -492,6 +491,9 @@ static void ccd_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, ccd_timer_callback);
+	}
 }
 
 static void ccd_exposure_handler(indigo_device *device) {

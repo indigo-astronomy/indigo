@@ -1072,7 +1072,6 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, AUX_RAIN_PROPERTY, NULL);
 			indigo_define_property(device, AUX_CLOUD_PROPERTY, NULL);
 			indigo_define_property(device, AUX_SKY_PROPERTY, NULL);
-			indigo_execute_handler(device, aux_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -1105,6 +1104,9 @@ static void aux_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, aux_timer_callback);
+	}
 }
 
 static void aux_outlet_names_handler(indigo_device *device) {

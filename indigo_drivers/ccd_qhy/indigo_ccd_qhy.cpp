@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000021
+#define DRIVER_VERSION       0x03000022
 #define DRIVER_NAME          "indigo_ccd_qhy"
 #define DRIVER_LABEL         "QHY CCD (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -652,7 +652,6 @@ static void ccd_connection_handler(indigo_device *device) {
 			indigo_define_property(device, X_PIXEL_FORMAT_PROPERTY, NULL);
 			indigo_define_property(device, X_ADVANCED_PROPERTY, NULL);
 			indigo_define_property(device, X_READ_MODE_PROPERTY, NULL);
-			indigo_execute_handler(device, ccd_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 		} else {
@@ -682,6 +681,9 @@ static void ccd_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, ccd_timer_callback);
+	}
 }
 
 static void ccd_exposure_handler(indigo_device *device) {
@@ -1548,7 +1550,7 @@ indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *in
 #include "indigo_ccd_qhy.h"
 
 indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "QHY CCD (legacy) Camera", __FUNCTION__, 0x03000021, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "QHY CCD (legacy) Camera", __FUNCTION__, 0x03000022, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

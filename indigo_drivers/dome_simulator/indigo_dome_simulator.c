@@ -128,7 +128,6 @@ static void dome_timer_callback(indigo_device *device) {
 
 static void dome_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		indigo_execute_handler(device, dome_timer_callback);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 	} else {
@@ -150,6 +149,9 @@ static void dome_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_dome_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, dome_timer_callback);
+	}
 }
 
 static void dome_horizontal_coordinates_handler(indigo_device *device) {

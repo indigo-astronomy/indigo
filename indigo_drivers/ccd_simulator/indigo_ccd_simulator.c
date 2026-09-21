@@ -1173,7 +1173,6 @@ static void imager_ccd_timer_callback(indigo_device *device) {
 
 static void imager_ccd_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		indigo_execute_handler(device, imager_ccd_timer_callback);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 	} else {
@@ -1187,6 +1186,9 @@ static void imager_ccd_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, imager_ccd_timer_callback);
+	}
 }
 
 static void imager_ccd_ccd_exposure_handler(indigo_device *device) {

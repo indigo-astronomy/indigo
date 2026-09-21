@@ -1597,9 +1597,6 @@ void write_c_connection_change_handler(device_type *device) {
 				write_line("\t\t\tindigo_define_property(device, %s, NULL);", property2->handle);
 			}
 		}
-		if (device->on_timer != NULL) {
-			write_line("\t\tindigo_execute_handler(device, %s_timer_callback);", device->id);
-		}
 		if (has_virtual_connection_result) {
 			write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
 			write_line("\t\t\tindigo_send_message(device, OK_PROPERTY, \"Connected to %%s\", device->name);");
@@ -1645,9 +1642,6 @@ void write_c_connection_change_handler(device_type *device) {
 				write_line("\t\t\tindigo_define_property(device, %s, NULL);", property2->handle);
 			}
 		}
-		if (device->on_timer != NULL) {
-			write_line("\t\t\tindigo_execute_handler(device, %s_timer_callback);", device->id);
-		}
 		write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
 		if (driver.serial) {
 			write_line("\t\t\tindigo_send_message(device, OK_PROPERTY, \"Connected to %%s on %%s\", %s, DEVICE_PORT_ITEM->text.value);", device->handle);
@@ -1690,6 +1684,18 @@ void write_c_connection_change_handler(device_type *device) {
 	write_line("\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
 	write_line("\t}");
 	write_line("\tindigo_%s_change_property(device, NULL, CONNECTION_PROPERTY);", device->type);
+	// The timer callback runs on the device queue, which in a hot-plug driver is not the queue this
+	// connection handler runs on. Starting it earlier let it observe CONNECTION still BUSY, and its
+	// IS_CONNECTED prologue then dropped the one call that starts a self-rescheduling poll, so the
+	// poll was gone for the whole session. Start it after the final change_property() call, which
+	// publishes the connection and defines the class properties, so the callback always sees a
+	// connected device it may publish to. On a failed connect or on disconnect IS_CONNECTED is
+	// false and no callback is queued.
+	if (device->on_timer != NULL) {
+		write_line("\tif (IS_CONNECTED) {");
+		write_line("\t\tindigo_execute_handler(device, %s_timer_callback);", device->id);
+		write_line("\t}");
+	}
 	write_line("}");
 	write_line("");
 }

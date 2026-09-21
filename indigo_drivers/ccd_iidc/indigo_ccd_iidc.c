@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000011
+#define DRIVER_VERSION       0x03000012
 #define DRIVER_NAME          "indigo_ccd_iidc"
 #define DRIVER_LABEL         "IIDC Compatible Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -448,7 +448,6 @@ static void ccd_connection_handler(indigo_device *device) {
 			//- ccd.on_connect
 		}
 		if (connection_result) {
-			indigo_execute_handler(device, ccd_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 		} else {
@@ -466,6 +465,9 @@ static void ccd_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, ccd_timer_callback);
+	}
 }
 
 static void ccd_mode_handler(indigo_device *device) {
@@ -1016,7 +1018,7 @@ indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *i
 #include "indigo_ccd_iidc.h"
 
 indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "IIDC Compatible Camera", __FUNCTION__, 0x03000011, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "IIDC Compatible Camera", __FUNCTION__, 0x03000012, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

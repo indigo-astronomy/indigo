@@ -1570,7 +1570,6 @@ static void mount_connection_handler(indigo_device *device) {
 			indigo_define_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
-			indigo_execute_handler(device, mount_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -1595,6 +1594,9 @@ static void mount_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, mount_timer_callback);
+	}
 }
 
 static void mount_park_handler(indigo_device *device) {
@@ -2418,7 +2420,6 @@ static void aux_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			indigo_execute_handler(device, aux_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -2445,6 +2446,9 @@ static void aux_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, aux_timer_callback);
+	}
 }
 
 static void aux_ccd_abort_exposure_handler(indigo_device *device) {

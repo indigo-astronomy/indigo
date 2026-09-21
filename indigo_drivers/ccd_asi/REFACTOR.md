@@ -516,24 +516,33 @@ kills the poll permanently. Confirmed in the debug log: in a passing run the fir
 `ASIGetControlValue(1, ASI_TEMPERATURE)` appears immediately after "Connected to", and in a failing
 run no such call appears at all.
 
-Fix: the driver now owns the start of the poll. `indigo_ccd_asi.driver` schedules
-`ccd_temperature_callback` from `ccd.on_connect` when a temperature sensor was discovered, and
-`ccd_temperature_callback` reschedules itself in half a second instead of returning when
-`CONNECTION` has not reached `INDIGO_OK_STATE` yet, so the first call cannot be lost and cannot
-publish before the CCD properties are defined. The now-unused `ccd.on_timer` block was removed, which
-also removes the generated call that loses the race. Version 61 -> 62.
+Fix: fixed in the generator, with the user's explicit approval, after a driver-local workaround had
+been tried first. `write_c_connection_change_handler()` in `indigo_tools/indigo_generator.c` no longer
+emits `indigo_execute_handler(device, <device>_timer_callback)` inside the connect branch. It emits it
+once at the end of the connection handler, after
+`indigo_<type>_change_property(device, NULL, CONNECTION_PROPERTY)` and guarded by
+`if (IS_CONNECTED)`. That call is what publishes the connection and defines the class properties, so
+the callback can no longer observe a BUSY connection and can no longer publish to a property that is
+not defined yet; on a failed connect or on a disconnect `IS_CONNECTED` is false and no callback is
+queued. `indigo_ccd_asi.driver` therefore keeps its ordinary `ccd.on_timer` block and needs no
+driver-local start; the intermediate workaround, which started the poll from `ccd.on_connect` and let
+`ccd_temperature_callback` reschedule itself while `CONNECTION` was not yet OK, was reverted.
+Version 61 -> 62 for the workaround, 62 -> 63 for the generator fix. The other 13 affected generated
+hot-plug drivers were bumped and revalidated too; the whole change is recorded as `DRV-211` in
+`indigo_drivers/REVIEW.md`.
 
 Regression test: `asi_controls_cooling` in `indigo_test/hardware/test_ccd_asi_hw.c` now derives its
 new target from a freshly published measurement — it waits for a new `CCD_TEMPERATURE` revision
 through `wait_revision()` — instead of from the cached definition value, so a poll that never runs
 fails the case deterministically with "CCD_TEMPERATURE was not published again". It failed on the
-pre-fix driver and passed on three consecutive runs after the fix. The fake SDK suite keeps its
-coverage: `asi_test_execute_in()` in `indigo_test/integration/test_ccd_asi_sdk.c` now captures the
-poll callback from the 0.5 s schedule as well as the 5 s one, and all 51 cases pass.
+pre-fix driver and passed on three consecutive runs after the fix. In the fake SDK suite,
+`sensor_only_and_sensor_absent` gates the start of the poll for free: its `poll_temperature()` needs
+the callback that the poll captures on its first five-second reschedule, so a poll that never starts
+fails the case. All 51 cases pass.
 
-This is a generator-level hazard, not an ASI-specific one: any generated hot-plug driver whose
-`on_timer` block starts a self-rescheduling chain can lose it the same way. It is recorded as
-`DRV-211` in `indigo_drivers/REVIEW.md` because fixing the generator needs explicit approval.
+This was a generator-level hazard, not an ASI-specific one: any generated hot-plug driver whose
+`on_timer` block starts a self-rescheduling chain could lose it the same way. It is fixed in the
+generator and recorded as `DRV-211` in `indigo_drivers/REVIEW.md`.
 
 ### Harness expectation corrected, not a driver defect
 
@@ -549,3 +558,26 @@ and measures that the replacement runs its own duration.
 - Hardware tests: 68 run, 68 passed — 28 on the ASI294MC Pro, 28 on the ASI120MC-S and 6 dynamic
   reload cases per camera. Four physical hot-plug cases and the flash-suffix replug case exist and
   were not run; they need an operator at the cable.
+
+## Generator fix for ASI-D02 — version 63 / 0x0300003F (2026-09-21)
+
+The user approved fixing ASI-D02 in `indigo_generator` rather than leaving the driver-local
+workaround in place, so the workaround was reverted and `indigo_ccd_asi.driver` is back to its
+ordinary `ccd.on_timer` block. The generator change and its repository-wide effect are recorded as
+`DRV-211` in `indigo_drivers/REVIEW.md`.
+
+Revalidation of this driver at version 63:
+
+- `make -C indigo_test test-ccd-asi-sdk`: 51/51 cases pass, including
+  `sensor_only_and_sensor_absent`, whose `poll_temperature()` only works if the temperature poll
+  actually started.
+- All portable and macOS drivers rebuild with no errors after regenerating all 115 generator inputs.
+- Hardware revalidation at version 63 could not be repeated in this session: the ASI294MC Pro, the
+  ASI120MC-S and the EFW mini were physically removed from the test host while the generator change
+  was being made, and a Player One Mars-C II was attached in their place by another test session. The
+  28/28 per-camera hardware results recorded above were obtained with version 62, which carried the
+  same behavioural fix through the driver-local workaround. The generator variant differs only in
+  where the first poll call is queued, and that path is exercised by the fake SDK suite, but no
+  hardware run at version 63 is claimed. Rerun
+  `INDIGO_TEST_DEVICE="ZWO ASI294MC Pro" indigo_test/build/hardware/test_ccd_asi_hw --run` once the
+  cameras are back to close that gap.

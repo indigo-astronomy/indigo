@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000017
+#define DRIVER_VERSION       0x03000018
 #define DRIVER_NAME          "indigo_ccd_playerone"
 #define DRIVER_LABEL         "Player One Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1074,7 +1074,6 @@ static void ccd_connection_handler(indigo_device *device) {
 			indigo_define_property(device, X_PRESETS_PROPERTY, NULL);
 			indigo_define_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
 			indigo_define_property(device, X_SENSOR_MODE_PROPERTY, NULL);
-			indigo_execute_handler(device, ccd_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 		} else {
@@ -1105,6 +1104,9 @@ static void ccd_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, ccd_timer_callback);
+	}
 }
 
 static void ccd_exposure_handler(indigo_device *device) {

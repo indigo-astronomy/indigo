@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_ccd_qsi"
 #define DRIVER_LABEL         "QSI Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -634,7 +634,6 @@ static void ccd_connection_handler(indigo_device *device) {
 			indigo_define_property(device, X_QSI_ANTI_BLOOM_PROPERTY, NULL);
 			indigo_define_property(device, X_QSI_PRE_EXPOSURE_FLUSH_PROPERTY, NULL);
 			indigo_define_property(device, X_QSI_FAN_MODE_PROPERTY, NULL);
-			indigo_execute_handler(device, ccd_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 		} else {
@@ -667,6 +666,9 @@ static void ccd_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, ccd_timer_callback);
+	}
 }
 
 static void ccd_exposure_handler(indigo_device *device) {

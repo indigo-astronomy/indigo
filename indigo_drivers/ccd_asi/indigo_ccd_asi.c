@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300003E
+#define DRIVER_VERSION       0x0300003F
 #define DRIVER_NAME          "indigo_ccd_asi"
 #define DRIVER_LABEL         "ZWO ASI Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -609,13 +609,6 @@ static void ccd_temperature_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
 	}
-	if (!IS_CONNECTED) {
-		// The poll is started from the connection handler, which runs on the driver queue,
-		// so the first call can arrive before the final CONNECTION state is published and
-		// the CCD properties are defined. Wait instead of dropping the whole poll chain.
-		indigo_execute_handler_in(device, 0.5, ccd_temperature_callback);
-		return;
-	}
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (asi_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
@@ -1074,6 +1067,17 @@ static void initialize_properties(indigo_device *device) {
 
 #pragma mark - High level code (ccd)
 
+static void ccd_timer_callback(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	//+ ccd.on_timer
+	if (PRIVATE_DATA->has_temperature_sensor) {
+		ccd_temperature_callback(device);
+	}
+	//- ccd.on_timer
+}
+
 static void ccd_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
@@ -1088,9 +1092,6 @@ static void ccd_connection_handler(indigo_device *device) {
 			indigo_lock_master_device(device);
 			connection_result = initialize_camera(device);
 			indigo_unlock_master_device(device);
-			if (connection_result && PRIVATE_DATA->has_temperature_sensor) {
-				indigo_execute_handler_in(device, 0.5, ccd_temperature_callback);
-			}
 			//- ccd.on_connect
 		}
 		if (connection_result) {
@@ -1129,6 +1130,9 @@ static void ccd_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, ccd_timer_callback);
+	}
 }
 
 static void ccd_exposure_handler(indigo_device *device) {
