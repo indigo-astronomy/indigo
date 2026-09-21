@@ -23,7 +23,7 @@ driver efa {
 	label = "Celestron / PlaneWave EFA Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 19;
+	version = 20;
 	serial;
 	define {
 		#define RESPONSE (PRIVATE_DATA->response + 5)
@@ -379,6 +379,14 @@ driver efa {
 		on_disconnect {
 			if (PRIVATE_DATA->calibrating) {
 				efa_byte(device, 0x2A, 0);
+				// The finalizer returns without publishing once the device is disconnected, and
+				// the connect handler resets only the motion state, so the interrupted
+				// calibration has to be ended here. Otherwise X_FOCUSER_CALIBRATION stays BUSY
+				// and refuses every FOCUSER_POSITION and FOCUSER_STEPS change from then on.
+				indigo_cancel_pending_handler(device, calibration_finalizer);
+				X_FOCUSER_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, X_FOCUSER_CALIBRATION_PROPERTY, NULL);
+				efa_motion_state(device, INDIGO_ALERT_STATE);
 			} else if (PRIVATE_DATA->active || PRIVATE_DATA->uncertain) {
 				efa_byte(device, 0x24, 0);
 			}

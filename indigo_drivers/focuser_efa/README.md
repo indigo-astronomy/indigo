@@ -34,3 +34,7 @@ Select the serial port before connecting. Keep actual hardware movement within i
 ## License
 
 INDIGO Astronomy open-source license.
+
+## Testing
+
+2026-09-21 19:31 3.0.0.20 mac arm64 simulator 56/56 OK

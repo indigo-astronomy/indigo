@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000013
+#define DRIVER_VERSION       0x03000014
 #define DRIVER_NAME          "indigo_focuser_efa"
 #define DRIVER_LABEL         "Celestron / PlaneWave EFA Focuser"
 #define FOCUSER_DEVICE_NAME  "EFA Focuser"
@@ -460,6 +460,14 @@ static void focuser_connection_handler(indigo_device *device) {
 		//+ focuser.on_disconnect
 		if (PRIVATE_DATA->calibrating) {
 			efa_byte(device, 0x2A, 0);
+			// The finalizer returns without publishing once the device is disconnected, and
+			// the connect handler resets only the motion state, so the interrupted
+			// calibration has to be ended here. Otherwise X_FOCUSER_CALIBRATION stays BUSY
+			// and refuses every FOCUSER_POSITION and FOCUSER_STEPS change from then on.
+			indigo_cancel_pending_handler(device, calibration_finalizer);
+			X_FOCUSER_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_FOCUSER_CALIBRATION_PROPERTY, NULL);
+			efa_motion_state(device, INDIGO_ALERT_STATE);
 		} else if (PRIVATE_DATA->active || PRIVATE_DATA->uncertain) {
 			efa_byte(device, 0x24, 0);
 		}

@@ -53,6 +53,7 @@
 | focuser_astromechanics | 2026-09-21 17:17 | 3.0.0.6 | mac arm64 | simulator | 12 / 12 | ✅ OK |
 | focuser_dmfc | 2026-09-21 12:44 | 3.0.0.17 | mac arm64 | simulator | 24 / 24 | ✅ OK |
 | focuser_dsd | 2026-09-21 17:23 | 3.0.0.19 | mac arm64 | simulator | 42 / 42 | ✅ OK |
+| focuser_efa | 2026-09-21 19:31 | 3.0.0.20 | mac arm64 | simulator | 56 / 56 | ✅ OK |
 | focuser_fc3 | 2026-09-20 13:06 | 3.0.0.7 | mac arm64 | simulator | 28 / 28 | ✅ OK |
 | focuser_fcusb | 2026-09-21 14:40 | 3.0.0.9 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
 | focuser_fli | 2026-09-21 14:40 | 3.0.0.11 | mac arm64 | fake SDK | 17 / 17 | ✅ OK |
