@@ -80,6 +80,7 @@
 | focuser_efa | 2026-09-21 19:31 | 3.0.0.20 | mac arm64 | simulator | 56 / 56 | ✅ OK |
 | focuser_fc3 | 2026-09-20 13:06 | 3.0.0.7 | mac arm64 | simulator | 28 / 28 | ✅ OK |
 | focuser_fcusb | 2026-09-21 14:40 | 3.0.0.9 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
+| focuser_fcusb | 2026-09-21 23:46 | 3.0.0.9 | mac arm64 | FCUSB | 10 / 10 | ✅ OK |
 | focuser_fli | 2026-09-21 14:40 | 3.0.0.11 | mac arm64 | fake SDK | 17 / 17 | ✅ OK |
 | focuser_focusdreampro | 2026-09-21 17:28 | 3.0.0.8 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 | focuser_ioptron | 2026-09-21 19:06 | 3.0.0.8 | mac arm64 | simulator | 40 / 40 | ✅ OK |

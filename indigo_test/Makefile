@@ -2425,3 +2425,17 @@ test-ccd-qhy2-hotplug-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_qhy2_hotplug
 
 $(TEST_BUILD)/hardware/test_ccd_qhy2_hotplug_hw: $(CCD_HOTPLUG_HW_SOURCES) $(BUILD_DRIVERS)/indigo_ccd_qhy2.a Makefile | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_ccd_qhy2 -DTEST_NAME='"QHY"' -DTEST_VENDORS='{ 0x1618 }' $< $(BUILD_DRIVERS)/indigo_ccd_qhy2.a -o $@ $(CCD_HOTPLUG_HW_LDFLAGS) -lqhyccd
+
+# Physical Shoestring FCUSB hardware is opt-in and excluded from normal integration tests. THE
+# MOTOR RUNS: the controller is open loop, so every move of the run is short and is followed by
+# the opposite move of the same length. Physical hot-plug is not part of the run; the faked libusb
+# boundary of test_focuser_fcusb_sdk covers it.
+.PHONY: test-focuser-fcusb-hw
+test-focuser-fcusb-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_fcusb_hw
+	$(TEST_BUILD)/hardware/test_focuser_fcusb_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+FOCUSER_FCUSB_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),../indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS/libfcusb.a,../indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a)
+FOCUSER_FCUSB_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_fcusb.a $(FOCUSER_FCUSB_HW_TEST_SDK) $(TEST_LDFLAGS) -lusb-1.0
+
+$(TEST_BUILD)/hardware/test_focuser_fcusb_hw: hardware/test_focuser_fcusb_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_fcusb.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_FCUSB_HW_TEST_LDFLAGS)
