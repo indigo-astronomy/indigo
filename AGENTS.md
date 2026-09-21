@@ -118,6 +118,8 @@ For CCD, mount, wheel, focuser, rotator, guider, AO and GPS validation, follow t
 - Interactive simulator run: same execution, but do not change code on your own. Report each defect with a proposed fix, wait for the user's approval, implement the approved fix, rerun, then commit. Do not push.
 - Non-interactive hardware run: exercise the driver against the physical device. Fix every defect found, rerun, then commit the result. Do not push.
 - Interactive hardware run: same execution against the physical device, with every fix proposed and approved before it is implemented, then rerun and commit. Do not push. Before the run starts, ask whether physical hot-plug (unplug/replug) is part of it; if it is, request each plug/unplug action at the point it is needed and record its result, and if it is not, state in the report that hot-plug coverage was not established.
+- Each driver is a separate commit unit. Commit one driver per commit, together with that driver's fixes, its `README.md` test record and the regenerated `TEST_SUMMARY.md`; never combine several drivers in one commit, even when they were tested in the same session.
+- Record every finished run in the driver's `README.md` `## Testing` section and regenerate `TEST_SUMMARY.md` with `python3 tools/make_test_summary.py`, following the recording rules in `indigo_test/AGENTS.md`. This record is the only `README.md` change that needs no separate approval. A run is not finished until both files are updated and committed with the driver's change.
 - Commit the verified result of a finished run; never push it. Report defects that stay unfixed, scope that was skipped, and any hardware-only gaps instead of reporting the run as passed.
 
 ## Repository Hygiene
