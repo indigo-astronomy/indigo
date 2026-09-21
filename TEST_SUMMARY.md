@@ -46,7 +46,7 @@
 | focuser_astroasis | 2026-09-21 14:39 | 3.0.0.10 | mac arm64 | fake SDK | 33 / 33 | ✅ OK |
 | focuser_dmfc | 2026-09-21 12:44 | 3.0.0.17 | mac arm64 | simulator | 24 / 24 | ✅ OK |
 | focuser_fc3 | 2026-09-20 13:06 | 3.0.0.7 | mac arm64 | simulator | 28 / 28 | ✅ OK |
-| focuser_fcusb | 2026-09-21 10:46 | 3.0.0.9 | mac arm64 | fake SDK | 17 / 17 | ✅ OK |
+| focuser_fcusb | 2026-09-21 14:40 | 3.0.0.9 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
 | focuser_primaluce | 2026-09-20 19:45 | 3.0.0.13 | mac arm64 | simulator | 35 / 35 | ✅ OK |
 | focuser_primaluce | 2026-09-20 19:54 | 3.0.0.13 | mac arm64 | SESTO SENSO 2 | 18 / 18 | ✅ OK |
 | focuser_prodigy | 2026-09-20 15:10 | 3.0.0.5 | mac arm64 | simulator | 55 / 55 | ✅ OK |
