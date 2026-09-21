@@ -44,6 +44,7 @@
 
 #include <indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.h>
 
+#include "parallel_case_runner.h"
 #include "serial_simulator_test_common.h"
 
 #ifndef DOME_NEXDOME3_SIMULATOR_EXECUTABLE
@@ -186,7 +187,7 @@ static const simulator_driver_case nexdome3_second_dome = {
 };
 
 static bool known_defects_mode, network_mode;
-static const char *capture_path;
+static const char *capture_path, *case_filter;
 static external_serial_simulator simulator, second_simulator;
 static char fixture_dir[PATH_MAX], event_path[PATH_MAX], fault_path[PATH_MAX], control_path[PATH_MAX], home_path[PATH_MAX];
 static pthread_mutex_t observe_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -2596,12 +2597,40 @@ static const nexdome3_case cases[] = {
 	{ "NX3-17 overlong_output_ignored", nx3_17_overlong_output_ignored, "--azimuth 90 --speed-factor 20", false, false },
 };
 
-static void run_child(const nexdome3_case *test) {
-	setpgid(0, 0);
+static const char *case_name(int index) {
+	return cases[index].name;
+}
+
+static bool case_selected(int index) {
+	const nexdome3_case *test = cases + index;
+	if (test->defect != known_defects_mode || test->network != network_mode) {
+		return false;
+	}
+	if (case_filter != NULL && strstr(test->name, case_filter) == NULL) {
+		return false;
+	}
+	return capture_path == NULL || test->run == reference_trace;
+}
+
+static unsigned case_timeout(int index) {
+	return cases[index].defect ? 150 : 240;
+}
+
+// Runs in the forked child. Every path the case shares with its simulator lives
+// below the private fixture directory, so concurrent cases stay independent.
+static int case_child(int index, const char *fixture) {
+	const nexdome3_case *test = cases + index;
+	snprintf(event_path, sizeof(event_path), "%s/events", fixture);
+	snprintf(fault_path, sizeof(fault_path), "%s/fault", fixture);
+	snprintf(control_path, sizeof(control_path), "%s/control", fixture);
+	snprintf(home_path, sizeof(home_path), "%s/home", fixture);
+	mkdir(home_path, 0700);
+	setenv("INDIGO_NEXDOME3_EVENTS", event_path, 1);
+	setenv("INDIGO_NEXDOME3_FAULT", fault_path, 1);
+	setenv("INDIGO_NEXDOME3_CONTROL", control_path, 1);
 	setenv("HOME", home_path, 1);
-	alarm(test->defect ? 150 : 240);
 	if (!start_simulator_with(&simulator, test->args)) {
-		_exit(2);
+		return 2;
 	}
 	if (getenv("NEXDOME3_DEBUG")) {
 		indigo_set_log_level(INDIGO_LOG_DEBUG);
@@ -2610,7 +2639,15 @@ static void run_child(const nexdome3_case *test) {
 	int result = indigo_run_tests("NexDome3", &runner, 1);
 	stop_external_serial_simulator(&simulator);
 	fflush(NULL);
-	_exit(result);
+	return result;
+}
+
+static void case_report(int index, bool failed, double seconds) {
+	if (known_defects_mode) {
+		printf("%s %s (%.1f s)\n", failed ? "EXPECTED FAIL" : "UNEXPECTED PASS", cases[index].name, seconds);
+	} else if (failed) {
+		printf("FAIL %s (%.1f s)\n", cases[index].name, seconds);
+	}
 }
 
 int main(int argc, char **argv) {
@@ -2637,49 +2674,13 @@ int main(int argc, char **argv) {
 		perror("mkdtemp");
 		return 1;
 	}
-	snprintf(event_path, sizeof(event_path), "%s/events", fixture_dir);
-	snprintf(fault_path, sizeof(fault_path), "%s/fault", fixture_dir);
-	snprintf(control_path, sizeof(control_path), "%s/control", fixture_dir);
-	snprintf(home_path, sizeof(home_path), "%s/home", fixture_dir);
-	mkdir(home_path, 0700);
-	setenv("INDIGO_NEXDOME3_EVENTS", event_path, 1);
-	setenv("INDIGO_NEXDOME3_FAULT", fault_path, 1);
-	setenv("INDIGO_NEXDOME3_CONTROL", control_path, 1);
-	const char *filter = getenv("NEXDOME3_TEST_FILTER");
+	case_filter = getenv("NEXDOME3_TEST_FILTER");
+	// The opt-in network cases bind fixed loopback ports, so they stay serial.
+	const parallel_case_runner runner = {
+		"NexDome3", fixture_dir, (int)ARRAY_SIZE(cases), network_mode ? 1 : 0, case_name, case_selected, case_timeout, case_child, case_report
+	};
 	int run = 0, passed = 0, failed = 0;
-	for (int i = 0; i < (int)ARRAY_SIZE(cases); i++) {
-		const nexdome3_case *test = cases + i;
-		if (test->defect != known_defects_mode || test->network != network_mode || (filter && !strstr(test->name, filter)) || (capture_path && test->run != reference_trace)) {
-			continue;
-		}
-		unlink(event_path);
-		unlink(fault_path);
-		unlink(control_path);
-		fflush(NULL);
-		double started = now();
-		pid_t child = fork();
-		if (child == 0) {
-			run_child(test);
-		}
-		int status = 0;
-		if (child > 0) {
-			while (waitpid(child, &status, 0) < 0 && errno == EINTR) {
-			}
-			kill(-child, SIGTERM);
-		}
-		run++;
-		bool ok = child > 0 && WIFEXITED(status) && WEXITSTATUS(status) == 0;
-		if (known_defects_mode) {
-			printf("%s %s (status %d, %.1f s)\n", ok ? "UNEXPECTED PASS" : "EXPECTED FAIL", test->name, status, now() - started);
-		} else if (!ok) {
-			printf("FAIL %s (status %d, %.1f s)\n", test->name, status, now() - started);
-		}
-		if (ok) {
-			passed++;
-		} else {
-			failed++;
-		}
-	}
+	run_parallel_cases(&runner, &run, &passed, &failed);
 	if (!getenv("NEXDOME3_KEEP_FIXTURE")) {
 		nftw(fixture_dir, remove_entry, 16, FTW_DEPTH | FTW_PHYS);
 	}

@@ -56,6 +56,34 @@ Run `make all` from the repository root first if `build/lib/libindigo` or the re
 
 After validating changes that build tests, run `make -C indigo_test test-clean` unless the user asks to keep build artifacts.
 
+## Parallel Case Runners
+
+Suites that run every case in its own forked child, each with its own simulator
+and its own INDIGO bus, are dominated by per case start-up cost rather than by
+the simulated motion: the simulator hand-shake, the driver bring-up and the
+connect delay a driver preserves from its hardware protocol, plus the driver
+timeouts a case exists to exercise. `integration/parallel_case_runner.h` runs
+such cases several at a time.
+
+- Fill in a `parallel_case_runner` and call `run_parallel_cases()` instead of
+  writing a `fork()` loop. The runner owns the fork, the process group, the
+  per case watchdog and the reaping.
+- Give the runner a `fixture_root`; every case gets its own directory below it.
+  Derive each case's event log, fault file, control file and `HOME` from the
+  `fixture` argument **inside** the child, never from a shared path in the
+  parent, otherwise concurrent cases overwrite each other's fixtures.
+- Each child's output is captured and replayed by the parent in registration
+  order, so a parallel run reads exactly like a serial one. Do not print a case
+  result from the parent; use the optional `report` callback when a suite needs
+  something other than `FAIL <name>`, as the known-defect modes do.
+- `INDIGO_TEST_JOBS` overrides the degree of parallelism; the default follows
+  the processor count, capped at 8. Use `INDIGO_TEST_JOBS=1` to serialize a run
+  when measuring timing or bisecting a flaky case.
+- Keep cases that bind a fixed loopback port serial by setting the runner's
+  `jobs` field to 1 for that mode.
+- Add `integration/parallel_case_runner.h` to the prerequisites of every test
+  rule that includes it, like any other shared test header.
+
 ## Harness Conventions
 
 - Use `test_runner.h` for new C tests.

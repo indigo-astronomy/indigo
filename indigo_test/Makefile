@@ -641,13 +641,13 @@ test-dome-nexdome-simulator-sanitize: $(INTEGRATION_BUILD)/test_dome_nexdome_sim
 test-dome-nexdome-simulator-network: $(INTEGRATION_BUILD)/test_dome_nexdome_simulator
 	$(INTEGRATION_BUILD)/test_dome_nexdome_simulator --network
 
-$(INTEGRATION_BUILD)/test_dome_nexdome3_simulator: integration/test_dome_nexdome3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_nexdome3/original_reference_trace.txt fixtures/dome_nexdome3/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_nexdome3_simulator $(BUILD_DRIVERS)/indigo_dome_nexdome3.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_dome_nexdome3_simulator: integration/test_dome_nexdome3_simulator.c integration/parallel_case_runner.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_nexdome3/original_reference_trace.txt fixtures/dome_nexdome3/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_nexdome3_simulator $(BUILD_DRIVERS)/indigo_dome_nexdome3.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_NEXDOME3_SIMULATOR_TEST_LDFLAGS)
 
 DOME_NEXDOME3_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
 DOME_NEXDOME3_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined -lindigocat
 
-$(INTEGRATION_BUILD)/test_dome_nexdome3_simulator_sanitize: integration/test_dome_nexdome3_simulator.c ../indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.c ../indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_nexdome3/original_reference_trace.txt fixtures/dome_nexdome3/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_nexdome3_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_dome_nexdome3_simulator_sanitize: integration/test_dome_nexdome3_simulator.c integration/parallel_case_runner.h ../indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.c ../indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_nexdome3/original_reference_trace.txt fixtures/dome_nexdome3/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_nexdome3_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(DOME_NEXDOME3_SANITIZE_CFLAGS) -o $@ $< ../indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.c $(DOME_NEXDOME3_SANITIZE_LDFLAGS)
 
 .PHONY: test-dome-nexdome3-simulator test-dome-nexdome3-simulator-sanitize test-dome-nexdome3-simulator-network

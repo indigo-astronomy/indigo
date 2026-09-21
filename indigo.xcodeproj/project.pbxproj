@@ -4985,6 +4985,7 @@
 		59FE348021886A17004FB5D4 /* indigo_focuser_lakeside.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_lakeside.h; sourceTree = "<group>"; };
 		59FE348121886A17004FB5D4 /* indigo_focuser_lakeside_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_lakeside_main.c; sourceTree = "<group>"; };
 		59FE348321886A17004FB5D4 /* focuser_lakeside_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = focuser_lakeside_simulator.ino; sourceTree = "<group>"; };
+		C0DE20260921000100000001 /* parallel_case_runner.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = parallel_case_runner.h; sourceTree = "<group>"; };
 		59FEFFC6301E6891007FB62D /* serial_simulator_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = serial_simulator_test_common.h; sourceTree = "<group>"; };
 		59FEFFC7301E6891007FB62D /* test_rotator_falcon2_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_rotator_falcon2_simulator.c; sourceTree = "<group>"; };
 		59FEFFC8301E6891007FB62D /* test_focuser_fc3_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_fc3_simulator.c; sourceTree = "<group>"; };
@@ -14021,6 +14022,7 @@
 				C0DE20260920003000000003 /* qsi_fake_sdk.h */,
 				C0DE20260920003000000004 /* qsi_fake_sdk.cpp */,
 				C0DE20300920000500000008 /* fli_sdk_test_common.h */,
+				C0DE20260921000100000001 /* parallel_case_runner.h */,
 				59FEFFC6301E6891007FB62D /* serial_simulator_test_common.h */,
 				59FA7BF6301D3F5A00A35CFB /* simulator_test_common.h */,
 				9D56D3593058283B00725436 /* test_agent_astrometry.c */,
