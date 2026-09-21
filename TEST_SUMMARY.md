@@ -26,6 +26,10 @@
 
 2026-09-21 13:53 3.0.0.49 mac arm64 fake SDK 30/30 OK
 
+# ccd_bresser
+
+2026-09-21 13:55 3.0.0.49 mac arm64 fake SDK 30/30 OK
+
 # ccd_fli (FLI Camera)
 
 2026-09-21 12:45 3.0.0.12 mac arm64 fake SDK 22/22 OK
