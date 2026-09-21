@@ -27,3 +27,7 @@ indigo_server indigo_focuser_lacerta
 ```
 
 Select the serial port before connecting. Migration decisions and validation results are recorded in `REFACTOR.md`; automated coverage is recorded in `../../indigo_test/CHANGES.md`.
+
+## Testing
+
+2026-09-21 17:33 3.0.0.7 mac arm64 simulator 43/43 OK
