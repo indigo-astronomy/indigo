@@ -24,3 +24,7 @@ indigo_server indigo_wheel_mi
 
 Driver is developed and tested with:
 * MI SFW
+
+## Testing
+
+2026-09-21 14:17 3.0.0.6 mac arm64 fake SDK 12/12 OK
