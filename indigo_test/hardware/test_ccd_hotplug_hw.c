@@ -77,8 +77,113 @@ extern indigo_result TEST_ENTRY(indigo_driver_action action, indigo_driver_info 
 
 static usb_hotplug_port port;
 static int camera = -1, guider = -1;
-static char camera_name[INDIGO_NAME_SIZE];
+static char camera_name[INDIGO_NAME_SIZE], guider_name[INDIGO_NAME_SIZE];
 static bool park_others = true, known_defects_mode = false;
+
+// Liveness of a device as the bus defines it, tracked here rather than taken from the shared
+// harness. A device is published by a define of its CONNECTION property and withdrawn by the
+// device wide delete indigo_detach_device() sends, and nothing else changes that.
+//
+// The distinction matters exactly here. A driver that withdraws a camera which has just been
+// switched off still has a disconnect in flight, and the CONNECTION *update* that finishes it
+// reaches the client after the withdrawal. A model that treats any publication as presence counts
+// that update as the device coming back and never sees the removal, which reads like a driver that
+// leaks the device of a camera that is gone. Updates are therefore ignored here.
+
+#define LIVE_MAX HW_MAX_DEVICES
+
+typedef struct {
+	char name[INDIGO_NAME_SIZE];
+	unsigned interface;
+	bool live;
+} live_device;
+
+static live_device live_devices[LIVE_MAX];
+static pthread_mutex_t live_mutex = PTHREAD_MUTEX_INITIALIZER;
+static indigo_result (*inner_define)(indigo_client *, indigo_device *, indigo_property *, const char *);
+static indigo_result (*inner_delete)(indigo_client *, indigo_device *, indigo_property *, const char *);
+
+// Caller holds live_mutex.
+static live_device *live_slot(const char *name) {
+	for (int i = 0; i < LIVE_MAX; i++) {
+		if (!strcmp(live_devices[i].name, name)) {
+			return live_devices + i;
+		}
+	}
+	for (int i = 0; i < LIVE_MAX; i++) {
+		if (!*live_devices[i].name) {
+			snprintf(live_devices[i].name, INDIGO_NAME_SIZE, "%s", name);
+			return live_devices + i;
+		}
+	}
+	return NULL;
+}
+
+static indigo_result observe_define(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	pthread_mutex_lock(&live_mutex);
+	live_device *slot = live_slot(property->device);
+	if (slot) {
+		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
+			slot->live = true;
+		} else if (!strcmp(property->name, INFO_PROPERTY_NAME)) {
+			for (int i = 0; i < property->count; i++) {
+				if (!strcmp(property->items[i].name, INFO_DEVICE_INTERFACE_ITEM_NAME)) {
+					slot->interface = (unsigned)strtoul(property->items[i].text.value, NULL, 10);
+				}
+			}
+		}
+	}
+	pthread_mutex_unlock(&live_mutex);
+	return inner_define(client, device, property, message);
+}
+
+static indigo_result observe_delete(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!*property->name) {
+		pthread_mutex_lock(&live_mutex);
+		live_device *slot = live_slot(property->device);
+		if (slot) {
+			slot->live = false;
+		}
+		pthread_mutex_unlock(&live_mutex);
+	}
+	if (hw_trace) {
+		fprintf(stderr, "    [trace] %s delete '%s'\n", property->device, property->name);
+	}
+	return inner_delete(client, device, property, message);
+}
+
+static bool device_is_live(const char *name) {
+	if (!name || !*name) {
+		return false;
+	}
+	pthread_mutex_lock(&live_mutex);
+	live_device *slot = live_slot(name);
+	bool live = slot && slot->live;
+	pthread_mutex_unlock(&live_mutex);
+	return live;
+}
+
+static int count_live_interface(unsigned interface) {
+	pthread_mutex_lock(&live_mutex);
+	int count = 0;
+	for (int i = 0; i < LIVE_MAX; i++) {
+		if (*live_devices[i].name && live_devices[i].live && (live_devices[i].interface & interface)) {
+			count++;
+		}
+	}
+	pthread_mutex_unlock(&live_mutex);
+	return count;
+}
+
+static void report_live_devices(void) {
+	pthread_mutex_lock(&live_mutex);
+	for (int i = 0; i < LIVE_MAX; i++) {
+		if (*live_devices[i].name) {
+			fprintf(stderr, "      %s live=%s interface=%u\n", live_devices[i].name, live_devices[i].live ? "yes" : "no", live_devices[i].interface);
+		}
+	}
+	pthread_mutex_unlock(&live_mutex);
+}
 
 typedef struct {
 	const char *name;
@@ -116,33 +221,32 @@ static int find_interface(unsigned interface, double timeout) {
 	return -1;
 }
 
-static int count_interface(unsigned interface) {
-	pthread_mutex_lock(&hw_mutex);
-	int count = 0;
-	for (int d = 0; d < HW_MAX_DEVICES; d++) {
-		if (hw_devices[d].present && (hw_devices[d].interface & interface)) {
-			count++;
-		}
-	}
-	pthread_mutex_unlock(&hw_mutex);
-	return count;
-}
-
-static bool wait_until_gone(int d, double timeout) {
-	if (d < 0) {
-		return true;
-	}
+static bool wait_until_live(const char *name, double timeout) {
 	double deadline = indigo_monotonic_time() + timeout;
 	while (indigo_monotonic_time() < deadline) {
-		pthread_mutex_lock(&hw_mutex);
-		bool present = hw_devices[d].present;
-		pthread_mutex_unlock(&hw_mutex);
-		if (!present) {
+		if (device_is_live(name)) {
 			return true;
 		}
 		indigo_usleep(20000);
 	}
-	fprintf(stderr, "    %s is still published %gs after its camera was switched off\n", hw_device_name(d), timeout);
+	fprintf(stderr, "    %s was not published again within %gs\n", name, timeout);
+	report_live_devices();
+	return false;
+}
+
+static bool wait_until_withdrawn(const char *name, double timeout) {
+	if (!name || !*name) {
+		return true;
+	}
+	double deadline = indigo_monotonic_time() + timeout;
+	while (indigo_monotonic_time() < deadline) {
+		if (!device_is_live(name)) {
+			return true;
+		}
+		indigo_usleep(20000);
+	}
+	fprintf(stderr, "    %s is still published %gs after its camera was switched off\n", name, timeout);
+	report_live_devices();
 	return false;
 }
 
@@ -153,7 +257,7 @@ static bool unplug(void) {
 	if (!usb_hotplug_off(&port, UNPLUG_TIMEOUT)) {
 		return false;
 	}
-	if (!wait_until_gone(camera, UNPLUG_TIMEOUT) || !wait_until_gone(guider, UNPLUG_TIMEOUT)) {
+	if (!wait_until_withdrawn(camera_name, UNPLUG_TIMEOUT) || !wait_until_withdrawn(guider_name, UNPLUG_TIMEOUT)) {
 		return false;
 	}
 	camera = guider = -1;
@@ -166,22 +270,32 @@ static bool replug(void) {
 	if (!usb_hotplug_on(&port, REPLUG_TIMEOUT)) {
 		return false;
 	}
-	camera = find_interface(INDIGO_INTERFACE_CCD, REPLUG_TIMEOUT);
-	if (camera < 0) {
-		fprintf(stderr, "    the driver did not publish a camera after the port came back\n");
+	// The camera is back when the driver defines its CONNECTION property again. Waiting for the
+	// shared cache to report it present instead would return immediately: a disconnect that
+	// finishes after the device was withdrawn updates that same property, and the cache counts any
+	// publication as presence, so the camera that just left still looks like it is there.
+	if (!wait_until_live(camera_name, REPLUG_TIMEOUT)) {
+		fprintf(stderr, "    the driver did not publish the camera again after the port came back\n");
 		return false;
 	}
-	if (strcmp(camera_name, hw_device_name(camera))) {
-		fprintf(stderr, "    the camera came back as '%s' instead of '%s'\n", hw_device_name(camera), camera_name);
+	camera = find_interface(INDIGO_INTERFACE_CCD, SHORT_TIMEOUT);
+	if (camera < 0 || strcmp(camera_name, hw_device_name(camera))) {
+		fprintf(stderr, "    the camera came back as '%s' instead of '%s'\n", camera < 0 ? "(nothing)" : hw_device_name(camera), camera_name);
 		return false;
 	}
 	guider = find_interface(INDIGO_INTERFACE_GUIDER, SHORT_TIMEOUT);
+	snprintf(guider_name, sizeof(guider_name), "%s", guider < 0 ? "" : hw_device_name(guider));
 	return true;
 }
 
 // Proves the camera works again: connect, take the shortest exposure it accepts, disconnect.
 static bool expose_once(void) {
 	if (!hw_connect(camera, SHORT_TIMEOUT)) {
+		// hw_connect() reports a request that timed out or was rejected, but it also returns false
+		// for a CONNECTION that settled in OK state while the device stayed disconnected, and that
+		// one is silent. Say which of the two happened, so a driver that answers a connect with a
+		// successful state and no connection is not read as a timeout.
+		fprintf(stderr, "    %s did not connect, CONNECTION state %d, connected %s\n", camera_name, hw_property_state(camera, CONNECTION_PROPERTY_NAME), hw_connected(camera) ? "yes" : "no");
 		return false;
 	}
 	if (!hw_set_number(camera, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, PROBE_EXPOSURE, INDIGO_OK_STATE, SHORT_TIMEOUT)) {
@@ -220,7 +334,10 @@ static bool ensure_camera(void) {
 		return false;
 	}
 	if (camera < 0) {
-		camera = find_interface(INDIGO_INTERFACE_CCD, REPLUG_TIMEOUT);
+		if (!wait_until_live(camera_name, REPLUG_TIMEOUT)) {
+			return false;
+		}
+		camera = find_interface(INDIGO_INTERFACE_CCD, SHORT_TIMEOUT);
 	}
 	if (camera < 0 || !hw_connect(camera, SHORT_TIMEOUT)) {
 		fprintf(stderr, "    the published camera does not answer, restarting the driver\n");
@@ -230,6 +347,7 @@ static bool ensure_camera(void) {
 	}
 	snprintf(camera_name, sizeof(camera_name), "%s", hw_device_name(camera));
 	guider = find_interface(INDIGO_INTERFACE_GUIDER, SHORT_TIMEOUT);
+	snprintf(guider_name, sizeof(guider_name), "%s", guider < 0 ? "" : hw_device_name(guider));
 	return hw_disconnect(guider, SHORT_TIMEOUT) && hw_disconnect(camera, SHORT_TIMEOUT);
 }
 
@@ -283,9 +401,9 @@ static void repeated_port_cycles_leave_exactly_one_camera(void) {
 	for (int i = 0; i < CYCLE_REPEATS; i++) {
 		printf("    cycle %d of %d\n", i + 1, CYCLE_REPEATS);
 		ASSERT_TRUE(unplug());
-		ASSERT_EQ_INT(0, count_interface(INDIGO_INTERFACE_CCD));
+		ASSERT_EQ_INT(0, count_live_interface(INDIGO_INTERFACE_CCD));
 		ASSERT_TRUE(replug());
-		ASSERT_EQ_INT(1, count_interface(INDIGO_INTERFACE_CCD));
+		ASSERT_EQ_INT(1, count_live_interface(INDIGO_INTERFACE_CCD));
 	}
 	ASSERT_TRUE(expose_once());
 	ASSERT_TRUE(hw_disconnect(camera, SHORT_TIMEOUT));
@@ -299,7 +417,10 @@ static void driver_finds_a_camera_attached_after_init(void) {
 	ASSERT_TRUE(unplug());
 	ASSERT_EQ_INT(INDIGO_OK, TEST_ENTRY(INDIGO_DRIVER_SHUTDOWN, NULL));
 	ASSERT_EQ_INT(INDIGO_OK, TEST_ENTRY(INDIGO_DRIVER_INIT, NULL));
-	ASSERT_EQ_INT(-1, find_interface(INDIGO_INTERFACE_CCD, 2));
+	// Live rather than merely published: a device the driver has withdrawn stays in the shared
+	// cache when a disconnect update lands after the withdrawal.
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(0, count_live_interface(INDIGO_INTERFACE_CCD));
 	ASSERT_TRUE(recover());
 }
 
@@ -367,12 +488,18 @@ int main(int argc, char **argv) {
 	HW_CHECK(indigo_start() == INDIGO_OK);
 	started = true;
 	HW_CHECK(hw_attach_client(TEST_NAME " hot-plug test") == INDIGO_OK);
+	// Liveness is observed in front of the shared harness, never instead of it.
+	inner_define = hw_client.define_property;
+	inner_delete = hw_client.delete_property;
+	hw_client.define_property = observe_define;
+	hw_client.delete_property = observe_delete;
 	HW_CHECK(TEST_ENTRY(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	initialized = true;
 	camera = find_interface(INDIGO_INTERFACE_CCD, REPLUG_TIMEOUT);
 	HW_CHECK(camera >= 0);
 	snprintf(camera_name, sizeof(camera_name), "%s", hw_device_name(camera));
 	guider = find_interface(INDIGO_INTERFACE_GUIDER, SHORT_TIMEOUT);
+	snprintf(guider_name, sizeof(guider_name), "%s", guider < 0 ? "" : hw_device_name(guider));
 	printf("Found %s%s%s\n", camera_name, guider >= 0 ? " and " : "", guider >= 0 ? hw_device_name(guider) : "");
 	if (known_defects_mode) {
 		int reproduced = 0, unexpected = 0;
