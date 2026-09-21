@@ -37,7 +37,7 @@
 | dome_baader | 2026-09-20 22:31 | 3.0.0.9 | mac arm64 | simulator | 44 / 44 | ✅ OK |
 | dome_beaver | 2026-09-20 22:31 | 3.0.0.7 | mac arm64 | simulator | 47 / 47 | ✅ OK |
 | dome_simulator | 2026-09-21 12:43 | 3.0.0.8 | mac arm64 | simulator | 7 / 7 | ✅ OK |
-| focuser_asi | 2026-09-21 10:45 | 3.0.0.34 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
+| focuser_asi | 2026-09-21 14:19 | 3.0.0.34 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
 | focuser_dmfc | 2026-09-21 12:44 | 3.0.0.17 | mac arm64 | simulator | 24 / 24 | ✅ OK |
 | focuser_fc3 | 2026-09-20 13:06 | 3.0.0.7 | mac arm64 | simulator | 28 / 28 | ✅ OK |
 | focuser_fcusb | 2026-09-21 10:46 | 3.0.0.9 | mac arm64 | fake SDK | 17 / 17 | ✅ OK |
