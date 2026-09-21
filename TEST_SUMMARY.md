@@ -46,6 +46,10 @@
 
 2026-09-21 12:42 3.0.0.34 mac arm64 fake SDK 17/17 OK
 
+# ccd_ogma
+
+2026-09-21 14:02 3.0.0.49 mac arm64 fake SDK 30/30 OK
+
 # ccd_playerone (Player One Camera)
 
 2026-09-21 09:26 3.0.0.25 mac arm64 Mars-C II 27/27 OK
