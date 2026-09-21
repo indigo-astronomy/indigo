@@ -326,9 +326,15 @@ python3 tools/make_test_summary.py
 ```
 
 It collects the `## Testing` sections of all drivers into `TEST_SUMMARY.md` in
-the project root. Recording a test run is not finished until the script has
-been run, so commit the regenerated `TEST_SUMMARY.md` together with the
-`README.md` change, as part of the same test run.
+the project root, where every recorded run becomes one row of a single markdown
+table with the columns driver, timestamp, version, platform, type, tests and
+result. The driver column holds the driver directory name, the platform column
+joins `<os>` and `<architecture>`, the tests column holds
+`<total tests> / <passed tests>` and the result column holds `✅ OK` or
+`❌ Failed`. `TEST_SUMMARY.md` is generated, so never edit it by hand.
+Recording a test run is not finished until the script has been run, so commit
+the regenerated `TEST_SUMMARY.md` together with the `README.md` change, as part
+of the same test run.
 
 ## Documentation
 

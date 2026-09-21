@@ -14,9 +14,11 @@
 #   2026-09-20 14:32 3.0.0.8 mac arm64 simulator 12/12 OK
 #   2026-09-20 15:04 3.0.0.7 linux x64 Optec FocusLynx 12/11 Failed
 #
-# Each driver becomes one chapter titled '# <driver name> (<driver label>)',
-# where the name is the driver directory name and the label is taken from the
-# 'label' attribute of the driver block in the driver's .driver file.
+# Every recorded run becomes one row of a single markdown table with the
+# columns driver, timestamp, version, platform, type, tests and result, where
+# the driver is the driver directory name, the platform joins the operating
+# system and the architecture, the tests column holds the total and passed
+# counts and the result column holds either '✅ OK' or '❌ Failed'.
 #
 # Usage: make_test_summary.py [-o <output>]
 #   -o <output>  file to write instead of <project root>/TEST_SUMMARY.md,
@@ -42,10 +44,12 @@ RECORD = re.compile(
 	r"\s+(?P<os>mac|linux|windows)"
 	r"\s+(?P<architecture>\S+)"
 	r"\s+(?P<type>\S.*?)"
-	r"\s+(?P<result>\d+/\d+\s+\S+)$"
+	r"\s+(?P<total>\d+)/(?P<passed>\d+)"
+	r"\s+(?P<result>\S+)$"
 )
-DRIVER_BLOCK = re.compile(r"^driver\s+(\S+)\s*\{")
-LABEL = re.compile(r"^label\s*=\s*\"(.*)\"\s*;")
+COLUMNS = ["Driver", "Timestamp", "Version", "Platform", "Type", "Tests", "Result"]
+PASSED = "✅ OK"
+FAILED = "❌ Failed"
 
 
 def read_testing_section(readme):
@@ -65,7 +69,7 @@ def read_testing_section(readme):
 
 
 def read_records(readme):
-	"""Return the test run records of the given README.md as (line, match) pairs."""
+	"""Return the test run records of the given README.md as match objects."""
 	records = []
 	for line in read_testing_section(readme):
 		line = line.strip()
@@ -79,64 +83,43 @@ def read_records(readme):
 	return records
 
 
-def read_label(directory):
-	"""Return the label of the driver defined in the .driver file of the directory."""
-	names = sorted(name for name in os.listdir(directory) if name.endswith(".driver"))
-	for name in names:
-		depth = 0
-		with open(os.path.join(directory, name), "r", encoding="utf-8") as file:
-			for line in file:
-				line = line.strip()
-				if depth == 0:
-					if DRIVER_BLOCK.match(line):
-						depth = 1
-					continue
-				if depth == 1:
-					match = LABEL.match(line)
-					if match:
-						return match.group(1)
-				depth += line.count("{") - line.count("}")
-				if depth <= 0:
-					break
-	return None
-
-
 def collect(root):
-	"""Return the (name, label, records) triplets of all tested drivers."""
+	"""Return the (name, records) pairs of all tested drivers."""
 	drivers = []
 	for driver_root in DRIVER_ROOTS:
 		path = os.path.join(root, driver_root)
 		if not os.path.isdir(path):
 			continue
 		for name in sorted(os.listdir(path)):
-			directory = os.path.join(path, name)
-			readme = os.path.join(directory, "README.md")
+			readme = os.path.join(path, name, "README.md")
 			if not os.path.isfile(readme):
 				continue
 			records = read_records(readme)
 			if not records:
 				continue
-			drivers.append((name, read_label(directory), records))
+			drivers.append((name, records))
 	return drivers
+
+
+def format_row(cells):
+	"""Return one markdown table row for the given cells."""
+	return "| " + " | ".join(cells) + " |"
 
 
 def format_summary(drivers):
 	"""Return the content of TEST_SUMMARY.md for the given drivers."""
-	lines = []
-	for name, label, records in drivers:
-		if lines:
-			lines.append("")
-		lines.append("# %s (%s)" % (name, label) if label else "# %s" % name)
-		lines.append("")
+	lines = [format_row(COLUMNS), format_row(["---"] * len(COLUMNS))]
+	for name, records in drivers:
 		for record in records:
-			lines.append("%s %s %s %s %s %s" % (
+			lines.append(format_row([
+				name,
 				record.group("timestamp"),
 				record.group("version"),
-				record.group("os"),
-				record.group("architecture"),
+				"%s %s" % (record.group("os"), record.group("architecture")),
 				record.group("type"),
-				" ".join(record.group("result").split())
-			))
+				"%s / %s" % (record.group("total"), record.group("passed")),
+				PASSED if record.group("result") == "OK" else FAILED
+			]))
 	return "\n".join(lines) + "\n"
 
 
