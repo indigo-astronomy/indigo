@@ -194,7 +194,9 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_aux_uch_simulator \
 	$(INTEGRATION_BUILD)/test_aux_usbdp_simulator
 
-TEST_CFLAGS = $(CFLAGS) -I.. -I../indigo_libs -I../build/include
+# test_runner.h calls nftw(), which glibc declares only for X/Open extended or GNU sources.
+# Without this every test that includes the header fails to compile on Linux.
+TEST_CFLAGS = $(CFLAGS) -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include
 TEST_LDFLAGS = $(LDFLAGS) -Wl,-rpath,$(BUILD_LIB) -lindigo -lm -lpthread
 CCD_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_ccd_simulator.a $(TEST_LDFLAGS) -lindigocat
 DOME_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_dome_simulator.a $(TEST_LDFLAGS) -lindigocat
