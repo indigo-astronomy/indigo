@@ -18,6 +18,7 @@
 | aux_rpio | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | fake SDK | 19 / 19 | ✅ OK |
 | aux_rpio | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | Raspberry Pi 5 | 4 / 4 | ✅ OK |
 | aux_rts | 2026-09-21 19:37 | 3.0.0.9 | mac arm64 | simulator | 3 / 3 | ✅ OK |
+| aux_svbpowerbox | 2026-09-21 19:38 | 3.0.0.2 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 | ccd_altair | 2026-09-21 10:22 | 3.0.0.48 | mac arm64 | Altair ALTAIRGP224C | 28 / 27 | ❌ Failed |
 | ccd_altair | 2026-09-21 13:49 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_asi | 2026-09-21 08:19 | 3.0.0.64 | mac arm64 | ASI294MC Pro | 28 / 28 | ✅ OK |
