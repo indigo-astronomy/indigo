@@ -71,8 +71,8 @@
 | wheel_manual | 2026-09-21 10:55 | 3.0.0.6 | mac arm64 | simulator | 2 / 2 | ✅ OK |
 | wheel_mi | 2026-09-21 14:17 | 3.0.0.6 | mac arm64 | fake SDK | 12 / 12 | ✅ OK |
 | wheel_playerone | 2026-09-21 14:18 | 3.0.0.12 | mac arm64 | fake SDK | 12 / 12 | ✅ OK |
-| wheel_sx | 2026-09-20 23:02 | 3.0.0.6 | mac arm64 | fake SDK | 17 / 17 | ✅ OK |
 | wheel_sx | 2026-09-20 23:09 | 3.0.0.6 | mac arm64 | SX filter wheel | 12 / 12 | ✅ OK |
+| wheel_sx | 2026-09-21 14:18 | 3.0.0.6 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
 | ccd_atik2 | 2026-09-21 13:51 | 3.0.0.13 | mac arm64 | fake SDK | 24 / 24 | ✅ OK |
 | aux_asiair | 2026-09-20 22:35 | 3.0.0.4 | linux arm64 | fake SDK | 16 / 16 | ✅ OK |
 | aux_asiair | 2026-09-20 22:35 | 3.0.0.4 | linux arm64 | Raspberry Pi 5 | 3 / 3 | ✅ OK |
