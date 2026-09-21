@@ -29,7 +29,7 @@ driver asi {
 	label = "ZWO ASI Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o. and Rumen G. Bogdanovski";
-	version = 64;
+	version = 65;
 	multi_device_support = true;
 	include {
 		#include <assert.h>
@@ -1108,10 +1108,9 @@ driver asi {
 			}
 		}
 		inherited CCD_EXPOSURE {
-			on_change_request {
-				if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Streaming in progress, an exposure can not be started";
 			}
 			on_change {
 				indigo_use_shortest_exposure_if_bias(device);
@@ -1122,10 +1121,9 @@ driver asi {
 			}
 		}
 		inherited CCD_STREAMING {
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Exposure in progress, streaming can not be started";
 			}
 			on_change {
 				indigo_use_shortest_exposure_if_bias(device);

@@ -1894,6 +1894,10 @@ static void rejected_change_alerts_and_keeps_values(void) {
 	ASSERT_TRUE(suffix != NULL);
 	ASSERT_STREQ("", suffix->items->text.value);
 	indigo_release_property(suffix);
+	// DRV-214: streaming requested during an exposure used to be dropped with a bare INDIGO_OK, which
+	// a waiting client cannot tell from a lost request and which stalls a configuration restore.
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_STREAMING", "COUNT", 2));
+	ASSERT_TRUE(wait_state(0, "CCD_STREAMING", INDIGO_ALERT_STATE));
 	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_GAIN", "GAIN", gain + 20));
 	ASSERT_TRUE(wait_state(0, "CCD_GAIN", INDIGO_OK_STATE));
