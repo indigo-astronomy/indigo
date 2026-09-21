@@ -64,6 +64,7 @@
 | focuser_mjkzz | 2026-09-21 19:12 | 3.0.0.6 | mac arm64 | simulator | 37 / 37 | ✅ OK |
 | focuser_moonlite | 2026-09-21 19:15 | 3.0.0.12 | mac arm64 | simulator | 39 / 39 | ✅ OK |
 | focuser_mypro2 | 2026-09-21 19:16 | 3.0.0.12 | mac arm64 | simulator | 16 / 16 | ✅ OK |
+| focuser_nfocus | 2026-09-21 19:17 | 3.0.0.8 | mac arm64 | simulator | 10 / 10 | ✅ OK |
 | focuser_optecfl | 2026-09-21 19:13 | 3.0.0.3 | mac arm64 | simulator | 45 / 45 | ✅ OK |
 | focuser_primaluce | 2026-09-20 19:45 | 3.0.0.13 | mac arm64 | simulator | 35 / 35 | ✅ OK |
 | focuser_primaluce | 2026-09-20 19:54 | 3.0.0.13 | mac arm64 | SESTO SENSO 2 | 18 / 18 | ✅ OK |

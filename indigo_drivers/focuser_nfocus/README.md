@@ -25,3 +25,7 @@ indigo_server indigo_focuser_nfocus
 ## Status: Untested
 
 Unclear - how to abort movement? what is #CF command?
+
+## Testing
+
+2026-09-21 19:17 3.0.0.8 mac arm64 simulator 10/10 OK
