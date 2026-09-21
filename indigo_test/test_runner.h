@@ -23,6 +23,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 typedef void (*indigo_test_function)(void);
@@ -99,8 +100,14 @@ static const char *indigo_current_test_name = NULL;
 
 static int indigo_run_tests(const char *suite_name, const indigo_test_case *tests, int count) {
 	int initial_failures = indigo_test_failures;
+	// INDIGO_TEST_CASE_FILTER runs only the cases whose name contains it, which is how a
+	// single case is repeated while a flaky or failing one is being tracked down.
+	const char *filter = getenv("INDIGO_TEST_CASE_FILTER");
 	printf("Running %s\n", suite_name);
 	for (int i = 0; i < count; i++) {
+		if (filter != NULL && strstr(tests[i].name, filter) == NULL) {
+			continue;
+		}
 		int before = indigo_test_failures;
 		indigo_current_test_name = tests[i].name;
 		tests[i].function();

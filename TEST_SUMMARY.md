@@ -20,6 +20,7 @@
 | aux_rts | 2026-09-21 19:37 | 3.0.0.9 | mac arm64 | simulator | 3 / 3 | ✅ OK |
 | aux_svbpowerbox | 2026-09-21 19:38 | 3.0.0.2 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 | aux_uch | 2026-09-21 19:38 | 3.0.0.5 | mac arm64 | simulator | 10 / 10 | ✅ OK |
+| aux_upb | 2026-09-21 21:05 | 3.0.0.28 | mac arm64 | simulator | 36 / 36 | ✅ OK |
 | aux_wbplusv3 | 2026-09-21 19:41 | 3.0.0.6 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 | aux_wbprov3 | 2026-09-21 19:43 | 3.0.0.6 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 | aux_wcv4ec | 2026-09-21 19:45 | 3.0.0.8 | mac arm64 | simulator | 15 / 15 | ✅ OK |

@@ -26,7 +26,7 @@ driver upb {
 	label = "PegasusAstro Ultimate Powerbox";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 27;
+	version = 28;
 	serial {
 		pattern {
 			product = "UPB";
@@ -60,6 +60,13 @@ driver upb {
 				}
 			}
 			return result > 0;
+		}
+
+		// A change request accepted meanwhile has already copied the client's values and
+		// published BUSY, so a status frame that was read before it must not overwrite
+		// them - the queued handler would then send the stale state back to the device.
+		static bool upb_adopt(indigo_property *property) {
+			return property->state != INDIGO_BUSY_STATE;
 		}
 
 		static bool upb_open(indigo_device *device) {
@@ -156,7 +163,7 @@ driver upb {
 						AUX_WEATHER_DEWPOINT_ITEM->number.value = value;
 					}
 				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // portstatus
+				if ((token = strtok_r(NULL, ":", &pnt)) && upb_adopt(AUX_POWER_OUTLET_PROPERTY)) { // portstatus
 					bool state = token[0] == '1';
 					if (AUX_POWER_OUTLET_1_ITEM->sw.value != state) {
 						AUX_POWER_OUTLET_1_ITEM->sw.value = state;
@@ -179,7 +186,7 @@ driver upb {
 					}
 				}
 				if (PRIVATE_DATA->version == 1) {
-					if ((token = strtok_r(NULL, ":", &pnt))) { // USB Hub
+					if ((token = strtok_r(NULL, ":", &pnt)) && upb_adopt(X_AUX_HUB_PROPERTY)) { // USB Hub
 						bool state = token[0] == '0';
 						if (X_AUX_HUB_ENABLED_ITEM->sw.value != state) {
 							indigo_set_switch(X_AUX_HUB_PROPERTY, state ? X_AUX_HUB_ENABLED_ITEM : X_AUX_HUB_DISABLED_ITEM, true);
@@ -188,7 +195,7 @@ driver upb {
 					}
 				}
 				if (PRIVATE_DATA->version == 2) {
-					if ((token = strtok_r(NULL, ":", &pnt))) { // USB status
+					if ((token = strtok_r(NULL, ":", &pnt)) && upb_adopt(AUX_USB_PORT_PROPERTY)) { // USB status
 						bool state = token[0] == '1';
 						if (AUX_USB_PORT_1_ITEM->sw.value != state) {
 							AUX_USB_PORT_1_ITEM->sw.value = state;
@@ -221,14 +228,14 @@ driver upb {
 						}
 					}
 				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
+				if ((token = strtok_r(NULL, ":", &pnt)) && upb_adopt(AUX_HEATER_OUTLET_PROPERTY)) { // Dew1
 					double value = round(indigo_atod(token) * 100.0 / 255.0);
 					if (AUX_HEATER_OUTLET_1_ITEM->number.value != value) {
 						updateHeaterOutlet = true;
 						AUX_HEATER_OUTLET_1_ITEM->number.value = value;
 					}
 				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew2
+				if ((token = strtok_r(NULL, ":", &pnt)) && upb_adopt(AUX_HEATER_OUTLET_PROPERTY)) { // Dew2
 					double value = round(indigo_atod(token) * 100.0 / 255.0);
 					if (AUX_HEATER_OUTLET_2_ITEM->number.value != value) {
 						updateHeaterOutlet = true;
@@ -236,7 +243,7 @@ driver upb {
 					}
 				}
 				if (PRIVATE_DATA->version == 2) {
-					if ((token = strtok_r(NULL, ":", &pnt))) { // Dew3
+					if ((token = strtok_r(NULL, ":", &pnt)) && upb_adopt(AUX_HEATER_OUTLET_PROPERTY)) { // Dew3
 						double value = round(indigo_atod(token) * 100.0 / 255.0);
 						if (AUX_HEATER_OUTLET_3_ITEM->number.value != value) {
 							updateHeaterOutlet = true;
@@ -338,7 +345,7 @@ driver upb {
 						}
 					}
 				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
+				if ((token = strtok_r(NULL, ":", &pnt)) && upb_adopt(AUX_DEW_CONTROL_PROPERTY)) { // Autodew
 					bool state = token[0] == '1';
 					if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != state) {
 						indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, state ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
@@ -554,6 +561,10 @@ driver upb {
 				libusb_context *ctx = NULL;
 				libusb_device **usb_devices;
 				struct libusb_device_descriptor descriptor;
+				// The smart hub is enumerated on the default libusb context, which exists only
+				// after libusb has been initialized. Nothing else in this driver uses libusb, so
+				// without this the first connect dereferences a null context and crashes.
+				indigo_start_usb_event_handler();
 				ssize_t total = libusb_get_device_list(ctx, &usb_devices);
 				AUX_USB_PORT_PROPERTY->hidden = true;
 				AUX_USB_PORT_STATE_PROPERTY->hidden = true;

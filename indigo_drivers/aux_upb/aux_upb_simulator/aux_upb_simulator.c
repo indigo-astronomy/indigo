@@ -30,6 +30,19 @@ static const char *bad_response;
 static int outlets[8] = { 1, 1, 1, 1, 0, 0, 0, 12 };
 static int usb[6] = { 1, 1, 1, 1, 1, 1 };
 static int automatic, hub = 1, reverse, backlash = 100, speed = 400;
+// Overcurrent flags reported as the next to last field of PA, one character per
+// power outlet followed by one per heater outlet.
+static char overcurrent[8] = "0000000";
+static double voltage = 12.2, current = 0.0, temperature = 23.2, humidity = 59, dewpoint = 14.7;
+static int power = 0;
+// Fault injection: the named command answers with MODE instead of its reply.
+// invalid - an unparsable line, short - a truncated line, silent - no answer at
+// all, close - the port is closed, which is how a transport loss looks.
+static const char *fault_command, *fault_mode;
+static bool fault_once;
+// Matches of the faulted command that are answered normally before the fault
+// applies, so a fault can be aimed at a poll rather than at the connect.
+static int fault_skip;
 static serial_motion motion = { .position = 50, .target = 50 };
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
@@ -99,9 +112,38 @@ static int sim_read_command(int fd, char *buffer, size_t length) {
 	return -1;
 }
 
-static void dispatch_command(int fd, const char *cmd) {
+// Returns true when the command was answered by an injected fault instead of by
+// the protocol implementation below.
+static bool inject_fault(int fd, const char *cmd) {
 	if (bad_response && !strcmp(cmd, bad_response)) {
 		sim_printf(fd, "invalid\n");
+		return true;
+	}
+	if (fault_command == NULL || strcmp(cmd, fault_command)) {
+		return false;
+	}
+	if (fault_skip > 0) {
+		fault_skip--;
+		return false;
+	}
+	if (fault_once) {
+		fault_command = NULL;
+	}
+	if (!strcmp(fault_mode, "invalid")) {
+		sim_printf(fd, "invalid\n");
+	} else if (!strcmp(fault_mode, "short")) {
+		sim_printf(fd, "UPB2:12.2\n");
+	} else if (!strcmp(fault_mode, "close")) {
+		close(fd);
+		serial_fd = -1;
+		running = 0;
+	}
+	// "silent" answers nothing at all.
+	return true;
+}
+
+static void dispatch_command(int fd, const char *cmd) {
+	if (inject_fault(fd, cmd)) {
 		return;
 	}
 	long position = serial_motion_update(&motion);
@@ -112,7 +154,7 @@ static void dispatch_command(int fd, const char *cmd) {
 		sim_printf(fd, "1.0\n");
 	} else if (!strcmp(cmd, "PA")) {
 		char response[256];
-		int used = snprintf(response, sizeof(response), "%s:12.2:0.0:0:23.2:59:14.7:%d%d%d%d:", version == 2 ? "UPB2" : "UPB", outlets[0], outlets[1], outlets[2], outlets[3]);
+		int used = snprintf(response, sizeof(response), "%s:%.1f:%.1f:%d:%.1f:%.0f:%.1f:%d%d%d%d:", version == 2 ? "UPB2" : "UPB", voltage, current, power, temperature, humidity, dewpoint, outlets[0], outlets[1], outlets[2], outlets[3]);
 		if (version == 2) {
 			used += snprintf(response + used, sizeof(response) - used, "%d%d%d%d%d%d:", usb[0], usb[1], usb[2], usb[3], usb[4], usb[5]);
 		} else {
@@ -125,7 +167,9 @@ static void dispatch_command(int fd, const char *cmd) {
 		for (int i = 0; i < 4 + heaters; i++) {
 			used += snprintf(response + used, sizeof(response) - used, "%d:", outlets[i] ? 200 : 0);
 		}
-		snprintf(response + used, sizeof(response) - used, "%s:%d\n", version == 2 ? "0000000" : "000000", automatic);
+		char flags[8];
+		snprintf(flags, version == 2 ? 8 : 7, "%s", overcurrent);
+		snprintf(response + used, sizeof(response) - used, "%s:%d\n", flags, automatic);
 		serial_simulator_write_all(fd, response, strlen(response));
 	} else if (!strcmp(cmd, "PC")) {
 		sim_printf(fd, "2.1:12:46\n");
@@ -201,10 +245,37 @@ int main(int argc, char **argv) {
 			version = !strcmp(model, "upb") ? 1 : 2;
 		} else if (!strcmp(argv[i], "--bad-response") && i + 1 < argc) {
 			bad_response = argv[++i];
+		} else if (!strcmp(argv[i], "--overcurrent") && i + 1 < argc) {
+			snprintf(overcurrent, sizeof(overcurrent), "%s", argv[++i]);
+		} else if (!strcmp(argv[i], "--weather") && i + 3 < argc) {
+			temperature = atof(argv[++i]);
+			humidity = atof(argv[++i]);
+			dewpoint = atof(argv[++i]);
+		} else if (!strcmp(argv[i], "--power") && i + 3 < argc) {
+			voltage = atof(argv[++i]);
+			current = atof(argv[++i]);
+			power = atoi(argv[++i]);
+		} else if (!strcmp(argv[i], "--autodew")) {
+			automatic = 1;
+		} else if (!strcmp(argv[i], "--fault-after") && i + 3 < argc) {
+			fault_skip = atoi(argv[++i]);
+			fault_once = true;
+			fault_command = argv[++i];
+			fault_mode = argv[++i];
+			if (strcmp(fault_mode, "invalid") && strcmp(fault_mode, "short") && strcmp(fault_mode, "silent") && strcmp(fault_mode, "close")) {
+				return 1;
+			}
+		} else if ((!strcmp(argv[i], "--fault") || !strcmp(argv[i], "--fault-once")) && i + 2 < argc) {
+			fault_once = !strcmp(argv[i], "--fault-once");
+			fault_command = argv[++i];
+			fault_mode = argv[++i];
+			if (strcmp(fault_mode, "invalid") && strcmp(fault_mode, "short") && strcmp(fault_mode, "silent") && strcmp(fault_mode, "close")) {
+				return 1;
+			}
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
 		} else if (strcmp(argv[i], "--headless")) {
-			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file path] [--model upb|upb2]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file path] [--model upb|upb2] [--overcurrent FLAGS] [--weather T H D] [--power V A W] [--autodew] [--fault CMD invalid|short|silent|close] [--fault-once CMD MODE] [--fault-after N CMD MODE]\n", argv[0]);
 			return 1;
 		}
 	}
