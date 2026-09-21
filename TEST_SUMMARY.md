@@ -71,6 +71,10 @@
 
 2026-09-21 13:43 3.0.0.16 mac arm64 fake SDK 60/60 OK
 
+# ccd_rising
+
+2026-09-21 14:06 3.0.0.49 mac arm64 fake SDK 30/30 OK
+
 # ccd_simulator (Camera Simulator)
 
 2026-09-21 12:42 3.0.0.28 mac arm64 simulator 19/19 OK
