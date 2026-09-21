@@ -43,7 +43,7 @@
 | dome_baader | 2026-09-21 15:27 | 3.0.0.9 | mac arm64 | simulator | 44 / 44 | ✅ OK |
 | dome_beaver | 2026-09-21 15:35 | 3.0.0.7 | mac arm64 | simulator | 47 / 47 | ✅ OK |
 | dome_nexdome | 2026-09-21 15:46 | 3.0.0.12 | mac arm64 | simulator | 46 / 46 | ✅ OK |
-| dome_nexdome3 | 2026-09-21 16:02 | 3.0.0.14 | mac arm64 | simulator | 49 / 48 | ❌ Failed |
+| dome_nexdome3 | 2026-09-21 16:53 | 3.0.0.14 | mac arm64 | simulator | 49 / 49 | ✅ OK |
 | dome_simulator | 2026-09-21 12:43 | 3.0.0.8 | mac arm64 | simulator | 7 / 7 | ✅ OK |
 | focuser_asi | 2026-09-21 14:19 | 3.0.0.34 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
 | focuser_astroasis | 2026-09-21 14:39 | 3.0.0.10 | mac arm64 | fake SDK | 33 / 33 | ✅ OK |
