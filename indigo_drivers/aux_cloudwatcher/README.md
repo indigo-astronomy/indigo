@@ -25,3 +25,7 @@ indigo_server indigo_aux_cloudwatcher
 
 Driver is developed and tested with:
 * AAG CloudWatcher
+
+## Testing
+
+2026-09-21 19:32 3.0.0.12 mac arm64 simulator 15/15 OK
