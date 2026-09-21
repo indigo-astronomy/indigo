@@ -64,3 +64,56 @@
 
 - Simulated tests: **6 run, 6 passed** in final validation (3 normal plus the same 3 under ASan/UBSan). The separate one-case baseline also passed before implementation.
 - Hardware tests: **0 run, 0 passed**; no compatible physical device is available.
+
+## Suite Expansion (2026-09-21)
+
+The three dense cases recorded above were split and extended to nine, because the class standard
+asks for driver metadata, the full published inventory and the persistence roundtrip, none of
+which the earlier suite touched. **No new production defect was found**; the parser hardening
+recorded in step 4 above holds against every fault the extended simulator can now inject.
+
+Simulator additions: the fault channel gained `long` (a nine byte reply line, the upper bound of
+the driver's exact eight byte framing check, previously only probed from below by `short`) and
+`stale` (an unsolicited `*S19000` line ahead of the correct reply, so the desynchronized exchange
+and the drain by the next command's `indigo_uni_discard()` are both exercised).
+
+New and reorganized cases:
+
+| Required behavior | Automated scenario |
+| --- | --- |
+| `INDIGO_DRIVER_INFO` metadata, API generation, base inventory before connect, hidden properties, exact property counts before and after connect | `identity_inventory_and_property_contract` |
+| Connecting sends no command at all, because the driver has no handshake | `identity_inventory_and_property_contract` |
+| 0/25/50/75/100% become `>B000`, `>B063`, `>B127`, `>B191`, `>B255` by truncation | `intensity_maps_percent_to_the_device_scale` |
+| `>L000`, `>D000`, and reselecting the item that is already set still reaching the device | `light_switch_sends_the_documented_commands` |
+| Dropped, short, over-long, non-`*`, wrong-operation and non-numeric-id replies; last accepted intensity and light selection preserved across each | `malformed_replies_are_rejected` |
+| Unsolicited line ahead of the reply, and the drain before the next command | `a_stale_reply_is_discarded_before_the_next_command` |
+| `CONFIG SAVE`/`CONFIG LOAD` of `AUX_LIGHT_INTENSITY`, and the restore reaching the device as `>B153` | `configuration_roundtrip_reaches_the_device` |
+| Failed open, nothing published, later connection succeeds | `failed_open_leaves_the_device_disconnected` |
+| Transport close, read and write failure, fresh-simulator recovery | `transport_loss_is_reported_and_reconnect_recovers` |
+| Repeated disconnect, connected-property deletion and redefinition, `INDIGO_DRIVER_SHUTDOWN` refused while connected | `repeated_disconnect_and_refused_shutdown` |
+
+### Open Proposals (not implemented, hardware-gated)
+
+- **No identity handshake.** The audit above states that "a side-effect-free identity query is not
+  present in the repository protocol reference". That is no longer accurate: the repository does
+  contain `../aux_flipflat/Alnitak_GenericCommandsR4.pdf`, which documents `>POOO` -> `*PiiOOO` as
+  the command "used to find device", and `aux_flipflat` uses it. `arteskyflat_open()` only opens the
+  port, so connecting to any serial device - a mount, a focuser - reports success and fails later on
+  the first control. Sending `>POOO` during open would close that gap, but no physical Artesky Flat
+  Box is available to confirm the clone answers it, and a device that does not would stop
+  connecting at all. Proposed, not implemented.
+- **No state readback on connect.** `aux_flipflat` reads `>SOOO` and `>JOOO` on connect and
+  publishes the panel's real light state and brightness. `aux_arteskyflat` publishes its
+  attach-time defaults instead, and `PRIVATE_DATA->light_on` - the fallback a rejected switch
+  restores from - is never initialized from the device and survives a disconnect. After a
+  reconnect, both can disagree with a panel that was power-cycled meanwhile. The same hardware
+  uncertainty applies, so this is also recorded rather than changed.
+
+### Final Test Summary (2026-09-21)
+
+- Simulated tests: **9 run, 9 passed**, plus the same 9 under ASan/UBSan with the production driver
+  source instrumented and no sanitizer report.
+- Strict builds: `make -B build/integration/aux_arteskyflat_simulator
+  build/integration/test_aux_arteskyflat_simulator CC='clang -Wall -Wextra -Werror
+  -Wno-unused-function -Wno-unused-parameter'` passed.
+- Hardware tests: **0 run, 0 passed**; no compatible physical device is available.

@@ -25,4 +25,4 @@ indigo_server indigo_aux_arteskyflat
 
 ## Testing
 
-2026-09-21 19:31 3.0.0.8 mac arm64 simulator 3/3 OK
+2026-09-21 23:03 3.0.0.8 mac arm64 simulator 9/9 OK

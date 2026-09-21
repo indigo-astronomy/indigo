@@ -59,6 +59,7 @@ static void usage(const char *name) {
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  --device-id <id>        Set reported device id, default is 19\n");
+	printf("  Faults: drop, short, long, malformed, mismatch, bad_id, stale, close\n");
 	printf("  Runtime control is read once from <ready-file>.control as ACTION SELECTOR\n");
 	printf("  and every complete command is recorded in <ready-file>.events.\n");
 	printf("  -h, --help              Show this help and exit\n");
@@ -222,6 +223,17 @@ static bool apply_control(int fd, const char *command) {
 	}
 	if (!strcmp(action, "bad_id")) {
 		sim_printf(fd, "*%cXX000\r\n", command[1]);
+		return true;
+	}
+	if (!strcmp(action, "long")) {
+		// One digit too many; the reply line is no longer the documented eight bytes.
+		sim_printf(fd, "*%c190000\r\n", command[1]);
+		return true;
+	}
+	if (!strcmp(action, "stale")) {
+		// An unsolicited line left over from an earlier exchange arrives ahead of the real reply.
+		sim_printf(fd, "*S19000\r\n");
+		sim_printf(fd, "*%c19%03d\r\n", command[1], command[1] == 'B' ? atoi(command + 2) : 0);
 		return true;
 	}
 	if (!strcmp(action, "close")) {
