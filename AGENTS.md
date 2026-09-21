@@ -5,7 +5,7 @@
 - These instructions apply to the whole INDIGO repository. More specific instructions may exist in subdirectories.
 - For driver work under `indigo_drivers/`, read `indigo_drivers/AGENTS.override.md` and follow it in addition to this file. It contains the driver-refactoring workflow and is more specific than this root file.
 - For automated tests under `indigo_test/`, read `indigo_test/AGENTS.md` and follow it in addition to this file.
-- Never modify `indigo_drivers/ccd_apogee`, `indigo_drivers/ccd_sbig`, `indigo_drivers/mount_asi` and `indigo_drivers/system_ascol`. These drivers are off limits: do not refactor, reformat, fix, test-instrument, or otherwise change any file in them, and do not include them in repository-wide sweeps. They may be read for reference only. If a task appears to require a change there, stop and ask the user first.
+- Never modify `indigo_drivers/ccd_apogee`, `indigo_drivers/ccd_sbig`, `indigo_drivers/mount_asi`, `indigo_drivers/mount_mxhd` and `indigo_drivers/system_ascol`. These drivers are off limits: do not refactor, reformat, fix, test-instrument, or otherwise change any file in them, and do not include them in repository-wide sweeps. They may be read for reference only. If a task appears to require a change there, stop and ask the user first.
 
 ## Developer References
 
