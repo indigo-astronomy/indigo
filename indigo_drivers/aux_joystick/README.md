@@ -29,3 +29,7 @@ indigo_server indigo_aux_joystick
 Driver is developed and tested with:
 * Logitech Dual Action
 * Gembird JPG-PS4U-01
+
+## Testing
+
+2026-09-21 14:42 3.0.0.10 mac arm64 fake SDK 14/14 OK
