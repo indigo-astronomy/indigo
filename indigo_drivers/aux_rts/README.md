@@ -24,3 +24,7 @@ indigo_server indigo_aux_rts
 ## Status: Untested
 
 Looking for device owners!!! :)
+
+## Testing
+
+2026-09-21 19:37 3.0.0.9 mac arm64 simulator 3/3 OK
