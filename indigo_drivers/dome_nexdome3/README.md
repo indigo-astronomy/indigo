@@ -28,3 +28,7 @@ Driver is developed and tested with:
 
 Driver is tesed with:
 * NexDome Dome
+
+## Testing
+
+2026-09-21 16:02 3.0.0.14 mac arm64 simulator 49/48 Failed
