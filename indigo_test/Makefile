@@ -68,8 +68,6 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_focuser_fcusb_usb \
 	$(INTEGRATION_BUILD)/test_aux_dsusb_sdk \
 	$(INTEGRATION_BUILD)/test_aux_joystick_hid \
-	$(INTEGRATION_BUILD)/test_aux_rpio_sysfs \
-	$(INTEGRATION_BUILD)/test_aux_asiair_sysfs \
 	$(INTEGRATION_BUILD)/test_focuser_primaluce_motion \
 	$(INTEGRATION_BUILD)/test_focuser_usbv3_motion \
 	$(INTEGRATION_BUILD)/test_focuser_dmfc_motion \
@@ -283,6 +281,13 @@ test-unit: check-lib $(UNIT_TESTS)
 
 ifeq ($(OS_DETECTED),Darwin)
 INTEGRATION_TESTS += $(INTEGRATION_BUILD)/test_ccd_ptp_ica
+endif
+
+# aux_rpio and aux_asiair are Linux-only drivers. Their fakes replace opendir()
+# and readdir(), which macOS declares with an $INODE64 asm label, so the
+# replacement names do not link there.
+ifneq ($(OS_DETECTED),Darwin)
+INTEGRATION_TESTS += $(INTEGRATION_BUILD)/test_aux_rpio_sysfs $(INTEGRATION_BUILD)/test_aux_asiair_sysfs
 endif
 
 test-integration: check-lib $(INTEGRATION_TESTS)
