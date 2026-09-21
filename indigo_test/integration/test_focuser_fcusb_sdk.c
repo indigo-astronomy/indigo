@@ -43,9 +43,6 @@ static char config_folder[] = "/tmp/indigo-fcusb-config-XXXXXX";
 
 // X_FOCUSER_FREQUENCY is persisted by the driver, so the CONFIG roundtrip is
 // redirected into a scratch directory.
-const char *fcusb_test_config_folder(void) {
-	return config_folder;
-}
 
 static const simulator_driver_case focuser = { "Shoestring FCUSB focuser", "indigo_focuser_fcusb", FCUSB_DEVICE_NAME, indigo_focuser_fcusb, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 
@@ -617,7 +614,7 @@ cleanup:
 static void configuration_roundtrip(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_FREQUENCY_PROPERTY_NAME, X_FOCUSER_FREQUENCY_16_ITEM_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(switch_change(CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(save_configuration());
 	disconnect_serial_device(&focuser);
 	tear_down_serial_driver(&focuser);
 	SERIAL_CHECK_TRUE(driver_start());
@@ -639,7 +636,7 @@ cleanup:
 int main(void) {
 	setvbuf(stdout, NULL, _IONBF, 0);
 	alarm(300);
-	if (mkdtemp(config_folder) == NULL) {
+	if (indigo_test_mkdtemp_home(config_folder) == NULL) {
 		fprintf(stderr, "Cannot create configuration directory\n");
 		return 1;
 	}

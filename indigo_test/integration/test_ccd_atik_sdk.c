@@ -137,9 +137,6 @@ static void sdk_leave(sdk_scope *scope) {
 	atomic_fetch_sub(&sdk_active[scope->index], 1);
 }
 #define SDK_SCOPE sdk_scope scope __attribute__((cleanup(sdk_leave))) = sdk_enter(h, __func__)
-const char *atik_test_config_folder(void) {
-	return config_folder;
-}
 indigo_queue *atik_test_queue_create(indigo_device *device) {
 	if (atomic_load(&fail_queue)) {
 		return NULL;
@@ -1631,7 +1628,7 @@ static void begin_fixture(void) {
 
 int main(int argc, char **argv) {
 	setvbuf(stdout, NULL, _IONBF, 0);
-	if (!mkdtemp(config_folder)) {
+	if (!indigo_test_mkdtemp_home(config_folder)) {
 		return 1;
 	}
 	bus_thread = pthread_self();
@@ -1710,6 +1707,6 @@ int main(int argc, char **argv) {
 		}
 		closedir(dir);
 	}
-	rmdir(config_folder);
+	indigo_test_remove_tree(config_folder);
 	return !selected || result || indigo_test_failures;
 }

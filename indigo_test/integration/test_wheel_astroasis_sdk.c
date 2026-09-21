@@ -63,9 +63,6 @@ static atomic_bool accelerate_polling, hold_read, release_read;
 static atomic_int read_entered, last_probe, scan_count_override = -1;
 static char config_folder[] = "/tmp/indigo_astroasis_XXXXXX";
 
-const char *ofw_test_config_folder(void) {
-	return config_folder;
-}
 
 static int handle_index(int handle) {
 	int index = (handle - 100) / 37;
@@ -1016,7 +1013,7 @@ static void end_fixture(void) {
 }
 
 int main(void) {
-	if (!mkdtemp(config_folder)) {
+	if (!indigo_test_mkdtemp_home(config_folder)) {
 		return 1;
 	}
 	indigo_start();
@@ -1056,6 +1053,6 @@ int main(void) {
 		}
 		closedir(dir);
 	}
-	rmdir(config_folder);
+	indigo_test_remove_tree(config_folder);
 	return result || indigo_test_failures ? 1 : 0;
 }

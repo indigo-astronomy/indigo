@@ -84,6 +84,42 @@ such cases several at a time.
 - Add `integration/parallel_case_runner.h` to the prerequisites of every test
   rule that includes it, like any other shared test header.
 
+## Configuration Isolation
+
+The framework's configuration folder is `$HOME/.indigo`, computed by
+`indigo_uni_config_folder()` and cached the first time it is asked. Any test that
+lets a driver save, load or restore configuration - a `CONFIG` `SAVE`/`LOAD`
+request, a persistent property, a profile - therefore writes into the user's own
+configuration unless the test redirects it.
+
+- Call `indigo_test_use_private_home()` from `test_runner.h` as the first
+  statement of `main()`, before `indigo_start()` and before any property is
+  saved or restored, and `indigo_test_remove_private_home()` before returning.
+  It creates a private directory, points `HOME` at it and removes it afterwards.
+- **Never redirect the configuration folder with
+  `-Dindigo_uni_config_folder=...`.** The framework is linked both into the test
+  binary and into `libindigo`, so a compile time redirection reaches only one of
+  the two copies. `CONFIG SAVE` then writes through one copy while `CONFIG LOAD`
+  reads through the other, and the restore fails with
+  "Configuration restore failed or timed out" while the file sits, correct, in
+  the test's own directory. That is how the `ccd_touptek` hardware
+  configuration roundtrip failed against real cameras. The `HOME` redirection
+  has no such split because both copies read the same environment variable.
+- A property the driver marks persistent is shared by every case in the same
+  binary, because the configuration outlives one driver lifecycle. A case that
+  narrows a limit, switches a mode or changes a setting another case depends on
+  must restore it, and a case that needs a specific setting must establish it
+  itself rather than inherit it from whatever ran before.
+- Keep images and other local output in a directory of the test's own, separate
+  from the redirected `HOME`.
+- Do not wait for an *update* after `CONFIG` `SAVE`. The first save into an empty
+  configuration folder adds the `LOAD` and `REMOVE` items, and a property whose
+  item count changes is republished as a delete followed by a define, never as
+  an update. Use `save_configuration()` from `simulator_test_common.h`, which
+  waits for the cleared `SAVE` item instead. A test that waits for an update
+  passes only against an already populated configuration folder, which is
+  exactly the pollution this section forbids.
+
 ## Harness Conventions
 
 - Use `test_runner.h` for new C tests.

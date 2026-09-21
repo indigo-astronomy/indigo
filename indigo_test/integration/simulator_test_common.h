@@ -477,6 +477,34 @@ static indigo_client simulator_test_client = {
 	false
 };
 
+// Request CONFIG SAVE and wait for the driver to answer it.
+//
+// The first save into an empty configuration folder adds the LOAD and REMOVE items to CONFIG, and
+// the framework publishes that as a delete followed by a define rather than as an update. A test
+// that waits for a fresh update therefore times out exactly once per configuration folder, which
+// is why such cases used to pass only against an already populated ~/.indigo. The cleared SAVE
+// item is the post-condition that holds either way.
+static bool save_configuration_on(const char *device_name) {
+	if (indigo_change_switch_property_1(&simulator_test_client, device_name, CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME, true) != INDIGO_OK) {
+		return false;
+	}
+	for (int i = 0; i < 100; i++) {
+		indigo_property *property = find_cached_property(CONFIG_PROPERTY_NAME);
+		indigo_item *item = find_cached_item(CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME);
+		if (property != NULL && item != NULL && !item->sw.value && property->state == INDIGO_OK_STATE) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	indigo_property *property = find_cached_property(CONFIG_PROPERTY_NAME);
+	fprintf(stderr, "CONFIG SAVE was not answered on %s, state is %d\n", device_name, property ? property->state : -1);
+	return false;
+}
+
+static bool save_configuration(void) {
+	return save_configuration_on(context.driver_case->device_name);
+}
+
 static bool assert_rejected_number_change_on(const char *device_name, const char *property_name, const char *item_name, double value) {
 	indigo_item *item = find_cached_item(property_name, item_name);
 	if (item == NULL) {

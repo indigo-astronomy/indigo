@@ -176,9 +176,6 @@ static char config_folder[] = "/tmp/indigo_focuser_astroasis_XXXXXX";
 
 static const char *call_names[FN_COUNT] = { "Scan", "Open", "Close", "GetProductModel", "GetVersion", "GetFriendlyName", "SetFriendlyName", "GetBluetoothName", "SetBluetoothName", "GetConfig", "SetConfig", "GetStatus", "FactoryReset", "SyncPosition", "Move", "MoveTo", "StopMove" };
 
-const char *oaf_test_config_folder(void) {
-	return config_folder;
-}
 
 static double scaled(double delay) {
 	return delay * atomic_load(&time_scale_percent) / 100.0;
@@ -2287,7 +2284,7 @@ cleanup:
 }
 
 static int run_cases(const char *suite, const indigo_test_case *cases, int count) {
-	if (!mkdtemp(config_folder)) {
+	if (!indigo_test_mkdtemp_home(config_folder)) {
 		perror("mkdtemp");
 		return 1;
 	}
@@ -2298,7 +2295,7 @@ static int run_cases(const char *suite, const indigo_test_case *cases, int count
 	indigo_detach_client(&test_client);
 	indigo_stop();
 	remove_config_files();
-	rmdir(config_folder);
+	indigo_test_remove_tree(config_folder);
 	return result;
 }
 

@@ -841,7 +841,7 @@ $(INTEGRATION_BUILD)/test_wheel_optec_simulator: integration/test_wheel_optec_si
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(WHEEL_OPTEC_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/focuser_fc3_test_driver.o: ../indigo_drivers/focuser_fc3/indigo_focuser_fc3.c | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=fc3_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_focuser_fc3_simulator: integration/test_focuser_fc3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_fc3_simulator $(INTEGRATION_BUILD)/focuser_fc3_test_driver.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_FC3_SIMULATOR_TEST_LDFLAGS)
@@ -853,7 +853,7 @@ $(INTEGRATION_BUILD)/test_focuser_efa_simulator_asan: integration/test_focuser_e
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_efa/indigo_focuser_efa.c $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/focuser_dmfc_test_driver.o: ../indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.c | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=dmfc_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_focuser_dmfc_simulator: integration/test_focuser_dmfc_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_dmfc_simulator $(INTEGRATION_BUILD)/focuser_dmfc_test_driver.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_DMFC_SIMULATOR_TEST_LDFLAGS)
@@ -953,7 +953,7 @@ $(INTEGRATION_BUILD)/test_focuser_steeldrive2_simulator_asan: integration/test_f
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.c $(TEST_LDFLAGS) -lindigocat
 
 $(INTEGRATION_BUILD)/focuser_usbv3_test_driver.o: ../indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.c | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=usbv3_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_focuser_usbv3_simulator: integration/test_focuser_usbv3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_usbv3_simulator $(INTEGRATION_BUILD)/focuser_usbv3_test_driver.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_USBV3_SIMULATOR_TEST_LDFLAGS)
@@ -1038,7 +1038,7 @@ $(INTEGRATION_BUILD)/focuser_astroasis_sdk_driver.o: ../indigo_drivers/focuser_a
 	$(CC) $(TEST_CFLAGS) $(OAF_SDK_TEST_INCLUDE) $(OAF_SDK_TEST_REPLACEMENTS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/focuser_astroasis_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=oaf_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/focuser_astroasis_sdk_base.o: ../indigo_libs/indigo_focuser_driver.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -c $< -o $@
@@ -1057,7 +1057,7 @@ $(INTEGRATION_BUILD)/focuser_astroasis_sdk_driver_sanitize.o: ../indigo_drivers/
 	$(CC) $(OAF_SANITIZE_CFLAGS) $(OAF_SDK_TEST_INCLUDE) $(OAF_SDK_TEST_REPLACEMENTS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/focuser_astroasis_sdk_framework_sanitize.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(OAF_SANITIZE_CFLAGS) -Dindigo_uni_config_folder=oaf_test_config_folder -c $< -o $@
+	$(CC) $(OAF_SANITIZE_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/focuser_astroasis_sdk_base_sanitize.o: ../indigo_libs/indigo_focuser_driver.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(OAF_SANITIZE_CFLAGS) -c $< -o $@
@@ -1085,7 +1085,7 @@ $(INTEGRATION_BUILD)/wheel_playerone_sdk_driver.o: ../indigo_drivers/wheel_playe
 	$(CC) $(TEST_CFLAGS) $(PW_SDK_TEST_INCLUDE) $(PW_SDK_TEST_REPLACEMENTS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/wheel_playerone_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=pw_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/wheel_playerone_sdk_base.o: ../indigo_libs/indigo_wheel_driver.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -c $< -o $@
@@ -1126,7 +1126,7 @@ $(INTEGRATION_BUILD)/wheel_astroasis_sdk_driver.o: ../indigo_drivers/wheel_astro
 	$(CC) $(TEST_CFLAGS) $(OFW_SDK_TEST_INCLUDE) $(OFW_SDK_TEST_REPLACEMENTS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/wheel_astroasis_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=ofw_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/wheel_astroasis_sdk_base.o: ../indigo_libs/indigo_wheel_driver.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -c $< -o $@
@@ -1159,7 +1159,7 @@ TOUPTEK_SDK_TEST_LDFLAGS += -ldns_sd -lavahi-client -lavahi-common
 endif
 
 $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=touptek_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_ccd_touptek_sdk: integration/test_ccd_touptek_sdk.c integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_touptek_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o
 	$(CC) $(TEST_CFLAGS) $(TOUPTEK_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_touptek_sdk_driver.o $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
@@ -1267,7 +1267,7 @@ $(INTEGRATION_BUILD)/ccd_playerone_sdk_driver.o: ../indigo_drivers/ccd_playerone
 	$(CC) $(TEST_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(POA_SDK_TEST_INCLUDE) $(POA_SDK_TEST_REPLACEMENTS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=poa_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_ccd_playerone_sdk: integration/test_ccd_playerone_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_playerone_sdk_driver.o $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(POA_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_playerone_sdk_driver.o $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
@@ -1387,7 +1387,7 @@ $(TEST_BUILD)/hardware/test_aux_asiair_hw: hardware/test_aux_asiair_hw.c test_ru
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_aux_asiair.a -o $@ $(TEST_LDFLAGS)
 
 $(TEST_BUILD)/hardware/mount_synscan_hw_driver.o: ../indigo_drivers/mount_synscan/indigo_mount_synscan.c ../indigo_drivers/mount_synscan/indigo_mount_synscan.h Makefile | $(TEST_BUILD)/hardware
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=synscan_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(TEST_BUILD)/hardware/test_mount_synscan_hw: hardware/test_mount_synscan_hw.c test_runner.h $(TEST_BUILD)/hardware/mount_synscan_hw_driver.o | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< $(TEST_BUILD)/hardware/mount_synscan_hw_driver.o -o $@ $(TEST_LDFLAGS) -lindigocat
@@ -1595,7 +1595,7 @@ $(INTEGRATION_BUILD)/focuser_usbv3_simulator: simulator_common/serial_motion.h
 $(INTEGRATION_BUILD)/focuser_primaluce_simulator: simulator_common/serial_motion.h
 
 $(INTEGRATION_BUILD)/mount_synscan_test_driver.o: ../indigo_drivers/mount_synscan/indigo_mount_synscan.c | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=synscan_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 USB_OUTPUT_INCLUDES = -I../indigo_drivers/aux_dsusb/bin_externals/libdsusb/include -I../indigo_drivers/focuser_fcusb/bin_externals/libfcusb/include -I../indigo_drivers/guider_gpusb/bin_externals/libgpusb/include -I../indigo_drivers/wheel_atik/bin_externals/libatik/include
 USB_OUTPUT_REPLACEMENTS = -Dindigo_queue_create=output_queue_create -Dindigo_attach_device=output_attach -Dindigo_detach_device=output_detach -Dindigo_start_usb_event_handler=output_usb_start -Dlibusb_hotplug_register_callback=output_usb_register -Dlibusb_hotplug_deregister_callback=output_usb_deregister -Dlibusb_hotplug_register_callback_sim=output_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=output_usb_deregister_poll -Dlibusb_ref_device=output_usb_ref -Dlibusb_unref_device=output_usb_unref -Dindigo_get_usb_path=output_usb_path -Dindigo_uni_open_hid=output_hid_open -Dindigo_uni_close=output_hid_close -Dindigo_uni_read=output_hid_read -Dindigo_uni_write=output_hid_write
@@ -1705,7 +1705,7 @@ $(INTEGRATION_BUILD)/wheel_sx_usb_output.o: ../indigo_drivers/wheel_sx/indigo_wh
 $(INTEGRATION_BUILD)/test_wheel_sx_usb: integration/test_usb_outputs.c $(INTEGRATION_BUILD)/wheel_sx_usb_output.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) -DTEST_KIND=4 -DTEST_ENTRY=indigo_wheel_sx -DTEST_NAME='"SX Filter Wheel #1"' $< $(INTEGRATION_BUILD)/wheel_sx_usb_output.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
-FCUSB_SDK_REPLACEMENTS = -Dindigo_queue_create=fcusb_queue_create -Dindigo_attach_device=fcusb_attach_device -Dindigo_detach_device=fcusb_detach_device -Dindigo_start_usb_event_handler=fcusb_usb_start -Dlibusb_hotplug_register_callback=fcusb_usb_register -Dlibusb_hotplug_deregister_callback=fcusb_usb_deregister -Dlibusb_hotplug_register_callback_sim=fcusb_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=fcusb_usb_deregister_poll -Dlibusb_ref_device=fcusb_usb_ref -Dlibusb_unref_device=fcusb_usb_unref -Dindigo_get_usb_path=fcusb_usb_path -Dindigo_uni_config_folder=fcusb_test_config_folder
+FCUSB_SDK_REPLACEMENTS = -Dindigo_queue_create=fcusb_queue_create -Dindigo_attach_device=fcusb_attach_device -Dindigo_detach_device=fcusb_detach_device -Dindigo_start_usb_event_handler=fcusb_usb_start -Dlibusb_hotplug_register_callback=fcusb_usb_register -Dlibusb_hotplug_deregister_callback=fcusb_usb_deregister -Dlibusb_hotplug_register_callback_sim=fcusb_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=fcusb_usb_deregister_poll -Dlibusb_ref_device=fcusb_usb_ref -Dlibusb_unref_device=fcusb_usb_unref -Dindigo_get_usb_path=fcusb_usb_path
 
 $(INTEGRATION_BUILD)/focuser_fcusb_sdk.o: ../indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.c | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(USB_OUTPUT_INCLUDES) $(FCUSB_SDK_REPLACEMENTS) -c $< -o $@
@@ -1903,7 +1903,7 @@ test-rotator-lunatico-udp: $(INTEGRATION_BUILD)/test_rotator_lunatico_udp_simula
 
 # Real Imager Agent and CCD simulator; only configuration storage is isolated.
 $(INTEGRATION_BUILD)/agent_imager_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(IMAGER_TEST_FLAGS) -Dindigo_uni_config_folder=imager_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) $(IMAGER_TEST_FLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/agent_imager_filter.o: ../indigo_libs/indigo_filter.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(IMAGER_TEST_FLAGS) -c $< -o $@
@@ -1919,7 +1919,7 @@ test-agent-imager: check-lib $(INTEGRATION_BUILD)/test_agent_imager
 	$(INTEGRATION_BUILD)/test_agent_imager
 
 $(INTEGRATION_BUILD)/agent_guider_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(GUIDER_TEST_FLAGS) -Dindigo_uni_config_folder=guider_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) $(GUIDER_TEST_FLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/agent_guider_filter.o: ../indigo_libs/indigo_filter.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(GUIDER_TEST_FLAGS) -c $< -o $@
@@ -1937,7 +1937,7 @@ test-agent-guider: check-lib $(INTEGRATION_BUILD)/test_agent_guider
 # Real mount agent and filter; isolated configuration, scripted LX200 transport,
 # and optional accelerated timeout-loop waits. No sockets or hardware are opened.
 $(INTEGRATION_BUILD)/agent_mount_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(MOUNT_TEST_FLAGS) -Dindigo_uni_config_folder=mount_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) $(MOUNT_TEST_FLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/agent_mount_filter.o: ../indigo_libs/indigo_filter.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(MOUNT_TEST_FLAGS) -c $< -o $@
@@ -2075,7 +2075,7 @@ $(INTEGRATION_BUILD)/ccd_asi_sdk_driver.o: ../indigo_drivers/ccd_asi/indigo_ccd_
 	$(CC) $(TEST_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(ASI_CCD_SDK_TEST_INCLUDE) $(ASI_CCD_SDK_TEST_REPLACEMENTS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/ccd_asi_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=asi_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_ccd_asi_sdk: integration/test_ccd_asi_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_asi_sdk_driver.o $(INTEGRATION_BUILD)/ccd_asi_sdk_framework.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(ASI_CCD_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_asi_sdk_driver.o $(INTEGRATION_BUILD)/ccd_asi_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
@@ -2092,7 +2092,7 @@ $(INTEGRATION_BUILD)/ccd_svb_sdk_driver.o: ../indigo_drivers/ccd_svb/indigo_ccd_
 	$(CC) $(TEST_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(SVB_CCD_SDK_TEST_INCLUDE) $(SVB_CCD_SDK_TEST_REPLACEMENTS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=svb_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_ccd_svb_sdk: integration/test_ccd_svb_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_svb_sdk_driver.o $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(SVB_CCD_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_svb_sdk_driver.o $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
@@ -2108,7 +2108,7 @@ $(INTEGRATION_BUILD)/ccd_svb_sdk_driver_sanitize.o: ../indigo_drivers/ccd_svb/in
 	$(CC) $(SVB_CCD_SANITIZE_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(SVB_CCD_SDK_TEST_INCLUDE) $(SVB_CCD_SDK_TEST_REPLACEMENTS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/ccd_svb_sdk_framework_sanitize.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(SVB_CCD_SANITIZE_CFLAGS) -Dindigo_uni_config_folder=svb_test_config_folder -c $< -o $@
+	$(CC) $(SVB_CCD_SANITIZE_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_ccd_svb_sdk_sanitize: integration/test_ccd_svb_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_svb_sdk_driver_sanitize.o $(INTEGRATION_BUILD)/ccd_svb_sdk_framework_sanitize.o | $(INTEGRATION_BUILD)
 	$(CC) $(SVB_CCD_SANITIZE_CFLAGS) $(SVB_CCD_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_svb_sdk_driver_sanitize.o $(INTEGRATION_BUILD)/ccd_svb_sdk_framework_sanitize.o -o $@ $(SVB_CCD_SANITIZE_LDFLAGS)
@@ -2152,7 +2152,7 @@ test-ccd-qhy-sdk: $(INTEGRATION_BUILD)/test_ccd_qhy_sdk $(INTEGRATION_BUILD)/tes
 	$(INTEGRATION_BUILD)/test_ccd_qhy2_sdk
 
 $(INTEGRATION_BUILD)/ccd_qhy_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=qhy_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 # Build only: physical acceptance requires explicit --run, library and device selection.
 $(TEST_BUILD)/hardware/test_ccd_qhy_hw: hardware/test_ccd_qhy_hw.c test_runner.h | $(TEST_BUILD)/hardware
@@ -2191,7 +2191,7 @@ test-ccd-atik-sdk: $(INTEGRATION_BUILD)/test_ccd_atik_sdk
 	$(INTEGRATION_BUILD)/test_ccd_atik_sdk
 
 $(INTEGRATION_BUILD)/ccd_atik_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=atik_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 ATIK2_SDK_TEST_INCLUDE = -I../indigo_drivers/wheel_atik/bin_externals/libatik/include
 ATIK2_SDK_TEST_REPLACEMENTS = -Dindigo_queue_create=atik2_test_queue_create -Dindigo_execute_handler_in=atik2_test_execute_in -Dindigo_monotonic_time=atik2_test_monotonic_time -Dlibusb_hotplug_register_callback_sim=atik2_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=atik2_test_usb_deregister_poll -Dindigo_start_usb_event_handler=atik2_test_usb_start -Dindigo_attach_device=atik2_test_attach -Dindigo_detach_device=atik2_test_detach -Dlibusb_hotplug_register_callback=atik2_test_usb_register -Dlibusb_hotplug_deregister_callback=atik2_test_usb_deregister -Dlibusb_ref_device=atik2_test_usb_ref -Dlibusb_unref_device=atik2_test_usb_unref -Dlibusb_get_device_descriptor=atik2_test_usb_descriptor -Dindigo_get_usb_path=atik2_test_usb_path

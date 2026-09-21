@@ -51,9 +51,6 @@ static _Atomic(indigo_device *) camera_device, guider_device;
 static indigo_result (*camera_change)(indigo_device *, indigo_client *, indigo_property *);
 static atomic_int exposure_failures;
 
-const char *guider_test_config_folder(void) {
-	return config_folder;
-}
 
 static observation *find(const char *device, const char *name) {
 	for (int i = 0; i < ARRAY_SIZE(cache); i++) {
@@ -444,7 +441,7 @@ static void remove_test_files(void) {
 			}
 		}
 		closedir(dir);
-		rmdir(config_folder);
+		indigo_test_remove_tree(config_folder);
 	}
 }
 
@@ -2032,7 +2029,7 @@ int main(int argc, char **argv) {
 		}
 		executed++;
 		strcpy(config_folder, "/tmp/indigo_guider_test_XXXXXX");
-		if (!mkdtemp(config_folder)) {
+		if (!indigo_test_mkdtemp_home(config_folder)) {
 			perror("mkdtemp");
 			return 1;
 		}

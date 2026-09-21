@@ -72,9 +72,6 @@ typedef struct {
 static abort_measurement abort_probe;
 static char config_folder[] = "/tmp/indigo_asi_hw_XXXXXX";
 
-const char *asi_test_config_folder(void) {
-	return config_folder;
-}
 #ifdef ASI_DYNAMIC_DRIVER
 static indigo_result (*driver_entry)(indigo_driver_action, indigo_driver_info *);
 static void *driver_library;
@@ -1484,7 +1481,7 @@ int main(int argc, char **argv) {
 	}
 	setvbuf(stdout, NULL, _IONBF, 0);
 	client = (indigo_client){ .name = "ASI hardware test", .version = INDIGO_VERSION_CURRENT, .define_property = define_property, .update_property = update_property, .delete_property = delete_property, .send_message = report_message };
-	if (!mkdtemp(config_folder)) {
+	if (!indigo_test_mkdtemp_home(config_folder)) {
 		return 1;
 	}
 #ifdef ASI_DYNAMIC_DRIVER
@@ -1583,7 +1580,7 @@ cleanup:
 		}
 		closedir(dir);
 	}
-	rmdir(config_folder);
+	indigo_test_remove_tree(config_folder);
 #ifdef ASI_DYNAMIC_DRIVER
 	if (driver_library && dlclose(driver_library) != 0) {
 		result = 1;

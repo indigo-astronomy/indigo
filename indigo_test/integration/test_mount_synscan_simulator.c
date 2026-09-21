@@ -26,9 +26,6 @@
 
 static char park_folder[] = "/tmp/indigo-synscan-park-XXXXXX";
 
-const char *synscan_test_config_folder(void) {
-	return park_folder;
-}
 
 #ifndef MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE
 #define MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE "build/integration/mount_synscan_simulator"
@@ -776,7 +773,7 @@ cleanup:
 }
 
 int main(void) {
-	if (mkdtemp(park_folder) == NULL) {
+	if (indigo_test_mkdtemp_home(park_folder) == NULL) {
 		return 1;
 	}
 	const indigo_test_case tests[] = {
@@ -809,6 +806,6 @@ int main(void) {
 	char park_path[PATH_MAX];
 	snprintf(park_path, sizeof(park_path), "%s/synscan-EQ8.park", park_folder);
 	unlink(park_path);
-	rmdir(park_folder);
+	indigo_test_remove_tree(park_folder);
 	return result;
 }

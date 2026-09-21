@@ -23,8 +23,12 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <ftw.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 typedef void (*indigo_test_function)(void);
 
@@ -97,6 +101,67 @@ static const char *indigo_current_test_name = NULL;
 #define INDIGO_DRIVER_API_GENERATION(version) ((version) & 0xFF000000)
 #define INDIGO_DRIVER_API_2 0x02000000
 #define INDIGO_DRIVER_API_3 0x03000000
+
+// The framework derives its configuration folder from HOME and caches the answer the first time it
+// is asked, so a test that lets a driver save, load or restore configuration must redirect HOME
+// before the bus starts. Redirecting indigo_uni_config_folder() at compile time is NOT enough: the
+// framework is linked both into the test binary and into libindigo, the redirection reaches only
+// one of the two copies, and CONFIG SAVE then writes a file that CONFIG LOAD does not read. See the
+// "Configuration Isolation" section of indigo_test/AGENTS.md.
+static char indigo_test_home[1024];
+
+static int indigo_test_remove_entry(const char *path, const struct stat *status, int flag, struct FTW *ftw) {
+	(void)status;
+	(void)flag;
+	(void)ftw;
+	return remove(path);
+}
+
+// Remove a directory the test created, with everything below it.
+static void indigo_test_remove_tree(const char *path) {
+	if (path != NULL && *path) {
+		nftw(path, indigo_test_remove_entry, 16, FTW_DEPTH | FTW_PHYS);
+	}
+}
+
+// Point the framework's configuration at a directory the test already owns. The saved files land
+// in <path>/.indigo, so the directory has to be removed with indigo_test_remove_tree().
+static bool indigo_test_set_private_home(const char *path) {
+	if (setenv("HOME", path, 1) != 0) {
+		perror("setenv");
+		return false;
+	}
+	return true;
+}
+
+// mkdtemp() plus the HOME redirection, for a test that keeps a temporary directory of its own and
+// wants the framework's configuration inside it. Returns the directory or NULL, like mkdtemp().
+static char *indigo_test_mkdtemp_home(char *template_path) {
+	char *path = mkdtemp(template_path);
+	if (path != NULL && !indigo_test_set_private_home(path)) {
+		return NULL;
+	}
+	return path;
+}
+
+// Call this as the first statement of main(), before indigo_start() and before any property is
+// saved or restored. Returns false when the private directory cannot be created.
+static bool indigo_test_use_private_home(void) {
+	snprintf(indigo_test_home, sizeof(indigo_test_home), "/tmp/indigo-test-home.XXXXXX");
+	if (mkdtemp(indigo_test_home) == NULL) {
+		perror("mkdtemp");
+		return false;
+	}
+	return indigo_test_set_private_home(indigo_test_home);
+}
+
+// Call this before main() returns, so a run leaves no configuration behind.
+static void indigo_test_remove_private_home(void) {
+	if (*indigo_test_home) {
+		indigo_test_remove_tree(indigo_test_home);
+		*indigo_test_home = 0;
+	}
+}
 
 static int indigo_run_tests(const char *suite_name, const indigo_test_case *tests, int count) {
 	int initial_failures = indigo_test_failures;

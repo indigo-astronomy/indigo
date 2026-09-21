@@ -36,9 +36,6 @@ static char config_folder[] = "/tmp/indigo-usbv3-config-XXXXXX";
 
 // FOCUSER_REVERSE_MOTION is persisted by the driver, so the CONFIG roundtrip is
 // redirected into a scratch directory.
-const char *usbv3_test_config_folder(void) {
-	return config_folder;
-}
 
 static const simulator_driver_case usbv3_focuser = {
 	"USB_Focus v3 Focuser",
@@ -695,7 +692,7 @@ cleanup:
 static void configuration_roundtrip(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(switch_change(CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(save_configuration());
 	disconnect_serial_device(&usbv3_focuser);
 	tear_down_serial_driver(&usbv3_focuser);
 	SERIAL_CHECK_TRUE(driver_start());
@@ -781,7 +778,7 @@ int main(void) {
 		{ "transport_loss", transport_loss, "normal" }
 	};
 	setvbuf(stdout, NULL, _IOLBF, 0);
-	if (mkdtemp(fixture_directory) == NULL || mkdtemp(config_folder) == NULL) {
+	if (mkdtemp(fixture_directory) == NULL || indigo_test_mkdtemp_home(config_folder) == NULL) {
 		fprintf(stderr, "Cannot create fixture directory\n");
 		return 1;
 	}

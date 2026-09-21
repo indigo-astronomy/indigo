@@ -58,7 +58,6 @@ static bool migrated;
 static std::atomic<int> fail_registration, fail_resource, fail_attachment, fail_descriptor, scan_error, fail_id, refs, fail_range, invalid_value, wheel_status(-1), remaining_error, memory_length;
 static std::atomic<bool> guide_blocks, reset_controls;
 static char config_folder[] = "/tmp/indigo_qhy_config_XXXXXX";
-extern "C" const char *qhy_test_config_folder(void) { return config_folder; }
 
 static pthread_mutex_t gate_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t gate_cond = PTHREAD_COND_INITIALIZER;
@@ -899,7 +898,7 @@ static void discovery_capacity_and_identity(void) {
 }
 
 int main(int argc, char **argv) {
-	if (!mkdtemp(config_folder)) { return 1; }
+	if (!indigo_test_mkdtemp_home(config_folder)) { return 1; }
 	bus_thread = pthread_self(); indigo_start(); indigo_attach_client(&client);
 	indigo_driver_info info; ENTRY(INDIGO_DRIVER_INFO, &info); migrated = info.version > 0x0300001A;
 	const indigo_test_case cases[] = { { "discovery capacity identity", discovery_capacity_and_identity }, { "property contract frame types", property_contract_and_frame_types }, { "sibling orders guide overlap", sibling_orders_and_guide_overlap }, { "RAW color payload", raw_color_payload }, { "zero stream failed setting", zero_stream_and_failed_setting }, { "cooler failure recovery", cooler_failure_recovery }, { "lifecycle", basic_lifecycle }, { "acquisition", acquisition }, { "open rollback", open_rollback }, { "advanced failure", failed_advanced }, { "initialization failures", initialization_failures }, { "start and read failures", start_and_read_failures }, { "fractional exposures", fractional_exposures }, { "abort restart", abort_and_restart }, { "streams abort", streams_and_abort }, { "stream errors", stream_errors }, { "guide directions errors", guider_directions_and_failures }, { "wheel position errors", wheel_position_and_errors }, { "controls no bus IO", controls_and_no_bus_io }, { "read modes", read_modes }, { "ROI formats bins", roi_formats_and_bins }, { "acquisition conflicts", acquisition_conflicts }, { "disconnect sibling", disconnect_and_sibling_survival }, { "discovery lifecycle", startup_only_discovery }, { "init enumeration attachment", init_enumeration_and_attachment_rollback }, { "discovery failure reload", discovery_failure_and_reload }, { "metadata readback", metadata_and_readback_errors }, { "queued abort", queued_abort_before_start }, { "wheel timeout status", wheel_timeout_and_malformed_status }, { "setup reinitialize", setup_reinitialize_recovery }, { "mode depth errors", mode_and_depth_errors }, { "stream reset error", stream_reset_error }, { "readout buffer contract", bounded_readout_and_buffer_contract }, { "cooling sensor", cooling_and_sensor_profiles }, { "optional sparse profiles", optional_interfaces_and_sparse_formats }, { "configuration restore", config_and_reopen_settings }, { "guide blocking zero", guide_blocking_and_zero } };
@@ -921,6 +920,6 @@ int main(int argc, char **argv) {
 		}
 		closedir(dir);
 	}
-	rmdir(config_folder);
+	indigo_test_remove_tree(config_folder);
 	return matched ? result : 2;
 }

@@ -60,9 +60,6 @@ static atomic_bool accelerate_polling, hold_read, release_read;
 static atomic_int read_entered;
 static char config_folder[] = "/tmp/indigo_playerone_XXXXXX";
 
-const char *pw_test_config_folder(void) {
-	return config_folder;
-}
 
 static int handle_index(int handle) {
 	int index = (handle - 100) / 37;
@@ -938,7 +935,7 @@ static void end_fixture(void) {
 }
 
 int main(void) {
-	if (!mkdtemp(config_folder)) {
+	if (!indigo_test_mkdtemp_home(config_folder)) {
 		return 1;
 	}
 	indigo_start();
@@ -980,6 +977,6 @@ int main(void) {
 		}
 		closedir(dir);
 	}
-	rmdir(config_folder);
+	indigo_test_remove_tree(config_folder);
 	return result || indigo_test_failures ? 1 : 0;
 }

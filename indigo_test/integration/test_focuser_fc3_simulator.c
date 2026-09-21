@@ -32,9 +32,6 @@ static char config_folder[] = "/tmp/indigo-fc3-config-XXXXXX";
 
 // FOCUSER_DIRECTION and FOCUSER_LIMITS are persisted by the driver, so the
 // CONFIG roundtrip is redirected into a scratch directory.
-const char *fc3_test_config_folder(void) {
-	return config_folder;
-}
 
 static const simulator_driver_case fc3_focuser = {
 	"PegasusAstro FocusCube v3 Focuser",
@@ -754,7 +751,7 @@ static void configuration_roundtrip(void) {
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME, 250, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 3750, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(switch_change(CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(save_configuration());
 	disconnect_serial_device(&fc3_focuser);
 	tear_down_serial_driver(&fc3_focuser);
 	SERIAL_CHECK_TRUE(driver_start());
@@ -863,7 +860,7 @@ int main(void) {
 		{ "transport_loss", transport_loss, "normal" }
 	};
 	setvbuf(stdout, NULL, _IOLBF, 0);
-	if (mkdtemp(fixture_directory) == NULL || mkdtemp(config_folder) == NULL) {
+	if (mkdtemp(fixture_directory) == NULL || indigo_test_mkdtemp_home(config_folder) == NULL) {
 		fprintf(stderr, "Cannot create fixture directory\n");
 		return 1;
 	}

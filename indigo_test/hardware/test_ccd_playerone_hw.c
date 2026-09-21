@@ -64,9 +64,6 @@ static abort_measurement abort_probe;
 static char last_message_property[INDIGO_NAME_SIZE], last_message_text[INDIGO_VALUE_SIZE];
 static char config_folder[] = "/tmp/indigo_playerone_hw_XXXXXX";
 
-const char *poa_test_config_folder(void) {
-	return config_folder;
-}
 #ifdef POA_DYNAMIC_DRIVER
 static indigo_result (*driver_entry)(indigo_driver_action, indigo_driver_info *);
 static void *driver_library;
@@ -1474,7 +1471,7 @@ int main(int argc, char **argv) {
 	}
 	setvbuf(stdout, NULL, _IONBF, 0);
 	client = (indigo_client){ .name = "Player One hardware test", .version = INDIGO_VERSION_CURRENT, .define_property = define_property, .update_property = update_property, .delete_property = delete_property, .send_message = report_message };
-	if (!mkdtemp(config_folder)) {
+	if (!indigo_test_mkdtemp_home(config_folder)) {
 		return 1;
 	}
 #ifdef POA_DYNAMIC_DRIVER
@@ -1572,7 +1569,7 @@ cleanup:
 		}
 		closedir(dir);
 	}
-	rmdir(config_folder);
+	indigo_test_remove_tree(config_folder);
 #ifdef POA_DYNAMIC_DRIVER
 	if (driver_library && dlclose(driver_library) != 0) {
 		result = 1;

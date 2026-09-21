@@ -160,9 +160,6 @@ void poa_test_execute_in(indigo_device *device, double delay, indigo_timer_callb
 	indigo_execute_handler_in(device, delay, callback);
 }
 
-const char *poa_test_config_folder(void) {
-	return config_folder;
-}
 
 static int device_index(const char *name) {
 	if (attaching_index >= 0) {
@@ -2189,7 +2186,7 @@ static void shared_countdown_with_blocked_device_queue(void) {
 int main(int argc, char **argv) {
 	bus_thread = pthread_self();
 	setvbuf(stdout, NULL, _IONBF, 0);
-	if (!mkdtemp(config_folder)) {
+	if (!indigo_test_mkdtemp_home(config_folder)) {
 		return 1;
 	}
 	indigo_start();
@@ -2283,6 +2280,6 @@ int main(int argc, char **argv) {
 		}
 		closedir(dir);
 	}
-	rmdir(config_folder);
+	indigo_test_remove_tree(config_folder);
 	return result || indigo_test_failures;
 }

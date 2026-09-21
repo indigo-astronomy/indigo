@@ -58,9 +58,6 @@
 // park position file of a test run never lands in the user's own INDIGO configuration folder.
 static char park_folder[] = "/tmp/indigo-synscan-hw-park-XXXXXX";
 
-const char *synscan_test_config_folder(void) {
-	return park_folder;
-}
 
 #define MOUNT_DEVICE_NAME "Mount SynScan"
 #define GUIDER_DEVICE_NAME "Mount SynScan (guider)"
@@ -1240,7 +1237,7 @@ int main(int argc, char **argv) {
 	if (declination && *declination) {
 		test_declination = atof(declination);
 	}
-	if (mkdtemp(park_folder) == NULL) {
+	if (indigo_test_mkdtemp_home(park_folder) == NULL) {
 		perror("mkdtemp");
 		return 2;
 	}
@@ -1307,6 +1304,6 @@ cleanup:
 		}
 	}
 	remove_park_files();
-	rmdir(park_folder);
+	indigo_test_remove_tree(park_folder);
 	return indigo_test_failures ? 1 : result;
 }
