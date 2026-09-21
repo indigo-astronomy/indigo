@@ -462,13 +462,17 @@ last but one in the file — never applied.
 
 Fix, in two parts:
 
-- Driver: `reject_change()` answers the cross-property interlocks explicitly, restating the unchanged
-  values with `INDIGO_ALERT_STATE` and a message, in the six places that previously returned
-  `INDIGO_OK` silently. A request arriving while the target property is itself BUSY is deliberately
-  left to the `INDIGO_COPY_*_PROCESS_CHANGE` guard, which must not overwrite a running operation's
-  state; the framework change below covers that case. Version `0x03000030` -> `0x03000031`.
-- Framework: a property that answers ALERT, or that publishes nothing within
-  `CONFIG_RESTORE_ACK_TIMEOUT`, is now recorded and skipped so the rest of the file is still applied.
+- Driver: `INDIGO_REJECT_CHANGE_IF()` answers the cross-property interlocks explicitly, restating the
+  unchanged values with `INDIGO_ALERT_STATE` and a message, in the seven places that previously
+  returned `INDIGO_OK` silently, the focuser's `FOCUSER_POSITION` among them. A request arriving
+  while the target property is itself BUSY is deliberately left to the
+  `INDIGO_COPY_*_PROCESS_CHANGE` guard, which must not overwrite a running operation's state; the
+  framework change below covers that case. The four connection branches also moved to
+  `INDIGO_PROCESS_QUEUED_CONNECT()`. Version `0x03000030` -> `0x03000031`.
+- Framework: `indigo_reject_change()` was added to the bus as the one place that publishes a refusal,
+  with `INDIGO_REJECT_CHANGE_IF()` wrapping it for change branches. A property that answers ALERT, or
+  that publishes nothing within `CONFIG_RESTORE_ACK_TIMEOUT`, is now recorded and skipped so the rest
+  of the file is still applied.
   `CONFIG` ends in `INDIGO_ALERT_STATE` with a message naming the properties the driver did not
   accept, which makes the failure diagnosable instead of silent. `config_restore_pop()` also resets
   `restore->state`, which previously leaked into the next request until its probe arrived.

@@ -876,19 +876,6 @@ static void focuser_temperature_handler(indigo_device *device) {
 
 #pragma mark - High level code (ccd)
 
-// A change the driver accepts without publishing anything is indistinguishable from a lost request:
-// the configuration restore waits for an answer that never arrives and drops every setting that
-// follows it in file order. Refuse the cross-property interlock explicitly instead, restating the
-// unchanged values. A request arriving while the target property is itself BUSY stays with the
-// INDIGO_COPY_*_PROCESS_CHANGE guard, which must not overwrite the running operation's state.
-static void reject_change(indigo_device *device, indigo_property *property, const char *message) {
-	for (int i = 0; i < property->count; i++) {
-		property->items[i].do_update = true;
-	}
-	property->state = INDIGO_ALERT_STATE;
-	indigo_update_property(device, property, message);
-}
-
 static void ccd_connection_handler(indigo_device *device) {
 	HRESULT result;
 	bool failed_connection = false;
@@ -1765,11 +1752,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	}
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, ccd_connection_handler, &driver_queue_mutex);
-		}
+		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, ccd_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CONFIG_PROPERTY, ccd_config_handler);
@@ -1777,38 +1760,23 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (!IS_CONNECTED || CONNECTION_PROPERTY->state != INDIGO_OK_STATE) {
 		return indigo_ccd_change_property(device, client, property);
 	} else if (indigo_property_match_changeable(CCD_MODE_PROPERTY, property)) {
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE || CCD_BIN_PROPERTY->state == INDIGO_BUSY_STATE || CCD_FRAME_PROPERTY->state == INDIGO_BUSY_STATE) {
-			reject_change(device, CCD_MODE_PROPERTY, "Acquisition in progress, the camera mode can not be changed");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE || CCD_BIN_PROPERTY->state == INDIGO_BUSY_STATE || CCD_FRAME_PROPERTY->state == INDIGO_BUSY_STATE, CCD_MODE_PROPERTY, "Acquisition in progress, the camera mode can not be changed");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_MODE_PROPERTY, ccd_mode_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE || CCD_MODE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_FRAME_PROPERTY->state == INDIGO_BUSY_STATE) {
-			reject_change(device, CCD_BIN_PROPERTY, "Acquisition in progress, the binning can not be changed");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE || CCD_MODE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_FRAME_PROPERTY->state == INDIGO_BUSY_STATE, CCD_BIN_PROPERTY, "Acquisition in progress, the binning can not be changed");
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_BIN_PROPERTY, ccd_bin_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE || CCD_MODE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_BIN_PROPERTY->state == INDIGO_BUSY_STATE) {
-			reject_change(device, CCD_FRAME_PROPERTY, "Acquisition in progress, the frame can not be changed");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE || CCD_MODE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_BIN_PROPERTY->state == INDIGO_BUSY_STATE, CCD_FRAME_PROPERTY, "Acquisition in progress, the frame can not be changed");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_FRAME_PROPERTY, ccd_frame_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
-		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-			reject_change(device, CCD_EXPOSURE_PROPERTY, "Streaming in progress, an exposure can not be started");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE, CCD_EXPOSURE_PROPERTY, "Streaming in progress, an exposure can not be started");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, ccd_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			reject_change(device, CCD_STREAMING_PROPERTY, "Exposure in progress, streaming can not be started");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE, CCD_STREAMING_PROPERTY, "Exposure in progress, streaming can not be started");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_STREAMING_PROPERTY, ccd_streaming_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
@@ -1842,10 +1810,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_CCD_LED_PROPERTY, ccd_x_led_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_defined(X_CCD_BIN_MODE_PROPERTY, property)) {
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-			reject_change(device, X_CCD_BIN_MODE_PROPERTY, "Acquisition in progress, the binning mode can not be changed");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE, X_CCD_BIN_MODE_PROPERTY, "Acquisition in progress, the binning mode can not be changed");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_CCD_BIN_MODE_PROPERTY, ccd_x_bin_mode_handler);
 		return INDIGO_OK;
 	}
@@ -1993,11 +1958,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	}
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, guider_connection_handler, &driver_queue_mutex);
-		}
+		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, guider_connection_handler);
 		return INDIGO_OK;
 	} else if (!IS_CONNECTED || CONNECTION_PROPERTY->state != INDIGO_OK_STATE) {
 		return indigo_guider_change_property(device, client, property);
@@ -2191,11 +2152,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	}
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, wheel_connection_handler, &driver_queue_mutex);
-		}
+		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, wheel_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CONFIG_PROPERTY, wheel_config_handler);
@@ -2626,11 +2583,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	}
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, focuser_connection_handler, &driver_queue_mutex);
-		}
+		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, focuser_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CONFIG_PROPERTY, focuser_config_handler);
@@ -2641,10 +2594,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_REVERSE_MOTION_PROPERTY, focuser_reverse_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			reject_change(device, FOCUSER_POSITION_PROPERTY, "Focuser is moving, the position can not be set");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_POSITION_PROPERTY, "Focuser is moving, the position can not be set");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
