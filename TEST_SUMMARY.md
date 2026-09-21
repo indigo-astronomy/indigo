@@ -66,7 +66,7 @@
 | mount_synscan | 2026-09-20 21:34 | 3.0.0.5 | mac arm64 | simulator | 18 / 18 | ✅ OK |
 | mount_temma | 2026-09-20 20:27 | 3.0.0.13 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 | polaralign_simulator | 2026-09-21 10:53 | 3.0.0.4 | mac arm64 | simulator | 11 / 11 | ✅ OK |
-| rotator_asi | 2026-09-21 10:49 | 3.0.0.7 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
+| rotator_asi | 2026-09-21 14:41 | 3.0.0.7 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
 | rotator_falcon | 2026-09-21 10:51 | 3.0.0.9 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 | rotator_optec | 2026-09-21 12:43 | 3.0.0.4 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | rotator_simulator | 2026-09-21 10:52 | 3.0.0.7 | mac arm64 | simulator | 9 / 9 | ✅ OK |
