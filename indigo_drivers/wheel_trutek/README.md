@@ -25,3 +25,7 @@ Looking for device owners!!! :)
 Based on protocol description found here:
 
 http://www.indilib.org/forum/focusers-filter-wheels/2005-trutech-filter-wheel-lost.html#15206
+
+## Testing
+
+2026-09-21 17:14 3.0.0.6 mac arm64 simulator 8/8 OK
