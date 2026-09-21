@@ -69,8 +69,8 @@ static void usage(const char *name) {
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_USBV3_EVENTS names a file receiving every accepted request, one per line.\n");
-	printf("INDIGO_USBV3_FAULT names a file holding '<command prefix> <silent|garbage|close>'\n");
-	printf("which is applied once to the next matching request and then removed.\n");
+	printf("INDIGO_USBV3_FAULT names a file holding '<command prefix> <silent|garbage|close|truncate>\n");
+	printf("[count]' which is applied to the next matching request, count times, and then removed.\n");
 }
 
 static void signal_handler(int sig) {
@@ -112,12 +112,33 @@ static bool parse_args(int argc, char *argv[]) {
 	return true;
 }
 
+// Every reply of the real USB_Focus v3 ends with LF followed by CR, in that order, checked
+// against firmware 1321 on 2026-09-22.
+static bool drop_a_byte = false;
+
 static void send_line(const char *line) {
+	char damaged[128];
+	if (drop_a_byte && strlen(line) > 4) {
+		// Drop one byte out of the middle, the way the link does.
+		size_t length = strlen(line), cut = length / 2;
+		snprintf(damaged, sizeof(damaged), "%.*s%s", (int)cut, line, line + cut + 1);
+		line = damaged;
+		drop_a_byte = false;
+	}
 	if (options.trace) {
 		fprintf(stderr, "-> %s\n", line);
 	}
 	serial_simulator_write_all(serial_fd, line, strlen(line));
-	serial_simulator_write_all(serial_fd, "\n", 1);
+	serial_simulator_write_all(serial_fd, "\n\r", 2);
+}
+
+// FTxxxA is the one reply the unit sends without any line ending, so a driver reading it has to
+// rely on an inter-byte timeout. Modelling that here is what makes the difference visible.
+static void send_unterminated(const char *text) {
+	if (options.trace) {
+		fprintf(stderr, "-> %s (no line ending)\n", text);
+	}
+	serial_simulator_write_all(serial_fd, text, strlen(text));
 }
 
 static int parse_suffix(const char *command) {
@@ -170,18 +191,41 @@ static const char *pending_fault(const char *command) {
 		return NULL;
 	}
 	char prefix[32] = { 0 };
+	int count = 1;
 	action[0] = '\0';
-	bool matched = fscanf(file, "%31s %31s", prefix, action) == 2 && !strncmp(command, prefix, strlen(prefix));
+	// A count lets one armed fault answer several requests, which is how a driver that retries a
+	// damaged reply is driven into reporting the failure.
+	int fields = fscanf(file, "%31s %31s %d", prefix, action, &count);
+	bool matched = fields >= 2 && !strncmp(command, prefix, strlen(prefix));
 	fclose(file);
 	if (!matched) {
 		return NULL;
+	}
+	if (fields == 3 && count > 1) {
+		file = fopen(path, "w");
+		if (file != NULL) {
+			fprintf(file, "%s %s %d\n", prefix, action, count - 1);
+			fclose(file);
+			return action;
+		}
 	}
 	unlink(path);
 	return action;
 }
 
-static void handle_command(const char *command) {
+// The unit announces the end of a move on its own, as soon as the motor stops, instead of
+// keeping it for the next position request: a move started with O or I is followed by a bare "*"
+// whenever it finishes. Checked against firmware 1321 on 2026-09-22.
+static void update_motion(void) {
 	position = (int)serial_motion_update(&motion);
+	if (moving && motion.duration == 0) {
+		moving = false;
+		send_line("*");
+	}
+}
+
+static void handle_command(const char *command) {
+	update_motion();
 	char response[128] = { 0 };
 
 	if (options.trace) {
@@ -208,55 +252,62 @@ static void handle_command(const char *command) {
 			send_line("ERR");
 			return;
 		}
+		// The real link drops a byte from a long reply every so often, which leaves a shorter
+		// reply that still parses. Measured at about one read in twenty against firmware 1321 on
+		// 2026-09-22, with the framework's reader and with a plain POSIX one.
+		if (!strcmp(fault, "truncate")) {
+			drop_a_byte = true;
+		}
 	}
 	if (!strcmp(command, "SWHOIS")) {
 		send_line(identity);
 	} else if (!strcmp(command, "SGETAL")) {
 		if (report_config) {
-			snprintf(response, sizeof(response), "C=%d-%d-%d-%d-%d-%d-%d", direction, stepmode, speed, abs(steps_per_degree), threshold, firmware, max_position);
+			// The unit pads the compensation and threshold fields to three digits and the
+			// position fields to five, e.g. C=0-1-2-012-002-1321-30000.
+			snprintf(response, sizeof(response), "C=%d-%d-%d-%03d-%03d-%d-%d", direction, stepmode, speed, abs(steps_per_degree), threshold, firmware, max_position);
 		} else {
 			snprintf(response, sizeof(response), "ERR");
 		}
 		send_line(response);
 	} else if (!strcmp(command, "FPOSRO")) {
-		if (moving && motion.duration == 0) {
-			moving = false;
-			send_line("*");
-		}
-		snprintf(response, sizeof(response), "P=%d", position);
+		snprintf(response, sizeof(response), "P=%05d", position);
 		send_line(response);
 	} else if (!strcmp(command, "FTMPRO")) {
-		snprintf(response, sizeof(response), "T=%.1f", temperature);
+		snprintf(response, sizeof(response), "T=%+.2f", temperature);
 		send_line(response);
 	} else if (!strcmp(command, "FMANUA")) {
+		// The unit acknowledges manual mode with an exclamation mark, not with a position.
 		automatic = false;
-		snprintf(response, sizeof(response), "P=%d", position);
-		send_line(response);
+		send_line("!");
 	} else if (!strcmp(command, "FAUTOM")) {
 		automatic = true;
 		(void)automatic;
-		send_line("A=1");
+		send_line("A");
 	} else if (!strcmp(command, "FTxxxA")) {
-		send_line(steps_per_degree < 0 ? "A=0" : "A=1");
+		send_unterminated(steps_per_degree < 0 ? "A=0" : "A=1");
 	} else if (!strncmp(command, "FLX", 3)) {
 		steps_per_degree = atoi(command + 3);
-		send_line("OK");
+		send_line("DONE");
 	} else if (!strncmp(command, "FZSIG", 5)) {
 		if (command[5] == '0' && steps_per_degree > 0) {
 			steps_per_degree = -steps_per_degree;
 		} else if (command[5] == '1' && steps_per_degree < 0) {
 			steps_per_degree = -steps_per_degree;
 		}
-		send_line("OK");
+		send_line("DONE");
 	} else if (!strncmp(command, "SMA", 3)) {
 		threshold = atoi(command + 3);
-		send_line("OK");
+		send_line("DONE");
 	} else if (!strcmp(command, "SMSTPF")) {
 		stepmode = 0;
 	} else if (!strcmp(command, "SMSTPD")) {
 		stepmode = 1;
 	} else if (!strncmp(command, "SMO", 3)) {
+		// A speed change is acknowledged, so a driver that does not read the reply finds it in
+		// front of the answer to its next command.
 		speed = atoi(command + 3);
+		send_line("DONE");
 	} else if (!strncmp(command, "O", 1)) {
 		target_position = position + parse_suffix(command);
 		clamp_position();
@@ -273,6 +324,8 @@ static void handle_command(const char *command) {
 			max_position = 0;
 		}
 		clamp_position();
+		// A travel limit change is acknowledged like a speed change.
+		send_line("DONE");
 	} else if (!strcmp(command, "FQUITx")) {
 		serial_motion_stop(&motion);
 		target_position = position;
@@ -286,6 +339,7 @@ static void run_protocol_loop(void) {
 	size_t length = 0;
 
 	while (running) {
+		update_motion();
 		char c = '\0';
 		ssize_t bytes_read = read(serial_fd, &c, 1);
 		if (bytes_read < 0) {

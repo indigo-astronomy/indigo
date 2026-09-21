@@ -52,18 +52,22 @@ static char event_path[PATH_MAX], fault_path[PATH_MAX];
 
 // ----------------------------------------------------------------- fixtures
 
-// Arm a one-shot controller fault. The simulator applies it to the next request
-// whose text starts with command and then removes the control file.
-static bool fault(const char *command, const char *action) {
+// Arm a controller fault. The simulator applies it to the next count requests whose text starts
+// with command and then removes the control file.
+static bool fault_times(const char *command, const char *action, int count) {
 	char temporary[PATH_MAX + 8];
 	snprintf(temporary, sizeof(temporary), "%s.tmp", fault_path);
 	FILE *file = fopen(temporary, "w");
 	if (file == NULL) {
 		return false;
 	}
-	fprintf(file, "%s %s\n", command, action);
+	fprintf(file, "%s %s %d\n", command, action, count);
 	fclose(file);
 	return rename(temporary, fault_path) == 0;
+}
+
+static bool fault(const char *command, const char *action) {
+	return fault_times(command, action, 1);
 }
 
 static int commands(const char *prefix) {
@@ -549,11 +553,16 @@ cleanup:
 static void motion_readback_failure(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(position_is(1000));
+	// One readback the controller does not answer is asked again, so a move survives it.
 	SERIAL_CHECK_TRUE(fault("FPOSRO", "silent"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1050, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(1050));
+	// A readback that keeps failing is reported instead of being retried forever.
+	SERIAL_CHECK_TRUE(fault_times("FPOSRO", "silent", 4));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1100, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 	// A malformed readback is refused the same way.
-	SERIAL_CHECK_TRUE(fault("FPOSRO", "garbage"));
+	SERIAL_CHECK_TRUE(fault_times("FPOSRO", "garbage", 4));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1150, INDIGO_ALERT_STATE));
 	// Reconnecting reads the coordinate the controller really holds, and the
 	// driver moves from it again.
@@ -573,6 +582,31 @@ cleanup:
 // not poll the position while it is idle, so what matters is that the next move
 // publishes the coordinate the controller really reached and not the driver's
 // own arithmetic from the coordinate it read while connecting.
+// The link to a real USB_Focus v3 drops a byte from a long reply about once in twenty reads, and
+// what is left still parses: "P=00306" becomes "P=0030" and a configuration line loses a digit of
+// the travel limit or the compensation. The driver has to reject a reply of the wrong shape and
+// ask again instead of publishing the number that is left.
+static void truncated_reply_rejected(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(1000));
+	// A position readback that loses a digit is retried, so the move still ends where the
+	// controller really is.
+	SERIAL_CHECK_TRUE(fault("FPOSRO", "truncate"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(1200));
+	// A configuration line that loses a digit is read again, so the travel limit the driver
+	// publishes after a reconnect is the one the controller holds.
+	disconnect_serial_device(&usbv3_focuser);
+	SERIAL_CHECK_TRUE(fault("SGETAL", "truncate"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&usbv3_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(cached_number_value(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME) == 65535);
+	SERIAL_CHECK_TRUE(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1200);
+cleanup:
+	driver_stop();
+}
+
 static void external_motion_observed(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_EQ_INT(0, commands("O"));
@@ -767,6 +801,7 @@ int main(void) {
 		{ "abort_while_idle", abort_while_idle, "normal" },
 		{ "overlap_rejected", overlap_rejected, "normal" },
 		{ "motion_readback_failure", motion_readback_failure, "normal" },
+		{ "truncated_reply_rejected", truncated_reply_rejected, "normal" },
 		{ "external_motion_observed", external_motion_observed, "external-motion" },
 		{ "disconnect_during_motion", disconnect_during_motion, "normal" },
 		{ "controller_settings", controller_settings, "normal" },

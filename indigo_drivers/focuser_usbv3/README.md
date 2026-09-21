@@ -25,4 +25,5 @@ Driver is developed and tested with the physical hardware.
 
 ## Testing
 
-2026-09-20 14:03 3.0.0.9 mac arm64 simulator 27/27 OK
+2026-09-22 01:09 3.0.0.10 mac arm64 USB_Focus v3 16/16 OK
+2026-09-22 01:12 3.0.0.10 mac arm64 simulator 27/27 OK

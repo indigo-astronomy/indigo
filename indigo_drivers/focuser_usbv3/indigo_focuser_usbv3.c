@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_focuser_usbv3"
 #define DRIVER_LABEL         "USB_Focus v3 Focuser"
 #define FOCUSER_DEVICE_NAME  "USB_Focus v3"
@@ -55,9 +55,12 @@ typedef struct {
 	indigo_property *x_focuser_step_size_property;
 	//+ data
 	char response[128];
+	// INDIGO_COPY_VALUE() clears a whole INDIGO_VALUE_SIZE buffer, so this one has that size.
+	char configuration[INDIGO_VALUE_SIZE];
 	bool moving;
 	bool abort;
 	int motion_polls;
+	int position_digits;
 	//- data
 } usbv3_private_data;
 
@@ -68,31 +71,106 @@ typedef struct {
 static void focuser_position_handler(indigo_device *device);
 static void focuser_steps_handler(indigo_device *device);
 
+// FTxxxA is answered with a bare "A=0" or "A=1", without the line ending every other
+// reply of this device carries, so a read that only knows a terminator has to wait for the
+// inter-byte timeout instead. With a blocking second read it waited five seconds for the
+// port itself to give up, returned a failure and left the buffer unterminated, so the
+// caller parsed the new reply followed by the tail of the previous one ("A=10306" from
+// "A=1" over "P=00306") and read the compensation sign as a large positive number.
+// The reply ends with LF followed by CR, so the read has to end on the CR. Ending it on
+// the LF leaves the CR in the input, and the next read then spends its first byte on that
+// CR and drops to the inter-byte timeout for the reply it is actually waiting for - which
+// lost every position readback the unit did not answer within a tenth of a second.
+// The first byte is given three seconds rather than one: while the motor steps, the unit
+// answers a position request in well under a millisecond most of the time, but it was
+// measured stalling for more than a second on a long move, and a position readback the
+// driver gives up on is published as a failed move.
+// Verified against a USB_Focus v3 with firmware 1321 on 2026-09-22.
 static bool usbv3_command(indigo_device *device, char *command, int response, ...) {
 	va_list args;
 	va_start(args, response);
+	*PRIVATE_DATA->response = 0;
 	long result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
 	va_end(args);
 	if (response && result > 0) {
-		result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
+		result = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r\n", INDIGO_DELAY(3), INDIGO_DELAY(0.1));
 		if (*PRIVATE_DATA->response == '*') {
 			PRIVATE_DATA->moving = false;
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
+			result = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r\n", INDIGO_DELAY(3), INDIGO_DELAY(0.1));
 		}
 	}
 	return result > 0;
 }
 
+// The device answers FQUITx with the same bare "*" it sends on its own when a move ends,
+// so that reply has to be taken here. A star left in the input is read by the next motion
+// poll instead, which then reports the new move as finished at the position it had a
+// tenth of a second in - the abort of a move followed by a move back ended 15 steps off
+// for exactly that reason.
+static bool usbv3_quit(indigo_device *device) {
+	*PRIVATE_DATA->response = 0;
+	if (indigo_uni_printf(PRIVATE_DATA->handle, "FQUITx") <= 0) {
+		return false;
+	}
+	PRIVATE_DATA->moving = false;
+	return indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r\n", INDIGO_DELAY(1), INDIGO_DELAY(0.1)) > 0;
+}
+
 static bool usbv3_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle) {
-		// The FQUITx sent by on_disconnect is answered with "*", which nothing reads, so a
-		// reconnect starts with stale lines queued. Drop them before the identity handshake.
+		// A session that ended while the device was still talking, or a device that was
+		// already moving, leaves lines queued. Drop them before the identity handshake.
 		indigo_uni_discard(PRIVATE_DATA->handle);
 		if (usbv3_command(device, "SWHOIS", true) && !strcmp(PRIVATE_DATA->response, "UFO")) {
 			return true;
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
+	}
+	return false;
+}
+
+// The link drops a byte from a long reply every so often - about one read in twenty against
+// firmware 1321, measured through this driver's own reader and through a plain POSIX one,
+// so the loss is on the link and not in the framework. A lost digit turns a reply into a
+// shorter but perfectly parsable one, "P=00306" into "P=0030" and "C=0-1-2-012-002-1321-
+// 30000" into "C=0-1-2-02-002-1321-30000", so a value the driver keeps has to be checked
+// instead of just parsed. A reply that is read once and only used to be displayed, like
+// the temperature, is left alone.
+//
+// A configuration line is read twice and accepted only when both reads agree.
+static bool usbv3_read_configuration(indigo_device *device) {
+	for (int attempt = 0; attempt < 3; attempt++) {
+		if (!usbv3_command(device, "SGETAL", true)) {
+			continue;
+		}
+		INDIGO_COPY_VALUE(PRIVATE_DATA->configuration, PRIVATE_DATA->response);
+		if (usbv3_command(device, "SGETAL", true) && !strcmp(PRIVATE_DATA->configuration, PRIVATE_DATA->response)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// A position reply is "P=" followed by a fixed number of digits. The width the unit uses is
+// taken from the first reading of a session, which is itself confirmed by a second read,
+// and every later reading has to match it.
+static bool usbv3_read_position(indigo_device *device, int *position) {
+	for (int attempt = 0; attempt < 3; attempt++) {
+		if (!usbv3_command(device, "FPOSRO", true) || strncmp(PRIVATE_DATA->response, "P=", 2)) {
+			continue;
+		}
+		char *digits = PRIVATE_DATA->response + 2;
+		size_t length = strspn(digits, "0123456789");
+		if (length == 0 || digits[length] != 0 || (PRIVATE_DATA->position_digits != 0 && (int)length != PRIVATE_DATA->position_digits)) {
+			continue;
+		}
+		*position = atoi(digits);
+		if (*position < 0 || *position > 65535) {
+			continue;
+		}
+		PRIVATE_DATA->position_digits = (int)length;
+		return true;
 	}
 	return false;
 }
@@ -107,7 +185,7 @@ static void usbv3_close(indigo_device *device) {
 
 static void focuser_motion_finalizer(indigo_device *device) {
 	int position;
-	if (!usbv3_command(device, "FPOSRO", true) || sscanf(PRIVATE_DATA->response, "P=%d", &position) != 1 || position < 0 || position > 65535) {
+	if (!usbv3_read_position(device, &position)) {
 		PRIVATE_DATA->moving = false;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
@@ -116,8 +194,7 @@ static void focuser_motion_finalizer(indigo_device *device) {
 			FOCUSER_POSITION_PROPERTY->state = PRIVATE_DATA->abort ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 			FOCUSER_POSITION_ITEM->number.target = position;
 		} else if (--PRIVATE_DATA->motion_polls <= 0) {
-			usbv3_command(device, "FQUITx", false);
-			PRIVATE_DATA->moving = false;
+			usbv3_quit(device);
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -131,6 +208,10 @@ static void focuser_motion_finalizer(indigo_device *device) {
 
 static void usbv3_start_motion(indigo_device *device, int steps) {
 	indigo_cancel_pending_handler(device, focuser_motion_finalizer);
+	// A move the driver did not start - one that was already running when it
+	// connected - ends with a star of its own at a time nothing here can predict.
+	// Dropping whatever is pending keeps that star out of the poll of this move.
+	indigo_uni_discard(PRIVATE_DATA->handle);
 	PRIVATE_DATA->abort = false;
 	PRIVATE_DATA->moving = false;
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -172,10 +253,11 @@ static void focuser_connection_handler(indigo_device *device) {
 		connection_result = usbv3_open(device);
 		if (connection_result) {
 			//+ focuser.on_connect
-			int direction, stepmode, speed, stepsdeg = 0, threshold = 0, firmware, maxpos, sign;
+			int direction, stepmode, speed, stepsdeg = 0, threshold = 0, firmware, maxpos, sign, position;
 			indigo_uni_discard(PRIVATE_DATA->handle);
-			if (usbv3_command(device, "SGETAL", true)) {
-				if (sscanf(PRIVATE_DATA->response, "C=%u-%u-%u-%u-%u-%u-%u", &direction, &stepmode, &speed, &stepsdeg, &threshold, &firmware, &maxpos) == 7) {
+			PRIVATE_DATA->position_digits = 0;
+			if (usbv3_read_configuration(device)) {
+				if (sscanf(PRIVATE_DATA->configuration, "C=%u-%u-%u-%u-%u-%u-%u", &direction, &stepmode, &speed, &stepsdeg, &threshold, &firmware, &maxpos) == 7) {
 					indigo_set_switch(FOCUSER_DIRECTION_PROPERTY, FOCUSER_DIRECTION_PROPERTY->items + direction % 2, true);
 					indigo_set_switch(X_FOCUSER_STEP_SIZE_PROPERTY, X_FOCUSER_STEP_SIZE_PROPERTY->items + stepmode % 2, true);
 					FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = speed;
@@ -185,10 +267,11 @@ static void focuser_connection_handler(indigo_device *device) {
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 				}
 			}
-			if (usbv3_command(device, "FPOSRO", true)) {
-				if (sscanf(PRIVATE_DATA->response, "P=%lf", &FOCUSER_POSITION_ITEM->number.value) == 1) {
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-				}
+			// The first reading of the session also establishes the digit width every later one is
+			// checked against, so it is confirmed by a second read of its own.
+			if (usbv3_read_position(device, &position) && usbv3_read_position(device, &position)) {
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
 			usbv3_command(device, "FMANUA", true);
 			usbv3_command(device, "FTxxxA", true);
@@ -212,7 +295,7 @@ static void focuser_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_pending_handlers(device);
 		//+ focuser.on_disconnect
-		usbv3_command(device, "FQUITx", false);
+		usbv3_quit(device);
 		//- focuser.on_disconnect
 		indigo_delete_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
 		usbv3_close(device);
@@ -254,10 +337,12 @@ static void focuser_mode_handler(indigo_device *device) {
 			FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else {
-		if (usbv3_command(device, "FMANUA", true)) {
-			if (sscanf(PRIVATE_DATA->response, "P=%lf", &FOCUSER_POSITION_ITEM->number.value) == 1) {
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			}
+		int position;
+		// The unit answers FMANUA with an exclamation mark, so the position it stands
+		// at after the mode change is read with the command that reports it.
+		if (usbv3_command(device, "FMANUA", true) && usbv3_read_position(device, &position)) {
+			FOCUSER_POSITION_ITEM->number.value = position;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		} else {
 			FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -270,7 +355,10 @@ static void focuser_mode_handler(indigo_device *device) {
 static void focuser_speed_handler(indigo_device *device) {
 	FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_SPEED.on_change
-	if (!usbv3_command(device, "SMO%03u", false, (int)FOCUSER_SPEED_ITEM->number.target)) {
+	// The device answers a speed change with DONE. Reading it here keeps it from
+	// being delivered to the next command, which used to publish that DONE as a
+	// failed position readback.
+	if (!usbv3_command(device, "SMO%03u", true, (int)FOCUSER_SPEED_ITEM->number.target)) {
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.FOCUSER_SPEED.on_change
@@ -327,7 +415,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	indigo_cancel_pending_handler(device, focuser_position_handler);
 	indigo_cancel_pending_handler(device, focuser_steps_handler);
 	if (PRIVATE_DATA->moving) {
-		if (usbv3_command(device, "FQUITx", false)) {
+		if (usbv3_quit(device)) {
 			PRIVATE_DATA->abort = true;
 		} else {
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -344,7 +432,9 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 static void focuser_limits_handler(indigo_device *device) {
 	FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_LIMITS.on_change
-	if (!usbv3_command(device, "M%05u", false, (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target)) {
+	// The device answers a travel limit change with DONE, which has to be read for the
+	// same reason as the speed change above.
+	if (!usbv3_command(device, "M%05u", true, (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target)) {
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.FOCUSER_LIMITS.on_change

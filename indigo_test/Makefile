@@ -2459,3 +2459,16 @@ GUIDER_CGUSBST4_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a $(TE
 
 $(TEST_BUILD)/hardware/test_guider_cgusbst4_hw: hardware/test_guider_cgusbst4_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(GUIDER_CGUSBST4_HW_TEST_LDFLAGS)
+
+# Physical USB_Focus v3 hardware is opt-in and excluded from normal integration tests. THE MOTOR
+# RUNS: every move stays within a few hundred steps of the position the unit reported at the start
+# and the run restores it, and every setting it changes is written back. Set USBV3_HW_PORT to
+# override the port the driver matched through its USB pattern.
+.PHONY: test-focuser-usbv3-hw
+test-focuser-usbv3-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_usbv3_hw
+	$(TEST_BUILD)/hardware/test_focuser_usbv3_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+FOCUSER_USBV3_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_usbv3.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_focuser_usbv3_hw: hardware/test_focuser_usbv3_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_usbv3.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_USBV3_HW_TEST_LDFLAGS)
