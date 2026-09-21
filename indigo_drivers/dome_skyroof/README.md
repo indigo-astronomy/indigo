@@ -27,3 +27,7 @@ indigo_server -s
 ## Status: Untested
 
 Developed with simulator only
+
+## Testing
+
+2026-09-21 16:58 3.0.0.9 mac arm64 simulator 11/11 OK

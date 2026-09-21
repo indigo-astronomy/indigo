@@ -45,6 +45,7 @@
 | dome_nexdome | 2026-09-21 15:46 | 3.0.0.12 | mac arm64 | simulator | 46 / 46 | ✅ OK |
 | dome_nexdome3 | 2026-09-21 16:53 | 3.0.0.14 | mac arm64 | simulator | 49 / 49 | ✅ OK |
 | dome_simulator | 2026-09-21 12:43 | 3.0.0.8 | mac arm64 | simulator | 7 / 7 | ✅ OK |
+| dome_skyroof | 2026-09-21 16:58 | 3.0.0.9 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | focuser_asi | 2026-09-21 14:19 | 3.0.0.34 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
 | focuser_astroasis | 2026-09-21 14:39 | 3.0.0.10 | mac arm64 | fake SDK | 33 / 33 | ✅ OK |
 | focuser_dmfc | 2026-09-21 12:44 | 3.0.0.17 | mac arm64 | simulator | 24 / 24 | ✅ OK |
