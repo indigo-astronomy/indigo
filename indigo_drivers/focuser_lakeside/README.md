@@ -22,3 +22,7 @@ indigo_server indigo_focuser_lakeside
 ## Status: Untested
 
 Tested with simulator only
+
+## Testing
+
+2026-09-21 17:34 3.0.0.8 mac arm64 simulator 34/34 OK

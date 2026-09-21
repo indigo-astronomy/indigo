@@ -58,6 +58,7 @@
 | focuser_fli | 2026-09-21 14:40 | 3.0.0.11 | mac arm64 | fake SDK | 17 / 17 | ✅ OK |
 | focuser_focusdreampro | 2026-09-21 17:28 | 3.0.0.8 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 | focuser_lacerta | 2026-09-21 17:33 | 3.0.0.7 | mac arm64 | simulator | 43 / 43 | ✅ OK |
+| focuser_lakeside | 2026-09-21 17:34 | 3.0.0.8 | mac arm64 | simulator | 34 / 34 | ✅ OK |
 | focuser_primaluce | 2026-09-20 19:45 | 3.0.0.13 | mac arm64 | simulator | 35 / 35 | ✅ OK |
 | focuser_primaluce | 2026-09-20 19:54 | 3.0.0.13 | mac arm64 | SESTO SENSO 2 | 18 / 18 | ✅ OK |
 | focuser_prodigy | 2026-09-20 15:10 | 3.0.0.5 | mac arm64 | simulator | 55 / 55 | ✅ OK |
