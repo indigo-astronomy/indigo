@@ -64,7 +64,7 @@
 | rotator_optec | 2026-09-21 12:43 | 3.0.0.4 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | rotator_simulator | 2026-09-21 10:52 | 3.0.0.7 | mac arm64 | simulator | 9 / 9 | ✅ OK |
 | wheel_asi | 2026-09-21 00:42 | 3.0.0.15 | mac arm64 | ASI EFW mini | 16 / 16 | ✅ OK |
-| wheel_asi | 2026-09-21 10:54 | 3.0.0.16 | mac arm64 | fake SDK | 5 / 5 | ✅ OK |
+| wheel_asi | 2026-09-21 14:16 | 3.0.0.16 | mac arm64 | fake SDK | 5 / 5 | ✅ OK |
 | wheel_atik | 2026-09-20 15:00 | 3.0.0.6 | mac arm64 | fake SDK | 17 / 17 | ✅ OK |
 | wheel_manual | 2026-09-21 10:55 | 3.0.0.6 | mac arm64 | simulator | 2 / 2 | ✅ OK |
 | wheel_playerone | 2026-09-21 10:56 | 3.0.0.12 | mac arm64 | fake SDK | 12 / 12 | ✅ OK |
