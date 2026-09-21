@@ -29,3 +29,7 @@ Driver is developed and tested with:
 Use URL in form gps://host:port to connect to the GPS over network (default port is 9999).
 
 To export the GPS over the network one can use Nexbridge https://sourceforge.net/projects/nexbridge
+
+## Testing
+
+2026-09-21 17:06 3.0.0.19 mac arm64 simulator 4/4 OK
