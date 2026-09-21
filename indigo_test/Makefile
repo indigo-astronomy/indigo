@@ -2401,7 +2401,9 @@ HW_KEEP_OTHERS ?= 0
 SVB_HOTPLUG_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),-L../indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/macOS -lSVBCameraSDK,../indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/Linux/$(ARCH_DETECTED)/libSVBCameraSDK.a)
 # Explicit and local, because the shared TOUPTEK_SDK_TEST_LDFLAGS asks for -lhidapi, which only
 # the macOS build provides; on Linux the same library is built as libhidapi-libusb.
-CCD_HOTPLUG_HW_LDFLAGS = $(filter-out -lindigo,$(TEST_LDFLAGS)) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(BUILD_LIB)/libraw.a -lusb-1.0 -lz -lstdc++ -ldl
+CCD_HOTPLUG_HW_LDFLAGS = $(filter-out -lindigo -lm -lpthread,$(TEST_LDFLAGS)) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(BUILD_LIB)/libraw.a -lusb-1.0 -lz -lstdc++ -ldl
+# -lm and -lpthread come after the SDK archives, which are linked last and need them.
+CCD_HOTPLUG_HW_LDFLAGS_TAIL = -lm -lpthread
 ifeq ($(OS_DETECTED),Darwin)
 CCD_HOTPLUG_HW_LDFLAGS += -lhidapi
 else
@@ -2416,21 +2418,21 @@ test-ccd-svb-hotplug-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_svb_hotplug_h
 	$(TEST_BUILD)/hardware/test_ccd_svb_hotplug_hw $(HW_HOTPLUG_ARGS)
 
 $(TEST_BUILD)/hardware/test_ccd_svb_hotplug_hw: $(CCD_HOTPLUG_HW_SOURCES) $(BUILD_DRIVERS)/indigo_ccd_svb.a Makefile | $(TEST_BUILD)/hardware
-	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_ccd_svb -DTEST_NAME='"SVBONY"' -DTEST_VENDORS='{ 0xf266 }' $< $(BUILD_DRIVERS)/indigo_ccd_svb.a -o $@ $(CCD_HOTPLUG_HW_LDFLAGS) $(SVB_HOTPLUG_HW_TEST_SDK)
+	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_ccd_svb -DTEST_NAME='"SVBONY"' -DTEST_VENDORS='{ 0xf266 }' $< $(BUILD_DRIVERS)/indigo_ccd_svb.a -o $@ $(CCD_HOTPLUG_HW_LDFLAGS) $(SVB_HOTPLUG_HW_TEST_SDK) $(CCD_HOTPLUG_HW_LDFLAGS_TAIL)
 
 .PHONY: test-ccd-touptek-hotplug-hw
 test-ccd-touptek-hotplug-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_touptek_hotplug_hw
 	$(TEST_BUILD)/hardware/test_ccd_touptek_hotplug_hw $(HW_HOTPLUG_ARGS)
 
 $(TEST_BUILD)/hardware/test_ccd_touptek_hotplug_hw: $(CCD_HOTPLUG_HW_SOURCES) $(BUILD_DRIVERS)/indigo_ccd_touptek.a Makefile | $(TEST_BUILD)/hardware
-	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_ccd_touptek -DTEST_NAME='"ToupTek"' -DTEST_VENDORS='{ 0x0547 }' $< $(BUILD_DRIVERS)/indigo_ccd_touptek.a -o $@ $(CCD_HOTPLUG_HW_LDFLAGS) -ltoupcam
+	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_ccd_touptek -DTEST_NAME='"ToupTek"' -DTEST_VENDORS='{ 0x0547 }' $< $(BUILD_DRIVERS)/indigo_ccd_touptek.a -o $@ $(CCD_HOTPLUG_HW_LDFLAGS) -ltoupcam $(CCD_HOTPLUG_HW_LDFLAGS_TAIL)
 
 .PHONY: test-ccd-qhy2-hotplug-hw
 test-ccd-qhy2-hotplug-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_qhy2_hotplug_hw
 	$(TEST_BUILD)/hardware/test_ccd_qhy2_hotplug_hw $(HW_HOTPLUG_ARGS)
 
 $(TEST_BUILD)/hardware/test_ccd_qhy2_hotplug_hw: $(CCD_HOTPLUG_HW_SOURCES) $(BUILD_DRIVERS)/indigo_ccd_qhy2.a Makefile | $(TEST_BUILD)/hardware
-	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_ccd_qhy2 -DTEST_NAME='"QHY"' -DTEST_VENDORS='{ 0x1618 }' $< $(BUILD_DRIVERS)/indigo_ccd_qhy2.a -o $@ $(CCD_HOTPLUG_HW_LDFLAGS) -lqhyccd
+	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_ccd_qhy2 -DTEST_NAME='"QHY"' -DTEST_VENDORS='{ 0x1618 }' $< $(BUILD_DRIVERS)/indigo_ccd_qhy2.a -o $@ $(CCD_HOTPLUG_HW_LDFLAGS) -lqhyccd $(CCD_HOTPLUG_HW_LDFLAGS_TAIL)
 
 # Physical Shoestring FCUSB hardware is opt-in and excluded from normal integration tests. THE
 # MOTOR RUNS: the controller is open loop, so every move of the run is short and is followed by
