@@ -27,3 +27,7 @@ mode one should turn all knobs to 0 before powering the device.
 
 Driver is developed and tested with:
 * Lacerta FBC
+
+## Testing
+
+2026-09-21 19:33 3.0.0.8 mac arm64 simulator 10/10 OK
