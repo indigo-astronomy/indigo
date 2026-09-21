@@ -22,3 +22,7 @@ indigo_server indigo_aux_upb3
 ## Status: Stable
 
 Tested with simulator
+
+## Testing
+
+2026-09-21 22:12 3.0.0.5 mac arm64 simulator 29/29 OK
