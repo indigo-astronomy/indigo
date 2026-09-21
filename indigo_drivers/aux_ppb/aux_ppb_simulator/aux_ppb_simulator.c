@@ -34,7 +34,24 @@
 
 // ----------------------------------------------------------------- options
 
-typedef enum { MODEL_PPB, MODEL_PPBA, MODEL_SPB } ppb_model_t;
+typedef enum { MODEL_PPB, MODEL_PPBA, MODEL_PPBM, MODEL_SPB } ppb_model_t;
+
+static bool power1 = true;
+static bool power2 = true;
+static int dew1 = 0;
+static int dew2 = 0;
+static bool autodev = true;
+static bool power_alert = false;
+static int dslr_adj = 5;
+static double voltage = 12.2, temperature = 23.2, humidity = 59, dewpoint = 14.7;
+// Fault injection: the named command answers with MODE instead of its reply.
+// invalid - an unparsable line, short - a truncated status frame, silent - no
+// answer at all, close - the port is closed, which is how a transport loss looks.
+static const char *fault_command, *fault_mode;
+static bool fault_once;
+// Matches answered normally before the fault applies, so a fault can be aimed at
+// a poll rather than at the connect.
+static int fault_skip;
 
 typedef struct {
 	bool headless;
@@ -58,7 +75,16 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
-	printf("  --model <ppb|ppba|spb>  Simulated device model (default: ppb)\n");
+	printf("  --model <ppb|ppba|ppbm|spb>  Simulated device model (default: ppb)\n");
+	printf("  --outlets-off           Start with both power outlets off\n");
+	printf("  --no-autodew            Start with automatic dew control off\n");
+	printf("  --power-alert           Report the power alert flag (PPBA and PPBM)\n");
+	printf("  --dslr <volts>          Initial DSLR output voltage (PPBA and PPBM)\n");
+	printf("  --voltage <volts>       Reported input voltage\n");
+	printf("  --weather <t> <h> <d>   Reported temperature, humidity and dewpoint\n");
+	printf("  --fault <cmd> <mode>    Answer <cmd> with invalid|short|silent|close\n");
+	printf("  --fault-once <cmd> <mode>       The same, but only the first time\n");
+	printf("  --fault-after <n> <cmd> <mode>  The same, skipping the first <n> matches\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -78,19 +104,63 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--power-alert")) {
+			power_alert = true;
+		} else if (!strcmp(argv[i], "--no-autodew")) {
+			autodev = false;
+		} else if (!strcmp(argv[i], "--outlets-off")) {
+			power1 = power2 = false;
+		} else if (!strcmp(argv[i], "--dslr")) {
+			if (++i == argc) {
+				fprintf(stderr, "--dslr requires a voltage\n");
+				return false;
+			}
+			dslr_adj = atoi(argv[i]);
+		} else if (!strcmp(argv[i], "--weather")) {
+			if (i + 3 >= argc) {
+				fprintf(stderr, "--weather requires temperature, humidity and dewpoint\n");
+				return false;
+			}
+			temperature = atof(argv[++i]);
+			humidity = atof(argv[++i]);
+			dewpoint = atof(argv[++i]);
+		} else if (!strcmp(argv[i], "--voltage")) {
+			if (++i == argc) {
+				fprintf(stderr, "--voltage requires a value\n");
+				return false;
+			}
+			voltage = atof(argv[i]);
+		} else if (!strcmp(argv[i], "--fault") || !strcmp(argv[i], "--fault-once") || !strcmp(argv[i], "--fault-after")) {
+			bool after = !strcmp(argv[i], "--fault-after");
+			fault_once = after || !strcmp(argv[i], "--fault-once");
+			if (i + (after ? 3 : 2) >= argc) {
+				fprintf(stderr, "%s requires %s a command and a mode\n", argv[i], after ? "a count," : "");
+				return false;
+			}
+			if (after) {
+				fault_skip = atoi(argv[++i]);
+			}
+			fault_command = argv[++i];
+			fault_mode = argv[++i];
+			if (strcmp(fault_mode, "invalid") && strcmp(fault_mode, "short") && strcmp(fault_mode, "silent") && strcmp(fault_mode, "close")) {
+				fprintf(stderr, "Unknown fault mode '%s'\n", fault_mode);
+				return false;
+			}
 		} else if (!strcmp(argv[i], "--model")) {
 			if (++i == argc) {
-				fprintf(stderr, "--model requires ppb, ppba, or spb\n");
+				fprintf(stderr, "--model requires ppb, ppba, ppbm or spb\n");
 				return false;
 			}
 			if (!strcmp(argv[i], "ppba")) {
 				options.model = MODEL_PPBA;
+			} else if (!strcmp(argv[i], "ppbm")) {
+				options.model = MODEL_PPBM;
 			} else if (!strcmp(argv[i], "spb")) {
 				options.model = MODEL_SPB;
 			} else if (!strcmp(argv[i], "ppb")) {
 				options.model = MODEL_PPB;
 			} else {
-				fprintf(stderr, "Unknown model '%s', use ppb, ppba, or spb\n", argv[i]);
+				fprintf(stderr, "Unknown model '%s', use ppb, ppba, ppbm or spb\n", argv[i]);
 				return false;
 			}
 		} else {
@@ -106,13 +176,6 @@ static bool parse_args(int argc, char *argv[]) {
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
 
-static bool power1 = true;
-static bool power2 = true;
-static int dew1 = 0;
-static int dew2 = 0;
-static bool autodev = true;
-static bool power_alert = false;
-static int dslr_adj = 5;
 
 static void signal_handler(int sig) {
 	(void)sig;
@@ -185,10 +248,39 @@ static int sim_read_command(int fd, char *buffer, size_t length) {
 	return -1;
 }
 
+// Returns true when the command was answered by an injected fault instead of by
+// the protocol implementation below.
+static bool inject_fault(int fd, const char *cmd) {
+	if (fault_command == NULL || strcmp(cmd, fault_command)) {
+		return false;
+	}
+	if (fault_skip > 0) {
+		fault_skip--;
+		return false;
+	}
+	if (fault_once) {
+		fault_command = NULL;
+	}
+	if (!strcmp(fault_mode, "invalid")) {
+		sim_printf(fd, "invalid\n");
+	} else if (!strcmp(fault_mode, "short")) {
+		sim_printf(fd, "PPB:12.2\n");
+	} else if (!strcmp(fault_mode, "close")) {
+		close(fd);
+	}
+	// "silent" answers nothing at all.
+	return true;
+}
+
 static void dispatch_command(int fd, const char *cmd) {
+	if (inject_fault(fd, cmd)) {
+		return;
+	}
 	if (!strcmp(cmd, "P#")) {
 		if (options.model == MODEL_PPBA)
 			sim_printf(fd, "PPBA_OK\n");
+		else if (options.model == MODEL_PPBM)
+			sim_printf(fd, "PPBM_OK\n");
 		else if (options.model == MODEL_SPB)
 			sim_printf(fd, "SPB\n");
 		else
@@ -200,9 +292,9 @@ static void dispatch_command(int fd, const char *cmd) {
 	} else if (!strcmp(cmd, "PA")) {
 		// Current raw: driver divides by 65 to get amps; send 65 when load is present
 		int current_raw = (power1 || power2 || dew1 > 0 || dew2 > 0) ? 65 : 0;
-		if (options.model == MODEL_PPBA) {
-			sim_printf(fd, "PPBA:12.2:%d.0:23.2:59:14.7:%d:%d:%d:%d:%d:%d:%d\n",
-				current_raw, power1, power2, dew1, dew2, autodev, power_alert, dslr_adj);
+		if (options.model == MODEL_PPBA || options.model == MODEL_PPBM) {
+			sim_printf(fd, "%s:%.1f:%d.0:%.1f:%.0f:%.1f:%d:%d:%d:%d:%d:%d:%d\n",
+				options.model == MODEL_PPBM ? "PPBM" : "PPBA", voltage, current_raw, temperature, humidity, dewpoint, power1, power2, dew1, dew2, autodev, power_alert, dslr_adj);
 		} else {
 			// SPB and PPB share the PPB: prefix; SPB has no DSLR outlet (report 0 for slot 2)
 			int p2 = (options.model == MODEL_SPB) ? 0 : power2;
@@ -231,7 +323,7 @@ static void dispatch_command(int fd, const char *cmd) {
 	} else if (!strncmp(cmd, "PD:", 3)) {
 		autodev = cmd[3] == '1';
 		// PPBA responds with current dew aggressiveness; PPB/SPB echo the command
-		if (options.model == MODEL_PPBA)
+		if (options.model == MODEL_PPBA || options.model == MODEL_PPBM)
 			sim_printf(fd, "PD:210\n");
 		else
 			sim_printf(fd, "%s\n", cmd);

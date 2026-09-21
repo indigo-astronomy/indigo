@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001C
+#define DRIVER_VERSION       0x0300001D
 #define DRIVER_NAME          "indigo_aux_ppb"
 #define DRIVER_LABEL         "PegasusAstro Pocket Powerbox"
 #define AUX_DEVICE_NAME      "Pocket Powerbox"
@@ -183,6 +183,10 @@ static bool ppb_open(indigo_device *device) {
 				if (ppb_command(device, "PV")) {
 					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
 				}
+				// The identified model and firmware have to be published, otherwise a client
+				// keeps showing the "Unknown" the attach handler seeded and only ever sees the
+				// reset that the close handler publishes.
+				indigo_update_property(device, INFO_PROPERTY, NULL);
 				ppb_command(device, "PL:1");
 				return true;
 			}
@@ -253,35 +257,38 @@ static void aux_timer_callback(indigo_device *device) {
 				AUX_WEATHER_DEWPOINT_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok_r(NULL, ":", &pnt))) { // power ports status
+		// These two fields carry the outlet switches themselves, so they publish
+		// AUX_POWER_OUTLET. AUX_POWER_OUTLET_STATE carries only the power alert below,
+		// and it is hidden on the models without one.
+		if ((token = strtok_r(NULL, ":", &pnt)) && AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) { // power ports status
 			bool state = token[0] == '1';
 			if (AUX_POWER_OUTLET_1_ITEM->sw.value != state) {
 				AUX_POWER_OUTLET_1_ITEM->sw.value = state;
-				updatePowerOutletState = true;
+				updatePowerOutlet = true;
 			}
 		}
-		if ((token = strtok_r(NULL, ":", &pnt))) { // DSLR ports status
+		if ((token = strtok_r(NULL, ":", &pnt)) && AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) { // DSLR ports status
 			bool state = token[0] == '1';
 			if (AUX_POWER_OUTLET_2_ITEM->sw.value != state) {
 				AUX_POWER_OUTLET_2_ITEM->sw.value = state;
-				updatePowerOutletState = true;
+				updatePowerOutlet = true;
 			}
 		}
-		if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
+		if ((token = strtok_r(NULL, ":", &pnt)) && AUX_HEATER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) { // Dew1
 			double value = round(indigo_atod(token) * 100.0 / 255.0);
 			if (AUX_HEATER_OUTLET_1_ITEM->number.value != value) {
 				updateHeaterOutlet = true;
 				AUX_HEATER_OUTLET_1_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok_r(NULL, ":", &pnt))) { // Dew2
+		if ((token = strtok_r(NULL, ":", &pnt)) && AUX_HEATER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) { // Dew2
 			double value = round(indigo_atod(token) * 100.0 / 255.0);
 			if (AUX_HEATER_OUTLET_2_ITEM->number.value != value) {
 				updateHeaterOutlet = true;
 				AUX_HEATER_OUTLET_2_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
+		if ((token = strtok_r(NULL, ":", &pnt)) && AUX_DEW_CONTROL_PROPERTY->state != INDIGO_BUSY_STATE) { // Autodew
 			bool state = token[0] == '1';
 			if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != state) {
 				indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, state ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
@@ -296,7 +303,7 @@ static void aux_timer_callback(indigo_device *device) {
 				updatePowerOutletState = true;
 			}
 		}
-		if (PRIVATE_DATA->is_advance && (token = strtok_r(NULL, ":", &pnt))) { // DSLR power
+		if (PRIVATE_DATA->is_advance && (token = strtok_r(NULL, ":", &pnt)) && AUX_DSLR_POWER_PROPERTY->state != INDIGO_BUSY_STATE) { // DSLR power
 			if (!strcmp(token, "3")) {
 				updateDSLRPower = !AUX_DSLR_POWER_3_ITEM->sw.value;
 				indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_3_ITEM, true);

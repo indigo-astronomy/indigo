@@ -2767,6 +2767,7 @@
 		5996614F22CE6A5F00330652 /* ao_sx_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ao_sx_simulator.ino; sourceTree = "<group>"; };
 		5996615122CF3E0F00330652 /* indigo_aux_ppb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_ppb.c; sourceTree = "<group>"; };
 		5996615222CF3E0F00330652 /* indigo_aux_ppb_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_ppb_main.c; sourceTree = "<group>"; };
+		C0DE20260921000200000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		5996615322CF3E0F00330652 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5996615422CF3E0F00330652 /* indigo_aux_ppb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_ppb.h; sourceTree = "<group>"; };
 		5996615622CF3E0F00330652 /* aux_ppb_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = aux_ppb_simulator.ino; sourceTree = "<group>"; };
@@ -9187,6 +9188,7 @@
 			isa = PBXGroup;
 			children = (
 				5996615322CF3E0F00330652 /* README.md */,
+				C0DE20260921000200000001 /* REFACTOR.md */,
 				5996615422CF3E0F00330652 /* indigo_aux_ppb.h */,
 				5996615122CF3E0F00330652 /* indigo_aux_ppb.c */,
 				5996615222CF3E0F00330652 /* indigo_aux_ppb_main.c */,
