@@ -30,11 +30,7 @@ The only known workaround is to run the application containing UVC driver as roo
 call to detach kernel driver and subsequent execution of the application execution will work until the camera is unplugged.
 
 Unplugging a connected camera is not safe: the process can abort while the driver closes the device
-from its unplug handler. libusb fails the assertion `pthread_mutex_destroy(mutex) == 0` inside
-libusb_close(), because the lock of the device handle carries an unbalanced use count, and the
-crash reproduces on every attempt with an SVBONY SV205 on Linux arm64 with libusb 1.0.26. It is
-older than the 3.0.0.27 bulk endpoint fix and the cause is not understood yet, so disconnect a
-camera in the client before unplugging it.
+from its unplug handler.
 
 ## Testing
 
