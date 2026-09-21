@@ -344,3 +344,67 @@ items in `on_change_request`, replacing the earlier workaround that forced the p
 to `INDIGO_OK_STATE` so the BUSY-guarded dispatch macro would let the request through. Behaviour is
 unchanged: the handler already released both relays of the axis and cancelled the pending finaliser
 before starting the replacement.
+
+## Hardware acceptance — Player One Mars-C II, version 25 / 0x03000019 (2026-09-21)
+
+Environment: macOS 26.6.2 (Darwin 25.6.0) arm64, arm64 runtime, bundled Player One SDK. Camera: Mars-C
+II, colour, uncooled, with an ST4 guider.
+
+`indigo_test/hardware/test_ccd_playerone_hw.c` was restructured from one monolithic workflow into 27
+independently named and reported cases, following the same shape as `test_ccd_asi_hw.c`. The opt-in
+entry points keep their meaning: `--run` runs the non-hot-plug cases, `--hotplug` appends the four
+cable-cycle cases, `--acceptance` appends the flash-suffix replug case, `--suffix` and the three
+`--abort-*` flags select those alone, and a trailing argument filters cases by name.
+
+Commands:
+
+```sh
+make -C indigo_test build/hardware/test_ccd_playerone_hw build/hardware/test_ccd_playerone_reload_hw
+indigo_test/build/hardware/test_ccd_playerone_hw --run
+indigo_test/build/hardware/test_ccd_playerone_reload_hw --run
+indigo_test/build/integration/test_ccd_playerone_sdk
+```
+
+Results: 27/27 hardware cases, 6/6 dynamic `dlclose`/`dlopen` reload cases, 49/49 fake SDK cases. Every
+pixel format, every sensor mode, every frame type, bins 1 and 2 with a nonzero ROI checked against the
+delivered geometry, the advanced controls, presets, offset, fractional and repeated exposures, guiding
+during acquisition, abort and reacquisition, exact and sustained streaming, all four guide directions,
+simultaneous axes, the rejected-change guards, both connection orders, reconnect, the flash suffix, the
+refused shutdown and reinitialisation all pass. The camera is uncooled, so the cooling row reports
+itself as not applicable. Physical hot-plug was excluded from this session by request.
+
+## Found defects — 2026-09-21
+
+### POA-D01 — the driver stopped advertising multi-device support
+
+Observable impact: `indigo_ccd_playerone(INDIGO_DRIVER_INFO, &info)` reported
+`info.multi_device_support == false`, so a server or client deciding from the driver's own metadata
+would not offer additional device instances. The hand-written predecessor reported `true`, and the
+baseline inventory in this document records that "driver metadata advertises multi-device support" as a
+property to preserve. Nothing in this plan decided to drop it.
+
+Root cause: the migration did not carry the flag into the generator input. The generator emits `false`
+unless the `.driver` declares `multi_device_support = true;`.
+
+Fix: `multi_device_support = true;` added to `indigo_ccd_playerone.driver`; the regenerated driver
+reports `true` again. Version 24 -> 25. This is the same defect class as ASI-D01 in
+`indigo_drivers/ccd_asi/REFACTOR.md`; a repository-wide audit of it is recorded in
+`indigo_drivers/REVIEW.md`.
+
+Regression test: `poa_reports_identity_and_capabilities` in
+`indigo_test/hardware/test_ccd_playerone_hw.c` asserts `info.multi_device_support`. The assertion fails
+against the pre-fix driver and passes after it, in both the static and the dynamic loader build.
+
+### Test defect found in the same pass
+
+The restructured hardware test did not point `CCD_LOCAL_MODE` at its temporary directory, so the camera
+kept the default `~/indigo_image_cache/`. `CONFIG SAVE` then stored that path and `CONFIG LOAD` refused
+it with "Folder ... is not writtable", failing the configuration roundtrip — and a passing run would
+have been writing into the user's home directory. `prepare_client_raw()` now sets the local directory
+first, which both isolates the run and fixes the case.
+
+## Final test summary — 2026-09-21
+
+- Simulated (fake SDK) tests: 49 run, 49 passed.
+- Hardware tests: 33 run, 33 passed — 27 on the Mars-C II plus 6 dynamic reload cases. Four physical
+  hot-plug cases and the flash-suffix replug case exist and were not run; they need an operator.

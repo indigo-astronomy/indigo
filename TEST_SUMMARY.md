@@ -3,6 +3,10 @@
 2026-09-20 23:35 3.0.0.13 mac arm64 simulator 11/11 OK
 2026-09-20 23:43 3.0.0.13 mac arm64 SX AO-L 16/16 OK
 
+# ccd_altair
+
+2026-09-21 10:22 3.0.0.48 mac arm64 Altair ALTAIRGP224C 28/27 Failed
+
 # ccd_asi (ZWO ASI Camera)
 
 2026-09-21 08:02 3.0.0.64 mac arm64 fake SDK 51/51 OK
@@ -19,7 +23,8 @@
 
 # ccd_playerone (Player One Camera)
 
-2026-09-20 21:31 3.0.0.23 mac arm64 fake SDK 48/48 OK
+2026-09-21 09:12 3.0.0.25 mac arm64 fake SDK 49/49 OK
+2026-09-21 09:26 3.0.0.25 mac arm64 Mars-C II 27/27 OK
 
 # ccd_simulator (Camera Simulator)
 
@@ -36,6 +41,10 @@
 # ccd_sx (Starlight Xpress Camera)
 
 2026-09-20 21:31 3.0.0.19 mac arm64 fake SDK 24/24 OK
+
+# ccd_touptek
+
+2026-09-21 10:04 3.0.0.48 mac arm64 Touptek GPCMOS01200KMB 28/27 Failed
 
 # dome_baader (Baader Classic Dome)
 

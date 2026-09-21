@@ -32,3 +32,7 @@ indigo_server indigo_ccd_altair
 ## Comments
 
 There is a known issue with SDK and reopening the camera - exposure is not possible until the camera is reconnected.
+
+## Testing
+
+2026-09-21 10:22 3.0.0.48 mac arm64 Altair ALTAIRGP224C 28/27 Failed

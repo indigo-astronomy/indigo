@@ -38,7 +38,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION											0x0300002f
+#define DRIVER_VERSION											0x03000030
 #define PRIVATE_DATA												((DRIVER_PRIVATE_DATA *)device->private_data)
 
 #define ADVANCED_GROUP											"Advanced"
@@ -1044,6 +1044,9 @@ static void ccd_connection_handler(indigo_device *device) {
 				}
 				indigo_define_property(device, X_CCD_CONVERSION_GAIN_PROPERTY, NULL);
 			}
+			if (X_CCD_BIN_MODE_PROPERTY) {
+				indigo_define_property(device, X_CCD_BIN_MODE_PROPERTY, NULL);
+			}
 			int led_state = 0;
 			result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TAILLIGHT), &led_state);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_TAILLIGHT, ->%d) -> %08x", led_state, result);
@@ -1480,12 +1483,21 @@ static void ccd_x_bin_mode_handler(indigo_device *device) {
 	indigo_update_property(device, X_CCD_BIN_MODE_PROPERTY, NULL);
 }
 
+// A saved property that the camera does not publish stalls the configuration restore: it is dispatched
+// in file order and waited for, so nothing after it in the file is applied either. Only save the
+// controls this camera actually exposes.
+static void save_if_published(indigo_device *device, indigo_property *property) {
+	if (property != NULL && !property->hidden) {
+		indigo_save_property(device, NULL, property);
+	}
+}
+
 static void ccd_config_handler(indigo_device *device) {
 	if (CONFIG_SAVE_ITEM->sw.value) {
-		indigo_save_property(device, NULL, X_CCD_ADVANCED_PROPERTY);
-		indigo_save_property(device, NULL, X_CCD_CONVERSION_GAIN_PROPERTY);
-		indigo_save_property(device, NULL, X_CCD_BIN_MODE_PROPERTY);
-		indigo_save_property(device, NULL, X_CCD_LED_PROPERTY);
+		save_if_published(device, X_CCD_ADVANCED_PROPERTY);
+		save_if_published(device, X_CCD_CONVERSION_GAIN_PROPERTY);
+		save_if_published(device, X_CCD_BIN_MODE_PROPERTY);
+		save_if_published(device, X_CCD_LED_PROPERTY);
 	}
 	CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_property *property = indigo_copy_property(NULL, CONFIG_PROPERTY);

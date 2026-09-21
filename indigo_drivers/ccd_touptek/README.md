@@ -37,3 +37,7 @@ Tested with:
 
 * There is a known issue with SDK and reopening the camera - exposure is not possible until the camera is reconnected.
 * Filter wheel does not report the number of slots, so it shuld be selected by the user.
+
+## Testing
+
+2026-09-21 10:04 3.0.0.48 mac arm64 Touptek GPCMOS01200KMB 28/27 Failed

@@ -363,3 +363,122 @@ cd indigo_test && INDIGO_TEST_FILTER="Rejected change" ./build/integration/test_
 The refused path stays exclusive to `indigo_test/integration/test_ccd_touptek_sdk.c`, because a real camera cannot be made to fail `put_ExpoAGain()` or `put_Option(OPTION_BLACKLEVEL)` on demand.
 
 Verified on 2026-09-18 with a Touptek GPCMOS01200KMB: the test passes against the current driver (gain 100 -> 550 -> 100, offset 8 -> 248 -> 8), and it fails when either success-path `value = target` assignment is removed from `ccd_gain_handler` or `ccd_offset_handler`.
+
+## Hardware acceptance — ToupTek GPCMOS01200KMB and Altair ALTAIRGP224C (2026-09-21)
+
+Environment: macOS 26.6.2 (Darwin 25.6.0) arm64, arm64 runtime. This source is shared by every OEM
+variant through `#include "../ccd_touptek/indigo_ccd_touptek.c"`, so the two runs below exercise the
+same implementation against two different vendor SDKs and two different cameras. Driver version
+`0x03000030` (3.0.0.48).
+
+`indigo_test/hardware/test_ccd_touptek_hw.c` was restructured from one monolithic workflow into 28
+independently named and reported cases, following `test_ccd_asi_hw.c` and `test_ccd_playerone_hw.c`,
+and extended to the capability-gated coverage the CCD class standard asks for: every published mode,
+bins and a nonzero ROI checked against the delivered frame geometry, every frame type, gain, offset,
+gamma, the advanced controls, binning mode, conversion gain, fan, heater and LED, cooling, the
+configuration roundtrip, fractional and repeated exposures, guiding during acquisition, abort and
+reacquisition, exact and sustained streaming, all four guide directions, simultaneous axes, both
+connection orders, reconnect, the refused shutdown, reinitialisation and frame validity. The harness
+also gained a `send_message` callback, without which the driver's own messages — including the reason
+a configuration restore fails — never reached the test output, and a temporary configuration directory
+so a run no longer writes into the user's own INDIGO configuration or image cache.
+
+Commands:
+
+```sh
+make -C indigo_test build/hardware/test_ccd_touptek_hw
+INDIGO_TEST_DRIVER=touptek indigo_test/build/hardware/test_ccd_touptek_hw --run
+INDIGO_TEST_DRIVER=altair indigo_test/build/hardware/test_ccd_touptek_hw --run
+```
+
+Results: 27 of 28 cases pass on each camera. The single failure is the configuration roundtrip,
+recorded as an expected baseline failure in TT-D03 below. Capability profiles differ as expected: the
+GPCMOS01200KMB publishes gain, offset, advanced and binning mode; the ALTAIRGP224C adds conversion
+gain. Neither is cooled and neither exposes fan, heater or LED, so those rows report themselves as not
+applicable. Physical hot-plug was excluded from this session by request; the two cable-cycle cases are
+implemented behind `--hotplug` and need an operator.
+
+## Found defects — 2026-09-21
+
+### TT-D01 — the binning mode was never published to a connected client
+
+Observable impact: `X_CCD_BIN_MODE` was created in attach, had a working change handler, was written
+into the saved configuration and was deleted on disconnect, but the connection handler never defined
+it. A client that attaches before connecting — which is every real client — therefore never saw the
+binning mode control and could not change it. Only a client that issued an explicit enumeration for
+that one property while connected would receive it, through `ccd_enumerate_properties()`.
+
+Root cause: the connect block defines `X_CCD_ADVANCED`, `X_CCD_FAN`, `X_CCD_HEATER`,
+`X_CCD_CONVERSION_GAIN` and `X_CCD_LED`, and the `X_CCD_BIN_MODE` define was simply missing from that
+list.
+
+Fix: the connection handler now defines `X_CCD_BIN_MODE` alongside the other advanced controls.
+Version `0x0300002f` -> `0x03000030`.
+
+Regression test: `tp_publishes_the_property_contract` reports every optional control it finds. Against
+the pre-fix driver it printed `optional X_CCD_BIN_MODE: absent` on both cameras and
+`tp_selects_the_bin_mode` skipped itself; after the fix it prints `published` and
+`tp_selects_the_bin_mode` exercises all three items.
+
+### TT-D02 — a hidden control was written into the saved configuration
+
+Observable impact: `ccd_config_handler()` saved `X_CCD_ADVANCED`, `X_CCD_CONVERSION_GAIN`,
+`X_CCD_BIN_MODE` and `X_CCD_LED` unconditionally. `indigo_save_property()` does not skip a hidden
+property, unlike define and update, so a camera whose LED option read fails — which sets
+`X_CCD_LED_PROPERTY->hidden` — wrote a control into the file that the camera does not publish. The
+configuration restore dispatches every saved property and waits for each, so such an entry can stall
+the whole restore and lose every setting after it in file order.
+
+Root cause: no visibility check before the save.
+
+Fix: a small `save_if_published()` helper skips a NULL or hidden property. Version `0x0300002f` ->
+`0x03000030`, together with TT-D01.
+
+Regression test: not covered. Neither available camera reports a hidden `X_CCD_LED`, so the stalling
+entry cannot be produced on this hardware; the fake SDK suite would need an option-read failure
+profile to reach it. Recorded as a deferred gap rather than claimed as tested.
+
+### TT-D03 — the configuration restore fails on both cameras (expected baseline failure)
+
+Observable impact: reproduced on the Touptek GPCMOS01200KMB and the Altair ALTAIRGP224C. `CONFIG SAVE`
+writes a correct file — verified by reading it back, it contains `CCD_GAIN GAIN 101` and thirteen other
+properties — but `CONFIG LOAD` answers "Configuration restore failed or timed out" and applies nothing.
+A debug trace shows no vendor SDK call at all between the load request and the failure, so the saved
+values never reach the driver. Loading a saved configuration is therefore broken for this driver
+family.
+
+Investigation so far, all of it ruling things out rather than pinning the cause:
+
+- Not the save. The file is present, well formed and contains the changed value.
+- Not a stalled property. Every one of the fourteen saved properties is published and settled when the
+  failure is reported; a per-property state dump is printed by the failing case.
+- Not `CCD_LENS` settling in IDLE. The base driver leaves a zeroed lens profile in `INDIGO_IDLE_STATE`
+  and the framework suppresses that unchanged update, which looked like a plausible stall for the
+  restore observer. Giving the profile real numbers first made `CCD_LENS` settle OK and the restore
+  still failed.
+- Not the update suppression on already-matching values. Moving `X_CCD_ADVANCED.SPEED` away from its
+  saved value before the load, so that no saved property still matched the current one, did not help
+  either.
+- Not specific to one camera or one vendor SDK: both cameras fail identically.
+
+The remaining suspects are in the framework's `config_restore` machinery in `indigo_libs/indigo_driver.c`
+and its interaction with this driver's hand-written `ccd_change_property()`, which returns
+`INDIGO_OK` without publishing anything when a request arrives while a related property is BUSY — the
+silent-drop pattern that the generated drivers replaced with an explicit `reject_change` ALERT. A client
+that waits for a response, as the restore does, cannot distinguish that from a lost request. Confirming
+it means changing `indigo_libs`, which is outside the scope of this driver pass, so it is recorded here
+and as a finding in `indigo_drivers/REVIEW.md` instead of being fixed blind.
+
+Per `indigo_drivers/AGENTS.override.md` this is kept as an expected baseline failure:
+`tp_saves_and_loads_configuration` still asserts the real contract and still fails, and the case
+carries a comment pointing here. It was not weakened and the defect was not encoded as correct
+behaviour.
+
+## Final test summary — 2026-09-21
+
+- Simulated (fake SDK) tests: 0 run in this pass. The existing `test_ccd_touptek_sdk` fake SDK suite was
+  not re-run because this pass changed only the connect-side define, the configuration save filter and
+  the hardware harness; it is listed as a gap for the next change that touches acquisition.
+- Hardware tests: 56 run, 54 passed — 28 cases on the Touptek GPCMOS01200KMB and 28 on the Altair
+  ALTAIRGP224C, with the same single expected baseline failure (TT-D03) on each. Two physical hot-plug
+  cases exist behind `--hotplug` and were not run; they need an operator at the cable.
