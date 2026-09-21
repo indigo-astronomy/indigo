@@ -38,3 +38,7 @@ Powerbox/PBox uses the `Switch Control` group of `MGBox Weather`: outlet names, 
 ## Generated source and validation
 
 Edit `indigo_aux_mgbox.driver` and regenerate the C, header and main with `indigo_generator`. The migration, compatibility decisions and validation results are recorded in [REFACTOR.md](REFACTOR.md). The host PTY simulator covers weather, GPS, Powerbox, failure recovery and shared/additional-instance lifecycles. These tests do not validate physical relay timing, hardware reboot/reset behavior, TCP bridges or all model firmware variants.
+
+## Testing
+
+2026-09-21 19:37 3.0.0.10 mac arm64 simulator 32/32 OK

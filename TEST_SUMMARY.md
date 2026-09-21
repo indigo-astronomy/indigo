@@ -13,6 +13,7 @@
 | aux_flipflat | 2026-09-21 19:34 | 3.0.0.9 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | aux_geoptikflat | 2026-09-21 19:34 | 3.0.0.7 | mac arm64 | simulator | 2 / 2 | ✅ OK |
 | aux_joystick | 2026-09-21 14:42 | 3.0.0.10 | mac arm64 | fake SDK | 14 / 14 | ✅ OK |
+| aux_mgbox | 2026-09-21 19:37 | 3.0.0.10 | mac arm64 | simulator | 32 / 32 | ✅ OK |
 | aux_rpio | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | fake SDK | 19 / 19 | ✅ OK |
 | aux_rpio | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | Raspberry Pi 5 | 4 / 4 | ✅ OK |
 | ccd_altair | 2026-09-21 10:22 | 3.0.0.48 | mac arm64 | Altair ALTAIRGP224C | 28 / 27 | ❌ Failed |
