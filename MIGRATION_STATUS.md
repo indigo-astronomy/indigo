@@ -13,23 +13,23 @@
 | agent_scripting         | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 60 / 0 | |
 | agent_astrometry        | 2️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Sim | 31 / 0 | |
 | ao_sx                   | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 11 / 16 | |
-| aux_arteskyflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
+| aux_arteskyflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
 | aux_asiair              | 3️⃣ | ⛔ N/A | ✅ Yes | ✅ Yes | ✅ HW  | 16 / 3 | ⛔ RPi only |
 | aux_astromechanics      | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 6 / 0 | |
 | aux_cloudwatcher        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 16 / 0 | |
 | aux_dragonfly           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | |
-| aux_dsusb               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 10 / 0 | |
+| aux_dsusb               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 11 / 11 | |
 | aux_fbc                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 10 / 0 | |
 | aux_flatmaster          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 8 / 0 | |
 | aux_flipflat            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 11 / 0 | |
-| aux_geoptikflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
+| aux_geoptikflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 12 / 0 | |
 | aux_joystick            | 3️⃣ | ❌ No  | ⛔ N/A | ✅ Yes | ✅ HW  | 14 / 2 | |
 | aux_mgbox               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 32 / 0 | |
 | aux_ppb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 29 / 0 | |
 | aux_rpio                | 3️⃣ | ⛔ N/A | ✅ Yes | ✅ Yes | ✅ HW  | 19 / 4 | ⛔ RPi only |
-| aux_rts                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 0 / 0 | |
-| aux_skyalert            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
-| aux_sqm                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
+| aux_rts                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
+| aux_skyalert            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 10 / 0 | |
+| aux_sqm                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 10 / 0 | |
 | aux_svbpowerbox         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 13 / 0 | |
 | aux_uch                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 11 / 0 | |
 | aux_upb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 37 / 14 | |
@@ -83,7 +83,7 @@
 | focuser_dsd             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 42 / 0 | |
 | focuser_efa             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 56 / 0 | |
 | focuser_fc3             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 28 / 0 | |
-| focuser_fcusb           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 17 / 0 | |
+| focuser_fcusb           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 17 / 10 | |
 | focuser_fli             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | |
 | focuser_focusdreampro   | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | |
 | focuser_ioptron         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 40 / 0 | |
@@ -110,8 +110,8 @@
 | gps_nmea                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 4 / 0 | `test_gps_nmea_transport.c` carries the protocol coverage |
 | gps_simulator           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 4 / 0 | |
 | guider_asi              | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | ⏰ TODO - find SDK for windows |
-| guider_cgusbst4         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 4 / 0 | |
-| guider_gpusb            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 15 / 0 | |
+| guider_cgusbst4         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 5 / 10 | |
+| guider_gpusb            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 16 / 10 | |
 | mount_asi               | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ Sim | 10 / 0 | |
 | mount_ioptron           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 104 / 0 | |
 | mount_lx200             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 70 / 0 | |

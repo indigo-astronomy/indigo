@@ -345,6 +345,98 @@ in its `indigo_<name>.c`; more than one means multiple logical devices. The
 master is the device that unhides `DEVICE_PORT` (`DEVICE_PORT_PROPERTY->hidden
 = false`); the others open via `device->master_device`.
 
+## Driving the Hardware Test Host Over SSH
+
+Hardware suites run on the host the devices are attached to, which is reached
+over SSH and driven non-interactively, one command at a time:
+
+```bash
+ssh user@testhost 'cd ~/indigo && make -C indigo_test test-ccd-uvc-hw'
+```
+
+Confirm which system the host booted before building anything on it. A machine
+that keeps a cloned card or disk next to its working one exposes two indigo
+checkouts that look alike, and a build can silently land on the stale one:
+
+```bash
+ssh user@testhost 'findmnt -n -o SOURCE /; git -C ~/indigo log --oneline -1'
+```
+
+A full build and a hardware run outlive a command timeout, so detach them and
+follow the log instead of holding the session open:
+
+```bash
+ssh user@testhost 'cd ~/indigo && setsid nohup sh -c "make >~/build.log 2>&1; echo EXIT=\$? >>~/build.log" >/dev/null 2>&1 </dev/null &'
+ssh user@testhost 'until grep -q EXIT= ~/build.log; do sleep 15; done; tail -3 ~/build.log'
+```
+
+The host needs no key of its own for `git fetch`, `git pull` and `git push`.
+Forward the agent instead, so the key stays on the machine that holds it:
+
+```bash
+ssh -A user@testhost 'cd ~/indigo && git pull --ff-only'
+```
+
+The first such connection needs `github.com` in the host's `known_hosts`. Add it
+from a verified key rather than by accepting whatever answers, comparing against
+the fingerprints GitHub publishes:
+
+```bash
+ssh user@testhost 'ssh-keyscan -t ed25519 github.com | tee -a ~/.ssh/known_hosts | ssh-keygen -lf -'
+# 256 SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU github.com (ED25519)
+```
+
+Send anything longer than a one-liner as a file. A remote command wrapped in
+single quotes is parsed by the local shell first, so an apostrophe in a comment
+or a `!` in a device name truncates or mangles it, usually into something that
+still runs:
+
+```bash
+scp patch.py user@testhost:/tmp/
+ssh user@testhost 'cd ~/indigo && python3 /tmp/patch.py'
+```
+
+## Hot-Plug Cases Without Touching the Cable
+
+Hardware suites keep the unplug and replug case opt-in, print a `HOTPLUG_READY`
+marker when they are ready for it, and then wait for the device to disappear and
+to come back, reporting `HOTPLUG_REMOVED` and `HOTPLUG_RECOVERED`. On Linux that
+wait can be answered from the shell, so the case runs unattended and can be
+repeated in a loop while a defect is being tracked down.
+
+Disable the USB port the device sits on. The port drops its device the way an
+unplugged cable does, and a real disconnect reaches libusb:
+
+```bash
+# Find the device node by vendor and product id, here 0bda:3038.
+for device in /sys/bus/usb/devices/*/; do
+	[ -f "$device/idVendor" ] || continue
+	[ "$(cat $device/idVendor):$(cat $device/idProduct)" = "0bda:3038" ] && echo "$device"
+done
+# /sys/bus/usb/devices/4-1/ is bus 4, port 1, so its port control is:
+PORT=/sys/bus/usb/devices/usb4/4-0:1.0/usb4-port1/disable
+echo 1 | sudo tee $PORT   # unplug
+echo 0 | sudo tee $PORT   # plug back in
+```
+
+Wait for `HOTPLUG_READY` in the output before disabling the port and for
+`HOTPLUG_REMOVED` before enabling it again. Both waits have their own timeout in
+the suite, so a script that moves on too early makes the case fail for its own
+reason.
+
+Do not reach for `authorized` instead. Writing 0 to
+`/sys/bus/usb/devices/<device>/authorized` unbinds the kernel driver but leaves
+the device on the bus, no disconnect reaches libusb, and the suite waits out its
+unplug timeout with the device still present.
+
+Confirm the port path belongs to the device under test before writing to it. The
+numbering is per machine, and a neighbouring port can carry the disk the machine
+runs from.
+
+macOS has no equivalent control. A hub with per-port power switching driven by
+`uhubctl` works on both systems, but only when the hub supports the feature;
+otherwise the cable has to be pulled by hand.
+
 ## Recording Test Runs
 
 After every driver test run, record the outcome in that driver's `README.md`:

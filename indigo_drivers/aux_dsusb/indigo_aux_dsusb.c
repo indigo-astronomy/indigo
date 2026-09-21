@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_aux_dsusb"
 #define DRIVER_LABEL         "Shoestring DSUSB shutter release"
 #define AUX_DEVICE_NAME      "%s"
@@ -71,6 +71,7 @@ typedef struct {
 	//+ data
 	libdsusb_device_context *device_context;
 	double exposure_endtime;
+	bool status_reliable;
 	//- data
 } dsusb_private_data;
 
@@ -87,8 +88,38 @@ static bool dsusb_match(libusb_device *dev, const char **name) {
 	return libdsusb_shutter(dev, name);
 }
 
+// libdsusb_write() hands hid_write() a single byte and logs the result of the matching
+// comparison, but returns the result of a comparison with two, so the shipped library
+// reports failure for every successful write: against a real DSUSB the debug log says OK
+// while libdsusb_start() returns false. Trusting that return value alone aborts every
+// exposure as failed the moment the shutter opens. dsusb_open() therefore asks the library
+// once whether it can report a success at all, and the wrappers below report a failure
+// only for a build that can. A fixed library re-enables the error reporting with no
+// further change.
+static bool dsusb_status(indigo_device *device, bool result) {
+	return result || !PRIVATE_DATA->status_reliable;
+}
+
+static bool dsusb_focus(indigo_device *device) {
+	return dsusb_status(device, libdsusb_focus(PRIVATE_DATA->device_context));
+}
+
+static bool dsusb_start(indigo_device *device) {
+	return dsusb_status(device, libdsusb_start(PRIVATE_DATA->device_context));
+}
+
+static bool dsusb_stop(indigo_device *device) {
+	return dsusb_status(device, libdsusb_stop(PRIVATE_DATA->device_context));
+}
+
 static bool dsusb_open(indigo_device *device) {
-	return libdsusb_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context);
+	if (!libdsusb_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context)) {
+		return false;
+	}
+	// libdsusb_open() has just released the contacts, so this repeats a write the adapter
+	// has already taken and only records whether the library can report its result.
+	PRIVATE_DATA->status_reliable = libdsusb_stop(PRIVATE_DATA->device_context);
+	return true;
 }
 
 static void dsusb_close(indigo_device *device) {
@@ -106,13 +137,13 @@ static void dsusb_debug(const char *message) {
 static void aux_timer_callback(indigo_device *device);
 
 static void aux_focus_finalizer(indigo_device *device) {
-	if (libdsusb_start(PRIVATE_DATA->device_context)) {
+	if (dsusb_start(device)) {
 		PRIVATE_DATA->exposure_endtime = indigo_monotonic_time() + CCD_EXPOSURE_ITEM->number.target;
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.target < 1 ? CCD_EXPOSURE_ITEM->number.target : 1, aux_timer_callback);
 	} else {
 		PRIVATE_DATA->exposure_endtime = 0;
-		libdsusb_stop(PRIVATE_DATA->device_context);
+		dsusb_stop(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -132,7 +163,7 @@ static void aux_timer_callback(indigo_device *device) {
 		if (time_left <= 0) {
 			CCD_EXPOSURE_ITEM->number.value = 0;
 			PRIVATE_DATA->exposure_endtime = 0;
-			CCD_EXPOSURE_PROPERTY->state = libdsusb_stop(PRIVATE_DATA->device_context) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			CCD_EXPOSURE_PROPERTY->state = dsusb_stop(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		} else {
 			CCD_EXPOSURE_ITEM->number.value = ceil(time_left);
 		}
@@ -170,7 +201,7 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_cancel_pending_handlers(device);
 		//+ aux.on_disconnect
 		PRIVATE_DATA->exposure_endtime = 0;
-		libdsusb_stop(PRIVATE_DATA->device_context);
+		dsusb_stop(device);
 		//- aux.on_disconnect
 		indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 		indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -193,7 +224,7 @@ static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, aux_timer_callback);
 		indigo_cancel_pending_handler(device, aux_focus_finalizer);
 		PRIVATE_DATA->exposure_endtime = 0;
-		if (!libdsusb_stop(PRIVATE_DATA->device_context)) {
+		if (!dsusb_stop(device)) {
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		INDIGO_UPDATE_PROPERTY_STATE(CCD_EXPOSURE_PROPERTY, INDIGO_ALERT_STATE, NULL);
@@ -206,7 +237,7 @@ static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 static void aux_ccd_exposure_handler(indigo_device *device) {
 	//+ aux.CCD_EXPOSURE.on_change
 	if (X_CONFIG_FOCUS_ITEM->sw.value) {
-		if (libdsusb_focus(PRIVATE_DATA->device_context)) {
+		if (dsusb_focus(device)) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_execute_handler_in(device, 1, aux_focus_finalizer);
 		} else {

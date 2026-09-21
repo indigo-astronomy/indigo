@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_guider_gpusb"
 #define DRIVER_LABEL         "Shoestring GPUSB guider"
 #define GUIDER_DEVICE_NAME   "%s"
@@ -54,6 +54,7 @@ typedef struct {
 	//+ data
 	libgpusb_device_context *device_context;
 	unsigned short relay_mask;
+	bool status_reliable;
 	//- data
 } gpusb_private_data;
 
@@ -68,13 +69,36 @@ static bool gpusb_match(libusb_device *dev, const char **name) {
 	return libgpusb_guider(dev, name);
 }
 
+// libgpusb_write() hands hid_write() a single byte and then compares the result with two,
+// so the shipped library reports failure for every successful write: against a real GPUSB
+// Guider the HID layer answers "Success" while libgpusb_set() returns false, on macOS
+// arm64 and x86_64 alike. Trusting that return value alone puts every guide pulse into
+// ALERT although the relay was closed, which is how the adapter behaved after the 3.0
+// refactoring; the pre-3.0 driver never looked at the value. gpusb_open() therefore asks
+// the library once whether it can report a success at all, and gpusb_set() reports a
+// failure only for a build that can. A fixed library re-enables the error reporting here
+// with no further change.
+static bool gpusb_set(indigo_device *device, int mask) {
+	bool result = libgpusb_set(PRIVATE_DATA->device_context, mask);
+	return result || !PRIVATE_DATA->status_reliable;
+}
+
 static bool gpusb_open(indigo_device *device) {
-	return libgpusb_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context);
+	if (!libgpusb_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context)) {
+		return false;
+	}
+	// libgpusb_open() has just released every relay, so this repeats a write the adapter
+	// has already taken and only records whether the library can report its result.
+	PRIVATE_DATA->status_reliable = libgpusb_set(PRIVATE_DATA->device_context, 0);
+	return true;
 }
 
 static void gpusb_close(indigo_device *device) {
 	libgpusb_set(PRIVATE_DATA->device_context, 0);
 	libgpusb_close(PRIVATE_DATA->device_context);
+	// The relays are open again, so the mask a pulse extends must not survive the session;
+	// otherwise the first pulse after a reconnect closes the relay of the interrupted one.
+	PRIVATE_DATA->relay_mask = 0;
 }
 
 static void gpusb_debug(const char *message) {
@@ -84,14 +108,14 @@ static void gpusb_debug(const char *message) {
 static void guider_guide_dec_finalizer(indigo_device *device) {
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
-	bool ok = libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
+	bool ok = gpusb_set(device, PRIVATE_DATA->relay_mask);
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 
 static void guider_guide_ra_finalizer(indigo_device *device) {
 	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
-	bool ok = libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
+	bool ok = gpusb_set(device, PRIVATE_DATA->relay_mask);
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 
@@ -132,7 +156,7 @@ static void guider_guide_dec_handler(indigo_device *device) {
 			requested_mask |= GPUSB_DEC_SOUTH;
 		}
 	}
-	if (!libgpusb_set(PRIVATE_DATA->device_context, requested_mask)) {
+	if (!gpusb_set(device, requested_mask)) {
 		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	} else {
 		PRIVATE_DATA->relay_mask = requested_mask;
@@ -159,7 +183,7 @@ static void guider_guide_ra_handler(indigo_device *device) {
 			requested_mask |= GPUSB_RA_WEST;
 		}
 	}
-	if (!libgpusb_set(PRIVATE_DATA->device_context, requested_mask)) {
+	if (!gpusb_set(device, requested_mask)) {
 		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	} else {
 		PRIVATE_DATA->relay_mask = requested_mask;

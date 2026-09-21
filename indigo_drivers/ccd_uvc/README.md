@@ -29,6 +29,9 @@ UVC driver doesn't work on macOS Monterey or later due to presence of system ker
 The only known workaround is to run the application containing UVC driver as root to allow libusb_set_auto_detach_kernel_driver()
 call to detach kernel driver and subsequent execution of the application execution will work until the camera is unplugged.
 
+Unplugging a connected camera is not safe: the process can abort while the driver closes the device
+from its unplug handler.
+
 ## Testing
 
 2026-09-21 14:12 3.0.0.26 mac arm64 fake SDK 21/21 OK

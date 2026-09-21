@@ -27,4 +27,5 @@ Driver is developed and tested with:
 
 ## Testing
 
-2026-09-20 20:52 3.0.0.7 mac arm64 simulator 4/4 OK
+2026-09-21 23:52 3.0.0.7 mac arm64 CG-USB-ST4 10/10 OK
+2026-09-21 23:53 3.0.0.7 mac arm64 simulator 5/5 OK

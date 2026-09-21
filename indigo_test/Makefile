@@ -75,7 +75,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_wheel_manual \
 	$(INTEGRATION_BUILD)/test_guider_cgusbst4_transport \
 	$(INTEGRATION_BUILD)/test_aux_geoptikflat_transport \
-	$(INTEGRATION_BUILD)/test_aux_rts_transport \
+	$(INTEGRATION_BUILD)/test_aux_rts_shutter \
 	$(INTEGRATION_BUILD)/test_generator_architecture \
 	$(INTEGRATION_BUILD)/test_wheel_playerone_sdk \
 	$(INTEGRATION_BUILD)/test_wheel_fli_sdk \
@@ -184,6 +184,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_aux_astromechanics_simulator \
 	$(INTEGRATION_BUILD)/test_aux_fbc_simulator \
 	$(INTEGRATION_BUILD)/test_aux_flatmaster_simulator \
+	$(INTEGRATION_BUILD)/test_aux_geoptikflat_simulator \
 	$(INTEGRATION_BUILD)/test_aux_flipflat_simulator \
 	$(INTEGRATION_BUILD)/test_ao_sx_simulator \
 	$(INTEGRATION_BUILD)/test_mount_synscan_simulator \
@@ -261,6 +262,7 @@ AUX_ARTESKYFLAT_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_arteskyflat
 AUX_ASTROMECHANICS_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_astromechanics.a $(TEST_LDFLAGS) -lindigocat
 AUX_FBC_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_fbc.a $(TEST_LDFLAGS) -lindigocat
 AUX_FLATMASTER_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_flatmaster.a $(TEST_LDFLAGS) -lindigocat
+AUX_GEOPTIKFLAT_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_geoptikflat.a $(TEST_LDFLAGS) -lindigocat
 AUX_FLIPFLAT_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_flipflat.a $(TEST_LDFLAGS) -lindigocat
 AO_SX_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_ao_sx.a $(TEST_LDFLAGS) -lindigocat
 MOUNT_SYNSCAN_SIMULATOR_TEST_LDFLAGS = $(INTEGRATION_BUILD)/mount_synscan_test_driver.o $(TEST_LDFLAGS) -lindigocat
@@ -541,6 +543,9 @@ $(INTEGRATION_BUILD)/aux_wcv4ec_simulator: ../indigo_drivers/aux_wcv4ec/aux_wcv4
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
 
 $(INTEGRATION_BUILD)/aux_arteskyflat_simulator: ../indigo_drivers/aux_arteskyflat/aux_arteskyflat_simulator/aux_arteskyflat_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
+$(INTEGRATION_BUILD)/aux_geoptikflat_simulator: ../indigo_drivers/aux_geoptikflat/aux_geoptikflat_simulator/aux_geoptikflat_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/aux_astromechanics_simulator: ../indigo_drivers/aux_astromechanics/aux_astromechanics_simulator/aux_astromechanics_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -981,8 +986,17 @@ $(INTEGRATION_BUILD)/test_aux_wcv4ec_simulator: integration/test_aux_wcv4ec_simu
 $(INTEGRATION_BUILD)/test_aux_arteskyflat_simulator: integration/test_aux_arteskyflat_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_arteskyflat_simulator $(BUILD_DRIVERS)/indigo_aux_arteskyflat.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_ARTESKYFLAT_SIMULATOR_TEST_LDFLAGS)
 
+$(INTEGRATION_BUILD)/test_aux_geoptikflat_simulator: integration/test_aux_geoptikflat_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_geoptikflat_simulator $(BUILD_DRIVERS)/indigo_aux_geoptikflat.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_GEOPTIKFLAT_SIMULATOR_TEST_LDFLAGS)
+
 $(INTEGRATION_BUILD)/test_aux_arteskyflat_simulator_asan: integration/test_aux_arteskyflat_simulator.c ../indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_arteskyflat_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
+
+$(INTEGRATION_BUILD)/test_aux_geoptikflat_simulator_asan: integration/test_aux_geoptikflat_simulator.c ../indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_geoptikflat_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
+
+$(INTEGRATION_BUILD)/test_aux_skyalert_simulator_asan: integration/test_aux_skyalert_simulator.c ../indigo_drivers/aux_skyalert/indigo_aux_skyalert.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_skyalert_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_skyalert/indigo_aux_skyalert.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/test_aux_astromechanics_simulator: integration/test_aux_astromechanics_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_astromechanics_simulator $(BUILD_DRIVERS)/indigo_aux_astromechanics.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_ASTROMECHANICS_SIMULATOR_TEST_LDFLAGS)
@@ -1013,6 +1027,9 @@ $(INTEGRATION_BUILD)/test_aux_skyalert_simulator: integration/test_aux_skyalert_
 
 $(INTEGRATION_BUILD)/test_aux_sqm_simulator: integration/test_aux_sqm_simulator.c $(BUILD_DRIVERS)/indigo_aux_sqm.a integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_sqm_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_SQM_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_aux_sqm_simulator_asan: integration/test_aux_sqm_simulator.c ../indigo_drivers/aux_sqm/indigo_aux_sqm.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_sqm_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_sqm/indigo_aux_sqm.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/test_aux_uch_simulator: integration/test_aux_uch_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_uch_simulator $(BUILD_DRIVERS)/indigo_aux_uch.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_UCH_SIMULATOR_TEST_LDFLAGS)
@@ -1578,11 +1595,19 @@ $(INTEGRATION_BUILD)/aux_geoptikflat_transport.o: ../indigo_drivers/aux_geoptikf
 $(INTEGRATION_BUILD)/test_aux_geoptikflat_transport: integration/test_serial_outputs.c $(INTEGRATION_BUILD)/aux_geoptikflat_transport.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DTEST_KIND=2 -DTEST_ENTRY=indigo_aux_geoptikflat -DTEST_NAME='"Geoptik Flat Generator"' $< $(INTEGRATION_BUILD)/aux_geoptikflat_transport.o -o $@ $(TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/aux_rts_transport.o: ../indigo_drivers/aux_rts/indigo_aux_rts.c | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(OUTPUT_TRANSPORT_REPLACEMENTS) -c $< -o $@
+RTS_SHUTTER_REPLACEMENTS = -Dindigo_uni_open_serial=rts_test_open -Dindigo_uni_close=rts_test_close -Dindigo_uni_set_rts=rts_test_set_rts
 
-$(INTEGRATION_BUILD)/test_aux_rts_transport: integration/test_serial_outputs.c $(INTEGRATION_BUILD)/aux_rts_transport.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -DTEST_KIND=3 -DTEST_ENTRY=indigo_aux_rts -DTEST_NAME='"RTS-on-COM shutter"' $< $(INTEGRATION_BUILD)/aux_rts_transport.o -o $@ $(TEST_LDFLAGS)
+$(INTEGRATION_BUILD)/aux_rts_shutter.o: ../indigo_drivers/aux_rts/indigo_aux_rts.c | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(RTS_SHUTTER_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_aux_rts_shutter: integration/test_aux_rts_shutter.c $(INTEGRATION_BUILD)/aux_rts_shutter.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/aux_rts_shutter.o -o $@ $(TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/aux_rts_shutter_asan.o: ../indigo_drivers/aux_rts/indigo_aux_rts.c | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $(RTS_SHUTTER_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_aux_rts_shutter_asan: integration/test_aux_rts_shutter.c $(INTEGRATION_BUILD)/aux_rts_shutter_asan.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $< $(INTEGRATION_BUILD)/aux_rts_shutter_asan.o -o $@ $(TEST_LDFLAGS) -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/test_wheel_manual: integration/test_wheel_manual.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_wheel_manual.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(BUILD_DRIVERS)/indigo_wheel_manual.a $(TEST_LDFLAGS)
@@ -2333,3 +2358,104 @@ $(INTEGRATION_BUILD)/ccd_fli_sdk_driver_asan.o: ../indigo_drivers/ccd_fli/indigo
 
 $(INTEGRATION_BUILD)/test_ccd_fli_sdk_asan: integration/test_ccd_fli_sdk.c integration/fli_fake_sdk.h integration/fli_sdk_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_fli_sdk_driver_asan.o | $(INTEGRATION_BUILD)
 	$(CC) $(FLI_SANITIZE_CFLAGS) $(FLI_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_fli_sdk_driver_asan.o -o $@ $(FLI_SANITIZE_LDFLAGS) -lusb-1.0
+
+# Physical Shoestring GPUSB hardware is opt-in and excluded from normal integration tests. The
+# adapter only closes ST4 relays, so nothing moves unless a mount is wired to it. Physical hot-plug
+# is not part of the run; the faked libusb boundary of test_guider_gpusb_sdk covers it.
+.PHONY: test-guider-gpusb-hw
+test-guider-gpusb-hw: check-lib $(TEST_BUILD)/hardware/test_guider_gpusb_hw
+	$(TEST_BUILD)/hardware/test_guider_gpusb_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+GUIDER_GPUSB_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),../indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/macOS/libgpusb.a,../indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/Linux/$(ARCH_DETECTED)/libgpusb.a)
+GUIDER_GPUSB_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_guider_gpusb.a $(GUIDER_GPUSB_HW_TEST_SDK) $(TEST_LDFLAGS) -lusb-1.0
+
+$(TEST_BUILD)/hardware/test_guider_gpusb_hw: hardware/test_guider_gpusb_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_guider_gpusb.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(GUIDER_GPUSB_HW_TEST_LDFLAGS)
+
+# Physical Shoestring DSUSB hardware is opt-in and excluded from normal integration tests. The
+# adapter closes the focus and shutter contacts of the camera wired to it, so a connected camera
+# takes the short exposures the run starts. Physical hot-plug is not part of the run; the faked
+# libusb boundary of test_aux_dsusb_sdk covers it.
+.PHONY: test-aux-dsusb-hw
+test-aux-dsusb-hw: check-lib $(TEST_BUILD)/hardware/test_aux_dsusb_hw
+	$(TEST_BUILD)/hardware/test_aux_dsusb_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+AUX_DSUSB_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),../indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/macOS/libdsusb.a,../indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/Linux/$(ARCH_DETECTED)/libdsusb.a)
+AUX_DSUSB_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_dsusb.a $(AUX_DSUSB_HW_TEST_SDK) $(TEST_LDFLAGS) -lusb-1.0
+
+$(TEST_BUILD)/hardware/test_aux_dsusb_hw: hardware/test_aux_dsusb_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_dsusb.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_DSUSB_HW_TEST_LDFLAGS)
+
+# Unattended hot-plug acceptance for the USB camera drivers. One source, one binary per driver,
+# each switching the power of its own camera's USB port instead of asking for a cable to be pulled,
+# so the case runs on a machine nobody is sitting at. Physical hardware is opt-in and deliberately
+# excluded from test/test-integration. The port is switched through a Linux kernel interface; on
+# macOS every binary reports the suite as skipped and exits 0, so the targets stay usable there.
+#
+# HW_KEEP_OTHERS=1 leaves the other USB devices powered. By default every other switchable port is
+# powered down for the run, because a host whose USB power budget cannot carry all attached cameras
+# at once browns out mid-exposure and the failure reads like a driver defect. Ports carrying a mass
+# storage device are never switched, whatever the setting, so a machine booting from a USB disk
+# keeps running.
+HW_KEEP_OTHERS ?= 0
+SVB_HOTPLUG_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),-L../indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/macOS -lSVBCameraSDK,../indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/Linux/$(ARCH_DETECTED)/libSVBCameraSDK.a)
+# Explicit and local, because the shared TOUPTEK_SDK_TEST_LDFLAGS asks for -lhidapi, which only
+# the macOS build provides; on Linux the same library is built as libhidapi-libusb.
+CCD_HOTPLUG_HW_LDFLAGS = $(filter-out -lindigo -lm -lpthread,$(TEST_LDFLAGS)) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(BUILD_LIB)/libraw.a -lusb-1.0 -lz -lstdc++ -ldl
+# -lm and -lpthread come after the SDK archives, which are linked last and need them.
+CCD_HOTPLUG_HW_LDFLAGS_TAIL = -lm -lpthread
+ifeq ($(OS_DETECTED),Darwin)
+CCD_HOTPLUG_HW_LDFLAGS += -lhidapi
+else
+CCD_HOTPLUG_HW_LDFLAGS += -lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common
+endif
+
+HW_HOTPLUG_ARGS = --run $(if $(filter 1,$(HW_KEEP_OTHERS)),--keep-others) $(if $(filter 1,$(HW_DEBUG)),--debug)
+CCD_HOTPLUG_HW_SOURCES = hardware/test_ccd_hotplug_hw.c hardware/hardware_test_common.h hardware/usb_hotplug_test_common.h test_runner.h
+
+.PHONY: test-ccd-svb-hotplug-hw
+test-ccd-svb-hotplug-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_svb_hotplug_hw
+	$(TEST_BUILD)/hardware/test_ccd_svb_hotplug_hw $(HW_HOTPLUG_ARGS)
+
+$(TEST_BUILD)/hardware/test_ccd_svb_hotplug_hw: $(CCD_HOTPLUG_HW_SOURCES) $(BUILD_DRIVERS)/indigo_ccd_svb.a Makefile | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_ccd_svb -DTEST_NAME='"SVBONY"' -DTEST_VENDORS='{ 0xf266 }' $< $(BUILD_DRIVERS)/indigo_ccd_svb.a -o $@ $(CCD_HOTPLUG_HW_LDFLAGS) $(SVB_HOTPLUG_HW_TEST_SDK) $(CCD_HOTPLUG_HW_LDFLAGS_TAIL)
+
+.PHONY: test-ccd-touptek-hotplug-hw
+test-ccd-touptek-hotplug-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_touptek_hotplug_hw
+	$(TEST_BUILD)/hardware/test_ccd_touptek_hotplug_hw $(HW_HOTPLUG_ARGS)
+
+$(TEST_BUILD)/hardware/test_ccd_touptek_hotplug_hw: $(CCD_HOTPLUG_HW_SOURCES) $(BUILD_DRIVERS)/indigo_ccd_touptek.a Makefile | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_ccd_touptek -DTEST_NAME='"ToupTek"' -DTEST_VENDORS='{ 0x0547 }' $< $(BUILD_DRIVERS)/indigo_ccd_touptek.a -o $@ $(CCD_HOTPLUG_HW_LDFLAGS) -ltoupcam $(CCD_HOTPLUG_HW_LDFLAGS_TAIL)
+
+.PHONY: test-ccd-qhy2-hotplug-hw
+test-ccd-qhy2-hotplug-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_qhy2_hotplug_hw
+	$(TEST_BUILD)/hardware/test_ccd_qhy2_hotplug_hw $(HW_HOTPLUG_ARGS)
+
+$(TEST_BUILD)/hardware/test_ccd_qhy2_hotplug_hw: $(CCD_HOTPLUG_HW_SOURCES) $(BUILD_DRIVERS)/indigo_ccd_qhy2.a Makefile | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_ccd_qhy2 -DTEST_NAME='"QHY"' -DTEST_VENDORS='{ 0x1618 }' $< $(BUILD_DRIVERS)/indigo_ccd_qhy2.a -o $@ $(CCD_HOTPLUG_HW_LDFLAGS) -lqhyccd $(CCD_HOTPLUG_HW_LDFLAGS_TAIL)
+
+# Physical Shoestring FCUSB hardware is opt-in and excluded from normal integration tests. THE
+# MOTOR RUNS: the controller is open loop, so every move of the run is short and is followed by
+# the opposite move of the same length. Physical hot-plug is not part of the run; the faked libusb
+# boundary of test_focuser_fcusb_sdk covers it.
+.PHONY: test-focuser-fcusb-hw
+test-focuser-fcusb-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_fcusb_hw
+	$(TEST_BUILD)/hardware/test_focuser_fcusb_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+FOCUSER_FCUSB_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),../indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS/libfcusb.a,../indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a)
+FOCUSER_FCUSB_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_fcusb.a $(FOCUSER_FCUSB_HW_TEST_SDK) $(TEST_LDFLAGS) -lusb-1.0
+
+$(TEST_BUILD)/hardware/test_focuser_fcusb_hw: hardware/test_focuser_fcusb_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_fcusb.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_FCUSB_HW_TEST_LDFLAGS)
+
+# Physical CG-USB-ST4 hardware is opt-in and excluded from normal integration tests. The adapter
+# only closes ST4 relays, so nothing moves unless a mount is wired to it. Set CGUSBST4_HW_PORT to
+# override the port the driver matched through its USB pattern.
+.PHONY: test-guider-cgusbst4-hw
+test-guider-cgusbst4-hw: check-lib $(TEST_BUILD)/hardware/test_guider_cgusbst4_hw
+	$(TEST_BUILD)/hardware/test_guider_cgusbst4_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+GUIDER_CGUSBST4_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_guider_cgusbst4_hw: hardware/test_guider_cgusbst4_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(GUIDER_CGUSBST4_HW_TEST_LDFLAGS)

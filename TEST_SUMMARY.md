@@ -2,22 +2,25 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | ao_sx | 2026-09-20 23:35 | 3.0.0.13 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | ao_sx | 2026-09-20 23:43 | 3.0.0.13 | mac arm64 | SX AO-L | 16 / 16 | ✅ OK |
-| aux_arteskyflat | 2026-09-21 19:31 | 3.0.0.8 | mac arm64 | simulator | 3 / 3 | ✅ OK |
+| aux_arteskyflat | 2026-09-21 23:03 | 3.0.0.8 | mac arm64 | simulator | 9 / 9 | ✅ OK |
 | aux_asiair | 2026-09-20 22:35 | 3.0.0.4 | linux arm64 | fake SDK | 16 / 16 | ✅ OK |
 | aux_asiair | 2026-09-20 22:35 | 3.0.0.4 | linux arm64 | Raspberry Pi 5 | 3 / 3 | ✅ OK |
 | aux_astromechanics | 2026-09-21 19:31 | 3.0.0.6 | mac arm64 | simulator | 6 / 6 | ✅ OK |
 | aux_cloudwatcher | 2026-09-21 23:05 | 3.0.0.13 | mac arm64 | simulator | 16 / 16 | ✅ OK |
-| aux_dsusb | 2026-09-21 14:42 | 3.0.0.15 | mac arm64 | fake SDK | 10 / 10 | ✅ OK |
+| aux_dsusb | 2026-09-21 23:41 | 3.0.0.16 | mac arm64 | DSUSB | 11 / 11 | ✅ OK |
+| aux_dsusb | 2026-09-21 23:42 | 3.0.0.16 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
 | aux_fbc | 2026-09-21 19:33 | 3.0.0.8 | mac arm64 | simulator | 10 / 10 | ✅ OK |
 | aux_flatmaster | 2026-09-21 19:33 | 3.0.0.10 | mac arm64 | simulator | 8 / 8 | ✅ OK |
 | aux_flipflat | 2026-09-21 19:34 | 3.0.0.9 | mac arm64 | simulator | 11 / 11 | ✅ OK |
-| aux_geoptikflat | 2026-09-21 19:34 | 3.0.0.7 | mac arm64 | simulator | 2 / 2 | ✅ OK |
+| aux_geoptikflat | 2026-09-21 22:48 | 3.0.0.8 | mac arm64 | simulator | 12 / 12 | ✅ OK |
 | aux_joystick | 2026-09-21 14:42 | 3.0.0.10 | mac arm64 | fake SDK | 14 / 14 | ✅ OK |
 | aux_mgbox | 2026-09-21 19:37 | 3.0.0.10 | mac arm64 | simulator | 32 / 32 | ✅ OK |
 | aux_ppb | 2026-09-21 21:47 | 3.0.0.29 | mac arm64 | simulator | 29 / 29 | ✅ OK |
 | aux_rpio | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | fake SDK | 19 / 19 | ✅ OK |
 | aux_rpio | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | Raspberry Pi 5 | 4 / 4 | ✅ OK |
-| aux_rts | 2026-09-21 19:37 | 3.0.0.9 | mac arm64 | simulator | 3 / 3 | ✅ OK |
+| aux_rts | 2026-09-21 23:49 | 3.0.0.10 | mac arm64 | simulator | 9 / 9 | ✅ OK |
+| aux_skyalert | 2026-09-21 23:17 | 3.0.0.7 | mac arm64 | simulator | 10 / 10 | ✅ OK |
+| aux_sqm | 2026-09-21 23:28 | 3.0.0.20 | mac arm64 | simulator | 10 / 10 | ✅ OK |
 | aux_svbpowerbox | 2026-09-21 19:38 | 3.0.0.2 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 | aux_uch | 2026-09-21 22:45 | 3.0.0.6 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | aux_upb | 2026-09-21 22:38 | 3.0.0.28 | mac arm64 | simulator | 37 / 37 | ✅ OK |
@@ -77,6 +80,7 @@
 | focuser_efa | 2026-09-21 19:31 | 3.0.0.20 | mac arm64 | simulator | 56 / 56 | ✅ OK |
 | focuser_fc3 | 2026-09-20 13:06 | 3.0.0.7 | mac arm64 | simulator | 28 / 28 | ✅ OK |
 | focuser_fcusb | 2026-09-21 14:40 | 3.0.0.9 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
+| focuser_fcusb | 2026-09-21 23:46 | 3.0.0.9 | mac arm64 | FCUSB | 10 / 10 | ✅ OK |
 | focuser_fli | 2026-09-21 14:40 | 3.0.0.11 | mac arm64 | fake SDK | 17 / 17 | ✅ OK |
 | focuser_focusdreampro | 2026-09-21 17:28 | 3.0.0.8 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 | focuser_ioptron | 2026-09-21 19:06 | 3.0.0.8 | mac arm64 | simulator | 40 / 40 | ✅ OK |
@@ -102,8 +106,10 @@
 | gps_nmea | 2026-09-21 17:06 | 3.0.0.19 | mac arm64 | simulator | 4 / 4 | ✅ OK |
 | gps_simulator | 2026-09-21 17:06 | 3.0.0.9 | mac arm64 | simulator | 4 / 4 | ✅ OK |
 | guider_asi | 2026-09-21 10:47 | 3.0.0.10 | mac arm64 | fake SDK | 16 / 16 | ✅ OK |
-| guider_cgusbst4 | 2026-09-20 20:52 | 3.0.0.7 | mac arm64 | simulator | 4 / 4 | ✅ OK |
-| guider_gpusb | 2026-09-21 14:42 | 3.0.0.9 | mac arm64 | fake SDK | 19 / 19 | ✅ OK |
+| guider_cgusbst4 | 2026-09-21 23:52 | 3.0.0.7 | mac arm64 | CG-USB-ST4 | 10 / 10 | ✅ OK |
+| guider_cgusbst4 | 2026-09-21 23:53 | 3.0.0.7 | mac arm64 | simulator | 5 / 5 | ✅ OK |
+| guider_gpusb | 2026-09-21 23:31 | 3.0.0.10 | mac arm64 | GPUSB | 10 / 10 | ✅ OK |
+| guider_gpusb | 2026-09-21 23:32 | 3.0.0.10 | mac arm64 | fake SDK | 20 / 20 | ✅ OK |
 | mount_ioptron | 2026-09-20 21:29 | 3.0.0.53 | mac arm64 | simulator | 104 / 104 | ✅ OK |
 | mount_lx200 | 2026-09-20 21:29 | 3.0.0.56 | mac arm64 | simulator | 70 / 70 | ✅ OK |
 | mount_nexstar | 2026-09-20 20:44 | 3.0.0.34 | mac arm64 | simulator | 13 / 13 | ✅ OK |
