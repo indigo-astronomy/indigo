@@ -36,3 +36,7 @@ Select the serial port before connecting; generator defaults replace the old pla
 ## License
 
 INDIGO Astronomy open-source license.
+
+## Testing
+
+2026-09-21 19:06 3.0.0.8 mac arm64 simulator 40/40 OK

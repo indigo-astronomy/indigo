@@ -20,7 +20,7 @@ driver ioptron {
 	label = "iOptron iEAF Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2024-2026 CloudMakers, s. r. o.";
-	version = 7;
+	version = 8;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -111,7 +111,11 @@ driver ioptron {
 
 		static void ioptron_publish(indigo_device *device) {
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->position;
-			if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain) {
+			// The periodic timer evaluates its admission condition before the status read, so a
+			// change request accepted meanwhile has already copied its target and published BUSY.
+			// Re-check the same condition here, otherwise the stale poll would overwrite that
+			// target with the current position and the queued handler would move nowhere.
+			if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain && (PRIVATE_DATA->moving || (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE))) {
 				FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 			}
 			double temperature = PRIVATE_DATA->temperature / 100.0 - 273.15;

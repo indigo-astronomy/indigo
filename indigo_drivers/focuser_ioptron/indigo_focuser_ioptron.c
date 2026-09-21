@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_focuser_ioptron"
 #define DRIVER_LABEL         "iOptron iEAF Focuser"
 #define FOCUSER_DEVICE_NAME  "iOptron iEAF"
@@ -152,7 +152,11 @@ static void ioptron_motion_state(indigo_device *device, indigo_property_state st
 
 static void ioptron_publish(indigo_device *device) {
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->position;
-	if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain) {
+	// The periodic timer evaluates its admission condition before the status read, so a
+	// change request accepted meanwhile has already copied its target and published BUSY.
+	// Re-check the same condition here, otherwise the stale poll would overwrite that
+	// target with the current position and the queued handler would move nowhere.
+	if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain && (PRIVATE_DATA->moving || (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE))) {
 		FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 	}
 	double temperature = PRIVATE_DATA->temperature / 100.0 - 273.15;

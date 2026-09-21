@@ -237,7 +237,21 @@ static bool switch_change(const char *property, const char *item, bool value, in
 }
 
 static bool at_position(int position) {
-	return wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, position, .01) && wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE) && wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE);
+	if (!wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, position, .01)) {
+		fprintf(stderr, "FOCUSER_POSITION.POSITION did not reach %d, value is %g\n", position, cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+		return false;
+	}
+	if (!wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE)) {
+		indigo_property *property = find_cached_property(FOCUSER_POSITION_PROPERTY_NAME);
+		fprintf(stderr, "FOCUSER_POSITION did not reach OK, state is %d\n", property ? property->state : -1);
+		return false;
+	}
+	if (!wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE)) {
+		indigo_property *property = find_cached_property(FOCUSER_STEPS_PROPERTY_NAME);
+		fprintf(stderr, "FOCUSER_STEPS did not reach OK, state is %d\n", property ? property->state : -1);
+		return false;
+	}
+	return true;
 }
 
 static void instances(void) {
@@ -365,6 +379,9 @@ static void rejected_change_alerts_and_keeps_values(void) {
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 40000, INDIGO_BUSY_STATE));
+	// FOCUSER_STEPS reaches BUSY in the generated prologue, before the handler clamps and publishes
+	// the derived FOCUSER_POSITION target, so wait for that publication before snapshotting it.
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
