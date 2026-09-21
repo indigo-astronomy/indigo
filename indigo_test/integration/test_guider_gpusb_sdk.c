@@ -41,7 +41,7 @@ static const simulator_driver_case guider = { "Shoestring GPUSB guider", "indigo
 #define MASK_HISTORY 64
 
 static atomic_int opened, closed, calls, calls_after_close, references, attached;
-static atomic_int fail_open, fail_set, fail_nth_set, relay_mask;
+static atomic_int fail_open, fail_set, fail_nth_set, relay_mask, report_failure_always;
 static atomic_int history_count;
 static int history[MASK_HISTORY];
 static double history_time[MASK_HISTORY];
@@ -62,6 +62,7 @@ static void reset_fake(void) {
 	atomic_store(&fail_set, 0);
 	atomic_store(&fail_nth_set, 0);
 	atomic_store(&relay_mask, 0);
+	atomic_store(&report_failure_always, 0);
 	atomic_store(&history_count, 0);
 	atomic_store(&fail_queue, 0);
 	atomic_store(&fail_register, 0);
@@ -111,7 +112,9 @@ bool libgpusb_set(libgpusb_device_context *context, int mask) {
 		history_time[index] = now_seconds();
 	}
 	atomic_store(&relay_mask, mask);
-	return true;
+	// The shipped library takes the write and still answers false, so the write is recorded
+	// before the status this mode returns.
+	return !atomic_load(&report_failure_always);
 }
 
 bool libgpusb_led_green(libgpusb_device_context *context) { return true; }
@@ -506,6 +509,24 @@ cleanup:
 	driver_stop();
 }
 
+// The shipped libgpusb hands hid_write() one byte and compares the result with
+// two, so it answers false for every successful write. Trusting that status put
+// a physically working GPUSB into ALERT on every pulse. The driver asks the
+// library once at open whether it can report a success at all and stops
+// trusting a failure from a build that cannot. The evidence is recorded in
+// indigo_drivers/guider_gpusb/REFACTOR.md.
+static void library_never_reports_success(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	atomic_store(&report_failure_always, 1);
+	SERIAL_CHECK_TRUE(connect_guider());
+	SERIAL_CHECK_TRUE(pulse_completes(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 200));
+	// The relay was closed and released for the requested time, which is what the property state
+	// now reports again.
+	SERIAL_CHECK_TRUE(held_seconds(GPUSB_DEC_NORTH) > 0.15);
+cleanup:
+	driver_stop();
+}
+
 // A release the device refuses at the end of a pulse must be reported rather
 // than published as a completed pulse.
 static void relay_release_failure(void) {
@@ -561,6 +582,7 @@ int main(void) {
 		{ "zero_request_stops", zero_request_stops },
 		{ "relay_write_failure", relay_write_failure },
 		{ "relay_release_failure", relay_release_failure },
+		{ "library_never_reports_success", library_never_reports_success },
 		{ "disconnect_during_pulse", disconnect_during_pulse }
 	};
 	return indigo_run_tests("Shoestring GPUSB guider", tests, ARRAY_SIZE(tests));

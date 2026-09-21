@@ -2350,3 +2350,16 @@ $(INTEGRATION_BUILD)/ccd_fli_sdk_driver_asan.o: ../indigo_drivers/ccd_fli/indigo
 
 $(INTEGRATION_BUILD)/test_ccd_fli_sdk_asan: integration/test_ccd_fli_sdk.c integration/fli_fake_sdk.h integration/fli_sdk_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_fli_sdk_driver_asan.o | $(INTEGRATION_BUILD)
 	$(CC) $(FLI_SANITIZE_CFLAGS) $(FLI_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_fli_sdk_driver_asan.o -o $@ $(FLI_SANITIZE_LDFLAGS) -lusb-1.0
+
+# Physical Shoestring GPUSB hardware is opt-in and excluded from normal integration tests. The
+# adapter only closes ST4 relays, so nothing moves unless a mount is wired to it. Physical hot-plug
+# is not part of the run; the faked libusb boundary of test_guider_gpusb_sdk covers it.
+.PHONY: test-guider-gpusb-hw
+test-guider-gpusb-hw: check-lib $(TEST_BUILD)/hardware/test_guider_gpusb_hw
+	$(TEST_BUILD)/hardware/test_guider_gpusb_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+GUIDER_GPUSB_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),../indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/macOS/libgpusb.a,../indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/Linux/$(ARCH_DETECTED)/libgpusb.a)
+GUIDER_GPUSB_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_guider_gpusb.a $(GUIDER_GPUSB_HW_TEST_SDK) $(TEST_LDFLAGS) -lusb-1.0
+
+$(TEST_BUILD)/hardware/test_guider_gpusb_hw: hardware/test_guider_gpusb_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_guider_gpusb.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(GUIDER_GPUSB_HW_TEST_LDFLAGS)

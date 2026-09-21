@@ -105,7 +105,8 @@
 | gps_simulator | 2026-09-21 17:06 | 3.0.0.9 | mac arm64 | simulator | 4 / 4 | ✅ OK |
 | guider_asi | 2026-09-21 10:47 | 3.0.0.10 | mac arm64 | fake SDK | 16 / 16 | ✅ OK |
 | guider_cgusbst4 | 2026-09-20 20:52 | 3.0.0.7 | mac arm64 | simulator | 4 / 4 | ✅ OK |
-| guider_gpusb | 2026-09-21 14:42 | 3.0.0.9 | mac arm64 | fake SDK | 19 / 19 | ✅ OK |
+| guider_gpusb | 2026-09-21 23:31 | 3.0.0.10 | mac arm64 | GPUSB | 10 / 10 | ✅ OK |
+| guider_gpusb | 2026-09-21 23:32 | 3.0.0.10 | mac arm64 | fake SDK | 20 / 20 | ✅ OK |
 | mount_ioptron | 2026-09-20 21:29 | 3.0.0.53 | mac arm64 | simulator | 104 / 104 | ✅ OK |
 | mount_lx200 | 2026-09-20 21:29 | 3.0.0.56 | mac arm64 | simulator | 70 / 70 | ✅ OK |
 | mount_nexstar | 2026-09-20 20:44 | 3.0.0.34 | mac arm64 | simulator | 13 / 13 | ✅ OK |
