@@ -1603,6 +1603,12 @@ $(INTEGRATION_BUILD)/aux_rts_shutter.o: ../indigo_drivers/aux_rts/indigo_aux_rts
 $(INTEGRATION_BUILD)/test_aux_rts_shutter: integration/test_aux_rts_shutter.c $(INTEGRATION_BUILD)/aux_rts_shutter.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/aux_rts_shutter.o -o $@ $(TEST_LDFLAGS)
 
+$(INTEGRATION_BUILD)/aux_rts_shutter_asan.o: ../indigo_drivers/aux_rts/indigo_aux_rts.c | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $(RTS_SHUTTER_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_aux_rts_shutter_asan: integration/test_aux_rts_shutter.c $(INTEGRATION_BUILD)/aux_rts_shutter_asan.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $< $(INTEGRATION_BUILD)/aux_rts_shutter_asan.o -o $@ $(TEST_LDFLAGS) -fsanitize=address,undefined
+
 $(INTEGRATION_BUILD)/test_wheel_manual: integration/test_wheel_manual.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_wheel_manual.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(BUILD_DRIVERS)/indigo_wheel_manual.a $(TEST_LDFLAGS)
 

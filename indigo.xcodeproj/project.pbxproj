@@ -5027,6 +5027,8 @@
 		59FFB064288D3CB900F172AC /* indigo_ccd_playerone_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_playerone_main.c; sourceTree = "<group>"; };
 		6690353AF13CB11838BACF0D /* test_guider_asi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_guider_asi_sdk.c; sourceTree = "<group>"; };
 		7330D4CDFA32AB370C17EF61 /* test_serial_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_serial_outputs.c; sourceTree = "<group>"; };
+		C0DE20260921F00000000004 /* test_aux_rts_shutter.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_rts_shutter.c; sourceTree = "<group>"; };
+		C0DE20260921F00000000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		76F8AA906122440EB263392A /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		842F7CE01D284EB1AA9EBECA /* rpio_sysfs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = rpio_sysfs.c; sourceTree = "<group>"; };
 		8C1FC871C19C3024C359D9DF /* test_aux_skyalert_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_skyalert_transport.c; sourceTree = "<group>"; };
@@ -10957,6 +10959,7 @@
 			isa = PBXGroup;
 			children = (
 				59BBD18D2182472E008199D6 /* README.md */,
+				C0DE20260921F00000000003 /* REFACTOR.md */,
 				59BBD18C2182472E008199D6 /* indigo_aux_rts.h */,
 				59BBD18A2182472E008199D6 /* indigo_aux_rts.c */,
 				59BBD18B2182472E008199D6 /* indigo_aux_rts_main.c */,
@@ -14183,6 +14186,7 @@
 				5984A384303CDA7400D581D2 /* test_rotator_optec_simulator.c */,
 				59FA7BFB301D3F5A00A35CFB /* test_rotator_simulator.c */,
 				5984A387303CDBBE00D581D2 /* test_rotator_wa_simulator.c */,
+				C0DE20260921F00000000004 /* test_aux_rts_shutter.c */,
 				7330D4CDFA32AB370C17EF61 /* test_serial_outputs.c */,
 				E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */,
 				C0DE20260920000000000002 /* test_wheel_hid.c */,
