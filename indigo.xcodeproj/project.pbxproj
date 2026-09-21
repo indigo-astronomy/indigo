@@ -1200,7 +1200,10 @@
 		5907ACDD301E88790009AA99 /* wheel_optec_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = wheel_optec_simulator.c; sourceTree = "<group>"; };
 		5907ACDE301E88910009AA99 /* test_wheel_optec_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_optec_simulator.c; sourceTree = "<group>"; };
 		5907ACDF301E8DA60009AA99 /* aux_arteskyflat_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_arteskyflat_simulator.c; sourceTree = "<group>"; };
+		C0DE20260921E00000000001 /* aux_geoptikflat_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_geoptikflat_simulator.c; sourceTree = "<group>"; };
 		5907ACE0301E8E340009AA99 /* test_aux_arteskyflat_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_arteskyflat_simulator.c; sourceTree = "<group>"; };
+		C0DE20260921E00000000003 /* test_aux_geoptikflat_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_geoptikflat_simulator.c; sourceTree = "<group>"; };
+		C0DE20260921E00000000004 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		5907ACE1301E90B00009AA99 /* aux_astromechanics_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_astromechanics_simulator.c; sourceTree = "<group>"; };
 		5907ACE2301E92030009AA99 /* aux_fbc_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_fbc_simulator.c; sourceTree = "<group>"; };
 		5907ACE3301E929F0009AA99 /* aux_flatmaster_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_flatmaster_simulator.c; sourceTree = "<group>"; };
@@ -7201,10 +7204,12 @@
 			isa = PBXGroup;
 			children = (
 				59540AD226D00CCF000C2A1B /* README.md */,
+				C0DE20260921E00000000004 /* REFACTOR.md */,
 				59540AD126D00CCF000C2A1B /* indigo_aux_geoptikflat.h */,
 				59540AD326D00CCF000C2A1B /* indigo_aux_geoptikflat.c */,
 				59540AD026D00CCF000C2A1B /* indigo_aux_geoptikflat_main.c */,
 				9DC41E702DBB8392006F679D /* indigo_aux_geoptikflat.driver */,
+				C0DE20260921E00000000002 /* aux_geoptikflat_simulator */,
 			);
 			path = aux_geoptikflat;
 			sourceTree = "<group>";
@@ -10803,6 +10808,14 @@
 			path = aux_arteskyflat_simulator;
 			sourceTree = "<group>";
 		};
+		C0DE20260921E00000000002 /* aux_geoptikflat_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20260921E00000000001 /* aux_geoptikflat_simulator.c */,
+			);
+			path = aux_geoptikflat_simulator;
+			sourceTree = "<group>";
+		};
 		59B81EC82337AA2E00DFA81B /* dome_nexdome */ = {
 			isa = PBXGroup;
 			children = (
@@ -14052,6 +14065,7 @@
 				5907ACE7301E93D30009AA99 /* test_aux_fbc_simulator.c */,
 				5907ACE8301E93D30009AA99 /* test_aux_flatmaster_simulator.c */,
 				5907ACEA301E9F1B0009AA99 /* test_aux_flipflat_simulator.c */,
+				C0DE20260921E00000000003 /* test_aux_geoptikflat_simulator.c */,
 				C0DE20260914C00100000002 /* test_aux_joystick_hid.c */,
 				49B981AB4CBB4A2489DD7064 /* test_aux_rpio_sysfs.c */,
 				F2CA338B73DF48C78B5B7267 /* test_aux_asiair_sysfs.c */,

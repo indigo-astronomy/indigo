@@ -184,6 +184,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_aux_astromechanics_simulator \
 	$(INTEGRATION_BUILD)/test_aux_fbc_simulator \
 	$(INTEGRATION_BUILD)/test_aux_flatmaster_simulator \
+	$(INTEGRATION_BUILD)/test_aux_geoptikflat_simulator \
 	$(INTEGRATION_BUILD)/test_aux_flipflat_simulator \
 	$(INTEGRATION_BUILD)/test_ao_sx_simulator \
 	$(INTEGRATION_BUILD)/test_mount_synscan_simulator \
@@ -261,6 +262,7 @@ AUX_ARTESKYFLAT_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_arteskyflat
 AUX_ASTROMECHANICS_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_astromechanics.a $(TEST_LDFLAGS) -lindigocat
 AUX_FBC_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_fbc.a $(TEST_LDFLAGS) -lindigocat
 AUX_FLATMASTER_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_flatmaster.a $(TEST_LDFLAGS) -lindigocat
+AUX_GEOPTIKFLAT_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_geoptikflat.a $(TEST_LDFLAGS) -lindigocat
 AUX_FLIPFLAT_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_flipflat.a $(TEST_LDFLAGS) -lindigocat
 AO_SX_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_ao_sx.a $(TEST_LDFLAGS) -lindigocat
 MOUNT_SYNSCAN_SIMULATOR_TEST_LDFLAGS = $(INTEGRATION_BUILD)/mount_synscan_test_driver.o $(TEST_LDFLAGS) -lindigocat
@@ -541,6 +543,9 @@ $(INTEGRATION_BUILD)/aux_wcv4ec_simulator: ../indigo_drivers/aux_wcv4ec/aux_wcv4
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
 
 $(INTEGRATION_BUILD)/aux_arteskyflat_simulator: ../indigo_drivers/aux_arteskyflat/aux_arteskyflat_simulator/aux_arteskyflat_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
+$(INTEGRATION_BUILD)/aux_geoptikflat_simulator: ../indigo_drivers/aux_geoptikflat/aux_geoptikflat_simulator/aux_geoptikflat_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/aux_astromechanics_simulator: ../indigo_drivers/aux_astromechanics/aux_astromechanics_simulator/aux_astromechanics_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -981,8 +986,14 @@ $(INTEGRATION_BUILD)/test_aux_wcv4ec_simulator: integration/test_aux_wcv4ec_simu
 $(INTEGRATION_BUILD)/test_aux_arteskyflat_simulator: integration/test_aux_arteskyflat_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_arteskyflat_simulator $(BUILD_DRIVERS)/indigo_aux_arteskyflat.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_ARTESKYFLAT_SIMULATOR_TEST_LDFLAGS)
 
+$(INTEGRATION_BUILD)/test_aux_geoptikflat_simulator: integration/test_aux_geoptikflat_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_geoptikflat_simulator $(BUILD_DRIVERS)/indigo_aux_geoptikflat.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_GEOPTIKFLAT_SIMULATOR_TEST_LDFLAGS)
+
 $(INTEGRATION_BUILD)/test_aux_arteskyflat_simulator_asan: integration/test_aux_arteskyflat_simulator.c ../indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_arteskyflat_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
+
+$(INTEGRATION_BUILD)/test_aux_geoptikflat_simulator_asan: integration/test_aux_geoptikflat_simulator.c ../indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_geoptikflat_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/test_aux_astromechanics_simulator: integration/test_aux_astromechanics_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_astromechanics_simulator $(BUILD_DRIVERS)/indigo_aux_astromechanics.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_ASTROMECHANICS_SIMULATOR_TEST_LDFLAGS)

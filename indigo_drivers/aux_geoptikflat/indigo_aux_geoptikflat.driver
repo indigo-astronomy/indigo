@@ -16,17 +16,17 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Geoptik flat field generato driver definition
+// Geoptik flat field generator driver definition
 
 // version history
 // 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 // 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 driver geoptikflat {
-	label = "Geoptik flat field generato";
+	label = "Geoptik flat field generator";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2021-2026 Rumen G. Bogdanovski";
-	version = 7;
+	version = 8;
 	serial;
 	data {
 		char response[16];
@@ -43,16 +43,20 @@ driver geoptikflat {
 					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\n", INDIGO_DELAY(1));
 				}
 			}
-			return result > 0 && PRIVATE_DATA->response[0] == '*';
+			// Alnitak generic commands (../aux_flipflat/Alnitak_GenericCommandsR4.pdf) answer ">Xyyy" CR
+			// with "*Xiizzz" LF, so the echoed operation letter is what distinguishes the answer to this
+			// command from a stale or foreign reply that merely starts with '*'.
+			return result > 0 && PRIVATE_DATA->response[0] == '*' && PRIVATE_DATA->response[1] == command[1];
 		}
 
 		static bool geoptikflat_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (geoptikflat_command(device, ">POOO")) {
-					if (geoptikflat_command(device, ">VOOO")) {
+					// "*Viivvv" carries the two digit product id before the three digit firmware version.
+					if (geoptikflat_command(device, ">VOOO") && strlen(PRIVATE_DATA->response) > 4) {
 						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
-						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 2);
+						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 4);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						return true;
 					}
@@ -79,7 +83,7 @@ driver geoptikflat {
 			} else {
 				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			if (geoptikflat_command(device, ">%cOOO", AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? 'L' : 'D')) {
+			if (geoptikflat_command(device, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">LOOO" : ">DOOO")) {
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -96,7 +100,7 @@ driver geoptikflat {
 			label = "Light (on/off)";
 			persistent = true;
 			on_change {
-				if (!geoptikflat_command(device, ">%cOOO", AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? 'L' : 'D')) {
+				if (!geoptikflat_command(device, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">LOOO" : ">DOOO")) {
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}

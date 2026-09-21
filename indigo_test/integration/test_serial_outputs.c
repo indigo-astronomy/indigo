@@ -85,7 +85,15 @@ long output_read(indigo_uni_handle *port, char *buffer, long length, const char 
 	if (output_discard(port) < 0 || atomic_exchange(&fail_read, 0)) {
 		return -1;
 	}
+#if TEST_KIND == 2
+	// The Alnitak generic reply echoes the operation that was sent as "*Xiizzz", and the driver
+	// uses that echo to tell the answer to this command from a stale or foreign reply.
+	char echo[16];
+	snprintf(echo, sizeof(echo), "*%c19000", command[0] == '>' ? command[1] : 'P');
+	const char *reply = atomic_exchange(&bad_reply, 0) ? "!invalid" : echo;
+#else
 	const char *reply = atomic_exchange(&bad_reply, 0) ? "!invalid" : (TEST_KIND == 1 ? "A" : "*V1.0");
+#endif
 	long size = strlen(reply);
 	// indigo_uni_read_section() treats length as the payload capacity and stores the
 	// terminating NUL at buffer[length], so a reply of exactly length bytes still fits.

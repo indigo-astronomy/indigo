@@ -11,7 +11,7 @@
 | aux_fbc | 2026-09-21 19:33 | 3.0.0.8 | mac arm64 | simulator | 10 / 10 | ✅ OK |
 | aux_flatmaster | 2026-09-21 19:33 | 3.0.0.10 | mac arm64 | simulator | 8 / 8 | ✅ OK |
 | aux_flipflat | 2026-09-21 19:34 | 3.0.0.9 | mac arm64 | simulator | 11 / 11 | ✅ OK |
-| aux_geoptikflat | 2026-09-21 19:34 | 3.0.0.7 | mac arm64 | simulator | 2 / 2 | ✅ OK |
+| aux_geoptikflat | 2026-09-21 22:48 | 3.0.0.8 | mac arm64 | simulator | 12 / 12 | ✅ OK |
 | aux_joystick | 2026-09-21 14:42 | 3.0.0.10 | mac arm64 | fake SDK | 14 / 14 | ✅ OK |
 | aux_mgbox | 2026-09-21 19:37 | 3.0.0.10 | mac arm64 | simulator | 32 / 32 | ✅ OK |
 | aux_ppb | 2026-09-21 21:47 | 3.0.0.29 | mac arm64 | simulator | 29 / 29 | ✅ OK |
