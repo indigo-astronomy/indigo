@@ -42,3 +42,4 @@ Tested with:
 
 2026-09-21 21:02 3.0.0.49 mac arm64 Touptek GPCMOS01200KMB 28/28 OK
 2026-09-21 12:38 3.0.0.49 mac arm64 fake SDK 30/30 OK
+2026-09-22 00:14 3.0.0.49 linux arm64 Touptek GPCMOS01200KMB 6/6 OK
