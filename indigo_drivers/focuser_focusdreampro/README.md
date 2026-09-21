@@ -26,3 +26,7 @@ indigo_server indigo_focuser_focusdreampro
 
 Tested with physical device provided by courtesy of AstroGadget.
 You may need to install Silicon Labs CP2102 driver for host operating system).
+
+## Testing
+
+2026-09-21 17:28 3.0.0.8 mac arm64 simulator 17/17 OK
