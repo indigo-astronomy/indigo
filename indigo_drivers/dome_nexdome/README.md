@@ -25,3 +25,7 @@ indigo_server indigo_dome_nexdome
 
 Driver is developed and tested with:
 * Arduino NexDome simulator (based on the firmware).
+
+## Testing
+
+2026-09-21 15:46 3.0.0.12 mac arm64 simulator 46/46 OK
