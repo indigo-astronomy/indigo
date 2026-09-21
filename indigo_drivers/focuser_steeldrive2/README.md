@@ -22,3 +22,7 @@ indigo_server indigo_focuser_steeldrive2
 ## Status: Stable
 
 Tested with physical device.
+
+## Testing
+
+2026-09-21 19:21 3.0.0.15 mac arm64 simulator 50/50 OK
