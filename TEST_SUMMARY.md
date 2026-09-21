@@ -13,22 +13,26 @@
 
 # ccd_asi (ZWO ASI Camera)
 
-2026-09-21 08:02 3.0.0.64 mac arm64 fake SDK 51/51 OK
 2026-09-21 08:19 3.0.0.64 mac arm64 ASI294MC Pro 28/28 OK
 2026-09-21 08:31 3.0.0.64 mac arm64 ASI120MC-S 28/28 OK
+2026-09-21 12:39 3.0.0.65 mac arm64 fake SDK 51/51 OK
 
 # ccd_atik (Atik Camera)
 
 2026-09-21 10:42 3.0.0.41 mac arm64 fake SDK 41/41 OK
 
+# ccd_fli (FLI Camera)
+
+2026-09-21 12:45 3.0.0.12 mac arm64 fake SDK 22/22 OK
+
 # ccd_mi (Moravian Instruments Camera)
 
-2026-09-20 21:31 3.0.0.33 mac arm64 fake SDK 17/17 OK
+2026-09-21 12:42 3.0.0.34 mac arm64 fake SDK 17/17 OK
 
 # ccd_playerone (Player One Camera)
 
-2026-09-21 09:12 3.0.0.25 mac arm64 fake SDK 49/49 OK
 2026-09-21 09:26 3.0.0.25 mac arm64 Mars-C II 27/27 OK
+2026-09-21 12:40 3.0.0.26 mac arm64 fake SDK 49/49 OK
 
 # ccd_qhy (QHY CCD (legacy) Camera)
 
@@ -40,7 +44,7 @@
 
 # ccd_simulator (Camera Simulator)
 
-2026-09-20 20:22 3.0.0.27 mac arm64 simulator 19/19 OK
+2026-09-21 12:42 3.0.0.28 mac arm64 simulator 19/19 OK
 
 # ccd_ssag (SSAG/QHY5 Camera)
 
@@ -48,7 +52,7 @@
 
 # ccd_svb (SVBONY Camera)
 
-2026-09-20 21:31 3.0.0.26 mac arm64 fake SDK 47/47 OK
+2026-09-21 12:41 3.0.0.28 mac arm64 fake SDK 47/47 OK
 
 # ccd_sx (Starlight Xpress Camera)
 
@@ -57,6 +61,7 @@
 # ccd_touptek
 
 2026-09-21 10:04 3.0.0.48 mac arm64 Touptek GPCMOS01200KMB 28/27 Failed
+2026-09-21 12:38 3.0.0.49 mac arm64 fake SDK 30/30 OK
 
 # dome_baader (Baader Classic Dome)
 
@@ -66,13 +71,17 @@
 
 2026-09-20 22:31 3.0.0.7 mac arm64 simulator 47/47 OK
 
+# dome_simulator (Dome Simulator)
+
+2026-09-21 12:43 3.0.0.8 mac arm64 simulator 7/7 OK
+
 # focuser_asi (ZWO ASI Focuser)
 
 2026-09-21 10:45 3.0.0.34 mac arm64 fake SDK 11/11 OK
 
 # focuser_dmfc (PegasusAstro DMFC Focuser)
 
-2026-09-20 12:30 3.0.0.17 mac arm64 simulator 25/25 OK
+2026-09-21 12:44 3.0.0.17 mac arm64 simulator 24/24 OK
 
 # focuser_fc3 (PegasusAstro FocusCube v3 Focuser)
 
@@ -129,7 +138,7 @@
 
 # mount_simulator (Mount Simulator)
 
-2026-09-20 20:23 3.0.0.16 mac arm64 simulator 16/16 OK
+2026-09-21 12:42 3.0.0.16 mac arm64 simulator 16/16 OK
 
 # mount_starbook (Vixen StarBook Mount)
 
@@ -158,7 +167,7 @@
 
 # rotator_optec (Optec Pyxis Rotator)
 
-2026-09-21 10:50 3.0.0.4 mac arm64 simulator 11/11 OK
+2026-09-21 12:43 3.0.0.4 mac arm64 simulator 11/11 OK
 
 # rotator_simulator (Field Rotator Simulator)
 
