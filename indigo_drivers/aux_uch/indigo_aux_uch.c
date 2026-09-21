@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_aux_uch"
 #define DRIVER_LABEL         "PegasusAstro USB Control Hub"
 #define AUX_DEVICE_NAME      "USB Control Hub"
@@ -156,7 +156,10 @@ static void aux_timer_callback(indigo_device *device) {
 				AUX_INFO_VOLTAGE_ITEM->number.value = value;
 			}
 		}	
-		if ((token = strtok_r(NULL, ":", &pnt))) { // USB status
+		// A change request accepted meanwhile has already copied the client's values and
+		// published BUSY, so a status frame read before it must not overwrite them - the
+		// queued handler would then send the stale state back to the hub.
+		if ((token = strtok_r(NULL, ":", &pnt)) && AUX_USB_PORT_PROPERTY->state != INDIGO_BUSY_STATE) { // USB status
 			bool state = token[0] == '1';
 			if (AUX_USB_PORT_1_ITEM->sw.value != state) {
 				AUX_USB_PORT_1_ITEM->sw.value = state;

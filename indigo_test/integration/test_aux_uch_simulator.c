@@ -183,6 +183,32 @@ cleanup:
 
 // -------------------------------------------------------------------------------- driver actions
 
+// A status frame that was already in flight when a change was accepted must not
+// overwrite the requested port state: the queued handler would then send the stale
+// state back to the hub and the port would silently revert. The simulator holds its
+// status reply so the request lands inside that window every time.
+static void a_change_survives_a_status_frame_in_flight(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--slow-status", "700", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, AUX_UCH_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&uch_case, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_first_poll());
+	for (int attempt = 0; attempt < 4; attempt++) {
+		bool target = attempt % 2 == 0 ? false : true;
+		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(set_port(usb_items[0], target));
+		SERIAL_CHECK_TRUE(wait_for_port(usb_items[0], target));
+		// Give the poll that was in flight time to publish before the value is trusted.
+		indigo_usleep(1500000);
+		SERIAL_CHECK_TRUE(wait_for_port(usb_items[0], target));
+	}
+cleanup:
+	if (online) { stop_serial_driver(&uch_case); }
+	stop_external_serial_simulator(&simulator);
+}
+
 static void saving_the_defaults_is_accepted(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -288,6 +314,7 @@ int main(void) {
 		{ "status_frame_reports_voltage_and_uptime", status_frame_reports_voltage_and_uptime },
 		{ "every_usb_port_switches", every_usb_port_switches },
 		{ "switching_one_port_leaves_the_others_alone", switching_one_port_leaves_the_others_alone },
+		{ "a_change_survives_a_status_frame_in_flight", a_change_survives_a_status_frame_in_flight },
 		{ "saving_the_defaults_is_accepted", saving_the_defaults_is_accepted },
 		{ "reboot_request_is_accepted_and_resets", reboot_request_is_accepted_and_resets },
 		{ "outlet_names_are_writable", outlet_names_are_writable },

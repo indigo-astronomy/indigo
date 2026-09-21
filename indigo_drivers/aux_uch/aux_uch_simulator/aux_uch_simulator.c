@@ -58,6 +58,10 @@ static void usage(const char *name) {
 	printf("  -h, --help              Show this help and exit\n");
 }
 
+// Delay applied before the status reply, so a test can issue a change request while
+// the driver's poll is still waiting for it and exercise that race deterministically.
+static int slow_status_ms = 0;
+
 static bool parse_args(int argc, char *argv[]) {
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
@@ -68,6 +72,12 @@ static bool parse_args(int argc, char *argv[]) {
 			options.trace = false;
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
+		} else if (!strcmp(argv[i], "--slow-status")) {
+			if (++i == argc) {
+				fprintf(stderr, "--slow-status requires a delay in milliseconds\n");
+				return false;
+			}
+			slow_status_ms = atoi(argv[i]);
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -162,6 +172,9 @@ static int sim_read_command(int fd, char *buffer, size_t length) {
 }
 
 static void dispatch_command(int fd, const char *cmd) {
+	if (slow_status_ms > 0 && !strcmp(cmd, "PA")) {
+		usleep((useconds_t)slow_status_ms * 1000);
+	}
 	if (!strcmp(cmd, "P#")) {
 		sim_printf(fd, "UCH_OK\n");
 	} else if (!strcmp(cmd, "PV")) {

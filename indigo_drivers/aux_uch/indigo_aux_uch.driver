@@ -26,7 +26,7 @@ driver uch {
 	label = "PegasusAstro USB Control Hub";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2023-2026 Rumen G. Bogdanovski";
-	version = 5;
+	version = 6;
 	serial {
 		pattern {
 			product = "USB Control Hub";
@@ -97,7 +97,10 @@ driver uch {
 						AUX_INFO_VOLTAGE_ITEM->number.value = value;
 					}
 				}	
-				if ((token = strtok_r(NULL, ":", &pnt))) { // USB status
+				// A change request accepted meanwhile has already copied the client's values and
+				// published BUSY, so a status frame read before it must not overwrite them - the
+				// queued handler would then send the stale state back to the hub.
+				if ((token = strtok_r(NULL, ":", &pnt)) && AUX_USB_PORT_PROPERTY->state != INDIGO_BUSY_STATE) { // USB status
 					bool state = token[0] == '1';
 					if (AUX_USB_PORT_1_ITEM->sw.value != state) {
 						AUX_USB_PORT_1_ITEM->sw.value = state;

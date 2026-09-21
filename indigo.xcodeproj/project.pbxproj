@@ -1403,6 +1403,7 @@
 		5920077F2A5B2D050063C472 /* 99-indigo_aux_uch.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "99-indigo_aux_uch.rules"; sourceTree = "<group>"; };
 		592007802A5B2D050063C472 /* indigo_aux_uch.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_uch.c; sourceTree = "<group>"; };
 		592007812A5B2D050063C472 /* UCH_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = UCH_Serial_Command_Table.pdf; sourceTree = "<group>"; };
+		C0DE20260921000500000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		592007822A5B2D050063C472 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		592007832A5B2D050063C472 /* indigo_aux_uch_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_uch_main.c; sourceTree = "<group>"; };
 		592007842A5B2D050063C472 /* indigo_aux_uch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_aux_uch.h; sourceTree = "<group>"; };
@@ -6756,6 +6757,7 @@
 			isa = PBXGroup;
 			children = (
 				592007822A5B2D050063C472 /* README.md */,
+				C0DE20260921000500000001 /* REFACTOR.md */,
 				592007842A5B2D050063C472 /* indigo_aux_uch.h */,
 				592007802A5B2D050063C472 /* indigo_aux_uch.c */,
 				592007832A5B2D050063C472 /* indigo_aux_uch_main.c */,
