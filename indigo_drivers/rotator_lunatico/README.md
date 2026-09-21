@@ -34,3 +34,7 @@ Driver is developed and tested with:
 * This driver can not be loaded if *indigo_focuser_lunatico* is loaded as both drivers have the same functionality. The only difference is that "Main" port of *indigo_focuser_lunatico* driver is configured as Focuser.
 
 * In devices with male DB9 connectors, pins are horizontally flipped. In software pin 1 corresponds to pin 5 on male DB9, pin 6 corresponds to pin 9 etc. There is no such flipping for the devices with female DB9 connectors.
+
+## Testing
+
+2026-09-21 17:09 3.0.0.12 mac arm64 simulator 27/27 OK
