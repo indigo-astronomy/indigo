@@ -25,3 +25,7 @@ indigo_server indigo_wheel_astroasis
 Driver is developed and tested with:
 * 7x36 Astroasis filter wheel
 * 7x2" Astroasis filter wheel
+
+## Testing
+
+2026-09-21 14:16 3.0.0.5 mac arm64 fake SDK 10/10 OK
