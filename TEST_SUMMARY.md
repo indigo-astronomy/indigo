@@ -34,6 +34,10 @@
 
 2026-09-21 12:45 3.0.0.12 mac arm64 fake SDK 22/22 OK
 
+# ccd_mallin
+
+2026-09-21 13:57 3.0.0.49 mac arm64 fake SDK 30/30 OK
+
 # ccd_mi (Moravian Instruments Camera)
 
 2026-09-21 12:42 3.0.0.34 mac arm64 fake SDK 17/17 OK
