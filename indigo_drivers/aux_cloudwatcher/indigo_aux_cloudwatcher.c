@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_aux_cloudwatcher"
 #define DRIVER_LABEL         "AAG CloudWatcher"
 #define AUX_DEVICE_NAME      "AAG CloudWatcher"
@@ -1025,7 +1025,11 @@ static void aux_timer_callback(indigo_device *device) {
 		cloudwatcher_heating_algorithm(device);
 	}
 	bool closed = false;
-	if (cloudwatcher_get_switch(device, &closed) && AUX_GPIO_OUTLET_1_ITEM->sw.value != closed) {
+	// The BUSY check has to sit after the read, not before it: a change request accepted
+	// while the reading was in flight has already copied the client's value and published
+	// BUSY, and applying the stale reading here would make the queued handler drive the
+	// switch back to where it already was.
+	if (cloudwatcher_get_switch(device, &closed) && AUX_GPIO_OUTLETS_PROPERTY->state != INDIGO_BUSY_STATE && AUX_GPIO_OUTLET_1_ITEM->sw.value != closed) {
 		AUX_GPIO_OUTLET_1_ITEM->sw.value = closed;
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_GPIO_OUTLETS_PROPERTY, INDIGO_OK_STATE, NULL);
 	}

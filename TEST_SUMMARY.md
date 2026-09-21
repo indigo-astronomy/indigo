@@ -6,7 +6,7 @@
 | aux_asiair | 2026-09-20 22:35 | 3.0.0.4 | linux arm64 | fake SDK | 16 / 16 | ✅ OK |
 | aux_asiair | 2026-09-20 22:35 | 3.0.0.4 | linux arm64 | Raspberry Pi 5 | 3 / 3 | ✅ OK |
 | aux_astromechanics | 2026-09-21 19:31 | 3.0.0.6 | mac arm64 | simulator | 6 / 6 | ✅ OK |
-| aux_cloudwatcher | 2026-09-21 19:32 | 3.0.0.12 | mac arm64 | simulator | 15 / 15 | ✅ OK |
+| aux_cloudwatcher | 2026-09-21 23:05 | 3.0.0.13 | mac arm64 | simulator | 16 / 16 | ✅ OK |
 | aux_dsusb | 2026-09-21 14:42 | 3.0.0.15 | mac arm64 | fake SDK | 10 / 10 | ✅ OK |
 | aux_fbc | 2026-09-21 19:33 | 3.0.0.8 | mac arm64 | simulator | 10 / 10 | ✅ OK |
 | aux_flatmaster | 2026-09-21 19:33 | 3.0.0.10 | mac arm64 | simulator | 8 / 8 | ✅ OK |

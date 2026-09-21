@@ -129,7 +129,32 @@ Not covered, and why:
 - The heater impulse and wet cycles: they need 600 s of continuous wet readings and 60 s of impulse, far beyond the bounded polling the test harness allows. The `X_HEATER_CONTROL_STATE` normal branch and the PWM write are covered.
 - `CONFIG.SAVE` persistence: the generated `indigo_save_property()` calls are framework behavior, asserted only through the presence of the twelve persistent properties.
 
+## Poll versus a pending change (2026-09-21)
+
+### Defect
+
+| Defect | Impact | Root cause | Fix | Test |
+| --- | --- | --- | --- | --- |
+| CW-01 | A requested relay change silently reverts and the switch is driven back to where it already was. | The polling timer read the relay state and copied it into `AUX_GPIO_OUTLETS` without checking whether a change request had been accepted meanwhile. `INDIGO_COPY_*_PROCESS_CHANGE` copies the client's value and publishes BUSY before the queued handler runs, so a reading that was already in flight overwrote that value, and the handler then read the overwritten item and commanded the old state. | The BUSY check sits after the read, immediately before the assignment. | `a_change_survives_a_relay_reading_in_flight` |
+
+The defect was not found by reading this driver but by sweeping every driver's periodic work for
+assignments into a writable property without a BUSY guard, after the same defect was found in
+`aux_upb` (UPB-02) and `aux_ppb` (PPB-03). The same sweep found it in `aux_uch` and `aux_usbdp`.
+
+Placement matters and the first attempt got it wrong: a guard placed *before* the device read does
+not help, because the change arrives while the read is in flight. The regression test caught that,
+which is why the guard now sits between the read and the assignment.
+
+### Regression test
+
+The race is only reachable while a relay reading is outstanding, so the simulator gained a
+`slow-switch` profile that holds the `F!` reply long enough for the change request to land inside
+that window every time. Verified both ways: the case fails against the driver without the guard
+("Outlet reverted to open after the request for closed") and passes with it, three runs in a row.
+
+Driver version is now `0x0300000D`.
+
 ## Final test summary
 
-- Simulated tests: 30 executed, 30 passed (15 ordinary scenarios and the same 15 under AddressSanitizer). Two of the 15 were recorded as expected baseline failures against the original driver and pass as regression tests against the migrated driver.
+- Simulated tests: 30 executed, 30 passed (15 ordinary scenarios and the same 15 under AddressSanitizer). Two of the 15 were recorded as expected baseline failures against the original driver and pass as regression tests against the migrated driver. The suite is now 16 scenarios after CW-01 above.
 - Hardware tests: 0 executed, 0 passed.

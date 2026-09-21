@@ -24,6 +24,7 @@ static void block(const char *text) {
 // precise       - high resolution RH/T encoding plus the ambient thermistor
 // wet-overcast  - raining, overcast, very light sky, humid, calm
 // constants-high - factory M! constants whose low bytes exceed 127
+// slow-switch    - the relay state reply is held, so a change can land during a poll
 static void sim_dispatch(const char *command) {
 	if (!command) { return; }
 	reply_size = 0;
@@ -36,7 +37,12 @@ static void sim_dispatch(const char *command) {
 	if (!strcmp(command, "A!")) { block(!strcmp(sim_profile, "wrong-identity") ? "!N Unknown" : "!N CloudWatcher"); }
 	else if (!strcmp(command, "B!")) { block("!V 5.89"); }
 	else if (!strcmp(command, "K!")) { block("!K1234"); }
-	else if (!strcmp(command, "F!")) { block(relay ? "!Y" : "!X"); }
+	else if (!strcmp(command, "F!")) {
+		// slow-switch holds the relay state reply, so a test can issue a change request while the
+		// driver's poll is still waiting for it and exercise that race deterministically.
+		if (!strcmp(sim_profile, "slow-switch")) { usleep(700000); }
+		block(relay ? "!Y" : "!X");
+	}
 	else if (!strcmp(command, "G!") || !strcmp(command, "H!")) {
 		if (strcmp(sim_profile, "relay-error")) { relay = command[0] == 'H'; }
 		block(!strcmp(sim_profile, "relay-error") ? "!Z" : relay ? "!Y" : "!X");

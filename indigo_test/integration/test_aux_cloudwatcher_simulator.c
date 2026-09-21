@@ -375,6 +375,29 @@ cleanup:
 	aux_stop(&primary);
 }
 
+// A relay reading that was already in flight when a change was accepted must not
+// overwrite the requested state: the queued handler would then drive the switch back
+// to where it already was. The slow-switch profile holds the reading so the request
+// lands inside that window every time.
+static void a_change_survives_a_relay_reading_in_flight(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	for (int attempt = 0; attempt < 3; attempt++) {
+		bool target = attempt % 2 == 0;
+		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_GPIO_OUTLETS_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_EQ_INT(indigo_change_switch_property_1(&simulator_test_client, primary.device_name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, target), INDIGO_OK);
+		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_GPIO_OUTLETS_PROPERTY_NAME, INDIGO_OK_STATE));
+		// Let the reading that was in flight publish before the value is trusted.
+		indigo_usleep(2000000);
+		indigo_item *item = find_cached_item(AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME);
+		if (item == NULL || item->sw.value != target) {
+			fprintf(stderr, "Outlet reverted to %s after the request for %s\n", item && item->sw.value ? "closed" : "open", target ? "closed" : "open");
+		}
+		SERIAL_CHECK_TRUE(item != NULL && item->sw.value == target);
+	}
+cleanup:
+	aux_stop(&primary);
+}
+
 static void relay_error(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
 	SERIAL_CHECK_EQ_INT(indigo_change_switch_property_1(&simulator_test_client, primary.device_name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, true), INDIGO_OK);
@@ -398,6 +421,7 @@ int main(void) {
 		{ "threshold_settings", threshold_settings, "normal" },
 		{ "reconnect", reconnect, "normal" },
 		{ "wrong_identity", rejected_connection, "wrong-identity" },
+		{ "a_change_survives_a_relay_reading_in_flight", a_change_survives_a_relay_reading_in_flight, "slow-switch" },
 		{ "relay_error", relay_error, "relay-error" },
 		{ "timeout", rejected_connection, "timeout" },
 	};
