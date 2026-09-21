@@ -1285,6 +1285,14 @@ uvc_error_t uvc_stream_start(
       libusb_set_iso_packet_lengths(transfer, (int)endpoint_bytes_per_packet);
     }
   } else {
+    /* A bulk streaming endpoint keeps the halt condition and the data toggle it was left with
+     * when the previous stream was torn down. A camera that streamed once then stays silent on
+     * every later start: the transfers are submitted and complete, but the device sends nothing.
+     * CLEAR_FEATURE(ENDPOINT_HALT) unstalls the endpoint and resets the toggle on both sides, so
+     * issue it before the first transfer is queued. It is harmless on a freshly opened endpoint.
+     * Isochronous endpoints have no toggle and are reset by the altsetting switch above. */
+    libusb_clear_halt(strmh->devh->usb_devh, format_desc->parent->bEndpointAddress);
+
     for (transfer_id = 0; transfer_id < LIBUVC_NUM_TRANSFER_BUFS;
         ++transfer_id) {
       transfer = libusb_alloc_transfer(0);

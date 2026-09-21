@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001A
+#define DRIVER_VERSION       0x0300001B
 #define DRIVER_NAME          "indigo_ccd_uvc"
 #define DRIVER_LABEL         "UVC Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -943,7 +943,7 @@ indigo_result indigo_ccd_uvc(indigo_driver_action action, indigo_driver_info *in
 #include "indigo_ccd_uvc.h"
 
 indigo_result indigo_ccd_uvc(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "UVC Camera", __FUNCTION__, 0x0300001A, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "UVC Camera", __FUNCTION__, 0x0300001B, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif
