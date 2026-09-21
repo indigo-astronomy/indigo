@@ -23,3 +23,7 @@ indigo_server indigo_focuser_optec
 
 ## Status: Untested
 
+
+## Testing
+
+2026-09-21 19:18 3.0.0.8 mac arm64 simulator 32/32 OK
