@@ -29,3 +29,7 @@ indigo_server indigo_ccd_baccam
 ## Comments
 
 There is a known issue with SDK and reopening the camera - exposure is not possible until the camera is reconnected.
+
+## Testing
+
+2026-09-21 13:53 3.0.0.49 mac arm64 fake SDK 30/30 OK
