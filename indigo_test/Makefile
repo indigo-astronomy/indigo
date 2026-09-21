@@ -1028,6 +1028,9 @@ $(INTEGRATION_BUILD)/test_aux_skyalert_simulator: integration/test_aux_skyalert_
 $(INTEGRATION_BUILD)/test_aux_sqm_simulator: integration/test_aux_sqm_simulator.c $(BUILD_DRIVERS)/indigo_aux_sqm.a integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_sqm_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_SQM_SIMULATOR_TEST_LDFLAGS)
 
+$(INTEGRATION_BUILD)/test_aux_sqm_simulator_asan: integration/test_aux_sqm_simulator.c ../indigo_drivers/aux_sqm/indigo_aux_sqm.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_sqm_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_sqm/indigo_aux_sqm.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
+
 $(INTEGRATION_BUILD)/test_aux_uch_simulator: integration/test_aux_uch_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_uch_simulator $(BUILD_DRIVERS)/indigo_aux_uch.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_UCH_SIMULATOR_TEST_LDFLAGS)
 

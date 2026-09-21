@@ -25,3 +25,7 @@ indigo_server indigo_aux_sqm
 
 Tested with a physical device:
 * SQM-LU
+
+## Testing
+
+2026-09-21 23:28 3.0.0.20 mac arm64 simulator 10/10 OK

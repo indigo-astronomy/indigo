@@ -29,7 +29,7 @@
 | aux_rpio                | 3️⃣ | ⛔ N/A | ✅ Yes | ✅ Yes | ✅ HW  | 19 / 4 | ⛔ RPi only |
 | aux_rts                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No  | 0 / 0 | |
 | aux_skyalert            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 10 / 0 | |
-| aux_sqm                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 3 / 0 | |
+| aux_sqm                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 10 / 0 | |
 | aux_svbpowerbox         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 13 / 0 | |
 | aux_uch                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 11 / 0 | |
 | aux_upb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 37 / 14 | |
