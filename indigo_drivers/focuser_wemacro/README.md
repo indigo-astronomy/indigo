@@ -26,3 +26,7 @@ You will need system level driver to recognise CH-341 usb-to-serial controller (
 ## Status: Stable
 
 Driver is developed and tested with the physical hardware.
+
+## Testing
+
+2026-09-21 19:22 3.0.0.7 mac arm64 simulator 23/23 OK

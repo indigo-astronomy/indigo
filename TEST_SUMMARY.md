@@ -75,6 +75,7 @@
 | focuser_robofocus | 2026-09-21 19:12 | 3.0.0.3 | mac arm64 | simulator | 19 / 19 | ✅ OK |
 | focuser_steeldrive2 | 2026-09-21 19:21 | 3.0.0.15 | mac arm64 | simulator | 50 / 50 | ✅ OK |
 | focuser_usbv3 | 2026-09-20 14:03 | 3.0.0.9 | mac arm64 | simulator | 27 / 27 | ✅ OK |
+| focuser_wemacro | 2026-09-21 19:22 | 3.0.0.7 | mac arm64 | simulator | 23 / 23 | ✅ OK |
 | gps_gpsd | 2026-09-21 17:06 | 3.0.0.5 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 | gps_nmea | 2026-09-21 17:06 | 3.0.0.19 | mac arm64 | simulator | 4 / 4 | ✅ OK |
 | gps_simulator | 2026-09-21 17:06 | 3.0.0.9 | mac arm64 | simulator | 4 / 4 | ✅ OK |
