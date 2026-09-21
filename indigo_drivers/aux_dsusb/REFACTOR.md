@@ -62,3 +62,73 @@ Generic framework property copying and configuration-file storage are not duplic
 
 - Simulated/fake-SDK tests: **20 run, 20 passed** in final DSUSB validation (10 normal plus the same 10 under ASan/UBSan). The separate five-case baseline passed before implementation; the first expanded version-12 run intentionally failed the two regression cases described above.
 - Hardware tests: **0 run, 0 passed**; no compatible device is available.
+
+## Hardware acceptance run (2026-09-21)
+
+A physical DSUSB USB Shutter Control Adapter (`134a:9021`, device name `DSUSB Shutter release`) was
+connected to a Mac mini (macOS, arm64) and driven through the real driver and the real `libdsusb`
+by the new opt-in suite `indigo_test/hardware/test_aux_dsusb_hw.c`:
+
+```sh
+make -C indigo_test test-aux-dsusb-hw
+```
+
+Physical hot-plug was explicitly out of scope for this run, so no unplug/replug was performed; the
+hot-plug identity, capacity and removal cases stay covered by the faked libusb boundary of
+`test_aux_dsusb_sdk.c`. This run closes the "physical relay, real-device identity" gap recorded
+above for everything except the electrical timing of the contacts and physical unplug.
+
+### Scenario to test mapping
+
+| Hardware acceptance area | Scenario |
+| --- | --- |
+| Discovery, identity and connection | `dsusb_reports_identity_and_capabilities` |
+| Published property contract | `dsusb_publishes_the_property_contract` |
+| Whole-second exposure and its countdown | `dsusb_runs_an_exposure` |
+| Subsecond exposure | `dsusb_runs_a_subsecond_exposure` |
+| Request arriving while the shutter is open | `dsusb_ignores_a_request_while_exposing` |
+| Abort during an exposure, abort while idle, fresh exposure | `dsusb_aborts_an_exposure` |
+| Focus before capture, abort inside the focus delay | `dsusb_focuses_before_the_exposure` |
+| Driver setting written, saved and restored over a reconnect | `dsusb_restores_the_setting_after_a_reconnect` |
+| Disconnect with the shutter open | `dsusb_survives_a_disconnect_during_an_exposure` |
+| Reconnect and repeated disconnect | `dsusb_reconnects` |
+| INIT/SHUTDOWN, shutdown refused while connected | `dsusb_reinitializes` |
+
+Measured against the adapter: a 3 s exposure completed in 3.015 s and published 2 s remaining
+1.4 s into it, a 0.4 s exposure completed in 0.417 s, the same 1 s exposure took 2.026 s with
+focus before capture, and an abort was answered in 10 ms.
+
+## Found defects
+
+### DRV-DSUSB-001 — every exposure failed the moment the shutter opened
+
+- **Observable impact**: with a physical DSUSB connected, `CCD_EXPOSURE` went to
+  `INDIGO_ALERT_STATE` about eight milliseconds after the request, with the shutter opened and
+  immediately released again. No exposure of any length could complete; the first hardware run
+  failed 8 of its 11 cases on this.
+- **Root cause**: the vendored `libdsusb` reports failure for every successful write. The debug
+  line even proves it: `libdsusb_write()` hands `hid_write()` a single byte (`mov w2, #0x1`), logs
+  `OK` from the matching comparison (`cmp w0, #0x1`) and then returns the result of a comparison
+  with two (`cmp w19, #0x2; cset w0, eq`), so the return value is always false while the adapter
+  takes the write. `libdsusb_focus()`, `libdsusb_start()` and `libdsusb_stop()` all go through it.
+  The defect is the same one recorded for `libgpusb` in `guider_gpusb/REFACTOR.md`; `libfcusb`
+  writes two bytes and compares two and is not affected.
+- **Production fix**: `dsusb_open()` asks the library once, right after the open that has already
+  released the contacts, whether it can report a success at all, and the new `dsusb_focus()`,
+  `dsusb_start()` and `dsusb_stop()` wrappers report a failure only for a build that can. A fixed
+  library re-enables the error reporting with no further change here. Driver version 15 → 16.
+- **Regression test**: `library that cannot report a successful write` in
+  `indigo_test/integration/test_aux_dsusb_sdk.c`. The fake switches the contact, records the call
+  and still answers false, exactly like the shipped library; the exposure has to reach OK and the
+  output has to be released. `direct exposure, SDK errors and recovery` and `focus sequence and
+  distinct SDK failures` still prove that a library which can report success keeps producing
+  ALERT.
+- **Not fixed here**: the library itself. `bin_externals` holds only the binary, and repository
+  rules forbid editing vendored SDKs, so `libdsusb_write()` has to be corrected in its own source
+  tree.
+
+## Final test summary (2026-09-21)
+
+- Simulated/fake-SDK tests: 11 executed, 11 passed, plus the same 11 under ASan/UBSan.
+- Hardware tests: 11 executed, 11 passed, against a physical DSUSB Shutter release on macOS arm64,
+  without physical hot-plug.

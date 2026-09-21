@@ -33,7 +33,7 @@ extern indigo_result indigo_aux_dsusb(indigo_driver_action, indigo_driver_info *
 static const simulator_driver_case driver = { "Shoestring DSUSB shutter release", "indigo_aux_dsusb", "DSUSB test", indigo_aux_dsusb, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 static const simulator_driver_case second_driver = { "Shoestring DSUSB shutter release", "indigo_aux_dsusb", "DSUSB test 2", indigo_aux_dsusb, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 static atomic_int references, attached, opened, closed, io_calls, invalid_io, fail_queue, fail_register, fail_attach, fail_open, fail_io, fail_stop, fail_nth;
-static atomic_int output, rejected_device, timer_delay_ms;
+static atomic_int output, rejected_device, timer_delay_ms, report_failure_always;
 static atomic_bool active_contexts[8];
 static libusb_hotplug_callback_fn callback;
 static indigo_queue *queue;
@@ -227,7 +227,9 @@ static bool set_output(libdsusb_device_context *context, int value) {
 		return false;
 	}
 	atomic_store(&output, value);
-	return true;
+	// The shipped library takes the write and still answers false, so the contact is switched
+	// before the status this mode returns.
+	return !atomic_load(&report_failure_always);
 }
 
 bool libdsusb_focus(libdsusb_device_context *context) {
@@ -358,6 +360,33 @@ static void direct_exposure_and_errors(void) {
 cleanup:
 	atomic_store(&fail_io, 0);
 	atomic_store(&fail_stop, 0);
+	stop_serial_driver(&driver);
+	ASSERT_EQ_INT(opened, closed);
+	ASSERT_EQ_INT(0, invalid_io);
+}
+
+// The shipped libdsusb hands hid_write() one byte, logs the result of the matching comparison and
+// then returns the result of a comparison with two, so it answers false for every successful
+// write. Trusting that status aborted every exposure of a physically working DSUSB the moment the
+// shutter opened. The driver asks the library once at open whether it can report a success at all
+// and stops trusting a failure from a build that cannot. The evidence is recorded in
+// indigo_drivers/aux_dsusb/REFACTOR.md.
+static void library_never_reports_success(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&driver));
+	indigo_queue_drain(queue);
+	atomic_store(&report_failure_always, 1);
+	SERIAL_CHECK_TRUE(connect_serial_device(&driver, NULL));
+	reset_trace();
+	unsigned int revision = property_revision("CCD_EXPOSURE");
+	indigo_change_number_property_1(&simulator_test_client, driver.device_name, "CCD_EXPOSURE", "EXPOSURE", 0.2);
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after("CCD_EXPOSURE", INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after("CCD_EXPOSURE", INDIGO_OK_STATE, revision));
+	// The shutter was opened and released although the library reported a failure for both writes.
+	SERIAL_CHECK_EQ_INT(1, count_calls(1, DSUSB_START));
+	SERIAL_CHECK_TRUE(count_calls(1, DSUSB_STOP) >= 1);
+	SERIAL_CHECK_EQ_INT(0, output);
+cleanup:
+	atomic_store(&report_failure_always, 0);
 	stop_serial_driver(&driver);
 	ASSERT_EQ_INT(opened, closed);
 	ASSERT_EQ_INT(0, invalid_io);
@@ -619,6 +648,7 @@ int main(void) {
 		{ "driver metadata, interface and property contract", contract },
 		{ "direct exposure, SDK errors and recovery", direct_exposure_and_errors },
 		{ "focus sequence and distinct SDK failures", focus_sequence_and_errors },
+		{ "library that cannot report a successful write", library_never_reports_success },
 		{ "monotonic exposure timing, overlap and recovery", timing_overlap_and_recovery },
 		{ "abort, stop failure and active removal races", abort_and_removal_races },
 		{ "queued exposure abort and false abort", queued_abort },

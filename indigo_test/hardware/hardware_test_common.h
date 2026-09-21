@@ -438,10 +438,16 @@ static bool hw_wait_number(int d, const char *name, const char *item, double val
 	return false;
 }
 
-static bool hw_set_switch(int d, const char *name, const char *item, indigo_property_state expected, double timeout) {
+// Switching an item of an ANY_OF_MANY property off needs the explicit false, which a
+// ONE_OF_MANY property never does.
+static bool hw_set_switch_value(int d, const char *name, const char *item, bool value, indigo_property_state expected, double timeout) {
 	unsigned before = hw_revision(d, name);
-	indigo_change_switch_property_1(&hw_client, hw_device_name(d), name, item, true);
+	indigo_change_switch_property_1(&hw_client, hw_device_name(d), name, item, value);
 	return hw_wait_state(d, name, before, expected, timeout);
+}
+
+static bool hw_set_switch(int d, const char *name, const char *item, indigo_property_state expected, double timeout) {
+	return hw_set_switch_value(d, name, item, true, expected, timeout);
 }
 
 static bool hw_set_number(int d, const char *name, const char *item, double value, indigo_property_state expected, double timeout) {
@@ -464,6 +470,24 @@ static void hw_request_number(int d, const char *name, const char *item, double 
 
 static void hw_request_switch(int d, const char *name, const char *item, bool value) {
 	indigo_change_switch_property_1(&hw_client, hw_device_name(d), name, item, value);
+}
+
+// CONFIG SAVE is not answered with an update when the configuration folder is still empty: the
+// first save adds the LOAD and REMOVE items, and a property whose item count changes is
+// republished as a delete followed by a define. Wait for the cleared SAVE item instead, as
+// indigo_test/AGENTS.md requires.
+static bool hw_save_configuration(int d, double timeout) {
+	indigo_change_switch_property_1(&hw_client, hw_device_name(d), CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME, true);
+	double deadline = indigo_monotonic_time() + timeout;
+	while (indigo_monotonic_time() < deadline) {
+		bool saving = true;
+		if (hw_switch_item(d, CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME, &saving) && !saving && hw_property_state(d, CONFIG_PROPERTY_NAME) == INDIGO_OK_STATE) {
+			return true;
+		}
+		indigo_usleep(20000);
+	}
+	fprintf(stderr, "    timeout: %s CONFIG SAVE was not answered, state %d\n", hw_device_name(d), hw_property_state(d, CONFIG_PROPERTY_NAME));
+	return false;
 }
 
 static bool hw_connected(int d) {

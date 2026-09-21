@@ -75,7 +75,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_wheel_manual \
 	$(INTEGRATION_BUILD)/test_guider_cgusbst4_transport \
 	$(INTEGRATION_BUILD)/test_aux_geoptikflat_transport \
-	$(INTEGRATION_BUILD)/test_aux_rts_transport \
+	$(INTEGRATION_BUILD)/test_aux_rts_shutter \
 	$(INTEGRATION_BUILD)/test_generator_architecture \
 	$(INTEGRATION_BUILD)/test_wheel_playerone_sdk \
 	$(INTEGRATION_BUILD)/test_wheel_fli_sdk \
@@ -1595,11 +1595,13 @@ $(INTEGRATION_BUILD)/aux_geoptikflat_transport.o: ../indigo_drivers/aux_geoptikf
 $(INTEGRATION_BUILD)/test_aux_geoptikflat_transport: integration/test_serial_outputs.c $(INTEGRATION_BUILD)/aux_geoptikflat_transport.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DTEST_KIND=2 -DTEST_ENTRY=indigo_aux_geoptikflat -DTEST_NAME='"Geoptik Flat Generator"' $< $(INTEGRATION_BUILD)/aux_geoptikflat_transport.o -o $@ $(TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/aux_rts_transport.o: ../indigo_drivers/aux_rts/indigo_aux_rts.c | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(OUTPUT_TRANSPORT_REPLACEMENTS) -c $< -o $@
+RTS_SHUTTER_REPLACEMENTS = -Dindigo_uni_open_serial=rts_test_open -Dindigo_uni_close=rts_test_close -Dindigo_uni_set_rts=rts_test_set_rts
 
-$(INTEGRATION_BUILD)/test_aux_rts_transport: integration/test_serial_outputs.c $(INTEGRATION_BUILD)/aux_rts_transport.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -DTEST_KIND=3 -DTEST_ENTRY=indigo_aux_rts -DTEST_NAME='"RTS-on-COM shutter"' $< $(INTEGRATION_BUILD)/aux_rts_transport.o -o $@ $(TEST_LDFLAGS)
+$(INTEGRATION_BUILD)/aux_rts_shutter.o: ../indigo_drivers/aux_rts/indigo_aux_rts.c | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(RTS_SHUTTER_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_aux_rts_shutter: integration/test_aux_rts_shutter.c $(INTEGRATION_BUILD)/aux_rts_shutter.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/aux_rts_shutter.o -o $@ $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_wheel_manual: integration/test_wheel_manual.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_wheel_manual.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(BUILD_DRIVERS)/indigo_wheel_manual.a $(TEST_LDFLAGS)
@@ -2363,3 +2365,63 @@ GUIDER_GPUSB_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_guider_gpusb.a $(GUIDER_G
 
 $(TEST_BUILD)/hardware/test_guider_gpusb_hw: hardware/test_guider_gpusb_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_guider_gpusb.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(GUIDER_GPUSB_HW_TEST_LDFLAGS)
+
+# Physical Shoestring DSUSB hardware is opt-in and excluded from normal integration tests. The
+# adapter closes the focus and shutter contacts of the camera wired to it, so a connected camera
+# takes the short exposures the run starts. Physical hot-plug is not part of the run; the faked
+# libusb boundary of test_aux_dsusb_sdk covers it.
+.PHONY: test-aux-dsusb-hw
+test-aux-dsusb-hw: check-lib $(TEST_BUILD)/hardware/test_aux_dsusb_hw
+	$(TEST_BUILD)/hardware/test_aux_dsusb_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+AUX_DSUSB_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),../indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/macOS/libdsusb.a,../indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/Linux/$(ARCH_DETECTED)/libdsusb.a)
+AUX_DSUSB_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_dsusb.a $(AUX_DSUSB_HW_TEST_SDK) $(TEST_LDFLAGS) -lusb-1.0
+
+$(TEST_BUILD)/hardware/test_aux_dsusb_hw: hardware/test_aux_dsusb_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_dsusb.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_DSUSB_HW_TEST_LDFLAGS)
+
+# Unattended hot-plug acceptance for the USB camera drivers. One source, one binary per driver,
+# each switching the power of its own camera's USB port instead of asking for a cable to be pulled,
+# so the case runs on a machine nobody is sitting at. Physical hardware is opt-in and deliberately
+# excluded from test/test-integration. The port is switched through a Linux kernel interface; on
+# macOS every binary reports the suite as skipped and exits 0, so the targets stay usable there.
+#
+# HW_KEEP_OTHERS=1 leaves the other USB devices powered. By default every other switchable port is
+# powered down for the run, because a host whose USB power budget cannot carry all attached cameras
+# at once browns out mid-exposure and the failure reads like a driver defect. Ports carrying a mass
+# storage device are never switched, whatever the setting, so a machine booting from a USB disk
+# keeps running.
+HW_KEEP_OTHERS ?= 0
+SVB_HOTPLUG_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),-L../indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/macOS -lSVBCameraSDK,../indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/Linux/$(ARCH_DETECTED)/libSVBCameraSDK.a)
+# Explicit and local, because the shared TOUPTEK_SDK_TEST_LDFLAGS asks for -lhidapi, which only
+# the macOS build provides; on Linux the same library is built as libhidapi-libusb.
+CCD_HOTPLUG_HW_LDFLAGS = $(filter-out -lindigo,$(TEST_LDFLAGS)) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(BUILD_LIB)/libraw.a -lusb-1.0 -lz -lstdc++ -ldl
+ifeq ($(OS_DETECTED),Darwin)
+CCD_HOTPLUG_HW_LDFLAGS += -lhidapi
+else
+CCD_HOTPLUG_HW_LDFLAGS += -lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common
+endif
+
+HW_HOTPLUG_ARGS = --run $(if $(filter 1,$(HW_KEEP_OTHERS)),--keep-others) $(if $(filter 1,$(HW_DEBUG)),--debug)
+CCD_HOTPLUG_HW_SOURCES = hardware/test_ccd_hotplug_hw.c hardware/hardware_test_common.h hardware/usb_hotplug_test_common.h test_runner.h
+
+.PHONY: test-ccd-svb-hotplug-hw
+test-ccd-svb-hotplug-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_svb_hotplug_hw
+	$(TEST_BUILD)/hardware/test_ccd_svb_hotplug_hw $(HW_HOTPLUG_ARGS)
+
+$(TEST_BUILD)/hardware/test_ccd_svb_hotplug_hw: $(CCD_HOTPLUG_HW_SOURCES) $(BUILD_DRIVERS)/indigo_ccd_svb.a Makefile | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_ccd_svb -DTEST_NAME='"SVBONY"' -DTEST_VENDORS='{ 0xf266 }' $< $(BUILD_DRIVERS)/indigo_ccd_svb.a -o $@ $(CCD_HOTPLUG_HW_LDFLAGS) $(SVB_HOTPLUG_HW_TEST_SDK)
+
+.PHONY: test-ccd-touptek-hotplug-hw
+test-ccd-touptek-hotplug-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_touptek_hotplug_hw
+	$(TEST_BUILD)/hardware/test_ccd_touptek_hotplug_hw $(HW_HOTPLUG_ARGS)
+
+$(TEST_BUILD)/hardware/test_ccd_touptek_hotplug_hw: $(CCD_HOTPLUG_HW_SOURCES) $(BUILD_DRIVERS)/indigo_ccd_touptek.a Makefile | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_ccd_touptek -DTEST_NAME='"ToupTek"' -DTEST_VENDORS='{ 0x0547 }' $< $(BUILD_DRIVERS)/indigo_ccd_touptek.a -o $@ $(CCD_HOTPLUG_HW_LDFLAGS) -ltoupcam
+
+.PHONY: test-ccd-qhy2-hotplug-hw
+test-ccd-qhy2-hotplug-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_qhy2_hotplug_hw
+	$(TEST_BUILD)/hardware/test_ccd_qhy2_hotplug_hw $(HW_HOTPLUG_ARGS)
+
+$(TEST_BUILD)/hardware/test_ccd_qhy2_hotplug_hw: $(CCD_HOTPLUG_HW_SOURCES) $(BUILD_DRIVERS)/indigo_ccd_qhy2.a Makefile | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_ccd_qhy2 -DTEST_NAME='"QHY"' -DTEST_VENDORS='{ 0x1618 }' $< $(BUILD_DRIVERS)/indigo_ccd_qhy2.a -o $@ $(CCD_HOTPLUG_HW_LDFLAGS) -lqhyccd
