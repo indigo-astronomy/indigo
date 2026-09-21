@@ -79,6 +79,7 @@
 | rotator_lunatico | 2026-09-21 17:09 | 3.0.0.12 | mac arm64 | simulator | 27 / 27 | ✅ OK |
 | rotator_optec | 2026-09-21 12:43 | 3.0.0.4 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | rotator_simulator | 2026-09-21 10:52 | 3.0.0.7 | mac arm64 | simulator | 9 / 9 | ✅ OK |
+| rotator_wa | 2026-09-21 17:12 | 3.0.0.5 | mac arm64 | simulator | 35 / 35 | ✅ OK |
 | wheel_asi | 2026-09-21 00:42 | 3.0.0.15 | mac arm64 | ASI EFW mini | 16 / 16 | ✅ OK |
 | wheel_asi | 2026-09-21 14:16 | 3.0.0.16 | mac arm64 | fake SDK | 5 / 5 | ✅ OK |
 | wheel_astroasis | 2026-09-21 14:16 | 3.0.0.5 | mac arm64 | fake SDK | 10 / 10 | ✅ OK |

@@ -27,3 +27,7 @@ indigo_server -s
 ## Status: Stable
 
 * WandererAstro Rotator MiniV2
+
+## Testing
+
+2026-09-21 17:12 3.0.0.5 mac arm64 simulator 35/35 OK
