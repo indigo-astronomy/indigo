@@ -26,8 +26,8 @@
 | aux_wcv4ec | 2026-09-21 19:45 | 3.0.0.8 | mac arm64 | simulator | 15 / 15 | ✅ OK |
 | ccd_altair | 2026-09-21 20:54 | 3.0.0.49 | mac arm64 | Altair ALTAIRGP224C | 28 / 28 | ✅ OK |
 | ccd_altair | 2026-09-21 13:49 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
-| ccd_asi | 2026-09-21 08:19 | 3.0.0.64 | mac arm64 | ASI294MC Pro | 28 / 28 | ✅ OK |
-| ccd_asi | 2026-09-21 08:31 | 3.0.0.64 | mac arm64 | ASI120MC-S | 28 / 28 | ✅ OK |
+| ccd_asi | 2026-09-21 21:17 | 3.0.0.65 | mac arm64 | ASI294MC Pro | 28 / 28 | ✅ OK |
+| ccd_asi | 2026-09-21 21:20 | 3.0.0.65 | mac arm64 | ASI120MC-S | 28 / 28 | ✅ OK |
 | ccd_asi | 2026-09-21 12:39 | 3.0.0.65 | mac arm64 | fake SDK | 51 / 51 | ✅ OK |
 | ccd_atik | 2026-09-21 13:50 | 3.0.0.41 | mac arm64 | fake SDK | 41 / 41 | ✅ OK |
 | ccd_atik2 | 2026-09-21 13:51 | 3.0.0.13 | mac arm64 | fake SDK | 24 / 24 | ✅ OK |
@@ -40,7 +40,7 @@
 | ccd_mi | 2026-09-21 12:42 | 3.0.0.34 | mac arm64 | fake SDK | 17 / 17 | ✅ OK |
 | ccd_ogma | 2026-09-21 14:02 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_omegonpro | 2026-09-21 14:04 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
-| ccd_playerone | 2026-09-21 09:26 | 3.0.0.25 | mac arm64 | Mars-C II | 27 / 27 | ✅ OK |
+| ccd_playerone | 2026-09-21 21:23 | 3.0.0.26 | mac arm64 | Mars-C II | 27 / 27 | ✅ OK |
 | ccd_playerone | 2026-09-21 12:40 | 3.0.0.26 | mac arm64 | fake SDK | 49 / 49 | ✅ OK |
 | ccd_ptp | 2026-09-21 14:14 | 3.0.0.52 | mac arm64 | fake SDK | 128 / 128 | ✅ OK |
 | ccd_qhy | 2026-09-21 10:57 | 3.0.0.35 | mac arm64 | fake SDK | 37 / 37 | ✅ OK |
