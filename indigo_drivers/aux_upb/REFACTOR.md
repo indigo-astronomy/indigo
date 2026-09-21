@@ -83,6 +83,16 @@ outlet state light and current, both heater outlets, dew control, the USB hub co
 renaming, the shared focuser logical device with the powerbox connection surviving its close,
 reconnect and driver reinitialization.
 
+The hardware run fed one observation back into the simulator: a box with no environmental probe
+reports zeros for the whole weather group, which the simulator could not produce and the suite
+therefore never covered. `--no-probe` and `--outlet-current` were added and
+`a_box_without_a_probe_reports_zero_weather` now covers it, bringing the suite to 37 cases.
+
+The simulator still cannot reproduce one thing the hardware showed: the v1 box publishes
+`AUX_USB_PORT` because it contains an internal Microchip hub that the driver finds over libusb.
+That hub is a USB device rather than a serial one, so the simulator's v1 mode has no way to present
+it and that path stays hardware-only.
+
 Not covered on this box: the environmental probe reads 0 C and 0 %RH because none is attached, so
 the weather values are only checked for plausibility rather than against a reference; the variable
 voltage outlet and the per port USB switching are v2 features this box does not have; the focuser
@@ -91,5 +101,6 @@ motion; physical hot-plug was not part of the run.
 
 ## Final test summary
 
-- Simulated tests run: 36; passed: 36. Sanitizer run (ASan + UBSan, arm64): 36 run, 36 passed.
+- Simulated tests run: 37; passed: 37. Sanitizer run (ASan + UBSan, arm64): 36 run, 36 passed, before
+  the probe-less case below was added.
 - Hardware tests run: 14; passed: 14. Pegasus Ultimate Powerbox v1, firmware 1.4.

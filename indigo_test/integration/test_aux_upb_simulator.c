@@ -198,6 +198,28 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A bare box has no environmental probe, so the whole weather group reads zero.
+// This is what the hardware run against a Pegasus UPB v1 actually reported, and the
+// driver has to publish it rather than treat it as a failed parse.
+static void a_box_without_a_probe_reports_zero_weather(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--no-probe", "--outlet-current", "6", NULL };
+	SERIAL_CHECK_TRUE(start_upb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME, 0, 0.01));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_HUMIDITY_ITEM_NAME, 0, 0.01));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_DEWPOINT_ITEM_NAME, 0, 0.01));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_OK_STATE));
+	// A lightly loaded outlet reads a small current rather than the fixed sample value.
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_POWER_OUTLET_CURRENT_PROPERTY_NAME, AUX_POWER_OUTLET_CURRENT_1_ITEM_NAME, 6 / 300.0, 0.01));
+	// The box stays fully controllable without a probe.
+	SERIAL_CHECK_TRUE(set_switch(&aux, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, false));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
 static void each_power_outlet_switches_on_its_own(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_upb(&simulator, NULL));
@@ -792,6 +814,7 @@ int main(void) {
 		{ "metadata_and_property_completeness", metadata_and_property_completeness },
 		{ "upb1_model_reduces_the_outlet_inventory", upb1_model_reduces_the_outlet_inventory },
 		{ "connect_seeds_every_sensor_from_the_status_frame", connect_seeds_every_sensor_from_the_status_frame },
+		{ "a_box_without_a_probe_reports_zero_weather", a_box_without_a_probe_reports_zero_weather },
 		{ "each_power_outlet_switches_on_its_own", each_power_outlet_switches_on_its_own },
 		{ "power_outlet_state_follows_the_switch", power_outlet_state_follows_the_switch },
 		{ "overcurrent_raises_the_outlet_state", overcurrent_raises_the_outlet_state },

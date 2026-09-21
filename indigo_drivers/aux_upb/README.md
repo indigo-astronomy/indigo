@@ -27,5 +27,5 @@ Tested with physical device.
 
 ## Testing
 
-2026-09-21 21:05 3.0.0.28 mac arm64 simulator 36/36 OK
+2026-09-21 22:38 3.0.0.28 mac arm64 simulator 37/37 OK
 2026-09-21 21:46 3.0.0.28 mac arm64 Pegasus UPB v1 14/14 OK

@@ -35,6 +35,12 @@ static int automatic, hub = 1, reverse, backlash = 100, speed = 400;
 static char overcurrent[8] = "0000000";
 static double voltage = 12.2, current = 0.0, temperature = 23.2, humidity = 59, dewpoint = 14.7;
 static int power = 0;
+// A box with no environmental probe attached reports zeros for the whole weather
+// group, which is what a bare Ultimate Powerbox does.
+static bool no_probe = false;
+// Raw per outlet current reading, in the units the box uses. The real box reports
+// close to zero for an unloaded outlet.
+static int outlet_current = 200;
 // Fault injection: the named command answers with MODE instead of its reply.
 // invalid - an unparsable line, short - a truncated line, silent - no answer at
 // all, close - the port is closed, which is how a transport loss looks.
@@ -165,7 +171,7 @@ static void dispatch_command(int fd, const char *cmd) {
 			used += snprintf(response + used, sizeof(response) - used, "%d:", outlets[4 + i]);
 		}
 		for (int i = 0; i < 4 + heaters; i++) {
-			used += snprintf(response + used, sizeof(response) - used, "%d:", outlets[i] ? 200 : 0);
+			used += snprintf(response + used, sizeof(response) - used, "%d:", outlets[i] ? outlet_current : 0);
 		}
 		char flags[8];
 		snprintf(flags, version == 2 ? 8 : 7, "%s", overcurrent);
@@ -255,6 +261,11 @@ int main(int argc, char **argv) {
 			voltage = atof(argv[++i]);
 			current = atof(argv[++i]);
 			power = atoi(argv[++i]);
+		} else if (!strcmp(argv[i], "--no-probe")) {
+			no_probe = true;
+			temperature = humidity = dewpoint = 0;
+		} else if (!strcmp(argv[i], "--outlet-current") && i + 1 < argc) {
+			outlet_current = atoi(argv[++i]);
 		} else if (!strcmp(argv[i], "--autodew")) {
 			automatic = 1;
 		} else if (!strcmp(argv[i], "--fault-after") && i + 3 < argc) {
@@ -275,7 +286,7 @@ int main(int argc, char **argv) {
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
 		} else if (strcmp(argv[i], "--headless")) {
-			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file path] [--model upb|upb2] [--overcurrent FLAGS] [--weather T H D] [--power V A W] [--autodew] [--fault CMD invalid|short|silent|close] [--fault-once CMD MODE] [--fault-after N CMD MODE]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file path] [--model upb|upb2] [--overcurrent FLAGS] [--weather T H D] [--power V A W] [--autodew] [--no-probe] [--outlet-current N] [--fault CMD invalid|short|silent|close] [--fault-once CMD MODE] [--fault-after N CMD MODE]\n", argv[0]);
 			return 1;
 		}
 	}
