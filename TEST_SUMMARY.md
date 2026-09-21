@@ -83,6 +83,10 @@
 
 2026-09-20 21:31 3.0.0.14 mac arm64 fake SDK 13/13 OK
 
+# ccd_ssg
+
+2026-09-21 14:08 3.0.0.49 mac arm64 fake SDK 30/30 OK
+
 # ccd_svb (SVBONY Camera)
 
 2026-09-21 12:41 3.0.0.28 mac arm64 fake SDK 47/47 OK
