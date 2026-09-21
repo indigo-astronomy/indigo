@@ -40,7 +40,7 @@
 
 # ccd_qhy2 (QHY CMOS (modern) Camera)
 
-2026-09-21 10:58 3.0.0.35 mac arm64 fake SDK 37/37 OK
+2026-09-21 13:41 3.0.0.35 mac arm64 fake SDK 37/37 OK
 
 # ccd_simulator (Camera Simulator)
 
