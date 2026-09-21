@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_aux_skyalert"
 #define DRIVER_LABEL         "Interactive Astronomy SkyAlert"
 #define AUX_DEVICE_NAME      "Interactive Astronomy SkyAlert"
@@ -121,6 +121,25 @@ static void skyalert_close(indigo_device *device) {
 
 #pragma mark - High level code (aux)
 
+static void aux_timer_callback(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	//+ aux.on_timer
+	// The device has no unsolicited output: every reading is one "send" request. The 2.0
+	// driver polled it every 10 seconds; the generated 3.0 driver read the record only in
+	// skyalert_open(), so the published weather never changed after connection.
+	if (skyalert_read_record(device)) {
+		AUX_WEATHER_PROPERTY->state = AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		AUX_WEATHER_PROPERTY->state = AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
+	indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
+	indigo_execute_handler_in(device, 10, aux_timer_callback);
+	//- aux.on_timer
+}
+
 static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
@@ -144,6 +163,9 @@ static void aux_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, aux_timer_callback);
+	}
 }
 
 #pragma mark - Device API (aux)

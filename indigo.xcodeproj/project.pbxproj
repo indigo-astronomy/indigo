@@ -2341,6 +2341,7 @@
 		5984A2F9303B775600D581D2 /* aux_ppb_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_ppb_simulator.c; sourceTree = "<group>"; };
 		5984A2FA303B77B300D581D2 /* test_aux_ppb_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_ppb_simulator.c; sourceTree = "<group>"; };
 		5984A2FB303B795B00D581D2 /* aux_skyalert_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_skyalert_simulator.c; sourceTree = "<group>"; };
+		C0DE20260921F00000000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		5984A2FC303B796D00D581D2 /* test_aux_skyalert_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_skyalert_simulator.c; sourceTree = "<group>"; };
 		5984A2FD303B7A3E00D581D2 /* aux_sqm_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_sqm_simulator.c; sourceTree = "<group>"; };
 		5984A2FE303B7A4900D581D2 /* test_aux_sqm_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_simulator.c; sourceTree = "<group>"; };
@@ -9145,6 +9146,7 @@
 			isa = PBXGroup;
 			children = (
 				59958E2B25CC833B00BEFA1B /* README.md */,
+				C0DE20260921F00000000001 /* REFACTOR.md */,
 				59958E2E25CC833B00BEFA1B /* indigo_aux_skyalert.h */,
 				59958E2925CC833B00BEFA1B /* indigo_aux_skyalert.c */,
 				59958E2A25CC833B00BEFA1B /* indigo_aux_skyalert_main.c */,

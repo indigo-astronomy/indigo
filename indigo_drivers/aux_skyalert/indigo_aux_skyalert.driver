@@ -26,7 +26,7 @@ driver skyalert {
 	label = "Interactive Astronomy SkyAlert";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 6;
+	version = 7;
 	serial;
 	data {
 		char response[32];
@@ -86,6 +86,19 @@ driver skyalert {
 		name = "Interactive Astronomy SkyAlert";
 		interface = INDIGO_INTERFACE_AUX_SQM;
 		additional_instances = true;
+		on_timer {
+			// The device has no unsolicited output: every reading is one "send" request. The 2.0
+			// driver polled it every 10 seconds; the generated 3.0 driver read the record only in
+			// skyalert_open(), so the published weather never changed after connection.
+			if (skyalert_read_record(device)) {
+				AUX_WEATHER_PROPERTY->state = AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				AUX_WEATHER_PROPERTY->state = AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
+			indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
+			indigo_execute_handler_in(device, 10, aux_timer_callback);
+		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
 			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");

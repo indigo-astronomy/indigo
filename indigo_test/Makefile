@@ -995,6 +995,9 @@ $(INTEGRATION_BUILD)/test_aux_arteskyflat_simulator_asan: integration/test_aux_a
 $(INTEGRATION_BUILD)/test_aux_geoptikflat_simulator_asan: integration/test_aux_geoptikflat_simulator.c ../indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_geoptikflat_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
 
+$(INTEGRATION_BUILD)/test_aux_skyalert_simulator_asan: integration/test_aux_skyalert_simulator.c ../indigo_drivers/aux_skyalert/indigo_aux_skyalert.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_skyalert_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_skyalert/indigo_aux_skyalert.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
+
 $(INTEGRATION_BUILD)/test_aux_astromechanics_simulator: integration/test_aux_astromechanics_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_astromechanics_simulator $(BUILD_DRIVERS)/indigo_aux_astromechanics.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_ASTROMECHANICS_SIMULATOR_TEST_LDFLAGS)
 
