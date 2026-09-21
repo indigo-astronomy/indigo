@@ -77,6 +77,26 @@ cleanup:
 	stop();
 }
 
+// The physical adapter answers the handshake while a pulse it is timing itself is still running,
+// so a client that drops the link mid pulse can come straight back. The driver sends no stop when
+// it closes the port, so the adapter keeps timing the abandoned pulse, and the reconnected device
+// has to publish the axis as idle again instead of inheriting the BUSY it left.
+static void reconnect_during_pulse(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&guider, simulator.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, "WEST", 3000));
+	SERIAL_CHECK_TRUE(event("ON", 3, 3000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	disconnect_serial_device(&guider);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_serial_device(&guider, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, "EAST", 100));
+	SERIAL_CHECK_TRUE(event("ON", 2, 100));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	stop();
+}
+
 static void reconnect(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&guider, simulator.port));
 	disconnect_serial_device(&guider);
@@ -99,9 +119,9 @@ int main(int argc, char **argv) {
 			return 1;
 		}
 	}
-	const indigo_test_case tests[] = { { "indigo_dialect_directions", directions }, { "phd2_dialect_directions", directions }, { "wrong_identity", identity_failure }, { "silent_identity", identity_failure }, { "reconnect", reconnect } };
-	const char *profiles[] = { "indigo", "phd2", "wrong-identity", "silent", "indigo" };
-	const bool defects[] = { false, true, false, false, false };
+	const indigo_test_case tests[] = { { "indigo_dialect_directions", directions }, { "phd2_dialect_directions", directions }, { "wrong_identity", identity_failure }, { "silent_identity", identity_failure }, { "reconnect", reconnect }, { "reconnect_during_pulse", reconnect_during_pulse } };
+	const char *profiles[] = { "indigo", "phd2", "wrong-identity", "silent", "indigo", "indigo" };
+	const bool defects[] = { false, true, false, false, false, false };
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	int failures = 0;
 	for (int i = 0; i < ARRAY_SIZE(tests); i++) {

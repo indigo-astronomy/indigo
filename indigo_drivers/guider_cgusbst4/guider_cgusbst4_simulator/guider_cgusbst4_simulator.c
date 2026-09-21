@@ -4,6 +4,11 @@
 // open-source license' (see LICENSE.md).
 // Protocol evidence and unresolved dialect difference: ../REFACTOR.md.
 // Default PHD2 dialect uses numeric directions; --profile indigo accepts letters.
+// Behaviour checked against a physical CG-USB-ST4 on 2026-09-21: the adapter answers the 0x06
+// handshake with A in under a millisecond, answers it again while a pulse it is timing itself is
+// still running, and never answers a guide command at all - neither dialect is acknowledged and
+// neither is refused. The silent REJECT below models exactly that: at the host a command the
+// firmware did not understand is indistinguishable from one it took.
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
 #include <signal.h>
 #include <sys/select.h>

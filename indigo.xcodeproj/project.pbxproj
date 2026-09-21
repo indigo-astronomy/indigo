@@ -1174,6 +1174,7 @@
 		2D7262A5A6EB6D2BF8614DCA /* aux_test_isolation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_test_isolation.h; sourceTree = "<group>"; };
 		30C50F83B71C53EA7F53B386 /* test_aux_cloudwatcher_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_cloudwatcher_simulator.c; sourceTree = "<group>"; };
 		C0DE20260921000400000001 /* test_aux_upb_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_upb_hw.c; sourceTree = "<group>"; };
+		C0DE20260921230000000005 /* test_guider_cgusbst4_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_guider_cgusbst4_hw.c; sourceTree = "<group>"; };
 		C0DE20260921230000000004 /* test_focuser_fcusb_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_fcusb_hw.c; sourceTree = "<group>"; };
 		C0DE20260921230000000003 /* test_aux_dsusb_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_dsusb_hw.c; sourceTree = "<group>"; };
 		C0DE20260921230000000002 /* test_guider_gpusb_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_guider_gpusb_hw.c; sourceTree = "<group>"; };
@@ -14606,6 +14607,7 @@
 			isa = PBXGroup;
 			children = (
 				C0DE20260921000400000001 /* test_aux_upb_hw.c */,
+				C0DE20260921230000000005 /* test_guider_cgusbst4_hw.c */,
 				C0DE20260921230000000004 /* test_focuser_fcusb_hw.c */,
 				C0DE20260921230000000003 /* test_aux_dsusb_hw.c */,
 				C0DE20260921230000000002 /* test_guider_gpusb_hw.c */,

@@ -2445,3 +2445,15 @@ FOCUSER_FCUSB_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_fcusb.a $(FOCUSE
 
 $(TEST_BUILD)/hardware/test_focuser_fcusb_hw: hardware/test_focuser_fcusb_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_fcusb.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_FCUSB_HW_TEST_LDFLAGS)
+
+# Physical CG-USB-ST4 hardware is opt-in and excluded from normal integration tests. The adapter
+# only closes ST4 relays, so nothing moves unless a mount is wired to it. Set CGUSBST4_HW_PORT to
+# override the port the driver matched through its USB pattern.
+.PHONY: test-guider-cgusbst4-hw
+test-guider-cgusbst4-hw: check-lib $(TEST_BUILD)/hardware/test_guider_cgusbst4_hw
+	$(TEST_BUILD)/hardware/test_guider_cgusbst4_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+GUIDER_CGUSBST4_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_guider_cgusbst4_hw: hardware/test_guider_cgusbst4_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(GUIDER_CGUSBST4_HW_TEST_LDFLAGS)
