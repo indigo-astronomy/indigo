@@ -438,47 +438,69 @@ Regression test: not covered. Neither available camera reports a hidden `X_CCD_L
 entry cannot be produced on this hardware; the fake SDK suite would need an option-read failure
 profile to reach it. Recorded as a deferred gap rather than claimed as tested.
 
-### TT-D03 — the configuration restore fails on both cameras (expected baseline failure)
+### TT-D03 — one refused property discarded the whole configuration restore
 
 Observable impact: reproduced on the Touptek GPCMOS01200KMB and the Altair ALTAIRGP224C. `CONFIG SAVE`
 writes a correct file — verified by reading it back, it contains `CCD_GAIN GAIN 101` and thirteen other
 properties — but `CONFIG LOAD` answers "Configuration restore failed or timed out" and applies nothing.
 A debug trace shows no vendor SDK call at all between the load request and the failure, so the saved
-values never reach the driver. Loading a saved configuration is therefore broken for this driver
-family.
+values never reach the driver.
 
-Investigation so far, all of it ruling things out rather than pinning the cause:
+Root cause, reproduced under the fake SDK on 2026-09-21. `config_restore` in `indigo_libs/indigo_driver.c`
+dispatches the saved properties in file order and waits for each one to answer before moving on. Two
+answers ended the whole restore rather than that one property:
 
-- Not the save. The file is present, well formed and contains the changed value.
-- Not a stalled property. Every one of the fourteen saved properties is published and settled when the
-  failure is reported; a per-property state dump is printed by the failing case.
-- Not `CCD_LENS` settling in IDLE. The base driver leaves a zeroed lens profile in `INDIGO_IDLE_STATE`
-  and the framework suppresses that unchanged update, which looked like a plausible stall for the
-  restore observer. Giving the profile real numbers first made `CCD_LENS` settle OK and the restore
-  still failed.
-- Not the update suppression on already-matching values. Moving `X_CCD_ADVANCED.SPEED` away from its
-  saved value before the load, so that no saved property still matched the current one, did not help
-  either.
-- Not specific to one camera or one vendor SDK: both cameras fail identically.
+- **No answer at all.** `ccd_change_property()` returned `INDIGO_OK` without publishing anything when a
+  request arrived while a related property was BUSY. The restore cannot tell that from "still working",
+  so it waited out its 120 s deadline and dropped every setting after that property in file order.
+- **An ALERT answer.** `config_restore_observe_property()` set `restore->failed` on any ALERT, so an
+  explicit refusal aborted the restore just as fatally as a lost request.
 
-The remaining suspects are in the framework's `config_restore` machinery in `indigo_libs/indigo_driver.c`
-and its interaction with this driver's hand-written `ccd_change_property()`, which returns
-`INDIGO_OK` without publishing anything when a request arrives while a related property is BUSY — the
-silent-drop pattern that the generated drivers replaced with an explicit `reject_change` ALERT. A client
-that waits for a response, as the restore does, cannot distinguish that from a lost request. Confirming
-it means changing `indigo_libs`, which is outside the scope of this driver pass, so it is recorded here
-and as a finding in `indigo_drivers/REVIEW.md` instead of being fixed blind.
+Both were confirmed by holding `CCD_EXPOSURE` BUSY across a `CONFIG LOAD` in the fake-SDK suite. The
+trace showed `dispatched X_CCD_BIN_MODE updated=0 state=1` followed by `success=0`, with `CCD_GAIN` —
+last but one in the file — never applied.
 
-Per `indigo_drivers/AGENTS.override.md` this is kept as an expected baseline failure:
-`tp_saves_and_loads_configuration` still asserts the real contract and still fails, and the case
-carries a comment pointing here. It was not weakened and the defect was not encoded as correct
-behaviour.
+Fix, in two parts:
+
+- Driver: `reject_change()` answers the cross-property interlocks explicitly, restating the unchanged
+  values with `INDIGO_ALERT_STATE` and a message, in the six places that previously returned
+  `INDIGO_OK` silently. A request arriving while the target property is itself BUSY is deliberately
+  left to the `INDIGO_COPY_*_PROCESS_CHANGE` guard, which must not overwrite a running operation's
+  state; the framework change below covers that case. Version `0x03000030` -> `0x03000031`.
+- Framework: a property that answers ALERT, or that publishes nothing within
+  `CONFIG_RESTORE_ACK_TIMEOUT`, is now recorded and skipped so the rest of the file is still applied.
+  `CONFIG` ends in `INDIGO_ALERT_STATE` with a message naming the properties the driver did not
+  accept, which makes the failure diagnosable instead of silent. `config_restore_pop()` also resets
+  `restore->state`, which previously leaked into the next request until its probe arrived.
+
+Regression test: `Configuration restore survives a refused property` in
+`indigo_test/integration/test_ccd_touptek_sdk.c` saves a configuration, changes it, starts an exposure
+so `CCD_MODE`, `CCD_BIN`, `CCD_FRAME` and `X_CCD_BIN_MODE` are all refused, and asserts that `CCD_GAIN`
+and `X_CCD_ADVANCED` — which follow them in the file — are still restored, that `CONFIG` reports
+ALERT, and that the same file restores cleanly with nothing in flight. Against the pre-fix framework
+the case fails at `(21) == ((int)item_number(0, "CCD_GAIN", "GAIN", 0))`, which is exactly the
+hardware symptom.
+
+`Acquisition admission, errors and reconnect` was updated in the same change: it asserted the old
+silent-drop contract by checking that a refused `CCD_MODE` produced no property revision at all. It
+now asserts the explicit refusal and that the mode items keep their values.
+
+Hardware status: not re-verified. `tp_saves_and_loads_configuration` in
+`indigo_test/hardware/test_ccd_touptek_hw.c` is unchanged and still asserts the real contract; whether
+the two cameras now pass it has to be confirmed with the hardware attached. The fake-SDK suite could
+not reproduce the failure with an idle camera in any profile that was tried, including a mono RAW8
+model producing the same fourteen saved properties, so the specific property refused on those cameras
+is still unknown. The framework change makes the restore report it by name when it next runs.
 
 ## Final test summary — 2026-09-21
 
-- Simulated (fake SDK) tests: 0 run in this pass. The existing `test_ccd_touptek_sdk` fake SDK suite was
-  not re-run because this pass changed only the connect-side define, the configuration save filter and
-  the hardware harness; it is listed as a gap for the next change that touches acquisition.
-- Hardware tests: 56 run, 54 passed — 28 cases on the Touptek GPCMOS01200KMB and 28 on the Altair
-  ALTAIRGP224C, with the same single expected baseline failure (TT-D03) on each. Two physical hot-plug
-  cases exist behind `--hotplug` and were not run; they need an operator at the cable.
+- Simulated (fake SDK) tests: 30 run, 30 passed. `make -C indigo_test build/integration/test_ccd_touptek_sdk`
+  then `indigo_test/build/integration/test_ccd_touptek_sdk`, macOS arm64/x86_64. The suite grew one case,
+  `Configuration restore survives a refused property`, which is the TT-D03 regression test; it fails
+  against the pre-fix framework and passes after it. The earlier note that the suite had not been re-run
+  in this pass no longer applies.
+- Hardware tests: 56 run, 54 passed, all before the TT-D03 fix — 28 cases on the Touptek GPCMOS01200KMB
+  and 28 on the Altair ALTAIRGP224C, with the same single failure (`tp_saves_and_loads_configuration`) on
+  each. The cameras were not available after the fix, so it is not known whether that case now passes;
+  the test is unchanged and still asserts the real contract. Two physical hot-plug cases exist behind
+  `--hotplug` and were not run; they need an operator at the cable.

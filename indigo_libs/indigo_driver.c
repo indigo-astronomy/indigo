@@ -310,14 +310,20 @@ typedef struct config_request {
 	struct config_request *next;
 } config_request;
 
+// INDIGO_COPY_*_PROCESS_CHANGE and an explicit rejection both publish before the request returns, so
+// a property that produced no update at all within this window was dropped rather than accepted. The
+// window is generous because a driver may publish its first update from a queued handler instead.
+#define CONFIG_RESTORE_ACK_TIMEOUT 5.0
+
 typedef struct {
 	indigo_adapter_context adapter; // XML reader context must be first.
 	indigo_client client;
 	pthread_mutex_t mutex;
 	config_request *first, *last;
-	bool active, connected, failed, probed, available, dispatched, updated;
+	bool active, connected, failed, probed, available, dispatched, updated, rejected;
 	indigo_property_state state;
-	double deadline;
+	double deadline, ack_deadline;
+	char unrestored[INDIGO_VALUE_SIZE];
 } config_restore;
 
 static indigo_result config_restore_observe_property(indigo_client *client, indigo_property *property, bool update) {
@@ -338,7 +344,8 @@ static indigo_result config_restore_observe_property(indigo_client *client, indi
 			if (restore->dispatched && update) {
 				restore->updated = true;
 				if (property->state == INDIGO_ALERT_STATE) {
-					restore->failed = true;
+					// One refused property must not discard the settings that follow it in the file.
+					restore->rejected = true;
 				}
 			}
 		}
@@ -389,7 +396,18 @@ static void config_restore_pop(config_restore *restore) {
 	}
 	indigo_release_property(request->property);
 	indigo_safe_free(request);
-	restore->probed = restore->available = restore->dispatched = restore->updated = false;
+	restore->probed = restore->available = restore->dispatched = restore->updated = restore->rejected = false;
+	restore->state = INDIGO_IDLE_STATE;
+}
+
+// Record a property the driver refused or never answered and continue with the rest of the file.
+static void config_restore_skip(config_restore *restore) {
+	const char *name = restore->first->property->name;
+	size_t used = strlen(restore->unrestored);
+	if (used + strlen(name) + 3 < INDIGO_VALUE_SIZE) {
+		snprintf(restore->unrestored + used, INDIGO_VALUE_SIZE - used, "%s%s", used ? ", " : "", name);
+	}
+	config_restore_pop(restore);
 }
 
 static void config_restore_handler(indigo_device *device) {
@@ -410,30 +428,45 @@ static void config_restore_handler(indigo_device *device) {
 		}
 		if (!restore->dispatched && restore->state != INDIGO_BUSY_STATE) {
 			restore->dispatched = true;
+			restore->ack_deadline = indigo_monotonic_time() + CONFIG_RESTORE_ACK_TIMEOUT;
 			request->access_token = indigo_get_device_or_master_token(request->device);
 			pthread_mutex_unlock(&restore->mutex);
 			indigo_change_property(&restore->client, request);
 			pthread_mutex_lock(&restore->mutex);
 		}
 		if (restore->dispatched && restore->updated && restore->state != INDIGO_BUSY_STATE) {
-			if (!restore->failed) {
+			if (restore->rejected) {
+				config_restore_skip(restore);
+			} else {
 				config_restore_pop(restore);
 			}
+		} else if (restore->dispatched && !restore->updated && indigo_monotonic_time() >= restore->ack_deadline) {
+			// The driver accepted the request without publishing anything, so waiting for it would
+			// burn the whole deadline and lose every setting after it in file order.
+			config_restore_skip(restore);
 		} else if (!restore->failed) {
 			pthread_mutex_unlock(&restore->mutex);
 			indigo_execute_background_handler_in(device, 0.01, config_restore_handler);
 			return;
 		}
 	}
-	bool success = !restore->failed && restore->first == NULL;
+	bool aborted = restore->failed || restore->first != NULL;
+	char unrestored[INDIGO_VALUE_SIZE];
+	strcpy(unrestored, restore->unrestored);
 	while (restore->first) {
 		config_restore_pop(restore);
 	}
 	restore->active = false;
 	CONFIG_LOAD_ITEM->sw.value = false;
-	CONFIG_PROPERTY->state = success ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	CONFIG_PROPERTY->state = (aborted || *unrestored) ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 	pthread_mutex_unlock(&restore->mutex);
-	indigo_update_property(device, CONFIG_PROPERTY, success ? NULL : "Configuration restore failed or timed out");
+	if (aborted) {
+		indigo_update_property(device, CONFIG_PROPERTY, "Configuration restore failed or timed out");
+	} else if (*unrestored) {
+		indigo_update_property(device, CONFIG_PROPERTY, "Configuration restored, except '%s' which the driver did not accept", unrestored);
+	} else {
+		indigo_update_property(device, CONFIG_PROPERTY, NULL);
+	}
 }
 
 static void start_config_restore(indigo_device *device) {
@@ -466,6 +499,7 @@ static void start_config_restore(indigo_device *device) {
 	restore->failed = failed;
 	restore->connected = IS_CONNECTED;
 	restore->deadline = indigo_monotonic_time() + 120;
+	restore->unrestored[0] = 0;
 	restore->active = true;
 	pthread_mutex_unlock(&restore->mutex);
 	config_restore_handler(device);

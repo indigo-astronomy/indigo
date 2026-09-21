@@ -1239,6 +1239,7 @@ cleanup:
 }
 
 static void acquisition_edges(void) {
+	indigo_property *mode_before = NULL, *mode_after = NULL;
 	CHECK_TRUE(start_properties());
 	atomic_store(&fast_watchdog, true);
 	atomic_store(&fail_trigger, true);
@@ -1253,12 +1254,20 @@ static void acquisition_edges(void) {
 	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
 	atomic_store(&deliver_image, false);
 	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 10, INDIGO_BUSY_STATE));
+	// A request the driver cannot serve during an acquisition must be refused out loud: a silent
+	// INDIGO_OK stalls the configuration restore, which waits for an answer per property.
+	mode_before = snapshot(0, "CCD_MODE");
 	unsigned mode_revision = revision(0, "CCD_MODE");
 	unsigned streaming_revision = revision(0, "CCD_STREAMING");
 	indigo_change_switch_property_1(NULL, logical[0]->name, "CCD_MODE", "MON08_2", true);
 	indigo_change_number_property(NULL, logical[0]->name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.1, 2 });
-	CHECK_EQ_INT(revision(0, "CCD_MODE"), mode_revision);
-	CHECK_EQ_INT(revision(0, "CCD_STREAMING"), streaming_revision);
+	CHECK_TRUE(wait_property(0, "CCD_MODE", mode_revision, INDIGO_ALERT_STATE));
+	CHECK_TRUE(wait_property(0, "CCD_STREAMING", streaming_revision, INDIGO_ALERT_STATE));
+	mode_after = snapshot(0, "CCD_MODE");
+	CHECK_TRUE(mode_before != NULL && mode_after != NULL && mode_before->count == mode_after->count);
+	for (int i = 0; i < mode_after->count; i++) {
+		CHECK_EQ_INT(mode_before->items[i].sw.value, mode_after->items[i].sw.value);
+	}
 	CHECK_TRUE(change_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
 	atomic_store(&image_on_stop, true);
 	atomic_store(&track_controls, false);
@@ -1273,6 +1282,8 @@ static void acquisition_edges(void) {
 	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
 	CHECK_EQ_INT(atomic_load(&bad_handle), 0);
 cleanup:
+	indigo_release_property(mode_before);
+	indigo_release_property(mode_after);
 	stop_properties();
 }
 
@@ -1894,6 +1905,38 @@ cleanup:
 	restore_camera();
 }
 
+static void configuration_restore_survives_a_refused_property(void) {
+	// TT-D03: a property the driver cannot serve must not cost the settings that follow it in the
+	// file. The restore answers per property, so a refusal has to be reported and skipped, not waited
+	// for until the deadline.
+	enable_full_camera();
+	CHECK_TRUE(start_properties());
+	CHECK_TRUE(change_number(0, "X_CCD_ADVANCED", "SPEED", 2, INDIGO_OK_STATE));
+	CHECK_TRUE(change_number(0, "CCD_GAIN", "GAIN", 21, INDIGO_OK_STATE));
+	CHECK_TRUE(change_switch(0, "CONFIG", "SAVE", INDIGO_OK_STATE));
+	CHECK_TRUE(change_number(0, "X_CCD_ADVANCED", "SPEED", 4, INDIGO_OK_STATE));
+	CHECK_TRUE(change_number(0, "CCD_GAIN", "GAIN", 33, INDIGO_OK_STATE));
+	// CCD_MODE, CCD_BIN, CCD_FRAME and X_CCD_BIN_MODE are all refused while an exposure runs, and
+	// they all precede CCD_GAIN in the saved file.
+	atomic_store(&deliver_image, false);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 30, INDIGO_BUSY_STATE));
+	unsigned config_revision = revision(0, "CONFIG");
+	indigo_change_switch_property_1(NULL, logical[0]->name, "CONFIG", "LOAD", true);
+	CHECK_TRUE(wait_property(0, "CONFIG", config_revision, INDIGO_ALERT_STATE));
+	// Everything the driver could serve was still applied.
+	CHECK_EQ_INT(21, (int)item_number(0, "CCD_GAIN", "GAIN", false));
+	CHECK_EQ_INT(2, (int)item_number(0, "X_CCD_ADVANCED", "SPEED", false));
+	CHECK_TRUE(change_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
+	// With nothing in flight the same file restores cleanly.
+	config_revision = revision(0, "CONFIG");
+	CHECK_TRUE(change_number(0, "CCD_GAIN", "GAIN", 33, INDIGO_OK_STATE));
+	indigo_change_switch_property_1(NULL, logical[0]->name, "CONFIG", "LOAD", true);
+	CHECK_TRUE(wait_property(0, "CONFIG", config_revision, INDIGO_OK_STATE));
+	CHECK_EQ_INT(21, (int)item_number(0, "CCD_GAIN", "GAIN", false));
+cleanup:
+	restore_camera();
+}
+
 static bool poll_camera(void) {
 	indigo_timer_callback callback = atomic_load(&monitor_tasks[0]);
 	if (!callback) { return false; }
@@ -2084,7 +2127,8 @@ int main(void) {
 		{ "Race: disconnect during SDK callback", disconnect_callback_race },
 		{ "Race: rapid hot-plug and pending shutdown", hotplug_pending_races },
 		{ "Guider pulse timing accuracy", guider_timing },
-		{ "Driver configuration persistence", configuration_workflows }
+		{ "Driver configuration persistence", configuration_workflows },
+		{ "Configuration restore survives a refused property", configuration_restore_survives_a_refused_property }
 	};
 	setvbuf(stdout, NULL, _IONBF, 0);
 	int result = 0;
