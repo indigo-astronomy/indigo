@@ -119,13 +119,20 @@ enum {
 	FN_COUNT
 };
 
+// The driver polls a running motion from focuser_move_finalizer() every
+// MOTION_POLL_INTERVAL seconds. A motion lasts motion_polls - 0.5 intervals so
+// that it always ends between two of those polls, whichever other caller reads
+// the status meanwhile.
+#define MOTION_POLL_INTERVAL 0.5
+
 typedef struct {
 	bool usb_present, visible, opened, hold_motion, track_status_after_stop;
 	int generation;
 	unsigned int firmware;
 	AOFocuserConfig config, last_config;
 	char model[AO_FOCUSER_NAME_LEN + 1], friendly[AO_FOCUSER_NAME_LEN + 1], bluetooth[AO_FOCUSER_NAME_LEN + 1];
-	int position, target, moving, polls_left, motion_polls;
+	int position, target, moving, motion_from, motion_polls;
+	double motion_start, motion_end, hold_since;
 	int temperature_int, temperature_ext, detection;
 	int error[FN_COUNT], error_skip[FN_COUNT], calls[FN_COUNT];
 	int pending_status_errors_after_stop, status_errors_after_stop, status_calls_after_stop;
@@ -453,11 +460,13 @@ AOReturn AOFocuserGetStatus(int id, AOFocuserStatus *status) {
 	if (result == AO_SUCCESS) {
 		fake_focuser *fake = fakes + index;
 		if (fake->moving && !fake->hold_motion) {
-			if (--fake->polls_left <= 0) {
+			double now = indigo_monotonic_time();
+			if (now >= fake->motion_end) {
 				fake->position = fake->target;
 				fake->moving = 0;
 			} else {
-				fake->position += (fake->target - fake->position) / 2;
+				double progress = (now - fake->motion_start) / (fake->motion_end - fake->motion_start);
+				fake->position = fake->motion_from + (int)((fake->target - fake->motion_from) * progress);
 			}
 		}
 		memset(status, 0, sizeof(*status));
@@ -511,7 +520,10 @@ static void fake_start_motion(fake_focuser *fake, int target) {
 	}
 	fake->target = target;
 	fake->moving = 1;
-	fake->polls_left = fake->motion_polls;
+	fake->motion_from = fake->position;
+	fake->motion_start = indigo_monotonic_time();
+	fake->motion_end = fake->motion_start + scaled(MOTION_POLL_INTERVAL * (fake->motion_polls - 0.5));
+	fake->hold_since = fake->hold_motion ? fake->motion_start : 0;
 }
 
 AOReturn AOFocuserMove(int id, int step) {
@@ -1100,7 +1112,16 @@ static void set_error(int index, int call, int error, int skip) {
 
 static void set_hold_motion(int index, bool hold) {
 	pthread_mutex_lock(&sdk_mutex);
-	fakes[index].hold_motion = hold;
+	fake_focuser *fake = fakes + index;
+	double now = indigo_monotonic_time();
+	if (hold && !fake->hold_motion) {
+		fake->hold_since = now;
+	} else if (!hold && fake->hold_motion && fake->hold_since > 0) {
+		fake->motion_start += now - fake->hold_since;
+		fake->motion_end += now - fake->hold_since;
+		fake->hold_since = 0;
+	}
+	fake->hold_motion = hold;
 	pthread_mutex_unlock(&sdk_mutex);
 }
 

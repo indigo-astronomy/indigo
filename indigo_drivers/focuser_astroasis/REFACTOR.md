@@ -243,3 +243,27 @@ cd indigo_test && ./build/integration/test_focuser_astroasis_sdk
 
 - Simulated tests run: 33; passed: 33.
 - Hardware tests run: 0; passed: 0.
+
+## Reference-trace determinism fix (2026-09-21)
+
+The `reference_trace` case failed intermittently: it passed in isolation but failed once during a
+batch run of several driver suites. Root cause is in the fake SDK, not in the driver. The fake
+advanced the simulated motion by one step per `AOFocuserGetStatus()` call, while the driver has two
+independent callers: `focuser_move_finalizer()` every 0.5 s and `focuser_temperature_poll()` every
+2 s. A temperature tick falling inside a motion consumed one of the motion's steps, so the motion
+finished one finalizer poll earlier and the trace lost an intermediate `FOCUSER_STEPS`/
+`FOCUSER_POSITION` BUSY pair. Whether that happened depended on wall-clock alignment, so the number
+of BUSY publications was not reproducible. The previous fixture had the steal baked in for
+`step steps-outward`, which is why the mismatch surfaced only under load.
+
+The fake now derives the motion from elapsed monotonic time: `fake_start_motion()` records the start
+position, the start time and a deadline of `motion_polls - 0.5` finalizer intervals, and
+`AOFocuserGetStatus()` interpolates the position from the elapsed fraction. Every caller therefore
+observes the same motion and no caller can consume another caller's progress, which is also how real
+hardware behaves. `set_hold_motion()` shifts the deadline by the held duration so the abort scenarios
+keep their previous meaning.
+
+`generated_reference_trace.txt` was regenerated. The only change is the intermediate BUSY pair that
+`step steps-outward` had lost to the temperature poll; every move now shows the same single
+intermediate pair. Verified with eight consecutive runs producing byte-identical traces, three of
+them under saturating CPU load, and the suite at 33 run, 33 passed.
