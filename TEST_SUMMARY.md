@@ -91,6 +91,10 @@
 
 2026-09-21 12:41 3.0.0.28 mac arm64 fake SDK 47/47 OK
 
+# ccd_svb2
+
+2026-09-21 14:10 3.0.0.49 mac arm64 fake SDK 30/30 OK
+
 # ccd_sx (Starlight Xpress Camera)
 
 2026-09-21 10:44 3.0.0.20 mac arm64 fake SDK 24/24 OK

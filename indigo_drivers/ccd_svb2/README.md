@@ -25,3 +25,7 @@ indigo_server indigo_ccd_svb2
 Untested with real device, uses generalised Touptek driver
 
 ## Comments
+
+## Testing
+
+2026-09-21 14:10 3.0.0.49 mac arm64 fake SDK 30/30 OK
