@@ -26,3 +26,7 @@ Driver is developed and tested with:
 * Atik GP (USB)
 * PTGrey Flea2 (firewire)
 * Imaging Source DMK 31BF03 (firewire)
+
+## Testing
+
+2026-09-21 14:12 3.0.0.18 mac arm64 fake SDK 15/15 OK
