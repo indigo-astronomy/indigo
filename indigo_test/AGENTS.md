@@ -345,6 +345,47 @@ in its `indigo_<name>.c`; more than one means multiple logical devices. The
 master is the device that unhides `DEVICE_PORT` (`DEVICE_PORT_PROPERTY->hidden
 = false`); the others open via `device->master_device`.
 
+## Hot-Plug Cases Without Touching the Cable
+
+Hardware suites keep the unplug and replug case opt-in, print a `HOTPLUG_READY`
+marker when they are ready for it, and then wait for the device to disappear and
+to come back, reporting `HOTPLUG_REMOVED` and `HOTPLUG_RECOVERED`. On Linux that
+wait can be answered from the shell, so the case runs unattended and can be
+repeated in a loop while a defect is being tracked down.
+
+Disable the USB port the device sits on. The port drops its device the way an
+unplugged cable does, and a real disconnect reaches libusb:
+
+```bash
+# Find the device node by vendor and product id, here 0bda:3038.
+for device in /sys/bus/usb/devices/*/; do
+	[ -f "$device/idVendor" ] || continue
+	[ "$(cat $device/idVendor):$(cat $device/idProduct)" = "0bda:3038" ] && echo "$device"
+done
+# /sys/bus/usb/devices/4-1/ is bus 4, port 1, so its port control is:
+PORT=/sys/bus/usb/devices/usb4/4-0:1.0/usb4-port1/disable
+echo 1 | sudo tee $PORT   # unplug
+echo 0 | sudo tee $PORT   # plug back in
+```
+
+Wait for `HOTPLUG_READY` in the output before disabling the port and for
+`HOTPLUG_REMOVED` before enabling it again. Both waits have their own timeout in
+the suite, so a script that moves on too early makes the case fail for its own
+reason.
+
+Do not reach for `authorized` instead. Writing 0 to
+`/sys/bus/usb/devices/<device>/authorized` unbinds the kernel driver but leaves
+the device on the bus, no disconnect reaches libusb, and the suite waits out its
+unplug timeout with the device still present.
+
+Confirm the port path belongs to the device under test before writing to it. The
+numbering is per machine, and a neighbouring port can carry the disk the machine
+runs from.
+
+macOS has no equivalent control. A hub with per-port power switching driven by
+`uhubctl` works on both systems, but only when the hub supports the feature;
+otherwise the cable has to be pulled by hand.
+
 ## Recording Test Runs
 
 After every driver test run, record the outcome in that driver's `README.md`:
