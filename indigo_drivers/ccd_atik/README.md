@@ -41,4 +41,4 @@ Standard property and custom item names are unchanged.
 
 ## Testing
 
-2026-09-21 10:42 3.0.0.41 mac arm64 fake SDK 41/41 OK
+2026-09-21 13:50 3.0.0.41 mac arm64 fake SDK 41/41 OK
