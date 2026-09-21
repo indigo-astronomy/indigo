@@ -351,7 +351,7 @@ Hardware suites run on the host the devices are attached to, which is reached
 over SSH and driven non-interactively, one command at a time:
 
 ```bash
-ssh indigo@indigosky.local 'cd ~/indigo && make -C indigo_test test-ccd-uvc-hw'
+ssh user@testhost 'cd ~/indigo && make -C indigo_test test-ccd-uvc-hw'
 ```
 
 Confirm which system the host booted before building anything on it. A machine
@@ -359,22 +359,22 @@ that keeps a cloned card or disk next to its working one exposes two indigo
 checkouts that look alike, and a build can silently land on the stale one:
 
 ```bash
-ssh indigo@indigosky.local 'findmnt -n -o SOURCE /; git -C ~/indigo log --oneline -1'
+ssh user@testhost 'findmnt -n -o SOURCE /; git -C ~/indigo log --oneline -1'
 ```
 
 A full build and a hardware run outlive a command timeout, so detach them and
 follow the log instead of holding the session open:
 
 ```bash
-ssh indigo@indigosky.local 'cd ~/indigo && setsid nohup sh -c "make >~/build.log 2>&1; echo EXIT=\$? >>~/build.log" >/dev/null 2>&1 </dev/null &'
-ssh indigo@indigosky.local 'until grep -q EXIT= ~/build.log; do sleep 15; done; tail -3 ~/build.log'
+ssh user@testhost 'cd ~/indigo && setsid nohup sh -c "make >~/build.log 2>&1; echo EXIT=\$? >>~/build.log" >/dev/null 2>&1 </dev/null &'
+ssh user@testhost 'until grep -q EXIT= ~/build.log; do sleep 15; done; tail -3 ~/build.log'
 ```
 
 The host needs no key of its own for `git fetch`, `git pull` and `git push`.
 Forward the agent instead, so the key stays on the machine that holds it:
 
 ```bash
-ssh -A indigo@indigosky.local 'cd ~/indigo && git pull --ff-only'
+ssh -A user@testhost 'cd ~/indigo && git pull --ff-only'
 ```
 
 The first such connection needs `github.com` in the host's `known_hosts`. Add it
@@ -382,7 +382,7 @@ from a verified key rather than by accepting whatever answers, comparing against
 the fingerprints GitHub publishes:
 
 ```bash
-ssh indigo@indigosky.local 'ssh-keyscan -t ed25519 github.com | tee -a ~/.ssh/known_hosts | ssh-keygen -lf -'
+ssh user@testhost 'ssh-keyscan -t ed25519 github.com | tee -a ~/.ssh/known_hosts | ssh-keygen -lf -'
 # 256 SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU github.com (ED25519)
 ```
 
@@ -392,8 +392,8 @@ or a `!` in a device name truncates or mangles it, usually into something that
 still runs:
 
 ```bash
-scp patch.py indigo@indigosky.local:/tmp/
-ssh indigo@indigosky.local 'cd ~/indigo && python3 /tmp/patch.py'
+scp patch.py user@testhost:/tmp/
+ssh user@testhost 'cd ~/indigo && python3 /tmp/patch.py'
 ```
 
 ## Hot-Plug Cases Without Touching the Cable
