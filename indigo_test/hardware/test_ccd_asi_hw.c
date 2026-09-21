@@ -389,20 +389,6 @@ static indigo_property_state property_state(int d, const char *name) {
 	return state;
 }
 
-// Waits for the next publication of a property regardless of the state it carries. Values a poll
-// fills in, such as the measured temperature, are only known after such a publication.
-static bool wait_revision(int d, const char *name, unsigned after, double timeout) {
-	double deadline = indigo_monotonic_time() + timeout;
-	while (indigo_monotonic_time() < deadline) {
-		if (revision(d, name) > after) {
-			return true;
-		}
-		indigo_usleep(10000);
-	}
-	fprintf(stderr, "    timeout: %s %s was not published again\n", devices[d].name, name);
-	return false;
-}
-
 // Connects a device unless it is already connected. The framework answers a request for a device
 // that is already connected without publishing anything, so a revision gated wait would time out.
 static bool connect_device(int d) {
@@ -587,17 +573,29 @@ static bool exercise_cooling(void) {
 		ok = switch_value(camera, "CCD_COOLER", "OFF", INDIGO_OK_STATE);
 		// OFF lets the normal poll settle the measured-temperature property before a new target.
 		ok = ok && wait_state(camera, "CCD_TEMPERATURE", 0, INDIGO_OK_STATE);
-		// The measured temperature is only filled in by the cooler poll, so the new target has to
-		// come from a freshly published measurement and not from the value the property was
-		// defined with.
-		unsigned polled = revision(camera, "CCD_TEMPERATURE");
-		ok = ok && wait_revision(camera, "CCD_TEMPERATURE", polled, 20);
-		indigo_property *measured = snapshot(camera, "CCD_TEMPERATURE");
-		ok = ok && measured != NULL && measured->count;
-		double now = ok ? measured->items->number.value : 0;
-		indigo_release_property(measured);
-		printf("    measured %.1f, original target %.1f, range %.1f .. %.1f\n", now, temperature->items->number.target, temperature->items->number.min, temperature->items->number.max);
-		double target = fmax(temperature->items->number.min, fmin(temperature->items->number.max, floor(now) - 1));
+		// The measured temperature comes from the cooler poll. Do not wait for a fresh publication
+		// here: the framework suppresses an update whose state and values are unchanged, so a
+		// camera sitting at a stable temperature legitimately publishes nothing for minutes. Read
+		// the last published value instead, and only wait while the driver still has no reading at
+		// all, which is what the vendor SDK leaves behind for the first moments after init.
+		double measured_value = 0;
+		double reading_deadline = indigo_monotonic_time() + 20;
+		while (ok) {
+			indigo_property *measured = snapshot(camera, "CCD_TEMPERATURE");
+			measured_value = measured && measured->count ? measured->items->number.value : 0;
+			indigo_release_property(measured);
+			if (measured_value != 0 || indigo_monotonic_time() >= reading_deadline) {
+				break;
+			}
+			indigo_usleep(100000);
+		}
+		printf("    measured %.1f, original target %.1f, range %.1f .. %.1f\n", measured_value, temperature->items->number.target, temperature->items->number.min, temperature->items->number.max);
+		// A camera that never publishes a reading cannot have a target derived from one.
+		if (ok && measured_value == 0) {
+			fprintf(stderr, "    no sensor temperature was published within 20 s\n");
+			ok = false;
+		}
+		double target = fmax(temperature->items->number.min, fmin(temperature->items->number.max, floor(measured_value) - 1));
 		ok = ok && number_value(camera, "CCD_TEMPERATURE", "TEMPERATURE", target, INDIGO_BUSY_STATE) && switch_value(camera, "CCD_COOLER", "ON", INDIGO_OK_STATE);
 		double deadline = indigo_monotonic_time() + 60;
 		bool cooled = false;

@@ -492,57 +492,98 @@ Regression test: `asi_reports_identity_and_capabilities` in
 against the pre-fix driver on the ASI294MC Pro and passes after the fix; the case also runs in the
 dynamic reload build, which loads the shipped shared object.
 
-### ASI-D02 — the temperature and cooler poll could fail to start for the whole session
+### ASI-D02 — the generated one-shot that starts an `on_timer` poll could be dropped
 
-Observable impact: reproduced on the ASI294MC Pro. After a successful connect the driver never
-published `CCD_TEMPERATURE` or `CCD_COOLER_POWER` again, so the measured temperature stayed at the
-0.0 the property was defined with, cooler power stayed 0, and `CCD_COOLER` / `CCD_TEMPERATURE`
-requests were accepted but never reached the SDK, because the driver performs all cooler work from
-its periodic poll. The camera was then uncontrollable for the rest of the session while looking
-connected and healthy. It failed on 2 of 3 consecutive attempts, and the surviving run is the reason
-the version 58 acceptance did not catch it: the first poll happened to win the race there, and the
-scenario sequence at the time left enough time between connect and the cooling checks for a later
-publication to mask a lost first call.
+**Corrected 2026-09-21.** This entry originally claimed the defect had been reproduced on the
+ASI294MC Pro, on 2 of 3 connects, as a temperature and cooler poll that never started. That claim is
+withdrawn. The evidence behind it was wrong in two ways, and the failures it was based on are now
+attributed to ASI-D03 below plus a defect in the test itself:
 
-Root cause: the poll chain was started by the generated one-shot `on_timer` call. The generated
-hot-plug connection handler runs on the per-driver queue and emits
-`indigo_execute_handler(device, ccd_timer_callback)` immediately before it assigns
-`CONNECTION_PROPERTY->state = INDIGO_OK_STATE`. `ccd_timer_callback` runs on the device master
-queue, which is a different thread, and its generated prologue is `if (!IS_CONNECTED) return;` —
-`IS_CONNECTED` requires `CONNECTION_PROPERTY->state == INDIGO_OK_STATE`. Waking the device queue
-hands the CPU to it, so the callback frequently observes the still-BUSY connection state and returns.
-`ccd_temperature_callback` reschedules itself only from inside itself, so that single dropped call
-kills the poll permanently. Confirmed in the debug log: in a passing run the first
-`ASIGetControlValue(1, ASI_TEMPERATURE)` appears immediately after "Connected to", and in a failing
-run no such call appears at all.
+- `indigo_update_property()` suppresses an update whose state and item values are all unchanged
+  (`indigo_libs/indigo_bus.c:885` onwards). "CCD_TEMPERATURE was not published again" therefore never
+  proved that the poll had stopped: a camera sitting at a stable temperature legitimately publishes
+  nothing at all. The test asserted on that absence.
+- The same test then printed `measured 0.0` from its own fallback expression rather than from the
+  property, so the number that looked like a sensor reading was an artefact of the failed wait.
 
-Fix: fixed in the generator, with the user's explicit approval, after a driver-local workaround had
-been tried first. `write_c_connection_change_handler()` in `indigo_tools/indigo_generator.c` no longer
-emits `indigo_execute_handler(device, <device>_timer_callback)` inside the connect branch. It emits it
-once at the end of the connection handler, after
-`indigo_<type>_change_property(device, NULL, CONNECTION_PROPERTY)` and guarded by
-`if (IS_CONNECTED)`. That call is what publishes the connection and defines the class properties, so
-the callback can no longer observe a BUSY connection and can no longer publish to a property that is
-not defined yet; on a failed connect or on a disconnect `IS_CONNECTED` is false and no callback is
-queued. `indigo_ccd_asi.driver` therefore keeps its ordinary `ccd.on_timer` block and needs no
-driver-local start; the intermediate workaround, which started the poll from `ccd.on_connect` and let
-`ccd_temperature_callback` reschedule itself while `CONNECTION` was not yet OK, was reverted.
-Version 61 -> 62 for the workaround, 62 -> 63 for the generator fix. The other 13 affected generated
-hot-plug drivers were bumped and revalidated too; the whole change is recorded as `DRV-211` in
-`indigo_drivers/REVIEW.md`.
+A later run with `--debug` at version 63 settled it: the poll was running perfectly, all three SDK
+reads every five seconds, while the test still failed. No run ever showed the SDK reads missing, so
+the race was never observed to fire.
 
-Regression test: `asi_controls_cooling` in `indigo_test/hardware/test_ccd_asi_hw.c` now derives its
-new target from a freshly published measurement — it waits for a new `CCD_TEMPERATURE` revision
-through `wait_revision()` — instead of from the cached definition value, so a poll that never runs
-fails the case deterministically with "CCD_TEMPERATURE was not published again". It failed on the
-pre-fix driver and passed on three consecutive runs after the fix. In the fake SDK suite,
-`sensor_only_and_sensor_absent` gates the start of the poll for free: its `poll_temperature()` needs
-the callback that the poll captures on its first five-second reschedule, so a poll that never starts
-fails the case. All 51 cases pass.
+What remains is a genuine hazard established by inspection, not by reproduction. The generated
+connection handler queued `indigo_execute_handler(device, <device>_timer_callback)` inside the connect
+branch, before `CONNECTION_PROPERTY->state = INDIGO_OK_STATE` and before the closing
+`indigo_<class>_change_property(device, NULL, CONNECTION_PROPERTY)`. The generated callback prologue
+is `if (!IS_CONNECTED) return;`, which needs that OK state. In a generated hot-plug driver the
+connection handler runs on the per-driver queue while the callback runs on the device queue, so the
+callback can observe the still-BUSY connection and return, and because nothing else queues it a
+self-rescheduling poll would then be lost for the session. It could also publish to a class property
+before that closing call had defined it.
 
-This was a generator-level hazard, not an ASI-specific one: any generated hot-plug driver whose
-`on_timer` block starts a self-rescheduling chain could lose it the same way. It is fixed in the
-generator and recorded as `DRV-211` in `indigo_drivers/REVIEW.md`.
+Fix: fixed in the generator with the user's explicit approval. `write_c_connection_change_handler()`
+emits the call once at the end of the handler, after the connection is published and the class
+properties are defined, guarded by `if (IS_CONNECTED)`. A driver-local workaround in
+`indigo_ccd_asi.driver` was tried first and then reverted, so this driver keeps its ordinary
+`ccd.on_timer` block. Versions: 61 -> 62 for the workaround, 62 -> 63 for the generator fix. Full
+impact, the 14 affected drivers and their revalidation are recorded as `DRV-211` in
+`indigo_drivers/REVIEW.md` and `TOOLS-012` in `indigo_tools/REVIEW.md`.
+
+Regression test: none is claimed. The hazard is a thread-interleaving window that no test in this
+repository forces, and the fix removes the window rather than changing an observable contract.
+`sensor_only_and_sensor_absent` in `indigo_test/integration/test_ccd_asi_sdk.c` does fail if the poll
+never starts at all, because its `poll_temperature()` needs the callback the poll captures on its
+first five-second reschedule, so it guards the start of the chain even though it cannot force the
+race.
+
+### ASI-D03 — the vendor SDK's unpopulated first temperature reading was published as the sensor temperature
+
+Observable impact: reproduced on the ASI294MC Pro. For the first seconds after connecting, the driver
+published `CCD_TEMPERATURE` as 0.0 °C while the sensor was at about 22 °C. A client that reads or
+records the sensor temperature right after connecting, for example into a FITS header, got 0.0 °C.
+The value corrected itself at the next poll, up to five seconds later.
+
+Root cause: measured directly against the bundled SDK with a throwaway probe. After
+`ASIInitCamera()`, `ASIGetControlValue(id, ASI_TEMPERATURE, ...)` returns `ASI_SUCCESS` with a value
+of exactly 0 for roughly 400 ms, however many times it is called — the SDK fills the value in from a
+background thread, so reading again immediately does not help:
+
+```
+--- back to back reads immediately after init ---
+  read  1 at  0.000 s: res=0 value=0 (0.0 C)
+  ...
+  read 10 at  0.000 s: res=0 value=0 (0.0 C)
+--- then every 200 ms ---
+  read at  0.209 s: res=0 value=0 (0.0 C)
+  read at  0.415 s: res=0 value=221 (22.1 C)
+```
+
+The driver's connection sequence takes about 425 ms on this host, and the generated one-shot runs the
+first poll immediately afterwards, so the first read landed on either side of that boundary. That is
+also why the symptom looked intermittent.
+
+Fix: the driver no longer publishes an unpopulated reading. `initialize_camera()` arms a bounded
+two-second grace period when it discovers the `ASI_TEMPERATURE` control, and while no valid reading
+has been seen yet `ccd_temperature_callback()` reschedules itself in 200 ms instead of publishing a
+zero. The first real reading ends the grace period; after it expires the driver publishes whatever the
+SDK reports, so a camera genuinely sitting at 0.0 °C is only delayed, never suppressed.
+Version 63 -> 64.
+
+Regression test: `asi_controls_cooling` in `indigo_test/hardware/test_ccd_asi_hw.c` reads the measured
+temperature at the start of the case and fails if no reading has been published within 20 seconds.
+Against the pre-fix driver the first published value was 0.0 and the derived cooler target was
+nonsensical; after the fix three consecutive runs reported 22.5, 21.8 and 21.1 °C as the first
+reading, and the full suite passes on both cameras.
+
+### Test defects found in the same pass
+
+Both were in `indigo_test/hardware/test_ccd_asi_hw.c` and both actively misled this investigation:
+
+- The cooling case waited for a *new* `CCD_TEMPERATURE` publication before deriving its target. That
+  is invalid: the framework suppresses an unchanged update, so a thermally stable camera publishes
+  nothing and the wait times out although the driver is healthy. The case now reads the last published
+  value and only waits while there is no reading at all.
+- Its diagnostic printed a fallback `0` when that wait failed, formatted exactly like a real reading.
+  The print now always shows the value actually held by the property.
 
 ### Harness expectation corrected, not a driver defect
 

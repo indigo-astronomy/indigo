@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300003F
+#define DRIVER_VERSION       0x03000040
 #define DRIVER_NAME          "indigo_ccd_asi"
 #define DRIVER_LABEL         "ZWO ASI Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -115,7 +115,8 @@ typedef struct {
 	unsigned char *buffer;
 	long int buffer_size;
 	long is_asi120;
-	bool can_check_temperature, has_temperature_sensor;
+	bool can_check_temperature, has_temperature_sensor, temperature_valid;
+	double temperature_deadline;
 	bool acquisition_active, streaming, frame_ready;
 	bool exposure_dark;
 	unsigned exposure_retries;
@@ -611,6 +612,13 @@ static void ccd_temperature_callback(indigo_device *device) {
 	}
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (asi_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
+			if (!PRIVATE_DATA->temperature_valid) {
+				if (PRIVATE_DATA->current_temperature == 0 && indigo_monotonic_time() < PRIVATE_DATA->temperature_deadline) {
+					indigo_execute_handler_in(device, 0.2, ccd_temperature_callback);
+					return;
+				}
+				PRIVATE_DATA->temperature_valid = true;
+			}
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
 			if (CCD_COOLER_ON_ITEM->sw.value) {
 				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 0.5 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
@@ -833,6 +841,13 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 			CCD_TEMPERATURE_PROPERTY->hidden = false;
 		}
 		PRIVATE_DATA->has_temperature_sensor = true;
+		// The SDK fills ASI_TEMPERATURE in from a background thread and answers every read
+		// with ASI_SUCCESS and a zero value until it has, for about 400 ms after
+		// ASIInitCamera(). Connecting takes about the same time, so the first poll lands on
+		// either side of that boundary. Give it a bounded grace period instead of
+		// publishing 0 as the sensor temperature.
+		PRIVATE_DATA->temperature_valid = false;
+		PRIVATE_DATA->temperature_deadline = indigo_monotonic_time() + 2;
 		return INDIGO_OK;
 	}
 	if (ctrl_caps.ControlType == ASI_COOLER_ON) {
