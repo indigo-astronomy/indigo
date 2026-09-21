@@ -4,7 +4,7 @@
 | ao_sx | 2026-09-20 23:43 | 3.0.0.13 | mac arm64 | SX AO-L | 16 / 16 | ✅ OK |
 | aux_asiair | 2026-09-20 22:35 | 3.0.0.4 | linux arm64 | fake SDK | 16 / 16 | ✅ OK |
 | aux_asiair | 2026-09-20 22:35 | 3.0.0.4 | linux arm64 | Raspberry Pi 5 | 3 / 3 | ✅ OK |
-| aux_dsusb | 2026-09-21 10:41 | 3.0.0.15 | mac arm64 | fake SDK | 10 / 10 | ✅ OK |
+| aux_dsusb | 2026-09-21 14:42 | 3.0.0.15 | mac arm64 | fake SDK | 10 / 10 | ✅ OK |
 | aux_rpio | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | fake SDK | 19 / 19 | ✅ OK |
 | aux_rpio | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | Raspberry Pi 5 | 4 / 4 | ✅ OK |
 | ccd_altair | 2026-09-21 10:22 | 3.0.0.48 | mac arm64 | Altair ALTAIRGP224C | 28 / 27 | ❌ Failed |
