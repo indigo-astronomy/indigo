@@ -42,6 +42,10 @@
 
 2026-09-21 13:41 3.0.0.35 mac arm64 fake SDK 37/37 OK
 
+# ccd_qsi (QSI Camera)
+
+2026-09-21 13:43 3.0.0.16 mac arm64 fake SDK 60/60 OK
+
 # ccd_simulator (Camera Simulator)
 
 2026-09-21 12:42 3.0.0.28 mac arm64 simulator 19/19 OK
