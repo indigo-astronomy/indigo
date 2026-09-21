@@ -1023,6 +1023,10 @@ static void property_busy_guard(void) {
 	ASSERT_TRUE(set_switch(0, SENSOR_PROPERTY, "MODE_1", true));
 	ASSERT_TRUE(wait_state(0, SENSOR_PROPERTY, INDIGO_ALERT_STATE));
 	ASSERT_EQ_INT(0, atomic_load(&cameras[0].mode));
+	// DRV-214: streaming requested during an exposure used to be dropped with a bare INDIGO_OK, which
+	// a waiting client cannot tell from a lost request and which stalls a configuration restore.
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_STREAMING", "COUNT", 2));
+	ASSERT_TRUE(wait_state(0, "CCD_STREAMING", INDIGO_ALERT_STATE));
 	ASSERT_TRUE(set_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true));
 	ASSERT_TRUE(wait_state(0, "CCD_ABORT_EXPOSURE", INDIGO_OK_STATE));
 }

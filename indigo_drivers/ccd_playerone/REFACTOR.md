@@ -408,3 +408,17 @@ first, which both isolates the run and fixes the case.
 - Simulated (fake SDK) tests: 49 run, 49 passed.
 - Hardware tests: 33 run, 33 passed — 27 on the Mars-C II plus 6 dynamic reload cases. Four physical
   hot-plug cases and the flash-suffix replug case exist and were not run; they need an operator.
+
+## Silent change refusal during acquisition (DRV-214, 2026-09-21)
+
+Observable impact: a `CCD_EXPOSURE` or `CCD_STREAMING` request arriving while either of them was BUSY returned `INDIGO_OK` without publishing anything. A client that waits for a response cannot tell that from a lost request,
+and `config_restore` in `indigo_libs/indigo_driver.c` dispatches saved properties one at a time and
+waits for each answer, so an unanswered property used to cost every setting after it in the file
+(TT-D03 / DRV-213). Found by a static sweep of every `change_property` body in the repository, not by
+a failing test.
+
+Root cause: both `on_change_request` blocks in `indigo_ccd_playerone.driver` tested `CCD_EXPOSURE || CCD_STREAMING` and refused with a bare `return INDIGO_OK;`.
+
+Fix: each is now a `reject_change` block naming only the *other* property. The property's own BUSY state is deliberately left to the `INDIGO_COPY_*_PROCESS_CHANGE` guard: publishing `INDIGO_ALERT_STATE` onto the property that is running the operation would overwrite its state and break the interlock that reads it. An unanswered self-BUSY request is covered by the restore's acknowledgement timeout instead. Version 25 -> 26.
+
+Regression test: `property_busy_guard` in `indigo_test/integration/test_ccd_playerone_sdk.c` now requests streaming during an exposure and requires `CCD_STREAMING` to reach `INDIGO_ALERT_STATE`. Against the pre-fix driver it fails at that assertion; the suite is 49/49 after the fix.
