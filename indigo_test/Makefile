@@ -1240,10 +1240,12 @@ $(TEST_BUILD)/hardware:
 $(TEST_BUILD)/hardware/ccd_touptek_hw_driver.o: ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.h ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $(TOUPTEK_SDK_TEST_INCLUDE) -c $< -o $@
 
-# The configuration roundtrip case saves and loads a driver setting, so the framework's config
-# folder is redirected into the temporary directory the test creates.
+# The configuration roundtrip case saves and loads a driver setting. The config folder is not
+# redirected here: the framework exists both in this binary and in libindigo, so a compile time
+# redirection would apply to only one of them and CONFIG SAVE and CONFIG LOAD would look at
+# different files. The test redirects HOME instead, which both copies honour.
 $(TEST_BUILD)/hardware/ccd_touptek_hw_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(TEST_BUILD)/hardware
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_config_folder=touptek_test_config_folder -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(TEST_BUILD)/hardware/test_ccd_touptek_hw: hardware/test_ccd_touptek_hw.c test_runner.h $(TEST_BUILD)/hardware/ccd_touptek_hw_driver.o $(TEST_BUILD)/hardware/ccd_altair_hw_driver.o $(TEST_BUILD)/hardware/ccd_touptek_hw_framework.o
 	$(CC) $(TEST_CFLAGS) $< $(TEST_BUILD)/hardware/ccd_touptek_hw_driver.o $(TEST_BUILD)/hardware/ccd_altair_hw_driver.o $(TEST_BUILD)/hardware/ccd_touptek_hw_framework.o -o $@ $(TEST_LDFLAGS) -ltoupcam -laltaircam -lusb-1.0

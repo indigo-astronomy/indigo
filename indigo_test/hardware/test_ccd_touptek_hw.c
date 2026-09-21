@@ -54,13 +54,13 @@ static indigo_result (*driver_entry)(indigo_driver_action, indigo_driver_info *)
 static const char *driver_name = "indigo_ccd_touptek";
 static const char *driver_label = "Touptek Camera";
 static indigo_client client;
-// CONFIG SAVE and any local output stay inside this directory, so a run never touches the user's
-// own INDIGO configuration or image cache.
-static char config_folder[] = "/tmp/indigo_touptek_hw_XXXXXX";
-
-const char *touptek_test_config_folder(void) {
-	return config_folder;
-}
+// Any local output stays inside this directory, so a run never touches the user's own image cache.
+static char session_folder[] = "/tmp/indigo_touptek_hw_XXXXXX";
+// Where the framework actually writes the saved configuration. It is derived from HOME rather
+// than from a compile time redirection: the framework lives both in this binary and in
+// libindigo, and only a redirection both copies agree on keeps CONFIG SAVE and CONFIG LOAD
+// looking at the same file.
+static char config_folder[PATH_MAX];
 
 static int slot(int d, const char *name) {
 	for (int p = 0; p < MAX_PROPERTIES; p++) {
@@ -333,7 +333,7 @@ static bool set_local_directory(void) {
 		return true;
 	}
 	unsigned before = revision(camera, "CCD_LOCAL_MODE");
-	indigo_change_text_property_1(&client, devices[camera].name, "CCD_LOCAL_MODE", "DIR", config_folder);
+	indigo_change_text_property_1(&client, devices[camera].name, "CCD_LOCAL_MODE", "DIR", session_folder);
 	return wait_state(camera, "CCD_LOCAL_MODE", before, INDIGO_OK_STATE);
 }
 
@@ -597,7 +597,9 @@ static bool exercise_configuration_roundtrip(void) {
 	bool loaded_back = false;
 	if (ok) {
 		indigo_change_switch_property_1(&client, devices[camera].name, "CONFIG", "LOAD", true);
-		double deadline = indigo_monotonic_time() + 15;
+		// The library gives a restore 120 s, so the observation window has to outlast it or a
+		// slow restore is indistinguishable from a failed one.
+		double deadline = indigo_monotonic_time() + 125;
 		while (indigo_monotonic_time() < deadline) {
 			indigo_property *loaded = snapshot(camera, "CCD_GAIN");
 			loaded_back = loaded && loaded->count && loaded->items[0].number.value == changed;
@@ -611,6 +613,9 @@ static bool exercise_configuration_roundtrip(void) {
 	}
 	printf("    hardware gain/config roundtrip in temporary directory: saved %g, restored %s\n", changed, loaded_back ? "PASS" : "FAIL");
 	if (!loaded_back) {
+		indigo_property *current = snapshot(camera, "CCD_GAIN");
+		printf("    CCD_GAIN after load: value=%g state=%d (original %g, requested %g)\n", current && current->count ? current->items[0].number.value : NAN, current ? current->state : -1, value, changed);
+		indigo_release_property(current);
 		// Name every property the save produced and the state it is in, so the failure says whether the
 		// file or the restore is at fault.
 		DIR *dir = opendir(config_folder);
@@ -630,7 +635,15 @@ static bool exercise_configuration_roundtrip(void) {
 					char *end = strchr(name, '\'');
 					if (end) {
 						*end = 0;
+						bool gain = !strcmp(name, "CCD_GAIN");
 						printf("    saved %-24s published=%d state=%d\n", name, property_published(camera, name), property_state(camera, name));
+						// The gain vector is the one under test, so its items are printed verbatim.
+						if (gain) {
+							char item[512];
+							while (fgets(item, sizeof(item), f) && strstr(item, "OneNumberVector") == NULL) {
+								printf("      %s", item);
+							}
+						}
 					}
 				}
 			}
@@ -1141,9 +1154,13 @@ int main(int argc, char **argv) {
 	}
 	setvbuf(stdout, NULL, _IONBF, 0);
 	client = (indigo_client){ .name = "ToupTek hardware test", .version = INDIGO_VERSION_CURRENT, .define_property = define_property, .update_property = update_property, .delete_property = delete_property, .send_message = report_message };
-	if (!mkdtemp(config_folder)) {
+	if (!mkdtemp(session_folder)) {
 		return 1;
 	}
+	// indigo_uni_config_folder() is $HOME/.indigo and caches its answer on first use, so HOME has
+	// to be redirected before anything in the framework asks for it.
+	setenv("HOME", session_folder, 1);
+	snprintf(config_folder, sizeof(config_folder), "%s/.indigo", session_folder);
 	const indigo_test_case tests[] = {
 		{ "tp_reports_identity_and_capabilities", tp_reports_identity_and_capabilities },
 		{ "tp_publishes_the_property_contract", tp_publishes_the_property_contract },
@@ -1208,18 +1225,22 @@ cleanup:
 			devices[d].properties[p] = NULL;
 		}
 	}
-	DIR *dir = opendir(config_folder);
-	if (dir) {
-		struct dirent *entry;
-		while ((entry = readdir(dir))) {
-			if (entry->d_name[0] != '.') {
-				char path[1024];
-				snprintf(path, sizeof(path), "%s/%s", config_folder, entry->d_name);
-				unlink(path);
+	// The saved configuration lives below the session folder, so both are removed.
+	const char *folders[] = { config_folder, session_folder };
+	for (int i = 0; i < 2; i++) {
+		DIR *dir = opendir(folders[i]);
+		if (dir) {
+			struct dirent *entry;
+			while ((entry = readdir(dir))) {
+				if (entry->d_name[0] != '.') {
+					char path[1024];
+					snprintf(path, sizeof(path), "%s/%s", folders[i], entry->d_name);
+					unlink(path);
+				}
 			}
+			closedir(dir);
 		}
-		closedir(dir);
+		rmdir(folders[i]);
 	}
-	rmdir(config_folder);
 	return indigo_test_failures ? 1 : result;
 }
