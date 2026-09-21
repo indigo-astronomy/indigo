@@ -488,11 +488,6 @@ driver mi {
 		inherited CCD_TEMPERATURE {
 			hidden = false;
 			preserve_values = true;
-			on_change_request {
-				if (CCD_TEMPERATURE_PROPERTY->perm == INDIGO_RO_PERM) {
-					return INDIGO_OK;
-				}
-			}
 			on_change {
 				float target = CCD_TEMPERATURE_ITEM->number.target;
 				if (gxccd_set_temperature(PRIVATE_DATA->camera, target) != 0) {

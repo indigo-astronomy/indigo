@@ -160,3 +160,17 @@ same axis.
 replaced after 500 ms by a 600 ms pulse in the same direction (1130 ms measured) and by a 300 ms
 pulse in the opposite direction (812 ms), the second also asserting the signed duration handed to
 `gxccd_move_telescope()` turns negative.
+
+## Silent change refusal during acquisition (DRV-214, 2026-09-21)
+
+Observable impact: none. The sweep flagged `CCD_TEMPERATURE`'s `on_change_request` guard, but it is unreachable: it tests `CCD_TEMPERATURE_PROPERTY->perm == INDIGO_RO_PERM`, which is exactly what `indigo_property_match_changeable()` has already excluded before the branch is entered. A client that waits for a response cannot tell that from a lost request,
+and `config_restore` in `indigo_libs/indigo_driver.c` dispatches saved properties one at a time and
+waits for each answer, so an unanswered property used to cost every setting after it in the file
+(TT-D03 / DRV-213). Found by a static sweep of every `change_property` body in the repository, not by
+a failing test.
+
+Root cause: dead code carried into the generator input.
+
+Fix: the guard was removed from `indigo_ccd_mi.driver` and the driver regenerated. The version was **not** bumped: no behaviour changes, and the repository rule ties a version bump to a behaviour fix. `CCD_GAIN` in the same driver already used the house refusal pattern, which is what the other drivers were brought in line with.
+
+Regression test: none, and none is possible: the removed branch could not be reached. The existing suite is 17/17 after the change.
