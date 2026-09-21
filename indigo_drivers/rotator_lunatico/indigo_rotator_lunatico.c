@@ -577,11 +577,7 @@ static indigo_result rotator_main_enumerate_properties(indigo_device *device, in
 
 static indigo_result rotator_main_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, rotator_main_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(rotator_main_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, rotator_main_rotator_steps_per_revolution_handler);
@@ -928,11 +924,7 @@ static indigo_result focuser_exp_enumerate_properties(indigo_device *device, ind
 
 static indigo_result focuser_exp_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, focuser_exp_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(focuser_exp_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_SPEED_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_SPEED_PROPERTY, focuser_exp_focuser_speed_handler);
@@ -1219,11 +1211,7 @@ static indigo_result rotator_exp_enumerate_properties(indigo_device *device, ind
 
 static indigo_result rotator_exp_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, rotator_exp_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(rotator_exp_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, rotator_exp_rotator_steps_per_revolution_handler);
@@ -1430,11 +1418,7 @@ static indigo_result aux_exp_enumerate_properties(indigo_device *device, indigo_
 
 static indigo_result aux_exp_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, aux_exp_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(aux_exp_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_OUTLET_NAMES_EXP_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_OUTLET_NAMES_EXP_PROPERTY, aux_exp_aux_outlet_names_exp_handler);
@@ -1752,11 +1736,7 @@ static indigo_result focuser_third_enumerate_properties(indigo_device *device, i
 
 static indigo_result focuser_third_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, focuser_third_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(focuser_third_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_SPEED_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_SPEED_PROPERTY, focuser_third_focuser_speed_handler);
@@ -2043,11 +2023,7 @@ static indigo_result rotator_third_enumerate_properties(indigo_device *device, i
 
 static indigo_result rotator_third_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, rotator_third_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(rotator_third_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, rotator_third_rotator_steps_per_revolution_handler);
@@ -2254,11 +2230,7 @@ static indigo_result aux_third_enumerate_properties(indigo_device *device, indig
 
 static indigo_result aux_third_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, aux_third_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(aux_third_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_OUTLET_NAMES_THIRD_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_OUTLET_NAMES_THIRD_PROPERTY, aux_third_aux_outlet_names_third_handler);

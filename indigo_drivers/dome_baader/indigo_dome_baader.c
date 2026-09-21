@@ -806,11 +806,7 @@ static indigo_result dome_enumerate_properties(indigo_device *device, indigo_cli
 
 static indigo_result dome_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, dome_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(dome_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
 		//+ dome.DOME_HORIZONTAL_COORDINATES.on_change_request
@@ -825,14 +821,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_HORIZONTAL_COORDINATES_PROPERTY, dome_horizontal_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_STEPS_PROPERTY, property)) {
-		if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < DOME_STEPS_PROPERTY->count; i++) {
-				DOME_STEPS_PROPERTY->items[i].do_update = true;
-			}
-			DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is moving: request can not be completed");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE, DOME_STEPS_PROPERTY, "Dome is moving: request can not be completed");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_STEPS_PROPERTY, dome_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_PARK_PROPERTY, property)) {

@@ -215,11 +215,7 @@ static indigo_result polaralign_enumerate_properties(indigo_device *device, indi
 
 static indigo_result polaralign_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, polaralign_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(polaralign_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(POLARALIGN_OFFSET_PROPERTY, property)) {
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(POLARALIGN_OFFSET_PROPERTY, polaralign_offset_handler);

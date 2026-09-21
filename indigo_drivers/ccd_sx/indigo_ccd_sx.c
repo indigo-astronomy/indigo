@@ -1151,14 +1151,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(CCD_FRAME_PROPERTY, ccd_frame_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
-		if (sx_rejected_binning(device, property)) {
-			for (int i = 0; i < CCD_BIN_PROPERTY->count; i++) {
-				CCD_BIN_PROPERTY->items[i].do_update = true;
-			}
-			CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_BIN_PROPERTY, "Unsupported binning");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(sx_rejected_binning(device, property), CCD_BIN_PROPERTY, "Unsupported binning");
 		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(CCD_BIN_PROPERTY, ccd_bin_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_COOLER_PROPERTY, property)) {

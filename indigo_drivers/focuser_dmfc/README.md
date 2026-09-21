@@ -25,4 +25,4 @@ indigo_server indigo_focuser_dmfc
 
 ## Testing
 
-2026-09-20 12:30 3.0.0.17 mac arm64 simulator 25/25 OK
+2026-09-21 12:44 3.0.0.17 mac arm64 simulator 24/24 OK

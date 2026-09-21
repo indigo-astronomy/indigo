@@ -1880,21 +1880,23 @@ void write_c_change_property(device_type *device) {
 	write_line("static indigo_result %s_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {", device->id);
 	bool persistent = false;
 	write_line("\tif (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {");
-	write_line("\t\tif (!indigo_ignore_connection_change(device, property)) {");
-	write_line("\t\t\tindigo_property_copy_values(CONNECTION_PROPERTY, property, false);");
+	// The first two shapes are the whole admission block, so they collapse into one macro. The third
+	// picks its queue per request and keeps the guard open around that choice.
+	if (driver_uses_device_queue() && driver.devices->next && !driver.sdk) {
+		write_line("\t\tif (!indigo_ignore_connection_change(device, property)) {");
+		write_line("\t\t\tindigo_property_copy_values(CONNECTION_PROPERTY, property, false);");
 		write_line("\t\t\tINDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);");
-		if (driver_uses_device_queue() && driver.devices->next && !driver.sdk) {
-			write_line("\t\t\tif (CONNECTION_CONNECTED_ITEM->sw.value && PRIVATE_DATA->count == 0) {");
-				write_line("\t\t\t\tindigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, %s_connection_handler, &driver_queue_mutex);", device->id);
-			write_line("\t\t\t} else {");
-				write_line("\t\t\t\tindigo_execute_handler(device, %s_connection_handler);", device->id);
-			write_line("\t\t\t}");
-		} else if (driver_uses_device_queue()) {
-			write_line("\t\t\tindigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, %s_connection_handler, &driver_queue_mutex);", device->id);
-		} else {
-			write_line("\t\t\tindigo_execute_handler(device, %s_connection_handler);", device->id);
-		}
-	write_line("\t\t}");
+		write_line("\t\t\tif (CONNECTION_CONNECTED_ITEM->sw.value && PRIVATE_DATA->count == 0) {");
+		write_line("\t\t\t\tindigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, %s_connection_handler, &driver_queue_mutex);", device->id);
+		write_line("\t\t\t} else {");
+		write_line("\t\t\t\tindigo_execute_handler(device, %s_connection_handler);", device->id);
+		write_line("\t\t\t}");
+		write_line("\t\t}");
+	} else if (driver_uses_device_queue()) {
+		write_line("\t\tINDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, %s_connection_handler);", device->id);
+	} else {
+		write_line("\t\tINDIGO_PROCESS_CONNECT(%s_connection_handler);", device->id);
+	}
 	write_line("\t\treturn INDIGO_OK;");
 	for (property_type *property = device->properties; property; property = property->next) {
 		bool change_branch = property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO") && (property->type[0] != 'i' || property->on_change);
@@ -1911,24 +1913,10 @@ void write_c_change_property(device_type *device) {
 				// handler keeps its own copy of the check for a request admitted just before a
 				// park request was accepted.
 				if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES") || !strcmp(property->id, "MOUNT_MOTION_DEC") || !strcmp(property->id, "MOUNT_MOTION_RA") || !strcmp(property->id, "MOUNT_TRACKING")) {
-					write_line("\t\tif (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {");
-					write_line("\t\t\tfor (int i = 0; i < %s->count; i++) {", property->handle);
-					write_line("\t\t\t\t%s->items[i].do_update = true;", property->handle);
-					write_line("\t\t\t}");
-					write_line("\t\t\t%s->state = INDIGO_ALERT_STATE;", property->handle);
-					write_line("\t\t\tindigo_update_property(device, %s, \"Mount is parked!\");", property->handle);
-					write_line("\t\t\treturn INDIGO_OK;");
-					write_line("\t\t}");
+					write_line("\t\tINDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, %s, \"Mount is parked!\");", property->handle);
 				}
 				for (reject_type *reject = property->rejects; reject; reject = reject->next) {
-					write_line("\t\tif (%s) {", reject->condition);
-					write_line("\t\t\tfor (int i = 0; i < %s->count; i++) {", property->handle);
-					write_line("\t\t\t\t%s->items[i].do_update = true;", property->handle);
-					write_line("\t\t\t}");
-					write_line("\t\t\t%s->state = INDIGO_ALERT_STATE;", property->handle);
-					write_line("\t\t\tindigo_update_property(device, %s, \"%s\");", property->handle, reject->message);
-					write_line("\t\t\treturn INDIGO_OK;");
-					write_line("\t\t}");
+					write_line("\t\tINDIGO_REJECT_CHANGE_IF(%s, %s, \"%s\");", reject->condition, property->handle, reject->message);
 				}
 				write_c_code_blocks(property->on_change_request, 2, "%s.%s.on_change_request", device->id, property->id);
 				if (c_code_is_empty(property->on_change)) {

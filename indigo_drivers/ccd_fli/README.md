@@ -38,3 +38,7 @@ In order to install the kernel driver for the new kernel.
 
 ### Since version 2.0.0.6 the driver uses libusb.
 Since version 2.0.0.6 the kernel driver is not required any more as it uses libusb.
+
+## Testing
+
+2026-09-21 12:45 3.0.0.12 mac arm64 fake SDK 22/22 OK

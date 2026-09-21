@@ -289,11 +289,7 @@ static indigo_result gps_enumerate_properties(indigo_device *device, indigo_clie
 
 static indigo_result gps_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, gps_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(gps_connection_handler);
 		return INDIGO_OK;
 	}
 	return indigo_gps_change_property(device, client, property);

@@ -402,6 +402,22 @@ INDIGO_EXTERN void indigo_enumerate_serial_ports(indigo_device *device, indigo_p
  */
 INDIGO_EXTERN bool indigo_ignore_connection_change(indigo_device *device, indigo_property *request);
 
+/** Accept a CONNECTION change and run the handler on the device queue.
+
+    A repeated request for the state the device is already in is ignored. Otherwise the requested
+    values are taken, CONNECTION is published BUSY and only then is the handler queued: the handler
+    runs on another thread and a connect that publishes BUSY after queuing lets it observe a state
+    that is not there yet. Expects `device` and `property` in scope, like INDIGO_COPY_*_PROCESS_CHANGE.
+ */
+#define INDIGO_PROCESS_CONNECT(h) if (!indigo_ignore_connection_change(device, property)) { indigo_property_copy_values(CONNECTION_PROPERTY, property, false); INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL); indigo_execute_handler(device, h); }
+
+/** Accept a CONNECTION change and run the handler on a per-driver queue.
+
+    As INDIGO_PROCESS_CONNECT, for a driver that serialises SDK enumeration, attach, open and close
+    across all its instances on its own queue `q` guarded by `m`.
+ */
+#define INDIGO_PROCESS_QUEUED_CONNECT(q, m, h) if (!indigo_ignore_connection_change(device, property)) { indigo_property_copy_values(CONNECTION_PROPERTY, property, false); INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL); indigo_queue_add(q, device, INDIGO_TASK_PRIORITY_NORMAL, 0, h, m); }
+
 /** Calculate position corrected with a backlash
 */
 INDIGO_EXTERN int indigo_compensate_backlash(int requested_position, int current_position, int backlash, bool *is_last_move_poitive);

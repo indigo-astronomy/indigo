@@ -444,11 +444,7 @@ static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_
 
 static indigo_result rotator_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, rotator_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(rotator_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_ON_POSITION_SET_PROPERTY, property)) {
 		indigo_property_copy_values(ROTATOR_ON_POSITION_SET_PROPERTY, property, false);
@@ -456,72 +452,30 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, ROTATOR_ON_POSITION_SET_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_OFFSET_PROPERTY, property)) {
-		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < ROTATOR_POSITION_OFFSET_PROPERTY->count; i++) {
-				ROTATOR_POSITION_OFFSET_PROPERTY->items[i].do_update = true;
-			}
-			ROTATOR_POSITION_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, ROTATOR_POSITION_OFFSET_PROPERTY, "Rotator is moving: request can not be completed");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE, ROTATOR_POSITION_OFFSET_PROPERTY, "Rotator is moving: request can not be completed");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_POSITION_OFFSET_PROPERTY, rotator_position_offset_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
-		if (ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < ROTATOR_POSITION_PROPERTY->count; i++) {
-				ROTATOR_POSITION_PROPERTY->items[i].do_update = true;
-			}
-			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Rotator is moving: request can not be completed");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE, ROTATOR_POSITION_PROPERTY, "Rotator is moving: request can not be completed");
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ROTATOR_POSITION_PROPERTY, rotator_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_RELATIVE_MOVE_PROPERTY, property)) {
-		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < ROTATOR_RELATIVE_MOVE_PROPERTY->count; i++) {
-				ROTATOR_RELATIVE_MOVE_PROPERTY->items[i].do_update = true;
-			}
-			ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, "Rotator is moving: request can not be completed");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE, ROTATOR_RELATIVE_MOVE_PROPERTY, "Rotator is moving: request can not be completed");
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ROTATOR_RELATIVE_MOVE_PROPERTY, rotator_relative_move_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(ROTATOR_ABORT_MOTION_PROPERTY, rotator_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_DIRECTION_PROPERTY, property)) {
-		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < ROTATOR_DIRECTION_PROPERTY->count; i++) {
-				ROTATOR_DIRECTION_PROPERTY->items[i].do_update = true;
-			}
-			ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, "Rotator is moving: request can not be completed");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE, ROTATOR_DIRECTION_PROPERTY, "Rotator is moving: request can not be completed");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_DIRECTION_PROPERTY, rotator_direction_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_BACKLASH_PROPERTY, property)) {
-		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < ROTATOR_BACKLASH_PROPERTY->count; i++) {
-				ROTATOR_BACKLASH_PROPERTY->items[i].do_update = true;
-			}
-			ROTATOR_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, ROTATOR_BACKLASH_PROPERTY, "Rotator is moving: request can not be completed");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE, ROTATOR_BACKLASH_PROPERTY, "Rotator is moving: request can not be completed");
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ROTATOR_BACKLASH_PROPERTY, rotator_backlash_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_SET_ZERO_POSITION_PROPERTY, property)) {
-		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < X_SET_ZERO_POSITION_PROPERTY->count; i++) {
-				X_SET_ZERO_POSITION_PROPERTY->items[i].do_update = true;
-			}
-			X_SET_ZERO_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, X_SET_ZERO_POSITION_PROPERTY, "Rotator is moving: request can not be completed");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE, X_SET_ZERO_POSITION_PROPERTY, "Rotator is moving: request can not be completed");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_SET_ZERO_POSITION_PROPERTY, rotator_x_set_zero_position_handler);
 		return INDIGO_OK;
 	}

@@ -1004,6 +1004,27 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 	return INDIGO_OK;
 }
 
+indigo_result indigo_reject_change(indigo_device *device, indigo_property *property, const char *format, ...) {
+	if (property == NULL) {
+		return INDIGO_FAILED;
+	}
+	// Every item is forced, because an unchanged value would otherwise be suppressed and the client
+	// would not learn which values it has to roll back.
+	for (int i = 0; i < property->count; i++) {
+		property->items[i].do_update = true;
+	}
+	property->state = INDIGO_ALERT_STATE;
+	if (format == NULL) {
+		return indigo_update_property(device, property, NULL);
+	}
+	char message[INDIGO_VALUE_SIZE];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+	va_end(args);
+	return indigo_update_property(device, property, "%s", message);
+}
+
 indigo_result indigo_delete_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	if (!is_started || property == NULL)
 		return INDIGO_FAILED;

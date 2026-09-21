@@ -429,76 +429,30 @@ static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_
 
 static indigo_result rotator_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, rotator_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(rotator_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_HOME_PROPERTY, property)) {
-		if (PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < X_HOME_PROPERTY->count; i++) {
-				X_HOME_PROPERTY->items[i].do_update = true;
-			}
-			X_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, X_HOME_PROPERTY, "Rotator operation is already in progress");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE, X_HOME_PROPERTY, "Rotator operation is already in progress");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_HOME_PROPERTY, rotator_x_home_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_RATE_PROPERTY, property)) {
-		if (PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < X_RATE_PROPERTY->count; i++) {
-				X_RATE_PROPERTY->items[i].do_update = true;
-			}
-			X_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, X_RATE_PROPERTY, "Rotator operation is already in progress");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE, X_RATE_PROPERTY, "Rotator operation is already in progress");
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(X_RATE_PROPERTY, rotator_x_rate_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_ROTATE_PROPERTY, property)) {
-		if (PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < X_ROTATE_PROPERTY->count; i++) {
-				X_ROTATE_PROPERTY->items[i].do_update = true;
-			}
-			X_ROTATE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, X_ROTATE_PROPERTY, "Rotator operation is already in progress");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE, X_ROTATE_PROPERTY, "Rotator operation is already in progress");
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(X_ROTATE_PROPERTY, rotator_x_rotate_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_DIRECTION_PROPERTY, property)) {
-		if (PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < ROTATOR_DIRECTION_PROPERTY->count; i++) {
-				ROTATOR_DIRECTION_PROPERTY->items[i].do_update = true;
-			}
-			ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, "Rotator operation is already in progress");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE, ROTATOR_DIRECTION_PROPERTY, "Rotator operation is already in progress");
 		//+ rotator.ROTATOR_DIRECTION.on_change_request
 		PRIVATE_DATA->previous_direction_normal = ROTATOR_DIRECTION_NORMAL_ITEM->sw.value;
 		//- rotator.ROTATOR_DIRECTION.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_DIRECTION_PROPERTY, rotator_direction_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
-		if (PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < ROTATOR_POSITION_PROPERTY->count; i++) {
-				ROTATOR_POSITION_PROPERTY->items[i].do_update = true;
-			}
-			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Rotator operation is already in progress");
-			return INDIGO_OK;
-		}
-		if (PRIVATE_DATA->position_invalidated) {
-			for (int i = 0; i < ROTATOR_POSITION_PROPERTY->count; i++) {
-				ROTATOR_POSITION_PROPERTY->items[i].do_update = true;
-			}
-			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Absolute position is unknown; home the rotator first");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->motion != OPTEC_NO_MOTION || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_HOME_PROPERTY->state == INDIGO_BUSY_STATE, ROTATOR_POSITION_PROPERTY, "Rotator operation is already in progress");
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->position_invalidated, ROTATOR_POSITION_PROPERTY, "Absolute position is unknown; home the rotator first");
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ROTATOR_POSITION_PROPERTY, rotator_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {

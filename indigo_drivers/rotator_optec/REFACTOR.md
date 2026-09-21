@@ -76,3 +76,17 @@ Covered by `optec_rejected_change` in `indigo_test/integration/test_rotator_opte
 ```sh
 cd indigo_test && ./build/integration/test_rotator_optec_simulator
 ```
+
+## Regenerated for the shared refusal and connect macros (2026-09-21)
+
+No behaviour change and no version bump. `indigo_generator` stopped emitting the eight-line refusal
+block and the five-line CONNECTION admission block inline and now emits `INDIGO_REJECT_CHANGE_IF()`
+and `INDIGO_PROCESS_CONNECT()` / `INDIGO_PROCESS_QUEUED_CONNECT()` instead, so this driver was
+regenerated along with the other 114 generator inputs. The macros expand to exactly the statements
+that were written out before; for a sample of four drivers the preprocessed translation unit is
+byte-identical apart from the new `indigo_reject_change()` declaration and shifted `assert()` line
+numbers. Background and the defect that motivated the refusal macro are in `indigo_drivers/REVIEW.md`
+(DRV-213, DRV-214) and `indigo_libs/REVIEW.md` (LIB-015, LIB-016).
+
+Verification: the complete simulator suite was re-run after regeneration —
+`indigo_test/build/integration/test_rotator_optec_simulator`, macOS arm64, 11/11 passed on 2026-09-21 12:43.

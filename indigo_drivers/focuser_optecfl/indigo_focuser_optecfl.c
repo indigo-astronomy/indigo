@@ -680,35 +680,17 @@ static indigo_result focuser_1_enumerate_properties(indigo_device *device, indig
 
 static indigo_result focuser_1_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, focuser_1_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(focuser_1_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-		if (PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < FOCUSER_POSITION_PROPERTY->count; i++) {
-				FOCUSER_POSITION_PROPERTY->items[i].do_update = true;
-			}
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Motion already in progress");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_POSITION_PROPERTY, "Motion already in progress");
 		//+ focuser_1.FOCUSER_POSITION.on_change_request
 		PRIVATE_DATA->move_pending[FOCUSER_SLOT] = true;
 		//- focuser_1.FOCUSER_POSITION.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_1_focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		if (PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < FOCUSER_STEPS_PROPERTY->count; i++) {
-				FOCUSER_STEPS_PROPERTY->items[i].do_update = true;
-			}
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Motion already in progress");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_STEPS_PROPERTY, "Motion already in progress");
 		//+ focuser_1.FOCUSER_STEPS.on_change_request
 		PRIVATE_DATA->move_pending[FOCUSER_SLOT] = true;
 		//- focuser_1.FOCUSER_STEPS.on_change_request
@@ -905,35 +887,17 @@ static indigo_result focuser_2_enumerate_properties(indigo_device *device, indig
 
 static indigo_result focuser_2_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, focuser_2_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(focuser_2_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-		if (PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < FOCUSER_POSITION_PROPERTY->count; i++) {
-				FOCUSER_POSITION_PROPERTY->items[i].do_update = true;
-			}
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Motion already in progress");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_POSITION_PROPERTY, "Motion already in progress");
 		//+ focuser_2.FOCUSER_POSITION.on_change_request
 		PRIVATE_DATA->move_pending[FOCUSER_SLOT] = true;
 		//- focuser_2.FOCUSER_POSITION.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_2_focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		if (PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-			for (int i = 0; i < FOCUSER_STEPS_PROPERTY->count; i++) {
-				FOCUSER_STEPS_PROPERTY->items[i].do_update = true;
-			}
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Motion already in progress");
-			return INDIGO_OK;
-		}
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_STEPS_PROPERTY, "Motion already in progress");
 		//+ focuser_2.FOCUSER_STEPS.on_change_request
 		PRIVATE_DATA->move_pending[FOCUSER_SLOT] = true;
 		//- focuser_2.FOCUSER_STEPS.on_change_request

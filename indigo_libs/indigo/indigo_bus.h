@@ -557,6 +557,15 @@ INDIGO_EXTERN indigo_result indigo_update_property_to_client(indigo_device *devi
  */
 INDIGO_EXTERN indigo_result indigo_update_property(indigo_device *device, indigo_property *property, const char *format, ...);
 
+/** Refuse a change request the driver can not serve right now.
+
+    A request answered with a bare INDIGO_OK is indistinguishable from a lost one: a client that waits
+    for a response never gets it, and a configuration restore, which waits per property, stalls on it
+    and loses every setting after it in file order. This publishes the refusal instead, restating the
+    property's unchanged values so the client can correct its own copy.
+ */
+INDIGO_EXTERN indigo_result indigo_reject_change(indigo_device *device, indigo_property *property, const char *format, ...);
+
 /** Broadcast property removal.
  */
 INDIGO_EXTERN indigo_result indigo_delete_property(indigo_device *device, indigo_property *property, const char *format, ...);
@@ -880,6 +889,15 @@ INDIGO_EXTERN void indigo_set_text_item_value(indigo_item *item, const char *val
 #define INDIGO_COPY_TARGETS_PROCESS_SYNC_CHANGE(p, h) if (p->state != INDIGO_BUSY_STATE) { indigo_property_copy_targets(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); h(device); }
 
 #define INDIGO_UPDATE_PROPERTY_STATE(p, s, f, ...) { p->state = s; indigo_update_property(device, p, f, ##__VA_ARGS__); }
+
+/** Refuse a change request the driver can not serve right now and leave the change branch.
+
+    Use it where INDIGO_COPY_*_PROCESS_CHANGE would otherwise be skipped by a driver-specific
+    admission check, so the request is answered instead of silently dropped; see
+    indigo_reject_change(). The property's own BUSY state is already handled by those macros and
+    must not be refused this way, because that would overwrite the running operation's state.
+ */
+#define INDIGO_REJECT_CHANGE_IF(c, p, f, ...) if (c) { indigo_reject_change(device, p, f, ##__VA_ARGS__); return INDIGO_OK; }
 
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */
