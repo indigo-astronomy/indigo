@@ -52,7 +52,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001B
+#define DRIVER_VERSION       0x0300001C
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -1278,26 +1278,14 @@ static indigo_result imager_ccd_enumerate_properties(indigo_device *device, indi
 
 static indigo_result imager_ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, imager_ccd_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(imager_ccd_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
-		//+ imager_ccd.CCD_EXPOSURE.on_change_request
-		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-			return INDIGO_OK;
-		}
-		//- imager_ccd.CCD_EXPOSURE.on_change_request
+		INDIGO_REJECT_CHANGE_IF(CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE, CCD_EXPOSURE_PROPERTY, "Streaming in progress, an exposure can not be started");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, imager_ccd_ccd_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
-		//+ imager_ccd.CCD_STREAMING.on_change_request
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			return INDIGO_OK;
-		}
-		//- imager_ccd.CCD_STREAMING.on_change_request
+		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE, CCD_STREAMING_PROPERTY, "Exposure in progress, streaming can not be started");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_STREAMING_PROPERTY, imager_ccd_ccd_streaming_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
@@ -1473,26 +1461,14 @@ static indigo_result guider_ccd_enumerate_properties(indigo_device *device, indi
 
 static indigo_result guider_ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, guider_ccd_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(guider_ccd_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
-		//+ guider_ccd.CCD_EXPOSURE.on_change_request
-		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-			return INDIGO_OK;
-		}
-		//- guider_ccd.CCD_EXPOSURE.on_change_request
+		INDIGO_REJECT_CHANGE_IF(CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE, CCD_EXPOSURE_PROPERTY, "Streaming in progress, an exposure can not be started");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, guider_ccd_ccd_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
-		//+ guider_ccd.CCD_STREAMING.on_change_request
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			return INDIGO_OK;
-		}
-		//- guider_ccd.CCD_STREAMING.on_change_request
+		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE, CCD_STREAMING_PROPERTY, "Exposure in progress, streaming can not be started");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_STREAMING_PROPERTY, guider_ccd_ccd_streaming_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
@@ -1608,22 +1584,14 @@ static indigo_result bahtinov_ccd_enumerate_properties(indigo_device *device, in
 
 static indigo_result bahtinov_ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, bahtinov_ccd_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(bahtinov_ccd_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
-		//+ bahtinov_ccd.CCD_EXPOSURE.on_change_request
-		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) { return INDIGO_OK; }
-		//- bahtinov_ccd.CCD_EXPOSURE.on_change_request
+		INDIGO_REJECT_CHANGE_IF(CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE, CCD_EXPOSURE_PROPERTY, "Streaming in progress, an exposure can not be started");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, bahtinov_ccd_ccd_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
-		//+ bahtinov_ccd.CCD_STREAMING.on_change_request
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) { return INDIGO_OK; }
-		//- bahtinov_ccd.CCD_STREAMING.on_change_request
+		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE, CCD_STREAMING_PROPERTY, "Exposure in progress, streaming can not be started");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_STREAMING_PROPERTY, bahtinov_ccd_ccd_streaming_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
@@ -1796,22 +1764,14 @@ static indigo_result dslr_ccd_enumerate_properties(indigo_device *device, indigo
 
 static indigo_result dslr_ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, dslr_ccd_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(dslr_ccd_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
-		//+ dslr_ccd.CCD_EXPOSURE.on_change_request
-		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) { return INDIGO_OK; }
-		//- dslr_ccd.CCD_EXPOSURE.on_change_request
+		INDIGO_REJECT_CHANGE_IF(CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE, CCD_EXPOSURE_PROPERTY, "Streaming in progress, an exposure can not be started");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, dslr_ccd_ccd_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
-		//+ dslr_ccd.CCD_STREAMING.on_change_request
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) { return INDIGO_OK; }
-		//- dslr_ccd.CCD_STREAMING.on_change_request
+		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE, CCD_STREAMING_PROPERTY, "Exposure in progress, streaming can not be started");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_STREAMING_PROPERTY, dslr_ccd_ccd_streaming_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
@@ -1943,22 +1903,14 @@ static indigo_result file_ccd_enumerate_properties(indigo_device *device, indigo
 
 static indigo_result file_ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, file_ccd_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(file_ccd_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
-		//+ file_ccd.CCD_EXPOSURE.on_change_request
-		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) { return INDIGO_OK; }
-		//- file_ccd.CCD_EXPOSURE.on_change_request
+		INDIGO_REJECT_CHANGE_IF(CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE, CCD_EXPOSURE_PROPERTY, "Streaming in progress, an exposure can not be started");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, file_ccd_ccd_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
-		//+ file_ccd.CCD_STREAMING.on_change_request
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) { return INDIGO_OK; }
-		//- file_ccd.CCD_STREAMING.on_change_request
+		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE, CCD_STREAMING_PROPERTY, "Exposure in progress, streaming can not be started");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_STREAMING_PROPERTY, file_ccd_ccd_streaming_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
@@ -2048,11 +2000,7 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, wheel_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(wheel_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
@@ -2179,11 +2127,7 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, focuser_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(focuser_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
@@ -2307,11 +2251,7 @@ static indigo_result guider_enumerate_properties(indigo_device *device, indigo_c
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, guider_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(guider_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		//+ guider.GUIDER_GUIDE_RA.on_change_request
@@ -2415,11 +2355,7 @@ static indigo_result ao_enumerate_properties(indigo_device *device, indigo_clien
 
 static indigo_result ao_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, ao_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(ao_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AO_GUIDE_RA_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AO_GUIDE_RA_PROPERTY, ao_guide_ra_handler);

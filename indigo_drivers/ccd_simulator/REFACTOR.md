@@ -108,3 +108,17 @@ first case measures the full 2000 ms and fails; against the fixed driver it meas
 Partial travel of a replaced pulse is not added to the simulated image offset, because the
 finalizer of the superseded pulse never runs; the simulated guiding error therefore lags slightly
 behind a real mount when a client replaces pulses mid-flight.
+
+## Silent change refusal during acquisition (DRV-214, 2026-09-21)
+
+Observable impact: in all five camera devices (imager, guider, bahtinov, dslr, file) a `CCD_STREAMING` request arriving while `CCD_EXPOSURE` was BUSY, and the reverse, returned `INDIGO_OK` without publishing anything. A client that waits for a response cannot tell that from a lost request,
+and `config_restore` in `indigo_libs/indigo_driver.c` dispatches saved properties one at a time and
+waits for each answer, so an unanswered property used to cost every setting after it in the file
+(TT-D03 / DRV-213). Found by a static sweep of every `change_property` body in the repository, not by
+a failing test.
+
+Root cause: ten `on_change_request` blocks in `indigo_ccd_simulator.driver` refused the cross-property interlock with a bare `return INDIGO_OK;`.
+
+Fix: all ten are now `reject_change` blocks. The simulator matters here beyond its own users: it is what the agent suites drive, so its refusal behaviour is the reference other tests observe. Version 27 -> 28.
+
+Regression test: `simulator_stream_abort_and_reconnect` in `indigo_test/integration/test_ccd_simulator.c` now requests streaming during an exposure and requires `CCD_STREAMING` to reach `INDIGO_ALERT_STATE`. Against the pre-fix driver it fails at that assertion; the suite is 19/19 after the fix. The second `CCD_EXPOSURE` request in the same case is the property's own BUSY guard and is still expected to stay silent.

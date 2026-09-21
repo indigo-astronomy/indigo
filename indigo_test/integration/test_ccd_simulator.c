@@ -659,6 +659,10 @@ static void simulator_stream_abort_and_reconnect(void) {
 	SIM_CHECK(sim_number("CCD_EXPOSURE", 1, (const char *[]){ "EXPOSURE" }, (double []){ 2 }, INDIGO_BUSY_STATE));
 	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, context.driver_case->device_name, "CCD_EXPOSURE", "EXPOSURE", 0.01) == INDIGO_OK);
 	SIM_CHECK(cached_number_value("CCD_EXPOSURE", "EXPOSURE") > 0.01);
+	// DRV-214: streaming requested during an exposure used to be dropped with a bare INDIGO_OK, which
+	// a waiting client cannot tell from a lost request and which stalls a configuration restore. The
+	// second CCD_EXPOSURE above is the property's own BUSY guard and stays silent by design.
+	SIM_CHECK(sim_number("CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.02, 2 }, INDIGO_ALERT_STATE));
 	SIM_CHECK(sim_switch("CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
 	SIM_CHECK(sim_expose());
 	SIM_CHECK(sim_number("CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.02, -1 }, INDIGO_BUSY_STATE));

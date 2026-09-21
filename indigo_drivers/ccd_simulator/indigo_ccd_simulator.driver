@@ -20,7 +20,7 @@ driver simulator {
 	label = "Camera Simulator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 27;
+	version = 28;
 	multi_device_support = true;
 	include {
 		#include <math.h>
@@ -854,10 +854,9 @@ driver simulator {
 			indigo_execute_handler_in(device, TEMP_UPDATE, imager_ccd_timer_callback);
 		}
 		inherited CCD_EXPOSURE {
-			on_change_request {
-				if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Streaming in progress, an exposure can not be started";
 			}
 			on_change {
 				indigo_use_shortest_exposure_if_bias(device);
@@ -865,10 +864,9 @@ driver simulator {
 			}
 		}
 		inherited CCD_STREAMING {
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Exposure in progress, streaming can not be started";
 			}
 			on_change {
 				start_streaming(device); // streaming_finalizer owns completion
@@ -929,10 +927,9 @@ driver simulator {
 			PRIVATE_DATA->guider_image = NULL;
 		}
 		inherited CCD_EXPOSURE {
-			on_change_request {
-				if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Streaming in progress, an exposure can not be started";
 			}
 			on_change {
 				indigo_use_shortest_exposure_if_bias(device);
@@ -940,10 +937,9 @@ driver simulator {
 			}
 		}
 		inherited CCD_STREAMING {
-			on_change_request {
-				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-					return INDIGO_OK;
-				}
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Exposure in progress, streaming can not be started";
 			}
 			on_change {
 				start_streaming(device); // streaming_finalizer owns completion
@@ -1037,12 +1033,18 @@ driver simulator {
 			abort_acquisition(device);
 		}
 		inherited CCD_EXPOSURE {
-			on_change_request { if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) { return INDIGO_OK; } }
+			reject_change {
+				condition = CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Streaming in progress, an exposure can not be started";
+			}
 			on_change { start_exposure(device); // exposure_finalizer owns completion
 			}
 		}
 		inherited CCD_STREAMING {
-			on_change_request { if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) { return INDIGO_OK; } }
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Exposure in progress, streaming can not be started";
+			}
 			on_change { start_streaming(device); // streaming_finalizer owns completion
 			}
 		}
@@ -1072,12 +1074,18 @@ driver simulator {
 			abort_acquisition(device);
 		}
 		inherited CCD_EXPOSURE {
-			on_change_request { if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) { return INDIGO_OK; } }
+			reject_change {
+				condition = CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Streaming in progress, an exposure can not be started";
+			}
 			on_change { start_exposure(device); // exposure_finalizer owns completion
 			}
 		}
 		inherited CCD_STREAMING {
-			on_change_request { if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) { return INDIGO_OK; } }
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Exposure in progress, streaming can not be started";
+			}
 			on_change { start_streaming(device); // streaming_finalizer owns completion
 			}
 		}
@@ -1150,12 +1158,18 @@ driver simulator {
 			close_file_image(device);
 		}
 		inherited CCD_EXPOSURE {
-			on_change_request { if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) { return INDIGO_OK; } }
+			reject_change {
+				condition = CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Streaming in progress, an exposure can not be started";
+			}
 			on_change { start_exposure(device); // exposure_finalizer owns completion
 			}
 		}
 		inherited CCD_STREAMING {
-			on_change_request { if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) { return INDIGO_OK; } }
+			reject_change {
+				condition = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Exposure in progress, streaming can not be started";
+			}
 			on_change { start_streaming(device); // streaming_finalizer owns completion
 			}
 		}
