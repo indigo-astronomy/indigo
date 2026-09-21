@@ -56,3 +56,7 @@ The autofocus cancellation problem was also reproduced through libgphoto2; switc
 * gvfsd-gphoto2
 
 ### NOTE: If you have trouble getting a frame, please make sure you have a memory card inserted into the camera. This driver will not work with cameras without a memory card.
+
+## Testing
+
+2026-09-21 14:14 3.0.0.52 mac arm64 fake SDK 128/128 OK
