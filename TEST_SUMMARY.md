@@ -9,6 +9,7 @@
 | aux_cloudwatcher | 2026-09-21 19:32 | 3.0.0.12 | mac arm64 | simulator | 15 / 15 | ✅ OK |
 | aux_dsusb | 2026-09-21 14:42 | 3.0.0.15 | mac arm64 | fake SDK | 10 / 10 | ✅ OK |
 | aux_fbc | 2026-09-21 19:33 | 3.0.0.8 | mac arm64 | simulator | 10 / 10 | ✅ OK |
+| aux_flatmaster | 2026-09-21 19:33 | 3.0.0.10 | mac arm64 | simulator | 8 / 8 | ✅ OK |
 | aux_joystick | 2026-09-21 14:42 | 3.0.0.10 | mac arm64 | fake SDK | 14 / 14 | ✅ OK |
 | aux_rpio | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | fake SDK | 19 / 19 | ✅ OK |
 | aux_rpio | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | Raspberry Pi 5 | 4 / 4 | ✅ OK |
