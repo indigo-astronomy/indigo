@@ -31,7 +31,8 @@
 
 #define MAX_DEVICES 16
 #define MAX_PROPERTIES 128
-#define CHECK(condition) do { if (!(condition)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #condition); indigo_test_failures++; goto cleanup; } } while (0)
+#define CHECK(condition) do { if (!(condition)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #condition); indigo_test_failures++; return; } } while (0)
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 
 typedef struct {
 	char name[INDIGO_NAME_SIZE];
@@ -335,37 +336,89 @@ static bool exercise_control(const char *property_name, const char *item_name) {
 	return change_number(property_name, item_name, test_value, INDIGO_OK_STATE) && acquire(short_exposure) && change_number(property_name, item_name, original, INDIGO_OK_STATE);
 }
 
-static void hardware_workflows(void) {
-	bool initialized = false;
-	CHECK(indigo_start() == INDIGO_OK);
-	CHECK(indigo_attach_client(&client) == INDIGO_OK);
-	CHECK(indigo_ccd_uvc(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
-	initialized = true;
+static bool session_initialized;
+
+// Every case expects a connected camera that uploads raw images to the client, so the three
+// switches that establish it are applied together whenever a case reconnects the camera.
+static bool connect_camera(void) {
+	return change_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, INDIGO_OK_STATE) &&
+		change_switch(CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, INDIGO_OK_STATE) &&
+		change_switch(CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, INDIGO_OK_STATE);
+}
+
+// The bus, the driver and the camera selection are shared by every case: bringing them up per case
+// would cost a driver reload each time and would report the same discovery failure once per case.
+static bool begin_session(void) {
+	if (indigo_start() != INDIGO_OK || indigo_attach_client(&client) != INDIGO_OK) {
+		return false;
+	}
+	if (indigo_ccd_uvc(INDIGO_DRIVER_INIT, NULL) != INDIGO_OK) {
+		return false;
+	}
+	session_initialized = true;
 	for (int iteration = 0; iteration < 500; iteration++) {
 		indigo_usleep(10000);
 	}
-	CHECK(select_camera());
-	CHECK(change_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, INDIGO_OK_STATE));
-	CHECK(change_switch(CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, INDIGO_OK_STATE));
-	CHECK(change_switch(CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, INDIGO_OK_STATE));
+	return select_camera();
+}
+
+static void end_session(void) {
+	if (camera >= 0) {
+		indigo_change_switch_property_1(&client, devices[camera].name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, true);
+		if (!disconnect_camera()) {
+			indigo_test_failures++;
+		}
+	}
+	if (session_initialized && indigo_ccd_uvc(INDIGO_DRIVER_SHUTDOWN, NULL) != INDIGO_OK) {
+		indigo_test_failures++;
+	}
+	session_initialized = false;
+	indigo_detach_client(&client);
+	indigo_stop();
+}
+
+static void connect_and_exposure_limits(void) {
+	CHECK(connect_camera());
 	CHECK(setup_exposure_durations());
-	CHECK(exercise_modes());
-	CHECK(exercise_control(CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME));
-	CHECK(exercise_control(CCD_GAMMA_PROPERTY_NAME, CCD_GAMMA_ITEM_NAME));
+}
+
+static void short_and_long_exposures(void) {
+	CHECK(acquire(short_exposure));
 	CHECK(acquire(long_exposure));
+}
+
+static void advertised_modes_deliver_frames(void) {
+	CHECK(exercise_modes());
+}
+
+static void optional_gain_control(void) {
+	CHECK(exercise_control(CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME));
+}
+
+static void optional_gamma_control(void) {
+	CHECK(exercise_control(CCD_GAMMA_PROPERTY_NAME, CCD_GAMMA_ITEM_NAME));
+}
+
+static void exposure_abort_and_reacquire(void) {
 	unsigned exposure_revision = property_revision(CCD_EXPOSURE_PROPERTY_NAME);
 	indigo_change_number_property_1(&client, devices[camera].name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, long_exposure);
 	CHECK(wait_state(CCD_EXPOSURE_PROPERTY_NAME, exposure_revision, INDIGO_BUSY_STATE));
 	CHECK(change_switch(CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, INDIGO_OK_STATE));
 	CHECK(wait_state(CCD_EXPOSURE_PROPERTY_NAME, exposure_revision, INDIGO_ALERT_STATE));
 	CHECK(acquire(short_exposure));
+}
+
+static void finite_streaming(void) {
 	unsigned before = frame_count();
 	unsigned streaming_revision = property_revision(CCD_STREAMING_PROPERTY_NAME);
 	indigo_change_number_property(&client, devices[camera].name, CCD_STREAMING_PROPERTY_NAME, 2, (const char *[]){ CCD_STREAMING_EXPOSURE_ITEM_NAME, CCD_STREAMING_COUNT_ITEM_NAME }, (double []){ short_exposure, 5 });
 	CHECK(wait_state(CCD_STREAMING_PROPERTY_NAME, streaming_revision, INDIGO_OK_STATE));
 	CHECK(frame_count() == before + 5);
-	before = frame_count();
-	streaming_revision = property_revision(CCD_STREAMING_PROPERTY_NAME);
+}
+
+static void indefinite_streaming_and_stop(void) {
+	unsigned before = frame_count();
+	unsigned streaming_revision = property_revision(CCD_STREAMING_PROPERTY_NAME);
 	indigo_change_number_property(&client, devices[camera].name, CCD_STREAMING_PROPERTY_NAME, 2, (const char *[]){ CCD_STREAMING_EXPOSURE_ITEM_NAME, CCD_STREAMING_COUNT_ITEM_NAME }, (double []){ short_exposure, -1 });
 	CHECK(wait_state(CCD_STREAMING_PROPERTY_NAME, streaming_revision, INDIGO_BUSY_STATE));
 	for (int iteration = 0; iteration < 3000 && frame_count() < before + 3; iteration++) {
@@ -374,50 +427,45 @@ static void hardware_workflows(void) {
 	CHECK(frame_count() >= before + 3);
 	CHECK(change_switch(CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, INDIGO_OK_STATE));
 	CHECK(wait_state(CCD_STREAMING_PROPERTY_NAME, streaming_revision, INDIGO_OK_STATE));
+}
+
+static void disconnect_and_reconnect(void) {
 	CHECK(disconnect_camera());
-	CHECK(change_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, INDIGO_OK_STATE));
-	CHECK(change_switch(CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, INDIGO_OK_STATE));
-	CHECK(change_switch(CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, INDIGO_OK_STATE));
+	CHECK(connect_camera());
 	CHECK(acquire(short_exposure));
-	if (hotplug) {
-		printf("HOTPLUG_READY: unplug USB camera now: %s\n", devices[camera].name);
-		CHECK(wait_presence(false));
-		printf("HOTPLUG_REMOVED: reconnect the same USB camera now\n");
-		CHECK(wait_presence(true));
-		CHECK(change_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, INDIGO_OK_STATE));
-		CHECK(change_switch(CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, INDIGO_OK_STATE));
-		CHECK(change_switch(CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, INDIGO_OK_STATE));
-		CHECK(acquire(short_exposure));
-		printf("HOTPLUG_RECOVERED: exposure succeeded after replug\n");
-	}
+}
+
+static void unplug_and_replug_recovery(void) {
+	printf("HOTPLUG_READY: unplug USB camera now: %s\n", devices[camera].name);
+	CHECK(wait_presence(false));
+	printf("HOTPLUG_REMOVED: reconnect the same USB camera now\n");
+	CHECK(wait_presence(true));
+	CHECK(connect_camera());
+	CHECK(acquire(short_exposure));
+	printf("HOTPLUG_RECOVERED: exposure succeeded after replug\n");
+}
+
+static void driver_shutdown_reinit_and_exposure(void) {
 	CHECK(disconnect_camera());
 	CHECK(indigo_ccd_uvc(INDIGO_DRIVER_SHUTDOWN, NULL) == INDIGO_OK);
-	initialized = false;
+	session_initialized = false;
 	CHECK(indigo_ccd_uvc(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
-	initialized = true;
+	session_initialized = true;
 	CHECK(wait_presence(true));
-	CHECK(change_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, INDIGO_OK_STATE));
-	CHECK(change_switch(CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, INDIGO_OK_STATE));
-	CHECK(change_switch(CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, INDIGO_OK_STATE));
+	CHECK(connect_camera());
 	CHECK(setup_exposure_durations());
 	CHECK(acquire(short_exposure));
+}
+
+// Runs last so that it judges every frame the preceding cases collected.
+static void received_frames_are_well_formed(void) {
 	pthread_mutex_lock(&mutex);
+	unsigned frames = devices[camera].frames;
 	unsigned invalid_frames = devices[camera].invalid_frames;
 	pthread_mutex_unlock(&mutex);
+	printf("    %u frame(s) received, %u malformed\n", frames, invalid_frames);
+	CHECK(frames > 0);
 	CHECK(invalid_frames == 0);
-	printf("    driver shutdown/reinit and fresh exposure succeeded\n");
-cleanup:
-	if (camera >= 0) {
-		indigo_change_switch_property_1(&client, devices[camera].name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, true);
-		if (!disconnect_camera()) {
-			indigo_test_failures++;
-		}
-	}
-	if (initialized && indigo_ccd_uvc(INDIGO_DRIVER_SHUTDOWN, NULL) != INDIGO_OK) {
-		indigo_test_failures++;
-	}
-	indigo_detach_client(&client);
-	indigo_stop();
 }
 
 int main(int argc, char **argv) {
@@ -431,8 +479,47 @@ int main(int argc, char **argv) {
 		indigo_set_log_level(INDIGO_LOG_DEBUG);
 	}
 	client = (indigo_client){ .name = "UVC hardware test", .version = INDIGO_VERSION_CURRENT, .define_property = define_property, .update_property = update_property, .delete_property = delete_property, .send_message = report_message };
-	const indigo_test_case tests[] = { { "Physical UVC camera modes, controls, exposure, streaming and reconnect", hardware_workflows } };
-	int result = indigo_run_tests("UVC hardware", tests, 1);
+	const indigo_test_case tests[] = {
+		{ "Connect and exposure limits", connect_and_exposure_limits },
+		{ "Short and long exposures", short_and_long_exposures },
+		{ "Advertised modes deliver frames", advertised_modes_deliver_frames },
+		{ "Optional gain control", optional_gain_control },
+		{ "Optional gamma control", optional_gamma_control },
+		{ "Exposure abort and reacquire", exposure_abort_and_reacquire },
+		{ "Finite streaming", finite_streaming },
+		{ "Indefinite streaming and stop", indefinite_streaming_and_stop },
+		{ "Disconnect and reconnect", disconnect_and_reconnect }
+	};
+	// Physical interruption is opt-in, and the driver reload has to follow it so that a replug is
+	// exercised against the same driver instance the preceding cases used.
+	const indigo_test_case hotplug_tests[] = {
+		{ "Unplug and replug recovery", unplug_and_replug_recovery }
+	};
+	const indigo_test_case closing_tests[] = {
+		{ "Driver shutdown reinit and fresh exposure", driver_shutdown_reinit_and_exposure },
+		{ "Received frames are well formed", received_frames_are_well_formed }
+	};
+	int result = 1;
+	if (begin_session()) {
+		indigo_test_case selected[ARRAY_SIZE(tests) + ARRAY_SIZE(hotplug_tests) + ARRAY_SIZE(closing_tests)];
+		int matched = 0;
+		for (int index = 0; index < ARRAY_SIZE(tests); index++) {
+			selected[matched++] = tests[index];
+		}
+		if (hotplug) {
+			for (int index = 0; index < ARRAY_SIZE(hotplug_tests); index++) {
+				selected[matched++] = hotplug_tests[index];
+			}
+		}
+		for (int index = 0; index < ARRAY_SIZE(closing_tests); index++) {
+			selected[matched++] = closing_tests[index];
+		}
+		result = indigo_run_tests("UVC hardware", selected, matched);
+	} else {
+		fprintf(stderr, "No usable physical UVC camera session.\n");
+		indigo_test_failures++;
+	}
+	end_session();
 	for (int device_index = 0; device_index < MAX_DEVICES; device_index++) {
 		for (int property_index = 0; property_index < MAX_PROPERTIES; property_index++) {
 			indigo_release_property(devices[device_index].properties[property_index]);
