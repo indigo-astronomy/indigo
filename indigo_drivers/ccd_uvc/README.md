@@ -28,3 +28,7 @@ Tested with SVBONY SV205 and TIS DMK21
 UVC driver doesn't work on macOS Monterey or later due to presence of system kernel extension com.apple.UVCService.
 The only known workaround is to run the application containing UVC driver as root to allow libusb_set_auto_detach_kernel_driver()
 call to detach kernel driver and subsequent execution of the application execution will work until the camera is unplugged.
+
+## Testing
+
+2026-09-21 14:12 3.0.0.26 mac arm64 fake SDK 21/21 OK
