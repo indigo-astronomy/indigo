@@ -123,7 +123,14 @@ $(GENERATED_SOURCE): $(DEFINITION) ../../indigo_tools/indigo_generator.c
 	$(BUILD_BIN)/indigo_generator $(DEFINITION)
 endif
 
-$(DRIVER_A): $(DRIVER_O)
+# The SDK is an order-only prerequisite everywhere it is used: a parallel build
+# must not compile against its generated headers or link against its libraries
+# before make_sdk has produced them, but a rebuilt SDK need not force a relink.
+ifneq ($(strip $(DRIVER_O) $(DRIVER_MAIN_O)),)
+$(DRIVER_O) $(DRIVER_MAIN_O): | $(MAKE_SDK)
+endif
+
+$(DRIVER_A): $(DRIVER_O) | $(MAKE_SDK)
 	$(AR) $(ARFLAGS) $@ $^
 ifneq ($(SDK_LIB_SO),)
 	install -m 0644 $(SDK_LIB_SO) $(BUILD_LIB)
@@ -136,10 +143,10 @@ ifeq ($(OS_DETECTED),Linux)
 endif
 endif
 
-$(DRIVER_SO): $(DRIVER_A)
+$(DRIVER_SO): $(DRIVER_A) | $(MAKE_SDK)
 	$(CC) -shared -o $@ $(FORCE_ALL_ON) $(DRIVER_A) $(FORCE_ALL_OFF) $(SDK_LIB) -lindigo $(LDFLAGS) -lusb-1.0
 
-$(DRIVER_EXECUTABLE): $(DRIVER_MAIN_O) $(DRIVER_A)
+$(DRIVER_EXECUTABLE): $(DRIVER_MAIN_O) $(DRIVER_A) | $(MAKE_SDK)
 	$(CC) -o $@ $^ $(SDK_LIB) -lindigo $(LDFLAGS) -lusb-1.0
 
 install: status $(INSTALL_SDK)
