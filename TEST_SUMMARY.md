@@ -10,6 +10,7 @@
 # ccd_altair
 
 2026-09-21 10:22 3.0.0.48 mac arm64 Altair ALTAIRGP224C 28/27 Failed
+2026-09-21 13:49 3.0.0.49 mac arm64 fake SDK 30/30 OK
 
 # ccd_asi (ZWO ASI Camera)
 
