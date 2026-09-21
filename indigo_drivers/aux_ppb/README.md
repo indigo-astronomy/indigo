@@ -25,3 +25,7 @@ indigo_server indigo_aux_ppb
 ## Status: Stable
 
 Tested with physical device.
+
+## Testing
+
+2026-09-21 19:37 3.0.0.28 mac arm64 simulator 3/3 OK
