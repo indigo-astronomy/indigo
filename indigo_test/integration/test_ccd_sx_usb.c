@@ -62,7 +62,7 @@ static bool interlaced(void) { return model == 0x40; }
 static bool icx453(void) { return model == 0x59; }
 
 static const simulator_driver_case sx_case = {
-	"Starlight Xpress Camera", "indigo_ccd_sx", "SX UltraStar #fake-0", indigo_ccd_sx, false,
+	"Starlight Xpress Camera", "indigo_ccd_sx", "SX UltraStar #fake-0", indigo_ccd_sx, true,
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
 

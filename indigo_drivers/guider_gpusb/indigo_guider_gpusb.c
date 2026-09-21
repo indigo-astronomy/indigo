@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_guider_gpusb"
 #define DRIVER_LABEL         "Shoestring GPUSB guider"
 #define GUIDER_DEVICE_NAME   "%s"
@@ -332,7 +332,7 @@ static libusb_hotplug_callback_handle callback_handle;
 indigo_result indigo_guider_gpusb(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;

@@ -26,7 +26,8 @@ driver simulator {
 	label = "Polar Aligner Simulator";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2026 by Rumen G.Bogdanovski";
-	version = 3;
+	version = 4;
+	multi_device_support = true;
 	define {
 		#define POLARALIGN_SPEED 0.5
 	}

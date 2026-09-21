@@ -22,7 +22,8 @@ driver dsi {
 	label = "Meade DSI Camera";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2017-2026 Rumen G. Bogdanovski";
-	version = 16;
+	version = 17;
+	multi_device_support = true;
 	sdk {
 		hotplug = true;
 		vid = DSI_VENDOR_ID;

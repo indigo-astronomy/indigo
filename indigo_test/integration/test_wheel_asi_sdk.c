@@ -31,7 +31,7 @@ static atomic_int visible_count = 1, attached_mask, attach_attempts, fail_attach
 static atomic_int close_calls, open_calls, set_position_calls, requested_slot, current_slot;
 static atomic_bool moving, fail_read, fail_info;
 static atomic_int read_calls, calibrate_calls, slots = 5;
-static const simulator_driver_case efw = { "ZWO ASI Filter Wheel", "indigo_wheel_asi", "EFW SDK test 0", indigo_wheel_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static const simulator_driver_case efw = { "ZWO ASI Filter Wheel", "indigo_wheel_asi", "EFW SDK test 0", indigo_wheel_asi, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 
 static int device_index(indigo_device *device) {
 	int index = -1;

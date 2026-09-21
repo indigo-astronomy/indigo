@@ -511,8 +511,8 @@ indigo_result asi_test_update_property(indigo_device *device, indigo_property *p
 	return indigo_update_property(device, property, "%s", formatted);
 }
 
-static const simulator_driver_case guider7 = { "ZWO ASI USB-St4 Guider", "indigo_guider_asi", "ASI USB-St4 Guider #7", indigo_guider_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
-static const simulator_driver_case guider42 = { "ZWO ASI USB-St4 Guider", "indigo_guider_asi", "ASI USB-St4 Guider #42", indigo_guider_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static const simulator_driver_case guider7 = { "ZWO ASI USB-St4 Guider", "indigo_guider_asi", "ASI USB-St4 Guider #7", indigo_guider_asi, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static const simulator_driver_case guider42 = { "ZWO ASI USB-St4 Guider", "indigo_guider_asi", "ASI USB-St4 Guider #42", indigo_guider_asi, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 static bool bus_started, client_attached, driver_initialized;
 
 static bool wait_atomic(atomic_int *value, int expected) {

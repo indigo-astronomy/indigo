@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_rotator_simulator"
 #define DRIVER_LABEL         "Field Rotator Simulator"
 #define ROTATOR_DEVICE_NAME  "Field Rotator Simulator"
@@ -257,7 +257,7 @@ indigo_result indigo_rotator_simulator(indigo_driver_action action, indigo_drive
 	static simulator_private_data *private_data = NULL;
 	static indigo_device *rotator = NULL;
 
-	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;

@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000003
+#define DRIVER_VERSION       0x03000004
 #define DRIVER_NAME          "indigo_rotator_optec"
 #define DRIVER_LABEL         "Optec Pyxis Rotator"
 #define ROTATOR_DEVICE_NAME  "Optec Pyxis"
@@ -532,7 +532,7 @@ indigo_result indigo_rotator_optec(indigo_driver_action action, indigo_driver_in
 	static optec_private_data *private_data = NULL;
 	static indigo_device *rotator = NULL;
 
-	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;

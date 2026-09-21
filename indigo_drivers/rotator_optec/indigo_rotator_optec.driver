@@ -26,7 +26,8 @@ driver optec {
 	label = "Optec Pyxis Rotator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2022-2026 CloudMakers, s. r. o.";
-	version = 3;
+	version = 4;
+	multi_device_support = true;
 	serial;
 	define {
 		#define OPTEC_RESPONSE_SIZE	64

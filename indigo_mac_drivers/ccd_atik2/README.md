@@ -46,4 +46,4 @@ This driver is provided only as a temporary solution until Atik will provide App
 
 ## Testing
 
-2026-09-20 21:31 3.0.0.11 mac arm64 fake SDK 24/24 OK
+2026-09-21 10:43 3.0.0.13 mac arm64 fake SDK 24/24 OK

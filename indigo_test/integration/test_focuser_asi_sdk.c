@@ -33,7 +33,7 @@ static atomic_bool motor, hand_control, fail_poll, fail_position, fail_move, fai
 static atomic_int temperature = 10, abort_state;
 static atomic_bool abort_switch, reverse_enabled, beep_enabled;
 static atomic_int open_calls, requested_position, reset_calls;
-static const simulator_driver_case eaf = { "ZWO ASI Focuser", "indigo_focuser_asi", "EAF SDK test 0", indigo_focuser_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static const simulator_driver_case eaf = { "ZWO ASI Focuser", "indigo_focuser_asi", "EAF SDK test 0", indigo_focuser_asi, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 
 static indigo_result eaf_client_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, eaf.device_name) && !strcmp(property->name, FOCUSER_ABORT_MOTION_PROPERTY_NAME)) {

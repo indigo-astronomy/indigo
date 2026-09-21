@@ -20,7 +20,8 @@ driver atik {
 	label = "Atik Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 40;
+	version = 41;
+	multi_device_support = true;
 	include {
 		#include <math.h>
 		#include <limits.h>

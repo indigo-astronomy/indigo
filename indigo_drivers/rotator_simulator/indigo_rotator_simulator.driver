@@ -26,7 +26,8 @@ driver simulator {
 	label = "Field Rotator Simulator";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2026 Rumen G. Bogdanovski";
-	version = 6;
+	version = 7;
+	multi_device_support = true;
 	define {
 		#define ROTATOR_SPEED 1
 		#define ROTATOR_POSITION_EPSILON 0.000001

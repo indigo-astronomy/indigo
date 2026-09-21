@@ -20,7 +20,8 @@ driver qhy {
 	label = "QHY CCD (legacy) Camera";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2017-2026 Rumen G. Bogdanovski";
-	version = 34;
+	version = 35;
+	multi_device_support = true;
 	cpp = true;
 	supported_architecture = "!defined(INDIGO_MACOS) || defined(__x86_64__)";
 	include {

@@ -24,7 +24,8 @@ driver asi {
 	label = "ZWO ASI Filter Wheel";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2016-2026 Rumen G. Bogdanovski";
-	version = 15;
+	version = 16;
+	multi_device_support = true;
 	include {
 		#include <stdbool.h>
 		#include <EFW_filter.h>

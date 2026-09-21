@@ -133,7 +133,7 @@ No sleep/retry loop may monopolize the driver queue. If SDK discovery needs a re
    Result:
    - Narrow universal macOS build passed for both x86_64 and arm64, including archive, dylib and executable. No compiler warnings remain; the pre-existing SDK deployment-target linker warning remains.
    - Compared the generated lifecycle, property definitions and removed legacy callbacks with the original. Intentional changes are checked errors, safe suffix parsing, asynchronous initial positioning, BUSY current-position reporting, reset busy rejection and generator queue ownership.
-   - Generated driver metadata uses the same `multi_device_support = false` convention as `wheel_asi` for a single logical wheel template; multiple physical wheels remain supported and tested up to the default five.
+   - Generated driver metadata originally used the same `multi_device_support = false` convention as `wheel_asi` for a single logical wheel template; multiple physical wheels remain supported and tested up to the default five. **Corrected 2026-09-21:** that was not a decision. The static audit recorded as `DRV-212` in `indigo_drivers/REVIEW.md` showed that `wheel_asi` had lost the flag in its own migration, against its stated goal of preserving multi-device support, and this note codified the accident. Both drivers now declare `multi_device_support = true;`.
 
 7. **Add hardware-free SDK tests.** Follow the ASI test arrangement: compile the driver separately with test hooks and provide Player One SDK/libusb stubs, exercise the public entry point and bus APIs. Add a dedicated test target under `indigo_test`, document coverage/deferred work in `CHANGES.md` and clean test outputs according to its instructions.
 

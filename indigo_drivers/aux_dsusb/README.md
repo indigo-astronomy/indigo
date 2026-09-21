@@ -25,3 +25,7 @@ indigo_server indigo_aux_dsusb
 ## Status: Stable
 
 Tested with physical device.
+
+## Testing
+
+2026-09-21 10:41 3.0.0.15 mac arm64 fake SDK 10/10 OK

@@ -43,7 +43,7 @@ static const simulator_driver_case rotator_simulator = {
 	"indigo_rotator_simulator",
 	"Field Rotator Simulator",
 	indigo_rotator_simulator,
-	false,
+	true,
 	base_properties_with_instances,
 	ARRAY_SIZE(base_properties_with_instances),
 	hidden_base_properties,
@@ -234,7 +234,7 @@ static void simulator_additional_instance_has_independent_position(void) {
 		"indigo_rotator_simulator",
 		"Field Rotator Simulator #2",
 		indigo_rotator_simulator,
-		false,
+		true,
 		NULL, 0, NULL, 0, NULL, 0, NULL, 0
 	};
 	bool driver_started = false;

@@ -30,8 +30,8 @@
 
 extern indigo_result indigo_aux_dsusb(indigo_driver_action, indigo_driver_info *);
 
-static const simulator_driver_case driver = { "Shoestring DSUSB shutter release", "indigo_aux_dsusb", "DSUSB test", indigo_aux_dsusb, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
-static const simulator_driver_case second_driver = { "Shoestring DSUSB shutter release", "indigo_aux_dsusb", "DSUSB test 2", indigo_aux_dsusb, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static const simulator_driver_case driver = { "Shoestring DSUSB shutter release", "indigo_aux_dsusb", "DSUSB test", indigo_aux_dsusb, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static const simulator_driver_case second_driver = { "Shoestring DSUSB shutter release", "indigo_aux_dsusb", "DSUSB test 2", indigo_aux_dsusb, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 static atomic_int references, attached, opened, closed, io_calls, invalid_io, fail_queue, fail_register, fail_attach, fail_open, fail_io, fail_stop, fail_nth;
 static atomic_int output, rejected_device, timer_delay_ms;
 static atomic_bool active_contexts[8];

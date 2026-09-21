@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000022
+#define DRIVER_VERSION       0x03000023
 #define DRIVER_NAME          "indigo_ccd_qhy"
 #define DRIVER_LABEL         "QHY CCD (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1474,7 +1474,7 @@ static void discover_devices_handler(indigo_device *device) {
 indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;
@@ -1550,7 +1550,7 @@ indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *in
 #include "indigo_ccd_qhy.h"
 
 indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "QHY CCD (legacy) Camera", __FUNCTION__, 0x03000022, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "QHY CCD (legacy) Camera", __FUNCTION__, 0x03000023, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

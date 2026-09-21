@@ -34,7 +34,7 @@
 
 #define GPUSB_DEVICE_NAME "GPUSB test"
 
-static const simulator_driver_case guider = { "Shoestring GPUSB guider", "indigo_guider_gpusb", GPUSB_DEVICE_NAME, indigo_guider_gpusb, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static const simulator_driver_case guider = { "Shoestring GPUSB guider", "indigo_guider_gpusb", GPUSB_DEVICE_NAME, indigo_guider_gpusb, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 
 // ----------------------------------------------------------------- fake relays
 

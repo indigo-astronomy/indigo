@@ -51,3 +51,7 @@ indigo_server -i indigo_ccd_qhy
 
 This will execute the driver in a separate process and in case of a driver crash the server will not be affected.
 This will come at the cost of substantially reduced performance.
+
+## Testing
+
+2026-09-21 10:57 3.0.0.35 mac arm64 fake SDK 37/37 OK

@@ -38,7 +38,7 @@ static const simulator_driver_case polaralign_simulator = {
 	"indigo_polaralign_simulator",
 	"Polar Aligner Simulator",
 	indigo_polaralign_simulator,
-	false,
+	true,
 	base_properties_with_instances,
 	ARRAY_SIZE(base_properties_with_instances),
 	hidden_base_properties,

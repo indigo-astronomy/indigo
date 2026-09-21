@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000021
+#define DRIVER_VERSION       0x03000022
 #define DRIVER_NAME          "indigo_focuser_asi"
 #define DRIVER_LABEL         "ZWO ASI Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -984,7 +984,7 @@ static libusb_hotplug_callback_handle callback_handle;
 indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;

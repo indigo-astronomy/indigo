@@ -22,7 +22,8 @@ driver asi {
 	label = "ZWO ASI Focuser";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (C) 2016-2026 Rumen G. Bogdanovski";
-	version = 33;
+	version = 34;
+	multi_device_support = true;
 	include {
 		#include <stdbool.h>
 		#include <EAF_focuser.h>

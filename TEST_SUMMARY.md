@@ -3,6 +3,10 @@
 2026-09-20 23:35 3.0.0.13 mac arm64 simulator 11/11 OK
 2026-09-20 23:43 3.0.0.13 mac arm64 SX AO-L 16/16 OK
 
+# aux_dsusb (Shoestring DSUSB shutter release)
+
+2026-09-21 10:41 3.0.0.15 mac arm64 fake SDK 10/10 OK
+
 # ccd_altair
 
 2026-09-21 10:22 3.0.0.48 mac arm64 Altair ALTAIRGP224C 28/27 Failed
@@ -15,7 +19,7 @@
 
 # ccd_atik (Atik Camera)
 
-2026-09-20 21:29 3.0.0.39 mac arm64 fake SDK 40/40 OK
+2026-09-21 10:42 3.0.0.41 mac arm64 fake SDK 41/41 OK
 
 # ccd_mi (Moravian Instruments Camera)
 
@@ -25,6 +29,14 @@
 
 2026-09-21 09:12 3.0.0.25 mac arm64 fake SDK 49/49 OK
 2026-09-21 09:26 3.0.0.25 mac arm64 Mars-C II 27/27 OK
+
+# ccd_qhy (QHY CCD (legacy) Camera)
+
+2026-09-21 10:57 3.0.0.35 mac arm64 fake SDK 37/37 OK
+
+# ccd_qhy2 (QHY CMOS (modern) Camera)
+
+2026-09-21 10:58 3.0.0.35 mac arm64 fake SDK 37/37 OK
 
 # ccd_simulator (Camera Simulator)
 
@@ -40,7 +52,7 @@
 
 # ccd_sx (Starlight Xpress Camera)
 
-2026-09-20 21:31 3.0.0.19 mac arm64 fake SDK 24/24 OK
+2026-09-21 10:44 3.0.0.20 mac arm64 fake SDK 24/24 OK
 
 # ccd_touptek
 
@@ -54,6 +66,10 @@
 
 2026-09-20 22:31 3.0.0.7 mac arm64 simulator 47/47 OK
 
+# focuser_asi (ZWO ASI Focuser)
+
+2026-09-21 10:45 3.0.0.34 mac arm64 fake SDK 11/11 OK
+
 # focuser_dmfc (PegasusAstro DMFC Focuser)
 
 2026-09-20 12:30 3.0.0.17 mac arm64 simulator 25/25 OK
@@ -64,7 +80,7 @@
 
 # focuser_fcusb (Shoestring FCUSB focuser)
 
-2026-09-20 15:23 3.0.0.8 mac arm64 fake SDK 17/17 OK
+2026-09-21 10:46 3.0.0.9 mac arm64 fake SDK 17/17 OK
 
 # focuser_primaluce (PrimaluceLab Focuser/Rotator)
 
@@ -81,7 +97,7 @@
 
 # guider_asi (ZWO ASI USB-St4 Guider)
 
-2026-09-20 20:52 3.0.0.9 mac arm64 fake SDK 17/17 OK
+2026-09-21 10:47 3.0.0.10 mac arm64 fake SDK 16/16 OK
 
 # guider_cgusbst4 (CG-USB-ST4 Adapter)
 
@@ -89,7 +105,7 @@
 
 # guider_gpusb (Shoestring GPUSB guider)
 
-2026-09-20 20:52 3.0.0.8 mac arm64 fake SDK 15/15 OK
+2026-09-21 10:48 3.0.0.9 mac arm64 fake SDK 15/15 OK
 
 # mount_ioptron (iOptron Mount)
 
@@ -128,14 +144,42 @@
 
 2026-09-20 20:27 3.0.0.13 mac arm64 simulator 13/13 OK
 
+# polaralign_simulator (Polar Aligner Simulator)
+
+2026-09-21 10:53 3.0.0.4 mac arm64 simulator 11/11 OK
+
+# rotator_asi (ZWO CAA Rotator)
+
+2026-09-21 10:49 3.0.0.7 mac arm64 fake SDK 11/11 OK
+
+# rotator_falcon (PegasusAstro Falcon rotator)
+
+2026-09-21 10:51 3.0.0.9 mac arm64 simulator 13/13 OK
+
+# rotator_optec (Optec Pyxis Rotator)
+
+2026-09-21 10:50 3.0.0.4 mac arm64 simulator 11/11 OK
+
+# rotator_simulator (Field Rotator Simulator)
+
+2026-09-21 10:52 3.0.0.7 mac arm64 simulator 9/9 OK
+
 # wheel_asi (ZWO ASI Filter Wheel)
 
-2026-09-21 00:34 3.0.0.15 mac arm64 fake SDK 5/5 OK
 2026-09-21 00:42 3.0.0.15 mac arm64 ASI EFW mini 16/16 OK
+2026-09-21 10:54 3.0.0.16 mac arm64 fake SDK 5/5 OK
 
 # wheel_atik (Atik Filter Wheel)
 
 2026-09-20 15:00 3.0.0.6 mac arm64 fake SDK 17/17 OK
+
+# wheel_manual (Manual filter wheel)
+
+2026-09-21 10:55 3.0.0.6 mac arm64 simulator 2/2 OK
+
+# wheel_playerone (Player One Filter Wheel)
+
+2026-09-21 10:56 3.0.0.12 mac arm64 fake SDK 12/12 OK
 
 # wheel_sx (Starlight Xpress Filter Wheel)
 
@@ -144,7 +188,7 @@
 
 # ccd_atik2 (Atik (legacy) Camera)
 
-2026-09-20 21:31 3.0.0.11 mac arm64 fake SDK 24/24 OK
+2026-09-21 10:43 3.0.0.13 mac arm64 fake SDK 24/24 OK
 
 # aux_asiair (ZWO Power Ports ASIAIR)
 

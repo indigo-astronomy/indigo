@@ -34,3 +34,6 @@ Driver is developed and tested with:
 
 * ZWO Camera Angle Aadjuster
 
+## Testing
+
+2026-09-21 10:49 3.0.0.7 mac arm64 fake SDK 11/11 OK

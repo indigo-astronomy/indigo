@@ -38,7 +38,7 @@ static const simulator_driver_case optec_rotator = {
 	"indigo_rotator_optec",
 	"Optec Pyxis",
 	indigo_rotator_optec,
-	false,
+	true,
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
 

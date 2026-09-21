@@ -26,7 +26,8 @@ driver falcon {
 	label = "PegasusAstro Falcon rotator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 8;
+	version = 9;
+	multi_device_support = true;
 	serial {
 		pattern {
 			product = "FalconRotator";

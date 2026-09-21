@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000003
+#define DRIVER_VERSION       0x03000004
 #define DRIVER_NAME          "indigo_polaralign_simulator"
 #define DRIVER_LABEL         "Polar Aligner Simulator"
 #define POLARALIGN_DEVICE_NAME DRIVER_LABEL
@@ -257,7 +257,7 @@ indigo_result indigo_polaralign_simulator(indigo_driver_action action, indigo_dr
 	static simulator_private_data *private_data = NULL;
 	static indigo_device *polaralign = NULL;
 
-	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;

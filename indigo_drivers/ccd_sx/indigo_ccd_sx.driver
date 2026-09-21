@@ -22,7 +22,8 @@ driver sx {
 	label = "Starlight Xpress Camera";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 19;
+	version = 20;
+	multi_device_support = true;
 	libusb {
 		hotplug = true;
 		vid = SX_VENDOR_ID;

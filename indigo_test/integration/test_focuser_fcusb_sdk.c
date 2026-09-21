@@ -47,7 +47,7 @@ const char *fcusb_test_config_folder(void) {
 	return config_folder;
 }
 
-static const simulator_driver_case focuser = { "Shoestring FCUSB focuser", "indigo_focuser_fcusb", FCUSB_DEVICE_NAME, indigo_focuser_fcusb, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static const simulator_driver_case focuser = { "Shoestring FCUSB focuser", "indigo_focuser_fcusb", FCUSB_DEVICE_NAME, indigo_focuser_fcusb, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 
 // ----------------------------------------------------------------- fake focuser
 

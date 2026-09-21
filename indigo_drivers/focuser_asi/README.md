@@ -40,3 +40,7 @@ Please follow these steps:
 
 This seems to be a MacOS issue. Looks like this procedure fixes some device permissions.
 This procedure should be followed only once, then your EAF should be auto discovered.
+
+## Testing
+
+2026-09-21 10:45 3.0.0.34 mac arm64 fake SDK 11/11 OK

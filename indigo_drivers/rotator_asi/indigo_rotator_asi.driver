@@ -24,7 +24,8 @@ driver asi {
 	label = "ZWO CAA Rotator";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2024-2026 Rumen G. Bogdanovski";
-	version = 6;
+	version = 7;
+	multi_device_support = true;
 	include {
 		#include <stdbool.h>
 		#include <CAA_API.h>

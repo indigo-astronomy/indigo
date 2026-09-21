@@ -43,7 +43,7 @@ static atomic_bool hold_probe, probe_entered, sync_read_failure;
 enum operation { OP_OPEN, OP_INFO, OP_POSITION, OP_STATUS, OP_MOVE, OP_SYNC, OP_STOP, OP_MAX_READ, OP_MAX_WRITE, OP_REVERSE_READ, OP_REVERSE_WRITE, OP_BEEP_READ, OP_BEEP_WRITE, OP_SUFFIX, OP_COUNT };
 static atomic_bool fail[OP_COUNT];
 static atomic_int calls[OP_COUNT];
-static const simulator_driver_case caa = { "ZWO CAA Rotator", "indigo_rotator_asi", "CAA SDK test 0", indigo_rotator_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static const simulator_driver_case caa = { "ZWO CAA Rotator", "indigo_rotator_asi", "CAA SDK test 0", indigo_rotator_asi, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 
 static int device_index(const char *name) {
 	int id = -1;

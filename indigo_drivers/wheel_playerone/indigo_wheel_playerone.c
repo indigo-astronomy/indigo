@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_wheel_playerone"
 #define DRIVER_LABEL         "Player One Filter Wheel"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -533,7 +533,7 @@ static libusb_hotplug_callback_handle callback_handle;
 
 indigo_result indigo_wheel_playerone(indigo_driver_action action, indigo_driver_info *info) {
 
-	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;

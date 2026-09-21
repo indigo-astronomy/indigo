@@ -21,7 +21,7 @@
 #include <indigo_drivers/wheel_manual/indigo_wheel_manual.h>
 #include "serial_simulator_test_common.h"
 
-static const simulator_driver_case manual = { "Manual filter wheel", "indigo_wheel_manual", "Manual filter wheel", indigo_wheel_manual, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+static const simulator_driver_case manual = { "Manual filter wheel", "indigo_wheel_manual", "Manual filter wheel", indigo_wheel_manual, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 
 static char last_message[INDIGO_VALUE_SIZE];
 

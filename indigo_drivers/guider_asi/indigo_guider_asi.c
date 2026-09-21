@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_guider_asi"
 #define DRIVER_LABEL         "ZWO ASI USB-St4 Guider"
 #define GUIDER_DEVICE_NAME   "%s"
@@ -579,7 +579,7 @@ static libusb_hotplug_callback_handle callback_handle;
 
 indigo_result indigo_guider_asi(indigo_driver_action action, indigo_driver_info *info) {
 
-	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;
@@ -653,7 +653,7 @@ indigo_result indigo_guider_asi(indigo_driver_action action, indigo_driver_info 
 #include "indigo_guider_asi.h"
 
 indigo_result indigo_guider_asi(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "ZWO ASI USB-St4 Guider", __FUNCTION__, 0x03000009, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "ZWO ASI USB-St4 Guider", __FUNCTION__, 0x0300000A, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000013
+#define DRIVER_VERSION       0x03000014
 #define DRIVER_NAME          "indigo_ccd_sx"
 #define DRIVER_LABEL         "Starlight Xpress Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1464,7 +1464,7 @@ static libusb_hotplug_callback_handle callback_handle;
 indigo_result indigo_ccd_sx(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;
