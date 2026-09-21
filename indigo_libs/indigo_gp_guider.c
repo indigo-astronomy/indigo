@@ -23,8 +23,16 @@
 //  Intelligent Systems (Edgar D. Klenske, Stephan Wenninger, Raffi Enficiaud)
 //  and distributed under a BSD license.
 //
+//  Extended and generalized to a Multi Kernel GP by Rumen G. Bogdanovski: the
+//  covariance is no longer a single periodic kernel over one worm period but a
+//  sum over an arbitrary number of periodic stages, each modelling a further
+//  gear stage whose period is incommensurate with the others. Every stage is
+//  discovered from the spectrum, gated on the strength of its own line, and
+//  refused if it is commensurate with a period already modelled.
+//
 //  version history
 //  3.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+//  3.1 Multi Kernel GP by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 #include <stdlib.h>
 #include <string.h>
@@ -69,17 +77,49 @@ static int clock_gettime(int clk_id, struct timespec *tp) {
 #define HYSTERESIS 0.1
 #define JITTER 1e-6
 
-/* indices into the 7 natural hyperparameters */
+/* Multi Kernel GP: number of additional periodic kernels beyond the worm.
+   Each models one further gear stage - a strain-wave input stage, a belt, a
+   transfer gear - whose period is incommensurate with the worm's, so their
+   errors beat against each other instead of repeating on a common cycle.
+ */
+#define GP_EXTRA_STAGES 1
+
+/* Indices into the natural hyperparameters: 7 base, then 3 per extra stage.
+
+   The base set describes the three kernels that are summed to form the
+   covariance: a long squared exponential (SE0K) for slow aperiodic wander, the
+   periodic worm kernel (PK), and a short squared exponential (SE1K) for
+   short-term wander. Only SE1K is dropped from the projection kernel, so it
+   shapes the fit but never the prediction - it exists to absorb wander that
+   would otherwise be misattributed to the worm.
+
+   "Natural" means the units a person would use: seconds for times, pixels for
+   amplitudes. set_gp_hyperparameters() converts them to the log-space vector
+   the kernel actually evaluates, where a signal variance is the square of the
+   amplitude below. Values in brackets are the defaults. */
 enum {
-	SE0K_LENGTH_SCALE = 0,
-	SE0K_SIGNAL_VARIANCE,
-	PK_LENGTH_SCALE,
-	PK_SIGNAL_VARIANCE,
-	SE1K_LENGTH_SCALE,
-	SE1K_SIGNAL_VARIANCE,
-	PK_PERIOD_LENGTH,
-	NUM_HYPERPARAMETERS
+	SE0K_LENGTH_SCALE = 0,    /* long SE:  correlation time of the slow wander, s [700] */
+	SE0K_SIGNAL_VARIANCE,     /* long SE:  amplitude of that wander, px [20] */
+	PK_LENGTH_SCALE,          /* worm:     finest detail resolved within one period, s [10]
+	                                       - smaller carries more harmonics, so a sharper
+	                                         non-sinusoidal error shape */
+	PK_SIGNAL_VARIANCE,       /* worm:     amplitude of the periodic error, px [20] */
+	SE1K_LENGTH_SCALE,        /* short SE: correlation time of seeing/short wander, s [25] */
+	SE1K_SIGNAL_VARIANCE,     /* short SE: amplitude of that wander, px [10] */
+	PK_PERIOD_LENGTH,         /* worm:     the period itself, s [300, then tracked by FFT] */
+	NUM_BASE_HYPERPARAMETERS  /* count of the above; the extra stages follow */
 };
+
+/* Hyperparameters of extra periodic stage s (0-based), same three quantities
+   as the worm's but for a further gear stage. Unlike the worm, the length
+   scale is derived from the period rather than set independently, and the
+   signal variance is driven by the evidence gate rather than being a fixed
+   prior - see update_stage(). */
+#define EXK_LENGTH_SCALE(s) (NUM_BASE_HYPERPARAMETERS + 3 * (s) + 0)    /* detail resolved within one period, s */
+#define EXK_SIGNAL_VARIANCE(s) (NUM_BASE_HYPERPARAMETERS + 3 * (s) + 1) /* amplitude, px; 0 when the gate is shut */
+#define EXK_PERIOD_LENGTH(s) (NUM_BASE_HYPERPARAMETERS + 3 * (s) + 2)   /* the stage's period, s */
+
+#define NUM_HYPERPARAMETERS (NUM_BASE_HYPERPARAMETERS + 3 * GP_EXTRA_STAGES)
 
 /* Default hyperparameters and tuning */
 #define DEFAULT_CONTROL_GAIN 0.6
@@ -116,6 +156,62 @@ enum {
 #define DEFAULT_SV_PK 20.0
 #define DEFAULT_LS_SE1 25.0
 #define DEFAULT_SV_SE1 10.0
+
+/* ---- extra periodic stages (Multi Kernel GP) -------------------------- */
+
+#define DEFAULT_PERIOD_EXK 60.0
+#define DEFAULT_SV_EXK 20.0
+
+/* An extra stage's length scale is a fraction of its own period, not an
+   absolute time: a fixed 10 s is a thirteenth of a 130 s period but nearly a
+   quarter of a 47 s one, and a periodic kernel can only carry harmonics finer
+   than its length scale. Tying the two together keeps the harmonic capacity
+   the same whatever period the stage turns out to have - without this the
+   stage is fitted as a bare sinusoid and most of the benefit is lost. */
+#define EXK_LS_PERIOD_RATIO 13.0
+
+/* Squared-exponential envelope on the extra periodic term, in units of its own
+   period, making it quasi-periodic rather than strictly periodic.
+
+   A strictly periodic kernel is coherent across the whole inference window. A
+   window holding 115 cycles of a 47 s stage turns a 0.2% period error into a
+   quarter cycle of accumulated phase error, which is enough to undo the term
+   entirely; the same error on the 130 s worm is three times smaller because
+   fewer cycles fit. The envelope limits how far back the prediction draws, so
+   phase error stops accumulating. Measured: 20 periods costs ~0.01 px at the
+   exact period and makes the residual flat in period error out past 2%. */
+#define EXK_DECAY_PERIODS 20.0
+
+/* Evidence gate. The extra term's signal variance is scaled by the smoothed
+   AMPLITUDE of its spectral line relative to the worm's - compute_spectrum()
+   returns power, so the estimator square-roots it. Below OFF the stage is
+   switched out entirely, so a mount with a single periodic component behaves
+   exactly as it did before this kernel existed. */
+#define EXK_STRENGTH_SMOOTHING 0.05
+#define EXK_STRENGTH_OFF 0.15
+#define EXK_STRENGTH_FULL 0.35
+
+/* A candidate period commensurate with an already-modelled one is a harmonic
+   that kernel already represents through its length scale. Admitting it makes
+   the two periodic terms degenerate: they explain the same signal, the split
+   of variance between them is arbitrary, the Gram matrix conditioning
+   degrades, and the two period trackers fight each other. */
+#define EXK_COMMENSURATE_TOL 0.06
+#define EXK_COMMENSURATE_MAX_K 5
+
+/* Width, relative and in frequency, of the notch placed over each
+   already-modelled line and its harmonics before the next line is searched
+   for. */
+#define EXK_NOTCH_REL 0.08
+
+/* Bounds on an unseeded candidate. Anything slower than the worm is not a gear
+   stage - it is drift and slow wander, already carried by the long SE kernel
+   and the explicit linear trend - and letting the search reach down there
+   hands the periodic kernel a 300 s "period" that is only the residual of an
+   imperfect de-trend. The floor keeps the candidate resolvable on the
+   regularisation grid. */
+#define EXK_MAX_PERIOD_VS_PK 1.2
+#define EXK_MIN_PERIOD (4.0 * GRID_INTERVAL)
 
 /*  Minimal dense linear algebra                                       */
 /*  Row-major double matrices, small sizes (n <~ 100), so plain        */
@@ -333,10 +429,15 @@ static bool compute_spectrum(const double *data, int n_data, int N, double **spe
 /*  Covariance kernels */
 
 /* Evaluate the covariance K[i][j] = k(x_i, y_j) into out (nx x ny).
-   log_hyper is the GP log-space vector of length 8:
-     [log_noise, log(ls0), log(sv0), log(lsP), log(svP), log(ls1), log(sv1), log(period)]
+   log_hyper is the GP log-space vector of length NUM_HYPERPARAMETERS + 1:
+     [log_noise, log(ls0), log(sv0), log(lsP), log(svP), log(ls1), log(sv1),
+      log(period), then log(lsEx), log(svEx), log(periodEx) per extra stage]
    projection == true uses PeriodicSquareExponential (long SE + periodic),
    projection == false uses PeriodicSquareExponential2 (long SE + periodic + short SE).
+
+   The extra periodic stages stay in BOTH branches: only the short SE is dropped
+   from the projection, and an extra gear stage is predictable error, not
+   short-term wander, so it must survive into the prediction.
 
    Distances are computed directly as (x_i - y_j)^2; the original mean-centering
    in math_tools::squareDistance is purely for numerical conditioning of the
@@ -353,12 +454,36 @@ static void kernel_eval(double *out, const double *x, int nx, const double *y, i
 	double inv_se0 = -0.5 / (ls_se0 * ls_se0);
 	double inv_se1 = -0.5 / (ls_se1 * ls_se1);
 
+	/* extra periodic stages, hoisted out of the inner loop */
+	double ex_ls[GP_EXTRA_STAGES], ex_sv[GP_EXTRA_STAGES];
+	double ex_pl[GP_EXTRA_STAGES], ex_inv_decay[GP_EXTRA_STAGES];
+	bool ex_active[GP_EXTRA_STAGES];
+	for (int s = 0; s < GP_EXTRA_STAGES; s++) {
+		ex_ls[s] = exp(log_hyper[EXK_LENGTH_SCALE(s) + 1]);
+		ex_sv[s] = exp(2.0 * log_hyper[EXK_SIGNAL_VARIANCE(s) + 1]);
+		ex_pl[s] = exp(log_hyper[EXK_PERIOD_LENGTH(s) + 1]);
+		double ld = EXK_DECAY_PERIODS * ex_pl[s];
+		ex_inv_decay[s] = -0.5 / (ld * ld);
+		/* the evidence gate drives the signal variance to (effectively) zero
+		   when the stage is not present; skip the term entirely then */
+		ex_active[s] = ex_sv[s] > 1e-12;
+	}
+
 	for (int i = 0; i < nx; i++) {
 		for (int j = 0; j < ny; j++) {
 			double d = x[i] - y[j];
 			double d2 = d * d;
-			double s = sin(M_PI / pl_p * sqrt(d2)) / ls_p;
+			double ad = sqrt(d2);
+			double s = sin(M_PI / pl_p * ad) / ls_p;
 			double k = sv_se0 * exp(inv_se0 * d2) + sv_p * exp(-2.0 * s * s);
+			for (int e = 0; e < GP_EXTRA_STAGES; e++) {
+				if (!ex_active[e]) {
+					continue;
+				}
+				double se = sin(M_PI / ex_pl[e] * ad) / ex_ls[e];
+				/* quasi-periodic: periodic core under a decay envelope */
+				k += ex_sv[e] * exp(-2.0 * se * se) * exp(ex_inv_decay[e] * d2);
+			}
 			if (!projection) {
 				k += sv_se1 * exp(inv_se1 * d2);
 			}
@@ -376,6 +501,35 @@ typedef struct {
 	double control;     /* control action */
 } data_point;
 
+/* Runtime state of one periodic stage. Stage 0 is the worm; stages 1.. are the
+   further gear stages of the Multi Kernel GP. They are handled uniformly here
+   even though the worm keeps two privileges: it is always enabled (it is the
+   model's backbone, and its period sets the data ramp and the FFT threshold),
+   and it is never gated, so its weight is always 1. */
+typedef struct {
+	bool enabled;             /* caller asked for this stage to be modelled */
+	bool compute_period;      /* track the period online, or hold the commanded one */
+	double commanded_period;  /* seed; <= 0 means "find it from the spectrum" */
+	double disagreement;      /* smoothed |tracked - FFT estimate| / FFT estimate */
+	double strength;          /* smoothed amplitude of its line / the worm's */
+} gp_stage;
+
+#define GP_STAGES (1 + GP_EXTRA_STAGES)
+
+/* Hyperparameter indices for a stage. The worm's three live in the base block
+   and are not contiguous, so they are mapped rather than indexed. */
+static int stage_ls_index(int stage) {
+	return stage == 0 ? PK_LENGTH_SCALE : EXK_LENGTH_SCALE(stage - 1);
+}
+
+static int stage_sv_index(int stage) {
+	return stage == 0 ? PK_SIGNAL_VARIANCE : EXK_SIGNAL_VARIANCE(stage - 1);
+}
+
+static int stage_period_index(int stage) {
+	return stage == 0 ? PK_PERIOD_LENGTH : EXK_PERIOD_LENGTH(stage - 1);
+}
+
 struct indigo_gp_guider {
 	/* tuning */
 	double control_gain;
@@ -384,11 +538,12 @@ struct indigo_gp_guider {
 	double min_periods_for_inference;
 	double min_periods_for_period_estimation;
 	int points_for_approximation;
-	bool compute_period;
 	double learning_rate;
-	double commanded_period; /* last period commanded via set_parameters; NaN forces a re-pin */
 
-	/* GP log-space hyperparameters (length 8) */
+	/* periodic stages: [0] is the worm, [1..] the further gear stages */
+	gp_stage stage[GP_STAGES];
+
+	/* GP log-space hyperparameters (length NUM_HYPERPARAMETERS + 1) */
 	double log_hyper[NUM_HYPERPARAMETERS + 1];
 
 	/* timing */
@@ -398,7 +553,6 @@ struct indigo_gp_guider {
 	double prediction;
 	double last_prediction_end;
 	double learning_progress;    /* 0..1 warm-up ramp, cached for the public getter */
-	double period_disagreement;  /* smoothed |smoothed period - FFT estimate| / FFT estimate */
 	double time_origin;          /* gear-time offset subtracted before GP inference; matches gp_data_loc */
 
 	int dither_steps;
@@ -482,9 +636,17 @@ static void set_gp_hyperparameters(indigo_gp_guider *g, const double natural[NUM
 	if (h[SE1K_LENGTH_SCALE] < 1.0) {
 		h[SE1K_LENGTH_SCALE] = 1.0;
 	}
+	for (int s = 0; s < GP_EXTRA_STAGES; s++) {
+		if (h[EXK_LENGTH_SCALE(s)] < 1.0) {
+			h[EXK_LENGTH_SCALE(s)] = 1.0;
+		}
+	}
 
-	/* convert periodic length-scale from natural units to standard notation */
+	/* convert periodic length-scales from natural units to standard notation */
 	h[PK_LENGTH_SCALE] = 4.0 * sin(h[PK_LENGTH_SCALE] * M_PI / h[PK_PERIOD_LENGTH]);
+	for (int s = 0; s < GP_EXTRA_STAGES; s++) {
+		h[EXK_LENGTH_SCALE(s)] = 4.0 * sin(h[EXK_LENGTH_SCALE(s)] * M_PI / h[EXK_PERIOD_LENGTH(s)]);
+	}
 
 	for (int i = 0; i < NUM_HYPERPARAMETERS; i++) {
 		if (h[i] < 1e-10) {
@@ -503,22 +665,60 @@ static void get_gp_hyperparameters(const indigo_gp_guider *g, double natural[NUM
 	for (int i = 0; i < NUM_HYPERPARAMETERS; i++) {
 		h[i] = exp(g->log_hyper[i + 1]);
 	}
-	/* convert periodic length-scale from standard notation back to natural units */
+	/* convert periodic length-scales from standard notation back to natural units */
 	h[PK_LENGTH_SCALE] = asin(h[PK_LENGTH_SCALE] / 4.0) * h[PK_PERIOD_LENGTH] / M_PI;
+	for (int s = 0; s < GP_EXTRA_STAGES; s++) {
+		h[EXK_LENGTH_SCALE(s)] = asin(h[EXK_LENGTH_SCALE(s)] / 4.0) * h[EXK_PERIOD_LENGTH(s)] / M_PI;
+	}
 	memcpy(natural, h, sizeof(h));
 }
 
-static double get_period_length(const indigo_gp_guider *g) {
-	return exp(g->log_hyper[PK_PERIOD_LENGTH + 1]);
+static double get_stage_period(const indigo_gp_guider *g, int stage) {
+	return exp(g->log_hyper[stage_period_index(stage) + 1]);
 }
 
-static void update_period_length(indigo_gp_guider *g, double period_length) {
+/* the worm period, which the data ramp and the FFT threshold are keyed on */
+static double get_period_length(const indigo_gp_guider *g) {
+	return get_stage_period(g, 0);
+}
+
+/* A stage's 0..1 evidence gate. The worm is never gated - it is the model's
+   backbone, not a candidate - so it always reads 1. */
+static double stage_gate(const indigo_gp_guider *g, int stage) {
+	if (stage == 0) {
+		return 1.0;
+	}
+	double gate = (g->stage[stage].strength - EXK_STRENGTH_OFF) / (EXK_STRENGTH_FULL - EXK_STRENGTH_OFF);
+	if (gate < 0.0) {
+		gate = 0.0;
+	}
+	if (gate > 1.0) {
+		gate = 1.0;
+	}
+	return gate;
+}
+
+/* Track one stage's period, and for the extra stages scale the signal variance
+   by the evidence gate. period_length NaN keeps the current estimate, which is
+   what a pinned period wants: only the gate still responds.
+
+   The two kinds of stage differ in two details the caller should not have to
+   care about. The worm's signal variance is a fixed prior and its length scale
+   is an absolute time, both inherited from the single-kernel model; an extra
+   stage is gated, and its length scale follows its own period so that its
+   harmonic capacity does not depend on how fast the stage happens to be. */
+static void update_stage(indigo_gp_guider *g, int stage, double period_length) {
 	double h[NUM_HYPERPARAMETERS];
 	get_gp_hyperparameters(g, h);
+	int pi = stage_period_index(stage);
 	if (is_nan(period_length)) {
-		period_length = h[PK_PERIOD_LENGTH];
+		period_length = h[pi];
 	}
-	h[PK_PERIOD_LENGTH] = (1.0 - g->learning_rate) * h[PK_PERIOD_LENGTH] + g->learning_rate * period_length;
+	h[pi] = (1.0 - g->learning_rate) * h[pi] + g->learning_rate * period_length;
+	if (stage > 0) {
+		h[stage_ls_index(stage)] = h[pi] / EXK_LS_PERIOD_RATIO;
+		h[stage_sv_index(stage)] = stage_gate(g, stage) * DEFAULT_SV_EXK;
+	}
 	set_gp_hyperparameters(g, h);
 }
 
@@ -782,6 +982,7 @@ static void handle_dark_guiding(indigo_gp_guider *g) {
 }
 
 static double estimate_period_length(const double *time, const double *data, int n, double seed);
+static double estimate_extra_period(const double *time, const double *data, int n, const double *known, int n_known, double seed, double *strength_out);
 
 /* regularize_dataset: resample the irregular (timestamp, gear_error, variance)
    samples onto a fixed GRID_INTERVAL grid by trapezoidal averaging, mirroring
@@ -931,23 +1132,63 @@ static bool update_gp(indigo_gp_guider *g, double prediction_point) {
 		w1 = (A[0] * b[1] - b[0] * A[2]) / det;
 	}
 
-	/* period estimation (optional) */
+	/* Period estimation, one pass over the stages. A stage that is not tracking
+	   its period still needs the spectrum when it is gated - the gate has to
+	   measure how strong its line is before the kernel may use it - so the
+	   spectrum is computed whenever any stage wants either. */
 	double period_length = get_period_length(g);
-	if (g->compute_period && cb_last(g)->timestamp > g->min_periods_for_period_estimation * period_length) {
+	bool want_spectrum = false;
+	for (int s = 0; s < GP_STAGES; s++) {
+		if (g->stage[s].enabled && (g->stage[s].compute_period || s > 0)) {
+			want_spectrum = true;
+			break;
+		}
+	}
+	if (want_spectrum && cb_last(g)->timestamp > g->min_periods_for_period_estimation * period_length) {
 		double *detrend = (double *)malloc((size_t)T * sizeof(double));
 		if (detrend) {
 			for (int i = 0; i < T; i++) {
 				detrend[i] = rg[i] - (w0 + w1 * rt[i]);
 			}
-			/* anchor the FFT peak search to the user's commanded period (NaN/0
-			   for auto -> no anchoring, global peak). */
-			double pl = estimate_period_length(rt, detrend, T, g->commanded_period);
-			if (!is_nan(pl) && pl > 0.0) {
-				/* how far the tracked period still is from what the FFT sees */
-				double rel = fabs(get_period_length(g) - pl) / pl;
-				g->period_disagreement = (1.0 - PERIOD_DISAGREEMENT_SMOOTHING) * g->period_disagreement + PERIOD_DISAGREEMENT_SMOOTHING * rel;
+
+			/* Stages in order. Each extra stage's search notches out the worm
+			   and every stage already resolved, so a stage can never lock onto
+			   a line an earlier one is already carrying. */
+			double known[GP_STAGES];
+			int n_known = 0;
+			for (int s = 0; s < GP_STAGES; s++) {
+				if (!g->stage[s].enabled) {
+					continue;
+				}
+				/* A pinned worm needs no estimate at all. A pinned extra stage
+				   still does, because its gate reads the line strength off the
+				   same search. */
+				if (!g->stage[s].compute_period && s == 0) {
+					known[n_known++] = get_stage_period(g, s);
+					continue;
+				}
+				double pl;
+				if (s == 0) {
+					/* the worm: anchor the peak search to the commanded period
+					   (NaN/0 for auto -> no anchoring, global peak) */
+					pl = estimate_period_length(rt, detrend, T, g->stage[0].commanded_period);
+				} else {
+					double strength = 0.0;
+					pl = estimate_extra_period(rt, detrend, T, known, n_known, g->stage[s].commanded_period, &strength);
+					/* the strength ramps toward the measured ratio, and decays
+					   back toward zero when no admissible line is present */
+					g->stage[s].strength = (1.0 - EXK_STRENGTH_SMOOTHING) * g->stage[s].strength + EXK_STRENGTH_SMOOTHING * strength;
+				}
+				if (!is_nan(pl) && pl > 0.0) {
+					/* how far the tracked period still is from what the FFT sees */
+					double rel = fabs(get_stage_period(g, s) - pl) / pl;
+					g->stage[s].disagreement = (1.0 - PERIOD_DISAGREEMENT_SMOOTHING) * g->stage[s].disagreement + PERIOD_DISAGREEMENT_SMOOTHING * rel;
+				}
+				/* when the caller pinned this stage's period, hold it; for an
+				   extra stage the gate still responds to the spectrum */
+				update_stage(g, s, g->stage[s].compute_period ? pl : NAN);
+				known[n_known++] = get_stage_period(g, s);
 			}
-			update_period_length(g, pl);
 			free(detrend);
 		}
 	}
@@ -1131,6 +1372,156 @@ static double estimate_period_length(const double *time, const double *data, int
 	return result;
 }
 
+/* Estimate the period of a further gear stage (Multi Kernel GP).
+
+   known[0..n_known-1] holds the periods already modelled - the worm first,
+   then any extra stages already found. Those lines and their harmonics are
+   notched out of the spectrum, and the strongest survivor is taken as the
+   candidate. With seed > 0 the search is confined to a band around it; with
+   seed <= 0 it is confined to the range a gear stage can plausibly occupy,
+   faster than the worm and slower than the regularisation grid.
+
+   *strength_out receives the candidate's AMPLITUDE relative to the worm's line
+   (compute_spectrum returns power, hence the square root), which drives the
+   evidence gate. Returns NAN when there is no usable line.
+
+   Note there is deliberately no "reconstruct the fundamental from its
+   harmonic" rule here, unlike estimate_period_length(). It was implemented and
+   measured: it cost more in the ordinary cases - false positives off the
+   leakage skirt of the notched worm line, which are real local peaks and
+   recur in bursts, so neither a peak test nor a persistence vote excludes them
+   - than it gained on a stage whose harmonic dominates. Seeding the period is
+   worth far more than reconstructing it. */
+static double estimate_extra_period(const double *time, const double *data, int n, const double *known, int n_known, double seed, double *strength_out) {
+	*strength_out = 0.0;
+	if (n < 2 || n_known < 1 || !(known[0] > 0.0)) {
+		return NAN;
+	}
+
+	double *windowed = (double *)malloc((size_t)n * sizeof(double));
+	if (!windowed) {
+		return NAN;
+	}
+	for (int i = 0; i < n; i++) {
+		double range = (n > 1) ? (double)i / (double)(n - 1) : 0.0;
+		double w = 0.54 - 0.46 * cos(2.0 * M_PI * range);
+		windowed[i] = data[i] * w;
+	}
+
+	double *spectrum = NULL, *frequencies = NULL;
+	int len = 0;
+	bool ok = compute_spectrum(windowed, n, FFT_SIZE, &spectrum, &frequencies, &len);
+	free(windowed);
+	if (!ok) {
+		return NAN;
+	}
+
+	double dt = (time[n - 1] - time[0]) / (double)(n - 1);
+	for (int i = 0; i < len; i++) {
+		frequencies[i] /= dt;
+	}
+	for (int i = 0; i < len; i++) {
+		double period = (frequencies[i] > 0.0) ? 1.0 / frequencies[i] : 1e30;
+		if (period > 1500.0) {
+			spectrum[i] = 0.0;
+		}
+	}
+
+	/* power of the worm's line, the reference for the strength ratio */
+	double f_worm = 1.0 / known[0];
+	double p_worm = 0.0;
+	for (int i = 0; i < len; i++) {
+		if (fabs(frequencies[i] - f_worm) <= EXK_NOTCH_REL * f_worm && spectrum[i] > p_worm) {
+			p_worm = spectrum[i];
+		}
+	}
+
+	/* notch every modelled line, its harmonics and its first sub-harmonics */
+	for (int i = 0; i < len; i++) {
+		double f = frequencies[i];
+		if (f <= 0.0) {
+			spectrum[i] = 0.0;
+			continue;
+		}
+		for (int m = 0; m < n_known && spectrum[i] > 0.0; m++) {
+			if (!(known[m] > 0.0)) {
+				continue;
+			}
+			double fm = 1.0 / known[m];
+			for (int k = 1; k <= EXK_COMMENSURATE_MAX_K; k++) {
+				double fk = k * fm;
+				if (fabs(f - fk) <= EXK_NOTCH_REL * fk) {
+					spectrum[i] = 0.0;
+					break;
+				}
+			}
+			for (int k = 2; k <= 3 && spectrum[i] > 0.0; k++) {
+				double fk = fm / k;
+				if (fabs(f - fk) <= EXK_NOTCH_REL * fk) {
+					spectrum[i] = 0.0;
+					break;
+				}
+			}
+		}
+	}
+
+	double lo, hi;
+	if (seed > 0.0) {
+		lo = (1.0 - PERIOD_SEED_WINDOW) * seed;
+		hi = (1.0 + PERIOD_SEED_WINDOW) * seed;
+	} else {
+		lo = EXK_MIN_PERIOD;
+		hi = EXK_MAX_PERIOD_VS_PK * known[0];
+	}
+
+	int best = -1;
+	for (int i = 0; i < len; i++) {
+		if (frequencies[i] <= 0.0 || spectrum[i] <= 0.0) {
+			continue;
+		}
+		double period = 1.0 / frequencies[i];
+		if (period < lo || period > hi) {
+			continue;
+		}
+		if (best < 0 || spectrum[i] > spectrum[best]) {
+			best = i;
+		}
+	}
+	if (best < 0 || p_worm <= 0.0) {
+		free(spectrum);
+		free(frequencies);
+		return NAN;
+	}
+
+	double period = 1.0 / interp_peak_frequency(spectrum, frequencies, len, best);
+	double strength = sqrt(spectrum[best] / p_worm);
+
+	free(spectrum);
+	free(frequencies);
+
+	if (is_nan(period) || !(period > 0.0)) {
+		return NAN;
+	}
+
+	/* reject anything commensurate with a line we already model */
+	for (int m = 0; m < n_known; m++) {
+		if (!(known[m] > 0.0)) {
+			continue;
+		}
+		for (int k = 1; k <= EXK_COMMENSURATE_MAX_K; k++) {
+			if (fabs(known[m] / (k * period) - 1.0) < EXK_COMMENSURATE_TOL) {
+				return NAN;
+			}
+			if (fabs(period / (k * known[m]) - 1.0) < EXK_COMMENSURATE_TOL) {
+				return NAN;
+			}
+		}
+	}
+
+	*strength_out = strength;
+	return period;
+}
+
 /* Learning progress 0..1, cached for the public getter. Must be called while
    cb_last() still holds the current frame (before cb_push()).
 
@@ -1142,6 +1533,41 @@ static double estimate_period_length(const double *time, const double *data, int
    The data ramp alone reads "done" while the periodic kernel still fits the
    wrong period, so it is only half the score; the other half tracks the period
    actually converging. */
+/* Map a smoothed period disagreement to a 0..1 convergence factor: fully
+   converged at/below CONVERGED_REL, not converged at/above DIVERGED_REL,
+   linear in between. */
+static double period_convergence(double disagreement) {
+	if (disagreement <= PERIOD_CONVERGED_REL) {
+		return 1.0;
+	}
+	if (disagreement >= PERIOD_DIVERGED_REL) {
+		return 0.0;
+	}
+	return (PERIOD_DIVERGED_REL - disagreement) / (PERIOD_DIVERGED_REL - PERIOD_CONVERGED_REL);
+}
+
+/* Convergence of every stage that is both tracking its period and carrying
+   real weight, taken as the worst of them: the prediction is only as good as
+   the least settled period it rests on. Returns -1 when no stage is tracking,
+   so the caller can treat convergence as not applicable. */
+static double stages_period_convergence(const indigo_gp_guider *g) {
+	double worst = -1.0;
+	for (int s = 0; s < GP_STAGES; s++) {
+		if (!g->stage[s].enabled || !g->stage[s].compute_period) {
+			continue;
+		}
+		/* an extra stage that the gate has switched out is not load-bearing */
+		if (s > 0 && g->stage[s].strength <= EXK_STRENGTH_OFF) {
+			continue;
+		}
+		double ok = period_convergence(g->stage[s].disagreement);
+		if (worst < 0.0 || ok < worst) {
+			worst = ok;
+		}
+	}
+	return worst;
+}
+
 static double compute_learning_progress(indigo_gp_guider *g) {
 	if (g->buf_size <= 10) {
 		return 0.0;
@@ -1157,16 +1583,9 @@ static double compute_learning_progress(indigo_gp_guider *g) {
 	if (data_ramp > 1.0) {
 		data_ramp = 1.0;
 	}
-	if (!g->compute_period) {
-		return data_ramp; /* fixed period: convergence is not a factor */
-	}
-	double period_ok;
-	if (g->period_disagreement <= PERIOD_CONVERGED_REL) {
-		period_ok = 1.0;
-	} else if (g->period_disagreement >= PERIOD_DIVERGED_REL) {
-		period_ok = 0.0;
-	} else {
-		period_ok = (PERIOD_DIVERGED_REL - g->period_disagreement) / (PERIOD_DIVERGED_REL - PERIOD_CONVERGED_REL);
+	double period_ok = stages_period_convergence(g);
+	if (period_ok < 0.0) {
+		return data_ramp; /* nothing is tracking: convergence is not a factor */
 	}
 	return 0.5 * data_ramp + 0.5 * period_ok;
 }
@@ -1193,15 +1612,9 @@ static double compute_blend_weight(indigo_gp_guider *g) {
 	if (data_ramp > 1.0) {
 		data_ramp = 1.0;
 	}
-	double period_ok = 1.0; /* fixed period is trusted as given */
-	if (g->compute_period) {
-		if (g->period_disagreement <= PERIOD_CONVERGED_REL) {
-			period_ok = 1.0;
-		} else if (g->period_disagreement >= PERIOD_DIVERGED_REL) {
-			period_ok = 0.0;
-		} else {
-			period_ok = (PERIOD_DIVERGED_REL - g->period_disagreement) / (PERIOD_DIVERGED_REL - PERIOD_CONVERGED_REL);
-		}
+	double period_ok = stages_period_convergence(g);
+	if (period_ok < 0.0) {
+		period_ok = 1.0; /* pinned periods are trusted as given */
 	}
 	return data_ramp * period_ok;
 }
@@ -1310,12 +1723,7 @@ static void apply_defaults(indigo_gp_guider *g) {
 	g->min_periods_for_inference = DEFAULT_PERIODS_FOR_INFERENCE;
 	g->min_periods_for_period_estimation = DEFAULT_PERIODS_FOR_PERIOD_ESTIMATION;
 	g->points_for_approximation = DEFAULT_POINTS_FOR_APPROXIMATION;
-	g->compute_period = DEFAULT_COMPUTE_PERIOD;
 	g->learning_rate = DEFAULT_LEARNING_RATE;
-	/* NaN so the next set_parameters() re-pins the caller's commanded period.
-	   apply_defaults() runs on create and on reset_model(), which is exactly
-	   when the period must be re-applied after being returned to the default. */
-	g->commanded_period = NAN;
 
 	double natural[NUM_HYPERPARAMETERS];
 	natural[SE0K_LENGTH_SCALE] = DEFAULT_LS_SE0;
@@ -1325,6 +1733,25 @@ static void apply_defaults(indigo_gp_guider *g) {
 	natural[SE1K_LENGTH_SCALE] = DEFAULT_LS_SE1;
 	natural[SE1K_SIGNAL_VARIANCE] = DEFAULT_SV_SE1;
 	natural[PK_PERIOD_LENGTH] = DEFAULT_PERIOD_PK;
+	for (int s = 0; s < GP_EXTRA_STAGES; s++) {
+		natural[EXK_PERIOD_LENGTH(s)] = DEFAULT_PERIOD_EXK;
+		natural[EXK_LENGTH_SCALE(s)] = DEFAULT_PERIOD_EXK / EXK_LS_PERIOD_RATIO;
+		natural[EXK_SIGNAL_VARIANCE(s)] = 0.0; /* gated off until the evidence arrives */
+	}
+
+	for (int s = 0; s < GP_STAGES; s++) {
+		/* the worm is the model's backbone and is always modelled; the further
+		   stages are off until the caller asks for them */
+		g->stage[s].enabled = (s == 0);
+		g->stage[s].compute_period = DEFAULT_COMPUTE_PERIOD;
+		/* NaN so the next set_stage() re-pins the caller's commanded period.
+		   apply_defaults() runs on create and on reset_model(), which is
+		   exactly when the period must be re-applied after being returned to
+		   the default. */
+		g->stage[s].commanded_period = NAN;
+		g->stage[s].strength = (s == 0) ? 1.0 : 0.0;
+		g->stage[s].disagreement = 1.0;
+	}
 	set_gp_hyperparameters(g, natural);
 }
 
@@ -1371,7 +1798,11 @@ void indigo_gp_guider_reset(indigo_gp_guider *g) {
 	g->last_time = g->start_time;
 	g->prediction = 0.0;
 	g->learning_progress = 0.0;
-	g->period_disagreement = 1.0; /* fully diverged until the first FFT estimate */
+	/* fully diverged until the first FFT estimate */
+	for (int s = 0; s < GP_STAGES; s++) {
+		g->stage[s].disagreement = 1.0;
+		g->stage[s].strength = (s == 0) ? 1.0 : 0.0;
+	}
 	g->time_origin = 0.0;
 	g->dither_offset = 0.0;
 	g->dither_steps = 0;
@@ -1460,33 +1891,67 @@ void indigo_gp_guider_session_stop(indigo_gp_guider *g) {
 	g->stopped_time = now_seconds();
 }
 
-void indigo_gp_guider_set_parameters(indigo_gp_guider *g, double control_gain, double prediction_gain, double min_move, bool compute_period, double period_length) {
+void indigo_gp_guider_set_parameters(indigo_gp_guider *g, double control_gain, double prediction_gain, double min_move) {
 	if (!g) {
 		return;
 	}
 	g->control_gain = control_gain;
 	g->prediction_gain = prediction_gain;
 	g->min_move = min_move;
-	g->compute_period = compute_period;
-	/* Seed the worm period only when the commanded value changes. Calling again
-	   with the same value leaves the period free to drift (via the FFT estimator)
-	   instead of being re-pinned to the seed every frame. period_length <= 0
-	   commands the built-in default period. commanded_period is NaN after create
-	   or reset_model, so the first call always re-pins. */
-	if (period_length != g->commanded_period) {
-		g->commanded_period = period_length;
-		double natural[NUM_HYPERPARAMETERS];
-		get_gp_hyperparameters(g, natural);
-		natural[PK_PERIOD_LENGTH] = (period_length > 0.0) ? period_length : DEFAULT_PERIOD_PK;
-		set_gp_hyperparameters(g, natural);
-	}
 }
 
-double indigo_gp_guider_get_period_length(const indigo_gp_guider *g) {
-	if (!g) {
+void indigo_gp_guider_set_stage(indigo_gp_guider *g, int stage, bool enabled, bool compute_period, double period_length) {
+	if (!g || stage < 0 || stage >= GP_STAGES) {
+		return;
+	}
+	gp_stage *e = &g->stage[stage];
+	/* the worm is the model's backbone; it cannot be switched off */
+	if (stage == 0) {
+		enabled = true;
+	}
+	e->compute_period = compute_period;
+	/* Seed the period only when the commanded value changes. Re-sending the
+	   same value must leave the period free to drift under the estimator
+	   rather than re-pinning it every frame, so a caller may safely re-apply
+	   its settings each cycle. commanded_period is NaN after create or
+	   reset_model, so the first call always pins. */
+	if (enabled == e->enabled && period_length == e->commanded_period) {
+		return;
+	}
+	e->enabled = enabled;
+	e->commanded_period = period_length;
+
+	double natural[NUM_HYPERPARAMETERS];
+	get_gp_hyperparameters(g, natural);
+	double fallback = (stage == 0) ? DEFAULT_PERIOD_PK : DEFAULT_PERIOD_EXK;
+	natural[stage_period_index(stage)] = (period_length > 0.0) ? period_length : fallback;
+	if (stage > 0) {
+		natural[stage_ls_index(stage)] = natural[stage_period_index(stage)] / EXK_LS_PERIOD_RATIO;
+		if (!enabled) {
+			natural[stage_sv_index(stage)] = 0.0;
+			e->strength = 0.0;
+			e->disagreement = 1.0;
+		}
+	}
+	set_gp_hyperparameters(g, natural);
+}
+
+int indigo_gp_guider_get_stage_count(void) {
+	return GP_STAGES;
+}
+
+double indigo_gp_guider_get_stage_period(const indigo_gp_guider *g, int stage) {
+	if (!g || stage < 0 || stage >= GP_STAGES) {
 		return 0.0;
 	}
-	return get_period_length(g);
+	return get_stage_period(g, stage);
+}
+
+double indigo_gp_guider_get_stage_weight(const indigo_gp_guider *g, int stage) {
+	if (!g || stage < 0 || stage >= GP_STAGES || !g->stage[stage].enabled) {
+		return 0.0;
+	}
+	return stage_gate(g, stage);
 }
 
 double indigo_gp_guider_get_learning_progress(const indigo_gp_guider *g) {

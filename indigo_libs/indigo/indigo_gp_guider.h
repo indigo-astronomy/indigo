@@ -33,6 +33,17 @@
 // reaction lag inherent in purely reactive controllers and is therefore only
 // meaningful on the RA axis.
 //
+// Extended and generalized to a Multi Kernel GP by Rumen G. Bogdanovski: the
+// covariance is a sum over an arbitrary number of periodic stages rather than
+// a single periodic kernel over one worm period. Each further stage models
+// another gear stage (a strain-wave input stage, a belt, a transfer gear).
+// A single periodic kernel represents any repeating shape at one period,
+// harmonics included, but cannot represent two periods that are incommensurate
+// - those beat against each other and never repeat on a common cycle. Each
+// extra kernel is discovered from the spectrum, gated on the strength of its
+// own line, and refused if it is commensurate with a period already modelled.
+// See indigo_gp_guider_set_stage().
+//
 // version history
 // 3.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
@@ -73,8 +84,9 @@ INDIGO_EXTERN void indigo_gp_guider_reset(indigo_gp_guider *guider);
 /* Full reset to the prior, including the learned worm period and the
    cross-session retain state. Use this for an explicit user-requested "forget
    everything and relearn from scratch" (e.g. when the period locked onto a
-   wrong value). User tuning set via indigo_gp_guider_set_parameters() is not
-   affected in practice because callers re-apply it each frame. */
+   wrong value). User tuning set via indigo_gp_guider_set_parameters() and
+   indigo_gp_guider_set_stage() is not affected in practice because callers
+   re-apply it each frame. */
 INDIGO_EXTERN void indigo_gp_guider_reset_model(indigo_gp_guider *guider);
 
 /* Begin a guiding session, deciding whether to retain the learned model or
@@ -97,18 +109,50 @@ INDIGO_EXTERN void indigo_gp_guider_session_stop(indigo_gp_guider *guider);
      control_gain    - reactive (proportional) gain, 0..1 (default 0.6)
      prediction_gain - amount of GP prediction blended in, 0..1 (default 0.5)
      min_move        - minimum drift magnitude (pixels) to act on (default 0.2)
-     compute_period  - if true the worm period is estimated online via FFT
-     period_length   - commanded worm period in seconds. It is pinned only when
-                       it differs from the previously commanded value; calling
-                       again with the same value lets the period drift instead of
-                       re-pinning it (so a caller may safely re-send parameters
-                       every frame). <= 0 commands the built-in default period. A
-                       create or reset_model forces the next call to re-apply the
-                       commanded value. */
-INDIGO_EXTERN void indigo_gp_guider_set_parameters(indigo_gp_guider *guider, double control_gain, double prediction_gain, double min_move, bool compute_period, double period_length);
+   The periodic stages are configured separately, with
+   indigo_gp_guider_set_stage(). */
+INDIGO_EXTERN void indigo_gp_guider_set_parameters(indigo_gp_guider *guider, double control_gain, double prediction_gain, double min_move);
 
-/* Current worm period length estimate in seconds. */
-INDIGO_EXTERN double indigo_gp_guider_get_period_length(const indigo_gp_guider *guider);
+/* Number of periodic stages this build models, the worm included. Always at
+   least 1. */
+INDIGO_EXTERN int indigo_gp_guider_get_stage_count(void);
+
+/* Configure one periodic stage of the model.
+     stage          - 0 is the worm; 1 .. get_stage_count()-1 are the further
+                      gear stages of the Multi Kernel GP (a strain-wave input
+                      stage, a belt, a transfer gear)
+     enabled        - model this stage at all. Ignored for stage 0, which is
+                      the model's backbone and is always on. Disabling every
+                      stage above 0 gives exactly the single-kernel behaviour.
+     compute_period - track this stage's period online via the FFT, rather
+                      than holding the commanded one
+     period_length  - seed for this stage's period in seconds, or <= 0 to have
+                      it found from the spectrum. For stage 0, <= 0 commands
+                      the built-in default period.
+
+   The period is pinned only when the commanded value changes; re-sending the
+   same value leaves the period free to drift under the estimator, so a caller
+   may safely re-apply its settings every frame. A create or reset_model forces
+   the next call to re-apply the commanded value.
+
+   A stage above 0 is not used merely because it is enabled. Its contribution
+   is scaled by an evidence gate driven by the strength of its spectral line,
+   so a mount without a further gear stage is unaffected, and a candidate
+   period commensurate with one already modelled is refused outright. A seed is
+   worth supplying when it is known: an unseeded search locks onto the
+   strongest line of the stage, which is not its fundamental when a harmonic
+   dominates. */
+INDIGO_EXTERN void indigo_gp_guider_set_stage(indigo_gp_guider *guider, int stage, bool enabled, bool compute_period, double period_length);
+
+/* Current period estimate in seconds for one stage. Stage 0 is the worm. */
+INDIGO_EXTERN double indigo_gp_guider_get_stage_period(const indigo_gp_guider *guider, int stage);
+
+/* How strongly one stage is contributing, 0.0 .. 1.0 - the evidence gate.
+   0 means its line is too weak to be a gear stage and its kernel is switched
+   out; 1 means it is fully engaged. Stage 0 is never gated and always reads 1.
+   Useful as a readout: it tells the user whether the mount actually has a
+   further gear stage at all. */
+INDIGO_EXTERN double indigo_gp_guider_get_stage_weight(const indigo_gp_guider *guider, int stage);
 
 /* Learning progress of the predictive model, 0.0 .. 1.0. This is a data
    sufficiency measure (not a goodness-of-fit): it ramps from 0 to 1 as the
