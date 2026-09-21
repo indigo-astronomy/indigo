@@ -18,7 +18,9 @@
 # columns driver, timestamp, version, platform, type, tests and result, where
 # the driver is the driver directory name, the platform joins the operating
 # system and the architecture, the tests column holds the total and passed
-# counts and the result column holds either '✅ OK' or '❌ Failed'.
+# counts and the result column holds either '✅ OK' or '❌ Failed'. The rows are
+# ordered by driver name across all driver roots, then by the order the runs
+# have in the driver's README.md.
 #
 # Usage: make_test_summary.py [-o <output>]
 #   -o <output>  file to write instead of <project root>/TEST_SUMMARY.md,
@@ -84,13 +86,13 @@ def read_records(readme):
 
 
 def collect(root):
-	"""Return the (name, records) pairs of all tested drivers."""
+	"""Return the (name, records) pairs of all tested drivers, ordered by name."""
 	drivers = []
 	for driver_root in DRIVER_ROOTS:
 		path = os.path.join(root, driver_root)
 		if not os.path.isdir(path):
 			continue
-		for name in sorted(os.listdir(path)):
+		for name in os.listdir(path):
 			readme = os.path.join(path, name, "README.md")
 			if not os.path.isfile(readme):
 				continue
@@ -98,6 +100,7 @@ def collect(root):
 			if not records:
 				continue
 			drivers.append((name, records))
+	drivers.sort(key=lambda driver: driver[0])
 	return drivers
 
 
