@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000013
+#define DRIVER_VERSION       0x03000014
 #define DRIVER_NAME          "indigo_ccd_iidc"
 #define DRIVER_LABEL         "IIDC Compatible Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -213,6 +213,32 @@ static bool iidc_discover_modes(indigo_device *device) {
 	return PRIVATE_DATA->mode_count > 0;
 }
 
+// A legacy (non-Format7) video mode supports its own set of framerates and the camera keeps
+// the rate the previous mode left in the register. Selecting a mode whose rate list does not
+// contain it leaves the camera unable to transmit, so every acquisition in that mode times
+// out - that is how MONO 16 1280x960 failed on a Chameleon CMLN-13S2M after MONO 8 1280x960
+// had set 15 fps. Keep the current rate while the new mode supports it and fall back to the
+// fastest one it does support; the framerate bounds the shutter, so CCD_MODE re-reads the
+// exposure range afterwards.
+static bool iidc_select_framerate(indigo_device *device, dc1394video_mode_t mode) {
+	dc1394framerates_t framerates = { 0 };
+	if (dc1394_video_get_supported_framerates(PRIVATE_DATA->camera, mode, &framerates) != DC1394_SUCCESS || framerates.num == 0) {
+		return false;
+	}
+	dc1394framerate_t current = 0, fastest = framerates.framerates[0];
+	bool supported = dc1394_video_get_framerate(PRIVATE_DATA->camera, &current) == DC1394_SUCCESS;
+	for (uint32_t i = 0; i < framerates.num; i++) {
+		if (framerates.framerates[i] == current) {
+			return true;
+		}
+		if (framerates.framerates[i] > fastest) {
+			fastest = framerates.framerates[i];
+		}
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "framerate %d is not supported by mode %d, using %d", supported ? current : -1, mode, fastest);
+	return dc1394_video_set_framerate(PRIVATE_DATA->camera, fastest) == DC1394_SUCCESS;
+}
+
 static bool iidc_select_mode(indigo_device *device, int index) {
 	if (index < 0 || index >= PRIVATE_DATA->mode_count) {
 		return false;
@@ -222,7 +248,11 @@ static bool iidc_select_mode(indigo_device *device, int index) {
 	if (dc1394_video_set_mode(PRIVATE_DATA->camera, mode->mode) != DC1394_SUCCESS) {
 		return false;
 	}
-	if (mode->mode >= DC1394_VIDEO_MODE_FORMAT7_MIN && mode->mode <= DC1394_VIDEO_MODE_FORMAT7_MAX && (dc1394_format7_set_image_position(PRIVATE_DATA->camera, mode->mode, 0, 0) != DC1394_SUCCESS || dc1394_format7_set_image_size(PRIVATE_DATA->camera, mode->mode, mode->width, mode->height) != DC1394_SUCCESS || dc1394_format7_set_color_coding(PRIVATE_DATA->camera, mode->mode, mode->coding) != DC1394_SUCCESS)) {
+	if (mode->mode >= DC1394_VIDEO_MODE_FORMAT7_MIN && mode->mode <= DC1394_VIDEO_MODE_FORMAT7_MAX) {
+		if (dc1394_format7_set_image_position(PRIVATE_DATA->camera, mode->mode, 0, 0) != DC1394_SUCCESS || dc1394_format7_set_image_size(PRIVATE_DATA->camera, mode->mode, mode->width, mode->height) != DC1394_SUCCESS || dc1394_format7_set_color_coding(PRIVATE_DATA->camera, mode->mode, mode->coding) != DC1394_SUCCESS) {
+			return false;
+		}
+	} else if (!iidc_select_framerate(device, mode->mode)) {
 		return false;
 	}
 	PRIVATE_DATA->selected_mode = index;
@@ -1000,7 +1030,7 @@ indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *i
 #include "indigo_ccd_iidc.h"
 
 indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "IIDC Compatible Camera", __FUNCTION__, 0x03000013, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "IIDC Compatible Camera", __FUNCTION__, 0x03000014, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

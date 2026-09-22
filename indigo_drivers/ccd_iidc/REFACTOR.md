@@ -86,6 +86,7 @@ Unsupported/not applicable by design: guider timing, cooling, device-side binnin
 - **Source audit, fixed:** a temperature read error stopped polling permanently. Polling now publishes ALERT and reschedules. Regression: `Controls and temperature recovery`.
 - **Fake-SDK reproduced, fixed:** freeing the camera in `sdk.unplug` occurred before generated detach/disconnect and caused SDK calls through a released handle. Camera release moved to `ccd.on_detach`. Regression: `Active removal and recovery` (initially failed with two post-release calls, now passes with zero).
 - **Source audit, fixed:** frame fields were read after returning the frame to the SDK capture queue. Required metadata is copied to local scalars before enqueue. Covered by normal and sanitizer image cases.
+- **Hardware reproduced, fixed (version 19 to 20):** a legacy (non-Format7) video mode was selected without programming a framerate, so the camera kept the rate the previous mode had left in the register. Every acquisition in a mode that does not offer that rate timed out. See the 2026-09-22 section. Regression: `Legacy mode framerate` in `indigo_test/integration/test_ccd_iidc_sdk.c` plus the full-mode sweep of the hardware test.
 - **Source audit, fixed:** the generated connection path does not call close after a failed low-level open, so partially allocated mode state could survive a failed first connection and leak on removal. `iidc_open()` now performs its own complete rollback. Regression: `Connection initialization failure` and ASan/UBSan suite.
 
 ## Verification evidence
@@ -102,7 +103,8 @@ Unsupported/not applicable by design: guider timing, cooling, device-side binnin
 
 ## Final test summary
 
-- Simulated/fake-SDK tests: 28 run, 28 passed (14 normal + the same 14 under ASan/UBSan).
+- Simulated/fake-SDK tests: 32 run, 32 passed (16 normal + the same 16 under ASan/UBSan).
+- Hardware tests: 1 run, 1 passed (`make -C indigo_test test-ccd-iidc-hw`, macOS arm64, Atik GP / Chameleon CMLN-13S2M, all 10 modes).
 - Hardware acceptance: scenarios above passed on macOS with Atik GP; no Linux or FireWire hardware validation claimed.
 
 ## Rejected-change regression coverage (2026-09-18)
@@ -123,10 +125,35 @@ The accepted control change is checked the same way as the refused one: after `C
 
 Found and fixed (version 16 to 17): aborting an acquisition published `CCD_ABORT_EXPOSURE` in ALERT. The handler settled `CCD_STREAMING` to OK before calling `indigo_ccd_abort_exposure_cleanup()`, so the cleanup saw neither an exposure nor a stream in progress and took its "nothing was running" branch. The handler now only finalizes the video stream and leaves both states to the cleanup, as `ccd_asi` and `ccd_playerone` already do. A consequence of the delegation is that aborting a *finite* stream now reports `CCD_STREAMING` ALERT instead of OK, which is the framework contract for an incomplete stream. Regression: the abort step of the hardware test, which fails when the old handler body is put back.
 
-`MODE_3` (`MONO 16 1280x960`, legacy fixed mode) never delivers a frame on this camera. A standalone program driving libdc1394 directly, without INDIGO, reproduces it with one-shot and with continuous transmission, with the camera default framerate and with an explicitly selected supported one (7.5 fps), so it is a camera/SDK limitation and not a driver defect. Exclude it by name; the default run stays strict:
+`MODE_3` (`MONO 16 1280x960`, legacy fixed mode) never delivered a frame on this camera and was recorded here as a camera/SDK limitation. **That conclusion was wrong**; see the 2026-09-22 section below, which finds the driver defect behind it and fixes it. `HW_SKIP_MODES` stays available for a camera that really cannot run a mode:
 
 ```sh
 make -C indigo_test test-ccd-iidc-hw HW_SKIP_MODES=MODE_3
 ```
 
 Result on 2026-09-18 with Atik GP (Chameleon CMLN-13S2M, USB 1e10:2005): passed, 9 of 10 modes exercised, 0 invalid frames. `make -C indigo_test test-ccd-iidc-sdk` and `test-ccd-iidc-sdk-sanitize` pass unchanged with version 17.
+
+## Legacy-mode framerate defect (2026-09-22)
+
+Non-interactive hardware run on macOS arm64 against the Atik GP (Chameleon CMLN-13S2M, USB `1e10:2005`), version 19. `MODE_3` (`MONO 16 1280x960`, legacy) failed with `CCD_EXPOSURE` ALERT and "Exposure timed out or readout failed", exactly as recorded on 2026-09-18.
+
+**Root cause.** `iidc_select_mode()` called `dc1394_video_set_mode()` and, for Format7, programmed position, size and coding, but for a legacy mode it programmed nothing else. A legacy IIDC mode carries its own framerate list, and the camera keeps whatever the previously selected mode left in the framerate register. A standalone libdc1394 probe reports the Chameleon's lists as
+
+| driver mode | dc1394 mode | framerates |
+| --- | --- | --- |
+| `MODE_0` `MONO 8 640x480` | 69 | 1.875, 3.75, 7.5, 15, 30 |
+| `MODE_1` `MONO 16 640x480` | 70 | 1.875, 3.75, 7.5, 15, 30 |
+| `MODE_2` `MONO 8 1280x960` | 81 | 1.875, 3.75, 7.5, 15 |
+| `MODE_3` `MONO 16 1280x960` | 85 | 1.875, 3.75, 7.5 |
+
+and confirms the register held 15 while mode 85 was selected - a combination the mode does not offer, so the camera never started transmitting and the 30-second readout deadline expired. The mode sweep reaches `MODE_3` straight after `MODE_2`, which is why the failure looked mode-specific. The 2026-09-18 note that a standalone program reproduced it "with an explicitly selected supported one (7.5 fps)" does not hold: with a supported rate actually programmed, the mode delivers a full 2457612-byte frame.
+
+**Fix (version 20).** `iidc_select_framerate()` runs for every non-Format7 mode after `dc1394_video_set_mode()`. It keeps the current rate when the new mode's list contains it and otherwise programs the fastest rate the mode does support; a failure of any of the three transactions fails mode selection, so `CCD_MODE` reaches ALERT instead of leaving the camera mute. Format7 modes have no framerate and are untouched.
+
+**Consequence on the exposure range.** The framerate bounds the shutter: this camera reports `max_shutter = 245.33 / framerate`, so the advertised `CCD_EXPOSURE` maximum moved from the 0.0666565 s recorded in the older runs to 16.3555 s, and it changes with the selected mode. That is not new behaviour - `CCD_MODE` already re-reads the shutter range through `iidc_setup_feature()` after every mode change - but before the fix the range depended on whatever rate the camera happened to hold, and it is now reproducible across connects.
+
+**Coverage.** `Legacy mode framerate` in `indigo_test/integration/test_ccd_iidc_sdk.c` drives the fake camera from a rate the legacy mode does not offer, requires the driver to program 7.5, requires a supported rate to survive untouched, and requires a failing `dc1394_video_get_supported_framerates()` or `dc1394_video_set_framerate()` to refuse the mode change with ALERT and no rate written. The fake gained `dc1394_video_get_supported_framerates`, `dc1394_video_get_framerate` and `dc1394_video_set_framerate`.
+
+**Stale expectation repaired in the same run.** `Hotplug identity and inconclusive removal` failed before any change of this session. Commit `0057e7302` made `sdk.unplug_match` confirm a removal libusb could not identify rather than veto one it reported, so a failing `dc1394_camera_enumerate()` no longer keeps a device whose own libusb device left. The case now sends the inconclusive event with a foreign libusb token, which is the path the block still serves, and additionally requires that a camera the enumeration keeps listing does not survive its own `DEVICE_LEFT`.
+
+**Results.** `make -C indigo_test test-ccd-iidc-sdk` 16/16, `test-ccd-iidc-sdk-sanitize` 16/16, `make -C indigo_test test-ccd-iidc-hw` 1/1 with all 10 modes exercised and 0 invalid frames, repeated three times with identical output. Hot-plug was out of scope for this camera: it is attached directly to the host, not to the Pegasus UPB hub that the other cameras of the session use for unattended unplug.

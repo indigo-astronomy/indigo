@@ -33,6 +33,7 @@ typedef struct {
 	char model[32];
 	bool visible, temperature;
 	dc1394video_mode_t mode;
+	dc1394framerate_t framerate;
 	dc1394color_coding_t coding;
 	uint32_t left, top, width, height;
 	atomic_int capture, streaming, polls, frames, stops;
@@ -144,6 +145,35 @@ dc1394error_t iidc_test_set_mode(dc1394camera_t *camera, dc1394video_mode_t mode
 		state->width = 64;
 		state->height = 48;
 	}
+	return DC1394_SUCCESS;
+}
+
+// The fake legacy mode 640x480_MONO8 runs at 1.875, 3.75 or 7.5 frames per second only, so a
+// camera resting at 30 has to be reprogrammed before it can transmit in that mode.
+dc1394error_t iidc_test_framerates(dc1394camera_t *camera, dc1394video_mode_t mode, dc1394framerates_t *framerates) {
+	if (atomic_load(&fail_call) && !strcmp(atomic_load(&fail_call), "framerates")) {
+		return DC1394_FAILURE;
+	}
+	framerates->num = 3;
+	framerates->framerates[0] = DC1394_FRAMERATE_3_75;
+	framerates->framerates[1] = DC1394_FRAMERATE_7_5;
+	framerates->framerates[2] = DC1394_FRAMERATE_1_875;
+	return DC1394_SUCCESS;
+}
+
+dc1394error_t iidc_test_get_framerate(dc1394camera_t *camera, dc1394framerate_t *framerate) {
+	if (atomic_load(&fail_call) && !strcmp(atomic_load(&fail_call), "get_framerate")) {
+		return DC1394_FAILURE;
+	}
+	*framerate = fake(camera)->framerate;
+	return DC1394_SUCCESS;
+}
+
+dc1394error_t iidc_test_set_framerate(dc1394camera_t *camera, dc1394framerate_t framerate) {
+	if (atomic_load(&fail_call) && !strcmp(atomic_load(&fail_call), "set_framerate")) {
+		return DC1394_FAILURE;
+	}
+	fake(camera)->framerate = framerate;
 	return DC1394_SUCCESS;
 }
 
@@ -362,6 +392,9 @@ static void reset_fake(void) {
 		cameras[i].public.model = cameras[i].model;
 		cameras[i].public.bmode_capable = true;
 		cameras[i].coding = DC1394_COLOR_CODING_MONO8;
+		// The camera powers up at a rate the only legacy mode of this fake does not offer, the way
+		// a real camera keeps whatever the previously selected mode left in the framerate register.
+		cameras[i].framerate = DC1394_FRAMERATE_30;
 		cameras[i].width = 64;
 		cameras[i].height = 48;
 	}
@@ -538,6 +571,36 @@ static void rejected_change_alerts_and_keeps_values(void) {
 	end();
 }
 
+// A legacy video mode carries its own framerate list and the camera keeps the rate the previous
+// mode left behind, so selecting the mode without programming a supported rate leaves the camera
+// unable to transmit. Format7 modes have no framerate and must not be touched.
+static void legacy_mode_framerate(void) {
+	ASSERT_TRUE(begin(true));
+	ASSERT_EQ_INT(DC1394_FRAMERATE_30, cameras[0].framerate);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, device_name, CCD_MODE_PROPERTY_NAME, "MODE_3", true));
+	ASSERT_TRUE(wait_for_property_state(CCD_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(DC1394_FRAMERATE_7_5, cameras[0].framerate);
+	// A rate the mode does support survives the next selection of the same mode untouched.
+	cameras[0].framerate = DC1394_FRAMERATE_1_875;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, device_name, CCD_MODE_PROPERTY_NAME, "MODE_0", true));
+	ASSERT_TRUE(wait_for_property_state(CCD_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(DC1394_FRAMERATE_1_875, cameras[0].framerate);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, device_name, CCD_MODE_PROPERTY_NAME, "MODE_3", true));
+	ASSERT_TRUE(wait_for_property_state(CCD_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(DC1394_FRAMERATE_1_875, cameras[0].framerate);
+	indigo_change_number_property_1(&simulator_test_client, device_name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, .01);
+	ASSERT_TRUE(wait_for_property_state(CCD_EXPOSURE_PROPERTY_NAME, INDIGO_OK_STATE));
+	// Every framerate transaction is a mode-selection failure, and the refused mode reaches ALERT.
+	cameras[0].framerate = DC1394_FRAMERATE_30;
+	atomic_store(&fail_call, "framerates");
+	ASSERT_TRUE(assert_rejected_switch_change_on(device_name, CCD_MODE_PROPERTY_NAME, "MODE_3"));
+	atomic_store(&fail_call, "set_framerate");
+	ASSERT_TRUE(assert_rejected_switch_change_on(device_name, CCD_MODE_PROPERTY_NAME, "MODE_3"));
+	ASSERT_EQ_INT(DC1394_FRAMERATE_30, cameras[0].framerate);
+	atomic_store(&fail_call, NULL);
+	end();
+}
+
 static void busy_overlap_and_disconnect(void) {
 	ASSERT_TRUE(begin(true));
 	atomic_store(&hold_frames, 1);
@@ -574,20 +637,31 @@ static void active_removal_and_recovery(void) {
 	end();
 }
 
+// The unplug hook confirms a removal libusb could not identify; it is not consulted for a device
+// libusb named, because that removal is already certain. A foreign token therefore stands for the
+// unidentified event: a failed enumeration leaves it inconclusive and the device stays, while a
+// successful one that no longer lists the camera removes it.
 static void hotplug_identity_and_inconclusive_removal(void) {
+	libusb_device *foreign = (libusb_device *)(usb_tokens + 5);
 	ASSERT_TRUE(begin(false));
 	usb_callback(NULL, (libusb_device *)usb_tokens, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
 	indigo_usleep(100000);
 	ASSERT_EQ_INT(1, attached);
 	atomic_store(&fail_enumerate, 1);
-	usb_callback(NULL, (libusb_device *)usb_tokens, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+	usb_callback(NULL, foreign, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
 	indigo_usleep(100000);
 	ASSERT_EQ_INT(1, attached);
 	atomic_store(&fail_enumerate, 0);
 	cameras[0].visible = false;
-	usb_callback(NULL, (libusb_device *)usb_tokens, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+	usb_callback(NULL, foreign, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
 	ASSERT_TRUE(wait_atomic(&attached, 0));
 	cameras[0].visible = true;
+	usb_callback(NULL, (libusb_device *)usb_tokens, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	ASSERT_TRUE(wait_atomic(&attached, 1));
+	// The device libusb names goes away whatever the vendor SDK still reports, so a camera the
+	// enumeration keeps listing must not survive its own DEVICE_LEFT event.
+	usb_callback(NULL, (libusb_device *)usb_tokens, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+	ASSERT_TRUE(wait_atomic(&attached, 0));
 	usb_callback(NULL, (libusb_device *)usb_tokens, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
 	ASSERT_TRUE(wait_atomic(&attached, 1));
 	end();
@@ -660,6 +734,7 @@ int main(int argc, char **argv) {
 		{ "SDK failures and recovery", sdk_failures_and_recovery },
 		{ "Controls and temperature recovery", controls_and_temperature_recovery },
 		{ "YUV and legacy modes", yuv_and_legacy_modes },
+		{ "Legacy mode framerate", legacy_mode_framerate },
 		{ "Busy overlap and disconnect", busy_overlap_and_disconnect },
 		{ "Rejected change keeps values", rejected_change_alerts_and_keeps_values },
 		{ "Active removal and recovery", active_removal_and_recovery },

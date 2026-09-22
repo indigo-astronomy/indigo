@@ -40,7 +40,8 @@
 | ccd_baccam | 2026-09-21 13:53 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_bresser | 2026-09-21 13:55 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_fli | 2026-09-21 12:45 | 3.0.0.12 | mac arm64 | fake SDK | 22 / 22 | ✅ OK |
-| ccd_iidc | 2026-09-21 14:12 | 3.0.0.18 | mac arm64 | fake SDK | 15 / 15 | ✅ OK |
+| ccd_iidc | 2026-09-22 07:50 | 3.0.0.20 | mac arm64 | fake SDK | 16 / 16 | ✅ OK |
+| ccd_iidc | 2026-09-22 07:51 | 3.0.0.20 | mac arm64 | Atik GP | 1 / 1 | ✅ OK |
 | ccd_mallin | 2026-09-21 13:57 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_meade | 2026-09-21 13:59 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_mi | 2026-09-21 12:42 | 3.0.0.34 | mac arm64 | fake SDK | 17 / 17 | ✅ OK |
