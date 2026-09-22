@@ -680,6 +680,14 @@ the same ABI. `OSXInitQHYCCDFirmware()` in the current sources resolves the call
 sub-path was put back so the archive stays a drop-in replacement for the one it succeeds and the
 driver's `README.md` stays correct.
 
+The QHY5 case needed that in two places. It is the only camera whose firmware takes two files, so
+it is the only case that rebuilds the path instead of appending to it, and it rebuilt it without the
+sub-path: `QHY5LOADER.HEX` went in and `QHY5.HEX` did not, which left the camera in its loader
+identity and made it look like a camera this SDK no longer supports. With both files found it comes
+up as `QHY5-CMOS`, the same identity the modern SDK gives it. Whether `ScanQHYCCD()` of this SDK
+then offers it was not established: the session was stopped before that run finished, so the QHY5
+has no recorded result on this driver.
+
 The driver builds and links for x86_64 and arm64 and runs natively on arm64.
 
 ### QHY5L-II live video does not work through this SDK
