@@ -20,7 +20,8 @@ driver atik {
 	label = "Atik Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 42;
+	version = 44;
+	max_devices = 16;
 	multi_device_support = true;
 	include {
 		#include <math.h>
@@ -332,11 +333,16 @@ driver atik {
 		}
 	}
 	on_init {
+		// ArtemisShutdown() is terminal - its own header says no SDK function may be called after
+		// it - and it is not symmetric with a driver, which INDIGO unloads and loads again within
+		// one process. It frees the SDK's libusb context while leaving the device table behind, so
+		// the next ArtemisDeviceSerial() opens a device through a dangling context, and it leaves
+		// the SDK's USB detector thread running, parked in a libusb poll with a return address
+		// inside the SDK library. The driver therefore never shuts the SDK down and pins the SDK
+		// library instead, so that thread keeps executing mapped code after the driver is gone.
+		indigo_pin_library((void *)ArtemisShutdown);
 		ArtemisSetDebugCallback(debug_log);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Artemis SDK %d, API %d", ArtemisDLLVersion(), ArtemisAPIVersion());
-	}
-	on_shutdown {
-		ArtemisShutdown();
 	}
 	ccd {
 		name = "%s";

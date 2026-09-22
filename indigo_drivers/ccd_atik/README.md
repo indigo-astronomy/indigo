@@ -41,4 +41,7 @@ Standard property and custom item names are unchanged.
 
 ## Testing
 
-2026-09-21 13:50 3.0.0.41 mac arm64 fake SDK 41/41 OK
+2026-09-22 09:05 3.0.0.44 mac arm64 fake SDK 42/42 OK
+2026-09-22 09:07 3.0.0.44 mac arm64 Atik One 1/1 OK
+2026-09-22 09:09 3.0.0.44 mac arm64 ArtemisCCD VS 1/1 OK
+2026-09-22 09:11 3.0.0.44 mac arm64 Atik Titan 1/1 OK

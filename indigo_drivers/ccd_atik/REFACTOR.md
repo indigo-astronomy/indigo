@@ -213,3 +213,49 @@ items in `on_change_request`, replacing the earlier workaround that forced the p
 to `INDIGO_OK_STATE` so the BUSY-guarded dispatch macro would let the request through. Behaviour is
 unchanged; the driver now uses the same pattern as every other INDIGO driver that exposes a guider.
 `guide_axes_and_replacement` already covered the replacement and passes unmodified.
+
+## Three-camera hardware run (2026-09-22)
+
+Non-interactive hardware run on macOS arm64 with three cameras on a Pegasus Ultimate Powerbox v1.7 hub: Atik One (USB `20e7:dfbb`), ArtemisCCD VS (`20e7:df3c`, behind a hub of its own) and Atik Titan (`20e7:df2e`). Two defects, both present since before the generator migration.
+
+### Defect 1: the third camera was never published (version 42 to 43)
+
+`ArtemisDeviceCount()` reported all three cameras, but the driver published only Atik One and ArtemisCCD VS. Every logical device takes one entry of the generated `devices[MAX_DEVICES]` array and the generator emitted a constant 5: Atik One is a camera plus a filter wheel, ArtemisCCD VS a camera plus a guider, which is four, and the Titan needs two more. The plug block's own `slots < 1 + has_guider + has_wheel` guard then refused it silently - correctly, because publishing half a camera is worse, but with nothing said about why.
+
+Fixed by the generator's new `max_devices` attribute; the driver declares `max_devices = 16`. All three cameras are published afterwards:
+
+```
+Discovered Atik One
+Discovered ArtemisCCD VS
+Discovered Atik Titan
+```
+
+Regression: `capacity_and_survivors` in `indigo_test/integration/test_ccd_atik_sdk.c` now offers 20 fake cameras, more logical devices than the driver has slots, and requires the driver to stop at exactly 16 and to keep the survivors working after one of them is removed. With the old capacity it stopped at 5 and never reached the limit with the twelve cameras it used to offer.
+
+### Defect 2: unloading the driver crashed the process (version 43 to 44)
+
+`ATIK_HW_CASE` unset runs the driver reload scenario: disconnect, `INDIGO_DRIVER_SHUTDOWN`, `dlclose`, `dlopen`, `INDIGO_DRIVER_INIT`, fresh exposure. With the Titan it ended in `SIGSEGV`, reproducibly, at the same point of every run. `indigo_remove_driver()` does exactly this `dlclose`, so an INDIGO server that unloads the Atik driver after a session took the same fault.
+
+Two independent causes, both in `ArtemisShutdown()`, which `on_shutdown` called:
+
+- It does not join the SDK's own threads. At the moment of `dlclose` the process still ran `AtikCore::ExposureThreadStandard::ET_ThreadMain()` in `ThreadTrigger::WaitForever()` and `AtikCore::USBDetectorConsole::Thread_ThreadMainLibUSB()` parked in a 60 second `libusb_handle_events_completed()`, both with return addresses inside `libatikcameras.dylib`. Unloading the driver unmapped that code under them. A standalone probe outside INDIGO confirms the detector thread is still there five seconds after `ArtemisShutdown()` returns and never exits, so no delay in the driver can close the window.
+- It is terminal. Its own header says "The SDK functions may not be called after calling this function", and it frees the SDK's libusb context while leaving the device table in place. With the SDK library kept mapped, the next `INDIGO_DRIVER_INIT` therefore crashed instead, in `libusb_open()` called from `ArtemisDeviceSerial()` with `ctx = 0x3208`. The `dlclose`/`dlopen` cycle used to hide this by resetting the library's static state, which is also why it only ever failed the other way.
+
+A driver is unloaded and loaded again within one process, so a terminal SDK shutdown cannot be part of its lifecycle. The driver no longer calls `ArtemisShutdown()` at all and pins the SDK library from `on_init` with the new `indigo_pin_library((void *)ArtemisShutdown)`, so the threads the SDK never joins keep executing mapped code after the driver is gone. The cost is that the SDK stays initialized, with one thread and its USB handles, for the life of the process.
+
+Regression: `sdk_survives_a_driver_reload` in `test_ccd_atik_sdk.c` requires the shutdown/init cycle to leave `ArtemisShutdown()` uncalled and the camera usable afterwards. Verified to fail (`expected 0, got 1`) with the call put back and to pass with it removed. The fake SDK could not have found this on its own: its `ArtemisShutdown()` was an empty function, so it counted the call rather than modelling its effect.
+
+### Results
+
+| run | result |
+| --- | --- |
+| `make -C indigo_test test-ccd-atik-sdk` | 42/42 |
+| `INDIGO_TEST_DEVICE="Atik One" make -C indigo_test test-ccd-atik-hw` | 1/1 |
+| `INDIGO_TEST_DEVICE="ArtemisCCD VS" make -C indigo_test test-ccd-atik-hw` | 1/1 |
+| `INDIGO_TEST_DEVICE="Atik Titan" make -C indigo_test test-ccd-atik-hw` | 1/1 |
+
+Each camera ran the full scenario: exposures from 0.001 to 16.5 seconds, every frame type, ROI and binning, both read modes, cooling where the model has a cooler, the wheel on Atik One, the guider on ArtemisCCD VS and Atik Titan, the refused-then-accepted guarded change, abort and reacquire, disconnect/reconnect, driver reload and a fresh exposure, with no invalid RAW frame.
+
+### Hot-plug not established
+
+Physical hot-plug was not covered. The cameras hang on the Powerbox's SMSC `0424:2517` hub, whose six external ports switch `PORT_POWER` through libusb, and the plan was to drive the unattended suite of `test_ccd_hotplug_hw.c` from it. Measured on this host, the mechanism does not work: with the port cleared, the hub reports it powered off and disconnected (`GET_STATUS` 0x00000000) for as long as it is left off, while the device stays in the IOKit registry and in `libusb_get_device_list()`, so no disconnect reaches the driver. Clearing `PORT_ENABLE` instead leaves the port disabled but still connected and is equally invisible. The reason is the same one that makes `uhubctl` useless for this on Linux: the host's own hub driver owns the port and is never told about a change made behind its back, and only the kernel's per-port `disable` attribute both cuts the port and tears the device down. macOS has no equivalent, so the unattended suite stays a Linux-only facility and this host cannot run it. A backend that switched the Powerbox port was written and discarded rather than shipped, because it would report a passing hot-plug run while testing nothing.

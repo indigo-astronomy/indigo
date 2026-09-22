@@ -46,13 +46,13 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002A
+#define DRIVER_VERSION       0x0300002C
 #define DRIVER_NAME          "indigo_ccd_atik"
 #define DRIVER_LABEL         "Atik Camera"
 #define CCD_DEVICE_NAME      "%s"
 #define GUIDER_DEVICE_NAME   "%s (guider)"
 #define WHEEL_DEVICE_NAME    "%s (wheel)"
-#define MAX_DEVICES          5
+#define MAX_DEVICES          16
 #define PRIVATE_DATA         ((atik_private_data *)device->private_data)
 
 //+ define
@@ -1315,6 +1315,14 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			//+ on_init
+			// ArtemisShutdown() is terminal - its own header says no SDK function may be called after
+			// it - and it is not symmetric with a driver, which INDIGO unloads and loads again within
+			// one process. It frees the SDK's libusb context while leaving the device table behind, so
+			// the next ArtemisDeviceSerial() opens a device through a dangling context, and it leaves
+			// the SDK's USB detector thread running, parked in a libusb poll with a return address
+			// inside the SDK library. The driver therefore never shuts the SDK down and pins the SDK
+			// library instead, so that thread keeps executing mapped code after the driver is gone.
+			indigo_pin_library((void *)ArtemisShutdown);
 			ArtemisSetDebugCallback(debug_log);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Artemis SDK %d, API %d", ArtemisDLLVersion(), ArtemisAPIVersion());
 			//- on_init
@@ -1363,9 +1371,6 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 			}
 			indigo_queue_delete(&driver_queue);
 			clear_sdk_discovery_retries();
-		//+ on_shutdown
-		ArtemisShutdown();
-		//- on_shutdown
 			break;
 
 		}

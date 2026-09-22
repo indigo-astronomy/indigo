@@ -30,7 +30,10 @@
 #include "AtikCameras.h"
 #include "simulator_test_common.h"
 #include "ccd_test_noise.h"
-#define CAMERAS 12
+// More cameras than the driver has device slots, so the capacity case reaches the limit instead of
+// running out of cameras. Camera 0 publishes three logical devices, the rest one each.
+#define CAMERAS 20
+#define ATIK_MAX_DEVICES 16
 #define PROPERTIES 80
 typedef struct {
 	atomic_bool visible, opened, exposing;
@@ -56,6 +59,7 @@ static pthread_mutex_t observation_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int usb_devices[CAMERAS];
 static libusb_hotplug_callback_fn usb_callback;
 static atomic_int attached, updates_after_detach;
+static atomic_int shutdown_calls;
 static atomic_int fail_register, fail_descriptor, wrong_vendor, usb_refs, usb_ref_balance[CAMERAS], invalid_usb_unref;
 static atomic_int blobs, bad_blob, sdk_after_close;
 static _Atomic(const char *) fail_call;
@@ -372,6 +376,7 @@ void ArtemisSetDebugCallback(void (*callback)(const char *)) {
 }
 
 void ArtemisShutdown(void) {
+	atomic_fetch_add(&shutdown_calls, 1);
 }
 
 int ArtemisDeviceCount(void) {
@@ -1248,6 +1253,22 @@ static void discovery_rollback(void) {
 	ASSERT_TRUE(connect_device(0, true));
 }
 
+// ArtemisShutdown() is terminal - its own header forbids any SDK call after it - while a driver is
+// unloaded and loaded again within one process. Calling it freed the SDK's libusb context and left
+// the device table behind, so the next discovery opened a device through a dangling context and the
+// process died; it also left the SDK's USB detector thread running on code the unload then unmapped.
+// The driver must therefore never shut the SDK down, and must stay usable across the cycle.
+static void sdk_survives_a_driver_reload(void) {
+	int before = shutdown_calls;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_atik(INDIGO_DRIVER_SHUTDOWN, NULL));
+	ASSERT_EQ_INT(before, shutdown_calls);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_atik(INDIGO_DRIVER_INIT, NULL));
+	ASSERT_TRUE(wait_count(&attached, 3));
+	ASSERT_EQ_INT(before, shutdown_calls);
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(number(0, "CCD_EXPOSURE", "EXPOSURE", .01, INDIGO_OK_STATE));
+}
+
 static void discovery_filters_and_strings(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_atik(INDIGO_DRIVER_SHUTDOWN, NULL));
 	wrong_vendor = 1;
@@ -1303,7 +1324,7 @@ static void capacity_and_survivors(void) {
 		cameras[i].visible = true;
 		usb_event(i, true);
 	}
-	ASSERT_TRUE(wait_count(&attached, 5));
+	ASSERT_TRUE(wait_count(&attached, ATIK_MAX_DEVICES));
 	ASSERT_TRUE(connect_device(3, true));
 	cameras[0].visible = false;
 	usb_event(0, false);
@@ -1312,7 +1333,7 @@ static void capacity_and_survivors(void) {
 	usb_event(10, true);
 	usb_event(11, true);
 	indigo_queue_drain(driver_queue);
-	ASSERT_TRUE(attached == 5);
+	ASSERT_TRUE(attached == ATIK_MAX_DEVICES);
 }
 
 static void optional_slave_attach_failure(void) {
@@ -1642,6 +1663,7 @@ int main(int argc, char **argv) {
 		{ "final_wheel_busy_preserves_target", wheel_busy_preserves_target },
 		{ "final_guide_off_failure_recovers", guide_off_failure_recovers },
 		{ "final_readout_state_failure", readout_state_failure },
+		{ "sdk_survives_a_driver_reload", sdk_survives_a_driver_reload },
 		{ "discovery_filters_and_strings", discovery_filters_and_strings },
 		{ "delayed_discovery_and_shutdown", delayed_discovery_and_shutdown },
 		{ "capacity_and_survivors", capacity_and_survivors },
