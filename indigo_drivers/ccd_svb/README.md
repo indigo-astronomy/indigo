@@ -29,3 +29,4 @@ Driver is developed and tested with:
 ## Testing
 
 2026-09-21 12:41 3.0.0.28 mac arm64 fake SDK 47/47 OK
+2026-09-22 07:02 3.0.0.28 linux arm64 SVBONY SV305PRO 6/6 OK
