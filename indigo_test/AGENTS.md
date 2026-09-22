@@ -175,6 +175,35 @@ The same applies to any other value the driver bumps routinely. Assert the contr
 - Use `simulator_test_common.h` for simulator compliance checks.
 - Use `DRIVER_TESTING_RULES.md` for all simulator devices.
 
+## Simulators and Fake SDKs Model the Real Thing
+
+A simulator or fake SDK is only worth the tests written against it as far as it
+behaves like the device or vendor SDK it stands in for. Every one of them is
+therefore kept converging on the real thing, never on what is convenient to
+implement.
+
+- **Every behaviour found on physical hardware or in a real vendor SDK goes back
+  into the simulator or fake SDK**, together with a test that pins it down. This
+  is not optional cleanup afterwards: a hardware run that finds a defect is
+  finished only when the same defect can be reproduced hardware-free. Say in the
+  driver's `REFACTOR.md` which hardware observation each addition came from.
+- Model the quirk, not the symptom. A camera that reports a cooler power level
+  below the minimum it advertised, a setpoint no one ever wrote, a reply read
+  from data an earlier transfer left in the pipe - reproduce the behaviour that
+  produced the wrong value, so the test still holds when the driver's handling
+  of it changes.
+- Make the quirk selectable rather than permanent when only some models have it.
+  A per-device field the fixture sets, defaulting to the well-behaved value,
+  keeps existing cases meaningful and lets one case cover the model that
+  misbehaves.
+- Keep values the real device would report. Prefer the numbers actually measured
+  on hardware over round ones: they are what the driver's arithmetic has to
+  survive, and they document the model in the test.
+- When a defect cannot be reproduced hardware-free, say so explicitly in
+  `REFACTOR.md` with the reason, and do not count the scenario as covered.
+- A simulator change that makes a case pass by being less like the hardware is a
+  defect in the simulator. Fix the driver instead.
+
 ## Benchmark Rules
 
 - Benchmarks measure timing or throughput; they never assert and always exit `0`.
