@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000023
+#define DRIVER_VERSION       0x03000024
 #define DRIVER_NAME          "indigo_ccd_qhy"
 #define DRIVER_LABEL         "QHY CCD (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -504,9 +504,16 @@ static void acquisition_start(indigo_device *device, bool streaming) {
 		return;
 	}
 	PRIVATE_DATA->acquiring = true;
-	PRIVATE_DATA->exposure_end = indigo_monotonic_time() + PRIVATE_DATA->duration;
-	PRIVATE_DATA->deadline = PRIVATE_DATA->exposure_end + 10;
-	indigo_execute_handler_in(device, fmin(0.25, PRIVATE_DATA->duration), acquisition_finalizer);
+	// QHYCCD_READ_DIRECTLY means the camera does not time the exposure itself: the start
+	// call returns at once and GetQHYCCDSingleFrame() blocks for the exposure instead.
+	// Waiting for the duration before reading therefore exposed for it twice - 16.5
+	// seconds took 33.8 on a QHY5-M under the modern SDK, which shares this code - so the
+	// read starts immediately and the deadline covers the exposure that happens inside it.
+	bool read_directly = !streaming && result == QHYCCD_READ_DIRECTLY;
+	double started = indigo_monotonic_time();
+	PRIVATE_DATA->exposure_end = started + (read_directly ? 0 : PRIVATE_DATA->duration);
+	PRIVATE_DATA->deadline = started + PRIVATE_DATA->duration + 10;
+	indigo_execute_handler_in(device, read_directly ? 0 : fmin(0.25, PRIVATE_DATA->duration), acquisition_finalizer);
 }
 
 static void qhy_temperature(indigo_device *device) {
@@ -1475,7 +1482,7 @@ indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *in
 #include "indigo_ccd_qhy.h"
 
 indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "QHY CCD (legacy) Camera", __FUNCTION__, 0x03000023, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "QHY CCD (legacy) Camera", __FUNCTION__, 0x03000024, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

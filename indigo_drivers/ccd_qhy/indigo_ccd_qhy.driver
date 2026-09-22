@@ -20,7 +20,7 @@ driver qhy {
 	label = "QHY CCD (legacy) Camera";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2017-2026 Rumen G. Bogdanovski";
-	version = 35;
+	version = 36;
 	multi_device_support = true;
 	cpp = true;
 	supported_architecture = "!defined(INDIGO_MACOS) || defined(__x86_64__)";
@@ -440,9 +440,16 @@ driver qhy {
 				return;
 			}
 			PRIVATE_DATA->acquiring = true;
-			PRIVATE_DATA->exposure_end = indigo_monotonic_time() + PRIVATE_DATA->duration;
-			PRIVATE_DATA->deadline = PRIVATE_DATA->exposure_end + 10;
-			indigo_execute_handler_in(device, fmin(0.25, PRIVATE_DATA->duration), acquisition_finalizer);
+			// QHYCCD_READ_DIRECTLY means the camera does not time the exposure itself: the start
+			// call returns at once and GetQHYCCDSingleFrame() blocks for the exposure instead.
+			// Waiting for the duration before reading therefore exposed for it twice - 16.5
+			// seconds took 33.8 on a QHY5-M under the modern SDK, which shares this code - so the
+			// read starts immediately and the deadline covers the exposure that happens inside it.
+			bool read_directly = !streaming && result == QHYCCD_READ_DIRECTLY;
+			double started = indigo_monotonic_time();
+			PRIVATE_DATA->exposure_end = started + (read_directly ? 0 : PRIVATE_DATA->duration);
+			PRIVATE_DATA->deadline = started + PRIVATE_DATA->duration + 10;
+			indigo_execute_handler_in(device, read_directly ? 0 : fmin(0.25, PRIVATE_DATA->duration), acquisition_finalizer);
 		}
 
 		static void qhy_temperature(indigo_device *device) {

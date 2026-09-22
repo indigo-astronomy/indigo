@@ -636,3 +636,20 @@ Validation: both fake-SDK suites pass, 74 test bodies over `indigo_ccd_qhy` and 
 Hardware: the `reject` scenario of `indigo_test/hardware/test_ccd_qhy_hw.c` passed against a QHY5III178M under x86_64/Rosetta — all eight exposed guards refused with `Acquisition in progress`, values and targets preserved, the exposure still delivered its image, the stream behaved the same, and the guards were not sticky. `X_READ_MODE` is not exposed for this camera by this driver.
 
 The full scenario set was not completed and is not claimed. It hangs in the `switching` scenario, round 1 RAW 16, with the vendor SDK spinning inside `QHY5IIIBASE::GetSingleFrame` and the disconnect blocked behind it in `indigo_queue_remove`. The identical hang reproduces against the pre-migration driver (`0x0300001F`) rebuilt from stash, so it is unrelated to this change. A QHY5III178M is a modern camera driven through the legacy SDK and is not a suitable device for legacy acceptance; the legacy profile still needs a legacy camera such as the QHY5LII-M used earlier. Note also that the hardware test has no overall watchdog, so an SDK call that never returns blocks the run indefinitely.
+
+## Doubled read-directly exposure (2026-09-22)
+
+`ccd_qhy2` was run against a QHY5 and every exposure took twice its duration plus readout; see `indigo_drivers/ccd_qhy2/REFACTOR.md` for the measurement. The cause is shared with this driver: `ExpQHYCCDSingleFrame()` answers `QHYCCD_READ_DIRECTLY` for a camera that does not time the exposure itself, the start call returns at once and `GetQHYCCDSingleFrame()` blocks for the exposure instead, and the driver still waited the full duration before reading. It now starts the read immediately for that return value and keeps the deadline covering the exposure that happens inside the read. Cameras answering `QHYCCD_SUCCESS` are untouched.
+
+Regression: `read directly exposure` in the shared `indigo_test/integration/test_ccd_qhy_sdk.cpp` requires a one second exposure to finish in under 1.6 seconds. Against this driver it failed at 2.017 s before the fix and passes at 1.005 s after.
+
+The companion fix of `ccd_qhy2`, hiding `CCD_STREAMING` for a camera without a live video mode, has no counterpart here: the bundled legacy SDK enum has no `CAM_LIVEVIDEOMODE`, so this driver cannot ask. Its `missing live video` case is `QHY2` only.
+
+### Hardware not exercised
+
+The attached camera could not be used to test this driver:
+
+- The driver declares `supported_architecture = "!defined(INDIGO_MACOS) || defined(__x86_64__)"`, so on this macOS arm64 host `INDIGO_DRIVER_INIT` returns `INDIGO_FAILED`. Under `arch -x86_64` it initializes.
+- Both drivers install a `libqhyccd.dylib` of the same name into `build/lib`, so only the SDK of the driver built last is present. A hardware run here would therefore exercise this driver against whichever SDK happened to be installed, not against its own. The drivers are mutually exclusive at runtime anyway, as the `README.md` files state.
+
+`make -C indigo_test test-ccd-qhy-hw` was added alongside the `ccd_qhy2` target and needs a host that satisfies both conditions. Result recorded for this session: `build/integration/test_ccd_qhy_sdk` 38/38, no hardware run.
