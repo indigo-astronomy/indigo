@@ -330,10 +330,11 @@ static void nmea_reconnects(void) {
 	ASSERT_TRUE(hw_connect(gps, SHORT_TIMEOUT));
 	ASSERT_TRUE(hw_property_defined(gps, GEOGRAPHIC_COORDINATES_PROPERTY_NAME));
 	ASSERT_TRUE(hw_property_defined(gps, GPS_STATUS_PROPERTY_NAME));
-	// A reconnect starts from the reset state, so the fix status can only come back from sentences
-	// read in this session.
-	ASSERT_EQ_INT(0, active_status_lights());
-	ASSERT_TRUE(hw_wait_settled(gps, GPS_STATUS_PROPERTY_NAME, INDIGO_OK_STATE, DATA_TIMEOUT));
+	// A reconnect starts from the reset state, so the status is redefined busy with no light on and
+	// only sentences read in this session can bring it back. Both steps have to be asserted through
+	// the state history the delete cleared: the receiver sends a GSA every second, so the reset
+	// state is regularly gone before a poll can see it.
+	ASSERT_TRUE(wait_for_states(GPS_STATUS_PROPERTY_NAME, (1u << INDIGO_BUSY_STATE) | (1u << INDIGO_OK_STATE), DATA_TIMEOUT));
 	ASSERT_EQ_INT(1, active_status_lights());
 }
 

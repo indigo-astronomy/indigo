@@ -171,6 +171,12 @@ is a fact about the framework that the next test in this class has to know:
 - `DEVICE_PORT` is validated by the framework, which reports alert for a path it cannot read but
   keeps the value, so the refused-port scenario expects alert from `DEVICE_PORT` and alert from the
   connection attempt that follows.
+- A state a receiver cycle undoes within a second cannot be polled. `nmea_reconnects` asserted that
+  no status light is on straight after the reconnect, and passed twice before failing on three runs
+  in a row: the driver does clear the lights on connect, but the first `GSA` of the new session had
+  already restored `NO_FIX` by the time the assertion read them. The scenario now asserts the busy
+  reset and the return to OK through the state history the property's deletion cleared, which has no
+  such race. This is a defect of the test, not of the driver.
 
 ### Observations recorded, not changed
 
@@ -204,8 +210,12 @@ make -f ../../Makefile.drv all                   # driver archive, no warnings
 make -C indigo_test build/hardware/test_gps_nmea_hw   # no warnings
 indigo_test/build/integration/test_gps_nmea_simulator # 2/2 passed
 indigo_test/build/integration/test_gps_nmea_transport # 3/3 passed
-make -C indigo_test test-gps-nmea-hw                  # 9/9 passed, twice
+make -C indigo_test test-gps-nmea-hw                  # 9/9 passed
 ```
+
+The hardware scope was run five times in total: twice against the first version of the test, then,
+after `nmea_reconnects` was found to be racy, three more consecutive clean runs against the current
+one.
 
 Not run: Linux and Windows builds, and sanitizer variants; no such environment was available in this
 session.
@@ -221,7 +231,7 @@ session.
 | `nmea_publishes_the_advanced_status` | pass — 0 satellites in use, DOP 99.99 on all three axes, property appears and disappears with `GPS_ADVANCED` |
 | `nmea_selects_the_positioning_system` | pass — `GPS` and `MULTIPLE` keep the status, `GLONASS` leaves the driver waiting because the receiver sends only `$GP` |
 | `nmea_refuses_an_unusable_port` | pass — alert connection, no connected property left defined, real port works again |
-| `nmea_reconnects` | pass — connected properties withdrawn and redefined, status re-derived from live data |
+| `nmea_reconnects` | pass — connected properties withdrawn and redefined, status republished busy and re-derived from live data |
 | `nmea_reinitializes` | pass — `SHUTDOWN` removes the device, `INIT` brings it back and it connects and parses again |
 
 The receiver was indoors for the whole session and never acquired a fix, so the fix-dependent half
@@ -255,6 +265,7 @@ Not covered, and why:
   against driver `3.0.0.20`. The same five passed against `3.0.0.19` except
   `nmea_gps_reports_a_receiver_without_a_fix`, which is the regression test of `DRV-137` and
   `DRV-138` and fails against it by design.
-- Hardware tests: **9 executed, 9 passed** (2026-09-22, u-blox 7, driver `3.0.0.20`), run twice with
-  the same result. The first run, against `3.0.0.19`, executed the same 9 and failed 6: two driver
-  defects and three wrong expectations of the test itself, all listed above.
+- Hardware tests: **9 executed, 9 passed** (2026-09-22, u-blox 7, driver `3.0.0.20`), three
+  consecutive runs with the same result after the racy `nmea_reconnects` assertion was corrected.
+  The first run, against `3.0.0.19`, executed the same 9 and failed 6: two driver defects and three
+  wrong expectations of the test itself, all listed above.

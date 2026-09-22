@@ -33,4 +33,4 @@ To export the GPS over the network one can use Nexbridge https://sourceforge.net
 ## Testing
 
 2026-09-22 21:28 3.0.0.20 mac arm64 simulator 5/5 OK
-2026-09-22 21:31 3.0.0.20 mac arm64 u-blox 7 9/9 OK
+2026-09-22 21:38 3.0.0.20 mac arm64 u-blox 7 9/9 OK
