@@ -460,7 +460,7 @@ static void repeated_execution(void) {
 }
 
 static void long_script_execution(void) {
-	const size_t lengths[] = { 511, 512, 513, 8192, 65536 };
+	const size_t lengths[] = { 511, 512, 513, 8192, 65536, 140000 };
 	for (unsigned i = 0; i < ARRAY_SIZE(lengths); i++) {
 		char *script = indigo_safe_malloc(lengths[i] + 1);
 		memset(script, ' ', lengths[i]);
@@ -468,7 +468,7 @@ static void long_script_execution(void) {
 		ASSERT_TRUE(js(script));
 		free(script);
 	}
-	ASSERT_TRUE(check_js("testValue === 5"));
+	ASSERT_TRUE(check_js("testValue === 6"));
 }
 
 static void script_crud(void) {

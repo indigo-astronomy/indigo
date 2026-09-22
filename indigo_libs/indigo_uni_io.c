@@ -1657,17 +1657,40 @@ long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length
 	}
 }
 
+static char *format_output(const char *format, va_list args, long *length) {
+	char *buffer = indigo_alloc_large_buffer();
+	va_list args_copy;
+	va_copy(args_copy, args);
+	int result = vsnprintf(buffer, INDIGO_BUFFER_SIZE, format, args_copy);
+	va_end(args_copy);
+	if (result < 0) {
+		indigo_free_large_buffer(buffer);
+		return NULL;
+	}
+	if (result >= INDIGO_BUFFER_SIZE) {
+		buffer = indigo_safe_realloc(buffer, (size_t)result + 1);
+		va_copy(args_copy, args);
+		vsnprintf(buffer, (size_t)result + 1, format, args_copy);
+		va_end(args_copy);
+	}
+	*length = result;
+	return buffer;
+}
+
 long indigo_uni_printf(indigo_uni_handle *handle, const char *format, ...) {
 	if (handle == NULL) {
 		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	if (strchr(format, '%')) {
-		char *buffer = indigo_alloc_large_buffer();
 		va_list args;
 		va_start(args, format);
-		int length = vsnprintf(buffer, INDIGO_BUFFER_SIZE, format, args);
+		long length;
+		char *buffer = format_output(format, args, &length);
 		va_end(args);
+		if (buffer == NULL) {
+			return -1;
+		}
 		long result = indigo_uni_write(handle, buffer, length);
 		indigo_free_large_buffer(buffer);
 		return result;
@@ -1682,8 +1705,11 @@ long indigo_uni_vprintf(indigo_uni_handle *handle, const char *format, va_list a
 		return -1;
 	}
 	if (strchr(format, '%')) {
-		char *buffer = indigo_alloc_large_buffer();
-		int length = vsnprintf(buffer, INDIGO_BUFFER_SIZE, format, args);
+		long length;
+		char *buffer = format_output(format, args, &length);
+		if (buffer == NULL) {
+			return -1;
+		}
 		long result = indigo_uni_write(handle, buffer, length);
 		indigo_free_large_buffer(buffer);
 		return result;
@@ -1699,8 +1725,11 @@ long indigo_uni_vtprintf(indigo_uni_handle *handle, const char *format, va_list 
 	}
 	long result;
 	if (strchr(format, '%')) {
-		char *buffer = indigo_alloc_large_buffer();
-		int length = vsnprintf(buffer, INDIGO_BUFFER_SIZE, format, args);
+		long length;
+		char *buffer = format_output(format, args, &length);
+		if (buffer == NULL) {
+			return -1;
+		}
 		result = indigo_uni_write(handle, buffer, length);
 		indigo_free_large_buffer(buffer);
 	} else {

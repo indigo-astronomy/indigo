@@ -185,9 +185,9 @@ static void json_adapter_serializes_define_update_delete_and_blob_url(void) {
 /* A text item longer than INDIGO_VALUE_SIZE is kept in item->text.long_value, the adapter has to
    serialize all of it - a truncated script would come back truncated from any JSON client. */
 static void json_adapter_serializes_whole_long_text_value(void) {
-	static char script[8192];
-	static char output[65536];
-	int length = (int)sizeof(script) - 1;
+	const int length = 140000;
+	char *script = indigo_safe_malloc((size_t)length + 1);
+	char *output = indigo_safe_malloc(400000);
 	for (int i = 0; i < length; i++) {
 		script[i] = (i % 40 == 39) ? '\n' : 'a';
 	}
@@ -213,7 +213,7 @@ static void json_adapter_serializes_whole_long_text_value(void) {
 	indigo_release_property(text);
 
 	close_output_adapter(client, &handle);
-	ASSERT_TRUE(read_file("build/unit/protocol_json_long_text.tmp", output, sizeof(output)));
+	ASSERT_TRUE(read_file("build/unit/protocol_json_long_text.tmp", output, 400000));
 
 	assert_contains(output, "\"defTextVector\"");
 	assert_contains(output, "\"setTextVector\"");
@@ -223,6 +223,8 @@ static void json_adapter_serializes_whole_long_text_value(void) {
 	const char *first = strstr(output, "a!\" }");
 	ASSERT_TRUE(first != NULL);
 	ASSERT_TRUE(strstr(first + 1, "a!\" }") != NULL);
+	free(output);
+	free(script);
 }
 
 static indigo_client *new_input_adapter(const char *path, indigo_uni_handle **input) {

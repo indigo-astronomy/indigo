@@ -261,6 +261,45 @@ static void xml_adapter_serializes_define_update_delete_and_blob_url(void) {
 	assert_contains(output, "<defBLOB name='IMAGE' url='http://example.test/blob.fits' label='Image'/>");
 }
 
+static void xml_adapter_serializes_whole_long_text_value(void) {
+	const int length = 140000;
+	char *script = indigo_safe_malloc((size_t)length + 1);
+	char *output = indigo_safe_malloc(800000);
+	for (int i = 0; i < length; i++) {
+		script[i] = (i % 40 == 39) ? '&' : 'a';
+	}
+	script[length - 1] = '!';
+	script[length] = 0;
+
+	indigo_uni_handle *handle = NULL;
+	indigo_client *client = new_output_adapter("build/unit/protocol_xml_long_text.tmp", &handle);
+	ASSERT_TRUE(client != NULL);
+	indigo_device device;
+	memset(&device, 0, sizeof(device));
+	INDIGO_COPY_NAME(device.name, TEST_DEVICE_NAME);
+
+	indigo_property *text = indigo_init_text_property(NULL, TEST_DEVICE_NAME, TEXT_PROPERTY_NAME, "Protocol", "Text Label", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	ASSERT_TRUE(text != NULL);
+	indigo_init_text_item_raw(text->items, TEXT_ITEM_NAME, "Value", script);
+	ASSERT_TRUE(text->items[0].text.long_value != NULL);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_xml_device_adapter_define_property(client, &device, text, NULL));
+	text->items[0].do_update = true;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_xml_device_adapter_update_property(client, &device, text, NULL));
+	indigo_release_property(text);
+
+	close_output_adapter(client, &handle);
+	ASSERT_TRUE(read_file("build/unit/protocol_xml_long_text.tmp", output, 800000));
+
+	assert_contains(output, "<defTextVector");
+	assert_contains(output, "<setTextVector");
+	ASSERT_TRUE(strlen(output) > 2 * (size_t)length);
+	const char *first = strstr(output, "a!</defText>");
+	ASSERT_TRUE(first != NULL);
+	ASSERT_TRUE(strstr(first + 1, "a!</oneText>") != NULL);
+	free(output);
+	free(script);
+}
+
 static void xml_client_adapter_serializes_requests(void) {
 	char output[8192];
 	indigo_uni_handle *handle = indigo_uni_create_file("build/unit/protocol_xml_client_output.tmp", INDIGO_LOG_NONE);
@@ -415,6 +454,7 @@ int main(void) {
 	const indigo_test_case tests[] = {
 		{ "xml_escape_handles_special_characters", xml_escape_handles_special_characters },
 		{ "xml_adapter_serializes_define_update_delete_and_blob_url", xml_adapter_serializes_define_update_delete_and_blob_url },
+		{ "xml_adapter_serializes_whole_long_text_value", xml_adapter_serializes_whole_long_text_value },
 		{ "xml_client_adapter_serializes_requests", xml_client_adapter_serializes_requests },
 		{ "xml_parser_routes_change_and_enable_blob_fixtures", xml_parser_routes_change_and_enable_blob_fixtures },
 		{ "xml_client_adapter_parses_remote_property_events", xml_client_adapter_parses_remote_property_events },

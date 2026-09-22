@@ -1775,14 +1775,20 @@ exit_loop:
 const char *indigo_xml_escape_b(int index, const char *string) {
 	if (strpbrk(string, "&<>\"'")) {
 		static INDIGO_THREAD_LOCAL char escape_buffer[ESCAPE_BUFFER_COUNT][ESCAPE_BUFFER_SIZE];
-		static INDIGO_THREAD_LOCAL char long_escape_buffer[INDIGO_BUFFER_SIZE];
+		static INDIGO_THREAD_LOCAL char *long_escape_buffer = NULL;
+		static INDIGO_THREAD_LOCAL size_t long_escape_buffer_size = 0;
 		char *buffer, *buffer_end;
 		if (index < ESCAPE_BUFFER_COUNT) {
 			buffer = escape_buffer[index];
 			buffer_end = buffer + ESCAPE_BUFFER_SIZE - 6;
 		} else {
+			size_t required_size = 6 * strlen(string) + 1;
+			if (required_size > long_escape_buffer_size) {
+				long_escape_buffer = indigo_safe_realloc(long_escape_buffer, required_size);
+				long_escape_buffer_size = required_size;
+			}
 			buffer = long_escape_buffer;
-			buffer_end = buffer + INDIGO_BUFFER_SIZE - 6;
+			buffer_end = buffer + long_escape_buffer_size - 6;
 		}
 		const char *in = string;
 		char *out = buffer;
