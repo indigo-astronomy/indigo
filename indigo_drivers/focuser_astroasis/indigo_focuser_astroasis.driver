@@ -24,7 +24,7 @@ driver astroasis {
 	label = "Astroasis Oasis Focuser";
 	author = "Frank Chen <frank.chen@astroasis.com>";
 	copyright = "Copyright (C) 2024-2026 Astroasis Vision Technology, Inc.";
-	version = 10;
+	version = 11;
 	supported_architecture = "!defined(__i386__)";
 	include {
 		#include <AOFocus.h>

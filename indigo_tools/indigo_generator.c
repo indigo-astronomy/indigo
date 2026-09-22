@@ -2280,7 +2280,12 @@ void write_c_hotplug_section(void) {
 		if (driver.sdk && driver.sdk->unplug_match) {
 			write_line("\t\t\tprivate_data = PRIVATE_DATA;");
 			write_line("\t\t\tbool unplug_result = private_data->usbdev == dev;");
-			write_line("\t\t\tif (last_action != INDIGO_DRIVER_SHUTDOWN) {");
+			// The match block confirms a removal libusb has not identified; it never vetoes one it
+			// has. Running it unconditionally threw the libusb identity away, and an SDK that goes
+			// on reporting a camera whose handle is still open then refused the removal of a
+			// device that was switched off while connected. No second DEVICE_LEFT event follows,
+			// so the driver kept publishing a device that answered no request. That is QHY2-001.
+			write_line("\t\t\tif (!unplug_result && last_action != INDIGO_DRIVER_SHUTDOWN) {");
 			write_c_code_blocks(driver.sdk->unplug_match, 4, "sdk.unplug_match");
 			write_line("\t\t\t}");
 			write_line("\t\t\tif (unplug_result) {");

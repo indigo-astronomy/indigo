@@ -20,7 +20,7 @@ driver uvc {
 	label = "UVC Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 27;
+	version = 28;
 	multi_device_support = true;
 	supported_architecture = "!defined(INDIGO_WINDOWS)";
 	include {

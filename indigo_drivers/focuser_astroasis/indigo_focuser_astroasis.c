@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_focuser_astroasis"
 #define DRIVER_LABEL         "Astroasis Oasis Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -1079,7 +1079,7 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 			indigo_device *device = devices[j];
 			private_data = PRIVATE_DATA;
 			bool unplug_result = private_data->usbdev == dev;
-			if (last_action != INDIGO_DRIVER_SHUTDOWN) {
+			if (!unplug_result && last_action != INDIGO_DRIVER_SHUTDOWN) {
 				//+ sdk.unplug_match
 				int number = 0, ids[AO_FOCUSER_MAX_NUM] = { 0 };
 				unplug_result = AOFocuserScan(&number, ids) == AO_SUCCESS && number >= 0 && number <= AO_FOCUSER_MAX_NUM;
@@ -1212,7 +1212,7 @@ indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_drive
 #include "indigo_focuser_astroasis.h"
 
 indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, 0x0300000A, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, 0x0300000B, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

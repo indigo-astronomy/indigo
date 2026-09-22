@@ -26,7 +26,7 @@ driver fli {
 	label = "FLI Filter Wheel";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2016-2026 Rumen G. Bogdanovski";
-	version = 11;
+	version = 12;
 	multi_device_support = true;
 	include {
 		#include <libfli.h>

@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_guider_asi"
 #define DRIVER_LABEL         "ZWO ASI USB-St4 Guider"
 #define GUIDER_DEVICE_NAME   "%s"
@@ -510,7 +510,7 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 			indigo_device *device = devices[j];
 			private_data = PRIVATE_DATA;
 			bool unplug_result = private_data->usbdev == dev;
-			if (last_action != INDIGO_DRIVER_SHUTDOWN) {
+			if (!unplug_result && last_action != INDIGO_DRIVER_SHUTDOWN) {
 				//+ sdk.unplug_match
 				int count = asi_get_num();
 				bool complete = count >= 0 && count <= USB2ST4_ID_MAX;
@@ -649,7 +649,7 @@ indigo_result indigo_guider_asi(indigo_driver_action action, indigo_driver_info 
 #include "indigo_guider_asi.h"
 
 indigo_result indigo_guider_asi(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "ZWO ASI USB-St4 Guider", __FUNCTION__, 0x0300000A, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "ZWO ASI USB-St4 Guider", __FUNCTION__, 0x0300000B, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

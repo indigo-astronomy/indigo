@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001B
+#define DRIVER_VERSION       0x0300001C
 #define DRIVER_NAME          "indigo_ccd_uvc"
 #define DRIVER_LABEL         "UVC Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -806,7 +806,7 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 			indigo_device *device = devices[j];
 			private_data = PRIVATE_DATA;
 			bool unplug_result = private_data->usbdev == dev;
-			if (last_action != INDIGO_DRIVER_SHUTDOWN) {
+			if (!unplug_result && last_action != INDIGO_DRIVER_SHUTDOWN) {
 				//+ sdk.unplug_match
 				unplug_result = private_data->dev && uvc_get_bus_number(private_data->dev) == libusb_get_bus_number(dev) && uvc_get_device_address(private_data->dev) == libusb_get_device_address(dev);
 				//- sdk.unplug_match
@@ -943,7 +943,7 @@ indigo_result indigo_ccd_uvc(indigo_driver_action action, indigo_driver_info *in
 #include "indigo_ccd_uvc.h"
 
 indigo_result indigo_ccd_uvc(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "UVC Camera", __FUNCTION__, 0x0300001B, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "UVC Camera", __FUNCTION__, 0x0300001C, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001C
+#define DRIVER_VERSION       0x0300001D
 #define DRIVER_NAME          "indigo_ccd_svb"
 #define DRIVER_LABEL         "SVBONY Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1713,7 +1713,7 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 			indigo_device *device = devices[j];
 			private_data = PRIVATE_DATA;
 			bool unplug_result = private_data->usbdev == dev;
-			if (last_action != INDIGO_DRIVER_SHUTDOWN) {
+			if (!unplug_result && last_action != INDIGO_DRIVER_SHUTDOWN) {
 				//+ sdk.unplug_match
 				SVBGetNumOfConnectedCameras();
 				int count = SVBGetNumOfConnectedCameras();

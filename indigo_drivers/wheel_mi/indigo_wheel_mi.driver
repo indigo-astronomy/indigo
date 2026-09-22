@@ -26,7 +26,7 @@ driver mi {
 	label = "Moravian Instruments SFW";
 	author = "Jakub Smutny <info@gxccd.com>";
 	copyright = "Copyright (c) 2024-2026 Moravian Instruments";
-	version = 6;
+	version = 7;
 	multi_device_support = true;
 	include {
 		#include <ctype.h>

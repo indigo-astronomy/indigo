@@ -24,7 +24,7 @@ driver astroasis {
 	label = "Astroasis Oasis Wheel";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2016-2026 Rumen G. Bogdanovski";
-	version = 5;
+	version = 6;
 	supported_architecture = "!defined(__i386__)";
 	include {
 		#include <OasisFilterWheel.h>

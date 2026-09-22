@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_wheel_astroasis"
 #define DRIVER_LABEL         "Astroasis Oasis Wheel"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -607,7 +607,7 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 			indigo_device *device = devices[j];
 			private_data = PRIVATE_DATA;
 			bool unplug_result = private_data->usbdev == dev;
-			if (last_action != INDIGO_DRIVER_SHUTDOWN) {
+			if (!unplug_result && last_action != INDIGO_DRIVER_SHUTDOWN) {
 				//+ sdk.unplug_match
 				int number = 0, ids[OFW_MAX_NUM] = { 0 };
 				unplug_result = OFWScan(&number, ids) == AO_SUCCESS && number >= 0 && number <= OFW_MAX_NUM;
@@ -739,7 +739,7 @@ indigo_result indigo_wheel_astroasis(indigo_driver_action action, indigo_driver_
 #include "indigo_wheel_astroasis.h"
 
 indigo_result indigo_wheel_astroasis(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "Astroasis Oasis Wheel", __FUNCTION__, 0x03000005, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "Astroasis Oasis Wheel", __FUNCTION__, 0x03000006, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif
