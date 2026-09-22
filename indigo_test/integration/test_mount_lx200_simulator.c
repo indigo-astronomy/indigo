@@ -179,6 +179,24 @@ static bool wait_for_mount_slew_end(void) {
 	return false;
 }
 
+// The master device's coordinates, for fixtures whose property cache follows another device.
+static bool request_mount_coordinates(double ra, double dec) {
+	const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double values[] = { ra, dec };
+	return indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, values) == INDIGO_OK;
+}
+
+static bool wait_for_mount_coordinates_state(indigo_property_state state) {
+	for (int i = 0; i < 300; i++) {
+		if (atomic_load(&mount_coordinates_state) == state) {
+			return true;
+		}
+		indigo_usleep(20000);
+	}
+	fprintf(stderr, "Mount coordinates state %d, expected %d\n", atomic_load(&mount_coordinates_state), state);
+	return false;
+}
+
 static bool lx_coordinates(double ra, double dec, indigo_property_state state) {
 	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
@@ -581,6 +599,9 @@ static void lx200_guider_directions_overlap_and_timing(void) {
 	// A same-axis request replaces the running pulse and reaches the mount; another axis stays
 	// independent. Before overlapping pulses were accepted this block asserted the opposite, that
 	// the Mgs0100 command was never sent, which recorded the request being discarded.
+	// The sampling loop above ends with a pulse of its own, and the command of a pulse that has
+	// not completed yet would be counted as the one this block is about to send.
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 500, INDIGO_BUSY_STATE));
 	int before = event_count(&simulator, "Mgs0100", NULL);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, lx200_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 100));
@@ -807,9 +828,16 @@ static void lx200_nyx_options_and_wifi_failures(void) {
 	bool online = false;
 	SERIAL_CHECK_TRUE(start_profile(&simulator, "nyx", NULL));
 	online = true;
-	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_NYX_LEVELER", "PITCH") - 1.25) < 0.001);
-	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_NYX_LEVELER", "ROLL") - 2.5) < 0.001);
+	// The pitch and roll a NYX-101 reports are signed, so the published range has to admit them.
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_NYX_LEVELER", "PITCH") - 34.5) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_NYX_LEVELER", "ROLL") + 0.7) < 0.001);
 	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_NYX_LEVELER", "COMPASS") - 123.5) < 0.001);
+	indigo_item *pitch = find_cached_item("X_NYX_LEVELER", "PITCH");
+	indigo_item *roll = find_cached_item("X_NYX_LEVELER", "ROLL");
+	SERIAL_CHECK_TRUE(pitch != NULL && roll != NULL);
+	SERIAL_CHECK_TRUE(pitch->number.min < 0 && roll->number.min < 0);
+	SERIAL_CHECK_TRUE(pitch->number.value >= pitch->number.min && pitch->number.value <= pitch->number.max);
+	SERIAL_CHECK_TRUE(roll->number.value >= roll->number.min && roll->number.value <= roll->number.max);
 	const char *ap_items[] = { "AP_SSID", "AP_PASSWORD" };
 	const char *values[] = { "INDIGO", "test-password" };
 	unsigned int revision = property_revision("X_NYX_WIFI_AP");
@@ -1091,6 +1119,162 @@ static void lx200_park_oat(void) {
 
 static void lx200_park_teenastro(void) {
 	check_park_profile(11);
+}
+
+// The value of MOUNT_STATE_PARK_ITEM is the parked state of the mount, not the outcome of the
+// last request, so a successful unpark has to turn the light off in the same update. Found on a
+// NYX-101, where the light stayed on until the next polling cycle corrected it.
+static indigo_property_state cached_light_value(const char *property_name, const char *item_name) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	return item == NULL ? INDIGO_IDLE_STATE : item->light.value;
+}
+
+static void lx200_nyx_park_light_follows_the_mount(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "nyx", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hP", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hR", 0));
+	// The polling callback is a second away, so the light can only be off already if the park
+	// handler published it.
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A NYX-101 refuses :hQ# while it is parked and answers :hP# with 0 when it cannot park. Both
+// replies have to reach the client instead of a park that is published busy and never ends.
+static void lx200_nyx_park_commands_report_refusals(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "nyx", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	// Storing the park position is refused while the mount stands parked on it.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	// Unparked it is accepted, and it stores the position the mount parked at. Both requests
+	// arrive before the next status poll, so the driver has to know it just unparked the mount
+	// rather than wait for the controller to say so.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hQ", 1));
+	// :hF# resets the controller at its home position and leaves it in a cold start standby in
+	// which it refuses to park. The refusal has to end the request, not hang it.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hF", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	// The refusal leaves the property on the state of the mount, not on the rejected value, so
+	// the parked guards of the motion and tracking properties do not lock the client out.
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	// Enabling tracking takes the controller out of standby and the park works again.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A NYX-101 answers :GT# with 0 while tracking is disabled and carries the rate it really uses in
+// the :GU# status instead. A driver that decodes the 0 reports the lunar rate on every session
+// that starts with tracking off.
+static void lx200_nyx_tracking_rate_comes_from_status(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "nyx", NULL));
+	online = true;
+	// The simulator starts not tracking, so :GT# answers 0 during the whole connection.
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, true);
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, false);
+	// Every rate the mount reports in its status has to be published back.
+	const char *items[] = { MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME };
+	const char *commands[] = { "TS", "TL", "TK", "TQ" };
+	for (int i = 0; i < 4; i++) {
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, items[i], true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, commands[i], 0));
+		// MOUNT_UTC_TIME carries the mount clock, so it is published on every polling cycle and
+		// a fresh revision of it means the status has been read again. The coordinates of an
+		// idle mount do not change, and an update that says nothing new is suppressed.
+		unsigned int revision = property_revision(UTC_TIME_PROPERTY_NAME);
+		SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(UTC_TIME_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+		assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, items[i], true);
+	}
+	// A rate the mount changed on its own reaches the client through the status as well.
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GU", "GnNp(#"));
+	for (int i = 0; i < 200 && !find_cached_item(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME)->sw.value; i++) {
+		indigo_usleep(20000);
+	}
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A goto does not stop the mount tracking. The NYX-101 status carries "no goto" and "not
+// tracking" as independent characters, so a slew with tracking on carries neither and a driver
+// that reads them as alternatives publishes tracking off for the whole slew.
+static void lx200_nyx_keeps_tracking_while_slewing(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	int off_samples = 0, samples = 0;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "nyx", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	// MOUNT_STATE carries the light of the property that changed, in the same update.
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME));
+	SERIAL_CHECK_TRUE(lx_coordinates(18.5, 40.5, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", 0));
+	while (find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state == INDIGO_BUSY_STATE && samples < 400) {
+		samples++;
+		if (!find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME)->sw.value) {
+			off_samples++;
+		}
+		indigo_usleep(20000);
+	}
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(samples > 0);
+	SERIAL_CHECK_EQ_INT(0, off_samples);
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A NYX-101 counts a running guide pulse as motion and refuses a goto issued during it. The
+// refusal has to reach the client as an alert with the controller's own message, and the next
+// goto after the pulse has to work.
+static void lx200_nyx_goto_during_a_guide_pulse_is_refused(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_guider, "nyx", NULL));
+	online = true;
+	// Both logical devices share the session: the guider pulses and the mount takes the goto.
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	reset_simulator_context(&lx200_guider);
+	enumerate_simulator_device();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, lx200_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2000));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Mgn2000", 0));
+	// The property cache follows the guider in this fixture, so the state of the master device's
+	// coordinates is read through the shared client observation instead.
+	SERIAL_CHECK_TRUE(request_mount_coordinates(18.5, 40.5) && wait_for_mount_coordinates_state(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(request_mount_coordinates(18.5, 40.5) && wait_for_mount_coordinates_state(INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_mount_slew_end());
+cleanup:
+	// The master was connected too, and a device left connected keeps publishing into the shared
+	// property cache of the next case.
+	if (online) {
+		indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
+		stop_serial_driver(&lx200_guider);
+	}
+	stop_external_serial_simulator(&simulator);
 }
 
 static void lx200_transport_loss_and_fresh_session(void) {
@@ -1619,6 +1803,11 @@ int main(int argc, char **argv) {
 		{ "lx200_disconnect_cancels_pulses_and_reconnects", lx200_disconnect_cancels_pulses_and_reconnects },
 		{ "lx200_zwo_rates_and_buzzer", lx200_zwo_rates_and_buzzer },
 		{ "lx200_nyx_options_and_wifi_failures", lx200_nyx_options_and_wifi_failures },
+		{ "lx200_nyx_park_light_follows_the_mount", lx200_nyx_park_light_follows_the_mount },
+		{ "lx200_nyx_park_commands_report_refusals", lx200_nyx_park_commands_report_refusals },
+		{ "lx200_nyx_tracking_rate_comes_from_status", lx200_nyx_tracking_rate_comes_from_status },
+		{ "lx200_nyx_keeps_tracking_while_slewing", lx200_nyx_keeps_tracking_while_slewing },
+		{ "lx200_nyx_goto_during_a_guide_pulse_is_refused", lx200_nyx_goto_during_a_guide_pulse_is_refused },
 		{ "lx200_initialization_rollback_and_reconnect", lx200_initialization_rollback_and_reconnect },
 		{ "lx200_manual_abort_completes_both_axes", lx200_manual_abort_completes_both_axes },
 		{ "lx200_home_single_item_completes", lx200_home_single_item_completes },

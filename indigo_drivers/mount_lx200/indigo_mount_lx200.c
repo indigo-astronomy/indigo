@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000038
+#define DRIVER_VERSION       0x03000039
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -989,8 +989,9 @@ static bool meade_set_tracking_rate(indigo_device *device) {
 }
 
 static bool meade_get_tracking_rate(indigo_device *device) {
-	// Onstep has it in :GU# response
-	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
+	// Onstep and the NYX have it in the :GU# response. The NYX answers :GT# with 0 while
+	// tracking is disabled, which is not a tracking rate and must not be decoded as one.
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 		if (meade_command(device, ":GT#")) {
 			double rate = atof(PRIVATE_DATA->response);
 			if (rate <= 57.9) {
@@ -1119,7 +1120,13 @@ static bool meade_motion_ra(indigo_device *device) {
 }
 
 static bool meade_park(indigo_device *device) {
-	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
+	// OnStep and the OnStep derived NYX answer :hP# with 0 or 1 and refuse the park in states
+	// the controller cannot leave on its own, for example the standby a :hF# reset puts it in.
+	// The reply has to be read, or a refused park is published busy and never completes.
+	if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value) {
+		return meade_simple_reply_command(device, ":hP#") && *PRIVATE_DATA->response == '1';
+	}
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 		return meade_no_reply_command(device, ":hP#");
 	}
 	if (MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value) {
@@ -1132,6 +1139,16 @@ static bool meade_park(indigo_device *device) {
 		return meade_command(device, ":X362#") && strcmp(PRIVATE_DATA->response, "pB") == 0;
 	}
 	return false;
+}
+
+// Puts MOUNT_PARK back on the state the driver knows the mount is in, for every path that
+// refuses or fails a request after the framework has already copied the requested value.
+static void meade_restore_park_switch(indigo_device *device) {
+	if (MOUNT_PARK_PROPERTY->count == 2) {
+		indigo_set_switch(MOUNT_PARK_PROPERTY, PRIVATE_DATA->parked ? MOUNT_PARK_PARKED_ITEM : MOUNT_PARK_UNPARKED_ITEM, true);
+	} else {
+		MOUNT_PARK_PARKED_ITEM->sw.value = false;
+	}
 }
 
 static bool meade_unpark(indigo_device *device) {
@@ -1147,7 +1164,11 @@ static bool meade_unpark(indigo_device *device) {
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 		return meade_command(device, ":X370#") && strcmp(PRIVATE_DATA->response, "p0") == 0;
 	}
-	if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
+	// OnStep and the NYX answer :hR# with 0 or 1; TeenAstro has no documented reply.
+	if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value) {
+		return meade_simple_reply_command(device, ":hR#") && *PRIVATE_DATA->response == '1';
+	}
+	if (MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 		return meade_no_reply_command(device, ":hR#");
 	}
 	return false;
@@ -1831,10 +1852,33 @@ static void meade_init_nyx_mount(indigo_device *device) {
 
 static void meade_update_nyx_state(indigo_device *device) {
 	if (meade_command(device, ":GU#")) {
+		// 'N' is "no goto" and 'n' is "not tracking". They are independent: a goto with
+		// tracking enabled carries neither, so reading them as alternatives publishes
+		// tracking off for the whole slew.
 		if (strchr(PRIVATE_DATA->response, 'N') == NULL) {
 			PRIVATE_DATA->slewing = true;
-		} else if (strchr(PRIVATE_DATA->response, 'n') == NULL) {
+		}
+		if (strchr(PRIVATE_DATA->response, 'n') == NULL) {
 			PRIVATE_DATA->tracking = true;
+		}
+		// The tracking rate the controller is really using: ( = lunar, O = solar, k = king,
+		// nothing = sidereal. Pier side none is the lowercase 'o', so it cannot be confused
+		// with the solar rate.
+		if (MOUNT_TRACK_RATE_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_item *rate_item;
+			if (strchr(PRIVATE_DATA->response, '(')) {
+				rate_item = MOUNT_TRACK_RATE_LUNAR_ITEM;
+			} else if (strchr(PRIVATE_DATA->response, 'O')) {
+				rate_item = MOUNT_TRACK_RATE_SOLAR_ITEM;
+			} else if (strchr(PRIVATE_DATA->response, 'k')) {
+				rate_item = MOUNT_TRACK_RATE_KING_ITEM;
+			} else {
+				rate_item = MOUNT_TRACK_RATE_SIDEREAL_ITEM;
+			}
+			if (!rate_item->sw.value) {
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, rate_item, true);
+				indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+			}
 		}
 		if (strchr(PRIVATE_DATA->response, 'I')) {
 			PRIVATE_DATA->parking = true;
@@ -2609,6 +2653,10 @@ static void mount_park_handler(indigo_device *device) {
 	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_PARK.on_change
 	if (!((PRIVATE_DATA->park_allowed && MOUNT_PARK_PARKED_ITEM->sw.value) || (PRIVATE_DATA->unpark_allowed && MOUNT_PARK_UNPARKED_ITEM->sw.value))) {
+		// A refused request may not leave the rejected value in the property: the
+		// parked item is what the generated guards of the motion and tracking
+		// properties read, so a client would be locked out until the next poll.
+		meade_restore_park_switch(device);
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		return;
 	}
@@ -2624,21 +2672,28 @@ static void mount_park_handler(indigo_device *device) {
 				MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
 		} else {
+			meade_restore_park_switch(device);
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else if (MOUNT_PARK_UNPARKED_ITEM->sw.value) {
 		if (meade_unpark(device)) {
-			if (MOUNT_TYPE_AP_ITEM->sw.value) {
-				PRIVATE_DATA->parked = false;
-			}
 			if (MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value) {
 				MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+			} else {
+				// The unpark is finished the moment the mount accepts it, so the
+				// cached state has to follow at once. Waiting for the next status
+				// poll leaves a window in which the admission guard below refuses
+				// the next request against a mount it still believes is parked.
+				PRIVATE_DATA->parked = false;
 			}
 		} else {
+			meade_restore_park_switch(device);
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
-	MOUNT_STATE_PARK_ITEM->light.value = MOUNT_PARK_PROPERTY->state;
+	// The light says whether the mount is parked, so a successful unpark turns it off
+	// instead of mirroring the OK state of the request.
+	MOUNT_STATE_PARK_ITEM->light.value = MOUNT_PARK_UNPARKED_ITEM->sw.value && MOUNT_PARK_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_IDLE_STATE : MOUNT_PARK_PROPERTY->state;
 	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	//- mount.MOUNT_PARK.on_change
 	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
@@ -2842,6 +2897,9 @@ static void mount_tracking_handler(indigo_device *device) {
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
 		MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_ALERT_STATE;
 	}
+	// MOUNT_PARK and MOUNT_HOME publish the light they changed; so does this one,
+	// instead of leaving a client with the previous value until the next poll.
+	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	//- mount.MOUNT_TRACKING.on_change
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 }
@@ -2950,8 +3008,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		if (NYX_LEVELER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_number_item(NYX_LEVELER_PITCH_ITEM, NYX_LEVELER_PITCH_ITEM_NAME, "Pitch [°]", 0, 360, 0, 0);
-		indigo_init_number_item(NYX_LEVELER_ROLL_ITEM, NYX_LEVELER_ROLL_ITEM_NAME, "Roll [°]", 0, 360, 0, 0);
+		indigo_init_number_item(NYX_LEVELER_PITCH_ITEM, NYX_LEVELER_PITCH_ITEM_NAME, "Pitch [°]", -180, 180, 0, 0);
+		indigo_init_number_item(NYX_LEVELER_ROLL_ITEM, NYX_LEVELER_ROLL_ITEM_NAME, "Roll [°]", -180, 180, 0, 0);
 		indigo_init_number_item(NYX_LEVELER_COMPASS_ITEM, NYX_LEVELER_COMPASS_ITEM_NAME, "Compass [°]", 0, 360, 0, 0);
 		NYX_LEVELER_PROPERTY->hidden = true;
 		ONSTEP_PREFERRED_PIER_SIDE_PROPERTY = indigo_init_switch_property(NULL, device->name, ONSTEP_PREFERRED_PIER_SIDE_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Meridian flip preferred pier side", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
