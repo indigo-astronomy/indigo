@@ -442,8 +442,9 @@ cleanup:
 }
 
 int main(int argc, char **argv) {
-	if (argc != 2 || (strcmp(argv[1], "--run") && strcmp(argv[1], "--hotplug-only") && strcmp(argv[1], "--active-hotplug-only"))) {
+	if (argc < 2 || argc > 3 || (strcmp(argv[1], "--run") && strcmp(argv[1], "--hotplug-only") && strcmp(argv[1], "--active-hotplug-only"))) {
 		fprintf(stderr, "This test operates physical SSAG/QHY5 hardware. Run with --run, --hotplug-only or --active-hotplug-only.\n");
+		fprintf(stderr, "The hot-plug case asks an operator to pull the cable, so --run leaves it out unless --hotplug follows.\n");
 		return 2;
 	}
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -452,11 +453,15 @@ int main(int argc, char **argv) {
 		const indigo_test_case hotplug_test[] = { { "SSAG physical idle and active hot-plug", physical_hotplug_acceptance } };
 		return indigo_run_tests("SSAG hardware hot-plug", hotplug_test, 1);
 	}
+	// The hot-plug case waits for a person to unplug the cable, so it cannot be part of a run that
+	// nobody is sitting at. Every other camera suite keeps it behind a flag; this one did not, and
+	// a plain --run always ended with a timed out removal.
 	const indigo_test_case tests[] = {
 		{ "SSAG physical camera acceptance", physical_acceptance },
 		{ "SSAG physical idle and active hot-plug", physical_hotplug_acceptance }
 	};
-	int result = indigo_run_tests("SSAG hardware", tests, sizeof(tests) / sizeof(tests[0]));
+	int count = argc == 3 && !strcmp(argv[2], "--hotplug") ? 2 : 1;
+	int result = indigo_run_tests("SSAG hardware", tests, count);
 	for (int i = 0; i < MAX_PROPERTIES; i++) {
 		indigo_release_property(camera.properties[i]);
 		indigo_release_property(guider.properties[i]);

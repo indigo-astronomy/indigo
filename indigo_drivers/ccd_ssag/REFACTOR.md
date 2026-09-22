@@ -112,3 +112,21 @@ property state now owned by the dispatch macro that no longer works, so the hand
 `ra_guiding` / `dec_guiding` flag it already maintains and the two atomics were removed. The
 `ssag_cancel_guide()` call that stops an in-flight pulse on the device is therefore still made
 exactly when a pulse is actually running.
+
+## Hardware run on a QHY5 (2026-09-22)
+
+Non-interactive hardware run on macOS arm64 against a QHY5 (USB `1618:0901`) on a Pegasus Ultimate Powerbox hub. `SSAG physical camera acceptance` passed: discovery of the camera and its guider, connect, seven RAW frames of 1280x1024, and the guider. The driver needed no change.
+
+`make -C indigo_test test-ccd-ssag-hw` ran both of its cases, and the second one asks a person to pull the cable:
+
+```
+    ACTION: unplug the SSAG/QHY5 USB cable while idle
+hardware/test_ccd_ssag_hw.c:409: wait_removal()
+  FAIL SSAG physical idle and active hot-plug
+```
+
+Every other camera suite in this tree keeps that case behind a flag; this one ran it from a plain `--run`, so an unattended run could never finish. The case is now opt-in with `--hotplug`, which `make ... test-ccd-ssag-hw HW_HOTPLUG=1` passes, the same shape the other suites use. `--hotplug-only` and `--active-hotplug-only` are unchanged.
+
+Hot-plug coverage was therefore not established in this run. It needs an operator, or a host that can switch the camera's USB port: the camera hangs on the Powerbox hub, whose port power is switchable through libusb but invisible to the host's hub driver on macOS (see `indigo_drivers/ccd_atik/REFACTOR.md`).
+
+Results: `build/integration/test_ccd_ssag_usb` 13/13, `make -C indigo_test test-ccd-ssag-hw` 1/1.

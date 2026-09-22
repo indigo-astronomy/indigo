@@ -1571,7 +1571,7 @@ $(INTEGRATION_BUILD)/test_ccd_ssag_usb_sanitize: integration/test_ccd_ssag_usb.c
 	$(CC) $(SSAG_SANITIZE_CFLAGS) $< $(INTEGRATION_BUILD)/ccd_ssag_usb_driver_sanitize.o -o $@ $(SSAG_SANITIZE_LDFLAGS)
 
 test-ccd-ssag-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_ssag_hw
-	$(TEST_BUILD)/hardware/test_ccd_ssag_hw --run
+	$(TEST_BUILD)/hardware/test_ccd_ssag_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug)
 
 SSAG_HW_TEST_REPLACEMENTS = -Dlibusb_hotplug_register_callback=ssag_hw_register -Dlibusb_hotplug_register_callback_sim=ssag_hw_register_sim -Dlibusb_hotplug_deregister_callback=ssag_hw_deregister -Dlibusb_hotplug_deregister_callback_poll=ssag_hw_deregister_poll
 
