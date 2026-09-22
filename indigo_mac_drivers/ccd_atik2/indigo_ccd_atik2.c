@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_ccd_atik2"
 #define DRIVER_LABEL         "Atik (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -57,6 +57,7 @@
 
 //+ define
 
+#define ATIK2_MAX_TEMPERATURE_STEP 50
 #define ATIK2_READOUT_TIMEOUT 120
 #define ATIK2_WHEEL_TIMEOUT  60
 
@@ -104,6 +105,19 @@ static void atik2_close(indigo_device *device) {
 	PRIVATE_DATA->device_context = NULL;
 }
 
+// A reply read from data the camera left in the port after an image readout can still decode
+// to a finite temperature inside the range the property advertises. The sensor is polled
+// every five seconds and no camera moves fifty degrees in that time, while the desynchronized
+// replies measured on an 11000 jumped by more than seventy, so such a step identifies a reply
+// that is not a measurement. The first reading of a session has no predecessor and is taken
+// on a port that no readout has disturbed yet.
+static bool atik2_temperature_valid(indigo_device *device, double temperature, bool compare) {
+	if (!isfinite(temperature) || temperature < CCD_TEMPERATURE_ITEM->number.min || temperature > CCD_TEMPERATURE_ITEM->number.max) {
+		return false;
+	}
+	return !compare || fabs(temperature - PRIVATE_DATA->current_temperature) <= ATIK2_MAX_TEMPERATURE_STEP;
+}
+
 static bool atik2_initialize_ccd(indigo_device *device) {
 	libatik_device_context *context = PRIVATE_DATA->device_context;
 	if (!context || context->width <= 0 || context->height <= 0 || !isfinite(context->pixel_width) || !isfinite(context->pixel_height) || context->pixel_width <= 0 || context->pixel_height <= 0 || !isfinite(context->min_exposure) || context->min_exposure <= 0 || context->max_bin_hor < 1 || context->max_bin_vert < 1 || context->max_bin_hor > context->width || context->max_bin_vert > context->height || (size_t)context->width > (SIZE_MAX - FITS_HEADER_SIZE) / 2 / context->height) {
@@ -137,7 +151,7 @@ static bool atik2_initialize_ccd(indigo_device *device) {
 	CCD_TEMPERATURE_PROPERTY->hidden = CCD_COOLER_PROPERTY->hidden = CCD_COOLER_POWER_PROPERTY->hidden = !context->has_cooler;
 	if (context->has_cooler) {
 		bool status = false;
-		if (!libatik_check_cooler(context, &status, &PRIVATE_DATA->cooler_power, &PRIVATE_DATA->current_temperature) || !isfinite(PRIVATE_DATA->cooler_power) || PRIVATE_DATA->cooler_power < 0 || PRIVATE_DATA->cooler_power > 100 || !isfinite(PRIVATE_DATA->current_temperature)) {
+		if (!libatik_check_cooler(context, &status, &PRIVATE_DATA->cooler_power, &PRIVATE_DATA->current_temperature) || !isfinite(PRIVATE_DATA->cooler_power) || PRIVATE_DATA->cooler_power < 0 || PRIVATE_DATA->cooler_power > 100 || !atik2_temperature_valid(device, PRIVATE_DATA->current_temperature, false)) {
 			return false;
 		}
 		indigo_set_switch(CCD_COOLER_PROPERTY, status ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
@@ -251,7 +265,7 @@ static void ccd_timer_callback(indigo_device *device) {
 	if (!CCD_TEMPERATURE_PROPERTY->hidden) {
 		bool status = false;
 		double power = 0, temperature = 0;
-		if (libatik_check_cooler(PRIVATE_DATA->device_context, &status, &power, &temperature) && isfinite(power) && power >= 0 && power <= 100 && isfinite(temperature)) {
+		if (libatik_check_cooler(PRIVATE_DATA->device_context, &status, &power, &temperature) && isfinite(power) && power >= 0 && power <= 100 && atik2_temperature_valid(device, temperature, true)) {
 			PRIVATE_DATA->cooler_power = power;
 			PRIVATE_DATA->current_temperature = temperature;
 			CCD_TEMPERATURE_ITEM->number.value = round(temperature * 10) / 10;

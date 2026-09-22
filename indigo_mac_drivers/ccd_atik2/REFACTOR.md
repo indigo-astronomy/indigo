@@ -138,3 +138,95 @@ The device pointer is valid and `CONNECTION_PROPERTY` is not, so a connection ha
 ### Hot-plug not established
 
 Not covered, for the reason recorded in `indigo_drivers/ccd_atik/REFACTOR.md`: switching a Powerbox hub port is invisible to the host's hub driver on macOS, so no disconnect reaches the driver.
+
+## Atik 11000 hardware run (2026-09-22)
+
+Non-interactive hardware run on macOS arm64 against an Atik 11000 (`Atik LF`, USB `04b4:df28`),
+the first cooled camera this driver has been run against. Driver version 3.0.0.15, libatik rebuilt
+from source. **Result: 1/0 Failed** - the run is recorded as failed and the remaining defect is
+described below rather than worked around.
+
+### Defect 5: the driver published 20760 C (libatik fix plus driver validation)
+
+The cooling scenario reported `Cooling from 20760.30 to 20757.30 C`. The value was not a driver
+artefact: `libatik_check_cooler()` itself returned it, with `true`. Reproduced outside INDIGO with a
+probe over the library:
+
+```
+pass 0 before: status 0 power 0.000 temperature 20.323
+pass 0 after 0: ok 1 status 1 power 35.000 temperature 6156.452
+pass 1 after 0: ok 1 status 1 power 33.000 temperature 6648.064
+pass 2 after 0: ok 1 status 0 power 37.000 temperature 19851.936
+pass 2 after 1: ok 1 status 0 power 0.000 temperature 19851.936
+```
+
+Root cause, from a trace of the library's own reads: after an image readout the camera is still
+clocking pixels into the parallel port, so the reply to the next command is read from that leftover
+pixel data. Once that has happened the status and sensor replies stay swapped - 19851.936 C is the
+cooling status reply `00 1f f1 00` decoded as a sensor value - and every later poll repeats it. The
+driver polls only between exposures, so with the test taking an exposure every twenty-odd seconds
+every published sample was a corrupted one, which is why the value stood for minutes.
+
+Two fixes, in two places:
+
+- **libatik** (separate repository, commit `lf: never report a fabricated cooler reading`): the
+  sensor read ignored its own return value and decoded an uninitialized buffer, in the LF and the
+  IC24 path alike, so a failed read became a measurement. `lf_check_cooler()` now validates the
+  reply against facts the protocol fixes - the sensor is a ten bit converter, and the cooler cannot
+  report a level above the maximum the camera advertised at open - discards what the port holds and
+  retries once, and returns false rather than a fabricated value. `round_power()` clamped its low
+  end but not its high one and could return 305%. Verified on this camera over five consecutive
+  full frame exposures with four status reads each, and over 2000x1000 and 128x128 subframes and
+  2x2 binning: every reply correct. The library was rebuilt for macOS (universal) and for Linux
+  x64, x86, arm64 and armv6 through Docker; the armv6 build was checked to carry the same
+  `Tag_CPU_arch v6` / VFP ABI attributes as the archive it replaces.
+- **this driver** (version 14 to 15): `libatik_check_cooler()` can still hand back a value that is
+  finite and inside the advertised range. The driver validated only `isfinite()`. It now rejects a
+  reading outside `CCD_TEMPERATURE`'s own range, and one that moves more than
+  `ATIK2_MAX_TEMPERATURE_STEP` (50 C) between two five-second polls - no sensor does that, while
+  the desynchronized replies measured here jumped by more than seventy degrees. The last good
+  measurement is kept and the property goes `INDIGO_ALERT_STATE`.
+
+Regression: `implausible_temperature_is_not_published` in
+`indigo_test/integration/test_ccd_atik2_sdk.c` drives 20760.3 C, -60 C, +51 C and a -50 C step
+through the fake SDK and requires each to be refused with the previous measurement kept, a real
+0.5 C change to be published, and a camera that reports an impossible temperature at connect time
+to fail the connection. Verified to fail against the unfixed driver
+(`device 0 property CCD_TEMPERATURE: expected 3, got 1`) and to pass with the fix.
+
+### Defect 6: the cooler is unreadable after a 4x4 binned frame - OPEN
+
+This is why the run is recorded as failed. On this model the sensor width, 4007, is not a multiple
+of four, and after a 4x4 binned frame the parallel port stays desynchronized: the library's resync
+does not recover it and every later `libatik_check_cooler()` fails until the camera is reconnected.
+The suite's `geometry` scenario exercises every `CCD_MODE`, so by the time `cooling` runs the
+property is `INDIGO_ALERT_STATE` and the scenario fails on it:
+
+```
+Measured 22.90 C, target 19.90 C, range -50.00 to 50.00 C, state 3
+hardware/test_ccd_atik_hw.c:533: !failed
+```
+
+Run on its own, after a power cycle, the cooling scenario passes and cools the camera from 23.20 C
+to the 20.20 C it was asked for. Everything before `cooling` in the full run passes: exposures from
+0.001 to 16.5 seconds at 4007x2671, every frame type, the ROI and all three binning modes, both
+read modes.
+
+The remaining fault is in libatik's LF frame transfer, not in this driver. What is established:
+the camera sends one row more than the region holds, exactly `2 * width` bytes for a full frame,
+measured repeatedly; consuming that row makes a full frame perfectly clean. It is not a general
+fix - a 2000-wide subframe then leaves a single byte, 4x4 binning leaves considerably more, and
+asking the camera for one row less loses the last real row of the image, which was caught by
+comparing row means against the original library. Draining the port until its timeout resynchronizes
+it but wedges the camera when done repeatedly, twice requiring a power cycle. Closing this needs the
+Atik LF protocol documentation rather than more black-box measurement, so it is left open and the
+driver reports the readback as unavailable instead of publishing a wrong number.
+
+Hardware note: the camera is powered through a Pegasus Ultimate Powerbox v1.7 12 V outlet 2, so it
+can be power cycled from the host, which this investigation needed several times.
+
+Physical hot-plug was not part of this run and no hot-plug coverage is established by it.
+
+### Test totals for this run
+
+Simulated (fake SDK) tests run 25, passed 25. Hardware tests run 1, passed 0.

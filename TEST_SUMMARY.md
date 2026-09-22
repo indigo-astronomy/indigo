@@ -45,6 +45,8 @@
 | ccd_atik2 | 2026-09-22 09:48 | 3.0.0.14 | mac arm64 | Atik VS | 1 / 1 | ✅ OK |
 | ccd_atik2 | 2026-09-22 09:51 | 3.0.0.14 | mac arm64 | Atik Titan | 1 / 1 | ✅ OK |
 | ccd_atik2 | 2026-09-22 09:56 | 3.0.0.14 | mac arm64 | fake SDK | 24 / 24 | ✅ OK |
+| ccd_atik2 | 2026-09-22 17:05 | 3.0.0.15 | mac arm64 | fake SDK | 25 / 25 | ✅ OK |
+| ccd_atik2 | 2026-09-22 17:22 | 3.0.0.15 | mac arm64 | Atik 11000 | 1 / 0 | ❌ Failed |
 | ccd_baccam | 2026-09-21 13:53 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_bresser | 2026-09-21 13:55 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_fli | 2026-09-21 12:45 | 3.0.0.12 | mac arm64 | fake SDK | 22 / 22 | ✅ OK |

@@ -34,6 +34,9 @@
 // exposure of this suite plus that overhead, and a disconnect has to outlast a readout in flight.
 #define WAIT_STATE_TICKS 30000
 #define DISCONNECT_TICKS 18000
+// A large-format thermoelectric cooler needs several minutes for the three degrees this suite asks
+// for: an 11000 moves about two degrees in the first two minutes.
+#define COOLING_TICKS 6000
 #define CHECK(condition) do { if (!(condition)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #condition); indigo_test_failures++; goto cleanup; } } while (0)
 
 typedef struct {
@@ -509,11 +512,12 @@ static void hardware_workflows(void) {
 			CHECK(cooler != NULL && temperature != NULL && temperature->perm == INDIGO_RW_PERM);
 			double initial = temperature->items[0].number.value;
 			double target = initial - 3;
+			printf("Measured %.2f C, target %.2f C, range %.2f to %.2f C, state %d\n", initial, target, temperature->items[0].number.min, temperature->items[0].number.max, temperature->state);
 			CHECK(target >= temperature->items[0].number.min);
 			printf("Cooling from %.2f to %.2f C\n", initial, target);
 			CHECK(number_value(camera, "CCD_TEMPERATURE", "TEMPERATURE", target, INDIGO_BUSY_STATE));
 			bool settled = false, power_seen = false;
-			for (int i = 0; i < 1200; i++) {
+			for (int i = 0; i < COOLING_TICKS; i++) {
 				indigo_property *current = snapshot(camera, "CCD_TEMPERATURE");
 				indigo_property *power = snapshot(camera, "CCD_COOLER_POWER");
 				bool failed = !current || !power || current->state == INDIGO_ALERT_STATE || power->state == INDIGO_ALERT_STATE;

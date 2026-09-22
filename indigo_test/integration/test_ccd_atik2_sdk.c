@@ -832,6 +832,41 @@ static void countdown_with_occupied_queue(void) {
 	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
 }
 
+// An Atik 11000 leaves data in the parallel port after an image readout, and libatik used to decode
+// that leftover as a cooling reply and report it as a measurement. The values it produced reached
+// 20760 C, but also landed inside the range CCD_TEMPERATURE advertises, at exactly -50 C. Neither
+// may be published: the driver keeps the last measurement and marks the property ALERT instead.
+static void implausible_temperature_is_not_published(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(wait_state(0, "CCD_TEMPERATURE", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(12, (int)value(0, "CCD_TEMPERATURE", "TEMPERATURE"));
+	// Out of the advertised range altogether.
+	const double outside[] = { 20760.3, -60.0, 51.0 };
+	for (int i = 0; i < ARRAY_SIZE(outside); i++) {
+		cameras[0].temperature = outside[i];
+		ASSERT_TRUE(wait_state(0, "CCD_TEMPERATURE", INDIGO_ALERT_STATE));
+		ASSERT_EQ_INT(12, (int)value(0, "CCD_TEMPERATURE", "TEMPERATURE"));
+		cameras[0].temperature = 12;
+		ASSERT_TRUE(wait_state(0, "CCD_TEMPERATURE", INDIGO_OK_STATE));
+	}
+	// Inside the advertised range, but a step no sensor makes between two five second polls.
+	cameras[0].temperature = -50;
+	ASSERT_TRUE(wait_state(0, "CCD_TEMPERATURE", INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(12, (int)value(0, "CCD_TEMPERATURE", "TEMPERATURE"));
+	// A change the sensor can really make is still published.
+	cameras[0].temperature = 11.5;
+	ASSERT_TRUE(wait_state(0, "CCD_TEMPERATURE", INDIGO_OK_STATE));
+	ASSERT_TRUE(fabs(value(0, "CCD_TEMPERATURE", "TEMPERATURE") - 11.5) < .001);
+	cameras[0].temperature = 12;
+	ASSERT_TRUE(wait_state(0, "CCD_TEMPERATURE", INDIGO_OK_STATE));
+	// A camera that reports an impossible temperature at connect time is not usable at all.
+	ASSERT_TRUE(connect_device(0, false));
+	cameras[0].temperature = -60;
+	ASSERT_TRUE(request_switch(0, "CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
+	cameras[0].temperature = 12;
+	ASSERT_TRUE(connect_device(0, true));
+}
+
 static void cooling_and_polling(void) {
 	ASSERT_TRUE(connect_device(0, true));
 	ASSERT_TRUE(request_number(0, "CCD_TEMPERATURE", "TEMPERATURE", -10.5, INDIGO_BUSY_STATE));
@@ -1167,6 +1202,7 @@ int main(int argc, char **argv) {
 		{ "readout_disconnect_and_removal", readout_disconnect_and_removal },
 		{ "countdown_with_occupied_queue", countdown_with_occupied_queue },
 		{ "cooling_and_polling", cooling_and_polling },
+		{ "implausible_temperature_is_not_published", implausible_temperature_is_not_published },
 		{ "cooling_failures_and_exclusion", cooling_failures_and_exclusion },
 		{ "guider_operations", guider_operations },
 		{ "guider_failures_and_disconnect", guider_failures_and_disconnect },
