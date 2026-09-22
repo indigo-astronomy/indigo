@@ -482,6 +482,14 @@ INDIGO_EXTERN void indigo_cancel_pending_handlers(indigo_device *device);
  */
 INDIGO_EXTERN void indigo_cancel_pending_handler(indigo_device *device, indigo_timer_callback callback);
 
+/** Keep the shared library containing the given address loaded for the lifetime of the process.
+    A vendor SDK that leaves a thread of its own running after its documented shutdown call makes
+    that thread execute unmapped code once the driver is unloaded, which no driver can prevent by
+    sequencing. Pinning the SDK library from the driver's initialization keeps its code mapped.
+    Pass the address of an SDK function, for example indigo_pin_library((void *)SDKShutdown).
+ */
+INDIGO_EXTERN bool indigo_pin_library(const void *address);
+
 #ifdef __cplusplus
 }
 #endif

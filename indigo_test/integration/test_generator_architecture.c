@@ -578,6 +578,34 @@ static void multi_device_support_is_opt_in_and_survives_extraction(void) {
 	ASSERT_TRUE(strstr(generated, "DRIVER_VERSION, false, last_action") != NULL);
 }
 
+// A hot-plug driver holds one slot per logical device, so a camera that also exposes a guider and
+// a filter wheel consumes three. Five is enough for one such camera and refuses the third of three
+// Atik cameras, which is why the capacity is an attribute rather than a constant.
+static void max_devices_defaults_to_five_and_survives_extraction(void) {
+	const char *definition = "driver architecture_test {\nlabel = \"Device capacity\";\nauthor = \"INDIGO tests\";\ncopyright = \"INDIGO tests\";\nversion = 1;\nmax_devices = 12;\nlibusb { vid = 0x1618; }\naux { name = \"Device\"; }\n}\n";
+	ASSERT_TRUE(write_text(DEFINITION, definition));
+	char *generate_arguments[] = { TEST_GENERATOR, DEFINITION, NULL };
+	ASSERT_TRUE(run(generate_arguments));
+	char generated[65536];
+	ASSERT_TRUE(read_text(GENERATED, generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "#define MAX_DEVICES          12") != NULL);
+	char *extract_arguments[] = { TEST_GENERATOR, "-c", DEFINITION, NULL };
+	ASSERT_TRUE(run(extract_arguments));
+	ASSERT_TRUE(read_text(DEFINITION, generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "max_devices = 12;") != NULL);
+	ASSERT_TRUE(run(generate_arguments));
+	ASSERT_TRUE(read_text(GENERATED, generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "#define MAX_DEVICES          12") != NULL);
+	// Without the attribute the generated capacity stays five and extraction adds no attribute.
+	ASSERT_TRUE(write_text(DEFINITION, "driver architecture_test { label = \"Default capacity\"; libusb { vid = 0x1618; } aux { name = \"Device\"; } }\n"));
+	ASSERT_TRUE(run(generate_arguments));
+	ASSERT_TRUE(read_text(GENERATED, generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "#define MAX_DEVICES          5") != NULL);
+	ASSERT_TRUE(run(extract_arguments));
+	ASSERT_TRUE(read_text(DEFINITION, generated, sizeof(generated)));
+	ASSERT_TRUE(strstr(generated, "max_devices") == NULL);
+}
+
 static void virtual_connection_result_controls_completion(void) {
 	const char *definition = "driver architecture_test {\nlabel = \"Fallible virtual connection\";\nauthor = \"INDIGO tests\";\ncopyright = \"INDIGO tests\";\nversion = 1;\naux { name = \"Virtual device\"; on_connect { connection_result = false; } }\n}\n";
 	ASSERT_TRUE(write_text(DEFINITION, definition));
@@ -704,6 +732,7 @@ int main(void) {
 		{ "Virtual and serial children detach before their master", virtual_and_serial_children_detach_before_master },
 		{ "Repeated device classes use unique ids and survive extraction", repeated_device_classes_use_unique_ids },
 		{ "Multi-device metadata is opt-in and survives extraction", multi_device_support_is_opt_in_and_survives_extraction },
+		{ "Device capacity defaults to five and survives extraction", max_devices_defaults_to_five_and_survives_extraction },
 		{ "Virtual connection_result controls success and preserves legacy output", virtual_connection_result_controls_completion },
 		{ "SDK startup discovery without hot-plug", sdk_startup_discovery_without_hotplug },
 		{ "C++ output selection, C linkage, extraction and unchanged C default", cpp_output_selection_and_extraction },

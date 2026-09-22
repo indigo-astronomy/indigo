@@ -111,7 +111,7 @@ typedef struct definition_type {
 
 typedef struct driver_type {
 	char name[64], label[256], author[256], copyright[256], supported_architecture[256];
-	int version;
+	int version, max_devices;
 	bool virtual, cpp, multi_device_support;
 	license_type license;
 	definition_type *definions;
@@ -1114,6 +1114,12 @@ bool parse_driver_block(void) {
 		if (parse_int_attribute("version", &driver.version)) {
 			continue;
 		}
+		if (parse_int_attribute("max_devices", &driver.max_devices)) {
+			if (driver.max_devices < 1) {
+				report_error("max_devices must be at least 1");
+			}
+			continue;
+		}
 		if (parse_serial_block(&driver)) {
 			continue;
 		}
@@ -1456,7 +1462,10 @@ void write_c_define_section(void) {
 		write_line("#define %-20s %s", device->handle, device->name);
 	}
 	if (driver.libusb || driver.sdk) {
-		write_line("#define %-20s 5", "MAX_DEVICES");
+		// One slave logical device of a camera - a guider or a filter wheel - takes a slot of its
+		// own, so a driver whose devices expose more than themselves runs out well before it has
+		// seen MAX_DEVICES cameras. Raise it per driver rather than for every generated driver.
+		write_line("#define %-20s %d", "MAX_DEVICES", driver.max_devices > 0 ? driver.max_devices : 5);
 	}
 	write_line("#define %-20s ((%s_private_data *)device->private_data)", "PRIVATE_DATA", driver.name);
 	if (driver.definions) {
@@ -2841,6 +2850,9 @@ void read_c_source(void) {
 			strncpy(driver.name, s1, sizeof(driver.name));
 		} else if (sscanf(line, "#define DRIVER_LABEL \"%127[^\"]\"", s1) == 1) {
 			strncpy(driver.label, s1, sizeof(driver.label));
+		} else if (sscanf(line, "#define MAX_DEVICES %d", &i1) == 1) {
+			// The generated default carries no attribute back into the extracted source.
+			driver.max_devices = i1 == 5 ? 0 : i1;
 		} else if (sscanf(line, "#define %127[^_]_DEVICE_NAME \"%127[^\"]\"", s1, s2) == 2) {
 			make_lower_case(s1);
 			device = get_device(s1);
@@ -3110,6 +3122,9 @@ void write_definition_source(void) {
 	}
 	if (driver.multi_device_support) {
 		write_line("\tmulti_device_support = true;");
+	}
+	if (driver.max_devices > 0) {
+		write_line("\tmax_devices = %d;", driver.max_devices);
 	}
 	if (*driver.supported_architecture) {
 		write_line("\tsupported_architecture = \"%s\";", driver.supported_architecture);

@@ -38,9 +38,11 @@
 #include <sys/types.h>
 
 #if defined(INDIGO_MACOS)
+#include <dlfcn.h>
 #include <IOKit/IOKitLib.h>
 #include <IOKit/serial/IOSerialKeys.h>
 #elif defined(INDIGO_LINUX)
+#include <dlfcn.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -1294,6 +1296,34 @@ void indigo_start_usb_event_handler() {
 		indigo_async(indigo_usb_hotplug_thread, NULL);
 		thread_started = true;
 	}
+}
+
+bool indigo_pin_library(const void *address) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	Dl_info info;
+	if (!dladdr(address, &info) || !info.dli_fname) {
+		INDIGO_ERROR(indigo_error("Can't locate the shared library to pin"));
+		return false;
+	}
+	// RTLD_NODELETE marks the library as never unloaded; the extra reference is intentionally
+	// leaked, because releasing it would restore exactly the unload this call exists to prevent.
+	if (dlopen(info.dli_fname, RTLD_LAZY | RTLD_NOLOAD | RTLD_NODELETE) == NULL) {
+		INDIGO_ERROR(indigo_error("Can't pin %s (%s)", info.dli_fname, dlerror()));
+		return false;
+	}
+	INDIGO_DEBUG(indigo_debug("Pinned %s", info.dli_fname));
+	return true;
+#elif defined(INDIGO_WINDOWS)
+	HMODULE module = NULL;
+	if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN, (LPCSTR)address, &module)) {
+		INDIGO_ERROR(indigo_error("Can't pin the shared library (%s)", indigo_last_windows_error()));
+		return false;
+	}
+	return true;
+#else
+#pragma message ("TODO: indigo_pin_library()")
+	return false;
+#endif
 }
 
 void indigo_timetoisogm(time_t tstamp, char* isotime, int isotime_len) {

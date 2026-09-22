@@ -28,6 +28,7 @@ driver <name> {
     copyright = "Copyright notice";
     version = <integer>;
 	multi_device_support = true; // optional; default false
+	max_devices = 16;            // optional; default 5, hot-plug drivers only
     serial;          // or libusb { ... }, hid { ... }, or sdk { ... }
 
     define { /* #define constants */ }
@@ -145,6 +146,8 @@ ccd {
 The device type continues to select the base header and `indigo_ccd_*` lifecycle API. The `id` is used only for generated C symbols, code-block namespaces, templates and logical-device pointers. Omitting it retains the historical type-based names. Device ids must be unique within a driver and must precede properties and code blocks. Reverse extraction preserves explicit ids.
 
 Drivers that intentionally support more than one logical or physical device can opt into the corresponding `indigo_driver_info` metadata flag with `multi_device_support = true` at driver scope. The default is `false`, so omitting the attribute preserves historical generated output. The setting affects both the normal entry point and an unsupported-architecture metadata fallback, and reverse extraction preserves an enabled setting.
+
+A hot-plug driver - one with a `libusb`, `hid` or `sdk` block - keeps its logical devices in an array of `MAX_DEVICES` entries, which the generator emits as 5 by default. Every logical device takes one entry, so a camera that also publishes a guider and a filter wheel uses three, and five entries are exhausted by two such cameras: the third Atik camera of a three-camera setup was refused for exactly that reason. Raise the capacity for such a driver with `max_devices = <n>` at driver scope. Reverse extraction emits the attribute only when the generated capacity differs from the default, so an unchanged driver keeps its historical output.
 
 Running the generator with a `.driver` file produces:
 
