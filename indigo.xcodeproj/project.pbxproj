@@ -5658,6 +5658,7 @@
 		C0DE20260921F00000000004 /* test_aux_rts_shutter.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_rts_shutter.c; sourceTree = "<group>"; };
 		C0DE20260922120000000001 /* test_focuser_focusdreampro_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_focusdreampro_hw.c; sourceTree = "<group>"; };
 		C0DE20260922120000000002 /* test_gps_nmea_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_nmea_hw.c; sourceTree = "<group>"; };
+		C0DE20260922220000000001 /* test_mount_lx200_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_lx200_hw.c; sourceTree = "<group>"; };
 		C0DE20260922120000000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260922190000000001 /* powerbox_hotplug_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = powerbox_hotplug_test_common.h; sourceTree = "<group>"; };
 		C0DE20270913000400000001 /* indigo_focuser_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_lunatico.driver; sourceTree = "<group>"; };
@@ -14606,6 +14607,7 @@
 				C0DE20260921230000000006 /* test_focuser_usbv3_hw.c */,
 				C0DE20260922120000000001 /* test_focuser_focusdreampro_hw.c */,
 				C0DE20260922120000000002 /* test_gps_nmea_hw.c */,
+				C0DE20260922220000000001 /* test_mount_lx200_hw.c */,
 				C0DE20260921230000000005 /* test_guider_cgusbst4_hw.c */,
 				C0DE20260921230000000004 /* test_focuser_fcusb_hw.c */,
 				C0DE20260921230000000003 /* test_aux_dsusb_hw.c */,

@@ -2518,3 +2518,19 @@ FOCUSER_FOCUSDREAMPRO_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_focusdre
 
 $(TEST_BUILD)/hardware/test_focuser_focusdreampro_hw: hardware/test_focuser_focusdreampro_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_focusdreampro.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_FOCUSDREAMPRO_HW_TEST_LDFLAGS)
+
+# A physically connected LX200 protocol mount is opt-in and excluded from normal integration tests.
+# THE MOUNT MOVES: every slew is a few degrees from the pointing the scenario starts at, and the
+# run restores the tracking and parked state it found. Nothing persistent in the controller is
+# overwritten: MOUNT_PARK_SET and MOUNT_HOME_SET are issued only while the mount already stands on
+# the position they store, and the NYX WiFi credentials are read but never written. Set
+# MOUNT_LX200_HW_PORT to override the port the driver matched through its own USB descriptor
+# pattern, or to an lx200://host:port URL.
+.PHONY: test-mount-lx200-hw
+test-mount-lx200-hw: check-lib $(TEST_BUILD)/hardware/test_mount_lx200_hw
+	$(TEST_BUILD)/hardware/test_mount_lx200_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+MOUNT_LX200_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_lx200.a $(TEST_LDFLAGS) -lindigocat
+
+$(TEST_BUILD)/hardware/test_mount_lx200_hw: hardware/test_mount_lx200_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_lx200.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(MOUNT_LX200_HW_TEST_LDFLAGS)
