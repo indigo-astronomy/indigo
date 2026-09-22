@@ -35,10 +35,12 @@
 | ccd_asi | 2026-09-21 21:17 | 3.0.0.65 | mac arm64 | ASI294MC Pro | 28 / 28 | ✅ OK |
 | ccd_asi | 2026-09-21 21:20 | 3.0.0.65 | mac arm64 | ASI120MC-S | 28 / 28 | ✅ OK |
 | ccd_asi | 2026-09-21 12:39 | 3.0.0.65 | mac arm64 | fake SDK | 51 / 51 | ✅ OK |
-| ccd_atik | 2026-09-22 09:05 | 3.0.0.44 | mac arm64 | fake SDK | 42 / 42 | ✅ OK |
 | ccd_atik | 2026-09-22 10:06 | 3.0.0.44 | mac arm64 | Atik One | 1 / 1 | ✅ OK |
 | ccd_atik | 2026-09-22 10:08 | 3.0.0.44 | mac arm64 | ArtemisCCD VS | 1 / 1 | ✅ OK |
 | ccd_atik | 2026-09-22 10:09 | 3.0.0.44 | mac arm64 | Atik Titan | 1 / 1 | ✅ OK |
+| ccd_atik | 2026-09-22 13:22 | 3.0.0.44 | mac arm64 | Atik Horizon | 1 / 1 | ✅ OK |
+| ccd_atik | 2026-09-22 14:05 | 3.0.0.45 | mac arm64 | fake SDK | 43 / 43 | ✅ OK |
+| ccd_atik | 2026-09-22 14:31 | 3.0.0.45 | mac arm64 | Atik 11000 | 1 / 1 | ✅ OK |
 | ccd_atik2 | 2026-09-22 09:45 | 3.0.0.14 | mac arm64 | Atik One | 1 / 1 | ✅ OK |
 | ccd_atik2 | 2026-09-22 09:48 | 3.0.0.14 | mac arm64 | Atik VS | 1 / 1 | ✅ OK |
 | ccd_atik2 | 2026-09-22 09:51 | 3.0.0.14 | mac arm64 | Atik Titan | 1 / 1 | ✅ OK |

@@ -41,6 +41,7 @@ typedef struct {
 	atomic_int preview, dark, slot_count, moving, malformed, short_option, ready_stuck, flushing;
 	atomic_int sensor_width, sensor_height, bx, by, left, top, width, height, preset, gain, offset, heater_power, temperature, target, relay, slot, wheel_target;
 	atomic_int opens, closes, starts, stops, dark_calls, wheel_wrap_reads, abort_readout_ms, drain_checks, temperature_in_drain;
+	atomic_int cooling_level, cooling_min, cooling_max;
 	double exposure, end, drain_end;
 	uint16_t *pixels;
 	size_t pixel_count;
@@ -301,6 +302,29 @@ static bool wait_state(int index, const char *name, int expected) {
 		indigo_usleep(10000);
 	}
 	fprintf(stderr, "device %d property %s: expected state %d, got %d\n", index, name, expected, state(index, name));
+	return false;
+}
+
+static bool wait_value(int index, const char *name, const char *item, double expected) {
+	double last = -99999;
+	for (int i = 0; i < 400; i++) {
+		pthread_mutex_lock(&observation_mutex);
+		int slot = property_index(index, name, false);
+		if (slot >= 0) {
+			indigo_property *property = observed[index].properties[slot];
+			for (int j = 0; j < property->count; j++) {
+				if (!strcmp(property->items[j].name, item)) {
+					last = property->items[j].number.value;
+				}
+			}
+		}
+		pthread_mutex_unlock(&observation_mutex);
+		if (last == expected) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "device %d property %s item %s: expected %g, got %g\n", index, name, item, expected, last);
 	return false;
 }
 
@@ -609,9 +633,9 @@ int ArtemisCoolingInfo(ArtemisHandle h, int *flags, int *level, int *min, int *m
 	SDK_SCOPE;
 	mock_camera *c = camera(h);
 	*flags = c->cooler ? 3 : 0;
-	*level = 100;
-	*min = 0;
-	*max = c->malformed == 3 ? 0 : 200;
+	*level = c->cooling_level;
+	*min = c->cooling_min;
+	*max = c->malformed == 3 ? 0 : c->cooling_max;
 	*target = c->target;
 	return failed(__func__);
 }
@@ -1031,6 +1055,39 @@ static void cooling_and_controls(void) {
 	ASSERT_TRUE(toggle(0, "CCD_COOLER", "OFF", INDIGO_ALERT_STATE));
 	fail_call = NULL;
 	ASSERT_TRUE(toggle(0, "CCD_COOLER", "OFF", INDIGO_OK_STATE));
+}
+
+// An Atik 11000 reports a cooler that is off as level 0 against a minimum operating level of 1, and
+// a camera that was never given a setpoint reports -59.99 C. Neither may prevent the connection or
+// drive CCD_COOLER_POWER to ALERT; the published power is clamped and the unusable setpoint is
+// replaced by the measured temperature.
+static void idle_cooler_outside_advertised_range(void) {
+	cameras[0].cooling_level = 0;
+	cameras[0].cooling_min = 1;
+	cameras[0].cooling_max = 79;
+	cameras[0].temperature = 2387;
+	cameras[0].target = -5999;
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(0, "CCD_COOLER_POWER"));
+	ASSERT_EQ_INT(0, (int)value(0, "CCD_COOLER_POWER", "POWER"));
+	indigo_property *temperature = snapshot(0, "CCD_TEMPERATURE");
+	ASSERT_TRUE(temperature != NULL);
+	ASSERT_EQ_INT(24, (int)round(temperature->items[0].number.value));
+	ASSERT_EQ_INT(24, (int)round(temperature->items[0].number.target));
+	ASSERT_TRUE(temperature->items[0].number.target >= temperature->items[0].number.min && temperature->items[0].number.target <= temperature->items[0].number.max);
+	indigo_release_property(temperature);
+	// The five-second poll keeps publishing the clamped power instead of an ALERT.
+	cameras[0].cooling_level = 40;
+	ASSERT_TRUE(wait_value(0, "CCD_COOLER_POWER", "POWER", 50));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(0, "CCD_COOLER_POWER"));
+	cameras[0].cooling_level = 0;
+	ASSERT_TRUE(wait_value(0, "CCD_COOLER_POWER", "POWER", 0));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(0, "CCD_COOLER_POWER"));
+	// A level above the advertised maximum is reported as full power, still without an ALERT.
+	cameras[0].cooling_level = 255;
+	ASSERT_TRUE(wait_value(0, "CCD_COOLER_POWER", "POWER", 100));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(0, "CCD_COOLER_POWER"));
+	ASSERT_TRUE(connect_device(0, false));
 }
 
 static void wheel_errors(void) {
@@ -1640,6 +1697,9 @@ static void begin_fixture(void) {
 		cameras[i].bx = cameras[i].by = 1;
 		cameras[i].temperature = 1200;
 		cameras[i].slot_count = 5;
+		cameras[i].cooling_level = 100;
+		cameras[i].cooling_min = 0;
+		cameras[i].cooling_max = 200;
 	}
 	cameras[0].visible = true;
 	cameras[0].shutter = cameras[0].guider = cameras[0].wheel = cameras[0].cooler = cameras[0].heater = cameras[0].presets = true;
@@ -1688,6 +1748,7 @@ int main(int argc, char **argv) {
 		{ "geometry_and_payload", geometry_and_payload },
 		{ "durations_and_frame_types", durations_and_frame_types },
 		{ "cooling_and_controls", cooling_and_controls },
+		{ "idle_cooler_outside_advertised_range", idle_cooler_outside_advertised_range },
 		{ "wheel_errors", wheel_errors },
 		{ "guide_axes_and_replacement", guide_axes_and_replacement },
 		{ "abort_readout_restart", abort_readout_restart },

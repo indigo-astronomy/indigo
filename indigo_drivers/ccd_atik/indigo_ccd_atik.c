@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002C
+#define DRIVER_VERSION       0x0300002D
 #define DRIVER_NAME          "indigo_ccd_atik"
 #define DRIVER_LABEL         "Atik Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -162,6 +162,18 @@ static bool atik_option(indigo_device *device, int id, uint16_t *values, int len
 	return ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, id, (unsigned char *)values, length, &actual) == ARTEMIS_OK && actual == length;
 }
 
+// An idle cooler reports a power level outside the advertised operating range - the 11000
+// reports 0 against a minimum of 1 - so the level is clamped into that range instead of
+// being validated against it.
+static double atik_cooler_power(int level, int min, int max) {
+	if (level < min) {
+		level = min;
+	} else if (level > max) {
+		level = max;
+	}
+	return round(100.0 * (level - min) / (max - min));
+}
+
 static bool atik_gain_offset(indigo_device *device) {
 	uint16_t gain[3] = { 0 }, offset[3] = { 0 };
 	if (!atik_option(device, 5, gain, sizeof(gain)) || !atik_option(device, 6, offset, sizeof(offset)) || gain[0] > gain[1] || gain[2] < gain[0] || gain[2] > gain[1] || offset[0] > offset[1] || offset[2] < offset[0] || offset[2] > offset[1]) {
@@ -238,15 +250,18 @@ static bool atik_initialize_ccd(indigo_device *device) {
 		return false;
 	}
 	if (cooling_result == ARTEMIS_OK && (flags & 3) == 3) {
-		if (max <= min || level < min || level > max || CCD_TEMPERATURE_PROPERTY->hidden) {
+		if (max <= min || CCD_TEMPERATURE_PROPERTY->hidden) {
 			return false;
 		}
 		PRIVATE_DATA->has_cooler = true;
 		CCD_COOLER_PROPERTY->hidden = CCD_COOLER_POWER_PROPERTY->hidden = false;
 		CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
 		CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-		CCD_TEMPERATURE_ITEM->number.target = target > 10000 ? CCD_TEMPERATURE_ITEM->number.value : round(target / 10.0) / 10;
-		CCD_COOLER_POWER_ITEM->number.value = round(100.0 * (level - min) / (max - min));
+		// A camera that was never given a setpoint reports one outside the supported range -
+		// the 11000 reports -59.99 C - so only a usable setpoint replaces the measured value.
+		double setpoint = round(target / 10.0) / 10;
+		CCD_TEMPERATURE_ITEM->number.target = setpoint >= CCD_TEMPERATURE_ITEM->number.min && setpoint <= CCD_TEMPERATURE_ITEM->number.max ? setpoint : CCD_TEMPERATURE_ITEM->number.value;
+		CCD_COOLER_POWER_ITEM->number.value = atik_cooler_power(level, min, max);
 		CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	if (info.cameraflags & ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_WINDOW_HEATER) {
@@ -425,8 +440,8 @@ static void ccd_timer_callback(indigo_device *device) {
 	}
 	if (PRIVATE_DATA->has_cooler) {
 		int flags = 0, level = 0, min = 0, max = 0, target = 0;
-		if (ArtemisCoolingInfo(PRIVATE_DATA->handle, &flags, &level, &min, &max, &target) == ARTEMIS_OK && max > min && level >= min && level <= max) {
-			CCD_COOLER_POWER_ITEM->number.value = round(100.0 * (level - min) / (max - min));
+		if (ArtemisCoolingInfo(PRIVATE_DATA->handle, &flags, &level, &min, &max, &target) == ARTEMIS_OK && max > min) {
+			CCD_COOLER_POWER_ITEM->number.value = atik_cooler_power(level, min, max);
 			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			CCD_COOLER_POWER_PROPERTY->state = INDIGO_ALERT_STATE;

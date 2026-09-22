@@ -29,6 +29,11 @@
 
 #define MAX_DEVICES 16
 #define MAX_PROPERTIES 128
+// A large-format model spends far longer flushing and reading out than it does exposing: the
+// 11000 needs over twenty seconds per frame, so a property wait has to outlast the longest
+// exposure of this suite plus that overhead, and a disconnect has to outlast a readout in flight.
+#define WAIT_STATE_TICKS 30000
+#define DISCONNECT_TICKS 18000
 #define CHECK(condition) do { if (!(condition)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #condition); indigo_test_failures++; goto cleanup; } } while (0)
 
 typedef struct {
@@ -176,7 +181,7 @@ static bool disconnect_device(int d) {
 		return true;
 	}
 	indigo_change_switch_property_1(&client, devices[d].name, "CONNECTION", "DISCONNECTED", true);
-	for (int i = 0; i < 3000; i++) {
+	for (int i = 0; i < DISCONNECT_TICKS; i++) {
 		pthread_mutex_lock(&mutex);
 		int p = slot(d, "CONNECTION");
 		bool disconnected = false;
@@ -207,7 +212,7 @@ static unsigned revision(int d, const char *name) {
 }
 
 static bool wait_state(int d, const char *name, unsigned after, indigo_property_state state) {
-	for (int i = 0; i < 3000; i++) {
+	for (int i = 0; i < WAIT_STATE_TICKS; i++) {
 		pthread_mutex_lock(&mutex);
 		int p = slot(d, name);
 		bool ready = p >= 0 && devices[d].revisions[p] > after && devices[d].properties[p]->state == state;

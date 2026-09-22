@@ -41,7 +41,7 @@
 | ccd_altair              | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 30 | ➡️ Touptek |
 | ccd_apogee              | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⏰ TODO - make boost_regex and libapogee for Windows |
 | ccd_asi                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 51 / 34 | |
-| ccd_atik                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 42 / 1 | |
+| ccd_atik                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 43 / 1 | |
 | ccd_atik2               | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 24 / 1 | ⛔ macOS only |
 | ccd_baccam              | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
 | ccd_bresser             | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |

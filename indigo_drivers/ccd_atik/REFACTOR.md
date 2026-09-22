@@ -261,3 +261,95 @@ The recorded runs are the final sweep with the shared test's square-bin fix, whi
 ### Hot-plug not established
 
 Physical hot-plug was not covered. The cameras hang on the Powerbox's SMSC `0424:2517` hub, whose six external ports switch `PORT_POWER` through libusb, and the plan was to drive the unattended suite of `test_ccd_hotplug_hw.c` from it. Measured on this host, the mechanism does not work: with the port cleared, the hub reports it powered off and disconnected (`GET_STATUS` 0x00000000) for as long as it is left off, while the device stays in the IOKit registry and in `libusb_get_device_list()`, so no disconnect reaches the driver. Clearing `PORT_ENABLE` instead leaves the port disabled but still connected and is equally invisible. The reason is the same one that makes `uhubctl` useless for this on Linux: the host's own hub driver owns the port and is never told about a change made behind its back, and only the kernel's per-port `disable` attribute both cuts the port and tears the device down. macOS has no equivalent, so the unattended suite stays a Linux-only facility and this host cannot run it. A backend that switched the Powerbox port was written and discarded rather than shipped, because it would report a passing hot-plug run while testing nothing.
+
+## Atik 11000 and Atik Horizon hardware run (2026-09-22)
+
+Non-interactive hardware run on macOS arm64, closing the two models `REFACTOR.md` had listed as
+pending. Both cameras were attached at the same time for the Horizon run, which also covered
+two-camera discovery and selection by name; the Horizon was unplugged before the 11000 run.
+
+### Defect 3: an idle cooler prevented the connection (version 44 to 45)
+
+`Atik Large Format Camera` (Atik 11000, USB `04b4:df28`) refused every connection attempt with
+`CONNECTION` in `INDIGO_ALERT_STATE`. `atik_open()` succeeded - the trace shows
+`ArtemisConnect(0) -> 0x65` - and `atik_initialize_ccd()` then failed. A standalone SDK probe over
+the same camera shows why:
+
+```
+ArtemisProperties = 0, 4007 x 2671, 9.000 x 9.000, flags 0xcd
+ArtemisGetMaxBin = 0, 6 x 255
+ArtemisTemperatureSensorInfo(0) = 0, sensors = 1
+ArtemisCoolingInfo = 0, flags 0x1f level 0 min 1 max 79 setpoint -5999
+```
+
+The driver validated the reported cooler power level against the advertised operating range with
+`level < min || level > max` and returned `false`. This camera reports `level` 0 against a `min` of
+1 whenever the cooler is idle, so the check made the camera permanently unusable. The SDK header
+documents `level` as "the power level of the cooler, usually from 0 to 255" and `minlvl`/`maxlvl`
+as the minimum and maximum cooling power level; nothing promises that the current level sits inside
+that range, and an idle cooler legitimately sits below it. The level is now clamped into the
+advertised range by the new `atik_cooler_power()` helper and only the range itself (`max > min`) is
+validated. The same over-strict test in the five-second poll drove `CCD_COOLER_POWER` to
+`INDIGO_ALERT_STATE` for as long as the cooler was idle and was replaced by the same helper.
+
+### Defect 4: an unset cooling setpoint was published outside the property range (version 44 to 45)
+
+The same `ArtemisCoolingInfo` reply carries `setpoint -5999`, that is -59.99 C, on a camera that has
+never been given a setpoint. The driver adopted it as `CCD_TEMPERATURE`'s target through
+`target > 10000 ? value : round(target / 10.0) / 10`, a guard written for a high sentinel only, so
+the target was published as -60 C while the item advertises `[-50, 50]`. The special case is
+replaced by a range check against the item's own minimum and maximum: an unusable setpoint leaves
+the measured temperature as the target. This was found by SDK probe and source audit before it
+could be reproduced through the property interface - writing a setpoint from the probe replaced the
+sentinel with a usable value - so the regression test below is what proves it.
+
+Regression for both: `idle_cooler_outside_advertised_range` in
+`indigo_test/integration/test_ccd_atik_sdk.c`. The fake SDK's `ArtemisCoolingInfo` now reports a
+per-camera level, minimum and maximum instead of the fixed `100 / 0 / 200`, and the case drives the
+11000's numbers - level 0, min 1, max 79, setpoint -5999, sensor 23.87 C - through connect, then
+moves the level above the minimum, back to 0 and past the maximum while the poll runs. It requires
+the connection to succeed, `CCD_COOLER_POWER` to stay `INDIGO_OK_STATE` and report 0, 50, 0 and 100
+percent, and `CCD_TEMPERATURE` to publish a target inside the item's advertised range. Verified to
+fail against the unfixed driver (`device 0 property CONNECTION: expected state 1, got 3`) and to
+pass with the fix.
+
+### Test-side change: the fixed 30-second property wait
+
+`indigo_test/hardware/test_ccd_atik_hw.c` waited 3000 ticks of 10 ms for any property state. The
+11000 needs about 22 seconds of flush and readout per frame, so the suite's longest exposure,
+16.5 seconds, timed out at 30 seconds with the camera working correctly and the driver still inside
+its own 120-second readout deadline. The waits are now named constants: `WAIT_STATE_TICKS` 30000
+(300 seconds, above the driver's own deadline) and `DISCONNECT_TICKS` 18000 (180 seconds, enough to
+outlast a readout in flight). No other driver's recorded timing is affected; the constants only
+raise a ceiling that was never reached before.
+
+### Results
+
+| run | driver version | result |
+| --- | --- | --- |
+| `make -C indigo_test test-ccd-atik-sdk` | 3.0.0.45 | 43/43 |
+| `INDIGO_TEST_DEVICE="Atik Horizon" make -C indigo_test test-ccd-atik-hw` | 3.0.0.44 | 1/1 |
+| `INDIGO_TEST_DEVICE="Atik Large Format Camera" make -C indigo_test test-ccd-atik-hw` | 3.0.0.45 | 1/1 |
+
+The Horizon ran the full scenario at version 44, before defects 3 and 4 were found on the 11000:
+exposures from 0.001 to 16.5 seconds at 4644x3506, every frame type, ROI and all four binning
+modes, both read modes, cooling from 25.6 C to 22.6 C with cooler power up to 11 percent, all four
+`X_PRESETS`, the refused-then-accepted `CCD_BIN`, `CCD_GAIN`, `CCD_OFFSET` and `X_PRESETS` changes
+during an exposure, abort and reacquire, disconnect/reconnect, driver reload and a fresh exposure,
+with no invalid RAW frame. It is the first model in this suite to exercise all four guarded
+properties, because it is the first with gain, offset and presets. The camera was unplugged by the
+user before the fix existed, so the Horizon was not re-run at version 45; both fixes are on the
+cooling path it exercised and the fake-SDK regression covers them.
+
+The 11000 ran the full scenario at version 45 after the fixes: exposures from 0.001 to 16.5 seconds
+at 4007x2671, every frame type, ROI and the three binning modes it offers, both read modes, cooling
+from 24.2 C to 21.6 C with cooler power up to 15 percent, the refused-then-accepted `CCD_BIN`
+change, abort and reacquire, disconnect/reconnect, driver reload and a fresh exposure, with no
+invalid RAW frame. It exposes no guider, wheel, gain, offset or presets, so `CCD_BIN` is the only
+reachable guard on this model.
+
+Physical hot-plug was not part of this run and no hot-plug coverage is established by it.
+
+### Test totals for this run
+
+Simulated (fake SDK) tests run 43, passed 43. Hardware tests run 2, passed 2.
