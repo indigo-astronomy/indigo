@@ -109,6 +109,14 @@ static bool switch_change(const char *property, const char *item, indigo_propert
 	return indigo_change_switch_property_1(&simulator_test_client, focusdreampro.device_name, property, item, true) == INDIGO_OK && new_state(property, before, state);
 }
 
+// The simulator steps at the rate the controller does, about 90 steps per second
+// at the speed index the focuser base class starts from, so a scenario whose
+// subject is not the speed picks the fastest index first, exactly as a user
+// would. See the measured step timing in the driver's REFACTOR.md.
+static bool select_fastest_speed(void) {
+	return number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 5, INDIGO_OK_STATE);
+}
+
 static bool position_is(double expected, double tolerance) {
 	for (int i = 0; i < 200; i++) {
 		indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
@@ -194,6 +202,7 @@ cleanup:
 
 static void sync_and_goto(void) {
 	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(select_fastest_speed());
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
 	// SYNC updates the coordinate without moving, so the position is reached at once.
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 4000, INDIGO_OK_STATE));
@@ -211,6 +220,7 @@ cleanup:
 
 static void relative_move(void) {
 	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(select_fastest_speed());
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5000, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
@@ -231,6 +241,7 @@ cleanup:
 // before it sends the move command.
 static void limits_clamp(void) {
 	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(select_fastest_speed());
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5000, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
@@ -401,6 +412,7 @@ static void reconnect(void) {
 	SERIAL_CHECK_TRUE(find_cached_property(X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME) != NULL);
 	// The duty cycle chosen before the disconnect is re-applied on connect.
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME, X_FOCUSER_DUTY_CYCLE_ITEM_NAME) - 45) < .01);
+	SERIAL_CHECK_TRUE(select_fastest_speed());
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2500, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(position_is(2500, 1));

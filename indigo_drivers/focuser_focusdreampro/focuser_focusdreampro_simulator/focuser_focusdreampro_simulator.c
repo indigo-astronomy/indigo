@@ -54,7 +54,13 @@ static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
 static serial_motion motion;
 static int max_position = 1000000;
-// The controller's S: value is a per step delay in microseconds.
+// The controller's S: value is a per step delay, but one unit of it is about
+// 44 us of real delay and not the microsecond the name suggests, and every step
+// carries about 0.15 ms of fixed overhead on top. Measured on an AstroGadget
+// FocusDreamPro over moves of 500 to 2000 steps: 22.1 ms per step at S:500,
+// 11.14 at S:250, 4.96 at S:110, 1.91 at S:40, 0.53 at S:10 and 0.40 at S:5.
+#define STEP_OVERHEAD_S 0.000151
+#define STEP_DELAY_UNIT_S 0.000044
 static int step_delay = 500;
 static int duty_cycle = 20;
 static double temperature = 21.5;
@@ -148,6 +154,10 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "P")) {
 		snprintf(response, sizeof(response), "P:%d", (int)serial_motion_update(&motion));
 		send_line(response);
+	} else if (!strcmp(command, "X") || !strcmp(command, "S") || !strcmp(command, "D")) {
+		// The controller has no readback for these: the bare query is answered
+		// with the bare command letter and no value.
+		send_line(command);
 	} else if (!strncmp(command, "X:", 2)) {
 		max_position = atoi(command + 2);
 		if (max_position < 0) {
@@ -170,7 +180,7 @@ static void handle_command(const char *command) {
 			send_line("ERR");
 			return;
 		}
-		serial_motion_start(&motion, clamp_position(atoi(command + 2)), 1000000.0 / step_delay);
+		serial_motion_start(&motion, clamp_position(atoi(command + 2)), 1.0 / (STEP_OVERHEAD_S + STEP_DELAY_UNIT_S * step_delay));
 		send_line(command);
 	} else if (!strncmp(command, "R:", 2)) {
 		if (!strcmp(profile, "move-error")) {
@@ -196,14 +206,10 @@ static void run_protocol_loop(void) {
 				continue;
 			}
 			if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EIO) {
-				// The protocol has no request terminator, so a gap in the
-				// incoming bytes ends the command.
-				if (length > 0) {
-					buffer[length] = '\0';
-					handle_command(buffer);
-					length = 0;
-					buffer[0] = '\0';
-				}
+				// A gap in the incoming bytes does NOT end a command. The
+				// controller acts on a request only once it has seen the
+				// terminating newline, so an unterminated request stays in the
+				// buffer and is never answered.
 				usleep(1000);
 				continue;
 			}
@@ -213,7 +219,16 @@ static void run_protocol_loop(void) {
 		if (bytes_read == 0) {
 			continue;
 		}
-		if (c == '\r' || c == '\n') {
+		if (c == '\n') {
+			buffer[length] = '\0';
+			if (length > 0) {
+				handle_command(buffer);
+			}
+			length = 0;
+			buffer[0] = '\0';
+			continue;
+		}
+		if (c == '\r') {
 			continue;
 		}
 		if (length < sizeof(buffer) - 1) {

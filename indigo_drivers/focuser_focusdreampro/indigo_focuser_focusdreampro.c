@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_focuser_focusdreampro"
 #define DRIVER_LABEL         "AGadget FocusDreamPro Focuser"
 #define FOCUSER_DEVICE_NAME  "FocusDreamPro"
@@ -79,11 +79,16 @@ typedef struct {
 static void focuser_position_handler(indigo_device *device);
 static void focuser_steps_handler(indigo_device *device);
 
-// FOCUSER_SPEED is an index into the controller's per step delay in
-// microseconds, so a higher index is a faster focuser.
+// FOCUSER_SPEED is an index into the controller's per step delay, so a
+// higher index is a faster focuser. One unit of the value the S:
+// command carries is about 44 us of real delay, measured on an
+// AstroGadget FocusDreamPro, on top of about 0.15 ms of fixed per step
+// overhead.
 static const int FOCUSDREAMPRO_SPEED[] = { 500, 250, 110, 40, 10, 5 };
 
-// Requests carry no terminator and replies are single lines. Value
+// Requests and replies are single lines. The controller only acts on a
+// request once it has seen the terminating newline; without it the
+// request is never answered, whatever the gap between the bytes. Value
 // setting commands echo the request, but only the leading command
 // letter is guaranteed, so that is what `expected` verifies; pass 0 to
 // accept any reply.
@@ -93,7 +98,7 @@ static bool focusdreampro_command(indigo_device *device, char expected, const ch
 	}
 	va_list args;
 	va_start(args, format);
-	long result = indigo_uni_vprintf(PRIVATE_DATA->handle, format, args);
+	long result = indigo_uni_vtprintf(PRIVATE_DATA->handle, format, args, "\n");
 	va_end(args);
 	if (result <= 0) {
 		return false;
@@ -474,6 +479,10 @@ indigo_result indigo_focuser_focusdreampro(indigo_driver_action action, indigo_d
 	switch (action) {
 		case INDIGO_DRIVER_INIT: {
 			last_action = action;
+			static indigo_device_match_pattern patterns[1] = { 0 };
+			patterns[0].vendor_id = 0x10c4;
+			patterns[0].product_id = 0xea60;
+			INDIGO_REGISER_MATCH_PATTERNS(focuser_template, patterns, 1);
 			private_data = (focusdreampro_private_data *)indigo_safe_malloc(sizeof(focusdreampro_private_data));
 			focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;

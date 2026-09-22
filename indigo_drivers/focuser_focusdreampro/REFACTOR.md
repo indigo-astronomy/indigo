@@ -137,7 +137,44 @@ stays and becomes the regression evidence once the defect is fixed.
 
 - `DRV-134` (`focuser_abort_handler`, reproduced). Observable impact: an abort issued while a move request was still queued did not cancel that request, so the driver halted the controller and then immediately started the move it had just been told to abandon. The trace of the original driver shows `H` followed by `M:200000`. Root cause: the handlers ran on independent one-shot timers and nothing cancelled them. Fix: the abort handler cancels the pending `focuser_position_handler` and `focuser_steps_handler` before it sends `H`. Regression test: `abort_overtakes_start`, which aborts immediately after requesting a 200000 step move and requires the focuser to stay put across two polling cycles.
 
+- `DRV-135` (`focusdreampro_command`, reproduced on hardware and now hardware-free). Observable
+  impact: **the driver could not talk to a real controller at all.** Every request was written
+  without a terminator, the controller never answered, the `#` transaction timed out and the
+  connection failed with `FocusDreamPro not detected`. Root cause: `focusdreampro_command()` used
+  `indigo_uni_vprintf()`, which writes the formatted request and nothing else; the migration
+  inherited the assumption from the original driver, whose comment stated the protocol has no
+  request terminator. A probe on the raw port disproves that: the controller answers `#` with `FD`
+  immediately when the request ends with `\n` and never answers without one, independently of the
+  gap between bytes and of DTR/RTS. Fix: `indigo_uni_vtprintf(..., "\n")`, the idiom the other
+  newline framed serial drivers already use. Regression test: the simulator now requires the
+  terminator (`SIM-101`), which turns the whole simulator suite into the reproducer - with the
+  terminator removed again 16 of the 17 scenarios fail, and only `silent_controller` passes,
+  because that scenario asserts a failed connection.
+
 - `DRV-132` (identity check, source audit only, **not fixed**). Any controller that answers the `#` command with one line is accepted, whatever the banner says. This is deliberate: the README names the AstroGadget and Astrojolo firmwares, but the command set is shared and the set of compatible banners is not documented, so rejecting unknown ones would be a regression for them. The `no-identity` profile covers the case that is unambiguously wrong, a controller that does not answer at all.
+
+## Simulator corrections taken from the hardware (2026-09-22)
+
+Each one replaces an assumption the simulator was written on with what the physical controller
+actually does, as `indigo_test/AGENTS.md` requires. The measurements they come from are recorded
+under the hardware-test decision above.
+
+- `SIM-101` **The request terminator is mandatory.** The simulator ended a command on a gap in the
+  incoming bytes and discarded `\r` and `\n` outright, so it answered requests the controller
+  would have ignored and the suite could never have caught `DRV-135`. It now acts on a request only
+  when it sees the terminating newline and leaves an unterminated request in the buffer unanswered.
+- `SIM-102` **Step timing.** The simulator stepped at `1000000 / delay` steps per second, treating
+  the `S:` value as a delay in microseconds, which is 22 to 45 times faster than the controller.
+  It now steps at `1 / (0.000151 + 0.000044 * delay)` seconds per step, the affine model fitted to
+  the measured table, which reproduces every measured point to better than one percent.
+- `SIM-103` **`X`, `S` and `D` have no readback.** A bare query was not handled at all and produced
+  no reply. The controller answers it with the bare command letter and no value, which the
+  simulator now does too.
+
+`SIM-102` makes the simulator as slow as the controller, so three scenarios whose subject is not
+the speed (`sync_and_goto`, `relative_move`, `limits_clamp` and the move in `reconnect`) now select
+the fastest speed index first through the new `select_fastest_speed()` helper, exactly as a user
+driving the real focuser would. No scenario was weakened and no assertion was relaxed.
 
 ## Verification (2026-09-19, macOS 15 arm64)
 
@@ -148,6 +185,32 @@ stays and becomes the regression evidence once the defect is fixed.
 - AddressSanitizer: the generated driver compiled with `-fsanitize=address -O1` and linked into the same suite — 17 scenarios, 17 passed, no sanitizer report. The framework library is still not instrumented.
 - No `MAX_DEVICES` override, no build products in the diff, driver version raised from `0x03000007` to `0x03000008`.
 - Linux and Windows builds were not run in this environment; only the macOS universal build is validated.
+
+## Hardware run (2026-09-22, macOS 15 arm64, AstroGadget FocusDreamPro, driver 3.0.0.9)
+
+`FOCUSDREAMPRO_HW_PORT=/dev/cu.usbserial-0001 make -C indigo_test test-focuser-focusdreampro-hw`
+- **15 scenarios, 15 passed.** The controller reported position 0, speed index 1, duty cycle 20%
+  and 29.25 C, and the session restored position 0 before it disconnected.
+
+| Scenario | Covers | Observed |
+| --- | --- | --- |
+| `reports_identity_and_capabilities` | Interface bit, device name, INFO model from the `#` banner | `AGadget FocusDreamPro` on `/dev/cu.usbserial-0001` |
+| `publishes_the_property_contract` | Every published property and range, and the four the controller has not | Speed 0-5, position 0-1000000, steps 0-100000, duty cycle 0-100 |
+| `reads_the_temperature` | Probe value in a plausible range and a fresh publication from the polling callback | 29.25 C, republished within the 1 s idle period |
+| `moves_to_an_absolute_position` | GOTO out and back, BUSY published before OK, exact final position | 0 to 300 and back, exact |
+| `moves_relative_in_both_directions` | Outward and inward relative moves, sign and units, zero step no-op | 0 to 300 to 0, exact |
+| `syncs_the_position` | SYNC as a coordinate update with no motion, then synced back | 0 to 12345 and back with the motor still |
+| `applies_the_travel_limit` | `FOCUSER_LIMITS` clamp on an absolute target | Target 300 stopped at the limit 150 |
+| `rejects_an_overlapping_move` | The framework BUSY guard drops the second request | The first target won, the second was ignored |
+| `aborts_a_move` | `DRV-133`/`DRV-134` on hardware: settled OK state, real stop point, no drift, fresh move accepted | Aborted at 60 of 300, unchanged over two polling periods |
+| `accepts_an_abort_while_idle` | Abort with nothing running leaves the motion properties alone | Position unchanged |
+| `changes_the_speed` | All six indices reach the controller and change the time a move takes | 100 steps in 1.17 s at index 5, 3.62 s at index 0 |
+| `changes_the_duty_cycle` | `D:` accepted and the focuser still moves with it applied | 20% to 70% and back |
+| `survives_a_disconnect_during_a_move` | Disconnect while BUSY halts the motor, withdraws the connected property, reconnect reads the stop point back | Stopped at 49, `X_FOCUSER_DUTY_CYCLE` withdrawn and redefined |
+| `reconnects` | Property withdrawal and redefinition, position preserved, motion afterwards | Clean |
+| `reinitializes` | `INDIGO_DRIVER_SHUTDOWN` removes the device, `INDIGO_DRIVER_INIT` finds it again | Clean |
+
+Hot-plug was not part of this run and is not established; see the hardware-test decision.
 
 ## Test coverage map
 
@@ -179,5 +242,12 @@ Not covered, and why:
 
 ## Final test summary
 
-- Simulated tests: 34 executed, 34 passed (17 ordinary scenarios and the same 17 under AddressSanitizer). Three of the 17 were recorded as expected baseline failures against the original driver and pass as regression tests against the migrated driver.
-- Hardware tests: 0 executed, 0 passed.
+- Simulated tests: 34 executed, 34 passed at migration time (17 ordinary scenarios and the same 17
+  under AddressSanitizer). Three of the 17 were recorded as expected baseline failures against the
+  original driver and pass as regression tests against the migrated driver. The 2026-09-22 change
+  re-ran the 17 ordinary scenarios against the corrected simulator: **17 executed, 17 passed.** The
+  AddressSanitizer variant was not repeated for that change. Counting the 2026-09-22 run, 51
+  simulated tests executed and 51 passed.
+- Hardware tests: **15 executed, 15 passed** (2026-09-22, AstroGadget FocusDreamPro, driver
+  3.0.0.9). The first hardware run of the same 15 scenarios, against driver 3.0.0.8, failed at
+  set-up with 0 executed; that is `DRV-135`.
