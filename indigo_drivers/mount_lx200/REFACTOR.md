@@ -625,3 +625,213 @@ ignored" and asserted that `Mgs0100` was never sent, which recorded the discard 
 behaviour. It now asserts the command is sent and adds two duration-measuring cases: a 2000 ms pulse
 replaced after 500 ms by a 600 ms pulse in the same direction (1446 ms measured) and by a 300 ms
 pulse in the opposite direction (917 ms).
+
+---
+
+# LX200 hardware acceptance run (2026-09-22)
+
+## Scope and hardware-test decision
+
+Non-interactive hardware run against a physically connected **Pegasus Astro
+NYX-101, firmware 1.32.1**, on macOS arm64 over the mount's own USB serial
+adapter at 115200 8N1, driver version `0x03000038` before this work. Hardware
+testing IS performed for this record; every result below that names the NYX-101
+is physical, every result that names the simulator is hardware-free.
+
+The mount is a harmonic-drive GEM with no counterweight and the run moves it.
+Every slew is computed from the pointing the scenario starts at, the motion
+scenarios work at declination 75 rather than at the pole where a right
+ascension axis produces no measurable arc, and the session restores the
+tracking and parked state it found.
+
+Nothing persistent in the controller is overwritten. `MOUNT_PARK_SET` is issued
+in the moment after unparking, while the mount still stands on the position it
+stores. `MOUNT_HOME_SET` is deliberately **not** exercised on hardware: it sends
+`:hF#`, documented as a reset that "simulates a cold Start", and the run found
+that it drops the controller into a standby in which `:hP#` is refused until
+tracking is enabled again. The NYX WiFi credentials are read and asserted but
+never written, because the protocol has no way to restore the previous
+password. Both write paths stay with the simulator.
+
+## Test asset
+
+`indigo_test/hardware/test_mount_lx200_hw.c`, run with
+`make -C indigo_test test-mount-lx200-hw`, 30 cases covering the mount
+hardware acceptance checklist of `indigo_test/DRIVER_TESTING_RULES.md` and the
+guider standard for the guider logical device. `MOUNT_LX200_HW_PORT` overrides
+the port the driver matches through its own `Pegasus Astro`/`NYX` USB
+descriptor pattern. The model specific cases report themselves as not
+applicable when another LX200 mount is connected.
+
+## Protocol observations from the NYX-101
+
+Recorded directly from the controller and used as the source of the simulator
+additions below. They are what the firmware does, not what `NYX101.pdf` says
+where the two differ.
+
+| Command | Documented | NYX-101 1.32.1 |
+| --- | --- | --- |
+| `:hP#` | `0` / `1` | `0` / `1`; `0` while the controller is in cold-start standby |
+| `:hR#` | not documented | `1`, the OnStep `0`/`1` contract |
+| `:hQ#` | `0` / `1` | `0` while the mount is parked, `1` while it is not |
+| `:hF#` | no reply | no reply, and the controller enters cold-start standby |
+| `:GT#` | `n.n` | `0` while tracking is disabled, otherwise the real frequency |
+| `:GU#` rate | `( O K` | `(` lunar, `O` solar, lowercase `k` king, nothing for sidereal |
+| `:GU#` pier | `O T W` | lowercase `o` for none, `T` east, `W` west |
+| `:GU#` slewing | `N` no goto | `N` and `n` are independent: a slew with tracking on carries neither |
+| `:WL>#` | `ssid,password` | `ssid:password`, colon separated |
+| `:GX9D#` | `pitch : roll` | signed, e.g. `34.5:-0.7` |
+| `:GX97#` | max slew rate | `4.5` degrees per second |
+
+## Baseline (2026-09-22, macOS arm64, driver 0x03000038)
+
+```sh
+make -C indigo_test build/hardware/test_mount_lx200_hw
+make -C indigo_test test-mount-lx200-hw
+```
+
+STATE: COMPLETE. The 30-case hardware suite ran against the NYX-101 before any
+production change: 22 passed, 8 failed. Five failures were driver defects and
+three were defects in the new test itself, which the run exposed together. The
+existing 67-case simulator suite passed unchanged in the same session, which is
+why none of the five had been seen before: every one of them needs either the
+real `:GT#`/`:GU#` answers of the controller or a request sequence the simulator
+did not produce. Test-side baseline failures are listed with the defects they
+were mixed with and are not counted as driver defects.
+
+## Found defects (hardware run)
+
+All are reproduced hardware-free in `mount_lx200_simulator.c` (version 4) and
+pinned by a regression case in `test_mount_lx200_simulator.c`, as
+`indigo_test/AGENTS.md` requires. Driver version 0x03000038 to 0x03000039.
+
+| ID | Status | Hardware observation and root cause | Fix and regression |
+| --- | --- | --- | --- |
+| LX015 | FIXED | `lx200_parks_and_unparks` hung: `MOUNT_PARK` stayed BUSY for the whole 180 s timeout. `:hP#` answers `0` or `1` on the NYX and on OnStep, and the controller refuses the park outright in the cold-start standby a `:hF#` reset leaves behind. `meade_park()` sent it as a no-reply command, so the refusal was invisible, BUSY was published and nothing ever completed it. | `meade_park()` reads the documented reply for NYX and OnStep and requires `1`; Meade, OAT and TeenAstro keep the no-reply form their manuals document. Simulator: NYX answers `:hP#`, and answers `0` while `:hF#` has left it in standby. Regression `lx200_nyx_park_commands_report_refusals`. |
+| LX016 | FIXED | Source audit while fixing LX015, confirmed on the mount: `:hR#` answers `1`, and OnStep documents `0`/`1` for it. `meade_unpark()` sent it as a no-reply command, so a refused unpark would have been reported as success. | `meade_unpark()` reads the reply for NYX and OnStep. Simulator: NYX answers `:hR#`. Covered by the same regression. |
+| LX017 | FIXED | `lx200_reads_the_nyx_leveler` failed: the mount reported roll `-0.7`, while `X_NYX_LEVELER` declared pitch and roll as `0 … 360`. A published value outside the range it advertises is wrong for every client that clamps or validates it. | Pitch and roll are declared `-180 … 180`. Simulator: `:GX9D#` answers `34.5:-0.7`, the signed pair measured on the mount, instead of the previous positive one. Regression: `lx200_nyx_options_and_wifi_failures` asserts the signed value and that both items lie inside their published range. |
+| LX018 | FIXED | `lx200_reports_the_tracking_rate_from_the_mount` failed: a session opened while tracking was off reported the lunar rate although the mount was configured for sidereal. The NYX answers `:GT#` with `0` while tracking is disabled, and `meade_get_tracking_rate()` mapped everything at or below 57.9 Hz to lunar. | The NYX no longer decodes `:GT#`; the rate comes from the `:GU#` status characters, as it already did for OnStep: `(` lunar, `O` solar, lowercase `k` king, none sidereal, all four verified on the mount. Simulator: `:GT#` answers `0` for a NYX that is not tracking. Regression `lx200_nyx_tracking_rate_comes_from_status`. |
+| LX019 | FIXED | `lx200_toggles_tracking` failed: `MOUNT_STATE`'s tracking light kept its previous value until the next polling cycle. `MOUNT_PARK` and `MOUNT_HOME` publish the light they change; `MOUNT_TRACKING` assigned it and published nothing. | The tracking handler publishes `MOUNT_STATE`. Regression: `lx200_nyx_keeps_tracking_while_slewing` asserts the light in the same update as the request. |
+| LX020 | FIXED | `lx200_keeps_tracking_while_slewing` failed with tracking reported off in 81 of 101 samples taken during a slew. `:GU#` carries `N` for "no goto" and `n` for "not tracking" independently, and a slew with tracking on carries neither; `meade_update_nyx_state()` read them as alternatives, so every GOTO published tracking off and then on again. | The two characters are decoded independently, as the OnStep branch already did. Regression `lx200_nyx_keeps_tracking_while_slewing` fails the case on a single sample. |
+| LX021 | FIXED | `lx200_parks_and_unparks` failed: after a successful unpark `MOUNT_STATE`'s park light was OK instead of idle, because the handler assigned it the state of the request rather than the parked state of the mount. | The light is set from the parked state; a successful unpark turns it off. Regression `lx200_nyx_park_light_follows_the_mount` asserts it before the next polling cycle can correct it. |
+| LX022 | FIXED | Found while writing the LX015 regression: a park requested in the same polling interval as the unpark before it was silently dropped. `PRIVATE_DATA->parked` only follows the controller status, so the admission guard still saw a parked mount and the request was republished OK with no command sent. | A successful unpark clears the cached flag for every model whose unpark completes immediately; the models that publish BUSY keep following the status. Covered by `lx200_nyx_park_commands_report_refusals`, which stores the park position immediately after unparking. |
+| LX023 | FIXED | Same case: a refused or failed `MOUNT_PARK` left the rejected value in the property. `MOUNT_PARK_PARKED_ITEM` is what the generated parked guards of the motion and tracking properties read, so a failed park locked the client out of both until the next poll. | `meade_restore_park_switch()` puts the property back on the state the driver knows before the refusal or failure is published. `lx200_nyx_park_commands_report_refusals` asserts the restored value and that tracking is accepted straight afterwards. |
+
+### Test defects the run exposed
+
+Not driver defects; recorded because they were part of the baseline failure
+count and because each one is a trap for the next mount suite.
+
+* Right ascension motion was judged by angular separation. Next to the pole an
+  axis can turn through hours of right ascension without covering any arc, so a
+  working axis measured as not moving at all. The scenarios now work at
+  declination 75 and judge each axis by its own coordinate.
+* The abort scenarios raced the mount. `MOUNT_ABORT_MOTION` is dispatched at
+  urgent priority, so an abort requested before the goto handler has run halts a
+  mount that has not started moving, and one requested after the busy
+  publication can still arrive after a short slew has finished. Both now wait
+  until the controller itself reports the slew.
+* `MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY_NAME` is not the property the mount
+  base class publishes; it is `GEOGRAPHIC_COORDINATES`.
+* A scenario cannot wait for a fresh publication of the property it is
+  asserting, because INDIGO suppresses an update that says nothing new. The
+  suite waits on `UTC_TIME`, the one property the polling callback moves on
+  every cycle.
+
+## Controller behaviour that is not a defect
+
+Recorded because each one cost a scenario and would cost the next one again.
+
+* **A goto during a guide pulse is refused.** The NYX answers `:MS#` with error
+  8, "already in motion", while a pulse it was given is still running, and the
+  driver reports it as an alert with that message. `lx200_guides_while_the_mount_slews`
+  therefore starts the slew first and pulses during it, which the mount accepts.
+  Modelled in the simulator and pinned by `lx200_nyx_goto_during_a_guide_pulse_is_refused`.
+* **`:hQ#` is refused while the mount is parked** and accepted while it is not,
+  which is why the park position is stored in the moment after unparking.
+* **`:hF#` costs the park position.** It resets the controller at its home
+  position and leaves it in a standby in which `:hP#` is refused until tracking
+  is enabled again. This is why `MOUNT_HOME_SET` is not exercised on hardware.
+
+## Hardware acceptance results (2026-09-22 23:07, driver 0x03000039)
+
+macOS 15 arm64, Pegasus Astro NYX-101 firmware 1.32.1 on
+`/dev/cu.usbserial-NYX467edc0c` at 115200 8N1.
+
+| Suite | Run | Passed | Failed |
+| --- | --- | --- | --- |
+| `test-mount-lx200-hw` against the NYX-101 | 30 | 30 | 0 |
+
+Scenario to case mapping for the mount hardware acceptance checklist:
+
+| Checklist item | Cases |
+| --- | --- |
+| Discovery, identity and capability readback | `lx200_reports_identity_and_capabilities`, `lx200_publishes_the_property_contract` |
+| Coordinates and supported status readback | `lx200_reads_site_and_time`, `lx200_reports_side_of_pier`, `lx200_reads_the_nyx_leveler`, `lx200_reads_the_nyx_wifi_configuration`, `lx200_reads_the_nyx_sensors` |
+| Small reachable slew and SYNC | `lx200_slews_to_a_nearby_target`, `lx200_syncs_to_the_current_pointing` |
+| Manual motion in both axes | `lx200_moves_both_axes_manually` |
+| Tracking and rate changes | `lx200_toggles_tracking`, `lx200_selects_tracking_rates`, `lx200_reports_the_tracking_rate_from_the_mount`, `lx200_keeps_tracking_while_slewing`, `lx200_selects_slew_rates` |
+| Abort followed by a fresh command | `lx200_aborts_manual_motion`, `lx200_aborts_a_slew_and_accepts_a_fresh_one` |
+| Park, unpark and home with the actual setup | `lx200_unparks_the_mount`, `lx200_goes_home`, `lx200_parks_and_unparks` |
+| Guider standard on the guider logical device | `lx200_guides_in_all_four_directions`, `lx200_guides_both_axes_at_once`, `lx200_replaces_a_guide_pulse_on_the_same_axis`, `lx200_measures_guide_pulse_duration`, `lx200_guides_while_the_mount_slews` |
+| Shared devices, connection orders, last close | `lx200_shares_the_serial_session`, `lx200_refuses_the_unsupported_focuser` |
+| Connection failure, reconnect, INIT/SHUTDOWN | `lx200_refuses_an_unusable_port`, `lx200_reconnects`, `lx200_reinitializes` |
+
+Measured on the mount: site 48.2167 N, 16.9833 E; local sidereal time 22.3367 h;
+mount clock 2026-09-22T21:05:19 with UTC offset 1; leveler pitch 28.7, roll
+-0.3, compass 63.9; ambient 23.2 C, 1006.4 mb, supply 12.3 V; maximum slew rate
+4.5 degrees per second from `:GX97#`, about 1.5 degrees per second measured near
+the pole. The abort stopped a 12 degree slew 10.4731 degrees short of its
+target. The mount kept tracking through all 101 samples taken during a slew.
+
+### Guiding pulse duration accuracy (hardware)
+
+Requested 20, 100 and 500 ms in all four directions, three retained samples per
+direction and duration after one discarded warm-up, 12 samples per duration.
+The endpoints are the client's change request and the OK publication of
+`GUIDER_GUIDE_RA` / `GUIDER_GUIDE_DEC`: the mount terminates the pulse itself,
+so **this is software completion timing over the real serial path, not an
+electrical measurement of the relay output**. Each transaction carries the
+driver's 50 ms post-command settle and one serial round trip.
+
+| Requested | n | Min | Mean | Median | p95 | p99 / max | Stddev | Signed error | Max absolute |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 20 ms | 12 | 73.31 | 77.57 | 78.32 | 81.32 | 81.53 | 3.05 | +57.57 ms (+287.84 %) | 61.53 ms |
+| 100 ms | 12 | 152.43 | 165.26 | 158.42 | 162.94 | 252.52 | 27.68 | +65.26 ms (+65.26 %) | 152.52 ms |
+| 500 ms | 12 | 553.07 | 585.20 | 558.25 | 643.61 | 649.05 | 43.27 | +85.20 ms (+17.04 %) | 149.05 ms |
+
+A pulse during a slew completed in 358.7 ms, both axes at once in 785.6 ms, and
+a 2000 ms pulse replaced after 500 ms by a 600 ms pulse ended after 1179 ms.
+These are observations on this host, not acceptance limits.
+
+## Simulator results (driver 0x03000039, simulator version 4)
+
+The suite grew from 67 to 72 serial cases with the five regressions above. Two
+full runs of the whole suite were made while the fixes were being written. The
+first reported 71 of 71 passing and the second 71 of 72, with
+`lx200_initialization_rollback_and_reconnect` failing on a fixture left over
+from the new `lx200_nyx_goto_during_a_guide_pulse_is_refused` case, which
+connected the master device and tore down only the guider; the case now
+disconnects the master as the other shared-device cases do. **That teardown fix
+was not re-verified by another full run**, because the run was stopped at that
+point; the five new cases and every case they touch passed individually
+afterwards. The opt-in TCP target and the ASAN/UBSAN build were not run in this
+session.
+
+## Not covered
+
+* Physical transport loss. The mount is on a USB serial adapter and the cable
+  cannot be pulled from a non-interactive run; no hot-plug coverage is claimed.
+* `MOUNT_HOME_SET` and the three WiFi write properties on hardware, for the
+  reasons given above. All four are covered against the simulator.
+* Pointing accuracy, tracking accuracy, polar alignment and periodic error, which
+  the driver testing rules place outside driver acceptance.
+* Other LX200 models. This run validates the NYX branch of the driver; the
+  Meade, 10micron, Gemini, StarGO, AP, OnStep, ZWO, OAT, aGotino and TeenAstro
+  branches keep their simulator evidence only.
+
+## Final test summary for this run
+
+* Simulated tests: 72 run, 71 passed in the last full run, with the one failure
+  and its unverified fix described above.
+* Hardware tests: 30 run, 30 passed, against a Pegasus Astro NYX-101.

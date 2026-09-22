@@ -137,6 +137,7 @@
 | guider_gpusb | 2026-09-21 23:32 | 3.0.0.10 | mac arm64 | fake SDK | 20 / 20 | ✅ OK |
 | mount_ioptron | 2026-09-20 21:29 | 3.0.0.53 | mac arm64 | simulator | 104 / 104 | ✅ OK |
 | mount_lx200 | 2026-09-20 21:29 | 3.0.0.56 | mac arm64 | simulator | 70 / 70 | ✅ OK |
+| mount_lx200 | 2026-09-22 23:07 | 3.0.0.57 | mac arm64 | Pegasus NYX-101 | 30 / 30 | ✅ OK |
 | mount_nexstar | 2026-09-20 20:44 | 3.0.0.34 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 | mount_nexstaraux | 2026-09-20 21:29 | 3.0.0.14 | mac arm64 | simulator | 30 / 30 | ✅ OK |
 | mount_pmc8 | 2026-09-20 20:49 | 3.0.0.11 | mac arm64 | simulator | 11 / 11 | ✅ OK |

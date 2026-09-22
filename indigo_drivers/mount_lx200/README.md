@@ -50,3 +50,4 @@ Driver is developed and tested with:
 ## Testing
 
 2026-09-20 21:29 3.0.0.56 mac arm64 simulator 70/70 OK
+2026-09-22 23:07 3.0.0.57 mac arm64 Pegasus NYX-101 30/30 OK
