@@ -66,6 +66,20 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool migrated;
 static std::atomic<int> fail_registration, fail_resource, fail_attachment, fail_descriptor, scan_error, fail_id, refs, fail_range, invalid_value, wheel_status(-1), remaining_error, memory_length;
 static std::atomic<bool> guide_blocks, reset_controls;
+// A QHY camera that comes up without firmware sits on the bus under a loader product id and stays
+// invisible to ScanQHYCCD() until a firmware call has programmed it. `unprogrammed` counts them and
+// defaults to none, so every other case keeps the fully programmed rig it was written against.
+static std::atomic<int> unprogrammed;
+// Set when OSXInitQHYCCDFirmware() was asked to program more than one camera in a single call. The
+// real SDK frees a block it does not own in that case and the process aborts in libmalloc with
+// "BUG IN CLIENT OF LIBMALLOC: not an allocated block", which no test can survive, so the fake
+// records the abort instead of performing it.
+static std::atomic<bool> firmware_overrun;
+// A QHY5L-II adds 50 to CONTROL_OFFSET on every SetQHYCCDBitsMode()/InitQHYCCD() pair and ignores
+// every write to that control while still reporting success for it, so the readback walks out of
+// the range the camera advertises after a handful of mode changes and never comes back. Zero, the
+// default, keeps the well behaved camera every other case was written against.
+static std::atomic<int> offset_drift;
 static char config_folder[] = "/tmp/indigo_qhy_config_XXXXXX";
 
 static pthread_mutex_t gate_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -115,9 +129,25 @@ uint32_t ReleaseQHYCCDResource(void) { resources--; return QHYCCD_SUCCESS; }
 
 void SetQHYCCDLogLevel(uint8_t level) { }
 
-uint32_t OSXInitQHYCCDFirmware(char *path) { return QHYCCD_SUCCESS; }
+uint32_t OSXInitQHYCCDFirmware(char *path) {
+	if (unprogrammed > 1) {
+		firmware_overrun = true;
+		return QHYCCD_ERROR;
+	}
+	unprogrammed = 0;
+	// The real call answers 0xffffffff even on the run that programmed a camera.
+	return QHYCCD_ERROR;
+}
 
-uint32_t ScanQHYCCD(void) { call(); return scan_error ? QHYCCD_ERROR : visible ? __builtin_popcount((unsigned)camera_mask.load()) : 0; }
+#ifdef QHY2
+uint32_t OSXInitQHYCCDFirmwareArray(void) {
+	unprogrammed = 0;
+	// Same unusable status as the path variant, and no limit on how many cameras one call covers.
+	return QHYCCD_ERROR;
+}
+#endif
+
+uint32_t ScanQHYCCD(void) { call(); return scan_error ? QHYCCD_ERROR : visible && unprogrammed == 0 ? __builtin_popcount((unsigned)camera_mask.load()) : 0; }
 #ifdef QHY2
 uint32_t GetQHYCCDId(uint32_t index, char *id)
 #else
@@ -171,6 +201,9 @@ double GetQHYCCDParam(qhyccd_handle *h, CONTROL_ID c) { valid(h); return invalid
 uint32_t SetQHYCCDParam(qhyccd_handle *h, CONTROL_ID c, double value) {
 	valid(h);
 	if (fail_control == (int)c + 1) { return QHYCCD_ERROR; }
+	// The drifting camera answers a write to the control it ignores with success and keeps its own
+	// value, which is what makes the driver's readback walk out of range.
+	if (offset_drift && c == CONTROL_OFFSET) { return QHYCCD_SUCCESS; }
 	params[c] = value;
 	if (c == CONTROL_EXPOSURE) { exposure = value / 1e6; }
 	return QHYCCD_SUCCESS;
@@ -180,7 +213,7 @@ uint32_t SetQHYCCDBinMode(qhyccd_handle *h, uint32_t x, uint32_t y) { valid(h); 
 
 uint32_t SetQHYCCDResolution(qhyccd_handle *h, uint32_t x, uint32_t y, uint32_t w, uint32_t v) { valid(h); left = x; top = y; width = w; height = v; return QHYCCD_SUCCESS; }
 
-uint32_t SetQHYCCDBitsMode(qhyccd_handle *h, uint32_t b) { valid(h); if (formats != 3 || fail_bits) { return QHYCCD_ERROR; } bits = b; return QHYCCD_SUCCESS; }
+uint32_t SetQHYCCDBitsMode(qhyccd_handle *h, uint32_t b) { valid(h); if (formats != 3 || fail_bits) { return QHYCCD_ERROR; } bits = b; if (offset_drift) { params[CONTROL_OFFSET] = params[CONTROL_OFFSET] + offset_drift; } return QHYCCD_SUCCESS; }
 
 uint32_t GetQHYCCDMemLength(qhyccd_handle *h) { valid(h); return memory_length ? memory_length.load() : 640 * 480 * 2; }
 
@@ -389,6 +422,9 @@ static void end(void) {
 	fail_mode = fail_bits = false;
 	release_gate();
 	fail_registration = fail_resource = fail_attachment = fail_descriptor = scan_error = fail_id = fail_range = invalid_value = remaining_error = memory_length = 0;
+	unprogrammed = 0;
+	firmware_overrun = false;
+	offset_drift = 0;
 	wheel_status = -1;
 	guide_blocks = reset_controls = false;
 	for (int d = 5; d >= 0; d--) {
@@ -898,6 +934,60 @@ static void missing_live_video_hides_streaming(void) {
 	end();
 	has_live = true;
 }
+
+// Hardware: a macOS rig carrying a QHY5 and a QHY5L-II that both came up without firmware aborted
+// the driver inside OSXInitQHYCCDFirmware() before the call returned, in libmalloc with "BUG IN
+// CLIENT OF LIBMALLOC: not an allocated block", and the whole process went with it. One
+// unprogrammed camera was survived, which is why a single camera rig never showed it. The driver
+// uses OSXInitQHYCCDFirmwareArray() instead, which programs the same cameras with no such limit.
+static void several_unprogrammed_cameras_are_programmed_without_a_double_free(void) {
+	cfw = false;
+	camera_mask = 3;
+	unprogrammed = 2;
+	ASSERT_TRUE(begin(4));
+	ASSERT_FALSE(firmware_overrun.load());
+	ASSERT_EQ_INT(0, unprogrammed.load());
+	ASSERT_TRUE(connect(0, true));
+	number(0, "CCD_EXPOSURE", "EXPOSURE", .01);
+	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_TRUE(connect(0, false));
+	end();
+	camera_mask = 1;
+	cfw = true;
+}
+
+// Hardware: a QHY5LII-M adds 50 to CONTROL_OFFSET on every bit depth change and ignores the write
+// the driver makes afterwards, so the readback reached 530 against the 1..512 the camera
+// advertises and every acquisition from the eighth mode change on ended with "Acquisition failed"
+// on a camera that was taking pictures perfectly well.
+static void a_control_that_drifts_out_of_its_range_does_not_end_the_acquisition(void) {
+	offset_drift = 20;
+	ASSERT_TRUE(begin());
+	ASSERT_TRUE(connect(0, true));
+	indigo_property *offset = snapshot(0, "CCD_OFFSET");
+	ASSERT_TRUE(offset != NULL);
+	double requested = offset->items[0].number.value;
+	indigo_release_property(offset);
+	// The fake advertises 0..100, so ten depth changes take the readback well past the top.
+	for (int i = 0; i < 10; i++) {
+		sw(0, "X_PIXEL_FORMAT", i % 2 ? "RAW 16" : "RAW 8");
+		ASSERT_TRUE(wait_state(0, "X_PIXEL_FORMAT", INDIGO_OK_STATE));
+		number(0, "CCD_EXPOSURE", "EXPOSURE", .01);
+		ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+	}
+	ASSERT_TRUE(params[CONTROL_OFFSET] > 100);
+	offset = snapshot(0, "CCD_OFFSET");
+	ASSERT_TRUE(offset != NULL);
+	// The value the driver asked for stays the setting; the drifted readback is never adopted.
+	ASSERT_EQ_INT((int)requested, (int)offset->items[0].number.value);
+	indigo_release_property(offset);
+	ASSERT_TRUE(connect(0, false));
+	end();
+	offset_drift = 0;
+	// The drifted control is fake state the next case would connect against, and a value outside
+	// the advertised range makes the driver refuse the connection while it reads the ranges.
+	params[CONTROL_OFFSET] = 0;
+}
 #endif
 
 // Waiting for the duration before reading a QHYCCD_READ_DIRECTLY frame exposed for it twice: 16.5
@@ -958,6 +1048,8 @@ int main(int argc, char **argv) {
 	const indigo_test_case cases[] = { { "discovery capacity identity", discovery_capacity_and_identity }, { "property contract frame types", property_contract_and_frame_types }, { "sibling orders guide overlap", sibling_orders_and_guide_overlap }, { "RAW color payload", raw_color_payload }, { "zero stream failed setting", zero_stream_and_failed_setting }, { "cooler failure recovery", cooler_failure_recovery }, { "lifecycle", basic_lifecycle }, { "acquisition", acquisition }, { "open rollback", open_rollback }, { "advanced failure", failed_advanced }, { "initialization failures", initialization_failures }, { "start and read failures", start_and_read_failures }, { "fractional exposures", fractional_exposures }, { "abort restart", abort_and_restart }, { "streams abort", streams_and_abort }, { "stream errors", stream_errors }, { "guide directions errors", guider_directions_and_failures }, { "wheel position errors", wheel_position_and_errors }, { "controls no bus IO", controls_and_no_bus_io }, { "read modes", read_modes }, { "ROI formats bins", roi_formats_and_bins }, { "acquisition conflicts", acquisition_conflicts }, { "disconnect sibling", disconnect_and_sibling_survival }, { "discovery lifecycle", startup_only_discovery }, { "init enumeration attachment", init_enumeration_and_attachment_rollback }, { "discovery failure reload", discovery_failure_and_reload }, { "metadata readback", metadata_and_readback_errors }, { "queued abort", queued_abort_before_start }, { "wheel timeout status", wheel_timeout_and_malformed_status }, { "setup reinitialize", setup_reinitialize_recovery }, { "mode depth errors", mode_and_depth_errors }, { "stream reset error", stream_reset_error }, { "readout buffer contract", bounded_readout_and_buffer_contract }, { "cooling sensor", cooling_and_sensor_profiles }, { "optional sparse profiles", optional_interfaces_and_sparse_formats }, { "configuration restore", config_and_reopen_settings }, { "guide blocking zero", guide_blocking_and_zero }, 
 	#ifdef QHY2
 		{ "missing live video", missing_live_video_hides_streaming },
+		{ "unprogrammed cameras", several_unprogrammed_cameras_are_programmed_without_a_double_free },
+		{ "drifting control", a_control_that_drifts_out_of_its_range_does_not_end_the_acquisition },
 	#endif
 		{ "read directly exposure", read_directly_exposure_is_not_doubled } };
 	int result = 0, matched = 0;

@@ -130,3 +130,156 @@ The shared fake SDK of `indigo_test/integration/test_ccd_qhy_sdk.cpp` gained a l
 The run covered exposures from 0.1 to 16.5 s, frame types, ROI, bins and read modes, the busy refusal guards for both exposure and streaming, abort and restart, the guider on all four axes including during an exposure, disconnect/reconnect, driver reload and a fresh exposure. Live video is not applicable to this camera, and the test now says so instead of assuming it.
 
 Hot-plug was not established: the camera hangs on the Powerbox hub, whose port switch is invisible to the host's hub driver on macOS (see `indigo_drivers/ccd_atik/REFACTOR.md`).
+
+## Three camera hardware run (2026-09-22)
+
+Non-interactive hardware run on macOS arm64 against three QHY cameras on the hub of a Pegasus
+Ultimate Powerbox v1.7 at the same time: a QHY5L-II-M, a QHY5 (Orion StarShoot Autoguider variant)
+and a QHY-8PRO. Every camera was taken through the full scope of
+`indigo_test/hardware/test_ccd_qhy_hw.c`. Three defects were found, all three reproduced against the
+fake SDK.
+
+The rig is what found them: the two defects below appear only when several QHY cameras share a bus,
+or after enough mode changes for a control readback to drift, and a single camera session never
+reaches either.
+
+### Defect 3: a second unprogrammed camera aborted the driver (version 38 to 39)
+
+With a QHY5 and a QHY5L-II both powered up without firmware, `OSXInitQHYCCDFirmware()` never
+returned: the process died inside it with
+
+```
+BUG IN CLIENT OF LIBMALLOC: not an allocated block
+libsystem_malloc.dylib mfm_free
+libqhyccd.dylib        OSXInitQHYCCDFirmware
+indigo_ccd_qhy2.dylib  indigo_ccd_qhy2
+```
+
+It frees a block it does not own as soon as one call has to program more than one camera. One
+unprogrammed camera is survived, which is why the QHY5-M session of 2026-09-22 never showed it and
+why the crash arrived with the second camera rather than with an SDK change. The argument shape is
+not the trigger: a stack buffer, a `strdup()` and a static buffer all abort, and a standalone
+program outside INDIGO aborts the same way, so this is the SDK and not the driver's call.
+
+`OSXInitQHYCCDFirmwareArray()` programs the same cameras from firmware the SDK carries itself, needs
+no firmware directory and has no such limit - it brought all three cameras up from cold in one call.
+The driver uses it now. Neither entry point reports a usable status: both answer `0xffffffff` on
+runs that demonstrably programmed a camera, so the result is deliberately not checked. A camera that
+re-enumerates between two boot stages, the QHY-8PRO here, is programmed by the call the plug event
+of its second stage makes.
+
+`INDIGO_FIRMWARE_BASE` is therefore no longer read by this driver on macOS. The driver's `README.md`
+still documents it and was left alone; changing it needs the user's approval.
+
+### Defect 4: a drifting control readback became the published setting and then ended the acquisition (version 39 to 40)
+
+`CONTROL_OFFSET` of the QHY5L-II gains 50 on every `SetQHYCCDBitsMode()`/`InitQHYCCD()` pair, and
+the write the driver makes afterwards is ignored while `SetQHYCCDParam()` still reports success:
+
+```
+offset at connect: 180
+  cycle  1 bpp  8: after mode    230, wrote    180 (rc 0x00000000), reads    230
+  cycle  2 bpp 16: after mode    280, wrote    230 (rc 0x00000000), reads    280
+  ...
+  cycle  7 bpp  8: after mode    530, wrote    480 (rc 0x00000000), reads    530   <-- OUT OF RANGE 1..512
+```
+
+`qhy2_write_control()` adopted that readback as the new setting, so two things followed. The
+published offset walked from 180 to 480 over a single acceptance run without any client asking for
+it, which the busy-refusal guard caught as `CCD_OFFSET.OFFSET: value 180 -> 480` when a refused
+change republished the property. And once the readback passed 512 the range check failed the write,
+`qhy2_setup()` failed with it and the exposure ended as `Acquisition failed` on a camera that was
+taking pictures perfectly well - the `switching` scenario hit that on its eighth mode change, every
+time.
+
+The readback exists to follow a camera that quantises the value it was given, so it is now adopted
+only when it could be exactly that: within the advertised range and no further than one step from
+the value that was written. The QHY5L-II's 50 against a step of 1 is reported and dropped, and the
+requested value stays the setting.
+
+### Defect 5: the exposure the SDK times itself outran the test's own bound (test only)
+
+The 16.5 s exposure of the `exposure` scenario timed out against a working driver.
+`ExpQHYCCDSingleFrame()` answers `QHYCCD_READ_DIRECTLY` for this camera, so the exposure happens
+inside `GetQHYCCDSingleFrame()`, and that call takes about twice the requested duration: 31.9 s
+measured for a 16.5 s frame, 34.5 s from the start. The driver was right; the harness waited a flat
+30 s for every property. `number_value()` now derives the bound for `CCD_EXPOSURE` from the duration
+that was requested, and the same exposure completes in 35.5 s. No driver change.
+
+### Unattended hot-plug through the Powerbox
+
+The earlier note in this file said hot-plug could not be established because the Powerbox port
+switch is invisible to the host's hub driver on macOS. That is half right and the missing half makes
+the scenario runnable. Measured on 2026-09-22 with a libusb hot-plug watcher and the same
+`CLEAR_FEATURE`/`SET_FEATURE` `PORT_POWER` requests the `aux_upb` driver makes:
+
+```
+[  2.01] power off port 3
+[  8.03] power on port 3
+  [  8.30] LEFT    1618:0920 addr 112
+  [  8.31] ARRIVED 1618:0920 addr 113
+```
+
+Nothing reaches a callback while the port is off - the device stays in the IOKit registry and in
+`libusb_get_device_list()` - but the removal and the arrival are both delivered about a quarter of a
+second after the power comes back, ten milliseconds apart. The camera really was unpowered
+throughout: `GET_STATUS` answers `0x00000000` for the whole off period and the camera comes back
+under its loader product id, having lost its firmware. A scenario therefore cannot wait for the
+camera to be absent; it switches the port off, leaves it off, switches it back on and waits for the
+withdrawal and the re-arrival from that moment.
+
+`indigo_test/hardware/powerbox_hotplug_test_common.h` implements the switch and records this, and
+`QHY_HW_CASE=hotplug QHY_HW_HUB_PORT=<n>` runs the four hot-plug phases unattended against the
+camera on that hub port. Without `QHY_HW_HUB_PORT` the phases still wait for a person, as before.
+
+### Coverage
+
+The shared fake SDK of `indigo_test/integration/test_ccd_qhy_sdk.cpp` gained two selectable
+behaviours of this rig, both off by default so the existing cases keep the well behaved camera they
+were written against.
+
+- `unprogrammed` counts the cameras that came up without firmware. They stay invisible to
+  `ScanQHYCCD()` until a firmware call programs them, `OSXInitQHYCCDFirmware()` records the abort
+  the real one performs when asked to program more than one, and `OSXInitQHYCCDFirmwareArray()`
+  programs them all. Both answer the unusable `0xffffffff` the real calls answer.
+- `offset_drift` adds its value to `CONTROL_OFFSET` on every `SetQHYCCDBitsMode()` and makes writes
+  to that control succeed without effect, which is the QHY5L-II quirk.
+
+Two cases pin them down, both `QHY2` only because the legacy SDK has neither the array entry point
+nor a driver that could use it:
+
+- `unprogrammed cameras` brings two unprogrammed cameras up, requires that no call would have
+  double freed, that both were programmed and that an exposure works. It fails when the array entry
+  point stops programming them, which was checked by making the fake ignore it.
+- `drifting control` takes ten bit depth changes with an exposure after each, requires every one of
+  them to succeed after the readback has left the advertised range, and requires the published
+  offset to still be the one the client asked for.
+
+### Results
+
+| run | result |
+| --- | --- |
+| `build/integration/test_ccd_qhy2_sdk` | 41/41 |
+| `INDIGO_TEST_DEVICE="QHY5LII" make -C indigo_test test-ccd-qhy2-hw` | 1/1 |
+| `INDIGO_TEST_DEVICE="QHY5-M" make -C indigo_test test-ccd-qhy2-hw` | 1/1 |
+| `INDIGO_TEST_DEVICE="QHY8PRO" make -C indigo_test test-ccd-qhy2-hw` | 1/1 |
+| `INDIGO_TEST_DEVICE="QHY5LII" QHY_HW_HUB_PORT=3 make -C indigo_test test-ccd-qhy2-hotplug-powerbox-hw` | 1/1 |
+
+Each hardware run covered exposures from 0.1 to 16.5 s, pixel formats and the single/live/single
+switching rounds, ROI, bins, modes and read modes, gain/offset/advanced settings and their
+restoration, the busy refusal guards during both an exposure and a stream, abort and restart,
+finite and indefinite streaming, the guider on all four axes including during an exposure,
+disconnect/reconnect, a driver reload and a fresh exposure after it. The hot-plug run cut the
+camera's power while it was disconnected, connected and idle, exposing and streaming, and required
+the device to be withdrawn and to come back usable under the same name every time.
+
+Not covered: the QHY5-M has no live video and the scenario says so rather than assuming it; the
+Windows build of this driver was not exercised; and the legacy `ccd_qhy` carries the same
+`qhy_write_control()` readback rule as defect 4 describes and was left unfixed on the user's
+instruction, so a QHY5L-II on that driver still drifts.
+
+## Final test summary
+
+- Simulated tests run: 41; passed: 41 (`build/integration/test_ccd_qhy2_sdk`).
+- Hardware tests run: 5; passed: 5. QHY5L-II-M, QHY5-M and QHY-8PRO on a Pegasus Ultimate Powerbox
+  v1.7 hub, macOS arm64, plus the unattended hot-plug run on the QHY5L-II-M.

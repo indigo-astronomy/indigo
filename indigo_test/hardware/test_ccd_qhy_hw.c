@@ -26,6 +26,7 @@
 #include <indigo/indigo_driver.h>
 #include <dlfcn.h>
 #include "../test_runner.h"
+#include "powerbox_hotplug_test_common.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define MAX_DEVICES 16
@@ -49,6 +50,8 @@ static int camera = -1, guider = -1;
 // A camera the SDK reports without live mode does not publish CCD_STREAMING at all, and asking it
 // to stream used to hang the vendor call and with it the whole device queue.
 static bool streams;
+// Set from QHY_HW_HUB_PORT; hub_port.hub stays NULL when the hot-plug phases wait for a person.
+static powerbox_hub_port hub_port;
 static indigo_result (*driver_entry)(indigo_driver_action, indigo_driver_info *);
 static void *driver_library;
 static const char *library_path, *entry_symbol;
@@ -215,8 +218,9 @@ static unsigned revision(int d, const char *name) {
 	return result;
 }
 
-static bool wait_state(int d, const char *name, unsigned after, indigo_property_state state) {
-	for (int i = 0; i < 3000; i++) {
+static bool wait_state_within(int d, const char *name, unsigned after, indigo_property_state state, double seconds) {
+	int cycles = (int)(seconds * 100);
+	for (int i = 0; i < cycles; i++) {
 		pthread_mutex_lock(&mutex);
 		int p = slot(d, name);
 		bool ready = p >= 0 && devices[d].revisions[p] > after && devices[d].properties[p]->state == state;
@@ -226,8 +230,12 @@ static bool wait_state(int d, const char *name, unsigned after, indigo_property_
 		}
 		indigo_usleep(10000);
 	}
-	fprintf(stderr, "Timeout: %s %s expected state %d\n", devices[d].name, name, state);
+	fprintf(stderr, "Timeout after %gs: %s %s expected state %d\n", seconds, devices[d].name, name, state);
 	return false;
+}
+
+static bool wait_state(int d, const char *name, unsigned after, indigo_property_state state) {
+	return wait_state_within(d, name, after, state, 30);
 }
 
 static bool switch_value(int d, const char *name, const char *item, indigo_property_state state) {
@@ -237,11 +245,18 @@ static bool switch_value(int d, const char *name, const char *item, indigo_prope
 	return wait_state(d, name, before, state);
 }
 
+// A camera whose SDK answers ExpQHYCCDSingleFrame() with QHYCCD_READ_DIRECTLY does not time the
+// exposure itself: GetQHYCCDSingleFrame() blocks for it instead, and that call takes about twice
+// the requested duration. A QHY5L-II measured 31.9 s inside the read for a 16.5 s frame, 34.5 s
+// from the start of the exposure, so the flat 30 s bound failed the longest exposure of the
+// scenario against a driver that was working. An exposure therefore gets a bound derived from what
+// it asked for; every other property keeps the flat one.
 static bool number_value(int d, const char *name, const char *item, double value, indigo_property_state state) {
 	printf("Set %s.%s = %.6g\n", name, item, value);
 	unsigned before = revision(d, name);
 	indigo_change_number_property_1(&client, devices[d].name, name, item, value);
-	return wait_state(d, name, before, state);
+	double seconds = strcmp(name, "CCD_EXPOSURE") ? 30 : 30 + 3 * value;
+	return wait_state_within(d, name, before, state, seconds);
 }
 
 static unsigned frames(void) {
@@ -311,26 +326,36 @@ static bool message_reported(const char *name, const char *text) {
 	return ok;
 }
 
+// Says which item and which field moved. "the driver did not preserve its values" on its own sends
+// the reader back to the camera with nothing to go on, and a value that moved for a reason of its
+// own reads exactly like a guard that let the change through.
 static bool same_values(indigo_property *a, indigo_property *b) {
 	if (!a || !b || a->type != b->type || a->count != b->count) {
+		fprintf(stderr, "      %s: the property itself changed shape\n", a ? a->name : "(missing)");
 		return false;
 	}
+	bool same = true;
 	for (int i = 0; i < a->count; i++) {
 		indigo_item *x = a->items + i, *y = b->items + i;
 		if (strcmp(x->name, y->name)) {
-			return false;
+			fprintf(stderr, "      %s item %d: '%s' became '%s'\n", a->name, i, x->name, y->name);
+			same = false;
+			continue;
 		}
 		if (a->type == INDIGO_NUMBER_VECTOR && (x->number.value != y->number.value || x->number.target != y->number.target)) {
-			return false;
+			fprintf(stderr, "      %s.%s: value %g -> %g, target %g -> %g\n", a->name, x->name, x->number.value, y->number.value, x->number.target, y->number.target);
+			same = false;
 		}
 		if (a->type == INDIGO_SWITCH_VECTOR && x->sw.value != y->sw.value) {
-			return false;
+			fprintf(stderr, "      %s.%s: %s -> %s\n", a->name, x->name, x->sw.value ? "on" : "off", y->sw.value ? "on" : "off");
+			same = false;
 		}
 		if (a->type == INDIGO_TEXT_VECTOR && strcmp(x->text.value, y->text.value)) {
-			return false;
+			fprintf(stderr, "      %s.%s: '%s' -> '%s'\n", a->name, x->name, x->text.value, y->text.value);
+			same = false;
 		}
 	}
-	return true;
+	return same;
 }
 
 // Requests a value the property does not hold, so an accepted change would be visible in the cache.
@@ -504,6 +529,15 @@ static void hardware_workflows(void) {
 				CHECK(frames() >= before + 3);
 			}
 			printf("HOTPLUG PHASE %d %s: WAITING FOR UNPLUG\n", phase + 1, phases[phase]);
+			// With QHY_HW_HUB_PORT the camera hangs on the hub inside a Pegasus Powerbox and the
+			// cable is pulled by switching that port instead of by a person. On macOS neither
+			// event reaches the driver while the port is off, so the unplug is only observable
+			// once the power is back - the suite waits for the withdrawal and the arrival after
+			// the cycle rather than in between, and the camera really was unpowered for the whole
+			// off period. Without the variable the phase waits for a person, as it always did.
+			if (hub_port.hub) {
+				CHECK(powerbox_hub_cycle(&hub_port, 6));
+			}
 			CHECK(wait_presence(false));
 			printf("HOTPLUG PHASE %d: DETACHED, WAITING FOR REPLUG\n", phase + 1);
 			CHECK(wait_presence(true));
@@ -662,11 +696,13 @@ cleanup:
 
 int main(int argc, char **argv) {
 	if (argc != 4 || strcmp(argv[1], "--run") || !getenv("INDIGO_TEST_DEVICE") || !*getenv("INDIGO_TEST_DEVICE")) {
-		fprintf(stderr, "Set INDIGO_TEST_DEVICE to a unique model/name substring and run --run <driver-library> <entry-symbol>. QHY_HW_CASE optionally selects exposure, switching, geometry, settings, reject, abort, stream, guide or hotplug.\n");
+		fprintf(stderr, "Set INDIGO_TEST_DEVICE to a unique model/name substring and run --run <driver-library> <entry-symbol>. QHY_HW_CASE optionally selects exposure, switching, geometry, settings, reject, abort, stream, guide or hotplug. QHY_HW_HUB_PORT runs the hotplug phases unattended by switching that port of the Pegasus Powerbox hub.\n");
 		return 2;
 	}
 	library_path = argv[2]; entry_symbol = argv[3];
 	if (getenv("QHY_HW_DEBUG")) { indigo_set_log_level(INDIGO_LOG_DEBUG); }
+	const char *hub = getenv("QHY_HW_HUB_PORT");
+	if (hub && *hub && !powerbox_hub_open(&hub_port, atoi(hub))) { return 2; }
 	if (!load_driver()) { return 1; }
 	setvbuf(stdout, NULL, _IONBF, 0);
 	client = (indigo_client){ .name = "QHY hardware test", .version = INDIGO_VERSION_CURRENT, .define_property = define_property, .update_property = update_property, .delete_property = delete_property, .send_message = report_message };
@@ -675,6 +711,7 @@ int main(int argc, char **argv) {
 	for (int d = 0; d < MAX_DEVICES; d++) {
 		for (int p = 0; p < MAX_PROPERTIES; p++) { indigo_release_property(devices[d].properties[p]); }
 	}
+	powerbox_hub_close(&hub_port);
 	if (driver_library && dlclose(driver_library)) { result = 1; }
 	return result;
 }
