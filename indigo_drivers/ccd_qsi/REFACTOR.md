@@ -262,3 +262,49 @@ Totals:
 
 - Simulated (hardware-free) tests run: **60**; passed: **60**. Counted once; the suite was additionally executed on the `x86_64` slice and under sanitizers with the same result.
 - Hardware tests run: **0**; passed: **0**.
+
+## 2026-09-22 macOS Intel-only correction
+
+### Scope and audit
+
+The user clarified that the QSI driver is supported on Intel macOS only. The current generated driver version 17 has no `supported_architecture` attribute and therefore compiles the full SDK-backed implementation for both macOS slices. Linux support remains unchanged. This correction is limited to generated architecture metadata and does not change properties, SDK calls, lifecycle behavior or test coverage.
+
+The generator migration guide documents the exact platform-specific expression required here: `!defined(INDIGO_MACOS) || defined(__x86_64__)`. On macOS arm64 the generated entry point must retain INFO metadata and return `INDIGO_UNSUPPORTED_ARCH` for INIT and SHUTDOWN; non-macOS targets must retain the implementation.
+
+No QSI hardware is available and no hardware testing will be performed for this correction. Hardware tests run: **0**; passed: **0**.
+
+### Baseline
+
+- `make -f ../../Makefile.drv` from `indigo_drivers/ccd_qsi` — PASS for the unmodified version 17 universal driver. The build emits the existing duplicate-libusb, deployment-target and libc++ support warnings; there are no errors.
+
+### Atomic plan
+
+| # | Step | Verification | State | Result |
+| - | ---- | ------------ | ----- | ------ |
+| 1 | Read the repository, driver and generator instructions and audit the current architecture metadata. | Current source and generated entry point inspected. | DONE | Version 17 has no restriction and no unsupported-architecture fallback. |
+| 2 | Build the unmodified driver as the baseline. | `make -f ../../Makefile.drv` succeeds. | DONE | PASS with the existing warnings recorded above. |
+| 3 | Add the macOS Intel-only expression to the `.driver` source and raise the driver version. | Source contains the documented generator attribute and a higher version. | DONE | Added `!defined(INDIGO_MACOS) || defined(__x86_64__)`; version raised from 17 to 18. |
+| 4 | Regenerate the checked-in `.cpp`, `.h` and `_main.c` outputs. | A second generator run is byte-identical. | DONE | Generator emitted the version/architecture guard and current connection/timer/unplug semantics; SHA-1 hashes were identical after the second run. The header and standalone wrapper remained unchanged. |
+| 5 | Build and inspect both macOS slices and run an arm64 unsupported-architecture contract check. | Intel slice contains the implementation, arm64 contains the unsupported stub, and the stub returns the documented results. | DONE | Universal build passed. `nm` shows `QSICamera` references only in x86_64. The arm64 contract test passed: INFO reports version 18; INIT and SHUTDOWN return `INDIGO_UNSUPPORTED_ARCH`. |
+| 6 | Run the existing 60-case fake-SDK suite on the supported x86_64 slice. | 60/60 tests pass. | BLOCKED | The universal test binary built successfully, but this Apple Silicon host has no Rosetta and `arch -x86_64 ...` fails with `Bad CPU type in executable`. No test case started. |
+
+### Found defect
+
+| ID | Evidence class | Impact | Root cause | Fix | Regression verification |
+| -- | -------------- | ------ | ---------- | --- | ----------------------- |
+| D13 | User report and source audit | The macOS arm64 slice advertises and initializes a driver that is not supported on that platform. | The prior Apple Silicon experiment removed `supported_architecture`, but QSI support remains Intel-only. | Restored the generator-owned macOS Intel-only guard and bumped the driver version to 18. | Slice inspection and the arm64 unsupported-architecture contract test pass. The x86_64 suite compiled but could not run because Rosetta is unavailable. |
+
+### Final test summary
+
+- `make -f ../../Makefile.drv` — PASS. Both macOS slices compile and link; only the existing duplicate-libusb, deployment-target and libc++ support warnings remain.
+- Two consecutive `indigo_generator indigo_ccd_qsi.driver` runs — PASS, byte-identical generated output.
+- `nm -arch arm64 build/drivers/indigo_ccd_qsi.a` — only `indigo_ccd_qsi` is present; no `QSICamera` references.
+- `nm -arch x86_64 build/drivers/indigo_ccd_qsi.a` — full implementation and `QSICamera` references are present.
+- Arm64 unsupported-architecture contract test — PASS: INFO returns OK with version 18; INIT and SHUTDOWN return `INDIGO_UNSUPPORTED_ARCH`.
+- `make build/integration/test_ccd_qsi_sdk` — PASS for the universal test binary.
+- `arch -x86_64 build/integration/test_ccd_qsi_sdk` — unavailable: Rosetta is not installed (`Bad CPU type in executable`), so no suite case ran.
+
+Totals for this correction:
+
+- Simulated (hardware-free) tests run: **1**; passed: **1** (architecture contract). The existing 60-case Intel suite was built but not executed.
+- Hardware tests run: **0**; passed: **0**.

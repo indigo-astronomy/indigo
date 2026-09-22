@@ -10,7 +10,7 @@ This driver supports hot-plug (multiple devices, only one camera and filter whee
 
 ## Supported platforms
 
-This driver works on Linux (Intel 32/64 bit and ARM v6+) and MacOS.
+This driver works on Linux (Intel 32/64 bit and ARM v6+) and MacOS (Intel Only).
 
 ## License
 
