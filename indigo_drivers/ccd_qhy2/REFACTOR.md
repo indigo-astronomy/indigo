@@ -52,9 +52,23 @@ ever arrives for the same device.
 The block now runs only when libusb has not already identified the device. All six cases pass on a
 QHY5III178M on Linux arm64.
 
-The same dead assignment is in the generator's SDK hot-plug template, so `ccd_asi`, `ccd_playerone`
-and `ccd_svb` carry the same shape. `ccd_svb` passes the suite unchanged, because its SDK stops
-reporting a camera that is gone; the other two are untested for it.
+The dead assignment was in the generator's SDK hot-plug template, which 17 drivers share, so the
+guard was moved there rather than kept in this driver's hook; this driver's `unplug_match` is back
+to its plain form. `ccd_svb` passes the suite unchanged either way, because its SDK stops reporting
+a camera that is gone.
+
+### Open: the process can abort after an unplug during streaming (QHY2-001)
+
+With the withdrawal fixed, the full suite aborts with SIGSEGV in two runs out of four, always after
+the streaming case has had its port switched off and back on, and never with a message beyond
+`Acquisition failed`. The three runs of that case on its own all passed, so it needs the state the
+earlier cases leave behind rather than the streaming teardown alone. A run that aborts leaves the
+camera re-enumerating, so the next run can fail its own start-up for want of a camera.
+
+The crash is only reachable now: before the fix the driver never detached the device of a camera
+that was switched off while connected, so the teardown path was never taken. The cause is not
+established and needs a run under a debugger; `ccd_uvc` records a similar abort from its own unplug
+handler as UVC-014.
 
 ### Open
 

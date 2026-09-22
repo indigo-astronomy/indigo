@@ -8,6 +8,8 @@ All QHY cameras and filter wheels plugged in to the camera.
 
 Hot-plug is enabled. Cameras can be connected and disconnected while the driver is running. This was verified with QHY5III178 and QHY5LII-M, including disconnection during exposure and streaming.
 
+Unplugging a camera while it is streaming is not safe: the process can abort afterwards. Stop the stream in the client before unplugging.
+
 ## Supported platforms
 
 This driver depends on a 3rd party library and is supported on Linux and macOS. The bundled SDK 26.07.21 supports Linux x64, ARM32 and ARM64, and requires macOS 14.0 or later on Intel and Apple Silicon. Linux x86 retains the older SDK because no updated package was supplied.
@@ -51,4 +53,4 @@ This will come at the cost of somewhat reduced performance.
 ## Testing
 
 2026-09-21 13:41 3.0.0.35 mac arm64 fake SDK 37/37 OK
-2026-09-22 07:10 3.0.0.36 linux arm64 QHY5III178M 6/6 OK
+2026-09-22 07:29 3.0.0.36 linux arm64 QHY5III178M 6/6 OK
