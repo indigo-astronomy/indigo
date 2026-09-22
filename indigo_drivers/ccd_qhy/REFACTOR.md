@@ -653,3 +653,82 @@ The attached camera could not be used to test this driver:
 - Both drivers install a `libqhyccd.dylib` of the same name into `build/lib`, so only the SDK of the driver built last is present. A hardware run here would therefore exercise this driver against whichever SDK happened to be installed, not against its own. The drivers are mutually exclusive at runtime anyway, as the `README.md` files state.
 
 `make -C indigo_test test-ccd-qhy-hw` was added alongside the `ccd_qhy2` target and needs a host that satisfies both conditions. Result recorded for this session: `build/integration/test_ccd_qhy_sdk` 38/38, no hardware run.
+
+## macOS universal build and QHY5L-II hardware run (2026-09-22)
+
+### The driver now builds for Apple Silicon
+
+`supported_architecture = "!defined(INDIGO_MACOS) || defined(__x86_64__)"` compiled the whole driver
+out on macOS arm64 and left an entry point that answers `INDIGO_UNSUPPORTED_ARCH`, so on an Apple
+Silicon Mac the driver could only be reached through Rosetta. The reason was the bundled
+`bin_externals/qhyccd/lib/macOS/libqhy.a`, which carried x86_64 code only.
+
+The user supplied the SDK sources at `github.com/polakovic/libqhy` and approved rebuilding them. Two
+changes there make a universal archive possible, both committed to that repository:
+
+- macOS builds each architecture into its own archive through a sub-make and combines the two with
+  `lipo`. Archiving fat objects with `ar` instead produces an archive `lipo` cannot read back.
+- `SetQHYCCDLogLevel()` is declared in `qhyccd.h` and called by this driver, but its definition had
+  been commented out, so a freshly built archive did not link. The fork routes every SDK message
+  through `indigo_error`/`indigo_log`/`indigo_trace` and the verbosity is INDIGO's own, so the entry
+  point is restored as the setter it has to remain.
+
+Every prototype this driver uses is identical in the trimmed INDIGO copy of the headers and in the
+libqhy sources, apart from `GetQHYCCDId()` taking `int` in one and `uint32_t` in the other, which is
+the same ABI. `OSXInitQHYCCDFirmware()` in the current sources resolves the caller's path to
+`<path>/<NAME>.HEX` while every shipped archive resolved it to `<path>/firmware/<NAME>.HEX`; the
+sub-path was put back so the archive stays a drop-in replacement for the one it succeeds and the
+driver's `README.md` stays correct.
+
+The driver builds and links for x86_64 and arm64 and runs natively on arm64.
+
+### QHY5L-II live video does not work through this SDK
+
+`BeginQHYCCDLive()` succeeds on a QHY5L-II-M and `GetQHYCCDLiveFrame()` then answers `QHYCCD_ERROR`
+for as long as the stream is left running - 830 calls over 20 s, not one frame - so the `switching`
+and `stream` scenarios fail on a camera that `ccd_qhy2` streams without trouble.
+
+The cause is in the SDK and was fixed there: `QHY5LIIBASE::BeginLiveExposure()` called
+`UpdateParameters()`, which already allocates the live transfers, starts the asynchronous reader and
+sends the begin-video vendor request, and then sent that request a second time. The camera answers
+the second one by delivering nothing at all. With it gone the same camera delivers frames about
+0.8 s after `BeginQHYCCDLive()`.
+
+### Known failure: the QHY5L-II does not connect through the rebuilt archive
+
+With the rebuilt archive installed, `CONNECTION` on the QHY5L-II-M never leaves BUSY: the device
+queue stays in the connect handler and `CCD_ABORT_EXPOSURE` and the disconnect time out behind it.
+It reproduces on a freshly programmed camera and survived a clean rebuild of the archive with header
+prerequisites added, so it is not a stale object from the header change. The first universal build
+of the session, before the live-video and firmware-path edits, did connect and took 0.1, 1.5, 2.5
+and 16.5 s exposures, so the connect path regressed somewhere between the two, most plausibly in the
+part of the source revision gap that has nothing to do with those edits.
+
+**The user's instruction was to mark this failed and not to pursue it further**, because `ccd_qhy2`
+drives all three cameras of this rig. It is recorded here rather than fixed, and the run is recorded
+as failed in `README.md`.
+
+Anyone picking this up should start by bisecting the libqhy revision gap against the connect path -
+`qhy_open()` plus `qhy_initialize_ccd()` - rather than by reverting the universal build, and should
+check whether the x86_64 slice behaves the same, which this session did not measure.
+
+### Not fixed here
+
+`qhy_write_control()` carries the same readback rule that defect 4 of `indigo_drivers/ccd_qhy2/REFACTOR.md`
+describes, so a QHY5L-II on this driver would walk its `CCD_OFFSET` the same way. It was left alone
+with the rest of the legacy driver.
+
+### Results
+
+| run | result |
+| --- | --- |
+| `build/integration/test_ccd_qhy_sdk` | 38/38 |
+| `INDIGO_TEST_DEVICE="QHY5LII" make -C indigo_test test-ccd-qhy-hw` | 1/0, failed at CONNECTION |
+
+`ScanQHYCCD()` of this SDK returns only the QHY5L-II on this rig; the QHY5 and the QHY-8PRO that
+`ccd_qhy2` drives are not offered by it, so neither could be tested through this driver.
+
+## Final test summary
+
+- Simulated tests run: 38; passed: 38 (`build/integration/test_ccd_qhy_sdk`).
+- Hardware tests run: 1; passed: 0. QHY5L-II-M on a Pegasus Ultimate Powerbox v1.7 hub, macOS arm64.

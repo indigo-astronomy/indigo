@@ -18,9 +18,6 @@
 
 // This file generated from indigo_ccd_qhy.driver
 
-// supported_architecture: !defined(INDIGO_MACOS) || defined(__x86_64__)
-#if !defined(INDIGO_MACOS) || defined(__x86_64__)
-
 #pragma mark - Includes
 
 #include <stdlib.h>
@@ -46,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000024
+#define DRIVER_VERSION       0x03000025
 #define DRIVER_NAME          "indigo_ccd_qhy"
 #define DRIVER_LABEL         "QHY CCD (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1478,11 +1475,3 @@ indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *in
 
 	return INDIGO_OK;
 }
-#else
-#include "indigo_ccd_qhy.h"
-
-indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "QHY CCD (legacy) Camera", __FUNCTION__, 0x03000024, true, INDIGO_DRIVER_SHUTDOWN);
-	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
-}
-#endif
