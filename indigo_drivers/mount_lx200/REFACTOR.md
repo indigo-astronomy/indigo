@@ -835,3 +835,290 @@ session.
 * Simulated tests: 72 run, 71 passed in the last full run, with the one failure
   and its unverified fix described above.
 * Hardware tests: 30 run, 30 passed, against a Pegasus Astro NYX-101.
+
+# LX200 hardware acceptance run, OnStepX (2026-09-22)
+
+## Scope and hardware-test decision
+
+Non-interactive hardware run against a physically connected **OnStepX
+controller, firmware 10.28x**, on macOS arm64 over the controller's ESP32 USB
+CDC port `/dev/cu.usbmodem2401`, driver version `0x03000039` before this work.
+Hardware testing IS performed for this record; every result below that names
+OnStepX is physical, every result that names the simulator is hardware-free.
+
+This is the second model the mount hardware suite has been run against. The
+first run, recorded above, validated the NYX branch. The suite was written
+around that mount and reported the model specific scenarios as not applicable
+for anything else, so a large part of this work is teaching it the OnStep
+branch rather than only fixing what it found.
+
+## Bench preparation
+
+The controller was found with **latitude 0, longitude 0 and a clock 20 hours
+behind**, the factory default of a freshly flashed board. At latitude 0 the
+celestial pole lies on the horizon, the mount stands below its own horizon
+limit, and OnStep answers every `:MS#` with `6`, "outside limits". Nothing the
+driver does can slew such a controller, so the site and clock were configured
+once before the acceptance run, directly over the serial port:
+
+```text
+:St+48*13#  :Sg343*01#  :SG-02#  :SC09/22/26#  :SL23:40:30#  :hC#
+```
+
+The site is 48°13' N, 16°59' E, the same place the NYX run was recorded at, and
+`:hC#` put the axes back on the home position the manual motion scenarios had
+left. This is test bench configuration and is called out here because the
+baseline below was taken *before* it: eleven of the thirteen baseline failures
+are the unconfigured site, not the driver.
+
+## Test asset
+
+`indigo_test/hardware/test_mount_lx200_hw.c`, run with
+`make -C indigo_test test-mount-lx200-hw` and `MOUNT_LX200_HW_PORT` pointing at
+the controller. The file grew from 30 to 33 cases: it now detects the OnStep
+model as well as the NYX, asserts the property contract `meade_init_onstep_mount()`
+publishes, writes the four OnStep option properties back with the values the
+controller already holds, checks the auxiliary feature outlets of the aux
+logical device, and follows the focuser capability the controller reports.
+
+## Protocol observations from the OnStepX
+
+Recorded directly from the controller and used as the source of the simulator
+additions below. They are what the firmware does, next to what `OnStepX.pdf`
+documents.
+
+| Command | Documented | OnStepX 10.28x |
+| --- | --- | --- |
+| `:MS#` | `0 .. 9` | `0` accepted, `6` outside limits with the site unset |
+| `:hC#` | no reply | no reply; the simulator answered `1` for OnStep and now does not |
+| `:hP#` / `:hR#` | `0` / `1` | `0` while the mount is outside its limits or already in that state |
+| `:GXY0#` | eight character bitmap | `0`, a single character, in a build without auxiliary features |
+| `:Fa#` | `1` when a focuser is present | `0`, and every other focuser command answers `0` too |
+| `:FT#` | `M1#`, `S3#` … | `0` in a build without a focuser, so it never reports `S` |
+| `:Gg#` | west positive | `+000*00` with the site unset, `-016*59` once it is configured |
+| `:GU#` | ordered status string | `nNpHvEo160` at home, `npHhvEo140` while homing, `pvEW140` while slewing |
+| `:GT#` | `n.n` | `0` while tracking is disabled, as on the NYX |
+| `:GX97#` | max slew rate | `1.0` degrees per second |
+
+## Baseline (2026-09-22 23:21, macOS arm64, driver 0x03000039)
+
+```sh
+make -C indigo_test build/hardware/test_mount_lx200_hw
+MOUNT_LX200_HW_PORT=/dev/cu.usbmodem2401 indigo_test/build/hardware/test_mount_lx200_hw --run
+```
+
+STATE: COMPLETE. The 30-case suite ran against the OnStepX before any change:
+**17 passed, 13 failed**. Two failures were driver defects, two were defects in
+the test, and the remaining nine were all the same unconfigured site refusing
+every GOTO. Two further driver defects were visible in the baseline output
+without failing a case, because no case asserted them, and one more was found
+by probing the controller for the focuser the suite skips on a non-NYX mount.
+
+| Case | Baseline | Cause |
+| --- | --- | --- |
+| `lx200_unparks_the_mount` | FAIL | site: the working slew was refused with `:MS#` 6 |
+| `lx200_toggles_tracking` | FAIL | test: no `MOUNT_STATE` publication when the light does not change |
+| `lx200_selects_tracking_rates` | FAIL | cascade of the tracking failure |
+| `lx200_reports_the_tracking_rate_from_the_mount` | FAIL | cascade of the tracking failure |
+| `lx200_moves_both_axes_manually` | FAIL | LX026, the coordinates stayed in ALERT |
+| `lx200_aborts_manual_motion` | FAIL | LX026 |
+| `lx200_slews_to_a_nearby_target` | FAIL | site |
+| `lx200_keeps_tracking_while_slewing` | FAIL | site |
+| `lx200_aborts_a_slew_and_accepts_a_fresh_one` | FAIL | site |
+| `lx200_guides_while_the_mount_slews` | FAIL | site |
+| `lx200_goes_home` | FAIL | site: the mount was outside its limits |
+| `lx200_parks_and_unparks` | FAIL | site: `:hP#` answered `0` |
+| `lx200_reconnects` | FAIL | test: it waited for `AUX_WEATHER`, which OnStep hides |
+
+## Found defects (hardware run)
+
+Driver version 0x03000039 to 0x0300003A. Each one is reproduced hardware-free
+in `mount_lx200_simulator.c` and pinned by a regression case in
+`test_mount_lx200_simulator.c`, as `indigo_test/AGENTS.md` requires.
+
+| ID | Status | Hardware observation and root cause | Fix and regression |
+| --- | --- | --- | --- |
+| LX024 | FIXED | `lx200_moves_both_axes_manually` and every later motion case timed out waiting for `MOUNT_EQUATORIAL_COORDINATES` to settle, although the axes were moving and the coordinates were being read: the single GOTO the unconfigured site had refused left the property in ALERT, and `meade_update_mount_state()` kept it there for the rest of the session. The sticky branch reads the property's own state, so it cannot tell a failed readback, which `PRIVATE_DATA->coordinate_read_failed` already tracks, from a refused GOTO. | The polling callback publishes OK whenever the readback succeeded; only `coordinate_read_failed` keeps the property in ALERT, through the branch that already owns that case. Regression `lx200_refused_goto_recovers_on_the_next_poll` refuses one `:MS#` with error 3 and requires the property to come back on its own, with no further request. |
+| LX025 | FIXED | The refused GOTO was reported to the client as a bare "Slew failed". OnStep answers `:MS#` with the same 0 .. 9 code table as the OnStep derived NYX, and `meade_error_string()` already carries that table for `MOUNT_TYPE_ON_STEP`, but `meade_slew()` only decoded it for NYX and TeenAstro. The run had to be diagnosed by talking to the controller by hand. | `meade_slew()` decodes the code for OnStep as well, so the client is told "Outside limits" instead of only that the slew failed. Covered by the same regression, which asserts the message path through error 3. |
+| LX026 | FIXED | `GEOGRAPHIC_COORDINATES` published **longitude 360** for a controller that reports its site as `+000*00`. `meade_get_site()` inverts the LX200 west positive sign with `360 - longitude` and never normalises, so the prime meridian comes back as 360 instead of 0; `meade_set_site()` has the same hole in the other direction and would have sent `:Sg360*00#`, which a mount that validates its input rejects. 360 is inside the range the property advertises, so nothing caught it. | Both directions normalise with `fmod`. Regression `lx200_prime_meridian_longitude_is_zero` asserts the command the mount receives is `:Sg000*00#` and that a fresh session reads the site back as 0. The hardware case `lx200_reads_site_and_time` now also requires `0 <= longitude < 360`. |
+| LX027 | FIXED | The aux device logged "Onstep AUX Device at slot 8 invalid response" at every connect. `:GXY0#` answers `0`, a single character, in a build without auxiliary features, and `onstep_aux_discover()` copied eight bytes out of that reply, so seven of them were whatever the shared response buffer still held; slots that do not exist were then queried. Both outlet properties were published with no item at all. | The reply has to be the documented eight character bitmap of `0` and `1` or the controller is taken to have no auxiliary features, the counts are cleared before every way out of the function, and an outlet property with no item stays hidden. Regression `lx200_onstep_without_auxiliary_features`. |
+| LX028 | FIXED | Found by probing the controller for the focuser the suite skipped on a non-NYX mount. This OnStepX answers `:Fa#` with `0`, no focuser, and answers `0` to every other focuser command including `:FT#`. The focuser logical device connected anyway, and `meade_focus_rel()` polls `:FT#` until it answers `S`, which such a controller never does: the first move would have blocked the device queue until the driver was restarted. | The focuser connection requires `:Fa#` to answer `1` on OnStep, and the `:FT#` wait is bounded by `ONSTEP_FOCUS_TIMEOUT`, after which the move is aborted and fails. Regression `lx200_onstep_without_a_focuser_refuses_the_connection`. |
+
+### Test defects the run exposed
+
+Not driver defects; recorded because each one is a trap for the next mount the
+suite is pointed at.
+
+* `lx200_toggles_tracking` required `MOUNT_TRACKING` to publish `MOUNT_STATE` in
+  the same update as the request, but INDIGO publishes nothing about a property
+  that says exactly what it said before. The NYX was found tracking, so the
+  first request changed the light; the OnStepX was found with tracking off, so
+  it did not, and the case failed on a driver that was behaving correctly. The
+  scenario now establishes the other state before it measures anything.
+* `lx200_reconnects` waited for `AUX_WEATHER` to settle. That is the property
+  the NYX aux device publishes; the OnStep aux device publishes outlets, and a
+  controller without auxiliary features publishes neither. The scenario now asks
+  the connected device which property it keeps fresh.
+
+### Simulator corrections
+
+* `:hC#` is documented with no reply and the controller sends none. The
+  simulator answered `1` for OnStep, which would have hidden a driver waiting
+  for a reply that never comes.
+* `:Fa#` was not implemented at all, so the new capability check had nothing to
+  read. The simulator now answers `1`, the value a build with a focuser reports,
+  and a case injects `0` for the controller that has none.
+
+## Controller behaviour that is not a defect
+
+* **An unconfigured site refuses everything.** With latitude 0 the pole is on
+  the horizon, the mount stands below its own horizon limit, and `:MS#` answers
+  `6`. This is not a driver fault and no driver change can work around it; it is
+  why the bench preparation above exists.
+* **A GOTO does not need tracking to be armed first.** The NYX branch of
+  `meade_slew()` turns tracking on before the slew because that firmware refuses
+  it otherwise. OnStep does not need it: `:MS#` starts tracking itself, and the
+  status string carries no `n` once the slew is running. The NYX-only branch was
+  therefore left alone.
+* **`:hR#` answers `0` for a mount that is not parked**, and `:hP#` answers `0`
+  for one that is outside its limits. Both are refusals the driver already
+  reads, since LX015 and LX016.
+
+## Scenario to case mapping, OnStep branch
+
+| Checklist item | Cases |
+| --- | --- |
+| Discovery, identity and capability readback | `lx200_reports_identity_and_capabilities`, `lx200_publishes_the_property_contract` |
+| Coordinates and supported status readback | `lx200_reads_site_and_time`, `lx200_reports_side_of_pier`, `lx200_writes_back_the_onstep_options`, `lx200_reads_the_onstep_outlets` |
+| Small reachable slew and SYNC | `lx200_slews_to_a_nearby_target`, `lx200_syncs_to_the_current_pointing` |
+| Manual motion in both axes | `lx200_moves_both_axes_manually` |
+| Tracking and rate changes | `lx200_toggles_tracking`, `lx200_selects_tracking_rates`, `lx200_reports_the_tracking_rate_from_the_mount`, `lx200_keeps_tracking_while_slewing`, `lx200_selects_slew_rates` |
+| Abort followed by a fresh command | `lx200_aborts_manual_motion`, `lx200_aborts_a_slew_and_accepts_a_fresh_one` |
+| Park, unpark and home with the actual setup | `lx200_unparks_the_mount`, `lx200_goes_home`, `lx200_parks_and_unparks` |
+| Guider standard on the guider logical device | `lx200_guides_in_all_four_directions`, `lx200_guides_both_axes_at_once`, `lx200_replaces_a_guide_pulse_on_the_same_axis`, `lx200_measures_guide_pulse_duration`, `lx200_guides_while_the_mount_slews` |
+| Shared devices, connection orders, last close | `lx200_shares_the_serial_session`, `lx200_follows_the_onstep_focuser_capability` |
+| Connection failure, reconnect, INIT/SHUTDOWN | `lx200_refuses_an_unusable_port`, `lx200_reconnects`, `lx200_reinitializes` |
+
+The five NYX specific cases report themselves as not applicable on this
+controller, and the OnStep specific ones do the same on a NYX.
+
+## Not covered
+
+* Physical transport loss. The controller is on its own USB CDC port and the
+  cable cannot be pulled from a non-interactive run; no hot-plug coverage is
+  claimed.
+* The OnStep focuser move on hardware. This controller answers `:Fa#` with `0`,
+  so it has no focuser to move, and the capability case asserts the refusal
+  instead. The move, its speeds, the direction, reverse motion and abort are
+  covered against the simulator by `lx200_focuser_onstep_operations`.
+* The OnStep auxiliary feature outlets on hardware, for the same reason: this
+  firmware has none, and the case asserts that neither outlet property is
+  offered. The outlets themselves are covered by
+  `lx200_aux_slot_mapping_and_failure_recovery`.
+* `MOUNT_PEC` writes on hardware. `:$QZ+#` arms a PEC playback the controller
+  keeps, and there is no reading that would let the run put back what it found,
+  so only the readback is asserted. The write paths stay with the simulator.
+* The NYX-101 was **not** re-run after these fixes. Two of them, LX024 and
+  LX026, are in code every model shares; the NYX branch keeps the simulator
+  evidence of this session and the hardware evidence of the run recorded above.
+* Pointing accuracy, tracking accuracy, polar alignment and periodic error,
+  which the driver testing rules place outside driver acceptance.
+
+## Found defects, second batch
+
+Found after the first batch of repairs, when the motion scenarios could finally run.
+
+| ID | Status | Hardware observation and root cause | Fix and regression |
+| --- | --- | --- | --- |
+| LX029 | FIXED | `lx200_selects_tracking_rates` and `lx200_reports_the_tracking_rate_from_the_mount` failed on the king rate only. OnStepX 10.28x accepts `:TK#` and really tracks at the king rate, `:GT#` answers 60.136 Hz against the 60.164 Hz of sidereal, but its `:GU#` carries **no rate character at all** for it: a mount on the king rate reports exactly what a mount on the sidereal rate reports. `meade_update_onstep_state()` read the absence of a character as sidereal, so the property went back to sidereal one polling cycle after the client selected king. | A status with no rate character is settled with `:GT#`, and the king rate is taken when the frequency is within 0.01 Hz of 60.136. `:GT#` answers 0 while tracking is disabled, which says nothing about the configured rate, so the driver keeps the rate it holds. Simulator: `:GU#` no longer reports the documented `k` unless `--status-king` is given, and `:GT#` answers the four frequencies an OnStepX reports. Regression `lx200_onstep_king_rate_comes_from_the_frequency`. |
+
+### Test defects the second run exposed
+
+* `lx200_goes_home` used `MOTION_TIMEOUT`, 180 seconds. A home slew is the one motion that can
+  cross the whole range of both axes, and this controller reports one degree per second for its
+  maximum slew rate: a measured home run moved 45 degrees of declination and 48 degrees of right
+  ascension in 50 seconds and was still going. The scenario now has its own `HOME_TIMEOUT` of 600
+  seconds. The assertion is unchanged: the home still has to complete.
+
+### Observed once and not reproduced
+
+`lx200_guides_while_the_mount_slews` failed once, in the run that still had the two tracking rate
+defects, with the coordinates property in ALERT and **no message from the driver**. A refused
+`:MS#` publishes "Slew failed" together with the decoded reason, so this was not a refusal: the
+only other path that puts the property into ALERT is a failed coordinate readback, which the
+polling callback now takes back on the next successful read. Probing the controller afterwards
+showed that a goto issued while a guide pulse is still running is accepted with `:MS#` 0, so the
+"already in motion" refusal the NYX has does not apply here. The case passed in the clean run and
+the cause stays unconfirmed; it is recorded rather than worked around, because the scenario reads
+any ALERT on the coordinates as a refusal and a transient readback failure can still be misread.
+
+## Hardware acceptance results (2026-09-23 00:11, driver 0x0300003A)
+
+macOS 15 arm64, OnStepX 10.28x on `/dev/cu.usbmodem2401`.
+
+| Suite | Run | Passed | Failed |
+| --- | --- | --- | --- |
+| `test-mount-lx200-hw` against the OnStepX, baseline (0x03000039) | 30 | 17 | 13 |
+| `test-mount-lx200-hw` against the OnStepX, after the first batch | 33 | 29 | 4 |
+| `test-mount-lx200-hw` against the OnStepX, final | 33 | 33 | 0 |
+
+Measured on the controller: site 48.2167 N, 16.9833 E; local sidereal time 23.4470 h; mount clock
+2026-09-22T22:11:45 with UTC offset 2; meridian limits 15 degrees east and west; altitude limits
+-10 and 80 degrees; preferred pier side "best"; automatic meridian flip disabled; PEC disabled;
+no auxiliary feature slots and no focuser. The abort stopped a 12 degree slew 11.8445 degrees
+short of its target. The mount kept tracking through all 345 samples taken during a slew. The
+maximum slew rate the controller reports through `:GX97#` is 1.0 degrees per second, and a home
+slew measured 0.9 degrees per second on both axes.
+
+### Guiding pulse duration accuracy (hardware)
+
+Requested 20, 100 and 500 ms in all four directions, three retained samples per direction and
+duration after one discarded warm-up, 12 samples per duration. The endpoints are the client's
+change request and the OK publication of `GUIDER_GUIDE_RA` / `GUIDER_GUIDE_DEC`: the controller
+terminates the pulse itself, so **this is software completion timing over the real serial path,
+not an electrical measurement of the relay output**. Each transaction carries the driver's 50 ms
+post-command settle and one serial round trip.
+
+| Requested | n | Min | Mean | Median | p95 | p99 / max | Stddev | Signed error | Max absolute |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 20 ms | 12 | 73.99 | 96.98 | 80.29 | 82.62 | 291.16 | 61.20 | +76.98 ms (+384.89 %) | 271.16 ms |
+| 100 ms | 12 | 152.51 | 185.96 | 160.92 | 278.51 | 363.59 | 65.74 | +85.96 ms (+85.96 %) | 263.59 ms |
+| 500 ms | 12 | 553.89 | 587.17 | 564.32 | 670.49 | 674.37 | 48.58 | +87.17 ms (+17.43 %) | 174.37 ms |
+
+A pulse during a slew completed in 354.2 ms, both axes at once in 717.9 ms, and a 2000 ms pulse
+replaced after 500 ms by a 600 ms pulse ended after 1152.5 ms. These are observations on this
+host, not acceptance limits.
+
+### Cost of the king rate repair
+
+Settling the rate through `:GT#` costs one extra serial transaction per polling cycle on an
+OnStep whose status carries no rate character, which is every cycle on the sidereal and the king
+rate. The polling callback already issues `:GR#`, `:GD#` and `:GU#` in the same cycle, so it is
+one transaction more on a link that is not otherwise busy. It is recorded here because it is a
+real cost and not a free repair.
+
+## Simulator results (driver 0x0300003A)
+
+The serial suite grew from 72 to 78 cases with the six regressions above, and
+`MIGRATION_STATUS.md` was corrected: its 75 did not match the suite.
+
+| Suite | Run | Passed | Failed |
+| --- | --- | --- | --- |
+| `test_mount_lx200_simulator` | 78 | 78 | 0 |
+
+New cases:
+
+* `lx200_refused_goto_recovers_on_the_next_poll` — LX024 and the message of LX025.
+* `lx200_prime_meridian_longitude_is_zero` — LX026 in both directions.
+* `lx200_onstep_without_auxiliary_features` — LX027.
+* `lx200_onstep_without_a_focuser_refuses_the_connection` — LX028.
+* `lx200_onstep_king_rate_comes_from_the_frequency` — LX029 on the firmware that omits the `k`.
+* `lx200_onstep_king_rate_comes_from_the_status` — the same contract on a build that reports it,
+  which is what `--status-king` and the NYX model provide.
+
+The opt-in TCP target and the ASAN/UBSAN build were not run in this session.
+
+## Final test summary for this run
+
+* Simulated tests: 78 run, 78 passed.
+* Hardware tests: 33 run, 33 passed, against an OnStepX controller, firmware 10.28x.

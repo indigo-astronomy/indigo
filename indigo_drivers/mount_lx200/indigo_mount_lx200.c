@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000039
+#define DRIVER_VERSION       0x0300003A
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -66,6 +66,16 @@
 #ifndef MIN
 #define MIN(a,b)             ((a) < (b) ? (a) : (b))
 #endif
+
+// The longest an Onstep focuser move may take before the driver stops waiting for the
+// controller to report the focuser standing still again
+#define ONSTEP_FOCUS_TIMEOUT 120.0
+
+// The tracking frequency Onstep reports through :GT# for the king rate, and how far a
+// reading may be from it and still be that rate. Sidereal is 60.164 Hz on the same
+// firmware, so the two are 0.028 Hz apart.
+#define ONSTEP_KING_FREQUENCY 60.136
+#define ONSTEP_RATE_TOLERANCE 0.01
 
 // Onstep has eight auxiliary device slots (1-indexed) which can have user defined purposes
 #define ONSTEP_AUX_DEVICE_COUNT 8
@@ -655,12 +665,9 @@ static void meade_get_site(indigo_device *device, double *latitude, double *long
 		if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 			str_replace(PRIVATE_DATA->response, 'g', '*');
 		}
-		*longitude = indigo_stod(PRIVATE_DATA->response);
-		if (*longitude < 0) {
-			*longitude += 360;
-		}
-		// LX200 protocol returns negative longitude for the east
-		*longitude = 360 - *longitude;
+		// LX200 protocol returns negative longitude for the east, INDIGO publishes it east
+		// positive in 0 .. 360, where a site on the prime meridian is 0 and never 360.
+		*longitude = fmod(360 - fmod(indigo_stod(PRIVATE_DATA->response) + 360, 360), 360);
 	}
 }
 
@@ -677,7 +684,7 @@ static bool meade_set_site(indigo_device *device, double latitude, double longit
 		result = meade_simple_reply_command(device, ":St%s#", indigo_dtos_r(latitude, "%+03d*%02d", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 	}
 	// LX200 protocol expects negative longitude for the east
-	longitude = 360 - fmod(longitude + 360, 360);
+	longitude = fmod(360 - fmod(longitude + 360, 360), 360);
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 		meade_simple_reply_command(device, ":Sg%s#", indigo_dtos_r(longitude, "%+04d*%02d:%02d", sexagesimal, sizeof(sexagesimal)));
 		result = true; // ignore result for Avalon StarGO
@@ -801,7 +808,9 @@ static bool meade_slew(indigo_device *device, double ra, double dec) {
 				indigo_send_message(device, ALERT_PROPERTY, "%s", message);
 			}
 		}
-		if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
+		// OnStep answers :MS# with the same 0 .. 9 code table as the OnStep derived NYX, so
+		// a client is told why the controller refused the slew instead of only that it did.
+		if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 			int error_code = atoi(PRIVATE_DATA->response);
 			char *message = meade_error_string(device, error_code);
 			if (message) {
@@ -1278,6 +1287,9 @@ static bool meade_focus_rel(indigo_device *device, bool slow, int steps) {
 	} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
 		if (!meade_no_reply_command(device, ":FR%+d#", steps))
 			return false;
+		// A controller that never reports the focuser standing still again must fail the
+		// move instead of holding the device queue for the rest of the session.
+		double deadline = indigo_monotonic_time() + ONSTEP_FOCUS_TIMEOUT;
 		while (true) {
 			if (PRIVATE_DATA->focus_aborted) {
 				return meade_focus_abort(device);
@@ -1287,6 +1299,11 @@ static bool meade_focus_rel(indigo_device *device, bool slow, int steps) {
 				return false;
 			if (*PRIVATE_DATA->response == 'S') {
 				break;
+			}
+			if (indigo_monotonic_time() > deadline) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Onstep focuser did not finish the move within %g s, last status '%s'", ONSTEP_FOCUS_TIMEOUT, PRIVATE_DATA->response);
+				meade_focus_abort(device);
+				return false;
 			}
 		}
 		return true;
@@ -1667,8 +1684,9 @@ static void meade_update_onstep_state(indigo_device *device) {
 			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		// Update tracking rate from :GU# status characters: ( = Lunar, O = Solar, k = King, else = Sidereal
+		indigo_item *rate_item = NULL;
+		bool rate_from_status = true;
 		if (MOUNT_TRACK_RATE_PROPERTY->state != INDIGO_BUSY_STATE) {
-			indigo_item *rate_item;
 			if (strchr(PRIVATE_DATA->response, '(')) {
 				rate_item = MOUNT_TRACK_RATE_LUNAR_ITEM;
 			} else if (strchr(PRIVATE_DATA->response, 'O')) {
@@ -1676,17 +1694,31 @@ static void meade_update_onstep_state(indigo_device *device) {
 			} else if (strchr(PRIVATE_DATA->response, 'k')) {
 				rate_item = MOUNT_TRACK_RATE_KING_ITEM;
 			} else {
-				rate_item = MOUNT_TRACK_RATE_SIDEREAL_ITEM;
-			}
-			if (!rate_item->sw.value) {
-				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, rate_item, true);
-				indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+				// OnStepX 10.28x never puts the documented k in its status, so a status with
+				// no rate character at all is sidereal or king. The two are told apart by the
+				// tracking frequency, which is settled below, after the status string has
+				// been read for everything else it carries.
+				rate_from_status = false;
 			}
 		}
 		// Update auto meridian flip from :GU# status character: a = enabled
+		bool flip_enabled = strchr(PRIVATE_DATA->response, 'a') != NULL;
+		if (!rate_from_status && meade_command(device, ":GT#")) {
+			double frequency = atof(PRIVATE_DATA->response);
+			if (fabs(frequency - ONSTEP_KING_FREQUENCY) < ONSTEP_RATE_TOLERANCE) {
+				rate_item = MOUNT_TRACK_RATE_KING_ITEM;
+			} else if (frequency > 0) {
+				rate_item = MOUNT_TRACK_RATE_SIDEREAL_ITEM;
+			}
+			// A disabled tracking answers 0, which says nothing about the configured rate,
+			// so the rate the driver already holds is kept.
+		}
+		if (rate_item != NULL && !rate_item->sw.value) {
+			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, rate_item, true);
+			indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+		}
 		if (!ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->hidden && ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->state != INDIGO_BUSY_STATE) {
-			bool enabled = strchr(PRIVATE_DATA->response, 'a') != NULL;
-			indigo_item *flip_item = enabled ? ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM : ONSTEP_AUTO_MERIDIAN_FLIP_DISABLED_ITEM;
+			indigo_item *flip_item = flip_enabled ? ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM : ONSTEP_AUTO_MERIDIAN_FLIP_DISABLED_ITEM;
 			if (!flip_item->sw.value) {
 				indigo_set_switch(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, flip_item, true);
 				indigo_update_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
@@ -2190,13 +2222,12 @@ static void meade_update_mount_state(indigo_device *device) {
 	} else if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE && !PRIVATE_DATA->goto_issued) {
 		// a GOTO was accepted but its slew command has not been sent yet
 	} else {
+		// The coordinates were read, so the position is valid again whatever left the
+		// property in ALERT. Only a failed readback keeps it there, through the branch
+		// above; a refused GOTO must not poison the property for the rest of the session.
 		PRIVATE_DATA->goto_issued = false;
-		if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
-			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
-		}
+		MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) { // to avoid race never change tracking state if BUSY
 		if (PRIVATE_DATA->tracking && !MOUNT_TRACKING_ON_ITEM->sw.value) {
@@ -2354,17 +2385,25 @@ static void onstep_aux_update(indigo_device *device) {
 }
 
 static bool onstep_aux_discover(indigo_device *device) {
+	// A controller without auxiliary features has no outlet of either kind, so the
+	// counts are cleared before the first way out of this function.
+	AUX_HEATER_OUTLET_PROPERTY->count = 0;
+	AUX_POWER_OUTLET_PROPERTY->count = 0;
 	// first we request Onstep to list active aux slots
 	if (!meade_command(device, ":GXY0#")) {
 		return false;
 	}
 	// Onstep responds with a string like "11000000" to indicate that the first and second aux device is enabled
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep active device string: %s", PRIVATE_DATA->response);
+	// A build without auxiliary features answers "0", and anything that is not the
+	// documented bitmap would be read past its terminator as a map of stale slots.
+	if (strlen(PRIVATE_DATA->response) != ONSTEP_AUX_DEVICE_COUNT || strspn(PRIVATE_DATA->response, "01") != ONSTEP_AUX_DEVICE_COUNT) {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Onstep reports no auxiliary feature slots ('%s')", PRIVATE_DATA->response);
+		return false;
+	}
 	char active_slots[ONSTEP_AUX_DEVICE_COUNT];
 	memcpy(active_slots, PRIVATE_DATA->response, sizeof(active_slots));
 	// in the first pass over the active devices we count how many auxiliary devices of each purpose we have
-	AUX_HEATER_OUTLET_PROPERTY->count = 0;
-	AUX_POWER_OUTLET_PROPERTY->count = 0;
 	for (int i = 0; i < ONSTEP_AUX_DEVICE_COUNT; i++) {
 		if (active_slots[i] != '1') {
 			continue;
@@ -3352,7 +3391,12 @@ static void focuser_connection_handler(indigo_device *device) {
 				indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
 			}
 			if (connection_result) {
-				if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value) {
+				// Onstep answers :Fa# with 1 only in a build that has a focuser. Without one it
+				// answers 0 to every focuser command, including the :FT# a move waits on, so a
+				// focuser device that came up anyway could never finish its first move.
+				if (MOUNT_TYPE_ON_STEP_ITEM->sw.value && !(meade_simple_reply_command(device, ":Fa#") && *PRIVATE_DATA->response == '1')) {
+					connection_result = false;
+				} else if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value) {
 					FOCUSER_SPEED_ITEM->number.min = 1;
 					FOCUSER_SPEED_ITEM->number.value = 1;
 					FOCUSER_SPEED_ITEM->number.target = 1;
@@ -3500,9 +3544,11 @@ static void aux_connection_handler(indigo_device *device) {
 					AUX_WEATHER_PROPERTY->hidden = false;
 					AUX_INFO_PROPERTY->hidden = false;
 				} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+					// A build without auxiliary features has no outlet to offer, and an outlet
+					// property with no item is not something a client can do anything with.
 					onstep_aux_discover(device);
-					AUX_HEATER_OUTLET_PROPERTY->hidden = false;
-					AUX_POWER_OUTLET_PROPERTY->hidden = false;
+					AUX_HEATER_OUTLET_PROPERTY->hidden = AUX_HEATER_OUTLET_PROPERTY->count == 0;
+					AUX_POWER_OUTLET_PROPERTY->hidden = AUX_POWER_OUTLET_PROPERTY->count == 0;
 				} else {
 					connection_result = false;
 				}

@@ -62,6 +62,7 @@
 #define X_MOUNT_TYPE_PROPERTY_NAME "X_MOUNT_TYPE"
 #define X_MOUNT_TYPE_DETECT_ITEM_NAME "DETECT"
 #define X_MOUNT_TYPE_NYX_ITEM_NAME "NYX"
+#define X_MOUNT_TYPE_ONSTEP_ITEM_NAME "ONSTEP"
 #define X_MOUNT_MODE_PROPERTY_NAME "X_MOUNT_MODE"
 #define X_MOUNT_MODE_EQUATORIAL_ITEM_NAME "EQUATORIAL"
 #define X_NYX_WIFI_AP_PROPERTY_NAME "X_NYX_WIFI_AP"
@@ -74,13 +75,25 @@
 #define X_NYX_LEVELER_PITCH_ITEM_NAME "PITCH"
 #define X_NYX_LEVELER_ROLL_ITEM_NAME "ROLL"
 #define X_NYX_LEVELER_COMPASS_ITEM_NAME "COMPASS"
+#define X_ONSTEP_PREFERRED_PIER_SIDE_PROPERTY_NAME "X_ONSTEP_PREFERRED_PIER_SIDE"
+#define X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP_PROPERTY_NAME "X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP"
+#define X_ONSTEP_MERIDIAN_LIMITS_PROPERTY_NAME "X_ONSTEP_MERIDIAN_LIMITS"
+#define X_ONSTEP_MERIDIAN_LIMITS_EAST_ITEM_NAME "EAST"
+#define X_ONSTEP_MERIDIAN_LIMITS_WEST_ITEM_NAME "WEST"
+#define X_ALTITUDE_LIMITS_PROPERTY_NAME "X_ALTITUDE_LIMITS"
+#define X_ALTITUDE_LIMITS_HORIZON_ITEM_NAME "HORIZON"
+#define X_ALTITUDE_LIMITS_OVERHEAD_ITEM_NAME "OVERHEAD"
 
 // One serial transaction plus the driver's own 50 ms settle, with room for a retry.
 #define SHORT_TIMEOUT 20.0
 // A connection opens the port, autodetects the model and reads the whole initial state.
 #define CONNECT_TIMEOUT 45.0
-// A small slew, a park slew or a home slew including the driver's own completion polling.
+// A small slew or a park slew including the driver's own completion polling.
 #define MOTION_TIMEOUT 180.0
+// A home slew is the one motion that can cross the whole range of both axes. An OnStepX reports
+// one degree per second for its maximum slew rate, so half a turn of the right ascension axis
+// alone is three minutes and the ordinary motion timeout is not enough for it.
+#define HOME_TIMEOUT 600.0
 // The mount is polled once a second while idle and twice a second while slewing, so two polling
 // cycles plus one transaction is the longest an honest readback can take.
 #define POLL_TIMEOUT 15.0
@@ -102,9 +115,9 @@
 
 static int mount = -1, guider = -1, focuser = -1, aux = -1;
 static const char *serial_port = NULL;
-// Whether the driver autodetected a Pegasus NYX. The model specific scenarios report themselves
-// as not applicable instead of failing when another mount is connected.
-static bool is_nyx = false;
+// Which model the driver autodetected. The model specific scenarios report themselves as not
+// applicable instead of failing when another mount is connected.
+static bool is_nyx = false, is_onstep = false;
 // The state the session found and has to give back.
 static bool initial_tracking = false, initial_parked = false, settings_captured = false;
 
@@ -271,6 +284,30 @@ static bool skip_unless_nyx(const char *what) {
 	return true;
 }
 
+// The property the aux logical device of the detected model publishes and keeps fresh: the
+// environment sensors on the NYX, an auxiliary feature outlet on OnStep. A controller whose
+// firmware offers neither publishes none of them, and then there is nothing to wait for.
+static const char *aux_live_property(void) {
+	if (hw_property_defined(aux, AUX_WEATHER_PROPERTY_NAME)) {
+		return AUX_WEATHER_PROPERTY_NAME;
+	}
+	if (hw_property_defined(aux, AUX_POWER_OUTLET_PROPERTY_NAME)) {
+		return AUX_POWER_OUTLET_PROPERTY_NAME;
+	}
+	if (hw_property_defined(aux, AUX_HEATER_OUTLET_PROPERTY_NAME)) {
+		return AUX_HEATER_OUTLET_PROPERTY_NAME;
+	}
+	return NULL;
+}
+
+static bool skip_unless_onstep(const char *what) {
+	if (is_onstep) {
+		return false;
+	}
+	printf("    not applicable: %s is specific to OnStep, which is not the detected model\n", what);
+	return true;
+}
+
 // ------------------------------------------------------------------- identity and contract
 
 static void lx200_reports_identity_and_capabilities(void) {
@@ -298,9 +335,15 @@ static void lx200_reports_identity_and_capabilities(void) {
 	ASSERT_TRUE(hw_property_defined(mount, X_MOUNT_TYPE_PROPERTY_NAME));
 	ASSERT_TRUE(!switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_DETECT_ITEM_NAME));
 	is_nyx = switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_NYX_ITEM_NAME);
-	printf("    detected mount type NYX: %s\n", is_nyx ? "yes" : "no");
+	is_onstep = switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_ONSTEP_ITEM_NAME);
+	printf("    detected mount type NYX: %s, OnStep: %s\n", is_nyx ? "yes" : "no", is_onstep ? "yes" : "no");
+	// The detection is a one of many rule, so the two branches are mutually exclusive.
+	ASSERT_TRUE(!(is_nyx && is_onstep));
 	if (is_nyx) {
 		ASSERT_STREQ("PegasusAstro", vendor);
+	}
+	if (is_onstep) {
+		ASSERT_STREQ("On-Step", vendor);
 	}
 	ASSERT_TRUE(hw_connected(mount));
 }
@@ -327,6 +370,45 @@ static void lx200_publishes_the_property_contract(void) {
 	ASSERT_TRUE(hw_item_defined(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
 	ASSERT_TRUE(hw_item_defined(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
 	ASSERT_TRUE(!hw_item_defined(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME));
+	if (is_onstep) {
+		// What meade_init_onstep_mount() unhides, and what it has to leave hidden.
+		ASSERT_TRUE(hw_property_defined(mount, UTC_TIME_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, MOUNT_SET_HOST_TIME_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, MOUNT_PARK_SET_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, MOUNT_HOME_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, MOUNT_HOME_SET_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+		// OnStep implements PEC and has no protocol to set the guide rate.
+		ASSERT_TRUE(hw_property_defined(mount, MOUNT_PEC_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_GUIDE_RATE_PROPERTY_NAME));
+		// Park and home are two-state on OnStep; setting either position is a momentary switch.
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_AWAY_ITEM_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME));
+		ASSERT_TRUE(!hw_item_defined(mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_DEFAULT_ITEM_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME));
+		ASSERT_TRUE(!hw_item_defined(mount, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_DEFAULT_ITEM_NAME));
+		// All four rates the OnStep firmware implements, king included.
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME));
+		// Each of the four option properties is published only when the controller answered the
+		// query it is read from, and this firmware answers all four.
+		ASSERT_TRUE(hw_property_defined(mount, X_ONSTEP_PREFERRED_PIER_SIDE_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, X_ONSTEP_MERIDIAN_LIMITS_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, X_ALTITUDE_LIMITS_PROPERTY_NAME));
+		// The properties that belong to other models.
+		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_WIFI_AP_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_WIFI_CL_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_WIFI_RESET_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_LEVELER_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, "X_ZWO_BUZZER"));
+		return;
+	}
 	if (skip_unless_nyx("the model specific property visibility")) {
 		return;
 	}
@@ -384,7 +466,10 @@ static void lx200_reads_site_and_time(void) {
 	ASSERT_TRUE(hw_number_item_range(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, &minimum, &maximum));
 	ASSERT_TRUE(longitude >= minimum && longitude <= maximum);
 	// The LX200 protocol counts longitude west positive and the driver has to publish it the
-	// INDIGO way, east positive in 0..360.
+	// INDIGO way, east positive in 0 .. 360 with the prime meridian at 0. A driver that only
+	// inverts the sign publishes 360 for a mount whose site is still on the prime meridian,
+	// which is inside the advertised range and outside the one INDIGO defines.
+	ASSERT_TRUE(longitude >= 0 && longitude < 360);
 	ASSERT_TRUE(hw_number_item(mount, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME, &lst));
 	printf("    local sidereal time %.4f h\n", lst);
 	ASSERT_TRUE(lst >= 0 && lst < 24);
@@ -464,6 +549,11 @@ static bool toggle_tracking(const char *item, indigo_property_state expected_lig
 }
 
 static void lx200_toggles_tracking(void) {
+	// The light only moves when the request changes it, and INDIGO publishes nothing about a
+	// property that says exactly what it said before. A mount found with tracking already off
+	// would therefore produce no MOUNT_STATE publication at all for the first request, so the
+	// scenario puts the mount into the other state before it measures anything.
+	ASSERT_TRUE(hw_set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
 	ASSERT_TRUE(toggle_tracking(MOUNT_TRACKING_OFF_ITEM_NAME, INDIGO_IDLE_STATE));
 	// The controller's own status has to agree after a full polling cycle, so a driver that only
 	// remembers the request cannot pass.
@@ -734,6 +824,70 @@ static void lx200_reports_side_of_pier(void) {
 
 // ------------------------------------------------------------------- model specific readback
 
+// The name of the item a one-of-many switch currently has selected, or NULL when the property
+// holds none of the names it was given.
+static const char *selected_item(int device, const char *property, const char **items, unsigned count) {
+	for (unsigned i = 0; i < count; i++) {
+		if (switch_on(device, property, items[i])) {
+			return items[i];
+		}
+	}
+	return NULL;
+}
+
+// Writes a two item number property back with the values it already holds, so the command and its
+// reply are exercised while the controller keeps the configuration it booted with.
+static bool write_back_number_pair(const char *property, const char *first, const char *second) {
+	double values[2] = { 0, 0 }, minimum = 0, maximum = 0;
+	const char *items[] = { first, second };
+	for (unsigned i = 0; i < 2; i++) {
+		if (!hw_number_item(mount, property, items[i], values + i) || !hw_number_item_range(mount, property, items[i], &minimum, &maximum)) {
+			fprintf(stderr, "    %s.%s could not be read\n", property, items[i]);
+			return false;
+		}
+		if (values[i] < minimum || values[i] > maximum) {
+			fprintf(stderr, "    %s.%s is %g, outside the published %g .. %g\n", property, items[i], values[i], minimum, maximum);
+			return false;
+		}
+	}
+	printf("    %s %s %g, %s %g, written back unchanged\n", property, first, values[0], second, values[1]);
+	indigo_change_number_property(&hw_client, MOUNT_DEVICE_NAME, property, 2, items, values);
+	return hw_wait_settled(mount, property, INDIGO_OK_STATE, SHORT_TIMEOUT);
+}
+
+// The four option properties the OnStep branch reads at connect, and the write path of each one.
+// Every write stores the value the controller already had, so nothing persistent in the mount is
+// changed: only the command and the reply the driver checks are exercised.
+static void lx200_writes_back_the_onstep_options(void) {
+	static const char *pier_sides[] = { "EAST", "WEST", "BEST", "AUTO" };
+	static const char *flip_states[] = { "ENABLED", "DISABLED" };
+	if (skip_unless_onstep("the OnStep option properties")) {
+		return;
+	}
+	ASSERT_TRUE(write_back_number_pair(X_ONSTEP_MERIDIAN_LIMITS_PROPERTY_NAME, X_ONSTEP_MERIDIAN_LIMITS_EAST_ITEM_NAME, X_ONSTEP_MERIDIAN_LIMITS_WEST_ITEM_NAME));
+	ASSERT_TRUE(write_back_number_pair(X_ALTITUDE_LIMITS_PROPERTY_NAME, X_ALTITUDE_LIMITS_HORIZON_ITEM_NAME, X_ALTITUDE_LIMITS_OVERHEAD_ITEM_NAME));
+	// The controller answered :GX96# and :GX95#, so exactly one item of each switch has to be
+	// selected, and selecting it again has to be accepted.
+	const char *pier_side = selected_item(mount, X_ONSTEP_PREFERRED_PIER_SIDE_PROPERTY_NAME, pier_sides, ARRAY_SIZE(pier_sides));
+	ASSERT_TRUE(pier_side != NULL);
+	printf("    preferred pier side %s, written back unchanged\n", pier_side);
+	ASSERT_TRUE(hw_set_switch(mount, X_ONSTEP_PREFERRED_PIER_SIDE_PROPERTY_NAME, pier_side, INDIGO_OK_STATE, SHORT_TIMEOUT));
+	ASSERT_TRUE(switch_on(mount, X_ONSTEP_PREFERRED_PIER_SIDE_PROPERTY_NAME, pier_side));
+	const char *flip = selected_item(mount, X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP_PROPERTY_NAME, flip_states, ARRAY_SIZE(flip_states));
+	ASSERT_TRUE(flip != NULL);
+	printf("    automatic meridian flip %s, written back unchanged\n", flip);
+	ASSERT_TRUE(hw_set_switch(mount, X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP_PROPERTY_NAME, flip, INDIGO_OK_STATE, SHORT_TIMEOUT));
+	ASSERT_TRUE(switch_on(mount, X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP_PROPERTY_NAME, flip));
+	// MOUNT_PEC is published for OnStep and its state comes from :$QZ?#, so exactly one of the
+	// two items has to be selected. The write path is left to the simulator: :$QZ+# arms a
+	// playback the controller keeps across a power cycle, and the run must not leave it armed.
+	bool enabled = false, disabled = false;
+	ASSERT_TRUE(hw_switch_item(mount, MOUNT_PEC_PROPERTY_NAME, MOUNT_PEC_ENABLED_ITEM_NAME, &enabled));
+	ASSERT_TRUE(hw_switch_item(mount, MOUNT_PEC_PROPERTY_NAME, MOUNT_PEC_DISABLED_ITEM_NAME, &disabled));
+	printf("    PEC enabled %d disabled %d\n", enabled, disabled);
+	ASSERT_TRUE(enabled != disabled);
+}
+
 static void lx200_reads_the_nyx_leveler(void) {
 	double pitch = 0, roll = 0, compass = 0, minimum = 0, maximum = 0;
 	if (skip_unless_nyx("the leveler")) {
@@ -795,6 +949,80 @@ static void lx200_reads_the_nyx_sensors(void) {
 	ASSERT_TRUE(pressure > minimum && pressure < maximum);
 	// A mount that answers at all is powered, so the voltage it reports has to be a real supply.
 	ASSERT_TRUE(voltage > 5 && voltage < 15);
+}
+
+// The aux logical device of an OnStep controller carries its auxiliary feature outlets and none of
+// the environment sensors the NYX branch publishes. A firmware built without auxiliary features
+// answers :GXY0# with a single character instead of the eight character bitmap and then has no
+// outlet of either kind, which is the case this controller exercises.
+static void lx200_reads_the_onstep_outlets(void) {
+	double value = 0, minimum = 0, maximum = 0;
+	if (skip_unless_onstep("the auxiliary feature outlets")) {
+		return;
+	}
+	ASSERT_TRUE(hw_connected(aux));
+	ASSERT_TRUE((hw_device_interface(aux) & INDIGO_INTERFACE_AUX_POWERBOX) != 0);
+	// The environment sensors belong to the NYX; OnStep answers :GX9A# with "nan".
+	ASSERT_TRUE(hw_property_hidden(aux, AUX_WEATHER_PROPERTY_NAME));
+	ASSERT_TRUE(hw_property_hidden(aux, AUX_INFO_PROPERTY_NAME));
+	bool heaters = hw_property_defined(aux, AUX_HEATER_OUTLET_PROPERTY_NAME);
+	bool outlets = hw_property_defined(aux, AUX_POWER_OUTLET_PROPERTY_NAME);
+	printf("    heater outlets published: %s, power outlets published: %s\n", heaters ? "yes" : "no", outlets ? "yes" : "no");
+	if (!heaters && !outlets) {
+		printf("    the controller reports no auxiliary feature slots\n");
+		return;
+	}
+	// An outlet property that is offered at all has to carry at least its first item, and the
+	// value the controller reported for it has to lie inside the range the property advertises.
+	if (heaters) {
+		ASSERT_TRUE(hw_item_defined(aux, AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME));
+		ASSERT_TRUE(hw_number_item(aux, AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME, &value));
+		ASSERT_TRUE(hw_number_item_range(aux, AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME, &minimum, &maximum));
+		printf("    heater outlet 1 at %g of %g .. %g\n", value, minimum, maximum);
+		ASSERT_TRUE(value >= minimum && value <= maximum);
+	}
+	if (outlets) {
+		ASSERT_TRUE(hw_item_defined(aux, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME));
+	}
+}
+
+// OnStep answers :Fa# with 1 only in a build that has a focuser, and with 0 to every focuser
+// command in one that has none. The focuser logical device has to follow that answer: on a
+// controller with no focuser it must refuse the connection rather than come up and block its
+// device queue on the first move, which polls :FT# until the focuser reports itself standing
+// still and would never get that answer.
+static void lx200_follows_the_onstep_focuser_capability(void) {
+	if (skip_unless_onstep("the focuser capability")) {
+		return;
+	}
+	ASSERT_TRUE(!hw_connected(focuser));
+	// The connection settles either way, so the scenario waits for the answer instead of
+	// expecting one of the two states and spending the whole connect timeout on the other.
+	unsigned before = hw_revision(focuser, CONNECTION_PROPERTY_NAME);
+	hw_request_switch(focuser, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
+	double deadline = indigo_monotonic_time() + CONNECT_TIMEOUT;
+	while (indigo_monotonic_time() < deadline && (hw_revision(focuser, CONNECTION_PROPERTY_NAME) == before || hw_property_state(focuser, CONNECTION_PROPERTY_NAME) == INDIGO_BUSY_STATE)) {
+		indigo_usleep(2000);
+	}
+	indigo_property_state state = hw_property_state(focuser, CONNECTION_PROPERTY_NAME);
+	ASSERT_TRUE(state == INDIGO_OK_STATE || state == INDIGO_ALERT_STATE);
+	bool present = state == INDIGO_OK_STATE;
+	printf("    the controller reports a focuser: %s\n", present ? "yes" : "no");
+	if (present) {
+		ASSERT_TRUE(hw_connected(focuser));
+		ASSERT_TRUE(hw_property_defined(focuser, FOCUSER_STEPS_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(focuser, FOCUSER_SPEED_PROPERTY_NAME));
+		// The move itself is not exercised: the travel of a focuser this run knows nothing about
+		// is not something a non-interactive session may spend. It is covered against the
+		// simulator by lx200_focuser_onstep_operations.
+		ASSERT_TRUE(hw_disconnect(focuser, SHORT_TIMEOUT));
+	} else {
+		ASSERT_TRUE(!hw_connected(focuser));
+		ASSERT_TRUE(hw_property_hidden(focuser, FOCUSER_STEPS_PROPERTY_NAME));
+	}
+	// The refusal or the extra session may not take the shared serial session down with it.
+	ASSERT_TRUE(hw_connected(mount));
+	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
 }
 
 // The NYX has no focuser port, so the focuser logical device has to refuse the connection instead
@@ -977,7 +1205,7 @@ static void lx200_goes_home(void) {
 	before = hw_revision(mount, MOUNT_HOME_PROPERTY_NAME);
 	hw_request_switch(mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true);
 	ASSERT_TRUE(hw_wait_state(mount, MOUNT_HOME_PROPERTY_NAME, before, INDIGO_BUSY_STATE, SHORT_TIMEOUT));
-	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE, MOTION_TIMEOUT));
+	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE, HOME_TIMEOUT));
 	ASSERT_TRUE(switch_on(mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME));
 	ASSERT_EQ_INT(INDIGO_OK_STATE, state_light(MOUNT_STATE_HOME_ITEM_NAME));
 	printf("    at home, RA %.4f DEC %.4f\n", current_ra(), current_dec());
@@ -1081,13 +1309,18 @@ static void lx200_refuses_an_unusable_port(void) {
 // A disconnect withdraws the connected properties and a reconnect starts a fresh session that
 // reads the whole state from the controller again.
 static void lx200_reconnects(void) {
+	// Which property the aux device carries depends on the model, so the scenario asks the
+	// connected one instead of assuming the environment sensors of a NYX.
+	const char *aux_property = aux_live_property();
 	ASSERT_TRUE(hw_disconnect(aux, SHORT_TIMEOUT));
 	ASSERT_TRUE(hw_disconnect(guider, SHORT_TIMEOUT));
 	ASSERT_TRUE(hw_disconnect(mount, CONNECT_TIMEOUT));
 	ASSERT_TRUE(hw_property_hidden(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
 	ASSERT_TRUE(hw_property_hidden(mount, MOUNT_INFO_PROPERTY_NAME));
 	ASSERT_TRUE(hw_property_hidden(guider, GUIDER_GUIDE_RA_PROPERTY_NAME));
-	ASSERT_TRUE(hw_property_hidden(aux, AUX_WEATHER_PROPERTY_NAME));
+	if (aux_property != NULL) {
+		ASSERT_TRUE(hw_property_hidden(aux, aux_property));
+	}
 	ASSERT_TRUE(hw_connect(mount, CONNECT_TIMEOUT));
 	ASSERT_TRUE(hw_connect(guider, CONNECT_TIMEOUT));
 	ASSERT_TRUE(hw_connect(aux, CONNECT_TIMEOUT));
@@ -1095,7 +1328,12 @@ static void lx200_reconnects(void) {
 	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
 	double elapsed = 0;
 	ASSERT_TRUE(guide_pulse(0, 200, &elapsed));
-	ASSERT_TRUE(hw_wait_settled(aux, AUX_WEATHER_PROPERTY_NAME, INDIGO_OK_STATE, 30.0));
+	if (aux_property != NULL) {
+		ASSERT_TRUE(hw_wait_settled(aux, aux_property, INDIGO_OK_STATE, 30.0));
+	} else {
+		printf("    the aux device of this model publishes no property of its own\n");
+		ASSERT_TRUE(hw_connected(aux));
+	}
 }
 
 static void lx200_reinitializes(void) {
@@ -1154,10 +1392,13 @@ int main(int argc, char **argv) {
 		{ "lx200_keeps_tracking_while_slewing", lx200_keeps_tracking_while_slewing },
 		{ "lx200_aborts_a_slew_and_accepts_a_fresh_one", lx200_aborts_a_slew_and_accepts_a_fresh_one },
 		{ "lx200_reports_side_of_pier", lx200_reports_side_of_pier },
+		{ "lx200_writes_back_the_onstep_options", lx200_writes_back_the_onstep_options },
 		{ "lx200_reads_the_nyx_leveler", lx200_reads_the_nyx_leveler },
 		{ "lx200_reads_the_nyx_wifi_configuration", lx200_reads_the_nyx_wifi_configuration },
 		{ "lx200_reads_the_nyx_sensors", lx200_reads_the_nyx_sensors },
+		{ "lx200_reads_the_onstep_outlets", lx200_reads_the_onstep_outlets },
 		{ "lx200_refuses_the_unsupported_focuser", lx200_refuses_the_unsupported_focuser },
+		{ "lx200_follows_the_onstep_focuser_capability", lx200_follows_the_onstep_focuser_capability },
 		{ "lx200_guides_in_all_four_directions", lx200_guides_in_all_four_directions },
 		{ "lx200_guides_both_axes_at_once", lx200_guides_both_axes_at_once },
 		{ "lx200_replaces_a_guide_pulse_on_the_same_axis", lx200_replaces_a_guide_pulse_on_the_same_axis },

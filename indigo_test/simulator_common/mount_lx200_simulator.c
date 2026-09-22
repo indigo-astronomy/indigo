@@ -49,6 +49,9 @@ typedef struct {
 	bool headless;
 	bool trace;
 	bool tcp;
+	// Whether :GU# carries the documented k for the king rate. OnStepX 10.28x does not, so the
+	// default is the firmware that omits it and only answers the rate through :GT#.
+	bool status_king;
 	const char *ready_file;
 	simulator_model model;
 } simulator_options;
@@ -140,6 +143,7 @@ static void usage(const char *name) {
 	printf("LX200 mount serial simulator\n");
 	printf("Usage: %s [OPTIONS]\n", name);
 	printf("  --headless              Disable terminal-oriented output\n");
+	printf("  --status-king           Report the king rate as k in :GU#, as the protocol documents\n");
 	printf("  --model <name>          a supported LX200 profile\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --tcp                   Serve an opt-in localhost TCP transport\n");
@@ -176,6 +180,8 @@ static bool parse_args(int argc, char *argv[]) {
 			options.trace = false;
 		} else if (!strcmp(argv[i], "--tcp")) {
 			options.tcp = true;
+		} else if (!strcmp(argv[i], "--status-king")) {
+			options.status_king = true;
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
 		} else if (!strcmp(argv[i], "--model")) {
@@ -501,7 +507,14 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "GVT")) {
 		write_response("11:25:53#");
 	} else if (!strcmp(command, "GU")) {
-		snprintf(response, sizeof(response), "G%s%s%s%sW%s%s#", state.tracking ? "" : "n", state.slewing ? "" : "N", state.parked ? "P" : parking_requested ? "I" : "p", state.at_home ? "H" : homing_requested ? "h" : "", auto_flip ? "a" : "", state.tracking_rate == 'L' ? "(" : state.tracking_rate == 'S' ? "O" : state.tracking_rate == 'K' ? "k" : "");
+		// OnStepX 10.28x never puts the documented k in its status: a mount on the king rate
+		// reports exactly what a mount on the sidereal rate reports, and only :GT# tells them
+		// apart. The NYX firmware that derives from it does report the k, which the NYX-101 run
+		// verified on the mount, so the quirk belongs to OnStep alone. --status-king restores the
+		// documented character for an OnStep build that has it.
+		bool report_king = state.tracking_rate == 'K' && (options.model != MODEL_ONSTEP || options.status_king);
+		const char *rate = state.tracking_rate == 'L' ? "(" : state.tracking_rate == 'S' ? "O" : report_king ? "k" : "";
+		snprintf(response, sizeof(response), "G%s%s%s%sW%s%s#", state.tracking ? "" : "n", state.slewing ? "" : "N", state.parked ? "P" : parking_requested ? "I" : "p", state.at_home ? "H" : homing_requested ? "h" : "", auto_flip ? "a" : "", rate);
 		write_response(response);
 	} else if (!strncmp(command, "SC", 2)) {
 		state.date_month = atoi(command + 2);
@@ -533,8 +546,22 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "GS")) {
 		write_response("12:00:00#");
 	} else if (!strcmp(command, "GT")) {
-		// A NYX-101 answers :GT# with 0 while tracking is disabled, which is not a rate.
-		write_response(model_is_zwo() ? (state.tracking_rate == 'L' ? "1#" : state.tracking_rate == 'S' ? "2#" : "0#") : (options.model == MODEL_NYX && !state.tracking) ? "0#" : "60.2#");
+		// A NYX-101 answers :GT# with 0 while tracking is disabled, which is not a rate. The
+		// frequencies are the ones an OnStepX reports: the king rate is 0.028 Hz below sidereal
+		// and is the only way to tell the two apart on a firmware whose status omits the k.
+		if (model_is_zwo()) {
+			write_response(state.tracking_rate == 'L' ? "1#" : state.tracking_rate == 'S' ? "2#" : "0#");
+		} else if ((options.model == MODEL_NYX || options.model == MODEL_ONSTEP) && !state.tracking) {
+			write_response("0#");
+		} else if (state.tracking_rate == 'L') {
+			write_response("57.90000#");
+		} else if (state.tracking_rate == 'S') {
+			write_response("60.00000#");
+		} else if (state.tracking_rate == 'K') {
+			write_response("60.13600#");
+		} else {
+			write_response("60.16427#");
+		}
 	} else if (!strncmp(command, "Sg", 2)) {
 		strncpy(state.longitude, command + 2, sizeof(state.longitude) - 1);
 		write_response("1");
@@ -614,7 +641,10 @@ static void handle_command(const char *command) {
 			return;
 		}
 		start_reference_motion(strcmp(command, "hC") != 0 || options.model == MODEL_GEMINI);
-		if (options.model == MODEL_ONSTEP || model_is_zwo() || (options.model == MODEL_NYX && !strcmp(command, "hP"))) { write_response("1"); }
+		// OnStepX documents :hP# with a 0/1 reply and :hC# with none, and the NYX firmware that
+		// derives from it does the same. A simulator that answers the home command anyway hides
+		// a driver that waits for a reply the mount never sends.
+		if (model_is_zwo() || ((options.model == MODEL_ONSTEP || options.model == MODEL_NYX) && !strcmp(command, "hP"))) { write_response("1"); }
 	} else if (!strcmp(command, "PO") || !strcmp(command, "hW") || !strcmp(command, "X370")) {
 		state.tracking = true;
 		state.slewing = false;
@@ -663,6 +693,10 @@ static void handle_command(const char *command) {
 		serial_motion_start(&focus_motion, focus_motion.position + atoi(command + 2), 1000);
 	} else if (!strcmp(command, "FT")) {
 		write_response(focus_motion.duration > 0 ? "M#" : "S#");
+	} else if (!strcmp(command, "Fa")) {
+		// OnStep answers 1 only in a build that has a focuser, and 0 to every focuser command
+		// in one that has none, including the :FT# a move waits on.
+		write_response("1");
 	} else if (!strcmp(command, "$QZ?")) {
 		snprintf(response, sizeof(response), "%c#", state.pec);
 		write_response(response);

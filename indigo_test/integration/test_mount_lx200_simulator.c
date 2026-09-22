@@ -78,6 +78,13 @@ static bool start_lx200_simulator(external_serial_simulator *simulator, const ch
 	return start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments);
 }
 
+// An OnStep build that does report the king rate in its status, which is what the protocol
+// documents and what the OnStep derived NYX firmware really does.
+static bool start_lx200_simulator_with_status_king(external_serial_simulator *simulator, const char *model) {
+	const char *arguments[] = { "--model", model, "--status-king", NULL };
+	return start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments);
+}
+
 // libindigo exports a legacy macOS clock_gettime shim using wall time.
 // Use the native nanosecond API so test and external simulator share a clock.
 static uint64_t lx_monotonic_ns(void) {
@@ -422,6 +429,167 @@ static void lx200_coordinate_command_failures_recover(void) {
 	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Sr07:30:00", "DROP"));
 	SERIAL_CHECK_TRUE(lx_coordinates(7.5, -12.5, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(lx_coordinates(7.5, -12.5, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A refused GOTO leaves MOUNT_EQUATORIAL_COORDINATES in ALERT, and the very next successful
+// readback has to publish it as valid again without any further request. An OnStep controller
+// that refused one slew otherwise reported its position as invalid for the whole session, so
+// every later scenario that waited for the property to settle waited out its timeout.
+static void lx200_refused_goto_recovers_on_the_next_poll(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	unsigned int revision = 0;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	// Error 3 is "controller in standby", which is what the mount answered on hardware.
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "MS", "3"));
+	SERIAL_CHECK_TRUE(lx_coordinates(7.5, 15, INDIGO_ALERT_STATE));
+	revision = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	// And the mount takes the next slew straight away.
+	SERIAL_CHECK_TRUE(lx_coordinates(7.5, 15, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// INDIGO publishes longitude east positive in 0 .. 360 with the prime meridian at 0. The LX200
+// protocol counts it west positive, and a driver that only inverts the sign turns 0 into 360 in
+// both directions: it sends :Sg360*00# to the mount and publishes 360 for a site the controller
+// reports as +000*00. An OnStep controller whose site was still unset showed both.
+static void lx200_prime_meridian_longitude_is_zero(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	unsigned int revision = 0;
+	const char *location_items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME };
+	double location[] = { 48.5, 0, 150 };
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	revision = property_revision(GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, location_items, location));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sg000*00", 0));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "Sg360*00", NULL));
+	// The site the controller now holds has to come back through the readback of a new session
+	// as 0 and not as 360, so the mount clock is put on this host's time first: the driver only
+	// reads the site from a controller whose clock it can believe.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true, INDIGO_OK_STATE));
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, NULL));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) < 0.001);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// An OnStep build without auxiliary features answers :GXY0# with a single character instead of
+// the documented eight character bitmap. The driver used to copy eight bytes out of that reply,
+// read stale bytes past its terminator as a map of active slots, and query slots the controller
+// does not have; the outlet properties then came up with no item at all.
+static void lx200_onstep_without_auxiliary_features(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_lx200_simulator(&simulator, "onstep"));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_aux));
+	online = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, lx200_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GXY0", "0"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_aux, NULL));
+	// Neither outlet property may be offered, and no slot may have been queried.
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_HEATER_OUTLET_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_POWER_OUTLET_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "GXY8", NULL));
+	// A second session against the same controller with its bitmap intact publishes them again.
+	disconnect_serial_device(&lx200_aux);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_aux, NULL));
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_POWER_OUTLET_PROPERTY_NAME) != NULL);
+	SERIAL_CHECK_EQ_INT(2, find_cached_property(AUX_POWER_OUTLET_PROPERTY_NAME)->count);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// An OnStep build without a focuser answers every focuser command with 0, including the :FT# a
+// move waits on. The focuser device has to refuse the connection on such a controller instead of
+// coming up and blocking its device queue on the first move, which is what an OnStepX with no
+// focuser configured did.
+static void lx200_onstep_without_a_focuser_refuses_the_connection(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_lx200_simulator(&simulator, "onstep"));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_focuser));
+	online = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, lx200_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Fa", "0"));
+	SERIAL_CHECK_TRUE(!connect_serial_device(&lx200_focuser, NULL));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(CONNECTION_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME) == NULL);
+	// The same controller with its focuser present takes the connection and the move.
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_focuser, NULL));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_focuser, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_focuser, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "FR+25", 0));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_focuser); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// OnStepX 10.28x accepts :TK# and really tracks at the king rate, but its status string carries
+// no rate character at all for it: a mount on the king rate reports exactly what a mount on the
+// sidereal rate reports. The rate is then only in the tracking frequency, 60.136 Hz against
+// 60.164 Hz, so a driver that reads the status alone puts the property back on sidereal one
+// second after the client selected king.
+static void lx200_onstep_king_rate_comes_from_the_frequency(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	static const char *rates[] = { MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME };
+	for (unsigned i = 0; i < ARRAY_SIZE(rates); i++) {
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, rates[i], true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+		// Two status cycles, so a rate the driver only remembers is replaced by the one the
+		// controller reports before it is read back.
+		int before = event_count(&simulator, "GU", NULL);
+		SERIAL_CHECK_TRUE(wait_event(&simulator, "GU", before + 1));
+		indigo_item *item = find_cached_item(MOUNT_TRACK_RATE_PROPERTY_NAME, rates[i]);
+		SERIAL_CHECK_TRUE(item != NULL && item->sw.value);
+	}
+	// While tracking is disabled the mount answers :GT# with 0, which says nothing about the
+	// configured rate, so the driver keeps the one it has instead of decoding 0 as a rate.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
+	int before = event_count(&simulator, "GU", NULL);
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "GU", before + 1));
+	indigo_item *king = find_cached_item(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME);
+	SERIAL_CHECK_TRUE(king != NULL && king->sw.value);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// The other half of the same contract: a build that does put the documented k in its status is
+// read from the status, without the driver having to ask for the frequency at all.
+static void lx200_onstep_king_rate_comes_from_the_status(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_lx200_simulator_with_status_king(&simulator, "onstep"));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_mount));
+	online = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	int before = event_count(&simulator, "GU", NULL);
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "GU", before + 1));
+	indigo_item *king = find_cached_item(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME);
+	SERIAL_CHECK_TRUE(king != NULL && king->sw.value);
 cleanup:
 	if (online) { stop_serial_driver(&lx200_mount); }
 	stop_external_serial_simulator(&simulator);
@@ -1822,6 +1990,12 @@ int main(int argc, char **argv) {
 		{ "lx200_shared_connection_orders_and_last_close", lx200_shared_connection_orders_and_last_close },
 		{ "lx200_goto_progress_abort_and_restart", lx200_goto_progress_abort_and_restart },
 		{ "lx200_coordinate_command_failures_recover", lx200_coordinate_command_failures_recover },
+		{ "lx200_refused_goto_recovers_on_the_next_poll", lx200_refused_goto_recovers_on_the_next_poll },
+		{ "lx200_prime_meridian_longitude_is_zero", lx200_prime_meridian_longitude_is_zero },
+		{ "lx200_onstep_without_auxiliary_features", lx200_onstep_without_auxiliary_features },
+		{ "lx200_onstep_without_a_focuser_refuses_the_connection", lx200_onstep_without_a_focuser_refuses_the_connection },
+		{ "lx200_onstep_king_rate_comes_from_the_frequency", lx200_onstep_king_rate_comes_from_the_frequency },
+		{ "lx200_onstep_king_rate_comes_from_the_status", lx200_onstep_king_rate_comes_from_the_status },
 		{ "lx200_location_and_utc_translation", lx200_location_and_utc_translation },
 		{ "lx200_onstep_options_and_partial_failures", lx200_onstep_options_and_partial_failures },
 		{ "lx200_park_rejects_motion_and_unpark_recovers", lx200_park_rejects_motion_and_unpark_recovers },
