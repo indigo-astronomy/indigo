@@ -174,3 +174,29 @@ Root cause: dead code carried into the generator input.
 Fix: the guard was removed from `indigo_ccd_mi.driver` and the driver regenerated. The version was **not** bumped: no behaviour changes, and the repository rule ties a version bump to a behaviour fix. `CCD_GAIN` in the same driver already used the house refusal pattern, which is what the other drivers were brought in line with.
 
 Regression test: none, and none is possible: the removed branch could not be reached. The existing suite is 17/17 after the change.
+
+## MI G0-0300 hardware run (2026-09-22)
+
+Non-interactive hardware run on macOS arm64 against a physical MI G0-0300, driver version 3.0.0.35:
+
+```
+make -C indigo_test test-ccd-mi-hw
+```
+
+Result 1/1, no defect found and no production-code change needed. The camera exposes a camera and a
+guider and no filter wheel, so the wheel scenarios reported themselves as skipped rather than
+passing. Covered: discovery and selection, connect of both logical devices, RAW frames at
+656x494, the minimum-duration bias frame, full-frame light settings restore, a 60-second exposure
+aborted with no image followed by a successful exposure, the `CCD_READ_MODE` change refused during
+an exposure with the driver's values and message preserved and the exposure still delivering its
+image, all four guide directions, overlapping RA and DEC pulses, a zero-duration pulse, guide
+pulses during an active exposure, the guider still working while the camera is disconnected,
+camera-first and guider-first disconnect/reconnect, and driver shutdown/reinitialization with a
+fresh queue and exposure. `CCD_GAIN` and an alternative `CCD_BIN` value are not exposed by this
+model, so those two guards reported themselves skipped.
+
+Physical hot-plug was not part of this run and no hot-plug coverage is established by it.
+
+### Test totals for this run
+
+Simulated tests run 0, passed 0. Hardware tests run 1, passed 1.
