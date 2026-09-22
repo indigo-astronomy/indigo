@@ -468,6 +468,15 @@ static void usb_event(int index, bool arrive) {
 	usb_callback(NULL, (libusb_device *)&usb_devices[index], arrive ? LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED : LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
 }
 
+// A libusb device no logical device was created from. The unplug hook confirms a removal libusb
+// could not identify; a removal libusb named is certain and the hook is not consulted for it, so a
+// failing SDK inventory can only be inconclusive for an event like this one.
+static int foreign_usb_device;
+
+static void foreign_usb_removal(void) {
+	usb_callback(NULL, (libusb_device *)&foreign_usb_device, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+}
+
 static void remember_request(const char *device, const char *property) {
 	int index = device_index(device);
 	pthread_mutex_lock(&observation_mutex);
@@ -1457,15 +1466,20 @@ static void discovery_filter_failures_retry(void) {
 	discovery_fail = 0;
 	ASSERT_TRUE(wait_count(&attached, 2)); // generated retry, no second event
 	count_fail = 1;
-	usb_event(0, false);
+	foreign_usb_removal();
 	ASSERT_TRUE(drain_discovery());
 	ASSERT_EQ_INT(2, attached);
 	count_fail = 0;
 	discovery_fail = 1;
-	usb_event(0, false);
+	foreign_usb_removal();
 	ASSERT_TRUE(drain_discovery());
 	ASSERT_EQ_INT(2, attached);
 	discovery_fail = 0;
+	// The camera libusb names goes away whatever the SDK inventory still reports.
+	usb_event(0, false);
+	ASSERT_TRUE(wait_count(&attached, 0));
+	usb_event(0, true);
+	ASSERT_TRUE(wait_count(&attached, 2));
 	ASSERT_TRUE(connect_device(0, true));
 	ASSERT_TRUE(take_image(0, 0.01));
 }

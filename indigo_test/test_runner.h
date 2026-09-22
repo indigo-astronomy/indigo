@@ -21,6 +21,8 @@
 #ifndef indigo_test_runner_h
 #define indigo_test_runner_h
 
+#include <errno.h>
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <ftw.h>
@@ -129,6 +131,17 @@ static void indigo_test_remove_tree(const char *path) {
 static bool indigo_test_set_private_home(const char *path) {
 	if (setenv("HOME", path, 1) != 0) {
 		perror("setenv");
+		return false;
+	}
+	// indigo_ccd_attach() points CCD_LOCAL_MODE at $HOME/indigo_image_cache/ and the framework
+	// only checks that the folder is writable, it never creates it. An empty private home
+	// therefore makes every CCD driver publish CCD_LOCAL_MODE in ALERT, and a CONFIG LOAD that
+	// restores it never settles, which is what failed the ccd_svb config roundtrip. A real home
+	// has the folder, so a private one gets it too.
+	char image_cache[PATH_MAX];
+	snprintf(image_cache, sizeof(image_cache), "%s/indigo_image_cache", path);
+	if (mkdir(image_cache, 0755) != 0 && errno != EEXIST) {
+		perror(image_cache);
 		return false;
 	}
 	return true;

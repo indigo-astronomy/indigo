@@ -196,3 +196,37 @@ Root cause: the two `on_change_request` blocks in `indigo_ccd_svb.driver` refuse
 Fix: both are now `reject_change` blocks, so the refusal is published with `INDIGO_ALERT_STATE` and a message and the client gets its unchanged values back. Version 27 -> 28.
 
 Regression test: `Edges rejected_change_alerts_and_keeps_values` in `indigo_test/integration/test_ccd_svb_sdk.c` now requests streaming during an exposure and requires `CCD_STREAMING` to reach `INDIGO_ALERT_STATE`. Against the pre-fix driver it fails at that assertion; the suite is 47/47 after the fix.
+
+## SV305PRO hardware run on macOS (2026-09-22)
+
+Non-interactive hardware run of `make -C indigo_test test-ccd-svb-hw` on macOS arm64 against an SVBONY SV305PRO on a Pegasus Ultimate Powerbox hub, driver version 3.0.0.29. The driver needed no change; two test defects had to be fixed first.
+
+### The private home had no image cache folder
+
+The acceptance case saves and loads the configuration in a private `HOME` created by `indigo_test_mkdtemp_home()`. The load failed every time:
+
+```
+    message: Folder "/tmp/indigo_svb_hw_I7KgZp/indigo_image_cache/" is not writtable
+    message: Configuration restored, except 'CCD_LOCAL_MODE' which the driver did not accept
+Timeout: SVBONY SV305PRO CONFIG expected state 1
+    hardware gain/config roundtrip in temporary directory: FAIL
+```
+
+`indigo_ccd_attach()` points `CCD_LOCAL_MODE` at `$HOME/indigo_image_cache/` and the framework only checks that the folder is writable, never creating it, so an empty private home makes every CCD driver publish `CCD_LOCAL_MODE` in `ALERT` and a `CONFIG` `LOAD` that restores it never settles. `indigo_test_set_private_home()` in `test_runner.h` now creates the folder, so a private home looks like a real one. This is not specific to this driver; it would have failed the same way for any CCD driver whose suite uses a private home and a configuration roundtrip.
+
+The test's make rule did not list `test_runner.h` or `hardware_test_common.h` among its prerequisites, so the fix appeared not to work until the binary was removed by hand. Both headers are prerequisites now.
+
+### A stale hot-plug expectation
+
+`Matrix discovery_filter_failures_retry` required a failing `SVBGetNumOfConnectedCameras()` to keep the cameras attached across a `DEVICE_LEFT` for their own libusb device. Commit `0057e7302` made `sdk.unplug_match` confirm a removal libusb could not identify rather than veto one it reported, so that removal now proceeds whatever the SDK says, which is the intended behaviour. The case sends its two inconclusive events with a libusb device no logical device was created from, and additionally requires the camera libusb does name to go away and come back.
+
+### Results
+
+| run | result |
+| --- | --- |
+| `build/integration/test_ccd_svb_sdk` | 47/47 |
+| `make -C indigo_test test-ccd-svb-hw` | 1/1 |
+
+The run covered all four hardware pixel formats at bin 1 and bin 2, ROI 256x256 at (16,24) in both bins, gain and offset, the configuration roundtrip, the `reject_change` guards during an exposure and during streaming, a sustained stream of 61 frames in about ten seconds, the guider, disconnect/reconnect and a driver shutdown/reinitialization with a fresh exposure.
+
+Hot-plug was not established in this run: the camera hangs on the Powerbox hub, whose port switch is invisible to the host's hub driver on macOS (see `indigo_drivers/ccd_atik/REFACTOR.md`). The Linux hot-plug run of 2026-09-22 07:02 stands.

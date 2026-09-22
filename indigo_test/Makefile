@@ -1530,7 +1530,7 @@ $(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw: hardware/test_ccd_playerone
 test-ccd-svb-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_svb_hw
 	$(TEST_BUILD)/hardware/test_ccd_svb_hw --run $(if $(filter 1,$(HW_ACCEPTANCE)),--acceptance,$(if $(filter 1,$(HW_HOTPLUG)),--hotplug))
 
-$(TEST_BUILD)/hardware/test_ccd_svb_hw: hardware/test_ccd_svb_hw.c ../build/drivers/indigo_ccd_svb.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_ccd_svb_hw: hardware/test_ccd_svb_hw.c hardware/hardware_test_common.h test_runner.h ../build/drivers/indigo_ccd_svb.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_svb.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS) $(if $(filter Darwin,$(OS_DETECTED)),-L../indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/macOS) -lSVBCameraSDK
 
 # Physical Moravian Instruments camera hardware is opt-in and excluded from normal integration tests.

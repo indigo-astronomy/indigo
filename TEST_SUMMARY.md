@@ -66,8 +66,9 @@
 | ccd_ssag | 2026-09-21 14:15 | 3.0.0.14 | mac arm64 | fake SDK | 13 / 13 | ✅ OK |
 | ccd_ssag | 2026-09-22 10:13 | 3.0.0.14 | mac arm64 | QHY5 | 1 / 1 | ✅ OK |
 | ccd_ssg | 2026-09-21 14:08 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
-| ccd_svb | 2026-09-21 12:41 | 3.0.0.28 | mac arm64 | fake SDK | 47 / 47 | ✅ OK |
 | ccd_svb | 2026-09-22 07:02 | 3.0.0.28 | linux arm64 | SVBONY SV305PRO | 6 / 6 | ✅ OK |
+| ccd_svb | 2026-09-22 11:25 | 3.0.0.29 | mac arm64 | SVBONY SV305PRO | 1 / 1 | ✅ OK |
+| ccd_svb | 2026-09-22 11:31 | 3.0.0.29 | mac arm64 | fake SDK | 47 / 47 | ✅ OK |
 | ccd_svb2 | 2026-09-21 14:10 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_sx | 2026-09-21 14:15 | 3.0.0.20 | mac arm64 | fake SDK | 24 / 24 | ✅ OK |
 | ccd_touptek | 2026-09-21 21:02 | 3.0.0.49 | mac arm64 | Touptek GPCMOS01200KMB | 28 / 28 | ✅ OK |
