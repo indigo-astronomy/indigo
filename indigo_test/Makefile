@@ -2195,8 +2195,8 @@ $(INTEGRATION_BUILD)/ccd_qhy_sdk_framework.o: ../indigo_libs/indigo_driver.c Mak
 # Physical acceptance requires explicit --run, library and device selection. The driver is loaded
 # through dlopen(), so the same binary serves the QHY SDK driver and its legacy sibling; set
 # INDIGO_TEST_DEVICE to a unique substring of the camera name.
-$(TEST_BUILD)/hardware/test_ccd_qhy_hw: hardware/test_ccd_qhy_hw.c test_runner.h | $(TEST_BUILD)/hardware
-	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS)
+$(TEST_BUILD)/hardware/test_ccd_qhy_hw: hardware/test_ccd_qhy_hw.c hardware/powerbox_hotplug_test_common.h test_runner.h | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
 .PHONY: test-ccd-qhy-hw
 test-ccd-qhy-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_qhy_hw $(BUILD_DRIVERS)/indigo_ccd_qhy.$(SOEXT)
@@ -2205,6 +2205,14 @@ test-ccd-qhy-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_qhy_hw $(BUILD_DRIVER
 .PHONY: test-ccd-qhy2-hw
 test-ccd-qhy2-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_qhy_hw $(BUILD_DRIVERS)/indigo_ccd_qhy2.$(SOEXT)
 	$(TEST_BUILD)/hardware/test_ccd_qhy_hw --run $(BUILD_DRIVERS)/indigo_ccd_qhy2.$(SOEXT) indigo_ccd_qhy2
+
+# Unattended hot-plug for a camera on the hub inside a Pegasus Ultimate Powerbox: QHY_HW_HUB_PORT is
+# the hub port the camera sits on, counted from 1, and the suite switches its power itself instead
+# of asking for a cable. It is the macOS answer to the per port `disable` attribute the Linux
+# suites write; hardware/powerbox_hotplug_test_common.h records what each platform delivers.
+.PHONY: test-ccd-qhy2-hotplug-powerbox-hw
+test-ccd-qhy2-hotplug-powerbox-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_qhy_hw $(BUILD_DRIVERS)/indigo_ccd_qhy2.$(SOEXT)
+	QHY_HW_CASE=hotplug $(TEST_BUILD)/hardware/test_ccd_qhy_hw --run $(BUILD_DRIVERS)/indigo_ccd_qhy2.$(SOEXT) indigo_ccd_qhy2
 
 # QSI compiles against its own real SDK header and a fake QSICamera implementation.
 QSI_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include

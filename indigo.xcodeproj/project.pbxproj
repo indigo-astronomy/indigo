@@ -1180,6 +1180,7 @@
 		C0DE20260921230000000003 /* test_aux_dsusb_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_dsusb_hw.c; sourceTree = "<group>"; };
 		C0DE20260921230000000002 /* test_guider_gpusb_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_guider_gpusb_hw.c; sourceTree = "<group>"; };
 		C0DE20260921230000000001 /* hardware_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = hardware_test_common.h; sourceTree = "<group>"; };
+		C0DE20260922190000000001 /* powerbox_hotplug_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = powerbox_hotplug_test_common.h; sourceTree = "<group>"; };
 		31394FFC665B4AD088017127 /* test_aux_rpio_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_rpio_hw.c; sourceTree = "<group>"; };
 		3163F39E82A1476FAC756087 /* indigo_aux_asiair.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_aux_asiair.driver; sourceTree = "<group>"; };
 		33F305E4453F448EB7D989BA /* indigo_aux_rpio.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_aux_rpio.driver; sourceTree = "<group>"; };
@@ -14614,6 +14615,7 @@
 				C0DE20260921230000000003 /* test_aux_dsusb_hw.c */,
 				C0DE20260921230000000002 /* test_guider_gpusb_hw.c */,
 				C0DE20260921230000000001 /* hardware_test_common.h */,
+				C0DE20260922190000000001 /* powerbox_hotplug_test_common.h */,
 				59E4ADBA30600C0A002B1629 /* test_mount_synscan_hw.c */,
 				31394FFC665B4AD088017127 /* test_aux_rpio_hw.c */,
 				BB585B0FF8074EBCA4FB2400 /* test_aux_asiair_hw.c */,
