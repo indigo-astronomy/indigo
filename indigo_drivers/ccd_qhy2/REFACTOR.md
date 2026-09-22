@@ -37,6 +37,25 @@ INDIGO_TEST_DEVICE=QHY5III178 QHY_HW_CASE=reject indigo_test/build/hardware/test
 
 The full scenario set (everything except hotplug) passed after the migration: `QHY hardware: all tests passed`, covering exposures from 0.1 s to 16.5 s, repeated pixel-format and single/live switching, geometry and modes, settings, abort, streaming, guider pulses, reconnect and driver `dlclose`/`dlopen`.
 
+### Unplug of a connected camera (fixed, 3.0.0.36)
+
+`test-ccd-qhy2-hotplug-hw` failed its three connected cases and passed every idle one: a camera
+switched off while connected stayed published, and the disconnect only completed once the camera
+was plugged back in.
+
+`unplug_match` answered the removal with `ScanQHYCCD()`, and the generator enters that block with
+`unplug_result` already set from the libusb identity of the device that left, so the rescan
+replaced the answer libusb had given instead of adding to it. `ScanQHYCCD()` keeps reporting a
+camera whose handle is still open, so the removal was refused, and no second `LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT`
+ever arrives for the same device.
+
+The block now runs only when libusb has not already identified the device. All six cases pass on a
+QHY5III178M on Linux arm64.
+
+The same dead assignment is in the generator's SDK hot-plug template, so `ccd_asi`, `ccd_playerone`
+and `ccd_svb` carry the same shape. `ccd_svb` passes the suite unchanged, because its SDK stops
+reporting a camera that is gone; the other two are untested for it.
+
 ### Open
 
 `indigo_ccd_qhy` still carries the identical hand-written `qhy_busy()` helper on the same nine properties and was not migrated here.

@@ -51,6 +51,7 @@
 | ccd_ptp | 2026-09-21 14:14 | 3.0.0.52 | mac arm64 | fake SDK | 128 / 128 | ✅ OK |
 | ccd_qhy | 2026-09-21 10:57 | 3.0.0.35 | mac arm64 | fake SDK | 37 / 37 | ✅ OK |
 | ccd_qhy2 | 2026-09-21 13:41 | 3.0.0.35 | mac arm64 | fake SDK | 37 / 37 | ✅ OK |
+| ccd_qhy2 | 2026-09-22 07:10 | 3.0.0.36 | linux arm64 | QHY5III178M | 6 / 6 | ✅ OK |
 | ccd_qsi | 2026-09-21 13:43 | 3.0.0.16 | mac arm64 | fake SDK | 60 / 60 | ✅ OK |
 | ccd_rising | 2026-09-21 14:06 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_simulator | 2026-09-21 12:42 | 3.0.0.28 | mac arm64 | simulator | 19 / 19 | ✅ OK |

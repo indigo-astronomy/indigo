@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000023
+#define DRIVER_VERSION       0x03000024
 #define DRIVER_NAME          "indigo_ccd_qhy2"
 #define DRIVER_LABEL         "QHY CMOS (modern) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1426,12 +1426,20 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 			bool unplug_result = private_data->usbdev == dev;
 			if (last_action != INDIGO_DRIVER_SHUTDOWN) {
 				//+ sdk.unplug_match
-				uint32_t count = ScanQHYCCD();
-				unplug_result = count <= 256;
-				for (uint32_t i = 0; unplug_result && i < count; i++) {
-					char sid[256] = { 0 };
-					if (!qhy2_result(GetQHYCCDId(i, sid), "GetQHYCCDId on removal") || !memchr(sid, 0, sizeof(sid)) || !sid[0] || !strcmp(private_data->sid, sid)) {
-						unplug_result = false;
+				// The block is entered with unplug_result already set from the libusb identity of the
+				// device that left, and it can only confirm a removal libusb has not identified, never
+				// veto one it has. Rescanning unconditionally loses the camera of a connected device:
+				// ScanQHYCCD() keeps reporting a camera whose handle is still open, so the removal is
+				// refused, no second event ever arrives, and the driver goes on publishing a device
+				// that answers no request until the camera is plugged back in.
+				if (!unplug_result) {
+					uint32_t count = ScanQHYCCD();
+					unplug_result = count <= 256;
+					for (uint32_t i = 0; unplug_result && i < count; i++) {
+						char sid[256] = { 0 };
+						if (!qhy2_result(GetQHYCCDId(i, sid), "GetQHYCCDId on removal") || !memchr(sid, 0, sizeof(sid)) || !sid[0] || !strcmp(private_data->sid, sid)) {
+							unplug_result = false;
+						}
 					}
 				}
 				//- sdk.unplug_match
