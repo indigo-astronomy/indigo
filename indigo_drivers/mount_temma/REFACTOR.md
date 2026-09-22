@@ -73,3 +73,86 @@ pulse replaced after 500 ms by a 600 ms pulse in the same direction, and the sam
 a 300 ms pulse in the opposite direction. The existing assertions only waited for a state
 transition, which passes even when the driver keeps the superseded pulse running to its own
 deadline.
+
+# Temma protocol repairs (2026-09-23)
+
+## Scope and hardware-test decision
+
+Three defects reported against this driver after a comparison with cocoaTemma, the upstream INDI
+driver and the public INDIGO `master`: two introduced by the generator migration
+(`1db9fb0ffa2b484acdb82d377e6d733917522029`, "mount_temma: migrated to code generator") and one
+older than it. No physical Temma mount is available, so hardware tests run/passed stay 0/0 and no
+hardware validation is claimed. Everything below is validated against the host-side simulator,
+which was corrected first so that it stops confirming the driver's own mistakes.
+
+Driver version `0x0300000D` to `0x0300000E`.
+
+## Source conflict worth recording
+
+The bundled `Temma.pdf` describes the last pair of the right ascension field in `E`, `D` and `P`
+as "Seconds (0 - 59)". The units repair below implements **hundredths of a minute**, on the
+instruction of the repository owner and consistent with cocoaTemma, with the worked example
+`123450` = 12h 34m 30s and with the fact that the field really carries values of 60 to 99, which
+seconds cannot. The manual's own wording is the only source that disagrees, and it is recorded
+here rather than silently overruled.
+
+## Found defects
+
+| ID | Status | Observation and root cause | Fix and regression |
+| --- | --- | --- | --- |
+| TM001 | FIXED | The migration introduced `temma_command_ack()`, which waits for a reply and accepts only `R1`, and used it for every command. Temma has no universal acknowledgement. For `D` and `P`, `R0` is the success and `R1` is the right ascension **error**, so the driver reported every accepted sync and GOTO as a failure and would have reported an error as a success. `T`, `I`, `Z`, `LA`, `LB`, `LL`, `LK`, `M<byte>`, `MA`, `PS` and `PT` are answered by nothing at all, so every one of them paid the full read timeout; on the guider that timeout lands inside the pulse. `STN-ON`, `STN-OFF` and `STN-COD` answer `stn-on` or `stn-off`, and `v1` and `v2` answer their own version line. | The transport layer is split by what the mount actually answers: `temma_no_reply_command()`, `temma_position_command()` which requires `R0` and names the documented `R1` .. `R3` errors, `temma_set_standby()` which requires the standby state back, and `temma_set_high_speed()` which requires the version line. Simulator: every no-reply command is now silent, the standby and version commands answer their own text, and `D`/`P` answer `R0`, `R1` or `R3`. Regression `temma_position_reply_codes_and_trailer` requires a GOTO answered `R1` to be refused and the one answered `R0` to run to completion. |
+| TM002 | FIXED | The migrated `temma_update_position()` accepted only `E` or `W` at index 13 and only `0` or `1` at index 14, and rejected the whole reply otherwise. The protocol also uses `F` at index 13, the temporary marker the mount reports for the first readings after an automatic introduction, and index 14 is the handbox letter, which is what the cocoaTemma emulator sends as `H`. A valid reply was therefore thrown away, and with it the position. | Index 13 accepts `E`, `W` and `F`, the declination sign accepts the space the protocol uses when the declination is exactly zero, and index 14 is not validated at all. An `F` keeps the last known side of the mount instead of replacing it with a value that is not a side; the GOTO state is followed through `s` as before. Simulator: the `E` reply ends with `H`, and `--introduction <count>` reports `F` for that many readings after a GOTO. Regression: the same case, which runs a GOTO through four `F` readings and requires the side to survive. |
+| TM003 | FIXED | Older than the migration and present in the public `master` as well: the right ascension of `E`, `D` and `P` was read and written as `HHMMSS` in seconds. The field is `HHMMcc`, where `cc` is hundredths of a minute, so `123450` is 12h 34m 30s and not 12h 34m 50s. Every position was wrong by up to 39 seconds of right ascension, which is ten arc minutes on the sky, in both directions. The migration made it worse by rejecting a last pair above 59, although 60 to 99 are the values the mount really sends. | Reading divides by 6000 and no longer bounds the last pair. Writing goes through one `temma_format_position()` used by sync, GOTO and the park position, which rounds to whole hundredths and whole tenths of an arc minute first, so a value that rounds up carries into the next minute, the next hour and across 24 hours instead of being sent as 60 minutes or 24 hours. `T` keeps ordinary seconds and `I` keeps tenths of an arc minute, and both were given the same carry-safe rounding. Simulator: `format_ra()` and `parse_radec()` use hundredths. Regression `temma_position_units_are_hundredths_of_a_minute` requires the exact command `D123450+45300` for 12.575 hours, requires a last pair of 99 to be accepted in both directions, and requires 23.999999 hours to be sent as `000000`. |
+
+## Simulator corrections
+
+The simulator answered `R1` to every command, which is precisely what made the driver's universal
+acknowledgement look correct. It now answers what the mount answers: nothing for the no-reply
+commands, `stn-on` / `stn-off` for the standby commands, a version line for `v1` and `v2`, and
+`R0` / `R1` / `R3` for `D` and `P`. `STN-COD` was missing and is implemented. `format_ra()` and
+`parse_radec()` use hundredths of a minute, `parse_radec()` rejects a non-numeric field instead of
+accepting whatever `sscanf` leaves behind, the `E` reply ends with the handbox letter, and
+`--introduction <count>` models the `F` readings after an automatic introduction.
+
+## Test changes
+
+`temma_timeout_and_open_failures_recover` dropped the reply of `PS` to make the abort fail. `PS`
+has no reply, so that is no longer a failure of anything; the case now drops the reply of `v`,
+which the connection reads first, so the timeout lands in one deterministic place, and the abort
+is asserted to complete normally. `temma_guider_command_failure_recovers` injected a bad reply to
+the relay mask command for the same reason; a relay mask command can now only fail on the
+transport, so the case takes the transport away and requires the failed pulse to clear its
+direction and both axes to work again on a fresh session. Two cases were added for the defects
+above, bringing the suite from 13 to 15.
+
+## Results (driver 0x0300000E)
+
+| Suite | Run | Passed | Failed |
+| --- | --- | --- | --- |
+| `test_mount_temma_simulator` | 15 | 15 | 0 |
+
+Guider pulse timing over the corrected protocol, 12 retained samples per row, software/protocol
+edge timing and not physical relay output:
+
+| Workload | Requested | Actual mean | Mean error |
+| --- | ---: | ---: | ---: |
+| Idle | 20 ms | 22.344 ms | 11.718 % |
+| Idle | 100 ms | 102.758 ms | 2.758 % |
+| Idle | 500 ms | 502.066 ms | 0.413 % |
+| Mount tracking | 20 ms | 22.941 ms | 14.706 % |
+| Mount tracking | 100 ms | 102.311 ms | 2.311 % |
+| Mount tracking | 500 ms | 503.677 ms | 0.735 % |
+
+## Not covered
+
+* Physical hardware. No Temma mount is available; every result above is simulator backed.
+* The exact wording of the `R4` and `R5` codes a GOTO can answer on firmware that reports more
+  reasons than the manual names. The driver passes such a code through to the client verbatim.
+* Whether a real controller needs the quarter second between commands the manual mentions. The
+  no-reply commands are now sent without waiting for anything, which is what the reporter asked
+  for and what cocoaTemma does, but it has not been measured against hardware.
+
+## Final test summary for this repair
+
+* Simulated tests: 15 run, 15 passed.
+* Hardware tests: 0 run, 0 passed. No Temma mount is available.

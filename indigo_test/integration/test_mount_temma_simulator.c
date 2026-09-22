@@ -175,6 +175,11 @@ static bool pulse_and_wait(const char *property_name, const char *item_name, dou
 	return wait_for_property_state_after(property_name, INDIGO_OK_STATE, revision) && fabs(cached_number_value(property_name, item_name)) < 0.001;
 }
 
+static bool cached_switch_value(const char *property_name, const char *item_name) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	return item != NULL && item->sw.value;
+}
+
 static void select_context(const simulator_driver_case *device_case) {
 	reset_simulator_context(device_case);
 	enumerate_simulator_device();
@@ -456,25 +461,107 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The coordinate commands carry the right ascension as HHMMcc, where cc is hundredths of a
+// minute and not seconds, so 12h34m30s is 123450 and the last pair legitimately reaches 99. A
+// driver that reads and writes seconds is off by up to 39 seconds of right ascension, which is
+// ten arc minutes on the sky, and refuses every reply whose last pair is 60 or more.
+static void temma_position_units_are_hundredths_of_a_minute(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = "";
+	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
+	const char *args[] = { "--trace-file", trace_path, NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_TEMMA_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&temma_mount, simulator.port));
+	driver_started = true;
+	// Epoch 2000 is the one value that leaves the coordinates alone, so the command the mount
+	// receives is the number the client asked for and not a precessed one.
+	SERIAL_CHECK_TRUE(change_number_and_wait(&temma_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	// 12h 34m 30s is half a minute, so the command carries 50 hundredths and not 30 seconds.
+	int mark = trace_count(trace_path);
+	SERIAL_CHECK_TRUE(change_coordinates_and_wait(12.575, 45.5, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "D123450+45300", mark));
+	SERIAL_CHECK_TRUE(!trace_contains_after(trace_path, "D123430+45300", mark));
+	// And the position the mount reports comes back as the same number.
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 12.575, 0.0002));
+	// A last pair of 99 hundredths is a value the mount really sends and the driver has to take.
+	mark = trace_count(trace_path);
+	SERIAL_CHECK_TRUE(change_coordinates_and_wait(12.5165, 45.5, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "D123099+45300", mark));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 12.5165, 0.0002));
+	// Rounding up carries into the next minute and the next hour instead of sending 60 or 24.
+	mark = trace_count(trace_path);
+	SERIAL_CHECK_TRUE(change_coordinates_and_wait(23.999999, 45.5, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "D000000+45300", mark));
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&temma_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
+}
+
+// D and P answer R0 when the mount accepts the position. R1 is the right ascension error, so a
+// driver that takes R1 for an acknowledgement reports every refusal as a success and every
+// success as a failure. The E reply carries F instead of the side of the mount for the first
+// readings after an automatic introduction and ends with the handbox letter, not a digit.
+static void temma_position_reply_codes_and_trailer(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	// Four readings of F, which is what the manual documents, and one injected R1.
+	const char *args[] = { "--introduction", "4", "--fault-reply", "P*", "R1", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_TEMMA_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&temma_mount, simulator.port));
+	driver_started = true;
+	// The E reply of this simulator always ends with H, so a session that comes up at all has
+	// already proved that the trailer is not required to be a digit.
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 6, 0.01));
+	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	// R1 is an error, so the GOTO it answers has to be refused.
+	SERIAL_CHECK_TRUE(change_coordinates_and_wait(7, 21, INDIGO_ALERT_STATE));
+	// The next GOTO is accepted with R0 and runs to completion, and the four F readings it
+	// produces on the way may not turn the side of the mount into something that is not a side.
+	SERIAL_CHECK_TRUE(change_coordinates_and_wait(8, 22, INDIGO_BUSY_STATE));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(!cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 22, 0.01));
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&temma_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void temma_timeout_and_open_failures_recover(void) {
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
-	const char *args[] = { "--drop-reply", "PS", NULL };
+	// PS, the relay mask and the rate commands are answered by nothing at all, so a reply that
+	// can time out has to be dropped on a command the mount really answers. v is the version the
+	// connection reads first, which makes the timeout land in a single deterministic place.
+	const char *args[] = { "--drop-reply", "v", NULL };
 	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_TEMMA_SIMULATOR_EXECUTABLE, args));
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&temma_mount));
 	driver_started = true;
 	enumerate_simulator_device();
 	SERIAL_CHECK_TRUE(!connect_serial_device(&temma_mount, "/tmp/indigo-temma-no-such-port"));
+	SERIAL_CHECK_TRUE(!connect_serial_device(&temma_mount, simulator.port));
 	SERIAL_CHECK_TRUE(connect_serial_device(&temma_mount, simulator.port));
 	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(change_coordinates_and_wait(8, 22, INDIGO_BUSY_STATE));
+	// An abort on a link that answers completes both motion properties and ends the GOTO.
 	unsigned int coordinates_revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	unsigned int revision = property_revision(MOUNT_ABORT_MOTION_PROPERTY_NAME);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, temma_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE, revision));
 	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, coordinates_revision));
-	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_MOTION_RA_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
-	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_MOTION_DEC_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_MOTION_RA_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_MOTION_DEC_PROPERTY_NAME)->state == INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(change_coordinates_and_wait(9, 23, INDIGO_BUSY_STATE));
 	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
@@ -583,21 +670,39 @@ cleanup:
 	}
 }
 
+// M carries the relay mask and the mount answers it with nothing at all, so the only way a guide
+// command can fail is the transport itself. A failed pulse has to clear the direction it was
+// asked for instead of leaving the mask set, and both axes have to work again on a fresh session.
 static void temma_guider_command_failure_recovers(void) {
 	external_serial_simulator simulator = { 0 };
+	external_serial_simulator replacement = { 0 };
 	bool driver_started = false;
 	char trace_path[PATH_MAX] = "";
 	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
-	const char *args[] = { "--trace-file", trace_path, "--fault-reply", "M*", "R4", NULL };
+	const char *args[] = { "--trace-file", trace_path, NULL };
 	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_TEMMA_SIMULATOR_EXECUTABLE, args));
 	SERIAL_CHECK_TRUE(start_shared_serial_device_with_master_case(&temma_guider, &temma_mount, simulator.port));
 	driver_started = true;
+	kill(simulator.pid, SIGTERM);
+	waitpid(simulator.pid, NULL, 0);
+	simulator.pid = 0;
 	unsigned int revision = property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, temma_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME)) < 0.001);
+	disconnect_serial_device(&temma_guider);
+	stop_external_serial_simulator(&simulator);
+	const char *replacement_args[] = { "--trace-file", trace_path, NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&replacement, MOUNT_TEMMA_SIMULATOR_EXECUTABLE, replacement_args));
+	// DEVICE_PORT belongs to the master device, and the property cache follows one device at a
+	// time, so the port is set while the cache is on the master.
+	select_context(&temma_mount);
+	SERIAL_CHECK_TRUE(set_master_port(replacement.port));
+	select_context(&temma_guider);
+	SERIAL_CHECK_TRUE(connect_serial_device(&temma_guider, NULL));
 	int mark = trace_count(trace_path);
 	SERIAL_CHECK_TRUE(pulse_and_wait(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100));
+	// The mask of the failed RA pulse may not have survived into the new session.
 	SERIAL_CHECK_TRUE(trace_motion_after(trace_path, 0x40 | TEMMA_MOTION_DEC_NORTH, mark));
 	SERIAL_CHECK_TRUE(pulse_and_wait(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 100));
 cleanup:
@@ -605,6 +710,7 @@ cleanup:
 		stop_serial_driver(&temma_guider);
 	}
 	stop_external_serial_simulator(&simulator);
+	stop_external_serial_simulator(&replacement);
 	if (*trace_path) {
 		unlink(trace_path);
 	}
@@ -796,6 +902,8 @@ int main(void) {
 		{ "temma_manual_motion_all_directions_rates_and_abort", temma_manual_motion_all_directions_rates_and_abort },
 		{ "temma_location_pier_and_park", temma_location_pier_and_park },
 		{ "temma_protocol_failures_recover", temma_protocol_failures_recover },
+		{ "temma_position_units_are_hundredths_of_a_minute", temma_position_units_are_hundredths_of_a_minute },
+		{ "temma_position_reply_codes_and_trailer", temma_position_reply_codes_and_trailer },
 		{ "temma_timeout_and_open_failures_recover", temma_timeout_and_open_failures_recover },
 		{ "temma_malformed_position_reply_recovers", temma_malformed_position_reply_recovers },
 		{ "temma_guider_directions_replacement_axes_and_zero", temma_guider_directions_replacement_axes_and_zero },

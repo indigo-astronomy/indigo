@@ -11,6 +11,7 @@
 #define _DEFAULT_SOURCE
 #define _XOPEN_SOURCE 600
 
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -37,6 +38,9 @@ typedef struct {
 	const char *trace_file;
 	const char *fault_command;
 	const char *fault_reply;
+	// How many E replies after a GOTO carry F instead of the side of the mount. The manual says
+	// the first four do; 0 keeps the well behaved mount that always reports its side.
+	int introduction_readings;
 } simulator_options;
 
 typedef struct {
@@ -55,12 +59,14 @@ typedef struct {
 	double slew_deadline;
 	double target_ra;
 	double target_dec;
+	int introduction_readings;
 } simulator_state;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
-	.ready_file = NULL
+	.ready_file = NULL,
+	.introduction_readings = 0
 };
 
 static simulator_state state = {
@@ -75,7 +81,8 @@ static simulator_state state = {
 	.telescope_side = 'W',
 	.correction_ra = 90,
 	.correction_dec = 90,
-	.high_speed = false
+	.high_speed = false,
+	.introduction_readings = 0
 };
 
 static const char *simulator_name = "mount_temma";
@@ -88,6 +95,7 @@ static void usage(const char *name) {
 	printf("Takahashi Temma mount serial simulator\n");
 	printf("Usage: %s [OPTIONS]\n", name);
 	printf("  --headless              Disable terminal-oriented output\n");
+	printf("  --introduction <count>  Answer E with F instead of the side for <count> readings after a GOTO\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  --trace-file <path>     Record timestamped command bytes\n");
@@ -125,6 +133,12 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.malformed_reply_command = argv[i];
+		} else if (!strcmp(argv[i], "--introduction")) {
+			if (++i == argc) {
+				fprintf(stderr, "--introduction requires a count\n");
+				return false;
+			}
+			options.introduction_readings = atoi(argv[i]);
 		} else if (!strcmp(argv[i], "--fault-reply")) {
 			if (i + 2 >= argc) {
 				fprintf(stderr, "--fault-reply requires a command and reply\n");
@@ -183,8 +197,15 @@ static void send_line(const char *line) {
 	write_response(response);
 }
 
-static void reply_ok(void) {
-	send_line("R1");
+// Temma has no universal acknowledgement: most commands are answered by nothing at all, D and P
+// answer R0 when they are accepted, and the standby and version commands answer with their own
+// text. A simulator that answers R1 to everything makes a driver that waits for R1 look correct.
+static void reply_position_ok(void) {
+	send_line("R0");
+}
+
+static void reply_position_error(const char *code) {
+	send_line(code);
 }
 
 static double wrap24(double value) {
@@ -249,12 +270,10 @@ static void update_slew(void) {
 	}
 }
 
+// The last RA pair is hundredths of a minute, so 60 .. 99 are values the mount really sends.
 static void format_ra(char *buffer, size_t size, double ra) {
-	int total_seconds = (int)round(wrap24(ra) * 3600.0) % (24 * 3600);
-	int hours = total_seconds / 3600;
-	int minutes = total_seconds / 60 % 60;
-	int seconds = total_seconds % 60;
-	snprintf(buffer, size, "%02d%02d%02d", hours, minutes, seconds);
+	int hundredths = (int)round(wrap24(ra) * 6000.0) % (24 * 6000);
+	snprintf(buffer, size, "%02d%02d%02d", hundredths / 6000, hundredths / 100 % 60, hundredths % 100);
 }
 
 static void format_dec(char *buffer, size_t size, double dec) {
@@ -273,10 +292,15 @@ static bool parse_radec(const char *text, double *ra, double *dec) {
 	if (strlen(text) < 12 || (sign != '+' && sign != '-' && sign != ' ')) {
 		return false;
 	}
+	for (int index = 0; index < 12; index++) {
+		if (index != 6 && !isdigit((unsigned char)text[index])) {
+			return false;
+		}
+	}
 	if (sscanf(text, "%02d%02d%02d", &rh, &rm, &rs) != 3 || sscanf(text + 7, "%02d%02d%1d", &dd, &dm, &dt) != 3) {
 		return false;
 	}
-	*ra = rh + rm / 60.0 + rs / 3600.0;
+	*ra = rh + rm / 60.0 + rs / 6000.0;
 	*dec = dd + dm / 60.0 + dt / 600.0;
 	if (sign == '-') {
 		*dec = -*dec;
@@ -299,39 +323,39 @@ static void handle_ascii_command(const char *command) {
 	if (!strcmp(command, "v")) {
 		send_line("vTemma-Sim");
 	} else if (!strcmp(command, "v1") || !strcmp(command, "v2")) {
+		// v1 and v2 answer with a version line of their own, not with an acknowledgement.
 		state.high_speed = !strcmp(command, "v2");
-		reply_ok();
+		send_line(state.high_speed ? "v2  Power 23.5v" : "v1  Power 23.5v");
 	} else if (!strcmp(command, "s")) {
 		send_line(state.slewing ? "s1" : "s0");
 	} else if (!strcmp(command, "STN-ON")) {
+		// The standby commands answer with the standby state the mount now holds.
 		state.motors_on = false;
 		state.slewing = false;
-		reply_ok();
+		send_line("stn-on");
 	} else if (!strcmp(command, "STN-OFF")) {
 		state.motors_on = true;
-		reply_ok();
+		send_line("stn-off");
+	} else if (!strcmp(command, "STN-COD")) {
+		send_line(state.motors_on ? "stn-off" : "stn-on");
 	} else if (!strcmp(command, "LL") || !strcmp(command, "LK")) {
+		// The tracking rate commands are answered by nothing at all.
 		state.motors_on = true;
-		reply_ok();
 	} else if (!strcmp(command, "PS")) {
 		state.slewing = false;
-		reply_ok();
 	} else if (!strcmp(command, "PT")) {
 		state.telescope_side = state.telescope_side == 'W' ? 'E' : 'W';
-		reply_ok();
 	} else if (!strcmp(command, "MA") || !strcmp(command, "MB") || !strcmp(command, "MC") || !strcmp(command, "MD") || !strcmp(command, "ME") ||
 	           !strcmp(command, "MH") || !strcmp(command, "MI") || !strcmp(command, "MP") || !strcmp(command, "MQ")) {
-		reply_ok();
+		/* no reply */
 	} else if (!strcmp(command, "Z")) {
-		reply_ok();
+		/* no reply */
 	} else if (command[0] == 'T' && strlen(command) == 7) {
 		int hh = 0, mm = 0, ss = 0;
+		// T carries the local sidereal time in ordinary seconds, and answers nothing.
 		if (sscanf(command + 1, "%02d%02d%02d", &hh, &mm, &ss) == 3) {
 			state.lst = wrap24(hh + mm / 60.0 + ss / 3600.0);
 			state.have_lst = true;
-			reply_ok();
-		} else {
-			send_line("R4");
 		}
 	} else if (command[0] == 'I' && strlen(command) == 7) {
 		char sign = command[1];
@@ -342,41 +366,49 @@ static void handle_ascii_command(const char *command) {
 				state.latitude = -state.latitude;
 			}
 			state.have_latitude = true;
-			reply_ok();
-		} else {
-			send_line("R4");
 		}
 	} else if (!strcmp(command, "lg")) {
 		snprintf(response, sizeof(response), "lg%02uD%02u%c", state.correction_ra, state.correction_dec, state.latitude < 0 ? 'S' : 'N');
 		send_line(response);
 	} else if (command[0] == 'L' && command[1] == 'A' && strlen(command) == 4) {
 		state.correction_ra = (unsigned)atoi(command + 2);
-		reply_ok();
 	} else if (command[0] == 'L' && command[1] == 'B' && strlen(command) == 4) {
 		state.correction_dec = (unsigned)atoi(command + 2);
-		reply_ok();
 	} else if (!strcmp(command, "E")) {
 		char ra[8];
 		char dec[8];
 		format_ra(ra, sizeof(ra), state.ra);
 		format_dec(dec, sizeof(dec), state.dec);
-		snprintf(response, sizeof(response), "E%s%s%c1", ra, dec, state.telescope_side);
+		// The mount reports F instead of the side for the first readings after an automatic
+		// introduction, and the last byte is the handbox flag, which is a letter and not a
+		// number: this is the H the cocoaTemma emulator sends.
+		char side = state.introduction_readings > 0 ? 'F' : state.telescope_side;
+		if (state.introduction_readings > 0) {
+			state.introduction_readings--;
+		}
+		snprintf(response, sizeof(response), "E%s%s%cH", ra, dec, side);
 		send_line(response);
 	} else if ((command[0] == 'D' || command[0] == 'P') && strlen(command) >= 13) {
-		if (parse_radec(command + 1, &state.target_ra, &state.target_dec)) {
+		// D and P answer R0 when the position is accepted. R1 is an RA error, R2 a Dec error
+		// and R3 too many digits, so a driver that takes R1 for success takes an error for one.
+		if (strlen(command) > 13) {
+			reply_position_error("R3");
+		} else if (!parse_radec(command + 1, &state.target_ra, &state.target_dec)) {
+			reply_position_error("R1");
+		} else {
 			state.slewing = command[0] == 'P';
 			state.slew_deadline = monotonic_time() + 0.75;
 			if (!state.slewing) {
 				state.ra = state.target_ra;
 				state.dec = state.target_dec;
+			} else {
+				state.introduction_readings = options.introduction_readings;
 			}
 			state.motors_on = true;
-			reply_ok();
-		} else {
-			send_line("R4");
+			reply_position_ok();
 		}
 	} else {
-		send_line("R4");
+		/* an unknown command is answered by nothing at all */
 	}
 }
 
@@ -388,7 +420,7 @@ static void handle_command(const unsigned char *command, size_t length) {
 		if (inject_fault(text)) {
 			return;
 		}
-		reply_ok();
+		/* the relay mask command is answered by nothing at all */
 		return;
 	}
 	char text[RX_MAX + 1];

@@ -22,7 +22,7 @@ driver temma {
 	label = "Takahashi Temma Mount";
 	author = "";
 	copyright = "Copyright (c) 2017-2026 CloudMakers, s. r. o.";
-	version = 13;
+	version = 14;
 	serial {
 	}
 	include {
@@ -93,12 +93,65 @@ driver temma {
 			return result;
 		}
 
-		static bool temma_command_ack(indigo_device *device, const char *format, ...) {
+		// Temma has no universal acknowledgement. T, I, Z, LA, LB, LL, LK, M<byte>, MA, PS and PT
+		// are answered by nothing at all, so a driver that waits for one pays the read timeout on
+		// every command. That is worst on the guider, where the timeout lands inside the pulse.
+		static bool temma_no_reply_command(indigo_device *device, const char *format, ...) {
+			va_list args;
+			va_start(args, format);
+			bool result = temma_vcommand(device, false, format, args);
+			va_end(args);
+			return result;
+		}
+
+		// The manual documents R0 for an accepted D or P and R1 .. R3 as its errors; a GOTO can
+		// answer with a higher code on firmware that reports more reasons, so anything the manual
+		// does not name is passed on as the code the mount sent. R1 is an error, never a success.
+		static const char *temma_position_error(char code) {
+			switch (code) {
+				case '1':
+					return "RA error";
+				case '2':
+					return "Dec error";
+				case '3':
+					return "Too many digits";
+			}
+			return NULL;
+		}
+
+		static bool temma_position_command(indigo_device *device, const char *format, ...) {
 			va_list args;
 			va_start(args, format);
 			bool result = temma_vcommand(device, true, format, args);
 			va_end(args);
-			return result && !strcmp(PRIVATE_DATA->response, "R1");
+			if (!result || PRIVATE_DATA->response[0] != 'R' || PRIVATE_DATA->response[1] == 0 || PRIVATE_DATA->response[2] != 0) {
+				return false;
+			}
+			if (PRIVATE_DATA->response[1] == '0') {
+				return true;
+			}
+			const char *reason = temma_position_error(PRIVATE_DATA->response[1]);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Temma refused the position command with %s", PRIVATE_DATA->response);
+			if (reason != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "%s", reason);
+			} else {
+				indigo_send_message(device, ALERT_PROPERTY, "Mount refused the position (%s)", PRIVATE_DATA->response);
+			}
+			return false;
+		}
+
+		// STN-ON and STN-OFF answer with the standby state the mount now holds, not with an
+		// acknowledgement. Standby on means the motors are off, so tracking is STN-OFF.
+		static bool temma_set_standby(indigo_device *device, bool standby) {
+			if (!temma_command(device, true, standby ? "STN-ON" : "STN-OFF")) {
+				return false;
+			}
+			return !strcmp(PRIVATE_DATA->response, standby ? "stn-on" : "stn-off");
+		}
+
+		// v1 and v2 answer with a version line of their own, for example "v1  Power 23.5v".
+		static bool temma_set_high_speed(indigo_device *device, bool high) {
+			return temma_command(device, true, high ? "v2" : "v1") && PRIVATE_DATA->response[0] == 'v';
 		}
 
 		static unsigned char temma_motion_byte(indigo_device *device) {
@@ -108,11 +161,22 @@ driver temma {
 
 		static bool temma_update_motion(indigo_device *device) {
 			indigo_device *mount = device->master_device == NULL ? device : device->master_device;
-			return temma_command_ack(mount, "M%c", temma_motion_byte(mount));
+			return temma_no_reply_command(mount, "M%c", temma_motion_byte(mount));
 		}
 
+		// E answers with E, the RA as HHMMcc, the declination sign, the declination as DDMMt, the
+		// side of the mount and the handbox byte. The sign is a space when the declination is
+		// exactly zero, the side byte is E, W or the temporary F the mount reports for the first
+		// readings after an automatic introduction, and the last byte is not a number: the
+		// cocoaTemma emulator sends H there. Only what the protocol documents is validated.
 		static bool temma_update_position(indigo_device *device) {
-			if (!temma_command(device, true, "E") || strlen(PRIVATE_DATA->response) != 15 || PRIVATE_DATA->response[0] != 'E' || (PRIVATE_DATA->response[7] != '+' && PRIVATE_DATA->response[7] != '-') || (PRIVATE_DATA->response[13] != 'E' && PRIVATE_DATA->response[13] != 'W') || (PRIVATE_DATA->response[14] != '0' && PRIVATE_DATA->response[14] != '1')) {
+			if (!temma_command(device, true, "E") || strlen(PRIVATE_DATA->response) != 15 || PRIVATE_DATA->response[0] != 'E') {
+				return false;
+			}
+			if (PRIVATE_DATA->response[7] != '+' && PRIVATE_DATA->response[7] != '-' && PRIVATE_DATA->response[7] != ' ') {
+				return false;
+			}
+			if (PRIVATE_DATA->response[13] != 'E' && PRIVATE_DATA->response[13] != 'W' && PRIVATE_DATA->response[13] != 'F') {
 				return false;
 			}
 			for (int index = 1; index <= 12; index++) {
@@ -120,38 +184,65 @@ driver temma {
 					return false;
 				}
 			}
-			int degrees, minutes, seconds;
-			if (sscanf(PRIVATE_DATA->response + 1, "%02d%02d%02d", &degrees, &minutes, &seconds) != 3 || degrees > 23 || minutes > 59 || seconds > 59) {
+			int degrees, minutes, fraction;
+			// The last RA pair is hundredths of a minute, not seconds, so 60 .. 99 are valid.
+			if (sscanf(PRIVATE_DATA->response + 1, "%02d%02d%02d", &degrees, &minutes, &fraction) != 3 || degrees > 23 || minutes > 59) {
 				return false;
 			}
-			PRIVATE_DATA->current_ra = degrees + minutes / 60.0 + seconds / 3600.0;
-			if (sscanf(PRIVATE_DATA->response + 8, "%02d%02d%01d", &degrees, &minutes, &seconds) != 3 || degrees > 90 || minutes > 59 || (degrees == 90 && (minutes != 0 || seconds != 0))) {
+			PRIVATE_DATA->current_ra = degrees + minutes / 60.0 + fraction / 6000.0;
+			if (sscanf(PRIVATE_DATA->response + 8, "%02d%02d%01d", &degrees, &minutes, &fraction) != 3 || degrees > 90 || minutes > 59 || (degrees == 90 && (minutes != 0 || fraction != 0))) {
 				return false;
 			}
-			PRIVATE_DATA->current_dec = degrees + minutes / 60.0 + seconds / 600.0;
+			PRIVATE_DATA->current_dec = degrees + minutes / 60.0 + fraction / 600.0;
 			if (PRIVATE_DATA->response[7] == '-') {
 				PRIVATE_DATA->current_dec = -PRIVATE_DATA->current_dec;
 			}
 			indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &PRIVATE_DATA->current_ra, &PRIVATE_DATA->current_dec);
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->current_ra;
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->current_dec;
-			PRIVATE_DATA->telescope_side = PRIVATE_DATA->response[13];
-			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, PRIVATE_DATA->telescope_side == 'W' ? MOUNT_SIDE_OF_PIER_EAST_ITEM : MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+			// F says the automatic introduction has just finished, not which side the mount is
+			// on, so the last known side is kept instead of being replaced by a value that is
+			// not a side at all. The GOTO state is followed through s.
+			if (PRIVATE_DATA->response[13] != 'F') {
+				PRIVATE_DATA->telescope_side = PRIVATE_DATA->response[13];
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, PRIVATE_DATA->telescope_side == 'W' ? MOUNT_SIDE_OF_PIER_EAST_ITEM : MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+			}
 			return true;
 		}
 
+		// T carries the local sidereal time as HHMMSS in ordinary seconds, unlike the coordinate
+		// commands. Rounding to whole seconds first keeps the carry into the next minute, the
+		// next hour and across 24 hours in one place.
 		static bool temma_set_lst(indigo_device *device) {
 			time_t utc = indigo_get_mount_utc(device);
 			double lst = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
-			return temma_command_ack(device, "T%02d%02d%02d", (int)lst, ((int)(lst * 60)) % 60, ((int)(lst * 3600)) % 60);
+			long seconds = ((long)llround(lst * 3600.0) % 86400L + 86400L) % 86400L;
+			return temma_no_reply_command(device, "T%02d%02d%02d", (int)(seconds / 3600), (int)(seconds / 60 % 60), (int)(seconds % 60));
 		}
 
+		// I carries the latitude as sDDMMt, where t is tenths of an arc minute. Rounding to whole
+		// tenths first keeps a value such as 48.99997 from being sent as 48 degrees 59.9 minutes
+		// in one field and 0 in the next.
 		static bool temma_set_latitude(indigo_device *device) {
-			double latitude = fabs(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
-			int degrees = latitude;
-			int minutes = (latitude - degrees) * 60;
-			int tenths = ((int)(latitude * 600)) % 10;
-			return temma_command_ack(device, "I%c%02d%02d%d", MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0 ? '-' : '+', degrees, minutes, tenths);
+			long tenths = llround(fabs(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value) * 600.0);
+			if (tenths > 54000L) {
+				tenths = 54000L;
+			}
+			return temma_no_reply_command(device, "I%c%02d%02d%d", MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0 ? '-' : '+', (int)(tenths / 600), (int)(tenths / 10 % 60), (int)(tenths % 10));
+		}
+
+		// D and P carry the RA as HHMMcc, where cc is hundredths of a minute and not seconds, and
+		// the declination as sDDMMt, where t is tenths of an arc minute. Both are rounded to the
+		// unit the mount reads before they are split into fields, so a value that rounds up
+		// carries into the next minute, the next hour and across 24 hours instead of being sent
+		// as 60 minutes or 24 hours.
+		static void temma_format_position(char *buffer, size_t size, char command, double ra, double dec) {
+			long hundredths = ((long)llround(ra * 6000.0) % 144000L + 144000L) % 144000L;
+			long tenths = llround(fabs(dec) * 600.0);
+			if (tenths > 54000L) {
+				tenths = 54000L;
+			}
+			snprintf(buffer, size, "%c%02d%02d%02d%c%02d%02d%d", command, (int)(hundredths / 6000), (int)(hundredths / 100 % 60), (int)(hundredths % 100), dec < 0 ? '-' : '+', (int)(tenths / 600), (int)(tenths / 10 % 60), (int)(tenths % 10));
 		}
 
 		static void mount_goto_finalizer(indigo_device *device) {
@@ -164,13 +255,13 @@ driver temma {
 			} else {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				if (PRIVATE_DATA->start_tracking) {
-					if (!temma_command_ack(device, "STN-OFF")) {
+					if (!temma_set_standby(device, false)) {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
 					PRIVATE_DATA->start_tracking = false;
 				}
 				if (PRIVATE_DATA->stop_tracking) {
-					if (!temma_command_ack(device, "STN-ON")) {
+					if (!temma_set_standby(device, true)) {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
 					PRIVATE_DATA->stop_tracking = false;
@@ -232,7 +323,7 @@ driver temma {
 				INDIGO_COPY_VALUE(MOUNT_INFO_VENDOR_ITEM->text.value, "Takahashi");
 				INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->response + 1);
 				INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
-				connection_result = temma_command_ack(device, "v1");
+				connection_result = temma_set_high_speed(device, false);
 				if (connection_result) {
 					PRIVATE_DATA->mount_motion_mask = PRIVATE_DATA->guider_motion_mask = 0;
 					PRIVATE_DATA->mount_high_speed = false;
@@ -255,7 +346,7 @@ driver temma {
 			if (PRIVATE_DATA->handle != NULL) {
 				temma_update_motion(device);
 				if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
-					temma_command_ack(device, "PS");
+					temma_no_reply_command(device, "PS");
 				}
 			}
 		}
@@ -273,7 +364,7 @@ driver temma {
 		number CORRECTION_SPEED {
 			persistent = true;
 			on_change {
-				bool ok = temma_command_ack(device, "LA%02d", (int)CORRECTION_SPEED_RA_ITEM->number.value) && temma_command_ack(device, "LB%02d", (int)CORRECTION_SPEED_DEC_ITEM->number.value);
+				bool ok = temma_no_reply_command(device, "LA%02d", (int)CORRECTION_SPEED_RA_ITEM->number.value) && temma_no_reply_command(device, "LB%02d", (int)CORRECTION_SPEED_DEC_ITEM->number.value);
 				CORRECTION_SPEED_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 			}
 			// on_attach { }
@@ -301,7 +392,7 @@ driver temma {
 		}
 		switch HIGH_SPEED {
 			on_change {
-				HIGH_SPEED_PROPERTY->state = temma_command_ack(device, HIGH_SPEED_HIGH_ITEM->sw.value ? "v2" : "v1") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				HIGH_SPEED_PROPERTY->state = temma_set_high_speed(device, HIGH_SPEED_HIGH_ITEM->sw.value) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 			}
 			// on_attach { }
 			// on_detach { }
@@ -322,7 +413,7 @@ driver temma {
 		}
 		switch ZENITH {
 			on_change {
-				bool ok = temma_command_ack(device, "Z");
+				bool ok = temma_no_reply_command(device, "Z");
 				ZENITH_EAST_ITEM->sw.value = false;
 				ZENITH_WEST_ITEM->sw.value = false;
 				ZENITH_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
@@ -351,13 +442,9 @@ driver temma {
 				double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 				double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 				indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
-				int ra_seconds = ra * 3600;
-				int dec_tenths = dec * 600;
-				char dec_sign = dec_tenths < 0 ? '-' : '+';
-				dec_tenths = abs(dec_tenths);
 				char command[32];
-				snprintf(command, sizeof(command), "%c%02d%02d%02d%c%02d%02d%d", MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? 'D' : 'P', ra_seconds / 3600, (ra_seconds / 60) % 60, ra_seconds % 60, dec_sign, dec_tenths / 600, (dec_tenths / 10) % 60, dec_tenths % 10);
-				if (temma_command_ack(device, "%s", command)) {
+				temma_format_position(command, sizeof(command), MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? 'D' : 'P', ra, dec);
+				if (temma_position_command(device, "%s", command)) {
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 					PRIVATE_DATA->start_tracking = MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value || MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value;
 					PRIVATE_DATA->stop_tracking = MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value;
@@ -377,7 +464,7 @@ driver temma {
 				indigo_cancel_pending_handler(device, mount_goto_finalizer);
 				indigo_cancel_pending_handler(device, mount_motion_finalizer);
 				PRIVATE_DATA->mount_motion_mask = 0;
-				bool ok = temma_update_motion(device) && temma_command_ack(device, "PS");
+				bool ok = temma_update_motion(device) && temma_no_reply_command(device, "PS");
 				MOUNT_MOTION_RA_PROPERTY->state = MOUNT_MOTION_DEC_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				MOUNT_MOTION_EAST_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = false;
 				MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
@@ -400,7 +487,7 @@ driver temma {
 		inherited MOUNT_TRACK_RATE {
 			hidden = false;
 			on_change {
-				MOUNT_TRACK_RATE_PROPERTY->state = temma_command_ack(device, MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value ? "LK" : "LL") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				MOUNT_TRACK_RATE_PROPERTY->state = temma_no_reply_command(device, MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value ? "LK" : "LL") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 			}
 			// on_attach { }
 			// on_detach { }
@@ -408,7 +495,7 @@ driver temma {
 		inherited MOUNT_TRACKING {
 			hidden = false;
 			on_change {
-				MOUNT_TRACKING_PROPERTY->state = temma_command_ack(device, MOUNT_TRACKING_ON_ITEM->sw.value ? "STN-OFF" : "STN-ON") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				MOUNT_TRACKING_PROPERTY->state = temma_set_standby(device, !MOUNT_TRACKING_ON_ITEM->sw.value) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 			}
 			// on_attach { }
 			// on_detach { }
@@ -487,7 +574,7 @@ driver temma {
 			hidden = false;
 			on_change {
 				bool switch_side = (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value && PRIVATE_DATA->telescope_side == 'E') || (MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value && PRIVATE_DATA->telescope_side == 'W');
-				MOUNT_SIDE_OF_PIER_PROPERTY->state = !switch_side || temma_command_ack(device, "PT") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				MOUNT_SIDE_OF_PIER_PROPERTY->state = !switch_side || temma_no_reply_command(device, "PT") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				if (MOUNT_SIDE_OF_PIER_PROPERTY->state == INDIGO_OK_STATE) {
 					temma_update_position(device);
 				}
@@ -501,11 +588,9 @@ driver temma {
 				if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 					time_t utc = indigo_get_mount_utc(device);
 					double ra = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_PARK_POSITION_HA_ITEM->number.value;
-					int ra_seconds = (ra < 0 ? ra + 24 : ra) * 3600;
-					int dec_tenths = MOUNT_PARK_POSITION_DEC_ITEM->number.value * 600;
-					char dec_sign = dec_tenths < 0 ? '-' : '+';
-					dec_tenths = abs(dec_tenths);
-					bool ok = temma_set_lst(device) && temma_command_ack(device, "P%02d%02d%02d%c%02d%02d%d", ra_seconds / 3600, (ra_seconds / 60) % 60, ra_seconds % 60, dec_sign, dec_tenths / 600, (dec_tenths / 10) % 60, dec_tenths % 10) && temma_command_ack(device, "STN-ON");
+					char command[32];
+					temma_format_position(command, sizeof(command), 'P', ra, MOUNT_PARK_POSITION_DEC_ITEM->number.value);
+					bool ok = temma_set_lst(device) && temma_position_command(device, "%s", command) && temma_set_standby(device, true);
 					MOUNT_PARK_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 					MOUNT_PARK_PARKED_ITEM->sw.value = false;
 				}
