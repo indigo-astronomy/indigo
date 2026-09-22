@@ -2192,9 +2192,19 @@ test-ccd-qhy-sdk: $(INTEGRATION_BUILD)/test_ccd_qhy_sdk $(INTEGRATION_BUILD)/tes
 $(INTEGRATION_BUILD)/ccd_qhy_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
-# Build only: physical acceptance requires explicit --run, library and device selection.
+# Physical acceptance requires explicit --run, library and device selection. The driver is loaded
+# through dlopen(), so the same binary serves the QHY SDK driver and its legacy sibling; set
+# INDIGO_TEST_DEVICE to a unique substring of the camera name.
 $(TEST_BUILD)/hardware/test_ccd_qhy_hw: hardware/test_ccd_qhy_hw.c test_runner.h | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS)
+
+.PHONY: test-ccd-qhy-hw
+test-ccd-qhy-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_qhy_hw $(BUILD_DRIVERS)/indigo_ccd_qhy.$(SOEXT)
+	$(TEST_BUILD)/hardware/test_ccd_qhy_hw --run $(BUILD_DRIVERS)/indigo_ccd_qhy.$(SOEXT) indigo_ccd_qhy
+
+.PHONY: test-ccd-qhy2-hw
+test-ccd-qhy2-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_qhy_hw $(BUILD_DRIVERS)/indigo_ccd_qhy2.$(SOEXT)
+	$(TEST_BUILD)/hardware/test_ccd_qhy_hw --run $(BUILD_DRIVERS)/indigo_ccd_qhy2.$(SOEXT) indigo_ccd_qhy2
 
 # QSI compiles against its own real SDK header and a fake QSICamera implementation.
 QSI_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include

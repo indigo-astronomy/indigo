@@ -57,8 +57,9 @@
 | ccd_playerone | 2026-09-21 12:40 | 3.0.0.26 | mac arm64 | fake SDK | 49 / 49 | ✅ OK |
 | ccd_ptp | 2026-09-21 14:14 | 3.0.0.52 | mac arm64 | fake SDK | 128 / 128 | ✅ OK |
 | ccd_qhy | 2026-09-21 10:57 | 3.0.0.35 | mac arm64 | fake SDK | 37 / 37 | ✅ OK |
-| ccd_qhy2 | 2026-09-21 13:41 | 3.0.0.35 | mac arm64 | fake SDK | 37 / 37 | ✅ OK |
 | ccd_qhy2 | 2026-09-22 07:29 | 3.0.0.36 | linux arm64 | QHY5III178M | 6 / 6 | ✅ OK |
+| ccd_qhy2 | 2026-09-22 10:55 | 3.0.0.38 | mac arm64 | QHY5-M | 1 / 1 | ✅ OK |
+| ccd_qhy2 | 2026-09-22 11:18 | 3.0.0.38 | mac arm64 | fake SDK | 39 / 39 | ✅ OK |
 | ccd_qsi | 2026-09-21 13:43 | 3.0.0.16 | mac arm64 | fake SDK | 60 / 60 | ✅ OK |
 | ccd_rising | 2026-09-21 14:06 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_simulator | 2026-09-22 11:06 | 3.0.0.29 | mac arm64 | simulator | 19 / 19 | ✅ OK |

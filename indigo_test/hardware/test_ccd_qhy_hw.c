@@ -46,6 +46,9 @@ static observed_device devices[MAX_DEVICES];
 static char last_message_property[INDIGO_NAME_SIZE], last_message_text[INDIGO_VALUE_SIZE];
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static int camera = -1, guider = -1;
+// A camera the SDK reports without live mode does not publish CCD_STREAMING at all, and asking it
+// to stream used to hang the vendor call and with it the whole device queue.
+static bool streams;
 static indigo_result (*driver_entry)(indigo_driver_action, indigo_driver_info *);
 static void *driver_library;
 static const char *library_path, *entry_symbol;
@@ -412,7 +415,7 @@ static bool reject_change_guards(void) {
 	printf("    exposure completed with its image after the refused changes: %s\n", completed ? "PASS" : "FAIL");
 	ok = ok && completed;
 	// The same guard condition also covers a busy stream, so repeat it for two representative properties.
-	if (completed) {
+	if (completed && streams) {
 		unsigned stream_revision = revision(camera, "CCD_STREAMING");
 		indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.1, -1 });
 		bool streaming = wait_state(camera, "CCD_STREAMING", stream_revision, INDIGO_BUSY_STATE);
@@ -478,6 +481,10 @@ static void hardware_workflows(void) {
 	printf("Guider: %s\n", guider >= 0 ? devices[guider].name : "not exposed");
 	if (getenv("QHY_HW_CASE") && selected("guide")) { CHECK(guider >= 0); }
 	format = snapshot(camera, "X_PIXEL_FORMAT"); frame = snapshot(camera, "CCD_FRAME"); bins = snapshot(camera, "CCD_BIN"); gain = snapshot(camera, "CCD_GAIN"); advanced = snapshot(camera, "X_ADVANCED"); mode = snapshot(camera, "X_READ_MODE");
+	pthread_mutex_lock(&mutex);
+	streams = slot(camera, "CCD_STREAMING") >= 0;
+	pthread_mutex_unlock(&mutex);
+	printf("Live video: %s\n", streams ? "exposed" : "not exposed by this camera");
 	CHECK(switch_value(camera, "CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE));
 	CHECK(switch_value(camera, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
 	if (getenv("QHY_HW_CASE") && selected("hotplug")) {
@@ -485,6 +492,10 @@ static void hardware_workflows(void) {
 		for (int phase = 0; phase < 4; phase++) {
 			if (phase == 0) { CHECK(disconnect_device(camera)); }
 			if (phase == 2) { CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 60, INDIGO_BUSY_STATE)); }
+			if (phase == 3 && !streams) {
+				printf("HOTPLUG PHASE 4: live video is not exposed by this camera, phase skipped\n");
+				continue;
+			}
 			if (phase == 3) {
 				unsigned before = frames(), rev = revision(camera, "CCD_STREAMING");
 				indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.1, -1 });
@@ -518,20 +529,30 @@ static void hardware_workflows(void) {
 		}
 	}
 	if (selected("switching")) {
-		CHECK(format && format->count > 1);
+		// The driver exposes X_PIXEL_FORMAT only for a camera with more than one bit depth, so an
+		// 8 bit only model such as QHY5-M has none. The single/live/single sequence is what this
+		// scenario really guards and it still runs; only the format change is not applicable.
+		int formats = format ? format->count : 0;
+		if (formats == 0) {
+			printf("X_PIXEL_FORMAT is not exposed by this camera; the scenario runs without a format change\n");
+		}
 		for (int round = 0; round < 2; round++) {
-			for (int i = 0; i < format->count; i++) {
-				printf("Switching round %d: %s single/live/single\n", round + 1, format->items[i].name);
-				CHECK(switch_value(camera, "X_PIXEL_FORMAT", format->items[i].name, INDIGO_OK_STATE));
+			for (int i = 0; i < (formats ? formats : 1); i++) {
+				printf("Switching round %d: %s single/live/single\n", round + 1, formats ? format->items[i].name : "single format");
+				if (formats) {
+					CHECK(switch_value(camera, "X_PIXEL_FORMAT", format->items[i].name, INDIGO_OK_STATE));
+				}
 				unsigned before = frames();
 				CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
 				CHECK(frames() == before + 1);
-				unsigned rev = revision(camera, "CCD_STREAMING");
-				indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.1, 3 });
-				CHECK(wait_state(camera, "CCD_STREAMING", rev, INDIGO_OK_STATE));
-				CHECK(frames() == before + 4);
+				if (streams) {
+					unsigned rev = revision(camera, "CCD_STREAMING");
+					indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.1, 3 });
+					CHECK(wait_state(camera, "CCD_STREAMING", rev, INDIGO_OK_STATE));
+					CHECK(frames() == before + 4);
+				}
 				CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
-				CHECK(frames() == before + 5);
+				CHECK(frames() == before + (streams ? 5 : 2));
 			}
 		}
 		pthread_mutex_lock(&mutex);
@@ -580,7 +601,9 @@ static void hardware_workflows(void) {
 		CHECK(switch_value(camera, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
 		CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
 	}
-	if (selected("stream")) {
+	if (selected("stream") && !streams) {
+		printf("Live video is not exposed by this camera; stream scenario skipped\n");
+	} else if (selected("stream")) {
 		unsigned before = frames(), rev = revision(camera, "CCD_STREAMING");
 		indigo_change_number_property(&client, devices[camera].name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.1, 3 });
 		CHECK(wait_state(camera, "CCD_STREAMING", rev, INDIGO_OK_STATE)); CHECK(frames() == before + 3);

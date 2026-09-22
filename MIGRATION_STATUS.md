@@ -55,7 +55,7 @@
 | ccd_playerone           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 49 / 33 | |
 | ccd_ptp                 | 3️⃣ | ❌ No  | ❌ No  | ✅ Yes | ✅ HW  | 128 / 4 | |
 | ccd_qhy                 | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ⚠️ HW  | 37 / 9 | ⏰ TODO - make libqhy for Windows |
-| ccd_qhy2                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 37 / 9 | |
+| ccd_qhy2                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 39 / 10 | |
 | ccd_qsi                 | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 60 / 0 | ⏰ TODO - find SDK for windows |
 | ccd_rising              | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
 | ccd_sbig                | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⏰ TODO - find SDK for windows |

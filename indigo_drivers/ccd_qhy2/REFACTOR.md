@@ -73,3 +73,60 @@ handler as UVC-014.
 ### Open
 
 `indigo_ccd_qhy` still carries the identical hand-written `qhy_busy()` helper on the same nine properties and was not migrated here.
+
+## QHY5-M hardware run (2026-09-22)
+
+Non-interactive hardware run on macOS arm64 against a QHY5 (Orion StarShoot Autoguider variant) on a Pegasus Ultimate Powerbox hub, through the new `make -C indigo_test test-ccd-qhy2-hw` target. Two defects found, both reproducible against the fake SDK once it was taught to model this camera.
+
+### Discovery depends on who loaded the firmware first
+
+The camera enumerates as `1618:0901` with no firmware. `ccd_ssag` loads its own and the camera becomes `1856:0012 StarShoot Autoguider`, which `ScanQHYCCD()` does not recognise, so this driver then reports no camera at all. After a power cycle the SDK loads `QHY5.HEX` itself, the camera becomes `QHY5-CMOS` and `ScanQHYCCD()` returns it as `QHY5-M`. The two drivers therefore cannot share the camera within one power cycle, which is expected for a firmware-loading device but is worth knowing before concluding the SDK dropped support for it. The run needs `INDIGO_FIRMWARE_BASE` pointing at `indigo_drivers/ccd_qhy/bin_externals/qhyccd/firmware` on a host with no installed INDIGO, as the driver's `README.md` already documents.
+
+### Defect 1: streaming hung the device queue (version 36 to 37)
+
+`BeginQHYCCDLive()` never returns on this camera. The device queue thread stayed in it:
+
+```
+Queue QHY5-M
+  acquisition_start(indigo_device*, bool)  (in indigo_ccd_qhy2.dylib)
+    BeginQHYCCDLive  (in libqhyccd.dylib)
+      QHYBASE::BeginLiveExposure(void*)
+        QHYCAM::vendTXD(void*, unsigned char, unsigned char*, unsigned short)
+          libusb_control_transfer  (in libusb-1.0.0.dylib)  sync.c:139
+```
+
+Nothing else could run on that queue afterwards, so `CCD_ABORT_EXPOSURE` and `CONNECTION` timed out as well and the camera was unusable until the process was killed. The driver's own deadline never fired, because the block is inside the vendor call.
+
+`IsQHYCCDControlAvailable(handle, CAM_LIVEVIDEOMODE)` answers `QHYCCD_ERROR` for this camera while `CAM_SINGLEFRAMEMODE` answers `QHYCCD_SUCCESS`, so the SDK knows. `CCD_STREAMING` and `CCD_STREAMING_SETTINGS` are now hidden when the camera has no live video mode.
+
+### Defect 2: the exposure was taken twice (version 37 to 38)
+
+Every exposure took twice its duration plus readout - 0.1 s took 0.95 s, 2.5 s took 5.84 s, 16.5 s took 33.85 s. A standalone probe outside INDIGO shows why:
+
+```
+QHYCCD_READ_DIRECTLY = 8193
+0.5 s: ExpQHYCCDSingleFrame -> 8193 after 0.243 s, remaining = 0, GetQHYCCDSingleFrame -> 0 total 0.818 s
+4.0 s: ExpQHYCCDSingleFrame -> 8193 after 0.326 s, remaining = 100, GetQHYCCDSingleFrame -> 0 total 4.398 s
+```
+
+`QHYCCD_READ_DIRECTLY` means the camera does not time the exposure itself: the start call returns at once and `GetQHYCCDSingleFrame()` blocks for the exposure instead. The driver accepted that return value but still waited the full duration before reading, so the exposure elapsed twice. It now starts the read immediately for that return value and keeps the deadline covering the exposure that happens inside the read. Measured afterwards: 16.5 s takes 17.19 s. Cameras that answer `QHYCCD_SUCCESS` are untouched.
+
+### Coverage
+
+The shared fake SDK of `indigo_test/integration/test_ccd_qhy_sdk.cpp` gained a live-video capability, separate from the live-mode state it already tracked, and a read-directly mode in which `ExpQHYCCDSingleFrame()` returns `QHYCCD_READ_DIRECTLY` and the read blocks for the exposure.
+
+- `missing live video` requires `CCD_STREAMING` to be absent and a single exposure to still work. It is `QHY2` only, because the legacy SDK enum has no `CAM_LIVEVIDEOMODE` and the legacy driver cannot ask.
+- `read directly exposure` requires a one second exposure to finish in under 1.6 s. It failed at 2.02 s before the fix and passes at 1.01 s after, for both drivers.
+
+`discovery capacity identity` was already failing before this session: commit `0057e7302` made `sdk.unplug_match` confirm a removal libusb could not identify rather than veto one it reported, so a failing `ScanQHYCCD()` no longer keeps a device whose own libusb device left. The case now sends its inconclusive events with a libusb token no logical device was created from, which is the path the hook still serves.
+
+### Results
+
+| run | result |
+| --- | --- |
+| `build/integration/test_ccd_qhy2_sdk` | 39/39 |
+| `INDIGO_TEST_DEVICE="QHY5-M" make -C indigo_test test-ccd-qhy2-hw` | 1/1 |
+
+The run covered exposures from 0.1 to 16.5 s, frame types, ROI, bins and read modes, the busy refusal guards for both exposure and streaming, abort and restart, the guider on all four axes including during an exposure, disconnect/reconnect, driver reload and a fresh exposure. Live video is not applicable to this camera, and the test now says so instead of assuming it.
+
+Hot-plug was not established: the camera hangs on the Powerbox hub, whose port switch is invisible to the host's hub driver on macOS (see `indigo_drivers/ccd_atik/REFACTOR.md`).

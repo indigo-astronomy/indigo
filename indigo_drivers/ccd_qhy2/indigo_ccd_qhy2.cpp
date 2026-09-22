@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000024
+#define DRIVER_VERSION       0x03000026
 #define DRIVER_NAME          "indigo_ccd_qhy2"
 #define DRIVER_LABEL         "QHY CMOS (modern) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -307,6 +307,10 @@ static bool qhy2_initialize_ccd(indigo_device *device) {
 	// Preserve the legacy QHY6 range workaround; its SDK underreports long exposures.
 	CCD_EXPOSURE_ITEM->number.max = fmax(max / 1e6, 900);
 	CCD_EXPOSURE_ITEM->number.step = step / 1e6;
+	// BeginQHYCCDLive() blocks forever in a vendor USB control transfer on a camera that
+	// has no live mode - QHY5-M is one - and the device queue is stuck with it, so abort
+	// and disconnect never run either. The SDK answers for the camera, so ask it.
+	CCD_STREAMING_PROPERTY->hidden = CCD_STREAMING_SETTINGS_PROPERTY->hidden = !qhy2_available(device, CAM_LIVEVIDEOMODE);
 	PRIVATE_DATA->has_cooler = qhy2_available(device, CONTROL_COOLER);
 	PRIVATE_DATA->has_temperature = PRIVATE_DATA->has_cooler || qhy2_available(device, CAM_CHIPTEMPERATURESENSOR_INTERFACE);
 	PRIVATE_DATA->has_shutter = qhy2_available(device, CAM_MECHANICALSHUTTER);
@@ -537,9 +541,16 @@ static void acquisition_start(indigo_device *device, bool streaming) {
 		return;
 	}
 	PRIVATE_DATA->acquiring = true;
-	PRIVATE_DATA->exposure_end = indigo_monotonic_time() + PRIVATE_DATA->duration;
-	PRIVATE_DATA->deadline = PRIVATE_DATA->exposure_end + 10;
-	indigo_execute_handler_in(device, fmin(0.25, PRIVATE_DATA->duration), acquisition_finalizer);
+	// QHYCCD_READ_DIRECTLY means the camera does not time the exposure itself: the start
+	// call returns at once and GetQHYCCDSingleFrame() blocks for the exposure instead.
+	// Waiting for the duration before reading therefore exposed for it twice - 16.5
+	// seconds took 33.8 on a QHY5-M - so the read starts immediately and the deadline
+	// covers the exposure that happens inside it.
+	bool read_directly = !streaming && result == QHYCCD_READ_DIRECTLY;
+	double started = indigo_monotonic_time();
+	PRIVATE_DATA->exposure_end = started + (read_directly ? 0 : PRIVATE_DATA->duration);
+	PRIVATE_DATA->deadline = started + PRIVATE_DATA->duration + 10;
+	indigo_execute_handler_in(device, read_directly ? 0 : fmin(0.25, PRIVATE_DATA->duration), acquisition_finalizer);
 }
 
 static void qhy2_temperature(indigo_device *device) {

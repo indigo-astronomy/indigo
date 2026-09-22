@@ -41,6 +41,13 @@ static std::atomic<int> fail_open, fail_init, fail_chip, fail_start, fail_read, 
 static std::atomic<int> malformed, guide_calls, guide_direction, guide_duration, fw_slot, read_mode;
 static std::atomic<int> width(320), height(240), bits(16), bin(1), left, top, formats(3), bin_mask(3), mode_count(2);
 static std::atomic<bool> visible(true), live, exposing, cooled, st4(true), cfw(true), temperature_only, shutter;
+// Whether the camera has a live video mode at all, which is a capability and not the current state
+// that `live` holds. A camera without one hangs in BeginQHYCCDLive(), so the driver must not offer
+// streaming for it.
+static std::atomic<bool> has_live(true);
+// A camera that does not time the exposure itself: the start call returns QHYCCD_READ_DIRECTLY at
+// once and the read blocks for the exposure instead.
+static std::atomic<bool> read_directly;
 static std::atomic<double> exposure(0.01), deadline, clock_shift;
 static std::atomic<double> params[128];
 static std::atomic<bool> color, verify_raw, fail_cooling;
@@ -48,6 +55,8 @@ static std::atomic<int> bad_raw, shutter_mode, camera_mask(1), sensor_depth(16);
 static pthread_t bus_thread;
 static int usb_token;
 static int usb_tokens[3];
+// A libusb device no logical device was created from, for the removal the hook has to resolve.
+static int foreign_usb_token;
 static std::atomic<int> enumeration_calls, fail_enumeration;
 static libusb_hotplug_callback_fn usb_callback;
 static indigo_device *devices[6];
@@ -147,6 +156,10 @@ uint32_t IsQHYCCDControlAvailable(qhyccd_handle *h, CONTROL_ID c) {
 	yes |= c == CONTROL_ST4PORT && st4; yes |= c == CONTROL_CFWPORT && cfw;
 	yes |= c == CONTROL_COOLER && cooled; yes |= c == CAM_CHIPTEMPERATURESENSOR_INTERFACE && temperature_only; yes |= c == CAM_MECHANICALSHUTTER && shutter;
 	yes |= c == CAM_8BITS && (formats & 1); yes |= c == CAM_16BITS && (formats & 2);
+	#ifdef QHY2
+	// The legacy SDK enum has no live video capability at all, so only the modern driver can ask.
+	yes |= c == CAM_LIVEVIDEOMODE && has_live;
+	#endif
 	if (c >= CAM_BIN1X1MODE && c <= CAM_BIN4X4MODE) { yes = bin_mask & (1 << (c - CAM_BIN1X1MODE)); }
 	return yes ? QHYCCD_SUCCESS : QHYCCD_ERROR;
 }
@@ -171,7 +184,7 @@ uint32_t SetQHYCCDBitsMode(qhyccd_handle *h, uint32_t b) { valid(h); if (formats
 
 uint32_t GetQHYCCDMemLength(qhyccd_handle *h) { valid(h); return memory_length ? memory_length.load() : 640 * 480 * 2; }
 
-uint32_t ExpQHYCCDSingleFrame(qhyccd_handle *h) { valid(h); exposing = !fail_start; deadline = indigo_monotonic_time() + exposure; return fail_start ? QHYCCD_ERROR : QHYCCD_SUCCESS; }
+uint32_t ExpQHYCCDSingleFrame(qhyccd_handle *h) { valid(h); exposing = !fail_start; deadline = indigo_monotonic_time() + (read_directly ? 0 : exposure.load()); return fail_start ? QHYCCD_ERROR : read_directly ? QHYCCD_READ_DIRECTLY : QHYCCD_SUCCESS; }
 
 uint32_t BeginQHYCCDLive(qhyccd_handle *h) { live = true; return ExpQHYCCDSingleFrame(h); }
 
@@ -186,7 +199,7 @@ static uint32_t frame(qhyccd_handle *h, uint32_t *w, uint32_t *v, uint32_t *b, u
 	return QHYCCD_SUCCESS;
 }
 
-uint32_t GetQHYCCDSingleFrame(qhyccd_handle *h, uint32_t *w, uint32_t *v, uint32_t *b, uint32_t *channels, uint8_t *data) { exposing = false; return frame(h, w, v, b, channels, data); }
+uint32_t GetQHYCCDSingleFrame(qhyccd_handle *h, uint32_t *w, uint32_t *v, uint32_t *b, uint32_t *channels, uint8_t *data) { if (read_directly) { indigo_usleep((unsigned long)(exposure * 1000000)); } exposing = false; return frame(h, w, v, b, channels, data); }
 
 uint32_t GetQHYCCDLiveFrame(qhyccd_handle *h, uint32_t *w, uint32_t *v, uint32_t *b, uint32_t *channels, uint8_t *data) { return frame(h, w, v, b, channels, data); }
 
@@ -865,18 +878,59 @@ static void sibling_orders_and_guide_overlap(void) {
 	ASSERT_TRUE(connect(0, false)); ASSERT_EQ_INT(0, active.load()); end();
 }
 
+#ifdef QHY2
+// BeginQHYCCDLive() blocks forever in the vendor USB layer on a camera that has no live mode: a
+// QHY5-M wedged the device queue that way, and abort and disconnect stopped working with it. The
+// driver must not offer streaming when the SDK says the camera has none. Only the modern SDK
+// reports the capability, so the legacy driver cannot ask and keeps offering streaming.
+static void missing_live_video_hides_streaming(void) {
+	has_live = false;
+	ASSERT_TRUE(begin());
+	ASSERT_TRUE(connect(0, true));
+	indigo_property *streaming = snapshot(0, "CCD_STREAMING");
+	ASSERT_TRUE(streaming == NULL);
+	indigo_release_property(streaming);
+	// A single exposure is unaffected.
+	number(0, "CCD_EXPOSURE", "EXPOSURE", .01);
+	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(1, blobs.load());
+	ASSERT_TRUE(connect(0, false));
+	end();
+	has_live = true;
+}
+#endif
+
+// Waiting for the duration before reading a QHYCCD_READ_DIRECTLY frame exposed for it twice: 16.5
+// seconds took 33.8 on a QHY5-M.
+static void read_directly_exposure_is_not_doubled(void) {
+	read_directly = true;
+	ASSERT_TRUE(begin());
+	ASSERT_TRUE(connect(0, true));
+	double start = indigo_monotonic_time();
+	number(0, "CCD_EXPOSURE", "EXPOSURE", 1);
+	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+	double elapsed = indigo_monotonic_time() - start;
+	printf("    a one second read-directly exposure took %.3f s\n", elapsed);
+	ASSERT_TRUE(elapsed > .9 && elapsed < 1.6);
+	ASSERT_TRUE(connect(0, false));
+	end();
+	read_directly = false;
+}
+
 static void discovery_capacity_and_identity(void) {
 	cfw = false; camera_mask = 7;
 	ASSERT_TRUE(begin(4));
 	ASSERT_TRUE(devices[0] && devices[3]); ASSERT_TRUE(strcmp(devices[0]->name, devices[3]->name));
 	#ifdef QHY2
 	ASSERT_TRUE(usb_callback != NULL);
-	// A malformed SDK inventory must not remove any logical devices.
+	// The unplug hook confirms a removal libusb could not identify; a removal libusb named is
+	// certain and the hook is not consulted for it. A malformed SDK inventory therefore has to
+	// leave the devices alone only for an event that names none of them.
 	scan_error = 1;
-	usb_callback(NULL, (libusb_device *)&usb_tokens[2], LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+	usb_callback(NULL, (libusb_device *)&foreign_usb_token, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
 	indigo_usleep(100000); ASSERT_EQ_INT(4, attached.load()); scan_error = 0;
 	fail_id = 1;
-	usb_callback(NULL, (libusb_device *)&usb_tokens[2], LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+	usb_callback(NULL, (libusb_device *)&foreign_usb_token, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
 	indigo_usleep(100000); ASSERT_EQ_INT(4, attached.load()); fail_id = 0;
 	// Camera 1 was attached to USB token 3; identity selects camera 1 anyway.
 	camera_mask = 6;
@@ -901,7 +955,11 @@ int main(int argc, char **argv) {
 	if (!indigo_test_mkdtemp_home(config_folder)) { return 1; }
 	bus_thread = pthread_self(); indigo_start(); indigo_attach_client(&client);
 	indigo_driver_info info; ENTRY(INDIGO_DRIVER_INFO, &info); migrated = info.version > 0x0300001A;
-	const indigo_test_case cases[] = { { "discovery capacity identity", discovery_capacity_and_identity }, { "property contract frame types", property_contract_and_frame_types }, { "sibling orders guide overlap", sibling_orders_and_guide_overlap }, { "RAW color payload", raw_color_payload }, { "zero stream failed setting", zero_stream_and_failed_setting }, { "cooler failure recovery", cooler_failure_recovery }, { "lifecycle", basic_lifecycle }, { "acquisition", acquisition }, { "open rollback", open_rollback }, { "advanced failure", failed_advanced }, { "initialization failures", initialization_failures }, { "start and read failures", start_and_read_failures }, { "fractional exposures", fractional_exposures }, { "abort restart", abort_and_restart }, { "streams abort", streams_and_abort }, { "stream errors", stream_errors }, { "guide directions errors", guider_directions_and_failures }, { "wheel position errors", wheel_position_and_errors }, { "controls no bus IO", controls_and_no_bus_io }, { "read modes", read_modes }, { "ROI formats bins", roi_formats_and_bins }, { "acquisition conflicts", acquisition_conflicts }, { "disconnect sibling", disconnect_and_sibling_survival }, { "discovery lifecycle", startup_only_discovery }, { "init enumeration attachment", init_enumeration_and_attachment_rollback }, { "discovery failure reload", discovery_failure_and_reload }, { "metadata readback", metadata_and_readback_errors }, { "queued abort", queued_abort_before_start }, { "wheel timeout status", wheel_timeout_and_malformed_status }, { "setup reinitialize", setup_reinitialize_recovery }, { "mode depth errors", mode_and_depth_errors }, { "stream reset error", stream_reset_error }, { "readout buffer contract", bounded_readout_and_buffer_contract }, { "cooling sensor", cooling_and_sensor_profiles }, { "optional sparse profiles", optional_interfaces_and_sparse_formats }, { "configuration restore", config_and_reopen_settings }, { "guide blocking zero", guide_blocking_and_zero } };
+	const indigo_test_case cases[] = { { "discovery capacity identity", discovery_capacity_and_identity }, { "property contract frame types", property_contract_and_frame_types }, { "sibling orders guide overlap", sibling_orders_and_guide_overlap }, { "RAW color payload", raw_color_payload }, { "zero stream failed setting", zero_stream_and_failed_setting }, { "cooler failure recovery", cooler_failure_recovery }, { "lifecycle", basic_lifecycle }, { "acquisition", acquisition }, { "open rollback", open_rollback }, { "advanced failure", failed_advanced }, { "initialization failures", initialization_failures }, { "start and read failures", start_and_read_failures }, { "fractional exposures", fractional_exposures }, { "abort restart", abort_and_restart }, { "streams abort", streams_and_abort }, { "stream errors", stream_errors }, { "guide directions errors", guider_directions_and_failures }, { "wheel position errors", wheel_position_and_errors }, { "controls no bus IO", controls_and_no_bus_io }, { "read modes", read_modes }, { "ROI formats bins", roi_formats_and_bins }, { "acquisition conflicts", acquisition_conflicts }, { "disconnect sibling", disconnect_and_sibling_survival }, { "discovery lifecycle", startup_only_discovery }, { "init enumeration attachment", init_enumeration_and_attachment_rollback }, { "discovery failure reload", discovery_failure_and_reload }, { "metadata readback", metadata_and_readback_errors }, { "queued abort", queued_abort_before_start }, { "wheel timeout status", wheel_timeout_and_malformed_status }, { "setup reinitialize", setup_reinitialize_recovery }, { "mode depth errors", mode_and_depth_errors }, { "stream reset error", stream_reset_error }, { "readout buffer contract", bounded_readout_and_buffer_contract }, { "cooling sensor", cooling_and_sensor_profiles }, { "optional sparse profiles", optional_interfaces_and_sparse_formats }, { "configuration restore", config_and_reopen_settings }, { "guide blocking zero", guide_blocking_and_zero }, 
+	#ifdef QHY2
+		{ "missing live video", missing_live_video_hides_streaming },
+	#endif
+		{ "read directly exposure", read_directly_exposure_is_not_doubled } };
 	int result = 0, matched = 0;
 	for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
 		if (argc > 1 && !strstr(cases[i].name, argv[1])) { continue; }

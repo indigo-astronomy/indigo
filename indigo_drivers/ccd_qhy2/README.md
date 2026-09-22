@@ -52,5 +52,6 @@ This will come at the cost of somewhat reduced performance.
 
 ## Testing
 
-2026-09-21 13:41 3.0.0.35 mac arm64 fake SDK 37/37 OK
 2026-09-22 07:29 3.0.0.36 linux arm64 QHY5III178M 6/6 OK
+2026-09-22 10:55 3.0.0.38 mac arm64 QHY5-M 1/1 OK
+2026-09-22 11:18 3.0.0.38 mac arm64 fake SDK 39/39 OK
