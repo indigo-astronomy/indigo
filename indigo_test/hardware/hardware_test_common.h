@@ -354,6 +354,40 @@ static bool hw_number_item_range(int d, const char *name, const char *item, doub
 	return found;
 }
 
+static bool hw_item_defined(int d, const char *name, const char *item) {
+	pthread_mutex_lock(&hw_mutex);
+	int p = d < 0 ? -1 : hw_slot(d, name);
+	bool found = false;
+	if (p >= 0) {
+		indigo_property *property = hw_devices[d].properties[p];
+		for (int i = 0; i < property->count && !found; i++) {
+			found = !strcmp(property->items[i].name, item);
+		}
+	}
+	pthread_mutex_unlock(&hw_mutex);
+	return found;
+}
+
+static bool hw_light_item(int d, const char *name, const char *item, indigo_property_state *value) {
+	pthread_mutex_lock(&hw_mutex);
+	int p = d < 0 ? -1 : hw_slot(d, name);
+	bool found = false;
+	if (p >= 0) {
+		indigo_property *property = hw_devices[d].properties[p];
+		for (int i = 0; i < property->count && !found; i++) {
+			if (!strcmp(property->items[i].name, item)) {
+				*value = property->items[i].light.value;
+				found = true;
+			}
+		}
+	}
+	pthread_mutex_unlock(&hw_mutex);
+	if (!found) {
+		fprintf(stderr, "    missing light item %s.%s\n", name, item);
+	}
+	return found;
+}
+
 static bool hw_switch_item(int d, const char *name, const char *item, bool *value) {
 	pthread_mutex_lock(&hw_mutex);
 	int p = d < 0 ? -1 : hw_slot(d, name);

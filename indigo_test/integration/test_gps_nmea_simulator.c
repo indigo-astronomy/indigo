@@ -49,6 +49,22 @@ static bool wait_for_switch_item_value(const char *property_name, const char *it
 	return false;
 }
 
+static bool wait_for_light_item_value(const char *property_name, const char *item_name, indigo_property_state value) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *item = find_cached_item(property_name, item_name);
+		if (item != NULL && item->light.value == value) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static indigo_property_state cached_property_state(const char *property_name) {
+	indigo_property *property = find_cached_property(property_name);
+	return property == NULL ? INDIGO_IDLE_STATE : property->state;
+}
+
 static void nmea_gps_passes_serial_compliance_checks(void) {
 	static const char *gps_status_items[] = {
 		GPS_STATUS_NO_FIX_ITEM_NAME,
@@ -108,9 +124,75 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The receiver the 2026-09-22 hardware run used had no sky view and never acquired a fix, which is
+// the condition the simulator's --no-fix mode reproduces from that capture. It is also the condition
+// under which both defects of that run show: nmea_reset() published four properties from on_connect,
+// before the connection handler had defined them and GPS_ADVANCED_STATUS without ever defining it,
+// and every no-fix GSA forced GEOGRAPHIC_COORDINATES and UTC_TIME back to busy, which the RMC and
+// the GGA of the next cycle set to alert again, once per second for as long as there was no fix.
+static void nmea_gps_reports_a_receiver_without_a_fix(void) {
+	static const char *const arguments[] = { "--no-fix", NULL };
+	external_serial_simulator simulator = { 0 };
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, GPS_NMEA_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nmea_gps, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
+	assert_not_defined_property(GPS_ADVANCED_STATUS_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(GPS_STATUS_PROPERTY_NAME, GPS_STATUS_NO_FIX_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GPS_STATUS_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, find_cached_item(GPS_STATUS_PROPERTY_NAME, GPS_STATUS_2D_FIX_ITEM_NAME)->light.value);
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, find_cached_item(GPS_STATUS_PROPERTY_NAME, GPS_STATUS_3D_FIX_ITEM_NAME)->light.value);
+	// Neither property may ever claim a position or a time while there is no fix.
+	SERIAL_CHECK_TRUE(wait_for_property_state(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(UTC_TIME_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 0, 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 0, 0));
+	// The first cycle still carries the transition into no fix, so let it pass before the states are
+	// required to stand still.
+	indigo_usleep(2500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, cached_property_state(GEOGRAPHIC_COORDINATES_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, cached_property_state(UTC_TIME_PROPERTY_NAME));
+	unsigned int coordinates = property_revision(GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	unsigned int time = property_revision(UTC_TIME_PROPERTY_NAME);
+	unsigned int status = property_revision(GPS_STATUS_PROPERTY_NAME);
+	// Three more cycles of the same no-fix sentences say nothing new, so the driver must publish
+	// nothing at all. The defect published GEOGRAPHIC_COORDINATES and UTC_TIME twice per cycle.
+	indigo_usleep(3500000);
+	SERIAL_CHECK_EQ_INT((int)coordinates, (int)property_revision(GEOGRAPHIC_COORDINATES_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT((int)time, (int)property_revision(UTC_TIME_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT((int)status, (int)property_revision(GPS_STATUS_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, cached_property_state(GEOGRAPHIC_COORDINATES_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, cached_property_state(UTC_TIME_PROPERTY_NAME));
+	// Enabling the advanced status defines it with what the no-fix GSA and GSV carried: no satellite
+	// in use, the single one the receiver can hear in view and the 99.99 no-solution dilution.
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nmea_gps.device_name, GPS_ADVANCED_PROPERTY_NAME, GPS_ADVANCED_ENABLED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GPS_ADVANCED_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_defined_property(GPS_ADVANCED_STATUS_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GPS_ADVANCED_STATUS_PROPERTY_NAME, GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM_NAME, 0, 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GPS_ADVANCED_STATUS_PROPERTY_NAME, GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM_NAME, 1, 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GPS_ADVANCED_STATUS_PROPERTY_NAME, GPS_ADVANCED_STATUS_PDOP_ITEM_NAME, 99.99, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GPS_ADVANCED_STATUS_PROPERTY_NAME, GPS_ADVANCED_STATUS_HDOP_ITEM_NAME, 99.99, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GPS_ADVANCED_STATUS_PROPERTY_NAME, GPS_ADVANCED_STATUS_VDOP_ITEM_NAME, 99.99, 0.001));
+	// Selecting a system resets the driver's picture of the receiver. That reset publishes only what
+	// the client has, and the next no-fix cycle has to bring the status back.
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nmea_gps.device_name, GPS_SELECTED_SYSTEM_PROPERTY_NAME, "GPS", true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(GPS_SELECTED_SYSTEM_PROPERTY_NAME, "GPS", true));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(GPS_STATUS_PROPERTY_NAME, GPS_STATUS_NO_FIX_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GPS_STATUS_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nmea_gps);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
-		{ "nmea_gps_passes_serial_compliance_checks", nmea_gps_passes_serial_compliance_checks }
+		{ "nmea_gps_passes_serial_compliance_checks", nmea_gps_passes_serial_compliance_checks },
+		{ "nmea_gps_reports_a_receiver_without_a_fix", nmea_gps_reports_a_receiver_without_a_fix }
 	};
 	return indigo_run_tests("Generic NMEA 0183 GPS serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }

@@ -58,6 +58,10 @@ typedef struct {
 	const simulator_driver_case *driver_case;
 	int define_count;
 	atomic_int update_count;
+	// An update published for a property the driver has not defined, or has already deleted, is a
+	// protocol violation a client cannot even cache: it never saw the property. Counting it here is
+	// the only way a test can see one, because the cache silently drops such an update.
+	atomic_int update_without_define_count;
 	int defined_property_count;
 	char defined_properties[MAX_DEFINED_PROPERTIES][INDIGO_NAME_SIZE];
 	indigo_property *cached_properties[MAX_DEFINED_PROPERTIES];
@@ -140,6 +144,10 @@ static int find_cached_property_index(const char *name) {
 static unsigned int property_revision(const char *name) {
 	int index = find_cached_property_index(name);
 	return index < 0 ? 0 : atomic_load(context.property_revisions + index);
+}
+
+static int updates_without_define(void) {
+	return atomic_load(&context.update_without_define_count);
 }
 
 static unsigned int property_state_revision(const char *name, indigo_property_state state) {
@@ -437,6 +445,10 @@ static indigo_result simulator_client_define_property(indigo_client *client, ind
 
 static indigo_result simulator_client_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (context.driver_case != NULL && !strcmp(property->device, context.driver_case->device_name)) {
+		if (find_cached_property_index(property->name) < 0) {
+			context.update_without_define_count++;
+			fprintf(stderr, "    %s %s was updated without being defined\n", property->device, property->name);
+		}
 		cache_property_update(property);
 		context.update_count++;
 	}

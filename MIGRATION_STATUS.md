@@ -107,7 +107,7 @@
 | focuser_wemacro         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 22 / 0 | |
 | focuser_wemacro_bt      | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ macOS only |
 | gps_gpsd                | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | ⏰ TODO - make libgps for Windows |
-| gps_nmea                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 4 / 0 | `test_gps_nmea_transport.c` carries the protocol coverage |
+| gps_nmea                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 5 / 9 | `test_gps_nmea_transport.c` carries the protocol coverage |
 | gps_simulator           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 4 / 0 | |
 | guider_asi              | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | ⏰ TODO - find SDK for windows |
 | guider_cgusbst4         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 5 / 10 | |

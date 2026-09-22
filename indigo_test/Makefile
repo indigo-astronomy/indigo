@@ -2491,6 +2491,21 @@ FOCUSER_USBV3_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_usbv3.a $(TEST_L
 $(TEST_BUILD)/hardware/test_focuser_usbv3_hw: hardware/test_focuser_usbv3_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_usbv3.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_USBV3_HW_TEST_LDFLAGS)
 
+# A physically connected NMEA 0183 receiver is opt-in and excluded from normal integration tests.
+# The driver only reads the receiver, so nothing in the run changes anything inside it, and a
+# receiver without a fix is a valid result the run records rather than a failure. Set GPS_NMEA_HW_PORT
+# to override the port the driver matched through its "GPS"/"GNSS" product pattern, GPS_NMEA_HW_SYSTEM
+# to a constellation the receiver does send (default GPS) and GPS_NMEA_HW_ABSENT_SYSTEM to one it does
+# not (default GLONASS).
+.PHONY: test-gps-nmea-hw
+test-gps-nmea-hw: check-lib $(TEST_BUILD)/hardware/test_gps_nmea_hw
+	$(TEST_BUILD)/hardware/test_gps_nmea_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+GPS_NMEA_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_gps_nmea.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_gps_nmea_hw: hardware/test_gps_nmea_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_gps_nmea.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(GPS_NMEA_HW_TEST_LDFLAGS)
+
 # Physical AstroGadget FocusDreamPro hardware is opt-in and excluded from normal integration tests.
 # THE MOTOR RUNS: every move stays within FOCUSDREAMPRO_HW_TRAVEL steps (default 300) of the
 # position the controller reported at the start and the run restores it. Set FOCUSDREAMPRO_HW_PORT

@@ -24,12 +24,14 @@
 typedef struct {
 	bool headless;
 	bool trace;
+	bool no_fix;
 	const char *ready_file;
 } simulator_options;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
+	.no_fix = false,
 	.ready_file = NULL
 };
 
@@ -41,6 +43,7 @@ static void usage(const char *name) {
 	printf("Generic NMEA 0183 GPS serial simulator\n");
 	printf("Usage: %s [OPTIONS]\n", name);
 	printf("  --headless              Disable terminal-oriented output\n");
+	printf("  --no-fix                Stream the sentences a receiver sends without a fix\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  -h, --help              Show this help and exit\n");
@@ -63,6 +66,8 @@ static bool parse_args(int argc, char *argv[]) {
 		} else if (!strcmp(argv[i], "--headless")) {
 			options.headless = true;
 			options.trace = false;
+		} else if (!strcmp(argv[i], "--no-fix")) {
+			options.no_fix = true;
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
 		} else if (!strcmp(argv[i], "--ready-file")) {
@@ -101,9 +106,44 @@ static void send_cycle(void) {
 	send_sentence("GPGSV,2,2,08,24,22,180,39,25,18,250,38,29,10,090,37,31,06,330,36");
 }
 
+// The banner a u-blox 7 sends once after power-up, before any positioning sentence. It is a
+// "non positioning" sentence the driver has to read and discard.
+static void send_banner(void) {
+	send_sentence("GPTXT,01,01,02,u-blox ag - www.u-blox.com");
+	send_sentence("GPTXT,01,01,02,HW  UBX-G70xx   00070000 ");
+	send_sentence("GPTXT,01,01,02,ROM CORE 1.00 (59842) Jun 27 2012 17:43:52");
+	send_sentence("GPTXT,01,01,02,PROTVER 14.00");
+	send_sentence("GPTXT,01,01,02,ANTSUPERV=AC SD PDoS SR");
+	send_sentence("GPTXT,01,01,02,ANTSTATUS=OK");
+}
+
+// What a u-blox 7 GPS/GNSS receiver actually streams indoors, captured from the unit over three
+// minutes: every positioning field empty, GGA fix quality 0 with no satellite used, GSA fix mode 1
+// with the 99.99 no-solution dilution, and only now and then a GSV naming a single satellite it can
+// hear but not use, with no elevation or azimuth for it. The capture repeated this once per second
+// and sent a GSV roughly every twenty-fourth cycle; this loop sends one every fifth so a test does
+// not have to wait out that cadence to see one.
+static void send_no_fix_cycle(int cycle) {
+	send_sentence("GPRMC,,V,,,,,,,,,,N");
+	send_sentence("GPVTG,,,,,,,,,N");
+	send_sentence("GPGGA,,,,,,0,00,99.99,,,,,,");
+	send_sentence("GPGSA,A,1,,,,,,,,,,,,,99.99,99.99,99.99");
+	send_sentence("GPGLL,,,,,,V,N");
+	if (cycle % 5 == 4) {
+		send_sentence("GPGSV,1,1,01,30,,,28");
+	}
+}
+
 static void run_protocol_loop(void) {
-	while (running) {
-		send_cycle();
+	if (options.no_fix) {
+		send_banner();
+	}
+	for (int cycle = 0; running; cycle++) {
+		if (options.no_fix) {
+			send_no_fix_cycle(cycle);
+		} else {
+			send_cycle();
+		}
 		for (int i = 0; running && i < 10; i++) {
 			usleep(100000);
 		}

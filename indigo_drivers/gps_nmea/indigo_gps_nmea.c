@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000013
+#define DRIVER_VERSION       0x03000014
 #define DRIVER_NAME          "indigo_gps_nmea"
 #define DRIVER_LABEL         "Generic NMEA 0183 GPS"
 #define GPS_DEVICE_NAME      "NMEA GPS"
@@ -211,10 +211,16 @@ static void nmea_reset(indigo_device *device) {
 	GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = 0.0;
 	GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = 0.0;
 	GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-	indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
-	indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
-	indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+	// This runs from on_connect too, where the connection handler has not defined these
+	// properties yet, so publish them only once the client has them.
+	if (IS_CONNECTED) {
+		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+		indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+		if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
+			indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+		}
+	}
 	memset(PRIVATE_DATA->satellites_in_view, 0, sizeof(int) * MAX_NB_OF_SYSTEMS);
 }
 
@@ -335,17 +341,22 @@ static void gps_timer_callback(indigo_device *device) {
 			char fix = *tokens[2] - '0';
 			if (fix == 1) {
 				PRIVATE_DATA->position_valid = PRIVATE_DATA->time_valid = false;
-				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
-				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
-				if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
-					INDIGO_UPDATE_PROPERTY_STATE(GPS_GEOGRAPHIC_COORDINATES_PROPERTY, INDIGO_BUSY_STATE, NULL);
+				// A receiver without a fix repeats this sentence once per second. Only the
+				// transition into no fix may force the busy state, otherwise it fights the alert
+				// state the RMC and the GGA of the same cycle publish.
+				if (GPS_STATUS_NO_FIX_ITEM->light.value != INDIGO_ALERT_STATE) {
+					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+					GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+					GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+					GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+					if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+						INDIGO_UPDATE_PROPERTY_STATE(GPS_GEOGRAPHIC_COORDINATES_PROPERTY, INDIGO_BUSY_STATE, NULL);
+					}
+					if (GPS_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
+						INDIGO_UPDATE_PROPERTY_STATE(GPS_UTC_TIME_PROPERTY, INDIGO_BUSY_STATE, NULL);
+					}
+					indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 				}
-				if (GPS_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
-					INDIGO_UPDATE_PROPERTY_STATE(GPS_UTC_TIME_PROPERTY, INDIGO_BUSY_STATE, NULL);
-				}
-				indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 			} else if (fix == 2 && GPS_STATUS_2D_FIX_ITEM->light.value != INDIGO_BUSY_STATE) {
 				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
