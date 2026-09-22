@@ -305,6 +305,48 @@ static bool accept_number(int d, const char *name, const char *item, double valu
 }
 
 // A refused change must publish ALERT and leave every value and target of the property untouched.
+// A bin factor both axes accept. CCD_BIN advertises a maximum per axis, but a driver may support
+// only square factors, or only powers of two, and one model reports a maximum of 255 that no bin
+// mode of its own offers. The largest square CCD_MODE item is a factor every model really has;
+// without CCD_MODE the axis maximum is the only thing to go by.
+static double square_bin(int d, indigo_property *bins) {
+	double factor = 0;
+	indigo_property *modes = snapshot(d, "CCD_MODE");
+	if (modes) {
+		for (int i = 0; i < modes->count; i++) {
+			int horizontal = 0, vertical = 0;
+			if (sscanf(modes->items[i].name, "BIN_%dx%d", &horizontal, &vertical) == 2 && horizontal == vertical && horizontal > factor) {
+				factor = horizontal;
+			}
+		}
+		indigo_release_property(modes);
+	}
+	if (factor == 0 && bins && bins->count > 1) {
+		factor = bins->items[0].number.max < bins->items[1].number.max ? bins->items[0].number.max : bins->items[1].number.max;
+	}
+	return factor;
+}
+
+static bool square_bin_value(int d, double factor, indigo_property_state state) {
+	printf("Set CCD_BIN = %.6gx%.6g\n", factor, factor);
+	unsigned before = revision(d, "CCD_BIN");
+	indigo_change_number_property(&client, devices[d].name, "CCD_BIN", 2, (const char *[]){ "HORIZONTAL", "VERTICAL" }, (double []){ factor, factor });
+	return wait_state(d, "CCD_BIN", before, state);
+}
+
+static bool reject_square_bin(int d, double factor) {
+	printf("Refused CCD_BIN = %.6gx%.6g expected\n", factor, factor);
+	indigo_property *before = snapshot(d, "CCD_BIN");
+	unsigned revision_before = revision(d, "CCD_BIN");
+	indigo_change_number_property(&client, devices[d].name, "CCD_BIN", 2, (const char *[]){ "HORIZONTAL", "VERTICAL" }, (double []){ factor, factor });
+	bool result = wait_state(d, "CCD_BIN", revision_before, INDIGO_ALERT_STATE);
+	indigo_property *after = snapshot(d, "CCD_BIN");
+	result = result && same_values(before, after);
+	indigo_release_property(before);
+	indigo_release_property(after);
+	return result;
+}
+
 static bool reject_number_change(int d, const char *name, const char *item, double value) {
 	printf("Refused %s.%s = %.6g expected\n", name, item, value);
 	indigo_property *before = snapshot(d, name);
@@ -538,8 +580,9 @@ static void hardware_workflows(void) {
 		}
 		// Every guarded property has to refuse a change while an exposure is running and publish its actual values.
 		passed = passed && number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 5, INDIGO_BUSY_STATE);
-		if (passed && bins) {
-			passed = reject_number_change(camera, "CCD_BIN", "HORIZONTAL", bins->items[0].number.max);
+		double bin_factor = bins ? square_bin(camera, bins) : 0;
+		if (passed && bin_factor > 1) {
+			passed = reject_square_bin(camera, bin_factor);
 		}
 		if (passed && gain) {
 			passed = reject_number_change(camera, "CCD_GAIN", "GAIN", gain->items[0].number.max);
@@ -552,8 +595,8 @@ static void hardware_workflows(void) {
 		}
 		passed = passed && switch_value(camera, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE);
 		// The same change is accepted once the exposure is over.
-		if (passed && bins) {
-			passed = number_value(camera, "CCD_BIN", "HORIZONTAL", bins->items[0].number.max, INDIGO_OK_STATE) && restore(bins);
+		if (passed && bin_factor > 1) {
+			passed = square_bin_value(camera, bin_factor, INDIGO_OK_STATE) && restore(bins);
 		}
 		if (passed && gain) {
 			passed = accept_number(camera, "CCD_GAIN", "GAIN", gain->items[0].number.max) && restore(gain);

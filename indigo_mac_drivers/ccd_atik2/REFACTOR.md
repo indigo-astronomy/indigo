@@ -97,3 +97,44 @@ This Atik One exposes no guider, so electrical guide direction and pulse timing 
 items in `on_change_request`, replacing the earlier workaround that forced the property state back
 to `INDIGO_OK_STATE` so the BUSY-guarded dispatch macro would let the request through. Behaviour is
 unchanged; the existing guider replacement coverage passes unmodified.
+
+## Three-camera hardware run (2026-09-22)
+
+Non-interactive hardware run on macOS arm64 against Atik One, Atik VS and Atik Titan on a Pegasus Ultimate Powerbox v1.7 hub, through `indigo_test/hardware/test_ccd_atik_hw.c`, which is shared with `ccd_atik`.
+
+### Device capacity (version 13 to 14)
+
+Like `ccd_atik`, this driver publishes a camera together with its guider or filter wheel, so the generated capacity of five logical devices was exhausted by two cameras. Here the three cameras happened to add up to exactly five devices - Atik One plus its wheel, Atik Titan plus its guider, and Atik VS, which this SDK reports without a guide port - so all three were published by luck rather than by capacity, and any fourth device would have been refused. The driver declares `max_devices = 16`, the same as `ccd_atik`.
+
+`hotplug_and_capacity` in `indigo_test/integration/test_ccd_atik2_sdk.c` asserted the old limit of five. It now gives every fake camera a guider and a filter wheel, which is eighteen logical devices for six cameras, and requires the driver to publish five cameras whole, refuse the sixth rather than publish part of it, keep a published camera working at the limit, and publish the refused camera once another one leaves and its arrival is seen again.
+
+Unlike `ccd_atik`, this driver has no vendor SDK shutdown call: `libatik` is a static archive built in this tree, and the driver never leaves a thread behind, so the reload scenario passed unchanged.
+
+### Test defect found on the way
+
+The shared hardware test drove the guarded-change scenario by writing `CCD_BIN.HORIZONTAL` alone, at the axis maximum. This driver accepts only square, power-of-two bin factors and refuses everything else, which is correct - and on Atik One the SDK reports a horizontal maximum of 255, a factor no bin mode of the camera offers. The change was therefore refused for its own reason after the exposure was aborted, and the scenario failed on all three cameras while the guard it exists to test worked. The test now derives the factor from the largest square `BIN_nxn` of `CCD_MODE` and writes both axes together, which is a value every model really has; `ccd_atik` was re-run with the change and still passes on all three cameras.
+
+### Results
+
+| run | result |
+| --- | --- |
+| `make -C indigo_test test-ccd-atik2-sdk` | 24/24 |
+| `INDIGO_TEST_DEVICE="Atik One" make -C indigo_test test-ccd-atik2-hw` | 1/1 |
+| `INDIGO_TEST_DEVICE="Atik VS" make -C indigo_test test-ccd-atik2-hw` | 1/1 |
+| `INDIGO_TEST_DEVICE="Atik Titan" make -C indigo_test test-ccd-atik2-hw` | 1/1 |
+
+### Open defect: a broadcast CONNECTION change can reach a detached device
+
+While the capacity case was being rewritten, a request sent to an empty device name - which INDIGO delivers to every device - crashed the process inside this driver:
+
+```
+thread #3, name = 'Queue Atik (legacy) Camera', stop reason = EXC_BAD_ACCESS (code=1, address=0xa0)
+frame #0: ccd_connection_handler(device=0x1008a05b0) at indigo_ccd_atik2.c:274
+    if (CONNECTION_CONNECTED_ITEM->sw.value) {
+```
+
+The device pointer is valid and `CONNECTION_PROPERTY` is not, so a connection handler was queued for a device whose properties had already been released while the driver was attaching and detaching devices at its capacity limit. The trigger was a test request that named no device, which is a legal broadcast a client can send at any time. This was not reproduced deliberately and is not fixed here; it needs a dedicated reproducer that broadcasts `CONNECTION` while devices are being detached, and it is not specific to this driver's own logic.
+
+### Hot-plug not established
+
+Not covered, for the reason recorded in `indigo_drivers/ccd_atik/REFACTOR.md`: switching a Powerbox hub port is invisible to the host's hub driver on macOS, so no disconnect reaches the driver.

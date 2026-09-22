@@ -46,13 +46,13 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_ccd_atik2"
 #define DRIVER_LABEL         "Atik (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
 #define GUIDER_DEVICE_NAME   "%s (guider)"
 #define WHEEL_DEVICE_NAME    "%s (wheel)"
-#define MAX_DEVICES          5
+#define MAX_DEVICES          16
 #define PRIVATE_DATA         ((atik2_private_data *)device->private_data)
 
 //+ define

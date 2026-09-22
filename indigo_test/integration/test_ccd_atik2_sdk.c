@@ -963,24 +963,34 @@ static void wheel_initialization_failures(void) {
 	ASSERT_TRUE(request_number(2, "WHEEL_SLOT", "SLOT", 5, INDIGO_OK_STATE));
 }
 
+// Every logical device takes one of the driver's sixteen slots and a camera is published whole or
+// not at all. Six cameras that each expose a guider and a filter wheel are eighteen devices, so
+// five of them fit and the sixth is refused until another camera leaves.
 static void hotplug_and_capacity(void) {
-	for (int i = 1; i < 4; i++) {
+	for (int i = 1; i < CAMERAS; i++) {
 		cameras[i].visible = true;
+		cameras[i].guider = cameras[i].context.has_guider_port = true;
+		cameras[i].wheel = cameras[i].context.has_filter_wheel = true;
 		usb_event(i, true);
 	}
 	indigo_queue_drain(driver_queue);
-	ASSERT_EQ_INT(5, attached);
+	ASSERT_EQ_INT(15, attached);
 	usb_event(1, true);
 	indigo_queue_drain(driver_queue);
-	ASSERT_EQ_INT(5, attached);
+	ASSERT_EQ_INT(15, attached);
 	ASSERT_TRUE(connect_device(3, true));
+	ASSERT_TRUE(request_number(3, "CCD_EXPOSURE", "EXPOSURE", .02, INDIGO_OK_STATE));
+	ASSERT_TRUE(connect_device(3, false));
 	cameras[0].visible = false;
 	usb_event(0, false);
-	ASSERT_TRUE(wait_count(&attached, 2));
-	ASSERT_TRUE(request_number(3, "CCD_EXPOSURE", "EXPOSURE", .02, INDIGO_OK_STATE));
-	cameras[0].visible = true;
-	usb_event(0, true);
-	ASSERT_TRUE(wait_count(&attached, 5));
+	ASSERT_TRUE(wait_count(&attached, 12));
+	// The three slots camera 0 released are exactly what the refused camera needs, so it is
+	// published the next time its arrival is seen, and it works.
+	usb_event(CAMERAS - 1, true);
+	ASSERT_TRUE(wait_count(&attached, 15));
+	ASSERT_TRUE(connect_device(3 * (CAMERAS - 1), true));
+	ASSERT_TRUE(request_number(3 * (CAMERAS - 1), "CCD_EXPOSURE", "EXPOSURE", .02, INDIGO_OK_STATE));
+	ASSERT_TRUE(connect_device(3 * (CAMERAS - 1), false));
 }
 
 static void hotplug_filters_and_attach_rollback(void) {
