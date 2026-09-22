@@ -122,3 +122,16 @@ Root cause: ten `on_change_request` blocks in `indigo_ccd_simulator.driver` refu
 Fix: all ten are now `reject_change` blocks. The simulator matters here beyond its own users: it is what the agent suites drive, so its refusal behaviour is the reference other tests observe. Version 27 -> 28.
 
 Regression test: `simulator_stream_abort_and_reconnect` in `indigo_test/integration/test_ccd_simulator.c` now requests streaming during an exposure and requires `CCD_STREAMING` to reach `INDIGO_ALERT_STATE`. Against the pre-fix driver it fails at that assertion; the suite is 19/19 after the fix. The second `CCD_EXPOSURE` request in the same case is the property's own BUSY guard and is still expected to stay silent.
+
+
+## Lens defaults regression (2026-09-22)
+
+Source comparison with master found that generated `configure_ccd()` omitted the imager and guider camera lens defaults from legacy attach. The base CCD initialization therefore exposed zero aperture, focal length and physical length with IDLE state. Master sets imager values to 4/12.7/12.7 cm and guider values to 2/5.1/5.1 cm, with OK state. Other camera variants do not set these defaults.
+
+Baseline: `make -C indigo_drivers/ccd_simulator -f ../../Makefile.drv all` passed on macOS. Added assertions to the existing camera compliance scenarios; `indigo_test/build/integration/test_ccd_simulator ccd_imager_passes_compliance_checks` reproduced the missing focal length (1 run, 0 passed).
+
+Plan: restore these assignments in the generator input, increment version 28 to 29, regenerate and build; run the full existing 19-case simulator suite including the expanded lens assertions; verify generation reproducibility and record results. No hardware testing applies to these virtual cameras. No property names, items or visibility change. Automated case count remains 19 / 0.
+
+Completed: restored the legacy value assignments and OK state in `configure_ccd()` for kinds 0 and 1, version 29; regenerated outputs. The driver build and `make -C indigo_test build/integration/test_ccd_simulator` passed. `indigo_test/build/integration/test_ccd_simulator` passed all 19 cases on macOS arm64, including lens values and state for both cameras. A second generator run produced byte-identical C/header/main outputs; `git diff --check` passed. Updated the test record and regenerated `TEST_SUMMARY.md`. No property definitions changed; no new files or case-count changes require project/status registration. Other platforms were not executed.
+
+Final test summary for this fix: simulator regression baseline 1 run / 0 passed (expected); final simulator suite 19 run / 19 passed; hardware 0 run / 0 passed.

@@ -392,6 +392,14 @@ static void assert_ccd_camera_compliance(const simulator_driver_case *driver_cas
 	};
 	start_connected_simulator(driver_case);
 
+	if (driver_case == &ccd_imager_simulator || driver_case == &ccd_guider_camera_simulator) {
+		double focal_length = driver_case == &ccd_imager_simulator ? 12.7 : 5.1;
+		double aperture = driver_case == &ccd_imager_simulator ? 4 : 2;
+		ASSERT_TRUE(wait_for_number_item_value(CCD_LENS_PROPERTY_NAME, CCD_LENS_FOCAL_LENGTH_ITEM_NAME, focal_length, 0.001));
+		ASSERT_TRUE(wait_for_number_item_value(CCD_LENS_PROPERTY_NAME, CCD_LENS_PHYSICAL_LENGTH_ITEM_NAME, focal_length, 0.001));
+		ASSERT_TRUE(wait_for_number_item_value(CCD_LENS_PROPERTY_NAME, CCD_LENS_APERTURE_ITEM_NAME, aperture, 0.001));
+		ASSERT_TRUE(wait_for_property_state(CCD_LENS_PROPERTY_NAME, INDIGO_OK_STATE));
+	}
 	assert_device_interface(INDIGO_INTERFACE_CCD);
 	assert_property_has_items(CCD_INFO_PROPERTY_NAME, ccd_info_items, ARRAY_SIZE(ccd_info_items));
 	assert_property_has_item(CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME);

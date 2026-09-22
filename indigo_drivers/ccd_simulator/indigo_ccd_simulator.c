@@ -52,7 +52,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001C
+#define DRIVER_VERSION       0x0300001D
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -995,6 +995,10 @@ static void configure_ccd(indigo_device *device, int kind) {
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 		CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = CCD_GAMMA_PROPERTY->hidden = false;
 		CCD_IMAGE_FORMAT_PROPERTY->count = 7;
+		CCD_LENS_FOCAL_LENGTH_ITEM->number.value = kind == 0 ? 12.7 : 5.1;
+		CCD_LENS_PHYSICAL_LENGTH_ITEM->number.value = kind == 0 ? 12.7 : 5.1;
+		CCD_LENS_APERTURE_ITEM->number.value = kind == 0 ? 4 : 2;
+		CCD_LENS_PROPERTY->state = INDIGO_OK_STATE;
 		for (int i = 0; i <= GUIDER_MAX_HOTPIXELS; i++) {
 			PRIVATE_DATA->hotpixel_x[i] = rand() % (width - 200) + 100;
 			PRIVATE_DATA->hotpixel_y[i] = rand() % (height - 200) + 100;
