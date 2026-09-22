@@ -30,3 +30,4 @@ You may need to install Silicon Labs CP2102 driver for host operating system).
 ## Testing
 
 2026-09-21 17:28 3.0.0.8 mac arm64 simulator 17/17 OK
+2026-09-22 20:50 3.0.0.8 mac arm64 AstroGadget FocusDreamPro 15/0 Failed

@@ -47,7 +47,66 @@ Linux, macOS and Windows; `indigo_focuser_focusdreampro.vcxproj` and `.vcxproj.f
 
 ## Hardware-test decision
 
-Hardware testing will **not** be performed. No FocusDreamPro or Jolo controller is available in this environment, and no hardware validation is claimed anywhere in this record.
+**2026-09-19.** Hardware testing will not be performed. No FocusDreamPro or Jolo controller was
+available at migration time, and the migration record below claims no hardware validation.
+
+**2026-09-22, superseded.** An AstroGadget FocusDreamPro controller is attached to the macOS arm64
+development host through its Silicon Labs CP2102 bridge (`0x10c4:0xea60`, `/dev/cu.usbserial-0001`)
+and answers `#` with `FD`. A non-interactive hardware run was requested, so the full focuser
+hardware acceptance checklist of `indigo_test/DRIVER_TESTING_RULES.md` is executed against the
+physical controller through a new `indigo_test/hardware/test_focuser_focusdreampro_hw.c`.
+
+Scope and safety of the hardware run:
+
+- Every move is relative to the position the controller reports when the session starts, the
+  longest single move is `FOCUSDREAMPRO_HW_TRAVEL` steps outward (default 300) and the session
+  restores the starting position before it disconnects, so no end stop is approached.
+- Physical hot-plug (unplug/replug) is **not** part of this run. The run is non-interactive and
+  macOS offers no way to drop a USB port from software, so hot-plug coverage is not established.
+  The driver has no hot-plug support anyway; it is a port-configured serial driver.
+- `X_FOCUSER_DUTY_CYCLE` is persistent, so the run redirects `HOME` with
+  `indigo_test_use_private_home()` and leaves the user's own configuration untouched.
+
+### Controller measurements taken before the run (2026-09-22)
+
+Taken with a standalone probe over the raw serial port, so they describe the controller and not the
+driver. They are the source of the simulator corrections recorded under `SIM-101`..`SIM-103`.
+
+- **Requests must end with `\n`.** With no terminator the controller never answers, whatever the
+  gap between bytes and whatever the state of DTR/RTS. `#` + `\n` answers `FD`, `P` + `\n` answers
+  `P:0`, `T` + `\n` answers `T:25.75`. Repeated in both orders and with DTR/RTS asserted and
+  cleared, always with the same result. This is the observation behind `DRV-135`.
+- **`X`, `S` and `D` have no readback.** The bare query answers the bare command letter with no
+  value; only `P`, `T` and `I` return data.
+- **Step timing.** Measured over moves of 500 to 2000 steps, polling `I` at 100 ms so that
+  servicing the poll steals as little stepping time as possible:
+
+  | `S:` delay | measured ms/step | model `0.151 + 0.044 * delay` |
+  | --- | --- | --- |
+  | 5 | 0.40 | 0.37 |
+  | 10 | 0.53 | 0.59 |
+  | 40 | 1.91 | 1.91 |
+  | 110 | 4.96 | 4.99 |
+  | 250 | 11.14 | 11.15 |
+  | 500 | 22.14 - 22.86 | 22.15 |
+
+  So one unit of the `S:` value is about 44 us of real delay and not the 1 us the driver comment
+  and the simulator both assumed, and there is a fixed overhead of about 0.15 ms per step. The
+  controller is single threaded: polling `I` without a gap slows a move down by about 20%, which is
+  why the low interference figures above are the ones used.
+
+## Hardware baseline (2026-09-22, macOS 15 arm64, AstroGadget FocusDreamPro)
+
+- `make -C indigo_test build/hardware/test_focuser_focusdreampro_hw` - succeeded, no warnings.
+- `FOCUSDREAMPRO_HW_PORT=/dev/cu.usbserial-0001 make -C indigo_test test-focuser-focusdreampro-hw`
+  against driver `3.0.0.8` - **15 scenarios registered, 0 executed, run failed at set-up.** The
+  driver logs `FocusDreamPro not detected` and answers `CONNECTION` with `INDIGO_ALERT_STATE` and
+  the message `Failed to connect to FocusDreamPro on /dev/cu.usbserial-0001`, so no scenario ever
+  reached the controller. This is `DRV-135` reproduced through the driver: the same port answers
+  `#` with `FD` immediately when the probe terminates the request with `\n`.
+
+This is an expected baseline failure in the sense of the characterization rules: the reproducer
+stays and becomes the regression evidence once the defect is fixed.
 
 ## Migration plan and results
 

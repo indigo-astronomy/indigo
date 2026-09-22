@@ -2490,3 +2490,16 @@ FOCUSER_USBV3_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_usbv3.a $(TEST_L
 
 $(TEST_BUILD)/hardware/test_focuser_usbv3_hw: hardware/test_focuser_usbv3_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_usbv3.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_USBV3_HW_TEST_LDFLAGS)
+
+# Physical AstroGadget FocusDreamPro hardware is opt-in and excluded from normal integration tests.
+# THE MOTOR RUNS: every move stays within FOCUSDREAMPRO_HW_TRAVEL steps (default 300) of the
+# position the controller reported at the start and the run restores it. Set FOCUSDREAMPRO_HW_PORT
+# to override the port the driver matched through its CP2102 pattern.
+.PHONY: test-focuser-focusdreampro-hw
+test-focuser-focusdreampro-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_focusdreampro_hw
+	$(TEST_BUILD)/hardware/test_focuser_focusdreampro_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+FOCUSER_FOCUSDREAMPRO_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_focusdreampro.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_focuser_focusdreampro_hw: hardware/test_focuser_focusdreampro_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_focusdreampro.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_FOCUSDREAMPRO_HW_TEST_LDFLAGS)
