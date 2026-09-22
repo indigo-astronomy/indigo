@@ -36,3 +36,4 @@ Driver is developed and tested with:
 ## Testing
 
 2026-09-21 14:15 3.0.0.20 mac arm64 fake SDK 24/24 OK
+2026-09-22 15:52 3.0.0.20 mac arm64 SXVR-H694 and LodeStar 9/9 OK

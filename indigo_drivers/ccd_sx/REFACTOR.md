@@ -401,3 +401,37 @@ items in `on_change_request`, replacing the earlier workaround that forced the p
 to `INDIGO_OK_STATE` so the BUSY-guarded dispatch macro would let the request through. Behaviour is
 unchanged; the driver now uses the same pattern as every other INDIGO driver that exposes a guider.
 `Guider replacement errors and disconnect` already covered the replacement and passes unmodified.
+
+## SXVR-H694 and LodeStar hardware run (2026-09-22)
+
+Non-interactive hardware run on macOS arm64 against two physical cameras on one bus, driver version
+3.0.0.20:
+
+```
+make -C indigo_test test-ccd-sx-hw
+```
+
+Result 9/9, no defect found and no production-code change needed. The suite probes every discovered
+camera and runs each case over all of them, so both models were covered by every case:
+
+- SXVR-H694 #020405: 2750 x 2200, 4.54 x 4.54 um pixels, cooler, Star2K, no flood LED.
+- SX LodeStar #0203: 752 x 580, 8.60 x 8.30 um pixels, no cooler, Star2K, no flood LED.
+
+All nine registered cases passed: identity/discovery/property contract, shared lifecycle and
+rejected shutdown, acquisition units with frame types, bins and ROI, abort orders and
+reacquisition, cooling profile, guider pulses with shared acquisition, guider pulse timing, flood
+LED contract, and teardown and reload. The cooling case exercised real hardware cooling on the
+H694 - 25.6 C with the cooler off, then 19.9 C against a 20.0 C target over three temperature
+updates, and 21.4 C after a reconnect - while the LodeStar exercised the uncooled contract with
+`CCD_COOLER` and `CCD_TEMPERATURE` hidden. Neither model has a flood LED, so that case covered the
+unsupported-capability contract only.
+
+An earlier run in the same session covered the LodeStar alone, because the H694 was not enumerating
+at the time; it is superseded by this one and not recorded separately.
+
+Physical hot-plug is opt-in through `HW_HOTPLUG=1`, was not part of this run, and no hot-plug
+coverage is established by it.
+
+### Test totals for this run
+
+Simulated tests run 0, passed 0. Hardware tests run 9, passed 9.
