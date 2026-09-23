@@ -144,6 +144,8 @@
 | mount_nexstar | 2026-09-20 20:44 | 3.0.0.34 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 | mount_nexstaraux | 2026-09-20 21:29 | 3.0.0.14 | mac arm64 | simulator | 30 / 30 | ✅ OK |
 | mount_pmc8 | 2026-09-20 20:49 | 3.0.0.11 | mac arm64 | simulator | 11 / 11 | ✅ OK |
+| mount_rainbow | 2026-09-23 14:04 | 3.0.0.18 | mac arm64 | MountSim 2.3 (RainbowAstro RST135) | 13 / 13 | ✅ OK |
+| mount_rainbow | 2026-09-23 14:05 | 3.0.0.18 | mac arm64 | simulator | 15 / 15 | ✅ OK |
 | mount_simulator | 2026-09-21 12:42 | 3.0.0.16 | mac arm64 | simulator | 16 / 16 | ✅ OK |
 | mount_starbook | 2026-09-20 20:49 | 3.0.0.7 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | mount_synscan | 2026-09-20 15:56 | 3.0.0.4 | mac arm64 | SkyWatcher AZ-GTi | 16 / 16 | ✅ OK |

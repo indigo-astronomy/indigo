@@ -2548,9 +2548,16 @@ $(TEST_BUILD)/mountsim:
 $(TEST_BUILD)/mountsim/test_mount_temma_mountsim: mountsim/test_mount_temma_mountsim.c mountsim/mountsim_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_temma.a | $(TEST_BUILD)/mountsim
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_TEMMA_SIMULATOR_TEST_LDFLAGS)
 
+.PHONY: test-mount-rainbow-mountsim
+test-mount-rainbow-mountsim: check-lib $(TEST_BUILD)/mountsim/test_mount_rainbow_mountsim
+	python3 mountsim/run_mountsim.py --app "$(MOUNTSIM_APP)" --mount RST135 --terminator 23 --test $(TEST_BUILD)/mountsim/test_mount_rainbow_mountsim
+
+$(TEST_BUILD)/mountsim/test_mount_rainbow_mountsim: mountsim/test_mount_rainbow_mountsim.c mountsim/mountsim_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_rainbow.a | $(TEST_BUILD)/mountsim
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_RAINBOW_SIMULATOR_TEST_LDFLAGS)
+
 else
-.PHONY: test-mount-temma-mountsim
-test-mount-temma-mountsim:
+.PHONY: test-mount-temma-mountsim test-mount-rainbow-mountsim
+test-mount-temma-mountsim test-mount-rainbow-mountsim:
 	@printf "MountSim acceptance requires macOS and a GUI session.\n"
 	@exit 2
 endif

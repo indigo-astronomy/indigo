@@ -27,3 +27,8 @@ Use URL in form rainbow://host:port to connect to the mount over network (defaul
 ## Status: Under development
 
 Driver is developed and tested with simulator
+
+## Testing
+
+2026-09-23 14:04 3.0.0.18 mac arm64 MountSim 2.3 (RainbowAstro RST135) 13/13 OK
+2026-09-23 14:05 3.0.0.18 mac arm64 simulator 15/15 OK

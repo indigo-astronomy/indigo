@@ -259,7 +259,7 @@ static void rainbow_tracks_and_selects_every_rate(void) {
 		SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	}
 	SERIAL_CHECK_TRUE(change_number_and_wait(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "CU0=0.5", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Cu0=0.5", 1));
 cleanup:
 	if (context.connected) {
 		stop_serial_driver(&rainbow_mount);
@@ -314,6 +314,9 @@ static void rainbow_goto_sync_and_abort_have_distinct_protocols(void) {
 	SERIAL_CHECK_TRUE(change_coordinates(8, 20, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ck120.000+20.000", 1));
 	SERIAL_CHECK_EQ_INT(ms_count, count_events(&simulator, "CMD", "MS"));
+	SERIAL_CHECK_TRUE(change_coordinates(8.125, -5.375, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ck121.875-05.375", 1));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -5.375, .002));
 	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
 	int busy_ms_count = count_events(&simulator, "CMD", "MS");
 	SERIAL_CHECK_TRUE(change_coordinates(18, -30, INDIGO_BUSY_STATE));
@@ -467,8 +470,79 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static void rainbow_settings_survive_reconnect(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	SERIAL_CHECK_EQ_INT(0, context.update_without_define_count);
+	SERIAL_CHECK_TRUE(change_number_and_wait(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 70, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Cu0=0.7", 1));
+	SERIAL_CHECK_TRUE(change_number_and_wait(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 289.75, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Sg+070*15'00", 1));
+	disconnect_serial_device(&rainbow_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&rainbow_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 70, .01));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 289.75, .01));
+	SERIAL_CHECK_EQ_INT(0, context.update_without_define_count);
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void rainbow_park_abort_and_pending_disconnect(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ch", 1));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, false);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ch", 2));
+	disconnect_serial_device(&rainbow_mount);
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Q", 2));
+	SERIAL_CHECK_TRUE(connect_serial_device(&rainbow_mount, simulator.port));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void rainbow_goto_ack_prefix_and_error_recovery(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "MS", "11:MM0#", 1));
+	SERIAL_CHECK_TRUE(change_coordinates(6, 40, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "MS", 1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	const char *errors[] = { ":MML#", ":MMU#", ":MME#" };
+	for (int i = 0; i < ARRAY_SIZE(errors); i++) {
+		SERIAL_CHECK_TRUE(install_injection(&simulator, "MS", errors[i], 1));
+		SERIAL_CHECK_TRUE(change_coordinates(7, 45, INDIGO_ALERT_STATE));
+	}
+	SERIAL_CHECK_TRUE(change_coordinates(8, 50, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "MS", 5));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
+	if (!indigo_test_use_private_home()) {
+		return 2;
+	}
 	const indigo_test_case tests[] = {
+		{ "rainbow_settings_survive_reconnect", rainbow_settings_survive_reconnect },
+		{ "rainbow_park_abort_and_pending_disconnect", rainbow_park_abort_and_pending_disconnect },
+		{ "rainbow_goto_ack_prefix_and_error_recovery", rainbow_goto_ack_prefix_and_error_recovery },
+
 		{ "rainbow_driver_info_and_property_inventory", rainbow_driver_info_and_property_inventory },
 		{ "rainbow_preserves_modern_initialization_order", rainbow_preserves_modern_initialization_order },
 		{ "rainbow_uses_legacy_firmware_protocol", rainbow_uses_legacy_firmware_protocol },
@@ -482,5 +556,7 @@ int main(void) {
 		{ "rainbow_handles_active_transport_loss", rainbow_handles_active_transport_loss },
 		{ "rainbow_rejects_non_rainbow_transport", rainbow_rejects_non_rainbow_transport }
 	};
-	return indigo_run_tests("RainbowAstro mount serial simulator integration tests", tests, ARRAY_SIZE(tests));
+	int result = indigo_run_tests("RainbowAstro mount serial simulator integration tests", tests, ARRAY_SIZE(tests));
+	indigo_test_remove_private_home();
+	return result;
 }

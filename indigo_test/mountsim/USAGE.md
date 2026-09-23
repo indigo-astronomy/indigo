@@ -7,6 +7,9 @@ From the INDIGO repository root:
 ```sh
 make -C indigo_drivers/mount_temma -f ../../Makefile.drv all
 make -C indigo_test test-mount-temma-mountsim
+
+make -C indigo_drivers/mount_rainbow -f ../../Makefile.drv all
+make -C indigo_test test-mount-rainbow-mountsim
 ```
 
 The default app is the sibling MountSim checkout's `build/Build/Products/Debug/MountSim.app`. Override `MOUNTSIM_APP` with an absolute app path if needed. Build MountSim using its own README first; INDIGO does not build or install it automatically.
@@ -34,3 +37,9 @@ Record Temma runs as `MountSim 2.3 (Temma)`, not `simulator`. The app version an
 Guiding statistics measure the interval between direction ON/OFF command frames forwarded to MountSim, including host/relay scheduling. They do not measure physical relay edges or the GUI motor loop's exact application time. Idle means tracking disabled; the second workload enables tracking and coordinate polling. All directions use 20/100/500 ms, three repetitions each, with discarded warmups. No universal precision threshold is asserted.
 
 Malformed replies, injected protocol failures and fake-device edge cases remain in the separate portable `test_mount_temma_simulator` suite. The MountSim suite removes/recreates the relay PTY for real client-side transport-loss coverage and reconnect, without injecting synthetic mount replies.
+
+### RainbowAstro RST135
+
+Use model `RST135`, trace terminator `23` (`#`) and result type `MountSim 2.3 (RainbowAstro RST135)`. Its firmware identity is 190402, so the driver exercises the legacy global-stop and read-only clock branch. Avalon StarGO is a different model/protocol.
+
+The 13 cases cover inventory/lifecycle, SYNC including fractional signed coordinates, reachable and rejected GOTO, already-at-target completion, BUSY conflicts, abort/recovery, all manual directions/rates plus measured movement and stop, tracking/rate readback, guide-rate and location reconnect roundtrips, park position/tracking and abort/disconnect, and real idle/active PTY loss. There is no guider interface in this driver; guide-rate configuration is distinct from pulse guiding. Modern firmware, malformed responses and injected protocol errors remain in the 15-case portable Rainbow suite.

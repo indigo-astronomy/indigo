@@ -5719,6 +5719,7 @@
 		C0DE20260923132000000002 /* mountsim_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mountsim_test_common.h; sourceTree = "<group>"; };
 		C0DE20260923132000000003 /* test_mount_temma_mountsim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_temma_mountsim.c; sourceTree = "<group>"; };
 		C0DE20260923132000000005 /* USAGE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = USAGE.md; sourceTree = "<group>"; };
+		C0DE20260923150000000001 /* test_mount_rainbow_mountsim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_rainbow_mountsim.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -16496,6 +16497,7 @@
 				C0DE20260923132000000001 /* run_mountsim.py */,
 				C0DE20260923132000000002 /* mountsim_test_common.h */,
 				C0DE20260923132000000003 /* test_mount_temma_mountsim.c */,
+				C0DE20260923150000000001 /* test_mount_rainbow_mountsim.c */,
 			);
 			path = mountsim;
 			sourceTree = "<group>";

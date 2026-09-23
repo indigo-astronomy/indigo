@@ -370,7 +370,7 @@ static void handle_command(const char *command) {
 	} else if (!strncmp(command, "Ck", 2)) {
 		serial_motion_sync(&state.ra, atof(command + 2) / 15.0 * 3600000.0);
 		serial_motion_sync(&state.dec, atof(command + 9) * 3600000.0);
-	} else if (!strncmp(command, "CU0=", 4)) {
+	} else if (!strncmp(command, "Cu0=", 4)) {
 		snprintf(state.guide_rate, sizeof(state.guide_rate), "%s", command + 4);
 	} else if (!strcmp(command, "CU0")) {
 		snprintf(response, sizeof(response), ":CU0=%s#", state.guide_rate);

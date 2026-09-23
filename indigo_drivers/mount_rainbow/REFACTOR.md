@@ -108,3 +108,73 @@ Guider pulse timing is not applicable: this driver exposes only the mount guide-
 
 - Simulated tests run/passed: 12 / 12.
 - Hardware tests run/passed: 0 / 0; no compatible hardware is available.
+
+## MountSim RST135 acceptance, 2026-09-23
+
+### Baseline, audit and hardware decision
+
+Both repositories were clean and pulled with `git pull --ff-only` (already current).
+The actual baseline driver version is 17; earlier migration notes describe version 16.
+Universal macOS build (`make -C indigo_drivers/mount_rainbow -f ../../Makefile.drv all`) and the existing portable `test-mount-rainbow-simulator` target passed 12/12 on arm64. The baseline emits coordinate/time updates before property definition. MountSim 2.3 built using `xcodebuild -quiet -project MountSim.xcodeproj -scheme MountSim -configuration Debug -derivedDataPath build CODE_SIGNING_ALLOWED=NO build`.
+
+The generated `.driver` remains the source of truth. One mount device, no guider interface; firmware 190402 selects the legacy global-stop and read-only clock branches. Existing modern-firmware injection tests remain portable and separate. The new macOS-only suite reuses the shared launcher, isolated HOME/preferences, raw byte relay, real PTY loss and command captures. No physical hardware is available or tested, and no Linux/Windows run is claimed.
+
+### Atomic plan and progress
+
+1. Done: build baseline and run portable 12/12; read repository instructions, class rules, MountSim README and protocol sources. Add and register independent MountSim suite under the Darwin-only opt-in Make block.
+2. Done: characterize complete RST135 scope, preserve baseline captures, add failure reproducers before production edits. Initial 7-case run passed 6/7; guide-rate readback failed. Expanded suite reproduces SYNC and western-longitude readback failures; tests depending on SYNC are blocked by that defect.
+3. Done: correct documented protocol defects in the responsible component, increment driver version, regenerate without changing the generator, and add portable regressions.
+4. Verified: full MountSim and portable/sanitized reruns, strict checks, generated-output reproducibility, project/platform isolation and records/summary. Captures retained outside the build; test cleanup and local commits complete this step.
+
+### Found defects and independent protocol evidence
+
+Manufacturer's [RainbowAstro 191217 protocol](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/mount_rainbow/RainbowAstro_191217.pdf) (bundled copy, firmware 190402+) and [INDI Rainbow implementation](https://github.com/indilib/indi/blob/master/drivers/telescope/rainbow.cpp) independently establish case-sensitive `Cu0=` writes versus `CU0` reads, decimal-degree `Ck` synchronization, signed west-positive longitude, and asynchronous `MM0` on completed motion. INDI's `setGuideRate`, `Sync`, `updateLocation`, `isSlewComplete` are the relevant independent implementations.
+
+- Driver: `CU0=` is a query spelling; guide-rate changes falsely report OK and revert on reconnect. Existing portable emulator accepted the same wrong spelling. Reproducer: `rainbow_tracks_and_selects_every_rate`, 70% readback after reconnect.
+- Driver: western longitude 289.75 degrees is sent as -289.75 rather than +70.25, which MountSim rejects as outside signed 180 degrees. Reproducer: `rainbow_location_roundtrip_and_legacy_time`.
+- MountSim: `Ck` parser omits the decimal separator in declination and uses an uninitialized fraction; generic GUI SYNC changes only its displayed pointing correction, while GR/GD keep reporting unchanged motor coordinates. Reproducer: `rainbow_sync_fractional_readback`.
+- MountSim source audit: MS sends MM0 immediately, and Q stops manual slew but does not clear GOTO. Fix should defer MM0 until motor completion and abort active GOTO/home without a success notification. The reachable GOTO and park-abort cases will verify this after SYNC works.
+- Driver source audit: abort cancels park finalizer but leaves MOUNT_PARK BUSY. A Q command stops homing per manufacturer; the driver must end its pending park state. Reproducer: `rainbow_park_abort_and_disconnect` after SYNC correction.
+
+Baseline wire captures and logs are retained outside the test build under `/tmp/rainbow-*` for this session; exact command initialization order remains covered by the existing portable reference trace.
+
+### Additional reproduced failures and fixes
+
+- INDIGO: unterminated Sr/Sd acknowledgements can be coalesced as `11:MM0#`. The reader discarded that completion, leaving an already-at-target GOTO BUSY. Strip only leading acknowledgement bytes before a colon frame; portable regression injects the exact capture. Publish BUSY before writing so an immediate completion cannot be overwritten.
+- INDIGO: MML/MMU/MME errors were ignored for up to the 600-second finalizer timeout. A genuinely below-horizon GOTO reproduced this; handle all three documented errors and permit fresh movement. Manufacturer error table and INDI `isSlewComplete` agree.
+- INDIGO: active park disconnect left the motor moving, then reconnection failed because initialization required coordinate OK even when CL1 correctly reported motion. Stop owned GOTO/park on clean disconnect; accept fresh BUSY coordinate readback during initialization. Real PTY loss intentionally cannot stop a disconnected mount, so the active-loss test reconnects during motion and issues a fresh abort.
+- INDIGO: coordinate/time callbacks published before class properties were defined. Baseline reported these violations in every connection. Guard publication with IS_CONNECTED while still collecting initialization values. The new portable settings roundtrip and MountSim inventory assert zero undefined updates.
+- INDIGO source audit: SYNC declination below ten degrees was space padded rather than signed zero padded; use `%+07.3f` as required by the fixed-width protocol and INDI's sign plus `%06.3f` format.
+- MountSim: after a longitude change, cached LST still used the original location. A valid declination-20 target near the new site's meridian produced MML. Refresh LST when longitude changes; this is shared location state, not a driver workaround. [USNO sidereal-time definition](https://aa.usno.navy.mil/faq/GAST) and public INDIGO `indigo_lst` in `indigo_libs/indigo_align.c` independently specify GMST plus east-positive longitude/15. Existing motor subscribers did not refresh that cache.
+- MountSim: homing completed at stale staged equatorial coordinates and resumed tracking. The enhanced park case reproduced wrong HA and tracking-on despite CHO. The RST135-specific motor now stages its existing configured home (HA +90 degrees, DEC 0) and suppresses post-home tracking, without changing other mount motor subclasses.
+
+Step 2 completed with 6/11 expanded baseline, dedicated rejected-GOTO 0/1 and home-coordinate/tracking 0/1 reproducers. Step 3 implemented driver version 18 and model-local Rainbow fixes, plus the required shared LST cache refresh. The new portable suite has 15 cases and passed 15/15 once; final full/sanitized validation remains pending.
+
+### MountSim acceptance mapping and final verification
+
+| Named case(s), prefix `rainbow_` | Assertions |
+| --- | --- |
+| `driver_info_and_property_inventory`, `uses_legacy_firmware_protocol`, `reconnects_after_clean_disconnect` | Entry-point metadata, one mount interface, visible/hidden capabilities, firmware 190402, no pre-definition updates, legacy query/global-stop gates, repeated connection and teardown. |
+| `sync_fractional_readback`, `reachable_goto_completion_and_abort`, `rejected_goto_recovers` | Signed/fractional RA/DEC SYNC without MS, zero-padded small DEC, site/LST-relative targets, BUSY until arrival, actual coordinate readback, already-at-target completion, BUSY request refusal, abort then new GOTO, below-horizon failure then recovery. |
+| `manual_motion_covers_all_rates_axes_and_stops`, `manual_motion_readback_and_active_loss` | All four rates and directions, exact commands, simultaneous RA/DEC motion and reversal, coordinate progress, stable DEC after abort, real cable loss during GOTO, failed abort on lost transport, reconnect during movement and fresh abort. |
+| `tracks_and_selects_every_rate`, `location_roundtrip_and_legacy_time` | Tracking on/off, sidereal/solar/lunar selection plus later poll readback, 70% guide rate retained after reconnect, southern latitude/western longitude retained, legacy host/UTC writes rejected without SC and subsequent clock polls recover. |
+| `park_completes_and_rejects_motion`, `park_abort_and_disconnect` | BUSY/OK home completion at HA +6h / DEC 0, tracking off, parked motion rejected without command, park abort leaves no BUSY, reconnect and disconnect while park pending. |
+| `idle_transport_loss_and_recovery` | Real PTY loss from healthy connection, write failure ALERT, new PTY recovery and fresh command. |
+
+Final checks:
+
+- `test-mount-rainbow-mountsim`: **13/13 passed** through app version 2.3, model RST135, actual firmware reply 190402.
+- `test-mount-rainbow-simulator`: **15/15 passed**, including the unchanged normalized modern initialization reference trace.
+- `test-mount-rainbow-simulator-sanitize`: **15/15 passed** with ASan/UBSan on arm64 (`detect_leaks=0`, as the existing target specifies). No sanitizer error.
+- Universal macOS driver build passed; strict `clang -fsyntax-only -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter` passed for generated driver, both test sources and portable emulator. Shared static harness helpers account for unused-function suppression.
+- Regenerated `.c`, `.h`, `_main.c` are byte-identical to the verified generated output. Generator unchanged; driver 17 -> 18. No property names added or removed.
+- Xcode project passes `plutil -lint`; `make -n OS_DETECTED=Linux test-mount-rainbow-mountsim` contains only the explicit unsupported-platform message/exit. No MountSim dependency was added to portable defaults. Linux/Windows execution remains untested.
+- Capture evidence is saved outside the cleaned test build. The initial command trace is preserved; intentional differences are corrected Cu setter, signed western longitude, SYNC padding, stop-before-close for active owned work, acknowledgement framing, and property completion/error ordering described above.
+
+No guider device is exposed, so pulse timing/shared-guider ownership are not applicable. There is no programmable park position, unpark property, side-of-pier, PEC, encoder, custom tracking or Alt/Az command support in this driver. Modern firmware and malformed/injected replies are tested by the portable emulator; the MountSim relay never fabricates replies. Physical serial electrical behavior, mechanical accuracy, actual library unload/reload and other firmware versions are not established by this run.
+
+MountSim's independent `python3 tests/test_control.py --app build/Build/Products/Debug/MountSim.app` also passed: new RST135 wire regressions, Temma motion/protocol checks, every model constructor, 10 repeated sessions, 20 model framing/identity audits and 20 interrupted parser/model-replacement cycles. This broader run covers the shared longitude/LST correction's integration. Final fetch found both upstreams unchanged, so no conflict resolution was needed.
+
+### Final test summary for this acceptance run
+
+MountSim simulated acceptance: **13 run / 13 passed**. Portable simulated integration: **15 run / 15 passed**, repeated **15 / 15** under ASan/UBSan. Unique simulated scenarios: **28 / 28**. Physical hardware: **0 run / 0 passed**.

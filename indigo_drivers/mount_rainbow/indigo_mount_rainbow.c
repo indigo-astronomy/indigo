@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000011
+#define DRIVER_VERSION       0x03000012
 #define DRIVER_NAME          "indigo_mount_rainbow"
 #define DRIVER_LABEL         "RainbowAstro Mount"
 #define MOUNT_DEVICE_NAME    "RainbowAstro Mount"
@@ -82,6 +82,14 @@ static bool rainbow_response(indigo_device *device, char *response, int length) 
 		return false;
 	}
 	response[result] = 0;
+	// Sr/Sd acknowledge with an unterminated '1'; it may prefix an asynchronous frame.
+	char *frame = response;
+	while (*frame == '1') {
+		frame++;
+	}
+	if (frame != response && *frame == ':') {
+		memmove(response, frame, strlen(frame) + 1);
+	}
 	return true;
 }
 
@@ -90,7 +98,7 @@ static bool rainbow_sync_command(indigo_device *device, const char *command, ind
 	if (rainbow_write(device, command)) {
 		for (int i = 0; i < 100; i++) {
 			indigo_usleep(10000);
-			if (property->state == INDIGO_OK_STATE) {
+			if (property->state == INDIGO_OK_STATE || (property == MOUNT_EQUATORIAL_COORDINATES_PROPERTY && property->state == INDIGO_BUSY_STATE)) {
 				if (IS_CONNECTED) {
 					indigo_update_property(device, property, NULL);
 				}
@@ -153,26 +161,46 @@ static void rainbow_reader(indigo_device *device) {
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 		} else if (!strcmp(response, ":CL0#") && !PRIVATE_DATA->goto_active) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_coordinates(device, NULL);
+			if (IS_CONNECTED) {
+				indigo_update_coordinates(device, NULL);
+			}
 		} else if (!strcmp(response, ":MM0#")) {
 			PRIVATE_DATA->goto_active = false;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_coordinates(device, NULL);
+			if (IS_CONNECTED) {
+				indigo_update_coordinates(device, NULL);
+			}
+		} else if (PRIVATE_DATA->goto_active && (!strcmp(response, ":MML#") || !strcmp(response, ":MMU#") || !strcmp(response, ":MME#"))) {
+			PRIVATE_DATA->goto_active = false;
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			if (IS_CONNECTED) {
+				indigo_update_coordinates(device, "Slew rejected or interrupted");
+			}
 		} else if (!strcmp(response, ":CL1#")) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_coordinates(device, NULL);
+			if (IS_CONNECTED) {
+				indigo_update_coordinates(device, NULL);
+			}
 		} else if (!strcmp(response, ":CHO#")) {
 			MOUNT_PARK_PARKED_ITEM->sw.value = true;
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+			if (IS_CONNECTED) {
+				indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+			}
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_coordinates(device, NULL);
+			if (IS_CONNECTED) {
+				indigo_update_coordinates(device, NULL);
+			}
 		} else if (!strncmp(response, ":CH", 3)) {
 			MOUNT_PARK_PARKED_ITEM->sw.value = false;
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+			if (IS_CONNECTED) {
+				indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+			}
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_coordinates(device, NULL);
+			if (IS_CONNECTED) {
+				indigo_update_coordinates(device, NULL);
+			}
 		} else if (!strncmp(response, ":GC", 3)) {
 			char separator;
 			sscanf(response + 3, "%d%c%d%c%d", &PRIVATE_DATA->utc.tm_mon, &separator, &PRIVATE_DATA->utc.tm_mday, &separator, &PRIVATE_DATA->utc.tm_year);
@@ -195,7 +223,9 @@ static void rainbow_reader(indigo_device *device) {
 			time_t seconds = mktime(&PRIVATE_DATA->utc);
 			indigo_timetoisogm(seconds, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+			if (IS_CONNECTED) {
+				indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+			}
 		} else if (!strncmp(response, ":Gt", 3)) {
 			MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response + 3);
 		} else if (!strncmp(response, ":Gg", 3)) {
@@ -316,6 +346,9 @@ static void mount_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_pending_handlers(device);
 		//+ mount.on_disconnect
+		if (PRIVATE_DATA->goto_active || MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+			rainbow_write(device, ":Q#");
+		}
 		PRIVATE_DATA->goto_active = false;
 		PRIVATE_DATA->reader_running = false;
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->reader);
@@ -354,7 +387,10 @@ static void mount_geographic_coordinates_handler(indigo_device *device) {
 	if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0) {
 		MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
 	}
-	double longitude_value = (360 - MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - 360;
+	double longitude_value = -MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+	if (longitude_value < -180) {
+		longitude_value += 360;
+	}
 	snprintf(command, sizeof(command), ":St%s#:Sg%s#", indigo_dtos_r(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, "%+03d*%02d'%02d", latitude, sizeof(latitude)), indigo_dtos_r(longitude_value, "%+04d*%02d'%02d", longitude, sizeof(longitude)));
 	if (!rainbow_write(device, command)) {
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -375,7 +411,7 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-		snprintf(command, sizeof(command), ":Ck%07.3f%+7.3f#", ra * 15, dec);
+		snprintf(command, sizeof(command), ":Ck%07.3f%+07.3f#", ra * 15, dec);
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = rainbow_write(device, command) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_coordinates(device, NULL);
 	} else {
@@ -383,11 +419,12 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		bool ok = rainbow_write(device, rate_command);
 		snprintf(command, sizeof(command), ":CtA#:Sr%s#:Sd%s#:MS#", indigo_dtos_r(ra, "%02d:%02d:%04.1f", ra_string, sizeof(ra_string)), indigo_dtos_r(dec, "%+03d*%02d:%04.1f", dec_string, sizeof(dec_string)));
 		PRIVATE_DATA->goto_active = true;
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		ok = rainbow_write(device, command) && ok;
 		if (!ok) {
 			PRIVATE_DATA->goto_active = false;
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = ok ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE;
 		indigo_update_coordinates(device, NULL);
 		if (ok) {
 			PRIVATE_DATA->goto_deadline = indigo_monotonic_time() + 600;
@@ -403,6 +440,11 @@ static void mount_abort_motion_handler(indigo_device *device) {
 	indigo_cancel_pending_handler(device, mount_goto_finalizer);
 	indigo_cancel_pending_handler(device, mount_park_finalizer);
 	bool ok = rainbow_write(device, ":Q#");
+	if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+		MOUNT_PARK_PARKED_ITEM->sw.value = false;
+		MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Park aborted");
+	}
 	PRIVATE_DATA->goto_active = false;
 	MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
 	MOUNT_MOTION_WEST_ITEM->sw.value = MOUNT_MOTION_EAST_ITEM->sw.value = false;
@@ -523,7 +565,7 @@ static void mount_guide_rate_handler(indigo_device *device) {
 	MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_GUIDE_RATE.on_change
 	char command[32];
-	snprintf(command, sizeof(command), ":CU0=%3.1f#", MOUNT_GUIDE_RATE_RA_ITEM->number.value / 100.0);
+	snprintf(command, sizeof(command), ":Cu0=%3.1f#", MOUNT_GUIDE_RATE_RA_ITEM->number.value / 100.0);
 	if (!rainbow_write(device, command)) {
 		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
