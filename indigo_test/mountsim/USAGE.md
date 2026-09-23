@@ -43,3 +43,26 @@ Malformed replies, injected protocol failures and fake-device edge cases remain 
 Use model `RST135`, trace terminator `23` (`#`) and result type `MountSim 2.3 (RainbowAstro RST135)`. Its firmware identity is 190402, so the driver exercises the legacy global-stop and read-only clock branch. Avalon StarGO is a different model/protocol.
 
 The 13 cases cover inventory/lifecycle, SYNC including fractional signed coordinates, reachable and rejected GOTO, already-at-target completion, BUSY conflicts, abort/recovery, all manual directions/rates plus measured movement and stop, tracking/rate readback, guide-rate and location reconnect roundtrips, park position/tracking and abort/disconnect, and real idle/active PTY loss. There is no guider interface in this driver; guide-rate configuration is distinct from pulse guiding. Modern firmware, malformed responses and injected protocol errors remain in the 15-case portable Rainbow suite.
+
+## iOptron model matrix
+
+Build the production `mount_ioptron` driver and the sibling MountSim checkout, then run:
+
+```sh
+make -C indigo_test test-mount-ioptron-mountsim
+```
+
+The target runs CEM25, CEM40, GEM45, CEM60, SmartEQPro, SmartEQ, ZEQ25, CEM70
+and CEM120 sequentially. Override `MOUNTSIM_IOPTRON_MODELS` for a focused rerun.
+Each model has eight named cases covering identity/reconnect, SYNC/GOTO/abort,
+manual axes/rates, tracking/location/time, park/home/options, idle and active
+relay loss, and guider timing/shared lifecycle. Unsupported capabilities are
+skipped inside their case; these counts are not portable integration counts.
+CEM60 advertises firmware 190716 and exercises the driver's protocol-3 branch;
+the portable suite separately covers firmware 161101/protocol 2.5.
+
+The shared launcher's trace timestamps use system `CLOCK_MONOTONIC` so that
+Python 3.9 on macOS and C callbacks share an epoch. Watchdog deadlines can use
+process-relative `time.monotonic()`. For duration-based guide commands, the
+reported latency runs from relay forwarding to public-property completion;
+there is no fabricated OFF edge. Keep this separate from physical pulse timing.

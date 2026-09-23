@@ -410,3 +410,213 @@ in the same direction (1259 ms measured) and by a 300 ms pulse in the opposite d
 Because the request is now accepted while the property is BUSY, two requests arriving inside the
 queue latency can queue two handlers that both act on the already-overwritten item values, so the
 same command can reach the mount twice. The resulting pulse is still the second request's.
+
+## MountSim 2.3 acceptance (2026-09-23)
+
+Scope: all nine supported iOptron identifiers, sequential isolated applications through
+`indigo_test/mountsim/run_mountsim.py` and `mountsim_test_common.h`.
+Hardware decision: no physical hardware testing; macOS arm64 software transport only.
+Baseline driver 3.0.0.53; MountSim and INDIGO pulls up to date. MountSim Debug
+xcodebuild and production driver Makefile.drv builds passed. Portable 104-case
+serial baseline log in `/tmp/ioptron-baseline.log` (initial
+invocation from the wrong cwd was cancelled and restarted from indigo_test).
+Architecture/property/lifecycle audit remains the inventory above; no migration,
+queue redesign or public property addition is planned. New coverage is an opt-in
+Darwin target, excluded from portable test dependencies. The existing portable
+simulator covers malformed replies and fault injection; MountSim covers an
+independent real protocol implementation and relay transport loss.
+
+Atomic plan:
+1. DONE: establish full portable baseline and preserve original driver
+   wire logs for every model; implement named MountSim acceptance cases.
+2. DONE: reproduce each discrepancy; cross-check manufacturer and independent
+   INDI sources; fix only its responsible component with regression coverage.
+3. DONE: run all requested models after repairs, portable and sanitizer
+   regression suites, native MountSim checks, generation reproducibility.
+4. DONE: register files, record per-model results, regenerate TEST_SUMMARY,
+   preserve evidence, clean tests and commit without pushing.
+
+Found defects (initial reproductions):
+- MSIO1: all 2.5 profiles time out on `:CM#`; MountSim has no SYNC handler.
+  Manufacturer 2.5 p8 and INDI ieqprolegacydriver.cpp sync both require `1`
+  and coordinate calibration. Reproducer: ioptron_sync_goto_abort.
+- MSIO2: CEM60 firmware 190716 was constructed as the 2.5 emulator, inconsistent
+  with the existing driver's explicit 171001+ 3.0 branch. Initial attribution
+  to the driver was withdrawn after user correction and independent INDI CEM120
+  documentation corroboration. Preserve both driver firmware branches and use
+  the 3.0 emulator for MountSim's advertised 190716 profile. Add portable coverage
+  for 190716/3.0 alongside existing 161101/2.5. Manufacturer 2.5 and 3.01 PDF
+  support lists disagree with broader firmware support described by INDI; no
+  driver detection table is changed based on that incomplete PDF evidence.
+- MSIO3: SmartEQ/ZEQ25 initialization fails: absent AT/QT/pS replies; legacy RA
+  getter uses degrees as hours and negative sub-degree DEC loses sign. Add the
+  documented queries and correct angular encodings, verified with 1.4 protocol
+  and independent INDI implementations.
+- MSIO4: 3.x lacks SLA/SLO, GTR, park-position and option handlers; custom rate
+  selection is reported as sidereal. Extend actual state/readback, not relay replies.
+
+
+Public sources:
+- https://www.ioptron.com/v/ASCOM/RS-232_Command_Language2014_V2.5.pdf
+- https://www.ioptron.us/ASCOM/RS-232_Command_language2013.pdf
+- https://www.ioptron.com/v/ASCOM/RS-232_Command_Language2014V301.pdf
+- https://github.com/indilib/indi/blob/master/drivers/telescope/ieqprolegacydriver.cpp
+- https://github.com/indilib/indi/blob/master/drivers/telescope/ioptronv3driver.cpp
+
+
+Additional public evidence: https://drivers.indilib.org/mounts/ioptron/cem120/cem120/
+
+Progress: original portable baseline 104/104 passed. Expanded MountSim discovery
+matrix initially 12/27 passed (3 cases × 9 models). The CEM60 190716/3.0 and
+161101/2.5 portable detection cases both pass against unchanged driver 3.0.0.53.
+Native motor/geometry/serial regressions pass. Model-local fixes additionally
+cover SYNC encoder rebasing, home completion, configured park movement and
+unparked power-up. Manual movement revealed shaft polarity being used as sky
+polarity: north reversed on west pier and east reversed RA. Correct the iOptron
+protocol-to-motor direction mapping; do not alter shared mechanics or other models.
+Clock setters previously acknowledged but did not persist (legacy formats were
+also parsed as packed numeric formats); iOptron now owns its advancing protocol
+clock, independently of the host/rendering clock, with GLT/GUT regression readback.
+
+Harness correction: Python 3.9 macOS `time.monotonic()` is process-relative,
+whereas the C completion callback uses system CLOCK_MONOTONIC. Use explicit
+CLOCK_MONOTONIC for relay trace timestamps. Source and local reproduction:
+https://docs.python.org/3/library/time.html#time.monotonic (macOS behavior changed
+in 3.10). Duration-based iOptron pulses have no OFF command; measure the documented
+duration command's relay-forward timestamp to the public completion callback,
+not invented ON/OFF edges or physical motor output. 72 retained samples/model:
+N/S/E/W, 20/100/500 ms, 3 repetitions, discarded per-direction warmup, idle and
+tracking/polling workloads. Functional checks remain independent of latency stats.
+
+MSIO5: the expanded CEM40 manual-motion case exposed accelerated movement with
+tracking disabled. `Motor.setMotorTracking` rebased its stopped accumulator to
+steps that already included the entire current slew offset on every timer tick;
+adding that offset again made motion depend on tick count. The native regression
+in MountSim `tests/test_motor_geometry.m` asserts one application of the measured
+slew offset after 20 real timer ticks and failed before the fix. Use `stop:` here,
+keeping explicit GOTO/home rebases unchanged. This shared motor fix requires the
+full native/control suite and a fresh nine-model acceptance matrix. Earlier matrix
+was stopped after CEM40/GEM45 manual-motion failures; it is not final acceptance.
+Direction/rate semantics are supported by the manufacturer manual movement and
+slew-rate tables and INDI's `startMotion`/slew-rate implementations cited above;
+the arithmetic reproducer isolates the simulator defect without changing driver
+or protocol expectations.
+
+### Acceptance scenario mapping and limits
+
+| MountSim case | Evidence |
+| --- | --- |
+| `ioptron_identity_reconnect` | Mount interface, model/firmware, healthy coordinate/rate properties, disconnect and fresh connection |
+| `ioptron_sync_goto_abort` | J2000 public coordinates transformed by the real driver, signed sub-degree SYNC, reachable GOTO with actual RA/DEC arrival, abort and fresh SYNC |
+| `ioptron_manual_motion` | Four slew rates and directions, each start observed on the real wire, coordinate direction at maximum rate, simultaneous axes, independent axis stop and global abort |
+| `ioptron_tracking_site_rates` | Tracking modes/on/off, site and UTC writes, site/guide-rate readback after reconnect |
+| `ioptron_park_home_options` | Capability-gated park/unpark, saved park-position arrival, parked tracking rejection, actual home arrival, custom rate, meridian and PEC switches |
+| `ioptron_idle_transport_loss` | Healthy idle poll, relay disconnection, coordinate ALERT/disconnection and recovery through a newly allocated PTY |
+| `ioptron_active_transport_loss` | Relay loss during GOTO and a fresh command after reconnect |
+| `ioptron_guider_timing_and_shared_lifecycle` | Four directions, completion timing, replacement/overlapping axes, guider alone, both logical devices, sibling survival and pending-pulse reconnect |
+
+Malformed/short replies, fault injection, detection branches, operation failure and
+queue races remain covered by the portable simulator suite inventoried above.
+MountSim deliberately does not fabricate those replies through its relay. The
+transport-loss expectation is a failed coordinate poll followed by explicit client
+disconnect/reconnect, not an invented automatic reconnect policy. The relay failure
+is neither a physical serial unplug nor an application crash.
+
+MountSim limitations: GEM45 aliases CEM40 identity; CEM70 uses the common 3.x
+simulation rather than all firmware-3.1 extensions. Meridian settings are stored,
+PEC switching is modelled but PEC training acknowledges without a training cycle;
+these are not claimed as mechanical meridian or physical PEC validation. Protocol
+clock readback is tested independently of the host/rendering astronomy clock.
+No encoders, mechanical home sensor, pointing accuracy, actual library unload,
+physical guider output, Linux, Windows or x86_64 runtime are established by this
+macOS arm64 run. The strict MountSim test binary is built for both macOS
+architectures; execution here is arm64. Driver production sources and version
+3.0.0.53 are unchanged, so regeneration and a driver version bump are not applicable.
+
+Shared-context guider tests enumerate one logical device at a time; diagnostics
+about the sibling CONNECTION not being in that cache are harness bookkeeping,
+not evidence of a missing driver's property definition. Deliberate transport-loss
+cases log expected PTY write errors. Baseline build also retains the existing
+macOS `sprintf` deprecation in the generated driver; no unrelated rewrite was made.
+
+Registry reconciliation: the pre-existing 3.0.0.53 source already contains 104
+serial cases (three guider replacement cases were added after the older 101-case
+summary). The preserved baseline log confirms 104 PASS lines. The new CEM60 case
+makes 105 serial cases, plus 3 opt-in TCP cases = 108 unique portable cases.
+Final status counts use the actual registry, not the stale 104 total in the prior
+README/MIGRATION row. The ordinary final serial run completed 105/105.
+
+Source baseline: INDIGO `d51dc6c08de2b3e06a9d8687c56483330bf71d78`,
+MountSim `9617149934d3ef3815e0b27dd93be49df78778ce`. The original MountSim
+12/27 matrix log includes full driver wire-debug exchanges. The initially named
+portable baseline trace directory was not created and is not claimed as retained
+evidence. A separate `INDIGO_SIMULATOR_TRACE_DIR=/tmp/ioptron-reference-traces`
+run of `test_mount_ioptron_simulator ioptron_detect_cem60` captures both firmware
+branches against the unchanged production driver. No driver command-sequence
+change is being accepted here; changed MountSim replies/state are intentional
+protocol corrections described above.
+
+### CEM120 late-reply observation
+
+The first final nine-model matrix completed 71/72. During CEM120 manual movement,
+`:qD#` was forwarded at CLOCK_MONOTONIC 262903.943868; the valid `1` arrived at
+262909.535431, 5.592 s later, along with queued GEP/GLS replies. Earlier commands
+in that same case also took 0.7–0.8 s. The driver's one-second deadline expired
+correctly; it must not silently turn this failed stop into OK. No malformed stop
+command or wrong reply was observed. The unchanged-code isolated manual recheck
+passed, and the subsequent full CEM120 rerun passed 8/8. The failed attempt remains
+recorded rather than being erased by the rerun.
+
+Manufacturer 3.01 specifies the stop acknowledgement, and the independent INDI
+V3 implementation also expects that reply (sources above). Apple's App Nap guide
+https://developer.apple.com/library/archive/documentation/Performance/Conceptual/power_efficiency_guidelines_osx/AppNap.html
+and process activity documentation
+https://developer.apple.com/documentation/foundation/processinfo/activityoptions
+explain host timer/I/O throttling as one possible source of delay. The trace alone
+does not establish App Nap or distinguish host scheduling from a MountSim main-loop
+stall. No timing threshold was relaxed and no speculative production fix was
+applied for this single non-reproduced delay. Residual limitation: occasional
+multi-second application/host latency remains unlocalized; do not claim it fixed.
+
+### Final verification and retained evidence
+
+- MountSim Debug `xcodebuild -project MountSim.xcodeproj -scheme MountSim -configuration Debug -derivedDataPath build CODE_SIGNING_ALLOWED=NO build`: passed.
+- `python3 tests/run_native.py --derived-data build`: all native checks passed, including the stopped-tracking slew regression.
+- `python3 tests/test_control.py --app build/Build/Products/Debug/MountSim.app`: passed all protocol audits and 20 interrupted parser/model replacement cycles.
+- Production driver `make -C indigo_drivers/mount_ioptron -f ../../Makefile.drv all`: passed; production driver sources unchanged.
+- `make -C indigo_test test-mount-ioptron-mountsim`: first full run 71/72; isolated CEM120 manual recheck 1/1, then `MOUNTSIM_IOPTRON_MODELS=CEM120` full rerun 8/8. Latest per-model results are all 8/8, with `-Wall -Wextra -Werror` test builds (existing common-header unused/sign warnings suppressed).
+- From `indigo_test`: `build/integration/test_mount_ioptron_simulator`: 105/105; `ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 build/integration/test_mount_ioptron_simulator_sanitize`: 105/105; `make test-mount-ioptron-tcp`: 3/3 ordinary and 3/3 sanitized. The sanitizer build instruments the driver and test, not the prebuilt framework library.
+- Both CEM60 reference-capture cases passed. Baseline, intermediate failure/reproducer and final logs plus final per-model session metadata, raw traffic and command traces are preserved in `/tmp/ioptron-acceptance-20260923` before test cleanup. This is local temporary evidence, not a checked-in or permanent artifact store.
+
+Guider signed completion error statistics below are milliseconds, except the last
+two percentage columns. Each row retains 72 samples (648 total), with the endpoints,
+20/100/500 ms requests, warmups and idle/tracking workloads defined above. Full
+requested/actual values are in each archived `test.log`. Other software regression
+processes ran concurrently; these statistics include host scheduling load. They
+are observations of software completion latency, not physical pulse accuracy.
+
+| Model | min / mean / median / p95 / p99 / max (ms) | Stddev (ms) | Max absolute (ms) | Mean signed % | Max absolute % |
+| --- | --- | --- | --- | --- | --- |
+| CEM25 | 50.636 / 66.735 / 60.239 / 152.791 / 198.343 / 198.343 | 26.531 | 198.343 | 142.213 | 991.715 |
+| CEM40 | 50.450 / 62.955 / 56.407 / 114.069 / 185.601 / 185.601 | 25.034 | 185.601 | 144.281 | 928.005 |
+| GEM45 | 50.352 / 62.311 / 56.159 / 69.881 / 254.239 / 254.239 | 29.247 | 254.239 | 139.531 | 1271.195 |
+| CEM60 | 50.562 / 65.973 / 58.711 / 153.044 / 165.645 / 165.645 | 26.584 | 165.645 | 142.567 | 828.225 |
+| SmartEQPro | 50.412 / 61.973 / 57.822 / 79.159 / 183.589 / 183.589 | 22.223 | 183.589 | 140.560 | 917.945 |
+| SmartEQ | 50.356 / 81.224 / 58.608 / 347.977 / 380.744 / 380.744 | 76.927 | 380.744 | 189.120 | 1847.720 |
+| ZEQ25 | 50.363 / 104.809 / 57.467 / 543.377 / 587.189 / 587.189 | 144.722 | 587.189 | 274.812 | 2935.945 |
+| CEM70 | 50.494 / 61.774 / 57.500 / 102.040 / 178.546 / 178.546 | 22.026 | 178.546 | 139.751 | 892.730 |
+| CEM120 | 50.182 / 62.891 / 56.303 / 110.847 / 211.115 / 211.115 | 28.502 | 211.115 | 143.625 | 1055.575 |
+
+Repository completion: `make -C indigo_test test-clean` passed after preserving
+captures. Rebased onto remote `84bb0910c` (including the other machine's LX200
+and SynScan work); resolved the adjacent MIGRATION_STATUS rows and relocated
+Xcode groups while preserving both sides' changes. Regenerated TEST_SUMMARY and
+validated the merged Xcode project with `plutil -lint`. MountSim fixes are commits
+`5b7336c` and `581c057`. No push was performed.
+
+Final portable simulated acceptance: 108 run / 108 passed ordinary, 108 run / 108
+passed with ASan/UBSan; 108 unique cases (105 serial + 3 TCP).
+Final MountSim verification attempts: 81 run / 80 passed (first matrix 71/72,
+isolated manual rerun 1/1, CEM120 full rerun 8/8). Latest per-model acceptance:
+72 / 72 unique cases passed (8 per model, 9 models), counted
+separately from portable integration. Physical hardware: 0 run / 0 passed.

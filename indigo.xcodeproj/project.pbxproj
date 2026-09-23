@@ -5673,6 +5673,7 @@
 		C0DE20260923132000000003 /* test_mount_temma_mountsim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_temma_mountsim.c; sourceTree = "<group>"; };
 		C0DE20260923132000000005 /* USAGE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = USAGE.md; sourceTree = "<group>"; };
 		C0DE20260923150000000001 /* test_mount_rainbow_mountsim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_rainbow_mountsim.c; sourceTree = "<group>"; };
+		C0DE20260923170000000001 /* test_mount_ioptron_mountsim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_ioptron_mountsim.c; sourceTree = "<group>"; };
 		C0DE20270913000400000001 /* indigo_focuser_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_lunatico.driver; sourceTree = "<group>"; };
 		C0DE20270913000400000002 /* indigo_rotator_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_lunatico.driver; sourceTree = "<group>"; };
 		C0DE20270913000400000003 /* lunatico_shared.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lunatico_shared.h; sourceTree = "<group>"; };
@@ -16475,6 +16476,7 @@
 				C0DE20260923132000000002 /* mountsim_test_common.h */,
 				C0DE20260923132000000003 /* test_mount_temma_mountsim.c */,
 				C0DE20260923150000000001 /* test_mount_rainbow_mountsim.c */,
+				C0DE20260923170000000001 /* test_mount_ioptron_mountsim.c */,
 			);
 			path = mountsim;
 			sourceTree = "<group>";

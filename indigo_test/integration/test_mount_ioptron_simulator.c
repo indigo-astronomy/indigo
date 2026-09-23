@@ -671,7 +671,8 @@ static const detection_row detection_rows[] = {
 	{ "0205", "0099", "161101", "N/A", "GLS", true, false, 2, 90, true, 2, 2, false, false, false },
 	{ "0300", "0099", "201231", "N/A", "GEP", true, false, 2, 90, true, 2, 2, true, true, true },
 	{ "0200", "0099", "201231", NULL, NULL, false, false, 0, 0, false, 0, 0, false, false, false },
-	{ "0300", "0120", "210605", "N/A", "GEP", true, true, 2, 90, true, 2, 2, true, true, true }
+	{ "0300", "0120", "210605", "N/A", "GEP", true, true, 2, 90, true, 2, 2, true, true, true },
+	{ "0300", "0060", "190716", "CEM60", "GEP", true, false, 2, 90, true, 2, 3, true, true, true }
 };
 
 static void check_detection(int index) {
@@ -714,6 +715,8 @@ static void check_detection(int index) {
 cleanup:
 	io_close(&fixture);
 }
+
+static void ioptron_detect_cem60_fw190716_uses_3(void) { check_detection(12); }
 
 static void ioptron_detect_cem60_fw161101_uses_25(void) { check_detection(0); }
 static void ioptron_detect_cem40_fw210101_uses_3(void) { check_detection(1); }
@@ -1995,6 +1998,7 @@ int main(int argc, char **argv) {
 		{ "ioptron_profile_0205", ioptron_profile_0205 },
 		{ "ioptron_profile_0300", ioptron_profile_0300 },
 		{ "ioptron_forced_protocol_selection", ioptron_forced_protocol_selection },
+		{ "ioptron_detect_cem60_fw190716_uses_3", ioptron_detect_cem60_fw190716_uses_3 },
 		{ "ioptron_detect_cem60_fw161101_uses_25", ioptron_detect_cem60_fw161101_uses_25 },
 		{ "ioptron_detect_cem40_fw210101_uses_3", ioptron_detect_cem40_fw210101_uses_3 },
 		{ "ioptron_detect_cem120ec_hides_pec", ioptron_detect_cem120ec_hides_pec },

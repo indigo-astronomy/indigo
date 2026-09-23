@@ -141,7 +141,7 @@ def run_case(args, case, directory):
                         pending = {actual: bytearray(), master: bytearray()}
                         command.clear()
                         response = os.ttyname(slave)
-                    raw.write(f'{time.monotonic():.9f} TRANSPORT {action} {response}\n')
+                    raw.write(f'{time.clock_gettime(time.CLOCK_MONOTONIC):.9f} TRANSPORT {action} {response}\n')
                     control_file.with_suffix('.reply').write_text(response + '\n')
                 readable, writable, _ = select.select([master, actual] if descriptors else [], [fd for fd, data in pending.items() if data], [], .02)
                 for source in readable:
@@ -152,7 +152,7 @@ def run_case(args, case, directory):
                     if not data:
                         raise RuntimeError('PTY closed unexpectedly')
                     destination = actual if source == master else master
-                    stamp = time.monotonic()
+                    stamp = time.clock_gettime(time.CLOCK_MONOTONIC)
                     raw.write(f'{stamp:.9f} {"TX" if source == master else "RX"} {data.hex(" ")}\n')
                     pending[destination].extend(data)
                     if len(pending[destination]) > 1048576:
@@ -165,7 +165,7 @@ def run_case(args, case, directory):
                     forwarded = bytes(pending[destination][:count])
                     del pending[destination][:count]
                     if destination == actual:
-                        stamp = time.monotonic()
+                        stamp = time.clock_gettime(time.CLOCK_MONOTONIC)
                         if args.terminator:
                             command.extend(forwarded)
                             while args.terminator in command:
