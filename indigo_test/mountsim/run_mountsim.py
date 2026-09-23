@@ -265,7 +265,8 @@ def run_cases(args, cases, parser):
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
             print(f'ERROR {case}: {error}', flush=True)
             result = 1
-        text = (directory / 'test.log').read_text(errors='replace')
+        test_log = directory / 'test.log'
+        text = test_log.read_text(errors='replace') if test_log.exists() else ''
         print(text, end='', flush=True)
         if result == 0 and f'PASS {case}' in text:
             passed += 1

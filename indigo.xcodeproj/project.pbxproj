@@ -5718,6 +5718,7 @@
 		DF10000000000000000005 /* test_uni_io.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_uni_io.c; sourceTree = "<group>"; };
 		E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_usb_outputs.c; sourceTree = "<group>"; };
 		F03E2D230D06433C8E608E74 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		F0A57A260923000000000002 /* test_mount_nexstar_mountsim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_nexstar_mountsim.c; sourceTree = "<group>"; };
 		F2CA338B73DF48C78B5B7267 /* test_aux_asiair_sysfs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_asiair_sysfs.c; sourceTree = "<group>"; };
 		F4B0667386AC4C429100A248 /* sysfs_gpio_fake.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sysfs_gpio_fake.h; sourceTree = "<group>"; };
 		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
@@ -16477,6 +16478,7 @@
 				C0DE20260923150000000001 /* test_mount_rainbow_mountsim.c */,
 				C0DE20260923170000000001 /* test_mount_ioptron_mountsim.c */,
 				F0A57A260923000000000001 /* test_mount_lx200_mountsim.c */,
+				F0A57A260923000000000002 /* test_mount_nexstar_mountsim.c */,
 			);
 			path = mountsim;
 			sourceTree = "<group>";

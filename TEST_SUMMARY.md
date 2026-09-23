@@ -153,7 +153,8 @@
 |  | 2026-09-23 19:34 | 3.0.0.64 | mac arm64 | MountSim 2.3 (StarGO) | 14 / 14 | ✅ OK |
 |  | 2026-09-23 20:26 | 3.0.0.65 | mac arm64 | MountSim 2.3 (LX200Classic) | 15 / 15 | ✅ OK |
 |  | 2026-09-23 20:38 | 3.0.0.65 | mac arm64 | simulator | 99 / 99 | ✅ OK |
-| mount_nexstar | 2026-09-20 20:44 | 3.0.0.34 | mac arm64 | simulator | 13 / 13 | ✅ OK |
+| mount_nexstar | 2026-09-23 22:40 | 3.0.0.35 | mac arm64 | simulator | 14 / 14 | ✅ OK |
+|  | 2026-09-23 22:40 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGE) | 20 / 20 | ✅ OK |
 | mount_nexstaraux | 2026-09-20 21:29 | 3.0.0.14 | mac arm64 | simulator | 30 / 30 | ✅ OK |
 | mount_pmc8 | 2026-09-20 20:49 | 3.0.0.11 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | mount_rainbow | 2026-09-23 14:04 | 3.0.0.18 | mac arm64 | MountSim 2.3 (RainbowAstro RST135) | 13 / 13 | ✅ OK |

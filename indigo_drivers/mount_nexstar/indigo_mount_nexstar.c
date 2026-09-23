@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000022
+#define DRIVER_VERSION       0x03000023
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -121,6 +121,30 @@ static void mount_park_finalizer(indigo_device *device);
 static indigo_result gps_attach(indigo_device *device);
 static indigo_result gps_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 static indigo_result gps_detach(indigo_device *device);
+
+static int nexstar_get_autoguide_rate(int dev_id, int vendor_id, char axis) {
+	if (vendor_id != VNDR_CELESTRON) {
+		return tc_get_autoguide_rate(dev_id, axis);
+	}
+	char response[2];
+	int destination = axis > 0 ? 16 : 17;
+	int result = tc_pass_through_cmd(dev_id, 1, destination, 0x47, 0, 0, 0, 1, response);
+	if (result != RC_OK || response[1] != '#') {
+		return RC_FAILED;
+	}
+	return 100 * (unsigned char)response[0] / 256;
+}
+
+static int nexstar_set_autoguide_rate(int dev_id, int vendor_id, char axis, int rate) {
+	if (vendor_id != VNDR_CELESTRON) {
+		return tc_set_autoguide_rate(dev_id, axis, rate);
+	}
+	char response;
+	int destination = axis > 0 ? 16 : 17;
+	int encoded = rate == 0 ? 0 : rate == 99 ? 255 : 256 * rate / 100 + 1;
+	int result = tc_pass_through_cmd(dev_id, 2, destination, 0x46, encoded, 0, 0, 0, &response);
+	return result == RC_OK && response == '#' ? RC_OK : RC_FAILED;
+}
 
 static void nexstar_initialize_private_data(indigo_device *device) {
 	if (!PRIVATE_DATA->initialized) {
@@ -224,14 +248,14 @@ static bool nexstar_configure_mount(indigo_device *device) {
 	if (PRIVATE_DATA->capabilities & CAN_GET_SET_GUIDE_RATE) {
 		MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
 		int offset = PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER ? 0 : 1;
-		int st4_ra_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_RA);
+		int st4_ra_rate = nexstar_get_autoguide_rate(dev_id, PRIVATE_DATA->vendor_id, TC_AXIS_RA);
 		if (st4_ra_rate < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d (%s)", dev_id, st4_ra_rate, strerror(errno));
 			MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 		} else {
 			MOUNT_GUIDE_RATE_RA_ITEM->number.value = st4_ra_rate + offset;
 			PRIVATE_DATA->st4_ra_rate = st4_ra_rate + offset;
-			int st4_dec_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_DE);
+			int st4_dec_rate = nexstar_get_autoguide_rate(dev_id, PRIVATE_DATA->vendor_id, TC_AXIS_DE);
 			if (st4_dec_rate < 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d (%s)", dev_id, st4_dec_rate, strerror(errno));
 			} else {
@@ -295,10 +319,6 @@ static bool nexstar_configure_mount(indigo_device *device) {
 	attach_gps = PRIVATE_DATA->vendor_id == VNDR_CELESTRON;
 	PRIVATE_DATA->configured = true;
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-	indigo_update_property(device, MOUNT_INFO_PROPERTY, NULL);
-	indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
-	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-	indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 	if (attach_gps) {
 		nexstar_attach_gps(device);
 	}
@@ -560,7 +580,7 @@ static bool nexstar_set_st4_guiding_rate(indigo_device *device) {
 	bool ok = true;
 	if ((int)MOUNT_GUIDE_RATE_RA_ITEM->number.value != PRIVATE_DATA->st4_ra_rate) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		int res = tc_set_autoguide_rate(dev_id, TC_AXIS_RA, (int)MOUNT_GUIDE_RATE_RA_ITEM->number.value - offset);
+		int res = nexstar_set_autoguide_rate(dev_id, PRIVATE_DATA->vendor_id, TC_AXIS_RA, (int)MOUNT_GUIDE_RATE_RA_ITEM->number.value - offset);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		if (res != RC_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_autoguide_rate(%d) = %d (%s)", dev_id, res, strerror(errno));
@@ -571,7 +591,7 @@ static bool nexstar_set_st4_guiding_rate(indigo_device *device) {
 	}
 	if ((int)MOUNT_GUIDE_RATE_DEC_ITEM->number.value != PRIVATE_DATA->st4_dec_rate) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		int res = tc_set_autoguide_rate(dev_id, TC_AXIS_DE, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.value - offset);
+		int res = nexstar_set_autoguide_rate(dev_id, PRIVATE_DATA->vendor_id, TC_AXIS_DE, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.value - offset);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		if (res != RC_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_autoguide_rate(%d) = %d (%s)", dev_id, res, strerror(errno));
@@ -581,7 +601,7 @@ static bool nexstar_set_st4_guiding_rate(indigo_device *device) {
 		}
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	int st4_ra_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_RA);
+	int st4_ra_rate = nexstar_get_autoguide_rate(dev_id, PRIVATE_DATA->vendor_id, TC_AXIS_RA);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (st4_ra_rate < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d (%s)", dev_id, st4_ra_rate, strerror(errno));
@@ -590,7 +610,7 @@ static bool nexstar_set_st4_guiding_rate(indigo_device *device) {
 		MOUNT_GUIDE_RATE_RA_ITEM->number.value = st4_ra_rate + offset;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	int st4_dec_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_DE);
+	int st4_dec_rate = nexstar_get_autoguide_rate(dev_id, PRIVATE_DATA->vendor_id, TC_AXIS_DE);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (st4_dec_rate < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d (%s)", dev_id, st4_dec_rate, strerror(errno));
@@ -754,8 +774,17 @@ static void mount_park_finalizer(indigo_device *device) {
 		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	bool in_progress = tc_goto_in_progress(PRIVATE_DATA->dev_id);
+	int in_progress = tc_goto_in_progress(PRIVATE_DATA->dev_id);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	if (in_progress < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_in_progress(%d) = %d (%s)", PRIVATE_DATA->dev_id, in_progress, strerror(errno));
+		PRIVATE_DATA->parked = false;
+		PRIVATE_DATA->park_in_progress = false;
+		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+		MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+		return;
+	}
 	if (in_progress) {
 		MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_execute_handler_in(device, REFRESH_SECONDS, mount_park_finalizer);
@@ -1044,7 +1073,7 @@ static void mount_park_handler(indigo_device *device) {
 	if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 		PRIVATE_DATA->parked = true;
 		PRIVATE_DATA->park_in_progress = true;
-		double dec = fabs(MOUNT_PARK_POSITION_DEC_ITEM->number.value);
+		double dec = MOUNT_PARK_POSITION_DEC_ITEM->number.value;
 		double ha = (MOUNT_PARK_POSITION_HA_ITEM->number.value + 12) * 15;
 		if (ha < 0) {
 			ha += 360.0;
@@ -1117,6 +1146,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		nexstar_initialize_private_data(device);
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		MOUNT_PARK_POSITION_PROPERTY->hidden = false;
+		MOUNT_PARK_SET_PROPERTY->hidden = false;
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;

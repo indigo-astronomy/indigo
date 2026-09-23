@@ -110,3 +110,119 @@ Because the request is now accepted while the property is BUSY, two requests arr
 queue latency can queue two handlers that both act on the already-overwritten item values, so the
 same command can reach the mount twice. The resulting pulse is still the second request's, with a
 single finaliser; only the redundant command is observable.
+
+## CGE MountSim acceptance (2026-09-23)
+
+The unchanged 13-case portable NexStar suite passed before this campaign. The first
+MountSim 2.3 CGE draft run passed 1 of 18 cases; raw traffic and individual case
+logs are retained under `/tmp/cge-baseline`. That draft is not acceptance evidence:
+its C clock used INDIGO's macOS `clock_gettime` wrapper (wall time) while the relay
+used system monotonic time, and several cases accepted a BUSY coordinate target
+before the mount reached it. The guide timestamp fix was verified with the
+guider-first shared-lifetime case. MountSim's initially reported DEC is -90, so
+long first slews need a real device-readback completion oracle and bounded time.
+
+The CGE source/protocol audit found independently scoped issues. MountSim had
+no Celestron GPS linked reply (`P ... B0 37`) or autoguide-rate `0x46`/`0x47`
+replies. The driver also did not send autoguide-rate commands on Celestron:
+vendored `libnexstar` guards its helpers with `VER_AUX = 0xFFFFFF`, which
+excludes reported firmware 4.29 before I/O. The driver now uses a local
+Celestron pass-through helper with byte conversion and reply termination
+checks, retaining the SkyWatcher path and leaving vendored code unchanged.
+MountSim now replies to these documented commands. Its single-axis zero-rate
+command previously stopped both axes; it now stops only the addressed axis,
+regardless of the last slew direction. Simultaneous-axis manual motion and
+guider sibling survival passed against actual coordinate and raw edge oracles.
+
+MountSim's inherited SYNC changed only a GUI pointing offset, leaving later
+`E`/`e` coordinate reads and GOTO targets on the old motor solution. Its
+NexStar implementation now maintains a sky-solution offset for reads and
+inverse GOTO conversion; the CGE case verifies SYNC with later fresh reads and
+physical GOTO arrival. Its inherited H/h controller clock ignored writes and
+queried host time; the NexStar hand-controller clock implementation now advances the written time,
+offset and DST through reconnect. Its inherited M abort stopped manual axes
+but left GOTO active; the NexStar override cancels both. These fixes are
+model-local to MountSim's NexStar class.
+
+The driver also published four capability updates before their properties were
+defined. Those premature updates were removed; the generated connection
+handler defines the configured properties. Its existing `MOUNT_PARK_SET.CURRENT`
+control is now visible. At the user's explicit direction, park command encoding
+passes the signed park DEC to `tc_goto_azalt_p`: the library accepts -90..+90
+and encodes negative angular values distinctly. The 14-case portable suite
+checks negative and positive wire targets and CURRENT's signed value. This
+proves sign preservation, not CGE physical park geometry.
+
+CGE `B`/`b` and `Z`/`z` are motor-axis operations. MountSim now uses the timed
+motor target path for `B`/`b`, reports motor-axis rather than geographic horizon
+positions in `Z`/`z`, and preserves the mechanical target at GOTO completion.
+The simulator's RA and DEC home steps map to the documented 90°/90° switch index;
+the test checks a partial timed move and final `B`/`b` to `Z`/`z` arrival rather
+than treating the command ACK as movement. The motor targets are reduced modulo
+the actual steps per revolution before staging. A newly introduced conversion
+rounded a southern park target to a whole revolution, which interacted with the
+pre-existing `Steps.setRange` wrap inconsistency and made the simulator display
+a four-digit mechanical declination. The modulo fix and native boundary checks
+for both axes now keep the underlying mechanical declination bounded during
+motion, including the southern signed-default park case. This runaway was
+triggered by the new converter during this campaign, not measured in the
+untouched baseline.
+
+Public documentation does not establish a complete pier-side or hemisphere
+transform between celestial HA/DEC and a physical counterweight pose. The
+driver's historical `(HA + 12) * 15` maps its default HA 6 to RA axis 270°,
+while Celestron documents an RA switch index of 90°; this difference could
+reflect frame or pier conventions and remains unresolved. The signed DEC fix
+preserves intent and the tests verify physical axis arrival, but neither proves
+that every custom celestial park point is the intended hardware pose. Hardware
+verification and a manufacturer-supported full transform remain gaps.
+
+The final complete CGE run used `indigo_test/mountsim/run_mountsim.py` with
+`--mount CGE`, binary forwarding and no trace terminator. Each case had an
+isolated app, PTY and preferences directory; raw traffic is retained under
+`/tmp/cge-final3-full`. A launcher failure before `test.log` creation now reports
+the underlying case error cleanly instead of a secondary missing-log traceback.
+The 20 cases cover identity and property lifecycle, both logical-device
+connection orders, real SYNC/GOTO arrival, already-at-target, BUSY/abort, all
+four manual directions and four rates, simultaneous axes, tracking/site/clock,
+ST4 guide-rate readback, GPS, guide replacement and independent axes,
+idle/active/pending-guide transport loss, pending-park loss and recovery.
+Parking cases verify actual motion before completion, abort and transport loss.
+The portable case verifies CURRENT's signed celestial capture and replay wire
+target; the MountSim case sets HA -1, DEC +35 explicitly and then verifies the
+`B`/`b` physical axis arrival. The southern default case verifies signed DEC
+-90 and a physical target arrival. Raw
+`B`/`b` versus `Z`/`z` motion is checked with no competing logical transport
+owner. The raw CGE guide-rate regression also measures DEC motor displacement
+at command rates 1 and 2; [Celestron's CGE manual](https://s3.amazonaws.com/celestron-site-support-files/support_files/CGE1100_11061.pdf) specifies 0.5× and 1×
+sidereal, and the focused run measured 0.005244° and 0.010500° over 2.5 s.
+The model now uses a CGE-specific documented rate table; other Celestron model
+tables are unchanged. No optical or physical pier-side geometry was observed.
+
+Guide pulse measurement observed raw forwarded ON/OFF `P` frames for 20, 100
+and 500 ms in all four directions, with four measured repeats and one warm-up
+per cell under tracking off and tracking on with coordinate polling. All 96
+measured pairs and 24 warm-ups completed in the final run. The per-cell raw
+software ON/OFF edge intervals and summary statistics are in the case logs.
+The maximum absolute interval error across directions and workloads was
+18.564 ms at 20 ms, 18.685 ms at 100 ms and 19.513 ms at 500 ms.
+These are software-command edges, not optical or
+electrical measurements. Timing used `clock_gettime_nsec_np(CLOCK_MONOTONIC)`
+on macOS because the existing INDIGO global `clock_gettime()` wrapper ignores
+its clock selector and returns wall time; the shared clock implementation was
+not changed here.
+
+The post-fix portable NexStar simulator suite and its AddressSanitizer and
+UndefinedBehaviorSanitizer build each passed all 14 cases, including
+malformed/short-reply and transport recovery paths. MountSim's five native
+motor/serial/sky tests passed. Its isolated control/PTY and all-model
+framing/identity suite passed on the final build. Hardware and Windows runtime
+were not exercised. The first baseline and intermediate failed runs remain in
+their separate `/tmp/cge-*` directories; only the last complete frozen run is
+used for acceptance.
+
+At the end of this campaign: **CGE MountSim 20 run, 20 passed; portable NexStar
+14 run, 14 passed; portable ASan/UBSan 14 run, 14 passed; MountSim native 5 run,
+5 passed; guide software-edge timing 96 measured and 24 warm-ups; hardware 0
+run, 0 passed**. The driver version is 3.0.0.35. The changed CGE behavior was
+not validated on physical hardware, Windows, or other NexStar models.
