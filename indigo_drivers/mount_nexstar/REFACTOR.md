@@ -226,3 +226,166 @@ At the end of this campaign: **CGE MountSim 20 run, 20 passed; portable NexStar
 5 passed; guide software-edge timing 96 measured and 24 warm-ups; hardware 0
 run, 0 passed**. The driver version is 3.0.0.35. The changed CGE behavior was
 not validated on physical hardware, Windows, or other NexStar models.
+
+## SE wedge EQ MountSim acceptance (2026-09-23)
+
+The selected MountSim profile is exact `SE` (model byte 12, NexStar 6/8 SE,
+hand-controller firmware 4.29). This run targets an SE installed on a wedge in
+EQ North and EQ South, as requested. Hardware testing is not part of this
+non-interactive simulator run: final simulated results are reported below;
+physical hardware tests run/passed: **0/0**. The Mac app is MountSim 2.3,
+built with `xcodebuild -project MountSim.xcodeproj -scheme MountSim
+-configuration Debug -derivedDataPath build CODE_SIGNING_ALLOWED=NO build`.
+The driver and existing NexStar test binary compiled before this model work;
+the CGE campaign's portable 14/14 and MountSim 20/20 results are the existing
+cross-model baseline, not SE results. The first unmodified SE tracking/site
+test passed 1/1 under `/tmp/se-baseline`; `/tmp/se-baseline/.../commands.events`
+and `serial.raw` preserve the wire sequence. The SE-specific T2/T3 reproducer
+was then added to the same test. Before the MountSim fix, source inspection
+established that inherited `SynScan.getTrackingMode` always replies 2 when
+tracking, and `setTrackingMode` interprets T3 as PEC; thus EQ South cannot be
+read back. The dedicated raw T2/t2 and T3/t3 sequence now passes 1/1 under
+`/tmp/se-tracking1`, including reconnect to the INDIGO driver. This is a
+protocol readback claim only; no southern motor kinematics claim is made.
+
+Current architecture: `indigo_mount_nexstar.driver` is the generated source
+for mount, guider and GPS logical devices; the SE is not `TRUE_EQ_MOUNT`, so
+INDIGO exposes `TRACKING_MODE` and hides the unsupported autoguide-rate
+setter. `NexStar.m` inherits the SynScan serial parser and shares a GEM-like
+`Motor` mapping. Celestron's [serial protocol](https://s3.amazonaws.com/celestron-site-support-files/support_files/1154108406_nexstarcommprot.pdf)
+defines t/T values 0 off, 1 Alt/Az, 2 EQ North and 3 EQ South, plus B/b and
+Z/z as fractions of turns about the mount axes. The [8SE product page](https://www.celestron.com/products/nexstar-8se-computerized-telescope)
+lists EQ North/South modes and the wedge requirement; the [wedge guide](https://www.celestron.com/blogs/knowledgebase/understanding-wedges-for-alt-az-telescopes)
+states the base is tilted and used with EQ alignment. In the unmodified SE
+baseline, Z/z came from geographic horizon coordinates and B/b was rejected.
+Optional simulated
+SkySync GPS and hand-controller H/h clock are exercised separately; there is
+no claim of built-in GPS or battery-backed RTC on an SE. The driver's park
+property is HA/DEC while B/b is mount-axis position; the full transform is
+not yet established. Physical single-fork clearance, wedge geometry, southern
+motor direction and hardware park pose remain unverified.
+
+Independent source-code cross-checks use the bundled libnexstar
+`externals/libnexstar/src/nexstar.c`: its `TC_TRACK_EQ` selection sends the
+southern protocol mode when site latitude is negative, and its B/b helper
+sends raw mount-axis fractions. This supports the observed driver wire
+selection; it does not establish the simulator's physical motor mapping.
+
+Atomic plan and current state:
+
+1. **Complete for non-park capabilities:** The 15-case non-park SE run covers
+   lifecycle, coordinates, EQ North/South GOTO, manual motion, guide, loss and
+   timing with explicit EQ mode. The shared locked launcher ran on a Mac
+   arm64 host with an arm64 app and universal arm64/x86_64 INDIGO binary;
+   x86_64 runtime was not exercised. Each case had a 300 s watchdog; evidence is under
+   `/tmp/se-final-nonpark` and `/tmp/se-final-nonpark.log`.
+2. **Complete for T/t and rates:** Checked the SE
+   tracking protocol against Celestron documentation and an independent
+   established implementation; retained
+   original wire/property traces before any INDIGO driver behavior change.
+   The T/t and manual-rate defects belong to MountSim; their model-specific
+   fixes passed focused and full non-park regressions.
+3. **Complete for modeled axes:** With the user's approved simulator scope,
+   SE B/b now drives timed motor-axis motion and Z/z returns those axes with
+   an explicit simulated 0°/90° home index. Raw precise/coarse roundtrip,
+   intermediate movement and L arrival passed 1/1 under `/tmp/se-axis-focused`;
+   the focused INDIGO park-to-axis arrival, abort and loss checks are part of
+   the full suite. This establishes the model's internal axis behavior, not
+   a physical wedge pose or celestial HA/DEC-to-axis transform.
+4. **Complete:** The final frozen app/harness/driver hashes are in
+   `/tmp/se-final-frozen-sha256.txt`; full SE 20/20, affected CGE 20/20,
+   portable 14/14, portable sanitizer 14/14 and native 5/5 passed. The
+   SE result is recorded in README Testing and regenerated TEST_SUMMARY.
+   The root task handles the authorized push after scoped commits.
+
+Found defects: `T3` on Celestron models was treated as SynScan PEC and `t`
+collapsed all tracking-on states to EQ North. That prevented southern-mode
+readback and AUTO discovery. The MountSim NexStar override now retains the
+requested Celestron mode and answers `t` with that value while tracking is on;
+the raw T2/t2 and T3/t3 reproducer passes. A GOTO started without a preceding
+`T` can start the motor directly; the NexStar getter now reports the model's
+default EQ North mode in that state, and the SE GOTO case checks raw `t=2`
+after arrival. The SE B/b
+absence and Z/z geographic interpretation are now also reproduced: the
+unmodified SE park case under `/tmp/se-park-baseline` forwarded a precise `b`
+target at raw timestamp 292850.881349, MountSim returned repeated `!#`
+rejections, INDIGO briefly published BUSY, and neither coordinate axis moved
+by 0.02° within 3 s. The case failed its physical-motion assertion. The
+approved axis model fixed this simulator gap. The later first full run then
+exposed the shared Motor's inappropriate geographic horizon check on the
+mechanical target; the focused park case passed after bypassing that check
+only for `mechanicalGoto`. The actual HA/DEC-to-physical-axis park mapping
+and single-fork clearance are still unverified.
+
+The EQ South exercise verifies T3/t3 wire readback, a southern-site driver
+selection and reachable GOTO coordinate motion. NexStar's T setter still
+passes a tracking boolean to the shared GEM-style Motor; the Motor does not
+switch SE wedge geometry or physical axis direction between T2 and T3.
+Therefore this suite does not verify southern physical tracking kinematics.
+
+The SE model also inherits an undocumented default manual-rate table with
+rate 2 at 10× sidereal and rate 9 at 1500×. The manufacturer's [6SE/8SE manual,
+page 19](https://celestron-site-support-files.s3.amazonaws.com/support_files/NexStar%206SE%20%26%208SE%20manual%20-%203%20languages.pdf)
+specifies rates 1–9 as 0.5×, 1×, 4×, 8×, 16×, 64× sidereal, then 1°/s,
+3°/s and 5°/s. The existing manual-motion case established command movement
+but did not measure those rates; an SE-specific raw motor displacement
+regression reproduced a failed baseline under `/tmp/se-rate-baseline`:
+rate 1 moved DEC 0.005343° in 2.5 s, while rate 2 moved 0.105271° rather than
+the approximately 0.0105° specified by the manual. This establishes the
+incorrect table as observable in the simulator. The SE-only table now uses the
+manufacturer's values; `/tmp/se-rate-fixed` passes with rate 1 at 0.005257°
+and rate 2 at 0.010493° over the same interval. Other models retain their
+existing tables. The full shared non-park
+SE run passed 14/14 under `/tmp/se-nonpark2` after the EQ setup harness fix,
+including raw T2/t2 and T3/t3, both hemispheric driver selections and guide
+software edge timing. This does not include rate or park acceptance.
+
+The prior frozen non-park binaries are identified in
+`/tmp/se-frozen-sha256.txt`, and the final app, harness and driver archive in
+`/tmp/se-final-frozen-sha256.txt`. The final full `--mount SE` run passed
+**20/20** under `/tmp/se-final-full` with the real driver, each case in an
+isolated MountSim 2.3 process and PTY. It includes raw 4/8-digit B/b→Z/z
+roundtrip with intermediate motor motion and L completion; park BUSY, real
+coordinate movement, axis arrival and tracking-off ordering; signed southern
+default target; park abort and transport-loss recovery. It also includes
+identity, two-device lifetime, EQ North/South protocol/site and reachable
+GOTO, SYNC, all manual directions, SE rates, hand-controller clock, optional
+simulated SkySync GPS, guider replacement, idle/active transport loss and
+guider timing. `nexstar_guider_transport_edge_timing` observed all 96 software
+ON/OFF wire-edge pairs after 24 warm-ups for 20, 100 and 500 ms in four
+directions under idle and tracking/polling workloads. These are forwarded
+serial-command intervals, not physical ST4 or optical measurements.
+The maximum absolute measured interval error was 22.213 ms across 24
+duration/direction/workload cells.
+
+Before the final build, the full raw-axis run passed 19/20 under
+`/tmp/se-park-full1`: `b75555554,18E38E38` was accepted but the driver's
+park transitioned BUSY→ALERT without axis motion. Source audit found that
+`Motor.gotoTarget` applied its geographic sky-horizon limit to the distinct
+`mechanicalGoto` path. A direct B/b motor-axis target on a tilted wedge has
+no sky-horizon interpretation. The final MountSim fix skips this filter only
+when `mechanicalGoto` is active; its focused park case passed 1/1 under
+`/tmp/se-park-fixed-focused`, and the complete SE suite then passed 20/20.
+
+The post-fix portable NexStar simulator suite passed **14/14** under
+`/tmp/se-final-portable.log`; its AddressSanitizer/UndefinedBehaviorSanitizer
+build passed **14/14** under `/tmp/se-final-portable-asan.log`. Both were run
+from `indigo_test`, where the simulator's relative path resolves. MountSim's
+five native motor/serial/sky regression groups passed **5/5** under
+`/tmp/se-final-native.log`. The affected CGE full MountSim regression after
+the shared T/t change passed 20/20 under `/tmp/cge-after-se`; the final
+post-mechanical-GOTO CGE regression also passed **20/20** under
+`/tmp/cge-after-se-park`. No
+physical hardware, Windows runtime or x86_64 runtime was exercised.
+
+SE history totals **91 simulated case invocations, 87 passed**, including
+the deliberately preserved baseline failures, a first harness EQ setup
+failure and the first 19/20 raw-axis full run. The formatting-only final
+harness rebuild passed a focused raw-axis case 1/1 under
+`/tmp/se-postformat-focused`. The final acceptance is
+**SE MountSim 20 run, 20 passed; portable NexStar 14 run, 14 passed;
+portable ASan/UBSan 14 run, 14 passed; MountSim native 5 run, 5 passed;
+affected CGE MountSim 20 run, 20 passed;
+hardware 0 run, 0 passed**. Physical SE wedge park pose, physical southern
+tracking direction, HA/DEC-to-physical-axis transform and fork clearance
+remain unverified; the completed claim is simulator axis/protocol behavior.

@@ -41,3 +41,4 @@ A non-standard switch property "Guider rate" is provided by this driver.
 
 2026-09-23 22:40 3.0.0.35 mac arm64 simulator 14/14 OK
 2026-09-23 22:40 3.0.0.35 mac arm64 MountSim 2.3 (CGE) 20/20 OK
+2026-09-23 23:55 3.0.0.35 mac arm64 MountSim 2.3 (SE wedge EQ) 20/20 OK

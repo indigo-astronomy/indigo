@@ -452,6 +452,58 @@ cleanup:
 	}
 }
 
+static void nexstar_se_axis_index_and_timed_motion(void) {
+	external_serial_simulator session = { 0 };
+	int fd = -1;
+	char reply[32], command[19];
+	double polar, declination;
+	SERIAL_CHECK_TRUE(mountsim_attach(&session));
+	fd = open(session.port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	SERIAL_CHECK_TRUE(fd >= 0);
+	SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, "z", 1, reply, sizeof(reply)));
+	SERIAL_CHECK_TRUE(nexstar_decode_axis_reply(reply, 8, &polar, &declination));
+	SERIAL_CHECK_TRUE(fabs(remainder(polar, 360)) < 0.02 && fabs(remainder(declination - 90, 360)) < 0.02);
+	snprintf(command, sizeof(command), "b%08X,%08X", (unsigned int)llround(5.0 * 4294967296.0 / 360.0), (unsigned int)llround(85.0 * 4294967296.0 / 360.0));
+	SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, command, 18, reply, sizeof(reply)) && !strcmp(reply, "#"));
+	indigo_usleep(150000);
+	SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, "L", 1, reply, sizeof(reply)) && !strcmp(reply, "1#"));
+	SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, "z", 1, reply, sizeof(reply)));
+	SERIAL_CHECK_TRUE(nexstar_decode_axis_reply(reply, 8, &polar, &declination));
+	SERIAL_CHECK_TRUE((polar > 0.05 && polar < 4.95) || (declination < 89.95 && declination > 85.05));
+	bool arrived = false;
+	for (int attempt = 0; attempt < 150; attempt++) {
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, "L", 1, reply, sizeof(reply)));
+		if (!strcmp(reply, "0#")) {
+			arrived = true;
+			break;
+		}
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(arrived);
+	SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, "z", 1, reply, sizeof(reply)));
+	SERIAL_CHECK_TRUE(nexstar_decode_axis_reply(reply, 8, &polar, &declination));
+	SERIAL_CHECK_TRUE(fabs(remainder(polar - 5, 360)) < 0.02 && fabs(remainder(declination - 85, 360)) < 0.02);
+	snprintf(command, sizeof(command), "B%04X,%04X", 0, (unsigned int)llround(90.0 * 65536.0 / 360.0));
+	SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, command, 10, reply, sizeof(reply)) && !strcmp(reply, "#"));
+	arrived = false;
+	for (int attempt = 0; attempt < 150; attempt++) {
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, "L", 1, reply, sizeof(reply)));
+		if (!strcmp(reply, "0#")) {
+			arrived = true;
+			break;
+		}
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(arrived);
+	SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, "Z", 1, reply, sizeof(reply)));
+	SERIAL_CHECK_TRUE(nexstar_decode_axis_reply(reply, 4, &polar, &declination));
+	SERIAL_CHECK_TRUE(fabs(remainder(polar, 360)) < 0.02 && fabs(remainder(declination - 90, 360)) < 0.02);
+cleanup:
+	if (fd >= 0) {
+		close(fd);
+	}
+}
+
 static void nexstar_model_identity_and_reconnect(void) {
 	external_serial_simulator session = { 0 };
 	SERIAL_CHECK_TRUE(mountsim_attach(&session));
@@ -461,6 +513,10 @@ static void nexstar_model_identity_and_reconnect(void) {
 	SERIAL_CHECK_TRUE(vendor != NULL && !strcmp(vendor->text.value, model->vendor));
 	indigo_item *identity = find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME);
 	SERIAL_CHECK_TRUE(identity != NULL && !strcmp(identity->text.value, model->name));
+	if (model->altaz) {
+		SERIAL_CHECK_TRUE(find_cached_property("TRACKING_MODE") != NULL);
+		SERIAL_CHECK_TRUE(find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME) == NULL);
+	}
 	SERIAL_CHECK_TRUE(fresh_coordinates());
 	SERIAL_CHECK_TRUE(isfinite(number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)));
 	SERIAL_CHECK_EQ_INT(0, context.update_without_define_count);
@@ -475,6 +531,9 @@ static void nexstar_sync_has_fresh_device_readback(void) {
 	external_serial_simulator session = { 0 };
 	SERIAL_CHECK_TRUE(mountsim_attach(&session));
 	SERIAL_CHECK_TRUE(start_mount_fixture(session.port));
+	if (model->altaz) {
+		SERIAL_CHECK_TRUE(change_switch("TRACKING_MODE", "EQ", true, INDIGO_OK_STATE));
+	}
 	SERIAL_CHECK_TRUE(fresh_coordinates());
 	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
 	double ra = number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
@@ -580,6 +639,9 @@ static bool start_case(external_serial_simulator *session) {
 	if (!mountsim_attach(session) || !start_mount_fixture(session->port)) {
 		return false;
 	}
+	if (model->altaz && (!change_switch("TRACKING_MODE", "EQ", true, INDIGO_OK_STATE) || !find_cached_item("TRACKING_MODE", "EQ")->sw.value)) {
+		return false;
+	}
 	return change_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE) && fresh_coordinates();
 }
 
@@ -655,6 +717,7 @@ static bool pulse(int axis, const char *direction, double duration, bool finish)
 
 static void nexstar_goto_arrives_and_handles_already_target(void) {
 	external_serial_simulator session = { 0 };
+	int raw_fd = -1;
 	SERIAL_CHECK_TRUE(start_case(&session));
 	SERIAL_CHECK_TRUE(reachable_goto(-0.8, 35));
 	double ra, dec;
@@ -662,7 +725,17 @@ static void nexstar_goto_arrives_and_handles_already_target(void) {
 	SERIAL_CHECK_TRUE(change_coordinates(ra, dec, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(await_coordinates(ra, dec, revision, 0.05));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	if (model->altaz) {
+		char reply[16];
+		SERIAL_CHECK_TRUE(fixture_disconnect(&nexstar_mount));
+		raw_fd = open(session.port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+		SERIAL_CHECK_TRUE(raw_fd >= 0);
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(raw_fd, "t", 1, reply, sizeof(reply)) && reply[0] == 2 && reply[1] == '#');
+	}
 cleanup:
+	if (raw_fd >= 0) {
+		close(raw_fd);
+	}
 	stop_mount_fixture();
 }
 
@@ -711,21 +784,86 @@ cleanup:
 	stop_mount_fixture();
 }
 
+static void nexstar_se_documented_manual_rates(void) {
+	external_serial_simulator session = { 0 };
+	int fd = -1;
+	char reply[32];
+	double ra, dec, displacement[2];
+	SERIAL_CHECK_TRUE(start_case(&session));
+	SERIAL_CHECK_TRUE(reachable_goto(-1, 30));
+	SERIAL_CHECK_TRUE(fixture_disconnect(&nexstar_mount));
+	fd = open(session.port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	SERIAL_CHECK_TRUE(fd >= 0);
+	for (int rate = 1; rate <= 2; rate++) {
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, "e", 1, reply, sizeof(reply)));
+		SERIAL_CHECK_TRUE(nexstar_decode_axis_reply(reply, 8, &ra, &dec));
+		double before = dec;
+		unsigned char move[] = { 'P', 2, 17, 0x24, (unsigned char)rate, 0, 0, 0 };
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, (const char *)move, sizeof(move), reply, sizeof(reply)) && !strcmp(reply, "#"));
+		indigo_usleep(2500000);
+		move[4] = 0;
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, (const char *)move, sizeof(move), reply, sizeof(reply)) && !strcmp(reply, "#"));
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, "e", 1, reply, sizeof(reply)));
+		SERIAL_CHECK_TRUE(nexstar_decode_axis_reply(reply, 8, &ra, &dec));
+		displacement[rate - 1] = remainder(dec - before, 360.0);
+	}
+	fprintf(stderr, "SE rate1/2 DEC motor displacement: %.6f / %.6f degrees\n", displacement[0], displacement[1]);
+	SERIAL_CHECK_TRUE(displacement[0] > 0.004 && displacement[0] < 0.0065);
+	SERIAL_CHECK_TRUE(displacement[1] > 0.008 && displacement[1] < 0.013);
+cleanup:
+	if (fd >= 0) {
+		close(fd);
+	}
+	stop_mount_fixture();
+}
+
 static void nexstar_tracking_and_site_roundtrip(void) {
 	external_serial_simulator session = { 0 };
+	int raw_fd = -1;
+	char reply[16];
 	SERIAL_CHECK_TRUE(start_case(&session));
 	SERIAL_CHECK_TRUE(change_numbers(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48.125, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 342.75));
+	if (model->altaz) {
+		SERIAL_CHECK_TRUE(change_switch("TRACKING_MODE", "AUTO", true, INDIGO_OK_STATE));
+	}
 	SERIAL_CHECK_TRUE(fixture_disconnect(&nexstar_mount));
+	if (model->altaz) {
+		unsigned char north[] = { 'T', 2 }, south[] = { 'T', 3 };
+		raw_fd = open(session.port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+		SERIAL_CHECK_TRUE(raw_fd >= 0);
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(raw_fd, (const char *)north, sizeof(north), reply, sizeof(reply)) && !strcmp(reply, "#"));
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(raw_fd, "t", 1, reply, sizeof(reply)) && reply[0] == 2 && reply[1] == '#');
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(raw_fd, (const char *)south, sizeof(south), reply, sizeof(reply)) && !strcmp(reply, "#"));
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(raw_fd, "t", 1, reply, sizeof(reply)) && reply[0] == 3 && reply[1] == '#');
+		close(raw_fd);
+		raw_fd = -1;
+	}
 	SERIAL_CHECK_TRUE(fixture_connect(&nexstar_mount, session.port));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48.125, 0.001));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 342.75, 0.001));
+	if (model->altaz) {
+		SERIAL_CHECK_TRUE(find_cached_item("TRACKING_MODE", "EQ")->sw.value);
+	}
 	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(fresh_coordinates());
 	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME)->sw.value);
 	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(fresh_coordinates());
 	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME)->sw.value);
+	if (model->altaz) {
+		SERIAL_CHECK_TRUE(change_numbers(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, -48.125, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 342.75));
+		SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(reachable_goto(-1, -30));
+		SERIAL_CHECK_TRUE(fixture_disconnect(&nexstar_mount));
+		raw_fd = open(session.port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+		SERIAL_CHECK_TRUE(raw_fd >= 0);
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(raw_fd, "t", 1, reply, sizeof(reply)) && reply[0] == 3 && reply[1] == '#');
+	}
 cleanup:
+	if (raw_fd >= 0) {
+		close(raw_fd);
+	}
 	stop_mount_fixture();
 }
 
@@ -1125,11 +1263,13 @@ int main(int argc, char **argv) {
 	}
 	const indigo_test_case cases[] = {
 		{ "nexstar_mechanical_axis_index_and_timed_motion", nexstar_mechanical_axis_index_and_timed_motion },
+		{ "nexstar_se_axis_index_and_timed_motion", nexstar_se_axis_index_and_timed_motion },
 		{ "nexstar_model_identity_and_reconnect", nexstar_model_identity_and_reconnect },
 		{ "nexstar_sync_has_fresh_device_readback", nexstar_sync_has_fresh_device_readback },
 		{ "nexstar_goto_arrives_and_handles_already_target", nexstar_goto_arrives_and_handles_already_target },
 		{ "nexstar_abort_and_busy_conflict_recover", nexstar_abort_and_busy_conflict_recover },
 		{ "nexstar_manual_directions_rates_and_axis_stop", nexstar_manual_directions_rates_and_axis_stop },
+		{ "nexstar_se_documented_manual_rates", nexstar_se_documented_manual_rates },
 		{ "nexstar_tracking_and_site_roundtrip", nexstar_tracking_and_site_roundtrip },
 		{ "nexstar_clock_write_advances_and_reconnects", nexstar_clock_write_advances_and_reconnects },
 		{ "nexstar_st4_rates_read_back", nexstar_st4_rates_read_back },
@@ -1148,7 +1288,9 @@ int main(int argc, char **argv) {
 	int result = 2;
 	if (!strcmp(argv[1], "--list")) {
 		for (int i = 0; i < ARRAY_SIZE(cases); i++) {
-			if (model->gps || strcmp(cases[i].name, "nexstar_gps_fix_and_shared_lifetime")) {
+			bool cge_only = !strcmp(cases[i].name, "nexstar_mechanical_axis_index_and_timed_motion") || !strcmp(cases[i].name, "nexstar_st4_rates_read_back");
+			bool se_only = !strcmp(cases[i].name, "nexstar_se_documented_manual_rates") || !strcmp(cases[i].name, "nexstar_se_axis_index_and_timed_motion");
+			if ((!cge_only || !strcmp(model->selection, "CGE")) && (!se_only || !strcmp(model->selection, "SE")) && (model->gps || strcmp(cases[i].name, "nexstar_gps_fix_and_shared_lifetime"))) {
 				puts(cases[i].name);
 			}
 		}
