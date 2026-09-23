@@ -376,7 +376,7 @@ No generator input existed before this change.
 
 ### Existing test assets
 
-* `indigo_test/simulator_common/mount_lx200_simulator.c` — test-owned
+* `indigo_drivers/mount_lx200/mount_lx200_simulator/mount_lx200_simulator.c` — test-owned
   protocol simulator, version 3, 13 profiles plus an ASI profile shared with
   `test_mount_asi_simulator`, `serial_motion.h` based motion, exact command
   event log, one-shot reply injection.
@@ -1294,7 +1294,7 @@ Measured on the board during the run:
 
 ## Simulator additions from this run
 
-The `agotino` model of `indigo_test/simulator_common/mount_lx200_simulator.c`
+The `agotino` model of `indigo_drivers/mount_lx200/mount_lx200_simulator/mount_lx200_simulator.c`
 used to answer the shared command table like any other profile, which is what
 let the driver's generic slew heuristic look adequate. It now models the
 controller:
@@ -1524,7 +1524,7 @@ timing over the real serial link, not an electrical measurement.
 
 ## Simulator additions from this run
 
-The `oat` model of `indigo_test/simulator_common/mount_lx200_simulator.c`
+The `oat` model of `indigo_drivers/mount_lx200/mount_lx200_simulator/mount_lx200_simulator.c`
 answered the shared command table like any other profile, which is what let all
 five protocol defects above look like working code. It now models the
 controller:
@@ -2009,7 +2009,7 @@ the board has no drivers and no motors.
 
 ## Simulator additions from this run
 
-`indigo_test/simulator_common/mount_lx200_simulator.c` gained an `esp32go`
+`indigo_drivers/mount_lx200/mount_lx200_simulator/mount_lx200_simulator.c` gained an `esp32go`
 model, so every defect above can be reproduced without the board:
 
 * the `0xE1` degree mark on `:GD#`, `:Gd#`, `:Gt#` and `:Gg#`, from LX042 and LX043;
@@ -2129,3 +2129,56 @@ LX051 protocol attribution: the [aGotino firmware](https://github.com/mappite/aG
 - Hardware tests in this campaign: **0 run, 0 passed**. Physical timing/pointing, accessory hardware, other firmware and non-macOS runtimes remain unverified. Historical hardware records are unchanged.
 
 All reproduced production defects in this scope are fixed (LX048–LX051 and the Avalon model corrections). Final pulse timing is recorded above with its software-only interpretation and retained model limitations. README Testing and generated TEST_SUMMARY record the independent 97-case portable and 14-case StarGO configurations. Logs, baseline failures, final traces, hashes and pulse samples were copied outside `indigo_test/build` before test cleanup; scoped commits contain the verified changes and no push is performed.
+
+## LX200 Classic MountSim acceptance — 2026-09-23
+
+Baseline: INDIGO `dd96fa597fe0552cab81bb1a24ea10b2c55dda39`, driver 3.0.0.64; MountSim `9e1acefa56858e1285aa73736acf5cd7b0c8c010`, app 2.3. This non-interactive simulator campaign uses macOS arm64, the universal production driver and the real Cocoa model through the shared launcher/PTY relay. Driver version is now **3.0.0.65**. No generator change or physical hardware run was made.
+
+The atomic plan was to preserve a baseline, corroborate each discrepancy against public protocol sources, fix the scoped model/driver behavior, cover the supported mount and guider classes, rerun full acceptance and portable regressions, then record and commit the result without pushing. The baseline and intermediate failures remain outside the build directory in `/tmp/mountsim-campaign-20260923/LX200Classic`.
+
+### Findings and implementation
+
+- The original model emitted a malformed high-precision `GD` response and reduced a pole declination modulo 90. Correct signed degrees/colon-separated seconds now read back, including near-pole and RA-wrap boundaries.
+- `CM` lacked physical coordinate rebasing; `Sr` skipped a leading digit and seconds. A Classic-specific Motor subclass now rebases staged coordinates and consumed motion offsets on SYNC, and RA parsing accepts supported precision. Subsequent manual motion/GOTO remain consistent with readback.
+- `Sg` acknowledged without changing longitude. The model now stores Classic westward longitude and returns its documented range; southern latitude and westward longitude round-trip through INDIGO.
+- Date/time writes did not round-trip. `SC` now returns both documented progress strings, and `SC`/`SL`/`SG` maintain an advancing protocol clock. Fractional offset readback remains supported by the model; driver offsets remain integer hours. LST/physical sky geometry still use host time: the test establishes clock protocol semantics, not historical sky simulation.
+- Model `GT` returned `60164.2#` instead of approximately 60.1 Hz. Its Motor millisecond scale is now converted correctly. `ST`/`TM` and `TQ` implement documented manual/quartz frequency selection.
+- Explicit `X_MOUNT_TYPE.CLASSIC` isolates Classic behavior: solar is `ST60.0` + `TM`, lunar `ST57.9` + `TM`, sidereal `TQ`. Invalid `GT` readback publishes ALERT and a later valid reconnect recovers. Unsupported guide-percentage, tracking-switch, park and home properties stay absent. GENERIC retains its existing compatibility behavior. Classic has no `GVP` identity reply, so select CLASSIC explicitly instead of relying on AUTO.
+- Native `Mg` is unsupported. After coordinate repairs, manual movement served as a positive control while `Mgs2000` completed publicly without moving the model. The user approved Classic-only host-timed `RG` plus directional `M`/`Q` guiding. Independent axes may overlap; replacement stops the old direction, zero stops the owned pulse, and manual/GOTO conflicts are rejected. Abort and either device's disconnect cancel queued starts/finalizers and stop owned directions. Failed stops publish ALERT; a fresh transport sends `Q` before clearing stale ownership. A separate driver-GOTO flag prevents guide movement from being mistaken for a GOTO and survives failed coordinate readback.
+- The initial host-timed implementation inherited a systematic 50 ms pulse extension from the ordinary command helper. The isolated Classic guide helper removes that artificial pause and schedules each finalizer from a monotonic deadline anchored at the successful `M` write. Existing profile helpers and native pulse paths remain unchanged.
+
+Sources: the [original Meade Classic command table (1996–1998), mirrored by skymtn](https://skymtn.com/mapug-astronomy/ragreiner/lx200CmdSet.html); [Meade Classic manual, page 23 frequency table](https://www.delnorteobservatory.org/uploads/1/4/0/3/140382066/lx200_classic_manual.pdf); [Meade 2010 protocol](https://interactiveastronomy.com/lx-200gps_telescope_protocol_2010-10.pdf); independent [INDI protocol implementation](https://github.com/indilib/indi/blob/master/drivers/telescope/lx200driver.cpp), [INDI host-timed guide implementation](https://github.com/indilib/indi/blob/master/drivers/telescope/lx200telescope.cpp), and [firsthand Classic ignored-Mg report](https://github.com/indilib/indi/issues/2070). The old Classic-specific table determines capability scope; later LS-only `TS` is not invented for Classic. The manufacturer table specifies no reply or mandatory post-write pause for manual guide movement/stops; INDI's non-pulse path writes movement/stops without the inherited 50 ms delay.
+
+### Acceptance mapping
+
+| Class requirement | MountSim case |
+| --- | --- |
+| Explicit identity, supported/absent properties, reconnect | `classic_identity_reconnect` |
+| Unsupported accessory connections fail, mount remains usable | `classic_rejects_unsupported_accessories` |
+| Native tracking-frequency units | `classic_protocol_tracking_frequency` |
+| Sidereal/solar/lunar commands and reconnect readback | `classic_rates_readback` |
+| Rejected below-horizon GOTO and recovery | `classic_rejected_goto_recovery` |
+| Signed coordinates, RA wrap, near poles | `classic_coordinate_boundaries`, `classic_sync_signed_readback` |
+| GOTO BUSY/completion, overlap refusal, abort/restart | `classic_goto_busy_abort_recovery` |
+| All manual directions/rates, reversal, overlapping axes and stops | `classic_manual_axes_rates_stops` |
+| Site and protocol-clock/UTC translation | `classic_site_clock_roundtrip` |
+| Idle/active transport loss and fresh PTY recovery | `classic_idle_transport_loss`, `classic_active_transport_loss` |
+| Actual N/S/E/W guide displacement and directional stop | `classic_guider_motion_readback` |
+| Replacement/zero, independent axes after polling, manual conflict, abort, disconnect and failed-stop recovery | `classic_guider_conflicts_and_recovery` |
+| Wire-edge duration statistics and shared logical-device lifetime | `classic_guider_timing_and_shared_lifecycle` |
+
+The portable `lx200_classic_profile_rates_and_recovery` case additionally injects rejected `ST` and malformed `GT` replies. `lx200_classic_timed_guiding` covers command timing/directions, replacement/zero/overlap/disconnect, and malformed `GR` during an actual GOTO followed by guide refusal and abort recovery. Both pass under ASan/UBSan. Existing profiles receive the complete portable regression suite.
+
+Guide movement and the tracking/polling timing workload first complete an actual GOTO, which starts model tracking. The initial model starts with tracking off; comparing a small west correction against its positive sky drift was an invalid test oracle. Conflict/active-disconnect assertions wait for the actual wire `M` event, because an urgent guide can correctly overtake a merely queued manual request and reject that manual operation. These are test setup corrections, not additional production changes. A preserved full portable candidate run finished 98/99 because its new guide test replaced a BUSY request before the first directional command actually ran; the corrected test waits for Mn/Mw/Ms and the GOTO MS event before asserting physical ownership. The complete 99-case suite was then rerun serially, rather than combining isolated results.
+
+At the user's request, the enhanced simulator is now the single canonical source at `indigo_drivers/mount_lx200/mount_lx200_simulator/mount_lx200_simulator.c`; the duplicate `indigo_test/simulator_common/mount_lx200_simulator.c` and its Xcode reference are removed. The portable target builds the canonical source using shared `serial_motion.h` and serial support. Behavior is preserved apart from the documented Classic extension. Existing driver-local Xcode registration remains. The unrelated external Xcode group/reference reorder is preserved outside the scoped commit.
+
+### Final verification
+
+Final app/driver/test binaries stayed frozen during each run. The unchanged generator reproduced `.c`, `.h`, and `_main.c` byte-for-byte; strict harness and universal driver builds, project lint and whitespace checks passed. The native app regressions passed five assertion groups. Final logs, wire traces, preserved failures and SHA-256 hashes are stored under `/tmp/mountsim-campaign-20260923/LX200Classic`; the final model run is in `verified`.
+
+Guide timing used 72 measured pulses: four directions, 20/100/500 ms, three repeats per duration, under idle and actual tracking/polling workloads, with a warm-up excluded per direction/workload. Relay M-to-Q wire-edge error in milliseconds: **min 0.079, mean 4.371, median 3.101, p95 5.140, p99/max 113.419, standard deviation 13.060, maximum absolute error 113.419**. Signed mean relative error was **7.047%**, maximum absolute relative error **113.419%**. Functional assertions cover direction, completion, replacement/cancellation and bounded liveness independently of these host-dependent statistics.
+
+No physical timing, pointing accuracy, optical guiding, untested firmware, 16-inch-specific home functions or external accessory hardware is claimed. Optional focuser/auxiliary devices remain unsupported by this explicit profile. Bounded polling transactions can delay urgent host-timed stops; measured wire-edge durations are software behavior, not a hard real-time or physical-controller guarantee. No historical sky-time simulation is claimed. Non-macOS execution remains unverified.
+
+Final counts: **MountSim LX200Classic 15 run / 15 passed; portable LX200 99 run / 99 passed; focused ASan/UBSan 2 run / 2 passed; MountSim native 5 assertion groups passed; physical hardware 0 run / 0 passed.** README Testing and generated TEST_SUMMARY record the independent portable and model configurations. Artifacts were preserved before test cleanup. Scoped INDIGO and MountSim commits are made separately; nothing is pushed.

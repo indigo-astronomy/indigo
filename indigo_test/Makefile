@@ -739,7 +739,7 @@ test-mount-ioptron-tcp: $(INTEGRATION_BUILD)/test_mount_ioptron_simulator $(INTE
 
 LX200_TEST_CFLAGS = $(TEST_CFLAGS) -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter -Wno-sign-compare
 
-$(INTEGRATION_BUILD)/mount_lx200_simulator: simulator_common/mount_lx200_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/mount_lx200_simulator: ../indigo_drivers/mount_lx200/mount_lx200_simulator/mount_lx200_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(LX200_TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/test_mount_lx200_simulator: integration/test_mount_lx200_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_lx200_simulator $(BUILD_DRIVERS)/indigo_mount_lx200.a | $(INTEGRATION_BUILD)

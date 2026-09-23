@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000040
+#define DRIVER_VERSION       0x03000041
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -119,7 +119,8 @@ typedef enum {
 #define MOUNT_TYPE_OAT_ITEM             (MOUNT_TYPE_PROPERTY->items + 11)
 #define MOUNT_TYPE_TEEN_ASTRO_ITEM      (MOUNT_TYPE_PROPERTY->items + 12)
 #define MOUNT_TYPE_ESP32GO_ITEM         (MOUNT_TYPE_PROPERTY->items + 13)
-#define MOUNT_TYPE_GENERIC_ITEM         (MOUNT_TYPE_PROPERTY->items + 14)
+#define MOUNT_TYPE_CLASSIC_ITEM         (MOUNT_TYPE_PROPERTY->items + 14)
+#define MOUNT_TYPE_GENERIC_ITEM         (MOUNT_TYPE_PROPERTY->items + 15)
 
 #define MOUNT_TYPE_PROPERTY_NAME        "X_MOUNT_TYPE"
 #define MOUNT_TYPE_DETECT_ITEM_NAME     "DETECT"
@@ -136,6 +137,7 @@ typedef enum {
 #define MOUNT_TYPE_OAT_ITEM_NAME        "OAT"
 #define MOUNT_TYPE_TEEN_ASTRO_ITEM_NAME "TEEN_ASTRO"
 #define MOUNT_TYPE_ESP32GO_ITEM_NAME    "ESP32GO"
+#define MOUNT_TYPE_CLASSIC_ITEM_NAME    "CLASSIC"
 #define MOUNT_TYPE_GENERIC_ITEM_NAME    "GENERIC"
 
 #define MOUNT_MODE_PROPERTY            (PRIVATE_DATA->alignment_mode_property)
@@ -273,6 +275,10 @@ typedef struct {
 	indigo_property *power_outlet_property;
 	//+ data
 	char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
+	char classicGuideNS, classicGuideWE;
+	bool classicGoto;
+	double classicGuideDeadlineNS, classicGuideDeadlineWE;
+	indigo_device *classicGuider;
 	double lastRA, lastDec;
 	bool coordinate_read_failed;
 	char product[64];
@@ -549,6 +555,16 @@ static bool lx200_open(indigo_device *device) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		indigo_uni_discard(PRIVATE_DATA->handle);
 		PRIVATE_DATA->timeout = 3;
+		if (MOUNT_TYPE_CLASSIC_ITEM->sw.value) {
+			// A fresh transport cannot inherit ownership from a failed old guide stop.
+			if (!meade_no_reply_command(device, ":Q#")) {
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				return false;
+			}
+			PRIVATE_DATA->classicGuideNS = PRIVATE_DATA->classicGuideWE = 0;
+			PRIVATE_DATA->lastMotionNS = PRIVATE_DATA->lastMotionWE = 0;
+			PRIVATE_DATA->classicGoto = false;
+		}
 		return true;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
@@ -606,7 +622,7 @@ static bool meade_set_utc(indigo_device *device, time_t secs, int utc_offset) {
 }
 
 static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
-	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value || MOUNT_TYPE_GENERIC_ITEM->sw.value) {
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value || MOUNT_TYPE_GENERIC_ITEM->sw.value || MOUNT_TYPE_CLASSIC_ITEM->sw.value) {
 		struct tm tm;
 		memset(&tm, 0, sizeof(tm));
 		char separator[2];
@@ -1063,6 +1079,22 @@ static bool meade_set_tracking(indigo_device *device, bool on) {
 }
 
 static bool meade_set_tracking_rate(indigo_device *device) {
+	if (MOUNT_TYPE_CLASSIC_ITEM->sw.value) {
+		char rate = MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value ? 'q' : MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value ? 's' : 'l';
+		if (PRIVATE_DATA->lastTrackRate == rate) {
+			return true;
+		}
+		// Classic manual FREQ table: quartz sidereal, 60.0 Hz solar, 57.9 Hz lunar.
+		if (rate == 'q') {
+			if (!meade_no_reply_command(device, ":TQ#")) {
+				return false;
+			}
+		} else if (!meade_simple_reply_command(device, ":ST%.1f#", rate == 's' ? 60.0 : 57.9) || *PRIVATE_DATA->response != '1' || !meade_no_reply_command(device, ":TM#")) {
+			return false;
+		}
+		PRIVATE_DATA->lastTrackRate = rate;
+		return true;
+	}
 	if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 'q') {
 		PRIVATE_DATA->lastTrackRate = 'q';
 		if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
@@ -1110,6 +1142,19 @@ static bool meade_set_tracking_rate(indigo_device *device) {
 }
 
 static bool meade_get_tracking_rate(indigo_device *device) {
+	if (MOUNT_TYPE_CLASSIC_ITEM->sw.value) {
+		if (!meade_command(device, ":GT#")) {
+			return false;
+		}
+		char *end;
+		double frequency = strtod(PRIVATE_DATA->response, &end);
+		if (end == PRIVATE_DATA->response || *end || !isfinite(frequency) || frequency < 56.4 || frequency > 60.2) {
+			return false;
+		}
+		indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, frequency < 59 ? MOUNT_TRACK_RATE_LUNAR_ITEM : frequency <= 60.0 ? MOUNT_TRACK_RATE_SOLAR_ITEM : MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
+		return true;
+	}
 	// Onstep and the NYX have it in the :GU# response. The NYX answers :GT# with 0 while
 	// tracking is disabled, which is not a tracking rate and must not be decoded as one.
 	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
@@ -1356,11 +1401,64 @@ static bool meade_home_set(indigo_device *device) {
 	return false;
 }
 
+static void guider_guide_dec_finalizer(indigo_device *device);
+static void guider_guide_ra_finalizer(indigo_device *device);
+static void guider_guide_dec_handler(indigo_device *device);
+static void guider_guide_ra_handler(indigo_device *device);
+
+static bool meade_classic_guide_command(indigo_device *device, char command, char direction) {
+	// Classic manual guide commands have no reply or specified post-write delay.
+	// The ordinary helper's 50 ms pause would lengthen every host-timed pulse.
+	return meade_validate_handle(device) && indigo_uni_discard(PRIVATE_DATA->handle) >= 0 && indigo_uni_printf(PRIVATE_DATA->handle, ":%c%c#", command, direction) >= 0;
+}
+
+static bool meade_classic_guide_stop(indigo_device *device, char *direction) {
+	if (*direction) {
+		if (!meade_classic_guide_command(device, 'Q', *direction)) {
+			return false;
+		}
+		*direction = 0;
+	}
+	return true;
+}
+
+static void meade_classic_cancel_guides(indigo_device *device) {
+	if (MOUNT_TYPE_CLASSIC_ITEM->sw.value && PRIVATE_DATA->classicGuider) {
+		device = PRIVATE_DATA->classicGuider;
+		indigo_cancel_pending_handler(device, guider_guide_dec_handler);
+		indigo_cancel_pending_handler(device, guider_guide_ra_handler);
+		indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+		indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+		guider_guide_dec_finalizer(device);
+		guider_guide_ra_finalizer(device);
+	}
+}
+
+static bool meade_classic_guide_start(indigo_device *device, char *active, double *deadline, char direction, int duration) {
+	// RG changes the shared manual rate, so manual motion and goto cannot overlap a pulse.
+	if (PRIVATE_DATA->lastMotionNS || PRIVATE_DATA->lastMotionWE || PRIVATE_DATA->classicGoto) {
+		return false;
+	}
+	if (!meade_classic_guide_stop(device, active) || !meade_classic_guide_command(device, 'R', 'G')) {
+		return false;
+	}
+	PRIVATE_DATA->lastSlewRate = 'g';
+	if (!meade_classic_guide_command(device, 'M', direction)) {
+		return false;
+	}
+	*active = direction;
+	*deadline = indigo_monotonic_time() + duration / 1000.0;
+	return true;
+}
+
 static bool meade_stop(indigo_device *device) {
 	return meade_no_reply_command(device, ":Q#");
 }
 
 static bool meade_guide_dec(indigo_device *device, int north, int south) {
+	if (MOUNT_TYPE_CLASSIC_ITEM->sw.value) {
+		return meade_classic_guide_start(device, &PRIVATE_DATA->classicGuideNS, &PRIVATE_DATA->classicGuideDeadlineNS, north > 0 ? 'n' : 's', north > 0 ? north : south);
+	}
 	if (MOUNT_TYPE_AP_ITEM->sw.value) {
 		if (north > 0) {
 			return meade_no_reply_command(device, ":Mn%03d#", north);
@@ -1378,6 +1476,9 @@ static bool meade_guide_dec(indigo_device *device, int north, int south) {
 }
 
 static bool meade_guide_ra(indigo_device *device, int west, int east) {
+	if (MOUNT_TYPE_CLASSIC_ITEM->sw.value) {
+		return meade_classic_guide_start(device, &PRIVATE_DATA->classicGuideWE, &PRIVATE_DATA->classicGuideDeadlineWE, west > 0 ? 'w' : 'e', west > 0 ? west : east);
+	}
 	if (MOUNT_TYPE_AP_ITEM->sw.value) {
 		if (west > 0) {
 			return meade_no_reply_command(device, ":Mw%03d#", west);
@@ -2426,9 +2527,17 @@ static void meade_init_mount(indigo_device *device) {
 		meade_update_esp32go_state(device);
 	} else {
 		meade_init_generic_mount(device);
+		if (MOUNT_TYPE_CLASSIC_ITEM->sw.value) {
+			MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+			MOUNT_INFO_PROPERTY->count = 2;
+			strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Meade");
+			strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "LX200 Classic");
+		}
 		meade_update_generic_state(device);
 	}
-	meade_get_tracking_rate(device);
+	if (!meade_get_tracking_rate(device) && MOUNT_TYPE_CLASSIC_ITEM->sw.value) {
+		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	if (PRIVATE_DATA->parking) {
 		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
 		MOUNT_PARK_PROPERTY->state = MOUNT_STATE_PARK_ITEM->light.value = INDIGO_BUSY_STATE;
@@ -2535,6 +2644,9 @@ static void meade_update_mount_state(indigo_device *device) {
 	} else {
 		meade_update_generic_state(device);
 	}
+	if (MOUNT_TYPE_CLASSIC_ITEM->sw.value && !PRIVATE_DATA->slewing && !PRIVATE_DATA->coordinate_read_failed) {
+		PRIVATE_DATA->classicGoto = false;
+	}
 	PRIVATE_DATA->lastRA = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 	PRIVATE_DATA->lastDec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 	indigo_debug("*** slewing=%d, tracking=%d, parked=%d, parking=%d, homed=%d, homing=%d", PRIVATE_DATA->slewing, PRIVATE_DATA->tracking, PRIVATE_DATA->parked, PRIVATE_DATA->parking, PRIVATE_DATA->homed, PRIVATE_DATA->homing);
@@ -2632,13 +2744,15 @@ static void meade_update_mount_state(indigo_device *device) {
 //+ guider.code
 
 static void guider_guide_dec_finalizer(indigo_device *device) {
+	bool stopped = !MOUNT_TYPE_CLASSIC_ITEM->sw.value || meade_classic_guide_stop(device, &PRIVATE_DATA->classicGuideNS);
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, stopped ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 
 static void guider_guide_ra_finalizer(indigo_device *device) {
+	bool stopped = !MOUNT_TYPE_CLASSIC_ITEM->sw.value || meade_classic_guide_stop(device, &PRIVATE_DATA->classicGuideWE);
 	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
-	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, stopped ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 
 //- guider.code
@@ -2834,6 +2948,7 @@ static void mount_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_pending_handlers(device);
 		//+ mount.on_disconnect
+		meade_classic_cancel_guides(device);
 		meade_stop(device);
 		MOUNT_TYPE_PROPERTY->perm = INDIGO_RW_PERM;
 		indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
@@ -3143,7 +3258,13 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		return;
 	}
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change
+	if (MOUNT_TYPE_CLASSIC_ITEM->sw.value && (PRIVATE_DATA->classicGuideNS || PRIVATE_DATA->classicGuideWE)) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Classic guiding is active");
+		return;
+	}
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
@@ -3152,6 +3273,7 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		if (meade_set_tracking_rate(device) && meade_slew(device, ra, dec)) {
 			indigo_usleep(500000); // wait for the mount to start slewing to get correct state in the position timer
 			PRIVATE_DATA->goto_issued = true;
+			PRIVATE_DATA->classicGoto = MOUNT_TYPE_CLASSIC_ITEM->sw.value;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -3174,6 +3296,7 @@ static void mount_abort_motion_handler(indigo_device *device) {
 	//+ mount.MOUNT_ABORT_MOTION.on_change
 	if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
 		MOUNT_ABORT_MOTION_ITEM->sw.value = false;
+		meade_classic_cancel_guides(device);
 		if (meade_stop(device)) {
 			if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 				// Abort can overtake a queued reference-position request; cancel its start
@@ -3193,6 +3316,7 @@ static void mount_abort_motion_handler(indigo_device *device) {
 				}
 				indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 			}
+			PRIVATE_DATA->classicGoto = false;
 			PRIVATE_DATA->lastMotionNS = PRIVATE_DATA->lastMotionWE = 0;
 			MOUNT_MOTION_NORTH_ITEM->sw.value = false;
 			MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
@@ -3216,6 +3340,11 @@ static void mount_motion_dec_handler(indigo_device *device) {
 	}
 	MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_MOTION_DEC.on_change
+	if (MOUNT_TYPE_CLASSIC_ITEM->sw.value && (PRIVATE_DATA->classicGuideNS || PRIVATE_DATA->classicGuideWE)) {
+		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Classic guiding is active");
+		return;
+	}
 	if (meade_set_slew_rate(device) && meade_motion_dec(device)) {
 		if (PRIVATE_DATA->lastMotionNS) {
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -3235,6 +3364,11 @@ static void mount_motion_ra_handler(indigo_device *device) {
 	}
 	MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_MOTION_RA.on_change
+	if (MOUNT_TYPE_CLASSIC_ITEM->sw.value && (PRIVATE_DATA->classicGuideNS || PRIVATE_DATA->classicGuideWE)) {
+		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, "Classic guiding is active");
+		return;
+	}
 	if (meade_set_slew_rate(device) && meade_motion_ra(device)) {
 		if (PRIVATE_DATA->lastMotionWE) {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -3345,7 +3479,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		//+ mount.on_attach
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		//- mount.on_attach
-		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 15);
+		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 16);
 		if (MOUNT_TYPE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -3363,6 +3497,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_TYPE_OAT_ITEM, MOUNT_TYPE_OAT_ITEM_NAME, "OpenAstroTech", false);
 		indigo_init_switch_item(MOUNT_TYPE_TEEN_ASTRO_ITEM, MOUNT_TYPE_TEEN_ASTRO_ITEM_NAME, "Teen Astro", false);
 		indigo_init_switch_item(MOUNT_TYPE_ESP32GO_ITEM, MOUNT_TYPE_ESP32GO_ITEM_NAME, "ESP32Go", false);
+		indigo_init_switch_item(MOUNT_TYPE_CLASSIC_ITEM, MOUNT_TYPE_CLASSIC_ITEM_NAME, "Meade LX200 Classic", false);
 		indigo_init_switch_item(MOUNT_TYPE_GENERIC_ITEM, MOUNT_TYPE_GENERIC_ITEM_NAME, "Generic", false);
 		MOUNT_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Mount mode", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (MOUNT_MODE_PROPERTY == NULL) {
@@ -3609,6 +3744,9 @@ static void guider_connection_handler(indigo_device *device) {
 				connection_result = false;
 				indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
 			}
+			if (connection_result && MOUNT_TYPE_CLASSIC_ITEM->sw.value) {
+				PRIVATE_DATA->classicGuider = device;
+			}
 			if (connection_result && MOUNT_TYPE_AGOTINO_ITEM->sw.value) {
 				// The aGotino firmware has no pulse guiding command. It reads the leading :Mg of
 				// one as a slow motion request, finds no direction in the g and ignores it, so a
@@ -3631,6 +3769,10 @@ static void guider_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		//+ guider.on_disconnect
+		meade_classic_cancel_guides(device);
+		PRIVATE_DATA->classicGuider = NULL;
+		//- guider.on_disconnect
 		if (--PRIVATE_DATA->count == 0) {
 			lx200_close(device);
 		}
@@ -3653,9 +3795,9 @@ static void guider_guide_dec_handler(indigo_device *device) {
 		return;
 	}
 	if (north > 0) {
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)north) / 1000.0, guider_guide_dec_finalizer);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, MOUNT_TYPE_CLASSIC_ITEM->sw.value ? fmax(0, PRIVATE_DATA->classicGuideDeadlineNS - indigo_monotonic_time()) : ((double)north) / 1000.0, guider_guide_dec_finalizer);
 	} else if (south > 0) {
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)south) / 1000.0, guider_guide_dec_finalizer);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, MOUNT_TYPE_CLASSIC_ITEM->sw.value ? fmax(0, PRIVATE_DATA->classicGuideDeadlineNS - indigo_monotonic_time()) : ((double)south) / 1000.0, guider_guide_dec_finalizer);
 	} else {
 		guider_guide_dec_finalizer(device);
 	}
@@ -3675,9 +3817,9 @@ static void guider_guide_ra_handler(indigo_device *device) {
 		return;
 	}
 	if (west > 0) {
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)west) / 1000.0, guider_guide_ra_finalizer);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, MOUNT_TYPE_CLASSIC_ITEM->sw.value ? fmax(0, PRIVATE_DATA->classicGuideDeadlineWE - indigo_monotonic_time()) : ((double)west) / 1000.0, guider_guide_ra_finalizer);
 	} else if (east > 0) {
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)east) / 1000.0, guider_guide_ra_finalizer);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, MOUNT_TYPE_CLASSIC_ITEM->sw.value ? fmax(0, PRIVATE_DATA->classicGuideDeadlineWE - indigo_monotonic_time()) : ((double)east) / 1000.0, guider_guide_ra_finalizer);
 	} else {
 		guider_guide_ra_finalizer(device);
 	}

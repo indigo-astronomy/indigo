@@ -5573,7 +5573,6 @@
 		C0DE20260915000200000001 /* test_ccd_iidc_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_iidc_sdk.c; sourceTree = "<group>"; };
 		C0DE20260915A0B000000001 /* test_ccd_ptp_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_ptp_sdk.c; sourceTree = "<group>"; };
 		C0DE20260915A0B000000002 /* test_ccd_ptp_ica.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = test_ccd_ptp_ica.m; sourceTree = "<group>"; };
-		C0DE20260915BEEF00000001 /* mount_lx200_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_lx200_simulator.c; sourceTree = "<group>"; };
 		C0DE20260915BEEF00000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260916000100000001 /* test_ccd_svb_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_svb_sdk.c; sourceTree = "<group>"; };
 		C0DE20260916000100000002 /* test_ccd_svb_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_svb_hw.c; sourceTree = "<group>"; };
@@ -14364,7 +14363,6 @@
 		59FEFFD0301E7005007FB62D /* simulator_common */ = {
 			isa = PBXGroup;
 			children = (
-				C0DE20260915BEEF00000001 /* mount_lx200_simulator.c */,
 				C0DE20260909000100000001 /* serial_motion.h */,
 				FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */,
 				59FEFFCF301E7005007FB62D /* serial_simulator_common.h */,

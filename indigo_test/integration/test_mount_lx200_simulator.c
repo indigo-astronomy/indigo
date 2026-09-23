@@ -883,6 +883,45 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static void lx200_classic_profile_rates_and_recovery(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "classic", "CLASSIC"));
+	online = true;
+	assert_switch_item_value(MOUNT_TYPE_PROPERTY_NAME, "CLASSIC", true);
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_GUIDE_RATE_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_TRACKING_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_PARK_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_HOME_PROPERTY_NAME));
+	const char *items[] = { MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME };
+	const char *commands[] = { "ST60.0", "ST57.9", "TQ" };
+	for (int i = 0; i < ARRAY_SIZE(items); i++) {
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, items[i], true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, commands[i], 0));
+		disconnect_serial_device(&lx200_mount);
+		SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+		assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, items[i], true);
+	}
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "ST60.0", "0"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	int before = event_count(&simulator, "ST60.0", NULL);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "ST60.0", before));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "TS", NULL));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "TL", NULL));
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GT", "oops#"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_TRACK_RATE_PROPERTY_NAME)->state);
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_TRACK_RATE_PROPERTY_NAME)->state);
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
 static void lx200_generic_profile(void) {
 	check_profile(12);
 }
@@ -1223,6 +1262,74 @@ static bool start_secondary_profile(external_serial_simulator *simulator, const 
 	wait_for_property_not_busy(CONNECTION_PROPERTY_NAME);
 	tear_down_serial_driver(secondary);
 	return false;
+}
+
+static void lx200_classic_timed_guiding(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false, mount_connected = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_guider, "classic", "CLASSIC"));
+	online = true;
+	const char *properties[] = { GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME };
+	const char *items[] = { GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME };
+	const char directions[] = "nsew";
+	for (int i = 0; i < 4; i++) {
+		char start[8], stop[8], native[16];
+		snprintf(start, sizeof(start), "M%c", directions[i]);
+		snprintf(stop, sizeof(stop), "Q%c", directions[i]);
+		snprintf(native, sizeof(native), "Mg%c0100", directions[i]);
+		SERIAL_CHECK_TRUE(lx_number(&lx200_guider, properties[i], items[i], 100, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, stop, 0));
+		double began = 0, ended = 0;
+		event_count(&simulator, start, &began);
+		event_count(&simulator, stop, &ended);
+		SERIAL_CHECK_TRUE(ended - began >= .09 && ended - began < 1);
+		SERIAL_CHECK_EQ_INT(0, event_count(&simulator, native, NULL));
+	}
+	int began = event_count(&simulator, "Mn", NULL);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Mn", began));
+	began = event_count(&simulator, "Mw", NULL);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 2000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Mw", began));
+	int stopped = event_count(&simulator, "Qn", NULL);
+	began = event_count(&simulator, "Ms", NULL);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 500, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Qn", stopped));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Ms", began));
+	stopped = event_count(&simulator, "Qs", NULL);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Qs", stopped));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(GUIDER_GUIDE_RA_PROPERTY_NAME)->state);
+	stopped = event_count(&simulator, "Qw", NULL);
+	disconnect_serial_device(&lx200_guider);
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Qw", stopped));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_guider, simulator.port));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	mount_connected = true;
+	began = event_count(&simulator, "MS", NULL);
+	SERIAL_CHECK_TRUE(lx_coordinates(18, 70, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", began));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GR", "bad#"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	reset_simulator_context(&lx200_guider);
+	enumerate_simulator_device();
+	int before = event_count(&simulator, "Mn", NULL);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(before, event_count(&simulator, "Mn", NULL));
+	reset_simulator_context(&lx200_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	disconnect_serial_device(&lx200_mount);
+	mount_connected = false;
+	reset_simulator_context(&lx200_guider);
+	enumerate_simulator_device();
+cleanup:
+	if (mount_connected) { disconnect_serial_device(&lx200_mount); }
+	reset_simulator_context(&lx200_guider);
+	enumerate_simulator_device();
+	if (online) { stop_serial_driver(&lx200_guider); }
+	stop_external_serial_simulator(&simulator);
 }
 
 static void lx200_guider_directions_overlap_and_timing(void) {
@@ -2011,7 +2118,7 @@ static void lx200_driver_metadata_and_base_properties(void) {
 	const char *base[] = { INFO_PROPERTY_NAME, CONFIG_PROPERTY_NAME, PROFILE_PROPERTY_NAME, PROFILE_NAME_PROPERTY_NAME, CONNECTION_PROPERTY_NAME, DEVICE_PORT_PROPERTY_NAME, DEVICE_BAUDRATE_PROPERTY_NAME, MOUNT_TYPE_PROPERTY_NAME };
 	assert_defined_properties(base, ARRAY_SIZE(base));
 	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == NULL);
-	SERIAL_CHECK_EQ_INT(15, find_cached_property(MOUNT_TYPE_PROPERTY_NAME)->count);
+	SERIAL_CHECK_EQ_INT(16, find_cached_property(MOUNT_TYPE_PROPERTY_NAME)->count);
 	for (int i = 0; i < ARRAY_SIZE(profiles); i++) {
 		assert_property_has_item(MOUNT_TYPE_PROPERTY_NAME, profiles[i].type);
 	}
@@ -2599,6 +2706,8 @@ int main(int argc, char **argv) {
 	simulator_test_client.update_property = timed_client_update;
 	const indigo_test_case tests[] = {
 		{ "lx200_guider_transport_failure_and_recovery", lx200_guider_transport_failure_and_recovery },
+		{ "lx200_classic_profile_rates_and_recovery", lx200_classic_profile_rates_and_recovery },
+		{ "lx200_classic_timed_guiding", lx200_classic_timed_guiding },
 		{ "lx200_generic_goto_polling_progress", lx200_generic_goto_polling_progress },
 		{ "lx200_teenastro_set_positions", lx200_teenastro_set_positions },
 		{ "lx200_nyx_legacy_wifi_and_elevation", lx200_nyx_legacy_wifi_and_elevation },

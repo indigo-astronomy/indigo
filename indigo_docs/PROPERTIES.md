@@ -1372,6 +1372,8 @@ Custom properties: `X_ALTITUDE_LIMITS`, `X_MOUNT_MODE`, `X_MOUNT_TYPE`, `X_NYX_L
 
 Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `AUX_INFO`, `AUX_POWER_OUTLET`, `AUX_WEATHER`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_HOME_SET`, `MOUNT_INFO`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_SET`, `MOUNT_PEC`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
 
+`X_MOUNT_TYPE.CLASSIC` explicitly selects the original Meade LX200 Classic. It uses the documented quartz/manual tracking-frequency commands, exposes time/location and motion, and hides unsupported adjustable guide-rate, tracking-switch, park and home properties. Its guider uses host-timed `RG` plus directional `M`/`Q` commands at the fixed controller guide speed, with independent axes and replacement/zero-stop semantics. Guiding conflicts with manual motion or a driver GOTO are rejected. `GENERIC` retains its existing compatibility behavior.
+
 Source: `indigo_drivers/mount_lx200/indigo_mount_lx200.c`.
 
 ### mount_mxhd
