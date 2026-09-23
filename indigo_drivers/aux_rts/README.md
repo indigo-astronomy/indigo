@@ -21,9 +21,13 @@ indigo_server indigo_aux_rts
 
 ## Comments
 
-## Status: Untested
+## Status: Stable
 
-Looking for device owners!!! :)
+Driver is developed and tested with:
+* A serial loopback of two FTDI USB serial adapters joined by a null-modem cable
+
+No RTS on COM shutter release and no camera were involved, so the line the shutter contact hangs on
+is verified electrically while the shutter release itself is not.
 
 ## Testing
 
