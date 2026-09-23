@@ -144,7 +144,6 @@
 | mount_ioptron | 2026-09-23 15:01 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron SmartEQ) | 8 / 8 | ✅ OK |
 | mount_ioptron | 2026-09-23 15:02 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron ZEQ25) | 8 / 8 | ✅ OK |
 | mount_ioptron | 2026-09-23 15:04 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM70) | 8 / 8 | ✅ OK |
-| mount_ioptron | 2026-09-23 15:06 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM120) | 8 / 7 | ❌ Failed |
 | mount_ioptron | 2026-09-23 15:10 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM120) | 8 / 8 | ✅ OK |
 | mount_ioptron | 2026-09-23 15:10 | 3.0.0.53 | mac arm64 | simulator | 108 / 108 | ✅ OK |
 | mount_ioptron | 2026-09-20 21:29 | 3.0.0.53 | mac arm64 | simulator | 104 / 104 | ✅ OK |
