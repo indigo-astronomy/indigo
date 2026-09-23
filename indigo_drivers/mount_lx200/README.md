@@ -6,7 +6,6 @@
 * Avalon mounts with StarGo controller
 * Losmandy Gemini mounts
 * 10micron mounts
-* EQMac
 * Astro-Physics GTO mounts
 * OnStep controllers (http://www.stellarjourney.com/index.php?r=site/software_telescope)
 * ZWO AM5 mount (https://astronomy-imaging-camera.com/)
@@ -36,14 +35,13 @@ A non-standard switch properties "Alignment mode" and "Mount type" are provided 
 
 Astro-Physics mount can't be detected automatically, use Mount type property om nount device to select it first.
 
-Use URL in form lx200://host:port to connect to the mount over network (default port is 4030, 9999 for NYX-101). This URL is set automatically, if EQMac mount type is selected.
+Use URL in form lx200://host:port to connect to the mount over network (default port is 4030, 9999 for NYX-101).
 
 ## Status: Stable
 
 Driver is developed and tested with:
 * Meade ETX-125
 * LX200GPS
-* EQMac
 * ZWO AM5
 * Pegasus NYX-101
 * Simulators
@@ -54,4 +52,4 @@ Driver is developed and tested with:
 2026-09-23 00:11 3.0.0.58 mac arm64 OnStepX 33/33 OK
 2026-09-23 10:06 3.0.0.59 mac arm64 aGotino 35/35 OK
 2026-09-23 11:17 3.0.0.60 mac arm64 OpenAstroTracker 35/35 OK
-2026-09-23 11:25 3.0.0.60 mac arm64 simulator 86/86 OK
+2026-09-23 12:06 3.0.0.62 mac arm64 simulator 91/91 OK

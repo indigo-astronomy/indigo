@@ -90,6 +90,11 @@ static bool start_unaligned_lx200_simulator(external_serial_simulator *simulator
 	return start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments);
 }
 
+static bool start_double_precision_lx200_simulator(external_serial_simulator *simulator, const char *model) {
+	const char *arguments[] = { "--model", model, "--double-precision", NULL };
+	return start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments);
+}
+
 static bool start_lx200_simulator_whose_park_fails(external_serial_simulator *simulator, const char *model) {
 	const char *arguments[] = { "--model", model, "--park-fails", NULL };
 	return start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments);
@@ -183,6 +188,23 @@ static bool first_event_time(external_serial_simulator *simulator, const char *p
 	}
 	fclose(file);
 	return found;
+}
+
+// The count of a command once the log has stopped growing. A command the driver sends without
+// waiting for a reply, which is every guide pulse, is written to the event log by the simulator
+// after the driver has already moved on, so a count taken straight away can miss it and the
+// next assertion then sees it as one command too many.
+static int settled_event_count(external_serial_simulator *simulator, const char *command) {
+	int count = event_count(simulator, command, NULL);
+	for (int i = 0; i < 40; i++) {
+		indigo_usleep(50000);
+		int again = event_count(simulator, command, NULL);
+		if (again == count) {
+			return count;
+		}
+		count = again;
+	}
+	return count;
 }
 
 static bool wait_event(external_serial_simulator *simulator, const char *command, int before) {
@@ -632,6 +654,45 @@ static void lx200_gemini_park_failure_ends_the_request(void) {
 	// mount has to be published as what it is, which is not parked.
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A Gemini in Double Precision answers every coordinate as a signed decimal with six digits
+// after the point, and :GG# with the extended offset that carries minutes and seconds. The
+// driver never selects that mode and must not send a command to leave it - :U# is a toggle and
+// :u# changes what every other client on the same mount sees - but another client can have
+// selected it, and then the sexagesimal parser rejects everything the mount says and a timezone
+// at thirty minutes loses its half hour. Gemini Level 5 command description, :u# and :GG#.
+static void lx200_gemini_reads_double_precision(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_double_precision_lx200_simulator(&simulator, "gemini"));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_mount));
+	online = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	// The coordinates have to arrive rather than leave the property on its attach value.
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - 6) < 0.05);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 45) < 1.0);
+	// The driver may not try to change the mode on a mount it shares with another client.
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "u", NULL));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "U", NULL));
+	// The first session set the controller clock, so a second one reads a clock that is right
+	// and the published time is whatever the offset conversion makes of it. Half an hour thrown
+	// away by reading only the hours shows up here and nowhere else.
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(UTC_TIME_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_item *clock = find_cached_item(UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME);
+	SERIAL_CHECK_TRUE(clock != NULL);
+	double drift = difftime(indigo_isogmtotime(clock->text.value), time(NULL));
+	printf("    the mount clock is %s, %.0f s from the host clock\n", clock->text.value, drift);
+	SERIAL_CHECK_TRUE(fabs(drift) < 300);
 cleanup:
 	if (online) {
 		stop_serial_driver(&lx200_mount);
@@ -1150,11 +1211,11 @@ static void lx200_guider_directions_overlap_and_timing(void) {
 	// not completed yet would be counted as the one this block is about to send.
 	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 500, INDIGO_BUSY_STATE));
-	int before = event_count(&simulator, "Mgs0100", NULL);
+	int before = settled_event_count(&simulator, "Mgs0100");
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, lx200_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 100, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(before + 1, event_count(&simulator, "Mgs0100", NULL));
+	SERIAL_CHECK_EQ_INT(before + 1, settled_event_count(&simulator, "Mgs0100"));
 
 	// The elapsed time has to follow the second request. Measuring the duration is the point of
 	// these two cases: waiting only for the property to leave BUSY passes even when the second
@@ -2455,6 +2516,7 @@ int main(int argc, char **argv) {
 		{ "lx200_gemini_sets_the_offset_before_the_clock", lx200_gemini_sets_the_offset_before_the_clock },
 		{ "lx200_gemini_reports_a_stalled_axis", lx200_gemini_reports_a_stalled_axis },
 		{ "lx200_gemini_park_failure_ends_the_request", lx200_gemini_park_failure_ends_the_request },
+		{ "lx200_gemini_reads_double_precision", lx200_gemini_reads_double_precision },
 		{ "lx200_oat_reads_the_coordinates_and_the_site", lx200_oat_reads_the_coordinates_and_the_site },
 		{ "lx200_oat_idle_is_not_parked", lx200_oat_idle_is_not_parked },
 		{ "lx200_oat_keeps_tracking_through_a_goto", lx200_oat_keeps_tracking_through_a_goto },

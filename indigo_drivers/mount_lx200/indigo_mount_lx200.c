@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300003D
+#define DRIVER_VERSION       0x0300003E
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -657,8 +657,22 @@ static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) 
 							strcpy(PRIVATE_DATA->response, "-06");
 						}
 					}
-					*utc_offset = -atoi(PRIVATE_DATA->response);
-					*secs = indigo_timegm(&tm) - *utc_offset * 3600;
+					// A Gemini on Level 5 answers :GG# with the extended {+-}hh:mm:ss as
+					// well as with the plain {+-}hh, and a timezone at thirty minutes loses
+					// its half hour to a conversion that reads only the hours. The clock is
+					// computed from the whole value; MOUNT_UTC_OFFSET keeps the whole hours
+					// the driver carries, which is unchanged for every reply that has no
+					// minutes in it. Gemini Level 5 command description, :GG#.
+					const char *offset_digits = PRIVATE_DATA->response;
+					int offset_sign = *offset_digits == '-' ? -1 : 1;
+					if (*offset_digits == '+' || *offset_digits == '-') {
+						offset_digits++;
+					}
+					int offset_hours = 0, offset_minutes = 0, offset_seconds = 0;
+					sscanf(offset_digits, "%d:%d:%d", &offset_hours, &offset_minutes, &offset_seconds);
+					int offset = offset_sign * (offset_hours * 3600 + offset_minutes * 60 + offset_seconds);
+					*utc_offset = -(offset / 3600);
+					*secs = indigo_timegm(&tm) + offset;
 					PRIVATE_DATA->time_difference = time(NULL) - *secs;
 					return true;
 				}
@@ -771,21 +785,55 @@ static bool meade_parse_coordinate(const char *reply, bool right_ascension, doub
 	return isfinite(*value);
 }
 
+// A Gemini put into Double Precision with :u# answers every coordinate as a signed decimal
+// value with six digits after the point and no sexagesimal separator at all. This driver
+// never selects that mode, and deliberately does not send a command to leave it: :U# is a
+// toggle and :u# changes what every other client on the same mount sees. Another client can
+// have selected it, though, and then the sexagesimal parser rejects everything the mount
+// says. Gemini Level 5 command description, :u#.
+static bool meade_parse_double_precision(const char *reply, double *value) {
+	if (strpbrk(reply, ":*eExX") != NULL || strchr(reply, (char)0xDF) != NULL || strchr(reply, '.') == NULL) {
+		return false;
+	}
+	const char *cursor = reply;
+	if (*cursor == '+' || *cursor == '-') {
+		cursor++;
+	}
+	if (!isdigit((unsigned char)*cursor)) {
+		return false;
+	}
+	char *end;
+	double parsed = strtod(reply, &end);
+	if (*end != 0 || !isfinite(parsed)) {
+		return false;
+	}
+	*value = parsed;
+	return true;
+}
+
+// The sexagesimal parser, with the Gemini decimal format tried first for that profile alone.
+static bool meade_parse_reply_coordinate(indigo_device *device, const char *reply, bool right_ascension, double *value) {
+	if (MOUNT_TYPE_GEMINI_ITEM->sw.value && meade_parse_double_precision(reply, value)) {
+		return true;
+	}
+	return meade_parse_coordinate(reply, right_ascension, value);
+}
+
 static bool meade_get_coordinates(indigo_device *device, double *ra, double *dec) {
 	if (MOUNT_TYPE_NYX_ITEM->sw.value) {
 		if (meade_command(device, ":GRH#")) {
-			if (!meade_parse_coordinate(PRIVATE_DATA->response, true, ra)) {
+			if (!meade_parse_reply_coordinate(device, PRIVATE_DATA->response, true, ra)) {
 				return false;
 			}
 			if (meade_command(device, ":GDH#")) {
-				if (!meade_parse_coordinate(PRIVATE_DATA->response, false, dec)) {
+				if (!meade_parse_reply_coordinate(device, PRIVATE_DATA->response, false, dec)) {
 					return false;
 				}
 				return true;
 			}
 		}
 	} else if (meade_command(device, ":GR#")) {
-		if (!meade_parse_coordinate(PRIVATE_DATA->response, true, ra)) {
+		if (!meade_parse_reply_coordinate(device, PRIVATE_DATA->response, true, ra)) {
 			return false;
 		}
 		if (strlen(PRIVATE_DATA->response) < 8) {
@@ -800,7 +848,7 @@ static bool meade_get_coordinates(indigo_device *device, double *ra, double *dec
 				meade_command(device, ":GR#");
 			}
 		}
-		if (!meade_parse_coordinate(PRIVATE_DATA->response, true, ra)) {
+		if (!meade_parse_reply_coordinate(device, PRIVATE_DATA->response, true, ra)) {
 			return false;
 		}
 		if (meade_command(device, ":GD#")) {
@@ -813,7 +861,7 @@ static bool meade_get_coordinates(indigo_device *device, double *ra, double *dec
 				// rejected and the driver never reads a declination from the mount at all.
 				str_replace(PRIVATE_DATA->response, '\'', ':');
 			}
-			if (!meade_parse_coordinate(PRIVATE_DATA->response, false, dec)) {
+			if (!meade_parse_reply_coordinate(device, PRIVATE_DATA->response, false, dec)) {
 				return false;
 			}
 			return true;

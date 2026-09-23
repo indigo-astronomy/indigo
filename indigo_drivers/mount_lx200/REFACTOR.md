@@ -1658,3 +1658,112 @@ tracking mode through command 130, the guide rate through 150 and through
 151/152 on L5, reading the version with `:GVN#` to tell L4 and L5 capabilities
 apart, and decoding the specific `:MS#` rejection reasons. Any native command
 work must implement and verify the documented checksum.
+
+## Execution log
+
+Every step was verified before the next began, and each reproducer was run
+against the driver as it stood before its repair.
+
+| Step | Result |
+| --- | --- |
+| 1. Simulator `--unaligned` answers `:CM#` with `No object!#` | done |
+| 2. `meade_sync()` rejects it for Gemini with a message | done; `lx200_gemini_refuses_an_unaligned_sync` fails against `0x0300003C`, passes after |
+| 3. Simulator refuses `:SC#` and `:SL#` for Gemini until `:SG#` arrived | done |
+| 4. `meade_set_utc()` sends `:SG#` first for Gemini | done; `lx200_gemini_sets_the_offset_before_the_clock` fails against `0x0300003C`, passes after |
+| 5. Simulator `--double-precision` answers the extended `:GG#` | done |
+| 6. The offset is parsed whole into the clock | done, see the decision below |
+| 7. Simulator injects `!` on `:Gv#` | done through the existing fault injection |
+| 8. The stall reaches the client and clears on the next valid velocity | done; `lx200_gemini_reports_a_stalled_axis` fails against the driver before it, passes after |
+| 9. Simulator `--park-fails` keeps answering `:h?#` with `0` | done |
+| 10. A park the driver issued gets a bounded window, then the `0` is the failure | done; `lx200_gemini_park_failure_ends_the_request` fails against the driver before it, passes after |
+| 11. Double Precision is read without sending a switching command | done; `lx200_gemini_reads_double_precision` fails against the driver before it, passes after |
+| 12. Regenerate, full serial suite, records | done |
+
+## Decisions taken with the user
+
+Two of the repairs could have been taken further than the Gemini branch, and
+both were put to the user before they were written.
+
+* **The published UTC offset stays whole hours.** `:GG#` may answer
+  `±hh:mm:ss`, and the clock is now computed from the whole value, which is
+  bit-identical for every profile whose reply has no minutes in it. Publishing a
+  fractional offset as well would mean changing `PRIVATE_DATA->utc_offset` from
+  an `int` and the signatures of `meade_set_utc()` and `meade_get_utc()` for
+  every profile. The framework would carry it - `MOUNT_UTC_OFFSET` is a text
+  item and `indigo_mount_driver.c` notes "step is 0.5 as there are timezones at
+  30 min" - so this is a deliberate limitation and not an oversight: **a Gemini
+  on a half-hour timezone publishes the truncated hour in `MOUNT_UTC_OFFSET`
+  while its clock is correct.**
+* **Double Precision is read, never selected.** The driver accepts the decimal
+  format for the Gemini profile and sends neither `:u#` nor `:U#` to change the
+  mode, which the test asserts. `:U#` is a toggle and `:u#` changes what every
+  other client on the same mount sees.
+
+## Deliberately not changed
+
+`:Cm#` is untouched. L4 section 5.3.10.10.2 lets the user swap the meaning of
+`:CM#` and `:Cm#` through the "Sync or Align" setting, and L5 documents `:Cm#`
+as an *Additional Alignment* that recalculates the pointing model. Choosing
+between them would change the user's pointing model behind their back.
+
+## Extensions assessed, not implemented
+
+These were kept out of the repairs on purpose and are recorded here with what
+the documentation says and what each would cost.
+
+| Extension | Assessment |
+| --- | --- |
+| Tracking mode through native `130` | The native syntax is `<<id>:<checksum>#` for a read and `><id>:<value><checksum>#` for a write; `130` requests the tracking rate that `131..137` set. The driver already writes natively through `gemini_set()`, which computes the documented XOR checksum, but it has no native *read* helper and `gemini_set()` reports success as soon as the write reached the transport. A read helper would have to verify the checksum of the reply, and the write path would have to stop treating a successful transport write as a confirmed command. Worth doing, and larger than a repair. |
+| Guide rate through `150`, and `151`/`152` on L5 | Same native read/write machinery, plus the capability split below. `MOUNT_GUIDE_RATE` is hidden for this profile today, so this is a new capability rather than a fix. |
+| `:GVN#` to tell L4 and L5 apart | Several of the commands used above are "New in L5". The driver treats every Gemini alike, which is why each repair is written to be harmless on L4: the extended offset parse accepts the plain form, the decimal coordinate parse only triggers on a decimal reply, and the stall and park characters are documented for both. A version probe would let the driver offer the L5-only capabilities deliberately. |
+| `:MS#` rejection reasons | L5 documents `1Object below horizon.#`, `2No object selected.#` and `3Manual Control.#`. The driver rejects any `:MS#` reply that is not `0` without telling the user which of the three it was. |
+
+Any native work must implement the documented checksum in both directions and
+must not read a successful transport write as a confirmed command.
+
+## Simulator additions from this work
+
+The `gemini` model answered the shared command table with the well-behaved
+reply for every one of the five failures, so none of them was visible to the
+suite. It now offers each as a selectable quirk, defaulting to the well-behaved
+mount so existing cases keep their meaning:
+
+* `--unaligned` answers `:CM#` with `No object!#`;
+* `:SC#` and `:SL#` answer `0` until `:SG#` has been given;
+* `--park-fails` accepts `:hC#` and keeps answering `:h?#` with `0`;
+* `--double-precision` answers every coordinate as a signed decimal and `:GG#`
+  with the extended `±hh:mm:ss`;
+* the stall reaches `:Gv#` through the existing fault injection, because what
+  matters about it is the recovery on the next valid velocity.
+
+## Not verified
+
+**Nothing here was run against a Gemini controller.** No hardware was available
+and none was used. Every result is from the simulator, whose quirks are written
+from the Level 5 command description rather than from a mount, so the wording
+of `No object!#`, the exact acknowledgement latency a real controller needs
+before `:h?#` stops answering `0`, the conditions under which a real mount
+reports `!`, and the behaviour of a real Level 4 controller on all five paths
+remain unverified. The five-second acknowledgement window of
+`GEMINI_PARK_ACK_TIMEOUT` in particular is a value chosen to be safe, not one
+measured on a mount.
+
+## Test defects this work exposed
+
+| ID | Where | Defect |
+| --- | --- | --- |
+| LXT026 | `lx200_guider_directions_overlap_and_timing` | The case counted a command straight after the driver sent it. A guide pulse is written without waiting for a reply, so the simulator can log it after the driver has already moved on, and the next assertion then sees one command too many. It failed once in a full run and passed three times in a row on its own. `settled_event_count()` takes the count once the log has stopped growing. |
+
+## Simulator results (driver 0x0300003E)
+
+| Suite | Run | Passed | Failed |
+| --- | --- | --- | --- |
+| `test_mount_lx200_simulator` | 91 | 91 | 0 |
+
+The opt-in TCP target and the ASAN/UBSAN build were not run in this session.
+
+## Final test summary for this work
+
+* Simulated tests: 91 run, 91 passed.
+* Hardware tests: 0 run, 0 passed. No Gemini controller was available and none
+  was used; nothing here is hardware validated.

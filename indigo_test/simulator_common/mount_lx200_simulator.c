@@ -61,6 +61,10 @@ typedef struct {
 	// operation and :h?# keeps answering 0, which the command description gives both for "No
 	// Prk command received" and for "Park operation failed". Gemini Level 5, :h?#.
 	bool park_fails;
+	// A Gemini that another client put into Double Precision with :u#: every coordinate comes
+	// back as a signed decimal with six digits after the point, and :GG# answers the extended
+	// offset with minutes and seconds. Gemini Level 5 command description, :u# and :GG#.
+	bool double_precision;
 	const char *ready_file;
 	simulator_model model;
 } simulator_options;
@@ -169,6 +173,7 @@ static void usage(const char *name) {
 	printf("  --status-king           Report the king rate as k in :GU#, as the protocol documents\n");
 	printf("  --unaligned             Answer :CM# with the Gemini \"No object!\" refusal\n");
 	printf("  --park-fails            Accept the Gemini park but keep answering :h?# with 0\n");
+	printf("  --double-precision      Answer Gemini coordinates as decimals and :GG# extended\n");
 	printf("  --model <name>          a supported LX200 profile\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --tcp                   Serve an opt-in localhost TCP transport\n");
@@ -222,6 +227,8 @@ static bool parse_args(int argc, char *argv[]) {
 			options.unaligned = true;
 		} else if (!strcmp(argv[i], "--park-fails")) {
 			options.park_fails = true;
+		} else if (!strcmp(argv[i], "--double-precision")) {
+			options.double_precision = true;
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
 		} else if (!strcmp(argv[i], "--model")) {
@@ -271,7 +278,15 @@ static void write_response(const char *response) {
 	}
 }
 
+static bool model_is_double_precision(void) {
+	return options.model == MODEL_GEMINI && options.double_precision;
+}
+
 static void format_ra(char *buffer, size_t size, long value) {
+	if (model_is_double_precision()) {
+		snprintf(buffer, size, "%+.6f#", value / 360000.0);
+		return;
+	}
 	if (state.high_precision) {
 		snprintf(buffer, size, "%02ld:%02ld:%02ld#", value / 360000L, (value / 6000L) % 60, (value / 100L) % 60);
 	} else {
@@ -280,6 +295,10 @@ static void format_ra(char *buffer, size_t size, long value) {
 }
 
 static void format_dec(char *buffer, size_t size, long value) {
+	if (model_is_double_precision()) {
+		snprintf(buffer, size, "%+.6f#", value / 3600.0);
+		return;
+	}
 	long degrees = value / 3600L;
 	long abs_value = labs(value);
 	if (state.high_precision) {
@@ -676,7 +695,13 @@ static void handle_command(const char *command) {
 		state.offset_set = true;
 		write_response("1");
 	} else if (!strcmp(command, "GG")) {
-		snprintf(response, sizeof(response), "%+03d#", state.time_offset);
+		if (model_is_double_precision()) {
+			// The extended form is new in L5. A timezone at thirty minutes is what makes the
+			// difference between reading the hours and reading the whole value.
+			snprintf(response, sizeof(response), "%+03d:30:00#", state.time_offset);
+		} else {
+			snprintf(response, sizeof(response), "%+03d#", state.time_offset);
+		}
 		write_response(response);
 	} else if (!strncmp(command, "SH", 2)) {
 		state.time_dst = atoi(command + 2);
