@@ -2563,9 +2563,17 @@ test-mount-rainbow-mountsim: check-lib $(TEST_BUILD)/mountsim/test_mount_rainbow
 $(TEST_BUILD)/mountsim/test_mount_rainbow_mountsim: mountsim/test_mount_rainbow_mountsim.c mountsim/mountsim_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_rainbow.a | $(TEST_BUILD)/mountsim
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_RAINBOW_SIMULATOR_TEST_LDFLAGS)
 
+MOUNTSIM_LX200_MODEL ?= StarGO
+.PHONY: test-mount-lx200-mountsim
+test-mount-lx200-mountsim: check-lib $(TEST_BUILD)/mountsim/test_mount_lx200_mountsim
+	python3 mountsim/run_mountsim.py --app "$(MOUNTSIM_APP)" --mount $(MOUNTSIM_LX200_MODEL) --terminator 23 --output $(TEST_BUILD)/mountsim-results/$(MOUNTSIM_LX200_MODEL) --test $(TEST_BUILD)/mountsim/test_mount_lx200_mountsim
+
+$(TEST_BUILD)/mountsim/test_mount_lx200_mountsim: mountsim/test_mount_lx200_mountsim.c mountsim/mountsim_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_lx200.a | $(TEST_BUILD)/mountsim
+	$(CC) $(TEST_CFLAGS) -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter -Wno-sign-compare -o $@ $< $(MOUNT_LX200_SIMULATOR_TEST_LDFLAGS)
+
 else
-.PHONY: test-mount-temma-mountsim test-mount-rainbow-mountsim test-mount-ioptron-mountsim
-test-mount-temma-mountsim test-mount-rainbow-mountsim test-mount-ioptron-mountsim:
+.PHONY: test-mount-temma-mountsim test-mount-rainbow-mountsim test-mount-ioptron-mountsim test-mount-lx200-mountsim
+test-mount-temma-mountsim test-mount-rainbow-mountsim test-mount-ioptron-mountsim test-mount-lx200-mountsim:
 	@printf "MountSim acceptance requires macOS and a GUI session.\n"
 	@exit 2
 endif

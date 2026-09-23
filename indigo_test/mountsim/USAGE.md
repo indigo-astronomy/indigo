@@ -20,6 +20,10 @@ The default app is the sibling MountSim checkout's `build/Build/Products/Debug/M
 
 The launcher gives the test `MOUNTSIM_PTY`, `MOUNTSIM_TRACE` and `MOUNTSIM_TRANSPORT_CONTROL`. `mountsim_test_common.h` supplies PTY attachment, trace-path discovery and explicit disconnect/reconnect of the relay transport. A reconnect returns a fresh slave name, which the test must apply to DEVICE_PORT. The app's simulated mount session survives the relay interruption, as real hardware survives an unplugged client cable.
 
+`MOUNTSIM_MODEL` is available during both `--list` and case execution so a driver can select model-specific cases. Listing receives the requested `--mount` identifier; each case receives the actual model and `MOUNTSIM_VERSION` reported by the control server.
+
+Concurrent launchers serialize their entire model run with an OS advisory lock at `/tmp/indigo-mountsim-<uid>.lock`. Every agent must use this launcher rather than starting MountSim directly. The lock is released when the launcher closes it or exits; keep the lock file in place because deleting it could allow two independent owners. `--lock-timeout` sets the maximum wait (3600 seconds by default). This coordinates cooperating launchers, not manually launched applications. Let a run finish normally so its application and test processes are cleaned up before the next owner proceeds.
+
 A transparent relay forwards all bytes without synthesizing replies or translating protocols. Raw captures contain both directions. `--terminator 0d0a` groups Temma TX trace records into CRLF frames; the terminator affects only logging. Omit it for binary protocols or select a different delimiter for another mount. A new model gets its own `test_<exact_driver_name>_mountsim.c`, case registry and Darwin-only Makefile rule; shared lifecycle and transport code belongs in the launcher/header.
 
 For one case, from `indigo_test`:
@@ -66,3 +70,14 @@ Python 3.9 on macOS and C callbacks share an epoch. Watchdog deadlines can use
 process-relative `time.monotonic()`. For duration-based guide commands, the
 reported latency runs from relay forwarding to public-property completion;
 there is no fabricated OFF edge. Keep this separate from physical pulse timing.
+
+## Avalon StarGO
+
+Build `mount_lx200`, then run `make -C indigo_test test-mount-lx200-mountsim`.
+The selected model defaults to `StarGO` through `MOUNTSIM_LX200_MODEL`; the current
+LX200 acceptance case set is specifically for StarGO. It uses `#` trace framing
+and exercises mount and guider through the shared real driver transport, while
+checking rejected focuser/AUX connections. Artifacts default to
+`build/mountsim-results/StarGO`. Public guider completion timing is measured
+from the duration-bearing `Mg` command, with separate coordinate-displacement
+coverage; there is no synthetic OFF edge or physical pulse-accuracy claim.

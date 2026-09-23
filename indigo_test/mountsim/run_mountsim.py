@@ -27,6 +27,7 @@ traffic is always retained. Each case has fresh app preferences and a watchdog.
 """
 import argparse
 import contextlib
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -39,6 +40,34 @@ import tempfile
 import sys
 import time
 import tty
+
+
+@contextlib.contextmanager
+def exclusive_mountsim(model, timeout):
+    # Keep one inode across runs: unlinking a flock file can split the mutex.
+    lock_path = Path('/tmp') / f'indigo-mountsim-{os.getuid()}.lock'
+    with lock_path.open('a+') as lock:
+        deadline = time.monotonic() + timeout
+        waiting = False
+        while True:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if not waiting:
+                    print(f'Waiting for MountSim lock: {lock_path}', flush=True)
+                    waiting = True
+                if time.monotonic() >= deadline:
+                    raise RuntimeError(f'MountSim lock timeout: {lock_path}')
+                time.sleep(.2)
+        try:
+            lock.seek(0)
+            lock.truncate()
+            lock.write(f'pid={os.getpid()} model={model}\n')
+            lock.flush()
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
 
 
 def control(port, **request):
@@ -107,6 +136,8 @@ def run_case(args, case, directory):
             os.set_blocking(master, False)
             env['MOUNTSIM_PTY'] = os.ttyname(slave)
             env['MOUNTSIM_TRACE'] = str(trace_path)
+            env['MOUNTSIM_MODEL'] = session['mount']
+            env['MOUNTSIM_VERSION'] = session['version']
             control_file = private / 'transport'
             env['MOUNTSIM_TRANSPORT_CONTROL'] = str(control_file)
             # Keep base-suite case filters out: every named case must really run.
@@ -190,6 +221,11 @@ def run_case(args, case, directory):
 
 
 def main():
+    # Unwind run_case's cleanup before releasing the shared application lock.
+    def terminate(signum, frame):
+        raise SystemExit(128 + signum)
+    signal.signal(signal.SIGTERM, terminate)
+    signal.signal(signal.SIGHUP, terminate)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--app', type=Path, required=True)
     parser.add_argument('--mount', required=True)
@@ -197,6 +233,7 @@ def main():
     parser.add_argument('--terminator', default='', help='TX trace frame terminator in hex; never changes wire bytes')
     parser.add_argument('--case', help='Run one exact case name')
     parser.add_argument('--timeout', type=float, default=120)
+    parser.add_argument('--lock-timeout', type=float, default=3600, help='Maximum seconds waiting for exclusive MountSim access')
     parser.add_argument('--output', type=Path, default=Path('build/mountsim-results'))
     args = parser.parse_args()
     if sys.platform != "darwin":
@@ -205,13 +242,18 @@ def main():
     args.test = args.test.resolve()
     args.terminator = bytes.fromhex(args.terminator)
     args.output = args.output.resolve()
-    cases = subprocess.check_output([str(args.test), '--list'], text=True).splitlines()
+    cases = subprocess.check_output([str(args.test), '--list'], text=True, env=dict(os.environ, MOUNTSIM_MODEL=args.mount)).splitlines()
     if args.case:
         if args.case not in cases:
             parser.error('Unknown case: ' + args.case)
         cases = [args.case]
     if not cases or len(set(cases)) != len(cases):
         parser.error('Empty or duplicate test registry')
+    with exclusive_mountsim(args.mount, args.lock_timeout):
+        return run_cases(args, cases, parser)
+
+
+def run_cases(args, cases, parser):
     passed = 0
     for case in cases:
         if Path(case).name != case:

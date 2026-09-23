@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300003F
+#define DRIVER_VERSION       0x03000040
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -1211,15 +1211,10 @@ static bool meade_set_slew_rate(indigo_device *device) {
 
 static bool meade_motion_dec(indigo_device *device) {
 	bool stopped = true;
-	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
-		if (PRIVATE_DATA->lastMotionNS == 'n' || PRIVATE_DATA->lastMotionNS == 's') {
-			stopped = meade_no_reply_command(device, ":Q#");
-		}
-	} else {
-		if (PRIVATE_DATA->lastMotionNS == 'n') {
-			stopped = meade_no_reply_command(device, ":Qn#");
-		} else if (PRIVATE_DATA->lastMotionNS == 's')
-			stopped = meade_no_reply_command(device, ":Qs#");
+	if (PRIVATE_DATA->lastMotionNS == 'n') {
+		stopped = meade_no_reply_command(device, ":Qn#");
+	} else if (PRIVATE_DATA->lastMotionNS == 's') {
+		stopped = meade_no_reply_command(device, ":Qs#");
 	}
 	if (stopped) {
 		if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
@@ -1237,15 +1232,10 @@ static bool meade_motion_dec(indigo_device *device) {
 
 static bool meade_motion_ra(indigo_device *device) {
 	bool stopped = true;
-	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
-		if (PRIVATE_DATA->lastMotionWE == 'w' || PRIVATE_DATA->lastMotionWE == 'e') {
-			stopped = meade_no_reply_command(device, ":Q#");
-		}
-	} else {
-		if (PRIVATE_DATA->lastMotionWE == 'w') {
-			stopped = meade_no_reply_command(device, ":Qw#");
-		} else if (PRIVATE_DATA->lastMotionWE == 'e')
-			stopped = meade_no_reply_command(device, ":Qe#");
+	if (PRIVATE_DATA->lastMotionWE == 'w') {
+		stopped = meade_no_reply_command(device, ":Qw#");
+	} else if (PRIVATE_DATA->lastMotionWE == 'e') {
+		stopped = meade_no_reply_command(device, ":Qe#");
 	}
 	if (stopped) {
 		if (MOUNT_MOTION_WEST_ITEM->sw.value) {
@@ -1749,7 +1739,8 @@ static void meade_init_stargo_mount(indigo_device *device) {
 static void meade_update_stargo_state(indigo_device *device) {
 	if (meade_command(device, ":X34#")) {
 		PRIVATE_DATA->slewing = (PRIVATE_DATA->response[1] == '5' || PRIVATE_DATA->response[2] == '5');
-		PRIVATE_DATA->tracking = PRIVATE_DATA->response[1] == '1' && PRIVATE_DATA->response[2] == '1';
+		// Each StarGO motor has its own status digit; RA tracking also continues during DEC motion (m15).
+		PRIVATE_DATA->tracking = PRIVATE_DATA->response[1] == '1';
 	}
 	if (meade_command(device, ":X38#")) {
 		switch (PRIVATE_DATA->response[1]) {
@@ -1949,6 +1940,18 @@ static void meade_update_agotino_state(indigo_device *device) {
 	// next command would reach a controller still busy inside its slew loop.
 	if (meade_command(device, ":D#")) {
 		PRIVATE_DATA->slewing = *PRIVATE_DATA->response;
+		if (!PRIVATE_DATA->slewing && PRIVATE_DATA->goto_issued) {
+			// GR/GD precede D in the poll; the slew may have ended between those reads.
+			double ra = 0, dec = 0;
+			PRIVATE_DATA->coordinate_read_failed = !meade_get_coordinates(device, &ra, &dec);
+			if (PRIVATE_DATA->coordinate_read_failed) {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else {
+				indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+			}
+		}
 	}
 }
 
@@ -3172,6 +3175,24 @@ static void mount_abort_motion_handler(indigo_device *device) {
 	if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
 		MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 		if (meade_stop(device)) {
+			if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
+				// Abort can overtake a queued reference-position request; cancel its start
+				// as well as settling an already running park/home operation.
+				indigo_cancel_pending_handler(device, mount_park_handler);
+				indigo_cancel_pending_handler(device, mount_home_handler);
+				PRIVATE_DATA->parking = PRIVATE_DATA->homing = false;
+				if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+					meade_restore_park_switch(device);
+					MOUNT_STATE_PARK_ITEM->light.value = PRIVATE_DATA->parked ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+					INDIGO_UPDATE_PROPERTY_STATE(MOUNT_PARK_PROPERTY, INDIGO_OK_STATE, NULL);
+				}
+				if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
+					MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
+					INDIGO_UPDATE_PROPERTY_STATE(MOUNT_HOME_PROPERTY, INDIGO_OK_STATE, NULL);
+				}
+				indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+			}
 			PRIVATE_DATA->lastMotionNS = PRIVATE_DATA->lastMotionWE = 0;
 			MOUNT_MOTION_NORTH_ITEM->sw.value = false;
 			MOUNT_MOTION_SOUTH_ITEM->sw.value = false;

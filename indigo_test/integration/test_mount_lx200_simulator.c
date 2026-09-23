@@ -380,7 +380,7 @@ static void check_profile(int index) {
 			SERIAL_CHECK_TRUE(wait_event(&simulator, command, 0));
 		}
 		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
-		SERIAL_CHECK_TRUE(wait_event(&simulator, !strcmp(profile->model, "stargo") ? "Q" : "Qn", 0));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, "Qn", 0));
 	}
 	disconnect_serial_device(&lx200_mount);
 	SERIAL_CHECK_TRUE(!context.connected);
@@ -457,6 +457,8 @@ static void lx200_agotino_holds_the_goto_until_the_slew_ends(void) {
 	// And the state it publishes comes from the distance bar, the one command that tells the
 	// truth about an aGotino in its slew loop.
 	SERIAL_CHECK_TRUE(event_count(&simulator, "D", NULL) > distance_bar_before);
+	// Force the completion boundary between frozen coordinates and the subsequent status query.
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "D", "COMPLETE"));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
 	// And it ends only once the mount is really there.
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - 22) < 0.01);
@@ -2241,6 +2243,95 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static _Atomic(indigo_device *) stargo_queue_device;
+static atomic_bool stargo_gate_entered, stargo_gate_release;
+
+static indigo_result stargo_capture_device(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, lx200_mount.device_name)) { atomic_store(&stargo_queue_device, device); }
+	return timed_client_update(client, device, property, message);
+}
+
+static void stargo_gate_handler(indigo_device *device) {
+	atomic_store(&stargo_gate_entered, true);
+	for (int i = 0; i < 5000 && !atomic_load(&stargo_gate_release); i++) { indigo_usleep(1000); }
+}
+
+static void lx200_stargo_abort_cancels_queued_park(void) {
+	external_serial_simulator simulator = { 0 };
+	atomic_store(&stargo_queue_device, NULL);
+	simulator_test_client.update_property = stargo_capture_device;
+	atomic_store(&stargo_gate_entered, false);
+	atomic_store(&stargo_gate_release, false);
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "stargo", "STARGO"));
+	SERIAL_CHECK_TRUE(atomic_load(&stargo_queue_device) != NULL);
+	indigo_execute_handler(atomic_load(&stargo_queue_device), stargo_gate_handler);
+	for (int i = 0; i < 1000 && !atomic_load(&stargo_gate_entered); i++) { indigo_usleep(1000); }
+	SERIAL_CHECK_TRUE(atomic_load(&stargo_gate_entered));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	atomic_store(&stargo_gate_release, true);
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Q", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	int polls = event_count(&simulator, "X34", NULL);
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "X34", polls + 1));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "X362", NULL));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+cleanup:
+	atomic_store(&stargo_gate_release, true);
+	stop_serial_driver(&lx200_mount);
+	simulator_test_client.update_property = timed_client_update;
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_stargo_park_abort_settles(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "stargo", "STARGO"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(12, 0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "X362", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+cleanup:
+	stop_serial_driver(&lx200_mount);
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_stargo_manual_preserves_other_axis(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "stargo", "STARGO"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Me", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Mn", 0));
+	int stop = event_count(&simulator, "Qn", NULL);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Qn", stop));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+	stop_serial_driver(&lx200_mount);
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_stargo_tracking_status_readback(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "stargo", "STARGO"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	int polls = event_count(&simulator, "X34", NULL);
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "X34", polls + 2));
+	indigo_usleep(100000);
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	polls = event_count(&simulator, "X34", NULL);
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "X34", polls + 2));
+	indigo_usleep(100000);
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+cleanup:
+	stop_serial_driver(&lx200_mount);
+	stop_external_serial_simulator(&simulator);
+}
+
 static void lx200_stargo_guide_rate_units(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -2511,6 +2602,10 @@ int main(int argc, char **argv) {
 		{ "lx200_generic_goto_polling_progress", lx200_generic_goto_polling_progress },
 		{ "lx200_teenastro_set_positions", lx200_teenastro_set_positions },
 		{ "lx200_nyx_legacy_wifi_and_elevation", lx200_nyx_legacy_wifi_and_elevation },
+		{ "lx200_stargo_abort_cancels_queued_park", lx200_stargo_abort_cancels_queued_park },
+		{ "lx200_stargo_park_abort_settles", lx200_stargo_park_abort_settles },
+		{ "lx200_stargo_manual_preserves_other_axis", lx200_stargo_manual_preserves_other_axis },
+		{ "lx200_stargo_tracking_status_readback", lx200_stargo_tracking_status_readback },
 		{ "lx200_stargo_guide_rate_units", lx200_stargo_guide_rate_units },
 		{ "lx200_driver_metadata_and_base_properties", lx200_driver_metadata_and_base_properties },
 		{ "lx200_utc_write_failures_recover", lx200_utc_write_failures_recover },
