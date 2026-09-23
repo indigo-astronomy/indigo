@@ -2534,3 +2534,23 @@ MOUNT_LX200_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_lx200.a $(TEST_LDFLA
 
 $(TEST_BUILD)/hardware/test_mount_lx200_hw: hardware/test_mount_lx200_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_lx200.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(MOUNT_LX200_HW_TEST_LDFLAGS)
+
+# Opt-in Cocoa application acceptance; excluded from headless integration tests.
+ifeq ($(OS_DETECTED),Darwin)
+MOUNTSIM_APP ?= ../../MountSim/build/Build/Products/Debug/MountSim.app
+.PHONY: test-mount-temma-mountsim
+test-mount-temma-mountsim: check-lib $(TEST_BUILD)/mountsim/test_mount_temma_mountsim
+	python3 mountsim/run_mountsim.py --app "$(MOUNTSIM_APP)" --mount Temma --terminator 0d0a --test $(TEST_BUILD)/mountsim/test_mount_temma_mountsim
+
+$(TEST_BUILD)/mountsim:
+	mkdir -p $@
+
+$(TEST_BUILD)/mountsim/test_mount_temma_mountsim: mountsim/test_mount_temma_mountsim.c mountsim/mountsim_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_temma.a | $(TEST_BUILD)/mountsim
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_TEMMA_SIMULATOR_TEST_LDFLAGS)
+
+else
+.PHONY: test-mount-temma-mountsim
+test-mount-temma-mountsim:
+	@printf "MountSim acceptance requires macOS and a GUI session.\n"
+	@exit 2
+endif

@@ -5715,6 +5715,10 @@
 		F4B0667386AC4C429100A248 /* sysfs_gpio_fake.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sysfs_gpio_fake.h; sourceTree = "<group>"; };
 		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
 		FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_simulator_common.h; sourceTree = "<group>"; };
+		C0DE20260923132000000001 /* run_mountsim.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_mountsim.py; sourceTree = "<group>"; };
+		C0DE20260923132000000002 /* mountsim_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mountsim_test_common.h; sourceTree = "<group>"; };
+		C0DE20260923132000000003 /* test_mount_temma_mountsim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_temma_mountsim.c; sourceTree = "<group>"; };
+		C0DE20260923132000000005 /* USAGE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = USAGE.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -6898,6 +6902,7 @@
 		592662AF1D9590630021746A /* indigo_test */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20260923132000000004 /* mountsim */,
 				59FEFFCE301E7005007FB62D /* REVIEW.md */,
 				59FA7BE4301D2E9700A35CFB /* AGENTS.md */,
 				59FA7C0B301DCEA000A35CFB /* DRIVER_TESTING_RULES.md */,
@@ -16482,6 +16487,17 @@
 				DF10000000000000000003 /* dome_dragonfly_simulator.c */,
 			);
 			path = dome_dragonfly_simulator;
+			sourceTree = "<group>";
+		};
+		C0DE20260923132000000004 /* mountsim */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20260923132000000005 /* USAGE.md */,
+				C0DE20260923132000000001 /* run_mountsim.py */,
+				C0DE20260923132000000002 /* mountsim_test_common.h */,
+				C0DE20260923132000000003 /* test_mount_temma_mountsim.c */,
+			);
+			path = mountsim;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

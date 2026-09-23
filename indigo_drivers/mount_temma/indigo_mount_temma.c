@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_mount_temma"
 #define DRIVER_LABEL         "Takahashi Temma Mount"
 #define MOUNT_DEVICE_NAME    "Takahashi Temma Mount"
@@ -95,6 +95,7 @@ typedef struct {
 	indigo_property *zenith_property;
 	//+ data
 	double current_ra, current_dec;
+	double park_deadline;
 	char telescope_side;
 	bool is_busy, start_tracking, stop_tracking;
 	unsigned char mount_motion_mask, guider_motion_mask;
@@ -108,6 +109,7 @@ typedef struct {
 //+ code
 
 static void mount_goto_finalizer(indigo_device *device);
+static void mount_park_finalizer(indigo_device *device);
 static void mount_motion_finalizer(indigo_device *device);
 static void guider_guide_ra_finalizer(indigo_device *device);
 static void guider_guide_dec_finalizer(indigo_device *device);
@@ -332,6 +334,30 @@ static void mount_goto_finalizer(indigo_device *device) {
 	indigo_update_coordinates(device, NULL);
 }
 
+static void mount_park_finalizer(indigo_device *device) {
+	bool ok = IS_CONNECTED && temma_update_position(device) && temma_command(device, true, "s") && (!strcmp(PRIVATE_DATA->response, "s0") || !strcmp(PRIVATE_DATA->response, "s1"));
+	if (ok && PRIVATE_DATA->response[1] == '1' && indigo_monotonic_time() < PRIVATE_DATA->park_deadline) {
+		indigo_update_coordinates(device, NULL);
+		indigo_execute_handler_in(device, 0.5, mount_park_finalizer);
+		return;
+	}
+	ok = ok && PRIVATE_DATA->response[1] == '0';
+	if (ok) {
+		ok = temma_set_standby(device, true);
+		MOUNT_TRACKING_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		if (ok) {
+			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+		}
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+	} else if (IS_CONNECTED) {
+		temma_no_reply_command(device, "PS");
+	}
+	MOUNT_PARK_PARKED_ITEM->sw.value = false;
+	MOUNT_PARK_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	indigo_update_coordinates(device, NULL);
+	indigo_update_property(device, MOUNT_PARK_PROPERTY, ok ? NULL : "Parking failed or timed out");
+}
+
 static void mount_motion_finalizer(indigo_device *device) {
 	if (!IS_CONNECTED || PRIVATE_DATA->mount_motion_mask == 0) {
 		return;
@@ -442,6 +468,8 @@ static void mount_connection_handler(indigo_device *device) {
 				temma_no_reply_command(device, "PS");
 			}
 		}
+		MOUNT_PARK_PARKED_ITEM->sw.value = false;
+		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		//- mount.on_disconnect
 		indigo_delete_property(device, CORRECTION_SPEED_PROPERTY, NULL);
 		indigo_delete_property(device, HIGH_SPEED_PROPERTY, NULL);
@@ -514,6 +542,12 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 static void mount_abort_motion_handler(indigo_device *device) {
 	//+ mount.MOUNT_ABORT_MOTION.on_change
 	indigo_cancel_pending_handler(device, mount_goto_finalizer);
+	indigo_cancel_pending_handler(device, mount_park_finalizer);
+	if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+		MOUNT_PARK_PARKED_ITEM->sw.value = false;
+		MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking aborted");
+	}
 	indigo_cancel_pending_handler(device, mount_motion_finalizer);
 	PRIVATE_DATA->mount_motion_mask = 0;
 	bool ok = temma_update_motion(device) && temma_no_reply_command(device, "PS");
@@ -619,19 +653,25 @@ static void mount_side_of_pier_handler(indigo_device *device) {
 }
 
 static void mount_park_handler(indigo_device *device) {
-	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_PARK.on_change
-	if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+	if (MOUNT_PARK_PARKED_ITEM->sw.value && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE && PRIVATE_DATA->mount_motion_mask == 0 && PRIVATE_DATA->guider_motion_mask == 0) {
 		time_t utc = indigo_get_mount_utc(device);
 		double ra = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_PARK_POSITION_HA_ITEM->number.value;
 		char command[32];
 		temma_format_position(command, sizeof(command), 'P', ra, MOUNT_PARK_POSITION_DEC_ITEM->number.value);
-		bool ok = temma_set_lst(device) && temma_position_command(device, "%s", command) && temma_set_standby(device, true);
-		MOUNT_PARK_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-		MOUNT_PARK_PARKED_ITEM->sw.value = false;
+		if (temma_set_lst(device) && temma_position_command(device, "%s", command)) {
+			PRIVATE_DATA->park_deadline = indigo_monotonic_time() + 600;
+			MOUNT_PARK_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_coordinates(device, NULL);
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+			indigo_execute_handler_in(device, 0.1, mount_park_finalizer);
+			return;
+		}
 	}
+	MOUNT_PARK_PARKED_ITEM->sw.value = false;
+	MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking could not start");
 	//- mount.MOUNT_PARK.on_change
-	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 }
 
 static void mount_geographic_coordinates_handler(indigo_device *device) {

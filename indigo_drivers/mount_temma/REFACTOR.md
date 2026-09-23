@@ -156,3 +156,68 @@ edge timing and not physical relay output:
 
 * Simulated tests: 15 run, 15 passed.
 * Hardware tests: 0 run, 0 passed. No Temma mount is available.
+
+
+# MountSim 2.3 (Temma) acceptance — 2026-09-23
+
+## Scope and plan
+
+Use the independently implemented Cocoa app through its real PTY. No physical mount is connected; physical hardware counts remain 0/0. Baseline INDIGO commit ef3387a3a; MountSim e394405. MountSim Debug build and universal Temma build succeeded on macOS arm64. Existing 15-case suite is running before production changes.
+
+1. COMPLETE: add a shared opt-in launcher with isolated preferences, per-case processes, bounded cleanup and transparent serial capture; register sources in Xcode.
+2. COMPLETE: run mount and guider property, command, coordinates, reachable GOTO/abort/park, shared lifecycle and software pulse timing acceptance against MountSim.
+3. COMPLETE: investigate any discrepancy against multiple independent public sources; record reproducer, cause and repair before changing production code.
+4. COMPLETE: reran the complete scope, recorded `MountSim 2.3 (Temma)`, regenerated the summary and checked upstream (no new commits/conflicts). Verified work is committed locally without pushing.
+
+The launcher must not synthesize mount responses. Protocol-fault injection remains covered separately by the deterministic 15-case suite. Captures distinguish driver-to-app and app-to-driver traffic; pulse measurements describe software transport edges, not physical relays.
+
+## Baseline and reproduced defects
+
+The original deterministic suite passed 15/15. The first independent MountSim subset passed 7/7. Added reachable GOTO and park-arrival cases before changing production code. Park arrival fails reproducibly: target Dec 46 degrees, initial 45 degrees; trace sends P then STN-ON about 38 ms later, so motion stops short although the driver reports OK. Captures retained in `/tmp/temma-mountsim-before-fix` for this session. The GOTO/abort assertion initially read the coordinate cache before asynchronous completion; its test now waits for a terminal state, with no production change for that observation.
+
+TM004 (reproduced, repaired): parking disables motors immediately after GOTO acceptance. Sources checked independently on 2026-09-23: [INDI Temma getCoords/Park](https://github.com/indilib/indi/blob/master/drivers/telescope/temmadriver.cpp) marks parking in progress and disables motors only after completion; [CCDASTRO Temma tracking/standby documentation](https://github.com/CCDASTRO/ASCOM.CCDASTRO.Temma#tracking-and-standby) identifies STN-ON as motors stopped. MountSim and the existing deterministic simulator both model that stop. The defect is in the driver; the previous simulator test asserted only the command and property result, not arrival.
+
+Repair plan: add a bounded park finalizer that polls position/status, sends standby only after completion, publishes tracking OFF, handles read/stop failures, and cancels on abort/disconnect. Preserve the existing momentary park switch contract (one item, clears on completion); reject competing work using the existing parked guard and coordinate BUSY state. Add the same arrival and cancellation regression to the portable suite, without introducing any MountSim dependency there. Increase driver version 14 to 15 and regenerate using the unchanged generator.
+
+## Coverage mapping and current results
+
+The driver-only repair (3.0.0.15) passes the 16-case portable suite, including park arrival, abort, disconnect/reconnect and failed status read. Strict `clang -Wall -Wextra -Werror -fsyntax-only` passes. Xcode project syntax passes. MountSim production code has not required changes.
+
+The independent suite has 12 named cases: transport loss during pending motion and healthy idle with fresh reconnect; location, pier side and actual manual-motion readback; park abort/reconnect; reachable GOTO completion/abort/fresh GOTO; park arrival before standby; mount property/lifecycle contract; driver-specific commands and rates; manual directions/rates/combined masks; RA hundredths and wrap; guider directions/replacement/overlap/zero; shared-device orders and pending disconnect; guider ON/OFF timing while idle and tracking.
+
+The first 9-case run after repair passed 9/9. Initial 12-case run passed 11/12: its idle-loss case cut the port while coordinates were still ALERT from the preceding abort, then incorrectly demanded a new ALERT publication. INDIGO suppresses unchanged updates; the corrected test first requires a healthy OK poll. The isolated rerun passed. This is a harness correction, not another driver defect.
+
+Platform isolation: all app tests and helpers are under `indigo_test/mountsim`; Makefile rules are guarded by Darwin and are not members of the portable test lists. The MIGRATION_STATUS count is 16 portable / 0 physical, excluding the 12 macOS-only app cases. Full instructions are in `indigo_test/mountsim/USAGE.md`.
+
+Remaining scope limits: no physical mount, Linux or Windows execution; 600-second park timeout is implemented but its full wall-clock expiry is not exercised; protocol-error injection stays in the portable suite. PTY loss is client transport loss, not an app crash or electrical parity test. No generic framework or generator changes are needed.
+
+## Final MountSim run and software timing
+
+Final complete MountSim run: **12/12 passed**, driver **3.0.0.15**, macOS arm64. Every session response identifies app version 2.3 and model Temma. All original portable cases plus the added park lifecycle case passed **16/16**. The repaired wire sequence is P → repeated E/s polls → s0 → STN-ON; the separate park test asserts actual Dec arrival and tracking OFF. Abort cancels the pending park finalizer and sends PS; disconnect clears the momentary switch before reconnect. The unchanged generator regenerates the driver source.
+
+Each timing row retains 12 samples (four directions, three repeats) after warmups. Endpoints are the relay forwarding each direction ON and OFF command into the real MountSim PTY, including host scheduling; they are not physical relay or motor-loop timestamps. Workloads are tracking disabled and tracking enabled with periodic coordinate polling. Signed and absolute errors are milliseconds; percentage is mean signed error/requested duration.
+
+| Workload | Request | Actual mean | Min | Mean | Median | p95 | p99 | Max | Stddev | Max abs | Mean % |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| idle | 20 | 23.127 | 0.088 | 3.127 | 0.426 | 10.106 | 10.106 | 10.106 | 3.729 | 10.106 | 15.637 |
+| idle | 100 | 105.083 | 0.141 | 5.083 | 4.519 | 14.786 | 14.786 | 14.786 | 4.509 | 14.786 | 5.083 |
+| idle | 500 | 502.647 | 0.155 | 2.647 | 0.790 | 10.216 | 10.216 | 10.216 | 3.379 | 10.216 | 0.529 |
+| tracking | 20 | 26.072 | 0.265 | 6.072 | 4.520 | 38.083 | 38.083 | 38.083 | 9.955 | 38.083 | 30.361 |
+| tracking | 100 | 103.676 | 0.449 | 3.676 | 1.888 | 21.147 | 21.147 | 21.147 | 5.455 | 21.147 | 3.676 |
+| tracking | 500 | 508.556 | 0.153 | 8.556 | 3.307 | 33.525 | 33.525 | 33.525 | 11.379 | 33.525 | 1.711 |
+
+Darwin Makefile guarding was verified with `make -n -C indigo_test OS_DETECTED=Linux test-mount-temma-mountsim` and the Windows equivalent: each emits only the unsupported-platform message and exit, with no build or test prerequisites. Default integration registration is unchanged. No native Linux/Windows execution is claimed.
+
+## Final verification and test summary
+
+- MountSim Debug build: successful (app remains built in the MountSim checkout).
+- Temma universal arm64/x86_64 build: successful; native execution was arm64.
+- Strict driver syntax/warnings (`-Wall -Wextra -Werror`): passed.
+- Regenerating the unchanged `.driver` source produced byte-identical C/H/main files.
+- Portable suite: **16 run / 16 passed**; repeated with ASan+UBSan-instrumented driver and test: **16/16**, no sanitizer diagnostics. Shared libindigo and the external deterministic simulator were not instrumented in this run. Leak detection disabled because this macOS sanitizer does not support it.
+- `MountSim 2.3 (Temma)`: **12 run / 12 passed**. Software simulated test cases in this work: **28 distinct / 28 passed** (16 portable + 12 independent MountSim); repeated runs are not counted twice.
+- Physical hardware: **0 run / 0 passed**. No physical validation claimed.
+- Xcode project syntax, generated summary, whitespace and non-macOS opt-in target guards checked successfully. Linux/Windows native execution remains unavailable.
+- Full MountSim captures retained for this session under `/tmp/temma-validation/mountsim-results`; original failing traces under `/tmp/temma-mountsim-before-fix`. The before/after ordered wire comparison isolates the park change: immediate STN-ON is replaced by status polling through completion, then STN-ON. Other cases remain successful. Logs are temporary artifacts, not repository source files.
+
+No MountSim code repair was necessary. The application tests stay excluded from portable default test targets. The only production change is Temma park sequencing/lifecycle in version 3.0.0.15.
