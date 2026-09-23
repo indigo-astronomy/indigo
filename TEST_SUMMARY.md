@@ -135,7 +135,6 @@
 | guider_cgusbst4 | 2026-09-21 23:53 | 3.0.0.7 | mac arm64 | simulator | 5 / 5 | ✅ OK |
 | guider_gpusb | 2026-09-21 23:31 | 3.0.0.10 | mac arm64 | GPUSB | 10 / 10 | ✅ OK |
 | guider_gpusb | 2026-09-21 23:32 | 3.0.0.10 | mac arm64 | fake SDK | 20 / 20 | ✅ OK |
-| mount_ioptron | 2026-09-23 18:32 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM120) | 8 / 8 | ✅ OK |
 | mount_ioptron | 2026-09-23 14:52 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM25) | 8 / 8 | ✅ OK |
 | mount_ioptron | 2026-09-23 14:54 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM40) | 8 / 8 | ✅ OK |
 | mount_ioptron | 2026-09-23 14:56 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron GEM45) | 8 / 8 | ✅ OK |
@@ -144,9 +143,8 @@
 | mount_ioptron | 2026-09-23 15:01 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron SmartEQ) | 8 / 8 | ✅ OK |
 | mount_ioptron | 2026-09-23 15:02 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron ZEQ25) | 8 / 8 | ✅ OK |
 | mount_ioptron | 2026-09-23 15:04 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM70) | 8 / 8 | ✅ OK |
-| mount_ioptron | 2026-09-23 15:10 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM120) | 8 / 8 | ✅ OK |
 | mount_ioptron | 2026-09-23 15:10 | 3.0.0.53 | mac arm64 | simulator | 108 / 108 | ✅ OK |
-| mount_ioptron | 2026-09-20 21:29 | 3.0.0.53 | mac arm64 | simulator | 104 / 104 | ✅ OK |
+| mount_ioptron | 2026-09-23 18:32 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM120) | 8 / 8 | ✅ OK |
 | mount_lx200 | 2026-09-22 23:07 | 3.0.0.57 | mac arm64 | Pegasus NYX-101 | 30 / 30 | ✅ OK |
 | mount_lx200 | 2026-09-23 00:11 | 3.0.0.58 | mac arm64 | OnStepX | 33 / 33 | ✅ OK |
 | mount_lx200 | 2026-09-23 10:06 | 3.0.0.59 | mac arm64 | aGotino | 35 / 35 | ✅ OK |
