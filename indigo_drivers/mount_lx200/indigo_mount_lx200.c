@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300003C
+#define DRIVER_VERSION       0x0300003D
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -571,13 +571,21 @@ static bool meade_set_utc(indigo_device *device, time_t secs, int utc_offset) {
 	time_t seconds = secs + utc_offset * 3600;
 	struct tm tm;
 	indigo_gmtime(&seconds, &tm);
+	// A Gemini keeps its real time clock at UTC and refuses a date or a local time it cannot
+	// place on a timeline: "The time difference has to be set before setting the calendar
+	// date (SC) and local time (SL)". Gemini Level 5 command description, :SG#. Every other
+	// profile keeps the order it had.
+	bool offset_first = MOUNT_TYPE_GEMINI_ITEM->sw.value;
+	if (offset_first && (!meade_simple_reply_command(device, ":SG%+03d#", -utc_offset) || *PRIVATE_DATA->response != '1')) {
+		return false;
+	}
 	if (!meade_simple_reply_command(device, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100) || *PRIVATE_DATA->response != '1') {
 		return false;
 	}
 	if (PRIVATE_DATA->use_dst_commands) {
 		meade_no_reply_command(device, ":SH%d#", indigo_get_dst_state());
 	}
-	if (!meade_simple_reply_command(device, ":SG%+03d#", -utc_offset) || *PRIVATE_DATA->response != '1') {
+	if (!offset_first && (!meade_simple_reply_command(device, ":SG%+03d#", -utc_offset) || *PRIVATE_DATA->response != '1')) {
 		return false;
 	}
 	if (!meade_simple_reply_command(device, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec) || *PRIVATE_DATA->response != '1') {
@@ -852,6 +860,15 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 		return false;
 	}
 	if (!meade_command(device, ":CM#") || *PRIVATE_DATA->response == 0) {
+		return false;
+	}
+	if (MOUNT_TYPE_GEMINI_ITEM->sw.value && !strncmp(PRIVATE_DATA->response, "No object!", 10)) {
+		// A Gemini that has not been aligned, or that has no object selected, refuses the
+		// synchronisation with this string and keeps the position it had. A successful one
+		// answers with the name of the object instead, so only the content of an ordinary
+		// string tells the two apart and an empty-reply check reports the refusal as a
+		// sync that happened. Gemini Level 5 command description, Synchronize.
+		indigo_send_message(device, ALERT_PROPERTY, "Sync refused, the mount is not aligned or no object is selected");
 		return false;
 	}
 	if (MOUNT_TYPE_ZWO_ITEM->sw.value && *PRIVATE_DATA->response == 'e') {

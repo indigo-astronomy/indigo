@@ -85,6 +85,11 @@ static bool start_lx200_simulator_with_status_king(external_serial_simulator *si
 	return start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments);
 }
 
+static bool start_unaligned_lx200_simulator(external_serial_simulator *simulator, const char *model) {
+	const char *arguments[] = { "--model", model, "--unaligned", NULL };
+	return start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments);
+}
+
 // libindigo exports a legacy macOS clock_gettime shim using wall time.
 // Use the native nanosecond API so test and external simulator share a clock.
 static uint64_t lx_monotonic_ns(void) {
@@ -148,6 +153,31 @@ static int event_count(external_serial_simulator *simulator, const char *command
 	}
 	fclose(file);
 	return count;
+}
+
+// The time of the first command whose name starts with the given prefix, which is how a test
+// orders two commands whose arguments it does not want to spell out.
+static bool first_event_time(external_serial_simulator *simulator, const char *prefix, double *when) {
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.events", simulator->ready_file);
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return false;
+	}
+	char line[256];
+	bool found = false;
+	while (!found && fgets(line, sizeof(line), file)) {
+		char *tab = strchr(line, '\t');
+		if (tab != NULL) {
+			*tab++ = 0;
+			if (!strncmp(tab, prefix, strlen(prefix))) {
+				*when = atof(line);
+				found = true;
+			}
+		}
+	}
+	fclose(file);
+	return found;
 }
 
 static bool wait_event(external_serial_simulator *simulator, const char *command, int before) {
@@ -502,6 +532,63 @@ cleanup:
 // puts a colon, and it refuses an unsigned longitude with 0 while keeping the site it had. The
 // first left the driver without any declination at all, the second replaced the site of the
 // mount with one it had never been given.
+// A Gemini that has not been aligned, or that has no object selected, answers :CM# with
+// "No object!#" and keeps the position it had. The reply is an ordinary string, so a driver that
+// only rejects an empty answer reports a synchronisation the mount refused and leaves the client
+// believing its pointing model was updated. Gemini Level 5 command description, Synchronize.
+//
+// The Level 4 manual, section 5.3.10.10.2, lets the user swap the meaning of :CM# and :Cm#
+// through the "Sync or Align" setting, and :Cm# is an additional alignment that recalculates the
+// pointing model. The driver must not choose between them, so this only asserts the refusal.
+static void lx200_gemini_refuses_an_unaligned_sync(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_unaligned_lx200_simulator(&simulator, "gemini"));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_mount));
+	online = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	double right_ascension = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double declination = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	// The refused sync has to end in ALERT, not in the OK a successful one publishes.
+	SERIAL_CHECK_TRUE(lx_coordinates(23.5, -0.5, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "CM", 0));
+	// And the mount has to keep the position it had, because that is what it did.
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - right_ascension) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - declination) < 0.01);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A Gemini runs its real time clock at UTC, so it refuses a calendar date and a local time it
+// cannot place on a timeline: "The time difference has to be set before setting the calendar date
+// (SC) and local time (SL)". The driver used to send the date first, so on this controller the
+// clock transfer failed at its very first command. Gemini Level 5 command description, :SG#.
+static void lx200_gemini_sets_the_offset_before_the_clock(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	double offset_time = 0, date_time = 0, local_time = 0;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "gemini", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(first_event_time(&simulator, "SG", &offset_time));
+	SERIAL_CHECK_TRUE(first_event_time(&simulator, "SC", &date_time));
+	SERIAL_CHECK_TRUE(first_event_time(&simulator, "SL", &local_time));
+	SERIAL_CHECK_TRUE(offset_time < date_time);
+	SERIAL_CHECK_TRUE(offset_time < local_time);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void lx200_oat_reads_the_coordinates_and_the_site(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -2314,6 +2401,8 @@ int main(int argc, char **argv) {
 		{ "lx200_agotino_refuses_the_guider", lx200_agotino_refuses_the_guider },
 		{ "lx200_agotino_keeps_the_site", lx200_agotino_keeps_the_site },
 		{ "lx200_guide_pulse_moves_the_mount", lx200_guide_pulse_moves_the_mount },
+		{ "lx200_gemini_refuses_an_unaligned_sync", lx200_gemini_refuses_an_unaligned_sync },
+		{ "lx200_gemini_sets_the_offset_before_the_clock", lx200_gemini_sets_the_offset_before_the_clock },
 		{ "lx200_oat_reads_the_coordinates_and_the_site", lx200_oat_reads_the_coordinates_and_the_site },
 		{ "lx200_oat_idle_is_not_parked", lx200_oat_idle_is_not_parked },
 		{ "lx200_oat_keeps_tracking_through_a_goto", lx200_oat_keeps_tracking_through_a_goto },

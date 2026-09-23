@@ -52,6 +52,11 @@ typedef struct {
 	// Whether :GU# carries the documented k for the king rate. OnStepX 10.28x does not, so the
 	// default is the firmware that omits it and only answers the rate through :GT#.
 	bool status_king;
+	// A Gemini that has not been aligned, or that has no object selected, answers :CM# with
+	// "No object!#" instead of the name of the object it synchronised to. Gemini Level 5
+	// command description, Synchronize section. The default is the aligned mount, so existing
+	// cases keep their meaning.
+	bool unaligned;
 	const char *ready_file;
 	simulator_model model;
 } simulator_options;
@@ -97,6 +102,11 @@ typedef struct {
 	// again when the slew ends, so the tracking it reports goes away and comes back on its own.
 	// Observed on firmware v1.13.20, Mount::startSlewingToTarget() in the firmware source.
 	bool oat_tracking_resume;
+	// A Gemini keeps its real time clock at UTC, so the offset has to be given before the date
+	// and the local time; the command description says so under :SG# and the controller refuses
+	// a date it cannot place on a timeline. Cleared once per session, like the controller does
+	// at power-up. Gemini Level 5 command description, :SG#.
+	bool offset_set;
 	// The position an aGotino keeps reporting for as long as a slew is running. Its firmware
 	// recomputes the strings :GR# and :GD# answer from only after the slew loop ends, which its
 	// own source marks as a known limitation. Observed on firmware 230312.
@@ -153,6 +163,7 @@ static void usage(const char *name) {
 	printf("Usage: %s [OPTIONS]\n", name);
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --status-king           Report the king rate as k in :GU#, as the protocol documents\n");
+	printf("  --unaligned             Answer :CM# with the Gemini \"No object!\" refusal\n");
 	printf("  --model <name>          a supported LX200 profile\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --tcp                   Serve an opt-in localhost TCP transport\n");
@@ -202,6 +213,8 @@ static bool parse_args(int argc, char *argv[]) {
 			options.tcp = true;
 		} else if (!strcmp(argv[i], "--status-king")) {
 			options.status_king = true;
+		} else if (!strcmp(argv[i], "--unaligned")) {
+			options.unaligned = true;
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
 		} else if (!strcmp(argv[i], "--model")) {
@@ -638,6 +651,12 @@ static void handle_command(const char *command) {
 		snprintf(response, sizeof(response), "G%s%s%s%sW%s%s#", state.tracking ? "" : "n", state.slewing ? "" : "N", state.parked ? "P" : parking_requested ? "I" : "p", state.at_home ? "H" : homing_requested ? "h" : "", auto_flip ? "a" : "", rate);
 		write_response(response);
 	} else if (!strncmp(command, "SC", 2)) {
+		if (options.model == MODEL_GEMINI && !state.offset_set) {
+			// "The time difference has to be set before setting the calendar date (SC) and
+			// local time (SL), since the Real Time Clock is running at UTC."
+			write_response("0");
+			return;
+		}
 		state.date_month = atoi(command + 2);
 		state.date_day = atoi(command + 5);
 		state.date_year = 2000 + atoi(command + 8);
@@ -647,6 +666,7 @@ static void handle_command(const char *command) {
 		write_response(response);
 	} else if (!strncmp(command, "SG", 2)) {
 		state.time_offset = atoi(command + 2);
+		state.offset_set = true;
 		write_response("1");
 	} else if (!strcmp(command, "GG")) {
 		snprintf(response, sizeof(response), "%+03d#", state.time_offset);
@@ -656,6 +676,8 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "GH")) {
 		snprintf(response, sizeof(response), "%d#", state.time_dst);
 		write_response(response);
+	} else if (options.model == MODEL_GEMINI && !strncmp(command, "SL", 2) && !state.offset_set) {
+		write_response("0");
 	} else if (!strncmp(command, "SL", 2)) {
 		state.time_hour = atoi(command + 2);
 		state.time_minute = atoi(command + 5);
@@ -743,6 +765,13 @@ static void handle_command(const char *command) {
 		}
 		write_response(response);
 	} else if (!strcmp(command, "CM")) {
+		if (options.model == MODEL_GEMINI && options.unaligned) {
+			// The mount refuses the synchronisation and keeps the position it had. The reply is
+			// a plain string like the successful one, which is what makes a driver that only
+			// checks for an empty answer report a sync that never happened.
+			write_response("No object!#");
+			return;
+		}
 		serial_motion_sync(&ra_motion, state.target_ra_cs);
 		serial_motion_sync(&dec_motion, state.target_dec_as);
 		state.parked = false;
