@@ -1767,3 +1767,107 @@ The opt-in TCP target and the ASAN/UBSAN build were not run in this session.
 * Simulated tests: 91 run, 91 passed.
 * Hardware tests: 0 run, 0 passed. No Gemini controller was available and none
   was used; nothing here is hardware validated.
+
+# LX200 hardware acceptance run, ESP32Go (2026-09-23)
+
+## Scope and hardware-test decision
+
+Non-interactive hardware run against a physically connected **ESP32Go
+controller, source commit `bbf224a`, build version `06.9`**, on macOS arm64 over
+the board's UART0 at 115200 baud on `/dev/cu.usbmodem5B7A0424131`, driver version
+`0x0300003E` before this work. Hardware testing IS performed for this record;
+every result below that names the ESP32Go is physical, every result that names
+the simulator is hardware-free.
+
+The controller is a bare ESP32-S3 development board: no stepper drivers, no
+motors, no encoders, no display and no sensors. That is not a limitation for
+this protocol, because ESP32Go is open loop throughout. Both axis positions are
+software counters the firmware advances from its own step generator, so every
+coordinate, every slew and the whole `:GU#` status word are computed exactly as
+they are with motors attached; only the physical turning of a shaft is missing.
+
+## Firmware deployment
+
+The image is `mount_lx200_simulator/ESP32Go_bbf224a_esp32_s3.bin`, SHA-256
+`647e4261a0f76b545be1085d9e8db2caea9fe92598ad2edf30eddb02e5e413ac`, a merged
+image flashed at offset `0x0` after `esptool flash_id` confirmed an ESP32-S3
+(QFN56) revision v0.2 with 16 MB of flash. `esptool` 4.12.0 and `pyserial` 3.5
+were installed into a throw-away virtual environment for the upload; the host
+has no system-wide esptool. The upload reported `Hash of data verified` and the
+board was left running this firmware. The image, its upstream origin, the
+ESP32-S3 adaptations, the flash layout, the bench pin map and the UART settings
+are recorded beside it in `ESP32Go_bbf224a_esp32_s3.md`.
+
+The firmware source was available at `~/Desktop/ESP32Go_bbf224a_esp32_s3_source.zip`
+during this run and every protocol finding below is cited against it rather than
+inferred from the replies alone. `command.cpp` is Ragel generated and the
+grammar it came from is not in the archive, so the command-to-action mapping was
+recovered by compiling the generated state machine on the host with every action
+body replaced by a print, and enumerating every one, two and three character
+command over a 70 character alphabet. Each mapping quoted below was then
+confirmed against the board.
+
+## Protocol observations from the ESP32Go
+
+| Command | Documented LX200 | ESP32Go `bbf224a` |
+| --- | --- | --- |
+| `:GVP#` | product name | `esp32go#` |
+| `:GVN#` | firmware version | `06.9#`, derived from the build date |
+| `:GVD#` / `:GVT#` / `:GVF#` | version details | build date, build time, `43Eg#` |
+| `:GR#` | `HH:MM:SS#` | `06:24:19.5#`, tenths of a second of time |
+| `:GD#` | `sDD*MM:SS#` | `+00\xe100:00#`, `0xE1` where the protocol puts `*` |
+| `:Gt#` / `:Gg#` | site | `+36\xe143#` / `+004\xe112#`, the same `0xE1` |
+| `:GG#` | `sHH#` | as documented |
+| `:GW#` | alignment status | not implemented, no reply |
+| `:GU#` | not in the protocol | `TpsE1#`: tracking, parked, slewing, pier side, rate |
+| `:GK#` / `:Gk#` | not in the protocol | the same state as a two digit bitmask / tracking alone |
+| `:Gx#` | not in the protocol | `:GR#`, `:GD#`, `:GZ#`, `:GA#`, `:GK#` and the focuser in one reply |
+| `:D#` | distance bar | `\|#` while an axis slews, `#` when both are idle |
+| `:MS#` | goto | `0#` |
+| `:CM#` | sync | `sync#` |
+| `:TQ#` `:TS#` `:TL#` `:TK#` | tracking rate | accepted, no reply, last digit of `:GU#` follows |
+| `:AP#` / `:AL#` | tracking on / off | accepted, no reply, and neither changes the tracking |
+| `:hP#` | park | goes to the home position and marks the mount parked |
+| `:hS#` | - | stores the current position as home |
+| `:pS#` | - | `EAST#` / `WEST#` |
+| `:PP#` | - | `1#` / `0#`, the parked flag alone |
+| `:cRR#` | - | saves the position and **restarts the controller** |
+
+Four of these decide most of what follows.
+
+**The degree separator is `0xE1`.** `misc.cpp` prints every declination,
+altitude, azimuth, latitude and longitude with `sprintf(..., 225, ...)`, and
+`0xE1` is neither the `*` nor the `0xDF` the LX200 protocol allows.
+
+**There is no command that stops tracking.** `:AL#` maps to
+`telescope->track = 0; azmotor->targetspeed = 0.0`, which the tracking loop
+overwrites on its next pass, and `:AP#` only sets `track = 1` without touching
+the rate the motor runs at. `mount_track_off()` exists in the firmware but is
+reachable only from the infrared remote and the hand pad, never from LX200.
+
+**There is no unpark either.** `:hP#` sends the mount home and sets `parked`;
+the only things that clear it are a goto and a sync, which do it as a side
+effect. `:cRR#` is the one command named "park" in the web interface, and it
+saves the position and calls `ESP.restart()`.
+
+**`:GU#` is a complete state word.** `%c%c%c%c%d` of tracking (`T`/`t`),
+parked (`P`/`p`), slewing (`S`/`s`), pier side (`W`/`E`) and the tracking rate
+index 1 to 4, so one transaction answers everything the polling callback needs.
+
+## Test asset
+
+`indigo_test/hardware/test_mount_lx200_hw.c`, run with
+`make -C indigo_test test-mount-lx200-hw` and `MOUNT_LX200_HW_PORT` pointing at
+the board.
+
+## Baseline (2026-09-23 12:20, macOS arm64, driver 0x0300003E)
+
+```sh
+MOUNT_LX200_HW_PORT=/dev/cu.usbmodem5B7A0424131 make -C indigo_test test-mount-lx200-hw
+```
+
+35 cases run, **20 passed and 15 failed**. The driver does not recognise
+`esp32go#`, falls through to the generic profile, and the generic profile cannot
+read a declination from this controller at all, so `MOUNT_EQUATORIAL_COORDINATES`
+stayed in ALERT for the whole session and every scenario that reads a position
+failed with it. The failures are listed as defects below.
