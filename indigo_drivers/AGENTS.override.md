@@ -39,6 +39,32 @@
 - Apply the driver-class acceptance checklist in `indigo_test/DRIVER_TESTING_RULES.md`. Map supported behavior and failure modes to concrete tests, and justify every non-applicable, hardware-only, or otherwise uncovered case in the driver's `REFACTOR.md`.
 - Run strict builds and warnings checks, sanitizer-backed tests, and tests on the operating systems and architectures relevant to the driver's declared support when the environment provides them. Record commands, results, unavailable environments, and residual coverage gaps in the driver's `REFACTOR.md`; do not present unavailable platform testing as successful validation.
 
+## Running firmware on an ESP32-S3
+
+- Store only the firmware `.bin` and deployment notes in the driver's simulator directory. Do not store firmware source code or source archives.
+- Deployment notes must identify the upstream project, firmware version or commit, ESP32-S3 adaptations, image checksum, flash layout, pin configuration, and serial baud rate. Verify that distributing the binary complies with its license; omitting source does not remove source-distribution obligations.
+- Resolve firmware paths relative to the simulator directory. Never hard-code absolute paths.
+- Flash or reset the board only when explicitly authorized. Confirm that no other test or application is using it. Never interrupt an existing test.
+- Identify the board's serial port; do not assume the first available port is correct.
+- Locate an installed Python environment with `esptool` and `pyserial`. Verify the chip type and flash capacity using `esptool`. This may reset the board and requires exclusive access.
+- Verify the image checksum and deployment notes before uploading.
+- For a **merged image** containing the bootloader, partition table, and application, flash at offset `0x0`:
+
+  ```sh
+  python -m esptool --chip esp32s3 --port "$ESP32_PORT" \
+    --baud 460800 write_flash 0x0 "$FIRMWARE_BIN"
+  ```
+
+  `FIRMWARE_BIN` must be a relative path. Follow the syntax supported by the installed esptool version.
+
+- Never flash an application-only image at `0x0`. Follow its documented offsets.
+- Do not erase the entire flash unless explicitly authorized.
+- Require successful upload verification, then allow the board to reboot. Use BOOT/RESET only if automatic download entry or reboot fails.
+- Open the documented serial interface and baud rate. The prepared UART builds use UART0 through the USB-to-UART bridge, with native USB CDC disabled.
+- Verify identity and basic protocol responses first. Without motors or sensors, report only communication and firmware state validation.
+- Close the serial verification connection before connecting INDIGO. Run only authorized hardware scenarios.
+- Finish by stopping commanded motion and tracking, closing serial connections, and recording the image checksum, board identity, upload result, test results, and firmware left installed.
+
 ## Generated drivers and repository integration
 
 - When a driver uses `indigo_generator`, preserve the `.driver` file as the source of truth and follow all generated-driver rules in the root `AGENTS.md`. Make behavioral edits in `.driver`, regenerate the checked-in outputs, and verify reproducibility by regenerating and confirming that no unexplained diff remains.
