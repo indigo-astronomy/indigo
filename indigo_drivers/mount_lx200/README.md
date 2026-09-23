@@ -12,6 +12,7 @@
 * ZWO AM5 mount (https://astronomy-imaging-camera.com/)
 * Pegasus NYX-101 (https://pegasusastro.com/products/nyx-101-harmonic-gear-mount/)
 * TeenAstro controllers (https://groups.io/g/TeenAstro)
+* aGotino controllers (https://github.com/mappite/aGotino)
 
 Connection over serial port or network.
 
