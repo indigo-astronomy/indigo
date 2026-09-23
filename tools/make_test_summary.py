@@ -20,7 +20,9 @@
 # system and the architecture, the tests column holds the total and passed
 # counts and the result column holds either '✅ OK' or '❌ Failed'. The rows are
 # ordered by driver name across all driver roots, then by the order the runs
-# have in the driver's README.md.
+# have in the driver's README.md. Once the rows are ordered, the driver column
+# is collapsed, so that it is filled in for the first run of a driver only and
+# the following runs leave it empty.
 #
 # Usage: make_test_summary.py [-o <output>]
 #   -o <output>  file to write instead of <project root>/TEST_SUMMARY.md,
@@ -109,12 +111,23 @@ def format_row(cells):
 	return "| " + " | ".join(cells) + " |"
 
 
+def collapse_driver_column(cells):
+	"""Blank the driver cell of every row repeating the driver of the row above."""
+	previous = None
+	for row in cells:
+		name = row[0]
+		if name == previous:
+			row[0] = ""
+		previous = name
+	return cells
+
+
 def format_summary(drivers):
 	"""Return the content of TEST_SUMMARY.md for the given drivers."""
-	lines = [format_row(COLUMNS), format_row(["---"] * len(COLUMNS))]
+	cells = []
 	for name, records in drivers:
 		for record in records:
-			lines.append(format_row([
+			cells.append([
 				name,
 				record.group("timestamp"),
 				record.group("version"),
@@ -122,7 +135,9 @@ def format_summary(drivers):
 				record.group("type"),
 				"%s / %s" % (record.group("total"), record.group("passed")),
 				PASSED if record.group("result") == "OK" else FAILED
-			]))
+			])
+	lines = [format_row(COLUMNS), format_row(["---"] * len(COLUMNS))]
+	lines.extend(format_row(row) for row in collapse_driver_column(cells))
 	return "\n".join(lines) + "\n"
 
 
