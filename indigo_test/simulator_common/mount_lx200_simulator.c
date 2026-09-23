@@ -42,7 +42,7 @@
 
 typedef enum {
 	MODEL_MEADE,
-	MODEL_ONSTEP, MODEL_10MIC, MODEL_GEMINI, MODEL_STARGO, MODEL_STARGO2, MODEL_AP, MODEL_AGOTINO, MODEL_ZWO, MODEL_NYX, MODEL_OAT, MODEL_TEEN, MODEL_GENERIC, MODEL_ASI
+	MODEL_ONSTEP, MODEL_10MIC, MODEL_GEMINI, MODEL_STARGO, MODEL_STARGO2, MODEL_AP, MODEL_AGOTINO, MODEL_ZWO, MODEL_NYX, MODEL_OAT, MODEL_TEEN, MODEL_GENERIC, MODEL_ASI, MODEL_ESP32GO
 } simulator_model;
 
 typedef struct {
@@ -181,8 +181,8 @@ static void usage(const char *name) {
 	printf("  -h, --help              Show this help and exit\n");
 }
 
-static const char *model_names[] = { "meade", "onstep", "10mic", "gemini", "stargo", "stargo2", "ap", "agotino", "zwo", "nyx", "oat", "teen", "generic", "asi" };
-static const char *products[] = { "Autostar", "On-Step", "10micron", "Losmandy", "Avalon", "Avalon", "AstroPhysics", "aGotino", "AM5", "NYX-101", "OpenAstroTracker", "TeenAstro", "Classic", "AM5" };
+static const char *model_names[] = { "meade", "onstep", "10mic", "gemini", "stargo", "stargo2", "ap", "agotino", "zwo", "nyx", "oat", "teen", "generic", "asi", "esp32go" };
+static const char *products[] = { "Autostar", "On-Step", "10micron", "Losmandy", "Avalon", "Avalon", "AstroPhysics", "aGotino", "AM5", "NYX-101", "OpenAstroTracker", "TeenAstro", "Classic", "AM5", "esp32go" };
 
 // The aGotino is an Arduino sketch that answers eleven LX200 commands and nothing else. Every
 // other request is read, matched against the few it knows and dropped without a reply, which is
@@ -193,6 +193,23 @@ static bool model_is_agotino(void) {
 
 static bool model_is_oat(void) {
 	return options.model == MODEL_OAT;
+}
+
+// The ESP32Go prints every angle with 0xE1 where the protocol allows * or 0xDF, answers :GR# with
+// a tenth of a second of time, carries its whole state in :GU#, and has no command that stops the
+// tracking motor and none that releases a mount :hP# sent home. Observed on the source commit
+// bbf224a, see indigo_drivers/mount_lx200/REFACTOR.md.
+static bool model_is_esp32go(void) {
+	return options.model == MODEL_ESP32GO;
+}
+
+// misc.cpp of the ESP32Go firmware prints the degree mark with sprintf(..., 225, ...), so every
+// declination, altitude, azimuth, latitude and longitude carries 0xE1 instead of the asterisk.
+static void esp32go_degree_mark(char *text) {
+	char *separator = strchr(text, '*');
+	if (separator != NULL) {
+		*separator = (char)0xE1;
+	}
 }
 
 // "asi" is the "zwo" profile plus the AM-series commands and the firmware revision that
@@ -287,7 +304,11 @@ static void format_ra(char *buffer, size_t size, long value) {
 		snprintf(buffer, size, "%+.6f#", value / 360000.0);
 		return;
 	}
-	if (state.high_precision) {
+	if (model_is_esp32go()) {
+		// lxprintra1() and mount_lxra_str() both append a fifteenth of a second of time as one
+		// digit after the seconds, whatever precision mode the mount is in.
+		snprintf(buffer, size, "%02ld:%02ld:%02ld.%ld#", value / 360000L, (value / 6000L) % 60, (value / 100L) % 60, ((value % 100L) * 2L / 3L) % 15L);
+	} else if (state.high_precision) {
 		snprintf(buffer, size, "%02ld:%02ld:%02ld#", value / 360000L, (value / 6000L) % 60, (value / 100L) % 60);
 	} else {
 		snprintf(buffer, size, "%02ld:%04.1f#", value / 360000L, ((value / 600L) % 600) / 10.0);
@@ -301,6 +322,11 @@ static void format_dec(char *buffer, size_t size, long value) {
 	}
 	long degrees = value / 3600L;
 	long abs_value = labs(value);
+	if (model_is_esp32go()) {
+		snprintf(buffer, size, "%c%02ld*%02ld:%02ld#", value < 0 ? '-' : '+', labs(degrees), (abs_value / 60L) % 60, abs_value % 60);
+		esp32go_degree_mark(buffer);
+		return;
+	}
 	if (state.high_precision) {
 		snprintf(buffer, size, "%c%02ld*%02ld:%02ld#", value < 0 ? '-' : '+', labs(degrees), (abs_value / 60L) % 60, abs_value % 60);
 	} else {
@@ -661,11 +687,17 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "GVF")) {
 		write_response(options.model == MODEL_ONSTEP ? "OnStep 4.24j#" : "ETX Autostar|A|43Eg|Apr 03 2007@11:25:53#");
 	} else if (!strcmp(command, "GVN")) {
-		write_response(options.model == MODEL_NYX ? "1.35#" : model_is_agotino() ? "230312#" : model_is_oat() ? "v1.13.20#" : "43Eg#");
+		write_response(options.model == MODEL_NYX ? "1.35#" : model_is_agotino() ? "230312#" : model_is_oat() ? "v1.13.20#" : model_is_esp32go() ? "06.9#" : "43Eg#");
 	} else if (!strcmp(command, "GVD")) {
 		write_response("Apr 03 2007#");
 	} else if (!strcmp(command, "GVT")) {
 		write_response("11:25:53#");
+	} else if (!strcmp(command, "GU") && model_is_esp32go()) {
+		// %c%c%c%c%d of tracking, parked, slewing, pier side and the tracking rate index. The
+		// parked flag is the one mount_goto_home() raises when it starts the :hP# slew, so it is
+		// already set while the mount is on its way home.
+		snprintf(response, sizeof(response), "%c%c%c%c%d#", state.tracking ? 'T' : 't', state.at_home || homing_requested ? 'P' : 'p', state.slewing ? 'S' : 's', 'E', state.tracking_rate == 'S' ? 2 : state.tracking_rate == 'L' ? 3 : state.tracking_rate == 'K' ? 4 : 1);
+		write_response(response);
 	} else if (!strcmp(command, "GU")) {
 		// OnStepX 10.28x never puts the documented k in its status: a mount on the king rate
 		// reports exactly what a mount on the sidereal rate reports, and only :GT# tells them
@@ -749,12 +781,21 @@ static void handle_command(const char *command) {
 		write_response("1");
 	} else if (!strcmp(command, "Gg")) {
 		snprintf(response, sizeof(response), "%s#", state.longitude);
+		if (model_is_esp32go()) {
+			// lxprintlong1() marks the degrees the same way as every other angle. Without the
+			// 0xE1 the driver's indigo_stod() stops at it and the arcminutes of the site are
+			// silently lost.
+			esp32go_degree_mark(response);
+		}
 		write_response(response);
 	} else if (!strncmp(command, "St", 2)) {
 		strncpy(state.latitude, command + 2, sizeof(state.latitude) - 1);
 		write_response("1");
 	} else if (!strcmp(command, "Gt")) {
 		snprintf(response, sizeof(response), "%s#", state.latitude);
+		if (model_is_esp32go()) {
+			esp32go_degree_mark(response);
+		}
 		write_response(response);
 	} else if (!strcmp(command, "U0")) {
 		state.high_precision = false;
@@ -850,10 +891,16 @@ static void handle_command(const char *command) {
 		manual_ra = manual_dec = 0;
 		parking_requested = homing_requested = false;
 		state.slewing = false;
+	} else if (model_is_esp32go() && (!strcmp(command, "AP") || !strcmp(command, "AL"))) {
+		// :AP# and :AL# reach telescope->track alone. The tracking loop recomputes the motor
+		// speed from track_speed on its next pass, so neither command starts or stops the
+		// tracking motor and :GU# keeps reporting what it reported before.
 	} else if (!strcmp(command, "AP") || !strcmp(command, "X122")) {
 		state.tracking = true;
 	} else if (!strcmp(command, "AL") || !strcmp(command, "X120")) {
 		state.tracking = false;
+	} else if (model_is_esp32go() && !strcmp(command, "GW")) {
+		// The :G grammar of this firmware has no W, so the request is read and dropped.
 	} else if (!strcmp(command, "GW")) {
 		write_response(state.tracking ? "PT1#" : state.parked ? "PNP#" : "PN1#");
 	} else if (!strcmp(command, "Gstat")) {
@@ -862,6 +909,12 @@ static void handle_command(const char *command) {
 		// ! is the stall of a Gemini; it is reached through the fault injection rather than a
 		// permanent option, because what matters is the recovery on the next valid velocity.
 		write_response(state.slewing ? "S" : state.tracking ? "T" : "N");
+	} else if (model_is_esp32go() && !strcmp(command, "hP")) {
+		// mount_goto_home() sends both axes to the stored home position and raises the parked
+		// flag right away, and there is no reply and no command that releases it again.
+		start_reference_motion(false);
+	} else if (model_is_esp32go() && !strcmp(command, "hS")) {
+		// set_home() stores the position the mount stands on, without a reply.
 	} else if (!strcmp(command, "hP") || !strcmp(command, "hC") || !strcmp(command, "X362") || !strcmp(command, "Ch") || !strcmp(command, "KA")) {
 		if (!strcmp(command, "hP") && options.model == MODEL_NYX && state.standby) {
 			write_response("0");

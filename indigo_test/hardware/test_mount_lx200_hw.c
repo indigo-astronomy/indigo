@@ -69,6 +69,7 @@
 #define X_MOUNT_TYPE_ONSTEP_ITEM_NAME "ONSTEP"
 #define X_MOUNT_TYPE_AGOTINO_ITEM_NAME "AGOTINO"
 #define X_MOUNT_TYPE_OAT_ITEM_NAME "OAT"
+#define X_MOUNT_TYPE_ESP32GO_ITEM_NAME "ESP32GO"
 #define X_MOUNT_MODE_PROPERTY_NAME "X_MOUNT_MODE"
 #define X_MOUNT_MODE_EQUATORIAL_ITEM_NAME "EQUATORIAL"
 #define X_NYX_WIFI_AP_PROPERTY_NAME "X_NYX_WIFI_AP"
@@ -130,7 +131,7 @@ static int mount = -1, guider = -1, focuser = -1, aux = -1;
 static const char *serial_port = NULL;
 // Which model the driver autodetected. The model specific scenarios report themselves as not
 // applicable instead of failing when another mount is connected.
-static bool is_nyx = false, is_onstep = false, is_agotino = false, is_oat = false;
+static bool is_nyx = false, is_onstep = false, is_agotino = false, is_oat = false, is_esp32go = false;
 // The state the session found and has to give back.
 static bool initial_tracking = false, initial_parked = false, settings_captured = false;
 
@@ -326,6 +327,25 @@ static bool skip_unless_onstep(const char *what) {
 	return true;
 }
 
+// Arms tracking for a scenario that needs the mount to be tracking. A controller can offer the
+// tracking rates without offering a switch that turns tracking on and off: an ESP32Go selects all
+// four rates with :TQ#, :TS#, :TL# and :TK# and has no command at all that stops the tracking
+// motor, so MOUNT_TRACKING is hidden for it and the mount is always already armed.
+static bool arm_tracking(void) {
+	if (hw_property_hidden(mount, MOUNT_TRACKING_PROPERTY_NAME)) {
+		return true;
+	}
+	return hw_set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT);
+}
+
+// The same for the assertion that tracking is on: a model without the switch has nothing to read.
+static bool tracking_is_armed(void) {
+	if (hw_property_hidden(mount, MOUNT_TRACKING_PROPERTY_NAME)) {
+		return true;
+	}
+	return switch_on(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME);
+}
+
 // A controller that implements only a part of the LX200 command set gets only the properties the
 // driver can serve with it, so a scenario that needs one of the others has nothing to exercise.
 static bool skip_without(const char *property, const char *what) {
@@ -365,6 +385,7 @@ static void detect_model(void) {
 	is_onstep = switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_ONSTEP_ITEM_NAME);
 	is_agotino = switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_AGOTINO_ITEM_NAME);
 	is_oat = switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_OAT_ITEM_NAME);
+	is_esp32go = switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_ESP32GO_ITEM_NAME);
 }
 
 // The secondary devices this model can serve, brought up and taken down together with the mount.
@@ -420,9 +441,9 @@ static void lx200_reports_identity_and_capabilities(void) {
 	ASSERT_TRUE(hw_property_defined(mount, X_MOUNT_TYPE_PROPERTY_NAME));
 	ASSERT_TRUE(!switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_DETECT_ITEM_NAME));
 	detect_model();
-	printf("    detected mount type NYX: %s, OnStep: %s, aGotino: %s, OAT: %s\n", is_nyx ? "yes" : "no", is_onstep ? "yes" : "no", is_agotino ? "yes" : "no", is_oat ? "yes" : "no");
+	printf("    detected mount type NYX: %s, OnStep: %s, aGotino: %s, OAT: %s, ESP32Go: %s\n", is_nyx ? "yes" : "no", is_onstep ? "yes" : "no", is_agotino ? "yes" : "no", is_oat ? "yes" : "no", is_esp32go ? "yes" : "no");
 	// The detection is a one of many rule, so the branches are mutually exclusive.
-	ASSERT_TRUE((is_nyx ? 1 : 0) + (is_onstep ? 1 : 0) + (is_agotino ? 1 : 0) + (is_oat ? 1 : 0) <= 1);
+	ASSERT_TRUE((is_nyx ? 1 : 0) + (is_onstep ? 1 : 0) + (is_agotino ? 1 : 0) + (is_oat ? 1 : 0) + (is_esp32go ? 1 : 0) <= 1);
 	if (is_nyx) {
 		ASSERT_STREQ("PegasusAstro", vendor);
 	}
@@ -440,6 +461,12 @@ static void lx200_reports_identity_and_capabilities(void) {
 		// The same holds for an OpenAstroTracker: :GVP# is the only name the firmware has.
 		ASSERT_STREQ("OpenAstroTech", vendor);
 		ASSERT_STREQ("OpenAstroTracker", model);
+	}
+	if (is_esp32go) {
+		// And for an ESP32Go, whose :GVP# answers its own name in lower case and whose :GVN#
+		// answers a version derived from the build date.
+		ASSERT_STREQ("ESP32Go", vendor);
+		ASSERT_STREQ("esp32go", model);
 	}
 	ASSERT_TRUE(hw_connected(mount));
 }
@@ -478,6 +505,50 @@ static void lx200_publishes_the_property_contract(void) {
 		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
 		ASSERT_TRUE(hw_property_hidden(mount, UTC_TIME_PROPERTY_NAME));
 		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_SET_HOST_TIME_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_WIFI_AP_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_WIFI_CL_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_WIFI_RESET_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_LEVELER_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, "X_ZWO_BUZZER"));
+		ASSERT_TRUE(hw_property_hidden(mount, X_ONSTEP_PREFERRED_PIER_SIDE_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_ONSTEP_MERIDIAN_LIMITS_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_ALTITUDE_LIMITS_PROPERTY_NAME));
+		return;
+	}
+	if (is_esp32go) {
+		// What meade_init_esp32go_mount() unhides, and what it has to leave hidden. The
+		// firmware answers the whole classic command set, so most of the contract is the
+		// default one; the exceptions are what the LX200 grammar of this firmware cannot do.
+		ASSERT_TRUE(hw_property_defined(mount, MOUNT_SLEW_RATE_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, MOUNT_MOTION_RA_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, MOUNT_MOTION_DEC_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, UTC_TIME_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, MOUNT_SET_HOST_TIME_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+		// :hP# sends the mount home, :hS# stores the position it stands on as home, and both
+		// are momentary single item switches because the firmware has no away and no default.
+		ASSERT_TRUE(hw_property_defined(mount, MOUNT_HOME_PROPERTY_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME));
+		ASSERT_TRUE(!hw_item_defined(mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_AWAY_ITEM_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, MOUNT_HOME_SET_PROPERTY_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME));
+		ASSERT_TRUE(!hw_item_defined(mount, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_DEFAULT_ITEM_NAME));
+		// :TQ#, :TS#, :TL# and :TK# all reach set_track_speed(), so all four rates are real.
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME));
+		// Nothing in the LX200 grammar of this firmware stops the tracking motor, nothing
+		// releases a parked mount, and the guide rate is a configuration value with no command
+		// to write it, so none of the three may be offered.
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_TRACKING_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_PARK_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_PARK_SET_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_GUIDE_RATE_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_PEC_PROPERTY_NAME));
+		// The properties that belong to other models.
 		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_WIFI_AP_PROPERTY_NAME));
 		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_WIFI_CL_PROPERTY_NAME));
 		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_WIFI_RESET_PROPERTY_NAME));
@@ -811,7 +882,7 @@ static void lx200_selects_tracking_rates(void) {
 	if (skip_without(MOUNT_TRACK_RATE_PROPERTY_NAME, "tracking rate")) {
 		return;
 	}
-	ASSERT_TRUE(switch_on(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	ASSERT_TRUE(tracking_is_armed());
 	for (unsigned i = 0; i < ARRAY_SIZE(rates); i++) {
 		if (!hw_item_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, rates[i])) {
 			continue;
@@ -819,10 +890,10 @@ static void lx200_selects_tracking_rates(void) {
 		ASSERT_TRUE(hw_set_switch(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, rates[i], INDIGO_OK_STATE, SHORT_TIMEOUT));
 		// The rate command only changes the rate the controller uses once tracking is armed with
 		// it, so the scenario re-arms tracking and then checks that neither request was refused.
-		ASSERT_TRUE(hw_set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
+		ASSERT_TRUE(arm_tracking());
 		ASSERT_TRUE(wait_for_poll());
 		ASSERT_TRUE(switch_on(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, rates[i]));
-		ASSERT_TRUE(switch_on(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+		ASSERT_TRUE(tracking_is_armed());
 		printf("    %s accepted\n", rates[i]);
 	}
 }
@@ -847,7 +918,7 @@ static void lx200_reports_the_tracking_rate_from_the_mount(void) {
 			continue;
 		}
 		ASSERT_TRUE(hw_set_switch(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, rates[i], INDIGO_OK_STATE, SHORT_TIMEOUT));
-		ASSERT_TRUE(hw_set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
+		ASSERT_TRUE(arm_tracking());
 		ASSERT_TRUE(wait_for_poll());
 		ASSERT_TRUE(wait_for_poll());
 		printf("    %s survives the status readback\n", rates[i]);
@@ -855,15 +926,19 @@ static void lx200_reports_the_tracking_rate_from_the_mount(void) {
 	}
 	// Now stop tracking and open a new session. The mount is still configured for the sidereal
 	// rate, so that is what the fresh session has to report.
-	ASSERT_TRUE(hw_set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
+	if (!hw_property_hidden(mount, MOUNT_TRACKING_PROPERTY_NAME)) {
+		ASSERT_TRUE(hw_set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
+	}
 	ASSERT_TRUE(disconnect_secondary_devices());
 	ASSERT_TRUE(hw_disconnect(mount, CONNECT_TIMEOUT));
 	ASSERT_TRUE(hw_connect(mount, CONNECT_TIMEOUT));
 	ASSERT_TRUE(connect_secondary_devices());
 	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
-	ASSERT_TRUE(!switch_on(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	if (!hw_property_hidden(mount, MOUNT_TRACKING_PROPERTY_NAME)) {
+		ASSERT_TRUE(!switch_on(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	}
 	ASSERT_TRUE(switch_on(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME));
-	ASSERT_TRUE(hw_set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
+	ASSERT_TRUE(arm_tracking());
 }
 
 static void lx200_selects_slew_rates(void) {
@@ -1556,6 +1631,9 @@ static void lx200_goes_home(void) {
 	hw_request_switch(mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true);
 	ASSERT_TRUE(hw_wait_state(mount, MOUNT_HOME_PROPERTY_NAME, before, INDIGO_BUSY_STATE, SHORT_TIMEOUT));
 	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE, HOME_TIMEOUT));
+	// The completion has to publish the home position in the property itself, not only in its
+	// state: a momentary single item MOUNT_HOME is cleared when the request is accepted, and a
+	// client that reads the property as soon as it settles has to find the mount at home.
 	ASSERT_TRUE(switch_on(mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME));
 	ASSERT_EQ_INT(INDIGO_OK_STATE, state_light(MOUNT_STATE_HOME_ITEM_NAME));
 	printf("    at home, RA %.4f DEC %.4f\n", current_ra(), current_dec());

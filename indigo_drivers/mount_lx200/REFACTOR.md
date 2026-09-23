@@ -1815,8 +1815,8 @@ confirmed against the board.
 | `:GVN#` | firmware version | `06.9#`, derived from the build date |
 | `:GVD#` / `:GVT#` / `:GVF#` | version details | build date, build time, `43Eg#` |
 | `:GR#` | `HH:MM:SS#` | `06:24:19.5#`, tenths of a second of time |
-| `:GD#` | `sDD*MM:SS#` | `+00\xe100:00#`, `0xE1` where the protocol puts `*` |
-| `:Gt#` / `:Gg#` | site | `+36\xe143#` / `+004\xe112#`, the same `0xE1` |
+| `:GD#` | `sDD*MM:SS#` | `+00<E1>00:00#`, where `<E1>` is the byte `0xE1` the protocol puts `*` at |
+| `:Gt#` / `:Gg#` | site | `+36<E1>43#` / `+004<E1>12#`, the same `0xE1` |
 | `:GG#` | `sHH#` | as documented |
 | `:GW#` | alignment status | not implemented, no reply |
 | `:GU#` | not in the protocol | `TpsE1#`: tracking, parked, slewing, pier side, rate |
@@ -1871,3 +1871,167 @@ MOUNT_LX200_HW_PORT=/dev/cu.usbmodem5B7A0424131 make -C indigo_test test-mount-l
 read a declination from this controller at all, so `MOUNT_EQUATORIAL_COORDINATES`
 stayed in ALERT for the whole session and every scenario that reads a position
 failed with it. The failures are listed as defects below.
+
+## Found defects (hardware run)
+
+| ID | Severity | Where | Defect |
+| --- | --- | --- | --- |
+| LX042 | critical | `meade_get_coordinates()` | The driver never read a declination from this controller at all. `:GD#` answers `+00<E1>00:00`, and `meade_parse_coordinate()` accepts `*`, `:` and `0xDF` as the degree mark but not `0xE1`. `MOUNT_EQUATORIAL_COORDINATES` stayed in ALERT for the whole session holding the +90 it was attached with, so goto, sync, the working position and every motion check were blind. Eleven of the fifteen baseline failures are this one defect. Fixed by normalising the mark in the ESP32Go branch before parsing, the way the aGotino and OpenAstroTracker branches already normalise theirs. |
+| LX043 | major | `meade_get_site()` | The observing site was read with its arcminutes silently dropped. `:Gt#` and `:Gg#` carry the same `0xE1`, and `indigo_stod()` stops at it and returns the whole degrees, so a mount standing at `+36<E1>43` was published at latitude 36.0000 and one at `+004<E1>12` at longitude 356.0000. Nothing reported an error: the site is what the framework computes `MOUNT_LST_TIME` and `MOUNT_HORIZONTAL_COORDINATES` from, so both were wrong for the whole session, and `lx200_keeps_the_observing_site` passed because it wrote back the same truncated value it had read. Fixed with the same normalisation. |
+| LX044 | major | `meade_detect_mount()` | `:GVP#` answers `esp32go#`, which matched no branch, so the controller fell through to the generic profile. That profile hides `MOUNT_TRACKING` and `MOUNT_PARK`, publishes `MOUNT_INFO` with the vendor alone and infers a slew from the coordinates changing, although this firmware implements all four tracking rates, a home slew, a pier side and a complete status word. Fixed with a dedicated `ESP32GO` mount type, autodetected case-insensitively from the product name. |
+| LX045 | major | `meade_update_esp32go_state()` (new) | The generic state machine reads a slew from "the coordinates moved by more than two arcminutes", which on a tracking mount is true of the right ascension the whole time and false of a slew that has not moved far yet. The profile now takes the state from `:GU#`, whose `%c%c%c%c%d` carries tracking, the home flag, the slew, the pier side and the tracking rate index in one transaction. |
+| LX046 | minor | `meade_get_tracking_rate()` | The rate the mount is on could not be read back at all for this firmware. `:GT#` answers the tracking frequency, which an ESP32Go leaves at `50.0` whatever rate `set_track_speed()` selected, so the driver would have decoded every rate as sidereal. The profile reads the last character of `:GU#` instead, which is the rate index 1 to 4. |
+| LX047 | minor | `MOUNT_HOME` completion in `meade_update_mount_state()` | A momentary single-item `MOUNT_HOME` is cleared by `on_change` the moment the request is accepted, and the completion branch published `INDIGO_OK_STATE` without putting the item back, so for one polling cycle the driver said the home slew had finished while the property itself still said the mount was away. **This is the one repair outside the ESP32Go branch in this run**; it was made with the user's explicit approval and applies to every profile with a one-item `MOUNT_HOME`. A two-item `MOUNT_HOME` already holds the item the request set, so nothing changes for one. |
+
+### Test defects the run exposed
+
+| ID | Where | Defect |
+| --- | --- | --- |
+| LXT027 | `lx200_selects_tracking_rates`, `lx200_reports_the_tracking_rate_from_the_mount` | Both scenarios armed tracking through `MOUNT_TRACKING` before selecting a rate, which assumes every controller that offers the rates also offers the switch. An ESP32Go selects all four rates and has no command that stops the tracking motor, so the property is hidden for it and both cases failed on a precondition rather than on what they exist to check. `arm_tracking()` and `tracking_is_armed()` are no-ops when the switch is hidden and behave exactly as before when it is not. |
+
+## Controller behaviour that is not a defect
+
+* **An ESP32Go cannot be told to stop tracking.** `:AL#` reaches
+  `telescope->track = 0` and sets the motor target speed to zero, which the
+  tracking loop overwrites on its next pass, and `:AP#` only sets `track` back
+  to 1 without touching the rate the motor runs at. `mount_track_off()` exists
+  in the firmware but is reachable from the infrared remote and the hand pad
+  alone. The run confirmed it on the board: `:GU#` reported `T` before and after
+  both commands. `MOUNT_TRACKING` is therefore hidden rather than offered as a
+  switch that silently does nothing.
+* **There is no unpark.** `:hP#` sends the mount home and raises the flag the
+  firmware calls parked; only a goto or a sync clears it again, as a side
+  effect. The one command the web interface calls park is `:cRR#`, which saves
+  the position and calls `ESP.restart()`. `MOUNT_PARK` stays hidden, and the
+  flag is published through `MOUNT_HOME`, which is the property whose command
+  produced it and the only one a client can act on. `:cRR#` is deliberately not
+  wired to anything.
+* **The board needs about twelve seconds after a reset before it answers.**
+  Measured by polling `:GR#` from the moment DTR and RTS were released: 12.1 s,
+  twice. Commands sent in the meantime are buffered and answered in one burst
+  when the firmware comes up. Opening the port asserts DTR and RTS on this
+  USB-to-UART bridge, so every fresh connection resets the board. INDIGO's own
+  connect survives it: `lx200_open()` retries `:GR#` across three baud rates and
+  the suite reconnected cleanly in every lifecycle scenario.
+* **Occasional multi-second reply stalls in the first seconds of a session.**
+  Two consecutive `:GU#` requests went unanswered for 4 s each right after the
+  boot probe and were then answered in a burst, after which every reply came
+  back in 50 to 60 ms. It follows the Wi-Fi access point and the web server
+  coming up in `loop()` and was never seen once a session was running.
+* **`:GR#` can answer a malformed negative right ascension** such as
+  `-17:-34:-21.-4#`. `mount_lxra_str()` has no negative normalisation at all and
+  prints whatever `calc_Ra()` returns, component by component. It was only ever
+  reproduced with the sidereal clock uninitialised, which is the state the board
+  comes up in; `:GS#` then reports an impossible sidereal time such as
+  `41:35:29#`. The driver writes the clock on connect, and after `:SG#`, `:SL#`
+  and `:SC#` the malformed form did not appear again in any run. It is recorded
+  as a firmware defect the driver avoids rather than one it works around, and
+  `meade_parse_coordinate()` rejects the reply if it ever does appear.
+* **A right ascension goto does not converge while the sidereal clock is
+  wrong.** With the clock at its power-up value the reported right ascension
+  oscillated around the start position and `:D#` stayed at `|#` indefinitely;
+  with the clock set, the same goto landed on the target in about six seconds.
+  The axis slew target is `calc_Ra(azmotor->target, longitude)`, which is
+  recomputed from sidereal time on every pass.
+
+## Not covered
+
+* **The focuser and the aux logical devices.** The firmware has a `:F...` and
+  `:X...` focuser sub-protocol of its own, close to but not the same as the
+  Meade, OnStep and Astro-Physics focuser commands this driver implements, and a
+  `:c...` configuration family that dumps and rewrites the whole controller
+  configuration. Neither is wired to the driver, both secondary devices refuse
+  the connection for this profile, and `lx200_refuses_the_unsupported_devices`
+  asserts that they do.
+* **The Wi-Fi transport.** The firmware serves LX200 over TCP on port 10001 and
+  a web interface on port 80. The run used the serial port only; the URL form is
+  documented in the driver `README.md` but not exercised.
+* **`:cRR#`, `:PP#` and `:pS#`.** The driver sends none of them: the park
+  command restarts the controller, and the parked flag and the pier side both
+  come from `:GU#`. They are recorded here from the firmware source and the
+  board, and are not modelled in the simulator.
+* **The ESP32Go signed longitude re-encoding.** The firmware stores the site
+  east-positive internally and prints it back with the LX200 west-positive sign,
+  so `:Gg#` answers `+004<E1>12#` where the simulator echoes what `:Sg#` wrote.
+  Both decode to the same value through `indigo_stod()` and the driver's own
+  east-positive conversion, verified on the board, so the simulator models the
+  degree mark alone.
+* **Physical guide pulse output.** The board has no drivers and no motors, so
+  the measured pulse durations are the firmware's own timing over the serial
+  path, not a relay output.
+
+## Scenario to case mapping, ESP32Go branch
+
+The checklist of `indigo_test/DRIVER_TESTING_RULES.md` for the mount class, plus
+the guider standard for the guider logical device, against what this firmware
+can serve. The scenarios whose property the firmware has no command for report
+themselves as not applicable rather than failing the run.
+
+| Checklist scenario | Case | Result on the ESP32Go |
+| --- | --- | --- |
+| Identity and capabilities | `lx200_reports_identity_and_capabilities` | vendor `ESP32Go`, model `esp32go` from `:GVP#`, firmware `06.9` from `:GVN#` |
+| Property contract | `lx200_publishes_the_property_contract` | the ESP32Go branch asserted item by item |
+| Site and clock | `lx200_reads_site_and_time`, `lx200_keeps_the_observing_site` | read with the arcminutes intact after LX043, written back and read back |
+| Unpark | `lx200_unparks_the_mount` | not applicable, no park control |
+| Tracking switch | `lx200_toggles_tracking` | not applicable, no command stops tracking |
+| Tracking rates | `lx200_selects_tracking_rates`, `lx200_reports_the_tracking_rate_from_the_mount` | all four, each confirmed through `:GU#` and across a new session |
+| Slew rates | `lx200_selects_slew_rates` | all four, `:RG#` `:RC#` `:RM#` `:RS#` |
+| Manual motion, abort | `lx200_moves_both_axes_manually`, `lx200_aborts_manual_motion` | both axes, both directions, `:Q#` |
+| Sync | `lx200_syncs_to_the_current_pointing` | `:CM#` answers `sync#` |
+| Goto, abort and restart | `lx200_slews_to_a_nearby_target`, `lx200_aborts_a_slew_and_accepts_a_fresh_one` | arrived 0.003 deg from the target |
+| Tracking during a slew | `lx200_keeps_tracking_while_slewing` | not applicable, no tracking switch |
+| Pier side | `lx200_reports_side_of_pier` | from `:GU#` |
+| Model specific options | the NYX and OnStep cases | not applicable, another model |
+| Guiding | `lx200_guides_in_all_four_directions`, `lx200_guides_both_axes_at_once`, `lx200_replaces_a_guide_pulse_on_the_same_axis`, `lx200_guides_while_the_mount_slews` | `:Mg<dir><nnnn>#`, all four directions |
+| Guide pulse duration | `lx200_measures_guide_pulse_duration` | see below |
+| Home | `lx200_goes_home` | `:hP#`, completion from `:GU#`, LX047 |
+| Park | `lx200_parks_and_unparks` | not applicable, no park control |
+| Secondary devices | `lx200_refuses_the_unsupported_devices`, `lx200_refuses_the_unsupported_focuser` | focuser and aux refuse the connection |
+| Lifecycle | `lx200_shares_the_serial_session`, `lx200_refuses_an_unusable_port`, `lx200_reconnects`, `lx200_reinitializes` | shared session, refused port, reconnect, INIT/SHUTDOWN |
+
+## Guiding pulse duration, ESP32Go (hardware)
+
+Measured on the board over the serial path, from the moment the driver publishes
+`GUIDER_GUIDE_*` busy to the moment it publishes the completion, twelve samples
+per duration after one warm-up:
+
+| Requested | n | min | mean | median | p95 | max | sd | signed error |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 20 ms | 12 | 73.9 | 86.5 | 79.3 | 82.4 | 174.9 | 27.9 | +66.5 ms |
+| 100 ms | 12 | 154.7 | 160.2 | 159.1 | 167.9 | 172.5 | 5.0 | +60.2 ms |
+| 500 ms | 12 | 555.2 | 558.4 | 558.6 | 561.7 | 562.5 | 2.2 | +58.4 ms |
+
+The overhead is a constant of about 58 to 66 ms, which is the driver's own
+completion latency over this serial path and not a property of the firmware, and
+the spread at a fixed duration is 2 to 5 ms once the 20 ms case is set aside.
+**This is software timing at the public property, not a physical relay output**:
+the board has no drivers and no motors.
+
+## Simulator additions from this run
+
+`indigo_test/simulator_common/mount_lx200_simulator.c` gained an `esp32go`
+model, so every defect above can be reproduced without the board:
+
+* the `0xE1` degree mark on `:GD#`, `:Gd#`, `:Gt#` and `:Gg#`, from LX042 and LX043;
+* `:GR#` with the fifteenth of a second of time the firmware appends;
+* `:GVP#` `esp32go#` and `:GVN#` `06.9#`, from LX044;
+* the `:GU#` status word, from LX045 and LX046;
+* `:AP#` and `:AL#` accepted without changing the tracking, and `:GW#` dropped
+  without a reply, from the two controller behaviours recorded above;
+* `:hP#` as a home slew that raises the home flag at once and answers nothing,
+  and `:hS#` accepted without a reply, from LX047.
+
+## Results (driver 0x0300003F)
+
+| Suite | Run | Passed | Failed |
+| --- | --- | --- | --- |
+| `test_mount_lx200_hw` against an ESP32Go, source commit `bbf224a`, build `06.9` | 35 | 35 | 0 |
+| `test_mount_lx200_simulator` | 93 | 93 | 0 |
+
+The opt-in TCP target and the ASAN/UBSAN build were not run in this session.
+
+## Final test summary for this run
+
+* Simulated tests: 93 run, 93 passed.
+* Hardware tests: 35 run, 35 passed, against an ESP32Go controller, source
+  commit `bbf224a`, build version `06.9`, on a bare ESP32-S3 development board.

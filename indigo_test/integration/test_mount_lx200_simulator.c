@@ -313,7 +313,8 @@ static const lx_profile profiles[] = {
 	{ "nyx", "NYX", "PegasusAstro", "R1", "Te", true, true, true, true, false, 3 },
 	{ "oat", "OAT", "OpenAstroTech", "RG", "MT1", true, true, false, true, false, 3 },
 	{ "teen", "TEEN_ASTRO", "TeenAstro", "RG", "Te", true, true, true, true, false, 3 },
-	{ "generic", "GENERIC", "Generic", "RG", NULL, false, true, false, false, true, 1 }
+	{ "generic", "GENERIC", "Generic", "RG", NULL, false, true, false, false, true, 1 },
+	{ "esp32go", "ESP32GO", "ESP32Go", "RG", NULL, false, true, true, false, false, 3 }
 };
 
 static void check_profile(int index) {
@@ -816,8 +817,76 @@ static void lx200_teen_profile(void) {
 	check_profile(11);
 }
 
+// What the ESP32Go hardware run found. The firmware marks the degrees of every angle with 0xE1,
+// which the coordinate parser rejects and indigo_stod() stops at, so before the profile existed
+// the driver never read a declination from this controller and read its site with the arcminutes
+// dropped. The rest of the case pins down the status word the profile reads its whole state from,
+// the four tracking rates, and the home slew that :hP# starts.
+static void lx200_esp32go_degree_mark_and_status(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "esp32go", NULL));
+	online = true;
+	assert_switch_item_value(MOUNT_TYPE_PROPERTY_NAME, "ESP32GO", true);
+	// The declination has to survive the 0xE1 the firmware puts where the protocol puts the
+	// asterisk, and the site has to keep its arcminutes.
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 45.0) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) - (48.0 + 8.0 / 60.0)) < 0.01);
+	// Nothing in this firmware stops the tracking motor, releases a mount that went home or
+	// writes a guide rate, so none of the three may be offered.
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_TRACKING_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_PARK_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_GUIDE_RATE_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(has_defined_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+	assert_switch_item_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true);
+	// All four rates reach set_track_speed(), and the one the mount is on comes back as the last
+	// character of :GU#, not from the :GT# frequency this firmware leaves at 50.0.
+	const char *rate_items[] = { MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME };
+	const char *rate_commands[] = { "TS", "TL", "TK", "TQ" };
+	for (int rate = 0; rate < 4; rate++) {
+		int before = event_count(&simulator, rate_commands[rate], NULL);
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, rate_items[rate], true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, rate_commands[rate], before));
+		assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, rate_items[rate], true);
+	}
+	// The rate the mount is on has to come back from the controller and not from what the driver
+	// remembers, so the lunar rate the loop left on the mount has to survive a new session.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true, INDIGO_OK_STATE));
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true);
+	// :hP# is the home slew. It answers nothing, it raises the flag the profile reads as the
+	// home position at once, and the property stays busy until the axes stop. The mount comes up
+	// standing on its home position, where the driver's own guard refuses a home request, so the
+	// scenario takes it away with a goto first.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(7.5, 40.0, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	int home_before = event_count(&simulator, "hP", NULL);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hP", home_before));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	// The completion has to publish the home position in the property itself, not only in its
+	// state: a momentary single item MOUNT_HOME is cleared when the request is accepted.
+	assert_switch_item_value(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true);
+	// :hS# stores the position the mount stands on, without a reply.
+	int home_set_before = event_count(&simulator, "hS", NULL);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hS", home_set_before));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void lx200_generic_profile(void) {
 	check_profile(12);
+}
+
+static void lx200_esp32go_profile(void) {
+	check_profile(13);
 }
 
 static void lx200_goto_progress_abort_and_restart(void) {
@@ -1940,7 +2009,7 @@ static void lx200_driver_metadata_and_base_properties(void) {
 	const char *base[] = { INFO_PROPERTY_NAME, CONFIG_PROPERTY_NAME, PROFILE_PROPERTY_NAME, PROFILE_NAME_PROPERTY_NAME, CONNECTION_PROPERTY_NAME, DEVICE_PORT_PROPERTY_NAME, DEVICE_BAUDRATE_PROPERTY_NAME, MOUNT_TYPE_PROPERTY_NAME };
 	assert_defined_properties(base, ARRAY_SIZE(base));
 	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == NULL);
-	SERIAL_CHECK_EQ_INT(14, find_cached_property(MOUNT_TYPE_PROPERTY_NAME)->count);
+	SERIAL_CHECK_EQ_INT(15, find_cached_property(MOUNT_TYPE_PROPERTY_NAME)->count);
 	for (int i = 0; i < ARRAY_SIZE(profiles); i++) {
 		assert_property_has_item(MOUNT_TYPE_PROPERTY_NAME, profiles[i].type);
 	}
@@ -2525,6 +2594,8 @@ int main(int argc, char **argv) {
 		{ "lx200_oat_profile", lx200_oat_profile },
 		{ "lx200_teen_profile", lx200_teen_profile },
 		{ "lx200_generic_profile", lx200_generic_profile },
+		{ "lx200_esp32go_profile", lx200_esp32go_profile },
+		{ "lx200_esp32go_degree_mark_and_status", lx200_esp32go_degree_mark_and_status },
 		{ "lx200_mount_passes_serial_compliance_checks", lx200_mount_passes_serial_compliance_checks },
 		{ "lx200_guider_passes_serial_compliance_checks", lx200_guider_passes_serial_compliance_checks },
 		{ "lx200_focuser_passes_serial_compliance_checks", lx200_focuser_passes_serial_compliance_checks },

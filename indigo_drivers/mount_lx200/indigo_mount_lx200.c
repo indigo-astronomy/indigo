@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300003E
+#define DRIVER_VERSION       0x0300003F
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -118,7 +118,8 @@ typedef enum {
 #define MOUNT_TYPE_NYX_ITEM             (MOUNT_TYPE_PROPERTY->items + 10)
 #define MOUNT_TYPE_OAT_ITEM             (MOUNT_TYPE_PROPERTY->items + 11)
 #define MOUNT_TYPE_TEEN_ASTRO_ITEM      (MOUNT_TYPE_PROPERTY->items + 12)
-#define MOUNT_TYPE_GENERIC_ITEM         (MOUNT_TYPE_PROPERTY->items + 13)
+#define MOUNT_TYPE_ESP32GO_ITEM         (MOUNT_TYPE_PROPERTY->items + 13)
+#define MOUNT_TYPE_GENERIC_ITEM         (MOUNT_TYPE_PROPERTY->items + 14)
 
 #define MOUNT_TYPE_PROPERTY_NAME        "X_MOUNT_TYPE"
 #define MOUNT_TYPE_DETECT_ITEM_NAME     "DETECT"
@@ -134,6 +135,7 @@ typedef enum {
 #define MOUNT_TYPE_NYX_ITEM_NAME        "NYX"
 #define MOUNT_TYPE_OAT_ITEM_NAME        "OAT"
 #define MOUNT_TYPE_TEEN_ASTRO_ITEM_NAME "TEEN_ASTRO"
+#define MOUNT_TYPE_ESP32GO_ITEM_NAME    "ESP32GO"
 #define MOUNT_TYPE_GENERIC_ITEM_NAME    "GENERIC"
 
 #define MOUNT_MODE_PROPERTY            (PRIVATE_DATA->alignment_mode_property)
@@ -697,11 +699,19 @@ static bool meade_get_site(indigo_device *device, double *latitude, double *long
 		if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 			str_replace(PRIVATE_DATA->response, 't', '*');
 		}
+		// An ESP32Go marks the degrees with 0xE1 here too. indigo_stod() stops at it and
+		// returns the whole degrees, so the arcminutes of the site are silently lost.
+		if (MOUNT_TYPE_ESP32GO_ITEM->sw.value) {
+			str_replace(PRIVATE_DATA->response, (char)0xE1, '*');
+		}
 		*latitude = indigo_stod(PRIVATE_DATA->response);
 	}
 	if (meade_command(device, ":Gg#")) {
 		if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 			str_replace(PRIVATE_DATA->response, 'g', '*');
+		}
+		if (MOUNT_TYPE_ESP32GO_ITEM->sw.value) {
+			str_replace(PRIVATE_DATA->response, (char)0xE1, '*');
 		}
 		// LX200 protocol returns negative longitude for the east, INDIGO publishes it east
 		// positive in 0 .. 360, where a site on the prime meridian is 0 and never 360.
@@ -860,6 +870,13 @@ static bool meade_get_coordinates(indigo_device *device, double *ra, double *dec
 				// arcminute mark rather than a colon: +45*00'00. Without this the reply is
 				// rejected and the driver never reads a declination from the mount at all.
 				str_replace(PRIVATE_DATA->response, '\'', ':');
+			}
+			if (MOUNT_TYPE_ESP32GO_ITEM->sw.value) {
+				// An ESP32Go marks the degrees with 0xE1, which is neither the * nor the
+				// 0xDF the protocol allows, so without this the reply is rejected and the
+				// driver never reads a declination from the mount at all. misc.cpp of the
+				// firmware prints every angle with sprintf(..., 225, ...).
+				str_replace(PRIVATE_DATA->response, (char)0xE1, '*');
 			}
 			if (!meade_parse_reply_coordinate(device, PRIVATE_DATA->response, false, dec)) {
 				return false;
@@ -1085,7 +1102,7 @@ static bool meade_set_tracking_rate(indigo_device *device) {
 		PRIVATE_DATA->lastTrackRate = 'k';
 		if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
 			return gemini_set(device, 132, "");
-		} else if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+		} else if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_ESP32GO_ITEM->sw.value) {
 			return meade_no_reply_command(device, ":TK#");
 		}
 	}
@@ -1106,6 +1123,27 @@ static bool meade_get_tracking_rate(indigo_device *device) {
 				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_KING_ITEM, true);
 			} else {
 				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+			}
+			return true;
+		}
+	} else if (MOUNT_TYPE_ESP32GO_ITEM->sw.value) {
+		// The last character of the ESP32Go status word is the tracking rate index its
+		// set_track_speed() keeps, 1 to 4. :GT# answers the tracking frequency in hertz,
+		// which this firmware leaves at 50.0 whatever rate is selected.
+		if (meade_command(device, ":GU#") && strlen(PRIVATE_DATA->response) >= 5) {
+			switch (PRIVATE_DATA->response[4]) {
+				case '2':
+					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
+					break;
+				case '3':
+					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
+					break;
+				case '4':
+					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_KING_ITEM, true);
+					break;
+				default:
+					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+					break;
 			}
 			return true;
 		}
@@ -1309,6 +1347,9 @@ static bool meade_home(indigo_device *device) {
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 		return meade_command(device, ":X361#") && strcmp(PRIVATE_DATA->response, "pA") == 0;
 	}
+	if (MOUNT_TYPE_ESP32GO_ITEM->sw.value) {
+		return meade_no_reply_command(device, ":hP#");
+	}
 	return false;
 }
 
@@ -1318,6 +1359,9 @@ static bool meade_home_set(indigo_device *device) {
 	}
 	if (MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 		return meade_no_reply_command(device, ":hB#");
+	}
+	if (MOUNT_TYPE_ESP32GO_ITEM->sw.value) {
+		return meade_no_reply_command(device, ":hS#");
 	}
 	return false;
 }
@@ -1491,6 +1535,8 @@ static bool meade_detect_mount(indigo_device *device) {
 			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_OAT_ITEM, true);
 		} else if (!strncmp(PRIVATE_DATA->product, "aGotino", 7)) {
 			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_AGOTINO_ITEM, true);
+		} else if (!strncasecmp(PRIVATE_DATA->product, "esp32go", 7)) {
+			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_ESP32GO_ITEM, true);
 		} else {
 			// The classic LX200 and some of the LX200-compatible mounts doesn't implement ":GVP#"
 			if (meade_detect_generic_mount(device)) {
@@ -2223,6 +2269,62 @@ static void meade_update_teenastro_state(indigo_device *device) {
 	}
 }
 
+static void meade_init_esp32go_mount(indigo_device *device) {
+	MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
+	MOUNT_UTC_TIME_PROPERTY->hidden = false;
+	// Nothing in the LX200 grammar of this firmware stops the tracking motor. :AL# sets
+	// telescope->track to 0 and the target speed to 0, which the next pass of the tracking
+	// loop overwrites, and :AP# only sets track back to 1 without touching the rate the
+	// motor runs at. mount_track_off() exists but is reachable from the infrared remote and
+	// the hand pad alone. A switch that cannot turn tracking off is worse than none.
+	MOUNT_TRACKING_PROPERTY->hidden = true;
+	// :hP# goes to the home position and marks the mount parked, and no command releases it
+	// again: only a goto or a sync clears the flag, as a side effect. The one command the
+	// web interface calls park is :cRR#, which saves the position and restarts the
+	// controller. MOUNT_HOME owns that movement instead, and MOUNT_PARK stays hidden so a
+	// client cannot park a mount it would have no way to unpark.
+	MOUNT_PARK_PROPERTY->hidden = true;
+	MOUNT_HOME_PROPERTY->hidden = false;
+	MOUNT_HOME_SET_PROPERTY->hidden = false;
+	MOUNT_HOME_SET_PROPERTY->count = 1;
+	// :TQ#, :TS#, :TL# and :TK# all reach set_track_speed(), so all four rates are real.
+	MOUNT_TRACK_RATE_PROPERTY->count = 4;
+	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+	// The guide rate is a configuration value of the controller with no LX200 command to
+	// write it, so the property would accept a value the mount never sees.
+	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "ESP32Go");
+	// There is no model query, so the model is the product name :GVP# already gave the
+	// autodetection.
+	INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
+	if (meade_command(device, ":GVN#")) {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", PRIVATE_DATA->response);
+		INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, PRIVATE_DATA->response);
+	}
+}
+
+// :GU# answers %c%c%c%c%d of tracking, parked, slewing, pier side and the tracking rate
+// index, so one transaction carries the whole state the polling callback needs.
+//
+// The second character is the flag mount_goto_home() sets when it starts the slew :hP#
+// asks for, and that any goto or sync clears again. It is therefore the mount standing on
+// its home position rather than a park state a client could act on, and it is published
+// through MOUNT_HOME: the home slew has to keep MOUNT_HOME busy while it runs, so "at home"
+// is the flag together with an axis that has stopped.
+static void meade_update_esp32go_state(indigo_device *device) {
+	if (meade_command(device, ":GU#") && strlen(PRIVATE_DATA->response) >= 5) {
+		PRIVATE_DATA->tracking = PRIVATE_DATA->response[0] == 'T';
+		PRIVATE_DATA->slewing = PRIVATE_DATA->response[2] == 'S';
+		PRIVATE_DATA->homed = PRIVATE_DATA->response[1] == 'P' && !PRIVATE_DATA->slewing;
+		PRIVATE_DATA->homing = PRIVATE_DATA->response[1] == 'P' && PRIVATE_DATA->slewing;
+		if (PRIVATE_DATA->response[3] == 'W' && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
+			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+		} else if (PRIVATE_DATA->response[3] == 'E' && !MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
+			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+		}
+	}
+}
+
 static void meade_init_generic_mount(indigo_device *device) {
 	MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 	MOUNT_UTC_TIME_PROPERTY->hidden = false;
@@ -2316,6 +2418,9 @@ static void meade_init_mount(indigo_device *device) {
 	} else if (MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 		meade_init_teenastro_mount(device);
 		meade_update_teenastro_state(device);
+	} else if (MOUNT_TYPE_ESP32GO_ITEM->sw.value) {
+		meade_init_esp32go_mount(device);
+		meade_update_esp32go_state(device);
 	} else {
 		meade_init_generic_mount(device);
 		meade_update_generic_state(device);
@@ -2422,6 +2527,8 @@ static void meade_update_mount_state(indigo_device *device) {
 		meade_update_oat_state(device);
 	} else if (MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 		meade_update_teenastro_state(device);
+	} else if (MOUNT_TYPE_ESP32GO_ITEM->sw.value) {
+		meade_update_esp32go_state(device);
 	} else {
 		meade_update_generic_state(device);
 	}
@@ -2480,6 +2587,12 @@ static void meade_update_mount_state(indigo_device *device) {
 	}
 	if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) { // to avoid race never change home state if BUSY with this exception
 		if (PRIVATE_DATA->homed) {
+			// A momentary single item MOUNT_HOME was cleared when the request was accepted,
+			// so the completion has to put it back. Without this the driver publishes the
+			// home slew as finished while the property itself still says the mount is away,
+			// and only the next polling cycle corrects it. A two item MOUNT_HOME already
+			// holds the item the request set, so this changes nothing for one.
+			indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
 			MOUNT_HOME_PROPERTY->state = MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
 		}
 	} else { // otherwise mirror state reported by mount
@@ -3211,7 +3324,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		//+ mount.on_attach
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		//- mount.on_attach
-		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 14);
+		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 15);
 		if (MOUNT_TYPE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -3228,6 +3341,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_TYPE_NYX_ITEM, MOUNT_TYPE_NYX_ITEM_NAME, "Pegasus NYX", false);
 		indigo_init_switch_item(MOUNT_TYPE_OAT_ITEM, MOUNT_TYPE_OAT_ITEM_NAME, "OpenAstroTech", false);
 		indigo_init_switch_item(MOUNT_TYPE_TEEN_ASTRO_ITEM, MOUNT_TYPE_TEEN_ASTRO_ITEM_NAME, "Teen Astro", false);
+		indigo_init_switch_item(MOUNT_TYPE_ESP32GO_ITEM, MOUNT_TYPE_ESP32GO_ITEM_NAME, "ESP32Go", false);
 		indigo_init_switch_item(MOUNT_TYPE_GENERIC_ITEM, MOUNT_TYPE_GENERIC_ITEM_NAME, "Generic", false);
 		MOUNT_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Mount mode", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (MOUNT_MODE_PROPERTY == NULL) {

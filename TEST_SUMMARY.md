@@ -140,7 +140,8 @@
 | mount_lx200 | 2026-09-23 00:11 | 3.0.0.58 | mac arm64 | OnStepX | 33 / 33 | ✅ OK |
 | mount_lx200 | 2026-09-23 10:06 | 3.0.0.59 | mac arm64 | aGotino | 35 / 35 | ✅ OK |
 | mount_lx200 | 2026-09-23 11:17 | 3.0.0.60 | mac arm64 | OpenAstroTracker | 35 / 35 | ✅ OK |
-| mount_lx200 | 2026-09-23 12:06 | 3.0.0.62 | mac arm64 | simulator | 91 / 91 | ✅ OK |
+| mount_lx200 | 2026-09-23 14:18 | 3.0.0.63 | mac arm64 | ESP32Go | 35 / 35 | ✅ OK |
+| mount_lx200 | 2026-09-23 14:26 | 3.0.0.63 | mac arm64 | simulator | 93 / 93 | ✅ OK |
 | mount_nexstar | 2026-09-20 20:44 | 3.0.0.34 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 | mount_nexstaraux | 2026-09-20 21:29 | 3.0.0.14 | mac arm64 | simulator | 30 / 30 | ✅ OK |
 | mount_pmc8 | 2026-09-20 20:49 | 3.0.0.11 | mac arm64 | simulator | 11 / 11 | ✅ OK |
