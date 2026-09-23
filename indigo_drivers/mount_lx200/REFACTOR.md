@@ -1568,3 +1568,93 @@ The opt-in TCP target and the ASAN/UBSAN build were not run in this session.
 
 * Simulated tests: 86 run, 86 passed.
 * Hardware tests: 35 run, 35 passed, against an OpenAstroTracker controller, firmware v1.13.20.
+
+# Losmandy Gemini audit (2026-09-23)
+
+## Scope and hardware-test decision
+
+Simulator-only work on the Gemini profile of `indigo_mount_lx200`, starting
+from an external audit that had not been confirmed against the code or the
+documentation. **Hardware testing is NOT performed**: no Gemini controller is
+available and the task explicitly forbids using physical hardware, so nothing
+below may be read as hardware validation. Driver version before this work is
+`0x0300003C`.
+
+Documentation used, both bundled with the driver:
+
+* `Gemini-5-2.1.pdf` - Gemini Level 5, Version 2.1 Serial Interface Command
+  Description, referred to as L5 below.
+* `gemini_manual_l4.pdf` - the Level 4 user manual, referred to as L4.
+
+## Audit verification
+
+Every claim was checked against the current `.driver` source and against L5
+before any change. All five are confirmed.
+
+| # | Claim | L5 reference | Code | Verdict |
+| --- | --- | --- | --- | --- |
+| 1 | `:CM#` answers `No object!#` when the mount is not aligned or no object is selected, and `meade_sync()` accepts it as success | "Synchronize" section: `:CM#` → `No object!#` or `<object name>#` | `meade_sync()` fails only on an empty reply and has error branches for ZWO and NYX only | confirmed |
+| 2 | The time difference must be set before the date and the local time | `:SG{+-}hh#`: "The time difference has to be set before setting the calendar date (SC) and local time (SL), since the Real Time Clock is running at UTC" | `meade_set_utc()` sends `:SC#`, then optionally `:SH#`, then `:SG#`, then `:SL#` | confirmed |
+| 2b | `:GG#` may answer `±hh:mm:ss` and `atoi()` drops the minutes | `:GG#` → `{+-}<hh>#` or `{+-}<hh>:<mm>:<ss>#`, "The extended format with minutes and seconds is new in L5" | `*utc_offset = -atoi(PRIVATE_DATA->response)` | confirmed |
+| 3 | Double Precision answers decimal degrees that the parser rejects | `:u#` "NEW in L5 Select the Double Precision mode. Values will be displayed in signed floating point format with 6 digits after the decimal point" | `meade_parse_coordinate()` requires a sexagesimal separator and rejects `+12.345678`; `meade_get_coordinates()` returns false before the `:U#` it would send for a short reply | confirmed |
+| 4 | `!` on `:Gv#` means Stall and is ignored | `:Gv#` → `N`, `T`, `G`, `C`, `S` and "! for Stall" | `meade_update_gemini_state()` switches on `S`, `C`, `T`, `G` only, so a stall reads as "no movement" | confirmed |
+| 5 | `:h?#` answers `0` both for "no park command received" and for a failed park | `:h?#` → "2: Park operation in progress, 1: Park operation completed, 0: No Prk command received or Park operation failed" | the driver handles `1` and `2` and ignores `0` | confirmed |
+
+The L4 warning is also confirmed and is a constraint on the work rather than a
+defect: L4 section 5.3.10.10.2 lets the user swap the meaning of `:CM#` and
+`:Cm#` through the "Sync or Align" setting, and L5 documents `:Cm#` as an
+*Additional Alignment* that recalculates the pointing model. The driver must
+not choose between them on the user's behalf, so this work keeps `:CM#`.
+
+## Baseline
+
+Driver `0x0300003C` builds clean and the full serial suite passes, which is the
+state the Gemini work starts from.
+
+```sh
+cd indigo_drivers/mount_lx200 && make -f ../../Makefile.drv all
+make -C indigo_test build/integration/test_mount_lx200_simulator
+./build/integration/test_mount_lx200_simulator
+```
+
+| Suite | Run | Passed | Failed |
+| --- | --- | --- | --- |
+| `test_mount_lx200_simulator` (driver 0x0300003C) | 86 | 86 | 0 |
+
+The `gemini` model of the simulator answers `:Gv#`, `:h?#`, `:Gm#`, `:CM#`,
+`:GG#` and the native `>...#` set from the shared command table, always with the
+well-behaved reply. None of the five failure replies above can be produced, so
+no existing case covers any of them: every one of the five defects is currently
+invisible to the suite.
+
+## Plan
+
+Each step is independently verifiable and is verified before the next begins.
+The simulator gains a selectable quirk for each failure reply first, so the
+regression case fails against `0x0300003C` before the repair is written.
+
+1. Simulator: `:CM#` answers `No object!#` when the model is Gemini and the
+   fixture asked for an unaligned mount. Case reproduces the false success.
+2. Driver: `meade_sync()` rejects `No object!#` for Gemini with a message.
+3. Simulator: record the order of `:SG#`, `:SC#` and `:SL#` in the event log and
+   reject a date set before the offset. Case reproduces the wrong order.
+4. Driver: `meade_set_utc()` sends `:SG#` before `:SC#` for Gemini.
+5. Simulator: `:GG#` answers the extended `±hh:mm:ss`. Case reproduces the
+   dropped minutes in the published clock.
+6. Driver: parse the extended offset without truncating the UTC computation.
+7. Simulator: `:Gv#` answers `!`. Case reproduces the motion that completes
+   although the mount stalled.
+8. Driver: propagate the stall and define the recovery on the next valid reply.
+9. Simulator: `:h?#` answers `0` after a park that failed. Case reproduces the
+   park that stays BUSY.
+10. Driver: distinguish the initial `0`, the operation in progress and its
+    failure, with a bounded completion.
+11. Double Precision: negotiate or support the format without sending a blind
+    toggle, and check the effect on the time and the other readbacks.
+12. Regenerate, run the full serial suite, update the records.
+
+Deferred and assessed separately, not mixed into the repairs: the native
+tracking mode through command 130, the guide rate through 150 and through
+151/152 on L5, reading the version with `:GVN#` to tell L4 and L5 capabilities
+apart, and decoding the specific `:MS#` rejection reasons. Any native command
+work must implement and verify the documented checksum.
