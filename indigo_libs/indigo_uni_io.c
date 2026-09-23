@@ -873,8 +873,12 @@ bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max
 			socklen_t addrlen = sizeof(remote_addr);
 			unsigned char payload[2048];
 			for (int n = 0; n < 5; n++) {
-				long recvlen = recvfrom(udp_socket, payload, sizeof(payload), 0, (struct sockaddr *)&remote_addr, &addrlen);
+				long recvlen = recvfrom(udp_socket, payload, sizeof(payload) - 1, 0, (struct sockaddr *)&remote_addr, &addrlen);
 				if (recvlen > 0) {
+					// A datagram carries no terminator of its own, so one is put after the
+					// bytes that actually arrived; without it the copy below runs off the end
+					// of the announcement and into whatever the stack held.
+					payload[recvlen] = 0;
 					if (host) {
 						strncpy(host, inet_ntoa(remote_addr.sin_addr), max_host);
 						host[max_host - 1] = 0;
@@ -911,15 +915,21 @@ bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max
 			socklen_t addrlen = sizeof(remote_addr);
 			unsigned char payload[2048];
 			for (int n = 0; n < 5; n++) {
-				long recvlen = recvfrom(udp_socket, payload, sizeof(payload), 0, (struct sockaddr*)&remote_addr, &addrlen);
+				long recvlen = recvfrom(udp_socket, payload, sizeof(payload) - 1, 0, (struct sockaddr*)&remote_addr, &addrlen);
 				if (recvlen > 0) {
+					// A datagram carries no terminator of its own, so one is put after the
+					// bytes that actually arrived; without it the copy below runs off the end
+					// of the announcement and into whatever the stack held.
+					payload[recvlen] = 0;
 					if (host) {
 						wchar_t ipstr[INET_ADDRSTRLEN];
 						InetNtop(AF_INET, &remote_addr.sin_addr, ipstr, sizeof(ipstr));
 						strncpy(host, indigo_wchar_to_char(ipstr), max_host);
+						host[max_host - 1] = 0;
 					}
 					if (message) {
 						strncpy(message, (char*)payload, max_message);
+						message[max_message - 1] = 0;
 					}
 					result = true;
 					break;
