@@ -620,3 +620,63 @@ Final MountSim verification attempts: 81 run / 80 passed (first matrix 71/72,
 isolated manual rerun 1/1, CEM120 full rerun 8/8). Latest per-model acceptance:
 72 / 72 unique cases passed (8 per model, 9 models), counted
 separately from portable integration. Physical hardware: 0 run / 0 passed.
+
+
+## CEM120 latency investigation (2026-09-23 follow-up)
+
+User requested localization of the previously unexplained stop timeout. The
+unchanged app failed `ioptron_manual_motion` on the first Main Thread Checker
+run. Temporary monotonic tracing was then added at receive, main-queue entry,
+handler entry and reply write; five manual runs and triggered `sample` captures
+locate the delay before main-queue entry. In one capture 629/776 main-thread
+samples are inside Motor timer -> GUI sky update -> Stars catalogue projection,
+while the serial reader waits in `blockingRunInMainThread`. Measured main-queue
+waits reach 0.993 s, whereas handler/reply work is short. The diagnostic worker
+entry logs main=1: the earlier global-queue suspicion is not demonstrated; the
+synchronous dispatch can execute inline. App Nap is not needed to explain the
+observed CPU-bound rendering backlog.
+
+Atomic repair plan: reproduce redundant rendering in a native GUI regression;
+coalesce expensive sky projection at the GUI boundary while preserving live
+coordinates and the existing motor/transport timing; compare identically traced
+CEM120 repetitions, then remove temporary diagnostics and rerun native/control
+and full CEM120 acceptance. No driver timeout or protocol change is planned.
+
+Public cross-checks:
+- https://developer.apple.com/documentation/xcode/improving-app-responsiveness
+- https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Multithreading/RunLoopManagement/RunLoopManagement.html
+These describe main-thread work budgets and delayed/coalesced timer servicing;
+they support the captured stacks rather than attributing the failure to a mount
+firmware peculiarity. Diagnostic artifacts: `/tmp/cem120-checker-baseline` and
+`/tmp/cem120-diagnostic` (temporary local files).
+
+Completed repair is in MountSim's shared GUI: coalesce expensive catalogue
+projection to at most 30 Hz, with the interval starting after projection finishes.
+Live pointing is updated before the gate, preserving GUI SYNC; motor integration,
+serial parsing and driver deadlines are unchanged. A native GUI regression fails
+on the original implementation and passes after the fix. Temporary probes were
+removed before final validation. The earlier unlocalized timeout is superseded by
+this investigation; the original 5.592 s event has no recoverable in-process stack,
+but the unchanged app reproduced the same stop failure with a 1.314 s reply delay.
+
+Five identically instrumented manual-motion runs per build measured main-queue
+wait median/p95/max of 10.706/195.894/993.386 ms before and
+0.024/13.325/27.010 ms after; maximum handler-through-reply time was
+17.209 ms before and 0.897 ms after. There were 384/360 commands respectively
+because slower cases trigger more polls. These are measured host software
+latencies, not a real-time guarantee. Both five-run groups passed; the separate
+unchanged-app checker baseline failed.
+
+Final clean Debug build passed; MountSim's five native assertion groups and all
+control-test model framing/identity checks plus 20 interrupted replacement cycles
+passed. The original shared harness then passed the complete CEM120 suite 8/8.
+No production INDIGO driver change was required (version remains 3.0.0.53); the
+previously passing 108 portable cases were not rerun for this GUI-only fix.
+The earlier nine-model acceptance matrix remains historical evidence; this
+follow-up specifically reran CEM120. Captures, stack samples, comparison metrics,
+and build/test logs are retained locally under
+`/tmp/cem120-latency-investigation-20260923` before test cleanup.
+
+Follow-up MountSim attempts: 19 run / 18 passed (unchanged baseline 0/1,
+instrumented before 5/5, instrumented after 5/5, final acceptance 8/8).
+Final CEM120 acceptance: 8 run / 8 passed; physical hardware: 0 run / 0 passed.
