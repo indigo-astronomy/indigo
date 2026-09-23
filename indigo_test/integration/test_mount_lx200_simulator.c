@@ -90,6 +90,11 @@ static bool start_unaligned_lx200_simulator(external_serial_simulator *simulator
 	return start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments);
 }
 
+static bool start_lx200_simulator_whose_park_fails(external_serial_simulator *simulator, const char *model) {
+	const char *arguments[] = { "--model", model, "--park-fails", NULL };
+	return start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments);
+}
+
 // libindigo exports a legacy macOS clock_gettime shim using wall time.
 // Use the native nanosecond API so test and external simulator share a clock.
 static uint64_t lx_monotonic_ns(void) {
@@ -582,6 +587,51 @@ static void lx200_gemini_sets_the_offset_before_the_clock(void) {
 	SERIAL_CHECK_TRUE(first_event_time(&simulator, "SL", &local_time));
 	SERIAL_CHECK_TRUE(offset_time < date_time);
 	SERIAL_CHECK_TRUE(offset_time < local_time);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A Gemini answers :Gv# with ! when an axis stalled. It keeps answering every query and keeps
+// reporting a position, so the only thing that says the motion it was asked for is not happening
+// is that one character; without it a goto that stalled is published as one that arrived. The
+// fault clears on the first velocity the controller reports again. Gemini Level 5, :Gv#.
+static void lx200_gemini_reports_a_stalled_axis(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "gemini", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Gv", "!"));
+	// The stall has to reach the client as a fault on the coordinates, not as an arrival.
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	// And the next valid velocity has to end it, without anything else being asked of the user.
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// :h?# answers 0 both for a park the controller never received and for one that failed, so a
+// driver that only acts on 1 and 2 leaves MOUNT_PARK busy for ever when the park does not take.
+// Gemini Level 5 command description, :h?#.
+static void lx200_gemini_park_failure_ends_the_request(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_lx200_simulator_whose_park_fails(&simulator, "gemini"));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_mount));
+	online = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hC", 0));
+	// The park never starts, so the request has to end in ALERT rather than stay busy, and the
+	// mount has to be published as what it is, which is not parked.
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
 cleanup:
 	if (online) {
 		stop_serial_driver(&lx200_mount);
@@ -2403,6 +2453,8 @@ int main(int argc, char **argv) {
 		{ "lx200_guide_pulse_moves_the_mount", lx200_guide_pulse_moves_the_mount },
 		{ "lx200_gemini_refuses_an_unaligned_sync", lx200_gemini_refuses_an_unaligned_sync },
 		{ "lx200_gemini_sets_the_offset_before_the_clock", lx200_gemini_sets_the_offset_before_the_clock },
+		{ "lx200_gemini_reports_a_stalled_axis", lx200_gemini_reports_a_stalled_axis },
+		{ "lx200_gemini_park_failure_ends_the_request", lx200_gemini_park_failure_ends_the_request },
 		{ "lx200_oat_reads_the_coordinates_and_the_site", lx200_oat_reads_the_coordinates_and_the_site },
 		{ "lx200_oat_idle_is_not_parked", lx200_oat_idle_is_not_parked },
 		{ "lx200_oat_keeps_tracking_through_a_goto", lx200_oat_keeps_tracking_through_a_goto },

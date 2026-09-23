@@ -57,6 +57,10 @@ typedef struct {
 	// command description, Synchronize section. The default is the aligned mount, so existing
 	// cases keep their meaning.
 	bool unaligned;
+	// A Gemini whose park does not take: the command is accepted, the mount never starts the
+	// operation and :h?# keeps answering 0, which the command description gives both for "No
+	// Prk command received" and for "Park operation failed". Gemini Level 5, :h?#.
+	bool park_fails;
 	const char *ready_file;
 	simulator_model model;
 } simulator_options;
@@ -164,6 +168,7 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --status-king           Report the king rate as k in :GU#, as the protocol documents\n");
 	printf("  --unaligned             Answer :CM# with the Gemini \"No object!\" refusal\n");
+	printf("  --park-fails            Accept the Gemini park but keep answering :h?# with 0\n");
 	printf("  --model <name>          a supported LX200 profile\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --tcp                   Serve an opt-in localhost TCP transport\n");
@@ -215,6 +220,8 @@ static bool parse_args(int argc, char *argv[]) {
 			options.status_king = true;
 		} else if (!strcmp(argv[i], "--unaligned")) {
 			options.unaligned = true;
+		} else if (!strcmp(argv[i], "--park-fails")) {
+			options.park_fails = true;
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
 		} else if (!strcmp(argv[i], "--model")) {
@@ -827,10 +834,16 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "Gstat")) {
 		write_response(state.parked ? "5#" : parking_requested ? "2#" : homing_requested ? "4#" : state.slewing ? "6#" : state.tracking ? "0#" : "7#");
 	} else if (!strcmp(command, "Gv")) {
+		// ! is the stall of a Gemini; it is reached through the fault injection rather than a
+		// permanent option, because what matters is the recovery on the next valid velocity.
 		write_response(state.slewing ? "S" : state.tracking ? "T" : "N");
 	} else if (!strcmp(command, "hP") || !strcmp(command, "hC") || !strcmp(command, "X362") || !strcmp(command, "Ch") || !strcmp(command, "KA")) {
 		if (!strcmp(command, "hP") && options.model == MODEL_NYX && state.standby) {
 			write_response("0");
+			return;
+		}
+		if (options.model == MODEL_GEMINI && options.park_fails) {
+			// The command is taken and nothing happens, which is all a client can observe.
 			return;
 		}
 		start_reference_motion(strcmp(command, "hC") != 0 || options.model == MODEL_GEMINI);

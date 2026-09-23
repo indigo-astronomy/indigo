@@ -59,6 +59,11 @@
 
 #define NYX_BASE64_THRESHOLD_VERSION "1.32.0"
 
+// How long a Gemini may take to acknowledge a park with the "in progress" status before
+// a 0 on :h?# stops meaning "the command has not arrived yet" and starts meaning "the
+// park failed". See meade_update_gemini_state().
+#define GEMINI_PARK_ACK_TIMEOUT 5.0
+
 #ifndef MAX
 #define MAX(a,               b) ((a) > (b) ? (a) : (b))
 #endif
@@ -273,6 +278,10 @@ typedef struct {
 	// An OpenAstroTracker cannot be asked whether it is parked, so the driver remembers it.
 	// See meade_update_oat_state().
 	bool oat_parked, oat_park_expected;
+	// A Gemini answers :Gv# with ! while an axis is stalled, and :h?# with 0 both for a park
+	// it never received and for one that failed. See meade_update_gemini_state().
+	bool stalled, gemini_park_expected, gemini_park_failed;
+	double gemini_park_deadline;
 	bool goto_issued;
 	bool park_allowed, unpark_allowed, home_allowed;
 	double timeout;
@@ -1185,6 +1194,13 @@ static bool meade_park(indigo_device *device) {
 		return meade_no_reply_command(device, ":KA#");
 	}
 	if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
+		// :h?# answers 0 both for a park the controller never received and for one that
+		// failed, so the driver has to remember that it asked and give the controller a
+		// moment to acknowledge before it reads the 0 as a failure. See
+		// meade_update_gemini_state(). Gemini Level 5 command description, :h?#.
+		PRIVATE_DATA->gemini_park_expected = true;
+		PRIVATE_DATA->gemini_park_failed = false;
+		PRIVATE_DATA->gemini_park_deadline = indigo_monotonic_time() + GEMINI_PARK_ACK_TIMEOUT;
 		return meade_no_reply_command(device, ":hC#");
 	}
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
@@ -1209,6 +1225,7 @@ static bool meade_unpark(indigo_device *device) {
 		return meade_no_reply_command(device, ":hU#");
 	}
 	if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
+		PRIVATE_DATA->gemini_park_expected = PRIVATE_DATA->gemini_park_failed = false;
 		return meade_no_reply_command(device, ":hW#");
 	}
 	if (MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value) {
@@ -1546,26 +1563,66 @@ static void meade_init_gemini_mount(indigo_device *device) {
 
 static void meade_update_gemini_state(indigo_device *device) {
 	if (meade_command(device, ":Gv#")) {
+		bool was_stalled = PRIVATE_DATA->stalled;
 		switch (PRIVATE_DATA->response[0]) {
 			case 'S':
 			case 'C':
 				PRIVATE_DATA->slewing = true;
+				PRIVATE_DATA->stalled = false;
 				break;
 			case 'T':
 			case 'G':
 				PRIVATE_DATA->tracking = true;
+				PRIVATE_DATA->stalled = false;
 				break;
+			case 'N':
+				PRIVATE_DATA->stalled = false;
+				break;
+			case '!':
+				// An axis stalled. The controller still answers every query and still
+				// reports a position, so nothing else says the motion it was asked for is
+				// not happening; without this a goto that stalled is published as one that
+				// finished. Gemini Level 5 command description, :Gv#.
+				PRIVATE_DATA->stalled = true;
+				break;
+		}
+		if (PRIVATE_DATA->stalled && !was_stalled) {
+			indigo_send_message(device, ALERT_PROPERTY, "Mount reports a stalled axis");
+		} else if (was_stalled && !PRIVATE_DATA->stalled) {
+			// The first velocity the controller reports again ends the fault.
+			indigo_send_message(device, OK_PROPERTY, "Mount is moving again");
 		}
 	}
 	if (meade_command(device, ":h?#")) {
 		switch (PRIVATE_DATA->response[0]) {
 			case '1':
 				PRIVATE_DATA->parked = true;
+				PRIVATE_DATA->gemini_park_expected = false;
 				break;
 			case '2':
 				PRIVATE_DATA->parking = true;
+				// The controller has taken the command, so a 0 from here on is a failure
+				// rather than a park that has not arrived yet.
+				PRIVATE_DATA->gemini_park_deadline = 0;
+				break;
+			case '0':
+				// "No Prk command received or Park operation failed". Only what the driver
+				// asked for tells the two apart: while a park it issued is still inside its
+				// acknowledgement window this is the first, and once the controller has
+				// reported the operation in progress, or the window has passed, the second.
+				if (PRIVATE_DATA->gemini_park_expected && (PRIVATE_DATA->gemini_park_deadline == 0 || indigo_monotonic_time() > PRIVATE_DATA->gemini_park_deadline)) {
+					PRIVATE_DATA->gemini_park_expected = false;
+					PRIVATE_DATA->gemini_park_failed = true;
+				}
 				break;
 		}
+	}
+	if (PRIVATE_DATA->gemini_park_failed) {
+		// The generic state machine below mirrors the mount into the switch and the light
+		// but leaves the property state alone, so the failure survives to the client.
+		PRIVATE_DATA->gemini_park_failed = false;
+		MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_send_message(device, ALERT_PROPERTY, "Park failed");
 	}
 	if (meade_command(device, ":Gm#")) {
 		if (PRIVATE_DATA->response[0] == 'W' && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
@@ -2325,6 +2382,12 @@ static void meade_update_mount_state(indigo_device *device) {
 	indigo_debug("*** slewing=%d, tracking=%d, parked=%d, parking=%d, homed=%d, homing=%d", PRIVATE_DATA->slewing, PRIVATE_DATA->tracking, PRIVATE_DATA->parked, PRIVATE_DATA->parking, PRIVATE_DATA->homed, PRIVATE_DATA->homing);
 	if (PRIVATE_DATA->coordinate_read_failed) {
 		MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
+	} else if (PRIVATE_DATA->stalled) {
+		// The position is readable and the axis is not moving, which is what the branch
+		// below reads as an arrival. A stalled mount has not arrived anywhere.
+		MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		PRIVATE_DATA->goto_issued = false;
 	} else if (PRIVATE_DATA->slewing) {
 		// a running slew (driver or hand controller initiated) completes when it stops
 		PRIVATE_DATA->goto_issued = true;
