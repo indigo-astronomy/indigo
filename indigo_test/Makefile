@@ -1405,6 +1405,20 @@ test-aux-asiair-hw: check-lib $(TEST_BUILD)/hardware/test_aux_asiair_hw
 $(TEST_BUILD)/hardware/test_aux_asiair_hw: hardware/test_aux_asiair_hw.c test_runner.h ../build/drivers/indigo_aux_asiair.a Makefile | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_aux_asiair.a -o $@ $(TEST_LDFLAGS)
 
+# The physical RTS-on-COM shutter test needs a serial loopback: two USB serial
+# adapters joined by a null-modem cable. The driver drives RTS on
+# AUX_RTS_HW_PORT and the suite reads that line back through
+# AUX_RTS_HW_MONITOR_PORT, which is the only way to measure how long the shutter
+# is actually held. Both variables are required; a straight-through cable
+# carries no handshake line and the suite says so before it runs anything.
+# HW_HOTPLUG=1 adds the case that pulls the adapter while the shutter is open.
+.PHONY: test-aux-rts-hw
+test-aux-rts-hw: check-lib $(TEST_BUILD)/hardware/test_aux_rts_hw
+	$(TEST_BUILD)/hardware/test_aux_rts_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug) $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+$(TEST_BUILD)/hardware/test_aux_rts_hw: hardware/test_aux_rts_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_rts.a Makefile | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< $(BUILD_DRIVERS)/indigo_aux_rts.a -o $@ $(TEST_LDFLAGS)
+
 $(TEST_BUILD)/hardware/mount_synscan_hw_driver.o: ../indigo_drivers/mount_synscan/indigo_mount_synscan.c ../indigo_drivers/mount_synscan/indigo_mount_synscan.h Makefile | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) -c $< -o $@
 

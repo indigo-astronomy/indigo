@@ -28,3 +28,5 @@ Looking for device owners!!! :)
 ## Testing
 
 2026-09-21 23:49 3.0.0.10 mac arm64 simulator 9/9 OK
+2026-09-23 19:19 3.0.0.11 linux arm64 simulator 10/10 OK
+2026-09-23 19:22 3.0.0.11 linux arm64 FTDI serial loopback 9/9 OK

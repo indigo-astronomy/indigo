@@ -99,11 +99,29 @@ static void reset_transport(void) {
 	atomic_store(&transition_count, 0);
 }
 
+// Every level change of the line, wherever it comes from: the requests the driver makes and the
+// assertion the operating system performs on its own when the port is opened.
+static void note_transition(bool state) {
+	if (atomic_load(&rts_line) != state) {
+		int index = atomic_fetch_add(&transition_count, 1);
+		if (index < MAX_TRANSITIONS) {
+			transitions[index].state = state;
+			transitions[index].at = indigo_monotonic_time();
+		}
+		atomic_store(&rts_line, state);
+	}
+}
+
 indigo_uni_handle *rts_test_open(const char *port, int level) {
 	if (atomic_exchange(&rts_fail_open, 0)) {
 		return NULL;
 	}
 	atomic_fetch_add(&rts_opens, 1);
+	// A tty asserts RTS when it is opened, before the driver has asked for anything: open() leaves
+	// TIOCM_RTS set and indigo_uni_io.c does not clear it. On this device that is the shutter
+	// contact. Reproduced from a physical serial loopback of two FTDI adapters, where connecting the
+	// driver opened the shutter and left it open until the first exposure ended.
+	note_transition(true);
 	return &rts_handle;
 }
 
@@ -126,14 +144,7 @@ int rts_test_set_rts(indigo_uni_handle *port, bool state) {
 	if (state ? atomic_exchange(&rts_fail_on, 0) : atomic_exchange(&rts_fail_off, 0)) {
 		return -1;
 	}
-	if (atomic_load(&rts_line) != state) {
-		int index = atomic_fetch_add(&transition_count, 1);
-		if (index < MAX_TRANSITIONS) {
-			transitions[index].state = state;
-			transitions[index].at = indigo_monotonic_time();
-		}
-		atomic_store(&rts_line, state);
-	}
+	note_transition(state);
 	return 0;
 }
 
@@ -270,12 +281,33 @@ static void identity_inventory_and_property_contract(void) {
 	SERIAL_CHECK_TRUE(exposure != NULL && exposure->type == INDIGO_NUMBER_VECTOR && exposure->perm == INDIGO_RW_PERM && exposure->count == 1);
 	SERIAL_CHECK_TRUE(abort != NULL && abort->type == INDIGO_SWITCH_VECTOR && abort->perm == INDIGO_RW_PERM && abort->rule == INDIGO_ANY_OF_MANY_RULE && abort->count == 1);
 	SERIAL_CHECK_TRUE(exposure_item != NULL && exposure_item->number.min == 0 && exposure_item->number.max == 1000 && exposure_item->number.step == 1);
-	// Connecting arms nothing and leaves the line alone.
+	// Connecting arms nothing, and the shutter ends closed: the open asserts the line and the driver
+	// lowers it again, so exactly one rising and one falling edge belong to the connection itself.
 	SERIAL_CHECK_TRUE(exposure_item->number.value == 0);
-	SERIAL_CHECK_EQ_INT(0, transitions_seen());
+	SERIAL_CHECK_EQ_INT(2, transitions_seen());
 	SERIAL_CHECK_TRUE(!atomic_load(&rts_line));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, rts_shutter.entry(INDIGO_DRIVER_INFO, &info));
 	SERIAL_CHECK_EQ_INT(INDIGO_DRIVER_API_3, INDIGO_DRIVER_API_GENERATION(info.version));
+cleanup:
+	tear_down();
+}
+
+// Opening a serial port asserts RTS, and on this device RTS is the shutter contact, so connecting
+// has to lower it again. Against driver version 10 the camera fired the moment the driver
+// connected and stayed open until the first exposure ended, which also came out longer than it was
+// asked for. Found on a physical serial loopback of two FTDI adapters; see
+// indigo_test/hardware/test_aux_rts_hw.c.
+static void connecting_closes_the_shutter(void) {
+	SERIAL_CHECK_TRUE(bring_up());
+	SERIAL_CHECK_TRUE(!atomic_load(&rts_line));
+	SERIAL_CHECK_EQ_INT(2, transitions_seen());
+	SERIAL_CHECK_TRUE(transitions[0].state && !transitions[1].state);
+	// The first exposure after connecting is the one the defect lengthened, because it began with
+	// the shutter already open and only its falling edge was ever timed.
+	double held = 0;
+	SERIAL_CHECK_TRUE(timed_exposure(1, &held));
+	printf("  first exposure after connecting held the line for %.3fs\n", held);
+	SERIAL_CHECK_TRUE(held >= 0.99 && held <= 1.4);
 cleanup:
 	tear_down();
 }
@@ -441,6 +473,14 @@ static void open_rollback_reconnect_and_refused_shutdown(void) {
 	SERIAL_CHECK_TRUE(!context.connected);
 	SERIAL_CHECK_TRUE(connected_properties_published(false));
 	SERIAL_CHECK_EQ_INT(0, atomic_load(&rts_opens));
+	// A port that opens but whose line cannot be lowered cannot serve a shutter, so the connection
+	// fails and closes the handle it took rather than leaving the camera exposing.
+	atomic_store(&rts_fail_off, 1);
+	SERIAL_CHECK_TRUE(!connect_serial_device(&rts_shutter, "fake-rts-port"));
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connected_properties_published(false));
+	SERIAL_CHECK_EQ_INT(1, atomic_load(&rts_opens));
+	SERIAL_CHECK_EQ_INT(1, atomic_load(&rts_closes));
 	SERIAL_CHECK_TRUE(connect_serial_device(&rts_shutter, "fake-rts-port"));
 	SERIAL_CHECK_EQ_INT(1, atomic_load(&rts_opens) - atomic_load(&rts_closes));
 	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, rts_shutter.entry(INDIGO_DRIVER_SHUTDOWN, NULL));
@@ -476,6 +516,7 @@ cleanup:
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "identity_inventory_and_property_contract", identity_inventory_and_property_contract },
+		{ "connecting_closes_the_shutter", connecting_closes_the_shutter },
 		{ "exposure_holds_the_shutter_for_the_requested_time", exposure_holds_the_shutter_for_the_requested_time },
 		{ "exposure_countdown_is_published_in_whole_seconds", exposure_countdown_is_published_in_whole_seconds },
 		{ "a_stalled_queue_does_not_extend_the_exposure", a_stalled_queue_does_not_extend_the_exposure },

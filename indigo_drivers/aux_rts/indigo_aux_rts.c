@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_aux_rts"
 #define DRIVER_LABEL         "RTS-on-COM shutter release"
 #define AUX_DEVICE_NAME      "RTS-on-COM shutter"
@@ -73,7 +73,19 @@ static bool rts_off(indigo_device *device) {
 
 static bool rts_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
-	return PRIVATE_DATA->handle != NULL;
+	if (PRIVATE_DATA->handle == NULL) {
+		return false;
+	}
+	// Opening a serial port asserts RTS, and on this device RTS is the shutter contact. Without
+	// this the camera fires the moment the driver connects and stays open until the end of the
+	// first exposure, which also comes out longer than it was asked for. Measured on a serial
+	// loopback of two FTDI adapters by indigo_test/hardware/test_aux_rts_hw.c. A port whose line
+	// cannot be lowered cannot serve a shutter at all, so the open fails and releases the handle.
+	if (!rts_off(device)) {
+		indigo_uni_close(&PRIVATE_DATA->handle);
+		return false;
+	}
+	return true;
 }
 
 static void rts_close(indigo_device *device) {
