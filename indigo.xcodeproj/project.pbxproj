@@ -5447,6 +5447,10 @@
 		9DE0E7B422C6465500289234 /* indigo_focuser_dsd_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_dsd_main.c; sourceTree = "<group>"; };
 		9DE0E7B522C6465500289234 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DE0E7B622C6465500289234 /* indigo_focuser_dsd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_dsd.h; sourceTree = "<group>"; };
+		9DE3F1FC3063C30200F76388 /* aGotino_230312_esp32_s3.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = aGotino_230312_esp32_s3.bin; sourceTree = "<group>"; };
+		9DE3F1FD3063C30200F76388 /* OAT_1.13.20_esp32_s3.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = OAT_1.13.20_esp32_s3.bin; sourceTree = "<group>"; };
+		9DE3F1FE3063C30200F76388 /* OnStepX_10.28x_esp32_s3.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = OnStepX_10.28x_esp32_s3.bin; sourceTree = "<group>"; };
+		9DE3F1FF3063C30200F76388 /* TeenAstro_1.5.2_esp32_s3.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = TeenAstro_1.5.2_esp32_s3.bin; sourceTree = "<group>"; };
 		9DE55C982F98C3C700B2C143 /* mount_nexstaraux_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = mount_nexstaraux_simulator.ino; sourceTree = "<group>"; };
 		9DEF3982304AD9A600FD4BC4 /* TIMERS_AND_QUEUES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TIMERS_AND_QUEUES.md; sourceTree = "<group>"; };
 		9DEF3983304AE5CB00FD4BC4 /* REVIEW.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW.md; sourceTree = "<group>"; };
@@ -5658,9 +5662,9 @@
 		C0DE20260921F00000000004 /* test_aux_rts_shutter.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_rts_shutter.c; sourceTree = "<group>"; };
 		C0DE20260922120000000001 /* test_focuser_focusdreampro_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_focusdreampro_hw.c; sourceTree = "<group>"; };
 		C0DE20260922120000000002 /* test_gps_nmea_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_nmea_hw.c; sourceTree = "<group>"; };
-		C0DE20260922220000000001 /* test_mount_lx200_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_lx200_hw.c; sourceTree = "<group>"; };
 		C0DE20260922120000000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260922190000000001 /* powerbox_hotplug_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = powerbox_hotplug_test_common.h; sourceTree = "<group>"; };
+		C0DE20260922220000000001 /* test_mount_lx200_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_lx200_hw.c; sourceTree = "<group>"; };
 		C0DE20270913000400000001 /* indigo_focuser_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_lunatico.driver; sourceTree = "<group>"; };
 		C0DE20270913000400000002 /* indigo_rotator_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_lunatico.driver; sourceTree = "<group>"; };
 		C0DE20270913000400000003 /* lunatico_shared.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lunatico_shared.h; sourceTree = "<group>"; };
@@ -6701,6 +6705,10 @@
 			children = (
 				5984A373303CC91500D581D2 /* mount_lx200_simulator.c */,
 				591E1143215AEC3900ABADA6 /* mount_lx200_simulator.ino */,
+				9DE3F1FC3063C30200F76388 /* aGotino_230312_esp32_s3.bin */,
+				9DE3F1FD3063C30200F76388 /* OAT_1.13.20_esp32_s3.bin */,
+				9DE3F1FE3063C30200F76388 /* OnStepX_10.28x_esp32_s3.bin */,
+				9DE3F1FF3063C30200F76388 /* TeenAstro_1.5.2_esp32_s3.bin */,
 			);
 			path = mount_lx200_simulator;
 			sourceTree = "<group>";
