@@ -65,6 +65,29 @@
 - Close the serial verification connection before connecting INDIGO. Run only authorized hardware scenarios.
 - Finish by stopping commanded motion and tracking, closing serial connections, and recording the image checksum, board identity, upload result, test results, and firmware left installed.
 
+## Testing mounts with MountSim
+
+- MountSim acceptance requires macOS, a logged-in GUI session and a built MountSim application. Read the MountSim checkout's `README.md` and build it before testing. Record the app version and selected model returned by its control server.
+- Keep these platform-specific tests under `indigo_test/mountsim/`, separate from the portable integration suite and physical-hardware tests. Guard their Makefile rules with `OS_DETECTED=Darwin`; never add them to `test`, `test-integration`, or Linux/Windows build and test dependencies.
+- Reuse `indigo_test/mountsim/run_mountsim.py` and `mountsim_test_common.h` for every mount family. Put driver-specific cases in `test_<exact_driver_name>_mountsim.c` with an explicit opt-in Makefile target. Register new persistent files in the Xcode project. See [MountSim harness usage](../indigo_test/mountsim/USAGE.md) for the launcher contract, arguments and artifact layout.
+- Build the production driver, then run its MountSim target. For Temma, from the INDIGO repository root:
+
+  ```sh
+  make -C indigo_drivers/mount_temma -f ../../Makefile.drv all
+  make -C indigo_test test-mount-temma-mountsim
+  ```
+
+  The default app path points to the sibling MountSim checkout's Debug build. Set `MOUNTSIM_APP` to an absolute `.app` path when using another location.
+
+- Let the shared launcher own each test's application instance, private control port, isolated preferences, PTY relay and watchdog. Run cases serially, each in a fresh process and app instance. Use `indigo_test_use_private_home()` before starting the INDIGO bus. Do not reuse or stop a user's running MountSim session or alter their saved settings.
+- Select the exact case-sensitive model identifier accepted by MountSim's control server. Connect the real driver through `DEVICE_PORT` using the PTY supplied by the harness. The relay must forward bytes unchanged; trace framing must never translate commands or fabricate mount replies. Choose a trace terminator appropriate to the protocol, or use raw capture for binary protocols.
+- Apply the mount and guider acceptance rules in `indigo_test/DRIVER_TESTING_RULES.md`. Check fresh property transitions, actual coordinate readback and motion completion, reachable GOTO/SYNC, manual motion, tracking/rates, park/abort, driver-specific settings, shared-device lifecycle and reconnect. An accepted command or OK property alone is not proof of arrival. Choose reachable targets relative to the configured site and current sidereal time rather than relying on a fixed sky position.
+- Exercise transport loss through the shared relay disconnect/reconnect helper and apply the returned new PTY path before reconnecting the driver. Establish a healthy idle poll before testing idle loss. Distinguish client transport loss from an application crash, electrical serial faults and physical-device removal.
+- Measure guiding through recorded direction ON/OFF command edges with the durations, repeats, warmups and workloads required by the guider rules. Label these results as software transport timing, including host/relay scheduling; do not describe them as physical relay or motor timing.
+- When a discrepancy appears, preserve a reproducer and wire logs, and cross-check the protocol against multiple independent public sources, preferably manufacturer documentation and established implementations. Determine whether the defect belongs to the driver, MountSim, the harness or another component. Record sources, disagreements, root cause and regression evidence in the driver's `REFACTOR.md`. Fix the responsible driver or MountSim code within the authorized test mode; never change the emulator merely to agree with an incorrect driver. Add portable regression coverage for driver defects where possible, without introducing a MountSim dependency into that suite.
+- After a production fix, rerun the full requested MountSim scope and the relevant portable regression suite. Preserve useful captures before `make -C indigo_test test-clean`; the default logs under `indigo_test/build/mountsim-results` are removed by that cleanup. Stop only app/test processes owned by the harness and close their transports.
+- Record each run in the driver's `README.md` Testing section using `MountSim <version> (<model>)` as the type, for example `MountSim 2.3 (Temma)`, rather than `simulator`. Follow the existing timestamp, driver-version, platform and result format, and regenerate `TEST_SUMMARY.md`. Keep MountSim case counts separate from portable integration and physical-hardware counts in `REFACTOR.md`; do not add macOS-only cases to `MIGRATION_STATUS.md`'s portable integration or hardware counts. Do not claim physical hardware or Linux/Windows validation from a MountSim run.
+
 ## Generated drivers and repository integration
 
 - When a driver uses `indigo_generator`, preserve the `.driver` file as the source of truth and follow all generated-driver rules in the root `AGENTS.md`. Make behavioral edits in `.driver`, regenerate the checked-in outputs, and verify reproducibility by regenerating and confirming that no unexplained diff remains.
