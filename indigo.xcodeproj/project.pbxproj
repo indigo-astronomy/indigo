@@ -5454,6 +5454,7 @@
 		9DE3F2003063DD0100F76388 /* ESP32Go_bbf224a_esp32_s3.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = ESP32Go_bbf224a_esp32_s3.bin; sourceTree = "<group>"; };
 		9DE3F2013063DD0100F76388 /* ESP32Go_bbf224a_esp32_s3.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ESP32Go_bbf224a_esp32_s3.md; sourceTree = "<group>"; };
 		9DE55C982F98C3C700B2C143 /* mount_nexstaraux_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = mount_nexstaraux_simulator.ino; sourceTree = "<group>"; };
+		9DECDF2A3063FDC3005C4B64 /* AstroEQ_8.25_esp32_s3.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = AstroEQ_8.25_esp32_s3.bin; sourceTree = "<group>"; };
 		9DEF3982304AD9A600FD4BC4 /* TIMERS_AND_QUEUES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TIMERS_AND_QUEUES.md; sourceTree = "<group>"; };
 		9DEF3983304AE5CB00FD4BC4 /* REVIEW.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW.md; sourceTree = "<group>"; };
 		9DF148102D52384D00049345 /* build_windows_sdk.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build_windows_sdk.sh; sourceTree = "<group>"; };
@@ -5667,6 +5668,11 @@
 		C0DE20260922120000000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260922190000000001 /* powerbox_hotplug_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = powerbox_hotplug_test_common.h; sourceTree = "<group>"; };
 		C0DE20260922220000000001 /* test_mount_lx200_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_lx200_hw.c; sourceTree = "<group>"; };
+		C0DE20260923132000000001 /* run_mountsim.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_mountsim.py; sourceTree = "<group>"; };
+		C0DE20260923132000000002 /* mountsim_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mountsim_test_common.h; sourceTree = "<group>"; };
+		C0DE20260923132000000003 /* test_mount_temma_mountsim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_temma_mountsim.c; sourceTree = "<group>"; };
+		C0DE20260923132000000005 /* USAGE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = USAGE.md; sourceTree = "<group>"; };
+		C0DE20260923150000000001 /* test_mount_rainbow_mountsim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_rainbow_mountsim.c; sourceTree = "<group>"; };
 		C0DE20270913000400000001 /* indigo_focuser_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_lunatico.driver; sourceTree = "<group>"; };
 		C0DE20270913000400000002 /* indigo_rotator_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_lunatico.driver; sourceTree = "<group>"; };
 		C0DE20270913000400000003 /* lunatico_shared.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lunatico_shared.h; sourceTree = "<group>"; };
@@ -5715,11 +5721,6 @@
 		F4B0667386AC4C429100A248 /* sysfs_gpio_fake.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sysfs_gpio_fake.h; sourceTree = "<group>"; };
 		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
 		FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_simulator_common.h; sourceTree = "<group>"; };
-		C0DE20260923132000000001 /* run_mountsim.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_mountsim.py; sourceTree = "<group>"; };
-		C0DE20260923132000000002 /* mountsim_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mountsim_test_common.h; sourceTree = "<group>"; };
-		C0DE20260923132000000003 /* test_mount_temma_mountsim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_temma_mountsim.c; sourceTree = "<group>"; };
-		C0DE20260923132000000005 /* USAGE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = USAGE.md; sourceTree = "<group>"; };
-		C0DE20260923150000000001 /* test_mount_rainbow_mountsim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_rainbow_mountsim.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -15582,6 +15583,7 @@
 				9DF4DCCD2C5A768700A1852B /* mount_synscan_simulator.c */,
 				9D89442022DCD297002DFE13 /* mount_synscan_simulator.ino */,
 				59A4ED5B22DD888E00384056 /* LOGS.md */,
+				9DECDF2A3063FDC3005C4B64 /* AstroEQ_8.25_esp32_s3.bin */,
 			);
 			path = mount_synscan_simulator;
 			sourceTree = "<group>";
@@ -16465,6 +16467,18 @@
 			path = aux_geoptikflat_simulator;
 			sourceTree = "<group>";
 		};
+		C0DE20260923132000000004 /* mountsim */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20260923132000000005 /* USAGE.md */,
+				C0DE20260923132000000001 /* run_mountsim.py */,
+				C0DE20260923132000000002 /* mountsim_test_common.h */,
+				C0DE20260923132000000003 /* test_mount_temma_mountsim.c */,
+				C0DE20260923150000000001 /* test_mount_rainbow_mountsim.c */,
+			);
+			path = mountsim;
+			sourceTree = "<group>";
+		};
 		C0DE20270913000400000004 /* focuser_lunatico_simulator */ = {
 			isa = PBXGroup;
 			children = (
@@ -16488,18 +16502,6 @@
 				DF10000000000000000003 /* dome_dragonfly_simulator.c */,
 			);
 			path = dome_dragonfly_simulator;
-			sourceTree = "<group>";
-		};
-		C0DE20260923132000000004 /* mountsim */ = {
-			isa = PBXGroup;
-			children = (
-				C0DE20260923132000000005 /* USAGE.md */,
-				C0DE20260923132000000001 /* run_mountsim.py */,
-				C0DE20260923132000000002 /* mountsim_test_common.h */,
-				C0DE20260923132000000003 /* test_mount_temma_mountsim.c */,
-				C0DE20260923150000000001 /* test_mount_rainbow_mountsim.c */,
-			);
-			path = mountsim;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
