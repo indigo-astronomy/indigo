@@ -5652,6 +5652,7 @@
 		C0DE20260921230000000001 /* hardware_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = hardware_test_common.h; sourceTree = "<group>"; };
 		C0DE20260921230000000002 /* test_guider_gpusb_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_guider_gpusb_hw.c; sourceTree = "<group>"; };
 		C0DE20260921230000000003 /* test_aux_dsusb_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_dsusb_hw.c; sourceTree = "<group>"; };
+		C0DE20260923190000000001 /* test_aux_rts_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_rts_hw.c; sourceTree = "<group>"; };
 		C0DE20260921230000000004 /* test_focuser_fcusb_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_fcusb_hw.c; sourceTree = "<group>"; };
 		C0DE20260921230000000005 /* test_guider_cgusbst4_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_guider_cgusbst4_hw.c; sourceTree = "<group>"; };
 		C0DE20260921230000000006 /* test_focuser_usbv3_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_usbv3_hw.c; sourceTree = "<group>"; };
@@ -14631,6 +14632,7 @@
 				C0DE20260921230000000005 /* test_guider_cgusbst4_hw.c */,
 				C0DE20260921230000000004 /* test_focuser_fcusb_hw.c */,
 				C0DE20260921230000000003 /* test_aux_dsusb_hw.c */,
+				C0DE20260923190000000001 /* test_aux_rts_hw.c */,
 				C0DE20260921230000000002 /* test_guider_gpusb_hw.c */,
 				C0DE20260921230000000001 /* hardware_test_common.h */,
 				C0DE20260922190000000001 /* powerbox_hotplug_test_common.h */,
