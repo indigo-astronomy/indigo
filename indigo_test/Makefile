@@ -2549,6 +2549,27 @@ MOUNT_LX200_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_lx200.a $(TEST_LDFLA
 $(TEST_BUILD)/hardware/test_mount_lx200_hw: hardware/test_mount_lx200_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_lx200.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(MOUNT_LX200_HW_TEST_LDFLAGS)
 
+# A physically connected Celestron mount reached over the NexStar AUX protocol is opt-in and
+# excluded from normal integration tests. The mount is reached over the network;
+# MOUNT_NEXSTARAUX_HW_URL selects the address and defaults to the driver's own nexstar://, which
+# exercises the passive discovery of the WiFi module. THE MOUNT MOVES: the GOTO scenarios move a
+# few degrees from the pointing they start at, and the run gives back the pointing, the tracking
+# state and the autoguide rates it found. HW_PARK=1 adds the two park scenarios, which command an
+# absolute position: the mount has no alignment of its own, so its pole is wherever the hand
+# controller put it and the slew can cross any arc. Pass it only when the mount may reach the
+# pole. SYNC
+# overwrites the position registers, and each scenario that uses it syncs the original position
+# back. MOUNT_NEXSTARAUX_HW_LATITUDE and MOUNT_NEXSTARAUX_HW_LONGITUDE give the observing site,
+# which the driver has no command to read from the mount.
+.PHONY: test-mount-nexstaraux-hw
+test-mount-nexstaraux-hw: check-lib $(TEST_BUILD)/hardware/test_mount_nexstaraux_hw
+	$(TEST_BUILD)/hardware/test_mount_nexstaraux_hw --run $(if $(filter 1,$(HW_PARK)),--park) $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+MOUNT_NEXSTARAUX_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_nexstaraux.a $(TEST_LDFLAGS) -lindigocat
+
+$(TEST_BUILD)/hardware/test_mount_nexstaraux_hw: hardware/test_mount_nexstaraux_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_nexstaraux.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(MOUNT_NEXSTARAUX_HW_TEST_LDFLAGS)
+
 # Opt-in Cocoa application acceptance; excluded from headless integration tests.
 ifeq ($(OS_DETECTED),Darwin)
 MOUNTSIM_APP ?= ../../MountSim/build/Build/Products/Debug/MountSim.app

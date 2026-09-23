@@ -36,6 +36,7 @@
 #define AZM_SET_POSITION      "10 04"
 #define ALT_SET_POSITION      "11 04"
 #define AZM_SET_POS_GUIDERATE "10 06"
+#define ALT_SET_POS_GUIDERATE "11 06"
 #define AZM_SET_NEG_GUIDERATE "10 07"
 #define AZM_SLEW_DONE         "10 13"
 #define AZM_GOTO_SLOW         "10 17"
@@ -67,6 +68,12 @@ static const simulator_driver_case nexstaraux_guider = {
 	false,
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
+
+// How long the tracking scenarios watch the right ascension. A mount that is not tracking loses
+// 0.00334 h of it over this window, which is four times the tolerance a tracking mount is held to.
+#define TRACKING_WINDOW 12.0
+#define TRACKING_HELD 0.0008
+#define TRACKING_LOST 0.0020
 
 static external_serial_simulator fixture;
 static char fixture_directory[] = "/tmp/indigo-nexstaraux.XXXXXX";
@@ -218,9 +225,18 @@ static bool text_is(const char *property_name, const char *item_name, const char
 }
 
 // The mount reports its position continuously, so a coordinate is only settled
-// once the property is no longer busy and the readback matches.
+// once the property is no longer busy and the readback matches. The match has to
+// come from a publication the polling callback made after this call: the handler
+// of a change request publishes the values the client itself sent, so a check
+// that accepts the first publication is only reading its own request back. That
+// is how a declination the mount reported as 330 degrees passed as -30.
 static bool coordinates_are(double ra, double dec, double tolerance) {
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) + 1;
 	for (int i = 0; i < 600; i++) {
+		if (property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) <= revision) {
+			indigo_usleep(25000);
+			continue;
+		}
 		indigo_property *property = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 		indigo_item *ra_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
 		indigo_item *dec_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
@@ -234,6 +250,53 @@ static bool coordinates_are(double ra, double dec, double tolerance) {
 	indigo_property *property = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	fprintf(stderr, "Mount did not settle at %g / %g (value %g / %g, state %d)\n", ra, dec, ra_item == NULL ? NAN : ra_item->number.value, dec_item == NULL ? NAN : dec_item->number.value, property == NULL ? -1 : property->state);
 	return false;
+}
+
+// Waits for a coordinate publication the polling callback made after this call.
+static bool wait_for_fresh_coordinates(void) {
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	for (int i = 0; i < 800; i++) {
+		if (property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) > revision + 1) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	fprintf(stderr, "The mount stopped publishing its coordinates\n");
+	return false;
+}
+
+// How much right ascension the mount lost over the window, which is what tells a
+// driven axis from a standing one: the sky runs away from a mount that is not
+// tracking, and the published right ascension follows it.
+static bool right_ascension_drift(double seconds, double *drift) {
+	if (!wait_for_fresh_coordinates()) {
+		return false;
+	}
+	indigo_item *item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	if (item == NULL) {
+		return false;
+	}
+	double start = item->number.value;
+	double until = indigo_monotonic_time() + seconds;
+	while (indigo_monotonic_time() < until) {
+		indigo_usleep(100000);
+	}
+	if (!wait_for_fresh_coordinates()) {
+		return false;
+	}
+	item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	if (item == NULL) {
+		return false;
+	}
+	double difference = item->number.value - start;
+	if (difference > 12) {
+		difference -= 24;
+	}
+	if (difference < -12) {
+		difference += 24;
+	}
+	*drift = fabs(difference);
+	return true;
 }
 
 static bool driver_up(void) {
@@ -472,8 +535,9 @@ static void abort_slew(void) {
 	SERIAL_CHECK_TRUE(coordinates_change(14, -20, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GOTO_FAST, 1));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "00 00 00"));
-	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_POS, "00 00 00"));
+	// MC_MOVE_POS carries an eight bit rate, so the stop is a single zero byte.
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "00"));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_POS, "00"));
 	SERIAL_CHECK_TRUE(state_seen(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
 	// A fresh slew has to be accepted right after the abort.
 	SERIAL_CHECK_TRUE(coordinates_change(3, 20, INDIGO_BUSY_STATE));
@@ -566,6 +630,10 @@ static void tracking(void) {
 	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_POS_GUIDERATE, "FF FF"));
+	// In EQ mode only the azimuth axis carries the drive, so the altitude rate is stopped with
+	// every tracking command. A NexStar SE left in alt-azimuth tracking by its hand controller
+	// kept turning the declination axis about twelve degrees an hour until it was.
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_SET_POS_GUIDERATE, "00 00"));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_POS_GUIDERATE, "FF FE"));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, INDIGO_OK_STATE));
@@ -640,6 +708,215 @@ static void guide_rate(void) {
 	SERIAL_CHECK_TRUE(number_is(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 25, 1));
 	SERIAL_CHECK_TRUE(fault(AZM_SET_GUIDE_RATE, "silent"));
 	SERIAL_CHECK_TRUE(number_change(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50, INDIGO_ALERT_STATE));
+cleanup:
+	driver_stop();
+}
+
+// The declination the mount reports is a signed fraction of a full rotation, so the upper half of
+// the encoder range is the southern half of the sky. Found on a NexStar SE: a mount synchronized
+// to -20 degrees reported 339.9999 back.
+static void southern_declination(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_change(12, -30, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_SET_POSITION, "EA AA AB"));
+	SERIAL_CHECK_TRUE(coordinates_are(12, -30, .05));
+	// The boundary between the two halves of the encoder range is the celestial equator.
+	SERIAL_CHECK_TRUE(coordinates_change(12, -0.5, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(12, -0.5, .05));
+	SERIAL_CHECK_TRUE(coordinates_change(12, 0.5, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(12, 0.5, .05));
+	SERIAL_CHECK_TRUE(coordinates_change(12, -89, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(12, -89, .05));
+cleanup:
+	driver_stop();
+}
+
+// The controller stores the autoguide rate in one byte, so the full scale of the property is 0xFF.
+// Scaling it to 0x100 wrapped the fastest rate round to a standing axis.
+static void guide_rate_full_scale(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_GUIDE_RATE, "FF"));
+	SERIAL_CHECK_TRUE(number_change(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_SET_GUIDE_RATE, "FF"));
+	disconnect_serial_device(&nexstaraux_mount);
+	SERIAL_CHECK_TRUE(connect_mount());
+	// 0xFF is 99.6 percent of sidereal, which is the fastest the controller can store.
+	SERIAL_CHECK_TRUE(number_is(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 99.6, .5));
+	SERIAL_CHECK_TRUE(number_is(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 99.6, .5));
+	// The other end of the property is one percent of sidereal, which is three controller steps.
+	SERIAL_CHECK_TRUE(number_change(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 1, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_GUIDE_RATE, "03"));
+cleanup:
+	driver_stop();
+}
+
+// A motor controller can answer MC_SLEW_DONE with 0xff while the axis stands short of the target.
+// A NexStar SE asked for 90 degrees of declination stopped at 59.9 and reported the goto complete,
+// and the driver published the mount as parked there. Arrival has to be judged by the position.
+static void goto_stopped_short(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(coordinates_change(5, 50, INDIGO_BUSY_STATE));
+	// The controller gives up a third of the way and calls the goto done; the driver has to
+	// report the failure instead of publishing the target as reached.
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	indigo_item *reached = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(reached != NULL);
+	printf("    the goto was called done at declination %.3f instead of 50\n", reached->number.value);
+	SERIAL_CHECK_TRUE(fabs(reached->number.value - 50) > 1);
+	// A park that never arrives must not leave the mount reported as parked.
+	unsigned int park_alerts = property_state_revision(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, park_alerts));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+cleanup:
+	driver_stop();
+}
+
+// The motor controller of a NexStar SE acknowledges MC_SET_AUTOGUIDE_RATE and keeps the rate it
+// had. A rate the mount never took must not be published as the rate it guides at.
+static void guide_rate_not_stored(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 75, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_GUIDE_RATE, "C0"));
+	// What is published is what the controller is really holding, not what was asked for.
+	SERIAL_CHECK_TRUE(number_is(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50, 1));
+	SERIAL_CHECK_TRUE(connect_guider());
+	SERIAL_CHECK_TRUE(number_change(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 75, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(number_is(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 50, 1));
+cleanup:
+	driver_stop();
+}
+
+// A controller that cannot reach the target does not always say so: it can keep answering
+// MC_SLEW_DONE with "not done" while the axes stand still. A NexStar SE asked for the pole did
+// that, and MOUNT_PARK stayed busy for a quarter of an hour while the parked guard refused every
+// other request. The goto has to be given up on instead of polled forever.
+static void goto_never_arrives(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	double started = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(coordinates_change(5, 50, INDIGO_BUSY_STATE));
+	// Giving up takes longer than the shared wait allows, so this one waits for itself.
+	double deadline = indigo_monotonic_time() + 60;
+	while (indigo_monotonic_time() < deadline && property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE) <= alerts) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE) > alerts);
+	double elapsed = indigo_monotonic_time() - started;
+	printf("    the goto that never arrives was given up after %.0f s\n", elapsed);
+	SERIAL_CHECK_TRUE(elapsed < 60);
+	// The mount stays usable: the axes are released and the next request is taken.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_change(6, 25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(6, 25, .05));
+cleanup:
+	driver_stop();
+}
+
+// A goto whose poll stops being answered must not be abandoned while the property is still busy.
+// Seen on a NexStar SE: one lost answer left MOUNT_PARK busy indefinitely, and the parked guard
+// then refused tracking, motion and coordinates for the rest of the session.
+static void goto_loses_the_answer(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(fault(AZM_SLEW_DONE, "close"));
+	SERIAL_CHECK_TRUE(coordinates_change(5, 50, INDIGO_BUSY_STATE));
+	double deadline = indigo_monotonic_time() + 60;
+	while (indigo_monotonic_time() < deadline && property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE) <= alerts) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE) > alerts);
+cleanup:
+	driver_stop();
+}
+
+// ----------------------------------------------------------------- the tracking drive
+
+// Tracking has to be visible as motion, not only as an accepted command: the sidereal drive holds
+// the right ascension while the sky turns.
+static void tracking_holds_the_right_ascension(void) {
+	double drift = 0;
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(right_ascension_drift(TRACKING_WINDOW, &drift));
+	printf("    with tracking off the mount lost %.5f h over %.0f s\n", drift, TRACKING_WINDOW);
+	SERIAL_CHECK_TRUE(drift > TRACKING_LOST);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(right_ascension_drift(TRACKING_WINDOW, &drift));
+	printf("    with tracking on the mount lost %.5f h over %.0f s\n", drift, TRACKING_WINDOW);
+	SERIAL_CHECK_TRUE(drift < TRACKING_HELD);
+cleanup:
+	driver_stop();
+}
+
+// A motor controller has one velocity register per axis, so the zero rate that ends a guide pulse
+// stops the tracking drive with it. Guiding a tracking mount therefore has to put the rate back.
+// Found on a NexStar SE, where the mount stood still after every pulse.
+static void tracking_survives_a_guide_pulse(void) {
+	double drift = 0;
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(connect_guider());
+	reset_simulator_context(&nexstaraux_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+	int rates = requests(AZM_SET_POS_GUIDERATE);
+	SERIAL_CHECK_TRUE(indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 300) == INDIGO_OK);
+	// The pulse stops the axis and then commands the tracking rate again.
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "00"));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_SET_POS_GUIDERATE, rates + 1));
+	SERIAL_CHECK_TRUE(right_ascension_drift(TRACKING_WINDOW, &drift));
+	printf("    after a guide pulse the mount lost %.5f h over %.0f s\n", drift, TRACKING_WINDOW);
+	SERIAL_CHECK_TRUE(drift < TRACKING_HELD);
+cleanup:
+	driver_stop();
+}
+
+// Releasing a manual motion stops the axis the same way, so the tracking drive has to come back
+// there too.
+static void tracking_survives_manual_motion(void) {
+	double drift = 0;
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, INDIGO_OK_STATE));
+	int rates = requests(AZM_SET_POS_GUIDERATE);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "02"));
+	SERIAL_CHECK_TRUE(indigo_change_switch_property_1(&simulator_test_client, nexstaraux_mount.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_SET_POS_GUIDERATE, rates + 1));
+	SERIAL_CHECK_TRUE(right_ascension_drift(TRACKING_WINDOW, &drift));
+	printf("    after manual motion the mount lost %.5f h over %.0f s\n", drift, TRACKING_WINDOW);
+	SERIAL_CHECK_TRUE(drift < TRACKING_HELD);
+cleanup:
+	driver_stop();
+}
+
+// An abort of a manual motion stops both axes, and the mount has to keep following the sky.
+static void tracking_survives_an_abort(void) {
+	double drift = 0;
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, INDIGO_BUSY_STATE));
+	int rates = requests(AZM_SET_POS_GUIDERATE);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_SET_POS_GUIDERATE, rates + 1));
+	SERIAL_CHECK_TRUE(right_ascension_drift(TRACKING_WINDOW, &drift));
+	printf("    after an abort the mount lost %.5f h over %.0f s\n", drift, TRACKING_WINDOW);
+	SERIAL_CHECK_TRUE(drift < TRACKING_HELD);
 cleanup:
 	driver_stop();
 }
@@ -851,6 +1128,16 @@ int main(void) {
 		{ "park_and_unpark", park_and_unpark, "normal" },
 		{ "abort_park", abort_park, "normal" },
 		{ "guide_rate", guide_rate, "normal" },
+		{ "guide_rate_full_scale", guide_rate_full_scale, "normal" },
+		{ "southern_declination", southern_declination, "normal" },
+		{ "goto_stopped_short", goto_stopped_short, "stalling" },
+		{ "goto_never_arrives", goto_never_arrives, "never-arrives" },
+		{ "goto_loses_the_answer", goto_loses_the_answer, "normal" },
+		{ "guide_rate_not_stored", guide_rate_not_stored, "deaf-guide-rate" },
+		{ "tracking_holds_the_right_ascension", tracking_holds_the_right_ascension, "normal" },
+		{ "tracking_survives_a_guide_pulse", tracking_survives_a_guide_pulse, "normal" },
+		{ "tracking_survives_manual_motion", tracking_survives_manual_motion, "normal" },
+		{ "tracking_survives_an_abort", tracking_survives_an_abort, "normal" },
 		{ "coordinate_polling", coordinate_polling, "normal" },
 		{ "stale_reply_skipped", stale_reply_skipped, "normal" },
 		{ "transport_loss", transport_loss, "normal" },
