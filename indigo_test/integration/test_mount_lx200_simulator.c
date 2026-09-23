@@ -204,6 +204,14 @@ static bool wait_for_mount_coordinates_state(indigo_property_state state) {
 	return false;
 }
 
+// MOUNT_EQUATORIAL_COORDINATES is defined in OK state carrying the values the device was
+// attached with, so waiting for that state says nothing about the controller having been read.
+// This waits for the next publication the polling callback makes.
+static bool wait_for_fresh_coordinates(void) {
+	unsigned int revision = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
+	return wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision);
+}
+
 static bool lx_coordinates(double ra, double dec, indigo_property_state state) {
 	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
@@ -480,6 +488,113 @@ static void lx200_agotino_keeps_the_site(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) - values[0]) < 0.001);
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) - values[1]) < 0.001);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// What a physical OpenAstroTracker on firmware v1.13.20 showed, each reproduced through a quirk
+// the simulator now models. See indigo_drivers/mount_lx200/REFACTOR.md.
+//
+// The firmware reports a declination as +45*00'00, with the arcminute mark where the protocol
+// puts a colon, and it refuses an unsigned longitude with 0 while keeping the site it had. The
+// first left the driver without any declination at all, the second replaced the site of the
+// mount with one it had never been given.
+static void lx200_oat_reads_the_coordinates_and_the_site(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	static const char *items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME };
+	static double values[] = { 48.1486, 17.1077, 160 };
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "oat", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME)->text.value, "OpenAstroTracker"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME)->text.value, "v1.13.20"));
+	// The declination has to arrive at all, which is what the arcminute mark used to prevent:
+	// the reply was rejected, the property stayed in ALERT and kept the 90 it was attached with.
+	// The tolerance is the precession between the epoch of the mount and the published one, not
+	// a weakened check.
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	double declination = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	printf("    the controller reports declination %.4f\n", declination);
+	SERIAL_CHECK_TRUE(fabs(declination - 45) < 1.0);
+	// And the site write has to reach the controller, which the unsigned longitude did not.
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// The longitude has to go out signed; the unsigned form the protocol documents is what the
+	// firmware answers with 0 while keeping the site it had.
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sg+342*54", 0));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) - values[1]) < 0.02);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) - values[0]) < 0.02);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// STATUS_PARKED is zero in the firmware, so "Parked" is what :GX# calls a mount with no status
+// bit set: every idle OpenAstroTracker reports it wherever its axes stand. Reading it as the park
+// state locked a client out of its own mount - tracking was refused because the mount was parked,
+// and the mount was parked because tracking was off. The park state is the driver's own, and only
+// a park it asked for makes it parked.
+static void lx200_oat_idle_is_not_parked(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "oat", NULL));
+	online = true;
+	// A session starts released, whatever an idle controller calls itself.
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	// Tracking off makes the controller report "Parked"; the mount is still not parked and the
+	// client has to be able to turn tracking on again.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "GX", 0));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	// A park the driver asks for is a real one, and it can be released again. With the single
+	// parked item this branch used to publish, the unpark request had nowhere to go at all.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hP", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hU", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The firmware stops the tracking motor for the length of a goto and starts it again when the
+// slew ends, so :GX# honestly reports no tracking while the mount is on its way. The setting the
+// client made did not change, and publishing it off would turn MOUNT_TRACKING off and on again
+// around every goto.
+static void lx200_oat_keeps_tracking_through_a_goto(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	int tracking_off = 0, samples = 0;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "oat", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(22, -60, INDIGO_BUSY_STATE));
+	while (find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state == INDIGO_BUSY_STATE && samples < 400) {
+		samples++;
+		indigo_item *item = find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME);
+		if (item == NULL || !item->sw.value) {
+			tracking_off++;
+		}
+		indigo_usleep(20000);
+	}
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(0, tracking_off);
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
 cleanup:
 	if (online) {
 		stop_serial_driver(&lx200_mount);
@@ -2013,6 +2128,66 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A guide pulse moves the mount. The simulator used to let the pulse consume its time and leave
+// the axes exactly where they were, so nothing in the suite could tell a pulse that reached the
+// mount from one that was acknowledged and dropped - which is the aGotino defect this file covers
+// elsewhere. The property cache follows one device, so it stays on the mount and the pulse is
+// sent to the guider without waiting on its own property; the judgement is the declination the
+// mount reports afterwards, which is what a pulse is for.
+static double guided_declination(void) {
+	return cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+}
+
+// Sends the pulse and answers the declination once it has settled, which is the first reading
+// that repeats. Waiting on the publication counters instead would depend on how often the
+// polling callback finds something new to say.
+static double pulse_the_guider(const char *item) {
+	if (indigo_change_number_property_1(&simulator_test_client, lx200_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, item, 1000) != INDIGO_OK) {
+		return NAN;
+	}
+	double previous = NAN;
+	for (int i = 0; i < 60; i++) {
+		indigo_usleep(200000);
+		double declination = guided_declination();
+		if (i > 9 && declination == previous) {
+			return declination;
+		}
+		previous = declination;
+	}
+	return previous;
+}
+
+static void lx200_guide_pulse_moves_the_mount(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_guider, "meade", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	reset_simulator_context(&lx200_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	double declination = guided_declination();
+	// A second of guiding at half the sidereal rate is about seven and a half arcseconds, so the
+	// declination moves by roughly two thousandths of a degree, north and then back south.
+	double guided = pulse_the_guider(GUIDER_GUIDE_NORTH_ITEM_NAME);
+	SERIAL_CHECK_TRUE(isfinite(guided));
+	printf("    a 1000 ms north pulse moved the declination by %.5f deg\n", guided - declination);
+	SERIAL_CHECK_TRUE(guided - declination > 0.0005);
+	SERIAL_CHECK_TRUE(guided - declination < 0.01);
+	double returned = pulse_the_guider(GUIDER_GUIDE_SOUTH_ITEM_NAME);
+	SERIAL_CHECK_TRUE(isfinite(returned));
+	printf("    a 1000 ms south pulse left it %.5f deg from where it started\n", returned - declination);
+	SERIAL_CHECK_TRUE(fabs(returned - declination) < 0.002);
+cleanup:
+	if (online) {
+		disconnect_serial_device(&lx200_mount);
+		reset_simulator_context(&lx200_guider);
+		enumerate_simulator_device();
+		stop_serial_driver(&lx200_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void lx200_guider_transport_failure_and_recovery(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -2138,6 +2313,10 @@ int main(int argc, char **argv) {
 		{ "lx200_agotino_abort_reports_the_unreached_target", lx200_agotino_abort_reports_the_unreached_target },
 		{ "lx200_agotino_refuses_the_guider", lx200_agotino_refuses_the_guider },
 		{ "lx200_agotino_keeps_the_site", lx200_agotino_keeps_the_site },
+		{ "lx200_guide_pulse_moves_the_mount", lx200_guide_pulse_moves_the_mount },
+		{ "lx200_oat_reads_the_coordinates_and_the_site", lx200_oat_reads_the_coordinates_and_the_site },
+		{ "lx200_oat_idle_is_not_parked", lx200_oat_idle_is_not_parked },
+		{ "lx200_oat_keeps_tracking_through_a_goto", lx200_oat_keeps_tracking_through_a_goto },
 		{ "lx200_zwo_profile", lx200_zwo_profile },
 		{ "lx200_nyx_profile", lx200_nyx_profile },
 		{ "lx200_oat_profile", lx200_oat_profile },

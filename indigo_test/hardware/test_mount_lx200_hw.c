@@ -68,6 +68,7 @@
 #define X_MOUNT_TYPE_NYX_ITEM_NAME "NYX"
 #define X_MOUNT_TYPE_ONSTEP_ITEM_NAME "ONSTEP"
 #define X_MOUNT_TYPE_AGOTINO_ITEM_NAME "AGOTINO"
+#define X_MOUNT_TYPE_OAT_ITEM_NAME "OAT"
 #define X_MOUNT_MODE_PROPERTY_NAME "X_MOUNT_MODE"
 #define X_MOUNT_MODE_EQUATORIAL_ITEM_NAME "EQUATORIAL"
 #define X_NYX_WIFI_AP_PROPERTY_NAME "X_NYX_WIFI_AP"
@@ -129,7 +130,7 @@ static int mount = -1, guider = -1, focuser = -1, aux = -1;
 static const char *serial_port = NULL;
 // Which model the driver autodetected. The model specific scenarios report themselves as not
 // applicable instead of failing when another mount is connected.
-static bool is_nyx = false, is_onstep = false, is_agotino = false;
+static bool is_nyx = false, is_onstep = false, is_agotino = false, is_oat = false;
 // The state the session found and has to give back.
 static bool initial_tracking = false, initial_parked = false, settings_captured = false;
 
@@ -363,6 +364,7 @@ static void detect_model(void) {
 	is_nyx = switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_NYX_ITEM_NAME);
 	is_onstep = switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_ONSTEP_ITEM_NAME);
 	is_agotino = switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_AGOTINO_ITEM_NAME);
+	is_oat = switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_OAT_ITEM_NAME);
 }
 
 // The secondary devices this model can serve, brought up and taken down together with the mount.
@@ -418,9 +420,9 @@ static void lx200_reports_identity_and_capabilities(void) {
 	ASSERT_TRUE(hw_property_defined(mount, X_MOUNT_TYPE_PROPERTY_NAME));
 	ASSERT_TRUE(!switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_DETECT_ITEM_NAME));
 	detect_model();
-	printf("    detected mount type NYX: %s, OnStep: %s, aGotino: %s\n", is_nyx ? "yes" : "no", is_onstep ? "yes" : "no", is_agotino ? "yes" : "no");
+	printf("    detected mount type NYX: %s, OnStep: %s, aGotino: %s, OAT: %s\n", is_nyx ? "yes" : "no", is_onstep ? "yes" : "no", is_agotino ? "yes" : "no", is_oat ? "yes" : "no");
 	// The detection is a one of many rule, so the branches are mutually exclusive.
-	ASSERT_TRUE((is_nyx ? 1 : 0) + (is_onstep ? 1 : 0) + (is_agotino ? 1 : 0) <= 1);
+	ASSERT_TRUE((is_nyx ? 1 : 0) + (is_onstep ? 1 : 0) + (is_agotino ? 1 : 0) + (is_oat ? 1 : 0) <= 1);
 	if (is_nyx) {
 		ASSERT_STREQ("PegasusAstro", vendor);
 	}
@@ -433,6 +435,11 @@ static void lx200_reports_identity_and_capabilities(void) {
 		// product name the autodetection already read.
 		ASSERT_STREQ("aGotino", vendor);
 		ASSERT_STREQ("aGotino", model);
+	}
+	if (is_oat) {
+		// The same holds for an OpenAstroTracker: :GVP# is the only name the firmware has.
+		ASSERT_STREQ("OpenAstroTech", vendor);
+		ASSERT_STREQ("OpenAstroTracker", model);
 	}
 	ASSERT_TRUE(hw_connected(mount));
 }
@@ -488,6 +495,34 @@ static void lx200_publishes_the_property_contract(void) {
 	ASSERT_TRUE(hw_property_defined(mount, MOUNT_TRACKING_PROPERTY_NAME));
 	ASSERT_TRUE(hw_property_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME));
 	ASSERT_TRUE(hw_property_defined(mount, MOUNT_PARK_PROPERTY_NAME));
+	if (is_oat) {
+		// What meade_init_oat_mount() unhides, and what it has to leave hidden.
+		ASSERT_TRUE(hw_property_defined(mount, UTC_TIME_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_defined(mount, MOUNT_SET_HOST_TIME_PROPERTY_NAME));
+		// The firmware implements :hP# and :hU#, so park is a two-state switch a client can
+		// use in both directions. With one item the unpark request had nowhere to go.
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+		// Three rates, because :XSS is the only rate command the firmware has and there is no
+		// king rate among them.
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME));
+		ASSERT_TRUE(hw_item_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME));
+		ASSERT_TRUE(!hw_item_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME));
+		// No guide rate command, no PEC, no pier side, and no park or home position to store.
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_GUIDE_RATE_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_PEC_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_PARK_SET_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_HOME_SET_PROPERTY_NAME));
+		// The properties that belong to other models.
+		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_WIFI_AP_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_LEVELER_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, "X_ZWO_BUZZER"));
+		ASSERT_TRUE(hw_property_hidden(mount, X_ONSTEP_MERIDIAN_LIMITS_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_ALTITUDE_LIMITS_PROPERTY_NAME));
+		return;
+	}
 	if (is_onstep) {
 		// What meade_init_onstep_mount() unhides, and what it has to leave hidden.
 		ASSERT_TRUE(hw_property_defined(mount, UTC_TIME_PROPERTY_NAME));
@@ -608,12 +643,14 @@ static void lx200_reads_site_and_time(void) {
 // The site the driver publishes has to survive the polling cycles and the next session: a connect
 // that reads the site from a mount which cannot answer must not replace it with zeroes.
 //
-// Only a controller with no site command, like the aGotino, is given a site here. There the site
-// exists solely in the driver - it is what the framework computes the local sidereal time and the
-// horizontal coordinates from - so nothing in the controller is written and there is nothing a
-// restore could fail to put back. A mount that has :St# and :Sg# is left alone on purpose: those
-// commands carry whole arcminutes, so writing back even the exact site the mount just reported
-// would truncate the seconds of the site it has stored.
+// Only a controller that cannot lose anything by it is written to. The aGotino has no site
+// command at all, so the site exists solely in the driver - it is what the framework computes the
+// local sidereal time and the horizontal coordinates from - and it is given a site of its own.
+// An OpenAstroTracker reports and takes whole arcminutes in both directions, so writing back the
+// site it just reported is exactly lossless and exercises :St# and :Sg#; that is how the
+// unsigned longitude its firmware refuses was found. Every other mount is left alone on purpose:
+// :Gt# and :Gg# can carry arcseconds the :St# and :Sg# of this driver do not, so a write-back
+// would truncate the site the controller has stored.
 static bool request_site(double latitude, double longitude, double elevation) {
 	static const char *items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME };
 	double values[] = { latitude, longitude, elevation };
@@ -647,6 +684,13 @@ static void lx200_keeps_the_observing_site(void) {
 		printf("    writing latitude %.4f, longitude %.4f, elevation %.0f m\n", probe_latitude, probe_longitude, elevation);
 		ASSERT_TRUE(request_site(probe_latitude, probe_longitude, elevation));
 		ASSERT_TRUE(site_is(probe_latitude, probe_longitude));
+	} else if (is_oat) {
+		// The same values the controller just reported, so its stored site is unchanged and
+		// both site commands are still exercised. A refused write leaves the property in
+		// ALERT and request_site() answers false.
+		printf("    writing the site back unchanged: latitude %.4f, longitude %.4f\n", probe_latitude, probe_longitude);
+		ASSERT_TRUE(request_site(probe_latitude, probe_longitude, elevation));
+		ASSERT_TRUE(site_is(probe_latitude, probe_longitude));
 	} else {
 		printf("    the controller stores the site itself, so it is read and not written\n");
 	}
@@ -668,8 +712,9 @@ static void lx200_keeps_the_observing_site(void) {
 	ASSERT_TRUE(hw_wait_settled(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
 	ASSERT_TRUE(site_is(probe_latitude, probe_longitude));
 	printf("    the site survived a reconnect\n");
-	// Give back the site the session found. Only the models whose site this scenario replaced
-	// need it, and for those the restore reaches nothing but the driver.
+	// Give back the site the session found. Only a model whose site this scenario replaced needs
+	// it, and for that one the restore reaches nothing but the driver; the write-back models
+	// were given the site they already had.
 	if (is_agotino) {
 		ASSERT_TRUE(request_site(latitude, longitude, elevation));
 		ASSERT_TRUE(site_is(latitude, longitude));
@@ -1562,7 +1607,15 @@ static void lx200_parks_and_unparks(void) {
 		ASSERT_TRUE(!switch_on(mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME));
 	}
 	if (hw_property_defined(mount, MOUNT_MOTION_DEC_PROPERTY_NAME)) {
-		double moved = 0;
+		// Off the park position first. A mount parks against a mechanical reference, and on a
+		// controller whose declination travel is measured from that reference the axis is
+		// standing on its own limit there: the move is accepted and the axis does not turn,
+		// because the limit it is sent to is where it already is. An OpenAstroTracker built
+		// with the default DEC_LIMIT_UP and DEC_LIMIT_DOWN of zero does exactly that.
+		double moved = 0, ra = 0, dec = 0;
+		nearby_target(&ra, &dec);
+		ASSERT_TRUE(hw_set_switch(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
+		ASSERT_TRUE(slew_to(ra, dec));
 		ASSERT_TRUE(manual_move(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, 1.5, &moved));
 		ASSERT_TRUE(moved > 0.001);
 	}

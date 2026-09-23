@@ -1337,3 +1337,234 @@ The opt-in TCP target and the ASAN/UBSAN build were not run in this session.
 * Simulated tests: 82 run, 82 passed.
 * Hardware tests: 35 run, 35 passed, against an aGotino controller, firmware 230312.
 
+
+# LX200 hardware acceptance run, OpenAstroTracker (2026-09-23)
+
+## Scope and hardware-test decision
+
+Non-interactive hardware run against a physically connected **OpenAstroTracker
+controller, firmware v1.13.20**, on macOS arm64 over the board's ESP32-S3 USB
+CDC port `/dev/cu.usbmodem5B7A0424131` at 19200 baud, driver version
+`0x0300003B` before this work. Hardware testing IS performed for this record;
+every result below that names the OpenAstroTracker is physical, every result
+that names the simulator is hardware-free.
+
+The controller is a bench board. Its `Configuration_local.hpp` says so in the
+first line - "ESP32-S3 bench: no drivers, motors, display or sensors attached" -
+and that matters for exactly one scenario, recorded under *Controller behaviour
+that is not a defect*. Everything else the run exercised is independent of it:
+the `:GX#` status word is computed from the firmware's own `_mountStatus` and
+from open-loop AccelStepper positions, with no hardware feedback anywhere in it.
+
+The firmware source was available at `~/Desktop/OAT-esp32-s3` during this run
+and every protocol finding below is cited against it rather than inferred from
+the replies alone.
+
+## Protocol observations from the OpenAstroTracker
+
+| Command | Documented LX200 | OpenAstroTracker v1.13.20 |
+| --- | --- | --- |
+| `:GVP#` | product name | `OpenAstroTracker#` |
+| `:GVN#` | firmware version | `v1.13.20#` |
+| `:GR#` | `HH:MM:SS#` | as documented |
+| `:GD#` | `sDD*MM:SS#` | `+45*00'00#`, the arcminute mark where the protocol puts a colon |
+| `:Gt#` / `:Gg#` | site | `+45*00#` / `+100*00#`, whole arcminutes both ways |
+| `:Sg` | `:SgDDD*MM#` | refused with `0`; it takes `:SgsDDD*MM#` and answers `1` |
+| `:St` | `:StsDD*MM#` | as documented |
+| `:GX#` | not in the protocol | `<state>,<flags>,<RA steps>,<DEC steps>,<TRK steps>,<RA>,<DEC>,<focus>,#` |
+| `:hP#` | park | no reply |
+| `:hU#` | unpark | `1` |
+| `:P#` | toggle precision | no reply |
+| `:GW#`, `:Gv#`, `:GVF#` | status, version | no reply |
+| `:MT0#` / `:MT1#` | tracking off/on | `1` |
+
+Two of these decide most of what follows.
+
+**`STATUS_PARKED` is zero.** `src/Mount.hpp:110` defines it as
+`0B0000000000000000`, and `Mount::getStatusStateString()` opens with
+`if (_mountStatus == STATUS_PARKED) status = F("Parked")`. "Parked" is therefore
+the name the firmware gives to a mount with no status bit set at all: every idle
+mount reports it, wherever its axes are standing, and the `else status = "Idle"`
+at the end of that function is unreachable for one. The run saw it at
+declination +75, nowhere near the park position.
+
+**Unparking is turning tracking on.** `MeadeCommandProcessor::onUnpark()` is
+`_mount->startSlewing(TRACKING)` and nothing else. Park and "not tracking" are
+the same state to this firmware, which is what made the two defects below a
+deadlock rather than two separate bugs.
+
+## Test asset
+
+`indigo_test/hardware/test_mount_lx200_hw.c`, run with
+`make -C indigo_test test-mount-lx200-hw` and `MOUNT_LX200_HW_PORT` pointing at
+the board. The file stays at 35 cases; the OpenAstroTracker branch reuses the
+model-aware structure the aGotino run introduced and adds its own property
+contract assertions.
+
+## Baseline (2026-09-23 10:29, macOS arm64, driver 0x0300003B)
+
+```sh
+MOUNT_LX200_HW_PORT=/dev/cu.usbmodem5B7A0424131 make -C indigo_test test-mount-lx200-hw
+```
+
+The baseline was stopped after 12 of 35 cases, with **9 failed**, once the root
+causes were identified: the mount could not be unparked, so every scenario that
+moves or tracks was refused by the parked-mount guard and would only have run
+out its own timeout. The 12 cases it did reach are the complete evidence for
+LX035 to LX041 and are recorded as the baseline rather than a full run.
+
+That baseline also **overwrote the controller's configured latitude with 0**
+(LX041) and its clock with the host clock. The site was restored by hand to the
+`+45*00` / `+100*00` it was found with, verified by reading it back.
+
+## Found defects (hardware run)
+
+| ID | Severity | Where | Defect |
+| --- | --- | --- | --- |
+| LX035 | critical | `meade_get_coordinates()` | The driver never read a declination from this mount at all. `:GD#` answers `+45*00'00`, with the arcminute mark between the arcminutes and the arcseconds, and `meade_parse_coordinate()` rejects anything that does not end after the seconds it recognises. `MOUNT_EQUATORIAL_COORDINATES` stayed in ALERT for the whole session holding the +90 it was attached with, so nothing that reads a position - goto, sync, the working position, every motion check - could work. Fixed by normalising the separator in the OAT branch before parsing, the way the aGotino branch already normalises its degree sign. |
+| LX036 | major | `meade_set_site()` | The site write was silently refused. The firmware takes `:SgsDDD*MM#` and answers an unsigned longitude with `0` while keeping the site it had, so the driver reported success, published its own value, and the mount kept another one. Fixed with a signed format in the OAT branch. |
+| LX037 | major | `meade_init_oat_mount()` | A parked OpenAstroTracker could not be released. `MOUNT_PARK` was published with a single parked item, so a client clearing it left `MOUNT_PARK_UNPARKED_ITEM` false, the unpark branch of the change handler was never entered, `:hU#` was never sent, and the next poll put the parked item back. The firmware implements both `:hP#` and `:hU#`, so the property is now the two-state switch it always should have been. |
+| LX038 | major | `meade_update_oat_state()` | An idle mount was published as parked, which locked a client out of it. `:GX#` reports "Parked" for `_mountStatus == 0`, so turning tracking off made the driver believe the mount had parked itself, and the parked-mount guard then refused to turn tracking back on: parked because not tracking, not tracking because parked. The park state is now the one the driver established with `:hP#` and `:hU#`, confirmed by the status that follows a park it asked for, the way the Astro-Physics branch keeps its own. A session starts released, because the firmware cannot be asked and the other guess is the one that locks the mount. |
+| LX039 | major | `meade_update_oat_state()` | `MOUNT_TRACKING` was published off for the length of every goto and every manual move. `Mount::startSlewingToTarget()` and `Mount::startSlewing()` stop the tracking motor and set `_compensateForTrackerOff`, and `Mount::loop()` starts it again when the slew ends, so `:GX#` honestly reports no tracking while the mount is on its way although the setting the client made never changed. The driver now keeps that setting for the duration of a slew. |
+| LX040 | minor | `meade_init_oat_mount()` | `MOUNT_INFO.MODEL` stayed on the `Unknown` the generic initialization writes, although the autodetection had already read `OpenAstroTracker` from `:GVP#`. |
+| LX041 | major | `meade_init_mount()` | Connecting overwrote the site the mount had with the one the driver held, which on a first connect is the 0, 0 of a profile that was never configured. The trigger is the clock: this controller comes up with a 2021 date, the driver reads that as "mount is not initialized" and wrote both the clock and the site. The clock is what that check is about; the site is now written only when the driver has one, and is always read back afterwards so a write that was refused cannot be published as if it had taken. **This is the one repair outside a model branch in this run** and it applies to every profile. |
+
+### Test defects the run exposed
+
+| ID | Where | Defect |
+| --- | --- | --- |
+| LXT023 | `lx200_parks_and_unparks` | The manual move that proves the mount runs again after an unpark was issued while the mount was standing on its park position, which on a controller whose declination travel is measured from that position is its own limit. The scenario now takes the mount off the park position with a small goto first. |
+| LXT024 | `mount_lx200_simulator.c` | A guide pulse consumed its duration and left the axes exactly where they were, so no hardware-free test could tell a pulse that reached the mount from one that was acknowledged and dropped. Pulses now move the axis they are sent to at half the sidereal rate for as long as they last, and `lx200_guide_pulse_moves_the_mount` pins it down. |
+| LXT025 | `test_mount_lx200_simulator.c` | `wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES, OK)` was used as "the controller has been read", but the property is defined in OK state carrying the values the device was attached with. `wait_for_fresh_coordinates()` waits for a publication the polling callback made. |
+
+## Controller behaviour that is not a defect
+
+* **Manual declination motion cannot move this build from its home position.**
+  `DEC_LIMIT_UP` and `DEC_LIMIT_DOWN` default to `0.0f` unless `OAM` or `OAE` is
+  defined (`Configuration_adv.hpp:243`), and `Mount::startSlewing()` sends the
+  axis to `±_stepsPerDECDegree * DEC_LIMIT`, which is step zero, which is where
+  the axis already is at home. Both directions are accepted and neither turns.
+  Away from home the same command moves the axis back towards zero, which is why
+  the manual motion scenarios pass everywhere except straight after a park. This
+  is the bench configuration, not the firmware and not the driver.
+* **A goto stops the tracking motor.** See LX039; the firmware restores it.
+* **`:hU#` answers `1` although the driver sends it as a command without a
+  reply.** Every command helper discards pending input before it writes, so the
+  stray acknowledgement costs nothing.
+
+## Not covered
+
+* **The controller stopped answering once, during the guide pulse measurement.**
+  On the run before the last repair the board went silent in the middle of
+  `lx200_measures_guide_pulse_duration`, after tens of pulses in a few seconds,
+  and stayed silent: the USB device node was still enumerated and every command
+  timed out, which failed that case and the five after it. Individual replies had
+  been arriving 6 s late for a while before it went down. It came back only after
+  a DTR/RTS reset pulse. The accepted run that follows repeated the same
+  measurement with no reply slower than 1045 ms, so it did not reproduce, and
+  nothing in this session establishes whether the cause is the firmware, the
+  ESP32-S3 USB CDC stack or the bench board. It is recorded as an observed
+  hardware-only failure rather than attributed to the driver. What the driver
+  does about a controller that stops answering while its port stays open - today,
+  time out every command and publish ALERT until it comes back - was not changed.
+* **The focuser logical device**, which this driver offers for the OAT profile.
+  The bench board has no focus stepper (`FOCUS_STEPPER_TYPE` is not configured),
+  so a move could not be told from a command that was ignored.
+* **`MOUNT_HOME`.** The driver implements `:hF#` for this profile and
+  `meade_update_oat_state()` handles the "Homing" status, but
+  `meade_init_oat_mount()` never unhides the property, so home is not offered to
+  a client. That is a pre-existing gap, left alone in this run because it is a
+  capability to add rather than a defect the run demonstrated.
+
+## Scenario to case mapping, OpenAstroTracker branch
+
+| Checklist scenario | Case | Result |
+| --- | --- | --- |
+| Identity and capabilities | `lx200_reports_identity_and_capabilities` | vendor, model and firmware from the controller, LX040 |
+| Published property contract | `lx200_publishes_the_property_contract` | the OAT branch asserts the two-state park, three tracking rates and everything that stays hidden |
+| Site and clock readback | `lx200_reads_site_and_time` | both read from the mount |
+| Observing site | `lx200_keeps_the_observing_site` | written back unchanged and read back, LX036 and LX041 |
+| Unpark, refusal while parked | `lx200_unparks_the_mount` | LX037 and LX038 |
+| Tracking on and off | `lx200_toggles_tracking` | LX038 |
+| Tracking rates, rate readback | `lx200_selects_tracking_rates`, `lx200_reports_the_tracking_rate_from_the_mount` | sidereal, solar and lunar through `:XSS` |
+| Slew rates | `lx200_selects_slew_rates` | |
+| Manual motion, manual abort | `lx200_moves_both_axes_manually`, `lx200_aborts_manual_motion` | LX035 |
+| SYNC, GOTO | `lx200_syncs_to_the_current_pointing`, `lx200_slews_to_a_nearby_target` | LX035 |
+| Tracking during a slew | `lx200_keeps_tracking_while_slewing` | LX039, the case that found it |
+| Abort a slew, accept a fresh one | `lx200_aborts_a_slew_and_accepts_a_fresh_one` | |
+| Pier side | `lx200_reports_side_of_pier` | not applicable, the firmware has no pier side |
+| Secondary device refusal | `lx200_refuses_the_unsupported_devices` | the aux device refuses, the guider comes up |
+| Guiding, all five cases | the guider cases | pulses in both axes, overlap, replacement and duration |
+| Home | `lx200_goes_home` | not applicable, `MOUNT_HOME` is not published for this profile |
+| Park | `lx200_parks_and_unparks` | LX037, LXT023 |
+| Shared serial session, refused port, reconnect, INIT/SHUTDOWN | the four lifecycle cases | |
+
+## Hardware acceptance results (2026-09-23 11:17, driver 0x0300003C)
+
+```sh
+MOUNT_LX200_HW_PORT=/dev/cu.usbmodem5B7A0424131 make -C indigo_test test-mount-lx200-hw
+```
+
+| Suite | Run | Passed | Failed |
+| --- | --- | --- | --- |
+| `test_mount_lx200_hw` against an OpenAstroTracker, firmware v1.13.20 | 35 | 35 | 0 |
+
+### Guiding pulse duration accuracy (hardware)
+
+| Requested | n | min | median | p95 | max | mean error |
+| --- | --- | --- | --- | --- | --- | --- |
+| 20 ms | 12 | 71.97 ms | 80.69 ms | 89.31 ms | 92.64 ms | +61.53 ms |
+| 100 ms | 12 | 155.93 ms | 164.05 ms | 172.71 ms | 601.87 ms | +99.83 ms |
+| 500 ms | 12 | 555.00 ms | 567.47 ms | 671.27 ms | 1045.07 ms | +128.14 ms |
+
+The floor is the serial path: the driver ends a pulse from its own timer and
+every transaction carries the 50 ms settle the command helpers apply, so a 20 ms
+pulse cannot complete in less than about 70 ms. This is software completion
+timing over the real serial link, not an electrical measurement.
+
+## Simulator additions from this run
+
+The `oat` model of `indigo_test/simulator_common/mount_lx200_simulator.c`
+answered the shared command table like any other profile, which is what let all
+five protocol defects above look like working code. It now models the
+controller:
+
+* `:GX#` answers the real comma separated status word, with "Parked" for an idle
+  mount the way `STATUS_PARKED == 0` makes the firmware report it, and with the
+  flags field carrying the tracking motor;
+* the three stepper positions in that word are derived from the simulated
+  motion - the declination stepper from the offset to the home position at the
+  314.1 steps per degree measured on the bench controller, the right ascension
+  stepper from the distance a running slew still has to cover, and the tracking
+  stepper counting down for as long as the mount tracks;
+* `:GD#` separates the arcminutes from the arcseconds with the arcminute mark;
+* `:Sg` refuses an unsigned longitude with `0` and keeps the site it had;
+* a goto stops the tracking motor and the end of the slew starts it again;
+* `:hU#` turns tracking on and answers `1`, and `:GVN#` answers `v1.13.20`.
+
+Independently of the profile, **a guide pulse now moves the axis it is sent
+to**, at half the sidereal rate for as long as it lasts (LXT024). Before this
+a pulse only consumed time, so no hardware-free test could tell a pulse that
+reached the mount from one that was acknowledged and dropped.
+
+Four cases pin the findings down hardware-free, so the serial suite grows from
+82 to 86:
+
+* `lx200_oat_reads_the_coordinates_and_the_site` - LX035, LX036 and LX040.
+* `lx200_oat_idle_is_not_parked` - LX037 and LX038.
+* `lx200_oat_keeps_tracking_through_a_goto` - LX039.
+* `lx200_guide_pulse_moves_the_mount` - LXT024, and the contract a guider owes
+  every profile.
+
+## Simulator results (driver 0x0300003C)
+
+| Suite | Run | Passed | Failed |
+| --- | --- | --- | --- |
+| `test_mount_lx200_simulator` | 86 | 86 | 0 |
+
+The opt-in TCP target and the ASAN/UBSAN build were not run in this session.
+
+## Final test summary for this run
+
+* Simulated tests: 86 run, 86 passed.
+* Hardware tests: 35 run, 35 passed, against an OpenAstroTracker controller, firmware v1.13.20.

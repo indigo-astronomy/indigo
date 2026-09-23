@@ -93,6 +93,10 @@ typedef struct {
 	// controller: it refuses :hP# with 0 until tracking is enabled again. Observed on firmware
 	// 1.32.1, see indigo_drivers/mount_lx200/REFACTOR.md.
 	bool standby;
+	// An OpenAstroTracker stops its tracking motor for the duration of every slew and starts it
+	// again when the slew ends, so the tracking it reports goes away and comes back on its own.
+	// Observed on firmware v1.13.20, Mount::startSlewingToTarget() in the firmware source.
+	bool oat_tracking_resume;
 	// The position an aGotino keeps reporting for as long as a slew is running. Its firmware
 	// recomputes the strings :GR# and :GD# answer from only after the slew loop ends, which its
 	// own source marks as a known limitation. Observed on firmware 230312.
@@ -164,6 +168,10 @@ static const char *products[] = { "Autostar", "On-Step", "10micron", "Losmandy",
 // what a driver that asks for a site, a clock or a guide pulse gets from it.
 static bool model_is_agotino(void) {
 	return options.model == MODEL_AGOTINO;
+}
+
+static bool model_is_oat(void) {
+	return options.model == MODEL_OAT;
 }
 
 // "asi" is the "zwo" profile plus the AM-series commands and the firmware revision that
@@ -286,6 +294,22 @@ static bool parking_requested, homing_requested;
 // and refuses :MS# with error 8 until it is over; observed on firmware 1.32.1, see
 // indigo_drivers/mount_lx200/REFACTOR.md.
 static double guide_pulse_until;
+// A guide pulse moves the axis it is sent to, at the guide rate, for as long as it lasts. The
+// rates are the classic half sidereal: 15.041 arcseconds per second of declination and one
+// second of right ascension per second, both halved. Without them a pulse only consumed time and
+// the simulated mount stood still, which no real mount does.
+#define GUIDE_RATE 0.5
+#define SIDEREAL_ARCSEC_PER_SECOND 15.041067
+static double guide_ra_rate, guide_dec_rate;
+// The three stepper positions an OpenAstroTracker reports in :GX#, all derived from the motion
+// above rather than made up: the declination stepper carries the offset from the home position
+// at the 314.1 steps per degree measured on the bench controller, the right ascension stepper is
+// zero unless a slew is under way because tracking is carried by the tracking stepper alone, and
+// that one counts down for as long as the mount tracks. Observed on firmware v1.13.20.
+#define OAT_DEC_STEPS_PER_DEGREE 314.1
+#define OAT_HOME_DEC_AS 324000.0
+#define OAT_TRACK_STEPS_PER_SECOND 88.0
+static double oat_track_steps;
 static double park_ra, park_dec = 324000;
 static double last_update;
 static char fault_command[128], fault_reply[128];
@@ -306,9 +330,31 @@ static void update_motion(void) {
 	if (manual_dec) {
 		serial_motion_sync(&dec_motion, fmax(-324000, fmin(324000, dec_motion.position + manual_dec * elapsed * 3600)));
 	}
+	// The part of this interval the pulse was still running for.
+	double guide_elapsed = fmin(now, guide_pulse_until) - (now - elapsed);
+	if (guide_elapsed > 0) {
+		if (guide_ra_rate != 0) {
+			serial_motion_sync(&ra_motion, fmod(ra_motion.position + guide_ra_rate * guide_elapsed + 8640000, 8640000));
+		}
+		if (guide_dec_rate != 0) {
+			serial_motion_sync(&dec_motion, fmax(-324000, fmin(324000, dec_motion.position + guide_dec_rate * guide_elapsed)));
+		}
+	}
+	if (now >= guide_pulse_until) {
+		guide_ra_rate = guide_dec_rate = 0;
+	}
+	if (state.tracking) {
+		oat_track_steps -= OAT_TRACK_STEPS_PER_SECOND * elapsed;
+	}
 	state.ra_cs = lround(ra_motion.position);
 	state.dec_as = lround(dec_motion.position);
 	state.slewing = ra_motion.duration > 0 || dec_motion.duration > 0;
+	if (!state.slewing && state.oat_tracking_resume) {
+		// The firmware restarts the tracker itself, with a compensation for the time it stood
+		// still, so the tracking setting of the client survives the slew.
+		state.tracking = true;
+		state.oat_tracking_resume = false;
+	}
 	if (!state.slewing && (parking_requested || homing_requested)) {
 		state.parked = parking_requested;
 		state.at_home = homing_requested;
@@ -415,6 +461,30 @@ static void handle_command(const char *command) {
 		write_response("1");
 	} else if (!strcmp(command, "Gm")) {
 		write_response("W#");
+	} else if (!strcmp(command, "GX") && model_is_oat()) {
+		// The status word of an OpenAstroTracker, in the order its getStatusStateString() tests
+		// them. STATUS_PARKED is defined as zero in the firmware, so "Parked" is the name it
+		// gives to a mount with no status bit set at all: every idle mount reports it, wherever
+		// its axes stand, and "Idle" is never reached for one. A driver that reads it as the
+		// park state locks the mount out of its own tracking switch.
+		const char *status = parking_requested ? "Parking" : homing_requested ? "Homing" : state.slewing ? "SlewToTarget" : state.tracking ? "Tracking" : "Parked";
+		char flags[] = "------";
+		if (state.slewing) {
+			flags[0] = 'R';
+			flags[1] = 'd';
+		}
+		if (state.tracking) {
+			flags[2] = 'T';
+		}
+		char right_ascension[32], declination[32];
+		format_ra(right_ascension, sizeof(right_ascension), state.ra_cs);
+		format_dec(declination, sizeof(declination), state.dec_as);
+		right_ascension[strcspn(right_ascension, "#")] = 0;
+		declination[strcspn(declination, "#")] = 0;
+		long dec_steps = lround((OAT_HOME_DEC_AS - dec_motion.position) / 3600.0 * OAT_DEC_STEPS_PER_DEGREE);
+		long ra_steps = state.slewing ? lround((ra_motion.target - ra_motion.position) / 100.0 * OAT_DEC_STEPS_PER_DEGREE / 60.0) : 0;
+		snprintf(response, sizeof(response), "%s,%s,%ld,%ld,%ld,%s,%s,,#", status, flags, ra_steps, dec_steps, lround(oat_track_steps), right_ascension, declination);
+		write_response(response);
 	} else if (!strcmp(command, "GX")) {
 		write_response(state.parked ? "Parked#" : parking_requested ? "Parking#" : homing_requested ? "Homing#" : state.slewing ? "Slewing#" : state.tracking ? "Tracking#" : "Idle#");
 	} else if (!strcmp(command, "GXI")) {
@@ -495,7 +565,12 @@ static void handle_command(const char *command) {
 		manual_ra = 0;
 	} else if (!strcmp(command, "hR") || !strcmp(command, "hU")) {
 		state.parked = false;
-		if (options.model == MODEL_ONSTEP || (options.model == MODEL_NYX && !strcmp(command, "hR"))) { write_response("1"); }
+		if (model_is_oat()) {
+			// :hU# is startSlewing(TRACKING) in the firmware, so unparking is literally turning
+			// tracking on, and it is acknowledged with 1.
+			state.tracking = true;
+		}
+		if (options.model == MODEL_ONSTEP || model_is_oat() || (options.model == MODEL_NYX && !strcmp(command, "hR"))) { write_response("1"); }
 	} else if (!strcmp(command, "X362")) {
 		start_reference_motion(true);
 		write_response("pB#");
@@ -547,7 +622,7 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "GVF")) {
 		write_response(options.model == MODEL_ONSTEP ? "OnStep 4.24j#" : "ETX Autostar|A|43Eg|Apr 03 2007@11:25:53#");
 	} else if (!strcmp(command, "GVN")) {
-		write_response(options.model == MODEL_NYX ? "1.35#" : model_is_agotino() ? "230312#" : "43Eg#");
+		write_response(options.model == MODEL_NYX ? "1.35#" : model_is_agotino() ? "230312#" : model_is_oat() ? "v1.13.20#" : "43Eg#");
 	} else if (!strcmp(command, "GVD")) {
 		write_response("Apr 03 2007#");
 	} else if (!strcmp(command, "GVT")) {
@@ -609,6 +684,13 @@ static void handle_command(const char *command) {
 			write_response("60.16427#");
 		}
 	} else if (!strncmp(command, "Sg", 2)) {
+		if (model_is_oat() && command[2] != '+' && command[2] != '-') {
+			// An OpenAstroTracker takes :SgsDDD*MM# and answers anything without the sign with
+			// 0, keeping the site it had. A driver that writes the unsigned form of the LX200
+			// protocol never changes the site and is never told.
+			write_response("0");
+			return;
+		}
 		strncpy(state.longitude, command + 2, sizeof(state.longitude) - 1);
 		write_response("1");
 	} else if (!strcmp(command, "Gg")) {
@@ -651,6 +733,14 @@ static void handle_command(const char *command) {
 				*separator = (char)0xDF;
 			}
 		}
+		if (model_is_oat()) {
+			// An OpenAstroTracker separates the arcminutes from the arcseconds with the
+			// arcminute mark: +45*00'00. Firmware v1.13.20.
+			char *separator = strrchr(response, ':');
+			if (separator != NULL) {
+				*separator = '\'';
+			}
+		}
 		write_response(response);
 	} else if (!strcmp(command, "CM")) {
 		serial_motion_sync(&ra_motion, state.target_ra_cs);
@@ -672,6 +762,12 @@ static void handle_command(const char *command) {
 		state.slewing = true;
 		state.tracking = true;
 		state.parked = false;
+		if (model_is_oat()) {
+			// The firmware stops the tracking motor for the length of the goto and starts it
+			// again when the slew ends, so :GX# reports no tracking while the mount is moving.
+			state.tracking = false;
+			state.oat_tracking_resume = true;
+		}
 		write_response("0");
 	} else if (!strcmp(command, "D")) {
 		// The aGotino answers a running slew with the DEL character its sketch prints; the other
@@ -741,6 +837,14 @@ static void handle_command(const char *command) {
 	} else if (!strncmp(command, "Mg", 2) || !strcmp(command, "Mn") || !strcmp(command, "Ms") || !strcmp(command, "Mw") || !strcmp(command, "Me") || !strcmp(command, "Qn") || !strcmp(command, "Qs") || !strcmp(command, "Qw") || !strcmp(command, "Qe")) {
 		if (!strncmp(command, "Mg", 2) && strlen(command) > 3) {
 			guide_pulse_until = serial_motion_time() + atoi(command + 3) / 1000.0;
+			guide_ra_rate = guide_dec_rate = 0;
+			// One second of right ascension is 100 centiseconds, one second of declination is
+			// one arcsecond, and west and north are the increasing directions of both.
+			if (command[2] == 'n' || command[2] == 's') {
+				guide_dec_rate = (command[2] == 'n' ? 1 : -1) * GUIDE_RATE * SIDEREAL_ARCSEC_PER_SECOND;
+			} else if (command[2] == 'w' || command[2] == 'e') {
+				guide_ra_rate = (command[2] == 'e' ? 1 : -1) * GUIDE_RATE * 100;
+			}
 		}
 		/* no reply */
 	} else if (!strcmp(command, "F+")) {

@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300003B
+#define DRIVER_VERSION       0x0300003C
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -270,6 +270,9 @@ typedef struct {
 	bool coordinate_read_failed;
 	char product[64];
 	bool slewing, tracking, parked, parking, homed, homing;
+	// An OpenAstroTracker cannot be asked whether it is parked, so the driver remembers it.
+	// See meade_update_oat_state().
+	bool oat_parked, oat_park_expected;
 	bool goto_issued;
 	bool park_allowed, unpark_allowed, home_allowed;
 	double timeout;
@@ -696,6 +699,10 @@ static bool meade_set_site(indigo_device *device, double latitude, double longit
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 		meade_simple_reply_command(device, ":Sg%s#", indigo_dtos_r(longitude, "%+04d*%02d:%02d", sexagesimal, sizeof(sexagesimal)));
 		result = true; // ignore result for Avalon StarGO
+	} else if (MOUNT_TYPE_OAT_ITEM->sw.value) {
+		// An OpenAstroTracker answers an unsigned longitude with 0 and keeps the site it
+		// had; it accepts the same value written as :SgsDDD*MM#. Firmware v1.13.20.
+		result = meade_simple_reply_command(device, ":Sg%s#", indigo_dtos_r(longitude, "%+04d*%02d", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 	} else {
 		result = meade_simple_reply_command(device, ":Sg%s#", indigo_dtos_r(longitude, "%03d*%02d", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 	}
@@ -782,6 +789,12 @@ static bool meade_get_coordinates(indigo_device *device, double *ra, double *dec
 		if (meade_command(device, ":GD#")) {
 			if (MOUNT_TYPE_AGOTINO_ITEM->sw.value) {
 				PRIVATE_DATA->response[3] = '*';
+			}
+			if (MOUNT_TYPE_OAT_ITEM->sw.value) {
+				// An OpenAstroTracker separates the arcminutes from the arcseconds with the
+				// arcminute mark rather than a colon: +45*00'00. Without this the reply is
+				// rejected and the driver never reads a declination from the mount at all.
+				str_replace(PRIVATE_DATA->response, '\'', ':');
 			}
 			if (!meade_parse_coordinate(PRIVATE_DATA->response, false, dec)) {
 				return false;
@@ -1143,7 +1156,12 @@ static bool meade_park(indigo_device *device) {
 	if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value) {
 		return meade_simple_reply_command(device, ":hP#") && *PRIVATE_DATA->response == '1';
 	}
-	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
+	if (MOUNT_TYPE_OAT_ITEM->sw.value) {
+		// The status that follows is what confirms the park, see meade_update_oat_state().
+		PRIVATE_DATA->oat_park_expected = true;
+		return meade_no_reply_command(device, ":hP#");
+	}
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 		return meade_no_reply_command(device, ":hP#");
 	}
 	if (MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value) {
@@ -1170,6 +1188,7 @@ static void meade_restore_park_switch(indigo_device *device) {
 
 static bool meade_unpark(indigo_device *device) {
 	if (MOUNT_TYPE_OAT_ITEM->sw.value) {
+		PRIVATE_DATA->oat_parked = PRIVATE_DATA->oat_park_expected = false;
 		return meade_no_reply_command(device, ":hU#");
 	}
 	if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
@@ -1972,30 +1991,65 @@ static void meade_update_nyx_state(indigo_device *device) {
 static void meade_init_oat_mount(indigo_device *device) {
 	MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 	MOUNT_UTC_TIME_PROPERTY->hidden = false;
-	MOUNT_PARK_PROPERTY->count = 1;
-	MOUNT_PARK_PROPERTY->rule = INDIGO_AT_MOST_ONE_RULE;
-	MOUNT_PARK_PARKED_ITEM->sw.value = false;
+	// The controller implements both :hP# and :hU#, so park is a two-state switch. With the
+	// single parked item it used to publish, the unpark branch of the change handler could
+	// never be reached and a parked OpenAstroTracker could not be released at all.
+	MOUNT_PARK_PROPERTY->count = 2;
+	MOUNT_PARK_PROPERTY->rule = INDIGO_ONE_OF_MANY_RULE;
 	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "OpenAstroTech");
+	// There is no model query, so the model is the product name :GVP# already gave the
+	// autodetection.
+	INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
+	// A session starts with the mount released. The firmware cannot be asked whether it is
+	// parked and reports every idle mount as parked, so the alternative guess would lock a
+	// client out of a mount that is only standing still: it could not track, move or slew
+	// until it unparked a mount that was never parked. Being wrong the other way costs
+	// nothing, because :MS#, :Mn# and :MT1# work whatever the firmware calls its state.
+	PRIVATE_DATA->oat_parked = PRIVATE_DATA->oat_park_expected = false;
 	if (meade_command(device, ":GVN#")) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", PRIVATE_DATA->response);
 		INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, PRIVATE_DATA->response);
 	}
 }
 
+// The :GX# status of an OpenAstroTracker has no idle state: everything that is not slewing,
+// guiding, parking or tracking is reported as "Parked", so a mount that merely stopped
+// tracking claims to be parked wherever it stands. Reading that as the park state locks a
+// client out of its own mount - tracking is refused because the mount is parked, and the
+// mount is parked because tracking is off - and it was observed on firmware v1.13.20 at
+// declination +75, nowhere near the park position. The park state is therefore the one the
+// driver established itself with :hP# and :hU#, the way the Astro-Physics branch keeps its
+// own, and a "Parked" status only confirms a park that was asked for.
 static void meade_update_oat_state(indigo_device *device) {
 	if (meade_command(device, ":GX#")) {
+		// "SlewToTarget" is a goto; "FreeSlew" and "ManualSlew" are the axis moving under
+		// :Mn# and friends, which is not a goto and must not publish one.
+		bool moving = strstr(PRIVATE_DATA->response, "Slew") != NULL;
 		if (!strncmp(PRIVATE_DATA->response, "Slew", 4)) {
 			PRIVATE_DATA->slewing = true;
 		} else if (!strncmp(PRIVATE_DATA->response, "Tracking", 8)) {
 			PRIVATE_DATA->tracking = true;
 		} else if (!strncmp(PRIVATE_DATA->response, "Parking", 7)) {
 			PRIVATE_DATA->parking = true;
-		} else if (!strncmp(PRIVATE_DATA->response, "Parked", 6)) {
-			PRIVATE_DATA->parked = true;
 		} else if (!strncmp(PRIVATE_DATA->response, "Homing", 6)) {
 			PRIVATE_DATA->homing = true;
+		} else if (!strncmp(PRIVATE_DATA->response, "Parked", 6) && PRIVATE_DATA->oat_park_expected) {
+			PRIVATE_DATA->oat_parked = true;
+			PRIVATE_DATA->oat_park_expected = false;
 		}
+		if (moving) {
+			// The firmware stops the tracking motor for the duration of every slew and
+			// starts it again, with a compensation for the time it stood still, when the
+			// slew ends. :GX# therefore reports no tracking while the mount is on its way,
+			// although the setting the client made did not change. Publishing that would
+			// turn MOUNT_TRACKING off and on again around every goto and every manual move.
+			PRIVATE_DATA->tracking = MOUNT_TRACKING_ON_ITEM->sw.value;
+		}
+		if (PRIVATE_DATA->tracking || moving) {
+			PRIVATE_DATA->oat_parked = PRIVATE_DATA->oat_park_expected = false;
+		}
+		PRIVATE_DATA->parked = PRIVATE_DATA->oat_parked;
 	}
 	if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE && !PRIVATE_DATA->slewing) {
 		PRIVATE_DATA->homed = true;
@@ -2184,8 +2238,20 @@ static void meade_init_mount(indigo_device *device) {
 	if (labs(secs - now) > 24 * 60 * 60) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount is not initialized, initializing...");
 		meade_set_utc(device, now, indigo_get_utc_offset());
-		meade_set_site(device, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value);
-	} else {
+		// The clock is what this check is about. The site is written with it only when the
+		// driver has one of its own, which on a first connect it has not: the geographic
+		// property then still holds the 0, 0 a profile that was never configured starts
+		// from, and writing that replaces the site the mount knows with nothing. An
+		// OpenAstroTracker that came up with its 2021 clock lost its configured latitude
+		// exactly that way.
+		if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != 0 || MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != 0) {
+			meade_set_site(device, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value);
+		}
+	}
+	{
+		// Whatever the branch above did, the published site is the one the mount reports,
+		// so a write is read back and a controller the driver did not write to is not
+		// published with a site it does not have.
 		double latitude = 0, longitude = 0;
 		if (meade_get_site(device, &latitude, &longitude)) {
 			MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
