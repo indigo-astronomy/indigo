@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300003A
+#define DRIVER_VERSION       0x0300003B
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -651,9 +651,13 @@ static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) 
 	return true;
 }
 
-static void meade_get_site(indigo_device *device, double *latitude, double *longitude) {
+// Answers false for a controller that has no site query, so the caller keeps the site it
+// already holds instead of replacing it with the zeroes of an answer that never came. A site
+// of 0, 0 is a legal position off the coast of Africa, so the driver cannot publish it for a
+// mount that was never asked.
+static bool meade_get_site(indigo_device *device, double *latitude, double *longitude) {
 	if (MOUNT_TYPE_STARGO2_ITEM->sw.value || MOUNT_TYPE_AGOTINO_ITEM->sw.value) {
-		return;
+		return false;
 	}
 	if (meade_command(device, ":Gt#")) {
 		if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
@@ -669,13 +673,17 @@ static void meade_get_site(indigo_device *device, double *latitude, double *long
 		// positive in 0 .. 360, where a site on the prime meridian is 0 and never 360.
 		*longitude = fmod(360 - fmod(indigo_stod(PRIVATE_DATA->response) + 360, 360), 360);
 	}
+	return true;
 }
 
 static bool meade_set_site(indigo_device *device, double latitude, double longitude, double elevation) {
 	char sexagesimal[128];
 	bool result = true;
 	if (MOUNT_TYPE_AGOTINO_ITEM->sw.value) {
-		return false;
+		// The aGotino has no site command. The site is still the one the framework computes
+		// the local sidereal time and the horizontal coordinates from, so the driver keeps
+		// what the client set instead of refusing it.
+		return true;
 	}
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 		meade_simple_reply_command(device, ":St%s#", indigo_dtos_r(latitude, "%+03d*%02d:%02d", sexagesimal, sizeof(sexagesimal)));
@@ -1736,9 +1744,24 @@ static void meade_init_agotino_mount(indigo_device *device) {
 	MOUNT_MOTION_RA_PROPERTY->hidden = true;
 	MOUNT_MOTION_DEC_PROPERTY->hidden = true;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "aGotino");
+	// The firmware has no model query, so the model is the product name :GVP# already gave
+	// the autodetection. Leaving it on the "Unknown" the generic initialization writes tells
+	// a client less than the driver knows.
+	INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
 	if (meade_command(device, ":GVN#")) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", PRIVATE_DATA->response);
 		INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, PRIVATE_DATA->response);
+	}
+}
+
+static void meade_update_agotino_state(indigo_device *device) {
+	// The aGotino answers :D# with the classic distance bar, an empty reply while it is idle
+	// and one DEL character while a slew is running. Its :GR# and :GD# keep reporting the
+	// position the slew started from until the slew ends, so the generic "the coordinates
+	// moved" heuristic would publish a goto as finished the moment it was issued and the
+	// next command would reach a controller still busy inside its slew loop.
+	if (meade_command(device, ":D#")) {
+		PRIVATE_DATA->slewing = *PRIVATE_DATA->response;
 	}
 }
 
@@ -2104,6 +2127,7 @@ static void meade_init_mount(indigo_device *device) {
 		meade_update_onstep_state(device);
 	} else if (MOUNT_TYPE_AGOTINO_ITEM->sw.value) {
 		meade_init_agotino_mount(device);
+		meade_update_agotino_state(device);
 	} else if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
 		meade_init_zwo_mount(device);
 		meade_update_zwo_state(device);
@@ -2163,9 +2187,10 @@ static void meade_init_mount(indigo_device *device) {
 		meade_set_site(device, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value);
 	} else {
 		double latitude = 0, longitude = 0;
-		meade_get_site(device, &latitude, &longitude);
-		MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
-		MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
+		if (meade_get_site(device, &latitude, &longitude)) {
+			MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
+			MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
+		}
 	}
 }
 
@@ -2196,6 +2221,8 @@ static void meade_update_mount_state(indigo_device *device) {
 		meade_update_stargo_state(device);
 	} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
 		meade_update_onstep_state(device);
+	} else if (MOUNT_TYPE_AGOTINO_ITEM->sw.value) {
+		meade_update_agotino_state(device);
 	} else if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
 		meade_update_zwo_state(device);
 	} else if (MOUNT_TYPE_NYX_ITEM->sw.value) {
@@ -3252,6 +3279,13 @@ static void guider_connection_handler(indigo_device *device) {
 			if (MOUNT_TYPE_DETECT_ITEM->sw.value && !meade_detect_mount(device->master_device)) {
 				connection_result = false;
 				indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
+			}
+			if (connection_result && MOUNT_TYPE_AGOTINO_ITEM->sw.value) {
+				// The aGotino firmware has no pulse guiding command. It reads the leading :Mg of
+				// one as a slow motion request, finds no direction in the g and ignores it, so a
+				// guider device that came up anyway would report every pulse as completed while
+				// the mount stood still.
+				connection_result = false;
 			}
 			//- guider.on_connect
 		}

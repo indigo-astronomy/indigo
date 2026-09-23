@@ -360,6 +360,133 @@ static void lx200_agotino_profile(void) {
 	check_profile(7);
 }
 
+// What a physical aGotino on firmware 230312 showed, all three reproduced through the quirks the
+// simulator now models. See indigo_drivers/mount_lx200/REFACTOR.md.
+//
+// The firmware recomputes the strings :GR# and :GD# answer from only after its slew loop ends, so
+// the coordinates do not move for as long as a goto runs. The generic "the position changed"
+// heuristic therefore saw a mount standing still and published the goto as finished the moment it
+// was issued, and the next command reached a controller still busy inside that loop. :D# is the
+// one command that tells the truth there, and it is what the driver has to ask.
+static void lx200_agotino_holds_the_goto_until_the_slew_ends(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "agotino", NULL));
+	online = true;
+	// The model comes from the product name the autodetection read; there is no model query.
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME)->text.value, "aGotino"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME)->text.value, "230312"));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	int distance_bar_before = event_count(&simulator, "D", NULL);
+	SERIAL_CHECK_TRUE(lx_coordinates(22, -60, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", 0));
+	// The slew of this simulated mount runs for about three seconds. A second into it the
+	// reported position is still the one the goto started from, which is exactly what the
+	// generic "the position changed" heuristic saw, and the goto still has to be published as
+	// running rather than finished.
+	indigo_usleep(1000000);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 45) < 0.5);
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	// And the state it publishes comes from the distance bar, the one command that tells the
+	// truth about an aGotino in its slew loop.
+	SERIAL_CHECK_TRUE(event_count(&simulator, "D", NULL) > distance_bar_before);
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// And it ends only once the mount is really there.
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - 22) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) + 60) < 0.01);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// An aborted slew ends the goto, and the aGotino then reports the target it never reached: its
+// slew loop stores the target whether it ran to the end or :Q# broke out of it, which its own
+// source marks as a known limitation. The driver cannot correct for that, so what it owes a
+// client is that the abort really ends the goto and that the next one is taken straight away.
+static void lx200_agotino_abort_reports_the_unreached_target(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "agotino", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(22, -60, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", 0));
+	indigo_usleep(1000000);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Q", 0));
+	// The goto ends well before the slew would have, which is what says the abort reached the
+	// controller rather than that the slew ran out.
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// And the position it reports is the target, although the axes never got there.
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) + 60) < 0.01);
+	// The next goto has to be taken straight away and finish.
+	SERIAL_CHECK_TRUE(lx_coordinates(6.25, 12.5, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 12.5) < 0.01);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The sketch reads the M of a :Mg... pulse, finds no direction in the g and drops the request, so
+// a guider device that came up would report every pulse as completed while the mount stood still.
+// It has to refuse the connection instead, the way the aux and focuser devices do for a
+// controller they cannot serve.
+static void lx200_agotino_refuses_the_guider(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_lx200_simulator(&simulator, "agotino"));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_guider));
+	online = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, lx200_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	SERIAL_CHECK_TRUE(!connect_serial_device(&lx200_guider, NULL));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(CONNECTION_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(find_cached_property(GUIDER_GUIDE_RA_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(GUIDER_GUIDE_DEC_PROPERTY_NAME) == NULL);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The aGotino has no :Gt# and no :Sg#, so its site lives only in the driver: it is what the
+// framework computes the local sidereal time and the horizontal coordinates from. A connect used
+// to overwrite it with the zeroes of a site query that was never sent, and a write used to be
+// refused outright.
+static void lx200_agotino_keeps_the_site(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	static const char *items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME };
+	static double values[] = { 48.1486, 17.1077, 160 };
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "agotino", NULL));
+	online = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) - values[0]) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) - values[1]) < 0.001);
+	// The site has to reach the framework, not only the property: a longitude that never got
+	// there leaves the local sidereal time on the Greenwich value.
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME) > 0);
+	// And a new session must not throw it away again.
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) - values[0]) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) - values[1]) < 0.001);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void lx200_zwo_profile(void) {
 	check_profile(8);
 }
@@ -2007,6 +2134,10 @@ int main(int argc, char **argv) {
 		{ "lx200_stargo2_profile", lx200_stargo2_profile },
 		{ "lx200_ap_profile", lx200_ap_profile },
 		{ "lx200_agotino_profile", lx200_agotino_profile },
+		{ "lx200_agotino_holds_the_goto_until_the_slew_ends", lx200_agotino_holds_the_goto_until_the_slew_ends },
+		{ "lx200_agotino_abort_reports_the_unreached_target", lx200_agotino_abort_reports_the_unreached_target },
+		{ "lx200_agotino_refuses_the_guider", lx200_agotino_refuses_the_guider },
+		{ "lx200_agotino_keeps_the_site", lx200_agotino_keeps_the_site },
 		{ "lx200_zwo_profile", lx200_zwo_profile },
 		{ "lx200_nyx_profile", lx200_nyx_profile },
 		{ "lx200_oat_profile", lx200_oat_profile },

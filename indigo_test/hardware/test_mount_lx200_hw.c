@@ -33,16 +33,20 @@
 //
 // NOTHING PERSISTENT IN THE MOUNT IS OVERWRITTEN. MOUNT_PARK_SET and MOUNT_HOME_SET are issued
 // only while the mount is already at the position they would store, so they write back the
-// position the mount already had. The WiFi credentials of X_NYX_WIFI_AP and X_NYX_WIFI_CL are
+// position the mount already had. The observing site is written back with the values the mount
+// itself reported, and a site of its own is given only to a controller that has no site command
+// and therefore stores nothing. The WiFi credentials of X_NYX_WIFI_AP and X_NYX_WIFI_CL are
 // read and asserted but never written: a write would reconfigure the network the mount is on,
 // and the protocol offers no way to restore the previous password. Those writes are covered
 // against the simulator instead.
 //
 // THIS RUN IS SPECIFIC TO THE DETECTED MODEL. The scenarios assert what the driver publishes for
 // the model it autodetects, so a mount of another type exercises another branch of the driver.
-// The model this file was developed and recorded against is the Pegasus Astro NYX-101; the
-// scenarios that assert NYX specific commands report themselves as skipped for another model
-// rather than failing it.
+// A controller that implements only a part of the LX200 command set gets only the properties it
+// can serve, and every scenario that needs one of the others reports itself as not applicable
+// instead of failing the run. An aGotino, for example, has no tracking switch, no park, no slew
+// or tracking rate, no manual motion and no pulse guiding, so what is left of the checklist is
+// the identity, the site, the coordinates, SYNC, GOTO, abort and the lifecycle.
 //
 // MOUNT_LX200_HW_PORT names the serial port or lx200:// URL. When it is not set, the port the
 // driver detected through its own USB descriptor match is used.
@@ -63,6 +67,7 @@
 #define X_MOUNT_TYPE_DETECT_ITEM_NAME "DETECT"
 #define X_MOUNT_TYPE_NYX_ITEM_NAME "NYX"
 #define X_MOUNT_TYPE_ONSTEP_ITEM_NAME "ONSTEP"
+#define X_MOUNT_TYPE_AGOTINO_ITEM_NAME "AGOTINO"
 #define X_MOUNT_MODE_PROPERTY_NAME "X_MOUNT_MODE"
 #define X_MOUNT_MODE_EQUATORIAL_ITEM_NAME "EQUATORIAL"
 #define X_NYX_WIFI_AP_PROPERTY_NAME "X_NYX_WIFI_AP"
@@ -108,7 +113,14 @@
 #define WORK_DEC 75.0
 #define DEC_OFFSET 5.0
 #define ABORT_DEC_OFFSET 12.0
+// What the abort scenario uses on a controller that cannot report where an interrupted slew
+// stopped. There the mount is left pointing short of the position it reports by whatever the
+// abort cut off, so the arc is kept small on purpose while staying long enough to interrupt.
+#define BLIND_ABORT_DEC_OFFSET 6.0
 #define RA_OFFSET 0.05
+// How much shorter an aborted slew has to be than the same slew run to completion, in seconds.
+// It is what says the motors were stopped rather than that the goto simply ran out.
+#define ABORT_MARGIN 2.0
 
 #define GUIDE_SAMPLES 3
 #define GUIDE_WARMUP 1
@@ -117,7 +129,7 @@ static int mount = -1, guider = -1, focuser = -1, aux = -1;
 static const char *serial_port = NULL;
 // Which model the driver autodetected. The model specific scenarios report themselves as not
 // applicable instead of failing when another mount is connected.
-static bool is_nyx = false, is_onstep = false;
+static bool is_nyx = false, is_onstep = false, is_agotino = false;
 // The state the session found and has to give back.
 static bool initial_tracking = false, initial_parked = false, settings_captured = false;
 
@@ -220,8 +232,13 @@ static bool wait_for_publication(int device, const char *property, double timeou
 // Waits for the driver to read the controller again. UTC_TIME carries the mount clock, so it is
 // the one property the polling callback republishes on every cycle; a property that did not
 // change is not published at all, which is why a scenario cannot wait on the one it is asserting.
+// A model whose controller has no clock publishes no UTC_TIME, and then the local sidereal time
+// is the property that moves on its own with every cycle.
 static bool wait_for_poll(void) {
-	return wait_for_publication(mount, UTC_TIME_PROPERTY_NAME, POLL_TIMEOUT);
+	if (hw_property_defined(mount, UTC_TIME_PROPERTY_NAME)) {
+		return wait_for_publication(mount, UTC_TIME_PROPERTY_NAME, POLL_TIMEOUT);
+	}
+	return wait_for_publication(mount, MOUNT_LST_TIME_PROPERTY_NAME, POLL_TIMEOUT);
 }
 
 static indigo_property_state state_light(const char *item) {
@@ -308,6 +325,72 @@ static bool skip_unless_onstep(const char *what) {
 	return true;
 }
 
+// A controller that implements only a part of the LX200 command set gets only the properties the
+// driver can serve with it, so a scenario that needs one of the others has nothing to exercise.
+static bool skip_without(const char *property, const char *what) {
+	if (hw_property_defined(mount, property)) {
+		return false;
+	}
+	printf("    not applicable: the detected model publishes no %s\n", what);
+	return true;
+}
+
+// Which secondary logical devices the detected model can serve. The aux device carries the
+// environment sensors of a NYX and the feature outlets of an OnStep and has nothing to offer for
+// any other controller; the guider needs the LX200 pulse guiding commands, which an aGotino does
+// not implement. Both have to refuse the connection rather than come up empty, which is what
+// lx200_refuses_the_unsupported_devices asserts.
+static bool aux_supported(void) {
+	return is_nyx || is_onstep;
+}
+
+static bool guiding_supported(void) {
+	return !is_agotino;
+}
+
+// Whether the controller can say where an interrupted slew actually stopped. An aGotino sets its
+// position to the goto target as soon as its slew loop exits, whether the loop reached the target
+// or :Q# broke out of it, which the sketch marks as a known limitation of its own. There the
+// abort is judged by the time it saved instead of by the arc it left unfinished, and the mount is
+// left pointing short of what it reports until the operator syncs it again.
+static bool reports_the_aborted_position(void) {
+	return !is_agotino;
+}
+
+// Which model the driver autodetected. Read from the controller itself, so the capability of the
+// secondary devices is known before the first scenario runs.
+static void detect_model(void) {
+	is_nyx = switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_NYX_ITEM_NAME);
+	is_onstep = switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_ONSTEP_ITEM_NAME);
+	is_agotino = switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_AGOTINO_ITEM_NAME);
+}
+
+// The secondary devices this model can serve, brought up and taken down together with the mount.
+// The lifecycle scenarios cycle the whole session, so they go through these instead of naming the
+// devices one by one.
+static bool connect_secondary_devices(void) {
+	if (guiding_supported() && !hw_connect(guider, CONNECT_TIMEOUT)) {
+		return false;
+	}
+	if (aux_supported() && !hw_connect(aux, CONNECT_TIMEOUT)) {
+		return false;
+	}
+	return true;
+}
+
+// Whatever is connected goes, not only what this model was expected to bring up: a device that
+// came up although it should have refused still holds the shared serial session open, and the
+// lifecycle scenarios that follow would then exercise a session nobody closed.
+static bool disconnect_secondary_devices(void) {
+	if (hw_connected(aux) && !hw_disconnect(aux, SHORT_TIMEOUT)) {
+		return false;
+	}
+	if (hw_connected(guider) && !hw_disconnect(guider, SHORT_TIMEOUT)) {
+		return false;
+	}
+	return true;
+}
+
 // ------------------------------------------------------------------- identity and contract
 
 static void lx200_reports_identity_and_capabilities(void) {
@@ -334,16 +417,22 @@ static void lx200_reports_identity_and_capabilities(void) {
 	// property has to be read only for as long as the session is connected.
 	ASSERT_TRUE(hw_property_defined(mount, X_MOUNT_TYPE_PROPERTY_NAME));
 	ASSERT_TRUE(!switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_DETECT_ITEM_NAME));
-	is_nyx = switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_NYX_ITEM_NAME);
-	is_onstep = switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, X_MOUNT_TYPE_ONSTEP_ITEM_NAME);
-	printf("    detected mount type NYX: %s, OnStep: %s\n", is_nyx ? "yes" : "no", is_onstep ? "yes" : "no");
-	// The detection is a one of many rule, so the two branches are mutually exclusive.
-	ASSERT_TRUE(!(is_nyx && is_onstep));
+	detect_model();
+	printf("    detected mount type NYX: %s, OnStep: %s, aGotino: %s\n", is_nyx ? "yes" : "no", is_onstep ? "yes" : "no", is_agotino ? "yes" : "no");
+	// The detection is a one of many rule, so the branches are mutually exclusive.
+	ASSERT_TRUE((is_nyx ? 1 : 0) + (is_onstep ? 1 : 0) + (is_agotino ? 1 : 0) <= 1);
 	if (is_nyx) {
 		ASSERT_STREQ("PegasusAstro", vendor);
 	}
 	if (is_onstep) {
 		ASSERT_STREQ("On-Step", vendor);
+	}
+	if (is_agotino) {
+		// The aGotino answers :GVP# with its own name and :GVN# with a date stamped build
+		// number, and has no command for a model string, so the driver fills it from the
+		// product name the autodetection already read.
+		ASSERT_STREQ("aGotino", vendor);
+		ASSERT_STREQ("aGotino", model);
 	}
 	ASSERT_TRUE(hw_connected(mount));
 }
@@ -356,20 +445,49 @@ static void lx200_publishes_the_property_contract(void) {
 	ASSERT_TRUE(hw_property_defined(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
 	ASSERT_TRUE(hw_property_defined(mount, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME));
 	ASSERT_TRUE(hw_property_defined(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME));
-	ASSERT_TRUE(hw_property_defined(mount, MOUNT_SLEW_RATE_PROPERTY_NAME));
-	ASSERT_TRUE(hw_property_defined(mount, MOUNT_MOTION_RA_PROPERTY_NAME));
-	ASSERT_TRUE(hw_property_defined(mount, MOUNT_MOTION_DEC_PROPERTY_NAME));
-	ASSERT_TRUE(hw_property_defined(mount, MOUNT_TRACKING_PROPERTY_NAME));
-	ASSERT_TRUE(hw_property_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME));
 	ASSERT_TRUE(hw_property_defined(mount, MOUNT_ABORT_MOTION_PROPERTY_NAME));
 	ASSERT_TRUE(hw_property_defined(mount, MOUNT_EPOCH_PROPERTY_NAME));
-	ASSERT_TRUE(hw_property_defined(mount, MOUNT_PARK_PROPERTY_NAME));
 	// The driver unhides MOUNT_STATE for every model.
 	ASSERT_TRUE(hw_property_defined(mount, MOUNT_STATE_PROPERTY_NAME));
 	// The driver reduces MOUNT_ON_COORDINATES_SET to track and sync; it has no slew-without-goto.
 	ASSERT_TRUE(hw_item_defined(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
 	ASSERT_TRUE(hw_item_defined(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
 	ASSERT_TRUE(!hw_item_defined(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME));
+	if (is_agotino) {
+		// The aGotino firmware answers :Sr#, :Sd#, :MS#, :CM#, :Q#, :D# and the two identity
+		// queries and nothing else, so everything the driver would have to drive with another
+		// command has to stay hidden rather than be offered and silently ignored.
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_TRACKING_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_TRACK_RATE_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_SLEW_RATE_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_MOTION_RA_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_MOTION_DEC_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_GUIDE_RATE_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_PARK_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_PARK_SET_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_HOME_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_HOME_SET_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_PEC_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, UTC_TIME_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, MOUNT_SET_HOST_TIME_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_WIFI_AP_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_WIFI_CL_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_WIFI_RESET_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_NYX_LEVELER_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, "X_ZWO_BUZZER"));
+		ASSERT_TRUE(hw_property_hidden(mount, X_ONSTEP_PREFERRED_PIER_SIDE_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_ONSTEP_MERIDIAN_LIMITS_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(mount, X_ALTITUDE_LIMITS_PROPERTY_NAME));
+		return;
+	}
+	ASSERT_TRUE(hw_property_defined(mount, MOUNT_SLEW_RATE_PROPERTY_NAME));
+	ASSERT_TRUE(hw_property_defined(mount, MOUNT_MOTION_RA_PROPERTY_NAME));
+	ASSERT_TRUE(hw_property_defined(mount, MOUNT_MOTION_DEC_PROPERTY_NAME));
+	ASSERT_TRUE(hw_property_defined(mount, MOUNT_TRACKING_PROPERTY_NAME));
+	ASSERT_TRUE(hw_property_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME));
+	ASSERT_TRUE(hw_property_defined(mount, MOUNT_PARK_PROPERTY_NAME));
 	if (is_onstep) {
 		// What meade_init_onstep_mount() unhides, and what it has to leave hidden.
 		ASSERT_TRUE(hw_property_defined(mount, UTC_TIME_PROPERTY_NAME));
@@ -487,31 +605,102 @@ static void lx200_reads_site_and_time(void) {
 	ASSERT_TRUE(abs(atoi(offset)) <= 14);
 }
 
+// The site the driver publishes has to survive the polling cycles and the next session: a connect
+// that reads the site from a mount which cannot answer must not replace it with zeroes.
+//
+// Only a controller with no site command, like the aGotino, is given a site here. There the site
+// exists solely in the driver - it is what the framework computes the local sidereal time and the
+// horizontal coordinates from - so nothing in the controller is written and there is nothing a
+// restore could fail to put back. A mount that has :St# and :Sg# is left alone on purpose: those
+// commands carry whole arcminutes, so writing back even the exact site the mount just reported
+// would truncate the seconds of the site it has stored.
+static bool request_site(double latitude, double longitude, double elevation) {
+	static const char *items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME };
+	double values[] = { latitude, longitude, elevation };
+	unsigned before = hw_revision(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	indigo_change_number_property(&hw_client, MOUNT_DEVICE_NAME, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, items, values);
+	return hw_wait_state(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, before, INDIGO_OK_STATE, SHORT_TIMEOUT);
+}
+
+static bool site_is(double latitude, double longitude) {
+	double published_latitude = 0, published_longitude = 0;
+	if (!hw_number_item(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, &published_latitude) || !hw_number_item(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, &published_longitude)) {
+		return false;
+	}
+	if (fabs(published_latitude - latitude) > 0.01 || fabs(published_longitude - longitude) > 0.01) {
+		fprintf(stderr, "    the site is latitude %.4f longitude %.4f, expected %.4f and %.4f\n", published_latitude, published_longitude, latitude, longitude);
+		return false;
+	}
+	return true;
+}
+
+static void lx200_keeps_the_observing_site(void) {
+	double latitude = 0, longitude = 0, elevation = 0;
+	ASSERT_TRUE(hw_number_item(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, &latitude));
+	ASSERT_TRUE(hw_number_item(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, &longitude));
+	ASSERT_TRUE(hw_number_item(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, &elevation));
+	double probe_latitude = latitude, probe_longitude = longitude;
+	if (is_agotino) {
+		// A driver held site, so the write reaches nothing but the driver's own property.
+		probe_latitude = 48.1486;
+		probe_longitude = 17.1077;
+		printf("    writing latitude %.4f, longitude %.4f, elevation %.0f m\n", probe_latitude, probe_longitude, elevation);
+		ASSERT_TRUE(request_site(probe_latitude, probe_longitude, elevation));
+		ASSERT_TRUE(site_is(probe_latitude, probe_longitude));
+	} else {
+		printf("    the controller stores the site itself, so it is read and not written\n");
+	}
+	// The polling callback reads the controller again; it may not overwrite the site with it.
+	ASSERT_TRUE(wait_for_poll());
+	ASSERT_TRUE(wait_for_poll());
+	ASSERT_TRUE(site_is(probe_latitude, probe_longitude));
+	// The local sidereal time follows the longitude the driver publishes, so a site that only
+	// looks right in the property but never reached the framework shows up here.
+	double lst = 0;
+	ASSERT_TRUE(hw_number_item(mount, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME, &lst));
+	printf("    local sidereal time %.4f h at longitude %.4f\n", lst, probe_longitude);
+	ASSERT_TRUE(lst >= 0 && lst < 24);
+	// A new session must not throw the site away.
+	ASSERT_TRUE(disconnect_secondary_devices());
+	ASSERT_TRUE(hw_disconnect(mount, CONNECT_TIMEOUT));
+	ASSERT_TRUE(hw_connect(mount, CONNECT_TIMEOUT));
+	ASSERT_TRUE(connect_secondary_devices());
+	ASSERT_TRUE(hw_wait_settled(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
+	ASSERT_TRUE(site_is(probe_latitude, probe_longitude));
+	printf("    the site survived a reconnect\n");
+	// Give back the site the session found. Only the models whose site this scenario replaced
+	// need it, and for those the restore reaches nothing but the driver.
+	if (is_agotino) {
+		ASSERT_TRUE(request_site(latitude, longitude, elevation));
+		ASSERT_TRUE(site_is(latitude, longitude));
+	}
+}
+
 // Everything that moves needs the mount unparked, so this runs before the motion scenarios and
 // also covers the refusal the driver has to publish while it is still parked.
 static void lx200_unparks_the_mount(void) {
-	if (!hw_property_defined(mount, MOUNT_PARK_PROPERTY_NAME)) {
+	if (hw_property_defined(mount, MOUNT_PARK_PROPERTY_NAME)) {
+		ASSERT_TRUE(hw_wait_settled(mount, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
+		initial_parked = switch_on(mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME);
+		initial_tracking = switch_on(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME);
+		settings_captured = true;
+		printf("    found the mount %s and tracking %s\n", initial_parked ? "parked" : "unparked", initial_tracking ? "on" : "off");
+		if (initial_parked) {
+			// A parked mount has to refuse a slew instead of silently accepting it, and the
+			// refused property has to end in ALERT.
+			unsigned before = hw_revision(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+			request_equatorial(normalized_ra(current_ra() + RA_OFFSET), current_dec());
+			ASSERT_TRUE(hw_wait_state(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, before, INDIGO_ALERT_STATE, SHORT_TIMEOUT));
+			printf("    a parked mount refused the slew\n");
+		}
+		ASSERT_TRUE(set_parked(false));
+		ASSERT_EQ_INT(INDIGO_IDLE_STATE, state_light(MOUNT_STATE_PARK_ITEM_NAME));
+	} else {
 		printf("    the detected model publishes no park control\n");
-		return;
 	}
-	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
-	initial_parked = switch_on(mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME);
-	initial_tracking = switch_on(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME);
-	settings_captured = true;
-	printf("    found the mount %s and tracking %s\n", initial_parked ? "parked" : "unparked", initial_tracking ? "on" : "off");
-	if (initial_parked) {
-		// A parked mount has to refuse a slew instead of silently accepting it, and the refused
-		// property has to end in ALERT.
-		unsigned before = hw_revision(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
-		request_equatorial(normalized_ra(current_ra() + RA_OFFSET), current_dec());
-		ASSERT_TRUE(hw_wait_state(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, before, INDIGO_ALERT_STATE, SHORT_TIMEOUT));
-		printf("    a parked mount refused the slew\n");
-	}
-	ASSERT_TRUE(set_parked(false));
-	ASSERT_EQ_INT(INDIGO_IDLE_STATE, state_light(MOUNT_STATE_PARK_ITEM_NAME));
 	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
-	printf("    unparked at RA %.4f DEC %.4f\n", current_ra(), current_dec());
-	// A mount parked at the pole has to be taken away from it before the motion scenarios can
+	printf("    ready at RA %.4f DEC %.4f\n", current_ra(), current_dec());
+	// A mount standing at the pole has to be taken away from it before the motion scenarios can
 	// measure anything on the right ascension axis.
 	if (current_dec() > WORK_DEC) {
 		ASSERT_TRUE(hw_set_switch(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
@@ -549,6 +738,9 @@ static bool toggle_tracking(const char *item, indigo_property_state expected_lig
 }
 
 static void lx200_toggles_tracking(void) {
+	if (skip_without(MOUNT_TRACKING_PROPERTY_NAME, "tracking switch")) {
+		return;
+	}
 	// The light only moves when the request changes it, and INDIGO publishes nothing about a
 	// property that says exactly what it said before. A mount found with tracking already off
 	// would therefore produce no MOUNT_STATE publication at all for the first request, so the
@@ -571,6 +763,9 @@ static void lx200_toggles_tracking(void) {
 // driver decodes the rate from a frequency the firmware reports.
 static void lx200_selects_tracking_rates(void) {
 	static const char *rates[] = { MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME };
+	if (skip_without(MOUNT_TRACK_RATE_PROPERTY_NAME, "tracking rate")) {
+		return;
+	}
 	ASSERT_TRUE(switch_on(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
 	for (unsigned i = 0; i < ARRAY_SIZE(rates); i++) {
 		if (!hw_item_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, rates[i])) {
@@ -592,6 +787,9 @@ static void lx200_selects_tracking_rates(void) {
 // NYX answers :GT# with 0 while tracking is off and carries the real rate in its status string
 // instead, so a driver that trusts :GT# comes back reporting the lunar rate.
 static void lx200_reports_the_tracking_rate_from_the_mount(void) {
+	if (skip_without(MOUNT_TRACK_RATE_PROPERTY_NAME, "tracking rate")) {
+		return;
+	}
 	if (!hw_item_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME)) {
 		printf("    the detected model publishes no lunar rate\n");
 		return;
@@ -613,12 +811,10 @@ static void lx200_reports_the_tracking_rate_from_the_mount(void) {
 	// Now stop tracking and open a new session. The mount is still configured for the sidereal
 	// rate, so that is what the fresh session has to report.
 	ASSERT_TRUE(hw_set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
-	ASSERT_TRUE(hw_disconnect(aux, SHORT_TIMEOUT));
-	ASSERT_TRUE(hw_disconnect(guider, SHORT_TIMEOUT));
+	ASSERT_TRUE(disconnect_secondary_devices());
 	ASSERT_TRUE(hw_disconnect(mount, CONNECT_TIMEOUT));
 	ASSERT_TRUE(hw_connect(mount, CONNECT_TIMEOUT));
-	ASSERT_TRUE(hw_connect(guider, CONNECT_TIMEOUT));
-	ASSERT_TRUE(hw_connect(aux, CONNECT_TIMEOUT));
+	ASSERT_TRUE(connect_secondary_devices());
 	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
 	ASSERT_TRUE(!switch_on(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
 	ASSERT_TRUE(switch_on(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME));
@@ -627,6 +823,9 @@ static void lx200_reports_the_tracking_rate_from_the_mount(void) {
 
 static void lx200_selects_slew_rates(void) {
 	static const char *rates[] = { MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME };
+	if (skip_without(MOUNT_SLEW_RATE_PROPERTY_NAME, "slew rate")) {
+		return;
+	}
 	for (unsigned i = 0; i < ARRAY_SIZE(rates); i++) {
 		ASSERT_TRUE(hw_set_switch(mount, MOUNT_SLEW_RATE_PROPERTY_NAME, rates[i], INDIGO_OK_STATE, SHORT_TIMEOUT));
 		ASSERT_TRUE(switch_on(mount, MOUNT_SLEW_RATE_PROPERTY_NAME, rates[i]));
@@ -671,6 +870,9 @@ static bool manual_move(const char *property, const char *item, double seconds, 
 
 static void lx200_moves_both_axes_manually(void) {
 	double moved = 0;
+	if (skip_without(MOUNT_MOTION_RA_PROPERTY_NAME, "manual motion")) {
+		return;
+	}
 	ASSERT_TRUE(manual_move(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, 2.0, &moved));
 	ASSERT_TRUE(moved > 0.001);
 	ASSERT_TRUE(manual_move(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, 2.0, &moved));
@@ -691,6 +893,9 @@ static void lx200_moves_both_axes_manually(void) {
 // Both axes are started, then aborted together. The abort has to stop the mount and complete both
 // motion properties, and the mount has to accept a fresh movement straight afterwards.
 static void lx200_aborts_manual_motion(void) {
+	if (skip_without(MOUNT_MOTION_RA_PROPERTY_NAME, "manual motion")) {
+		return;
+	}
 	unsigned ra_before = hw_revision(mount, MOUNT_MOTION_RA_PROPERTY_NAME);
 	unsigned dec_before = hw_revision(mount, MOUNT_MOTION_DEC_PROPERTY_NAME);
 	double moved = 0;
@@ -739,7 +944,9 @@ static void lx200_slews_to_a_nearby_target(void) {
 	ASSERT_TRUE(separation(ra, dec, current_ra(), current_dec()) < 0.5);
 	ASSERT_EQ_INT(INDIGO_IDLE_STATE, state_light(MOUNT_STATE_SLEW_ITEM_NAME));
 	// A goto ends with the mount tracking, whatever it was doing before.
-	ASSERT_TRUE(switch_on(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	if (hw_property_defined(mount, MOUNT_TRACKING_PROPERTY_NAME)) {
+		ASSERT_TRUE(switch_on(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	}
 }
 
 // A goto does not stop the mount tracking, and the driver may not report that it did. The NYX
@@ -748,6 +955,9 @@ static void lx200_slews_to_a_nearby_target(void) {
 static void lx200_keeps_tracking_while_slewing(void) {
 	double ra = 0, dec = 0;
 	int samples = 0, tracking_off = 0;
+	if (skip_without(MOUNT_TRACKING_PROPERTY_NAME, "tracking switch")) {
+		return;
+	}
 	ASSERT_TRUE(hw_set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
 	nearby_target(&ra, &dec);
 	unsigned before = hw_revision(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
@@ -766,36 +976,74 @@ static void lx200_keeps_tracking_while_slewing(void) {
 	ASSERT_TRUE(switch_on(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
 }
 
+// Starts a goto, waits until the controller itself reports the slew, aborts it and answers how
+// long the whole goto took. MOUNT_ABORT_MOTION is dispatched at urgent priority, so an abort
+// requested before the goto handler has run jumps ahead of it and halts a mount that has not
+// started moving yet, which is why the wait is on the controller and not on the request.
+static bool abort_a_slew(double ra, double dec, double *elapsed) {
+	double started = indigo_monotonic_time();
+	hw_forget_states();
+	request_equatorial(ra, dec);
+	if (!wait_for_slew_started()) {
+		return false;
+	}
+	if (!hw_set_switch(mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT)) {
+		return false;
+	}
+	if (!hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, MOTION_TIMEOUT)) {
+		return false;
+	}
+	*elapsed = indigo_monotonic_time() - started;
+	// The slew was published as running before the abort ended it.
+	if ((hw_states_seen(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) & (1u << INDIGO_BUSY_STATE)) == 0) {
+		fprintf(stderr, "    the goto was never published as running\n");
+		return false;
+	}
+	return true;
+}
+
 static void lx200_aborts_a_slew_and_accepts_a_fresh_one(void) {
-	double aborted_ra = 0, aborted_dec = 0;
-	double origin_ra = current_ra(), origin_dec = current_dec();
+	double origin_ra = current_ra(), origin_dec = current_dec(), elapsed = 0;
 	// A target far enough away that the slew is still running when the abort arrives. Everything
 	// else in this file moves the mount by a few degrees; this one needs a slew with a middle.
+	double offset = reports_the_aborted_position() ? ABORT_DEC_OFFSET : BLIND_ABORT_DEC_OFFSET;
 	double ra = normalized_ra(origin_ra - RA_OFFSET);
-	double dec = origin_dec - ABORT_DEC_OFFSET;
+	double dec = origin_dec - offset;
 	if (dec < -20) {
-		dec = origin_dec + ABORT_DEC_OFFSET;
+		dec = origin_dec + offset;
 	}
 	if (dec > 89) {
 		dec = 89;
 	}
-	// MOUNT_ABORT_MOTION is dispatched at urgent priority, so an abort requested before the goto
-	// handler has run jumps ahead of it and halts a mount that has not started moving yet. The
-	// scenario therefore waits until the controller itself reports the slew.
-	hw_forget_states();
-	request_equatorial(ra, dec);
-	ASSERT_TRUE(wait_for_slew_started());
-	ASSERT_TRUE(hw_set_switch(mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
-	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, MOTION_TIMEOUT));
-	// The slew was published as running before the abort ended it.
-	ASSERT_TRUE((hw_states_seen(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) & (1u << INDIGO_BUSY_STATE)) != 0);
-	aborted_ra = current_ra();
-	aborted_dec = current_dec();
-	printf("    abort stopped the slew at RA %.4f DEC %.4f, %.4f deg short of the target\n", aborted_ra, aborted_dec, separation(aborted_ra, aborted_dec, ra, dec));
+	if (!reports_the_aborted_position()) {
+		// The controller will claim the target whatever the abort does, so the judgement is the
+		// time: the same slew is first run to completion, and the aborted one has to end
+		// measurably sooner. A mount whose :Q# never reached the motors takes just as long.
+		double full = 0;
+		ASSERT_TRUE(slew_to(ra, dec));
+		double started = indigo_monotonic_time();
+		ASSERT_TRUE(slew_to(origin_ra, origin_dec));
+		full = indigo_monotonic_time() - started;
+		ASSERT_TRUE(abort_a_slew(ra, dec, &elapsed));
+		printf("    the %.0f degree slew takes %.1f s, the aborted one ended after %.1f s\n", offset, full, elapsed);
+		ASSERT_EQ_INT(INDIGO_IDLE_STATE, state_light(MOUNT_STATE_SLEW_ITEM_NAME));
+		ASSERT_TRUE(elapsed + ABORT_MARGIN < full);
+		// This firmware now reports the target it never reached, so the mount points short of
+		// what it publishes by whatever the abort cut off. Nothing the driver sends can find
+		// that out, and the next goto is computed from the wrong position.
+		printf("    the controller reports RA %.4f DEC %.4f, the position it was sent to but did not reach\n", current_ra(), current_dec());
+		ASSERT_TRUE(separation(ra, dec, current_ra(), current_dec()) < 0.5);
+		// It still has to take the next goto straight away and finish it.
+		ASSERT_TRUE(slew_to(origin_ra, origin_dec));
+		ASSERT_TRUE(separation(origin_ra, origin_dec, current_ra(), current_dec()) < 0.5);
+		return;
+	}
+	ASSERT_TRUE(abort_a_slew(ra, dec, &elapsed));
+	printf("    abort stopped the slew at RA %.4f DEC %.4f after %.1f s, %.4f deg short of the target\n", current_ra(), current_dec(), elapsed, separation(current_ra(), current_dec(), ra, dec));
 	ASSERT_EQ_INT(INDIGO_IDLE_STATE, state_light(MOUNT_STATE_SLEW_ITEM_NAME));
 	// The abort has to have stopped the mount before it arrived; a mount that reached the target
 	// anyway would leave nothing to abort and say nothing about the abort path.
-	ASSERT_TRUE(separation(aborted_ra, aborted_dec, ra, dec) > 0.1);
+	ASSERT_TRUE(separation(current_ra(), current_dec(), ra, dec) > 0.1);
 	// The mount must take the next slew straight away and reach it, and then go back where this
 	// scenario found it so the ones that follow start from the working position.
 	ASSERT_TRUE(slew_to(ra, dec));
@@ -1025,10 +1273,11 @@ static void lx200_follows_the_onstep_focuser_capability(void) {
 	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
 }
 
-// The NYX has no focuser port, so the focuser logical device has to refuse the connection instead
-// of coming up with a focuser that is not there.
+// Neither the NYX nor the aGotino has a focuser port, so the focuser logical device has to refuse
+// the connection instead of coming up with a focuser that is not there.
 static void lx200_refuses_the_unsupported_focuser(void) {
-	if (skip_unless_nyx("the focuser capability rejection")) {
+	if (!is_nyx && !is_agotino) {
+		printf("    not applicable: the detected model may have a focuser port\n");
 		return;
 	}
 	ASSERT_TRUE(!hw_connected(focuser));
@@ -1040,7 +1289,48 @@ static void lx200_refuses_the_unsupported_focuser(void) {
 	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
 }
 
+// A secondary logical device the detected controller cannot serve has to refuse the connection
+// and leave the shared serial session alone, instead of coming up with properties that answer
+// nothing. The aux device carries the NYX sensors and the OnStep outlets and has nothing for any
+// other controller; the guider needs the LX200 pulse guiding commands, and an aGotino ignores
+// them, so a guider that came up would report every pulse as completed while the mount stood
+// still.
+static void lx200_refuses_the_unsupported_devices(void) {
+	if (!aux_supported()) {
+		ASSERT_TRUE(!hw_connected(aux));
+		ASSERT_TRUE(hw_set_switch(aux, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, INDIGO_ALERT_STATE, CONNECT_TIMEOUT));
+		ASSERT_TRUE(!hw_connected(aux));
+		ASSERT_TRUE(hw_property_hidden(aux, AUX_WEATHER_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(aux, AUX_POWER_OUTLET_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(aux, AUX_HEATER_OUTLET_PROPERTY_NAME));
+		printf("    the aux device refused the connection\n");
+	} else {
+		ASSERT_TRUE(hw_connected(aux));
+	}
+	if (!guiding_supported()) {
+		ASSERT_TRUE(!hw_connected(guider));
+		ASSERT_TRUE(hw_set_switch(guider, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, INDIGO_ALERT_STATE, CONNECT_TIMEOUT));
+		ASSERT_TRUE(!hw_connected(guider));
+		ASSERT_TRUE(hw_property_hidden(guider, GUIDER_GUIDE_RA_PROPERTY_NAME));
+		ASSERT_TRUE(hw_property_hidden(guider, GUIDER_GUIDE_DEC_PROPERTY_NAME));
+		printf("    the guider device refused the connection\n");
+	} else {
+		ASSERT_TRUE(hw_connected(guider));
+	}
+	// A refusal may not take the shared session down with it.
+	ASSERT_TRUE(hw_connected(mount));
+	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
+}
+
 // ------------------------------------------------------------------- guider
+
+static bool skip_without_guiding(void) {
+	if (guiding_supported()) {
+		return false;
+	}
+	printf("    not applicable: the detected model has no pulse guiding\n");
+	return true;
+}
 
 static bool guide_pulse(int direction, double milliseconds, double *elapsed) {
 	const char *property = guide_axis_of(direction);
@@ -1097,6 +1387,9 @@ static void report_statistics(const char *label, double requested, double *sampl
 }
 
 static void lx200_guides_in_all_four_directions(void) {
+	if (skip_without_guiding()) {
+		return;
+	}
 	ASSERT_TRUE(hw_connected(guider));
 	ASSERT_TRUE(hw_property_defined(guider, GUIDER_GUIDE_RA_PROPERTY_NAME));
 	ASSERT_TRUE(hw_property_defined(guider, GUIDER_GUIDE_DEC_PROPERTY_NAME));
@@ -1112,6 +1405,9 @@ static void lx200_guides_in_all_four_directions(void) {
 }
 
 static void lx200_guides_both_axes_at_once(void) {
+	if (skip_without_guiding()) {
+		return;
+	}
 	unsigned ra_before = hw_revision(guider, GUIDER_GUIDE_RA_PROPERTY_NAME);
 	unsigned dec_before = hw_revision(guider, GUIDER_GUIDE_DEC_PROPERTY_NAME);
 	hw_forget_states();
@@ -1132,6 +1428,9 @@ static void lx200_guides_both_axes_at_once(void) {
 // A pulse that arrives while another one on the same axis is still running replaces it, and the
 // replaced pulse's deadline may not end the new one early.
 static void lx200_replaces_a_guide_pulse_on_the_same_axis(void) {
+	if (skip_without_guiding()) {
+		return;
+	}
 	unsigned before = hw_revision(guider, GUIDER_GUIDE_RA_PROPERTY_NAME);
 	double started = indigo_monotonic_time();
 	hw_request_number(guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 2000);
@@ -1152,6 +1451,9 @@ static void lx200_replaces_a_guide_pulse_on_the_same_axis(void) {
 // software completion timing over the real serial path, not an electrical measurement.
 static void lx200_measures_guide_pulse_duration(void) {
 	static const double durations[] = { 20, 100, 500 };
+	if (skip_without_guiding()) {
+		return;
+	}
 	for (unsigned d = 0; d < ARRAY_SIZE(durations); d++) {
 		double samples[4 * GUIDE_SAMPLES];
 		int count = 0;
@@ -1171,6 +1473,9 @@ static void lx200_measures_guide_pulse_duration(void) {
 
 // Guiding has to keep working while the mount is doing something else on the same serial link.
 static void lx200_guides_while_the_mount_slews(void) {
+	if (skip_without_guiding()) {
+		return;
+	}
 	double origin_dec = current_dec(), elapsed = 0;
 	double dec = origin_dec > 0 ? origin_dec - ABORT_DEC_OFFSET : origin_dec + ABORT_DEC_OFFSET;
 	// The slew has to be under way before the pulse: a NYX-101 counts a running pulse as motion
@@ -1234,13 +1539,18 @@ static void lx200_parks_and_unparks(void) {
 	printf("    parked at RA %.4f DEC %.4f\n", current_ra(), current_dec());
 	// A parked mount refuses motion and tracking, and the refused property has to end in ALERT
 	// holding the driver's own state rather than the rejected request.
-	unsigned before = hw_revision(mount, MOUNT_MOTION_RA_PROPERTY_NAME);
-	hw_request_switch(mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true);
-	ASSERT_TRUE(hw_wait_state(mount, MOUNT_MOTION_RA_PROPERTY_NAME, before, INDIGO_ALERT_STATE, SHORT_TIMEOUT));
-	ASSERT_TRUE(!switch_on(mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME));
-	before = hw_revision(mount, MOUNT_TRACKING_PROPERTY_NAME);
-	hw_request_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
-	ASSERT_TRUE(hw_wait_state(mount, MOUNT_TRACKING_PROPERTY_NAME, before, INDIGO_ALERT_STATE, SHORT_TIMEOUT));
+	unsigned before = 0;
+	if (hw_property_defined(mount, MOUNT_MOTION_RA_PROPERTY_NAME)) {
+		before = hw_revision(mount, MOUNT_MOTION_RA_PROPERTY_NAME);
+		hw_request_switch(mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true);
+		ASSERT_TRUE(hw_wait_state(mount, MOUNT_MOTION_RA_PROPERTY_NAME, before, INDIGO_ALERT_STATE, SHORT_TIMEOUT));
+		ASSERT_TRUE(!switch_on(mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME));
+	}
+	if (hw_property_defined(mount, MOUNT_TRACKING_PROPERTY_NAME)) {
+		before = hw_revision(mount, MOUNT_TRACKING_PROPERTY_NAME);
+		hw_request_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+		ASSERT_TRUE(hw_wait_state(mount, MOUNT_TRACKING_PROPERTY_NAME, before, INDIGO_ALERT_STATE, SHORT_TIMEOUT));
+	}
 	// Unparking has to work straight after the refusals and the mount has to move again.
 	ASSERT_TRUE(set_parked(false));
 	ASSERT_EQ_INT(INDIGO_IDLE_STATE, state_light(MOUNT_STATE_PARK_ITEM_NAME));
@@ -1251,9 +1561,11 @@ static void lx200_parks_and_unparks(void) {
 		ASSERT_TRUE(hw_set_switch(mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
 		ASSERT_TRUE(!switch_on(mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME));
 	}
-	double moved = 0;
-	ASSERT_TRUE(manual_move(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, 1.5, &moved));
-	ASSERT_TRUE(moved > 0.001);
+	if (hw_property_defined(mount, MOUNT_MOTION_DEC_PROPERTY_NAME)) {
+		double moved = 0;
+		ASSERT_TRUE(manual_move(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, 1.5, &moved));
+		ASSERT_TRUE(moved > 0.001);
+	}
 }
 
 // ------------------------------------------------------------------- lifecycle
@@ -1262,25 +1574,31 @@ static void lx200_parks_and_unparks(void) {
 // orders and the last close are the contract; a sibling may never be taken down by another
 // device's disconnect.
 static void lx200_shares_the_serial_session(void) {
-	// The guider first, which has to open the port through its master.
-	ASSERT_TRUE(hw_disconnect(aux, SHORT_TIMEOUT));
-	ASSERT_TRUE(hw_disconnect(guider, SHORT_TIMEOUT));
-	ASSERT_TRUE(hw_disconnect(mount, CONNECT_TIMEOUT));
-	ASSERT_TRUE(hw_connect(guider, CONNECT_TIMEOUT));
-	ASSERT_TRUE(hw_property_defined(guider, GUIDER_GUIDE_RA_PROPERTY_NAME));
 	double elapsed = 0;
-	ASSERT_TRUE(guide_pulse(2, 200, &elapsed));
-	ASSERT_TRUE(hw_connect(mount, CONNECT_TIMEOUT));
-	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
-	// The master leaves and the guider keeps its own live session.
+	ASSERT_TRUE(disconnect_secondary_devices());
 	ASSERT_TRUE(hw_disconnect(mount, CONNECT_TIMEOUT));
-	ASSERT_TRUE(hw_connected(guider));
-	ASSERT_TRUE(guide_pulse(3, 200, &elapsed));
-	ASSERT_TRUE(hw_disconnect(guider, SHORT_TIMEOUT));
+	if (guiding_supported()) {
+		// The guider first, which has to open the port through its master.
+		ASSERT_TRUE(hw_connect(guider, CONNECT_TIMEOUT));
+		ASSERT_TRUE(hw_property_defined(guider, GUIDER_GUIDE_RA_PROPERTY_NAME));
+		ASSERT_TRUE(guide_pulse(2, 200, &elapsed));
+		ASSERT_TRUE(hw_connect(mount, CONNECT_TIMEOUT));
+		ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
+		// The master leaves and the guider keeps its own live session.
+		ASSERT_TRUE(hw_disconnect(mount, CONNECT_TIMEOUT));
+		ASSERT_TRUE(hw_connected(guider));
+		ASSERT_TRUE(guide_pulse(3, 200, &elapsed));
+		ASSERT_TRUE(hw_disconnect(guider, SHORT_TIMEOUT));
+	} else {
+		// With no secondary device to share it with, the mount alone has to open and close the
+		// session as many times as it is asked to.
+		ASSERT_TRUE(hw_connect(mount, CONNECT_TIMEOUT));
+		ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
+		ASSERT_TRUE(hw_disconnect(mount, CONNECT_TIMEOUT));
+	}
 	// Everything is closed now, so a fresh session has to open from scratch.
 	ASSERT_TRUE(hw_connect(mount, CONNECT_TIMEOUT));
-	ASSERT_TRUE(hw_connect(guider, CONNECT_TIMEOUT));
-	ASSERT_TRUE(hw_connect(aux, CONNECT_TIMEOUT));
+	ASSERT_TRUE(connect_secondary_devices());
 	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
 }
 
@@ -1289,20 +1607,18 @@ static void lx200_shares_the_serial_session(void) {
 static void lx200_refuses_an_unusable_port(void) {
 	char port[INDIGO_VALUE_SIZE] = "";
 	ASSERT_TRUE(hw_text_item(mount, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, port, sizeof(port)));
-	ASSERT_TRUE(hw_disconnect(aux, SHORT_TIMEOUT));
-	ASSERT_TRUE(hw_disconnect(guider, SHORT_TIMEOUT));
+	ASSERT_TRUE(disconnect_secondary_devices());
 	ASSERT_TRUE(hw_disconnect(mount, CONNECT_TIMEOUT));
 	ASSERT_TRUE(hw_set_text(mount, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, "/dev/indigo-no-such-mount", INDIGO_ALERT_STATE, SHORT_TIMEOUT));
 	ASSERT_TRUE(hw_set_switch(mount, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, INDIGO_ALERT_STATE, CONNECT_TIMEOUT));
 	ASSERT_TRUE(!hw_connected(mount));
 	ASSERT_TRUE(hw_property_hidden(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
-	ASSERT_TRUE(hw_property_hidden(mount, MOUNT_PARK_PROPERTY_NAME));
+	ASSERT_TRUE(hw_property_hidden(mount, MOUNT_INFO_PROPERTY_NAME));
 	// X_MOUNT_TYPE is always defined and becomes writable again after the failure.
 	ASSERT_TRUE(hw_property_defined(mount, X_MOUNT_TYPE_PROPERTY_NAME));
 	ASSERT_TRUE(hw_set_text(mount, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, port, INDIGO_OK_STATE, SHORT_TIMEOUT));
 	ASSERT_TRUE(hw_connect(mount, CONNECT_TIMEOUT));
-	ASSERT_TRUE(hw_connect(guider, CONNECT_TIMEOUT));
-	ASSERT_TRUE(hw_connect(aux, CONNECT_TIMEOUT));
+	ASSERT_TRUE(connect_secondary_devices());
 	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
 }
 
@@ -1312,8 +1628,7 @@ static void lx200_reconnects(void) {
 	// Which property the aux device carries depends on the model, so the scenario asks the
 	// connected one instead of assuming the environment sensors of a NYX.
 	const char *aux_property = aux_live_property();
-	ASSERT_TRUE(hw_disconnect(aux, SHORT_TIMEOUT));
-	ASSERT_TRUE(hw_disconnect(guider, SHORT_TIMEOUT));
+	ASSERT_TRUE(disconnect_secondary_devices());
 	ASSERT_TRUE(hw_disconnect(mount, CONNECT_TIMEOUT));
 	ASSERT_TRUE(hw_property_hidden(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
 	ASSERT_TRUE(hw_property_hidden(mount, MOUNT_INFO_PROPERTY_NAME));
@@ -1322,23 +1637,22 @@ static void lx200_reconnects(void) {
 		ASSERT_TRUE(hw_property_hidden(aux, aux_property));
 	}
 	ASSERT_TRUE(hw_connect(mount, CONNECT_TIMEOUT));
-	ASSERT_TRUE(hw_connect(guider, CONNECT_TIMEOUT));
-	ASSERT_TRUE(hw_connect(aux, CONNECT_TIMEOUT));
+	ASSERT_TRUE(connect_secondary_devices());
 	ASSERT_TRUE(hw_property_defined(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
 	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
-	double elapsed = 0;
-	ASSERT_TRUE(guide_pulse(0, 200, &elapsed));
+	if (guiding_supported()) {
+		double elapsed = 0;
+		ASSERT_TRUE(guide_pulse(0, 200, &elapsed));
+	}
 	if (aux_property != NULL) {
 		ASSERT_TRUE(hw_wait_settled(aux, aux_property, INDIGO_OK_STATE, 30.0));
 	} else {
 		printf("    the aux device of this model publishes no property of its own\n");
-		ASSERT_TRUE(hw_connected(aux));
 	}
 }
 
 static void lx200_reinitializes(void) {
-	ASSERT_TRUE(hw_disconnect(aux, SHORT_TIMEOUT));
-	ASSERT_TRUE(hw_disconnect(guider, SHORT_TIMEOUT));
+	ASSERT_TRUE(disconnect_secondary_devices());
 	ASSERT_TRUE(hw_disconnect(mount, CONNECT_TIMEOUT));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_mount_lx200(INDIGO_DRIVER_SHUTDOWN, NULL));
 	ASSERT_EQ_INT(-1, hw_device_index(MOUNT_DEVICE_NAME));
@@ -1353,9 +1667,13 @@ static void lx200_reinitializes(void) {
 	ASSERT_TRUE(mount >= 0 && guider >= 0 && focuser >= 0 && aux >= 0);
 	ASSERT_TRUE(select_port());
 	ASSERT_TRUE(hw_connect(mount, CONNECT_TIMEOUT));
-	ASSERT_TRUE(hw_connect(guider, CONNECT_TIMEOUT));
+	ASSERT_TRUE(connect_secondary_devices());
 	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
-	ASSERT_TRUE(switch_on(mount, X_MOUNT_TYPE_PROPERTY_NAME, is_nyx ? X_MOUNT_TYPE_NYX_ITEM_NAME : X_MOUNT_TYPE_DETECT_ITEM_NAME) || !is_nyx);
+	// A fresh driver instance starts from the autodetect default again and has to arrive at the
+	// same model it detected at the start of the run.
+	bool was_nyx = is_nyx, was_onstep = is_onstep, was_agotino = is_agotino;
+	detect_model();
+	ASSERT_TRUE(was_nyx == is_nyx && was_onstep == is_onstep && was_agotino == is_agotino);
 }
 
 int main(int argc, char **argv) {
@@ -1380,6 +1698,7 @@ int main(int argc, char **argv) {
 		{ "lx200_reports_identity_and_capabilities", lx200_reports_identity_and_capabilities },
 		{ "lx200_publishes_the_property_contract", lx200_publishes_the_property_contract },
 		{ "lx200_reads_site_and_time", lx200_reads_site_and_time },
+		{ "lx200_keeps_the_observing_site", lx200_keeps_the_observing_site },
 		{ "lx200_unparks_the_mount", lx200_unparks_the_mount },
 		{ "lx200_toggles_tracking", lx200_toggles_tracking },
 		{ "lx200_selects_tracking_rates", lx200_selects_tracking_rates },
@@ -1397,6 +1716,7 @@ int main(int argc, char **argv) {
 		{ "lx200_reads_the_nyx_wifi_configuration", lx200_reads_the_nyx_wifi_configuration },
 		{ "lx200_reads_the_nyx_sensors", lx200_reads_the_nyx_sensors },
 		{ "lx200_reads_the_onstep_outlets", lx200_reads_the_onstep_outlets },
+		{ "lx200_refuses_the_unsupported_devices", lx200_refuses_the_unsupported_devices },
 		{ "lx200_refuses_the_unsupported_focuser", lx200_refuses_the_unsupported_focuser },
 		{ "lx200_follows_the_onstep_focuser_capability", lx200_follows_the_onstep_focuser_capability },
 		{ "lx200_guides_in_all_four_directions", lx200_guides_in_all_four_directions },
@@ -1425,8 +1745,10 @@ int main(int argc, char **argv) {
 	HW_CHECK(mount >= 0 && guider >= 0 && focuser >= 0 && aux >= 0);
 	HW_CHECK(select_port());
 	HW_CHECK(hw_connect(mount, CONNECT_TIMEOUT));
-	HW_CHECK(hw_connect(guider, CONNECT_TIMEOUT));
-	HW_CHECK(hw_connect(aux, CONNECT_TIMEOUT));
+	// Which secondary devices can come up depends on the controller, so the model is read before
+	// they are asked for; the ones this model cannot serve are left to the refusal scenario.
+	detect_model();
+	HW_CHECK(connect_secondary_devices());
 	result = indigo_run_tests("LX200 mount hardware", tests, ARRAY_SIZE(tests));
 cleanup:
 	// Give the mount back the tracking and park state the session found it in.
@@ -1439,13 +1761,13 @@ cleanup:
 			indigo_test_failures++;
 		}
 	}
-	if (!hw_disconnect(aux, SHORT_TIMEOUT)) {
+	if (aux >= 0 && !hw_disconnect(aux, SHORT_TIMEOUT)) {
 		indigo_test_failures++;
 	}
-	if (!hw_disconnect(guider, SHORT_TIMEOUT)) {
+	if (guider >= 0 && !hw_disconnect(guider, SHORT_TIMEOUT)) {
 		indigo_test_failures++;
 	}
-	if (!hw_disconnect(focuser, SHORT_TIMEOUT)) {
+	if (focuser >= 0 && !hw_disconnect(focuser, SHORT_TIMEOUT)) {
 		indigo_test_failures++;
 	}
 	if (!hw_disconnect(mount, CONNECT_TIMEOUT)) {

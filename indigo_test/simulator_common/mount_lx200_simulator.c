@@ -93,6 +93,11 @@ typedef struct {
 	// controller: it refuses :hP# with 0 until tracking is enabled again. Observed on firmware
 	// 1.32.1, see indigo_drivers/mount_lx200/REFACTOR.md.
 	bool standby;
+	// The position an aGotino keeps reporting for as long as a slew is running. Its firmware
+	// recomputes the strings :GR# and :GD# answer from only after the slew loop ends, which its
+	// own source marks as a known limitation. Observed on firmware 230312.
+	long frozen_ra_cs;
+	long frozen_dec_as;
 } simulator_state;
 
 static simulator_options options = {
@@ -153,6 +158,13 @@ static void usage(const char *name) {
 
 static const char *model_names[] = { "meade", "onstep", "10mic", "gemini", "stargo", "stargo2", "ap", "agotino", "zwo", "nyx", "oat", "teen", "generic", "asi" };
 static const char *products[] = { "Autostar", "On-Step", "10micron", "Losmandy", "Avalon", "Avalon", "AstroPhysics", "aGotino", "AM5", "NYX-101", "OpenAstroTracker", "TeenAstro", "Classic", "AM5" };
+
+// The aGotino is an Arduino sketch that answers eleven LX200 commands and nothing else. Every
+// other request is read, matched against the few it knows and dropped without a reply, which is
+// what a driver that asks for a site, a clock or a guide pulse gets from it.
+static bool model_is_agotino(void) {
+	return options.model == MODEL_AGOTINO;
+}
 
 // "asi" is the "zwo" profile plus the AM-series commands and the firmware revision that
 // indigo_mount_asi requires; indigo_mount_lx200 never sends those commands.
@@ -336,6 +348,37 @@ static void start_reference_motion(bool parking) {
 	serial_motion_start(&dec_motion, parking ? park_dec : 324000, 162000);
 }
 
+// The command dispatch of the aGotino sketch, in its own order: the two coordinate queries, the
+// :GV* family, the two target setters, everything that starts with M or with Q, the sync and the
+// distance bar. Everything else - a site query, a clock query, a status word - is read off the
+// line and dropped without a reply, so a driver that sends one waits out its own timeout.
+// Answers false when the request is one the sketch does not act on, and handles the requests
+// whose reply differs from the shared implementation itself.
+static bool agotino_dispatch(const char *command) {
+	if (!strcmp(command, "GR") || !strcmp(command, "GD") || !strcmp(command, "CM") || !strcmp(command, "D")) {
+		return true;
+	}
+	if (!strncmp(command, "Sr", 2) || !strncmp(command, "Sd", 2)) {
+		return true;
+	}
+	if (!strncmp(command, "GV", 2)) {
+		// Only the product name and the version have an answer; every other :GV* is acknowledged
+		// with the bare terminator the sketch prints after the switch.
+		if (!strcmp(command, "GVP") || !strcmp(command, "GVN")) {
+			return true;
+		}
+		write_response("#");
+		return false;
+	}
+	// A slow move and a stop have no reply, and neither has a guide pulse: the sketch matches the
+	// M of :Mg..., finds no direction in the g and drops the request, which is exactly why a
+	// pulse on an aGotino moves nothing.
+	if (*command == 'M') {
+		return !strncmp(command, "Mg", 2) ? false : true;
+	}
+	return *command == 'Q';
+}
+
 static void handle_command(const char *command) {
 	char response[128] = { 0 };
 	update_motion();
@@ -349,6 +392,9 @@ static void handle_command(const char *command) {
 		if (strcmp(fault_reply, "DROP")) {
 			write_response(fault_reply);
 		}
+		return;
+	}
+	if (model_is_agotino() && !agotino_dispatch(command)) {
 		return;
 	}
 	if (options.trace) {
@@ -501,7 +547,7 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "GVF")) {
 		write_response(options.model == MODEL_ONSTEP ? "OnStep 4.24j#" : "ETX Autostar|A|43Eg|Apr 03 2007@11:25:53#");
 	} else if (!strcmp(command, "GVN")) {
-		write_response(options.model == MODEL_NYX ? "1.35#" : "43Eg#");
+		write_response(options.model == MODEL_NYX ? "1.35#" : model_is_agotino() ? "230312#" : "43Eg#");
 	} else if (!strcmp(command, "GVD")) {
 		write_response("Apr 03 2007#");
 	} else if (!strcmp(command, "GVT")) {
@@ -587,7 +633,7 @@ static void handle_command(const char *command) {
 		format_ra(response, sizeof(response), state.target_ra_cs);
 		write_response(response);
 	} else if (!strcmp(command, "GR") || !strcmp(command, "GRH")) {
-		format_ra(response, sizeof(response), state.ra_cs);
+		format_ra(response, sizeof(response), model_is_agotino() && state.slewing ? state.frozen_ra_cs : state.ra_cs);
 		write_response(response);
 	} else if (!strncmp(command, "Sd", 2)) {
 		set_target_dec(command + 2);
@@ -596,7 +642,15 @@ static void handle_command(const char *command) {
 		format_dec(response, sizeof(response), state.target_dec_as);
 		write_response(response);
 	} else if (!strcmp(command, "GD") || !strcmp(command, "GDH")) {
-		format_dec(response, sizeof(response), state.dec_as);
+		format_dec(response, sizeof(response), model_is_agotino() && state.slewing ? state.frozen_dec_as : state.dec_as);
+		if (model_is_agotino()) {
+			// The sketch separates the degrees with the degree sign of the LX200 protocol, 0xDF,
+			// where every other profile in this simulator uses the asterisk.
+			char *separator = strchr(response, '*');
+			if (separator != NULL) {
+				*separator = (char)0xDF;
+			}
+		}
 		write_response(response);
 	} else if (!strcmp(command, "CM")) {
 		serial_motion_sync(&ra_motion, state.target_ra_cs);
@@ -610,6 +664,8 @@ static void handle_command(const char *command) {
 			write_response("8");
 			return;
 		}
+		state.frozen_ra_cs = state.ra_cs;
+		state.frozen_dec_as = state.dec_as;
 		serial_motion_start(&ra_motion, state.target_ra_cs, 1800000);
 		serial_motion_start(&dec_motion, state.target_dec_as, 162000);
 		state.at_home = false;
@@ -618,8 +674,20 @@ static void handle_command(const char *command) {
 		state.parked = false;
 		write_response("0");
 	} else if (!strcmp(command, "D")) {
-		write_response(state.slewing ? "*#" : "#");
+		// The aGotino answers a running slew with the DEL character its sketch prints; the other
+		// profiles use the asterisk of a classic distance bar. Either is a non-empty reply, which
+		// is all the protocol says about it.
+		write_response(state.slewing ? (model_is_agotino() ? "\177#" : "*#") : "#");
 	} else if (!strcmp(command, "Q")) {
+		if (model_is_agotino() && state.slewing) {
+			// The sketch breaks out of its slew loop on :Q# and then stores the target as the
+			// current position, the same way it does when the loop ran to the end. The motors
+			// stop where they are, so the mount points short of what it reports from then on,
+			// and nothing in the protocol can find that out. Its own source marks this as a
+			// known limitation. Observed on firmware 230312.
+			serial_motion_sync(&ra_motion, state.target_ra_cs);
+			serial_motion_sync(&dec_motion, state.target_dec_as);
+		}
 		serial_motion_stop(&ra_motion);
 		serial_motion_stop(&dec_motion);
 		manual_ra = manual_dec = 0;

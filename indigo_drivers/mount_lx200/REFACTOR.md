@@ -1122,3 +1122,218 @@ The opt-in TCP target and the ASAN/UBSAN build were not run in this session.
 
 * Simulated tests: 78 run, 78 passed.
 * Hardware tests: 33 run, 33 passed, against an OnStepX controller, firmware 10.28x.
+
+# LX200 hardware acceptance run, aGotino (2026-09-23)
+
+## Scope and hardware-test decision
+
+Non-interactive hardware run against a physically connected **aGotino
+controller, firmware 230312**, on macOS arm64 over the board's USB CDC port
+`/dev/cu.usbmodem11101`, driver version `0x0300003A` before this work. Hardware
+testing IS performed for this record; every result below that names aGotino is
+physical, every result that names the simulator is hardware-free.
+
+This is the third model the mount hardware suite has been run against, after
+the NYX-101 and the OnStepX recorded above. Both of those implement most of the
+LX200 command set. The aGotino implements eleven commands and nothing else, so
+the suite had to learn the difference between a scenario that fails and a
+scenario that has nothing to exercise before it could say anything about the
+driver.
+
+## What the aGotino is
+
+An Arduino sketch (https://github.com/mappite/aGotino) driving two stepper
+motors with no encoders and no hand controller feedback. Its whole LX200
+surface, read from the source and confirmed on the board:
+
+| Command | Reply | Note |
+| --- | --- | --- |
+| `:GVP#` | `aGotino#` | what the autodetection matches on |
+| `:GVN#` | `230312#` | a date stamped build number |
+| `:GV*#` | `#` | every other `:GV` is acknowledged with the bare terminator |
+| `:GR#` | `HH:MM:SS#` | frozen at the start position while a slew runs |
+| `:GD#` | `sDD\xdfMM:SS#` | degree sign `0xDF`, not the asterisk |
+| `:Sr…#` / `:Sd…#` | `1` | not validated |
+| `:MS#` | `0`, then `1Range_too_big#` when it is out of range | |
+| `:Mn#` `:Ms#` `:Mw#` `:Me#` | no reply | continuous slow motion, no position bookkeeping |
+| `:Q#` / `:Qx#` | no reply | stops declination, returns right ascension to tracking |
+| `:CM#` | `0#` | sync |
+| `:D#` | `#` idle, `\x7f#` slewing | the classic distance bar, with DEL |
+
+Everything else - `:Gt#`, `:Gg#`, `:GC#`, `:GL#`, `:GG#`, `:GS#`, `:GW#`,
+`:Mg…#` - is read off the line and dropped without a reply, so a driver that
+sends one waits out its own timeout. There is no tracking switch, no park, no
+home, no slew rate, no tracking rate, no pier side, no clock and no pulse
+guiding, which is why `meade_init_agotino_mount()` hides all of them.
+
+## Test asset
+
+`indigo_test/hardware/test_mount_lx200_hw.c`, run with
+`make -C indigo_test test-mount-lx200-hw` and `MOUNT_LX200_HW_PORT` pointing at
+the board. The file grew from 33 to 35 cases. The larger change is that every
+scenario now asks what the detected model publishes instead of assuming the
+NYX or OnStep contract: a mount with no tracking switch, no park, no slew rate
+or no manual motion reports those scenarios as not applicable, and the
+secondary logical devices are brought up only for a model that can serve them.
+
+## Baseline (2026-09-23 09:30, macOS arm64, driver 0x0300003A)
+
+```sh
+MOUNT_LX200_HW_PORT=/dev/cu.usbmodem11101 make -C indigo_test test-mount-lx200-hw
+```
+
+The unmodified suite did not reach its first case: `main()` connected the aux
+logical device unconditionally, the driver correctly refused it for a
+controller that has neither the NYX sensors nor the OnStep outlets, and the run
+stopped there. With that made conditional, the baseline was **7 of 35 failed**.
+
+## Found defects (hardware run)
+
+| ID | Severity | Where | Defect |
+| --- | --- | --- | --- |
+| LX030 | major | `meade_update_mount_state()` | An aGotino goto was published as finished the moment it was issued. The model fell through to `meade_update_generic_state()`, which infers a slew from the coordinates changing, and an aGotino reports the position its slew started from until the slew ends. `MOUNT_EQUATORIAL_COORDINATES` went `OK` within one polling cycle while the mount was still moving, and the next command reached a controller still busy inside its slew loop, which answers nothing but `:GR#`, `:GD#`, `:D#` and `:Q#`. The scenario that followed then reported "Slew failed". Fixed by `meade_update_agotino_state()`, which reads the distance bar `:D#` the firmware does implement. |
+| LX031 | major | guider `on_connect` | The guider logical device came up for an aGotino and reported every pulse as completed. The firmware has no pulse guiding command: it matches the `M` of `:Mgn0300#`, finds no direction in the `g` and drops the request, so nothing moved. Fixed by refusing the connection, the way the aux and focuser devices already refuse a controller they cannot serve. |
+| LX032 | major | `meade_init_mount()`, `meade_get_site()` | Connecting an aGotino replaced the observing site with 0, 0. `meade_get_site()` returned without touching its output parameters for a model with no `:Gt#`, and the caller stored the zeroes anyway. The site is what the framework computes `MOUNT_LST_TIME` and `MOUNT_HORIZONTAL_COORDINATES` from, so both were wrong for the whole session; the hardware run published a local sidereal time of exactly 0. Fixed by returning `false` and leaving the site alone. The same path affects StarGO2, which has no site query either. |
+| LX033 | minor | `meade_set_site()` | Setting the observing site was refused outright for an aGotino, so `MOUNT_GEOGRAPHIC_COORDINATES` went `ALERT` and a client had no way to give the driver the site it needs. Fixed by accepting it: there is nothing to send to the controller, and the value is the driver's own. |
+| LX034 | minor | `meade_init_agotino_mount()` | `MOUNT_INFO.MODEL` stayed on the `Unknown` the generic initialization writes, although the autodetection had already read `aGotino` from `:GVP#`. Fixed by filling it from the product name. |
+
+### Test defects the run exposed
+
+| ID | Where | Defect |
+| --- | --- | --- |
+| LXT018 | `main()` | The aux and guider logical devices were connected unconditionally, so the run aborted on the first model that cannot serve them. They are now brought up only for a model that can, and `lx200_refuses_the_unsupported_devices` asserts the refusal for the others. |
+| LXT019 | fourteen scenarios | Tracking, tracking rate, slew rate, manual motion, park, home, pier side and guiding were asserted unconditionally. Each now reports itself as not applicable when the model publishes no such property. |
+| LXT020 | `disconnect_secondary_devices()` | Tearing the session down by capability instead of by what is connected left a device that came up although it should have refused holding the shared serial handle open, and the lifecycle scenarios then ran against a session nobody closed. It now disconnects whatever is connected. |
+| LXT021 | `wait_for_poll()` | The polling heartbeat was `UTC_TIME`, which a model with no clock never publishes. It falls back to `MOUNT_LST_TIME`, which every model republishes on every cycle. |
+| LXT022 | `lx200_aborts_a_slew_and_accepts_a_fresh_one` | The abort was judged by the arc the mount left unfinished, which an aGotino cannot report. See the next section. |
+
+## Controller behaviour that is not a defect
+
+* **An aborted slew reports the target it never reached.** `:Q#` genuinely
+  stops the motors - measured on the board, a 12° declination slew takes
+  15.1 s and the same slew aborted after 3.2 s ends 3.2 s in - but the sketch
+  then stores the goto target as the current position, the same way it does
+  when the loop ran to the end. Its own source marks this as a known
+  limitation. Nothing in the protocol can find it out, so the driver publishes
+  a position the mount is not at, and the operator has to sync again. The
+  hardware scenario therefore judges the abort by the time it saved, and the
+  simulator models the quirk so the same contract is pinned down hardware-free.
+* **No site, no clock, no status word.** The driver must not send `:Gt#`,
+  `:Gg#`, `:GC#`, `:GL#` or `:GW#` to this controller: they are dropped
+  silently and cost a full read timeout each.
+* **`:GD#` separates the degrees with `0xDF`.** The driver already rewrites
+  the fourth byte before parsing.
+* **Continuous slow motion exists but has no bookkeeping.** `:Mn#`, `:Ms#`,
+  `:Mw#` and `:Me#` move the axes, but the sketch does not update the position
+  it reports while they run, so a client would see a mount that moves without
+  its coordinates changing. `MOUNT_MOTION_RA` and `MOUNT_MOTION_DEC` stay
+  hidden, which is the pre-existing driver decision and was left alone.
+
+## Not covered
+
+* **`:MS#` out of range.** The sketch prints `0` before it checks the range and
+  then `1Range_too_big#` when the slew is refused, so the refusal arrives after
+  the driver has already read the acknowledgement and is left in the pipe for
+  the next reply. Every slew this suite issues is a few degrees and well inside
+  the 30° default, so the path was never entered on the board and is not
+  modelled in the simulator. It is a real risk for a client that sends a large
+  goto and is recorded here rather than claimed as covered.
+* **Slow motion through `:Mn#` and friends**, for the reason above.
+* **Hot-plug** was not part of this run; the board is a plain USB CDC device
+  and the driver has no hot-plug support for it.
+
+## Scenario to case mapping, aGotino branch
+
+The class standard of `indigo_test/DRIVER_TESTING_RULES.md` was applied to what
+this controller can do. The scenarios of the mount checklist that need a
+property the firmware has no command for report themselves as not applicable,
+which is recorded here rather than counted as coverage.
+
+| Checklist scenario | Case | Result on the aGotino |
+| --- | --- | --- |
+| Identity and capabilities | `lx200_reports_identity_and_capabilities` | vendor, model and firmware all from the controller |
+| Published property contract | `lx200_publishes_the_property_contract` | asserts the eleven-command contract, including everything that has to stay hidden |
+| Site and clock readback | `lx200_reads_site_and_time` | site and LST only; no clock to read |
+| Observing site | `lx200_keeps_the_observing_site` | accepted, kept through the polling cycles and a reconnect |
+| Unpark, refusal while parked | `lx200_unparks_the_mount` | no park control; the working position is still established |
+| Tracking on and off | `lx200_toggles_tracking` | not applicable, no tracking switch |
+| Tracking rates, rate readback | `lx200_selects_tracking_rates`, `lx200_reports_the_tracking_rate_from_the_mount` | not applicable |
+| Slew rates | `lx200_selects_slew_rates` | not applicable |
+| Manual motion, manual abort | `lx200_moves_both_axes_manually`, `lx200_aborts_manual_motion` | not applicable, `MOUNT_MOTION_*` hidden |
+| SYNC | `lx200_syncs_to_the_current_pointing` | `:CM#` |
+| GOTO | `lx200_slews_to_a_nearby_target` | LX030, the case that found it |
+| Tracking during a slew | `lx200_keeps_tracking_while_slewing` | not applicable |
+| Abort a slew, accept a fresh one | `lx200_aborts_a_slew_and_accepts_a_fresh_one` | judged by the time saved, see above |
+| Pier side | `lx200_reports_side_of_pier` | not applicable |
+| Model specific readback | the four NYX and OnStep cases | not applicable |
+| Secondary device refusal | `lx200_refuses_the_unsupported_devices`, `lx200_refuses_the_unsupported_focuser` | LX031, plus the aux and focuser refusals |
+| Guiding, all four cases | the five guider cases | not applicable, no pulse guiding |
+| Home, park | `lx200_goes_home`, `lx200_parks_and_unparks` | not applicable |
+| Shared serial session | `lx200_shares_the_serial_session` | the mount alone opens and closes it |
+| Refused port | `lx200_refuses_an_unusable_port` | |
+| Reconnect, driver INIT/SHUTDOWN | `lx200_reconnects`, `lx200_reinitializes` | the model is re-detected from scratch |
+
+## Hardware acceptance results (2026-09-23 10:06, driver 0x0300003B)
+
+```sh
+MOUNT_LX200_HW_PORT=/dev/cu.usbmodem11101 make -C indigo_test test-mount-lx200-hw
+```
+
+| Suite | Run | Passed | Failed |
+| --- | --- | --- | --- |
+| `test_mount_lx200_hw` against an aGotino, firmware 230312 | 35 | 35 | 0 |
+
+Measured on the board during the run:
+
+| Quantity | Value |
+| --- | --- |
+| 12° declination slew | 15.1 s, about 0.80 °/s |
+| 6° declination slew, driver timed | 9.2 s |
+| the same slew aborted | 2.0 s, the abort itself lands within 0.2 s |
+| connect, autodetect and full state readback | under 2 s |
+
+## Simulator additions from this run
+
+The `agotino` model of `indigo_test/simulator_common/mount_lx200_simulator.c`
+used to answer the shared command table like any other profile, which is what
+let the driver's generic slew heuristic look adequate. It now models the
+controller:
+
+* only the commands the sketch dispatches are answered; every other request is
+  dropped without a reply, `:GV*` other than `:GVP#` and `:GVN#` answer the
+  bare terminator, and `:Mg…#` is dropped like the sketch drops it;
+* `:GVN#` answers the real `230312`;
+* `:GD#` separates the degrees with `0xDF`;
+* `:GR#` and `:GD#` report the position the slew started from until it ends;
+* `:D#` answers `\x7f#` while slewing;
+* `:Q#` during a slew stores the target as the current position.
+
+Four cases pin the hardware findings down hardware-free, so the serial suite
+grows from 78 to 82:
+
+* `lx200_agotino_holds_the_goto_until_the_slew_ends` - LX030 and LX034.
+* `lx200_agotino_abort_reports_the_unreached_target` - the abort contract on a
+  controller that cannot say where it stopped.
+* `lx200_agotino_refuses_the_guider` - LX031.
+* `lx200_agotino_keeps_the_site` - LX032 and LX033.
+
+Three of the four were run against driver `0x0300003A` before the repairs and
+failed there - the goto case on the model name, the guider case because the
+device came up, the site case because the write was refused - and all four pass
+against `0x0300003B`. The abort case was written after the repairs and pins
+down a controller limitation rather than a driver defect, so it has no failing
+counterpart.
+
+## Simulator results (driver 0x0300003B)
+
+| Suite | Run | Passed | Failed |
+| --- | --- | --- | --- |
+| `test_mount_lx200_simulator` | 82 | 82 | 0 |
+
+The opt-in TCP target and the ASAN/UBSAN build were not run in this session.
+
+## Final test summary for this run
+
+* Simulated tests: 82 run, 82 passed.
+* Hardware tests: 35 run, 35 passed, against an aGotino controller, firmware 230312.
+
