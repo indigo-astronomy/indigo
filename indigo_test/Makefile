@@ -38,6 +38,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_bus_helpers \
 	$(UNIT_BUILD)/test_bus_property \
 	$(UNIT_BUILD)/test_dome_azimuth \
+	$(UNIT_BUILD)/test_driver_loader \
 	$(UNIT_BUILD)/test_md5 \
 	$(UNIT_BUILD)/test_polynomial_fit \
 	$(UNIT_BUILD)/test_protocol_json \
@@ -341,6 +342,12 @@ $(UNIT_BUILD)/test_bus_property: unit/test_bus_property.c test_runner.h | $(UNIT
 
 $(UNIT_BUILD)/test_bus_helpers: unit/test_bus_helpers.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+$(UNIT_BUILD)/indigo_test_loader_driver.$(SOEXT): unit/test_driver_loader_fixture.c | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -shared -o $@ $< $(TEST_LDFLAGS)
+
+$(UNIT_BUILD)/test_driver_loader: unit/test_driver_loader.c test_runner.h $(UNIT_BUILD)/indigo_test_loader_driver.$(SOEXT) | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -DLOADER_FIXTURE='"$(abspath $(UNIT_BUILD)/indigo_test_loader_driver.$(SOEXT))"' -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_token: unit/test_token.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
