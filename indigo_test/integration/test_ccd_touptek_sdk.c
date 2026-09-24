@@ -52,9 +52,11 @@
 #define TOUPCAM_AAF_SETPOSITION SDK_DEF(AAF_SETPOSITION)
 #define TOUPCAM_AAF_SETZERO SDK_DEF(AAF_SETZERO)
 #define TOUPCAM_EVENT_ERROR SDK_DEF(EVENT_ERROR)
+#define TOUPCAM_EVENT_EXPOSURE SDK_DEF(EVENT_EXPOSURE)
 #define TOUPCAM_EVENT_IMAGE SDK_DEF(EVENT_IMAGE)
 #define TOUPCAM_EVENT_NOFRAMETIMEOUT SDK_DEF(EVENT_NOFRAMETIMEOUT)
 #define TOUPCAM_EVENT_NOPACKETTIMEOUT SDK_DEF(EVENT_NOPACKETTIMEOUT)
+#define TOUPCAM_EVENT_TRIGGERFAIL SDK_DEF(EVENT_TRIGGERFAIL)
 #define TOUPCAM_FLAG_AUTOFOCUSER SDK_DEF(FLAG_AUTOFOCUSER)
 #define TOUPCAM_FLAG_BLACKLEVEL SDK_DEF(FLAG_BLACKLEVEL)
 #define TOUPCAM_FLAG_CG SDK_DEF(FLAG_CG)
@@ -81,6 +83,7 @@
 #define TOUPCAM_OPTION_FILTERWHEEL_SLOT SDK_DEF(OPTION_FILTERWHEEL_SLOT)
 #define TOUPCAM_OPTION_HEAT SDK_DEF(OPTION_HEAT)
 #define TOUPCAM_OPTION_HEAT_MAX SDK_DEF(OPTION_HEAT_MAX)
+#define TOUPCAM_OPTION_NOPACKET_TIMEOUT SDK_DEF(OPTION_NOPACKET_TIMEOUT)
 #define TOUPCAM_OPTION_RAW SDK_DEF(OPTION_RAW)
 #define TOUPCAM_OPTION_TAILLIGHT SDK_DEF(OPTION_TAILLIGHT)
 #define TOUPCAM_OPTION_TEC SDK_DEF(OPTION_TEC)
@@ -185,6 +188,8 @@ static ToupcamModelV2 models[3] = {
 // Record control calls independently of lifecycle calls: CCD and guider share a worker.
 static atomic_bool track_controls, fail_control, deliver_image, image_on_stop;
 static atomic_int pulled_images, triggers, stream_frames, watchdog_seconds;
+// No-packet timeout in force when an acquisition was started.
+static atomic_int armed_no_packet_timeout;
 static atomic_bool fast_watchdog;
 static _Atomic(indigo_timer_callback) monitor_tasks[4], move_tasks[4];
 static atomic_int replay_done;
@@ -1471,6 +1476,48 @@ cleanup:
 	restore_camera();
 }
 
+// The SDK reports a frame lost on USB only while the no-packet timeout is armed, so it must be armed for every acquisition and disarmed
+// when the acquisition ends. Only image and error notifications may end an exposure; any other notification must leave the watchdog armed.
+static void acquisition_timeouts(void) {
+	CHECK_TRUE(start_properties());
+	atomic_store(&deliver_image, true);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 2, INDIGO_OK_STATE));
+	CHECK_EQ_INT(atomic_load(&armed_no_packet_timeout), 6040);
+	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]), 0);
+	const int events[] = { TOUPCAM_EVENT_NOPACKETTIMEOUT, TOUPCAM_EVENT_TRIGGERFAIL, TOUPCAM_EVENT_ERROR };
+	for (unsigned i = 0; i < ARRAY_SIZE(events); i++) {
+		atomic_store(&sdk_event, events[i]);
+		atomic_store(&armed_no_packet_timeout, 0);
+		CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 1, INDIGO_ALERT_STATE));
+		CHECK_EQ_INT(atomic_load(&armed_no_packet_timeout), 5020);
+		CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]), 0);
+	}
+	atomic_store(&sdk_event, TOUPCAM_EVENT_EXPOSURE);
+	atomic_store(&fast_watchdog, true);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 1, INDIGO_ALERT_STATE));
+	CHECK_EQ_INT(atomic_load(&watchdog_seconds), 26);
+	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]), 0);
+	atomic_store(&fast_watchdog, false);
+	atomic_store(&sdk_event, TOUPCAM_EVENT_IMAGE);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.5, INDIGO_OK_STATE));
+	atomic_store(&deliver_image, false);
+	atomic_store(&stream_frames, 2);
+	unsigned before = revision(0, "CCD_STREAMING");
+	indigo_change_number_property(NULL, logical[0]->name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 1, 2 });
+	CHECK_TRUE(wait_property(0, "CCD_STREAMING", before, INDIGO_OK_STATE));
+	CHECK_EQ_INT(atomic_load(&armed_no_packet_timeout), 5020);
+	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]), 0);
+	atomic_store(&stream_frames, 0);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 10, INDIGO_BUSY_STATE));
+	CHECK_TRUE(wait_value(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT], 14200));
+	CHECK_TRUE(change_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
+	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]), 0);
+	CHECK_EQ_INT(atomic_load(&wrong_thread), 0);
+cleanup:
+	atomic_store(&sdk_event, TOUPCAM_EVENT_IMAGE);
+	stop_properties();
+}
+
 static void disconnected_recurring_tasks(void) {
 	enable_full_camera();
 	CHECK_TRUE(start_properties());
@@ -2105,6 +2152,7 @@ int main(void) {
 		{ "SDK lifecycle queue", lifecycle },
 		{ "CCD property handlers and base dispatch", camera_properties },
 		{ "Acquisition finalizers, watchdog and streaming", acquisition_finalizers },
+		{ "Acquisition no-packet timeout and unrelated SDK events", acquisition_timeouts },
 		{ "Guider property handlers on camera queue", guider_properties },
 		{ "Wheel property handlers", wheel_properties },
 		{ "Focuser property handlers", focuser_properties },
@@ -2233,6 +2281,7 @@ HRESULT Toupcam_Trigger(HToupcam h, unsigned short nNumber) {
 	control_call(h);
 	if (atomic_load(&fail_trigger)) { return -1; }
 	if (nNumber) {
+		atomic_store(&armed_no_packet_timeout, atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]));
 		atomic_fetch_add(&triggers, 1);
 		if (atomic_load(&deliver_image)) { emit_image(); }
 	}
@@ -2262,6 +2311,7 @@ HRESULT Toupcam_put_Option(HToupcam h, unsigned iOption, int iValue) {
 	if (iOption == TOUPCAM_OPTION_FILTERWHEEL_SLOT) { atomic_store(&wheel_slots, iValue); }
 	if (iOption == TOUPCAM_OPTION_TRIGGER) {
 		if (iValue == 0) {
+			atomic_store(&armed_no_packet_timeout, atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]));
 			atomic_fetch_add(&stream_started, 1);
 			for (int i = 0; i < atomic_load(&stream_frames); i++) { emit_image(); }
 		} else if (atomic_load(&image_on_stop)) {

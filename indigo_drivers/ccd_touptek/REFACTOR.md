@@ -508,3 +508,61 @@ is still unknown. The framework change makes the restore report it by name when 
   each. The cameras were not available after the fix, so it is not known whether that case now passes;
   the test is unchanged and still asserts the real contract. Two physical hot-plug cases exist behind
   `--hotplug` and were not run; they need an operator at the cable.
+
+## TT-D04 — a lost guide frame stalled guiding for exposure + 25 s (2026-09-25)
+
+Observed impact: with two ToupTek cameras acquiring at the same time (SkyEye 26AM plus as the imager, GPM462M as
+the guider), the guide camera sometimes got no SDK notification after `Trigger(1)`. That happened three times in
+two hours. The exposure then waited for `ccd_exposure_watchdog_handler()`, which fires after exposure + 25 s, and
+the guiding was ruined.
+
+Probable cause, not yet confirmed on hardware: the frame is lost on USB and the SDK throws it away without
+notifying anyone. `OPTION_NOPACKET_TIMEOUT` and `OPTION_NOFRAME_TIMEOUT` are both disabled by default. The GPM462M
+has no frame buffer on the camera, so if the host is late reading its data while the imager downloads a large
+frame, part of the frame is lost.
+
+A second defect was found in the same path: `ccd_event_handler()` cancelled the watchdog for every SDK event
+before checking the event type, and it ignored `EVENT_TRIGGERFAIL` ("trigger failed, for example bad frame data
+or timeout"). So any unrelated event, or a trigger failure, left the exposure BUSY forever.
+
+Fix, version `0x03000031` -> `0x03000032`:
+
+- `set_no_packet_timeout()` arms `OPTION_NOPACKET_TIMEOUT` before every `Trigger(1)` and every stream start. The
+  value is exposure * 1020 + 4000 ms, the trigger timeout the SDK documentation recommends. The timeout is disarmed
+  (set to 0) when the image arrives, on SDK failure, on watchdog expiry, on single-exposure abort, when video mode
+  stops and on CCD disconnect, so it is never armed while the camera is idle. The SDK documents the option as
+  changeable while the camera is running.
+- The watchdog is cancelled only by `EVENT_IMAGE` and by the failure events. `EVENT_TRIGGERFAIL` joins
+  `EVENT_ERROR`, `EVENT_NOFRAMETIMEOUT` and `EVENT_NOPACKETTIMEOUT`, and each failure is now logged at error level
+  with its event code.
+
+Regression test: `Acquisition no-packet timeout and unrelated SDK events` in
+`indigo_test/integration/test_ccd_touptek_sdk.c` covers these cases:
+
+- the timeout is armed before the trigger and at stream start with the expected value;
+- it is disarmed after an image, after each failure event, after the watchdog, after streaming and after an abort;
+- `EVENT_NOPACKETTIMEOUT`, `EVENT_TRIGGERFAIL` and `EVENT_ERROR` end a single exposure in ALERT;
+- an unrelated event (`EVENT_EXPOSURE`) leaves the watchdog to end the exposure.
+
+Each part was checked against the old code by reverting it on its own:
+
+| Reverted part | Where the test fails |
+| --- | --- |
+| Whole driver change | Arming assertion |
+| `EVENT_TRIGGERFAIL` handling | Failure-event loop |
+| Watchdog cancel for every event | Unrelated-event case |
+
+Validation, fake SDK, macOS arm64/x86_64:
+
+- The ToupTek suite passes 31 of 32 cases. The Altair variant gives the same result.
+- The one failing case, `Driver configuration persistence` (`configs == 3`), also fails with this change stashed,
+  so it existed before this change and is not fixed here.
+- All ten OEM variants that include this source (Altair, BacCam, Bresser, OmegonPro, StarshootG, Rising, Mallin,
+  Meade, Ogma, SVBony) build without compiler warnings.
+
+Still needed on hardware:
+
+- Confirm the SDK counts the no-packet timeout from the trigger or from the last packet, not from some earlier
+  point. If it counted from an earlier point, every exposure started after an idle period would fail at once with
+  `pull_callback(0085) reported failure`.
+- Confirm that a lost GPM462M frame now ends in ALERT within exposure + about 4 s.
