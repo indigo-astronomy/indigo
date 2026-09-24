@@ -1821,11 +1821,18 @@ bool indigo_uni_is_valid(indigo_uni_handle *handle) {
 			if (ioctl(handle->fd, TIOCMGET, &status) != -1) {
 				return true;
 			}
-#if defined(INDIGO_MACOS)
-			if (!strncmp(handle->name, "/dev/ttys", 9)) {
+			// TIOCMGET fails for two unrelated reasons. A device that has gone away answers EIO,
+			// ENODEV, ENXIO or EBADF, and that really is a lost connection. A terminal that has no
+			// modem lines at all answers ENOTTY and is perfectly usable: that is every
+			// pseudo-terminal, which is what the host side serial simulators are built on. Measured
+			// on both platforms, a pseudo-terminal slave answers ENOTTY, so only that one errno is
+			// exempt here. This used to be a macOS-only exemption matching that platform's own
+			// "/dev/ttys" pseudo-terminal names, which left the Linux "/dev/pts" ones reported as
+			// disconnected at the first command, failing every PTY backed simulator test of a driver
+			// that validates its handle.
+			if (errno == ENOTTY) {
 				return true;
 			}
-#endif
 		} else if (handle->type == INDIGO_TCP_HANDLE) {
 			int result = (int)send(handle->fd, NULL, 0, MSG_NOSIGNAL);
 			if (!(result < 0 && (errno == EPIPE || errno == ECONNRESET))) {
