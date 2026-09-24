@@ -1,0 +1,437 @@
+{
+  "ErrorCount": 0,
+  "IssueCount": 23,
+  "ConfigurationAlertCount": 0,
+  "TimingIssuesCount": 0,
+  "TimingCount": 83,
+  "Errors": [],
+  "Issues": [
+    {
+      "Key": "PulseGuide -9.0 North",
+      "Value": "The declination axis did not move."
+    },
+    {
+      "Key": "PulseGuide -9.0 South",
+      "Value": "The declination axis did not move."
+    },
+    {
+      "Key": "PulseGuide -9.0 East",
+      "Value": "The RA axis did not move."
+    },
+    {
+      "Key": "PulseGuide -9.0 West",
+      "Value": "The RA axis did not move."
+    },
+    {
+      "Key": "PulseGuide \u002B9.0 North",
+      "Value": "The declination axis did not move."
+    },
+    {
+      "Key": "PulseGuide \u002B9.0 South",
+      "Value": "The declination axis did not move."
+    },
+    {
+      "Key": "PulseGuide \u002B9.0 East",
+      "Value": "The RA axis did not move."
+    },
+    {
+      "Key": "PulseGuide \u002B9.0 West",
+      "Value": "The RA axis did not move."
+    },
+    {
+      "Key": "PulseGuide -3.0 North",
+      "Value": "The declination axis did not move."
+    },
+    {
+      "Key": "PulseGuide -3.0 South",
+      "Value": "The declination axis did not move."
+    },
+    {
+      "Key": "PulseGuide -3.0 East",
+      "Value": "The RA axis did not move."
+    },
+    {
+      "Key": "PulseGuide -3.0 West",
+      "Value": "The RA axis did not move."
+    },
+    {
+      "Key": "PulseGuide \u002B3.0 North",
+      "Value": "The declination axis did not move."
+    },
+    {
+      "Key": "PulseGuide \u002B3.0 South",
+      "Value": "The declination axis did not move."
+    },
+    {
+      "Key": "PulseGuide \u002B3.0 East",
+      "Value": "The RA axis did not move."
+    },
+    {
+      "Key": "PulseGuide \u002B3.0 West",
+      "Value": "The RA axis did not move."
+    },
+    {
+      "Key": "DestinationSideOfPier",
+      "Value": "DestinationSideOfPier Exception\r\nASCOM.NotImplementedException: Property or method not implemented\n   at ASCOM.Alpaca.Clients.RemoteDevice.Send[T](Parameters clientParameters, Dictionary\u00602 formParameters, HttpMethod httpMethod) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/RemoteDevice.cs:line 820\n   at ASCOM.Alpaca.Clients.AlpacaTelescope.DestinationSideOfPier(Double RightAscension, Double Declination) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/AlpacaDevices/AlpacaTelescope.cs:line 477\n   at ConformU.TelescopeTester.\u003C\u003Ec__DisplayClass142_1.\u003CTelescopeOptionalMethodsTest\u003Eb__0() in J:\\ConformU\\ConformU\\Conform\\TelescopeTester.cs:line 6207\n   at ConformU.DeviceTesterBaseClass.TimeFunc[TResult](String methodName, Func\u00601 function, TargetTime targetTime) in J:\\ConformU\\ConformU\\Conform\\DeviceTesterBaseClass\\DeviceTesterBaseClass.cs:line 2329\n   at ConformU.TelescopeTester.TelescopeOptionalMethodsTest(OptionalMethodType testType, String testName, Boolean canTest) in J:\\ConformU\\ConformU\\Conform\\TelescopeTester.cs:line 6207"
+    },
+    {
+      "Key": "SOPPierTest",
+      "Value": "DestinationSideOfPier Exception: ASCOM.NotImplementedException: Property or method not implemented\n   at ASCOM.Alpaca.Clients.RemoteDevice.Send[T](Parameters clientParameters, Dictionary\u00602 formParameters, HttpMethod httpMethod) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/RemoteDevice.cs:line 820\n   at ASCOM.Alpaca.Clients.AlpacaTelescope.DestinationSideOfPier(Double RightAscension, Double Declination) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/AlpacaDevices/AlpacaTelescope.cs:line 477\n   at ConformU.TelescopeTester.\u003C\u003Ec__DisplayClass146_0.\u003CSopPierTest\u003Eb__0() in J:\\ConformU\\ConformU\\Conform\\TelescopeTester.cs:line 7552\n   at ConformU.DeviceTesterBaseClass.TimeFunc[TResult](String methodName, Func\u00601 function, TargetTime targetTime) in J:\\ConformU\\ConformU\\Conform\\DeviceTesterBaseClass\\DeviceTesterBaseClass.cs:line 2329\n   at ConformU.TelescopeTester.SopPierTest(Double testRa, Double testDec, Double startRa, Double startDeclination, String message) in J:\\ConformU\\ConformU\\Conform\\TelescopeTester.cs:line 7552"
+    },
+    {
+      "Key": "SOPPierTest",
+      "Value": "DestinationSideOfPier Exception: ASCOM.NotImplementedException: Property or method not implemented\n   at ASCOM.Alpaca.Clients.RemoteDevice.Send[T](Parameters clientParameters, Dictionary\u00602 formParameters, HttpMethod httpMethod) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/RemoteDevice.cs:line 820\n   at ASCOM.Alpaca.Clients.AlpacaTelescope.DestinationSideOfPier(Double RightAscension, Double Declination) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/AlpacaDevices/AlpacaTelescope.cs:line 477\n   at ConformU.TelescopeTester.\u003C\u003Ec__DisplayClass146_0.\u003CSopPierTest\u003Eb__0() in J:\\ConformU\\ConformU\\Conform\\TelescopeTester.cs:line 7552\n   at ConformU.DeviceTesterBaseClass.TimeFunc[TResult](String methodName, Func\u00601 function, TargetTime targetTime) in J:\\ConformU\\ConformU\\Conform\\DeviceTesterBaseClass\\DeviceTesterBaseClass.cs:line 2329\n   at ConformU.TelescopeTester.SopPierTest(Double testRa, Double testDec, Double startRa, Double startDeclination, String message) in J:\\ConformU\\ConformU\\Conform\\TelescopeTester.cs:line 7552"
+    },
+    {
+      "Key": "SOPPierTest",
+      "Value": "DestinationSideOfPier Exception: ASCOM.NotImplementedException: Property or method not implemented\n   at ASCOM.Alpaca.Clients.RemoteDevice.Send[T](Parameters clientParameters, Dictionary\u00602 formParameters, HttpMethod httpMethod) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/RemoteDevice.cs:line 820\n   at ASCOM.Alpaca.Clients.AlpacaTelescope.DestinationSideOfPier(Double RightAscension, Double Declination) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/AlpacaDevices/AlpacaTelescope.cs:line 477\n   at ConformU.TelescopeTester.\u003C\u003Ec__DisplayClass146_0.\u003CSopPierTest\u003Eb__0() in J:\\ConformU\\ConformU\\Conform\\TelescopeTester.cs:line 7552\n   at ConformU.DeviceTesterBaseClass.TimeFunc[TResult](String methodName, Func\u00601 function, TargetTime targetTime) in J:\\ConformU\\ConformU\\Conform\\DeviceTesterBaseClass\\DeviceTesterBaseClass.cs:line 2329\n   at ConformU.TelescopeTester.SopPierTest(Double testRa, Double testDec, Double startRa, Double startDeclination, String message) in J:\\ConformU\\ConformU\\Conform\\TelescopeTester.cs:line 7552"
+    },
+    {
+      "Key": "SOPPierTest",
+      "Value": "DestinationSideOfPier Exception: ASCOM.NotImplementedException: Property or method not implemented\n   at ASCOM.Alpaca.Clients.RemoteDevice.Send[T](Parameters clientParameters, Dictionary\u00602 formParameters, HttpMethod httpMethod) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/RemoteDevice.cs:line 820\n   at ASCOM.Alpaca.Clients.AlpacaTelescope.DestinationSideOfPier(Double RightAscension, Double Declination) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/AlpacaDevices/AlpacaTelescope.cs:line 477\n   at ConformU.TelescopeTester.\u003C\u003Ec__DisplayClass146_0.\u003CSopPierTest\u003Eb__0() in J:\\ConformU\\ConformU\\Conform\\TelescopeTester.cs:line 7552\n   at ConformU.DeviceTesterBaseClass.TimeFunc[TResult](String methodName, Func\u00601 function, TargetTime targetTime) in J:\\ConformU\\ConformU\\Conform\\DeviceTesterBaseClass\\DeviceTesterBaseClass.cs:line 2329\n   at ConformU.TelescopeTester.SopPierTest(Double testRa, Double testDec, Double startRa, Double startDeclination, String message) in J:\\ConformU\\ConformU\\Conform\\TelescopeTester.cs:line 7552"
+    },
+    {
+      "Key": "SideofPier",
+      "Value": "pierEast is returned when the mount is observing at an hour angle between -6.0 and 0.0"
+    },
+    {
+      "Key": "SideofPier",
+      "Value": "pierWest is returned when the mount is observing at an hour angle between 0.0 and \u002B6.0"
+    }
+  ],
+  "ConfigurationAlerts": [],
+  "Timings": [
+    {
+      "Key": "InterfaceVersion",
+      "Value": "At 17:39:35.889 InterfaceVersion                           0.000 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Connected",
+      "Value": "At 17:39:35.891 Connected                                  0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Description",
+      "Value": "At 17:39:35.896 Description                                0.004 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "DriverInfo",
+      "Value": "At 17:39:35.897 DriverInfo                                 0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "DriverVersion",
+      "Value": "At 17:39:35.898 DriverVersion                              0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Name",
+      "Value": "At 17:39:35.899 Name                                       0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SupportedActions",
+      "Value": "At 17:39:35.904 SupportedActions                           0.004 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanFindHome",
+      "Value": "At 17:39:35.908 CanFindHome                                0.002 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanPark",
+      "Value": "At 17:39:35.909 CanPark                                    0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanPulseGuide",
+      "Value": "At 17:39:35.910 CanPulseGuide                              0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSetDeclinationRate",
+      "Value": "At 17:39:35.915 CanSetDeclinationRate                      0.005 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSetGuideRates",
+      "Value": "At 17:39:35.916 CanSetGuideRates                           0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSetPark",
+      "Value": "At 17:39:35.917 CanSetPark                                 0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSetPierSide",
+      "Value": "At 17:39:35.918 CanSetPierSide                             0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSetRightAscensionRate",
+      "Value": "At 17:39:35.919 CanSetRightAscensionRate                   0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSetTracking",
+      "Value": "At 17:39:35.920 CanSetTracking                             0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSlew",
+      "Value": "At 17:39:35.921 CanSlew                                    0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSlewltAz",
+      "Value": "At 17:39:35.922 CanSlewltAz                                0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSlewAltAzAsync",
+      "Value": "At 17:39:35.924 CanSlewAltAzAsync                          0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSlewAsync",
+      "Value": "At 17:39:35.924 CanSlewAsync                               0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSync",
+      "Value": "At 17:39:35.925 CanSync                                    0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSyncAltAz",
+      "Value": "At 17:39:35.926 CanSyncAltAz                               0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanUnPark",
+      "Value": "At 17:39:35.927 CanUnPark                                  0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "AlignmentMode",
+      "Value": "At 17:39:36.059 AlignmentMode                              0.030 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Altitude",
+      "Value": "At 17:39:36.062 Altitude                                   0.003 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "AtHome",
+      "Value": "At 17:39:36.073 AtHome                                     0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "AtPark",
+      "Value": "At 17:39:36.074 AtPark                                     0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Azimuth",
+      "Value": "At 17:39:36.075 Azimuth                                    0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Declination",
+      "Value": "At 17:39:36.076 Declination                                0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "DeclinationRate Read",
+      "Value": "At 17:39:36.077 DeclinationRate Read                       0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "EquatorialSystem",
+      "Value": "At 17:39:36.104 EquatorialSystem                           0.022 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "GuideRateDeclination Read",
+      "Value": "At 17:39:36.107 GuideRateDeclination Read                  0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "GuideRateDeclination Write",
+      "Value": "At 17:39:36.108 GuideRateDeclination Write                 0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "GuideRateRightAscension Read",
+      "Value": "At 17:39:36.109 GuideRateRightAscension Read               0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "GuideRateRightAscension Write",
+      "Value": "At 17:39:36.110 GuideRateRightAscension Write              0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "IsPulseGuiding",
+      "Value": "At 17:39:36.111 IsPulseGuiding                             0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "RightAscension",
+      "Value": "At 17:39:36.112 RightAscension                             0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "RightAscensionRate Read",
+      "Value": "At 17:39:36.113 RightAscensionRate Read                    0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SiteElevation Read",
+      "Value": "At 17:39:36.116 SiteElevation Read                         0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SiteElevation Write",
+      "Value": "At 17:39:36.121 SiteElevation Write                        0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SiteLatitude Read",
+      "Value": "At 17:39:36.124 SiteLatitude Read                          0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SiteLatitude Write",
+      "Value": "At 17:39:36.127 SiteLatitude Write                         0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SiteLongitude Read",
+      "Value": "At 17:39:36.133 SiteLongitude Read                         0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SiteLatitude Write",
+      "Value": "At 17:39:36.137 SiteLatitude Write                         0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "Slewing",
+      "Value": "At 17:39:36.140 Slewing                                    0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SideOfPier Read",
+      "Value": "At 17:39:36.173 SideOfPier Read                            0.026 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SiderealTime",
+      "Value": "At 17:39:36.174 SiderealTime                               0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Tracking Read",
+      "Value": "At 17:39:36.176 Tracking Read                              0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Tracking Write",
+      "Value": "At 17:39:36.177 Tracking Write                             0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "Tracking Write",
+      "Value": "At 17:39:38.195 Tracking Write                             0.013 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "UTCDate Read",
+      "Value": "At 17:39:38.340 UTCDate Read                               0.002 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanMoveAxis:Primary",
+      "Value": "At 17:39:38.352 CanMoveAxis:Primary                        0.003 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanMoveAxis:Secondary",
+      "Value": "At 17:39:38.353 CanMoveAxis:Secondary                      0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanMoveAxis:Tertiary",
+      "Value": "At 17:39:38.353 CanMoveAxis:Tertiary                       0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Park",
+      "Value": "At 17:39:47.892 Park                                       0.001 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "Unpark",
+      "Value": "At 17:39:57.425 Unpark                                     0.001 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "AbortSlew",
+      "Value": "At 17:39:59.456 AbortSlew                                  0.501 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide East 2s",
+      "Value": "At 17:39:59.483 PulseGuide East 2s                         0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide North 2s",
+      "Value": "At 17:40:01.487 PulseGuide North 2s                        0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide North 5s",
+      "Value": "At 17:40:16.519 PulseGuide North 5s                        0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide South 5s",
+      "Value": "At 17:40:21.525 PulseGuide South 5s                        0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide East 5s",
+      "Value": "At 17:40:26.529 PulseGuide East 5s                         0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide West 5s",
+      "Value": "At 17:40:31.533 PulseGuide West 5s                         0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide North 5s",
+      "Value": "At 17:40:43.057 PulseGuide North 5s                        0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide South 5s",
+      "Value": "At 17:40:48.062 PulseGuide South 5s                        0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide East 5s",
+      "Value": "At 17:40:53.077 PulseGuide East 5s                         0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide West 5s",
+      "Value": "At 17:40:58.081 PulseGuide West 5s                         0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide North 5s",
+      "Value": "At 17:41:15.607 PulseGuide North 5s                        0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide South 5s",
+      "Value": "At 17:41:20.612 PulseGuide South 5s                        0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide East 5s",
+      "Value": "At 17:41:25.616 PulseGuide East 5s                         0.000 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide West 5s",
+      "Value": "At 17:41:30.621 PulseGuide West 5s                         0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide North 5s",
+      "Value": "At 17:41:42.149 PulseGuide North 5s                        0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide South 5s",
+      "Value": "At 17:41:47.153 PulseGuide South 5s                        0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide East 5s",
+      "Value": "At 17:41:52.159 PulseGuide East 5s                         0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "PulseGuide West 5s",
+      "Value": "At 17:41:57.164 PulseGuide West 5s                         0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SlewToCoordinates",
+      "Value": "At 17:42:09.677 SlewToCoordinates                          7.503 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "SlewToCoordinatesAsync",
+      "Value": "At 17:42:09.691 SlewToCoordinatesAsync                     0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SyncToCoordinates",
+      "Value": "At 17:42:20.222 SyncToCoordinates                          0.502 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SyncToCoordinates",
+      "Value": "At 17:42:25.735 SyncToCoordinates                          0.501 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SlewToTarget",
+      "Value": "At 17:42:34.259 SlewToTarget                               3.502 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "SlewToTargetAsync",
+      "Value": "At 17:42:34.267 SlewToTargetAsync                          0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SyncToTarget",
+      "Value": "At 17:42:51.323 SyncToTarget                               0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SyncToTarget",
+      "Value": "At 17:42:56.337 SyncToTarget                               0.001 seconds. \u2713 (STANDARD)"
+    }
+  ]
+}

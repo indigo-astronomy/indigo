@@ -1,0 +1,85 @@
+{
+  "ErrorCount": 0,
+  "IssueCount": 1,
+  "ConfigurationAlertCount": 0,
+  "TimingIssuesCount": 0,
+  "TimingCount": 17,
+  "Errors": [],
+  "Issues": [
+    {
+      "Key": "Move",
+      "Value": "Unexpected error: The \u0022Moving focuser\u0022 operation exceeded its 60 second timeout."
+    }
+  ],
+  "ConfigurationAlerts": [],
+  "Timings": [
+    {
+      "Key": "InterfaceVersion",
+      "Value": "At 17:17:13.051 InterfaceVersion         0.000 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Connected",
+      "Value": "At 17:17:13.057 Connected                0.005 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Description",
+      "Value": "At 17:17:13.071 Description              0.012 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "DriverInfo",
+      "Value": "At 17:17:13.078 DriverInfo               0.007 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "DriverVersion",
+      "Value": "At 17:17:13.082 DriverVersion            0.004 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Name",
+      "Value": "At 17:17:13.087 Name                     0.005 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SupportedActions",
+      "Value": "At 17:17:13.094 SupportedActions         0.007 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Absolute",
+      "Value": "At 17:17:13.105 Absolute                 0.002 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "IsMoving",
+      "Value": "At 17:17:13.115 IsMoving                 0.009 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "MaxStep",
+      "Value": "At 17:17:13.175 MaxStep                  0.061 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "MaxIncrement",
+      "Value": "At 17:17:13.182 MaxIncrement             0.007 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Position",
+      "Value": "At 17:17:13.186 Position                 0.004 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "TempCompAvailable",
+      "Value": "At 17:17:13.265 TempCompAvailable        0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "TempComp Read",
+      "Value": "At 17:17:13.268 TempComp Read            0.002 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Temperature",
+      "Value": "At 17:17:13.278 Temperature              0.005 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Halt",
+      "Value": "At 17:17:13.287 Halt                     0.007 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "Move to 999999",
+      "Value": "At 17:17:13.306 Move to 999999           0.005 seconds. \u2713 (STANDARD)"
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "ErrorCount": 0,
+  "IssueCount": 0,
+  "ConfigurationAlertCount": 0,
+  "TimingIssuesCount": 0,
+  "TimingCount": 17,
+  "Errors": [],
+  "Issues": [],
+  "ConfigurationAlerts": [],
+  "Timings": [
+    {
+      "Key": "InterfaceVersion",
+      "Value": "At 17:17:12.953 InterfaceVersion         0.000 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Connected",
+      "Value": "At 17:17:12.962 Connected                0.004 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanReverse",
+      "Value": "At 17:17:12.966 CanReverse               0.002 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Position",
+      "Value": "At 17:17:13.123 Position                 0.006 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "TargetPosition",
+      "Value": "At 17:17:13.129 TargetPosition           0.006 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Reverse",
+      "Value": "At 17:17:13.224 Reverse                  0.003 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "MoveAbsolute 45",
+      "Value": "At 17:17:13.313 MoveAbsolute 45          0.032 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "MoveAbsolute 135",
+      "Value": "At 17:17:18.354 MoveAbsolute 135         0.005 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "MoveAbsolute 225",
+      "Value": "At 17:17:27.950 MoveAbsolute 225         0.003 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "MoveAbsolute 315",
+      "Value": "At 17:17:37.455 MoveAbsolute 315         0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "Move -10",
+      "Value": "At 17:17:46.967 Move -10                 0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "Move 10",
+      "Value": "At 17:17:48.472 Move 10                  0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "Move -40",
+      "Value": "At 17:17:49.977 Move -40                 0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "Move 40",
+      "Value": "At 17:17:54.482 Move 40                  0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "Move -130",
+      "Value": "At 17:17:58.987 Move -130                0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "Move 130",
+      "Value": "At 17:18:12.494 Move 130                 0.002 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "Move -375",
+      "Value": "At 17:18:26.000 Move -375                0.001 seconds. \u2713 (STANDARD)"
+    }
+  ]
+}

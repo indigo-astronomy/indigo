@@ -71,13 +71,13 @@ ImageBytes now transmits 8-bit data as Byte (6) and 16-bit data as UInt16 (8), w
 | FilterWheel | 0 / 0 | 0 / 0 | |
 | Focuser: CCD Imager (focuser) | 1 / 1 (not tested, V1) | 0 / 13 | Simulator limitation, see below. |
 | Focuser: UPB3 (focuser) | 1 / 1 (not tested, V1) | 0 / 1 | Simulator limitation, see below. |
-| Telescope: Mount Simulator (+ guider) | 0 / 2 | see 5.3 | |
+| Telescope: Mount Simulator (+ guider) | 0 / 2 (pulse guiding, SideOfPier and slew tests unreachable, `CanPulseGuide=false`) | 0 / 23 | See 5.3: the remaining issues come from simulator behaviour and from `DestinationSideOfPier` not being implemented. |
 | Telescope: CCD Guider (guider), CCD Guider (AO), Mount (guider) | 0 / 13, 0 / 42, 0 / 13 | no longer exposed | AGENT-6 |
 | Dome | 0 / 0 | 0 / 0 | |
 | Rotator | 0 / 0 | 0 / 0 | |
 | CoverCalibrator: FlipFlat | 0 / 1 | 0 / 0 | |
 | Switch: Pocket Powerbox | 0 / 0 | 0 / 0 | |
-| Switch: UPB3 | 0 / 0 | see 5.3 | |
+| Switch: UPB3 | 0 / 0 | 0 / 0 | |
 
 **Focuser simulator limitation.** ConformU moves an absolute focuser by `MaxStep / 10` and allows 60 s (`FocuserTimeout`).
 - The INDIGO CCD Imager focuser simulator has a range of ±9 999 999 steps (`MaxStep` 19 999 998) and moves at most 100 steps per 0.1 s. The first move of about 2 000 000 steps cannot finish in time, and the remaining move tests cascade from that.
@@ -91,9 +91,19 @@ This is simulator behaviour, not agent behaviour. The agent reports `IsMoving` c
 |---|---|---|
 | Issues / errors, summed over all devices | 953 / 5 on 17 devices (mostly `ClientTransactionID`, parameter casing and value validation) | 0 / 1 on 14 devices. The error is camera 4 ("Not connected"), the same simulator limitation as in 5.1. |
 
-### 5.3 Final reruns
+### 5.3 Telescope details and final reruns
 
-See section 7 (step A7).
+The first post-fix Telescope run used the mount simulator's default site (latitude 0°, longitude 0°). ConformU stopped with "The highest elevation available … is below the horizon", because the newly reachable extended pulse-guide tests use hour angle ±9 h, which is below the horizon at latitude 0 (1 issue, `conformu/final/conformance/telescope7_site_lat0.log`).
+
+The rerun on a fresh server set a realistic site through Alpaca before the test (`SiteLatitude=48.15`, `SiteLongitude=17.1`) and got 0 errors and 23 issues (`telescope7.log`):
+
+| Issues | Member | Cause | Classification |
+|---|---|---|---|
+| 16 | `PulseGuide ±3/±9 h N/S/E/W`: "axis did not move" | The `mount_simulator` guider only times the pulse and does not move the mount coordinates. | Simulator limitation. Pulse timing, `IsPulseGuiding` and the parked check pass. |
+| 2 | `SideofPier`: "pierEast is returned … HA -6..0", "pierWest … HA 0..+6" | `mount_simulator` sets `MOUNT_SIDE_OF_PIER.WEST` when the target is in the western sky (`az > 180`). ASCOM (and INDI) define pierEast as "mount on the east side, pointing west". The agent maps `EAST`→0 and `WEST`→1 directly. | **Open question for the user:** fix the simulator's pier-side semantics, or define the INDIGO item semantics explicitly. Not changed here. |
+| 5 | `DestinationSideOfPier` / `SOPPierTest` | Not implemented. INDIGO has no property to predict the pier side of a target. | Known gap (optional member). |
+
+The final protocol rerun on a fresh server is in section 5.2 ("After fix").
 
 ## 6. Image orientation and colour verification (`compare.py`)
 
@@ -120,11 +130,24 @@ The original agent was built from `HEAD` (`git archive`) into a scratch director
 | A4 | Common fixes: `UTCDate`, connection ALERT, focuser V3, calibrator bounds (AGENT-9..12) | done | ConformU |
 | A5 | Rewrite `imagearray` (AGENT-1/2/4/13) | done | `compare.py`, ConformU `ImageArray` / `ImageArrayVariant` |
 | A6 | Full conformance rerun on a fresh server | done | Section 5.1 |
-| A7 | Telescope rerun with a realistic site; protocol rerun on a fresh server | see below | |
+| A7 | Telescope rerun with a realistic site; protocol rerun on a fresh server | done | Sections 5.2 and 5.3 |
 
 **Discovered during A6: an incorrect build dependency.** `Makefile.drv` does not rebuild objects when `indigo_alpaca_common.h` changes. After the structure layout changed, stale objects crashed `indigo_server` (SIGSEGV in `alpaca_set_connected`, captured with gdb). A clean rebuild (`make -f ../../Makefile.drv clean`) is required after header changes. This is a repository build issue, not an agent defect.
 
-## 8. Residual risks and gaps
+## 8. Test logs
+
+All ConformU logs are in [`conformu/`](conformu). `.log` is the ConformU text log and `.json` the machine-readable result (conformance only; `alpacaprotocol` writes no result file).
+
+| Folder | Content |
+|---|---|
+| `conformu/baseline/devices.tsv` | Device numbering of the original agent: 17 devices, including standalone guiders and AO |
+| `conformu/baseline/conformance/` | Full conformance of the original agent 3.0.0.5 |
+| `conformu/baseline/protocol/` | `alpacaprotocol` of the original agent |
+| `conformu/final/devices.tsv` | Device numbering after the fix: 14 devices |
+| `conformu/final/conformance/` | Full conformance of 3.0.0.6. `telescope7.log` is the run with a realistic site; `telescope7_site_lat0.log` is the run at the simulator's default site. |
+| `conformu/final/protocol/` | `alpacaprotocol` of 3.0.0.6 |
+
+## 9. Residual risks and gaps
 
 - The `alpaca_devices` list is accessed from HTTP worker threads without a lock, and device records are freed on detach. This is a pre-existing race, unchanged.
 - The blocking `indigo_alpaca_wait_for_*` calls are unchanged. They hold an HTTP worker thread for up to 150 s during slews.
@@ -134,5 +157,17 @@ The original agent was built from `HEAD` (`git archive`) into a scratch director
 
 ## Final test summary
 
-- Simulated tests (ConformU conformance + protocol against INDIGO simulators, plus image comparison): see section 5.3 for the final totals.
-- Hardware tests: 0 run, 0 passed.
+Simulated tests, final state 3.0.0.6: 30 run, 25 passed.
+- ConformU conformance: 14 device runs, 10 clean.
+  - Camera 4: simulator without an image file.
+  - Focusers 6 and 13: the simulators move too slowly for ConformU's 60 s timeout.
+  - Telescope 7: simulator pulse guiding and pier side, `DestinationSideOfPier` not implemented.
+- ConformU protocol: 14 runs, 13 clean (camera 4).
+- Image comparison: 2 runs, 2 passed.
+
+The baseline of the original 3.0.0.5 was 36 runs:
+- conformance: 17 runs, 9 clean;
+- protocol: 17 runs, 0 clean;
+- image comparison: 2 runs, 0 passed.
+
+Hardware tests: 0 run, 0 passed.

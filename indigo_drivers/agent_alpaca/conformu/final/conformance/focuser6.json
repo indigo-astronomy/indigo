@@ -1,0 +1,137 @@
+{
+  "ErrorCount": 0,
+  "IssueCount": 13,
+  "ConfigurationAlertCount": 0,
+  "TimingIssuesCount": 0,
+  "TimingCount": 18,
+  "Errors": [],
+  "Issues": [
+    {
+      "Key": "Move",
+      "Value": "Unexpected error: The \u0022Moving focuser\u0022 operation exceeded its 60 second timeout."
+    },
+    {
+      "Key": "Move - TempComp True V3",
+      "Value": "Focuser is already moving before start of Move test, rest of test skipped"
+    },
+    {
+      "Key": "Move - TempComp True V3",
+      "Value": "Unexpected error: The \u0022Moving back to starting position\u0022 operation exceeded its 60 second timeout."
+    },
+    {
+      "Key": "Move - To 0",
+      "Value": "Focuser is already moving before start of Move test, rest of test skipped"
+    },
+    {
+      "Key": "Move - To 0",
+      "Value": "Move ended at 10001192, which is 10001192 steps away from the expected position 0. This is outside Conform\u0027s configured move tolerance: 2."
+    },
+    {
+      "Key": "Move - Below 0",
+      "Value": "Focuser is already moving before start of Move test, rest of test skipped"
+    },
+    {
+      "Key": "Move - Below 0",
+      "Value": "Move was permitted below position 0. Move ended at 10001193, which is 10001193 steps away from the expected position 0. This is outside Conform\u0027s configured move tolerance: 2."
+    },
+    {
+      "Key": "Move - To MidPoint",
+      "Value": "Focuser is already moving before start of Move test, rest of test skipped"
+    },
+    {
+      "Key": "Move - To MidPoint",
+      "Value": "Move ended at 10001193, which is 1194 steps away from the expected position 9999999. This is outside Conform\u0027s configured move tolerance: 2."
+    },
+    {
+      "Key": "Move - To MaxStep",
+      "Value": "Focuser is already moving before start of Move test, rest of test skipped"
+    },
+    {
+      "Key": "Move - To MaxStep",
+      "Value": "Move ended at 10001193, which is 9998805 steps away from the expected position 19999998. This is outside Conform\u0027s configured move tolerance: 2."
+    },
+    {
+      "Key": "Move - Above MaxStep",
+      "Value": "Focuser is already moving before start of Move test, rest of test skipped"
+    },
+    {
+      "Key": "Move - Above MaxStep",
+      "Value": "Move was permitted above position MaxStep. Move ended at 10001193, which is 9998805 steps away from the expected position 19999998. This is outside Conform\u0027s configured move tolerance: 2."
+    }
+  ],
+  "ConfigurationAlerts": [],
+  "Timings": [
+    {
+      "Key": "InterfaceVersion",
+      "Value": "At 17:17:12.910 InterfaceVersion         0.000 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Connected",
+      "Value": "At 17:17:12.917 Connected                0.005 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Description",
+      "Value": "At 17:17:12.933 Description              0.012 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "DriverInfo",
+      "Value": "At 17:17:12.936 DriverInfo               0.003 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "DriverVersion",
+      "Value": "At 17:17:12.945 DriverVersion            0.009 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Name",
+      "Value": "At 17:17:12.946 Name                     0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SupportedActions",
+      "Value": "At 17:17:12.974 SupportedActions         0.028 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Absolute",
+      "Value": "At 17:17:12.988 Absolute                 0.006 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "IsMoving",
+      "Value": "At 17:17:12.999 IsMoving                 0.010 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "MaxStep",
+      "Value": "At 17:17:13.087 MaxStep                  0.088 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "MaxIncrement",
+      "Value": "At 17:17:13.108 MaxIncrement             0.020 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Position",
+      "Value": "At 17:17:13.124 Position                 0.016 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "TempCompAvailable",
+      "Value": "At 17:17:13.304 TempCompAvailable        0.010 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "TempComp Read",
+      "Value": "At 17:17:13.313 TempComp Read            0.008 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "TempComp Write",
+      "Value": "At 17:17:13.321 TempComp Write           0.008 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "Temperature",
+      "Value": "At 17:17:13.345 Temperature              0.014 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Halt",
+      "Value": "At 17:17:13.366 Halt                     0.008 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "Move to 11999998",
+      "Value": "At 17:17:13.396 Move to 11999998         0.008 seconds. \u2713 (STANDARD)"
+    }
+  ]
+}

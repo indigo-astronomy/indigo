@@ -115,3 +115,7 @@ Needs more testing
 ## Notes
 
 See [Driver ASCOM Conformance Test Results](ASCOM_CONFORMANCE.txt)
+
+## Testing
+
+2026-09-24 17:44 3.0.0.6 linux x64 ConformU 4.5.0 (INDIGO simulators) 30/25 Failed

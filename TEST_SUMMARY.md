@@ -1,5 +1,6 @@
 | Driver | Timestamp | Version | Platform | Type | Tests | Result |
 | --- | --- | --- | --- | --- | --- | --- |
+| agent_alpaca | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 (INDIGO simulators) | 30 / 25 | ❌ Failed |
 | agent_astrometry | 2026-09-24 12:56 | 2.0.0.23 | linux x64 | simulator | 31 / 31 | ✅ OK |
 | agent_config | 2026-09-24 12:56 | 3.0.0.28 | linux x64 | simulator | 56 / 56 | ✅ OK |
 | agent_guider | 2026-09-24 12:56 | 3.0.0.48 | linux x64 | simulator | 88 / 88 | ✅ OK |
