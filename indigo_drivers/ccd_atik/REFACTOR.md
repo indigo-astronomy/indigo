@@ -353,3 +353,83 @@ Physical hot-plug was not part of this run and no hot-plug coverage is establish
 ### Test totals for this run
 
 Simulated (fake SDK) tests run 43, passed 43. Hardware tests run 2, passed 2.
+
+## Linux arm64 hardware run — Atik Titan (2026-09-24)
+
+First run of this driver on Linux and on a non-x86/non-macOS architecture: Raspberry Pi 5,
+Debian 12 bookworm, aarch64, repository at `b230d86e8`, driver version 45 (`0x0300002d`, reported by
+the client as `version 0x0300002d`), bundled arm64 `libatikcameras.so`. One camera attached, USB
+`20e7:df2e` on controller `xhci-hcd.0`; the driver resolved it through the SDK as `Atik Titan` with
+`Atik Titan (guider)` as its second logical device. The camera publishes no `product` string over
+USB, so the model comes from `ArtemisDeviceName`, not from sysfs.
+
+**No defect was found.** Two consecutive full runs of the single `ATIK physical acceptance` case
+passed with byte-identical output, the second one holding `/tmp/indigo-hwrun.lock` so no other
+camera suite was running on the host's four cores. Nothing needed an exclusive run to be diagnosed
+and no production, generator, `.driver` or fake-SDK change was required, so the driver version stays
+at 45.
+
+```sh
+INDIGO_TEST_DEVICE="Atik Titan" make -C indigo_test test-ccd-atik-hw
+# build/hardware/test_ccd_atik_hw --run build/drivers/indigo_ccd_atik.so indigo_ccd_atik
+# ATIK hardware: all tests passed
+```
+
+Workflows that actually executed inside the single case, read off the complete log rather than its
+tail: discovery and selection of one camera with its guider sibling; `CCD_UPLOAD_MODE.CLIENT` and
+`CCD_IMAGE_FORMAT.RAW`; exposures of .001/.1/1.5/2.5/16.5 s, elapsed .211/.453/1.709/2.705/16.702 s
+including setup and readout, each delivering one fresh 658 x 492 RAW16 frame of 647484 bytes; all
+five frame types; ROI (16,16) 128 x 128 delivering 32780 bytes; every advertised `CCD_MODE` bin,
+1x1/2x2/4x4/8x8; both read modes, HIGH_SPEED and LOW_NOISE; the refused-then-accepted guarded
+change on `CCD_BIN` during a five-second exposure; abort of a five-second exposure and an immediate
+fresh .1 s exposure; 100 ms guide pulses EAST/WEST/NORTH/SOUTH, one EAST pulse during a 1.5 s
+exposure, one WEST pulse after the CCD was disconnected while the guider stayed connected, and the
+camera reconnected afterwards; disconnect/reconnect with a fresh exposure; and
+`INDIGO_DRIVER_SHUTDOWN` + `dlclose` + `dlopen` + `INDIGO_DRIVER_INIT` followed by another fresh
+exposure. No invalid RAW frame was observed at either of the two checkpoints that assert it. The
+suite only prints the first twelve frames, so the absence of `frame` lines after the 1x1 bin
+exposure is the print cap, not a missing image; the frame-count assertions and the invalid-frame
+counter cover the rest.
+
+Confirmation of the two defects a previous session fixed on this target:
+
+- The driver-reload path is clean here. `dlclose()` is checked for success, the reopened driver
+  initialized, and the process exited 0 after a final `INDIGO_DRIVER_SHUTDOWN` and a second
+  `dlclose()` in `main()`. The removal of `ArtemisShutdown()` together with
+  `indigo_pin_library()` therefore holds on Linux arm64 as well, where the SDK's unjoined threads
+  are pthreads in `libatikcameras.so` rather than in a Mach-O dylib.
+- `max_devices = 16` was not exercised for capacity here: one physical camera contributes two
+  logical devices, so the old constant 5 would have been enough. `capacity_and_survivors` remains
+  the coverage for that.
+
+Scenarios the model cannot reach, recorded as not applicable rather than passed: the Titan exposes
+no cooler or temperature, so the `cooling` scenario skipped itself by its own uncooled branch; no
+integrated wheel, so `wheel` did not run; no `X_PRESETS`, `CCD_GAIN`, `CCD_OFFSET` or
+`X_WINDOW_HEATER`, so `CCD_BIN` was again the only reachable `reject_change` guard and the
+`presets` and gain/offset branches did nothing. Those branches are covered on hardware by the
+Horizon run of 2026-09-22 and hardware-free by `cooling_and_controls`, `rejected_change`,
+`preset_readback_failures`, `wheel_errors` and
+`idle_cooler_outside_advertised_range`.
+
+**Hot-plug coverage was not established by this run.** It was excluded from the scope on purpose and
+no `/sys/bus/usb/.../disable` attribute was written, because the host carries its own boot SSD and a
+second agent's camera on neighbouring ports. The Titan's unresolved macOS idle-replug SIGSEGV is
+therefore neither reproduced nor cleared on Linux.
+
+Hardware-free confirmation on the same host and architecture, run under the shared build lock:
+
+```sh
+make -C indigo_test test-ccd-atik-sdk
+# Atik fake SDK: all tests passed  (43 cases)
+```
+
+This is the first Linux run of that suite; every one of the 43 cases passed unchanged, so the
+fake-SDK contract is not macOS-specific. `indigo_pin_library()` logs
+`Can't pin build/integration/test_ccd_atik_sdk` in that suite because the fake build has no separate
+SDK object to pin, which is the expected test-build behaviour and not a driver failure.
+
+### Test totals for this run
+
+Simulated (fake SDK) tests run 43, passed 43 (Linux arm64). Hardware tests run 1, passed 1
+(Atik Titan, Linux arm64; the run was repeated once under an exclusive host lock with the same
+result).
