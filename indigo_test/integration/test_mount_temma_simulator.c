@@ -420,12 +420,14 @@ static void temma_location_pier_and_park(void) {
 	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "I-33300", mark));
 	SERIAL_CHECK_TRUE(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) > 289.7);
 	mark = trace_count(trace_path);
+	// The simulator starts with the telescope on the west side of the mount, so EAST needs PT.
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "PT", mark));
+	assert_switch_item_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true);
+	mark = trace_count(trace_path);
 	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "PT", mark));
 	assert_switch_item_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, true);
-	mark = trace_count(trace_path);
-	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "PT", mark));
 	SERIAL_CHECK_TRUE(change_number_and_wait(&temma_mount, MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_PARK_POSITION_HA_ITEM_NAME, 1.5, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(change_number_and_wait(&temma_mount, MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_PARK_POSITION_DEC_ITEM_NAME, 30, INDIGO_OK_STATE));
 	mark = trace_count(trace_path);
@@ -521,7 +523,8 @@ static void temma_position_reply_codes_and_trailer(void) {
 	// The E reply of this simulator always ends with H, so a session that comes up at all has
 	// already proved that the trailer is not required to be a digit.
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 6, 0.01));
-	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME));
+	// The simulator reports the telescope on the west side of the mount.
+	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
 	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
 	// R1 is an error, so the GOTO it answers has to be refused.
 	SERIAL_CHECK_TRUE(change_coordinates_and_wait(7, 21, INDIGO_ALERT_STATE));
@@ -530,8 +533,8 @@ static void temma_position_reply_codes_and_trailer(void) {
 	SERIAL_CHECK_TRUE(change_coordinates_and_wait(8, 22, INDIGO_BUSY_STATE));
 	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
-	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME));
-	SERIAL_CHECK_TRUE(!cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(!cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 22, 0.01));
 cleanup:
 	if (driver_started) {

@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_mount_temma"
 #define DRIVER_LABEL         "Takahashi Temma Mount"
 #define MOUNT_DEVICE_NAME    "Takahashi Temma Mount"
@@ -269,7 +269,7 @@ static bool temma_update_position(indigo_device *device) {
 	// not a side at all. The GOTO state is followed through s.
 	if (PRIVATE_DATA->response[13] != 'F') {
 		PRIVATE_DATA->telescope_side = PRIVATE_DATA->response[13];
-		indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, PRIVATE_DATA->telescope_side == 'W' ? MOUNT_SIDE_OF_PIER_EAST_ITEM : MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+		indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, PRIVATE_DATA->telescope_side == 'W' ? MOUNT_SIDE_OF_PIER_WEST_ITEM : MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
 	}
 	return true;
 }
@@ -643,7 +643,7 @@ static void mount_motion_ra_handler(indigo_device *device) {
 static void mount_side_of_pier_handler(indigo_device *device) {
 	MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_SIDE_OF_PIER.on_change
-	bool switch_side = (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value && PRIVATE_DATA->telescope_side == 'E') || (MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value && PRIVATE_DATA->telescope_side == 'W');
+	bool switch_side = (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value && PRIVATE_DATA->telescope_side == 'W') || (MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value && PRIVATE_DATA->telescope_side == 'E');
 	MOUNT_SIDE_OF_PIER_PROPERTY->state = !switch_side || temma_no_reply_command(device, "PT") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	if (MOUNT_SIDE_OF_PIER_PROPERTY->state == INDIGO_OK_STATE) {
 		temma_update_position(device);
