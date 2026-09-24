@@ -261,8 +261,8 @@ Properties are implemented by focuser driver base class in [indigo_focuser_drive
 | MOUNT_ALIGNMENT_DELETE_POINTS | switch | no | no | point id | yes | Hidden by default. |
 | MOUNT_ALIGNMENT_RESET | switch | no | no | RESET | yes | Hidden by default. |
 | MOUNT_EPOCH | number | no | yes | EPOCH | yes | Valid values are 0, 1900, 1950, 2000 and 2050 |
-| MOUNT_SIDE_OF_PIER | switch | yes | no | EAST | yes | Hidden by default. |
-|  |  |  |  | WEST | yes | West |
+| MOUNT_SIDE_OF_PIER | switch | yes | no | EAST | yes | Hidden by default. Side of the pier the OTA is on (ASCOM/INDI convention): OTA east of the pier, pointing west (normal pointing state for HA >= 0). |
+|  |  |  |  | WEST | yes | West: OTA west of the pier, pointing east. |
 | MOUNT_PEC | switch | no | no | ENABLED | yes | Hidden by default. |
 |  |  |  |  | DISABLED | yes | Disabled |
 | MOUNT_PEC_TRAINING | switch | no | no | STARTED | yes | Hidden by default. |

@@ -661,7 +661,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 					if (ha > 12.0) {
 						ha -= 24.0;
 					}
-					point->side_of_pier = (ha >= 0) ? MOUNT_SIDE_WEST : MOUNT_SIDE_EAST;
+					point->side_of_pier = (ha >= 0) ? MOUNT_SIDE_EAST : MOUNT_SIDE_WEST;
 				} else {
 					point->side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value ? MOUNT_SIDE_EAST : MOUNT_SIDE_WEST;
 				}
@@ -1057,7 +1057,7 @@ indigo_result indigo_translated_to_raw(indigo_device *device, double ra, double 
 		if (ha > 12.0) {
 			ha -= 24.0;
 		}
-		int side_of_pier = (ha >= 0.0) ? MOUNT_SIDE_WEST : MOUNT_SIDE_EAST;
+		int side_of_pier = (ha >= 0.0) ? MOUNT_SIDE_EAST : MOUNT_SIDE_WEST;
 		return indigo_translated_to_raw_with_lst(device, lst, ra, dec, side_of_pier, raw_ra, raw_dec);
 	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
 
@@ -1136,7 +1136,7 @@ indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, dou
 		if (ha > 12.0) {
 			ha -= 24.0;
 		}
-		int side_of_pier = (ha >= 0.0) ? MOUNT_SIDE_WEST : MOUNT_SIDE_EAST;
+		int side_of_pier = (ha >= 0.0) ? MOUNT_SIDE_EAST : MOUNT_SIDE_WEST;
 		return indigo_raw_to_translated_with_lst(device, lst, raw_ra, raw_dec, side_of_pier, ra, dec);
 	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
 

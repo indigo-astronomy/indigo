@@ -438,6 +438,8 @@ extern "C" {
 #define MOUNT_SIDE_OF_PIER_PROPERTY										(MOUNT_CONTEXT->mount_side_of_pier_property)
 
 /** MOUNT_SIDE_OF_PIER.EAST property item pointer.
+ The side of the pier the OTA is on (ASCOM and INDI convention): EAST means the OTA is east of the pier pointing west,
+ i.e. the normal (not flipped) pointing state for hour angle >= 0, WEST means the OTA is west of the pier pointing east.
  */
 #define MOUNT_SIDE_OF_PIER_EAST_ITEM									(MOUNT_SIDE_OF_PIER_PROPERTY->items+0)
 
@@ -480,8 +482,8 @@ extern "C" {
 /** Definition of side of pier
  */
 
-#define MOUNT_SIDE_EAST																0
-#define MOUNT_SIDE_WEST																1
+#define MOUNT_SIDE_EAST																0	///< OTA east of the pier, pointing west
+#define MOUNT_SIDE_WEST																1	///< OTA west of the pier, pointing east
 
 /** Aligment point structure.
  */
