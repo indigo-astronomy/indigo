@@ -1172,10 +1172,16 @@ $(INTEGRATION_BUILD)/ccd_touptek_sdk_driver.o: ../indigo_drivers/ccd_touptek/ind
 
 # Compile the framework property dispatcher separately so only its config-path lookup is replaced.
 # All CONFIG serialization/parsing and base driver behavior remain real; no user HOME override.
-TOUPTEK_SDK_TEST_LDFLAGS = $(filter-out -lindigo,$(TEST_LDFLAGS)) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(BUILD_LIB)/libraw.a -lhidapi -lusb-1.0 -lz -lstdc++ -ldl
-ifneq ($(OS_DETECTED),Darwin)
-TOUPTEK_SDK_TEST_LDFLAGS += -ldns_sd -lavahi-client -lavahi-common
+# -lhidapi is the name only the macOS build provides; on Linux the same library is built as
+# libhidapi-libusb, so every SDK test sharing these flags fails to link there without the switch.
+TOUPTEK_SDK_TEST_LDFLAGS = $(filter-out -lindigo -lm -lpthread,$(TEST_LDFLAGS)) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(BUILD_LIB)/libraw.a -lusb-1.0 -lz -lstdc++ -ldl
+ifeq ($(OS_DETECTED),Darwin)
+TOUPTEK_SDK_TEST_LDFLAGS += -lhidapi
+else
+TOUPTEK_SDK_TEST_LDFLAGS += -lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common
 endif
+# -lm and -lpthread come last, after the static archives that reference them.
+TOUPTEK_SDK_TEST_LDFLAGS += -lm -lpthread
 
 $(INTEGRATION_BUILD)/ccd_touptek_sdk_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -c $< -o $@
