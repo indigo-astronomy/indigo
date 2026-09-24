@@ -1709,13 +1709,35 @@ difference on DEC is host and USB latency, not the driver. Eight 1000 ms pulses 
 the reported RA by the expected amount (differential 0.0306 degrees against 0.033), and tracking
 resumes at the sidereal rate (0.0011 degrees of drift in 12 s against 0.050 for a stopped axis).
 
-Not validated: the change has not been run against a Sky-Watcher controller. The AZ-GTi hardware
-record is version 4. The protocol document and AstroEQ agree that a low-speed axis takes a new
-`:I` while running, but a rerun on the AZ-GTi is the outstanding check.
+Sky-Watcher controller: the same hardware suite against the AZ-GTi, firmware 3.16, reached through
+UDP autodetection at `synscan://192.168.111.139:11880` from macOS arm64, `SYNSCAN_HW_DEBUG=1
+./build/hardware/test_mount_synscan_hw --run`: **16 of 16 passed**, exit 0, finished 2026-09-24
+22:07 CEST, starting pointing restored. The controller accepts the in-place `:I` on the tracking
+RA axis: eight 1000 ms pulses each way differ by 0.0290 degrees against the expected 0.033, and RA
+drifted 0.0026 degrees in 12 s after the pulses against 0.050 for a stopped axis. Pulse
+completion against the last AZ-GTi record (version 4, same test, same Wi-Fi link):
+
+| Axis | Requested | Version 4 | Version 9 (min / max) |
+| --- | --- | --- | --- |
+| RA | 100 ms | +314.0 ms | +110.5 ms (+104.5 / +116.6) |
+| RA | 250 ms | +312.9 ms | +134.5 ms (+119.8 / +177.1) |
+| RA | 500 ms | +339.7 ms | +138.7 ms (+131.1 / +148.5) |
+| RA | 1000 ms | +310.8 ms | +125.7 ms (+108.2 / +171.3) |
+| RA | 2000 ms | +310.0 ms | +120.1 ms (+106.6 / +133.2) |
+| DEC | 100 ms | +173.1 ms | +166.6 ms (+159.9 / +178.6) |
+| DEC | 250 ms | +182.6 ms | +154.6 ms (+123.8 / +175.5) |
+| DEC | 500 ms | +183.5 ms | +154.5 ms (+135.0 / +186.6) |
+| DEC | 1000 ms | +183.6 ms | +165.5 ms (+138.5 / +174.2) |
+| DEC | 2000 ms | +166.7 ms | +174.4 ms (+169.0 / +184.8) |
+
+RA now overruns by about 120 ms instead of about 320; the remainder is the status query and `:I`
+round trips over Wi-Fi, which take longer than over the AstroEQ's USB link. DEC is unchanged within
+the spread, as expected.
 
 ### Final test summary, SYNSCAN-D02
 
 - Simulated tests run: 20. Passed: 20 (macOS arm64, version 9). The same suite against version 8
   with the new reproducer: 20 run, 19 passed, the reproducer failing as expected.
-- Hardware tests run: 16. Passed: 16 (AstroEQ 8.25 ESP32-S3, macOS arm64, version 9).
+- Hardware tests run: 32. Passed: 32 (version 9, macOS arm64: 16 on the AstroEQ 8.25 ESP32-S3 over
+  USB serial, 16 on the Sky-Watcher AZ-GTi over UDP).
 - Defects found: 1 (SYNSCAN-D02). Fixed: 1. Driver version: 8 before, 9 after.
