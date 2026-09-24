@@ -2013,17 +2013,26 @@ static void rotator_sync_wrap(void) {
 
 static void configuration_failure(void) {
 	CHECK(num(AGENT, "AGENT_MOUNT_FOV", "WIDTH", 1));
-	char path[sizeof(config_folder)], filename[256], before[16384], after[16384];
-	strcpy(path, config_folder);
-	snprintf(filename, sizeof(filename), "%s/Mount_Agent.config", path);
+	char folder[256], saved_folder[300], filename[300], before[16384], after[16384];
+	snprintf(folder, sizeof(folder), "%s/.indigo", config_folder);
+	snprintf(saved_folder, sizeof(saved_folder), "%s.saved", folder);
+	snprintf(filename, sizeof(filename), "%s/Mount_Agent.config", folder);
 	FILE *file = fopen(filename, "r");
 	CHECK(file);
 	size_t size = fread(before, 1, sizeof(before), file);
 	fclose(file);
-	// ENOTDIR is deterministic even when the test account has broad privileges.
-	strcpy(config_folder, "/dev/null");
-	bool accepted = num(AGENT, "AGENT_MOUNT_FOV", "WIDTH", 2);
-	strcpy(config_folder, path);
+	// A regular file in place of the configuration folder makes the save fail with ENOTDIR,
+	// deterministically even when the test account has broad privileges.
+	CHECK(rename(folder, saved_folder) == 0);
+	file = fopen(folder, "w");
+	bool blocked = file != NULL;
+	if (file) {
+		fclose(file);
+	}
+	bool accepted = blocked && num(AGENT, "AGENT_MOUNT_FOV", "WIDTH", 2);
+	unlink(folder);
+	CHECK(rename(saved_folder, folder) == 0);
+	CHECK(blocked);
 	CHECK(accepted);
 	CHECK(value(AGENT, "AGENT_MOUNT_FOV", "WIDTH") == 2);
 	file = fopen(filename, "r");
