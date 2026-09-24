@@ -43,7 +43,7 @@ typedef struct {
 	indigo_property *property;
 	unsigned revision, busy, terminal, blobs;
 	long blob_size;
-	unsigned char blob_prefix[32];
+	unsigned char blob_prefix[64];
 } observation;
 static observation cache[2048];
 static pthread_mutex_t cache_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -751,6 +751,7 @@ static void download_listing_payload_delete(void) {
 	FILE *file = fopen(path, "wb");
 	ASSERT_TRUE(file != NULL);
 	const char payload[] = "INDIGO integration image payload";
+	_Static_assert(sizeof(payload) <= sizeof(((observation *)0)->blob_prefix), "payload must fit the captured blob prefix");
 	ASSERT_EQ_INT(sizeof(payload), fwrite(payload, 1, sizeof(payload), file));
 	fclose(file);
 	ASSERT_TRUE(txt(AGENT, "CCD_LOCAL_MODE", "DIR", folder, INDIGO_OK_STATE));
