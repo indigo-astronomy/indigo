@@ -24,7 +24,7 @@
  \file indigo_agent_alpaca.c
  */
 
-#define DRIVER_VERSION 0x03000005
+#define DRIVER_VERSION 0x03000006
 #define DRIVER_NAME	"indigo_agent_alpaca"
 
 #include <stdlib.h>
@@ -33,6 +33,9 @@
 #include <assert.h>
 #include <pthread.h>
 #include <errno.h>
+#include <ctype.h>
+#include <stdint.h>
+#include <limits.h>
 
 #if defined(INDIGO_MACOS) || defined(INDIGO_LINUX)
 #include <unistd.h>
@@ -80,7 +83,7 @@ static SOCKET discovery_server_socket = INVALID_SOCKET;
 #endif
 
 static indigo_alpaca_device *alpaca_devices = NULL;
-static int server_transaction_id = 0;
+static uint32_t server_transaction_id = 1;
 
 indigo_device *indigo_agent_alpaca_device = NULL;
 indigo_client *indigo_agent_alpaca_client = NULL;
@@ -186,29 +189,463 @@ static void shutdown_discovery_server() {
 	}
 }
 
-static void parse_url_params(char *params, int *client_id, int *client_transaction_id, int *id) {
-	if (params == NULL) {
-		return;
+#define ALPACA_MAX_PARAMS		16
+
+typedef enum {
+	ALPACA_NONE = 0,
+	ALPACA_BOOL,
+	ALPACA_INT,
+	ALPACA_DOUBLE,
+	ALPACA_STRING
+} alpaca_param_type;
+
+typedef struct {
+	const char *name;
+	alpaca_param_type type;
+} alpaca_param_spec;
+
+typedef struct {
+	const char *name;
+	bool get;
+	bool put;
+	alpaca_param_spec get_params[2];
+	alpaca_param_spec put_params[2];
+} alpaca_member_spec;
+
+typedef struct {
+	char key[64];
+	char value[INDIGO_VALUE_SIZE];
+} alpaca_param;
+
+typedef struct {
+	uint32_t client_id;
+	uint32_t client_transaction_id;
+	int count;
+	alpaca_param params[ALPACA_MAX_PARAMS];
+} alpaca_request;
+
+#define ALPACA_GET(name)																{ name, true, false }
+#define ALPACA_PUT(name)																{ name, false, true }
+#define ALPACA_GET_1(name, p1, t1)											{ name, true, false, { { p1, t1 } } }
+#define ALPACA_GET_2(name, p1, t1, p2, t2)							{ name, true, false, { { p1, t1 }, { p2, t2 } } }
+#define ALPACA_PUT_1(name, p1, t1)											{ name, false, true, { { NULL } }, { { p1, t1 } } }
+#define ALPACA_PUT_2(name, p1, t1, p2, t2)							{ name, false, true, { { NULL } }, { { p1, t1 }, { p2, t2 } } }
+#define ALPACA_GET_PUT_1(name, p1, t1)									{ name, true, true, { { NULL } }, { { p1, t1 } } }
+
+// Alpaca device API members as defined in https://ascom-standards.org/api (AlpacaDeviceAPI_v1.yaml, Platform 7).
+// PUT parameter names are case sensitive, GET parameter names are not.
+
+static alpaca_member_spec alpaca_common_members[] = {
+	ALPACA_PUT_2("action", "Action", ALPACA_STRING, "Parameters", ALPACA_STRING),
+	ALPACA_PUT_2("commandblind", "Command", ALPACA_STRING, "Raw", ALPACA_BOOL),
+	ALPACA_PUT_2("commandbool", "Command", ALPACA_STRING, "Raw", ALPACA_BOOL),
+	ALPACA_PUT_2("commandstring", "Command", ALPACA_STRING, "Raw", ALPACA_BOOL),
+	ALPACA_GET_PUT_1("connected", "Connected", ALPACA_BOOL),
+	ALPACA_PUT("connect"),
+	ALPACA_PUT("disconnect"),
+	ALPACA_GET("connecting"),
+	ALPACA_GET("devicestate"),
+	ALPACA_GET("description"),
+	ALPACA_GET("driverinfo"),
+	ALPACA_GET("driverversion"),
+	ALPACA_GET("interfaceversion"),
+	ALPACA_GET("name"),
+	ALPACA_GET("supportedactions"),
+	{ NULL }
+};
+
+static alpaca_member_spec alpaca_camera_members[] = {
+	ALPACA_GET("bayeroffsetx"),
+	ALPACA_GET("bayeroffsety"),
+	ALPACA_GET_PUT_1("binx", "BinX", ALPACA_INT),
+	ALPACA_GET_PUT_1("biny", "BinY", ALPACA_INT),
+	ALPACA_GET("camerastate"),
+	ALPACA_GET("cameraxsize"),
+	ALPACA_GET("cameraysize"),
+	ALPACA_GET("canabortexposure"),
+	ALPACA_GET("canasymmetricbin"),
+	ALPACA_GET("canfastreadout"),
+	ALPACA_GET("cangetcoolerpower"),
+	ALPACA_GET("canpulseguide"),
+	ALPACA_GET("cansetccdtemperature"),
+	ALPACA_GET("canstopexposure"),
+	ALPACA_GET("ccdtemperature"),
+	ALPACA_GET_PUT_1("cooleron", "CoolerOn", ALPACA_BOOL),
+	ALPACA_GET("coolerpower"),
+	ALPACA_GET("electronsperadu"),
+	ALPACA_GET("exposuremax"),
+	ALPACA_GET("exposuremin"),
+	ALPACA_GET("exposureresolution"),
+	ALPACA_GET_PUT_1("fastreadout", "FastReadout", ALPACA_BOOL),
+	ALPACA_GET("fullwellcapacity"),
+	ALPACA_GET_PUT_1("gain", "Gain", ALPACA_INT),
+	ALPACA_GET("gainmax"),
+	ALPACA_GET("gainmin"),
+	ALPACA_GET("gains"),
+	ALPACA_GET("hasshutter"),
+	ALPACA_GET("heatsinktemperature"),
+	ALPACA_GET("imagearray"),
+	ALPACA_GET("imagearrayvariant"),
+	ALPACA_GET("imageready"),
+	ALPACA_GET("ispulseguiding"),
+	ALPACA_GET("lastexposureduration"),
+	ALPACA_GET("lastexposurestarttime"),
+	ALPACA_GET("maxadu"),
+	ALPACA_GET("maxbinx"),
+	ALPACA_GET("maxbiny"),
+	ALPACA_GET_PUT_1("numx", "NumX", ALPACA_INT),
+	ALPACA_GET_PUT_1("numy", "NumY", ALPACA_INT),
+	ALPACA_GET_PUT_1("offset", "Offset", ALPACA_INT),
+	ALPACA_GET("offsetmax"),
+	ALPACA_GET("offsetmin"),
+	ALPACA_GET("offsets"),
+	ALPACA_GET("percentcompleted"),
+	ALPACA_GET("pixelsizex"),
+	ALPACA_GET("pixelsizey"),
+	ALPACA_GET_PUT_1("readoutmode", "ReadoutMode", ALPACA_INT),
+	ALPACA_GET("readoutmodes"),
+	ALPACA_GET("sensorname"),
+	ALPACA_GET("sensortype"),
+	ALPACA_GET_PUT_1("setccdtemperature", "SetCCDTemperature", ALPACA_DOUBLE),
+	ALPACA_GET_PUT_1("startx", "StartX", ALPACA_INT),
+	ALPACA_GET_PUT_1("starty", "StartY", ALPACA_INT),
+	ALPACA_GET_PUT_1("subexposureduration", "SubExposureDuration", ALPACA_DOUBLE),
+	ALPACA_PUT("abortexposure"),
+	ALPACA_PUT_2("pulseguide", "Direction", ALPACA_INT, "Duration", ALPACA_INT),
+	ALPACA_PUT_2("startexposure", "Duration", ALPACA_DOUBLE, "Light", ALPACA_BOOL),
+	ALPACA_PUT("stopexposure"),
+	{ NULL }
+};
+
+static alpaca_member_spec alpaca_covercalibrator_members[] = {
+	ALPACA_GET("brightness"),
+	ALPACA_GET("calibratorchanging"),
+	ALPACA_GET("calibratorstate"),
+	ALPACA_GET("covermoving"),
+	ALPACA_GET("coverstate"),
+	ALPACA_GET("maxbrightness"),
+	ALPACA_PUT("calibratoroff"),
+	ALPACA_PUT_1("calibratoron", "Brightness", ALPACA_INT),
+	ALPACA_PUT("closecover"),
+	ALPACA_PUT("haltcover"),
+	ALPACA_PUT("opencover"),
+	{ NULL }
+};
+
+static alpaca_member_spec alpaca_dome_members[] = {
+	ALPACA_GET("altitude"),
+	ALPACA_GET("athome"),
+	ALPACA_GET("atpark"),
+	ALPACA_GET("azimuth"),
+	ALPACA_GET("canfindhome"),
+	ALPACA_GET("canpark"),
+	ALPACA_GET("cansetaltitude"),
+	ALPACA_GET("cansetazimuth"),
+	ALPACA_GET("cansetpark"),
+	ALPACA_GET("cansetshutter"),
+	ALPACA_GET("canslave"),
+	ALPACA_GET("cansyncazimuth"),
+	ALPACA_GET("shutterstatus"),
+	ALPACA_GET_PUT_1("slaved", "Slaved", ALPACA_BOOL),
+	ALPACA_GET("slewing"),
+	ALPACA_PUT("abortslew"),
+	ALPACA_PUT("closeshutter"),
+	ALPACA_PUT("findhome"),
+	ALPACA_PUT("openshutter"),
+	ALPACA_PUT("park"),
+	ALPACA_PUT("setpark"),
+	ALPACA_PUT_1("slewtoaltitude", "Altitude", ALPACA_DOUBLE),
+	ALPACA_PUT_1("slewtoazimuth", "Azimuth", ALPACA_DOUBLE),
+	ALPACA_PUT_1("synctoazimuth", "Azimuth", ALPACA_DOUBLE),
+	{ NULL }
+};
+
+static alpaca_member_spec alpaca_filterwheel_members[] = {
+	ALPACA_GET("focusoffsets"),
+	ALPACA_GET("names"),
+	ALPACA_GET_PUT_1("position", "Position", ALPACA_INT),
+	{ NULL }
+};
+
+static alpaca_member_spec alpaca_focuser_members[] = {
+	ALPACA_GET("absolute"),
+	ALPACA_GET("ismoving"),
+	ALPACA_GET("maxincrement"),
+	ALPACA_GET("maxstep"),
+	ALPACA_GET("position"),
+	ALPACA_GET("stepsize"),
+	ALPACA_GET_PUT_1("tempcomp", "TempComp", ALPACA_BOOL),
+	ALPACA_GET("tempcompavailable"),
+	ALPACA_GET("temperature"),
+	ALPACA_PUT("halt"),
+	ALPACA_PUT_1("move", "Position", ALPACA_INT),
+	{ NULL }
+};
+
+static alpaca_member_spec alpaca_rotator_members[] = {
+	ALPACA_GET("canreverse"),
+	ALPACA_GET("ismoving"),
+	ALPACA_GET("mechanicalposition"),
+	ALPACA_GET("position"),
+	ALPACA_GET_PUT_1("reverse", "Reverse", ALPACA_BOOL),
+	ALPACA_GET("stepsize"),
+	ALPACA_GET("targetposition"),
+	ALPACA_PUT("halt"),
+	ALPACA_PUT_1("move", "Position", ALPACA_DOUBLE),
+	ALPACA_PUT_1("moveabsolute", "Position", ALPACA_DOUBLE),
+	ALPACA_PUT_1("movemechanical", "Position", ALPACA_DOUBLE),
+	ALPACA_PUT_1("sync", "Position", ALPACA_DOUBLE),
+	{ NULL }
+};
+
+static alpaca_member_spec alpaca_switch_members[] = {
+	ALPACA_GET("maxswitch"),
+	ALPACA_GET_1("canasync", "Id", ALPACA_INT),
+	ALPACA_GET_1("canwrite", "Id", ALPACA_INT),
+	ALPACA_GET_1("getswitch", "Id", ALPACA_INT),
+	ALPACA_GET_1("getswitchdescription", "Id", ALPACA_INT),
+	ALPACA_GET_1("getswitchname", "Id", ALPACA_INT),
+	ALPACA_GET_1("getswitchvalue", "Id", ALPACA_INT),
+	ALPACA_GET_1("maxswitchvalue", "Id", ALPACA_INT),
+	ALPACA_GET_1("minswitchvalue", "Id", ALPACA_INT),
+	ALPACA_GET_1("statechangecomplete", "Id", ALPACA_INT),
+	ALPACA_GET_1("switchstep", "Id", ALPACA_INT),
+	ALPACA_PUT_1("cancelasync", "Id", ALPACA_INT),
+	ALPACA_PUT_2("setasync", "Id", ALPACA_INT, "State", ALPACA_BOOL),
+	ALPACA_PUT_2("setasyncvalue", "Id", ALPACA_INT, "Value", ALPACA_DOUBLE),
+	ALPACA_PUT_2("setswitch", "Id", ALPACA_INT, "State", ALPACA_BOOL),
+	ALPACA_PUT_2("setswitchname", "Id", ALPACA_INT, "Name", ALPACA_STRING),
+	ALPACA_PUT_2("setswitchvalue", "Id", ALPACA_INT, "Value", ALPACA_DOUBLE),
+	{ NULL }
+};
+
+static alpaca_member_spec alpaca_telescope_members[] = {
+	ALPACA_GET("alignmentmode"),
+	ALPACA_GET("altitude"),
+	ALPACA_GET("aperturearea"),
+	ALPACA_GET("aperturediameter"),
+	ALPACA_GET("athome"),
+	ALPACA_GET("atpark"),
+	ALPACA_GET("azimuth"),
+	ALPACA_GET("canfindhome"),
+	ALPACA_GET("canpark"),
+	ALPACA_GET("canpulseguide"),
+	ALPACA_GET("cansetdeclinationrate"),
+	ALPACA_GET("cansetguiderates"),
+	ALPACA_GET("cansetpark"),
+	ALPACA_GET("cansetpierside"),
+	ALPACA_GET("cansetrightascensionrate"),
+	ALPACA_GET("cansettracking"),
+	ALPACA_GET("canslew"),
+	ALPACA_GET("canslewaltaz"),
+	ALPACA_GET("canslewaltazasync"),
+	ALPACA_GET("canslewasync"),
+	ALPACA_GET("cansync"),
+	ALPACA_GET("cansyncaltaz"),
+	ALPACA_GET("canunpark"),
+	ALPACA_GET("declination"),
+	ALPACA_GET_PUT_1("declinationrate", "DeclinationRate", ALPACA_DOUBLE),
+	ALPACA_GET_PUT_1("doesrefraction", "DoesRefraction", ALPACA_BOOL),
+	ALPACA_GET("equatorialsystem"),
+	ALPACA_GET("focallength"),
+	ALPACA_GET_PUT_1("guideratedeclination", "GuideRateDeclination", ALPACA_DOUBLE),
+	ALPACA_GET_PUT_1("guideraterightascension", "GuideRateRightAscension", ALPACA_DOUBLE),
+	ALPACA_GET("ispulseguiding"),
+	ALPACA_GET("rightascension"),
+	ALPACA_GET_PUT_1("rightascensionrate", "RightAscensionRate", ALPACA_DOUBLE),
+	ALPACA_GET_PUT_1("sideofpier", "SideOfPier", ALPACA_INT),
+	ALPACA_GET("siderealtime"),
+	ALPACA_GET_PUT_1("siteelevation", "SiteElevation", ALPACA_DOUBLE),
+	ALPACA_GET_PUT_1("sitelatitude", "SiteLatitude", ALPACA_DOUBLE),
+	ALPACA_GET_PUT_1("sitelongitude", "SiteLongitude", ALPACA_DOUBLE),
+	ALPACA_GET("slewing"),
+	ALPACA_GET_PUT_1("slewsettletime", "SlewSettleTime", ALPACA_INT),
+	ALPACA_GET_PUT_1("targetdeclination", "TargetDeclination", ALPACA_DOUBLE),
+	ALPACA_GET_PUT_1("targetrightascension", "TargetRightAscension", ALPACA_DOUBLE),
+	ALPACA_GET_PUT_1("tracking", "Tracking", ALPACA_BOOL),
+	ALPACA_GET_PUT_1("trackingrate", "TrackingRate", ALPACA_INT),
+	ALPACA_GET("trackingrates"),
+	ALPACA_GET_PUT_1("utcdate", "UTCDate", ALPACA_STRING),
+	ALPACA_GET_1("axisrates", "Axis", ALPACA_INT),
+	ALPACA_GET_1("canmoveaxis", "Axis", ALPACA_INT),
+	ALPACA_GET_2("destinationsideofpier", "RightAscension", ALPACA_DOUBLE, "Declination", ALPACA_DOUBLE),
+	ALPACA_PUT("abortslew"),
+	ALPACA_PUT("findhome"),
+	ALPACA_PUT_2("moveaxis", "Axis", ALPACA_INT, "Rate", ALPACA_DOUBLE),
+	ALPACA_PUT("park"),
+	ALPACA_PUT_2("pulseguide", "Direction", ALPACA_INT, "Duration", ALPACA_INT),
+	ALPACA_PUT("setpark"),
+	ALPACA_PUT_2("slewtoaltaz", "Azimuth", ALPACA_DOUBLE, "Altitude", ALPACA_DOUBLE),
+	ALPACA_PUT_2("slewtoaltazasync", "Azimuth", ALPACA_DOUBLE, "Altitude", ALPACA_DOUBLE),
+	ALPACA_PUT_2("slewtocoordinates", "RightAscension", ALPACA_DOUBLE, "Declination", ALPACA_DOUBLE),
+	ALPACA_PUT_2("slewtocoordinatesasync", "RightAscension", ALPACA_DOUBLE, "Declination", ALPACA_DOUBLE),
+	ALPACA_PUT("slewtotarget"),
+	ALPACA_PUT("slewtotargetasync"),
+	ALPACA_PUT_2("synctoaltaz", "Azimuth", ALPACA_DOUBLE, "Altitude", ALPACA_DOUBLE),
+	ALPACA_PUT_2("synctocoordinates", "RightAscension", ALPACA_DOUBLE, "Declination", ALPACA_DOUBLE),
+	ALPACA_PUT("synctotarget"),
+	ALPACA_PUT("unpark"),
+	{ NULL }
+};
+
+static struct {
+	const char *device_type;
+	alpaca_member_spec *members;
+} alpaca_device_members[] = {
+	{ "camera", alpaca_camera_members },
+	{ "covercalibrator", alpaca_covercalibrator_members },
+	{ "dome", alpaca_dome_members },
+	{ "filterwheel", alpaca_filterwheel_members },
+	{ "focuser", alpaca_focuser_members },
+	{ "rotator", alpaca_rotator_members },
+	{ "switch", alpaca_switch_members },
+	{ "telescope", alpaca_telescope_members },
+	{ NULL }
+};
+
+static alpaca_member_spec *find_member(const char *device_type, const char *name) {
+	for (alpaca_member_spec *member = alpaca_common_members; member->name; member++) {
+		if (!strcmp(member->name, name)) {
+			return member;
+		}
 	}
-	while (true) {
-		char *token = strtok_r(params, "&", &params);
-		if (token == NULL) {
+	for (int i = 0; alpaca_device_members[i].device_type; i++) {
+		if (!strcmp(alpaca_device_members[i].device_type, device_type)) {
+			for (alpaca_member_spec *member = alpaca_device_members[i].members; member->name; member++) {
+				if (!strcmp(member->name, name)) {
+					return member;
+				}
+			}
 			break;
 		}
-		if (!strncasecmp(token, "ClientID", 8)) {
-			if ((token = strchr(token, '='))) {
-				*client_id = atoi(token + 1);
+	}
+	return NULL;
+}
+
+static int hex_digit(char c) {
+	if (c >= '0' && c <= '9') {
+		return c - '0';
+	}
+	if (c >= 'a' && c <= 'f') {
+		return c - 'a' + 10;
+	}
+	if (c >= 'A' && c <= 'F') {
+		return c - 'A' + 10;
+	}
+	return -1;
+}
+
+static void url_decode(char *target, long target_size, const char *source, long source_length) {
+	long j = 0;
+	for (long i = 0; i < source_length && j < target_size - 1; i++) {
+		char c = source[i];
+		if (c == '+') {
+			c = ' ';
+		} else if (c == '%' && i + 2 < source_length && hex_digit(source[i + 1]) >= 0 && hex_digit(source[i + 2]) >= 0) {
+			c = (char)(hex_digit(source[i + 1]) * 16 + hex_digit(source[i + 2]));
+			i += 2;
+		}
+		target[j++] = c;
+	}
+	target[j] = 0;
+}
+
+// ClientID and ClientTransactionID are uint32; anything else (empty, negative, non-numeric, too large) is treated as not supplied.
+static uint32_t parse_transaction_id(const char *value) {
+	if (*value < '0' || *value > '9') {
+		return 0;
+	}
+	char *end;
+	unsigned long long result = strtoull(value, &end, 10);
+	if (*end || result > UINT32_MAX) {
+		return 0;
+	}
+	return (uint32_t)result;
+}
+
+// GET parameter names are case insensitive, PUT (form) parameter names are case sensitive and wrongly cased ClientID / ClientTransactionID are ignored.
+static void parse_params(const char *text, alpaca_request *request, bool case_sensitive) {
+	memset(request, 0, sizeof(alpaca_request));
+	if (text == NULL) {
+		return;
+	}
+	const char *pnt = text;
+	while (*pnt) {
+		const char *end = strchr(pnt, '&');
+		long length = end ? end - pnt : (long)strlen(pnt);
+		if (length > 0 && request->count < ALPACA_MAX_PARAMS) {
+			alpaca_param *param = request->params + request->count;
+			const char *equal = memchr(pnt, '=', length);
+			long key_length = equal ? equal - pnt : length;
+			url_decode(param->key, sizeof(param->key), pnt, key_length);
+			if (equal) {
+				url_decode(param->value, sizeof(param->value), equal + 1, length - key_length - 1);
+			} else {
+				*param->value = 0;
 			}
-		} else if (!strncasecmp(token, "ClientTransactionID", 19)) {
-			if ((token = strchr(token, '='))) {
-				*client_transaction_id = atoi(token + 1);
-			}
-		} else if (id && !strncasecmp(token, "ID", 2)) {
-			if ((token = strchr(token, '='))) {
-				*id = (int)atol(token + 1);
+			if (case_sensitive ? !strcmp(param->key, "ClientID") : !strcasecmp(param->key, "ClientID")) {
+				request->client_id = parse_transaction_id(param->value);
+			} else if (case_sensitive ? !strcmp(param->key, "ClientTransactionID") : !strcasecmp(param->key, "ClientTransactionID")) {
+				request->client_transaction_id = parse_transaction_id(param->value);
+			} else {
+				request->count++;
 			}
 		}
+		if (end == NULL) {
+			break;
+		}
+		pnt = end + 1;
 	}
+}
+
+static const char *find_param(alpaca_request *request, const char *name, bool case_sensitive) {
+	for (int i = 0; i < request->count; i++) {
+		if (case_sensitive ? !strcmp(request->params[i].key, name) : !strcasecmp(request->params[i].key, name)) {
+			return request->params[i].value;
+		}
+	}
+	return NULL;
+}
+
+static bool validate_param(const char *value, alpaca_param_type type) {
+	char *end;
+	switch (type) {
+		case ALPACA_BOOL:
+			return !strcasecmp(value, "true") || !strcasecmp(value, "false");
+		case ALPACA_INT: {
+			if (*value == 0) {
+				return false;
+			}
+			errno = 0;
+			long result = strtol(value, &end, 10);
+			return *end == 0 && errno == 0 && result >= INT_MIN && result <= INT_MAX;
+		}
+		case ALPACA_DOUBLE: {
+			if (*value == 0) {
+				return false;
+			}
+			double result = strtod(value, &end);
+			return *end == 0 && isfinite(result);
+		}
+		default:
+			return true;
+	}
+}
+
+// Checks that all parameters required by the member are present and well formed.
+static bool validate_params(alpaca_request *request, alpaca_param_spec *specs, bool case_sensitive, char *message, int message_size) {
+	for (int i = 0; i < 2 && specs[i].name; i++) {
+		const char *value = find_param(request, specs[i].name, case_sensitive);
+		if (value == NULL) {
+			snprintf(message, message_size, "Missing parameter %s", specs[i].name);
+			return false;
+		}
+		if (!validate_param(value, specs[i].type)) {
+			snprintf(message, message_size, "Invalid value of parameter %s", specs[i].name);
+			return false;
+		}
+	}
+	return true;
 }
 
 static void send_json_response(indigo_uni_handle *handle, char *path, int status_code, const char *status_text, char *body) {
@@ -264,27 +701,27 @@ static bool alpaca_setup_handler(indigo_uni_handle *handle, char *method, char *
 }
 
 static bool alpaca_apiversions_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
-	int client_id = 0, client_transaction_id = 0;
+	alpaca_request request;
 	char buffer[128];
-	parse_url_params(params, &client_id, &client_transaction_id, NULL);
-	snprintf(buffer, sizeof(buffer), "{ \"Value\": [ 1 ], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
+	parse_params(params, &request, false);
+	snprintf(buffer, sizeof(buffer), "{ \"Value\": [ 1 ], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", request.client_transaction_id, server_transaction_id++);
 	send_json_response(handle, path, 200, "OK", buffer);
 	return true;
 }
 
 static bool alpaca_v1_description_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
-	int client_id = 0, client_transaction_id = 0;
+	alpaca_request request;
 	char buffer[512];
-	parse_url_params(params, &client_id, &client_transaction_id, NULL);
-	snprintf(buffer, sizeof(buffer), "{ \"Value\": { \"ServerName\": \"INDIGO-Alpaca Bridge\", \"ServerVersion\": \"%d.%d-%s\", \"Manufacturer\": \"The INDIGO Initiative\", \"ManufacturerURL\": \"https://www.indigo-astronomy.org\" }, \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, client_transaction_id, server_transaction_id++);
+	parse_params(params, &request, false);
+	snprintf(buffer, sizeof(buffer), "{ \"Value\": { \"ServerName\": \"INDIGO-Alpaca Bridge\", \"Manufacturer\": \"The INDIGO Initiative\", \"ManufacturerVersion\": \"%d.%d-%s\", \"Location\": \"\" }, \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, request.client_transaction_id, server_transaction_id++);
 	send_json_response(handle, path, 200, "OK", buffer);
 	return true;
 }
 
 static bool alpaca_v1_configureddevices_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
-	int client_id = 0, client_transaction_id = 0;
+	alpaca_request request;
 	char *buffer = indigo_alloc_large_buffer();
-	parse_url_params(params, &client_id, &client_transaction_id, NULL);
+	parse_params(params, &request, false);
 	long index = snprintf(buffer, INDIGO_BUFFER_SIZE, "{ \"Value\": [ ");
 	indigo_alpaca_device *alpaca_device = alpaca_devices;
 	bool comma_needed = false;
@@ -300,20 +737,18 @@ static bool alpaca_v1_configureddevices_handler(indigo_uni_handle *handle, char 
 		}
 		alpaca_device = alpaca_device->next;
 	}
-	snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, "], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
+	snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, "], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", request.client_transaction_id, server_transaction_id++);
 	send_json_response(handle, path, 200, "OK", buffer);
 	indigo_free_large_buffer(buffer);
 	return true;
 }
 
-int string_cmp(const void * a, const void * b) {
+static int string_cmp(const void * a, const void * b) {
 	 return strncasecmp((char *)a, (char *)b, 128);
 }
 
-static bool alpaca_v1_api_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s %s %s", method, path, params);
-	int client_id = 0, client_transaction_id = 0;
-	int id = 0;
+static bool alpaca_v1_api_request(indigo_uni_handle *handle, char *method, char *path, char *params, char *body) {
+	char message[128];
 	char *device_type = strstr(path, "/api/v1/");
 	if (device_type == NULL) {
 		send_text_response(handle, path, 400, "Bad Request", "Wrong API prefix");
@@ -332,16 +767,15 @@ static bool alpaca_v1_api_handler(indigo_uni_handle *handle, char *method, char 
 		return true;
 	}
 	*command++ = 0;
-	char *buffer = NULL;
+	if (*device_number == 0 || strspn(device_number, "0123456789") != strlen(device_number)) {
+		send_text_response(handle, path, 400, "Bad Request", "Invalid device number");
+		return true;
+	}
 	indigo_alpaca_device *alpaca_device = alpaca_devices;
 	int number = atoi(device_number);
 	while (alpaca_device) {
-		if (alpaca_device->device_number == number) {
-			if (alpaca_device->device_type && !strcasecmp(alpaca_device->device_type, device_type)) {
-				break;
-			}
-			send_text_response(handle, path, 400, "Bad Request", "Device type doesn't match");
-			return true;
+		if (alpaca_device->device_type && alpaca_device->device_number == number) {
+			break;
 		}
 		alpaca_device = alpaca_device->next;
 	}
@@ -349,30 +783,90 @@ static bool alpaca_v1_api_handler(indigo_uni_handle *handle, char *method, char 
 		send_text_response(handle, path, 400, "Bad Request", "No such device");
 		return true;
 	}
+	// device type, device number and member name are case sensitive and lower case
+	char type[32] = { 0 };
+	for (int i = 0; alpaca_device->device_type[i] && i < (int)sizeof(type) - 1; i++) {
+		type[i] = (char)tolower(alpaca_device->device_type[i]);
+	}
+	if (strcmp(type, device_type)) {
+		send_text_response(handle, path, 400, "Bad Request", "Device type doesn't match");
+		return true;
+	}
+	alpaca_member_spec *member = find_member(type, command);
+	if (member == NULL) {
+		send_text_response(handle, path, 400, "Bad Request", "Unrecognised command");
+		return true;
+	}
+	bool keep_alive = true;
+	alpaca_request *request = indigo_safe_malloc(sizeof(alpaca_request));
 	if (!strncmp(method, "GET", 3)) {
-		parse_url_params(params, &client_id, &client_transaction_id, &id);
-		if (!strncmp(command, "imagearray", 10)) {
-			indigo_alpaca_ccd_get_imagearray(alpaca_device, 1, handle, client_transaction_id, server_transaction_id++, !strcmp(method, "GET/GZIP"), !strcmp(method, "GET/IMAGEBYTES"));
-			return false;
+		parse_params(params, request, false);
+		if (!member->get) {
+			send_text_response(handle, path, 400, "Bad Request", "Invalid method");
+		} else if (!validate_params(request, member->get_params, false, message, sizeof(message))) {
+			send_text_response(handle, path, 400, "Bad Request", message);
+		} else if (!strcmp(command, "imagearray") || !strcmp(command, "imagearrayvariant")) {
+			indigo_alpaca_ccd_get_imagearray(alpaca_device, 1, handle, request->client_transaction_id, server_transaction_id++, !strcmp(method, "GET/GZIP"), !strcmp(method, "GET/IMAGEBYTES"));
+			keep_alive = false;
 		} else {
-			buffer = indigo_alloc_large_buffer();
+			const char *id = find_param(request, "Id", false);
+			char *buffer = indigo_alloc_large_buffer();
 			long index = snprintf(buffer, INDIGO_BUFFER_SIZE, "{ ");
-			long length = indigo_alpaca_get_command(alpaca_device, 1, command, id, buffer + index, INDIGO_BUFFER_SIZE - index);
-			if (length > 0) {
-				index += length;
-				snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
-				send_json_response(handle, path, 200, "OK", buffer);
-			} else {
-				send_text_response(handle, path, 400, "Bad Request", "Unrecognised command");
+			long length = indigo_alpaca_get_command(alpaca_device, 1, command, id ? atoi(id) : 0, buffer + index, INDIGO_BUFFER_SIZE - index);
+			if (length <= 0) {
+				length = indigo_alpaca_append_error(buffer + index, INDIGO_BUFFER_SIZE - index, indigo_alpaca_error_NotImplemented);
 			}
+			index += length;
+			snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", request->client_transaction_id, server_transaction_id++);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
+			send_json_response(handle, path, 200, "OK", buffer);
+			indigo_free_large_buffer(buffer);
 		}
 	} else if (!strcmp(method, "PUT")) {
+		parse_params(body, request, true);
+		if (!member->put) {
+			send_text_response(handle, path, 400, "Bad Request", "Invalid method");
+		} else if (!validate_params(request, member->put_params, true, message, sizeof(message))) {
+			send_text_response(handle, path, 400, "Bad Request", message);
+		} else {
+			// only the parameters defined for the member are passed to the handlers, as "Name=value" sorted by name
+			char args[2][128] = { { 0 } };
+			int count = 0;
+			for (int i = 0; i < 2 && member->put_params[i].name; i++) {
+				snprintf(args[count++], 128, "%s=%s", member->put_params[i].name, find_param(request, member->put_params[i].name, true));
+			}
+			if (count > 1) {
+				qsort(args, count, 128, string_cmp);
+			}
+			char *buffer = indigo_alloc_large_buffer();
+			long index = snprintf(buffer, INDIGO_BUFFER_SIZE, "{ ");
+			long length = indigo_alpaca_set_command(alpaca_device, 1, command, buffer + index, INDIGO_BUFFER_SIZE - index, args[0], args[1]);
+			if (length <= 0) {
+				length = indigo_alpaca_append_error(buffer + index, INDIGO_BUFFER_SIZE - index, indigo_alpaca_error_NotImplemented);
+			}
+			index += length;
+			snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", request->client_transaction_id, server_transaction_id++);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
+			send_json_response(handle, path, 200, "OK", buffer);
+			indigo_free_large_buffer(buffer);
+		}
+	} else {
+		send_text_response(handle, path, 400, "Bad Request", "Invalid method");
+	}
+	indigo_safe_free(request);
+	return keep_alive;
+}
+
+static bool alpaca_v1_api_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s %s %s", method, path, params);
+	char *body = NULL;
+	if (!strcmp(method, "PUT")) {
+		// headers and body are read before the request is validated to keep the connection in sync
 		int content_length = 0;
-		buffer = indigo_alloc_large_buffer();
-		while (indigo_uni_read_line(handle, buffer, INDIGO_BUFFER_SIZE - 1) > 0) {
-			if (!strncasecmp(buffer, "Content-Length:", 15)) {
-				content_length = atoi(buffer + 15);
+		body = indigo_alloc_large_buffer();
+		while (indigo_uni_read_line(handle, body, INDIGO_BUFFER_SIZE - 1) > 0) {
+			if (!strncasecmp(body, "Content-Length:", 15)) {
+				content_length = atoi(body + 15);
 			}
 		}
 		// Content-Length is client supplied, so it has to be clamped to the buffer before it is
@@ -382,50 +876,15 @@ static bool alpaca_v1_api_handler(indigo_uni_handle *handle, char *method, char 
 		} else if (content_length > INDIGO_BUFFER_SIZE - 1) {
 			content_length = INDIGO_BUFFER_SIZE - 1;
 		}
-		indigo_uni_read_line(handle, buffer, content_length);
-		buffer[content_length] = 0;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s", buffer);
-		char *params = buffer;
-		char args[5][128] = { 0 };
-		int count = 0;
-		while (true) {
-			char *token = strtok_r(params, "&", &params);
-			if (token == NULL) {
-				break;
-			}
-			if (!strncmp(token, "ClientID", 8)) {
-				if ((token = strchr(token, '='))) {
-					client_id = atoi(token + 1);
-				}
-			} else if (!strncmp(token, "ClientTransactionID", 19)) {
-				if ((token = strchr(token, '='))) {
-					client_transaction_id = atoi(token + 1);
-				}
-			} else if (count < 5) {
-				strncpy(args[count++], token, 128);
-			}
-		}
-		if (count > 1) {
-			qsort(args, count, 128, string_cmp);
-		}
-		long index = snprintf(buffer, INDIGO_BUFFER_SIZE, "{ ");
-		long length = indigo_alpaca_set_command(alpaca_device, 1, command, buffer + index, INDIGO_BUFFER_SIZE - index, args[0], args[1]);
-		if (length > 0) {
-			index += length;
-			snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
-			send_json_response(handle, path, 200, "OK", buffer);
-		} else {
-			send_text_response(handle, path, 400, "Bad Request", "Unrecognised command");
-		}
-
-	} else {
-		send_text_response(handle, path, 400, "Bad Request", "Invalid method");
+		indigo_uni_read_line(handle, body, content_length);
+		body[content_length] = 0;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s", body);
 	}
-	if (buffer) {
-		indigo_free_large_buffer(buffer);
+	bool keep_alive = alpaca_v1_api_request(handle, method, path, params, body);
+	if (body) {
+		indigo_free_large_buffer(body);
 	}
-	return true;
+	return keep_alive;
 }
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
@@ -560,6 +1019,27 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
+// Guider of a mount is by convention an INDIGO device named "<mount name> (guider)".
+
+static bool is_mount_guider(indigo_alpaca_device *mount, indigo_alpaca_device *guider) {
+	char name[INDIGO_NAME_SIZE + 16];
+	snprintf(name, sizeof(name), "%s (guider)", mount->indigo_device);
+	return !strcmp(name, guider->indigo_device);
+}
+
+static void pair_guider(indigo_alpaca_device *alpaca_device) {
+	for (indigo_alpaca_device *other = alpaca_devices; other; other = other->next) {
+		if (other == alpaca_device) {
+			continue;
+		}
+		if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_MOUNT) && IS_DEVICE_TYPE(other, INDIGO_INTERFACE_GUIDER) && !IS_DEVICE_TYPE(other, INDIGO_INTERFACE_MOUNT) && is_mount_guider(alpaca_device, other)) {
+			alpaca_device->guider_device = other;
+		} else if (IS_DEVICE_TYPE(other, INDIGO_INTERFACE_MOUNT) && is_mount_guider(other, alpaca_device)) {
+			other->guider_device = alpaca_device;
+		}
+	}
+}
+
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (device == indigo_agent_alpaca_device) {
 		return INDIGO_OK;
@@ -612,12 +1092,17 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 					alpaca_device->device_type = "Rotator";
 				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_POWERBOX) || IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_GPIO)) {
 					alpaca_device->device_type = "Switch";
-				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AO) || IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_MOUNT) || IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_GUIDER)) {
+				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_MOUNT)) {
 					alpaca_device->device_type = "Telescope";
+					pair_guider(alpaca_device);
 				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_LIGHTBOX)) {
 					alpaca_device->device_type = "CoverCalibrator";
 				} else {
+					// standalone guiders and AO units can't implement mandatory ITelescope members, guider of a mount is used by its Telescope
 					alpaca_device->device_type = NULL;
+					if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_GUIDER)) {
+						pair_guider(alpaca_device);
+					}
 				}
 				if (alpaca_device->device_type) {
 					int device_number;
@@ -713,6 +1198,11 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 					alpaca_devices = alpaca_device->next;
 				} else {
 					previous->next = alpaca_device->next;
+				}
+				for (indigo_alpaca_device *other = alpaca_devices; other; other = other->next) {
+					if (other->guider_device == alpaca_device) {
+						other->guider_device = NULL;
+					}
 				}
 				indigo_safe_free(alpaca_device);
 			}

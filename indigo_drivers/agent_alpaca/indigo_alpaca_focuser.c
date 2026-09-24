@@ -29,7 +29,7 @@
 #include "indigo_alpaca_common.h"
 
 static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, int *value) {
-	*value = 1;
+	*value = 3;
 	return indigo_alpaca_error_OK;
 }
 
@@ -165,10 +165,7 @@ static indigo_alpaca_error alpaca_move(indigo_alpaca_device *device, int version
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (device->focuser.tempcompavailable && device->focuser.tempcomp) {
-		pthread_mutex_unlock(&device->mutex);
-		return indigo_alpaca_error_InvalidOperation;
-	}
+	// IFocuserV3: Move is accepted also while temperature compensation is active
 	if (device->focuser.absolute) {
 		if (value < 0) {
 			value = 0;

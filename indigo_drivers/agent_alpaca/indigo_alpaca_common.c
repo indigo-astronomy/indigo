@@ -74,6 +74,8 @@ char *indigo_alpaca_error_string(int code) {
 			return "Invalid operation";
 		case indigo_alpaca_error_ActionNotImplemented:
 			return "Action not implemented";
+		case indigo_alpaca_error_UnspecifiedError:
+			return "Unspecified error";
 		default:
 			return "Unknown code";
 	}
@@ -81,6 +83,7 @@ char *indigo_alpaca_error_string(int code) {
 
 void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property) {
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
+		alpaca_device->connection_failed = property->state == INDIGO_ALERT_STATE;
 		if (property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
@@ -213,7 +216,11 @@ static indigo_alpaca_error alpaca_get_utcdate(indigo_alpaca_device *device, int 
 	if (*device->utcdate == 0) {
 		indigo_timetoisogm(time(NULL), device->utcdate, sizeof(device->utcdate));
 	}
+	// Alpaca requires ISO 8601 UTC date with explicit 'Z' suffix
 	strcpy(value, device->utcdate);
+	if (*value && value[strlen(value) - 1] != 'Z') {
+		strcat(value, "Z");
+	}
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -251,11 +258,35 @@ static indigo_alpaca_error alpaca_get_elevation(indigo_alpaca_device *device, in
 	return indigo_alpaca_error_OK;
 }
 
+static indigo_alpaca_error wait_for_connection(indigo_alpaca_device *device, bool value) {
+	for (int i = 0; i < 300; i++) {
+		if (device->connected == value) {
+			return indigo_alpaca_error_OK;
+		}
+		if (device->connection_failed) {
+			return indigo_alpaca_error_UnspecifiedError;
+		}
+		indigo_usleep(50000);
+	}
+	return indigo_alpaca_error_UnspecifiedError;
+}
+
 static indigo_alpaca_error alpaca_set_connected(indigo_alpaca_device *device, int version, bool value) {
 	pthread_mutex_lock(&device->mutex);
+	device->connection_failed = false;
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, CONNECTION_PROPERTY_NAME, value ? CONNECTION_CONNECTED_ITEM_NAME : CONNECTION_DISCONNECTED_ITEM_NAME, true);
+	// guider of a mount is part of the Telescope device and follows its connection
+	indigo_alpaca_device *guider = device->guider_device;
+	if (guider) {
+		guider->connection_failed = false;
+		indigo_change_switch_property_1(indigo_agent_alpaca_client, guider->indigo_device, CONNECTION_PROPERTY_NAME, value ? CONNECTION_CONNECTED_ITEM_NAME : CONNECTION_DISCONNECTED_ITEM_NAME, true);
+	}
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_wait_for_bool(&device->connected, value, 30);
+	indigo_alpaca_error result = wait_for_connection(device, value);
+	if (result == indigo_alpaca_error_OK && guider) {
+		result = wait_for_connection(guider, value);
+	}
+	return result;
 }
 
 static indigo_alpaca_error alpaca_set_latitude(indigo_alpaca_device *device, int version, double value) {
@@ -358,7 +389,7 @@ long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version,
 		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "utcdate")) {
-		char value[64] = {0};
+		char value[80] = { 0 };
 		indigo_alpaca_error result = alpaca_get_utcdate(alpaca_device, version, value);
 		return indigo_alpaca_append_value_string(buffer, buffer_length, value, result);
 	}

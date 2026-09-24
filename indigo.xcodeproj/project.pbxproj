@@ -5050,6 +5050,7 @@
 		9D214E053061403C0050FA96 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D239B35304FDB40002E0722 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260924000000000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260924000000000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		9D239B36304FE0CF002E0722 /* test_ccd_touptek_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_touptek_sdk.c; sourceTree = "<group>"; };
 		9D239B37304FEC2A002E0722 /* indigo_ccd_touptek_vendors.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_touptek_vendors.h; sourceTree = "<group>"; };
 		9D239B3D30500558002E0722 /* test_ccd_touptek_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_touptek_hw.c; sourceTree = "<group>"; };
@@ -7632,6 +7633,7 @@
 			children = (
 				59D8BBE526126C8900B904EE /* Makefile.inc */,
 				597BD14C2601381F00239274 /* README.md */,
+				C0DE20260924000000000003 /* REFACTOR.md */,
 				597BD14A2601381F00239274 /* indigo_agent_alpaca.h */,
 				597BD14B2601381F00239274 /* indigo_agent_alpaca.c */,
 				597BD1792602553E00239274 /* indigo_alpaca_common.h */,

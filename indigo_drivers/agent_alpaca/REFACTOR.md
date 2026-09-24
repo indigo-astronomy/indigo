@@ -1,0 +1,138 @@
+# agent_alpaca: ASCOM Alpaca conformance fixes
+
+Status: **done, 2026-09-24**. Driver version 0x03000005 → **0x03000006**.
+
+This work was requested as decision D8 in `indigo_drivers/system_alpaca/REFACTOR.md`: fix the defects found by the source audit and verify `agent_alpaca` with ASCOM ConformU (https://ascom-standards.org/COMDeveloper/Conformance.htm) against every INDIGO simulator. It is a targeted fix of the Alpaca server, not a generator migration. The agent is hand-written and not generated, and none of that changes here.
+
+## 1. Audit of the original state
+
+- **Architecture.** `indigo_agent_alpaca.c` is an INDIGO agent device plus an INDIGO client that mirrors every INDIGO device into an `indigo_alpaca_device` record.
+  - The HTTP handlers are registered on `indigo_server_tcp`: `/management/*` and `/api/v1`.
+  - Discovery runs on a UDP responder.
+  - The Alpaca members of each device type are implemented in `indigo_alpaca_<type>.c`.
+  - Device numbering is persisted in `AGENT_ALPACA_DEVICES`.
+- **Blocking behaviour.** Alpaca calls block the HTTP worker thread in `indigo_alpaca_wait_for_*` polling loops (0.5 s × N). This is unchanged, apart from the connection wait (section 3, defect AGENT-9).
+- **Concurrency.** The `alpaca_devices` list and `server_transaction_id` are accessed from the HTTP worker threads without a lock. This is unchanged and noted as a residual risk.
+- **Tests.** There were no automated tests. The only earlier evidence is the Windows Conform 6.5 log from 2020 (`ASCOM_CONFORMANCE.txt`).
+
+### Hardware-test decision
+
+No hardware testing. Validation uses INDIGO simulators behind the agent, tested by ConformU 4.5.0 on Linux x64. No hardware validation is claimed.
+
+## 2. Test environment
+
+| Item | Value |
+|---|---|
+| Platform | Linux x64 container, GCC, `make -C indigo_libs`, `make -C indigo_drivers/agent_alpaca -f ../../Makefile.drv` |
+| Server | `build/bin/indigo_server -- -p 7624 -b- indigo_agent_alpaca indigo_ccd_simulator indigo_mount_simulator indigo_dome_simulator indigo_rotator_simulator indigo_aux_flipflat indigo_aux_ppb indigo_aux_upb3`, with a private `HOME` |
+| Serial simulators | `aux_flipflat_simulator`, `aux_ppb_simulator`, `aux_upb3_simulator` from `indigo_test/build/integration` (ready-file convention) |
+| ConformU | 4.5.0 linux-x64, default settings, run headless. Every device runs in its own process with its own `HOME`. |
+| Commands | `conformu conformance <url> -r <json>` (full device test) and `conformu alpacaprotocol <url> -r <json>` (HTTP/Alpaca protocol test) |
+
+The harness scripts (`start_server.sh`, `run_all.sh`, `compare.py`) are session-local and not part of the repository. Section 7 records their exact behaviour.
+
+## 3. Found defects
+
+Every defect listed here was reproduced by ConformU or by the image comparison. The exceptions are AGENT-7 and AGENT-9, which are marked "(source audit)".
+
+| ID | Location | Observable impact | Root cause | Fix | Regression evidence |
+|---|---|---|---|---|---|
+| AGENT-1 | `indigo_alpaca_ccd.c`, ImageBytes RGB24 | Colour image channels were transmitted as B, R, G. | Wrong indices `base+2, base+0, base+1`. | The rewritten `indigo_alpaca_ccd_get_imagearray()` emits R, G, B for both 8-bit and 16-bit data. | `compare.py`: the DSLR Simulator RGB24 1600×1200 image failed on the original agent and matches pixel by pixel after the fix. |
+| AGENT-2 | `indigo_alpaca_ccd.c`, all imagearray paths | The image was flipped vertically: Alpaca `y = 0` was the bottom INDIGO row. Alpaca defines the origin in the top-left corner (`AlpacaDeviceAPI_v1.yaml`, ImageArray); INDIGO raw data is top-down (`ROWORDER='TOP-DOWN'`). | The loop `for (row = height - 1; row >= 0; row--)`. | The loop now iterates `y = 0..height-1`. | `compare.py`: CCD Imager MONO16, where channel order plays no role, failed on the original and matches after the fix. |
+| AGENT-3 | `indigo_agent_alpaca.c`, `/management/v1/description` | The keys `ServerVersion` and `ManufacturerURL` were returned instead of the specified `ManufacturerVersion` and `Location`. | Wrong key names. | The spec keys are now returned. | `curl /management/v1/description` |
+| AGENT-4 | `indigo_alpaca_ccd.c`, JSON imagearray | The JSON `imagearray` was invalid, starting `[[, 770, …`, and the last element had no separator. The JSON path for RGB48 was missing, and an ImageBytes request without an image wrote an error string with no HTTP header. | The separator was decided by `row == 0` in a loop running from `height-1` downwards. | Rewritten; RGB48 JSON added. A missing image or an unsupported format now returns a JSON error envelope with `InvalidOperation`. | `compare.py` (JSON path); ConformU `ImageArray` "Received error when ImageReady is false" |
+| AGENT-5 | `indigo_agent_alpaca.c`, request parsing | ConformU `alpacaprotocol` reported between 17 and 100 issues per device:<br>• a negative or invalid `ClientTransactionID` came back as 4294899406 instead of 0;<br>• badly cased PUT parameters were accepted with 200;<br>• invalid values (`Connected=abc`, empty strings, numbers for bools) were accepted with 200;<br>• a capitalised device type, a non-numeric device number and unknown members were not rejected with 400;<br>• a badly cased `ClientTransactionID` on a PUT was passed into the command arguments, giving `InvalidValue` for `Move`. | Hand-rolled `strncmp`/`atoi` parsing, and no member table. | New dispatcher:<br>• a table of every Alpaca member per device type (verb and parameters, from `AlpacaDeviceAPI_v1.yaml`);<br>• strict URL checks (lower case, numeric device number, known member);<br>• URL decoding;<br>• case-insensitive GET parameters and case-sensitive PUT parameters;<br>• validation of bool, int and double values (400 on failure);<br>• `ClientID` and `ClientTransactionID` parsed as uint32 (invalid values give 0);<br>• only the member's own parameters are passed to the handlers;<br>• the PUT body is always read before validation. | `alpacaprotocol` on all 14 devices: 0 issues. |
+| AGENT-6 | `indigo_agent_alpaca.c`, `indigo_alpaca_guider.c` | Standalone guider and AO devices were exposed as `Telescope`. They have no coordinates, tracking or time, so ConformU reported 13, 13 and 42 issues. The mount's own `Telescope` reported `CanPulseGuide=false`. | Every `GUIDER` or `AO` interface was mapped to `Telescope`. | **User decision:** a guider named `<mount> (guider)` is paired with its mount. The mount's `Telescope` implements `CanPulseGuide`, `IsPulseGuiding` and `PulseGuide` through the paired guider and connects the guider together with the mount. Standalone guiders and AO units are no longer exposed. | ConformU Telescope: "Asynchronous single/dual axis pulse guide East/North found OK", "PulseGuide threw an exception when Parked, as required". |
+| AGENT-7 | `indigo_alpaca_guider.c` (source audit) | North and South pulses were sent to `GUIDER_GUIDE_RA`, East and West to `GUIDER_GUIDE_DEC`, and `guideraterightascension` was never matched because of the name `guideraterightascensionrate`. | Wrong mapping and a typo. | N/S now go to DEC and E/W to RA; the name is corrected. | ConformU PulseGuide North and East both complete (see AGENT-6). |
+| AGENT-8 | `indigo_alpaca_mount.c` (source audit plus ConformU) | Guide rates were reported in % of sidereal instead of deg/s. | No unit conversion. | Converted with `ALPACA_SIDEREAL_RATE = 360 / 86164.0905` deg/s; writes are rounded to whole %, and values outside 1–100 % give `InvalidValue`. | ConformU `GuideRateDeclination Read OK 0.002089 (+00:00:07.5)`, i.e. 50 % sidereal, and write OK. |
+| AGENT-9 | `indigo_alpaca_common.c` | Connecting the CCD File Simulator without a file timed out in ConformU after 10 s, because the agent waited 15 s even though INDIGO had already reported ALERT. | The connection wait ignored the ALERT state. | `CONNECTION` ALERT sets `connection_failed`, and the wait returns `UnspecifiedError` (0x4FF) immediately. | ConformU camera 4: "Connection exception" after 3 s instead of the 10 s client timeout. |
+| AGENT-10 | `indigo_alpaca_common.c` | `UTCDate` had no `Z` suffix ("does not explicitly state that it is a UTC date-time"). | The INDIGO `UTC_TIME` format was passed through unchanged. | `Z` is appended. | ConformU Telescope: no `UTCDate` issue. |
+| AGENT-11 | `indigo_alpaca_focuser.c` | ConformU refused to test the focusers ("can only test focusers that implement IFocuserV2 or later") because `InterfaceVersion` was 1. | Version constant. | `InterfaceVersion` is now 3. Per IFocuserV3, `Move` is accepted while temperature compensation is active. | ConformU now runs the full focuser test (see section 5 for the simulator limitation). |
+| AGENT-12 | `indigo_alpaca_lightbox.c` | `CalibratorOn(-1)` did not return `InvalidValue`. | Only the upper bound was checked. | The lower bound is checked too. | ConformU CoverCalibrator: 0 issues. |
+| AGENT-13 | `indigo_agent_alpaca.c` | `imagearrayvariant` was served only because `strncmp(command, "imagearray", 10)` also matched it. The ASCOM client library reads the variant image from this endpoint. | Accidental prefix match. | The member is now explicitly routed to the image handler. | ConformU `ImageArrayVariant` "Successfully read variant array". |
+
+ImageBytes now transmits 8-bit data as Byte (6) and 16-bit data as UInt16 (8), with `ImageElementType` Int32 (2). This is the narrowing the spec allows, and it reduces a 16-bit image to half the size of the previous Int32 transmission.
+
+## 4. Behaviour changes relevant to clients
+
+- **Device list.** Standalone guiders and AO units are no longer listed in `configureddevices`. A mount guider is part of the mount's `Telescope`.
+  - Existing `AGENT_ALPACA_DEVICES` entries for those devices remain in the configuration but are not exposed.
+  - Numbers assigned to other devices on a fresh configuration are lower, because those devices no longer take numbers. In the test setup Telescope 9 became 7.
+- **Strict requests.** Requests that the Alpaca specification defines as invalid are now answered with HTTP 400 instead of being silently accepted.
+
+## 5. ConformU results
+
+### 5.1 Full conformance (`conformu conformance`), each device on a fresh server
+
+| Device (INDIGO simulator) | Baseline (errors / issues) | After fix (errors / issues) | Notes |
+|---|---|---|---|
+| Camera: CCD Imager, CCD Guider, Bahtinov, DSLR | 0 / 0 each | 0 / 0 each | |
+| Camera: CCD File Simulator | 0 / 1 | 0 / 1 | Simulator limitation: no image file configured, so the connection fails. The agent now reports it immediately (AGENT-9). |
+| FilterWheel | 0 / 0 | 0 / 0 | |
+| Focuser: CCD Imager (focuser) | 1 / 1 (not tested, V1) | 0 / 13 | Simulator limitation, see below. |
+| Focuser: UPB3 (focuser) | 1 / 1 (not tested, V1) | 0 / 1 | Simulator limitation, see below. |
+| Telescope: Mount Simulator (+ guider) | 0 / 2 | see 5.3 | |
+| Telescope: CCD Guider (guider), CCD Guider (AO), Mount (guider) | 0 / 13, 0 / 42, 0 / 13 | no longer exposed | AGENT-6 |
+| Dome | 0 / 0 | 0 / 0 | |
+| Rotator | 0 / 0 | 0 / 0 | |
+| CoverCalibrator: FlipFlat | 0 / 1 | 0 / 0 | |
+| Switch: Pocket Powerbox | 0 / 0 | 0 / 0 | |
+| Switch: UPB3 | 0 / 0 | see 5.3 | |
+
+**Focuser simulator limitation.** ConformU moves an absolute focuser by `MaxStep / 10` and allows 60 s (`FocuserTimeout`).
+- The INDIGO CCD Imager focuser simulator has a range of ±9 999 999 steps (`MaxStep` 19 999 998) and moves at most 100 steps per 0.1 s. The first move of about 2 000 000 steps cannot finish in time, and the remaining move tests cascade from that.
+- The UPB3 focuser simulator hits the same timeout on its first move.
+
+This is simulator behaviour, not agent behaviour. The agent reports `IsMoving` correctly and moves are accepted and completed; see the ConformU log `Move to 999999 … STANDARD`.
+
+### 5.2 Protocol (`conformu alpacaprotocol`)
+
+| | Baseline | After fix |
+|---|---|---|
+| Issues / errors, summed over all devices | 953 / 5 on 17 devices (mostly `ClientTransactionID`, parameter casing and value validation) | 0 / 1 on 14 devices. The error is camera 4 ("Not connected"), the same simulator limitation as in 5.1. |
+
+### 5.3 Final reruns
+
+See section 7 (step A7).
+
+## 6. Image orientation and colour verification (`compare.py`)
+
+The same exposure is fetched twice:
+- directly from INDIGO: an XML client with `enableBLOB URL`, downloading the RAW blob;
+- through Alpaca: `imagearray` as JSON and as ImageBytes.
+
+Every pixel and channel is then compared as `Alpaca[x][y][c] == INDIGO_raw[(y * width + x) * planes + c]`.
+
+| Image | Original agent | Fixed agent |
+|---|---|---|
+| CCD Imager Simulator, MONO16 1600×1200 | JSON: invalid JSON. ImageBytes: FAIL (vertical flip). | JSON OK, ImageBytes OK (UInt16) |
+| DSLR Simulator, RGB24 1600×1200 | JSON: invalid JSON. ImageBytes: FAIL (flip + BRG) | JSON OK, ImageBytes OK (Byte) |
+
+The original agent was built from `HEAD` (`git archive`) into a scratch directory and loaded by full path into a separate `indigo_server` instance on port 7630.
+
+## 7. Plan and evidence
+
+| # | Step | State | Evidence |
+|---|---|---|---|
+| A1 | Build INDIGO, write the harness, run the ConformU baseline (conformance + protocol) on 17 devices | done | Section 5, "Baseline" columns |
+| A2 | Rewrite the request dispatcher (AGENT-5), fix `description` (AGENT-3) | done | Clean build with `-Wall`; `alpacaprotocol` 0 issues |
+| A3 | Guider pairing and pulse guiding through the mount (AGENT-6/7/8) | done | ConformU Telescope pulse guide OK |
+| A4 | Common fixes: `UTCDate`, connection ALERT, focuser V3, calibrator bounds (AGENT-9..12) | done | ConformU |
+| A5 | Rewrite `imagearray` (AGENT-1/2/4/13) | done | `compare.py`, ConformU `ImageArray` / `ImageArrayVariant` |
+| A6 | Full conformance rerun on a fresh server | done | Section 5.1 |
+| A7 | Telescope rerun with a realistic site; protocol rerun on a fresh server | see below | |
+
+**Discovered during A6: an incorrect build dependency.** `Makefile.drv` does not rebuild objects when `indigo_alpaca_common.h` changes. After the structure layout changed, stale objects crashed `indigo_server` (SIGSEGV in `alpaca_set_connected`, captured with gdb). A clean rebuild (`make -f ../../Makefile.drv clean`) is required after header changes. This is a repository build issue, not an agent defect.
+
+## 8. Residual risks and gaps
+
+- The `alpaca_devices` list is accessed from HTTP worker threads without a lock, and device records are freed on detach. This is a pre-existing race, unchanged.
+- The blocking `indigo_alpaca_wait_for_*` calls are unchanged. They hold an HTTP worker thread for up to 150 s during slews.
+- A device that is both MOUNT and GUIDER would store guider state in the same union as the mount state. No INDIGO driver does this today.
+- There is no automated regression test in `indigo_test`. The ConformU harness is manual and needs .NET ConformU. A portable C test of the dispatcher and image encoding is a possible follow-up.
+- Only Linux x64 was built and tested. macOS and Windows were not built, and the Windows project files are unchanged.
+
+## Final test summary
+
+- Simulated tests (ConformU conformance + protocol against INDIGO simulators, plus image comparison): see section 5.3 for the final totals.
+- Hardware tests: 0 run, 0 passed.
