@@ -484,6 +484,40 @@ cleanup:
 	}
 }
 
+static void nexstar_avx_documented_manual_rates(void) {
+	external_serial_simulator session = { 0 };
+	int fd = -1;
+	char reply[32];
+	double polar, declination, displacement[4];
+	const int rates[] = { 1, 2, 7, 9 };
+	const int durations_us[] = { 2500000, 2500000, 700000, 500000 };
+	SERIAL_CHECK_TRUE(mountsim_attach(&session));
+	fd = open(session.port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	SERIAL_CHECK_TRUE(fd >= 0);
+	for (int index = 0; index < ARRAY_SIZE(rates); index++) {
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, "z", 1, reply, sizeof(reply)));
+		SERIAL_CHECK_TRUE(nexstar_decode_axis_reply(reply, 8, &polar, &declination));
+		double before = declination;
+		unsigned char move[] = { 'P', 2, 17, 0x24, (unsigned char)rates[index], 0, 0, 0 };
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, (const char *)move, sizeof(move), reply, sizeof(reply)) && !strcmp(reply, "#"));
+		indigo_usleep(durations_us[index]);
+		move[4] = 0;
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, (const char *)move, sizeof(move), reply, sizeof(reply)) && !strcmp(reply, "#"));
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, "z", 1, reply, sizeof(reply)));
+		SERIAL_CHECK_TRUE(nexstar_decode_axis_reply(reply, 8, &polar, &declination));
+		displacement[index] = remainder(declination - before, 360.0);
+	}
+	fprintf(stderr, "AVX rate1/2/7/9 DEC motor displacement: %.6f / %.6f / %.6f / %.6f degrees\n", displacement[0], displacement[1], displacement[2], displacement[3]);
+	SERIAL_CHECK_TRUE(displacement[0] > 0.015 && displacement[0] < 0.035);
+	SERIAL_CHECK_TRUE(displacement[1] > displacement[0] * 1.6 && displacement[1] < displacement[0] * 2.4);
+	SERIAL_CHECK_TRUE(displacement[2] > 0.45 && displacement[2] < 0.95);
+	SERIAL_CHECK_TRUE(displacement[3] > 1.5 && displacement[3] < 2.5);
+cleanup:
+	if (fd >= 0) {
+		close(fd);
+	}
+}
+
 static void nexstar_se_axis_index_and_timed_motion(void) {
 	external_serial_simulator session = { 0 };
 	int fd = -1;
@@ -1104,6 +1138,14 @@ static void nexstar_guider_first_and_sibling_survival(void) {
 	enumerate_simulator_device();
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, nexstar_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, session.port));
 	SERIAL_CHECK_TRUE(fixture_connect(&nexstar_guider, NULL));
+	if (!strcmp(model->selection, "AVX")) {
+		reset_simulator_context(&nexstar_guider);
+		enumerate_simulator_device();
+		indigo_item *rate1 = find_cached_item("COMMAND_GUIDE_RATE", "GUIDE_50");
+		indigo_item *rate2 = find_cached_item("COMMAND_GUIDE_RATE", "GUIDE_100");
+		SERIAL_CHECK_TRUE(rate1 != NULL && rate2 != NULL);
+		SERIAL_CHECK_TRUE(strstr(rate1->label, "2x sidereal") != NULL && strstr(rate2->label, "4x sidereal") != NULL);
+	}
 	SERIAL_CHECK_TRUE(pulse(0, GUIDER_GUIDE_WEST_ITEM_NAME, 100, true));
 	SERIAL_CHECK_TRUE(fixture_connect(&nexstar_mount, NULL));
 	SERIAL_CHECK_TRUE(fresh_coordinates());
@@ -1296,6 +1338,7 @@ int main(int argc, char **argv) {
 	const indigo_test_case cases[] = {
 		{ "nexstar_mechanical_axis_index_and_timed_motion", nexstar_mechanical_axis_index_and_timed_motion },
 		{ "nexstar_cgem_documented_higher_manual_rates", nexstar_cgem_documented_higher_manual_rates },
+		{ "nexstar_avx_documented_manual_rates", nexstar_avx_documented_manual_rates },
 		{ "nexstar_se_axis_index_and_timed_motion", nexstar_se_axis_index_and_timed_motion },
 		{ "nexstar_model_identity_and_reconnect", nexstar_model_identity_and_reconnect },
 		{ "nexstar_sync_has_fresh_device_readback", nexstar_sync_has_fresh_device_readback },
@@ -1321,10 +1364,11 @@ int main(int argc, char **argv) {
 	int result = 2;
 	if (!strcmp(argv[1], "--list")) {
 		for (int i = 0; i < ARRAY_SIZE(cases); i++) {
-			bool cge_cgem_only = !strcmp(cases[i].name, "nexstar_mechanical_axis_index_and_timed_motion") || !strcmp(cases[i].name, "nexstar_st4_rates_read_back");
+			bool equatorial_axis = !strcmp(cases[i].name, "nexstar_mechanical_axis_index_and_timed_motion") || !strcmp(cases[i].name, "nexstar_st4_rates_read_back");
 			bool cgem_only = !strcmp(cases[i].name, "nexstar_cgem_documented_higher_manual_rates");
+			bool avx_only = !strcmp(cases[i].name, "nexstar_avx_documented_manual_rates");
 			bool se_only = !strcmp(cases[i].name, "nexstar_se_documented_manual_rates") || !strcmp(cases[i].name, "nexstar_se_axis_index_and_timed_motion");
-			if ((!cge_cgem_only || !strcmp(model->selection, "CGE") || !strcmp(model->selection, "CGEM")) && (!cgem_only || !strcmp(model->selection, "CGEM")) && (!se_only || !strcmp(model->selection, "SE")) && (model->gps || strcmp(cases[i].name, "nexstar_gps_fix_and_shared_lifetime"))) {
+			if ((!equatorial_axis || !strcmp(model->selection, "CGE") || !strcmp(model->selection, "CGEM") || !strcmp(model->selection, "AVX")) && (!cgem_only || !strcmp(model->selection, "CGEM")) && (!avx_only || !strcmp(model->selection, "AVX")) && (!se_only || !strcmp(model->selection, "SE")) && (model->gps || strcmp(cases[i].name, "nexstar_gps_fix_and_shared_lifetime"))) {
 				puts(cases[i].name);
 			}
 		}

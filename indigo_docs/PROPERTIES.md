@@ -1386,6 +1386,8 @@ Source: `indigo_drivers/mount_mxhd/indigo_mount_mxhd.c`.
 
 Custom properties: `COMMAND_GUIDE_RATE`, `TRACKING_MODE`.
 
+On Advanced VX, `COMMAND_GUIDE_RATE` retains its legacy `GUIDE_50` and `GUIDE_100` item names for client compatibility, while its displayed item labels describe the actual fixed hand-control indices 1 and 2 (manual nominal 2x and 4x sidereal). These command rates are separate from `MOUNT_GUIDE_RATE`, which configures the ST4 autoguide percentage.
+
 Driver-specific use of existing properties: `GEOGRAPHIC_COORDINATES`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `MOUNT_ABORT_MOTION`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_GUIDE_RATE`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET` (CURRENT captures signed DEC), `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
 
 Source: `indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver`; generated output in `indigo_drivers/mount_nexstar/indigo_mount_nexstar.c`.

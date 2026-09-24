@@ -493,3 +493,104 @@ native **5/5**. Hardware **0 run, 0 passed**. The CGEM run validates
 simulated protocol and mechanical-axis behavior; real encoder indexing,
 park pose, physical motion speeds (especially the conflicting rate 9),
 southern tracking mechanics and guider output remain hardware-only gaps.
+
+## Advanced VX MountSim 2.3 acceptance (2026-09-24)
+
+The requested mode is a non-interactive simulator run of the exact `AVX`
+profile (Celestron model byte 20). No physical AVX is available; hardware
+validation is 0 run, 0 passed. The existing NexStar driver is 3.0.0.35.
+Both the production driver and MountSim Debug app built before changes. The
+baseline isolated `nexstar_park_completes_before_tracking_off` case failed 0/1
+in `/tmp/avx-baseline-park`: the driver forwarded precise mechanical `b`,
+MountSim rejected it, `tc_goto_azalt_p` returned -1, and no park-axis motion
+followed. The original trace contains `b75555554,18E38E38` at monotonic
+319184.283925; the trace and test log are retained there. The failed
+`--terminator none` launcher spelling was a pre-launch argument parse error;
+omitting the option selects binary raw capture as documented in the launcher.
+
+Atomic AVX plan, before production edits:
+
+1. Audit the official Celestron serial protocol and Advanced VX manual against
+   the original trace, existing driver and independent INDI command encoding.
+   Treat motor-axis index and physical home pose as unverified; declare the
+   simulator convention used by a model-local implementation.
+2. Give only AVX model 20 raw `B`/`b` motion and `Z`/`z` readback in a consistent
+   mechanical frame with timed arrival, preserving signed southern park DEC.
+   Correct only its slew-rate table to the manufacturer's AVX HC rates, then
+   assert low and high indexed displacement through the unmodified PTY relay.
+3. Examine fixed `P` guide commands separately from the ST4 `0x46/0x47` rate
+   setting. The serial document maps fixed indices to HC speeds, while the AVX
+   manual lists indices 1/2 as 2x/4x sidereal. The driver presently advertises
+   those indices as 50%/100%; measure MountSim DEC motion and record that as a
+   software observation, with physical speed and tracking behavior left open.
+   Preserve the driver's deliberate native-pulse disable unless a separate
+   compatible replacement is demonstrated.
+4. Extend the existing exact-model suite to exercise raw axis/rate behavior
+   and AVX ST4 readback. Rerun the complete AVX mount and guider scope after
+   all fixes, including 20/100/500 ms guiding in four directions under idle
+   and active workloads, transport loss, abort and park. Then run affected
+   previous-model, portable and MountSim native regressions; record outcomes
+   and limits here and in the driver Testing record, regenerate TEST_SUMMARY,
+   review diffs and make separate INDIGO/MountSim commits without pushing.
+
+The official [NexStar serial protocol](https://s3.amazonaws.com/celestron-site-support-files/support_files/1154108406_nexstarcommprot.pdf)
+defines `B`/`b` and `Z`/`z` as revolution fractions, fixed `P` indices as HC
+rates and index zero as stop. The official [Advanced VX manual](https://celestron-site-support-files.s3.us-east-1.amazonaws.com/support_files/Advanced%20VX%20Telescope%20Series_Manual_5lang_2021.pdf)
+lists HC rates 1–9 as 2x, 4x, 8x, 16x, 32x sidereal, then 0.3, 1, 2 and
+4 degrees/second. This supports a model-specific rate simulation; it does not
+establish a measured physical AVX motor speed or mechanical zero index.
+
+The original `b` failure is attributable to MountSim's AVX profile inheriting
+a sky-coordinate handler for a mechanical-axis park request. The model-local
+AVX correction uses the simulator's declared home convention of both raw axes
+at 90°; it does not infer an AVX hardware encoder index or alter the driver's
+RA mapping. Its focused raw `B`/`b`→`Z`/`z` timed arrival passed 1/1, and the
+previously failing park case passed 1/1 after the change. The raw positive DEC
+`P` rate measurements over 2.5 s were 0.02099° at index 1 and 0.04201° at
+index 2; further 0.7 s index 7 and 0.5 s index 9 measurements were 0.72164°
+and 2.09368°. These are simulated motor displacements, consistent with the
+AVX manual's nominal 2x/4x and 1°/s/4°/s rates. The original generic table
+would have produced a different result. The simulator test asserts broad
+physical-unit bounds to detect wrong indexed profiles without using it as an
+angular-precision benchmark.
+
+The guide source audit also checked independent [INDI Celestron code](https://github.com/indilib/indi/blob/master/drivers/telescope/celestrondriver.cpp):
+its fixed motion passes `rate + 1` unchanged to the MC, whereas autoguide-rate
+configuration sends `0x46`. The official serial protocol says fixed indices
+1/2 mimic the HC rates and may coexist with equatorial tracking; it does not
+give a measured AVX correction curve. INDIGO's legacy `COMMAND_GUIDE_RATE`
+`GUIDE_50`/`GUIDE_100` names remain for client compatibility, but AVX's
+visible labels and success text now describe fixed HC index 1/2 and nominal
+2x/4x, avoiding the false 50%/100% claim. No fixed-command encoding, pulse
+duration or native-pulse capability changed. Hardware measurement of actual
+AVX pulse motion and tracking behavior remains necessary before claiming
+physical guide correction rates.
+
+Final AVX verification used the rebuilt driver 3.0.0.36 and MountSim 2.3
+selected as exact `AVX` by the control server. The complete isolated suite
+passed **21/21** under `/tmp/avx-full1`; cases cover identity and reconnect,
+raw mechanical axes and indexed rates, SYNC, reachable and already-target
+GOTO, abort/BUSY recovery, four-direction manual motion and stop, tracking,
+site and clock, ST4 write/readback, park arrival and signed southern default,
+GPS/shared lifetime, guider directions/replacement and sibling connection,
+idle/active/pending-park/pending-guide transport loss, and guide timing.
+The guide case measured **96/96** complete forwarded ON/OFF intervals after
+24 warmups: 20/100/500 ms in EAST/WEST/NORTH/SOUTH, four retained repetitions
+per combination, both tracking-off with coordinate polling and tracking-on
+with coordinate polling. Signed software transport error ranged from +0.382
+to +21.166 ms with mean +5.250 ms. These endpoints are receipt of complete
+direction ON/OFF frames at the transparent PTY relay; the values include host
+scheduling and are neither physical relay timing nor motor/sky precision.
+The separate direction case verified actual simulated sky motion in all four
+directions, replacement, both axes and post-pulse completion.
+
+After the AVX change, focused raw mechanical-axis preservation checks passed
+for CGE **1/1** (`/tmp/cge-after-avx-axis`), CGEM **1/1**
+(`/tmp/cgem-after-avx-axis`) and SE **1/1** (`/tmp/se-after-avx-axis`). The
+portable NexStar suite passed **14/14** normally and **14/14** under
+ASan/UBSan, with no sanitizer diagnostic. MountSim native tests passed
+**5/5**. Physical AVX hardware tests were **0/0**. The AVX simulator cannot
+establish an actual encoder index, physical signed park pose, mechanical
+tracking response, pulse angular rates, electrical serial behavior, or
+firmware-variant compatibility. `MIGRATION_STATUS.md` remains at its portable
+14 / hardware 0 count because MountSim cases are opt-in macOS tests.

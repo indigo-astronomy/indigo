@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000023
+#define DRIVER_VERSION       0x03000024
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -59,6 +59,7 @@
 #define d2h(d)               (d / 15.0)
 #define REFRESH_SECONDS      (0.5)
 #define GPS_DEVICE_NAME      "Mount Nexstar (gps)"
+#define NEXSTAR_AVX_MODEL_ID 20
 #define WARN_PARKED_MSG      "Mount is parked, please unpark!"
 #define WARN_PARKING_PROGRESS_MSG "Mount parking is in progress, please wait until complete!"
 #define is_connected         gp_bits
@@ -96,6 +97,7 @@ typedef struct {
 	bool initialized;
 	bool configured;
 	int dev_id;
+	int model_id;
 	bool parked;
 	bool park_in_progress;
 	int slew_rate;
@@ -151,6 +153,7 @@ static void nexstar_initialize_private_data(indigo_device *device) {
 		PRIVATE_DATA->initialized = true;
 		PRIVATE_DATA->configured = false;
 		PRIVATE_DATA->dev_id = -1;
+		PRIVATE_DATA->model_id = -1;
 		PRIVATE_DATA->vendor_id = -1;
 		PRIVATE_DATA->guide_rate = 1;
 		PRIVATE_DATA->slew_rate = 2;
@@ -171,6 +174,7 @@ static bool nexstar_open(indigo_device *device) {
 	if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "get_mount_capabilities(%d) = %d", dev_id, res);
 	}
+	PRIVATE_DATA->model_id = tc_get_model(dev_id);
 	PRIVATE_DATA->capabilities &= ~(CAN_PULSE_GUIDE);
 	return true;
 }
@@ -182,6 +186,7 @@ static void nexstar_close(indigo_device *device) {
 	if (PRIVATE_DATA->dev_id >= 0) {
 		close_telescope(PRIVATE_DATA->dev_id);
 		PRIVATE_DATA->dev_id = -1;
+		PRIVATE_DATA->model_id = -1;
 	}
 	PRIVATE_DATA->configured = false;
 }
@@ -232,7 +237,7 @@ static bool nexstar_configure_mount(indigo_device *device) {
 	} else if (PRIVATE_DATA->vendor_id == VNDR_CELESTRON) {
 		INDIGO_COPY_VALUE(MOUNT_INFO_VENDOR_ITEM->text.value, "Celestron");
 	}
-	int model_id = tc_get_model(dev_id);
+	int model_id = PRIVATE_DATA->model_id;
 	if (model_id < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_model(%d) = %d (%s)", dev_id, model_id, strerror(errno));
 	} else {
@@ -1259,6 +1264,17 @@ static void guider_connection_handler(indigo_device *device) {
 			PRIVATE_DATA->count++;
 		}
 		if (connection_result) {
+			//+ guider.on_connect
+			if (PRIVATE_DATA->model_id == NEXSTAR_AVX_MODEL_ID) {
+				INDIGO_COPY_VALUE(GUIDE_50_ITEM->label, "HC fixed rate 1 (nominal 2x sidereal)");
+				INDIGO_COPY_VALUE(GUIDE_100_ITEM->label, "HC fixed rate 2 (nominal 4x sidereal)");
+			} else {
+				INDIGO_COPY_VALUE(GUIDE_50_ITEM->label, "50% sidereal");
+				INDIGO_COPY_VALUE(GUIDE_100_ITEM->label, "100% sidereal");
+			}
+			//- guider.on_connect
+		}
+		if (connection_result) {
 			indigo_define_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
@@ -1336,7 +1352,11 @@ static void guider_command_guide_rate_handler(indigo_device *device) {
 		PRIVATE_DATA->guide_rate = 2;
 	}
 	COMMAND_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
-	if (PRIVATE_DATA->guide_rate == 1) {
+	if (PRIVATE_DATA->model_id == NEXSTAR_AVX_MODEL_ID && PRIVATE_DATA->guide_rate == 1) {
+		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "AVX fixed HC rate 1 selected (manual nominal 2x sidereal; physical correction unverified).");
+	} else if (PRIVATE_DATA->model_id == NEXSTAR_AVX_MODEL_ID && PRIVATE_DATA->guide_rate == 2) {
+		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "AVX fixed HC rate 2 selected (manual nominal 4x sidereal; physical correction unverified).");
+	} else if (PRIVATE_DATA->guide_rate == 1) {
 		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 7.5\"/s (1/2 sidereal).");
 	} else if (PRIVATE_DATA->guide_rate == 2) {
 		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 15\"/s (sidereal).");
