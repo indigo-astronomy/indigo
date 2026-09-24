@@ -118,6 +118,8 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_agent_astrometry \
 	$(INTEGRATION_BUILD)/test_agent_scripting \
 	$(INTEGRATION_BUILD)/test_agent_scripting_sequencer \
+	$(INTEGRATION_BUILD)/test_agent_imager_guider_mount \
+	$(INTEGRATION_BUILD)/test_agent_imager_instances \
 	$(INTEGRATION_BUILD)/test_ccd_simulator \
 	$(INTEGRATION_BUILD)/test_dome_simulator \
 	$(INTEGRATION_BUILD)/test_dome_baader_simulator \
@@ -2110,6 +2112,28 @@ $(INTEGRATION_BUILD)/test_agent_scripting_sequencer: integration/test_agent_scri
 .PHONY: test-agent-scripting-sequencer
 test-agent-scripting-sequencer: check-lib $(INTEGRATION_BUILD)/test_agent_scripting_sequencer
 	$(INTEGRATION_BUILD)/test_agent_scripting_sequencer
+
+# Cooperation of the production Imager, Guider and Mount agents with the CCD and mount simulators;
+# configuration is isolated through a private HOME.
+AGENT_COOPERATION_ARCHIVES = $(BUILD_DRIVERS)/indigo_agent_imager.a $(BUILD_DRIVERS)/indigo_agent_guider.a $(BUILD_DRIVERS)/indigo_agent_mount.a $(BUILD_DRIVERS)/indigo_ccd_simulator.a $(BUILD_DRIVERS)/indigo_mount_simulator.a
+
+$(INTEGRATION_BUILD)/test_agent_imager_guider_mount: integration/test_agent_imager_guider_mount.c test_runner.h $(AGENT_COOPERATION_ARCHIVES) | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(AGENT_COOPERATION_ARCHIVES) $(TEST_LDFLAGS) -lindigocat
+
+.PHONY: test-agent-imager-guider-mount
+test-agent-imager-guider-mount: check-lib $(INTEGRATION_BUILD)/test_agent_imager_guider_mount
+	$(INTEGRATION_BUILD)/test_agent_imager_guider_mount
+
+# Coordination of several production Imager Agent instances (barrier, abort, leader dithering
+# through the production Guider Agent) with the CCD simulator.
+AGENT_IMAGER_INSTANCES_ARCHIVES = $(BUILD_DRIVERS)/indigo_agent_imager.a $(BUILD_DRIVERS)/indigo_agent_guider.a $(BUILD_DRIVERS)/indigo_ccd_simulator.a
+
+$(INTEGRATION_BUILD)/test_agent_imager_instances: integration/test_agent_imager_instances.c test_runner.h $(AGENT_IMAGER_INSTANCES_ARCHIVES) | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(AGENT_IMAGER_INSTANCES_ARCHIVES) $(TEST_LDFLAGS) -lindigocat
+
+.PHONY: test-agent-imager-instances
+test-agent-imager-instances: check-lib $(INTEGRATION_BUILD)/test_agent_imager_instances
+	$(INTEGRATION_BUILD)/test_agent_imager_instances
 
 ASI_CCD_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_asi/bin_externals/libasicamera/include
 ASI_CCD_SDK_TEST_REPLACEMENTS = -Dindigo_monotonic_time=asi_test_monotonic_time -Dindigo_queue_create=asi_test_queue_create -Dindigo_execute_handler_in=asi_test_execute_in -Dlibusb_hotplug_register_callback_sim=asi_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=asi_test_usb_deregister_poll -Dindigo_start_usb_event_handler=asi_test_usb_start -Dindigo_attach_device=asi_test_attach -Dindigo_detach_device=asi_test_detach -Dlibusb_hotplug_register_callback=asi_test_usb_register -Dlibusb_hotplug_deregister_callback=asi_test_usb_deregister -Dlibusb_ref_device=asi_test_usb_ref -Dlibusb_unref_device=asi_test_usb_unref -Dlibusb_get_device_descriptor=asi_test_usb_descriptor

@@ -5566,6 +5566,9 @@
 		C0DE20260914003100000003 /* test_wheel_mi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_mi_sdk.c; sourceTree = "<group>"; };
 		C0DE20260914B00100000001 /* test_agent_scripting.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scripting.c; sourceTree = "<group>"; };
 		C0DE20260914B00100000002 /* test_agent_scripting_sequencer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scripting_sequencer.c; sourceTree = "<group>"; };
+		C0DE20260924A00100000001 /* test_agent_imager_guider_mount.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_imager_guider_mount.c; sourceTree = "<group>"; };
+		C0DE20260924A00100000002 /* test_agent_imager_instances.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_imager_instances.c; sourceTree = "<group>"; };
+		C0DE20260924A00100000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260914C00100000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260914C00100000002 /* test_aux_joystick_hid.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_joystick_hid.c; sourceTree = "<group>"; };
 		C0DE20260914C00100000003 /* malloc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = malloc.h; sourceTree = "<group>"; };
@@ -14084,6 +14087,8 @@
 				59910AA23054836E00FB1C2F /* test_agent_config.c */,
 				59910A763052B3A100FB1C2F /* test_agent_guider.c */,
 				59910A5A305289D700FB1C2F /* test_agent_imager.c */,
+				C0DE20260924A00100000001 /* test_agent_imager_guider_mount.c */,
+				C0DE20260924A00100000002 /* test_agent_imager_instances.c */,
 				59910AA33054836E00FB1C2F /* test_agent_mount.c */,
 				C0DE20260914B00100000001 /* test_agent_scripting.c */,
 				C0DE20260914B00100000002 /* test_agent_scripting_sequencer.c */,
@@ -15781,6 +15786,7 @@
 			isa = PBXGroup;
 			children = (
 				9DA451CB21908CBC00818B58 /* README.md */,
+				C0DE20260924A00100000003 /* REFACTOR.md */,
 				9DA451CD21908CBC00818B58 /* indigo_agent_imager.h */,
 				9DA451CC21908CBC00818B58 /* indigo_agent_imager.c */,
 			);
