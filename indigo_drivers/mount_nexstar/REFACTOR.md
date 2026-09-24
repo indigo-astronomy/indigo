@@ -1111,3 +1111,20 @@ on a valid subsequent request.
   binaries/temporary sources instead of executing the repository-wide
   `make -C indigo_test test-clean`. Diagnostic logs in `/tmp/nexstar-*.log` are
   retained as evidence. No NexStar test or transport remains active.
+
+## GPS hardware follow-up — 2026-09-24 21:25
+
+The user attached a GPS accessory to the NexStar SE / NexStar+ 5.35 and requested detection only, indoors without requiring a satellite fix. This is a narrow interactive hardware follow-up, not a repeat of mount motion acceptance. Physical hot-plug remains excluded.
+
+- Added `--gps` selection to the existing hardware executable; it runs only `nexstar_gps_presence_and_sibling_survival` and requires the accessory to be present. The existing full suite still supports the explicitly absent-accessory scenario.
+- The connected branch checks GPS interface, firmware and a resolved no-fix/3D-fix status, disconnects GPS and verifies fresh mount coordinates. Cleanup also disconnects GPS on an assertion failure.
+- Strict universal macOS build passed with `make -C indigo_test build/hardware/test_mount_nexstar_hw` (`-Wall -Wextra -Werror`). Executed `MOUNT_NEXSTAR_HW_PORT=<HC serial port> indigo_test/build/hardware/test_mount_nexstar_hw --gps`: **1/1 passed**.
+- AUX destination B0 version request `50 01 b0 fe 00 00 00 02` returned `0b 01 23`: firmware **11.1**. Linked request `50 01 b0 37 00 00 00 01` returned `00 23`: **no fix**. Driver exposed this as NO_FIX ALERT; this is expected indoors and is not a connection failure.
+- Protocol log: `/tmp/nexstar-gps-hw.log`. All transmitted commands were identification/status reads. No slew, sync, tracking, site or clock writes were sent. GPS and mount disconnected cleanly.
+- Production code unchanged; driver remains 3.0.0.41. Registered case counts recalculated: 17 portable / 12 physical, unchanged because this selects and extends an existing case; MIGRATION_STATUS.md already has those counts.
+- This closes the earlier accessory-presence hardware gap. Fix acquisition, position/time accuracy and physical hot-plug remain unverified. No production defect was found.
+
+### Final test summary for this GPS follow-up
+
+Simulated tests: **0 run, 0 passed** (no production change; prior 17/17 portable and 17/17 sanitizer acceptance remains separately recorded above).
+Hardware tests: **1 run, 1 passed**, GPS detection/status and sibling survival only. The preceding full mount hardware acceptance remains **12/12**.

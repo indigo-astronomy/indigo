@@ -33,6 +33,8 @@
 extern void (*tc_debug)(const char *format, ...);
 
 static int mount = -1;
+static int gps = -1;
+static bool gps_only = false;
 static pthread_mutex_t edge_mutex = PTHREAD_MUTEX_INITIALIZER;
 static double edge_on[2], edge_off[2];
 static unsigned site_queries;
@@ -369,7 +371,7 @@ static void nexstar_current_park_and_unpark(void) {
 }
 
 static void nexstar_gps_presence_and_sibling_survival(void) {
-	int gps = hw_wait_for_device("Mount Nexstar (gps)", 10);
+	gps = hw_wait_for_device("Mount Nexstar (gps)", 10);
 	ASSERT_TRUE(gps >= 0);
 	unsigned before = hw_revision(gps, CONNECTION_PROPERTY_NAME);
 	hw_request_switch(gps, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
@@ -380,11 +382,26 @@ static void nexstar_gps_presence_and_sibling_survival(void) {
 	if (hw_connected(gps)) {
 		ASSERT_TRUE(hw_device_interface(gps) & INDIGO_INTERFACE_GPS);
 		ASSERT_TRUE(hw_property_defined(gps, GPS_STATUS_PROPERTY_NAME));
-		printf("GPS accessory detected; no claim of satellite fix accuracy\n");
+		char firmware[INDIGO_VALUE_SIZE];
+		ASSERT_TRUE(hw_text_item(gps, INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, firmware, sizeof(firmware)));
+		ASSERT_TRUE(firmware[0] && strcmp(firmware, "N/A"));
+		indigo_property_state no_fix = INDIGO_IDLE_STATE, fix_3d = INDIGO_IDLE_STATE;
+		deadline = indigo_monotonic_time() + 15;
+		do {
+			hw_light_item(gps, GPS_STATUS_PROPERTY_NAME, GPS_STATUS_NO_FIX_ITEM_NAME, &no_fix);
+			hw_light_item(gps, GPS_STATUS_PROPERTY_NAME, GPS_STATUS_3D_FIX_ITEM_NAME, &fix_3d);
+			if (no_fix == INDIGO_ALERT_STATE || fix_3d == INDIGO_OK_STATE) {
+				break;
+			}
+			indigo_usleep(20000);
+		} while (indigo_monotonic_time() < deadline);
+		ASSERT_TRUE(no_fix == INDIGO_ALERT_STATE || fix_3d == INDIGO_OK_STATE);
+		printf("GPS accessory detected: firmware %s, status %s; fix accuracy not tested\n", firmware, fix_3d == INDIGO_OK_STATE ? "3D fix" : "no fix");
 		ASSERT_TRUE(hw_disconnect(gps, 15));
 	} else {
 		ASSERT_EQ_INT(INDIGO_ALERT_STATE, hw_property_state(gps, CONNECTION_PROPERTY_NAME));
 		printf("GPS accessory absent: rejection verified, fix acquisition not applicable\n");
+		ASSERT_TRUE(!gps_only);
 	}
 	double ra, dec;
 	ASSERT_TRUE(fresh_position(&ra, &dec));
@@ -410,14 +427,15 @@ static void nexstar_refused_port_and_driver_reinitialization(void) {
 }
 
 int main(int argc, char **argv) {
-	if (argc != 2 || (strcmp(argv[1], "--identity") && strcmp(argv[1], "--run"))) {
-		fprintf(stderr, "Use --identity or --run with MOUNT_NEXSTAR_HW_PORT set.\n");
+	if (argc != 2 || (strcmp(argv[1], "--identity") && strcmp(argv[1], "--run") && strcmp(argv[1], "--gps"))) {
+		fprintf(stderr, "Use --identity, --gps or --run with MOUNT_NEXSTAR_HW_PORT set.\n");
 		return 2;
 	}
 	const char *port = getenv("MOUNT_NEXSTAR_HW_PORT");
 	if (port == NULL || !indigo_test_use_private_home()) {
 		return 2;
 	}
+	gps_only = !strcmp(argv[1], "--gps");
 	setvbuf(stdout, NULL, _IONBF, 0);
 	indigo_set_log_level(INDIGO_LOG_DEBUG);
 	tc_debug = protocol_log;
@@ -450,12 +468,18 @@ int main(int argc, char **argv) {
 	result = 0;
 	int count = !strcmp(argv[1], "--identity") ? 1 : ARRAY_SIZE(tests);
 	for (int i = 0; i < count; i++) {
+		if (gps_only && tests[i].function != nexstar_gps_presence_and_sibling_survival) {
+			continue;
+		}
 		result = indigo_run_tests("NexStar physical hardware", tests + i, 1);
 		if (result) {
 			break;
 		}
 	}
 cleanup:
+	if (gps >= 0 && !hw_disconnect(gps, 20)) {
+		indigo_test_failures++;
+	}
 	if (guider >= 0 && !hw_disconnect(guider, 20)) {
 		indigo_test_failures++;
 	}
