@@ -1509,3 +1509,79 @@ the exact host permission or routing policy is not established. Direct loopback
 UDP and the ordinary portable executable work. The sanitizer's UDP broadcast
 case remains **unverified**, rather than counted as passed or diagnosed as a
 driver memory defect.
+
+## Found defect — SYNSCAN-D01, a guide pulse killed the process (FIXED, version 8)
+
+Found by the first hardware run of this driver against a physical AstroEQ 8.25 ESP32-S3 controller
+on 2026-09-24, reached over serial from a Raspberry Pi 5 (Debian 12, aarch64).
+
+Observable impact: the whole driver process died with SIGSEGV on the first DEC guide pulse that
+reached the stop-and-wait path. Backtrace, driver at `c5a329c20`:
+
+```
+Thread 4 received signal SIGSEGV
+#0  synscan_read_mount_coordinates (device=0x5555555be760) at indigo_mount_synscan.c:978
+#2  synscan_update_mount_coordinates (device=0x5555555be760) at indigo_mount_synscan.c:1008
+#3  synscan_wait_axis_stopped (device=..., axis=SYNSCAN_AXIS_DEC, abort=0x0) at indigo_mount_synscan.c:595
+#4  synscan_stop_axis_and_wait (abort=0x0, axis=SYNSCAN_AXIS_DEC, device=...) at indigo_mount_synscan.c:507
+#5  guider_guide_dec_finalizer (device=...) at indigo_mount_synscan.c:1627
+#7  queue_func (...) at indigo_timer.c:945
+```
+
+Root cause: `guider_guide_dec_finalizer` passes its own logical device down that chain, and
+`synscan_read_mount_coordinates` / `synscan_update_mount_coordinates` read and publish `MOUNT_*`
+properties. Every `MOUNT_*` macro resolves through `MOUNT_CONTEXT`, that is `device->device_context`,
+which on the guider is an `indigo_guider_context`. The read was type-confused. Publishing there would
+also have sent mount properties under the guider's name, so the wrong device was wrong in two ways.
+
+Fix: both helpers resolve the master device themselves, which is what the root `AGENTS.md` prescribes
+for a helper that needs another logical device's property context. The guider's RA finalizer is not
+affected - `synscan_slew_axis_at_rate` touches no `MOUNT_*` property - and `synscan_update_mount_state`
+is only reached through `synscan_update_mount_coordinates`, so it inherits the resolved device.
+
+Why no hardware-free test caught it: `synscan_wait_axis_stopped` only updates coordinates from inside
+its polling loop, and the simulator cleared `RUNNING` the instant `:K` was acknowledged, so the wait
+returned on its first iteration and never got there. The bench controller reported `=210`, still
+running, for minutes after the stop. The simulator now models that deceleration behind a new
+`--stop-lag <n>` option, which keeps an axis reporting `RUNNING` for `n` status queries after a stop.
+
+Regression test: `synscan_guider_finishes_a_dec_pulse_while_the_axis_decelerates` in
+`indigo_test/integration/test_mount_synscan_simulator.c`, which runs the simulator with
+`--stop-lag 3`, connects the guider through its master, issues a DEC pulse and requires both the pulse
+to complete and the driver to still answer afterwards. Verified A/B on macOS arm64: against the
+pre-fix driver the suite dies with SIGSEGV in exactly that case (exit 139, no verdict printed, the
+case is the last one entered); against the fixed driver the suite is 19/19, exit 0.
+
+## Hardware run — AstroEQ 8.25 on ESP32-S3, Linux arm64 (2026-09-24)
+
+`SYNSCAN_HW_URL=/dev/ttyACM0 make -C indigo_test test-mount-synscan-hw`, 5 of 16 cases passed, so
+**this is not a passing hardware run**. The crash above is gone - `synscan_guides` now runs to a
+verdict instead of taking the process down - and identity, coordinate and state readback, tracking and
+rates, and the two cases that do not apply to this controller all pass.
+
+Two things still stand in the way, neither of them the guider defect:
+
+* **A commanded GoTo creeps.** The driver sends the whole sequence (`:K`, `:f`, `:j`, `:G`, `:H`, `:M`,
+  `:J`) and the controller does step - RA went from `0x800051` to `0x7F90DB`, 3958 counts, in the two
+  minutes before the timeout - but that is about 33 counts per second, roughly six times sidereal on a
+  460800-count axis, where a 96076-count slew needs to finish in seconds. The driver asked for period
+  600 with `:I` (the configured sidereal `IVal`) and selected motion mode with `:G101` / `:G121`.
+  Attributing this needs `skywatcher_motor_controller_command_set.pdf`: either the driver is selecting
+  a low-speed GoTo where it wants high speed, or this AstroEQ port is not honouring the high-speed
+  selection. It was not resolved here and no change was made for it. Three cases fail on the timeout
+  directly and the later cases cascade from `prepare_mount()` failing.
+* `synscan_discovers_and_connects` asserts that `DEVICE_PORT` was rewritten to a `synscan://`
+  address, which only holds for the UDP transport the suite was written for. It cannot pass over a
+  serial port as written; that is a limitation of the test, not a defect.
+
+The axes were left stopped (`:K1`, `:K2`, both then reporting `=100`). No motors or sensors were
+attached, so nothing here validates physical motion.
+
+### The portable suite does not run on this host
+
+Worth recording separately, because it cost time: `indigo_test/build/integration/test_mount_synscan_simulator`
+fails every case on the Pi with `No SynScan response from /dev/pts/N` at connect, 4 of 19, while the
+same commit passes 18/18 on macOS arm64. Reverting every change of this session and rebuilding on the
+Pi reproduces the same 4 of 18, so it is not caused by the fix above - it is a platform problem with
+this suite on Linux/aarch64 that has not been diagnosed. The hardware-free verification of this fix
+was therefore done on macOS.

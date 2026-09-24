@@ -148,7 +148,8 @@ passed and the run ended in a crash, so **this is not a passing hardware run**:
   rewritten to a `synscan://` address. That assertion only holds for the UDP
   transport the suite was written for; it is a test limitation, not a defect of
   the firmware or the driver.
-* **Driver defect, not firmware: the process dies with SIGSEGV** in
+* **Driver defect, not firmware, fixed in driver version 8 (SYNSCAN-D01): the process died with
+  SIGSEGV** in
   `guider_guide_dec_finalizer` ->  `synscan_stop_axis_and_wait` ->
   `synscan_wait_axis_stopped` -> `synscan_update_mount_coordinates` ->
   `synscan_read_mount_coordinates`, at
@@ -162,7 +163,8 @@ passed and the run ended in a crash, so **this is not a passing hardware run**:
   sequence (`:K`, `:f`, `:j`, `:G`, `:H`, `:M`, `:J`) and does step - RA moved
   from `0x800051` to `0x7F90DB`, about 3958 counts, in the two minutes before the
   timeout - but that is roughly 33 counts per second, so a 96076-count slew would
-  need about 48 minutes. Three cases fail on it. The axes also never set the
+  need about 48 minutes. Three cases fail on it, and after the crash was fixed the later cases cascade
+  from the same timeout, so the rerun on driver version 8 stands at 5 of 16 with no crash. The axes also never set the
   "initialised" bit in `:f`, although `:F1` and `:F2` were accepted at connect.
   The step rate wants investigating in `s3_hal.cpp`'s timer path and in the
   `:I`-driven speed handling before this image is used for motion; the bench

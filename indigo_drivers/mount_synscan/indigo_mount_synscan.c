@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -972,6 +972,11 @@ static void synscan_de2h(double ha, double dec, double latitude, double *az, dou
 }
 
 static bool synscan_read_mount_coordinates(indigo_device *device) {
+	// Reached from the guider's finalizers too, whose device_context is an indigo_guider_context,
+	// so resolve the master device before touching any MOUNT_* property.
+	if (device->master_device != NULL) {
+		device = device->master_device;
+	}
 	if (!synscan_update_axis_positions(device)) {
 		return false;
 	}
@@ -1005,6 +1010,11 @@ static bool synscan_read_mount_coordinates(indigo_device *device) {
 }
 
 static bool synscan_update_mount_coordinates(indigo_device *device) {
+	// Reached from the guider's finalizers too, whose device_context is an indigo_guider_context,
+	// so resolve the master device before touching any MOUNT_* property.
+	if (device->master_device != NULL) {
+		device = device->master_device;
+	}
 	if (!synscan_read_mount_coordinates(device)) {
 		return false;
 	}
