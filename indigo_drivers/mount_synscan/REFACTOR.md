@@ -1396,3 +1396,91 @@ the request.
 for the same pulse replaced by a 300 ms pulse in the opposite direction.
 
 Re-validated on the simulator only. The AZ-GTi hardware run recorded earlier was not repeated.
+
+## EQMOD MountSim acceptance (2026-09-24)
+
+This is a separate macOS run through MountSim 2.3's `EQMOD` SkyWatcher motor-controller
+profile, not the SynScan hand-controller profile or a physical mount. The existing generated
+driver (version 5) and MountSim app both built before behavior changes. The unchanged
+driver failed its first connection against the unchanged EQMOD profile: the raw relay trace
+ended at `:s1\r` without an RX frame, followed by `CONNECTION` ALERT. The manufacturer
+command set specifies a success frame or a `!00\r` unknown-command error for that inquiry.
+The original raw trace excerpt was `324379.760974 TX 3a 73 31 0d` (`:s1\r`)
+with no following RX; the replay after the profile correction showed an error frame and a
+successful connection. The initial per-case capture was replaced by the subsequent launcher
+run, so this excerpt is the retained baseline evidence. Both runs used `run_mountsim.py`
+with the per-user flock, isolated app instance, `--mount EQMOD`, and `--terminator 0d`.
+
+The independent references are the bundled SkyWatcher motor-controller command-set PDF,
+INDI's `skywatcherAPI.cpp`/`.h`, and AstroEQ's `commands.c`/`synta.c`. They agree that `s`
+is a PEC-period inquiry, `E` sets a stopped motor counter, `j` reads it, errors use `!` plus
+two hex digits, and ST4 code 4 means 0.125 sidereal. The PDF calls `q` an inquiry, so it
+must not clear axis initialization. Raw EQMOD tests exercise `s`, `q`, `E`/`j`, status
+preservation, and actual elapsed-time encoder motion. The old profile ACKed `E` but still
+returned `=000000\r` to `j` for both programmed axes. A separate GOTO trace showed the
+counter remained fixed while the status was running: EQMotor's motion method was not
+reached by the base timer. The corrected profile keeps physical pose continuous under `E`
+with an independent 24-bit reported counter and advances motor motion from elapsed timer ticks;
+the counter no longer jumps when the mechanical position wraps at one revolution. The EQMOD
+parser also used a truncated `!0` or silence for malformed/unknown commands; it now returns
+the command-set's full `!00` unknown, `!01` bad-length and `!03` invalid-character frames.
+
+The driver-side guide-rate defect was separate: `MOUNT_GUIDE_RATE` is specified and initialized
+by INDIGO in whole percent, but `synscan_set_st4_guide_rate()` compared its input with fractions.
+A 75% request emitted `:P10\r` instead of `:P11\r` in the baseline relay trace. Version 6
+converted to a fraction before mapping the documented P codes; the post-change case covers
+100, 75, 50, 25 and 12.5 percent. The long-motion cases then reproduced a second driver
+defect: coordinate, park and home handlers waited synchronously for both axes, blocking abort
+behind them. Version 7 starts each operation and polls with named finalizers, with cancellation
+on abort/disconnect and terminal state updates after completion or failure. The generated
+`INDIGO_COPY_*_PROCESS_CHANGE` guards own initial BUSY and reject a second same-property target;
+the abort handler explicitly publishes OK because its finalizer cancellation references suppress
+the generator's normal epilogue. SLEW completion clears the stale ON tracking property after the
+motor has stopped tracking. Abort and failed motion also publish tracking OFF; the generated
+disconnect path already cancels all pending handlers, so no separate finalizer cancellation is
+needed there. On successful completion the finalizer refreshes motor and translated coordinate
+readback before publishing terminal OK, so that event contains the arrived position rather than
+the previous periodic sample.
+
+The opt-in `indigo_test/mountsim/test_mount_synscan_mountsim.c` suite maps the mount class
+requirements to named cases: raw controller contract, identity/init/reconnect, shared
+mount/guider lifetime, SYNC and actual GOTO arrival including wrap-relative target,
+BUSY/abort/recovery, all advertised manual directions and rates, tracking rates and ST4
+mapping, signed park/home arrival and interruption, guider direction/replacement/overlap,
+idle/motion/pulse transport loss, and two guide-timing workloads. The timing groups use
+20/100/500 ms in four directions, one discarded warmup and three measured repetitions per
+duration and workload. They report J-to-K transport-command timing and RA restore timing
+separately. This is software/PTY scheduling evidence; it does not measure physical ST4
+electrical output, mechanical pointing accuracy or behavior on an actual EQ6.
+
+Two exploratory harness oracles were corrected after checking the relay trace and property
+lifecycles. RA EAST and WEST guide pulses both select the same motor direction (`G110`),
+while their `I` step periods differ around sidereal tracking; the test now checks both
+periods. A guider-originated transport loss publishes ALERT on the active guider pulse and
+disconnects the shared mount, but idle mount coordinates are deleted without first becoming
+ALERT. The pulse-loss case therefore checks the guider ALERT and mount disconnect; the
+separate moving-mount loss case checks coordinate ALERT.
+
+The finished macOS arm64 MountSim 2.3 EQMOD run passed 15/15 named cases with a fresh app
+instance per case and the launcher lock. It includes real elapsed counter motion, nontrivial
+GOTO/arrival, signed park/home and interruption, reconnection after three transport-loss
+states, all manual directions/rates, tracking/ST4 command mapping, and guider replacement,
+overlap and completion. Each timing workload discarded one warmup per direction and measured
+three repeats of 20, 100 and 500 ms per direction (36 samples per workload). Forwarded J-to-K
+signed error was 0.346/6.257/17.714 ms (min/median/max) under tracking with idle polling,
+and 0.353/5.053/10.324 ms under tracking, other-axis guiding and polling. RA tracking
+restoration was measured from K to the next J separately. These are host/PTY command edges,
+including scheduler delay, rather than electrical ST4 or mechanical movement timing. No
+physical EQDIR mount was used; mechanical pointing, guide electrical output, exact physical
+GOTO rates, and macOS x86_64/Linux/Windows behavior remain unverified.
+
+The existing portable SynScan simulator suite also passed 18/18 in its normal
+macOS arm64 build after the EQDIR changes. A separate ASAN/UBSAN build completed
+17/18 without a sanitizer diagnostic: only UDP broadcast autodetection timed
+out. Its explicit UDP URL and dropped-reply cases passed. The isolated
+autodetection case also timed out under sanitizer, while a standalone UDP
+socket received the simulator's `=020304\r` reply via both loopback and
+broadcast. An isolated `indigo_perform_active_discovery()` probe timed out in
+both normal and instrumented builds, even though the normal full suite passed
+autodetection. This leaves an intermittent host/framework broadcast-discovery
+limitation outside the EQMOD relay path, not an established memory error.

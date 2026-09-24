@@ -2620,9 +2620,16 @@ test-mount-nexstar-mountsim: check-lib $(TEST_BUILD)/mountsim/test_mount_nexstar
 $(TEST_BUILD)/mountsim/test_mount_nexstar_mountsim: mountsim/test_mount_nexstar_mountsim.c mountsim/mountsim_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_nexstar.a | $(TEST_BUILD)/mountsim
 	$(CC) $(TEST_CFLAGS) -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter -Wno-sign-compare -o $@ $< $(MOUNT_NEXSTAR_SIMULATOR_TEST_LDFLAGS)
 
+.PHONY: test-mount-synscan-mountsim
+test-mount-synscan-mountsim: check-lib $(TEST_BUILD)/mountsim/test_mount_synscan_mountsim
+	python3 mountsim/run_mountsim.py --app "$(MOUNTSIM_APP)" --mount EQMOD --terminator 0d --timeout 600 --test $(TEST_BUILD)/mountsim/test_mount_synscan_mountsim
+
+$(TEST_BUILD)/mountsim/test_mount_synscan_mountsim: mountsim/test_mount_synscan_mountsim.c mountsim/mountsim_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_synscan.a | $(TEST_BUILD)/mountsim
+	$(CC) $(TEST_CFLAGS) -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter -Wno-sign-compare -o $@ $< $(BUILD_DRIVERS)/indigo_mount_synscan.a $(TEST_LDFLAGS) -lindigocat
+
 else
-.PHONY: test-mount-temma-mountsim test-mount-rainbow-mountsim test-mount-ioptron-mountsim test-mount-lx200-mountsim test-mount-nexstar-mountsim
-test-mount-temma-mountsim test-mount-rainbow-mountsim test-mount-ioptron-mountsim test-mount-lx200-mountsim test-mount-nexstar-mountsim:
+.PHONY: test-mount-temma-mountsim test-mount-rainbow-mountsim test-mount-ioptron-mountsim test-mount-lx200-mountsim test-mount-nexstar-mountsim test-mount-synscan-mountsim
+test-mount-temma-mountsim test-mount-rainbow-mountsim test-mount-ioptron-mountsim test-mount-lx200-mountsim test-mount-nexstar-mountsim test-mount-synscan-mountsim:
 	@printf "MountSim acceptance requires macOS and a GUI session.\n"
 	@exit 2
 endif
