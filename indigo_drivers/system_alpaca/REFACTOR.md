@@ -564,7 +564,7 @@ States: `todo`, `in progress`, `done`, `blocked`. Every step records its evidenc
 |---|---|---|---|
 | S0 | Research of the standard, simulators and INDIGO infrastructure; this document; registration in `DEVELOPED_DRIVERS` + temporarily `EXCLUDED_DRIVERS`; `ccd_pentax` also added to `EXCLUDED_DRIVERS` at the user's request | Review by the user | done (commits `7e0a2cc`, `Exclude ccd_pentax from the default build`, and this commit) |
 | S1 | User decisions D1–D8 (section 9) | Recorded in this document | done (2026-09-24) |
-| S1a | D8: ConformU baseline against `agent_alpaca` + all INDIGO simulators, fix AGENT-1..3 and LIB-1..2, rerun ConformU, unit/regression tests | ConformU JSON results before/after; unit tests | in progress |
+| S1a | D8: ConformU baseline against `agent_alpaca` + all INDIGO simulators, fix AGENT-1..3 and LIB-1..2, rerun ConformU, unit/regression tests | ConformU JSON results before/after; unit tests | done (2026-09-24). See `../agent_alpaca/REFACTOR.md` and section 8. `indigo_uni_discover()` and the connect timeout from WP3 / S4 already exist now. |
 | S2 | Library: general JSON parser in `indigo_json.c/.h` plus unit tests and fixtures | `make -C indigo_test test-unit`, strict build, ASan | todo |
 | S3 | Driver skeleton: `.c/.h/_main.c`, bridge device, remove from `EXCLUDED_DRIVERS`, Xcode registration | `make -C indigo_drivers/system_alpaca -f ../../Makefile.drv`, the driver loads in `indigo_server` | todo |
 | S4 | Library: `indigo_uni_io` connect timeout + multi-responder UDP discovery, with tests | unit/integration tests on loopback | todo |
@@ -580,7 +580,16 @@ States: `todo`, `in progress`, `done`, `blocked`. Every step records its evidenc
 
 ## 8. Found defects
 
-All were found **by source audit only**. None has been reproduced. They are outside the scope of `system_alpaca`, and fixing them needs a separate decision.
+All were originally found **by source audit only**. Under decision D8 they were fixed on 2026-09-24 and verified:
+
+- **AGENT-1..3** were reproduced and fixed. The full record is in [`../agent_alpaca/REFACTOR.md`](../agent_alpaca/REFACTOR.md), which also lists ten further defects that the ConformU baseline found (AGENT-4..13).
+- **LIB-1** is fixed by `indigo_uni_open_client_socket_with_timeout()`.
+- **LIB-2** is fixed by the portable `indigo_uni_discover()`. `focuser_askar` now uses it (version 3.0.0.7), and its platform-specific code is removed.
+- **Regression tests:** 8 new cases in `indigo_test/unit/test_uni_io.c`, all passing. The `focuser_askar` simulator suite passes 10/10 on Linux x64.
+- **Coverage gap:** the askar discovery glue (reply parsing, deduplication) has no automated test. It uses the fixed port 7676 and broadcast, so it can't be tested hermetically.
+- **Pre-existing failures:** `test_timer` fails 2–4 fork-related cases, and fails the same way with the original `indigo_uni_io`. Unrelated.
+
+The table below keeps the original audit record.
 
 | ID | Location | Impact | Cause | Proposed fix | Regression test |
 |---|---|---|---|---|---|
