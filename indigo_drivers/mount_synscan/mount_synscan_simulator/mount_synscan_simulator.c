@@ -33,6 +33,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <limits.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -243,6 +244,19 @@ static bool parse_args(int argc, char *argv[]) {
 // ----------------------------------------------------------------- state
 
 static volatile sig_atomic_t running = 1;
+
+// Command log for tests and reference traces, "<ready-file>.events": one "<monotonic seconds>\t<command>"
+// line per command the simulator executed, including commands whose reply is withheld.
+static FILE *events;
+
+static void record_event(const char *command) {
+	if (events != NULL) {
+		struct timespec now;
+		clock_gettime(CLOCK_MONOTONIC, &now);
+		fprintf(events, "%.6f\t%s\n", now.tv_sec + now.tv_nsec / 1e9, command);
+		fflush(events);
+	}
+}
 static int serial_fd = -1;
 static int udp_fd = -1;
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -335,6 +349,7 @@ static uint8_t parse_8(const char *buffer) {
 }
 
 static char *process_command(char *buffer) {
+	record_event(buffer);
 	if (buffer[0] != ':') {
 		return "!3";
 	}
@@ -393,6 +408,11 @@ static char *process_command(char *buffer) {
 			axis_target_set[axis] = false;
 			return "=";
 		case 'I':
+			// The motor controller command set does not support changing the step period while the
+			// axis is slewing in high-speed mode; at low speed the running axis takes the new period.
+			if ((axis_status[axis] & RUNNING) && (axis_status[axis] & HIGHSPEED)) {
+				return "!2";
+			}
 			axis_t1[axis] = parse_24(buffer + 3);
 			return "=";
 		case 'J':
@@ -766,6 +786,12 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
+	if (options.ready_file != NULL) {
+		char path[PATH_MAX];
+		snprintf(path, sizeof(path), "%s.events", options.ready_file);
+		events = fopen(path, "w");
+	}
+
 	if (!options.headless) {
 		printf("SkyWatcher EQ8 SynScan simulator is running on %s\n", port);
 		fflush(stdout);
@@ -799,5 +825,9 @@ int main(int argc, char *argv[]) {
 		udp_fd = -1;
 	}
 	pthread_join(thread, NULL);
+	if (events != NULL) {
+		fclose(events);
+		events = NULL;
+	}
 	return 0;
 }

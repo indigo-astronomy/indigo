@@ -665,6 +665,93 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// Counts the commands in the simulator's command log from line `from` on that start with `prefix`,
+// and returns the last one in `last`. Returns the total number of logged commands in `total`.
+static int count_synscan_commands(external_serial_simulator *simulator, int from, const char *prefix, char *last, size_t last_size, int *total) {
+	char path[PATH_MAX];
+	int count = 0, line_number = 0;
+	if (total != NULL) {
+		*total = 0;
+	}
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return -1;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return -1;
+	}
+	char line[256];
+	while (fgets(line, sizeof(line), file)) {
+		char *command = strchr(line, '\t');
+		if (command == NULL) {
+			continue;
+		}
+		command++;
+		command[strcspn(command, "\r\n")] = 0;
+		if (line_number++ >= from && !strncmp(command, prefix, strlen(prefix))) {
+			count++;
+			if (last != NULL) {
+				snprintf(last, last_size, "%s", command);
+			}
+		}
+	}
+	fclose(file);
+	if (total != NULL) {
+		*total = line_number;
+	}
+	return count;
+}
+
+// The motor controller takes a new step period on an axis running at low speed, so an RA guide
+// pulse on a tracking mount only has to change the period and change it back. Stopping the axis
+// for it interrupts tracking twice per pulse and makes every pulse finish late by two stop-and-wait
+// cycles; on an AstroEQ, which finishes the step in progress before it stops, that was measured at
+// +300 ms per pulse on hardware. The simulator decelerates for three status queries after a stop,
+// as that controller does, so a stop inside the pulse also shows as a late completion.
+static void synscan_guider_guides_ra_without_stopping_tracking(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--stop-lag", "3", NULL };
+	bool mount_connected = false;
+	char tracking_period[32] = "", resumed_period[32] = "";
+	int total = 0;
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	mount_connected = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":I1", tracking_period, sizeof(tracking_period), NULL) > 0);
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_guider, NULL));
+
+	for (int pulse = 0; pulse < 2; pulse++) {
+		const char *item = pulse == 0 ? GUIDER_GUIDE_WEST_ITEM_NAME : GUIDER_GUIDE_EAST_ITEM_NAME;
+		SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":", NULL, 0, &total) >= 0);
+		double started = indigo_monotonic_time();
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, item, 300));
+		SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_BUSY_STATE));
+		SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+		double elapsed = (indigo_monotonic_time() - started) * 1000.0;
+		int stops = count_synscan_commands(&simulator, total, ":K1", NULL, 0, NULL);
+		int periods = count_synscan_commands(&simulator, total, ":I1", resumed_period, sizeof(resumed_period), NULL);
+		printf("    300 ms %s pulse while tracking: %d stop(s), %d period change(s), finished in %.0f ms\n", item, stops, periods, elapsed);
+		SERIAL_CHECK_EQ_INT(0, stops);
+		SERIAL_CHECK_EQ_INT(2, periods);
+		// The pulse ends by restoring the tracking period, not by leaving the guide rate running.
+		SERIAL_CHECK_TRUE(!strcmp(tracking_period, resumed_period));
+		SERIAL_CHECK_TRUE(elapsed < 550);
+	}
+
+cleanup:
+	if (context.connected) {
+		disconnect_serial_device(&synscan_guider);
+	}
+	if (mount_connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void synscan_aux_passes_shutter_compliance_checks(void) {
 	external_serial_simulator simulator = { 0 };
 
@@ -848,6 +935,7 @@ int main(void) {
 		{ "synscan_mount_reports_new_model_codes", synscan_mount_reports_new_model_codes },
 		{ "synscan_guider_passes_serial_compliance_checks", synscan_guider_passes_serial_compliance_checks },
 		{ "synscan_guider_finishes_a_dec_pulse_while_the_axis_decelerates", synscan_guider_finishes_a_dec_pulse_while_the_axis_decelerates },
+		{ "synscan_guider_guides_ra_without_stopping_tracking", synscan_guider_guides_ra_without_stopping_tracking },
 		{ "synscan_aux_passes_shutter_compliance_checks", synscan_aux_passes_shutter_compliance_checks },
 		{ "synscan_mount_disconnects_after_serial_loss", synscan_mount_disconnects_after_serial_loss },
 		{ "synscan_mount_reports_failed_serial_connection", synscan_mount_reports_failed_serial_connection },

@@ -1125,6 +1125,11 @@ Reducing it would mean changing the manner in which the driver issues protocol c
 original-driver reference-trace comparison. That work is not part of this hardware validation and
 is recorded here as a known characteristic, not as a fixed defect.
 
+**Superseded for RA by SYNSCAN-D02 (version 9).** The premise was wrong: the command set refuses a
+new step period only while the axis slews at high speed. An RA pulse now changes the period of the
+running axis in place; the DEC finalizer still stops and waits, which is correct for an axis that
+was stopped before the pulse.
+
 Practical consequence for autoguiding, so the number is not left uninterpreted: at the 50 % guide
 rate used here an RA overshoot of about 300 ms adds roughly 300 ms x 0.5 x sidereal, about 2.2
 arcseconds, of extra correction beyond the requested pulse. For short pulses that is a large
@@ -1612,3 +1617,105 @@ version, which is how that regression was caught. Note that `mount_lx200_simulat
 `mount_ioptron_simulator.c` do not compile at all with gcc on Linux, failing
 `-Werror=format-truncation` and `-Werror=stringop-truncation`, so those two suites could not be run
 there; that is a separate matter from this fix.
+
+## Found defect — SYNSCAN-D02, every RA guide pulse stopped the tracking axis twice (version 9)
+
+Found by the AstroEQ 8.25 ESP32-S3 hardware run of 2026-09-24 (`synscan_guide_pulse_accuracy`): every
+RA pulse completed a constant +300 ms late across 100 to 2000 ms, twice the DEC overrun.
+
+Observable impact: an RA guide pulse on a tracking mount stops the RA axis, waits for it to report
+stopped, restarts it at the guide rate, and at the end of the pulse stops it again and restarts it at
+the tracking rate. Tracking is interrupted twice per pulse, the controller decelerates and accelerates
+twice, and the pulse reports completion two stop-and-wait cycles late. On a controller that takes long
+to stop, AstroEQ among them because it finishes the step in progress first, the delivered correction is
+also wrong by the time the axis spends stopped.
+
+Root cause: `synscan_slew_axis_at_rate()` stops a running axis whenever the cached mode, direction or
+period differs from the request. The *Guide pulse duration accuracy* section above recorded this as a
+protocol requirement ("the motor controller requires a stopped axis before the step period is
+changed") and deferred it. The command set in
+`skywatcher_motor_controller_command_set.pdf` says otherwise: *Set Step Period* (`:I`) is unsupported
+only "when motor is slewing in high speed mode". A guide pulse at up to 100 % of the tracking rate
+keeps the RA axis in the low-speed mode it tracks in (`:G1` mode 1), in the same direction, so only the
+period changes. AstroEQ applies a new `:I` to a running low-speed axis the same way (its `readyToGo`
+`MOTION_START_UPDATABLE` path).
+
+Plan, characterization first:
+
+1. Simulator: log every executed command to `<ready-file>.events` so a test can read the wire
+   sequence and the reference trace can be captured; refuse `:I` with `!2` on an axis running at high
+   speed, as the command set documents. Done: the existing 19 cases pass against the original driver.
+2. Reproducer `synscan_guider_guides_ra_without_stopping_tracking`, with `--stop-lag 3` modelling the
+   slow stop: a 300 ms west and a 300 ms east pulse on a tracking mount must send no `:K1`, exactly two
+   `:I1` (guide period, then the tracking period again) and finish within 550 ms. Expected baseline
+   failure against version 8, recorded: `300 ms WEST pulse while tracking: 2 stop(s), 2 period
+   change(s), finished in 822 ms`, FAIL. The 19 other cases pass.
+3. Reference trace of the original driver: `INDIGO_SIMULATOR_TRACE_DIR=<dir>
+   build/integration/test_mount_synscan_simulator`, 19 event logs.
+4. Fix in `indigo_mount_synscan.driver`: when the axis is already running in low-speed mode (`mode` 1)
+   with the cached mode and direction, send only `:I` with the new period and keep the axis running.
+   Every other change - high speed, a direction change, an unknown cached state - keeps the existing
+   stop, `:G`, `:I`, `:J` sequence. Regenerate, version 9.
+5. Rerun the simulator suite and compare the trace; rerun the AstroEQ hardware suite from macOS arm64
+   over `/dev/cu.usbmodem111401`, the same board now wired to the Mac.
+
+### SYNSCAN-D02 results
+
+1. Simulator command log and the high-speed `:I` refusal: done, as above.
+2. Reproducer: done, fails against version 8 as recorded above.
+3. Original-driver reference trace: 19 event logs, captured before the production change.
+4. Fix: `synscan_slew_axis_at_rate()` in `indigo_mount_synscan.driver`, regenerated with
+   `../../build/bin/indigo_generator indigo_mount_synscan.driver`; the generated `.c` differs from
+   version 8 only in that function and `DRIVER_VERSION` 0x03000009.
+5. Verification, macOS arm64:
+   - `./build/integration/test_mount_synscan_simulator` from `indigo_test`: **20 of 20 passed**.
+     The reproducer now reports `300 ms WEST pulse while tracking: 0 stop(s), 2 period change(s),
+     finished in 403 ms` and `300 ms EAST ... finished in 308 ms`.
+   - Trace comparison, command column only: the one intentional difference is in
+     `synscan_guider_guides_ra_without_stopping_tracking`, where each pulse is now `:I1<guide>`
+     and `:I1<tracking>` instead of `:K1`, stop polling, `:G110`, `:I1`, `:J1` twice. Four other
+     logs differ (`synscan_aux_passes_shutter_compliance_checks`,
+     `synscan_mount_autohome_finds_home_index`,
+     `synscan_mount_parks_after_axis_status_initialized_reply`,
+     `synscan_mount_tracks_after_coordinate_slew_when_requested`): in poll interleaving and in
+     `:H` increments that depend on sidereal time. They are not caused by the change - two runs of
+     version 9 differ from each other in the same four logs by 1, 7, 8 and 2 lines.
+   - Hardware, `SYNSCAN_HW_URL=/dev/cu.usbmodem111401 ./build/hardware/test_mount_synscan_hw --run`
+     against the AstroEQ 8.25 ESP32-S3 board with the current image, now wired to the Mac:
+     **16 of 16 passed**, exit 0, finished 2026-09-24 21:48 CEST.
+
+Guide pulse duration accuracy, AstroEQ 8.25 ESP32-S3 over USB serial, 50 % guide rate, mount
+tracking at sidereal, five samples per duration. Measured endpoints: the change request submitted
+to the bus until `GUIDER_GUIDE_*` is republished `INDIGO_OK_STATE`; this is public-property
+completion timing through the driver's finalizer, not the controller's step output.
+
+| Axis | Requested | Version 8, Linux arm64 | Version 9, macOS arm64 (min / max) |
+| --- | --- | --- | --- |
+| RA | 100 ms | +300.5 ms | +57.9 ms (+55.6 / +60.2) |
+| RA | 250 ms | +300.7 ms | +67.6 ms (+64.9 / +70.9) |
+| RA | 500 ms | +301.0 ms | +56.3 ms (+35.5 / +79.2) |
+| RA | 1000 ms | +301.5 ms | +63.8 ms (+56.7 / +71.1) |
+| RA | 2000 ms | +302.7 ms | +70.4 ms (+44.8 / +86.2) |
+| DEC | 100 ms | +150.3 ms | +166.6 ms (+161.8 / +169.9) |
+| DEC | 250 ms | +150.5 ms | +173.1 ms (+168.8 / +177.1) |
+| DEC | 500 ms | +150.8 ms | +188.6 ms (+184.5 / +191.5) |
+| DEC | 1000 ms | +151.3 ms | +167.0 ms (+155.5 / +173.2) |
+| DEC | 2000 ms | +152.5 ms | +162.8 ms (+156.5 / +171.7) |
+
+All errors are late, none early. The RA overrun fell by about 240 ms; what remains is the
+finalizer's status query and `:I` round trip. DEC is unchanged by this fix, and its path still
+stops and waits for the axis; the two columns come from different hosts, so the 15 to 35 ms
+difference on DEC is host and USB latency, not the driver. Eight 1000 ms pulses each way still move
+the reported RA by the expected amount (differential 0.0306 degrees against 0.033), and tracking
+resumes at the sidereal rate (0.0011 degrees of drift in 12 s against 0.050 for a stopped axis).
+
+Not validated: the change has not been run against a Sky-Watcher controller. The AZ-GTi hardware
+record is version 4. The protocol document and AstroEQ agree that a low-speed axis takes a new
+`:I` while running, but a rerun on the AZ-GTi is the outstanding check.
+
+### Final test summary, SYNSCAN-D02
+
+- Simulated tests run: 20. Passed: 20 (macOS arm64, version 9). The same suite against version 8
+  with the new reproducer: 20 run, 19 passed, the reproducer failing as expected.
+- Hardware tests run: 16. Passed: 16 (AstroEQ 8.25 ESP32-S3, macOS arm64, version 9).
+- Defects found: 1 (SYNSCAN-D02). Fixed: 1. Driver version: 8 before, 9 after.

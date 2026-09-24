@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -557,6 +557,19 @@ static bool synscan_slew_axis_at_rate(indigo_device *device, synscan_axis axis, 
 		return false;
 	}
 	running = (status & SYNSCAN_STATUS_RUNNING) != 0;
+	// A running low-speed axis takes a new step period without stopping; only high speed or
+	// a change of mode or direction needs the stop and the full :G, :I, :J sequence.
+	if (running && mode == 1 && synscan_axis_config_matches(device, axis, mode, direction, *synscan_axis_config_period(device, axis))) {
+		if (*synscan_axis_config_period(device, axis) == period) {
+			return true;
+		}
+		if (!synscan_axis_setting(device, 'I', axis, period)) {
+			synscan_invalidate_axis_config(device, axis);
+			return false;
+		}
+		synscan_cache_axis_config(device, axis, mode, direction, period);
+		return true;
+	}
 	if (!synscan_axis_config_matches(device, axis, mode, direction, period)) {
 		if (running) {
 			if (!synscan_stop_axis_and_wait(device, axis, NULL)) {
