@@ -161,14 +161,15 @@
 |  | 2026-09-23 15:04 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM70) | 8 / 8 | ✅ OK |
 |  | 2026-09-23 15:10 | 3.0.0.53 | mac arm64 | simulator | 108 / 108 | ✅ OK |
 |  | 2026-09-23 18:32 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM120) | 8 / 8 | ✅ OK |
-| mount_lx200 | 2026-09-22 23:07 | 3.0.0.57 | mac arm64 | Pegasus NYX-101 | 30 / 30 | ✅ OK |
-|  | 2026-09-23 00:11 | 3.0.0.58 | mac arm64 | OnStepX | 33 / 33 | ✅ OK |
+| mount_lx200 | 2026-09-23 00:11 | 3.0.0.58 | mac arm64 | OnStepX | 33 / 33 | ✅ OK |
 |  | 2026-09-23 10:06 | 3.0.0.59 | mac arm64 | aGotino | 35 / 35 | ✅ OK |
 |  | 2026-09-23 11:17 | 3.0.0.60 | mac arm64 | OpenAstroTracker | 35 / 35 | ✅ OK |
 |  | 2026-09-23 14:18 | 3.0.0.63 | mac arm64 | ESP32Go | 35 / 35 | ✅ OK |
 |  | 2026-09-23 19:34 | 3.0.0.64 | mac arm64 | MountSim 2.3 (StarGO) | 14 / 14 | ✅ OK |
 |  | 2026-09-23 20:26 | 3.0.0.65 | mac arm64 | MountSim 2.3 (LX200Classic) | 15 / 15 | ✅ OK |
 |  | 2026-09-23 20:38 | 3.0.0.65 | mac arm64 | simulator | 99 / 99 | ✅ OK |
+|  | 2026-09-24 23:20 | 3.0.0.65 | mac arm64 | Pegasus NYX-101 | 35 / 35 | ✅ OK |
+|  | 2026-09-24 23:26 | 3.0.0.65 | mac arm64 | Pegasus NYX-101 (WiFi) | 35 / 35 | ✅ OK |
 | mount_nexstar | 2026-09-23 23:55 | 3.0.0.35 | mac arm64 | MountSim 2.3 (SE wedge EQ) | 20 / 20 | ✅ OK |
 |  | 2026-09-24 06:25 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGEM) | 21 / 21 | ✅ OK |
 |  | 2026-09-24 06:32 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGE) | 20 / 20 | ✅ OK |

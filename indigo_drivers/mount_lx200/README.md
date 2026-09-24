@@ -52,7 +52,6 @@ Driver is developed and tested with:
 
 ## Testing
 
-2026-09-22 23:07 3.0.0.57 mac arm64 Pegasus NYX-101 30/30 OK
 2026-09-23 00:11 3.0.0.58 mac arm64 OnStepX 33/33 OK
 2026-09-23 10:06 3.0.0.59 mac arm64 aGotino 35/35 OK
 2026-09-23 11:17 3.0.0.60 mac arm64 OpenAstroTracker 35/35 OK
@@ -60,3 +59,5 @@ Driver is developed and tested with:
 2026-09-23 19:34 3.0.0.64 mac arm64 MountSim 2.3 (StarGO) 14/14 OK
 2026-09-23 20:26 3.0.0.65 mac arm64 MountSim 2.3 (LX200Classic) 15/15 OK
 2026-09-23 20:38 3.0.0.65 mac arm64 simulator 99/99 OK
+2026-09-24 23:20 3.0.0.65 mac arm64 Pegasus NYX-101 35/35 OK
+2026-09-24 23:26 3.0.0.65 mac arm64 Pegasus NYX-101 (WiFi) 35/35 OK

@@ -28,8 +28,10 @@
 //
 // THE MOUNT PHYSICALLY MOVES. Every slew is small and computed from the pointing the mount has
 // when the scenario starts, never from a fixed sky position, and the session restores the
-// tracking state, the slew rate and the parked state it found. The run ends with the mount
-// parked, which is where the park scenario leaves it.
+// tracking state, the slew rate and the parked state it found. The park scenario unparks the
+// mount again and moves it off the park position, so a mount found unparked is left unparked a
+// few degrees from where the last scenario pointed it, and only a mount found parked is parked
+// again at the end.
 //
 // NOTHING PERSISTENT IN THE MOUNT IS OVERWRITTEN. MOUNT_PARK_SET and MOUNT_HOME_SET are issued
 // only while the mount is already at the position they would store, so they write back the
@@ -332,7 +334,7 @@ static bool skip_unless_onstep(const char *what) {
 // four rates with :TQ#, :TS#, :TL# and :TK# and has no command at all that stops the tracking
 // motor, so MOUNT_TRACKING is hidden for it and the mount is always already armed.
 static bool arm_tracking(void) {
-	if (hw_property_hidden(mount, MOUNT_TRACKING_PROPERTY_NAME)) {
+	if (!hw_property_defined(mount, MOUNT_TRACKING_PROPERTY_NAME)) {
 		return true;
 	}
 	return hw_set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT);
@@ -340,7 +342,7 @@ static bool arm_tracking(void) {
 
 // The same for the assertion that tracking is on: a model without the switch has nothing to read.
 static bool tracking_is_armed(void) {
-	if (hw_property_hidden(mount, MOUNT_TRACKING_PROPERTY_NAME)) {
+	if (!hw_property_defined(mount, MOUNT_TRACKING_PROPERTY_NAME)) {
 		return true;
 	}
 	return switch_on(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME);
@@ -926,7 +928,7 @@ static void lx200_reports_the_tracking_rate_from_the_mount(void) {
 	}
 	// Now stop tracking and open a new session. The mount is still configured for the sidereal
 	// rate, so that is what the fresh session has to report.
-	if (!hw_property_hidden(mount, MOUNT_TRACKING_PROPERTY_NAME)) {
+	if (hw_property_defined(mount, MOUNT_TRACKING_PROPERTY_NAME)) {
 		ASSERT_TRUE(hw_set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
 	}
 	ASSERT_TRUE(disconnect_secondary_devices());
@@ -934,7 +936,7 @@ static void lx200_reports_the_tracking_rate_from_the_mount(void) {
 	ASSERT_TRUE(hw_connect(mount, CONNECT_TIMEOUT));
 	ASSERT_TRUE(connect_secondary_devices());
 	ASSERT_TRUE(hw_wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, POLL_TIMEOUT));
-	if (!hw_property_hidden(mount, MOUNT_TRACKING_PROPERTY_NAME)) {
+	if (hw_property_defined(mount, MOUNT_TRACKING_PROPERTY_NAME)) {
 		ASSERT_TRUE(!switch_on(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
 	}
 	ASSERT_TRUE(switch_on(mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME));

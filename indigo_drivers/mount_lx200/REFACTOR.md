@@ -2182,3 +2182,86 @@ Guide timing used 72 measured pulses: four directions, 20/100/500 ms, three repe
 No physical timing, pointing accuracy, optical guiding, untested firmware, 16-inch-specific home functions or external accessory hardware is claimed. Optional focuser/auxiliary devices remain unsupported by this explicit profile. Bounded polling transactions can delay urgent host-timed stops; measured wire-edge durations are software behavior, not a hard real-time or physical-controller guarantee. No historical sky-time simulation is claimed. Non-macOS execution remains unverified.
 
 Final counts: **MountSim LX200Classic 15 run / 15 passed; portable LX200 99 run / 99 passed; focused ASan/UBSan 2 run / 2 passed; MountSim native 5 assertion groups passed; physical hardware 0 run / 0 passed.** README Testing and generated TEST_SUMMARY record the independent portable and model configurations. Artifacts were preserved before test cleanup. Scoped INDIGO and MountSim commits are made separately; nothing is pushed.
+
+# LX200 hardware acceptance rerun, NYX-101 over USB and WiFi (2026-09-24)
+
+## Scope and hardware-test decision
+
+Non-interactive hardware run against the Pegasus Astro NYX-101, firmware 1.32.1,
+on macOS arm64 with driver 3.0.0.65 (`0x03000041`), unchanged by this work. The
+35-case suite was run twice over the USB serial adapter and once over the
+mount's WiFi as a separate transport configuration:
+
+```sh
+MOUNT_LX200_HW_PORT=/dev/cu.usbserial-NYX467edc0c make -C indigo_test test-mount-lx200-hw
+MOUNT_LX200_HW_PORT=lx200://192.168.111.195:9999 make -C indigo_test test-mount-lx200-hw
+```
+
+The WiFi run reaches the controller through its client connection to the
+network `pp`, on the default NYX port 9999 the driver documents. Physical
+hot-plug and network loss were not part of this non-interactive run; no
+hot-plug or network-failure coverage is claimed.
+
+## Found defects
+
+No driver defect. The first USB run passed 35/35 but its output contained a
+misleading diagnostic that was fixed in the test:
+
+| ID | Status | Observation and root cause | Fix |
+| --- | --- | --- | --- |
+| LXT01 | FIXED (test) | Every tracking scenario printed "MOUNT_TRACKING is published but should stay hidden", which reads as a property contract violation on a mount that legitimately has the switch. `arm_tracking()`, `tracking_is_armed()` and two branches of `lx200_reports_the_tracking_rate_from_the_mount` asked whether the model has a tracking switch through `hw_property_hidden()`, the assertion helper that reports a published property as a failure. | The four capability queries use `hw_property_defined()`; `hw_property_hidden()` stays with the contract assertions. The rerun prints no such line. |
+
+The file header also claimed that the run ends with the mount parked. The
+session restores the parked state it found and the park scenario unparks and
+moves the mount off the park position, so the comment now says that; the code
+was already right. Neither change touches the driver, the simulator or a
+controller behaviour, so there is nothing new to model in the simulator.
+
+## Results
+
+| Run | Transport | Finished | Run | Passed |
+| --- | --- | --- | --- | --- |
+| 1, before LXT01 | USB serial | 23:18 | 35 | 35 |
+| 2, after LXT01 | USB serial | 23:20 | 35 | 35 |
+| 3, after LXT01 | WiFi, `lx200://192.168.111.195:9999` | 23:26 | 35 | 35 |
+
+Every NYX specific case ran; only the three OnStep specific cases report
+themselves as not applicable. Over WiFi the session detected the same model,
+kept tracking in all 95 samples taken during a slew and the abort stopped a
+12 degree slew 10.35 degrees short of its target.
+
+### Guiding pulse duration accuracy (hardware)
+
+Same method as the 2026-09-22 record: 20, 100 and 500 ms in all four
+directions, three retained samples per direction after one discarded warm-up,
+from the change request to the OK publication of `GUIDER_GUIDE_RA` /
+`GUIDER_GUIDE_DEC`. Software completion timing over the real transport, not an
+electrical measurement. Values in ms.
+
+| Transport | Requested | n | Min | Mean | Median | p95 | p99 / max | Stddev | Signed error | Max absolute |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| USB, run 1 | 20 | 12 | 76.46 | 80.83 | 81.17 | 84.37 | 84.90 | 2.98 | +60.83 (+304.16 %) | 64.90 |
+| USB, run 1 | 100 | 12 | 157.35 | 169.12 | 161.40 | 165.02 | 256.90 | 27.73 | +69.12 (+69.12 %) | 156.90 |
+| USB, run 1 | 500 | 12 | 559.41 | 587.69 | 564.70 | 637.81 | 638.69 | 36.66 | +87.69 (+17.54 %) | 138.69 |
+| WiFi | 20 | 12 | 84.62 | 107.34 | 91.14 | 93.72 | 298.36 | 60.22 | +87.34 (+436.70 %) | 278.36 |
+| WiFi | 100 | 12 | 164.17 | 229.16 | 172.30 | 386.91 | 461.28 | 109.86 | +129.16 (+129.16 %) | 361.28 |
+| WiFi | 500 | 12 | 569.37 | 638.33 | 663.60 | 682.31 | 723.19 | 53.59 | +138.33 (+27.67 %) | 223.19 |
+
+The WiFi medians are within 10 ms of USB; the larger mean and tail are network
+round-trip jitter. These are observations on this host and network, not
+acceptance limits.
+
+## Not covered
+
+* Physical unplug, WiFi loss and a refused network address. The
+  `lx200_refuses_an_unusable_port` case uses a nonexistent serial device in both
+  configurations; network refusal stays with the simulator `--tcp` target.
+* `MOUNT_HOME_SET` and the WiFi write properties on hardware, for the reasons
+  given in the 2026-09-22 record.
+
+## Final test summary for this run
+
+* Simulated tests: 0 run, 0 passed. The change is test-only and touches no
+  simulator suite.
+* Hardware tests: 105 run, 105 passed against the Pegasus Astro NYX-101, 70 over
+  USB serial and 35 over WiFi.
