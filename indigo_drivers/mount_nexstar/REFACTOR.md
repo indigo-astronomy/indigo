@@ -594,3 +594,94 @@ establish an actual encoder index, physical signed park pose, mechanical
 tracking response, pulse angular rates, electrical serial behavior, or
 firmware-variant compatibility. `MIGRATION_STATUS.md` remains at its portable
 14 / hardware 0 count because MountSim cases are opt-in macOS tests.
+
+## CGX MountSim 2.3 acceptance (2026-09-24)
+
+The requested run used the exact `CGX` control-server profile, Celestron model
+byte 23, in non-interactive simulator mode. No CGX hardware was available, so
+the hardware-test decision was zero physical runs. The original MountSim
+profile handled raw `Z`/`z` as geographic Alt/Az and did not implement raw
+`B`/`b` mechanical-axis GOTO. The existing driver's park path sends `b` and
+expects `L` completion, making CGX park and signed southern park untestable
+against that profile. Its rate table also assigned 0.5x/1x to fixed indices
+1/2 and 3 degrees/second to index 9.
+
+The atomic CGX work was: (1) audit the original driver, wire commands,
+MountSim profile and official protocol/model documentation; (2) add CGX to
+the existing 90°/90° simulated mechanical-axis frame and rebase, with `B`/`b`
+timed motion and `Z`/`z` readback; (3) correct its fixed slew-rate table;
+(4) extend the existing CGX case gates and share the AVX/CGX rate assertion;
+(5) label fixed HC guide indices accurately for CGX, regenerate the driver,
+and run the complete model, portable, native and affected-model suites.
+Each step passed its verification. No new persistent file or Xcode project
+entry was needed. The `.driver` remains the source of truth and generated
+C/header/main files were regenerated with the unchanged generator.
+
+The [official NexStar protocol](https://s3.amazonaws.com/celestron-site-support-files/support_files/1154108406_nexstarcommprot.pdf)
+defines `B`/`b` and `Z`/`z` revolution fractions and says fixed `P` indices
+correspond to hand-control speeds. The [CGX manual](https://celestron-site-support-files.s3.amazonaws.com/support_files/91530_CGX_EQ%20Mount%20and%20Tripod_Manual_5lang_Web.pdf),
+English page 19, lists rates 1/2 as 2x/4x sidereal and rate 9 as 4 degrees/s;
+its separate autoguide-rate setting is a percentage. Independent
+[INDI Celestron code](https://github.com/indilib/indi/blob/master/drivers/telescope/celestrondriver.cpp)
+forwards fixed rate indices to MC motion and handles `0x46` autoguide-rate
+configuration separately. These sources support the simulator's index table
+and honest property labels, but give no measured physical CGX guide
+correction or encoder zero.
+
+Found defects and regression evidence:
+
+- **Reproduced simulator behavior:** before correction, raw `z` did not give
+  the mount-axis index needed by `b` parking, and `b` was not a mechanical
+  motion handler. The CGX-specific simulator branch now uses the same declared
+  90°/90° simulated index as CGE/CGEM/AVX. The raw axis case passed, the driver
+  park completed only after motion, and the signed southern default emitted
+  270° DEC on `b` and reached 270° on subsequent `z` readback.
+- **Simulator source-audit defect:** the CGX fixed rate table conflicted with
+  the CGX manual. The corrected raw positive DEC rate 1/2/7/9 measurements
+  were 0.02099° over 2.5 s, 0.04201° over 2.5 s, 0.71836° over 0.7 s and
+  2.08318° over 0.5 s. The shared AVX/CGX documented-rate case now pins those
+  model-specific bounds; these are simulated motor displacements.
+- **Driver source-audit defect:** `COMMAND_GUIDE_RATE` retained client item
+  names `GUIDE_50`/`GUIDE_100` but labeled the fixed `P` index 1/2 CGX
+  fallback as 50%/100% sidereal, even though the CGX manual describes HC
+  indices 1/2 as nominal 2x/4x. Driver 3.0.0.37 now applies the AVX style
+  nominal labels and unverified-physical-correction message to CGX. The
+  guider-first shared-lifetime case checks both labels; the command encoding
+  and disabled native-pulse capability did not change.
+
+The final full CGX run passed **21/21** under `/tmp/cgx-full`. It covered
+protocol/readback, model/firmware, SYNC/GOTO arrival, manual motion, rate and
+tracking properties, site/clock, ST4 readback, mechanical and signed parks,
+abort and BUSY recovery, GPS/shared lifetime, guider directions/replacement,
+reconnect and transport loss during idle, active, park and guide operations.
+The timed-guide case recorded **96/96** complete ON/OFF intervals plus 24
+warmups: 20, 100 and 500 ms in each of four directions, four retained samples
+per cell, under tracking-off and tracking-on coordinate-polling workloads.
+Mean signed error across the 24 cells was +6.221 ms; cell means ranged from
++2.172 to +16.375 ms and the maximum absolute sample error was 20.305 ms.
+These are transparent PTY relay command-edge timings, including host scheduling.
+
+After the CGX change, portable NexStar integration passed **14/14** normally
+and **14/14** under ASan/UBSan without sanitizer diagnostics. MountSim native
+motor, geometry, serial and sky-refresh tests passed **5/5**; its control and
+protocol audit suite passed, including CGX identity. Focused preservation
+cases passed for CGE mechanical axes, CGEM mechanical axes and higher rates,
+AVX documented rates, and SE mechanical axes (**5/5**). `git diff --check`
+passed. The 21 CGX and 5 focused other-model runs used the launcher's
+exclusive `/tmp/indigo-mountsim-501.lock`, fresh app instances and raw
+binary capture with no terminator option.
+
+CGX simulator acceptance cannot establish a physical encoder index, signed
+park pose, motor rate, pulse angular correction, tracking coexistence on
+hardware, electrical serial behavior or firmware-variant compatibility.
+The platform run was macOS arm64; Linux and Windows were not run for CGX.
+`MIGRATION_STATUS.md` retains portable integration 14 and hardware 0.
+
+## Final CGX Test Summary
+
+- Simulated functional executions: **59 run, 59 passed** (CGX MountSim 21,
+  portable normal 14, portable ASan/UBSan 14, MountSim native 5 and focused
+  previous-model cases 5). The separate MountSim control/audit suite passed.
+- Guiding timing: **96 measured ON/OFF intervals**, plus 24 warmups, across
+  two workloads; software transport timing only.
+- Hardware tests: **0 run, 0 passed**.

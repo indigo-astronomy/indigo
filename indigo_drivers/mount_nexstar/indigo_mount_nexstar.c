@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000024
+#define DRIVER_VERSION       0x03000025
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -60,6 +60,8 @@
 #define REFRESH_SECONDS      (0.5)
 #define GPS_DEVICE_NAME      "Mount Nexstar (gps)"
 #define NEXSTAR_AVX_MODEL_ID 20
+#define NEXSTAR_CGX_MODEL_ID 23
+#define NEXSTAR_MODERN_EQ_MODEL(id) ((id) == NEXSTAR_AVX_MODEL_ID || (id) == NEXSTAR_CGX_MODEL_ID)
 #define WARN_PARKED_MSG      "Mount is parked, please unpark!"
 #define WARN_PARKING_PROGRESS_MSG "Mount parking is in progress, please wait until complete!"
 #define is_connected         gp_bits
@@ -1265,7 +1267,7 @@ static void guider_connection_handler(indigo_device *device) {
 		}
 		if (connection_result) {
 			//+ guider.on_connect
-			if (PRIVATE_DATA->model_id == NEXSTAR_AVX_MODEL_ID) {
+			if (NEXSTAR_MODERN_EQ_MODEL(PRIVATE_DATA->model_id)) {
 				INDIGO_COPY_VALUE(GUIDE_50_ITEM->label, "HC fixed rate 1 (nominal 2x sidereal)");
 				INDIGO_COPY_VALUE(GUIDE_100_ITEM->label, "HC fixed rate 2 (nominal 4x sidereal)");
 			} else {
@@ -1352,10 +1354,10 @@ static void guider_command_guide_rate_handler(indigo_device *device) {
 		PRIVATE_DATA->guide_rate = 2;
 	}
 	COMMAND_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
-	if (PRIVATE_DATA->model_id == NEXSTAR_AVX_MODEL_ID && PRIVATE_DATA->guide_rate == 1) {
-		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "AVX fixed HC rate 1 selected (manual nominal 2x sidereal; physical correction unverified).");
-	} else if (PRIVATE_DATA->model_id == NEXSTAR_AVX_MODEL_ID && PRIVATE_DATA->guide_rate == 2) {
-		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "AVX fixed HC rate 2 selected (manual nominal 4x sidereal; physical correction unverified).");
+	if (NEXSTAR_MODERN_EQ_MODEL(PRIVATE_DATA->model_id) && PRIVATE_DATA->guide_rate == 1) {
+		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 1 selected (manual nominal 2x sidereal; physical correction unverified).");
+	} else if (NEXSTAR_MODERN_EQ_MODEL(PRIVATE_DATA->model_id) && PRIVATE_DATA->guide_rate == 2) {
+		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 2 selected (manual nominal 4x sidereal; physical correction unverified).");
 	} else if (PRIVATE_DATA->guide_rate == 1) {
 		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 7.5\"/s (1/2 sidereal).");
 	} else if (PRIVATE_DATA->guide_rate == 2) {
