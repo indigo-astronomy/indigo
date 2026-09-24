@@ -5049,6 +5049,7 @@
 		9D214E013061403C0050FA96 /* indigo_mount_mxhd_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_mount_mxhd_main.c; sourceTree = "<group>"; };
 		9D214E053061403C0050FA96 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D239B35304FDB40002E0722 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20260924000000000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		9D239B36304FE0CF002E0722 /* test_ccd_touptek_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_touptek_sdk.c; sourceTree = "<group>"; };
 		9D239B37304FEC2A002E0722 /* indigo_ccd_touptek_vendors.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_touptek_vendors.h; sourceTree = "<group>"; };
 		9D239B3D30500558002E0722 /* test_ccd_touptek_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_touptek_hw.c; sourceTree = "<group>"; };
@@ -11338,6 +11339,7 @@
 				9D743A5423FD56EF0093319F /* rotator_simulator */,
 				596FCAAD2BD0328000F5BACB /* rotator_wa */,
 				9DC782F521A6FCC7009859FD /* system_ascol */,
+				C0DE20260924000000000002 /* system_alpaca */,
 				9D74A5302D4B648100A31003 /* wheel_astroasis */,
 				593CFE3F1DFC89F5003B63D4 /* wheel_atik */,
 				9DBC34611DCB265A00588DB9 /* wheel_asi */,
@@ -16075,6 +16077,14 @@
 				9DC774FC2DB8DB4C00CE859C /* aux_astromechanics_simulator.ino */,
 			);
 			path = aux_astromechanics_simulator;
+			sourceTree = "<group>";
+		};
+		C0DE20260924000000000002 /* system_alpaca */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20260924000000000001 /* REFACTOR.md */,
+			);
+			path = system_alpaca;
 			sourceTree = "<group>";
 		};
 		9DC782F521A6FCC7009859FD /* system_ascol */ = {
