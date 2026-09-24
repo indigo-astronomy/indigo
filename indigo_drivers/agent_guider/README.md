@@ -118,3 +118,7 @@ If the Declination guiding runs away after meridian flip **Reverse Dec speed aft
 Please see **RA speed** and **Dec speed** parameters of the **Settings** for details.
 
 As of INDIGO version 2.0-237 recalibration after GOTO or meridian flip is not required. In order for this to work the *Mount agent* needs to push the mount coordinates and orientation to *AGENT_GUIDER_MOUNT_COORDINATES* property. This is achieved by setting the *Guider agent* as related from the *Mount agent*.
+
+## Testing
+
+2026-09-24 12:56 3.0.0.48 linux x64 simulator 88/88 OK

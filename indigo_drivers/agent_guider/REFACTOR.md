@@ -38,3 +38,12 @@ Status: hardware-free validation complete. Production defects `DRV-124` through 
 
 - Simulated/fake hardware-free tests: 87 / 88 passed. The sole failure, `dither RA projection preserves magnitude`, records the open and intentionally deferred DRV-130 finding. DRV-182's focused UBSan and Sequencer simulator-guiding regressions passed.
 - Hardware tests: 0 executed, 0 passed.
+
+## Linux agent test run (2026-09-24)
+
+- Environment: Linux x86_64 (Ubuntu, GNU ld 2.42), simulator only, strict bus locking always on (the framework's `indigo_use_strict_locking` switch was removed in the same session).
+- `dither RA projection preserves magnitude` passes: DRV-130 is closed as fixed in `indigo_drivers/REVIEW.md`, so the accepted-failure note above is historical.
+- `selection subframe restore` failed deterministically because the CCD simulator never published the sensor size set through `SIMULATION_SETUP` (see `ccd_simulator/REFACTOR.md`, 2026-09-24). Fixed in the simulator; no Guider Agent change.
+- `dither strategies` hung in about one of ten runs (SIGALRM). A thread dump showed a test-harness deadlock: the fake camera called `indigo_cancel_timer_sync()` from `change_property` with the bus locked while its `synthetic_frame()` timer waited for the bus lock in `indigo_update_property()`. The fake camera now aborts on its device queue, as `DRIVER_DEVELOPMENT_BASICS.md` requires; the case then passed 30 of 30 repetitions.
+- Cooperation with the production Imager and Mount agents (dithering handshake, aborts while dithering, Mount Agent `ABORT_RELATED_PROCESS` on slew and park) is covered by `integration/test_agent_imager_guider_mount.c`, see `agent_imager/REFACTOR.md`.
+- Result: 88 / 88 simulated cases passed; hardware tests 0 / 0.

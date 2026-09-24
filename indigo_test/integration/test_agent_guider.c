@@ -349,13 +349,21 @@ static void fail_exposure(indigo_device *device) {
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Injected exposure failure");
 }
 
+// Runs on the device queue: indigo_cancel_timer_sync() waits for a running synthetic_frame(), which
+// publishes through the bus, so it must not be called from change_property with the bus locked.
+static void synthetic_abort_handler(indigo_device *device) {
+	indigo_cancel_timer_sync(device, &synthetic_timer);
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+	}
+}
+
 static indigo_result camera_spy(indigo_device *device, indigo_client *sender, indigo_property *property) {
 	if (!strcmp(property->name, "CCD_ABORT_EXPOSURE")) {
 		atomic_fetch_add(&camera_abort_requests, 1);
 		if (synthetic) {
-			indigo_cancel_timer_sync(device, &synthetic_timer);
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			indigo_execute_handler(device, synthetic_abort_handler);
 		}
 	}
 	if (!strcmp(property->name, "CCD_EXPOSURE")) {
