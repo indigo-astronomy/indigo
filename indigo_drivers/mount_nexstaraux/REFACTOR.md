@@ -344,3 +344,44 @@ completion confirmed over a network can be; none is early. No pulse was refused 
   Linux arm64, driver `0x03000012`, Celestron NexStar SE with a NexStar+ hand controller over a
   SkyPortal WiFi module.) Seven of the 36 report themselves as not exercised on this rig for the
   reasons listed above.
+
+## Mac hardware retest (2026-09-24)
+
+On macOS 26.7 arm64, at commit `f4abdd01f` with a clean working tree, the current
+`0x03000012` driver was rebuilt from source and linked into the opt-in hardware test. The physical
+Celestron NexStar SE and NexStar+ hand controller were reached through the SkyPortal WiFi module at
+`192.168.111.156:2000` (MAC `4C:55:CC:17:67:E0`, ZentriOS `WL-1.2.0.10`); both motor controllers
+reported firmware 5.20. A read-only `MC_GET_VER` packet returned a motor-controller response before
+the run. The host was this Mac, not the Raspberry Pi used for the earlier acceptance.
+
+`MOUNT_NEXSTARAUX_HW_URL=nexstar://192.168.111.156:2000 make -C indigo_test
+test-mount-nexstaraux-hw HW_PARK=0` exited 0 with 36/36 cases passing. Nine cases printed `not run`
+within their PASS result: six motion or tracking measurements because another master on the AUX bus
+moved the axes while no driver command was active; both opt-in park cases because the earlier
+hardware run found the pole sometimes unreachable and the return bounded by cord wrap; and the
+extreme guide-rate write because this controller acknowledges but does not store autoguide-rate
+changes. The network autodiscovery case separately reported that an explicit URL prevented its
+exercise, making ten cases not fully exercised on this Mac. Physical unplug/replug was not
+performed, so hot-plug coverage was not established. The suite restored the state it could and
+disconnected both logical devices.
+
+The Mac received the module's genuine UDP announcements through a Python UDP socket and connected to
+the motor controller over TCP, but a run with the driver's default `nexstar://` address did not
+connect. A first attempt in the tool sandbox reported `Failed to bind passive discovery socket`; an
+escalated attempt timed out without a discovery result. A narrow Mac C probe using
+`indigo_perform_passive_discovery(55555, 3, ...)` also timed out, while a plain C UDP socket bound
+successfully but `recvfrom()` returned `EAGAIN` after four seconds. A Python UDP socket on the same
+Mac received repeated announcements from the same MAC and IP. This leaves Mac process-specific UDP
+delivery unresolved; it is not evidence of a mount driver defect or of a completed autodiscovery
+case. Direct TCP and every other exercised scenario passed.
+
+The guide pulse timing case measured 48 software completion intervals for 50, 100, 200 and 500 ms
+pulses in four directions: signed error min 31.4, mean 38.7, median 38.0, p95 47.4, p99 66.3, max
+66.3 and standard deviation 5.7 ms. This includes Mac and WiFi scheduling; it is not an electrical
+or motor-timing measurement. No pulse was refused.
+
+An initial Mac attempt had accidentally linked a stale 2026-09-22 driver archive, although the
+current source was newer. It reproduced the already-fixed southern-declination and SYNC failures
+and aborted during the slew test. After rebuilding the archive and relinking the test, the full run
+above passed; the earlier attempt is not counted as validation of the current driver. A read-only
+`MC_SLEW_DONE` check before the repeat found both axes reporting complete.
