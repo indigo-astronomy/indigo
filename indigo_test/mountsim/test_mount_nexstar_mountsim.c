@@ -429,7 +429,7 @@ static void nexstar_mechanical_axis_index_and_timed_motion(void) {
 	SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, "Z", 1, reply, sizeof(reply)));
 	SERIAL_CHECK_TRUE(nexstar_decode_axis_reply(reply, 4, &polar, &declination));
 	SERIAL_CHECK_TRUE(fabs(polar - 90) < 0.02 && fabs(declination - 90) < 0.02);
-	// CGE and CGEM manuals specify rates 1 and 2 as 0.5x and 1x sidereal. Measure the DEC motor axis directly.
+	// SynScan V4 specifies rates 1 and 2 as 1x and 8x; CGE/CGEM specify 0.5x and 1x. Measure the DEC motor axis directly.
 	double displacement[2];
 	for (int index = 0; index < 2; index++) {
 		unsigned char move[] = { 'P', 2, 17, 0x24, (unsigned char)(index + 1), 0, 0, 0 };
@@ -445,7 +445,8 @@ static void nexstar_mechanical_axis_index_and_timed_motion(void) {
 		displacement[index] = remainder(declination - before, 360);
 	}
 	fprintf(stderr, "%s rate1/2 DEC motor displacement: %.6f / %.6f degrees\n", model->selection, displacement[0], displacement[1]);
-	SERIAL_CHECK_TRUE(displacement[0] > 0.001 && displacement[1] > displacement[0] * 1.6 && displacement[1] < displacement[0] * 2.4);
+	double ratio = !strcmp(model->selection, "SynScan") ? 8 : 2;
+	SERIAL_CHECK_TRUE(displacement[0] > 0.001 && displacement[1] > displacement[0] * ratio * 0.8 && displacement[1] < displacement[0] * ratio * 1.2);
 cleanup:
 	if (fd >= 0) {
 		close(fd);
@@ -581,6 +582,8 @@ static void nexstar_model_identity_and_reconnect(void) {
 	SERIAL_CHECK_TRUE(identity != NULL && !strcmp(identity->text.value, model->name));
 	if (model->altaz) {
 		SERIAL_CHECK_TRUE(find_cached_property("TRACKING_MODE") != NULL);
+		SERIAL_CHECK_TRUE(find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME) == NULL);
+	} else if (!strcmp(model->selection, "SynScan")) {
 		SERIAL_CHECK_TRUE(find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME) == NULL);
 	}
 	SERIAL_CHECK_TRUE(fresh_coordinates());
@@ -903,6 +906,16 @@ static void nexstar_tracking_and_site_roundtrip(void) {
 		SERIAL_CHECK_TRUE(nexstar_raw_exchange(raw_fd, "t", 1, reply, sizeof(reply)) && reply[0] == 3 && reply[1] == '#');
 		close(raw_fd);
 		raw_fd = -1;
+	} else if (!strcmp(model->selection, "SynScan")) {
+		unsigned char equatorial[] = { 'T', 2 }, pec[] = { 'T', 3 };
+		raw_fd = open(session.port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+		SERIAL_CHECK_TRUE(raw_fd >= 0);
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(raw_fd, (const char *)equatorial, sizeof(equatorial), reply, sizeof(reply)) && !strcmp(reply, "#"));
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(raw_fd, "t", 1, reply, sizeof(reply)) && reply[0] == 2 && reply[1] == '#');
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(raw_fd, (const char *)pec, sizeof(pec), reply, sizeof(reply)) && !strcmp(reply, "#"));
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(raw_fd, "t", 1, reply, sizeof(reply)) && reply[0] == 3 && reply[1] == '#');
+		close(raw_fd);
+		raw_fd = -1;
 	}
 	SERIAL_CHECK_TRUE(fixture_connect(&nexstar_mount, session.port));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48.125, 0.001));
@@ -1036,7 +1049,7 @@ static void nexstar_southern_default_park_keeps_signed_pole(void) {
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_PARK_POSITION_DEC_ITEM_NAME, -90, 0.01));
 	double after = wire_now();
 	SERIAL_CHECK_TRUE(change_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(coordinates_change(1, 0.02, 3000));
+	SERIAL_CHECK_TRUE(coordinates_change(0, 0.02, 3000) || coordinates_change(1, 0.02, 3000));
 	SERIAL_CHECK_TRUE(wait_for_state_long(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
 	int frame_count = nexstar_read_frames(frames, 32768);
 	SERIAL_CHECK_TRUE(frame_count >= 0);
@@ -1145,6 +1158,13 @@ static void nexstar_guider_first_and_sibling_survival(void) {
 		indigo_item *rate2 = find_cached_item("COMMAND_GUIDE_RATE", "GUIDE_100");
 		SERIAL_CHECK_TRUE(rate1 != NULL && rate2 != NULL);
 		SERIAL_CHECK_TRUE(strstr(rate1->label, "2x sidereal") != NULL && strstr(rate2->label, "4x sidereal") != NULL);
+	} else if (!strcmp(model->selection, "SynScan")) {
+		reset_simulator_context(&nexstar_guider);
+		enumerate_simulator_device();
+		indigo_item *rate1 = find_cached_item("COMMAND_GUIDE_RATE", "GUIDE_50");
+		indigo_item *rate2 = find_cached_item("COMMAND_GUIDE_RATE", "GUIDE_100");
+		SERIAL_CHECK_TRUE(rate1 != NULL && rate2 != NULL);
+		SERIAL_CHECK_TRUE(strstr(rate1->label, "1x sidereal") != NULL && strstr(rate2->label, "8x sidereal") != NULL);
 	}
 	SERIAL_CHECK_TRUE(pulse(0, GUIDER_GUIDE_WEST_ITEM_NAME, 100, true));
 	SERIAL_CHECK_TRUE(fixture_connect(&nexstar_mount, NULL));
@@ -1368,7 +1388,7 @@ int main(int argc, char **argv) {
 			bool cgem_only = !strcmp(cases[i].name, "nexstar_cgem_documented_higher_manual_rates");
 			bool avx_cgx_only = !strcmp(cases[i].name, "nexstar_avx_cgx_documented_manual_rates");
 			bool se_only = !strcmp(cases[i].name, "nexstar_se_documented_manual_rates") || !strcmp(cases[i].name, "nexstar_se_axis_index_and_timed_motion");
-			if ((!equatorial_axis || !strcmp(model->selection, "CGE") || !strcmp(model->selection, "CGEM") || !strcmp(model->selection, "AVX") || !strcmp(model->selection, "CGX")) && (!cgem_only || !strcmp(model->selection, "CGEM")) && (!avx_cgx_only || !strcmp(model->selection, "AVX") || !strcmp(model->selection, "CGX")) && (!se_only || !strcmp(model->selection, "SE")) && (model->gps || strcmp(cases[i].name, "nexstar_gps_fix_and_shared_lifetime"))) {
+			if ((!equatorial_axis || !strcmp(model->selection, "CGE") || !strcmp(model->selection, "CGEM") || !strcmp(model->selection, "AVX") || !strcmp(model->selection, "CGX") || !strcmp(model->selection, "SynScan")) && (strcmp(cases[i].name, "nexstar_st4_rates_read_back") || strcmp(model->selection, "SynScan")) && (!cgem_only || !strcmp(model->selection, "CGEM")) && (!avx_cgx_only || !strcmp(model->selection, "AVX") || !strcmp(model->selection, "CGX")) && (!se_only || !strcmp(model->selection, "SE")) && (model->gps || strcmp(cases[i].name, "nexstar_gps_fix_and_shared_lifetime"))) {
 				puts(cases[i].name);
 			}
 		}

@@ -159,8 +159,9 @@
 |  | 2026-09-24 06:25 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGEM) | 21 / 21 | ✅ OK |
 |  | 2026-09-24 06:32 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGE) | 20 / 20 | ✅ OK |
 |  | 2026-09-24 06:57 | 3.0.0.36 | mac arm64 | MountSim 2.3 (AVX) | 21 / 21 | ✅ OK |
-|  | 2026-09-24 06:58 | 3.0.0.36 | mac arm64 | simulator | 14 / 14 | ✅ OK |
 |  | 2026-09-24 07:19 | 3.0.0.37 | mac arm64 | MountSim 2.3 (CGX) | 21 / 21 | ✅ OK |
+|  | 2026-09-24 08:00 | 3.0.0.38 | mac arm64 | simulator | 14 / 14 | ✅ OK |
+|  | 2026-09-24 08:00 | 3.0.0.38 | mac arm64 | MountSim 2.3 (SynScan) | 18 / 18 | ✅ OK |
 | mount_nexstaraux | 2026-09-20 21:29 | 3.0.0.14 | mac arm64 | simulator | 30 / 30 | ✅ OK |
 |  | 2026-09-24 00:12 | 3.0.0.18 | linux arm64 | simulator | 40 / 40 | ✅ OK |
 | mount_pmc8 | 2026-09-20 20:49 | 3.0.0.11 | mac arm64 | simulator | 11 / 11 | ✅ OK |

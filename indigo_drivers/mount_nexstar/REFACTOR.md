@@ -685,3 +685,81 @@ The platform run was macOS arm64; Linux and Windows were not run for CGX.
 - Guiding timing: **96 measured ON/OFF intervals**, plus 24 warmups, across
   two workloads; software transport timing only.
 - Hardware tests: **0 run, 0 passed**.
+
+## SynScan V4 hand-controller MountSim acceptance (2026-09-24)
+
+The selected MountSim profile is exact `SynScan`: Sky-Watcher HEQ5 Series,
+model byte 1, hand-controller firmware 4.38.06. It uses the binary SynScan
+hand-controller protocol through `mount_nexstar`; it is distinct from EQDIR
+motor-controller control through `mount_synscan`. The manufacturer
+[SynScan serial protocol 3.3](https://inter-static.skywatcher.com/downloads/synscanserialcommunicationprotocol_version33.pdf)
+explicitly covers firmware 4.38.06, `B/b` GOTO and `Z/z` readback,
+upper-24-bit precise positions, `T3` PEC, fixed `P` rates and no serial
+ST4-rate readback command. The manufacturer
+[V4 hand-control manual](https://inter-static.skywatcher.com/downloads/Synscan_V4_Hand_Control_Manual_SSHCV4-F-161208V1-EN.pdf)
+gives rates 1 and 2 as nominal 1× and 8× sidereal field drift in tracking
+mode. Neither document establishes this simulator's encoder index or a
+physical guide correction amplitude.
+
+The unmodified driver-backed MountSim baseline failed park: `b` returned a
+simulator rejection and `tc_goto_azalt_p` failed. The first full 17-case run
+passed 9/17; remaining failures identified simulator SYNC readback, GOTO
+cancellation, fixed-rate RA direction, H/h controller time, signed park
+motion, guider direction and park-loss recovery. The simulator now uses a
+declared 90°/90° home axis frame with matching B/b and Z/z, a controller
+coordinate offset for SYNC, an advancing controller clock, distinct SynScan
+PEC tracking mode, and documented fixed-rate directions and rate table.
+The B/b axis path preserves the nearest equivalent revolution before the
+timed motor GOTO. Raw `b`/`z` and `B`/`Z` assertions require intermediate
+motion, final arrival and rate-1/2 displacement. The southern park case
+accepts motion on either axis because the simulated DEC can already equal
+the requested signed pole; it still checks the signed `b` target and
+independent final `z` readback.
+
+The driver source `.driver` is version 38 and generated output is synchronized.
+It suppresses the unsupported SynScan `CAN_GET_SET_GUIDE_RATE` capability so
+the standard `MOUNT_GUIDE_RATE` ST4 property is absent without a failed 0x47
+probe. Its existing fixed-rate `COMMAND_GUIDE_RATE` guider path remains
+available; SynScan labels identify HC rate 1 and 2 with the manufacturer's
+nominal drift values and expressly leave physical correction unverified.
+The test checks those labels, property visibility, and raw `T2` then `T3/t=3`
+PEC readback separately from Celestron's `T3` EQ South meaning. No GPS
+logical device is expected on SynScan.
+
+The full SynScan case registry maps to required behavior as follows:
+
+| Scenario | Driver-backed cases |
+| --- | --- |
+| Identity, capability visibility, reconnect and mechanical axis protocol | `nexstar_model_identity_and_reconnect`, `nexstar_mechanical_axis_index_and_timed_motion` |
+| SYNC, reachable/already-target GOTO, BUSY conflict and abort | `nexstar_sync_has_fresh_device_readback`, `nexstar_goto_arrives_and_handles_already_target`, `nexstar_abort_and_busy_conflict_recover` |
+| Manual axes/rates, tracking and PEC, site and controller clock | `nexstar_manual_directions_rates_and_axis_stop`, `nexstar_tracking_and_site_roundtrip`, `nexstar_clock_write_advances_and_reconnects` |
+| Park, signed southern target, abort and loss | `nexstar_park_completes_before_tracking_off`, `nexstar_southern_default_park_keeps_signed_pole`, `nexstar_park_abort_allows_new_motion`, `nexstar_pending_park_loss_recovers` |
+| Guider directions, replacement, independent axes and shared lifetime | `nexstar_guider_directions_replacement_and_independent_axes`, `nexstar_guider_first_and_sibling_survival` |
+| Idle, active and pending-guide transport loss | `nexstar_idle_transport_loss_recovers`, `nexstar_active_transport_loss_recovers`, `nexstar_pending_guide_loss_recovers` |
+| Four-direction 20/100/500 ms pulse timing, warmups and repeats with tracking off/on | `nexstar_guider_transport_edge_timing` |
+
+The manufacturer documents no compatible GPS commands, serial ST4-rate
+readback, home command or homing status for this HC model, so those class
+cases are not applicable. Protocol failure injection and malformed-reply
+recovery remain in the portable NexStar suite. No physical HEQ5, Windows
+runtime, actual park pose, guiding amplitude, tracking accuracy or electrical
+ST4 signal was verified by MountSim.
+
+The final exact-profile MountSim rerun passed **18/18** cases. The portable
+NexStar protocol suite passed **14/14** in a normal build and **14/14** with
+ASan/UBSan without diagnostics. MountSim's native suite passed **5/5**.
+Focused identity/reconnect, park-completion and guider-first regressions passed
+for each previously accepted CGE, SE, CGEM, AVX and CGX profile (**15/15**).
+Those profiles retain their prior full-run records; SynScan's nearest-axis
+motor method is additive and their command paths were not changed.
+
+The guider timing case observed **96 ON/OFF transport intervals** after 24
+warmups, covering four directions at 20, 100 and 500 ms under tracking-off
+polling and tracking-on GOTO workloads. All timing assertions passed; the
+largest observed absolute software wire-edge error was 21.807 ms. These
+measurements verify emitted serial timing, not physical mount motion or ST4
+electrical output. The functional campaign totals **66/66** executions
+(SynScan 18, portable normal 14, portable ASan/UBSan 14, MountSim native 5,
+focused prior-model 15). The separate MountSim control/audit suite also passed,
+including SynScan audit identity and 20 interrupted binary parser/model
+replacement cycles.

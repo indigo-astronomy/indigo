@@ -576,13 +576,13 @@ Compliance scenarios:
 - Assert `MOUNT_INFO.MODEL`, `VENDOR`, and `FIRMWARE_VERSION`.
 - Assert location/time properties: `GEOGRAPHIC_COORDINATES`, `MOUNT_LST_TIME`, and optional `UTC_TIME`.
 - Assert park/home properties when visible: `MOUNT_PARK`, `MOUNT_PARK_SET`, `MOUNT_PARK_POSITION`, `MOUNT_HOME`, `MOUNT_HOME_SET`, and `MOUNT_HOME_POSITION`.
-- Assert motion and tracking properties: `MOUNT_SLEW_RATE`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_TRACK_RATE`, `MOUNT_TRACKING`, `MOUNT_GUIDE_RATE`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_HORIZONTAL_COORDINATES`, and `MOUNT_ABORT_MOTION`.
+- Assert motion and tracking properties: `MOUNT_SLEW_RATE`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_TRACK_RATE`, `MOUNT_TRACKING`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_HORIZONTAL_COORDINATES`, and `MOUNT_ABORT_MOTION`. Assert `MOUNT_GUIDE_RATE` when the controller supports a guide-rate command; otherwise verify that the driver hides it.
 - Validate latitude, longitude, park/home coordinates, guide rates, equatorial coordinates, and horizontal coordinates where initial values are stable.
 - Unpark before testing tracking or motion on drivers that reject those requests while parked.
 - Toggle tracking on/off and verify the property reaches `OK`.
 - Change slew rate and verify the property reaches `OK`.
 - If visible, set a custom tracking rate and verify the value.
-- Set guide rate values and restore if practical.
+- Set guide rate values and restore if practical when `MOUNT_GUIDE_RATE` is visible.
 - Set `MOUNT_ON_COORDINATES_SET.SYNC`, sync to a valid RA/DEC, and verify final coordinates.
 - Start RA/DEC motion, abort it, and verify `MOUNT_ABORT_MOTION` reaches `OK` and motion properties are not left `BUSY`.
 - Treat alignment, side-of-pier, PEC, state lights, park/home, and set-host-time properties as optional unless the concrete driver exposes them.
