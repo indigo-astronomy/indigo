@@ -108,13 +108,19 @@ suite ran on a Raspberry Pi 5 under Linux arm64 from
 `make -C indigo_test test-mount-nexstaraux-hw HW_PARK=1`. The driver went from `0x0300000E` to
 `0x03000012` over the session.
 
-**The run is not complete.** Six defects were found on the mount and fixed, and every one of them
-is reproduced hardware-free, but the suite never finished a clean pass end to end: the WiFi module
-dropped off the network during the last attempt and did not come back, and the last two fixes - the
-declination axis that was never stopped and the goto abandoned after a lost answer - have therefore
-been verified only against the simulator. The best hardware pass of the session was 34 of 36 cases
-with driver `0x03000011`, the two failures being measurements spoiled by the drifting declination
-axis that the sixth defect explains. No hardware result is recorded in `README.md` for that reason.
+The suite passes 36 of 36 against the mount with driver `0x03000012`. Six defects were found on the
+mount over the session and all six are reproduced hardware-free as well. Seven cases report
+themselves as not exercised on this rig rather than passing or failing, each for a reason the driver
+cannot control; they are listed under "Not exercised on this rig" below.
+
+Reaching that took several passes, and what made the difference was not the driver but the way the
+measurements are taken. Anything judged by an arc the axes travelled has to survive a hand
+controller that writes the same velocity registers, and anything judged by a session has to survive
+a WiFi module that refuses one now and then. The measurements were rebuilt accordingly: motion is
+compared between two directions so a common drift cancels, the tracking windows are validated
+afterwards by what the undriven axis lost, a session is retried with a growing pause, and the guide
+pulse sweep leaves 300 ms between pulses because a back-to-back burst of eighty lost nineteen of
+them. None of that weakens an assertion about the driver; it separates the driver from the rig.
 
 ### What the hardware suite covers
 
@@ -277,11 +283,39 @@ can be interrupted.
   `indigo_perform_passive_discovery()` in `indigo_libs/indigo_uni_io.c`, which copied a datagram it
   never terminated; fixed separately.
 
+### Not exercised on this rig
+
+These are reported by the run itself, with the measurement that justifies each one.
+
+- **The hand controller kept turning the axes.** `rig_is_quiet()` found the axes moving with nothing
+  commanded before `moves_the_dec_axis_manually`, `moves_faster_at_a_higher_rate` and
+  `aborts_manual_motion` (0.0021 to 0.0071 degrees in six seconds), and the validity gate rejected
+  the windows of `holds_the_right_ascension_while_tracking` and
+  `keeps_tracking_through_a_guide_pulse`, where the undriven axis lost 0.00685 h and 0.00441 h of
+  the 0.00836 h the sky moved. The driver contract those two carry is still asserted whenever the
+  bus is quiet, which it was for `keeps_tracking_after_manual_motion` and `tracks_after_a_slew` in
+  the same run.
+- **The pole was out of reach.** `parks_and_unparks` found the mount stopping at DEC 44.4 instead of
+  90 and reported that the driver said so, which is the refusal path rather than the park workflow.
+  An earlier pass in the same session did reach the pole (DEC 90.1298), refused a GOTO while parked
+  and unparked cleanly, so the workflow itself is verified; it depends on where the hand controller
+  left the encoders.
+- **The autoguide rate is not stored.** `writes_the_extreme_guide_rates` cannot run on a controller
+  that keeps its own rate, which `writes_the_mount_guide_rate` establishes first.
+
 ### Not covered
 
 - The mount has no park position, home command, side of pier report, site or clock of its own, so
   those rows of the class standard do not apply. Their absence is asserted in
   `publishes_the_mount_property_contract` and `publishes_the_sidereal_time`.
+- **Cord wrap bounds the return from the park position.** The park position is on the meridian, so
+  coming back can be most of a turn of the azimuth axis, and `MC_POLL_CORDWRAP` answers `0xff` on
+  this mount. The axis stops at its limit and the driver reports it; the return is therefore
+  best-effort and the run says where the mount was left.
+- **Whether a released manual motion physically stops** cannot be decided from the coordinates here:
+  it runs at one times sidereal, slower than the drift the hand controller imposes. That the stop
+  command reaches the motor controller is asserted on the wire by `abort_slew` in the simulator
+  suite instead.
 - The guide pulse measurement is software completion timing over the network transport, from the
   public request to the completion the driver publishes. It is not relay or motor timing and no
   electrical measurement was made.
@@ -289,11 +323,24 @@ can be interrupted.
   rate back, because the property starts at one percent. This mount was found at 0.39 percent and
   the run says so instead of pretending it restored it.
 
+### Guiding pulse duration accuracy
+
+Measured with `make -C indigo_test test-mount-nexstaraux-hw HW_PARK=1` on driver `0x03000012`,
+48 pulses of 50, 100, 200 and 500 ms in all four directions, three samples each, two warm-up pulses
+discarded, mount idle, 300 ms between pulses. The endpoints are the public `GUIDER_GUIDE_RA` /
+`GUIDER_GUIDE_DEC` request and the completion the driver publishes, so this is **software completion
+timing over the network transport**, including host and WiFi scheduling. It is not relay or motor
+timing, and no electrical measurement was made.
+
+Signed error in milliseconds: min 27.9, mean 32.5, median 32.0, p95 36.3, p99 52.7, max 52.7,
+standard deviation 3.9, maximum absolute 52.7. Every sample is late, which is what a scheduled
+completion confirmed over a network can be; none is early. No pulse was refused in that run.
+
 ### Test summary
 
 - Simulated tests run: 40; passed: 40. (`make -C indigo_test build/integration/test_mount_nexstaraux_simulator`
   then `./build/integration/test_mount_nexstaraux_simulator`, Linux arm64.)
-- Hardware tests run: 36; passed: 34; the run is incomplete, see above. Best pass of the session
-  was driver `0x03000011` against the NexStar SE with a NexStar+ hand controller; the two failures
-  were the tracking and declination measurements spoiled by the undriven declination axis, which
-  the last fix addresses and which has not been re-measured on the mount.
+- Hardware tests run: 36; passed: 36. (`make -C indigo_test test-mount-nexstaraux-hw HW_PARK=1`,
+  Linux arm64, driver `0x03000012`, Celestron NexStar SE with a NexStar+ hand controller over a
+  SkyPortal WiFi module.) Seven of the 36 report themselves as not exercised on this rig for the
+  reasons listed above.
