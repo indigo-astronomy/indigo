@@ -2026,23 +2026,17 @@ ASTROMETRY_TEST_FLAGS = -DINDIGO_ASTROMETRY_TEST
 ASTROMETRY_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
 ASTROMETRY_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(LDFLAGS)) -arch arm64 -fsanitize=address,undefined
 
-$(INTEGRATION_BUILD)/agent_astrometry_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(ASTROMETRY_TEST_FLAGS) -Dindigo_uni_config_folder=astrometry_test_config_folder -c $< -o $@
-
 $(INTEGRATION_BUILD)/agent_astrometry_driver.o: ../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c ../indigo_drivers/agent_astrometry/indigo_agent_astrometry.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(ASTROMETRY_TEST_FLAGS) -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_agent_astrometry: integration/test_agent_astrometry.c test_runner.h $(INTEGRATION_BUILD)/agent_astrometry_framework.o $(INTEGRATION_BUILD)/agent_astrometry_driver.o $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(ASTROMETRY_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_astrometry_framework.o $(INTEGRATION_BUILD)/agent_astrometry_driver.o -o $@ $(LDFLAGS) $(ASTROMETRY_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
-
-$(INTEGRATION_BUILD)/agent_astrometry_framework_sanitize.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(ASTROMETRY_SANITIZE_CFLAGS) $(ASTROMETRY_TEST_FLAGS) -Dindigo_uni_config_folder=astrometry_test_config_folder -c $< -o $@
+$(INTEGRATION_BUILD)/test_agent_astrometry: integration/test_agent_astrometry.c test_runner.h $(INTEGRATION_BUILD)/agent_astrometry_driver.o $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(ASTROMETRY_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_astrometry_driver.o -o $@ $(LDFLAGS) $(ASTROMETRY_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
 
 $(INTEGRATION_BUILD)/agent_astrometry_driver_sanitize.o: ../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c ../indigo_drivers/agent_astrometry/indigo_agent_astrometry.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(ASTROMETRY_SANITIZE_CFLAGS) $(ASTROMETRY_TEST_FLAGS) -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_agent_astrometry_sanitize: integration/test_agent_astrometry.c test_runner.h $(INTEGRATION_BUILD)/agent_astrometry_framework_sanitize.o $(INTEGRATION_BUILD)/agent_astrometry_driver_sanitize.o $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
-	$(CC) $(ASTROMETRY_SANITIZE_CFLAGS) $(ASTROMETRY_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_astrometry_framework_sanitize.o $(INTEGRATION_BUILD)/agent_astrometry_driver_sanitize.o -o $@ $(ASTROMETRY_SANITIZE_LDFLAGS) $(ASTROMETRY_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+$(INTEGRATION_BUILD)/test_agent_astrometry_sanitize: integration/test_agent_astrometry.c test_runner.h $(INTEGRATION_BUILD)/agent_astrometry_driver_sanitize.o $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
+	$(CC) $(ASTROMETRY_SANITIZE_CFLAGS) $(ASTROMETRY_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_astrometry_driver_sanitize.o -o $@ $(ASTROMETRY_SANITIZE_LDFLAGS) $(ASTROMETRY_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
 
 .PHONY: test-agent-astrometry
 test-agent-astrometry: check-lib $(INTEGRATION_BUILD)/test_agent_astrometry
@@ -2052,7 +2046,7 @@ test-agent-astrometry: check-lib $(INTEGRATION_BUILD)/test_agent_astrometry
 test-agent-astrometry-sanitize: check-lib $(INTEGRATION_BUILD)/test_agent_astrometry_sanitize
 	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_agent_astrometry_sanitize
 
-# Real Scripting Agent and Duktape; isolated configuration/BLOB I/O and fixed wall clock.
+# Real Scripting Agent and Duktape; configuration isolated through a private HOME per case, BLOB I/O and fixed wall clock.
 SCRIPTING_TEST_FLAGS = -DINDIGO_SCRIPTING_TEST
 
 $(INTEGRATION_BUILD)/agent_scripting_duktape.o: ../indigo_drivers/agent_scripting/duktape.c ../indigo_drivers/agent_scripting/duktape.h ../indigo_drivers/agent_scripting/duk_config.h Makefile | $(INTEGRATION_BUILD)
