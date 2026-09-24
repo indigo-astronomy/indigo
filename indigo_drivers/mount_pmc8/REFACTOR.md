@@ -697,3 +697,97 @@ the bus thread and block there until a running handler finished.
 `pmc8_guider_passes_serial_compliance_checks` gained two duration-measuring cases: a 2000 ms pulse
 replaced after 500 ms by a 600 ms pulse in the same direction, and the same pulse replaced by a
 300 ms pulse in the opposite direction.
+
+## Hardware run on an iEXOS-100 (2026-09-24)
+
+### Decision and scope
+
+- Mode: non-interactive hardware run, serial interface only. UDP and TCP were not exercised on the
+  hardware: the controller's WiFi module is in its default access point mode and the user chose to
+  keep the run on the serial port. `ESX!` and `ESY!` are never sent by the suite, because `ESX!`
+  moves the controller's primary interface to WiFi and the serial port then stops answering.
+  UDP/TCP coverage remains simulator-only (`pmc8_mount_connects_over_tcp`,
+  `pmc8_mount_connects_over_udp`).
+- Device: Explore Scientific iEXOS-100, PMC-Eight model 1A, firmware
+  `ES20A01.1 Release 2021.08.08: ES1A01CB20A01, ESP8266, DST4`, FTDI FT232R serial adapter
+  (`/dev/cu.usbserial-AK06KTVZ`) on macOS arm64. No telescope was mounted.
+- Hot-plug: not applicable, the driver has no USB hot-plug; physical cable removal was not tested.
+- Suite: `indigo_test/hardware/test_mount_pmc8_hw.c`, `make -C indigo_test test-mount-pmc8-hw`
+  with `MOUNT_PMC8_HW_PORT` set. The session starts and ends in the park position and moves at most
+  15 degrees on either axis from it.
+
+### What the controller does (measured, used for the simulator)
+
+| Observation | Evidence |
+| --- | --- |
+| Every SET command is answered with the matching GET reply: `ESSd`→`ESGd`, `ESSr`→`ESGr`, `ESTr`→`ESGx`, `ESSp`→`ESGp`, `ESPt`→`ESGt`. | serial probe |
+| `ESSr` is an axis rate in counts/s; `ESTr` is the RA tracking rate in 1/25 counts/s (`ESTr04B0` tracks at 48 counts/s, the sidereal rate on 4147200 counts); `ESGr` reports counts/s. | probe: 0x1000 moved 8267 counts in 2 s; `ESTr04B0` moved 243 counts in 5 s |
+| `ESSd` direction 1 makes the counts grow, 0 makes them shrink, on both axes; tracking uses the RA direction. | probe |
+| `ESPt` points at 40000 (RA) and 39800 (DEC) counts/s after a ramp; RA overshoots by ~200 counts, DEC ends exactly. | probe |
+| While a point runs, a rate or direction command is answered only after ~1.5 s and then stops the axis late. `ESPt300000!` (not in the 2019 manual, used by INDI) ends the point on both axes with normal deceleration and answers `ESGt3!`. | probe |
+| Closing the serial port drops DTR and reboots the controller: ~1.4 kB boot banner, no answers for 13.9 s, position counters and tracking rate cleared. Opening the port does not reboot it; clearing DTR while open does. | probe, 6 repetitions |
+| `ESGi!` answers `ESGi1152000001040040000900060000001`; the model code at offset 20 is `00`, which the driver maps to the iEXOS-100. | probe |
+
+### Found defects
+
+| ID | Impact | Root cause | Fix | Regression |
+| --- | --- | --- | --- | --- |
+| D1 | GOTO and SYNC never reached the mount; the property went OK at once. Reproduced on hardware. | The generated handler sets the property OK before `on_change`, and the GOTO loop only ran while the property was BUSY. | GOTO rewritten as handler + `mount_goto_finalizer` (three point/settle passes, as before); SYNC sends `ESSp` directly. | sim `pmc8_mount_slews_and_syncs_through_the_controller`; hw `pmc8_slews_to_the_work_position`, `pmc8_slews_to_a_nearby_target`, `pmc8_syncs_*` |
+| D2 | Unpark ran the park code; park never reported BUSY/completion; the park's own tracking-off request was refused as "Mount is parked!". Reproduced on hardware. | `on_change` ignored the selected item; completion was an `on_timer` side effect; the tracking handler has the parked-mount guard. | Park = stop drive directly, `ESPt` 0/0, BUSY, `mount_park_finalizer` until both axes stand still near zero; unpark only releases. | sim `pmc8_mount_parks_and_unparks`, `pmc8_mount_performs_basic_mount_operations`; hw `pmc8_parks_and_unparks` |
+| D3 | Abort could not interrupt a GOTO (queue blocked by the GOTO loop) and zero rates stop a point late. Reproduced on hardware. | Blocking GOTO handler; rate commands during a point are delayed by the controller. | Abort sends `ESPt300000!` when a GOTO or park is running, waits (bounded 5 s) for the axes to stop, then restores the rates. | sim `pmc8_mount_aborts_a_running_slew`, `pmc8_mount_aborts_a_park`; hw `pmc8_aborts_a_slew_and_accepts_a_fresh_one`, `pmc8_aborts_a_park` |
+| D4 | Manual WEST moved east and EAST moved west. Reproduced on hardware. | Direction 0 used for west; RA counts grow west in the northern hemisphere. | `pmc8_ra_direction()` by hemisphere. | sim `pmc8_mount_moves_in_the_requested_directions`; hw `pmc8_moves_the_ra_axis_manually` |
+| D5 | Manual NORTH/SOUTH and guide NORTH/SOUTH used opposite fixed directions, so one of them was wrong on each side of the pier. Reproduced on hardware (manual). | Directions did not depend on the side of pier or hemisphere. | `pmc8_dec_direction()` from the last polled DEC count and the hemisphere, used by manual motion and the guider. | sim `pmc8_mount_moves_in_the_requested_directions`, `pmc8_guider_guides_in_the_requested_directions`; hw `pmc8_moves_the_dec_axis_manually`, `pmc8_moves_the_dec_axis_while_guiding` |
+| D6 | GUIDE slew rate ran at 25× sidereal. Reproduced on hardware (0.31 deg in 3 s). | The ×25 tracking value was sent as an `ESSr` counts/s rate. | `rate[0] / 25`. | sim `pmc8_mount_moves_in_the_requested_directions` (`ESSr10030`); hw `pmc8_moves_slowly_at_the_guide_rate` |
+| D7 | GOTO arrival threshold compared counts/s with a ×25 value (1203 counts/s), which could end a pass during the ramp-down. Source audit. | Unit mix. | Threshold `rate[2] / 25`. | covered by the GOTO arrival checks above |
+| D8 | Disconnecting the guider during a DEC pulse left the axis moving (0.011 deg in 4 s measured). Reproduced on hardware. | `on_disconnect` cancelled the finaliser but sent no stop. | Stop DEC axis / restore tracking rate for a pulse still BUSY. | sim `pmc8_guider_guides_in_the_requested_directions`; hw `pmc8_disconnects_the_guider_during_a_pulse` |
+| D9 | After any serial reconnect the mount reported the park position wherever it pointed, so the next GOTO started from a wrong position. Reproduced on hardware. | Hardware: port close reboots the controller and clears its counters. | `pmc8_close()` reads the position before closing a serial session; `pmc8_restore_position()` writes it back with `ESSp` when the reopened controller reports 0/0. The drive is not restarted: tracking reads back off. | sim `pmc8_mount_keeps_its_position_across_a_controller_reboot`; hw `pmc8_keeps_the_position_across_a_reconnect` |
+| D10 | An EAST pulse slower than the drive, or with tracking off, sent `ESTr` with a negative value printed as eight hex digits. Source audit. | Unsigned rate formatting of `rate + offset`. | Negative rate turns into the opposite direction with the absolute rate. | sim `pmc8_guider_guides_in_the_requested_directions` (`ESSd00`, `ESTr0258`) |
+| D11 | A session opened by the guider alone kept the default tracking switch ON, so the first RA pulse started the sidereal drive of an idle mount. Found by the new simulator case; hardware check added after the fix. | Only the mount's `on_connect` read `ESGx`. | Guider `on_connect` reads the tracking rate when it opens the session. | sim `pmc8_guider_guides_in_the_requested_directions`; hw `pmc8_shares_the_connection_with_the_guider` |
+
+Intentional behaviour differences: a GOTO no longer blocks the device queue; an aborted GOTO keeps
+the tracking switch the user selected instead of forcing tracking on; unpark no longer moves the
+mount.
+
+Not reproducible hardware-free: the DTR line itself (a pseudo terminal has none), so the simulator
+models the reboot on hang-up; the boot banner is not modelled because the driver discards pending
+input before every command; the boot silence is 2 s in the simulator instead of 13.9 s. A reconnect
+within ~14 s of a disconnect therefore still shows "Retrying connection in 10 seconds..." on
+hardware and takes about 16 s.
+
+### Simulator changes
+
+`mount_pmc8_simulator.c` now answers with the controller's replies, moves the axes over elapsed time
+through `serial_motion.h`, delays rate/direction commands during a point, ends a point on
+`ESPt300000!`, reboots on hang-up (`--boot-seconds`), reports the recorded iEXOS-100 identity with
+`--model iexos100`, logs every command to `<ready-file>.events`, and accepts `--speed-scale` for
+long test slews. The default identity stays the EXOS-2 strings the older cases use.
+
+### Guider timing
+
+Hardware, serial transport, mount tracking and polled once a second: 60 pulses (5 durations of
+20/50/100/200/500 ms × 4 directions × 3 samples, 2 warm-up pulses discarded), measured from the
+public request to the published completion. This is software completion timing, not relay or motor
+timing.
+
+| Run | Samples | Signed error ms: min / mean / median / p95 / p99 / max | SD | Max abs |
+| --- | --- | --- | --- | --- |
+| hw run 2 | 60 | 45.1 / 64.3 / 61.2 / 76.5 / 76.8 / 92.2 | 8.2 | 92.2 |
+| hw run 3 | 60 | 42.3 / 63.3 / 61.0 / 76.3 / 77.7 / 94.0 | 9.5 | 94.0 |
+
+Every pulse ends late by the serial round trips of the finaliser (`ESSd`/`ESTr` or `ESSr`, each
+~16 ms) plus scheduling; none ends early. A 5000 ms pulse at 50 % moved the declination 0.01050 deg
+each way against 0.01045 deg expected.
+
+### Test runs
+
+| Run | Driver | Result |
+| --- | --- | --- |
+| hw baseline | 3.0.0.11 | 19/38 passed |
+| hw run 2 | 3.0.0.12 (without D11) | 38/38 passed |
+| sim | 3.0.0.12 | 19/19 passed |
+| hw run 3 | 3.0.0.12 | 38/38 passed |
+
+## Final test summary
+
+- Simulated: 19 cases run, 19 passed (`test_mount_pmc8_simulator`, macOS arm64).
+- Hardware: 38 cases run, 38 passed (`test_mount_pmc8_hw`, iEXOS-100 over serial, macOS arm64).

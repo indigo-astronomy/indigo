@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_mount_pmc8"
 #define DRIVER_LABEL         "PMC Eight Mount"
 #define MOUNT_DEVICE_NAME    "Mount PMC Eight"
@@ -115,11 +115,15 @@ typedef struct {
 	int rate[3];
 	pthread_mutex_t port_mutex;
 	indigo_uni_handle_type proto;
-	bool park;
 	bool is_udp, is_tcp, is_serial;
 	bool configured;
 	int version;
 	char response[128];
+	int32_t raw_ha, raw_dec;
+	int goto_pass;
+	bool goto_moving;
+	bool saved_position;
+	int32_t saved_ha, saved_dec;
 	//- data
 } pmc8_private_data;
 
@@ -131,6 +135,11 @@ static void mount_equatorial_coordinates_handler(indigo_device *device);
 static void mount_motion_dec_handler(indigo_device *device);
 static void mount_motion_ra_handler(indigo_device *device);
 static void mount_park_handler(indigo_device *device);
+static void mount_goto_finalizer(indigo_device *device);
+static void mount_park_finalizer(indigo_device *device);
+static bool pmc8_point(indigo_device *device, bool sync, int32_t ha, int32_t dec);
+static bool pmc8_get_position(indigo_device *device, int32_t *ha, int32_t *dec);
+static void pmc8_restore_position(indigo_device *device);
 
 static bool pmc8_validate_handle(indigo_device *device) {
 	return PRIVATE_DATA->handle != NULL;
@@ -288,6 +297,7 @@ static bool pmc8_configure_mount(indigo_device *device) {
 			if (!MOUNT_TYPE_AUTO->sw.value) {
 				pmc8_update_mount_model(device);
 			}
+			pmc8_restore_position(device);
 			return true;
 		}
 		indigo_send_message(device, BUSY_PROPERTY, "Retrying connection in 10 seconds...");
@@ -302,9 +312,29 @@ static void pmc8_close(indigo_device *device) {
 		device = device->master_device;
 	}
 	if (PRIVATE_DATA->handle != NULL) {
+		// Closing the serial port drops DTR, which reboots the controller: it stops both axes where
+		// they are and clears its position counters. The position read here is therefore where
+		// the next session finds the telescope.
+		int32_t ha = 0, dec = 0;
+		PRIVATE_DATA->saved_position = PRIVATE_DATA->proto == INDIGO_COM_HANDLE && pmc8_get_position(device, &ha, &dec);
+		PRIVATE_DATA->saved_ha = ha;
+		PRIVATE_DATA->saved_dec = dec;
 		indigo_uni_close(&PRIVATE_DATA->handle);
 		PRIVATE_DATA->configured = false;
 	}
+}
+
+// A controller that rebooted when the previous serial session closed reports the park position
+// wherever the telescope stands. The position that session last read is written back, which
+// moves nothing, so the coordinates keep describing where the telescope points.
+static void pmc8_restore_position(indigo_device *device) {
+	int32_t ha = 0, dec = 0;
+	if (PRIVATE_DATA->saved_position && PRIVATE_DATA->proto == INDIGO_COM_HANDLE && (PRIVATE_DATA->saved_ha != 0 || PRIVATE_DATA->saved_dec != 0) && pmc8_get_position(device, &ha, &dec) && ha == 0 && dec == 0) {
+		if (pmc8_point(device, true, PRIVATE_DATA->saved_ha, PRIVATE_DATA->saved_dec)) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Controller position restored to %d, %d after its reboot", PRIVATE_DATA->saved_ha, PRIVATE_DATA->saved_dec);
+		}
+	}
+	PRIVATE_DATA->saved_position = false;
 }
 
 static bool pmc8_get_tracking_rate(indigo_device *device) {
@@ -338,19 +368,35 @@ static bool pmc8_set_tracking_rate(indigo_device *device, int offset) {
 			rate = PRIVATE_DATA->rate[2];
 		}
 	}
-	if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
-		if (!pmc8_command(device, "ESSd01!")) {
-			return false;
-		}
-	} else {
-		if (!pmc8_command(device, "ESSd00!")) {
-			return false;
-		}
+	// The tracking rate is unsigned, so an east guide pulse slower than the drive, or one sent
+	// while tracking is off, turns the axis the other way instead of wrapping the rate.
+	bool sidereal = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0;
+	rate += offset;
+	if (rate < 0) {
+		rate = -rate;
+		sidereal = !sidereal;
 	}
-	if (pmc8_command(device, "ESTr%04X!", rate + offset)) {
+	if (!pmc8_command(device, sidereal ? "ESSd01!" : "ESSd00!")) {
+		return false;
+	}
+	if (pmc8_command(device, "ESTr%04X!", rate)) {
 		return true;
 	}
 	return false;
+}
+
+// The right ascension counts grow towards the west in the northern hemisphere and towards the
+// east in the southern one, whichever side of the pier the telescope is on.
+static int pmc8_ra_direction(indigo_device *device, bool west) {
+	return west == (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) ? 1 : 0;
+}
+
+// Growing declination counts move the telescope away from the pole on the west side of the
+// pier and towards it on the east side, so the direction of a north or south motion depends on
+// the side of pier the last poll reported as well as on the hemisphere.
+static int pmc8_dec_direction(indigo_device *device, bool north) {
+	bool counts_grow_north = (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) == (PRIVATE_DATA->raw_dec < -1);
+	return north == counts_grow_north ? 1 : 0;
 }
 
 static bool pmc8_stop_tracking(indigo_device *device) {
@@ -419,6 +465,60 @@ static bool pmc8_move(indigo_device *device, int axis, int direction, int rate) 
 	return true;
 }
 
+// The requested coordinates as the axis counts of the side of pier that keeps the telescope
+// above the counterweight, computed for the current sidereal time.
+static void pmc8_target_position(indigo_device *device, int32_t *raw_ha, int32_t *raw_dec) {
+	double ra_angle = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+	double dec_angle = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra_angle, &dec_angle);
+	double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+	double ha_angle = lst - ra_angle;
+	if (ha_angle < -12) {
+		ha_angle += 24;
+	} else if (ha_angle >= 12) {
+		ha_angle -= 24;
+	}
+	if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
+		if (ha_angle < 0) {
+			ha_angle = ha_angle + 6;
+			dec_angle = -(dec_angle - 90);
+		} else {
+			ha_angle = ha_angle - 6;
+			dec_angle = dec_angle - 90;
+		}
+	} else {
+		if (ha_angle < 0) {
+			ha_angle = -(ha_angle + 6);
+			dec_angle = -(dec_angle + 90);
+		} else {
+			ha_angle = -(ha_angle - 6);
+			dec_angle = dec_angle + 90;
+		}
+	}
+	uint32_t ra_count = MODELS[PRIVATE_DATA->type].count[0];
+	uint32_t dec_count = MODELS[PRIVATE_DATA->type].count[1];
+	*raw_dec = (dec_angle / 360.0) * dec_count;
+	*raw_ha = (ha_angle / 24.0) * ra_count;
+}
+
+// A running point is not stopped by setting the axis rates to zero: the controller leaves such
+// a request unanswered for more than a second and the axes stop late. Axis 3 of the point
+// command ends the point on both axes with their normal deceleration.
+static bool pmc8_abort_point(indigo_device *device) {
+	return pmc8_command(device, "ESPt300000!");
+}
+
+// Waits, bounded, until the decelerating axes of an aborted point stand still.
+static void pmc8_wait_for_stop(indigo_device *device) {
+	for (int i = 0; i < 50; i++) {
+		int32_t ra_rate = 0, dec_rate = 0;
+		if (pmc8_get_rate(device, &ra_rate, &dec_rate) && ra_rate == 0 && dec_rate == 0) {
+			return;
+		}
+		indigo_usleep(100000);
+	}
+}
+
 //- code
 
 //+ mount.code
@@ -466,6 +566,78 @@ static void mount_switch_connection_handler(indigo_device *device) {
 	indigo_update_property(device, CONNECTION_MODE_PROPERTY, NULL);
 }
 
+// A slew or a sync ends with the mount tracking at the selected rate.
+static void mount_goto_complete(indigo_device *device) {
+	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+	if (pmc8_set_tracking_rate(device, 0)) {
+		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	}
+}
+
+// A GOTO is three passes of point, wait for both axes to stand still and settle for half a
+// second: every pass ends a little off the target, which has moved on with the sidereal time
+// meanwhile, and the next one starts from the position reached.
+static void mount_goto_finalizer(indigo_device *device) {
+	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+		return;
+	}
+	if (PRIVATE_DATA->goto_moving) {
+		int32_t ra_rate = 0, dec_rate = 0;
+		if (pmc8_get_rate(device, &ra_rate, &dec_rate)) {
+			// The rates are read in counts per second, the tracking rates are kept 25 times finer.
+			if (ra_rate > PRIVATE_DATA->rate[2] / 25 || dec_rate != 0) {
+				indigo_execute_handler_in(device, 0.2, mount_goto_finalizer);
+				return;
+			}
+			PRIVATE_DATA->goto_moving = false;
+			PRIVATE_DATA->goto_pass++;
+			indigo_execute_handler_in(device, 0.5, mount_goto_finalizer);
+			return;
+		}
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else if (PRIVATE_DATA->goto_pass < 3) {
+		int32_t raw_ha = 0, raw_dec = 0;
+		pmc8_target_position(device, &raw_ha, &raw_dec);
+		if (pmc8_point(device, false, raw_ha, raw_dec)) {
+			PRIVATE_DATA->goto_moving = true;
+			indigo_execute_handler_in(device, 1.0, mount_goto_finalizer);
+			return;
+		}
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	mount_goto_complete(device);
+	indigo_update_coordinates(device, NULL);
+}
+
+// The park position is where both axis counts are zero: counterweight down, telescope at the
+// pole. The park is complete when both axes stand still close to it.
+static void mount_park_finalizer(indigo_device *device) {
+	if (MOUNT_PARK_PROPERTY->state != INDIGO_BUSY_STATE) {
+		return;
+	}
+	int32_t raw_ha = 0, raw_dec = 0, ra_rate = 0, dec_rate = 0;
+	if (pmc8_get_position(device, &raw_ha, &raw_dec) && pmc8_get_rate(device, &ra_rate, &dec_rate)) {
+		if (ra_rate != 0 || dec_rate != 0) {
+			indigo_execute_handler_in(device, 0.5, mount_park_finalizer);
+			return;
+		}
+		if (abs(raw_ha) < 0xFFF && abs(raw_dec) < 0xFFF) {
+			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+			return;
+		}
+	}
+	indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+	MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+}
+
 //- mount.code
 
 //+ guider.code
@@ -504,11 +676,8 @@ static void mount_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		int32_t raw_ha = 0, raw_dec = 0;
 		if (pmc8_get_position(device, &raw_ha, &raw_dec)) {
-			if (abs(raw_ha) < 0xFFF && abs(raw_dec) < 0xFFF && MOUNT_TRACKING_OFF_ITEM->sw.value && PRIVATE_DATA->park) {
-				PRIVATE_DATA->park = false;
-				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
-			}
+			PRIVATE_DATA->raw_ha = raw_ha;
+			PRIVATE_DATA->raw_dec = raw_dec;
 			indigo_item *side_of_pier;
 			uint32_t ra_count = MODELS[PRIVATE_DATA->type].count[0];
 			uint32_t dec_count = MODELS[PRIVATE_DATA->type].count[1];
@@ -648,73 +817,24 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		return;
 	}
-	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change
 	pmc8_stop_tracking(device);
 	indigo_usleep(200000);
-	for (int i = 0; i < 3 && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE; i++) {
-		double ra_angle = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
-		double dec_angle = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
-		indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra_angle, &dec_angle);
-		double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
-		double ha_angle = lst - ra_angle;
-		if (ha_angle < -12) {
-			ha_angle += 24;
-		} else if (ha_angle >= 12) {
-			ha_angle -= 24;
-		}
-		if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
-			if (ha_angle < 0) {
-				ha_angle = ha_angle + 6;
-				dec_angle = -(dec_angle - 90);
-			} else {
-				ha_angle = ha_angle - 6;
-				dec_angle = dec_angle - 90;
-			}
+	if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+		int32_t raw_ha = 0, raw_dec = 0;
+		pmc8_target_position(device, &raw_ha, &raw_dec);
+		if (pmc8_point(device, true, raw_ha, raw_dec)) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			if (ha_angle < 0) {
-				ha_angle = -(ha_angle + 6);
-				dec_angle = -(dec_angle + 90);
-			} else {
-				ha_angle = -(ha_angle - 6);
-				dec_angle = dec_angle + 90;
-			}
-		}
-		uint32_t ra_count = MODELS[PRIVATE_DATA->type].count[0];
-		uint32_t dec_count = MODELS[PRIVATE_DATA->type].count[1];
-		int32_t raw_dec = (dec_angle / 360.0) * dec_count;
-		int32_t raw_ha = (ha_angle / 24.0) * ra_count;
-		if (!pmc8_point(device, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value, raw_ha, raw_dec)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-			break;
-		}		
-		indigo_usleep(1000000);
-		while (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
-			int32_t ra_rate, dec_rate;
-			if (pmc8_get_rate(device, &ra_rate, &dec_rate)) {
-				if (ra_rate <= PRIVATE_DATA->rate[2] && dec_rate == 0) {
-					break;
-				}
-			} else {
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			indigo_usleep(200000);
-		}
-		indigo_usleep(500000);
-	}
-	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
-	if (pmc8_set_tracking_rate(device, 0)) {
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+		mount_goto_complete(device);
 	} else {
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+		PRIVATE_DATA->goto_pass = 0;
+		PRIVATE_DATA->goto_moving = false;
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_execute_handler(device, mount_goto_finalizer);
 	}
-	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-	}
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 	//- mount.MOUNT_EQUATORIAL_COORDINATES.on_change
 	indigo_update_coordinates(device, NULL);
 }
@@ -751,24 +871,36 @@ static void mount_track_rate_handler(indigo_device *device) {
 }
 
 static void mount_park_handler(indigo_device *device) {
-	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_PARK.on_change
-	MOUNT_TRACKING_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-	mount_tracking_handler(device);
-	PRIVATE_DATA->park = true;
-	if (!pmc8_point(device, false, 0, 0)) {
-		MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+	if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+		// The tracking handler refuses a parked mount, and the park switch is already set here,
+		// so the drive is stopped directly.
+		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+		if (pmc8_stop_tracking(device)) {
+			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+		if (pmc8_point(device, false, 0, 0)) {
+			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_execute_handler_in(device, 1.0, mount_park_finalizer);
+		} else {
+			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	} else {
+		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 	}
-	//- mount.MOUNT_PARK.on_change
 	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+	//- mount.MOUNT_PARK.on_change
 }
 
 static void mount_abort_motion_handler(indigo_device *device) {
-	MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_ABORT_MOTION.on_change
+	bool pointing = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE || MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE;
 	indigo_cancel_pending_handler(device, mount_equatorial_coordinates_handler);
+	indigo_cancel_pending_handler(device, mount_goto_finalizer);
 	indigo_cancel_pending_handler(device, mount_motion_ra_handler);
 	if (MOUNT_MOTION_RA_PROPERTY->state == INDIGO_BUSY_STATE) {
 		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);
@@ -778,12 +910,17 @@ static void mount_abort_motion_handler(indigo_device *device) {
 		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
 	indigo_cancel_pending_handler(device, mount_park_handler);
+	indigo_cancel_pending_handler(device, mount_park_finalizer);
 	if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
-		PRIVATE_DATA->park = false;
 		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_PARK_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
-	if (pmc8_move(device, 0, 0, 0) && pmc8_move(device, 1, 0, 0)) {
+	bool stopped = true;
+	if (pointing) {
+		stopped = pmc8_abort_point(device);
+		pmc8_wait_for_stop(device);
+	}
+	if (stopped && pmc8_move(device, 0, 0, 0) && pmc8_move(device, 1, 0, 0)) {
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -798,7 +935,6 @@ static void mount_abort_motion_handler(indigo_device *device) {
 	indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 	//- mount.MOUNT_ABORT_MOTION.on_change
-	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 }
 
 static void mount_motion_dec_handler(indigo_device *device) {
@@ -811,7 +947,8 @@ static void mount_motion_dec_handler(indigo_device *device) {
 	//+ mount.MOUNT_MOTION_DEC.on_change
 	int rate = 0;
 	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value) {
-		rate = PRIVATE_DATA->rate[0];
+		// The axis rate is in counts per second, the tracking rate is kept 25 times finer.
+		rate = PRIVATE_DATA->rate[0] / 25;
 	} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
 		rate = 0x1000;
 	} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value) {
@@ -821,9 +958,9 @@ static void mount_motion_dec_handler(indigo_device *device) {
 	}
 	int direction = 0, dec_rate = rate;
 	if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
-		direction = 0;
+		direction = pmc8_dec_direction(device, true);
 	} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
-		direction = 1;
+		direction = pmc8_dec_direction(device, false);
 	} else {
 		dec_rate = 0;
 	}
@@ -847,7 +984,8 @@ static void mount_motion_ra_handler(indigo_device *device) {
 	//+ mount.MOUNT_MOTION_RA.on_change
 	int rate = 0;
 	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value) {
-		rate = PRIVATE_DATA->rate[0];
+		// The axis rate is in counts per second, the tracking rate is kept 25 times finer.
+		rate = PRIVATE_DATA->rate[0] / 25;
 	} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
 		rate = 0x1000;
 	} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value) {
@@ -857,9 +995,9 @@ static void mount_motion_ra_handler(indigo_device *device) {
 	}
 	int direction = 0, ra_rate = rate;
 	if (MOUNT_MOTION_WEST_ITEM->sw.value) {
-		direction = 0;
+		direction = pmc8_ra_direction(device, true);
 	} else if (MOUNT_MOTION_EAST_ITEM->sw.value) {
-		direction = 1;
+		direction = pmc8_ra_direction(device, false);
 	} else {
 		ra_rate = 0;
 	}
@@ -1002,7 +1140,10 @@ static void guider_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ guider.on_connect
 			if (!PRIVATE_DATA->configured) {
-				connection_result = pmc8_configure_mount(device->master_device);
+				// The guider restores the tracking rate after every right ascension pulse, so a session
+				// the guider opens reads the drive state first, or a pulse starts the drive of an idle
+				// mount.
+				connection_result = pmc8_configure_mount(device->master_device) && pmc8_get_tracking_rate(device->master_device);
 			}
 			if (connection_result) {
 				PRIVATE_DATA->configured = true;
@@ -1026,6 +1167,17 @@ static void guider_connection_handler(indigo_device *device) {
 		indigo_cancel_pending_handlers(device);
 		indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
 		indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+		// A pulse cut by the disconnect has to end on the axis too, not only on the property.
+		if (GUIDER_GUIDE_DEC_PROPERTY->state == INDIGO_BUSY_STATE) {
+			pmc8_move(device, 1, 0, 0);
+			GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		if (GUIDER_GUIDE_RA_PROPERTY->state == INDIGO_BUSY_STATE) {
+			pmc8_set_tracking_rate(device->master_device, 0);
+			GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		}
 		//- guider.on_disconnect
 		if (--PRIVATE_DATA->count == 0) {
 			pmc8_close(device);
@@ -1064,10 +1216,10 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	int rate = PRIVATE_DATA->rate[0] * (GUIDER_RATE_ITEM->number.value / 2500.0);
 	double duration = 0;
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
-		pmc8_move(device, 1, 1, rate);
+		pmc8_move(device, 1, pmc8_dec_direction(device->master_device, true), rate);
 		duration = GUIDER_GUIDE_NORTH_ITEM->number.value / 1000.0;
 	} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
-		pmc8_move(device, 1, 0, rate);
+		pmc8_move(device, 1, pmc8_dec_direction(device->master_device, false), rate);
 		duration = GUIDER_GUIDE_SOUTH_ITEM->number.value / 1000.0;
 	}
 	if (duration > 0) {

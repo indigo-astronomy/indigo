@@ -785,8 +785,8 @@ $(INTEGRATION_BUILD)/mount_nexstaraux_simulator: ../indigo_drivers/mount_nexstar
 $(INTEGRATION_BUILD)/test_mount_nexstaraux_simulator: integration/test_mount_nexstaraux_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstaraux_simulator $(BUILD_DRIVERS)/indigo_mount_nexstaraux.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_NEXSTARAUX_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/mount_pmc8_simulator: ../indigo_drivers/mount_pmc8/mount_pmc8_simulator/mount_pmc8_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $<
+$(INTEGRATION_BUILD)/mount_pmc8_simulator: ../indigo_drivers/mount_pmc8/mount_pmc8_simulator/mount_pmc8_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/test_mount_pmc8_simulator: integration/test_mount_pmc8_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_pmc8_simulator $(BUILD_DRIVERS)/indigo_mount_pmc8.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_PMC8_SIMULATOR_TEST_LDFLAGS)
@@ -2612,6 +2612,22 @@ MOUNT_NEXSTARAUX_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_nexstaraux.a $(
 
 $(TEST_BUILD)/hardware/test_mount_nexstaraux_hw: hardware/test_mount_nexstaraux_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_nexstaraux.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(MOUNT_NEXSTARAUX_HW_TEST_LDFLAGS)
+
+# A physically connected Explore Scientific PMC-Eight mount (iEXOS-100, EXOS-2, G11, Titan) on its
+# serial interface is opt-in and excluded from normal integration tests. MOUNT_PMC8_HW_PORT names
+# the serial port and is required. THE MOUNT MOVES: start it in the park position (counterweight
+# down, telescope at the pole); the session slews to a work position 10 degrees from the pole and
+# ends with a park. SYNC overwrites the position registers and every scenario that uses it syncs
+# the original position back. The WiFi mode switching commands are never sent.
+# MOUNT_PMC8_HW_LATITUDE and MOUNT_PMC8_HW_LONGITUDE give the observing site.
+.PHONY: test-mount-pmc8-hw
+test-mount-pmc8-hw: check-lib $(TEST_BUILD)/hardware/test_mount_pmc8_hw
+	$(TEST_BUILD)/hardware/test_mount_pmc8_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+MOUNT_PMC8_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_pmc8.a $(TEST_LDFLAGS) -lindigocat
+
+$(TEST_BUILD)/hardware/test_mount_pmc8_hw: hardware/test_mount_pmc8_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_pmc8.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(MOUNT_PMC8_HW_TEST_LDFLAGS)
 
 # Opt-in Cocoa application acceptance; excluded from headless integration tests.
 ifeq ($(OS_DETECTED),Darwin)

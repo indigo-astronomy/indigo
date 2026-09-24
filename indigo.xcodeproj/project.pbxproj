@@ -5690,6 +5690,7 @@
 		C0DE20260922220000000001 /* test_mount_lx200_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_lx200_hw.c; sourceTree = "<group>"; };
 		C0DE20260924200000000001 /* test_mount_nexstar_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_nexstar_hw.c; sourceTree = "<group>"; };
 		C0DE20260923200000000001 /* test_mount_nexstaraux_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_nexstaraux_hw.c; sourceTree = "<group>"; };
+		C0DE20260924233000000001 /* test_mount_pmc8_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_pmc8_hw.c; sourceTree = "<group>"; };
 		C0DE20260923132000000001 /* run_mountsim.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_mountsim.py; sourceTree = "<group>"; };
 		C0DE20260923132000000002 /* mountsim_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mountsim_test_common.h; sourceTree = "<group>"; };
 		C0DE20260923132000000003 /* test_mount_temma_mountsim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_temma_mountsim.c; sourceTree = "<group>"; };
@@ -14678,6 +14679,7 @@
 				C0DE20260922220000000001 /* test_mount_lx200_hw.c */,
 				C0DE20260924200000000001 /* test_mount_nexstar_hw.c */,
 				C0DE20260923200000000001 /* test_mount_nexstaraux_hw.c */,
+				C0DE20260924233000000001 /* test_mount_pmc8_hw.c */,
 				C0DE20260921230000000005 /* test_guider_cgusbst4_hw.c */,
 				C0DE20260921230000000004 /* test_focuser_fcusb_hw.c */,
 				C0DE20260921230000000003 /* test_aux_dsusb_hw.c */,

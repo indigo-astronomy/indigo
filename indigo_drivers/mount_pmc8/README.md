@@ -31,4 +31,5 @@ Driver is developed and tested with iEXOS-100
 
 ## Testing
 
-2026-09-20 20:49 3.0.0.11 mac arm64 simulator 11/11 OK
+2026-09-24 23:44 3.0.0.12 mac arm64 simulator 19/19 OK
+2026-09-24 23:45 3.0.0.12 mac arm64 iEXOS-100 38/38 OK
