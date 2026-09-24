@@ -33,7 +33,8 @@
 // SYNSCAN_HW_AUTOHOME=1 is set.
 //
 // The mount address comes from SYNSCAN_HW_URL. The default is "synscan://", which exercises the
-// driver's UDP broadcast autodetection; an explicit "synscan://host:port" skips autodetection.
+// driver's UDP broadcast autodetection; an explicit "synscan://host:port" skips autodetection,
+// and a serial device path such as /dev/ttyACM0 reaches a controller wired to this host.
 
 #include <dirent.h>
 #include <limits.h>
@@ -104,6 +105,11 @@ static const char *mount_url = "synscan://";
 static double initial_ra, initial_dec, initial_guide_ra, initial_guide_dec;
 static double initial_park_ha, initial_park_dec, initial_home_ha, initial_home_dec;
 static bool initial_tracking, settings_captured;
+
+// Whether the aux device connected at the start of the session. The driver refuses the aux device
+// on a controller without a snap port, so later scenarios expect that refusal instead of a
+// connection.
+static bool aux_has_snap_port;
 
 // The observing site the driver is told to use, and the declination the motion scenarios run at.
 // The site matters because the driver derives hour angle, horizontal coordinates and hemisphere
@@ -448,6 +454,22 @@ static bool connect_device(int d, double timeout) {
 	return false;
 }
 
+// Connects the aux device where the controller has a snap port. Where it has none, the driver has
+// to refuse the device cleanly: ALERT, left disconnected, and without disturbing the connection
+// the mount and guider share.
+static bool connect_aux(void) {
+	if (aux_has_snap_port) {
+		return connect_device(aux, SHORT_TIMEOUT);
+	}
+	if (aux < 0) {
+		return false;
+	}
+	unsigned before = revision(aux, CONNECTION_PROPERTY_NAME);
+	indigo_change_switch_property_1(&client, devices[aux].name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
+	bool connected = true;
+	return wait_state(aux, CONNECTION_PROPERTY_NAME, before, INDIGO_ALERT_STATE, SHORT_TIMEOUT) && switch_item(aux, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, &connected) && !connected;
+}
+
 static bool disconnect_device(int d) {
 	if (d < 0 || !devices[d].present) {
 		return true;
@@ -606,8 +628,13 @@ static void synscan_discovers_and_connects(void) {
 	ASSERT_TRUE((devices[aux].interface & INDIGO_INTERFACE_AUX_SHUTTER) != 0);
 	char port[INDIGO_VALUE_SIZE];
 	ASSERT_TRUE(text_item(mount, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, port, sizeof(port)));
-	// Autodetection rewrites DEVICE_PORT with the address that actually answered the broadcast.
-	ASSERT_TRUE(!strncmp(port, "synscan://", 10) && port[10] != 0);
+	if (!strcmp(mount_url, "synscan://")) {
+		// Autodetection rewrites DEVICE_PORT with the address that actually answered the broadcast.
+		ASSERT_TRUE(!strncmp(port, "synscan://", 10) && port[10] != 0);
+	} else {
+		// An explicit address or serial device is used as given.
+		ASSERT_STREQ(mount_url, port);
+	}
 	printf("    connected through %s\n", port);
 	ASSERT_TRUE(property_state(mount, CONNECTION_PROPERTY_NAME) == INDIGO_OK_STATE);
 }
@@ -1147,7 +1174,7 @@ static void synscan_reconnects(void) {
 	ASSERT_TRUE(disconnect_device(mount));
 	ASSERT_TRUE(connect_device(mount, MOTION_TIMEOUT));
 	ASSERT_TRUE(connect_device(guider, SHORT_TIMEOUT));
-	ASSERT_TRUE(connect_device(aux, SHORT_TIMEOUT));
+	ASSERT_TRUE(connect_aux());
 	double ra = 0, dec = 0;
 	ASSERT_TRUE(current_coordinates(&ra, &dec));
 	printf("    reconnected, RA %.5f DEC %.5f\n", ra, dec);
@@ -1165,7 +1192,7 @@ static void synscan_reconnects(void) {
 	ASSERT_TRUE(disconnect_device(guider));
 	ASSERT_TRUE(connect_device(mount, MOTION_TIMEOUT));
 	ASSERT_TRUE(connect_device(guider, SHORT_TIMEOUT));
-	ASSERT_TRUE(connect_device(aux, SHORT_TIMEOUT));
+	ASSERT_TRUE(connect_aux());
 }
 
 // The UDP transport has no session to drop, so an unreachable mount is the reachable failure mode
@@ -1189,7 +1216,7 @@ static void synscan_reports_unreachable_mount(void) {
 	ASSERT_TRUE(select_mount_url());
 	ASSERT_TRUE(connect_device(mount, MOTION_TIMEOUT));
 	ASSERT_TRUE(connect_device(guider, SHORT_TIMEOUT));
-	ASSERT_TRUE(connect_device(aux, SHORT_TIMEOUT));
+	ASSERT_TRUE(connect_aux());
 	double ra = 0, dec = 0;
 	ASSERT_TRUE(current_coordinates(&ra, &dec));
 	printf("    recovered on the real mount, RA %.5f DEC %.5f\n", ra, dec);
@@ -1209,7 +1236,7 @@ static void synscan_reinitializes(void) {
 	printf("    driver reinitialized, RA %.5f DEC %.5f\n", ra, dec);
 	// The session teardown restores the mount, so leave the shared connection up.
 	ASSERT_TRUE(connect_device(guider, SHORT_TIMEOUT));
-	ASSERT_TRUE(connect_device(aux, SHORT_TIMEOUT));
+	ASSERT_TRUE(connect_aux());
 }
 
 int main(int argc, char **argv) {
@@ -1272,7 +1299,10 @@ int main(int argc, char **argv) {
 	CHECK(select_mount_url());
 	CHECK(connect_device(mount, MOTION_TIMEOUT));
 	CHECK(connect_device(guider, SHORT_TIMEOUT));
-	connect_device(aux, SHORT_TIMEOUT);
+	aux_has_snap_port = connect_device(aux, SHORT_TIMEOUT);
+	if (!aux_has_snap_port) {
+		printf("The aux device was refused, the controller has no snap port\n");
+	}
 	CHECK(clear_alignment_model());
 	CHECK(set_site());
 	CHECK(capture_initial_settings());
