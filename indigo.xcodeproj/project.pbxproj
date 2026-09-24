@@ -5455,6 +5455,7 @@
 		9DE3F2013063DD0100F76388 /* ESP32Go_bbf224a_esp32_s3.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ESP32Go_bbf224a_esp32_s3.md; sourceTree = "<group>"; };
 		9DE55C982F98C3C700B2C143 /* mount_nexstaraux_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = mount_nexstaraux_simulator.ino; sourceTree = "<group>"; };
 		9DECDF2A3063FDC3005C4B64 /* AstroEQ_8.25_esp32_s3.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = AstroEQ_8.25_esp32_s3.bin; sourceTree = "<group>"; };
+		9DECDF2B3063FDC3005C4B64 /* AstroEQ_8.25_esp32_s3.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AstroEQ_8.25_esp32_s3.md; sourceTree = "<group>"; };
 		9DEF3982304AD9A600FD4BC4 /* TIMERS_AND_QUEUES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TIMERS_AND_QUEUES.md; sourceTree = "<group>"; };
 		9DEF3983304AE5CB00FD4BC4 /* REVIEW.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW.md; sourceTree = "<group>"; };
 		9DF148102D52384D00049345 /* build_windows_sdk.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build_windows_sdk.sh; sourceTree = "<group>"; };
@@ -15590,6 +15591,7 @@
 				9D89442022DCD297002DFE13 /* mount_synscan_simulator.ino */,
 				59A4ED5B22DD888E00384056 /* LOGS.md */,
 				9DECDF2A3063FDC3005C4B64 /* AstroEQ_8.25_esp32_s3.bin */,
+				9DECDF2B3063FDC3005C4B64 /* AstroEQ_8.25_esp32_s3.md */,
 			);
 			path = mount_synscan_simulator;
 			sourceTree = "<group>";
