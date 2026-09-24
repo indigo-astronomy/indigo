@@ -195,7 +195,8 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_aux_skyalert_simulator \
 	$(INTEGRATION_BUILD)/test_aux_sqm_simulator \
 	$(INTEGRATION_BUILD)/test_aux_uch_simulator \
-	$(INTEGRATION_BUILD)/test_aux_usbdp_simulator
+	$(INTEGRATION_BUILD)/test_aux_usbdp_simulator \
+	$(INTEGRATION_BUILD)/test_polaralign_mlastro_simulator
 
 # test_runner.h calls nftw(), which glibc declares only for X/Open extended or GNU sources.
 # Without this every test that includes the header fails to compile on Linux.
@@ -274,6 +275,7 @@ AUX_SKYALERT_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_skyalert.a $(T
 AUX_SQM_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_sqm.a $(TEST_LDFLAGS) -lindigocat
 AUX_UCH_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_uch.a $(TEST_LDFLAGS) -lindigocat
 AUX_USBDP_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_usbdp.a $(TEST_LDFLAGS) -lindigocat
+POLARALIGN_MLASTRO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_mlastro.a $(TEST_LDFLAGS) -lindigocat
 
 .PHONY: test test-unit test-integration benchmark test-clean check-lib
 
@@ -585,6 +587,9 @@ $(INTEGRATION_BUILD)/aux_uch_simulator: ../indigo_drivers/aux_uch/aux_uch_simula
 
 $(INTEGRATION_BUILD)/aux_usbdp_simulator: ../indigo_drivers/aux_usbdp/aux_usbdp_simulator/aux_usbdp_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
+
+$(INTEGRATION_BUILD)/polaralign_mlastro_simulator: ../indigo_drivers/polaralign_mlastro/polaralign_mlastro_simulator/polaralign_mlastro_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
 
 $(INTEGRATION_BUILD)/test_focuser_askar_simulator: integration/test_focuser_askar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_askar_simulator $(BUILD_DRIVERS)/indigo_focuser_askar.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_ASKAR_SIMULATOR_TEST_LDFLAGS)
@@ -1038,6 +1043,9 @@ $(INTEGRATION_BUILD)/test_aux_uch_simulator: integration/test_aux_uch_simulator.
 
 $(INTEGRATION_BUILD)/test_aux_usbdp_simulator: integration/test_aux_usbdp_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_usbdp_simulator $(BUILD_DRIVERS)/indigo_aux_usbdp.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_USBDP_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_polaralign_mlastro_simulator: integration/test_polaralign_mlastro_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/polaralign_mlastro_simulator $(BUILD_DRIVERS)/indigo_polaralign_mlastro.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(POLARALIGN_MLASTRO_SIMULATOR_TEST_LDFLAGS)
 
 test-clean:
 	rm -rf $(TEST_BUILD)

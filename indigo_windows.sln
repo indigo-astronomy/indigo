@@ -258,6 +258,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_efa", "indig
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_prodigy", "indigo_drivers\focuser_prodigy\indigo_focuser_prodigy.vcxproj", "{A9B62BE7-736A-4F32-BE59-FB9B4D13D219}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_polaralign_mlastro", "indigo_drivers\polaralign_mlastro\indigo_polaralign_mlastro.vcxproj", "{9FC4490E-51BA-44A4-BD47-E9459F07E9A1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -1262,6 +1264,14 @@ Global
 		{A9B62BE7-736A-4F32-BE59-FB9B4D13D219}.Release|ARM64.Build.0 = Release|ARM64
 		{A9B62BE7-736A-4F32-BE59-FB9B4D13D219}.Release|x64.ActiveCfg = Release|x64
 		{A9B62BE7-736A-4F32-BE59-FB9B4D13D219}.Release|x64.Build.0 = Release|x64
+		{9FC4490E-51BA-44A4-BD47-E9459F07E9A1}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{9FC4490E-51BA-44A4-BD47-E9459F07E9A1}.Debug|ARM64.Build.0 = Debug|ARM64
+		{9FC4490E-51BA-44A4-BD47-E9459F07E9A1}.Debug|x64.ActiveCfg = Debug|x64
+		{9FC4490E-51BA-44A4-BD47-E9459F07E9A1}.Debug|x64.Build.0 = Debug|x64
+		{9FC4490E-51BA-44A4-BD47-E9459F07E9A1}.Release|ARM64.ActiveCfg = Release|ARM64
+		{9FC4490E-51BA-44A4-BD47-E9459F07E9A1}.Release|ARM64.Build.0 = Release|ARM64
+		{9FC4490E-51BA-44A4-BD47-E9459F07E9A1}.Release|x64.ActiveCfg = Release|x64
+		{9FC4490E-51BA-44A4-BD47-E9459F07E9A1}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

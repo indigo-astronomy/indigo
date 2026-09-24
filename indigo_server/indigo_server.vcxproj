@@ -296,6 +296,9 @@
     <ProjectReference Include="..\indigo_drivers\dome_simulator\indigo_dome_simulator.vcxproj">
       <Project>{bed3f6c7-d374-49bb-9004-eaf521129a8c}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\polaralign_mlastro\indigo_polaralign_mlastro.vcxproj">
+      <Project>{9fc4490e-51ba-44a4-bd47-e9459f07e9a1}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\polaralign_simulator\indigo_polaralign_simulator.vcxproj">
       <Project>{a4e4d4e6-5e19-4b18-a59d-3c552e0ae31f}</Project>
     </ProjectReference>

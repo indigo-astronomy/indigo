@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{7AF18CC9-D078-4149-B117-2E2B6E897B1C}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{DD3E6874-28CF-4FB5-98C4-F120388284C8}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{58729CD3-C3D1-4629-A2F3-E6EFB6D04333}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\indigo">
+      <UniqueIdentifier>{77D498BC-D3A8-47C2-BC6C-69BE12A497DB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\indigo">
+      <UniqueIdentifier>{405B7213-97C0-4512-B1E3-6D0F58246F5E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\indigo_windows\dllmain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="indigo_polaralign_mlastro.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="indigo_polaralign_mlastro.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="indigo_polaralign_mlastro.driver" />
+    <None Include="REFACTOR.md" />
+  </ItemGroup>
+</Project>
