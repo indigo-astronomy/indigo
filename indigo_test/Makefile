@@ -2055,17 +2055,14 @@ test-agent-astrometry-sanitize: check-lib $(INTEGRATION_BUILD)/test_agent_astrom
 # Real Scripting Agent and Duktape; isolated configuration/BLOB I/O and fixed wall clock.
 SCRIPTING_TEST_FLAGS = -DINDIGO_SCRIPTING_TEST
 
-$(INTEGRATION_BUILD)/agent_scripting_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(SCRIPTING_TEST_FLAGS) -Dindigo_uni_config_folder=scripting_test_config_folder -c $< -o $@
-
 $(INTEGRATION_BUILD)/agent_scripting_duktape.o: ../indigo_drivers/agent_scripting/duktape.c ../indigo_drivers/agent_scripting/duktape.h ../indigo_drivers/agent_scripting/duk_config.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(SCRIPTING_TEST_FLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/agent_scripting_driver.o: ../indigo_drivers/agent_scripting/indigo_agent_scripting.c ../indigo_drivers/agent_scripting/indigo_agent_scripting.h ../indigo_drivers/agent_scripting/boot.js.dat Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(SCRIPTING_TEST_FLAGS) -Dindigo_populate_http_blob_item=scripting_test_populate_blob -Dindigo_set_timer_with_data=scripting_test_set_timer -Dtime=scripting_test_time -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_agent_scripting: integration/test_agent_scripting.c test_runner.h $(INTEGRATION_BUILD)/agent_scripting_framework.o $(INTEGRATION_BUILD)/agent_scripting_duktape.o $(INTEGRATION_BUILD)/agent_scripting_driver.o $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(SCRIPTING_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_scripting_framework.o $(INTEGRATION_BUILD)/agent_scripting_duktape.o $(INTEGRATION_BUILD)/agent_scripting_driver.o -o $@ $(LDFLAGS) $(SCRIPTING_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+$(INTEGRATION_BUILD)/test_agent_scripting: integration/test_agent_scripting.c test_runner.h $(INTEGRATION_BUILD)/agent_scripting_duktape.o $(INTEGRATION_BUILD)/agent_scripting_driver.o $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(SCRIPTING_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_scripting_duktape.o $(INTEGRATION_BUILD)/agent_scripting_driver.o -o $@ $(LDFLAGS) $(SCRIPTING_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
 
 .PHONY: test-agent-scripting
 test-agent-scripting: check-lib $(INTEGRATION_BUILD)/test_agent_scripting
@@ -2073,9 +2070,6 @@ test-agent-scripting: check-lib $(INTEGRATION_BUILD)/test_agent_scripting
 
 # Sequencer.js corpus with real Scripting/Imager/Mount/Guider agents and hardware simulators.
 SEQUENCER_TEST_FLAGS = -DINDIGO_SCRIPTING_TEST -DSEQUENCER_JS_PATH='"$(abspath ../indigo_drivers/agent_scripting/library/Sequencer.js)"'
-
-$(INTEGRATION_BUILD)/sequencer_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(SEQUENCER_TEST_FLAGS) -Dindigo_uni_config_folder=sequencer_test_config_folder -c $< -o $@
 
 $(INTEGRATION_BUILD)/sequencer_filter.o: ../indigo_libs/indigo_filter.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(SEQUENCER_TEST_FLAGS) -c $< -o $@
@@ -2113,7 +2107,7 @@ $(INTEGRATION_BUILD)/sequencer_gps_simulator.o: ../indigo_drivers/gps_simulator/
 $(INTEGRATION_BUILD)/sequencer_rotator_simulator.o: ../indigo_drivers/rotator_simulator/indigo_rotator_simulator.c ../indigo_drivers/rotator_simulator/indigo_rotator_simulator.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(SEQUENCER_TEST_FLAGS) -c $< -o $@
 
-SEQUENCER_TEST_OBJECTS = $(INTEGRATION_BUILD)/sequencer_framework.o $(INTEGRATION_BUILD)/sequencer_filter.o $(INTEGRATION_BUILD)/sequencer_duktape.o $(INTEGRATION_BUILD)/sequencer_scripting.o $(INTEGRATION_BUILD)/sequencer_imager.o $(INTEGRATION_BUILD)/sequencer_mount.o $(INTEGRATION_BUILD)/sequencer_guider.o
+SEQUENCER_TEST_OBJECTS = $(INTEGRATION_BUILD)/sequencer_filter.o $(INTEGRATION_BUILD)/sequencer_duktape.o $(INTEGRATION_BUILD)/sequencer_scripting.o $(INTEGRATION_BUILD)/sequencer_imager.o $(INTEGRATION_BUILD)/sequencer_mount.o $(INTEGRATION_BUILD)/sequencer_guider.o
 SEQUENCER_SIMULATORS = $(INTEGRATION_BUILD)/sequencer_ccd_simulator.o $(INTEGRATION_BUILD)/sequencer_ccd_simulator_data.o $(INTEGRATION_BUILD)/sequencer_mount_simulator.o $(INTEGRATION_BUILD)/sequencer_dome_simulator.o $(INTEGRATION_BUILD)/sequencer_gps_simulator.o $(INTEGRATION_BUILD)/sequencer_rotator_simulator.o
 
 $(INTEGRATION_BUILD)/test_agent_scripting_sequencer: integration/test_agent_scripting_sequencer.c test_runner.h $(SEQUENCER_TEST_OBJECTS) $(SEQUENCER_SIMULATORS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
