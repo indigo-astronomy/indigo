@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000010
+#define DRIVER_VERSION       0x03000011
 #define DRIVER_NAME          "indigo_mount_simulator"
 #define DRIVER_LABEL         "Mount Simulator"
 #define MOUNT_DEVICE_NAME    DRIVER_LABEL
@@ -358,7 +358,8 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		indigo_j2k_to_jnow(&ra, &dec);
 		double alt, az;
 		indigo_radec_to_altaz(ra, dec, &utc, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, &alt, &az);
-		bool west = az > 180;
+		// MOUNT_SIDE_OF_PIER is the side of the pier the OTA is on: a target in the western sky is reached from the east side
+		bool west = az <= 180;
 		if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0) {
 			west = !west;
 		}
