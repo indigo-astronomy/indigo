@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000003
+#define DRIVER_VERSION       0x03000004
 #define DRIVER_NAME          "indigo_polaralign_mlastro"
 #define DRIVER_LABEL         "MLAstro RPA"
 #define POLARALIGN_DEVICE_NAME DRIVER_LABEL
@@ -46,6 +46,10 @@
 #define MLASTRO_HANDSHAKE_ATTEMPTS 5
 #define MLASTRO_MAX_LINES    16
 #define MLASTRO_MIN_MOVE     (0.5 / 3600.0)
+/* Firmware 1.8.1 with its communication watchdog on (the default) drops serial
+   control when no command arrives for about 1.15 s, so the poll has to stay
+   well inside that. */
+#define MLASTRO_POLL_INTERVAL 0.5
 
 //- define
 
@@ -132,12 +136,21 @@ typedef struct {
 
 static void polaralign_connection_handler(indigo_device *device);
 
+/* Lines telling that the controller no longer takes commands from this port:
+   "DISCONNECTED" when the Web UI takes control back, "REBOOTING..." after
+   Save&Reboot, the "error: Serial heartbeat timeout -> ESTOP" push when the
+   communication watchdog expires, and the "error: Not connected. ..." reply the
+   firmware gives every command afterwards. */
+static bool mlastro_control_lost_line(const char *line) {
+	return !strncmp(line, "DISCONNECTED", 12) || !strncmp(line, "REBOOTING", 9) || !strncmp(line, "error: Serial heartbeat timeout", 31) || !strncmp(line, "error: Not connected", 20);
+}
+
 /* Lines the controller pushes on its own: "AzAN:COMPLETED", "AlAN:COMPLETED",
-   "AAll:COMPLETED", "HOME_COMPLETED", the upper-case "ERROR:..." status line,
-   "DISCONNECTED" when the Web UI takes control back and "REBOOTING..." after
-   Save&Reboot. None of them is a reply to a command. */
+   "AAll:COMPLETED", "HOME_COMPLETED", "SetH:COMPLETED", "SetH:STOPPED", the
+   upper-case "ERROR:Sys:..." status line, the lines of mlastro_control_lost_line(),
+   and the firmware's boot banner and WiFi log. None of them is a reply to a command. */
 static void mlastro_unsolicited(indigo_device *device, const char *line) {
-	if (!strncmp(line, "DISCONNECTED", 12) || !strncmp(line, "REBOOTING", 9)) {
+	if (mlastro_control_lost_line(line)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Controller released serial control: '%s'", line);
 		PRIVATE_DATA->control_lost = true;
 	} else if (!strncmp(line, "ERROR:", 6)) {
@@ -192,6 +205,10 @@ static bool mlastro_exchange(indigo_device *device, const char *command, bool te
 		}
 		if (result == 0) {
 			continue;
+		}
+		if (mlastro_control_lost_line(PRIVATE_DATA->response)) {
+			mlastro_unsolicited(device, PRIVATE_DATA->response);
+			return false;
 		}
 		if (telemetry ? PRIVATE_DATA->response[0] == '<' : (!strncmp(PRIVATE_DATA->response, "ok", 2) || !strncmp(PRIVATE_DATA->response, "error", 5))) {
 			return true;
@@ -402,13 +419,15 @@ static bool mlastro_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle == NULL) {
 		return false;
 	}
-	PRIVATE_DATA->control_lost = false;
 	PRIVATE_DATA->moving = PRIVATE_DATA->error = false;
 	/* Opening the port resets most ESP32 boards, which print a boot log and
 	   ignore the handshake until the firmware is up, so keep retrying. */
 	bool handshake = false;
 	for (int attempt = 0; attempt < MLASTRO_HANDSHAKE_ATTEMPTS && !handshake; attempt++) {
 		indigo_usleep(INDIGO_DELAY(attempt == 0 ? 0.2 : 0.5));
+		/* A "Not connected" line left over from before the handshake is not a
+		   loss of the control this handshake is about to take. */
+		PRIVATE_DATA->control_lost = false;
 		handshake = mlastro_exchange(device, "[MLAstroRPA-TC]", false, 1) && !strncmp(PRIVATE_DATA->response, "ok", 2);
 	}
 	if (!handshake) {
@@ -473,7 +492,7 @@ static void polaralign_timer_callback(indigo_device *device) {
 		polaralign_connection_handler(device);
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_send_message(device, ALERT_PROPERTY, "%s released serial control (Web UI took over or controller rebooted)", device->name);
+		indigo_send_message(device, ALERT_PROPERTY, "%s released serial control (Web UI took over, communication watchdog expired or controller rebooted)", device->name);
 		return;
 	}
 	if (POLARALIGN_OFFSET_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -495,7 +514,7 @@ static void polaralign_timer_callback(indigo_device *device) {
 		POLARALIGN_OFFSET_AZ_ITEM->number.target = POLARALIGN_OFFSET_AZ_ITEM->number.value;
 		indigo_update_property(device, POLARALIGN_OFFSET_PROPERTY, NULL);
 	}
-	indigo_execute_handler_in(device, 1, polaralign_timer_callback);
+	indigo_execute_handler_in(device, MLASTRO_POLL_INTERVAL, polaralign_timer_callback);
 	//- polaralign.on_timer
 }
 

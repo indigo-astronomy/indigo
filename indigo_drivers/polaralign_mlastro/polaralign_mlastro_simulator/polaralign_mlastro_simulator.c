@@ -22,14 +22,38 @@
 // Behaviour the document leaves open was taken from the MLAstro NINA plugin
 // (Services/SerialConnectionService.cs) in the same repository.
 //
+// Behaviour marked [1.8.1] was observed on MLAstro firmware 1.8.1 running on a
+// bare ESP32 board (TTGO, no TMC2209 drivers) on 2026-09-24; the rest follows
+// the protocol document.
+//
 // Modelled behaviour:
-// - Nothing but the "[MLAstroRPA-TC]" handshake is answered until the
-//   handshake is accepted; "Disconnect" (sent by the NINA plugin before it
-//   closes the port) hands control back, and so does "disconnect" written to
-//   the control file, which models a Web UI reload: the simulator then pushes
-//   "DISCONNECTED" and waits for a new handshake.
-// - Every command line gets exactly one "ok"/"error: ..." reply, including the
-//   comma-chained ones (ReDe:D,ReAM:M,ReAS:S,MAzR:1 and AzED:...,AAll:1).
+// - Until the "[MLAstroRPA-TC]" handshake is accepted every command is refused
+//   with "error: Not connected. Send [MLAstroRPA-TC] to take control." and the
+//   "?" poll with "error: Not connected. System is idle or controlled by
+//   Web/PC-Wireless." [1.8.1]. "Disconnect" (sent by the NINA plugin before it
+//   closes the port) is acknowledged with "ok" and hands control back; so does
+//   "disconnect" written to the control file, which models a Web UI reload: the
+//   simulator then pushes "DISCONNECTED" and waits for a new handshake.
+// - Communication watchdog [1.8.1]: with control taken, a gap of more than
+//   --heartbeat seconds (default 1.15) between two commands of any kind, "?"
+//   included, stops the motors, pushes "error: Serial heartbeat timeout ->
+//   ESTOP" and drops control. "heartbeat" in the control file expires it at
+//   once; "release" drops control without any push, so only the "Not
+//   connected" replies tell.
+// - Every command line gets one "ok"/"error: ..." reply, including the
+//   comma-chained ones (ReDe:D,ReAM:M,ReAS:S,MAzR:1 and AzED:...,AAll:1); a
+//   chained line whose motion command is refused gets the error and then an
+//   extra "ok" [1.8.1]. SetH:1 is followed by a "SetH:COMPLETED" push and
+//   STOP:1 while idle by a "SetH:STOPPED" push [1.8.1].
+// - --no-motor-drivers models the bench board without TMC2209 drivers [1.8.1]:
+//   the post-start driver check locks the controller in ERROR and pushes
+//   "ERROR:Sys:2,AzNC:2,AlNC:2,..." after the handshake reply; ReER:1 clears it
+//   (READY, "ERROR:Sys:0,..." push) until the next motion command, which is
+//   refused with "error: Driver Not Responding" after the axis has crept
+//   0.13 deg, and locks the controller again.
+// - --log-noise pushes the firmware's boot banner after the handshake reply and
+//   a WiFi log line every two seconds, as firmware 1.8.1 does on its serial
+//   port [1.8.1].
 // - Telemetry reports AzPH/AlPH, the angle from the SetH:1 reference, and
 //   Mpos, the angle moved since the last motion started.
 // - Relative moves report MOVING, alignment moves ALIGNING and end in
@@ -40,8 +64,9 @@
 //   at once; STOP:0/ESTOP:0 are ignored.
 // - In jog mode (JoRe:0, the power-on default) a move command drives towards
 //   the soft limit and the 500 ms watchdog stops it unless it is repeated.
+// - RstH:1 forgets the home reference but keeps AzPH/AlPH and Mpos [1.8.1].
 // - --hard-limit-az trips a StallGuard hard limit: the controller stops in
-//   ERROR, pushes an "ERROR:..." line and refuses motion with "error: System
+//   ERROR, pushes an "ERROR:Sys:...,AzHL:1,..." line and refuses motion with "error: System
 //   Locked" until ReER:1; afterwards a move further in the blocked direction
 //   is refused with "error: Hard Limit".
 // Motor tuning (AzIR/AzIH/AzMS/AzAc/AzDec/AzSB/AzSC/AzRM and their Al*
@@ -77,6 +102,9 @@ typedef struct {
 	bool defer_push;
 	bool hard_limit_az_set;
 	double hard_limit_az;
+	double heartbeat;
+	bool no_motor_drivers;
+	bool log_noise;
 	char control_file[PATH_MAX];
 	char event_file[PATH_MAX];
 } simulator_options;
@@ -86,7 +114,8 @@ static simulator_options options = {
 	.trace = true,
 	.ready_file = NULL,
 	.firmware = "firmware 1.2.43",
-	.serial_number = "AA:BB:CC:DD:EE:F0"
+	.serial_number = "AA:BB:CC:DD:EE:F0",
+	.heartbeat = 1.15
 };
 
 static const char *simulator_name = "polaralign_mlastro";
@@ -102,9 +131,13 @@ static void usage(const char *name) {
 	printf("  --boot-noise <count>    Answer the first <count> handshakes with ESP32 boot log lines only\n");
 	printf("  --defer-push            Hold asynchronous pushes until just before the next command reply\n");
 	printf("  --hard-limit-az <deg>   Trip a StallGuard hard limit when azimuth crosses <deg>\n");
+	printf("  --heartbeat <seconds>   Communication watchdog timeout, 0 disables it (default 1.15)\n");
+	printf("  --no-motor-drivers      Model a board without TMC2209 drivers (locked in ERROR)\n");
+	printf("  --log-noise             Push the boot banner and periodic WiFi log lines\n");
 	printf("  -h, --help              Show this help and exit\n");
 	printf("  Runtime control is read from <ready-file>.control (\"disconnect\" hands control\n");
-	printf("  back to the Web UI) and every complete command is recorded in <ready-file>.events.\n");
+	printf("  back to the Web UI, \"heartbeat\" expires the communication watchdog, \"release\"\n");
+	printf("  drops control silently) and every complete command is recorded in <ready-file>.events.\n");
 }
 
 static bool parse_args(int argc, char *argv[]) {
@@ -146,6 +179,16 @@ static bool parse_args(int argc, char *argv[]) {
 			}
 			options.hard_limit_az_set = true;
 			options.hard_limit_az = atof(argv[i]);
+		} else if (!strcmp(argv[i], "--heartbeat")) {
+			if (++i >= argc) {
+				fprintf(stderr, "Missing value for --heartbeat\n");
+				return false;
+			}
+			options.heartbeat = atof(argv[i]);
+		} else if (!strcmp(argv[i], "--no-motor-drivers")) {
+			options.no_motor_drivers = true;
+		} else if (!strcmp(argv[i], "--log-noise")) {
+			options.log_noise = true;
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -176,6 +219,9 @@ typedef enum {
 
 static bool controlled = false;
 static int handshakes_to_ignore = 0;
+// serial_motion_time() of the last command line, for the communication watchdog
+static double last_command_time = 0;
+static double next_log_noise = 0;
 
 // degrees, relative to the last SetH:1 reference (AzPH/AlPH)
 static serial_motion az_motion, alt_motion;
@@ -218,8 +264,15 @@ static int az_backlash_steps = 0, alt_backlash_steps = 0;
 static bool locked = false;
 static int blocked_az_direction = 0;
 
+// the "ERROR:Sys:..." report: Sys 2 while locked, AzNC/AlNC 2 for a motor
+// driver that does not answer, AzHL for a tripped azimuth hard limit
+static int error_az_nc = 0, error_alt_nc = 0, error_az_hl = 0;
+
+// a push to send right after the reply to the command being dispatched
+static char post_reply_push[256];
+
 // Guarded by write_mutex: pushes held back by --defer-push.
-static char deferred_pushes[8][64];
+static char deferred_pushes[8][256];
 static int deferred_push_count = 0;
 
 // slow enough that a move of a degree or more stays observably BUSY across
@@ -268,7 +321,7 @@ static void send_reply(int fd, bool flush_pushes, const char *format, ...) {
 }
 
 static void send_push(int fd, const char *line) {
-	char buffer[64];
+	char buffer[256];
 	snprintf(buffer, sizeof(buffer), "%s\n", line);
 	pthread_mutex_lock(&write_mutex);
 	if (options.defer_push) {
@@ -351,6 +404,30 @@ static void hard_stop(void) {
 	kind = MOTION_NONE;
 }
 
+static void format_error_line(char *line, size_t size) {
+	snprintf(line, size, "ERROR:Sys:%d,AzNC:%d,AlNC:%d,AzOT:0,AlOT:0,AzPW:0,AlPW:0,AzSA:0,AzSB:0,AlSA:0,AlSB:0,AzOL:0,AlOL:0,AzHL:%d,AlHL:0,AzSL:0,AlSL:0,Esc:0,CmdRf:0", locked ? 2 : 0, error_az_nc, error_alt_nc, error_az_hl);
+}
+
+// Without TMC2209 drivers a motion command gets as far as a few steps before
+// the controller notices that the driver does not answer [1.8.1].
+static const char *driver_not_responding(double new_az, double new_alt) {
+	bool azimuth = new_az != az_motion.position || new_alt == alt_motion.position;
+	serial_motion *motion = azimuth ? &az_motion : &alt_motion;
+	double target = azimuth ? new_az : new_alt;
+	mpos_origin_az = az_motion.position;
+	mpos_origin_alt = alt_motion.position;
+	serial_motion_sync(motion, motion->position + (target >= motion->position ? 0.13 : -0.13));
+	locked = true;
+	status = "ERROR";
+	if (azimuth) {
+		error_az_nc = 2;
+	} else {
+		error_alt_nc = 2;
+	}
+	format_error_line(post_reply_push, sizeof(post_reply_push));
+	return "error: Driver Not Responding\n";
+}
+
 // Starts a motion to an absolute (az, alt) target in degrees from home;
 // returns the reply to send. AAll sequences azimuth before altitude.
 static const char *begin_motion(motion_kind new_kind, double new_az, double new_alt, bool sequence_alt) {
@@ -360,6 +437,9 @@ static const char *begin_motion(motion_kind new_kind, double new_az, double new_
 	}
 	if (new_az < az_limit_min || new_az > az_limit_max || new_alt < alt_limit_min || new_alt > alt_limit_max) {
 		return "error: Soft Limit\n";
+	}
+	if (options.no_motor_drivers) {
+		return driver_not_responding(new_az, new_alt);
 	}
 	int direction = new_az > az_motion.position ? 1 : new_az < az_motion.position ? -1 : 0;
 	if (blocked_az_direction != 0 && direction == blocked_az_direction) {
@@ -419,10 +499,9 @@ static void tick(char *push, size_t size) {
 			hard_stop();
 			serial_motion_sync(&az_motion, limit);
 			locked = true;
+			error_az_hl = 1;
 			status = "ERROR";
-			// The NINA plugin parses "ERROR:<key>:<int>,..." but the keys are
-			// not documented; this one is a placeholder.
-			snprintf(push, size, "ERROR:AzHL:1");
+			format_error_line(push, size);
 			return;
 		}
 	}
@@ -453,21 +532,40 @@ static void *background(void *arg) {
 	(void)arg;
 	while (running) {
 		usleep(50000);
-		char push[64] = { 0 };
+		char push[256] = { 0 };
 		char action[32] = { 0 };
-		bool drop_control = take_control_action(action, sizeof(action)) && !strcmp(action, "disconnect");
+		bool acted = take_control_action(action, sizeof(action));
+		bool web_ui = acted && !strcmp(action, "disconnect");
+		bool release = acted && !strcmp(action, "release");
 		pthread_mutex_lock(&state_mutex);
 		tick(push, sizeof(push));
 		bool was_controlled = controlled;
-		if (drop_control) {
+		bool heartbeat_expired = was_controlled && ((acted && !strcmp(action, "heartbeat")) || (options.heartbeat > 0 && serial_motion_time() - last_command_time > options.heartbeat));
+		if (heartbeat_expired) {
+			hard_stop();
+		}
+		if (web_ui || release || heartbeat_expired) {
 			controlled = false;
 		}
+		bool log_noise = options.log_noise && serial_motion_time() > next_log_noise;
+		if (log_noise) {
+			next_log_noise = serial_motion_time() + 2;
+		}
 		pthread_mutex_unlock(&state_mutex);
-		if (*push && serial_fd >= 0) {
+		if (serial_fd < 0) {
+			continue;
+		}
+		if (*push) {
 			send_push(serial_fd, push);
 		}
-		if (drop_control && was_controlled && serial_fd >= 0) {
+		if (web_ui && was_controlled) {
 			send_push(serial_fd, "DISCONNECTED");
+		}
+		if (heartbeat_expired) {
+			send_push(serial_fd, "error: Serial heartbeat timeout -> ESTOP");
+		}
+		if (log_noise) {
+			send_push(serial_fd, "STA disconnected/failed - keep AP alive (reason: 201 - NO_AP_FOUND) | attempt: 0 | status: 1 | AP: 192.168.4.1");
 		}
 	}
 	return NULL;
@@ -620,6 +718,10 @@ static bool apply_token(const char *key, const char *value, const char **respons
 		}
 	} else if (!strcmp(key, "STOP")) {
 		if (press) {
+			update_positions();
+			if (kind == MOTION_NONE) {
+				snprintf(post_reply_push, sizeof(post_reply_push), "SetH:STOPPED");
+			}
 			soft_stop();
 		}
 	} else if (!strcmp(key, "ESTOP")) {
@@ -630,22 +732,22 @@ static bool apply_token(const char *key, const char *value, const char **respons
 	} else if (!strcmp(key, "ReER")) {
 		hard_stop();
 		locked = false;
+		error_az_nc = error_alt_nc = error_az_hl = 0;
 		status = "READY";
+		format_error_line(post_reply_push, sizeof(post_reply_push));
 	} else if (!strcmp(key, "SetH")) {
 		hard_stop();
 		serial_motion_sync(&az_motion, 0);
 		serial_motion_sync(&alt_motion, 0);
 		mpos_origin_az = mpos_origin_alt = 0;
 		homed = true;
-		status = "READY";
+		status = locked ? "ERROR" : "READY";
+		snprintf(post_reply_push, sizeof(post_reply_push), "SetH:COMPLETED");
 	} else if (!strcmp(key, "RetH")) {
 		*response = homed ? begin_motion(MOTION_HOME, 0, 0, false) : "error: Not homed\n";
 	} else if (!strcmp(key, "RstH")) {
-		// "Clears the home status and coordinates."
-		update_positions();
-		serial_motion_sync(&az_motion, 0);
-		serial_motion_sync(&alt_motion, 0);
-		mpos_origin_az = mpos_origin_alt = 0;
+		// The document says "Clears the home status and coordinates", but
+		// firmware 1.8.1 keeps reporting AzPH/AlPH and Mpos unchanged.
 		homed = false;
 	} else if (!strcmp(key, "Save&Reboot")) {
 		*reboot = press;
@@ -657,15 +759,28 @@ static bool apply_token(const char *key, const char *value, const char **respons
 	return true;
 }
 
+static const char *boot_banner[] = {
+	"",
+	"",
+	"====== MLAstro Robotic Polar Alignment ======",
+	"|               (MLAstroRPA)                |",
+	"| firmware 1.8.1",
+	"|              [ System Ready ]             |",
+	"============================================="
+};
+
 static void dispatch_command(int fd, char *line) {
 	record_event(line);
 	if (!strcmp(line, "[MLAstroRPA-TC]")) {
+		char error_line[256];
 		pthread_mutex_lock(&state_mutex);
 		bool booting = handshakes_to_ignore > 0;
 		if (booting) {
 			handshakes_to_ignore--;
 		} else {
 			controlled = true;
+			last_command_time = serial_motion_time();
+			format_error_line(error_line, sizeof(error_line));
 		}
 		pthread_mutex_unlock(&state_mutex);
 		if (booting) {
@@ -675,17 +790,31 @@ static void dispatch_command(int fd, char *line) {
 			send_reply(fd, true, "ok\n");
 		} else {
 			send_reply(fd, true, "ok,%s,SN:%s\n", options.firmware, options.serial_number);
+			// firmware 1.8.1 reports its error state right after taking control
+			send_push(fd, error_line);
+			if (options.log_noise) {
+				for (size_t i = 0; i < sizeof(boot_banner) / sizeof(boot_banner[0]); i++) {
+					send_push(fd, boot_banner[i]);
+				}
+			}
 		}
 		return;
 	}
 	pthread_mutex_lock(&state_mutex);
 	bool accepted = controlled;
-	if (accepted && !strcmp(line, "Disconnect")) {
-		controlled = false;
-		accepted = false;
+	if (accepted) {
+		last_command_time = serial_motion_time();
+		if (!strcmp(line, "Disconnect")) {
+			controlled = false;
+		}
 	}
 	pthread_mutex_unlock(&state_mutex);
 	if (!accepted) {
+		send_reply(fd, false, "%s", !strcmp(line, "?") ? "error: Not connected. System is idle or controlled by Web/PC-Wireless.\n" : "error: Not connected. Send [MLAstroRPA-TC] to take control.\n");
+		return;
+	}
+	if (!strcmp(line, "Disconnect")) {
+		send_reply(fd, true, "ok\n");
 		return;
 	}
 	if (!strcmp(line, "?")) {
@@ -695,8 +824,12 @@ static void dispatch_command(int fd, char *line) {
 	const char *response = "ok\n";
 	bool reboot = false;
 	char *save = NULL;
+	char push[256];
+	int tokens = 0;
 	pthread_mutex_lock(&state_mutex);
+	post_reply_push[0] = '\0';
 	for (char *token = strtok_r(line, ",", &save); token; token = strtok_r(NULL, ",", &save)) {
+		tokens++;
 		char key[16] = { 0 }, value[32] = { 0 };
 		if (sscanf(token, "%15[^:]:%31s", key, value) != 2 || !apply_token(key, value, &response, &reboot)) {
 			response = "error: Unknown command\n";
@@ -707,8 +840,17 @@ static void dispatch_command(int fd, char *line) {
 	if (reboot) {
 		controlled = false;
 	}
+	// a chained line whose motion command was refused still ends in "ok" [1.8.1]
+	bool chained_refusal = tokens > 1 && !strncmp(response, "error:", 6) && strcmp(response, "error: Unknown command\n");
+	snprintf(push, sizeof(push), "%s", post_reply_push);
 	pthread_mutex_unlock(&state_mutex);
 	send_reply(fd, true, "%s", response);
+	if (chained_refusal) {
+		send_reply(fd, false, "ok\n");
+	}
+	if (*push) {
+		send_push(fd, push);
+	}
 	if (reboot) {
 		send_reply(fd, false, "REBOOTING...\n");
 	}
@@ -726,6 +868,12 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	handshakes_to_ignore = options.boot_noise;
+	if (options.no_motor_drivers) {
+		// the post-start driver connectivity check finds neither driver [1.8.1]
+		locked = true;
+		error_az_nc = error_alt_nc = 2;
+		status = "ERROR";
+	}
 
 	signal(SIGTERM, signal_handler);
 	signal(SIGINT, signal_handler);

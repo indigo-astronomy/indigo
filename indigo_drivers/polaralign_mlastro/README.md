@@ -28,11 +28,17 @@ indigo_server indigo_polaralign_mlastro
 
 https://github.com/MLAstroRPA/MLAstroRPA.NINA.Plugin/blob/main/Documentation/Serial-protocol.md
 
+https://github.com/MLAstroRPA/MLAstroRPA.NINA.Plugin/blob/main/README.md
+
 Command usage was cross-checked against the "MLAstro RPA" driver in the INDI
 project (`drivers/auxiliary/mlastro_rpa.cpp`/`.h` in indilib/indi). Behaviour
 the protocol document leaves open (the `Disconnect` command, the meaning of
 `Mpos` versus `AzPH`/`AlPH`, unsolicited lines) follows the MLAstro NINA plugin
 (`Services/SerialConnectionService.cs` in the same repository as the protocol).
+
+## Firmware
+
+https://github.com/MLAstroRPA/Firmware-Update/
 
 ## Properties
 
@@ -102,4 +108,5 @@ set if they are needed sooner.
 
 ## Testing
 
-2026-09-24 22:25 3.0.0.3 mac arm64 simulator 23/23 OK
+2026-09-24 22:28 3.0.0.3 mac arm64 MLAstro RPA firmware 1.8.1 (TTGO ESP32) 18/14 Failed
+2026-09-24 22:46 3.0.0.4 mac arm64 simulator 29/29 OK

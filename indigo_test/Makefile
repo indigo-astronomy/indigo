@@ -2556,6 +2556,19 @@ FOCUSER_FOCUSDREAMPRO_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_focusdre
 $(TEST_BUILD)/hardware/test_focuser_focusdreampro_hw: hardware/test_focuser_focusdreampro_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_focusdreampro.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_FOCUSDREAMPRO_HW_TEST_LDFLAGS)
 
+# The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
+# NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
+# motion command, which the suite asserts. Settings change only in controller memory and are
+# restored at the end. Set MLASTRO_HW_PORT to the controller's serial port.
+.PHONY: test-polaralign-mlastro-hw
+test-polaralign-mlastro-hw: check-lib $(TEST_BUILD)/hardware/test_polaralign_mlastro_hw
+	$(TEST_BUILD)/hardware/test_polaralign_mlastro_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+POLARALIGN_MLASTRO_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_mlastro.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_polaralign_mlastro_hw: hardware/test_polaralign_mlastro_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_polaralign_mlastro.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(POLARALIGN_MLASTRO_HW_TEST_LDFLAGS)
+
 # A physically connected LX200 protocol mount is opt-in and excluded from normal integration tests.
 # THE MOUNT MOVES: every slew is a few degrees from the pointing the scenario starts at, and the
 # run restores the tracking and parked state it found. Nothing persistent in the controller is

@@ -571,6 +571,175 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// -------------------------------------------------------------------------------- communication watchdog
+
+static bool wait_for_disconnect(void) {
+	for (int i = 0; i < 100 && context.connected; i++) {
+		indigo_usleep(100000);
+	}
+	return !context.connected;
+}
+
+// Firmware 1.8.1 with its communication watchdog on drops serial control after
+// about 1.15 s without a command (MLAstro firmware 1.8.1 on a TTGO ESP32,
+// 2026-09-24); the driver's idle poll ran every 1.063 s, 90 ms inside it.
+// With the watchdog at 0.8 s the poll still has to hold control on its own.
+static void poll_keeps_serial_control_inside_the_watchdog(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--heartbeat", "0.8", NULL };
+	SERIAL_CHECK_TRUE(start_mlastro(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&mlastro_polaralign, simulator.port));
+	online = true;
+	indigo_usleep(5000000);
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(move_to(0, 30));
+	SERIAL_CHECK_TRUE(context.connected);
+cleanup:
+	if (online) { stop_serial_driver(&mlastro_polaralign); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// When the watchdog does expire the controller stops, pushes "error: Serial
+// heartbeat timeout -> ESTOP" and answers every command with "error: Not
+// connected". The driver has to go offline with an alert instead of polling a
+// controller that no longer takes its commands.
+static void watchdog_expiry_disconnects_with_alert(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_mlastro(&simulator, NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&mlastro_polaralign, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(arm_control(&simulator, "heartbeat"));
+	SERIAL_CHECK_TRUE(wait_for_disconnect());
+	SERIAL_CHECK_TRUE(context.last_connection_state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(expect_event(&simulator, "Disconnect", 0));
+	online = false;
+	tear_down_serial_driver(&mlastro_polaralign);
+cleanup:
+	if (online) { stop_serial_driver(&mlastro_polaralign); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A lost control whose push never arrived still shows in the "error: Not
+// connected" reply to the next poll.
+static void not_connected_reply_disconnects_with_alert(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_mlastro(&simulator, NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&mlastro_polaralign, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(arm_control(&simulator, "release"));
+	SERIAL_CHECK_TRUE(wait_for_disconnect());
+	SERIAL_CHECK_TRUE(context.last_connection_state == INDIGO_ALERT_STATE);
+	// and a fresh connection takes control again
+	SERIAL_CHECK_TRUE(connect_serial_device(&mlastro_polaralign, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(move_to(0, 30));
+cleanup:
+	if (online) { stop_serial_driver(&mlastro_polaralign); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// -------------------------------------------------------------------------------- firmware 1.8.1 behaviour
+
+// A controller without TMC2209 drivers, as on the bench board, is locked in
+// ERROR from the start. A refused chained move is answered "error: System
+// Locked" followed by an extra "ok", which must not become the reply to the
+// next command. ReER:1 unlocks it until the next move, which creeps 0.13 deg,
+// fails with "error: Driver Not Responding" and locks it again.
+static void controller_without_motor_drivers_stays_locked(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--no-motor-drivers", NULL };
+	SERIAL_CHECK_TRUE(start_mlastro(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&mlastro_polaralign, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_status("ERROR"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_MLASTRO_STATUS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+
+	unsigned int revision = property_state_revision(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(change_offset(0, 30));
+	SERIAL_CHECK_TRUE(wait_for_offset_state_after(INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(expect_event(&simulator, "ReDe:0,ReAM:30,ReAS:0,MAzR:1", 1));
+	revision = property_state_revision(X_MLASTRO_SPEED_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(indigo_change_number_property_1(&simulator_test_client, mlastro_polaralign.device_name, X_MLASTRO_SPEED_PROPERTY_NAME, X_MLASTRO_SPEED_ITEM_NAME, 4) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(X_MLASTRO_SPEED_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(X_MLASTRO_SPEED_PROPERTY_NAME, X_MLASTRO_SPEED_ITEM_NAME, 4, 0));
+
+	SERIAL_CHECK_TRUE(press(X_MLASTRO_RESET_ERROR_PROPERTY_NAME, X_MLASTRO_RESET_ERROR_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_MLASTRO_RESET_ERROR_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_status("READY"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_MLASTRO_STATUS_PROPERTY_NAME, INDIGO_OK_STATE));
+
+	revision = property_state_revision(POLARALIGN_OFFSET_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(change_offset(0, 30));
+	SERIAL_CHECK_TRUE(wait_for_offset_state_after(INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_status("ERROR"));
+	// the creep reaches the client and the target follows the position
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME, 7.8, .01));
+	indigo_item *az = find_cached_item(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME);
+	SERIAL_CHECK_TRUE(az != NULL && fabs(az->number.target - 7.8) < .01);
+
+	// SetH:1 is accepted while locked and the controller stays locked
+	SERIAL_CHECK_TRUE(press(POLARALIGN_RESET_POSITION_AZ_PROPERTY_NAME, POLARALIGN_RESET_POSITION_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_RESET_POSITION_AZ_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME, 0, .01));
+	indigo_usleep(1500000);
+	SERIAL_CHECK_TRUE(wait_for_status("ERROR"));
+	SERIAL_CHECK_TRUE(context.connected);
+cleanup:
+	if (online) { stop_serial_driver(&mlastro_polaralign); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// RstH:1 forgets the home reference but the controller keeps reporting the
+// same AzPH/AlPH (firmware 1.8.1); the published position must not jump.
+static void clear_home_keeps_the_reported_position(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_mlastro(&simulator, NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&mlastro_polaralign, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(press(POLARALIGN_RESET_POSITION_AZ_PROPERTY_NAME, POLARALIGN_RESET_POSITION_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_RESET_POSITION_AZ_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(move_to(0, 60));
+	SERIAL_CHECK_TRUE(press(X_MLASTRO_CLEAR_HOME_PROPERTY_NAME, X_MLASTRO_CLEAR_HOME_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_MLASTRO_CLEAR_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_usleep(1500000);
+	indigo_item *homed = find_cached_item(X_MLASTRO_HOMED_PROPERTY_NAME, X_MLASTRO_HOMED_ITEM_NAME);
+	SERIAL_CHECK_TRUE(homed != NULL && homed->light.value == INDIGO_IDLE_STATE);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_OFFSET_AZ_ITEM_NAME, 60, .5));
+cleanup:
+	if (online) { stop_serial_driver(&mlastro_polaralign); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// Firmware 1.8.1 prints its boot banner (blank lines included) after the
+// handshake reply and a WiFi log line every few seconds on the same port. None
+// of it may be taken for a reply.
+static void firmware_log_lines_are_not_taken_for_replies(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--log-noise", NULL };
+	SERIAL_CHECK_TRUE(start_mlastro(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&mlastro_polaralign, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(!strcmp(info_text(INFO_DEVICE_SERIAL_NUM_ITEM_NAME), "AA:BB:CC:DD:EE:F0"));
+	SERIAL_CHECK_TRUE(move_to(0, 60));
+	SERIAL_CHECK_TRUE(press(POLARALIGN_RESET_POSITION_AZ_PROPERTY_NAME, POLARALIGN_RESET_POSITION_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_RESET_POSITION_AZ_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(press(POLARALIGN_ABORT_MOTION_PROPERTY_NAME, POLARALIGN_ABORT_MOTION_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state(POLARALIGN_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(move_to(30, 0));
+	indigo_usleep(2500000);
+	SERIAL_CHECK_TRUE(context.connected);
+	SERIAL_CHECK_TRUE(!strcmp(text_of(X_MLASTRO_STATUS_PROPERTY_NAME, X_MLASTRO_STATUS_ITEM_NAME), "READY"));
+cleanup:
+	if (online) { stop_serial_driver(&mlastro_polaralign); }
+	stop_external_serial_simulator(&simulator);
+}
+
 // -------------------------------------------------------------------------------- home reference
 
 // The controller has one shared zero reference for both axes: SetH:1 zeros
@@ -773,6 +942,12 @@ int main(void) {
 		{ "completion_push_is_not_taken_for_a_reply", completion_push_is_not_taken_for_a_reply },
 		{ "releasing_serial_control_disconnects", releasing_serial_control_disconnects },
 		{ "disconnect_hands_control_back", disconnect_hands_control_back },
+		{ "poll_keeps_serial_control_inside_the_watchdog", poll_keeps_serial_control_inside_the_watchdog },
+		{ "watchdog_expiry_disconnects_with_alert", watchdog_expiry_disconnects_with_alert },
+		{ "not_connected_reply_disconnects_with_alert", not_connected_reply_disconnects_with_alert },
+		{ "controller_without_motor_drivers_stays_locked", controller_without_motor_drivers_stays_locked },
+		{ "clear_home_keeps_the_reported_position", clear_home_keeps_the_reported_position },
+		{ "firmware_log_lines_are_not_taken_for_replies", firmware_log_lines_are_not_taken_for_replies },
 		{ "reset_position_shares_the_home_reference", reset_position_shares_the_home_reference },
 		{ "goto_home_requires_a_reference_and_clear_home_forgets_it", goto_home_requires_a_reference_and_clear_home_forgets_it },
 		{ "direction_and_steps_per_degree_round_trip", direction_and_steps_per_degree_round_trip },

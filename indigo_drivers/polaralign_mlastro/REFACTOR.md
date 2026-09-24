@@ -47,6 +47,38 @@ No MLAstro RPA hardware was available; all results are simulator results. The fo
 - Which status follows a completed relative move (the simulator reports `READY`; the driver treats every non-moving status alike).
 - Whether the status passes through a non-moving state between the azimuth and altitude legs of `AAll`; if it does, the driver would report completion one leg early.
 
+## Hardware run and fixes in 3.0.0.4 (2026-09-24)
+
+Hardware: MLAstro RPA firmware 1.8.1 (`MLAstroRPA-full-1.8.1.bin` from [MLAstroRPA/Firmware-Update](https://github.com/MLAstroRPA/Firmware-Update/) release v1.8.1, SHA-256 `2fa7037fa3558ae766d8b8b3ce079e25915b756d2576f22aefb1f8f162eda763`, merged 4 MB image written at `0x0` with `--chip esp32`) on a TTGO board, ESP32-D0WDQ6 rev 1.0, 4 MB flash, CP2104 USB-UART, MAC `24:6F:28:25:54:BC`, connected to a Mac (arm64). The board has no TMC2209 motor drivers, PSRAM or FRAM, so nothing can move. The image is built for the classic ESP32 (bootloader at `0x1000`) and does not boot on an ESP32-S3. Its repository carries no license and no source, so the binary is not stored in the simulator directory; the README links the firmware repository instead. Hot-plug was not part of the run and is not covered.
+
+Interactive hardware run, `make -C indigo_test test-polaralign-mlastro-hw` (`MLASTRO_HW_PORT=/dev/cu.usbserial-01DA93AF`), against driver 3.0.0.3: 18 cases, 14 passed. The 4 failures (`mlastro_resets_the_controller_error`, `mlastro_reconnects`, `mlastro_survives_repeated_reconnects`, `mlastro_reinitializes`) come from a wrong assumption in the new test, not from the driver: they expect the controller to fall back to ERROR after `ReER:1`, but firmware 1.8.1 stays READY until the next motion command. The test has not been corrected and the fixed driver 3.0.0.4 has not been rerun on hardware yet.
+
+Observed on the hardware (direct serial probes and the run's debug log):
+
+- Handshake reply `ok,firmware 1.8.1,SN:24:6F:28:25:54:BC`, then an `ERROR:Sys:2,AzNC:2,AlNC:2,AzOT:0,...,AzHL:0,AlHL:0,AzSL:0,AlSL:0,Esc:0,CmdRf:0` push. The boot banner (with blank lines) and WiFi log lines arrive unsolicited, before or after the handshake reply.
+- Without motor drivers the controller is locked in ERROR; motion is refused with `error: System Locked`. `ReER:1` answers `ok` plus `ERROR:Sys:0,...` and leaves it READY until a motion command, which creeps 0.13 deg, answers `error: Driver Not Responding` and locks again.
+- A refused chained command answers the error and then an extra `ok`. A refused single command answers only the error.
+- `SetH:1` is followed by a `SetH:COMPLETED` push, `STOP:1` while idle by `SetH:STOPPED`. `RstH:1` clears `Home` but keeps `AzPH`/`AlPH` and `Mpos`.
+- Before the handshake every command is answered `error: Not connected. Send [MLAstroRPA-TC] to take control.`, the `?` poll `error: Not connected. System is idle or controlled by Web/PC-Wireless.`. `Disconnect` answers `ok`.
+- Communication watchdog (on by default): a gap of 1.12 s between commands keeps control, 1.15 s loses it; `?` counts as a command. On expiry the firmware pushes `error: Serial heartbeat timeout -> ESTOP` and answers every command `error: Not connected`.
+- Opening the port through INDIGO does not reset this board; opening it with pyserial does.
+
+| Defect | Consequence | Covered by |
+| :--- | :--- | :--- |
+| The idle poll ran every 1.063 s (measured), 90 ms inside the 1.15 s communication watchdog of firmware 1.8.1. | Any delay of the handler queue dropped serial control and stopped the motors. The poll now runs every 0.5 s. | `poll_keeps_serial_control_inside_the_watchdog` (watchdog set to 0.8 s) |
+| A lost serial control through the watchdog was not detected: the `error: Serial heartbeat timeout` push was logged as an ordinary line and `error: Not connected` replies were taken as command errors. | The driver kept polling a controller that ignored it, and every change ended in ALERT without a reason. Both lines now take the `DISCONNECTED` path: the device goes offline with an alert. | `watchdog_expiry_disconnects_with_alert`, `not_connected_reply_disconnects_with_alert` |
+
+Simulator additions, all from the hardware observations above: `--heartbeat <s>` watchdog (default 1.15 s) with the `heartbeat` and `release` control actions, `Not connected` replies, `ok` to `Disconnect`, the extra `ok` after a refused chained command, `SetH:COMPLETED`/`SetH:STOPPED` pushes, the real `ERROR:Sys:...` line after the handshake, `ReER:1` and a hard limit, `--no-motor-drivers` (locked from start, `Driver Not Responding` with 0.13 deg creep), `RstH:1` keeping the position, and `--log-noise` (banner and WiFi lines). New cases: `controller_without_motor_drivers_stays_locked`, `clear_home_keeps_the_reported_position`, `firmware_log_lines_are_not_taken_for_replies`.
+
+Resolved assumptions from "Not verified": `RstH:1` does not zero `AzPH`/`AlPH`; the `ERROR:` line keys are `Sys, AzNC, AlNC, AzOT, AlOT, AzPW, AlPW, AzSA, AzSB, AlSA, AlSB, AzOL, AlOL, AzHL, AlHL, AzSL, AlSL, Esc, CmdRf`; after losing control the firmware answers `error: Not connected`.
+
+Simulator run with 3.0.0.4: `build/integration/test_polaralign_mlastro_simulator`, 29/29 passed (mac arm64).
+
 ## Windows
 
 Visual Studio project and filters added, registered in `indigo_windows.sln` and referenced by `indigo_server.vcxproj`; the driver is also listed in the `indigo_server.c` static driver table. No Windows machine was available, so the Windows build was not executed.
+
+## Test summary
+
+- Simulated: 29 cases run, 29 passed (driver 3.0.0.4).
+- Hardware: 18 cases run, 14 passed (driver 3.0.0.3, firmware 1.8.1 on a TTGO ESP32 without motor drivers); the 4 failures are test-assumption errors, see above.
