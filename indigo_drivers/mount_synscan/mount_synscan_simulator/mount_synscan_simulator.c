@@ -96,6 +96,7 @@ typedef struct {
 	bool udp;
 	int udp_port;
 	int drop_nth_reply;
+	int drop_first_replies;
 	uint8_t model_code;
 	bool ra_features_override;
 	bool dec_features_override;
@@ -111,6 +112,7 @@ static simulator_options options = {
 	.udp = false,
 	.udp_port = 0,
 	.drop_nth_reply = 0,
+	.drop_first_replies = 0,
 	.model_code = 0x04,
 	.ra_features_override = false,
 	.dec_features_override = false,
@@ -127,6 +129,7 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --udp-port <port>       Listen on UDP instead of a pseudo-serial port\n");
 	printf("  --drop-nth-reply <n>    Silently drop every n-th UDP reply, to emulate packet loss\n");
+	printf("  --drop-first-replies <n>  Silently drop the first n UDP replies\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  --pcdirect              Start axes as initialized for PC Direct style probing\n");
@@ -195,6 +198,12 @@ static bool parse_args(int argc, char *argv[]) {
 				return 1;
 			}
 			options.drop_nth_reply = atoi(argv[i]);
+		} else if (!strcmp(argv[i], "--drop-first-replies")) {
+			if (++i == argc) {
+				fprintf(stderr, "--drop-first-replies requires a count\n");
+				return false;
+			}
+			options.drop_first_replies = atoi(argv[i]);
 		} else if (!strcmp(argv[i], "--udp-port")) {
 			if (++i == argc) {
 				fprintf(stderr, "--udp-port requires a port\n");
@@ -670,7 +679,7 @@ static void run_udp_server(void) {
 				// which is what a datagram lost on the way back to the driver looks like.
 				static int received = 0;
 				received++;
-				if (options.drop_nth_reply > 0 && received % options.drop_nth_reply == 0) {
+				if (received <= options.drop_first_replies || (options.drop_nth_reply > 0 && received % options.drop_nth_reply == 0)) {
 					serial_simulator_trace_line(options.trace, "<-", "(reply dropped)");
 					dispatch_udp_command(-1, command, &client_address, client_address_length);
 				} else {

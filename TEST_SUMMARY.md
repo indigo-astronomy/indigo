@@ -175,7 +175,9 @@
 | mount_simulator | 2026-09-21 12:42 | 3.0.0.16 | mac arm64 | simulator | 16 / 16 | ✅ OK |
 | mount_starbook | 2026-09-20 20:49 | 3.0.0.7 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | mount_synscan | 2026-09-20 15:56 | 3.0.0.4 | mac arm64 | SkyWatcher AZ-GTi | 16 / 16 | ✅ OK |
-|  | 2026-09-24 09:35 | 3.0.0.7 | mac arm64 | simulator | 15 / 15 | ✅ OK |
+|  | 2026-09-20 21:34 | 3.0.0.5 | mac arm64 | simulator | 18 / 18 | ✅ OK |
+|  | 2026-09-24 09:35 | 3.0.0.7 | mac arm64 | MountSim 2.3 (EQMOD) | 15 / 15 | ✅ OK |
+|  | 2026-09-24 10:00 | 3.0.0.7 | mac arm64 | simulator | 18 / 18 | ✅ OK |
 | mount_temma | 2026-09-23 13:37 | 3.0.0.15 | mac arm64 | MountSim 2.3 (Temma) | 12 / 12 | ✅ OK |
 |  | 2026-09-23 13:37 | 3.0.0.15 | mac arm64 | simulator | 16 / 16 | ✅ OK |
 | polaralign_simulator | 2026-09-21 10:53 | 3.0.0.4 | mac arm64 | simulator | 11 / 11 | ✅ OK |

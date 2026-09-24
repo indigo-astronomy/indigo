@@ -1484,3 +1484,28 @@ broadcast. An isolated `indigo_perform_active_discovery()` probe timed out in
 both normal and instrumented builds, even though the normal full suite passed
 autodetection. This leaves an intermittent host/framework broadcast-discovery
 limitation outside the EQMOD relay path, not an established memory error.
+
+### UDP autodetection follow-up (2026-09-24)
+
+The portable test used the shared five-second connection wait, but one call to
+`indigo_perform_active_discovery()` can make five one-second receive attempts,
+and the driver permits eight such calls with pauses. A lost first reply could
+therefore make the test tear down the driver before its documented retry path
+finished. The UDP simulator can now discard its first five replies on request;
+the autodetection case uses this deterministic failure and waits through the
+driver's bounded retry budget. The focused normal case passed after those five
+losses, and the full portable suite passed **18/18**. The production driver and
+shared discovery helper are unchanged.
+
+The complete ASan/UBSan rerun passed **17/18**; its isolated and full-suite
+autodetection cases still timed out without a sanitizer diagnostic. Socket
+instrumentation showed all C-process broadcasts
+were sent successfully and every receive timed out. A plain C UDP probe showed
+the same behavior, while a Python socket received the simulator's reply and the
+unchanged INDIGO discovery helper also succeeded when called from Python via
+`ctypes` against the same running simulator. This confines the remaining failure
+to local broadcast delivery for these test executables on this macOS host;
+the exact host permission or routing policy is not established. Direct loopback
+UDP and the ordinary portable executable work. The sanitizer's UDP broadcast
+case remains **unverified**, rather than counted as passed or diagnosed as a
+driver memory defect.

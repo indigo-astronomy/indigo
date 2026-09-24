@@ -79,6 +79,14 @@ static bool start_udp_simulator(external_serial_simulator *simulator, int port) 
 	return start_external_serial_simulator_with_args(simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE, arguments);
 }
 
+static bool start_udp_simulator_drop_first_replies(external_serial_simulator *simulator, int port, int count) {
+	char port_text[16], count_text[16];
+	const char *arguments[] = { "--udp-port", port_text, "--drop-first-replies", count_text, NULL };
+	snprintf(port_text, sizeof(port_text), "%d", port);
+	snprintf(count_text, sizeof(count_text), "%d", count);
+	return start_external_serial_simulator_with_args(simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE, arguments);
+}
+
 static bool start_lossy_udp_simulator(external_serial_simulator *simulator, int port, int drop_nth) {
 	char port_text[16], drop_text[16];
 	const char *arguments[] = { "--udp-port", port_text, "--drop-nth-reply", drop_text, NULL };
@@ -739,15 +747,36 @@ cleanup:
 
 static void synscan_mount_connects_with_udp_autodetection(void) {
 	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
 
-	SERIAL_CHECK_TRUE(start_udp_simulator(&simulator, 11880));
-	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, "synscan://"));
+	SERIAL_CHECK_TRUE(start_udp_simulator_drop_first_replies(&simulator, 11880, 5));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&synscan_mount));
+	driver_started = true;
+	if (!connect_serial_device(&synscan_mount, "synscan://")) {
+		// One active-discovery call can use five one-second receive timeouts; the driver
+		// permits eight calls with pauses. The generic five-second connection wait
+		// must not tear down the driver while those retries are still running.
+		bool connected = false;
+		for (int i = 0; i < 550; i++) {
+			if (context.connected && !context.disconnected && context.last_connection_state == INDIGO_OK_STATE) {
+				connected = true;
+				break;
+			}
+			if (context.last_connection_state == INDIGO_ALERT_STATE) {
+				break;
+			}
+			indigo_usleep(100000);
+		}
+		SERIAL_CHECK_TRUE(connected);
+	}
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
 	assert_serial_mount_class_property_completeness();
 
 cleanup:
-	if (context.connected) {
+	if (driver_started && context.connected) {
 		stop_serial_driver(&synscan_mount);
+	} else if (driver_started) {
+		tear_down_serial_driver(&synscan_mount);
 	}
 	stop_external_serial_simulator(&simulator);
 }
