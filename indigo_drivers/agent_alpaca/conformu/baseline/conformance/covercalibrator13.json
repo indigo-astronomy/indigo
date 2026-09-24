@@ -1,0 +1,97 @@
+{
+  "ErrorCount": 0,
+  "IssueCount": 1,
+  "ConfigurationAlertCount": 0,
+  "TimingIssuesCount": 0,
+  "TimingCount": 20,
+  "Errors": [],
+  "Issues": [
+    {
+      "Key": "CalibratorOn",
+      "Value": "CalibratorOn with brightness -1 should have thrown an InvalidValueException but did not."
+    }
+  ],
+  "ConfigurationAlerts": [],
+  "Timings": [
+    {
+      "Key": "InterfaceVersion",
+      "Value": "At 16:32:46.711 InterfaceVersion     0.000 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Connected",
+      "Value": "At 16:32:46.716 Connected            0.003 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Description",
+      "Value": "At 16:32:46.723 Description          0.005 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "DriverInfo",
+      "Value": "At 16:32:46.726 DriverInfo           0.003 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "DriverVersion",
+      "Value": "At 16:32:46.727 DriverVersion        0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Name",
+      "Value": "At 16:32:46.731 Name                 0.004 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SupportedActions",
+      "Value": "At 16:32:46.736 SupportedActions     0.005 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CalibratorState",
+      "Value": "At 16:32:46.784 CalibratorState      0.044 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CoverState",
+      "Value": "At 16:32:46.855 CoverState           0.071 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "MaxBrightness",
+      "Value": "At 16:32:46.919 MaxBrightness        0.064 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Brightness",
+      "Value": "At 16:32:46.932 Brightness           0.006 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "OpenCover",
+      "Value": "At 16:32:46.958 OpenCover            0.003 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "CloseCover",
+      "Value": "At 16:32:48.981 CloseCover           0.004 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "CalibratorOn",
+      "Value": "At 16:32:51.692 CalibratorOn         0.502 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "CalibratorOn",
+      "Value": "At 16:32:52.202 CalibratorOn         0.504 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "CalibratorOn",
+      "Value": "At 16:32:52.721 CalibratorOn         0.505 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "CalibratorOn",
+      "Value": "At 16:32:53.226 CalibratorOn         0.501 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "CalibratorOn",
+      "Value": "At 16:32:53.729 CalibratorOn         0.501 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "CalibratorOn",
+      "Value": "At 16:32:54.232 CalibratorOn         0.501 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "CalibratorOff",
+      "Value": "At 16:32:54.739 CalibratorOff        0.501 seconds. \u2713 (EXTENDED)"
+    }
+  ]
+}

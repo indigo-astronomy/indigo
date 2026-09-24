@@ -1,0 +1,100 @@
+{
+  "ErrorCount": 0,
+  "IssueCount": 0,
+  "ConfigurationAlertCount": 0,
+  "TimingIssuesCount": 0,
+  "TimingCount": 22,
+  "Errors": [],
+  "Issues": [],
+  "ConfigurationAlerts": [],
+  "Timings": [
+    {
+      "Key": "InterfaceVersion",
+      "Value": "At 16:32:44.273 InterfaceVersion         0.022 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Connected",
+      "Value": "At 16:32:44.286 Connected                0.013 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Description",
+      "Value": "At 16:32:44.313 Description              0.025 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "DriverInfo",
+      "Value": "At 16:32:44.334 DriverInfo               0.021 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "DriverVersion",
+      "Value": "At 16:32:44.339 DriverVersion            0.005 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Name",
+      "Value": "At 16:32:44.366 Name                     0.027 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanFindHome",
+      "Value": "At 16:32:44.410 CanFindHome              0.040 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "AtPark",
+      "Value": "At 16:32:50.862 AtPark                   0.010 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Azimuth",
+      "Value": "At 16:32:50.869 Azimuth                  0.007 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "ShutterStatus",
+      "Value": "At 16:32:50.881 ShutterStatus            0.006 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SlewToAzimuth",
+      "Value": "At 16:32:50.903 SlewToAzimuth            0.002 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SlewToAzimuth",
+      "Value": "At 16:33:01.416 SlewToAzimuth            0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SlewToAzimuth",
+      "Value": "At 16:33:16.924 SlewToAzimuth            0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SlewToAzimuth",
+      "Value": "At 16:33:32.431 SlewToAzimuth            0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SlewToAzimuth",
+      "Value": "At 16:33:47.941 SlewToAzimuth            0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SlewToAzimuth",
+      "Value": "At 16:34:03.451 SlewToAzimuth            0.004 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SlewToAzimuth",
+      "Value": "At 16:34:18.959 SlewToAzimuth            0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SlewToAzimuth",
+      "Value": "At 16:34:34.466 SlewToAzimuth            0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "AbortSlew-Azimuth",
+      "Value": "At 16:35:02.996 AbortSlew-Azimuth        0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "CloseShutter",
+      "Value": "At 16:35:03.005 CloseShutter             0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "OpenShutter",
+      "Value": "At 16:35:51.036 OpenShutter              0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "Park",
+      "Value": "At 16:36:39.065 Park                     0.001 seconds. \u2713 (STANDARD)"
+    }
+  ]
+}

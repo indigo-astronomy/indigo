@@ -1,0 +1,21 @@
+{
+  "ErrorCount": 1,
+  "IssueCount": 1,
+  "ConfigurationAlertCount": 0,
+  "TimingIssuesCount": 0,
+  "TimingCount": 0,
+  "Errors": [
+    {
+      "Key": "Connected",
+      "Value": "The focuser returned interface version: 1, Conform Universal can only test focusers that implement IFocuserV2 or later."
+    }
+  ],
+  "Issues": [
+    {
+      "Key": "ConnectToDevice",
+      "Value": "Connection exception - further testing abandoned: Unable to test focuser IFocuserV1 devices."
+    }
+  ],
+  "ConfigurationAlerts": [],
+  "Timings": []
+}

@@ -1,0 +1,273 @@
+{
+  "ErrorCount": 0,
+  "IssueCount": 2,
+  "ConfigurationAlertCount": 0,
+  "TimingIssuesCount": 1,
+  "TimingCount": 63,
+  "Errors": [],
+  "Issues": [
+    {
+      "Key": "UTCDate Read",
+      "Value": "The returned JSON date-time string \u00222026-09-24T16:32:45\u0022 does not explicitly state that it is a UTC date-time."
+    },
+    {
+      "Key": "DestinationSideOfPier",
+      "Value": "DestinationSideOfPier Exception\r\nASCOM.NotImplementedException: Property or method not implemented\n   at ASCOM.Alpaca.Clients.RemoteDevice.Send[T](Parameters clientParameters, Dictionary\u00602 formParameters, HttpMethod httpMethod) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/RemoteDevice.cs:line 820\n   at ASCOM.Alpaca.Clients.AlpacaTelescope.DestinationSideOfPier(Double RightAscension, Double Declination) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/AlpacaDevices/AlpacaTelescope.cs:line 477\n   at ConformU.TelescopeTester.\u003C\u003Ec__DisplayClass142_1.\u003CTelescopeOptionalMethodsTest\u003Eb__0() in J:\\ConformU\\ConformU\\Conform\\TelescopeTester.cs:line 6207\n   at ConformU.DeviceTesterBaseClass.TimeFunc[TResult](String methodName, Func\u00601 function, TargetTime targetTime) in J:\\ConformU\\ConformU\\Conform\\DeviceTesterBaseClass\\DeviceTesterBaseClass.cs:line 2329\n   at ConformU.TelescopeTester.TelescopeOptionalMethodsTest(OptionalMethodType testType, String testName, Boolean canTest) in J:\\ConformU\\ConformU\\Conform\\TelescopeTester.cs:line 6207"
+    }
+  ],
+  "ConfigurationAlerts": [],
+  "Timings": [
+    {
+      "Key": "InterfaceVersion",
+      "Value": "At 16:32:44.688 InterfaceVersion                           0.000 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Connected",
+      "Value": "At 16:32:44.712 Connected                                  0.012 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Description",
+      "Value": "At 16:32:44.739 Description                                0.017 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "DriverInfo",
+      "Value": "At 16:32:44.743 DriverInfo                                 0.003 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "DriverVersion",
+      "Value": "At 16:32:44.756 DriverVersion                              0.013 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Name",
+      "Value": "At 16:32:44.769 Name                                       0.013 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SupportedActions",
+      "Value": "At 16:32:44.788 SupportedActions                           0.019 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanFindHome",
+      "Value": "At 16:32:44.832 CanFindHome                                0.025 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanPark",
+      "Value": "At 16:32:44.843 CanPark                                    0.011 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanPulseGuide",
+      "Value": "At 16:32:44.856 CanPulseGuide                              0.012 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSetDeclinationRate",
+      "Value": "At 16:32:44.872 CanSetDeclinationRate                      0.017 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSetGuideRates",
+      "Value": "At 16:32:44.876 CanSetGuideRates                           0.004 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSetPark",
+      "Value": "At 16:32:44.879 CanSetPark                                 0.002 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSetPierSide",
+      "Value": "At 16:32:44.884 CanSetPierSide                             0.005 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSetRightAscensionRate",
+      "Value": "At 16:32:44.887 CanSetRightAscensionRate                   0.003 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSetTracking",
+      "Value": "At 16:32:44.891 CanSetTracking                             0.003 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSlew",
+      "Value": "At 16:32:44.896 CanSlew                                    0.005 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSlewltAz",
+      "Value": "At 16:32:44.900 CanSlewltAz                                0.004 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSlewAltAzAsync",
+      "Value": "At 16:32:44.906 CanSlewAltAzAsync                          0.006 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSlewAsync",
+      "Value": "At 16:32:44.912 CanSlewAsync                               0.006 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSync",
+      "Value": "At 16:32:44.917 CanSync                                    0.006 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanSyncAltAz",
+      "Value": "At 16:32:44.925 CanSyncAltAz                               0.008 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanUnPark",
+      "Value": "At 16:32:44.933 CanUnPark                                  0.008 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "AlignmentMode",
+      "Value": "At 16:32:45.540 AlignmentMode                              0.116 seconds. OUTSIDE FAST RESPONSE TIME TARGET: 0.1 seconds."
+    },
+    {
+      "Key": "Altitude",
+      "Value": "At 16:32:45.549 Altitude                                   0.009 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "AtHome",
+      "Value": "At 16:32:45.602 AtHome                                     0.003 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "AtPark",
+      "Value": "At 16:32:45.606 AtPark                                     0.003 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Azimuth",
+      "Value": "At 16:32:45.608 Azimuth                                    0.002 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Declination",
+      "Value": "At 16:32:45.609 Declination                                0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "DeclinationRate Read",
+      "Value": "At 16:32:45.610 DeclinationRate Read                       0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "EquatorialSystem",
+      "Value": "At 16:32:45.652 EquatorialSystem                           0.036 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "GuideRateDeclination Read",
+      "Value": "At 16:32:45.669 GuideRateDeclination Read                  0.013 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "GuideRateDeclination Write",
+      "Value": "At 16:32:45.674 GuideRateDeclination Write                 0.005 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "GuideRateRightAscension Read",
+      "Value": "At 16:32:45.681 GuideRateRightAscension Read               0.007 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "GuideRateRightAscension Write",
+      "Value": "At 16:32:45.688 GuideRateRightAscension Write              0.007 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "RightAscension",
+      "Value": "At 16:32:45.702 RightAscension                             0.007 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "RightAscensionRate Read",
+      "Value": "At 16:32:45.710 RightAscensionRate Read                    0.008 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SiteElevation Read",
+      "Value": "At 16:32:45.724 SiteElevation Read                         0.005 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SiteElevation Write",
+      "Value": "At 16:32:45.746 SiteElevation Write                        0.007 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SiteLatitude Read",
+      "Value": "At 16:32:45.766 SiteLatitude Read                          0.003 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SiteLatitude Write",
+      "Value": "At 16:32:45.776 SiteLatitude Write                         0.004 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SiteLongitude Read",
+      "Value": "At 16:32:45.795 SiteLongitude Read                         0.006 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SiteLatitude Write",
+      "Value": "At 16:32:45.806 SiteLatitude Write                         0.002 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "Slewing",
+      "Value": "At 16:32:45.815 Slewing                                    0.003 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SideOfPier Read",
+      "Value": "At 16:32:45.870 SideOfPier Read                            0.045 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "SiderealTime",
+      "Value": "At 16:32:45.872 SiderealTime                               0.002 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Tracking Read",
+      "Value": "At 16:32:45.877 Tracking Read                              0.004 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Tracking Write",
+      "Value": "At 16:32:45.880 Tracking Write                             0.003 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "Tracking Write",
+      "Value": "At 16:32:47.924 Tracking Write                             0.032 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanMoveAxis:Primary",
+      "Value": "At 16:32:48.142 CanMoveAxis:Primary                        0.003 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanMoveAxis:Secondary",
+      "Value": "At 16:32:48.146 CanMoveAxis:Secondary                      0.004 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "CanMoveAxis:Tertiary",
+      "Value": "At 16:32:48.147 CanMoveAxis:Tertiary                       0.001 seconds. \u2713 (FAST)"
+    },
+    {
+      "Key": "Park",
+      "Value": "At 16:33:00.070 Park                                       0.002 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "Unpark",
+      "Value": "At 16:33:11.595 Unpark                                     0.001 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "AbortSlew",
+      "Value": "At 16:33:13.628 AbortSlew                                  0.501 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SlewToCoordinates",
+      "Value": "At 16:33:24.156 SlewToCoordinates                          10.503 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "SlewToCoordinatesAsync",
+      "Value": "At 16:33:24.169 SlewToCoordinatesAsync                     0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SyncToCoordinates",
+      "Value": "At 16:33:34.692 SyncToCoordinates                          0.502 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SyncToCoordinates",
+      "Value": "At 16:33:40.201 SyncToCoordinates                          0.501 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SlewToTarget",
+      "Value": "At 16:33:45.719 SlewToTarget                               0.501 seconds. \u2713 (EXTENDED)"
+    },
+    {
+      "Key": "SlewToTargetAsync",
+      "Value": "At 16:33:45.733 SlewToTargetAsync                          0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SyncToTarget",
+      "Value": "At 16:34:00.777 SyncToTarget                               0.001 seconds. \u2713 (STANDARD)"
+    },
+    {
+      "Key": "SyncToTarget",
+      "Value": "At 16:34:05.784 SyncToTarget                               0.001 seconds. \u2713 (STANDARD)"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+camera/0	Camera	0	CCD Imager Simulator
+camera/1	Camera	1	CCD Guider Simulator
+camera/2	Camera	2	CCD Bahtinov Mask Simulator
+camera/3	Camera	3	DSLR Simulator
+camera/4	Camera	4	CCD File Simulator
+filterwheel/5	FilterWheel	5	CCD Imager Simulator (wheel)
+focuser/6	Focuser	6	CCD Imager Simulator (focuser)
+telescope/7	Telescope	7	CCD Guider Simulator (guider)
+telescope/8	Telescope	8	CCD Guider Simulator (AO)
+telescope/9	Telescope	9	Mount Simulator
+telescope/10	Telescope	10	Mount Simulator (guider)
+dome/11	Dome	11	Dome Simulator
+rotator/12	Rotator	12	Field Rotator Simulator
+covercalibrator/13	CoverCalibrator	13	FlipFlat
+switch/14	Switch	14	Pocket Powerbox
+switch/15	Switch	15	Ultimate Powerbox 3
+focuser/16	Focuser	16	Ultimate Powerbox 3 (focuser)
