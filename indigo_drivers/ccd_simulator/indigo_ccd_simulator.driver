@@ -20,7 +20,7 @@ driver simulator {
 	label = "Camera Simulator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 29;
+	version = 30;
 	multi_device_support = true;
 	include {
 		#include <math.h>
@@ -1022,6 +1022,13 @@ driver simulator {
 			snprintf(CCD_MODE_ITEM[1].label, INDIGO_VALUE_SIZE, "RAW %dx%d", width / 2, height / 2);
 			snprintf(CCD_MODE_ITEM[2].label, INDIGO_VALUE_SIZE, "RAW %dx%d", width / 4, height / 4);
 			PRIVATE_DATA->guider_image = indigo_safe_realloc(PRIVATE_DATA->guider_image, FITS_HEADER_SIZE + 2 * (size_t)width * height + 2880);
+			if (IS_CONNECTED) {
+				// clients must see the new sensor size, otherwise they keep and send back the old frame
+				indigo_update_property(device, CCD_INFO_PROPERTY, NULL);
+				indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+				indigo_delete_property(device, CCD_MODE_PROPERTY, NULL);
+				indigo_define_property(device, CCD_MODE_PROPERTY, NULL);
+			}
 			}
 		}
 	}

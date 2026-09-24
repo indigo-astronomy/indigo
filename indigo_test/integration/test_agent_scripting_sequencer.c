@@ -16,7 +16,6 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <dirent.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdatomic.h>
@@ -58,15 +57,11 @@ static pthread_mutex_t cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_client observer;
 static indigo_device *scripting_device;
 static indigo_property *config_load_property, *drivers_property, *solver_exposure_property, *solver_target_property, *solver_process_property;
-static char test_root[256], config_folder[300], messages[131072];
+static char test_root[256], messages[131072];
 static atomic_int message_count;
 static atomic_int orchestration_changes;
 static bool bus_started, observer_attached, peers_attached, ccd_started, mount_started, dome_started, gps_started, rotator_started, imager_started, mount_agent_started, guider_started, scripting_started;
 static time_t fixed_time = 1704112496;
-
-const char *sequencer_test_config_folder(void) {
-	return config_folder;
-}
 
 time_t sequencer_test_time(time_t *result) {
 	if (result) {
@@ -351,7 +346,6 @@ static bool wait_exists(const char *device, const char *name, double timeout) {
 }
 
 static bool setup(void) {
-	indigo_use_strict_locking = false;
 	indigo_set_log_level(getenv("INDIGO_TEST_DEBUG") ? INDIGO_LOG_DEBUG : INDIGO_LOG_ERROR);
 	REQUIRE(indigo_start() == INDIGO_OK);
 	bus_started = true;
@@ -435,28 +429,6 @@ static void cleanup(void) {
 	indigo_release_property(solver_process_property);
 	indigo_release_property(solver_target_property);
 	indigo_release_property(solver_exposure_property);
-}
-
-static void remove_files(const char *path) {
-	DIR *directory = opendir(path);
-	if (directory) {
-		struct dirent *entry;
-		while ((entry = readdir(directory))) {
-			if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
-				continue;
-			}
-			char child[1024];
-			snprintf(child, sizeof(child), "%s/%s", path, entry->d_name);
-			struct stat st;
-			if (!lstat(child, &st) && S_ISDIR(st.st_mode)) {
-				remove_files(child);
-			} else {
-				unlink(child);
-			}
-		}
-		closedir(directory);
-	}
-	rmdir(path);
 }
 
 static void library_inventory(void) {
@@ -644,8 +616,13 @@ static void simulator_agent_features(void) {
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 20));
 }
 
+// The simulator keeps a fixed RA, so its hour angle follows the real sidereal time; the HA break
+// limit is therefore taken one hour behind the current HA to break at any time of day.
 static void simulator_altitude_and_hour_angle(void) {
-	ASSERT_TRUE(run_js("altitudeTrace=''; var s=new Sequence('altitude'); s.select_mount('Mount Simulator'); s.select_gps('GPS Simulator'); s.wait_until_solar_altitude_below(91); s.wait_until_target_altitude_above(-91,5,20); s.break_if_solar_altitude_above(-91); s.evaluate(\"altitudeTrace+='S'\"); s.resume_point(); s.break_if_target_altitude_below(91,5,20); s.evaluate(\"altitudeTrace+='T'\"); s.resume_point(); s.break_at_ha(-13); s.evaluate(\"altitudeTrace+='H'\"); s.resume_point(); s.start();"));
+	ASSERT_TRUE(run_js("var s=new Sequence('select mount'); s.select_mount('Mount Simulator'); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 15));
+	ASSERT_TRUE(check_js("indigo_devices['Mount Agent'].AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY != null"));
+	ASSERT_TRUE(run_js("altitudeTrace=''; var ha=indigo_devices['Mount Agent'].AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY.items.HA; var s=new Sequence('altitude'); s.select_mount('Mount Simulator'); s.select_gps('GPS Simulator'); s.wait_until_solar_altitude_below(91); s.wait_until_target_altitude_above(-91,5,20); s.break_if_solar_altitude_above(-91); s.evaluate(\"altitudeTrace+='S'\"); s.resume_point(); s.break_if_target_altitude_below(91,5,20); s.evaluate(\"altitudeTrace+='T'\"); s.resume_point(); s.break_at_ha(ha-1); s.evaluate(\"altitudeTrace+='H'\"); s.resume_point(); s.start();"));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 15));
 	ASSERT_TRUE(check_js("altitudeTrace===''"));
 }
@@ -723,12 +700,10 @@ int main(int argc, char **argv) {
 		if (!mkdtemp(test_root)) {
 			return 1;
 		}
-		snprintf(config_folder, sizeof(config_folder), "%s/.indigo", test_root);
-		mkdir(config_folder, 0700);
 		pid_t child = fork();
 		if (child == 0) {
 			alarm(120);
-			int status = setup() ? indigo_run_tests("Sequencer.js integration", tests + i, 1) : 1;
+			int status = indigo_test_set_private_home(test_root) && setup() ? indigo_run_tests("Sequencer.js integration", tests + i, 1) : 1;
 			cleanup();
 			exit(status || indigo_test_failures ? 1 : 0);
 		}
@@ -737,7 +712,7 @@ int main(int argc, char **argv) {
 			fprintf(stderr, "FAILED %s (status %d)\n", tests[i].name, status);
 			failed++;
 		}
-		remove_files(test_root);
+		indigo_test_remove_tree(test_root);
 	}
 	printf("Sequencer.js: %d/%d passed (including cleanup)\n", executed - failed, executed);
 	return executed ? (failed ? 1 : 0) : 2;

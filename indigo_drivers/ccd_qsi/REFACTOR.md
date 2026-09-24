@@ -308,3 +308,12 @@ Totals for this correction:
 
 - Simulated (hardware-free) tests run: **1**; passed: **1** (architecture contract). The existing 60-case Intel suite was built but not executed.
 - Hardware tests run: **0**; passed: **0**.
+
+## Regeneration with the current generator (2026-09-24)
+
+A full build regenerated `indigo_ccd_qsi.cpp` differently from the checked-in output: the checked-in file predated the current generator semantics. Regenerating from the unchanged `.driver` source changes three generator-owned parts: the camera's periodic `ccd_timer_callback` is started after `CONNECTION` is published instead of before, the camera and wheel `CONNECTION` changes go through `INDIGO_PROCESS_QUEUED_CONNECT`, and USB removal only runs the SDK serial match when the removed device does not already match directly. The version was raised from 18 to 19 for this behaviour change and the outputs were regenerated.
+
+Validation: `make -C indigo_drivers/ccd_qsi -f ../../Makefile.drv all` and the 60-case fake SDK suite `indigo_test/build/integration/test_ccd_qsi_sdk` on Linux x86_64: 60 run, 60 passed. macOS, Windows and physical QSI cameras were not run.
+
+- Simulated (fake SDK) tests run: **60**; passed: **60**.
+- Hardware tests run: **0**; passed: **0**.

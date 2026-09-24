@@ -1,5 +1,11 @@
 | Driver | Timestamp | Version | Platform | Type | Tests | Result |
 | --- | --- | --- | --- | --- | --- | --- |
+| agent_astrometry | 2026-09-24 12:56 | 2.0.0.23 | linux x64 | simulator | 31 / 31 | ✅ OK |
+| agent_config | 2026-09-24 12:56 | 3.0.0.28 | linux x64 | simulator | 56 / 56 | ✅ OK |
+| agent_guider | 2026-09-24 12:56 | 3.0.0.48 | linux x64 | simulator | 88 / 88 | ✅ OK |
+| agent_imager | 2026-09-24 12:56 | 3.0.0.61 | linux x64 | simulator | 53 / 53 | ✅ OK |
+| agent_mount | 2026-09-24 12:56 | 3.0.0.23 | linux x64 | simulator | 69 / 69 | ✅ OK |
+| agent_scripting | 2026-09-24 12:56 | 3.0.0.13 | linux x64 | simulator | 60 / 60 | ✅ OK |
 | ao_sx | 2026-09-20 23:35 | 3.0.0.13 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 |  | 2026-09-20 23:43 | 3.0.0.13 | mac arm64 | SX AO-L | 16 / 16 | ✅ OK |
 | aux_arteskyflat | 2026-09-21 23:03 | 3.0.0.8 | mac arm64 | simulator | 9 / 9 | ✅ OK |
@@ -75,8 +81,10 @@
 |  | 2026-09-22 19:41 | 3.0.0.40 | mac arm64 | QHY5LII-M | 2 / 2 | ✅ OK |
 |  | 2026-09-22 19:42 | 3.0.0.40 | mac arm64 | fake SDK | 41 / 41 | ✅ OK |
 | ccd_qsi | 2026-09-21 13:43 | 3.0.0.16 | mac arm64 | fake SDK | 60 / 60 | ✅ OK |
+|  | 2026-09-24 13:09 | 3.0.0.19 | linux x64 | fake SDK | 60 / 60 | ✅ OK |
 | ccd_rising | 2026-09-21 14:06 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_simulator | 2026-09-22 11:06 | 3.0.0.29 | mac arm64 | simulator | 19 / 19 | ✅ OK |
+|  | 2026-09-24 12:56 | 3.0.0.30 | linux x64 | simulator | 19 / 19 | ✅ OK |
 | ccd_ssag | 2026-09-21 14:15 | 3.0.0.14 | mac arm64 | fake SDK | 13 / 13 | ✅ OK |
 |  | 2026-09-22 10:13 | 3.0.0.14 | mac arm64 | QHY5 | 1 / 1 | ✅ OK |
 | ccd_ssg | 2026-09-21 14:08 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |

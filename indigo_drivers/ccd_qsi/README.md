@@ -33,3 +33,4 @@ This is a limitation of the underlaying QSI SDK, which can use one camera and on
 ## Testing
 
 2026-09-21 13:43 3.0.0.16 mac arm64 fake SDK 60/60 OK
+2026-09-24 13:09 3.0.0.19 linux x64 fake SDK 60/60 OK

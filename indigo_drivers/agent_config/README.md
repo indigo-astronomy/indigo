@@ -39,3 +39,7 @@ Loading the configuration is achieved by selecting the configuration listed in *
 
 ### Removing configuration
 Removing configuration is achieved by witting the configuration name in **NAME** item of the **AGENT_CONFIG_REMOVE** property. Please note that the associated device profiles will not be removed or changed as they may be used by other configurations.
+
+## Testing
+
+2026-09-24 12:56 3.0.0.28 linux x64 simulator 56/56 OK

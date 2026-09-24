@@ -52,7 +52,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001D
+#define DRIVER_VERSION       0x0300001E
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -1394,6 +1394,13 @@ static void guider_ccd_simulation_setup_handler(indigo_device *device) {
 	snprintf(CCD_MODE_ITEM[1].label, INDIGO_VALUE_SIZE, "RAW %dx%d", width / 2, height / 2);
 	snprintf(CCD_MODE_ITEM[2].label, INDIGO_VALUE_SIZE, "RAW %dx%d", width / 4, height / 4);
 	PRIVATE_DATA->guider_image = indigo_safe_realloc(PRIVATE_DATA->guider_image, FITS_HEADER_SIZE + 2 * (size_t)width * height + 2880);
+	if (IS_CONNECTED) {
+		// clients must see the new sensor size, otherwise they keep and send back the old frame
+		indigo_update_property(device, CCD_INFO_PROPERTY, NULL);
+		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		indigo_delete_property(device, CCD_MODE_PROPERTY, NULL);
+		indigo_define_property(device, CCD_MODE_PROPERTY, NULL);
+	}
 	//- guider_ccd.SIMULATION_SETUP.on_change
 	indigo_update_property(device, SIMULATION_SETUP_PROPERTY, NULL);
 }

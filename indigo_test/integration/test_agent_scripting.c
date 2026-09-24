@@ -60,10 +60,6 @@ static indigo_enable_blob_mode blob_mode;
 static indigo_property *last_request, *peer_properties[5];
 static time_t fixed_time = 1704112496;
 
-const char *scripting_test_config_folder(void) {
-	return config_folder;
-}
-
 time_t scripting_test_time(time_t *result) {
 	if (result) {
 		*result = fixed_time;
@@ -359,7 +355,6 @@ static void init_peer_properties(void) {
 }
 
 static bool setup(void) {
-	indigo_use_strict_locking = false;
 	indigo_set_log_level(getenv("INDIGO_TEST_DEBUG") ? INDIGO_LOG_DEBUG : INDIGO_LOG_ERROR);
 	init_peer_properties();
 	REQUIRE(indigo_start() == INDIGO_OK);
@@ -393,28 +388,6 @@ static void cleanup(void) {
 		indigo_release_property(peer_properties[i]);
 	}
 	indigo_release_property(last_request);
-}
-
-static void remove_files(const char *path) {
-	DIR *directory = opendir(path);
-	if (directory) {
-		struct dirent *entry;
-		while ((entry = readdir(directory))) {
-			if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
-				continue;
-			}
-			char child[1024];
-			snprintf(child, sizeof(child), "%s/%s", path, entry->d_name);
-			struct stat st;
-			if (!lstat(child, &st) && S_ISDIR(st.st_mode)) {
-				remove_files(child);
-			} else {
-				unlink(child);
-			}
-		}
-		closedir(directory);
-	}
-	rmdir(path);
 }
 
 static void schema_and_lifecycle(void) {
@@ -670,18 +643,23 @@ static void on_unload_failure(void) {
 	indigo_release_property(p);
 }
 
+// The framework caches $HOME/.indigo, so the save failure is forced by replacing the directory with a
+// regular file: mkdir() then reports EEXIST and the configuration file below it fails with ENOTDIR.
 static void save_failure_recovery(void) {
-	char blocker[300];
-	snprintf(blocker, sizeof(blocker), "%s/blocker", test_root);
-	FILE *file = fopen(blocker, "w");
+	char moved[300];
+	snprintf(moved, sizeof(moved), "%s/.indigo.blocked", test_root);
+	ASSERT_EQ_INT(0, rename(config_folder, moved));
+	FILE *file = fopen(config_folder, "w");
 	ASSERT_TRUE(file != NULL);
 	fputs("not a directory", file);
 	fclose(file);
-	snprintf(config_folder, sizeof(config_folder), "%s/subfolder", blocker);
-	ASSERT_TRUE(add_script("Memory only", "testValue = 1;"));
+	bool added = add_script("Memory only", "testValue = 1;");
 	indigo_device_context *context = (indigo_device_context *)agent->device_context;
-	ASSERT_EQ_INT(INDIGO_ALERT_STATE, context->configuration_property->state);
-	snprintf(config_folder, sizeof(config_folder), "%s/.indigo", test_root);
+	indigo_property_state state = context->configuration_property->state;
+	ASSERT_EQ_INT(0, unlink(config_folder));
+	ASSERT_EQ_INT(0, rename(moved, config_folder));
+	ASSERT_TRUE(added);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state);
 	ASSERT_TRUE(add_script("Saved", "testValue = 2;"));
 	DIR *directory = opendir(config_folder);
 	ASSERT_TRUE(directory != NULL);
@@ -1051,7 +1029,7 @@ int main(int argc, char **argv) {
 		pid_t child = fork();
 		if (child == 0) {
 			alarm(90);
-			int status = setup() ? indigo_run_tests("Scripting Agent integration", tests + i, 1) : 1;
+			int status = indigo_test_set_private_home(test_root) && setup() ? indigo_run_tests("Scripting Agent integration", tests + i, 1) : 1;
 			cleanup();
 			exit(status || indigo_test_failures ? 1 : 0);
 		}
@@ -1063,7 +1041,7 @@ int main(int argc, char **argv) {
 		if (getenv("INDIGO_TEST_KEEP_OUTPUT")) {
 			printf("Kept test output in %s\n", test_root);
 		} else {
-			remove_files(test_root);
+			indigo_test_remove_tree(test_root);
 		}
 	}
 	printf("Scripting Agent: %d/%d passed (including cleanup)\n", executed - failed, executed);

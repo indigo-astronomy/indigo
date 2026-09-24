@@ -48,7 +48,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000013
 #define DRIVER_NAME          "indigo_ccd_qsi"
 #define DRIVER_LABEL         "QSI Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -637,7 +637,6 @@ static void ccd_connection_handler(indigo_device *device) {
 			indigo_define_property(device, X_QSI_ANTI_BLOOM_PROPERTY, NULL);
 			indigo_define_property(device, X_QSI_PRE_EXPOSURE_FLUSH_PROPERTY, NULL);
 			indigo_define_property(device, X_QSI_FAN_MODE_PROPERTY, NULL);
-			indigo_execute_handler(device, ccd_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 		} else {
@@ -670,6 +669,9 @@ static void ccd_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, ccd_timer_callback);
+	}
 }
 
 static void ccd_exposure_handler(indigo_device *device) {
@@ -877,11 +879,7 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, ccd_connection_handler, &driver_queue_mutex);
-		}
+		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, ccd_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, ccd_exposure_handler);
@@ -1033,11 +1031,7 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, wheel_connection_handler, &driver_queue_mutex);
-		}
+		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, wheel_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
@@ -1260,7 +1254,7 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 			indigo_device *device = devices[j];
 			private_data = PRIVATE_DATA;
 			bool unplug_result = private_data->usbdev == dev;
-			if (last_action != INDIGO_DRIVER_SHUTDOWN) {
+			if (!unplug_result && last_action != INDIGO_DRIVER_SHUTDOWN) {
 				//+ sdk.unplug_match
 				std::string serials[QSICamera::MAXCAMERAS];
 				std::string descriptions[QSICamera::MAXCAMERAS];
@@ -1401,7 +1395,7 @@ indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *in
 #include "indigo_ccd_qsi.h"
 
 indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "QSI Camera", __FUNCTION__, 0x03000012, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "QSI Camera", __FUNCTION__, 0x03000013, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

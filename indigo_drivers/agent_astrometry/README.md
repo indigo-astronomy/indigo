@@ -45,3 +45,7 @@ indigo_server indigo_agent_astrometry indigo_agent_imager indigo_agent_mount ind
 8. Repeat points 6 and 7 until the error is acceptable.
 
 NB: C.W. is Clockwise, C.C.W. is Counterclockwise.
+
+## Testing
+
+2026-09-24 12:56 2.0.0.23 linux x64 simulator 31/31 OK

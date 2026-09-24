@@ -88,3 +88,10 @@ Scenario-to-method mapping:
 Validation: release macOS arm64/x86_64 build and 25/25 Sequencer cases passed. The original 35/35 Scripting Agent corpus and strict `-Wall -Wextra -Werror` syntax checks passed. An arm64 ASan/UBSan run passed 25/25 with no AddressSanitizer errors; UBSan reports Duktape's vendored intentional `-1` to unsigned sentinel conversion in `duk_hobject_props.c`, which is outside the non-vendored fix scope. UBSan also found DRV-182; the focused simulator-guiding rerun confirms that report is gone. The complete Guider suite passed 87/88 cases; the sole failure continues to reproduce deferred DRV-130. The Sequencer guiding scenario passes because it does not assert RA-only projection magnitude. Linux/Windows execution and physical hardware were unavailable.
 
 Sequencer hardware-free tests run/passed: 25 / 25. Sequencer physical hardware tests run/passed: 0 / 0. Combined Scripting Agent hardware-free tests: 60 / 60.
+
+## Linux agent test run (2026-09-24)
+
+- Environment: Linux x86_64, simulator and deterministic peers, strict bus locking always on. Both suites previously switched `indigo_use_strict_locking` off; that switch no longer exists and the tests now run with production locking.
+- Configuration isolation: the Scripting and Sequencer tests no longer redirect the configuration folder with `-Dindigo_uni_config_folder`; every forked case points HOME at its own directory. `save_failure_recovery` forces the save failure by replacing `$HOME/.indigo` with a regular file (ENOTDIR, also as root).
+- Sequencer `simulator altitude and hour angle` depended on the time of day: the simulator keeps a fixed RA, so its hour angle follows real sidereal time and `break_at_ha(-13)` (limit 11 h) broke only in half of the sidereal day. The case now takes the limit one hour behind the current hour angle.
+- Result: Scripting 35 / 35 and Sequencer 25 / 25 simulated cases passed; hardware tests 0 / 0.

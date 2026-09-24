@@ -58,3 +58,10 @@ The fake Imager Agent is preferable to launching CCD Simulator for this corpus b
 Simulated/fake hardware-free tests run/passed: 31 / 31.
 
 Physical hardware tests run/passed: 0 / 0.
+
+## Linux agent test run (2026-09-24)
+
+- Environment: Linux x86_64, controlled local image2xy, solve-field and curl peers; a real astrometry.net installation was not used. Tests run as root there.
+- `image filesystem failures` and `index remove failure and recovery` forced write failures with `chmod 0500`, which root ignores. The folder is now replaced by a regular file (ENOTDIR) and the index by a directory (unlink fails with EISDIR), which fail for every account.
+- Configuration isolation: the `-Dindigo_uni_config_folder` redirection and its separate framework object were removed; each forked case points HOME at its own directory. The suite no longer switches off strict bus locking (the switch was removed from the framework).
+- Result: 31 / 31 simulated cases passed; hardware tests 0 / 0.

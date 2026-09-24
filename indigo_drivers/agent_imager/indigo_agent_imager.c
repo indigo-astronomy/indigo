@@ -25,7 +25,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0300003B
+#define DRIVER_VERSION 0x0300003D
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -1192,11 +1192,33 @@ static void check_breakpoint(indigo_device *device, indigo_item *breakpoint) {
 	}
 }
 
+// A barrier leader dithers only when every member is paused on a breakpoint, so that no member
+// exposes while the mount is moved; the members are released by the next barrier breakpoint.
+static bool wait_for_barrier_members(indigo_device *device) {
+	if (!AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM->sw.value || AGENT_IMAGER_BARRIER_STATE_PROPERTY->count == 0) {
+		return true;
+	}
+	if (!DEVICE_PRIVATE_DATA->barrier_resume) {
+		indigo_send_message(device, IDLE_PROPERTY, "Waiting for barrier members before dithering");
+	}
+	while (!DEVICE_PRIVATE_DATA->barrier_resume) {
+		wait_for_resume(device);
+		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			return false;
+		}
+		indigo_usleep(1000);
+	}
+	return true;
+}
+
 static bool do_dither(indigo_device *device) {
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 	if (!related_agent_name) {
 		indigo_send_message(device, BUSY_PROPERTY, "Dithering failed, no guider agent selected");
 		return true; // do not fail batch if dithering fails - let us keep it for a while
+	}
+	if (!wait_for_barrier_members(device)) {
+		return false;
 	}
 	DEVICE_PRIVATE_DATA->dithering_started = false;
 	DEVICE_PRIVATE_DATA->dithering_finished = false;
@@ -3585,6 +3607,26 @@ static void snoop_barrier_state(indigo_client *client, indigo_property *property
 			CLIENT_PRIVATE_DATA->barrier_resume &= (item->light.value == INDIGO_BUSY_STATE);
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Breakpoint barrier state %s", CLIENT_PRIVATE_DATA->barrier_resume ? "complete" : "incomplete");
+	} else if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME) && property->state == INDIGO_ALERT_STATE) {
+		// A member whose batch was aborted or failed never reaches the barrier again, so the leader
+		// and the other members would wait for it forever: abort the whole group instead.
+		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+		if (AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM->sw.value && AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			for (int i = 0; i < AGENT_IMAGER_BARRIER_STATE_PROPERTY->count; i++) {
+				if (!strcmp(AGENT_IMAGER_BARRIER_STATE_PROPERTY->items[i].name, property->device)) {
+					indigo_send_message(device, ALERT_PROPERTY, "%s stopped, aborting the barrier group", property->device);
+					if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+						AGENT_PAUSE_PROCESS_ITEM->sw.value = AGENT_PAUSE_PROCESS_WAIT_ITEM->sw.value = false;
+						AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
+					}
+					AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+					abort_process(device);
+					break;
+				}
+			}
+		}
 	}
 }
 

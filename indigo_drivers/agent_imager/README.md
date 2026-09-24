@@ -69,3 +69,7 @@ To capture a batch using "macro mode" (=focus bracketing), follow these steps:
 5. Start the capture batch process: Set EXPOSURE under AGENT_START_PROCESS to initiate focus bracketing.
 
 Once the process is complete, the focuser will automatically return to its initial position.
+
+## Testing
+
+2026-09-24 12:56 3.0.0.61 linux x64 simulator 53/53 OK
