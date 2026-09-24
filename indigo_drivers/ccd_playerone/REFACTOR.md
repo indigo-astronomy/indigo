@@ -422,3 +422,104 @@ Root cause: both `on_change_request` blocks in `indigo_ccd_playerone.driver` tes
 Fix: each is now a `reject_change` block naming only the *other* property. The property's own BUSY state is deliberately left to the `INDIGO_COPY_*_PROCESS_CHANGE` guard: publishing `INDIGO_ALERT_STATE` onto the property that is running the operation would overwrite its state and break the interlock that reads it. An unanswered self-BUSY request is covered by the restore's acknowledgement timeout instead. Version 25 -> 26.
 
 Regression test: `property_busy_guard` in `indigo_test/integration/test_ccd_playerone_sdk.c` now requests streaming during an exposure and requires `CCD_STREAMING` to reach `INDIGO_ALERT_STATE`. Against the pre-fix driver it fails at that assertion; the suite is 49/49 after the fix.
+
+## Hardware acceptance — Player One Mars-C II on Linux arm64, version 27 / 0x0300001B (2026-09-24)
+
+Environment: Debian 12 bookworm, Linux aarch64 (Raspberry Pi, 4 cores), repository at `b230d86e8` on
+branch `refactoring` with the uncommitted `indigo_test/Makefile` link-order fix for Linux. Camera:
+Player One Mars-C II, USB `a0a0:6620`, colour, uncooled, with an ST4 guider, bundled SDK 3.10.1 /
+API 20260430. This is the first acceptance of the generated driver on Linux arm64; the earlier runs in
+this document are macOS arm64.
+
+Requested mode: non-interactive hardware. Scope: the 27 registered cases of
+`make -C indigo_test test-ccd-playerone-hw`. Physical hot-plug was explicitly excluded, so `HW_HOTPLUG=1`
+was not passed and the four `poa_survives_transport_loss_*` cases and
+`poa_writes_the_flash_suffix_across_replug` did not run. Hot-plug coverage is therefore **not**
+established on Linux arm64.
+
+Commands and results:
+
+```sh
+make -C indigo_test test-ccd-playerone-hw            # 27/27 PASS, exit 0 (shared host)
+make -C indigo_test test-ccd-playerone-hw            # 27/27 PASS, exit 0 (exclusive, under a run lock)
+make -C indigo_test test-ccd-playerone-reload-hw     # 6/6 PASS, exit 0 (dynamic dlopen/dlclose build)
+indigo_test/build/integration/test_ccd_playerone_sdk # 47/49, two failures, see POA-D02
+```
+
+The two hardware runs produced byte-identical output; the second was serialised against the other
+camera suite sharing the host so that no timing-sensitive case could be blamed on load. No driver
+defect was found by the hardware scope, so no production change and no version bump came out of this
+run. Reported identity: `Mars-C II (IMX662)`, serial `CAMP5163095002109000`, `3.0.0.27`, sensor
+1936 x 1100, `CCD_EXPOSURE` 0.000010 .. 7200 s.
+
+Evidence per area: all four advertised pixel formats (RAW 8 / RGB 24 / RAW 16 / MONO 8) with the
+delivered payload length checked against the geometry; a 256x256 ROI at 16,24 in bin 1 and bin 2; all
+five frame types; the gain/configuration save-change-load roundtrip in a private `HOME`; all eight
+advanced controls with readback; the offset; all four presets; fractional and repeated exposures;
+guiding during a long exposure; abort and immediate reacquisition; an exact finite stream and a
+sustained stream (99 frames in about 10 s); all four guide directions and both axes simultaneously;
+every `reject_change` guard including the streaming ones; both connection orders; disconnecting the CCD
+with a live guider; reconnect; the flash suffix write and restore to the original empty value; the
+refused shutdown; driver reinitialisation; and 128 delivered frames with zero malformed ones.
+`X_SENSOR_MODE` is not published by this camera and `CCD_COOLER` reports sensor-only, so those two rows
+are not applicable to this model, exactly as on macOS.
+
+## Found defects — 2026-09-24
+
+### POA-D02 — a crossed libusb/SDK binding now removes a camera that is still present (BLOCKED)
+
+Observable impact: `indigo_test/integration/test_ccd_playerone_sdk.c` fails two cases, 47/49 instead of
+49/49, on both macOS arm64 and Linux arm64:
+
+- `Optional guider, capacity and SDK identity removal`, line 988: after a `DEVICE_LEFT` event whose
+  libusb pointer had been bound to a camera the SDK still reports, three logical devices are detached
+  instead of two — the absent camera **and** the camera that is still there. `counter expected 3, got 2`.
+- `Completion sdk_discovery_identity_and_strings`, line 1724: with `POAGetCameraCount()` failing, so
+  that no removal can be confirmed, the device whose recorded `usbdev` matches the event is detached
+  anyway. `expected 4, got 2`.
+
+In both cases the driver loses a camera that is physically present, and it does not come back without a
+replug, because no further `DEVICE_LEFT` event follows for it.
+
+Root cause: commit `0057e7302` changed the generator's SDK hot-plug template from
+`if (last_action != INDIGO_DRIVER_SHUTDOWN)` to `if (!unplug_result && last_action != INDIGO_DRIVER_SHUTDOWN)`
+around the `sdk.unplug_match` block, so `private_data->usbdev == dev` became decisive and the hook can
+no longer refuse a removal libusb has reported — see `indigo_ccd_playerone.c:2151` and
+`indigo_tools/indigo_generator.c:2297`. That is correct for a driver whose libusb-to-SDK binding is
+trustworthy, and it fixed QHY2-001. It is wrong for this driver: the `plug` block in
+`indigo_ccd_playerone.driver:969` binds the arriving `dev` to *the first SDK camera not already
+attached*, because the Player One SDK exposes no USB path. With two cameras whose USB arrival order
+differs from `POAGetCameraProperties()` enumeration order the binding is crossed, which is exactly what
+both failing cases model. The SDK-identity hook exists precisely to be authoritative over that
+unreliable pointer.
+
+Proof that this is a regression of `0057e7302` and not a pre-existing failure: rebuilding the same
+suite against the current driver with only that one condition restored gives 49/49 (`EXIT=0`), and the
+unmodified driver gives 47/49 (`EXIT=1`), on the same machine with the same test source.
+
+Status: **not fixed — blocked on a generator decision.** The hook can only ever set `unplug_result`
+to true and is now unreachable when libusb has matched, so no change confined to
+`indigo_ccd_playerone.driver` can restore the behaviour; and the Player One SDK offers nothing to tie a
+`libusb_device *` to a `cameraID`, so the binding cannot be made trustworthy instead. The fix belongs
+in `indigo_tools/indigo_generator.c`, which the root `AGENTS.md` puts behind explicit user approval of
+a concrete proposed change. The same template change regenerated 16 other drivers; `ccd_asi`,
+`ccd_qhy2`, `ccd_svb`, `ccd_qsi`, `ccd_mi`, `ccd_fli`, `focuser_astroasis`, `wheel_astroasis`,
+`guider_asi`, `wheel_playerone` and others all match on an SDK-side identity rather than on the libusb
+pointer, so the same exposure should be assumed for them until each is re-run. `ccd_atik` was re-run on
+the same day and is **not** affected: its fake-SDK suite is 43/43 on Linux arm64, because its cases do
+not model a crossed binding.
+
+Regression test: none added. The two failing cases already reproduce the defect hardware-free and were
+written before it existed; they must keep failing until the removal decision is fixed, so they are
+recorded here as expected baseline failures rather than weakened to accept the new behaviour. The
+defect was found hardware-free and needs no hardware observation to reproduce. It was *not* reachable
+from this session's hardware scope: one camera cannot produce a crossed binding, and physical hot-plug
+was out of scope.
+
+## Final test summary — 2026-09-24
+
+- Simulated (fake SDK) tests: 49 run, 47 passed — the two failures are POA-D02, reproduced on both
+  macOS arm64 and Linux arm64.
+- Hardware tests: 33 run, 33 passed on Linux arm64 — 27 Mars-C II cases plus 6 dynamic reload cases,
+  each of the 27 confirmed twice. Four physical hot-plug cases and the flash-suffix replug case exist
+  and were not run; they need an operator, so hot-plug coverage is not established on this platform.

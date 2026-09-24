@@ -43,8 +43,8 @@
 |  | 2026-09-22 13:22 | 3.0.0.44 | mac arm64 | Atik Horizon | 1 / 1 | ✅ OK |
 |  | 2026-09-22 14:05 | 3.0.0.45 | mac arm64 | fake SDK | 43 / 43 | ✅ OK |
 |  | 2026-09-22 14:31 | 3.0.0.45 | mac arm64 | Atik 11000 | 1 / 1 | ✅ OK |
-|  | 2026-09-24 06:31 | 3.0.0.45 | linux arm64 | fake SDK | 43 / 43 | ✅ OK |
-|  | 2026-09-24 06:33 | 3.0.0.45 | linux arm64 | Atik Titan | 1 / 1 | ✅ OK |
+|  | 2026-09-24 08:31 | 3.0.0.45 | linux arm64 | fake SDK | 43 / 43 | ✅ OK |
+|  | 2026-09-24 08:33 | 3.0.0.45 | linux arm64 | Atik Titan | 1 / 1 | ✅ OK |
 | ccd_atik2 | 2026-09-22 09:45 | 3.0.0.14 | mac arm64 | Atik One | 1 / 1 | ✅ OK |
 |  | 2026-09-22 09:48 | 3.0.0.14 | mac arm64 | Atik VS | 1 / 1 | ✅ OK |
 |  | 2026-09-22 09:51 | 3.0.0.14 | mac arm64 | Atik Titan | 1 / 1 | ✅ OK |
@@ -63,7 +63,9 @@
 | ccd_ogma | 2026-09-21 14:02 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_omegonpro | 2026-09-21 14:04 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_playerone | 2026-09-21 21:23 | 3.0.0.26 | mac arm64 | Mars-C II | 27 / 27 | ✅ OK |
-|  | 2026-09-21 12:40 | 3.0.0.26 | mac arm64 | fake SDK | 49 / 49 | ✅ OK |
+|  | 2026-09-24 08:30 | 3.0.0.27 | linux arm64 | Mars-C II | 27 / 27 | ✅ OK |
+|  | 2026-09-24 08:34 | 3.0.0.27 | linux arm64 | fake SDK | 49 / 47 | ❌ Failed |
+|  | 2026-09-24 08:46 | 3.0.0.27 | mac arm64 | fake SDK | 49 / 47 | ❌ Failed |
 | ccd_ptp | 2026-09-21 14:14 | 3.0.0.52 | mac arm64 | fake SDK | 128 / 128 | ✅ OK |
 | ccd_qhy | 2026-09-22 19:25 | 3.0.0.37 | mac arm64 | fake SDK | 38 / 38 | ✅ OK |
 |  | 2026-09-22 20:15 | 3.0.0.37 | mac arm64 | QHY5LII-M | 1 / 0 | ❌ Failed |

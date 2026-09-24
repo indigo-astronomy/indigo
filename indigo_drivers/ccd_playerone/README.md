@@ -38,4 +38,6 @@ The generated implementation was validated on Mars-C II (macOS arm64, SDK 3.10.1
 ## Testing
 
 2026-09-21 21:23 3.0.0.26 mac arm64 Mars-C II 27/27 OK
-2026-09-21 12:40 3.0.0.26 mac arm64 fake SDK 49/49 OK
+2026-09-24 08:30 3.0.0.27 linux arm64 Mars-C II 27/27 OK
+2026-09-24 08:34 3.0.0.27 linux arm64 fake SDK 49/47 Failed
+2026-09-24 08:46 3.0.0.27 mac arm64 fake SDK 49/47 Failed
