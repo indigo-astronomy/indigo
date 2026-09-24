@@ -429,7 +429,7 @@ static void nexstar_mechanical_axis_index_and_timed_motion(void) {
 	SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, "Z", 1, reply, sizeof(reply)));
 	SERIAL_CHECK_TRUE(nexstar_decode_axis_reply(reply, 4, &polar, &declination));
 	SERIAL_CHECK_TRUE(fabs(polar - 90) < 0.02 && fabs(declination - 90) < 0.02);
-	// CGE manual rates 1 and 2 are 0.5x and 1x sidereal. Measure the DEC motor axis directly.
+	// CGE and CGEM manuals specify rates 1 and 2 as 0.5x and 1x sidereal. Measure the DEC motor axis directly.
 	double displacement[2];
 	for (int index = 0; index < 2; index++) {
 		unsigned char move[] = { 'P', 2, 17, 0x24, (unsigned char)(index + 1), 0, 0, 0 };
@@ -444,8 +444,40 @@ static void nexstar_mechanical_axis_index_and_timed_motion(void) {
 		SERIAL_CHECK_TRUE(nexstar_decode_axis_reply(reply, 8, &polar, &declination));
 		displacement[index] = remainder(declination - before, 360);
 	}
-	fprintf(stderr, "CGE rate1/2 DEC motor displacement: %.6f / %.6f degrees\n", displacement[0], displacement[1]);
+	fprintf(stderr, "%s rate1/2 DEC motor displacement: %.6f / %.6f degrees\n", model->selection, displacement[0], displacement[1]);
 	SERIAL_CHECK_TRUE(displacement[0] > 0.001 && displacement[1] > displacement[0] * 1.6 && displacement[1] < displacement[0] * 2.4);
+cleanup:
+	if (fd >= 0) {
+		close(fd);
+	}
+}
+
+static void nexstar_cgem_documented_higher_manual_rates(void) {
+	external_serial_simulator session = { 0 };
+	int fd = -1;
+	char reply[32];
+	double polar, declination, displacement[2];
+	const int rates[] = { 3, 7 };
+	const int durations_us[] = { 1200000, 700000 };
+	SERIAL_CHECK_TRUE(mountsim_attach(&session));
+	fd = open(session.port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	SERIAL_CHECK_TRUE(fd >= 0);
+	for (int index = 0; index < 2; index++) {
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, "z", 1, reply, sizeof(reply)));
+		SERIAL_CHECK_TRUE(nexstar_decode_axis_reply(reply, 8, &polar, &declination));
+		double before = declination;
+		unsigned char move[] = { 'P', 2, 17, 0x24, (unsigned char)rates[index], 0, 0, 0 };
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, (const char *)move, sizeof(move), reply, sizeof(reply)) && !strcmp(reply, "#"));
+		indigo_usleep(durations_us[index]);
+		move[4] = 0;
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, (const char *)move, sizeof(move), reply, sizeof(reply)) && !strcmp(reply, "#"));
+		SERIAL_CHECK_TRUE(nexstar_raw_exchange(fd, "z", 1, reply, sizeof(reply)));
+		SERIAL_CHECK_TRUE(nexstar_decode_axis_reply(reply, 8, &polar, &declination));
+		displacement[index] = remainder(declination - before, 360.0);
+	}
+	fprintf(stderr, "CGEM rate3/7 DEC motor displacement: %.6f / %.6f degrees\n", displacement[0], displacement[1]);
+	SERIAL_CHECK_TRUE(displacement[0] > 0.012 && displacement[0] < 0.035);
+	SERIAL_CHECK_TRUE(displacement[1] > 0.45 && displacement[1] < 1.0);
 cleanup:
 	if (fd >= 0) {
 		close(fd);
@@ -896,7 +928,7 @@ cleanup:
 static void nexstar_st4_rates_read_back(void) {
 	external_serial_simulator session = { 0 };
 	SERIAL_CHECK_TRUE(start_case(&session));
-	// CGE firmware advertises this capability; absence is a reproduced failure, not a skip.
+	// Celestron 4.29 advertises this capability; absence is a failure, not a skip.
 	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME) != NULL);
 	SERIAL_CHECK_TRUE(change_numbers(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 41, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 67));
 	SERIAL_CHECK_TRUE(fixture_disconnect(&nexstar_mount));
@@ -1263,6 +1295,7 @@ int main(int argc, char **argv) {
 	}
 	const indigo_test_case cases[] = {
 		{ "nexstar_mechanical_axis_index_and_timed_motion", nexstar_mechanical_axis_index_and_timed_motion },
+		{ "nexstar_cgem_documented_higher_manual_rates", nexstar_cgem_documented_higher_manual_rates },
 		{ "nexstar_se_axis_index_and_timed_motion", nexstar_se_axis_index_and_timed_motion },
 		{ "nexstar_model_identity_and_reconnect", nexstar_model_identity_and_reconnect },
 		{ "nexstar_sync_has_fresh_device_readback", nexstar_sync_has_fresh_device_readback },
@@ -1288,9 +1321,10 @@ int main(int argc, char **argv) {
 	int result = 2;
 	if (!strcmp(argv[1], "--list")) {
 		for (int i = 0; i < ARRAY_SIZE(cases); i++) {
-			bool cge_only = !strcmp(cases[i].name, "nexstar_mechanical_axis_index_and_timed_motion") || !strcmp(cases[i].name, "nexstar_st4_rates_read_back");
+			bool cge_cgem_only = !strcmp(cases[i].name, "nexstar_mechanical_axis_index_and_timed_motion") || !strcmp(cases[i].name, "nexstar_st4_rates_read_back");
+			bool cgem_only = !strcmp(cases[i].name, "nexstar_cgem_documented_higher_manual_rates");
 			bool se_only = !strcmp(cases[i].name, "nexstar_se_documented_manual_rates") || !strcmp(cases[i].name, "nexstar_se_axis_index_and_timed_motion");
-			if ((!cge_only || !strcmp(model->selection, "CGE")) && (!se_only || !strcmp(model->selection, "SE")) && (model->gps || strcmp(cases[i].name, "nexstar_gps_fix_and_shared_lifetime"))) {
+			if ((!cge_cgem_only || !strcmp(model->selection, "CGE") || !strcmp(model->selection, "CGEM")) && (!cgem_only || !strcmp(model->selection, "CGEM")) && (!se_only || !strcmp(model->selection, "SE")) && (model->gps || strcmp(cases[i].name, "nexstar_gps_fix_and_shared_lifetime"))) {
 				puts(cases[i].name);
 			}
 		}

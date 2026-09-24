@@ -389,3 +389,107 @@ affected CGE MountSim 20 run, 20 passed;
 hardware 0 run, 0 passed**. Physical SE wedge park pose, physical southern
 tracking direction, HA/DEC-to-physical-axis transform and fork clearance
 remain unverified; the completed claim is simulator axis/protocol behavior.
+
+## CGEM DX MountSim 2.3 acceptance (2026-09-24)
+
+Hardware-test decision: no CGEM DX is available for this run; hardware tests
+are 0 run, 0 passed. The exact selected MountSim model is `CGEM`, identifying
+as Celestron CGEM DX, model byte 14, firmware 4.29. The existing generated
+NexStar driver is version 3.0.0.35. No driver behavior change is planned
+unless the CGEM acceptance exposes one independently of the emulator.
+
+Baseline on macOS arm64: `make -C indigo_test build/mountsim/test_mount_nexstar_mountsim`
+built the current driver-backed test. With the isolated launcher, CGEM identity
+and reconnect passed 1/1 under `/tmp/cgem-baseline-identity`. The existing
+park case failed 0/1 under `/tmp/cgem-baseline-park`: the forwarded precise
+`b` command got a MountSim rejection, `tc_goto_azalt_p` returned -1 and no
+axis moved by 0.02 degrees. The original serial capture is retained there.
+This is an expected baseline defect reproducer, not a passed test. Existing
+CGE/SE and portable results above are the preservation baseline.
+
+Atomic CGEM plan:
+
+1. **Complete:** Audit exact CGEM command and rate behavior against
+   Celestron documentation, independent INDI command usage and the app source;
+   the failed park trace is the original reference. The CGEM DX manual rates
+   1–9 are 0.5×, 1×, 4×, 8×, 16×, 64×, 1°, 2°, 5°/s in its table, although
+   nearby prose says rate 9 is 3°/s. The table drives simulator rate 9;
+   its physical speed remains unverified.
+2. **Complete:** Extend the existing CGEM-specific MountSim model to handle
+   `B/b` and `Z/z` with a declared motor-axis index convention, and correct
+   its documented hand-control rate table. Add raw axis-arrival and rate
+   assertions to the existing opt-in NexStar test. Keep generated driver and
+   other model branches untouched unless a separate defect is reproduced.
+   The emulator convention is 90/90 at its simulated home, shared with CGE;
+   it is not a claim about a physical CGEM DX index or park pose.
+3. **Complete:** Rebuild MountSim and the NexStar test, run focused protocol
+   reproducers and compare successful command/reply behavior with the baseline
+   trace and independent protocol. The full final CGEM run passed 21/21
+   under `/tmp/cgem-full1`; all cases used isolated app/PTY instances.
+4. **Complete:** Run affected CGE/SE regressions, portable NexStar normal and
+   sanitizer suites, and native MountSim tests. Update this evidence, app
+   audit, driver Testing record and generated TEST_SUMMARY; review scoped diffs
+   and clean test build artifacts before scoped commits. Full CGE
+   regression passed 20/20; SE targeted regressions passed 4/4; portable
+   NexStar passed 14/14 both normally and under ASan/UBSan; MountSim native
+   passed 5/5. Driver README Testing and TEST_SUMMARY were updated.
+
+Found CGEM defect (reproduced): MountSim's CGEM profile inherits SynScan's
+`gotoAxisPosition:` rejection. The hand-controller `B/b` command is documented
+by [Celestron's serial protocol](https://s3.amazonaws.com/celestron-site-support-files/support_files/1154108406_nexstarcommprot.pdf),
+and [INDI's Celestron driver](https://github.com/indilib/indi/blob/master/drivers/telescope/celestrondriver.cpp)
+sends it as `slew_azalt`. The observed impact is failed INDIGO park without
+motor-axis arrival. The intended fix is model-local MountSim axis handling;
+the same park reproducer and a direct `B/b` to `Z/z` arrival test will prove it.
+The physical CGEM DX encoder index, actual mechanical home/park pose and sky-to-mechanical
+axis mapping are unverified and will be identified as assumptions.
+
+Focused post-fix evidence: app build and driver-backed test build passed.
+Raw `B/b` to `Z/z` roundtrip, intermediate motion, `L` arrival and rate
+1/2 passed 1/1 under `/tmp/cgem-raw-fixed` (DEC motor 0.005275° and
+0.010547° over 2.5 s). CGEM rate 3/7 passed 1/1 under
+`/tmp/cgem-high-fixed` (0.020256°/1.2 s and 0.712569°/0.7 s).
+The original failed park case passed 1/1 under `/tmp/cgem-park-fixed`,
+including real coordinate change and completion before tracking off.
+The full CGEM scope passed **21/21** under `/tmp/cgem-full1`: identity,
+exact model and capability inventory, raw axis protocol, SYNC and reachable
+sky GOTO, manual directions and rates, tracking/site/time, ST4 rate readback,
+park completion/signed southern target/abort/loss, GPS and shared lifetime,
+guider replacement/independent axes, and idle/active transport loss.
+The guider case observed all 96 software ON/OFF command-edge pairs after 24
+warm-ups at 20, 100 and 500 ms in four directions with tracking off/on and
+coordinate polling. Across its 24 duration/direction/workload cells, the
+minimum signed error was +0.411 ms, mean signed error +7.766 ms and maximum
+absolute error 23.380 ms. This measures forwarded serial command intervals,
+not physical ST4 pulse or optical correction timing.
+
+The affected CGE run passed **20/20** under `/tmp/cge-after-cgem` after the
+CGEM change. SE's raw axis, documented rates, park arrival and tracking/site
+cases passed **4/4** under `/tmp/se-after-cgem-*`; its previous full 20/20
+acceptance remains recorded separately. From the `indigo_test` directory,
+`build/integration/test_mount_nexstar_simulator` passed **14/14**, and
+`build/integration/test_mount_nexstar_simulator_asan` passed **14/14** with
+no reported ASan/UBSan error. `python3 tests/run_native.py --derived-data
+build` in MountSim passed **5/5**. `git diff --check` passed in both repos.
+No generated driver source, framework property, persistent file or portable
+integration case changed; driver version remains 3.0.0.35, and
+MIGRATION_STATUS's 14 / 0 portable integration/hardware count remains valid.
+No physical hardware, Windows runtime or x86_64 runtime was tested.
+
+The tested CGEM app executable SHA-256 was
+`3eccbb5000555a18ae91152b9ca57ab30dba2a4e3b5c3a92bc13e8442fabc660`,
+the MountSim NexStar test executable was
+`a7beab629bb67e2d4b093df78c89ab30a2f0477408b268f50ab9b7b4646197db`,
+and the unchanged NexStar driver archive was
+`66084adeb10d088b5b8f3093bb173ad1082d257c0c442edb32200efbf15c2dad`.
+These binaries were built before `/tmp/cgem-full1`; subsequent edits were
+documentation only.
+
+Final CGEM campaign test summary: simulated **83 run, 82 passed**, including
+the one deliberately preserved failing baseline park reproducer. Of those,
+CGEM MountSim acceptance was **21/21**, affected CGE **20/20**, targeted SE
+**4/4**, portable normal **14/14**, portable sanitizer **14/14** and MountSim
+native **5/5**. Hardware **0 run, 0 passed**. The CGEM run validates
+simulated protocol and mechanical-axis behavior; real encoder indexing,
+park pose, physical motion speeds (especially the conflicting rate 9),
+southern tracking mechanics and guider output remain hardware-only gaps.
