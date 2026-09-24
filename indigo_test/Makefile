@@ -1970,7 +1970,7 @@ $(INTEGRATION_BUILD)/agent_imager_driver.o: ../indigo_drivers/agent_imager/indig
 	$(CC) $(TEST_CFLAGS) $(IMAGER_TEST_FLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_agent_imager: integration/test_agent_imager.c test_runner.h $(INTEGRATION_BUILD)/agent_imager_framework.o $(INTEGRATION_BUILD)/agent_imager_filter.o $(INTEGRATION_BUILD)/agent_imager_driver.o ../build/drivers/indigo_ccd_simulator.a $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(IMAGER_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_imager_framework.o $(INTEGRATION_BUILD)/agent_imager_filter.o $(INTEGRATION_BUILD)/agent_imager_driver.o ../build/drivers/indigo_ccd_simulator.a -o $@ $(LDFLAGS) $(IMAGER_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+	$(CC) $(TEST_CFLAGS) $(IMAGER_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_imager_framework.o $(INTEGRATION_BUILD)/agent_imager_filter.o $(INTEGRATION_BUILD)/agent_imager_driver.o ../build/drivers/indigo_ccd_simulator.a -o $@ $(LDFLAGS) $(IMAGER_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
 
 .PHONY: test-agent-imager
 test-agent-imager: check-lib $(INTEGRATION_BUILD)/test_agent_imager
@@ -1986,7 +1986,7 @@ $(INTEGRATION_BUILD)/agent_guider_driver.o: ../indigo_drivers/agent_guider/indig
 	$(CC) $(TEST_CFLAGS) $(GUIDER_TEST_FLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_agent_guider: integration/test_agent_guider.c test_runner.h $(INTEGRATION_BUILD)/agent_guider_framework.o $(INTEGRATION_BUILD)/agent_guider_filter.o $(INTEGRATION_BUILD)/agent_guider_driver.o ../build/drivers/indigo_ccd_simulator.a $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(GUIDER_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_guider_framework.o $(INTEGRATION_BUILD)/agent_guider_filter.o $(INTEGRATION_BUILD)/agent_guider_driver.o ../build/drivers/indigo_ccd_simulator.a -o $@ $(LDFLAGS) $(GUIDER_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+	$(CC) $(TEST_CFLAGS) $(GUIDER_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_guider_framework.o $(INTEGRATION_BUILD)/agent_guider_filter.o $(INTEGRATION_BUILD)/agent_guider_driver.o ../build/drivers/indigo_ccd_simulator.a -o $@ $(LDFLAGS) $(GUIDER_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
 
 .PHONY: test-agent-guider
 test-agent-guider: check-lib $(INTEGRATION_BUILD)/test_agent_guider
@@ -2004,7 +2004,7 @@ $(INTEGRATION_BUILD)/agent_mount_driver.o: ../indigo_drivers/agent_mount/indigo_
 	$(CC) $(TEST_CFLAGS) $(MOUNT_TEST_FLAGS) -Dtime=mount_test_time -Dindigo_usleep=mount_test_sleep -Dindigo_uni_open_tcp_server_socket_with_callback=mount_test_server -Dindigo_uni_read_available=mount_test_read -Dindigo_uni_write=mount_test_write -Dindigo_uni_close=mount_test_close -Dindigo_uni_set_socket_read_timeout=mount_test_read_timeout -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_agent_mount: integration/test_agent_mount.c test_runner.h $(INTEGRATION_BUILD)/agent_mount_framework.o $(INTEGRATION_BUILD)/agent_mount_filter.o $(INTEGRATION_BUILD)/agent_mount_driver.o $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(MOUNT_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_mount_framework.o $(INTEGRATION_BUILD)/agent_mount_filter.o $(INTEGRATION_BUILD)/agent_mount_driver.o -o $@ $(LDFLAGS) $(MOUNT_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+	$(CC) $(TEST_CFLAGS) $(MOUNT_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_mount_framework.o $(INTEGRATION_BUILD)/agent_mount_filter.o $(INTEGRATION_BUILD)/agent_mount_driver.o -o $@ $(LDFLAGS) $(MOUNT_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
 
 .PHONY: test-agent-mount
 test-agent-mount: check-lib $(INTEGRATION_BUILD)/test_agent_mount
@@ -2018,7 +2018,7 @@ $(INTEGRATION_BUILD)/agent_config_driver.o: ../indigo_drivers/agent_config/indig
 	$(CC) $(TEST_CFLAGS) $(CONFIG_TEST_FLAGS) -Dindigo_uni_config_folder=config_test_folder -Dgetenv=config_test_getenv -Dindigo_uni_replace_file=config_test_replace -Dindigo_detach_client=config_test_detach -Dindigo_save_property=config_test_save -Dindigo_usleep=config_test_sleep -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_agent_config: integration/test_agent_config.c test_runner.h $(INTEGRATION_BUILD)/agent_config_framework.o $(INTEGRATION_BUILD)/agent_config_driver.o $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(CONFIG_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_config_framework.o $(INTEGRATION_BUILD)/agent_config_driver.o -o $@ $(LDFLAGS) $(CONFIG_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+	$(CC) $(TEST_CFLAGS) $(CONFIG_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_config_framework.o $(INTEGRATION_BUILD)/agent_config_driver.o -o $@ $(LDFLAGS) $(CONFIG_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
 
 .PHONY: test-agent-config
 test-agent-config: check-lib $(INTEGRATION_BUILD)/test_agent_config
@@ -2036,7 +2036,7 @@ $(INTEGRATION_BUILD)/agent_astrometry_driver.o: ../indigo_drivers/agent_astromet
 	$(CC) $(TEST_CFLAGS) $(ASTROMETRY_TEST_FLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_agent_astrometry: integration/test_agent_astrometry.c test_runner.h $(INTEGRATION_BUILD)/agent_astrometry_framework.o $(INTEGRATION_BUILD)/agent_astrometry_driver.o $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(ASTROMETRY_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_astrometry_framework.o $(INTEGRATION_BUILD)/agent_astrometry_driver.o -o $@ $(LDFLAGS) $(ASTROMETRY_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+	$(CC) $(TEST_CFLAGS) $(ASTROMETRY_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_astrometry_framework.o $(INTEGRATION_BUILD)/agent_astrometry_driver.o -o $@ $(LDFLAGS) $(ASTROMETRY_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
 
 $(INTEGRATION_BUILD)/agent_astrometry_framework_sanitize.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(ASTROMETRY_SANITIZE_CFLAGS) $(ASTROMETRY_TEST_FLAGS) -Dindigo_uni_config_folder=astrometry_test_config_folder -c $< -o $@
@@ -2045,7 +2045,7 @@ $(INTEGRATION_BUILD)/agent_astrometry_driver_sanitize.o: ../indigo_drivers/agent
 	$(CC) $(ASTROMETRY_SANITIZE_CFLAGS) $(ASTROMETRY_TEST_FLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_agent_astrometry_sanitize: integration/test_agent_astrometry.c test_runner.h $(INTEGRATION_BUILD)/agent_astrometry_framework_sanitize.o $(INTEGRATION_BUILD)/agent_astrometry_driver_sanitize.o $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
-	$(CC) $(ASTROMETRY_SANITIZE_CFLAGS) $(ASTROMETRY_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_astrometry_framework_sanitize.o $(INTEGRATION_BUILD)/agent_astrometry_driver_sanitize.o -o $@ $(ASTROMETRY_SANITIZE_LDFLAGS) $(ASTROMETRY_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+	$(CC) $(ASTROMETRY_SANITIZE_CFLAGS) $(ASTROMETRY_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_astrometry_framework_sanitize.o $(INTEGRATION_BUILD)/agent_astrometry_driver_sanitize.o -o $@ $(ASTROMETRY_SANITIZE_LDFLAGS) $(ASTROMETRY_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
 
 .PHONY: test-agent-astrometry
 test-agent-astrometry: check-lib $(INTEGRATION_BUILD)/test_agent_astrometry
@@ -2068,7 +2068,7 @@ $(INTEGRATION_BUILD)/agent_scripting_driver.o: ../indigo_drivers/agent_scripting
 	$(CC) $(TEST_CFLAGS) $(SCRIPTING_TEST_FLAGS) -Dindigo_populate_http_blob_item=scripting_test_populate_blob -Dindigo_set_timer_with_data=scripting_test_set_timer -Dtime=scripting_test_time -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_agent_scripting: integration/test_agent_scripting.c test_runner.h $(INTEGRATION_BUILD)/agent_scripting_framework.o $(INTEGRATION_BUILD)/agent_scripting_duktape.o $(INTEGRATION_BUILD)/agent_scripting_driver.o $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(SCRIPTING_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_scripting_framework.o $(INTEGRATION_BUILD)/agent_scripting_duktape.o $(INTEGRATION_BUILD)/agent_scripting_driver.o -o $@ $(LDFLAGS) $(SCRIPTING_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+	$(CC) $(TEST_CFLAGS) $(SCRIPTING_TEST_FLAGS) $< $(INTEGRATION_BUILD)/agent_scripting_framework.o $(INTEGRATION_BUILD)/agent_scripting_duktape.o $(INTEGRATION_BUILD)/agent_scripting_driver.o -o $@ $(LDFLAGS) $(SCRIPTING_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
 
 .PHONY: test-agent-scripting
 test-agent-scripting: check-lib $(INTEGRATION_BUILD)/test_agent_scripting
@@ -2120,7 +2120,7 @@ SEQUENCER_TEST_OBJECTS = $(INTEGRATION_BUILD)/sequencer_framework.o $(INTEGRATIO
 SEQUENCER_SIMULATORS = $(INTEGRATION_BUILD)/sequencer_ccd_simulator.o $(INTEGRATION_BUILD)/sequencer_ccd_simulator_data.o $(INTEGRATION_BUILD)/sequencer_mount_simulator.o $(INTEGRATION_BUILD)/sequencer_dome_simulator.o $(INTEGRATION_BUILD)/sequencer_gps_simulator.o $(INTEGRATION_BUILD)/sequencer_rotator_simulator.o
 
 $(INTEGRATION_BUILD)/test_agent_scripting_sequencer: integration/test_agent_scripting_sequencer.c test_runner.h $(SEQUENCER_TEST_OBJECTS) $(SEQUENCER_SIMULATORS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(SEQUENCER_TEST_FLAGS) $< $(SEQUENCER_TEST_OBJECTS) $(SEQUENCER_SIMULATORS) -o $@ $(LDFLAGS) $(SEQUENCER_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+	$(CC) $(TEST_CFLAGS) $(SEQUENCER_TEST_FLAGS) $< $(SEQUENCER_TEST_OBJECTS) $(SEQUENCER_SIMULATORS) -o $@ $(LDFLAGS) $(SEQUENCER_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
 
 .PHONY: test-agent-scripting-sequencer
 test-agent-scripting-sequencer: check-lib $(INTEGRATION_BUILD)/test_agent_scripting_sequencer
