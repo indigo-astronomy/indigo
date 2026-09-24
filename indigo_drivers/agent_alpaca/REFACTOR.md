@@ -71,7 +71,7 @@ ImageBytes now transmits 8-bit data as Byte (6) and 16-bit data as UInt16 (8), w
 | FilterWheel | 0 / 0 | 0 / 0 | |
 | Focuser: CCD Imager (focuser) | 1 / 1 (not tested, V1) | 0 / 13 | Simulator limitation, see below. |
 | Focuser: UPB3 (focuser) | 1 / 1 (not tested, V1) | 0 / 1 | Simulator limitation, see below. |
-| Telescope: Mount Simulator (+ guider) | 0 / 2 (pulse guiding, SideOfPier and slew tests unreachable, `CanPulseGuide=false`) | 0 / 23 | See 5.3: the remaining issues come from simulator behaviour and from `DestinationSideOfPier` not being implemented. |
+| Telescope: Mount Simulator (+ guider) | 0 / 2 (pulse guiding, SideOfPier and slew tests unreachable, `CanPulseGuide=false`) | 0 / 21 | See 5.3 and 7a: the remaining issues come from simulator pulse guiding and from `DestinationSideOfPier` not being implemented. |
 | Telescope: CCD Guider (guider), CCD Guider (AO), Mount (guider) | 0 / 13, 0 / 42, 0 / 13 | no longer exposed | AGENT-6 |
 | Dome | 0 / 0 | 0 / 0 | |
 | Rotator | 0 / 0 | 0 / 0 | |
@@ -95,12 +95,12 @@ This is simulator behaviour, not agent behaviour. The agent reports `IsMoving` c
 
 The first post-fix Telescope run used the mount simulator's default site (latitude 0°, longitude 0°). ConformU stopped with "The highest elevation available … is below the horizon", because the newly reachable extended pulse-guide tests use hour angle ±9 h, which is below the horizon at latitude 0 (1 issue, `conformu/final/conformance/telescope7_site_lat0.log`).
 
-The rerun on a fresh server set a realistic site through Alpaca before the test (`SiteLatitude=48.15`, `SiteLongitude=17.1`) and got 0 errors and 23 issues (`telescope7.log`):
+The rerun on a fresh server set a realistic site through Alpaca before the test (`SiteLatitude=48.15`, `SiteLongitude=17.1`) and got 0 errors and 23 issues. After the pier-side fix (section 7a) the result is 0 errors and 21 issues (`telescope7.log`):
 
 | Issues | Member | Cause | Classification |
 |---|---|---|---|
 | 16 | `PulseGuide ±3/±9 h N/S/E/W`: "axis did not move" | The `mount_simulator` guider only times the pulse and does not move the mount coordinates. | Simulator limitation. Pulse timing, `IsPulseGuiding` and the parked check pass. |
-| 2 | `SideofPier`: "pierEast is returned … HA -6..0", "pierWest … HA 0..+6" | `mount_simulator` sets `MOUNT_SIDE_OF_PIER.WEST` when the target is in the western sky (`az > 180`). ASCOM (and INDI) define pierEast as "mount on the east side, pointing west". The agent maps `EAST`→0 and `WEST`→1 directly. | **Open question for the user:** fix the simulator's pier-side semantics, or define the INDIGO item semantics explicitly. Not changed here. |
+| 2 (before the fix only) | `SideofPier`: "pierEast is returned … HA -6..0", "pierWest … HA 0..+6" | `mount_simulator` set `MOUNT_SIDE_OF_PIER.WEST` when the target was in the western sky (`az > 180`). ASCOM and INDI define pierEast as "OTA on the east side of the pier, pointing west". | **Fixed** (section 7a) |
 | 5 | `DestinationSideOfPier` / `SOPPierTest` | Not implemented. INDIGO has no property to predict the pier side of a target. | Known gap (optional member). |
 
 The final protocol rerun on a fresh server is in section 5.2 ("After fix").
@@ -158,14 +158,27 @@ This analysis follows up the open SideOfPier question in section 5.3. It is base
 - Every hardware driver that reports a documented side follows ASCOM, except Temma, which inverts it.
 - The core alignment code uses the opposite convention. For a mount with a visible `MOUNT_SIDE_OF_PIER`, `indigo_mount_driver.c:666` stores alignment points with the driver's (ASCOM) value. The point lookup in `indigo_translated_to_raw()` (`:1060`) and `indigo_raw_to_translated()` (`:1139`) computes the side with the core convention.
 - `mount_synscan` passes its own ASCOM value into `indigo_raw_to_translated_with_lst()`.
-- The nearest-point search therefore mixes the two conventions (`indigo_eq_to_encoder()` flips the encoder model). This is a suspected alignment defect, found by source audit only and not reproduced.
+- Correction after closer reading: the `side_of_pier` argument of the live `indigo_translated_to_raw_with_lst()` and `indigo_raw_to_translated_with_lst()` is unused, and `indigo_eq_to_encoder()` / `indigo_nearest_alignment_point()` are commented out. So the mixed conventions only affected the E/W label and the persisted side of alignment points, not the computed coordinates.
+- `indigo_dome_azimuth.c:113` documents the value explicitly as "the side of the pier the OTA is on" (-1 EAST, +1 WEST), i.e. the ASCOM convention.
 
-**Proposed resolution (needs user approval, not applied):**
+**Resolution (approved by the user and applied on 2026-09-24; saved alignment points are deliberately left untouched):**
 1. Define the INDIGO semantics as ASCOM/INDI in `indigo_names.h` / `PROPERTIES.md`.
-2. Swap the HA→side mapping in the three places of `indigo_mount_driver.c` and the WEST/EAST branch in `indigo_eq_to_encoder()`.
+2. Swap the HA→side mapping in the three live places of `indigo_mount_driver.c`. The commented-out `indigo_eq_to_encoder()` is left unchanged.
 3. Fix `mount_simulator` (`az > 180` → EAST).
 4. Remove the inversion in `mount_temma`.
-5. Existing saved alignment points (`side_of_pier` persisted in the alignment file) would need migration or reset.
+5. Existing saved alignment points (`side_of_pier` persisted in the alignment file) are not migrated, by user decision.
+
+**Verification:**
+
+| Test | Result |
+|---|---|
+| `test_mount_simulator` | 16/16 |
+| `test_mount_synscan_simulator` | 19/19 |
+| `test_mount_temma_simulator` | 13/16, with the pier-side cases updated. The 3 failures ("Failed to open /dev/pts/0" when the serial port is reopened) are identical with the original driver and test on this machine. |
+| `test_agent_mount` | intermittent single failures in unrelated cases (`slaving`, `filter site async host`) across repeated runs |
+| ConformU Telescope | `SideofPier` now "Reports the pointing state of the mount as expected"; the two SideOfPier issues are gone (23 → 21 issues) |
+
+The test build rule of the `mount_temma_simulator` was also missing `-lm` (link error on `round`).
 
 ## 8. Test logs
 
