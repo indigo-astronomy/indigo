@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2025 CloudMakers, s. r. o.
+// Copyright (c) 2021-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -24,7 +24,7 @@
  \file indigo_agent_alpaca.c
  */
 
-#define DRIVER_VERSION 0x03000006
+#define DRIVER_VERSION 0x0300000A
 #define DRIVER_NAME	"indigo_agent_alpaca"
 
 #include <stdlib.h>
@@ -812,7 +812,12 @@ static bool alpaca_v1_api_request(indigo_uni_handle *handle, char *method, char 
 			const char *id = find_param(request, "Id", false);
 			char *buffer = indigo_alloc_large_buffer();
 			long index = snprintf(buffer, INDIGO_BUFFER_SIZE, "{ ");
-			long length = indigo_alpaca_get_command(alpaca_device, 1, command, id ? atoi(id) : 0, buffer + index, INDIGO_BUFFER_SIZE - index);
+			long length;
+			if (!strcmp(command, "destinationsideofpier")) {
+				length = indigo_alpaca_mount_get_destinationsideofpier(alpaca_device, 1, atof(find_param(request, "RightAscension", false)), atof(find_param(request, "Declination", false)), buffer + index, INDIGO_BUFFER_SIZE - index);
+			} else {
+				length = indigo_alpaca_get_command(alpaca_device, 1, command, id ? atoi(id) : 0, buffer + index, INDIGO_BUFFER_SIZE - index);
+			}
 			if (length <= 0) {
 				length = indigo_alpaca_append_error(buffer + index, INDIGO_BUFFER_SIZE - index, indigo_alpaca_error_NotImplemented);
 			}

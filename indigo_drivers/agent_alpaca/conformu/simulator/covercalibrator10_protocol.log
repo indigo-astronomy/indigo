@@ -1,0 +1,19 @@
+00:46:57.065 Check Alpaca Protocol - Conform Universal 4.5.0 (Build 53834.49ab847) 
+00:46:57.065                                     
+00:46:57.066 Test CoverCalibrator device:  - localhost:7679 through URL: http://localhost:7679 
+00:46:57.066                                     
+00:46:57.069 OK messages are suppressed, they can be enabled through the Alpaca and COM settings page. 
+00:46:57.069                                     
+00:46:57.069 Connecting to device...             
+00:46:59.266                                     
+00:46:59.266 Successfully connected to device, disconnecting in order to test that connection using a different PUT parameter order is successful... 
+00:46:59.325                                     
+00:46:59.325 Successfully disconnected from device, re-connecting using re-ordered PUT parameters... 
+00:46:59.325                                     
+00:47:01.494 Successfully connected to device using re-ordered PUT parameters, testing device... 
+00:47:01.494                                     
+00:47:01.501 Device exposes interface version 1  
+00:47:44.879                                     
+00:47:44.880 Successfully disconnected from device. 
+00:47:44.880                                     
+00:47:44.880 Congratulations there were no errors, issues or information alerts - Your device passes ASCOM Alpaca protocol validation!! 

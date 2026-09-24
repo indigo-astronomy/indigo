@@ -1,6 +1,27 @@
 | Driver | Timestamp | Version | Platform | Type | Tests | Result |
 | --- | --- | --- | --- | --- | --- | --- |
-| agent_alpaca | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 (INDIGO simulators) | 30 / 25 | ❌ Failed |
+| agent_alpaca | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 Camera (INDIGO simulators) | 12 / 10 | ❌ Failed |
+|  | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 FilterWheel (INDIGO simulators) | 2 / 2 | ✅ OK |
+|  | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 Focuser (INDIGO simulators) | 4 / 2 | ❌ Failed |
+|  | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 Telescope (INDIGO simulators) | 2 / 1 | ❌ Failed |
+|  | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 Dome (INDIGO simulators) | 2 / 2 | ✅ OK |
+|  | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 Rotator (INDIGO simulators) | 2 / 2 | ✅ OK |
+|  | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 CoverCalibrator (INDIGO simulators) | 2 / 2 | ✅ OK |
+|  | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 Switch (INDIGO simulators) | 4 / 4 | ✅ OK |
+|  | 2026-09-25 00:37 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Camera (INDIGO simulators) | 10 / 10 | ✅ OK |
+|  | 2026-09-25 00:37 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Focuser (INDIGO simulators) | 4 / 2 | ❌ Failed |
+|  | 2026-09-25 00:37 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Dome (INDIGO simulators) | 2 / 2 | ✅ OK |
+|  | 2026-09-25 00:39 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Telescope (Pegasus NYX-101) | 2 / 1 | ❌ Failed |
+|  | 2026-09-25 00:41 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 FilterWheel (INDIGO simulators) | 2 / 2 | ✅ OK |
+|  | 2026-09-25 00:42 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Telescope (INDIGO simulators) | 2 / 1 | ❌ Failed |
+|  | 2026-09-25 00:44 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Rotator (INDIGO simulators) | 2 / 2 | ✅ OK |
+|  | 2026-09-25 00:46 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 CoverCalibrator (INDIGO simulators) | 2 / 2 | ✅ OK |
+|  | 2026-09-25 00:47 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Switch (INDIGO simulators) | 4 / 4 | ✅ OK |
+|  | 2026-09-25 00:47 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Telescope (LX200 NYX simulator) | 2 / 1 | ❌ Failed |
+|  | 2026-09-25 00:49 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Focuser (Pegasus UPB v1, NYX-101) | 4 / 1 | ❌ Failed |
+|  | 2026-09-25 00:50 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Switch (Pegasus UPB v1, NYX-101) | 4 / 2 | ❌ Failed |
+|  | 2026-09-25 00:59 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Camera (ZWO ASI120MC-S, ASI294MC Pro) | 4 / 4 | ✅ OK |
+|  | 2026-09-25 01:01 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 FilterWheel (ZWO EFW) | 2 / 2 | ✅ OK |
 | agent_astrometry | 2026-09-24 12:56 | 2.0.0.23 | linux x64 | simulator | 31 / 31 | ✅ OK |
 | agent_config | 2026-09-24 12:56 | 3.0.0.28 | linux x64 | simulator | 56 / 56 | ✅ OK |
 | agent_guider | 2026-09-24 12:56 | 3.0.0.48 | linux x64 | simulator | 88 / 88 | ✅ OK |

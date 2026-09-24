@@ -12,6 +12,7 @@
 **/.indigo_sdk_host
 **/*.log
 !indigo_libs/externals/libjpeg/change.log
+!indigo_drivers/agent_alpaca/conformu/**/*.log
 **/a.out
 *.deb
 **/configure~

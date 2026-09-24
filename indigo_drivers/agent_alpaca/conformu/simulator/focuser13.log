@@ -1,0 +1,79 @@
+00:40:47.721 ASCOM Universal Device Conformance Checker Version 4.5.0.53834, Build time: Thu 06 August 2026 12:47:41          
+00:40:47.722                                              
+00:40:47.723 Operating system is macOS 26.7.0, Processor is ARM 64bit, Application is 64bit.          
+00:40:47.723                                              
+00:40:47.723 Alpaca device:  (localhost:7678 Focuser/13)          
+00:40:47.723                                              
+00:40:47.724 CreateDevice                        INFO     Creating Alpaca device: IP address: localhost, IP Port: 7678, Alpaca device number: 13
+00:40:47.730 CreateDevice                        INFO     Alpaca device created OK
+00:40:47.730 CreateDevice                        INFO     Successfully created driver
+00:40:48.792 CreateDevice                        OK       Found a valid interface version: 3
+00:40:48.792 CreateDevice                        OK       Driver instance created successfully
+00:40:48.792                                              
+00:40:48.792 Connect to device                            
+00:40:48.868 Connected                           OK       Connected to device successfully using Connected = True
+00:40:48.868                                              
+00:40:48.872 Common Driver Methods                        
+00:40:48.873 InterfaceVersion                    OK       3
+00:40:48.874 Connected                           OK       True
+00:40:48.876 Description                         OK       Ultimate Powerbox 3 (focuser)
+00:40:48.876 DriverInfo                          OK       indigo_aux_upb3
+00:40:48.876 DriverVersion                       OK       3.0.0.5
+00:40:48.877 Name                                OK       Ultimate Powerbox 3 (focuser)
+00:40:48.877                                              
+00:40:48.878 SupportedActions                    OK       Driver returned an empty action list
+00:40:48.878 Action                              INFO     Conform cannot test the Action method
+00:40:48.878                                              
+00:40:48.878 DeviceState                         INFO     DeviceState tests omitted - DeviceState is not a member of this interface version.
+00:40:48.878                                              
+00:40:48.878 Properties                                   
+00:40:48.879 Absolute                            OK       True
+00:40:48.880 IsMoving                            OK       False
+00:40:48.892 MaxStep                             OK       9999999
+00:40:48.892 MaxIncrement                        OK       9999999
+00:40:48.893 Position                            OK       0
+00:40:48.911 StepSize                            OK       Optional member returned a NotImplementedException error.
+00:40:48.913 TempCompAvailable                   OK       False
+00:40:48.913 TempComp Read                       OK       False
+00:40:48.914 TempComp Write                      OK       Temperature compensation is not available and a NotImplementedException error was generated as expected
+00:40:48.915 Temperature                         OK       22,5
+00:40:48.915                                              
+00:40:48.915 Methods                                      
+00:40:48.916 Halt                                OK       Focuser halted OK
+00:41:48.925 Move                                ISSUE    Unexpected error: The "Moving focuser" operation exceeded its 60 second timeout.
+00:41:48.925                                              
+00:41:48.926 Disconnect from device                       
+00:41:48.988 Connected                           OK       False
+00:41:48.988                                              
+00:41:48.988 Conformance test has finished                
+00:41:48.988                                              
+00:41:48.988 Your device had 1 issue, 0 errors and 0 configuration alerts          
+00:41:48.989                                              
+00:41:48.989 Issue Summary                                
+00:41:48.989 Move                                ISSUE    Unexpected error: The "Moving focuser" operation exceeded its 60 second timeout.
+00:41:48.989                                     
+00:41:48.989 Timing Summary                               See Help for further information.
+00:41:48.989 Timing Summary                               FAST target response time: 0,1 seconds, (configuration and state reporting members).
+00:41:48.989 Timing Summary                               STANDARD target response time: 1,0 second, (property write and asynchronous initiators).
+00:41:48.990 Timing Summary                               EXTENDED target response time: 600,0 seconds, (synchronous methods, ImageArray and ImageArrayVariant).
+00:41:48.990 Timing Summary                               Conform is configured to report both good and bad timing outcomes.
+00:41:48.990                                              
+00:41:48.990 InterfaceVersion                             At 00:40:48.873 InterfaceVersion         0,000 seconds. ✓ (FAST)
+00:41:48.990 Connected                                    At 00:40:48.874 Connected                0,001 seconds. ✓ (FAST)
+00:41:48.990 Description                                  At 00:40:48.876 Description              0,001 seconds. ✓ (FAST)
+00:41:48.990 DriverInfo                                   At 00:40:48.876 DriverInfo               0,000 seconds. ✓ (FAST)
+00:41:48.990 DriverVersion                                At 00:40:48.876 DriverVersion            0,000 seconds. ✓ (FAST)
+00:41:48.990 Name                                         At 00:40:48.877 Name                     0,000 seconds. ✓ (FAST)
+00:41:48.990 SupportedActions                             At 00:40:48.878 SupportedActions         0,001 seconds. ✓ (FAST)
+00:41:48.990 Absolute                                     At 00:40:48.879 Absolute                 0,000 seconds. ✓ (FAST)
+00:41:48.991 IsMoving                                     At 00:40:48.880 IsMoving                 0,000 seconds. ✓ (FAST)
+00:41:48.991 MaxStep                                      At 00:40:48.892 MaxStep                  0,012 seconds. ✓ (FAST)
+00:41:48.991 MaxIncrement                                 At 00:40:48.892 MaxIncrement             0,000 seconds. ✓ (FAST)
+00:41:48.991 Position                                     At 00:40:48.893 Position                 0,000 seconds. ✓ (FAST)
+00:41:48.991 TempCompAvailable                            At 00:40:48.913 TempCompAvailable        0,001 seconds. ✓ (FAST)
+00:41:48.991 TempComp Read                                At 00:40:48.913 TempComp Read            0,000 seconds. ✓ (FAST)
+00:41:48.991 Temperature                                  At 00:40:48.915 Temperature              0,001 seconds. ✓ (FAST)
+00:41:48.991 Halt                                         At 00:40:48.916 Halt                     0,000 seconds. ✓ (STANDARD)
+00:41:48.991 Move to 999999                               At 00:40:48.918 Move to 999999           0,000 seconds. ✓ (STANDARD)
+00:41:48.991                                              
+00:41:48.992 Congratulations, all members returned within their target response times!!          

@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2025 CloudMakers, s. r. o.
+// Copyright (c) 2021-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -859,16 +859,36 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 					alpaca_device->ccd.starty = (int)(item->number.value / alpaca_device->ccd.biny);
 				} else if (!strcmp(item->name, CCD_FRAME_WIDTH_ITEM_NAME)) {
 					alpaca_device->ccd.numx = (int)(item->number.value / alpaca_device->ccd.binx);
+					// a camera without CCD_INFO (e.g. CCD File Simulator) reports its sensor size only as the frame limit
+					if (!alpaca_device->ccd.has_ccd_info) {
+						alpaca_device->ccd.cameraxsize = (int)item->number.max;
+					}
 				} else if (!strcmp(item->name, CCD_FRAME_HEIGHT_ITEM_NAME)) {
 					alpaca_device->ccd.numy = (int)(item->number.value / alpaca_device->ccd.biny);
+					if (!alpaca_device->ccd.has_ccd_info) {
+						alpaca_device->ccd.cameraysize = (int)item->number.max;
+					}
 				} else if (!strcmp(item->name, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME)) {
 					alpaca_device->ccd.electronsperadu = 1;
 					alpaca_device->ccd.fullwellcapacity = pow(2, item->number.value);
+					if (!alpaca_device->ccd.has_ccd_info) {
+						alpaca_device->ccd.maxadu = (int)pow(2, item->number.value);
+					}
+				}
+			}
+			if (!alpaca_device->ccd.has_ccd_info) {
+				// pixel size is unknown without CCD_INFO, use the same placeholder as for CCD_INFO reporting 0
+				if (alpaca_device->ccd.pixelsizex <= 0) {
+					alpaca_device->ccd.pixelsizex = 1;
+				}
+				if (alpaca_device->ccd.pixelsizey <= 0) {
+					alpaca_device->ccd.pixelsizey = 1;
 				}
 			}
 		}
 	} else if (!strcmp(property->name, CCD_INFO_PROPERTY_NAME)) {
 		if (property->state == INDIGO_OK_STATE) {
+			alpaca_device->ccd.has_ccd_info = true;
 			if (alpaca_device->ccd.binx == 0) {
 				alpaca_device->ccd.binx = 1;
 			}

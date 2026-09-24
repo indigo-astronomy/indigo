@@ -1,0 +1,60 @@
+00:50:40.452 ASCOM Universal Device Conformance Checker Version 4.5.0.53834, Build time: Thu 06 August 2026 12:47:41          
+00:50:40.452                                              
+00:50:40.453 Operating system is macOS 26.7.0, Processor is ARM 64bit, Application is 64bit.          
+00:50:40.453                                              
+00:50:40.453 Alpaca device:  (localhost:7683 Switch/2)          
+00:50:40.454                                              
+00:50:40.454 CreateDevice                        INFO     Creating Alpaca device: IP address: localhost, IP Port: 7683, Alpaca device number: 2
+00:50:40.461 CreateDevice                        INFO     Alpaca device created OK
+00:50:40.461 CreateDevice                        INFO     Successfully created driver
+00:50:41.526 CreateDevice                        OK       Found a valid interface version: 2
+00:50:41.526 CreateDevice                        OK       Driver instance created successfully
+00:50:41.526                                              
+00:50:41.526 Connect to device                            
+00:50:41.663 Connected                           OK       Connected to device successfully using Connected = True
+00:50:41.663                                              
+00:50:41.666 Common Driver Methods                        
+00:50:41.667 InterfaceVersion                    OK       2
+00:50:41.667 Connected                           OK       True
+00:50:41.669 Description                         OK       Mount LX200 (aux)
+00:50:41.669 DriverInfo                          OK       indigo_mount_lx200
+00:50:41.670 DriverVersion                       OK       3.0.0.65
+00:50:41.670 Name                                OK       Mount LX200 (aux)
+00:50:41.670                                              
+00:50:41.672 SupportedActions                    OK       Driver returned an empty action list
+00:50:41.672 Action                              INFO     Conform cannot test the Action method
+00:50:41.672                                              
+00:50:41.672 DeviceState                         INFO     DeviceState tests omitted - DeviceState is not a member of this interface version.
+00:50:41.672                                              
+00:50:41.672 Properties                                   
+00:50:41.673 MaxSwitch                           ISSUE    Invalid value: 0
+00:50:41.673                                              
+00:50:41.673 Methods                                      
+00:50:41.683 SwitchCheckMethods                  INFO     Skipping further tests as there is no valid value for MaxSwitch
+00:50:41.683                                              
+00:50:41.683 Disconnect from device                       
+00:50:41.910 Connected                           OK       False
+00:50:41.910                                              
+00:50:41.910 Conformance test has finished                
+00:50:41.910                                              
+00:50:41.911 Your device had 1 issue, 0 errors and 0 configuration alerts          
+00:50:41.911                                              
+00:50:41.911 Issue Summary                                
+00:50:41.911 MaxSwitch                           ISSUE    Invalid value: 0
+00:50:41.911                                     
+00:50:41.911 Timing Summary                               See Help for further information.
+00:50:41.911 Timing Summary                               FAST target response time: 0,1 seconds, (configuration and state reporting members).
+00:50:41.911 Timing Summary                               STANDARD target response time: 1,0 second, (property write and asynchronous initiators).
+00:50:41.911 Timing Summary                               EXTENDED target response time: 600,0 seconds, (synchronous methods, ImageArray and ImageArrayVariant).
+00:50:41.911 Timing Summary                               Conform is configured to report both good and bad timing outcomes.
+00:50:41.911                                              
+00:50:41.911 InterfaceVersion                             At 00:50:41.667 InterfaceVersion          0,000 seconds. ✓ (FAST)
+00:50:41.911 Connected                                    At 00:50:41.667 Connected                 0,000 seconds. ✓ (FAST)
+00:50:41.911 Description                                  At 00:50:41.669 Description               0,001 seconds. ✓ (FAST)
+00:50:41.911 DriverInfo                                   At 00:50:41.669 DriverInfo                0,000 seconds. ✓ (FAST)
+00:50:41.911 DriverVersion                                At 00:50:41.670 DriverVersion             0,000 seconds. ✓ (FAST)
+00:50:41.911 Name                                         At 00:50:41.670 Name                      0,000 seconds. ✓ (FAST)
+00:50:41.911 SupportedActions                             At 00:50:41.672 SupportedActions          0,001 seconds. ✓ (FAST)
+00:50:41.911 MaxSwitch                                    At 00:50:41.673 MaxSwitch                 0,000 seconds. ✓ (FAST)
+00:50:41.911                                              
+00:50:41.911 Congratulations, all members returned within their target response times!!          

@@ -1,0 +1,19 @@
+00:56:26.260 Check Alpaca Protocol - Conform Universal 4.5.0 (Build 53834.49ab847) 
+00:56:26.260                                     
+00:56:26.260 Test Switch device:  - localhost:7679 through URL: http://localhost:7679 
+00:56:26.260                                     
+00:56:26.263 OK messages are suppressed, they can be enabled through the Alpaca and COM settings page. 
+00:56:26.263                                     
+00:56:26.263 Connecting to device...             
+00:56:26.355                                     
+00:56:26.355 Successfully connected to device, disconnecting in order to test that connection using a different PUT parameter order is successful... 
+00:56:26.413                                     
+00:56:26.413 Successfully disconnected from device, re-connecting using re-ordered PUT parameters... 
+00:56:26.413                                     
+00:56:26.470 Successfully connected to device using re-ordered PUT parameters, testing device... 
+00:56:26.470                                     
+00:56:26.475 Device exposes interface version 2  
+00:56:51.913                                     
+00:56:51.914 Successfully disconnected from device. 
+00:56:51.914                                     
+00:56:51.914 Congratulations there were no errors, issues or information alerts - Your device passes ASCOM Alpaca protocol validation!! 

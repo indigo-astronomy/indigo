@@ -1,0 +1,581 @@
+00:50:50.743 Check Alpaca Protocol - Conform Universal 4.5.0 (Build 53834.49ab847) 
+00:50:50.744                                     
+00:50:50.744 Test Switch device:  - localhost:7683 through URL: http://localhost:7683 
+00:50:50.744                                     
+00:50:50.747 OK messages are suppressed, they can be enabled through the Alpaca and COM settings page. 
+00:50:50.747                                     
+00:50:50.747 Connecting to device...             
+00:50:50.952                                     
+00:50:50.952 Successfully connected to device, disconnecting in order to test that connection using a different PUT parameter order is successful... 
+00:50:51.106                                     
+00:50:51.106 Successfully disconnected from device, re-connecting using re-ordered PUT parameters... 
+00:50:51.106                                     
+00:50:51.268 Successfully connected to device using re-ordered PUT parameters, testing device... 
+00:50:51.268                                     
+00:50:51.272 Device exposes interface version 2  
+00:50:51.337 GET CanWrite                        INFO     Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.337 GET CanWrite                        INFO     Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.338 GET CanWrite                        INFO     Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.338 GET CanWrite                        INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.338 GET CanWrite                        INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.339 GET CanWrite                        INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.339 GET CanWrite                        INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.339 GET CanWrite                        INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.340 GET CanWrite                        INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.340 GET CanWrite                        INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.340 GET CanWrite                        INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.340 GET CanWrite                        INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.341 GET CanWrite                        INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.341 GET GetSwitch                       INFO     Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.341 GET GetSwitch                       INFO     Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.342 GET GetSwitch                       INFO     Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.342 GET GetSwitch                       INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.342 GET GetSwitch                       INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.343 GET GetSwitch                       INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.343 GET GetSwitch                       INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.343 GET GetSwitch                       INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.343 GET GetSwitch                       INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.344 GET GetSwitch                       INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.344 GET GetSwitch                       INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.344 GET GetSwitch                       INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.345 GET GetSwitch                       INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.847 GET GetSwitchDescription            INFO     Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.847 GET GetSwitchDescription            INFO     Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.848 GET GetSwitchDescription            INFO     Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.848 GET GetSwitchDescription            INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.848 GET GetSwitchDescription            INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.848 GET GetSwitchDescription            INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.849 GET GetSwitchDescription            INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.849 GET GetSwitchDescription            INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.849 GET GetSwitchDescription            INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.849 GET GetSwitchDescription            INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.850 GET GetSwitchDescription            INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.850 GET GetSwitchDescription            INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.850 GET GetSwitchDescription            INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.850 GET GetSwitchName                   INFO     Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.851 GET GetSwitchName                   INFO     Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.851 GET GetSwitchName                   INFO     Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.851 GET GetSwitchName                   INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.852 GET GetSwitchName                   INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.852 GET GetSwitchName                   INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.852 GET GetSwitchName                   INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.852 GET GetSwitchName                   INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.853 GET GetSwitchName                   INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.853 GET GetSwitchName                   INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.853 GET GetSwitchName                   INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.853 GET GetSwitchName                   INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.854 GET GetSwitchName                   INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.854 GET GetSwitchValue                  INFO     Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.854 GET GetSwitchValue                  INFO     Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.855 GET GetSwitchValue                  INFO     Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.855 GET GetSwitchValue                  INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.855 GET GetSwitchValue                  INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.855 GET GetSwitchValue                  INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.856 GET GetSwitchValue                  INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.856 GET GetSwitchValue                  INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.856 GET GetSwitchValue                  INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.856 GET GetSwitchValue                  INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.857 GET GetSwitchValue                  INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.857 GET GetSwitchValue                  INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:51.857 GET GetSwitchValue                  INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.359 GET MinSwitchValue                  INFO     Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.359 GET MinSwitchValue                  INFO     Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.360 GET MinSwitchValue                  INFO     Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.360 GET MinSwitchValue                  INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.360 GET MinSwitchValue                  INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.361 GET MinSwitchValue                  INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.361 GET MinSwitchValue                  INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.361 GET MinSwitchValue                  INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.361 GET MinSwitchValue                  INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.361 GET MinSwitchValue                  INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.362 GET MinSwitchValue                  INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.362 GET MinSwitchValue                  INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.362 GET MinSwitchValue                  INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.362 GET MaxSwitchValue                  INFO     Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.363 GET MaxSwitchValue                  INFO     Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.363 GET MaxSwitchValue                  INFO     Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.363 GET MaxSwitchValue                  INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.363 GET MaxSwitchValue                  INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.364 GET MaxSwitchValue                  INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.364 GET MaxSwitchValue                  INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.364 GET MaxSwitchValue                  INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.364 GET MaxSwitchValue                  INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.364 GET MaxSwitchValue                  INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.365 GET MaxSwitchValue                  INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.365 GET MaxSwitchValue                  INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.365 GET MaxSwitchValue                  INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.396 PUT SetSwitch                       INFO     Parameters Id and State (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.396 PUT SetSwitch                       INFO     Parameters Id and State (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.397 PUT SetSwitch                       INFO     Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.397 PUT SetSwitch                       INFO     Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.398 PUT SetSwitch                       INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.398 PUT SetSwitch                       INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.398 PUT SetSwitch                       INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.398 PUT SetSwitch                       INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.399 PUT SetSwitch                       INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.399 PUT SetSwitch                       INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.399 PUT SetSwitch                       INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:52.399 PUT SetSwitch                       INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.403 PUT SetSwitchName                   INFO     Parameters Id and Name (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.403 PUT SetSwitchName                   INFO     Parameters Id and Name (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.405 PUT SetSwitchName                   INFO     Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.406 PUT SetSwitchName                   INFO     Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.406 PUT SetSwitchName                   INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.407 PUT SetSwitchName                   INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.408 PUT SetSwitchName                   INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.408 PUT SetSwitchName                   INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.408 PUT SetSwitchName                   INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.409 PUT SetSwitchName                   INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.409 PUT SetSwitchName                   INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.409 PUT SetSwitchName                   INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.420 PUT SetSwitchValue                  INFO     Parameters Id and Value (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.420 PUT SetSwitchValue                  INFO     Parameters Id and Value (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.422 PUT SetSwitchValue                  INFO     Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.422 PUT SetSwitchValue                  INFO     Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.422 PUT SetSwitchValue                  INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.422 PUT SetSwitchValue                  INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.423 PUT SetSwitchValue                  INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.423 PUT SetSwitchValue                  INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.423 PUT SetSwitchValue                  INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.424 PUT SetSwitchValue                  INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.424 PUT SetSwitchValue                  INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:55.424 PUT SetSwitchValue                  INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:58.426 GET SwitchStep                      INFO     Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:58.426 GET SwitchStep                      INFO     Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:58.427 GET SwitchStep                      INFO     Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:58.428 GET SwitchStep                      INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:58.428 GET SwitchStep                      INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:58.429 GET SwitchStep                      INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:58.429 GET SwitchStep                      INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:58.430 GET SwitchStep                      INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:58.430 GET SwitchStep                      INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:58.431 GET SwitchStep                      INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:58.431 GET SwitchStep                      INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:58.431 GET SwitchStep                      INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:58.432 GET SwitchStep                      INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:58.491                                     
+00:50:58.491 Successfully disconnected from device. 
+00:50:58.491                                     
+00:50:58.491 Found 0 errors, 0 issues and 140 information messages. 
+00:50:58.491                                     
+00:50:58.491 Information Message Summary         
+00:50:58.491 GET CanWrite ==> Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 105. Error message: Invalid value
+ 
+00:50:58.491 GET CanWrite ==> Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 106. Error message: Invalid value
+ 
+00:50:58.491 GET CanWrite ==> Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 107. Error message: Invalid value
+ 
+00:50:58.491 GET CanWrite ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 108. Error message: Invalid value
+ 
+00:50:58.491 GET CanWrite ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 109. Error message: Invalid value
+ 
+00:50:58.491 GET CanWrite ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 110. Error message: Invalid value
+ 
+00:50:58.491 GET CanWrite ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 111. Error message: Invalid value
+ 
+00:50:58.491 GET CanWrite ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 112. Error message: Invalid value
+ 
+00:50:58.491 GET CanWrite ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 113. Error message: Invalid value
+ 
+00:50:58.491 GET CanWrite ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 114. Error message: Invalid value
+ 
+00:50:58.491 GET CanWrite ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 115. Error message: Invalid value
+ 
+00:50:58.491 GET CanWrite ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 116. Error message: Invalid value
+ 
+00:50:58.491 GET CanWrite ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 117. Error message: Invalid value
+ 
+00:50:58.491 GET GetSwitch ==> Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 118. Error message: Invalid value
+ 
+00:50:58.491 GET GetSwitch ==> Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 119. Error message: Invalid value
+ 
+00:50:58.491 GET GetSwitch ==> Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 120. Error message: Invalid value
+ 
+00:50:58.491 GET GetSwitch ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 121. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitch ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 122. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitch ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 123. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitch ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 124. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitch ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 125. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitch ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 126. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitch ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 127. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitch ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 128. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitch ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 129. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitch ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 130. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchDescription ==> Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 131. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchDescription ==> Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 132. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchDescription ==> Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 133. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchDescription ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 134. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchDescription ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 135. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchDescription ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 136. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchDescription ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 137. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchDescription ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 138. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchDescription ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 139. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchDescription ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 140. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchDescription ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 141. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchDescription ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 142. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchDescription ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 143. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchName ==> Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 144. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchName ==> Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 145. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchName ==> Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 146. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchName ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 147. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchName ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 148. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchName ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 149. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchName ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 150. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchName ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 151. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchName ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 152. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchName ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 153. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchName ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 154. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchName ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 155. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchName ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 156. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchValue ==> Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 157. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchValue ==> Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 158. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchValue ==> Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 159. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchValue ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 160. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchValue ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 161. Error message: Invalid value
+ 
+00:50:58.492 GET GetSwitchValue ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 162. Error message: Invalid value
+ 
+00:50:58.493 GET GetSwitchValue ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 163. Error message: Invalid value
+ 
+00:50:58.493 GET GetSwitchValue ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 164. Error message: Invalid value
+ 
+00:50:58.493 GET GetSwitchValue ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 165. Error message: Invalid value
+ 
+00:50:58.493 GET GetSwitchValue ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 166. Error message: Invalid value
+ 
+00:50:58.493 GET GetSwitchValue ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 167. Error message: Invalid value
+ 
+00:50:58.493 GET GetSwitchValue ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 168. Error message: Invalid value
+ 
+00:50:58.493 GET GetSwitchValue ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 169. Error message: Invalid value
+ 
+00:50:58.493 GET MinSwitchValue ==> Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 170. Error message: Invalid value
+ 
+00:50:58.493 GET MinSwitchValue ==> Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 171. Error message: Invalid value
+ 
+00:50:58.493 GET MinSwitchValue ==> Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 172. Error message: Invalid value
+ 
+00:50:58.493 GET MinSwitchValue ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 173. Error message: Invalid value
+ 
+00:50:58.493 GET MinSwitchValue ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 174. Error message: Invalid value
+ 
+00:50:58.493 GET MinSwitchValue ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 175. Error message: Invalid value
+ 
+00:50:58.493 GET MinSwitchValue ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 176. Error message: Invalid value
+ 
+00:50:58.493 GET MinSwitchValue ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 177. Error message: Invalid value
+ 
+00:50:58.493 GET MinSwitchValue ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 178. Error message: Invalid value
+ 
+00:50:58.493 GET MinSwitchValue ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 179. Error message: Invalid value
+ 
+00:50:58.493 GET MinSwitchValue ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 180. Error message: Invalid value
+ 
+00:50:58.493 GET MinSwitchValue ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 181. Error message: Invalid value
+ 
+00:50:58.493 GET MinSwitchValue ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 182. Error message: Invalid value
+ 
+00:50:58.493 GET MaxSwitchValue ==> Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 183. Error message: Invalid value
+ 
+00:50:58.493 GET MaxSwitchValue ==> Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 184. Error message: Invalid value
+ 
+00:50:58.493 GET MaxSwitchValue ==> Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 185. Error message: Invalid value
+ 
+00:50:58.493 GET MaxSwitchValue ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 186. Error message: Invalid value
+ 
+00:50:58.493 GET MaxSwitchValue ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 187. Error message: Invalid value
+ 
+00:50:58.493 GET MaxSwitchValue ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 188. Error message: Invalid value
+ 
+00:50:58.493 GET MaxSwitchValue ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 189. Error message: Invalid value
+ 
+00:50:58.493 GET MaxSwitchValue ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 190. Error message: Invalid value
+ 
+00:50:58.493 GET MaxSwitchValue ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 191. Error message: Invalid value
+ 
+00:50:58.493 GET MaxSwitchValue ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 192. Error message: Invalid value
+ 
+00:50:58.493 GET MaxSwitchValue ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 193. Error message: Invalid value
+ 
+00:50:58.493 GET MaxSwitchValue ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 194. Error message: Invalid value
+ 
+00:50:58.493 GET MaxSwitchValue ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 195. Error message: Invalid value
+ 
+00:50:58.493 PUT SetSwitch ==> Parameters Id and State (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 198. Error message: Invalid value
+ 
+00:50:58.493 PUT SetSwitch ==> Parameters Id and State (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 199. Error message: Invalid value
+ 
+00:50:58.493 PUT SetSwitch ==> Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 200. Error message: Invalid value
+ 
+00:50:58.493 PUT SetSwitch ==> Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 201. Error message: Invalid value
+ 
+00:50:58.493 PUT SetSwitch ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 202. Error message: Invalid value
+ 
+00:50:58.493 PUT SetSwitch ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 203. Error message: Invalid value
+ 
+00:50:58.493 PUT SetSwitch ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 204. Error message: Invalid value
+ 
+00:50:58.493 PUT SetSwitch ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 205. Error message: Invalid value
+ 
+00:50:58.493 PUT SetSwitch ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 206. Error message: Invalid value
+ 
+00:50:58.493 PUT SetSwitch ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 207. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitch ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 208. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitch ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 209. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchName ==> Parameters Id and Name (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 211. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchName ==> Parameters Id and Name (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 212. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchName ==> Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 213. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchName ==> Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 214. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchName ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 215. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchName ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 216. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchName ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 217. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchName ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 218. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchName ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 219. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchName ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 220. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchName ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 221. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchName ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 222. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchValue ==> Parameters Id and Value (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 225. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchValue ==> Parameters Id and Value (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 226. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchValue ==> Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 227. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchValue ==> Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 228. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchValue ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 229. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchValue ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 230. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchValue ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 231. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchValue ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 232. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchValue ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 233. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchValue ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 234. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchValue ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 235. Error message: Invalid value
+ 
+00:50:58.494 PUT SetSwitchValue ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 236. Error message: Invalid value
+ 
+00:50:58.494 GET SwitchStep ==> Parameter Id (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 237. Error message: Invalid value
+ 
+00:50:58.494 GET SwitchStep ==> Parameter Id (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 238. Error message: Invalid value
+ 
+00:50:58.494 GET SwitchStep ==> Parameter Id (Inverted casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 239. Error message: Invalid value
+ 
+00:50:58.494 GET SwitchStep ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 240. Error message: Invalid value
+ 
+00:50:58.494 GET SwitchStep ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 241. Error message: Invalid value
+ 
+00:50:58.494 GET SwitchStep ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 242. Error message: Invalid value
+ 
+00:50:58.494 GET SwitchStep ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 243. Error message: Invalid value
+ 
+00:50:58.494 GET SwitchStep ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 244. Error message: Invalid value
+ 
+00:50:58.494 GET SwitchStep ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 67890, server transaction: 245. Error message: Invalid value
+ 
+00:50:58.494 GET SwitchStep ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 246. Error message: Invalid value
+ 
+00:50:58.494 GET SwitchStep ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 247. Error message: Invalid value
+ 
+00:50:58.495 GET SwitchStep ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 248. Error message: Invalid value
+ 
+00:50:58.495 GET SwitchStep ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidValue error (0x00000401) for client transaction: 0, server transaction: 249. Error message: Invalid value
+ 

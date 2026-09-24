@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2025 CloudMakers, s. r. o.
+// Copyright (c) 2021-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -84,6 +84,7 @@ char *indigo_alpaca_error_string(int code) {
 void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property) {
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
 		alpaca_device->connection_failed = property->state == INDIGO_ALERT_STATE;
+		alpaca_device->connection_busy = property->state == INDIGO_BUSY_STATE;
 		if (property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
@@ -100,7 +101,6 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 			alpaca_device->connected = false;
 		}
 	} else if (!strcmp(property->name, UTC_TIME_PROPERTY_NAME)) {
-		alpaca_device->mount.cansetguiderates = true;
 		if (property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
@@ -112,6 +112,8 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 			}
 		}
 	} else if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
+		alpaca_device->geographic_coordinates_busy = property->state == INDIGO_BUSY_STATE;
+		alpaca_device->geographic_coordinates_failed = property->state == INDIGO_ALERT_STATE;
 		if (property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
@@ -259,8 +261,9 @@ static indigo_alpaca_error alpaca_get_elevation(indigo_alpaca_device *device, in
 }
 
 static indigo_alpaca_error wait_for_connection(indigo_alpaca_device *device, bool value) {
+	// BUSY CONNECTION already reads as disconnected, the change is complete only when it settles
 	for (int i = 0; i < 300; i++) {
-		if (device->connected == value) {
+		if (device->connected == value && !device->connection_busy) {
 			return indigo_alpaca_error_OK;
 		}
 		if (device->connection_failed) {
@@ -289,6 +292,17 @@ static indigo_alpaca_error alpaca_set_connected(indigo_alpaca_device *device, in
 	return result;
 }
 
+// a site change is complete only when the driver has processed it, a serial mount answers after the request returns
+static indigo_alpaca_error wait_for_geographic_coordinates(indigo_alpaca_device *device) {
+	for (int i = 0; i < 100; i++) {
+		if (!device->geographic_coordinates_busy) {
+			return device->geographic_coordinates_failed ? indigo_alpaca_error_ValueNotSet : indigo_alpaca_error_OK;
+		}
+		indigo_usleep(100000);
+	}
+	return indigo_alpaca_error_ValueNotSet;
+}
+
 static indigo_alpaca_error alpaca_set_latitude(indigo_alpaca_device *device, int version, double value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
@@ -299,9 +313,10 @@ static indigo_alpaca_error alpaca_set_latitude(indigo_alpaca_device *device, int
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
+	device->geographic_coordinates_busy = true;
 	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, value);
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_OK;
+	return wait_for_geographic_coordinates(device);
 }
 
 static indigo_alpaca_error alpaca_set_longitude(indigo_alpaca_device *device, int version, double value) {
@@ -317,9 +332,10 @@ static indigo_alpaca_error alpaca_set_longitude(indigo_alpaca_device *device, in
 	if (value < 0) {
 		value += 360;
 	}
+	device->geographic_coordinates_busy = true;
 	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, value);
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_OK;
+	return wait_for_geographic_coordinates(device);
 }
 
 static indigo_alpaca_error alpaca_set_elevation(indigo_alpaca_device *device, int version, double value) {
@@ -332,9 +348,10 @@ static indigo_alpaca_error alpaca_set_elevation(indigo_alpaca_device *device, in
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
+	device->geographic_coordinates_busy = true;
 	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, value);
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_OK;
+	return wait_for_geographic_coordinates(device);
 }
 
 

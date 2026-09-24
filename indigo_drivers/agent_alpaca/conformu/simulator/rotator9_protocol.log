@@ -1,0 +1,19 @@
+00:46:04.477 Check Alpaca Protocol - Conform Universal 4.5.0 (Build 53834.49ab847) 
+00:46:04.478                                     
+00:46:04.478 Test Rotator device:  - localhost:7679 through URL: http://localhost:7679 
+00:46:04.478                                     
+00:46:04.481 OK messages are suppressed, they can be enabled through the Alpaca and COM settings page. 
+00:46:04.481                                     
+00:46:04.481 Connecting to device...             
+00:46:04.575                                     
+00:46:04.575 Successfully connected to device, disconnecting in order to test that connection using a different PUT parameter order is successful... 
+00:46:04.634                                     
+00:46:04.634 Successfully disconnected from device, re-connecting using re-ordered PUT parameters... 
+00:46:04.634                                     
+00:46:04.691 Successfully connected to device using re-ordered PUT parameters, testing device... 
+00:46:04.691                                     
+00:46:04.695 Device exposes interface version 1  
+00:46:04.885                                     
+00:46:04.885 Successfully disconnected from device. 
+00:46:04.885                                     
+00:46:04.885 Congratulations there were no errors, issues or information alerts - Your device passes ASCOM Alpaca protocol validation!! 

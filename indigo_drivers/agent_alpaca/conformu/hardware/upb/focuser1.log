@@ -1,0 +1,79 @@
+01:18:30.580 ASCOM Universal Device Conformance Checker Version 4.5.0.53834, Build time: Thu 06 August 2026 12:47:41          
+01:18:30.581                                              
+01:18:30.582 Operating system is macOS 26.7.0, Processor is ARM 64bit, Application is 64bit.          
+01:18:30.582                                              
+01:18:30.582 Alpaca device:  (localhost:7684 Focuser/1)          
+01:18:30.582                                              
+01:18:30.582 CreateDevice                        INFO     Creating Alpaca device: IP address: localhost, IP Port: 7684, Alpaca device number: 1
+01:18:30.589 CreateDevice                        INFO     Alpaca device created OK
+01:18:30.589 CreateDevice                        INFO     Successfully created driver
+01:18:31.647 CreateDevice                        OK       Found a valid interface version: 3
+01:18:31.647 CreateDevice                        OK       Driver instance created successfully
+01:18:31.647                                              
+01:18:31.647 Connect to device                            
+01:18:32.156 Connected                           OK       Connected to device successfully using Connected = True
+01:18:32.156                                              
+01:18:32.160 Common Driver Methods                        
+01:18:32.160 InterfaceVersion                    OK       3
+01:18:32.161 Connected                           OK       True
+01:18:32.162 Description                         OK       Ultimate Powerbox (focuser)
+01:18:32.163 DriverInfo                          OK       indigo_aux_upb
+01:18:32.163 DriverVersion                       OK       3.0.0.28
+01:18:32.163 Name                                OK       Ultimate Powerbox (focuser)
+01:18:32.163                                              
+01:18:32.164 SupportedActions                    OK       Driver returned an empty action list
+01:18:32.164 Action                              INFO     Conform cannot test the Action method
+01:18:32.164                                              
+01:18:32.165 DeviceState                         INFO     DeviceState tests omitted - DeviceState is not a member of this interface version.
+01:18:32.165                                              
+01:18:32.165 Properties                                   
+01:18:32.166 Absolute                            OK       True
+01:18:32.166 IsMoving                            OK       False
+01:18:32.177 MaxStep                             OK       19999998
+01:18:32.177 MaxIncrement                        OK       19999998
+01:18:32.178 Position                            OK       10001499
+01:18:32.195 StepSize                            OK       Optional member returned a NotImplementedException error.
+01:18:32.197 TempCompAvailable                   OK       False
+01:18:32.197 TempComp Read                       OK       False
+01:18:32.197 TempComp Write                      OK       Temperature compensation is not available and a NotImplementedException error was generated as expected
+01:18:32.199 Temperature                         OK       0
+01:18:32.199                                              
+01:18:32.199 Methods                                      
+01:18:32.200 Halt                                OK       Focuser halted OK
+01:18:32.711 Move - TempComp False               ISSUE    Move ended at 10001499, which is 1999999 steps away from the expected position 12001498. This is outside Conform's configured move tolerance: 2.
+01:18:32.712                                              
+01:18:32.712 Disconnect from device                       
+01:18:32.872 Connected                           OK       False
+01:18:32.872                                              
+01:18:32.872 Conformance test has finished                
+01:18:32.872                                              
+01:18:32.872 Your device had 1 issue, 0 errors and 0 configuration alerts          
+01:18:32.872                                              
+01:18:32.872 Issue Summary                                
+01:18:32.872 Move - TempComp False               ISSUE    Move ended at 10001499, which is 1999999 steps away from the expected position 12001498. This is outside Conform's configured move tolerance: 2.
+01:18:32.872                                     
+01:18:32.872 Timing Summary                               See Help for further information.
+01:18:32.872 Timing Summary                               FAST target response time: 0,1 seconds, (configuration and state reporting members).
+01:18:32.872 Timing Summary                               STANDARD target response time: 1,0 second, (property write and asynchronous initiators).
+01:18:32.872 Timing Summary                               EXTENDED target response time: 600,0 seconds, (synchronous methods, ImageArray and ImageArrayVariant).
+01:18:32.872 Timing Summary                               Conform is configured to report both good and bad timing outcomes.
+01:18:32.873                                              
+01:18:32.873 InterfaceVersion                             At 01:18:32.160 InterfaceVersion         0,000 seconds. ✓ (FAST)
+01:18:32.873 Connected                                    At 01:18:32.161 Connected                0,000 seconds. ✓ (FAST)
+01:18:32.873 Description                                  At 01:18:32.162 Description              0,001 seconds. ✓ (FAST)
+01:18:32.873 DriverInfo                                   At 01:18:32.163 DriverInfo               0,000 seconds. ✓ (FAST)
+01:18:32.873 DriverVersion                                At 01:18:32.163 DriverVersion            0,000 seconds. ✓ (FAST)
+01:18:32.873 Name                                         At 01:18:32.163 Name                     0,000 seconds. ✓ (FAST)
+01:18:32.873 SupportedActions                             At 01:18:32.164 SupportedActions         0,001 seconds. ✓ (FAST)
+01:18:32.873 Absolute                                     At 01:18:32.166 Absolute                 0,000 seconds. ✓ (FAST)
+01:18:32.873 IsMoving                                     At 01:18:32.166 IsMoving                 0,000 seconds. ✓ (FAST)
+01:18:32.873 MaxStep                                      At 01:18:32.177 MaxStep                  0,011 seconds. ✓ (FAST)
+01:18:32.873 MaxIncrement                                 At 01:18:32.177 MaxIncrement             0,000 seconds. ✓ (FAST)
+01:18:32.873 Position                                     At 01:18:32.178 Position                 0,000 seconds. ✓ (FAST)
+01:18:32.873 TempCompAvailable                            At 01:18:32.196 TempCompAvailable        0,000 seconds. ✓ (FAST)
+01:18:32.873 TempComp Read                                At 01:18:32.197 TempComp Read            0,000 seconds. ✓ (FAST)
+01:18:32.873 Temperature                                  At 01:18:32.199 Temperature              0,001 seconds. ✓ (FAST)
+01:18:32.873 Halt                                         At 01:18:32.200 Halt                     0,001 seconds. ✓ (STANDARD)
+01:18:32.873 Move to 12001498                             At 01:18:32.202 Move to 12001498         0,000 seconds. ✓ (STANDARD)
+01:18:32.873                                              
+01:18:32.873 Congratulations, all members returned within their target response times!!          

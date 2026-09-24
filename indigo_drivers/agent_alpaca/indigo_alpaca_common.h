@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2025 CloudMakers, s. r. o.
+// Copyright (c) 2021-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -63,10 +63,13 @@ typedef struct indigo_alpaca_device_struct {
 	pthread_mutex_t mutex;
 	bool connected;
 	bool connection_failed;
+	bool connection_busy;
 	char utcdate[64];
 	double latitude;
 	double longitude;
 	double elevation;
+	bool geographic_coordinates_busy;
+	bool geographic_coordinates_failed;
 	struct indigo_alpaca_device_struct *guider_device;
 	union {
 		struct {
@@ -79,6 +82,7 @@ typedef struct indigo_alpaca_device_struct {
 			int camerastate;
 			int cameraxsize;
 			int cameraysize;
+			bool has_ccd_info;
 			int startx;
 			int starty;
 			int numx;
@@ -161,6 +165,8 @@ typedef struct indigo_alpaca_device_struct {
 			double targetdeclination;
 			double targetrightascension;
 			bool slewing;
+			bool coordinates_failed;
+			unsigned coordinates_updates;
 			bool tracking;
 			int trackingrate;
 			bool trackingrates[4];
@@ -276,6 +282,7 @@ INDIGO_EXTERN long indigo_alpaca_focuser_set_command(indigo_alpaca_device *alpac
 INDIGO_EXTERN void indigo_alpaca_mount_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
 INDIGO_EXTERN long indigo_alpaca_mount_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
 INDIGO_EXTERN long indigo_alpaca_mount_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+INDIGO_EXTERN long indigo_alpaca_mount_get_destinationsideofpier(indigo_alpaca_device *alpaca_device, int version, double ra, double dec, char *buffer, long buffer_length);
 
 INDIGO_EXTERN void indigo_alpaca_guider_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
 INDIGO_EXTERN long indigo_alpaca_guider_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
