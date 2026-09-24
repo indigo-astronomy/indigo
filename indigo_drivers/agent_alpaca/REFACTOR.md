@@ -134,6 +134,39 @@ The original agent was built from `HEAD` (`git archive`) into a scratch director
 
 **Discovered during A6: an incorrect build dependency.** `Makefile.drv` does not rebuild objects when `indigo_alpaca_common.h` changes. After the structure layout changed, stale objects crashed `indigo_server` (SIGSEGV in `alpaca_set_connected`, captured with gdb). A clean rebuild (`make -f ../../Makefile.drv clean`) is required after header changes. This is a repository build issue, not an agent defect.
 
+## 7a. MOUNT_SIDE_OF_PIER semantics across INDIGO (analysis, 2026-09-24)
+
+This analysis follows up the open SideOfPier question in section 5.3. It is based on source and protocol documentation only; no hardware was used. ASCOM and INDI both define **EAST as "OTA on the east side of the pier, pointing west"**, which is the normal (non-flipped) state for HA > 0.
+
+| Component | Where EAST/WEST comes from | Semantics |
+|---|---|---|
+| `mount_ioptron` | `:GEP#` digit 18 ("0 means pier east, 1 means pier west", `Protocol_V3.10.pdf`; a separate digit gives the pointing state) and `:pS#`, mapped directly | ASCOM |
+| `mount_lx200` (Gemini, OnStep/OnStepX, ZWO, NYX, TeenAstro, ESP32Go) | device-reported `:Gm#` / `:GU#` pier side, mapped directly (Gemini: "Telescope Mount's Side of Meridian") | ASCOM, as reported by the firmware |
+| `mount_asi` (read only) | `:Gm#`, mapped directly | ASCOM, as reported by the firmware |
+| `mount_nexstar` | `p` command. SkyWatcher: "E means no flipping (OTA is on the eastern side of meridian)" (`skywatcher.pdf`), mapped directly | ASCOM |
+| `mount_synscan` | computed from the encoders: the unflipped state with HA > 0 gives EAST | ASCOM |
+| `mount_pmc8` | computed from the encoders exactly as `PMC_Eight_ProgrammersReferenceManual`: "EpW … telescope is EAST of the PIER and pointing WEST … ASCOM PierEAST, HA > 0" | ASCOM |
+| `mount_starbook` | `/GET_PIERSIDE`, mapped directly; the protocol notes do not define it | unknown |
+| `indigo_version.c` INDI mapping | INDI `PIER_EAST` → `EAST` | ASCOM |
+| `agent_mount` | message "Telescope is on east side of pier" for EAST | ASCOM (physical side) |
+| `agent_alpaca` | EAST → `pierEast` (0) | ASCOM |
+| **`indigo_libs/indigo_mount_driver.c`** | alignment: `side_of_pier = (ha >= 0) ? MOUNT_SIDE_WEST : MOUNT_SIDE_EAST` (`:664`, `:1060`, `:1139`); `indigo_eq_to_encoder()` treats WEST + HA ≥ 0 as the unflipped encoder state (`:910`) | **opposite** ("side of the meridian the OTA points to") |
+| **`mount_simulator`** | `west = az > 180` (target in the western sky) → WEST (`indigo_mount_simulator.driver:323-330`) | **opposite**, consistent with the core |
+| **`mount_temma`** | Temma reports "Side of mount telescope is on" (`Temma.pdf`), and the driver **inverts** it: `'W'` → EAST (`indigo_mount_temma.driver:210`, `:610`) | **opposite**, consistent with the core |
+
+**Consequences:**
+- Every hardware driver that reports a documented side follows ASCOM, except Temma, which inverts it.
+- The core alignment code uses the opposite convention. For a mount with a visible `MOUNT_SIDE_OF_PIER`, `indigo_mount_driver.c:666` stores alignment points with the driver's (ASCOM) value. The point lookup in `indigo_translated_to_raw()` (`:1060`) and `indigo_raw_to_translated()` (`:1139`) computes the side with the core convention.
+- `mount_synscan` passes its own ASCOM value into `indigo_raw_to_translated_with_lst()`.
+- The nearest-point search therefore mixes the two conventions (`indigo_eq_to_encoder()` flips the encoder model). This is a suspected alignment defect, found by source audit only and not reproduced.
+
+**Proposed resolution (needs user approval, not applied):**
+1. Define the INDIGO semantics as ASCOM/INDI in `indigo_names.h` / `PROPERTIES.md`.
+2. Swap the HA→side mapping in the three places of `indigo_mount_driver.c` and the WEST/EAST branch in `indigo_eq_to_encoder()`.
+3. Fix `mount_simulator` (`az > 180` → EAST).
+4. Remove the inversion in `mount_temma`.
+5. Existing saved alignment points (`side_of_pier` persisted in the alignment file) would need migration or reset.
+
 ## 8. Test logs
 
 All ConformU logs are in [`conformu/`](conformu). `.log` is the ConformU text log and `.json` the machine-readable result (conformance only; `alpacaprotocol` writes no result file).
