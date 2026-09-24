@@ -563,11 +563,12 @@ States: `todo`, `in progress`, `done`, `blocked`. Every step records its evidenc
 | # | Step | Verification | State |
 |---|---|---|---|
 | S0 | Research of the standard, simulators and INDIGO infrastructure; this document; registration in `DEVELOPED_DRIVERS` + temporarily `EXCLUDED_DRIVERS`; `ccd_pentax` also added to `EXCLUDED_DRIVERS` at the user's request | Review by the user | done (commits `7e0a2cc`, `Exclude ccd_pentax from the default build`, and this commit) |
-| S1 | User decisions D1–D7 (section 9) | Recorded in this document | **todo, blocking** |
+| S1 | User decisions D1–D8 (section 9) | Recorded in this document | done (2026-09-24) |
+| S1a | D8: ConformU baseline against `agent_alpaca` + all INDIGO simulators, fix AGENT-1..3 and LIB-1..2, rerun ConformU, unit/regression tests | ConformU JSON results before/after; unit tests | in progress |
 | S2 | Library: general JSON parser in `indigo_json.c/.h` plus unit tests and fixtures | `make -C indigo_test test-unit`, strict build, ASan | todo |
 | S3 | Driver skeleton: `.c/.h/_main.c`, bridge device, remove from `EXCLUDED_DRIVERS`, Xcode registration | `make -C indigo_drivers/system_alpaca -f ../../Makefile.drv`, the driver loads in `indigo_server` | todo |
 | S4 | Library: `indigo_uni_io` connect timeout + multi-responder UDP discovery, with tests | unit/integration tests on loopback | todo |
-| S5 | HTTP client + Alpaca transport layer (envelope, errors, IDs, encoding) + unit tests | unit tests on fixtures | todo |
+| S5 | HTTP/1.1 client in `indigo_uni_io` (D3) + Alpaca transport layer in the driver (envelope, errors, IDs, encoding) + unit tests | unit tests on fixtures and a loopback HTTP server | todo |
 | S6 | Deterministic simulator: management API, discovery, fault injection, ready file | Smoke test of the simulator; cross-check with alpyca as the reference client | todo |
 | S7 | Discovery + management + attach/detach of proxies, proxy-loop filter | Integration: dynamic devices, duplicates, removal, SHUTDOWN | todo |
 | S8 | Focuser, Wheel, Rotator (simplest classes, validate the pattern) | Class checklists | todo |
@@ -591,19 +592,18 @@ All were found **by source audit only**. None has been reproduced. They are outs
 
 ## 9. Decisions for the user
 
-- **D1 Generator:**
-  - (a) hand-written driver (recommended);
-  - (b) generator extension (a `system`/`entry_name` override plus a network/custom discovery connection type), with the concrete diff presented for approval first.
-- **D2 Library changes:** approve the general JSON parser in `indigo_json.c` (already required), the multi-responder UDP discovery and the connect timeout in `indigo_uni_io`.
-- **D3 HTTP client:** in the driver (recommended), or as a library helper.
-- **D4 Attach policy:**
-  - (a) automatically proxy everything discovered except INDIGO bridges;
-  - (b) only devices selected in `X_ALPACA_DEVICES`, persisted by UniqueID;
-  - (c) (a) with an opt-out.
-- **D5 Disconnect semantics:** on an INDIGO disconnect, send `Connected=false` / `disconnect` to the Alpaca device, or not, because the device can be shared with other clients.
-- **D6 Hardware testing:** no hardware testing is planned for now, and no hardware validation will be claimed. If an Alpaca device is available (for example Pegasus Falcon v2 or PPBADV Gen3), name the exact model.
-- **D7 OmniSim in CI:** only an opt-in / manual tier (recommended), or a nightly job.
-- **D8 Defects AGENT-1..3, LIB-1..2:** fix them in separate tasks, or leave them recorded only.
+Decided by the user on 2026-09-24:
+
+| ID | Decision |
+|---|---|
+| D1 | Hand-written driver, **with the same structure as generated code** (the generated hot-plug layout: driver queue, `devices[]`, shared private data, `<driver>_open` / `<driver>_close`, handler + `_finalizer`, on_change-style handlers). No generator changes. |
+| D2 | Library changes approved (general JSON parser in `indigo_json.c`, multi-responder UDP discovery, connect timeout). **Everything must be covered by unit tests.** |
+| D3 | The HTTP client goes into `indigo_uni_io`. |
+| D4 | Variant (b): only devices selected in `X_ALPACA_DEVICES` are proxied, persisted by UniqueID. |
+| D5 | On an INDIGO disconnect, send `Connected=false` / `disconnect` to the Alpaca device. |
+| D6 | Simulators only for now. No hardware testing is planned and no hardware validation is claimed. |
+| D7 | No CI. The OmniSim and ConformU tiers stay manual / opt-in. |
+| D8 | Fix and test defects AGENT-1..3 and LIB-1..2. **This goes first**, before the `system_alpaca` implementation. ConformU (https://ascom-standards.org/COMDeveloper/Conformance.htm) is run against `agent_alpaca` exposing every INDIGO simulator, before and after the fixes. |
 
 ## 10. Baseline
 
