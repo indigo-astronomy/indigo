@@ -22,7 +22,6 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <dirent.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <indigo/indigo_filter.h>
@@ -71,12 +70,24 @@ indigo_result config_test_save(indigo_device *device, indigo_uni_handle **handle
 	return indigo_save_property(device, handle, property);
 }
 
-const char *config_test_folder(void) {
-	return config_folder;
+// The framework caches $HOME/.indigo, so a failing configuration folder is forced by replacing the
+// directory with a regular file: mkdir() then reports EEXIST and every file below it fails with ENOTDIR.
+static bool block_config_folder(void) {
+	char moved[300];
+	snprintf(moved, sizeof(moved), "%s/.indigo.blocked", test_root);
+	REQUIRE(rename(config_folder, moved) == 0);
+	FILE *f = fopen(config_folder, "w");
+	REQUIRE(f != NULL);
+	REQUIRE(fclose(f) == 0);
+	return true;
 }
 
-char *config_test_getenv(const char *name) {
-	return !strcmp(name, "HOME") ? test_root : getenv(name);
+static bool unblock_config_folder(void) {
+	char moved[300];
+	snprintf(moved, sizeof(moved), "%s/.indigo.blocked", test_root);
+	REQUIRE(unlink(config_folder) == 0);
+	REQUIRE(rename(moved, config_folder) == 0);
+	return true;
 }
 
 // Only agent waits are shortened; bus scheduling and timeout predicates are real.
@@ -458,11 +469,9 @@ static void save_empty_and_failure(void) {
 	ASSERT_TRUE(text_change(SAVE, "good", INDIGO_OK_STATE));
 	ASSERT_TRUE(text_change(SAVE, "", INDIGO_ALERT_STATE));
 	ASSERT_TRUE(has_item(LAST, "NAME", "good", -1));
-	char original[256];
-	strcpy(original, config_folder);
-	strcpy(config_folder, "/dev/null/config-test");
+	ASSERT_TRUE(block_config_folder());
 	bool failed = text_change(SAVE, "bad", INDIGO_ALERT_STATE);
-	strcpy(config_folder, original);
+	ASSERT_TRUE(unblock_config_folder());
 	ASSERT_TRUE(failed);
 	ASSERT_TRUE(has_item(LAST, "NAME", "good", -1));
 	ASSERT_TRUE(text_change(SAVE, "recovered", INDIGO_OK_STATE));
@@ -587,9 +596,12 @@ static void scan_suffix(void) {
 	ASSERT_FALSE(has_item(LOAD, "unrelated.config", NULL, -1));
 }
 
+// The configuration folder does not exist yet: SAVE has to create it and REMOVE has to find the file there.
 static void alternate_folder_remove(void) {
-	snprintf(config_folder, sizeof(config_folder), "%s/alternate", test_root);
+	indigo_test_remove_tree(config_folder);
+	ASSERT_TRUE(access(config_folder, F_OK) != 0);
 	ASSERT_TRUE(text_change(SAVE, "alternate", INDIGO_OK_STATE));
+	ASSERT_TRUE(exists("alternate.saved"));
 	ASSERT_TRUE(text_change(REMOVE, "alternate", INDIGO_OK_STATE));
 	ASSERT_FALSE(exists("alternate.saved"));
 }
@@ -896,11 +908,9 @@ static void setup_restart(void) {
 }
 
 static void setup_save_failure(void) {
-	char original[256];
-	strcpy(original, config_folder);
-	strcpy(config_folder, "/dev/null/config-test");
+	ASSERT_TRUE(block_config_folder());
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&client, AGENT, SETUP, "AUTOSAVE_DEVICE_CONFIGS", true));
-	strcpy(config_folder, original);
+	ASSERT_TRUE(unblock_config_folder());
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state(SETUP));
 	option("AUTOSAVE_DEVICE_CONFIGS", false);
 	ASSERT_TRUE(exists("Configuration_Agent.config"));
@@ -1076,21 +1086,6 @@ static void cleanup(void) {
 	for (int i = 0; i < ARRAY_SIZE(cache); i++) { indigo_release_property(cache[i].property); }
 }
 
-static void remove_files(const char *folder) {
-	DIR *dir = opendir(folder);
-	if (!dir) { return; }
-	struct dirent *entry;
-	while ((entry = readdir(dir))) {
-		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) { continue; }
-		char path[512];
-		snprintf(path, sizeof(path), "%s/%s", folder, entry->d_name);
-		struct stat st;
-		if (lstat(path, &st) == 0 && S_ISDIR(st.st_mode)) { remove_files(path); } else { unlink(path); }
-	}
-	closedir(dir);
-	rmdir(folder);
-}
-
 static const indigo_test_case tests[] = {
 	{ "restore_queue_overflow", restore_queue_overflow },
 	{ "related_failure", related_failure },
@@ -1165,7 +1160,7 @@ int main(int argc, char **argv) {
 		pid_t child = fork();
 		if (child == 0) {
 			alarm(45);
-			int status = setup() ? indigo_run_tests("Configuration Agent integration", tests + i, 1) : 1;
+			int status = indigo_test_set_private_home(test_root) && setup() ? indigo_run_tests("Configuration Agent integration", tests + i, 1) : 1;
 			cleanup();
 			exit(status || indigo_test_failures ? 1 : 0);
 		}
@@ -1174,7 +1169,7 @@ int main(int argc, char **argv) {
 			fprintf(stderr, "FAILED %s (status %d)\n", tests[i].name, status);
 			failed++;
 		}
-		remove_files(test_root);
+		indigo_test_remove_tree(test_root);
 	}
 	printf("Configuration Agent: %d/%d passed (including cleanup)\n", executed - failed, executed);
 	return executed ? (failed ? 1 : 0) : 2;
