@@ -50,6 +50,18 @@
 	} \
 } while (0)
 
+// A fixture path is the simulator's ready file plus a short suffix. Report a path that does not fit
+// rather than shortening it silently: the shortened name is a file nobody writes or reads, and the
+// suite then fails on a confusing timeout instead of on the real cause.
+static bool simulator_fixture_path(char *path, size_t size, const char *format, const char *base, const char *suffix) {
+	int written = suffix == NULL ? snprintf(path, size, format, base) : snprintf(path, size, format, base, suffix);
+	if (written < 0 || (size_t)written >= size) {
+		fprintf(stderr, "fixture path for '%s' does not fit %zu bytes\n", base, size);
+		return false;
+	}
+	return true;
+}
+
 typedef struct {
 	const char *executable;
 	pid_t pid;
@@ -65,14 +77,29 @@ static void remove_simulator_directory(const char *directory) {
 		char ready_file[PATH_MAX];
 		char control_file[PATH_MAX];
 		char event_file[PATH_MAX];
-		snprintf(ready_file, sizeof(ready_file), "%s/ready.env", directory);
-		snprintf(control_file, sizeof(control_file), "%s.control", ready_file);
-		snprintf(event_file, sizeof(event_file), "%s.events", ready_file);
+		if (!simulator_fixture_path(ready_file, sizeof(ready_file), "%s/ready.env", directory, NULL)) {
+			return;
+		}
+		if (!simulator_fixture_path(control_file, sizeof(control_file), "%s.control", ready_file, NULL) || !simulator_fixture_path(event_file, sizeof(event_file), "%s.events", ready_file, NULL)) {
+			return;
+		}
 		unlink(control_file);
 		unlink(event_file);
 		unlink(ready_file);
 		rmdir(directory);
 	}
+}
+
+// The line buffer is deliberately larger than the fields, so a value that does not fit has to be
+// refused rather than shortened: a truncated port path points at a device that does not exist and the
+// suite then fails on a confusing open error instead of on the real cause.
+static void store_ready_value(char *field, size_t size, const char *value) {
+	size_t length = strlen(value);
+	if (length >= size) {
+		fprintf(stderr, "ready file: value of %zu bytes does not fit a field of %zu\n", length, size);
+		return;
+	}
+	memcpy(field, value, length + 1);
 }
 
 static bool read_ready_file(external_serial_simulator *simulator) {
@@ -88,11 +115,11 @@ static bool read_ready_file(external_serial_simulator *simulator) {
 	while (fgets(line, sizeof(line), file) != NULL) {
 		line[strcspn(line, "\r\n")] = '\0';
 		if (!strncmp(line, port_prefix, sizeof(port_prefix) - 1)) {
-			snprintf(simulator->port, sizeof(simulator->port), "%s", line + sizeof(port_prefix) - 1);
+			store_ready_value(simulator->port, sizeof(simulator->port), line + sizeof(port_prefix) - 1);
 		} else if (!strncmp(line, tcp_url_prefix, sizeof(tcp_url_prefix) - 1)) {
-			snprintf(simulator->tcp_url, sizeof(simulator->tcp_url), "%s", line + sizeof(tcp_url_prefix) - 1);
+			store_ready_value(simulator->tcp_url, sizeof(simulator->tcp_url), line + sizeof(tcp_url_prefix) - 1);
 		} else if (!strncmp(line, udp_url_prefix, sizeof(udp_url_prefix) - 1)) {
-			snprintf(simulator->udp_url, sizeof(simulator->udp_url), "%s", line + sizeof(udp_url_prefix) - 1);
+			store_ready_value(simulator->udp_url, sizeof(simulator->udp_url), line + sizeof(udp_url_prefix) - 1);
 		}
 	}
 	fclose(file);
@@ -107,7 +134,10 @@ static bool start_external_serial_simulator_with_args(external_serial_simulator 
 		perror("mkdtemp");
 		return false;
 	}
-	snprintf(simulator->ready_file, sizeof(simulator->ready_file), "%s/ready.env", simulator->directory);
+	if (!simulator_fixture_path(simulator->ready_file, sizeof(simulator->ready_file), "%s/ready.env", simulator->directory, NULL)) {
+		remove_simulator_directory(simulator->directory);
+		return false;
+	}
 
 	simulator->pid = fork();
 	if (simulator->pid < 0) {
@@ -169,8 +199,13 @@ static void capture_simulator_trace(external_serial_simulator *simulator) {
 		sequence = 0;
 	}
 	char source_path[PATH_MAX], target_path[PATH_MAX];
-	snprintf(source_path, sizeof(source_path), "%s.events", simulator->ready_file);
-	snprintf(target_path, sizeof(target_path), "%s/%s-%d.events", trace_directory, test_name, sequence++);
+	if (!simulator_fixture_path(source_path, sizeof(source_path), "%s.events", simulator->ready_file, NULL)) {
+		return;
+	}
+	if (snprintf(target_path, sizeof(target_path), "%s/%s-%d.events", trace_directory, test_name, sequence++) >= (int)sizeof(target_path)) {
+		fprintf(stderr, "trace target path does not fit %zu bytes\n", sizeof(target_path));
+		return;
+	}
 	FILE *source = fopen(source_path, "r");
 	if (source == NULL) {
 		return;

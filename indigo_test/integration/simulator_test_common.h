@@ -267,8 +267,12 @@ static void record_defined_property(const char *name) {
 		return;
 	}
 	ASSERT_TRUE(context.defined_property_count < MAX_DEFINED_PROPERTIES);
-	strncpy(context.defined_properties[context.defined_property_count], name, INDIGO_NAME_SIZE - 1);
-	context.defined_properties[context.defined_property_count][INDIGO_NAME_SIZE - 1] = 0;
+	// strncpy bounded by size - 1 is reported as possibly leaving no terminator even with one written
+	// straight after, so bound the copy by what the source actually holds.
+	char *target = context.defined_properties[context.defined_property_count];
+	size_t length = strnlen(name, INDIGO_NAME_SIZE - 1);
+	memcpy(target, name, length);
+	target[length] = 0;
 	context.defined_property_count++;
 }
 

@@ -70,7 +70,9 @@ static bool start_sim(external_serial_simulator *simulator, const char *protocol
 // Counts events equal to (or starting with) text; returns the last match.
 static int scan_events(external_serial_simulator *simulator, const char *text, bool prefix, double *last_time, char *last, size_t last_size) {
 	char path[PATH_MAX];
-	snprintf(path, sizeof(path), "%s.events", simulator->ready_file);
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return -1;
+	}
 	FILE *file = fopen(path, "r");
 	if (file == NULL) {
 		return 0;
@@ -108,7 +110,9 @@ static int prefix_count(external_serial_simulator *simulator, const char *prefix
 
 static void dump_events(external_serial_simulator *simulator) {
 	char path[PATH_MAX];
-	snprintf(path, sizeof(path), "%s.events", simulator->ready_file);
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return;
+	}
 	FILE *file = fopen(path, "r");
 	if (file != NULL) {
 		char line[256];
@@ -145,7 +149,9 @@ static bool wait_prefix(external_serial_simulator *simulator, const char *prefix
 // Autodetection probes of :V#, :MountInfo# and :FW1# are expected.
 static int protocol_violations(external_serial_simulator *simulator) {
 	char path[PATH_MAX];
-	snprintf(path, sizeof(path), "%s.events", simulator->ready_file);
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return -1;
+	}
 	FILE *file = fopen(path, "r");
 	if (file == NULL) {
 		return 0;
@@ -170,8 +176,12 @@ static int protocol_violations(external_serial_simulator *simulator) {
 
 static bool sim_control(external_serial_simulator *simulator, const char *line) {
 	char path[PATH_MAX], temporary[PATH_MAX];
-	snprintf(path, sizeof(path), "%s.control", simulator->ready_file);
-	snprintf(temporary, sizeof(temporary), "%s.inject", simulator->ready_file);
+	if (!simulator_fixture_path(path, sizeof(path), "%s.control", simulator->ready_file, NULL)) {
+		return false;
+	}
+	if (!simulator_fixture_path(temporary, sizeof(temporary), "%s.inject", simulator->ready_file, NULL)) {
+		return false;
+	}
 	for (int i = 0; i < 300 && access(path, F_OK) == 0; i++) {
 		indigo_usleep(10000);
 	}

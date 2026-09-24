@@ -141,7 +141,9 @@ static bool lx_number(const simulator_driver_case *device, const char *property,
 
 static int event_count(external_serial_simulator *simulator, const char *command, double *last_time) {
 	char path[PATH_MAX];
-	snprintf(path, sizeof(path), "%s.events", simulator->ready_file);
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return -1;
+	}
 	FILE *file = fopen(path, "r");
 	if (file == NULL) {
 		return 0;
@@ -169,7 +171,9 @@ static int event_count(external_serial_simulator *simulator, const char *command
 // orders two commands whose arguments it does not want to spell out.
 static bool first_event_time(external_serial_simulator *simulator, const char *prefix, double *when) {
 	char path[PATH_MAX];
-	snprintf(path, sizeof(path), "%s.events", simulator->ready_file);
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return false;
+	}
 	FILE *file = fopen(path, "r");
 	if (file == NULL) {
 		return false;
@@ -220,8 +224,12 @@ static bool wait_event(external_serial_simulator *simulator, const char *command
 
 static bool inject_reply(external_serial_simulator *simulator, const char *command, const char *reply) {
 	char path[PATH_MAX], temporary[PATH_MAX];
-	snprintf(path, sizeof(path), "%s.control", simulator->ready_file);
-	snprintf(temporary, sizeof(temporary), "%s.inject", simulator->ready_file);
+	if (!simulator_fixture_path(path, sizeof(path), "%s.control", simulator->ready_file, NULL)) {
+		return false;
+	}
+	if (!simulator_fixture_path(temporary, sizeof(temporary), "%s.inject", simulator->ready_file, NULL)) {
+		return false;
+	}
 	FILE *file = fopen(temporary, "w");
 	if (file == NULL) {
 		return false;

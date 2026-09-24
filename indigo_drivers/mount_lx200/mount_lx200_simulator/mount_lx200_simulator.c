@@ -442,13 +442,33 @@ static void read_control(void) {
 			char *tab = strchr(line, '\t');
 			if (tab != NULL) {
 				*tab++ = 0;
-				snprintf(fault_command, sizeof(fault_command), "%s", line);
-				snprintf(fault_reply, sizeof(fault_reply), "%s", tab);
+				size_t command_length = strlen(line), reply_length = strlen(tab);
+				// A shortened fault rule would match the wrong command or answer the wrong bytes, and
+				// the test would fail somewhere else, so refuse it and say so.
+				if (command_length >= sizeof(fault_command) || reply_length >= sizeof(fault_reply)) {
+					fprintf(stderr, "control: fault rule too long, command %zu of %zu bytes, reply %zu of %zu bytes\n", command_length, sizeof(fault_command), reply_length, sizeof(fault_reply));
+				} else {
+					memcpy(fault_command, line, command_length + 1);
+					memcpy(fault_reply, tab, reply_length + 1);
+				}
 			}
 		}
 		fclose(file);
 		unlink(path);
 	}
+}
+
+// :Sg and :St carry a fixed width site value. Anything longer is not a value this mount could have
+// produced, so refuse it the way the protocol refuses an invalid one rather than storing a truncated
+// copy: strncpy with a bound of size - 1 leaves no terminator when the source is longer, and the Gg
+// and Gt replies then read past the field.
+static bool store_site_value(char *field, size_t size, const char *value) {
+	size_t length = strlen(value);
+	if (length >= size) {
+		return false;
+	}
+	memcpy(field, value, length + 1);
+	return true;
 }
 
 static void start_reference_motion(bool parking) {
@@ -793,7 +813,10 @@ static void handle_command(const char *command) {
 			write_response("0");
 			return;
 		}
-		strncpy(state.longitude, command + 2, sizeof(state.longitude) - 1);
+		if (!store_site_value(state.longitude, sizeof(state.longitude), command + 2)) {
+			write_response("0");
+			return;
+		}
 		write_response("1");
 	} else if (!strcmp(command, "Gg")) {
 		snprintf(response, sizeof(response), "%s#", state.longitude);
@@ -805,7 +828,10 @@ static void handle_command(const char *command) {
 		}
 		write_response(response);
 	} else if (!strncmp(command, "St", 2)) {
-		strncpy(state.latitude, command + 2, sizeof(state.latitude) - 1);
+		if (!store_site_value(state.latitude, sizeof(state.latitude), command + 2)) {
+			write_response("0");
+			return;
+		}
 		write_response("1");
 	} else if (!strcmp(command, "Gt")) {
 		snprintf(response, sizeof(response), "%s#", state.latitude);
