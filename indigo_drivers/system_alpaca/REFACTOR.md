@@ -609,6 +609,113 @@ Decided by the user on 2026-09-24:
 
 This is a new driver, so there is no original implementation to build or test. No baseline build was run: the folder contains no sources, and `system_alpaca` is in `EXCLUDED_DRIVERS`.
 
+## 11. Implementation plan split between subagents (proposal, not executed)
+
+Status: **proposal only**. Nothing in this section has been started. It is executed only after D8 is finished and the user approves this plan.
+
+### 11.1 Roles and ground rules
+
+- **Orchestrator** (the main session). Its responsibilities:
+  - assigns work packages and reviews their results;
+  - merges them into the `refactoring` branch;
+  - owns every shared file, so there are no parallel conflicts:
+    - root `Makefile`, `indigo_test/Makefile`
+    - `indigo.xcodeproj/project.pbxproj`
+    - `indigo_docs/PROPERTIES.md`
+    - `MIGRATION_STATUS.md`, `TEST_SUMMARY.md`
+    - this `REFACTOR.md`
+    - the shared test file `indigo_test/integration/test_system_alpaca_simulator.c` (case registration)
+  - pushes. Subagents never push.
+- **Subagents** follow these rules:
+  - Read `AGENTS.md`, `indigo_drivers/AGENTS.override.md`, `indigo_test/AGENTS.md` and `indigo_test/DRIVER_TESTING_RULES.md`. The formatting rules apply to hand-written code as well: calls on a single line, no empty lines inside functions, `{ 0 }`.
+  - Work packages in the same wave that run in parallel each get their own **git worktree** (`isolation: worktree`). Each subagent commits in its own worktree and changes only the files its package owns.
+  - Files a package needs to add to shared files go into its report as ready-made snippets: Makefile rules, pbxproj entries, `PROPERTIES.md` sections, test-case registrations. The orchestrator inserts them.
+  - The report states what was done, the exact build and test commands with their results, open issues, and any deviations from this document. Every claim of coverage must be backed by a test run.
+  - Never edit `README.md` (approval required), the generator, the off-limits drivers, or `agent_alpaca` (except in D8).
+- **Structure of the driver (D1):** hand-written, laid out the way generated code is:
+  - `#pragma mark` sections in the generator's order;
+  - `DRIVER_NAME` / `DRIVER_VERSION` / `DRIVER_LABEL`;
+  - a per-driver `driver_queue`, `devices[MAX_DEVICES]` and shared private data per server;
+  - `system_alpaca_open` / `system_alpaca_close` with the transactional contract;
+  - `*_attach` / `*_change_property` / `*_detach` per class, with the `on_change`-style handler bodies of the generator;
+  - `_finalizer` for asynchronous operations.
+- **Driver files:** one file per class, so that parallel packages do not collide:
+
+  | File | Contents |
+  |---|---|
+  | `indigo_system_alpaca.c` | core: bridge device, discovery, attach/detach, entry point |
+  | `indigo_system_alpaca_transport.c` / `.h` | Alpaca envelope and errors on top of the `indigo_uni_io` HTTP client |
+  | `indigo_system_alpaca_<class>.c` | device classes |
+  | `indigo_system_alpaca_private.h` | shared types |
+
+  `Makefile.drv` picks up `*.c` automatically.
+
+### 11.2 Wave 0: D8 (runs now, before this plan)
+
+- **W0-A.** Build INDIGO and the ConformU harness: `indigo_server` + `agent_alpaca` + all INDIGO simulators.
+- **W0-B..E.** ConformU baseline, in parallel by device group, against the unfixed `agent_alpaca`:
+  - Camera
+  - Telescope
+  - Focuser / FilterWheel / Rotator
+  - Dome / CoverCalibrator / Switch
+- **Orchestrator.** Fixes AGENT-1..3 and LIB-1..2 plus the defects ConformU finds. Adds unit and regression tests, bumps the `agent_alpaca` / askar versions, and reruns ConformU. The results go into section 8 and a table of ConformU runs.
+
+### 11.3 Wave 1: libraries and simulator (4 subagents in parallel, worktrees)
+
+| WP | Subagent | Output (owned files) | Verification |
+|---|---|---|---|
+| WP1 | JSON parser | `indigo_libs/indigo_json.c/.h`, the `_value` API (section 5.3/1), including the numeric-array fast path; `indigo_test/unit/test_json_value.c`; fixtures in `indigo_test/fixtures/protocol/alpaca_*.json` (captured from OmniSim) | unit tests: valid and malformed JSON, UTF-8/`\uXXXX`, depth/size limits, locale (`LC_NUMERIC=de_DE`), ASan/UBSan |
+| WP2 | HTTP client (D3) | `indigo_uni_io.c/.h`: `indigo_uni_http_request()` (GET/PUT, Content-Length, chunked, keep-alive + a single retry on a stale socket, gzip, binary body, timeouts), `indigo_uni_url_encode()` / form encoding; unit tests with a loopback HTTP server in the test | unit tests: chunked, `Connection: close`, truncated body, stall→timeout, reset, 1xx/3xx/4xx/5xx, large binary body |
+| WP3 | UDP discovery | `indigo_uni_io.c/.h`: `indigo_uni_discover()` (broadcast on every interface + loopback, a callback per reply, deduplication left to the caller). If D8/LIB-2 has not already done it, move `focuser_askar` onto this helper. | unit tests: several responders on loopback, duplicates, late replies, malformed replies, timeout; askar regression tests |
+| WP4 | Deterministic simulator | `indigo_drivers/system_alpaca/system_alpaca_simulator/`: HTTP server, discovery responder, management API, device framework (types registered through a table so that wave 3 only adds modules), scripted faults, request recording, explicit tick, ready file; `README`-style usage notes in `REFACTOR.md` (delivered to the orchestrator as a snippet) | Smoke test of the simulator, cross-checked with alpyca as the reference client (if available) and with curl |
+
+Dependencies: WP2 builds on the LIB-1 connect timeout from D8. WP4 is independent; it parses JSON in its own simple way and does not depend on WP1.
+
+### 11.4 Wave 2: driver core (1 subagent, sequential)
+
+| WP | Output | Verification |
+|---|---|---|
+| WP5 | `indigo_system_alpaca.c/.h/_main.c`, `_transport.c/.h`, `_private.h`:<br>• the "Alpaca" bridge device with `X_ALPACA_DISCOVERY*`, `X_ALPACA_SERVERS`, `X_ALPACA_DEVICES` (D4: selection persisted by UniqueID)<br>• discovery and management, proxy-loop filter, deduplication<br>• attach/detach of an empty proxy with the common members: connect/disconnect with P7 `connect`/`connecting` + finalizer, the pre-P7 fallback, and D5 disconnect<br>• capability cache, `devicestate` polling framework<br>• mapping of errors onto property states<br>The package also removes the driver from `EXCLUDED_DRIVERS` (via a snippet for the orchestrator). | Build, including a strict warnings build. Integration tests against WP4: discovery, manual server, selection and its persistence, duplicates, disappearance/removal, failed attach, capacity, SHUTDOWN, transport loss idle/active, malformed replies, wrong transaction ID, a P7 vs V3 device |
+
+### 11.5 Wave 3: device classes (5 subagents in parallel, worktrees)
+
+Each package delivers:
+- a driver module;
+- a simulator module for its types;
+- test cases in its own source file `indigo_test/integration/system_alpaca/<class>_cases.h`, included by the orchestrator into `test_system_alpaca_simulator.c`;
+- `PROPERTIES.md` snippets.
+
+The class acceptance checklist from `DRIVER_TESTING_RULES.md` is mandatory.
+
+| WP | Classes | Specific requirements |
+|---|---|---|
+| WP6 | Focuser, FilterWheel, Rotator | absolute vs. relative focuser, temperature compensation, wheel 0/1-based and −1 while moving, rotator reverse/sync/mechanical position |
+| WP7 | Telescope + Guider | JNow/J2000 (`EquatorialSystem`), async slew + finalizer, sync, park/unpark/home, tracking + rates, MoveAxis + AxisRates, SideOfPier, site/UTC, guide rates; **guider timing measurement** (`AGENTS.override.md:36`) |
+| WP8 | Camera + Guider | exposure, abort vs. stop, countdown via `indigo_ccd_exposure_setup()`, binning/frame in binned units, gain/offset in index and value modes, readout modes, cooling; **ImageBytes** (all element types, rank 2/3, transpose, orientation, Bayer, error), JSON fallback through the WP1 fast path, download on a separate connection; **guider timing measurement** |
+| WP9 | Dome, CoverCalibrator | shutter, azimuth/altitude slew, park/home, slaved, roll-off; cover/calibrator V1 state enums vs. V2 `*Changing` / `*Moving`, brightness |
+| WP10 | Switch, ObservingConditions, SafetyMonitor | boolean vs. analog switches, canwrite, async V3 (setasync/statechangecomplete/cancelasync); weather sensors mapped to `AUX_WEATHER` + `X_` items, averageperiod/refresh; `X_ALPACA_SAFETY` |
+
+The orchestrator merges the worktrees one at a time and runs the full integration suite after each merge.
+
+### 11.6 Wave 4: independent validation (2 subagents in parallel) and completion
+
+| WP | Output |
+|---|---|
+| WP11 | OmniSim opt-in tier: `make -C indigo_test test-system-alpaca-omnisim` (pinned v0.5.0 + checksum, private `HOME`, lock, reset between cases), plus the ConformU round trip `OmniSim → system_alpaca → agent_alpaca → ConformU`, evaluated differentially. The results are recorded as "OmniSim 0.5.0" (D7: manual only, no CI). |
+| WP12 | Independent review of the whole diff, following `AGENTS.md` / `AGENTS.override.md` (formatting, lifecycle, `X_` prefixes, `PROPERTIES.md`, queues vs. bus callbacks, leaks under ASan, platform-independence of the driver). Findings go into section 8. |
+| Orchestrator | Fixes from WP12, `PROPERTIES.md`, Xcode registration of every file, `README.md` (only with the user's approval), the README `## Testing` record + `python3 tools/make_test_summary.py`, optionally `MIGRATION_STATUS.md`, the final audit per the `AGENTS.override.md` checklist, and the final summary in this document |
+
+### 11.7 Estimated scale
+
+17 subagents in total across 5 waves, with at most 5 running in parallel:
+- wave 0: 5
+- wave 1: 4
+- wave 2: 1
+- wave 3: 5
+- wave 4: 2
+
+The critical path is W0 → WP2 → WP5 → WP8 (the camera) → WP11/12.
+
 ## Final test summary
 
 - Simulated tests: 0 run, 0 passed.
