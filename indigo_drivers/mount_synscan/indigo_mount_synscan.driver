@@ -24,7 +24,7 @@ driver synscan {
 	label = "SynScan Mount";
 	author = "CloudMakers, s. r. o. based on INDIGO 2.0 code by David Hulse";
 	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
-	version = 7;
+	version = 8;
 	serial {
 		configurable_speed = true;
 	}
@@ -908,6 +908,11 @@ driver synscan {
 		}
 
 		static bool synscan_read_mount_coordinates(indigo_device *device) {
+			// Reached from the guider's finalizers too, whose device_context is an indigo_guider_context,
+			// so resolve the master device before touching any MOUNT_* property.
+			if (device->master_device != NULL) {
+				device = device->master_device;
+			}
 			if (!synscan_update_axis_positions(device)) {
 				return false;
 			}
@@ -941,6 +946,11 @@ driver synscan {
 		}
 
 		static bool synscan_update_mount_coordinates(indigo_device *device) {
+			// Reached from the guider's finalizers too, whose device_context is an indigo_guider_context,
+			// so resolve the master device before touching any MOUNT_* property.
+			if (device->master_device != NULL) {
+				device = device->master_device;
+			}
 			if (!synscan_read_mount_coordinates(device)) {
 				return false;
 			}

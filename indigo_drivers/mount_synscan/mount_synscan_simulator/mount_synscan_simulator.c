@@ -103,6 +103,7 @@ typedef struct {
 	uint32_t ra_features;
 	uint32_t dec_features;
 	const char *ready_file;
+	int stop_lag;
 } simulator_options;
 
 static simulator_options options = {
@@ -118,7 +119,8 @@ static simulator_options options = {
 	.dec_features_override = false,
 	.ra_features = FEATURES,
 	.dec_features = FEATURES,
-	.ready_file = NULL
+	.ready_file = NULL,
+	.stop_lag = 0
 };
 
 static const char *simulator_name = "mount_synscan";
@@ -133,6 +135,7 @@ static void usage(const char *name) {
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  --pcdirect              Start axes as initialized for PC Direct style probing\n");
+	printf("  --stop-lag <n>          Report an axis as still running for n status queries after a stop\n");
 	printf("  --model-code <hex>      Motor controller model code for :e replies\n");
 	printf("  --ra-features <hex>     Override RA axis feature bits for :q1000100 replies\n");
 	printf("  --dec-features <hex>    Override DEC axis feature bits for :q2000100 replies\n");
@@ -211,6 +214,18 @@ static bool parse_args(int argc, char *argv[]) {
 			}
 			options.udp = true;
 			options.udp_port = atoi(argv[i]);
+		} else if (!strcmp(argv[i], "--stop-lag")) {
+			if (++i == argc) {
+				fprintf(stderr, "--stop-lag requires a value\n");
+				return false;
+			}
+			char *end = NULL;
+			long value = strtol(argv[i], &end, 10);
+			if (end == argv[i] || *end != 0 || value < 0 || value > 1000) {
+				fprintf(stderr, "--stop-lag requires a count between 0 and 1000\n");
+				return false;
+			}
+			options.stop_lag = (int)value;
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -237,6 +252,8 @@ static char hexa[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 
 static uint32_t axis_timer[2] = { 0, 0 };
 static uint32_t axis_t1[2] = { 25, 25 };
 static uint16_t axis_status[2] = { 0, 0 };
+// Status queries still owed before a stopped axis admits it has stopped, per --stop-lag.
+static int axis_stop_lag[2] = { 0, 0 };
 static uint32_t axis_position[2] = { 0x800000, 0x800000 + STEPS_PER_REVOLUTION / 4 };
 static uint32_t axis_aux_position_offset[2] = { 512, 1024 };
 static uint32_t axis_increment[2] = { 0, 0 };
@@ -398,7 +415,11 @@ static char *process_command(char *buffer) {
 			return "=";
 		case 'K':
 		case 'L':
-			axis_status[axis] &= ~RUNNING;
+			if (options.stop_lag > 0) {
+				axis_stop_lag[axis] = options.stop_lag;
+			} else {
+				axis_status[axis] &= ~RUNNING;
+			}
 			return "=";
 		case 'M':
 			if (axis_status[axis] & BACKWARD) {
@@ -465,6 +486,9 @@ static char *process_command(char *buffer) {
 		case 'e':
 			return reply_24(((uint32_t)options.model_code << 16) | 0x0302);
 		case 'f':
+			if (axis_stop_lag[axis] > 0 && --axis_stop_lag[axis] == 0) {
+				axis_status[axis] &= ~RUNNING;
+			}
 			return reply_12(axis_status[axis]);
 		case 'g':
 			return reply_8(HIGHSPEED_STEPS);

@@ -636,6 +636,35 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The DEC guide finalizer stops the axis and waits for it to report stopped, and that wait updates
+// the mount's coordinates. It used to do so through whichever device called it, so on the guider -
+// whose device_context is an indigo_guider_context, not an indigo_mount_context - reading MOUNT_*
+// was type-confused and killed the process. It needed a controller that decelerates to reach at
+// all: with an axis that stops the instant :K is acknowledged the wait returns first.
+static void synscan_guider_finishes_a_dec_pulse_while_the_axis_decelerates(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--stop-lag", "3", NULL };
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_shared_serial_device(&synscan_guider, synscan_mount.device_name, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0.001));
+	// The driver has to still be there afterwards, which is what the crash took away.
+	double guider_rate = bounded_number_value(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 50);
+	SERIAL_CHECK_TRUE(!isnan(guider_rate));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, guider_rate));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&synscan_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void synscan_aux_passes_shutter_compliance_checks(void) {
 	external_serial_simulator simulator = { 0 };
 
@@ -818,6 +847,7 @@ int main(void) {
 		{ "synscan_mount_autohome_finds_home_index", synscan_mount_autohome_finds_home_index },
 		{ "synscan_mount_reports_new_model_codes", synscan_mount_reports_new_model_codes },
 		{ "synscan_guider_passes_serial_compliance_checks", synscan_guider_passes_serial_compliance_checks },
+		{ "synscan_guider_finishes_a_dec_pulse_while_the_axis_decelerates", synscan_guider_finishes_a_dec_pulse_while_the_axis_decelerates },
 		{ "synscan_aux_passes_shutter_compliance_checks", synscan_aux_passes_shutter_compliance_checks },
 		{ "synscan_mount_disconnects_after_serial_loss", synscan_mount_disconnects_after_serial_loss },
 		{ "synscan_mount_reports_failed_serial_connection", synscan_mount_reports_failed_serial_connection },
