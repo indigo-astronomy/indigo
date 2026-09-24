@@ -40,14 +40,47 @@ typedef struct {
 	const char *profile;
 } simulator_options;
 
-// A slew and a rate move are both modelled as a signed speed in units per
-// second, so MC_SLEW_DONE can report a motion that really takes time.
+// Both axes count 2^24 units per revolution, so one sidereal day of the
+// tracking drive is exactly one turn of the right ascension axis.
+#define UNITS_PER_TURN 0x1000000
+#define SIDEREAL_SPEED (UNITS_PER_TURN / 86164.0905)
+#define SOLAR_SPEED (UNITS_PER_TURN / 86400.0)
+#define LUNAR_SPEED (UNITS_PER_TURN / 89428.0)
+#define DEGREES_PER_SECOND (UNITS_PER_TURN / 360.0)
+
+// The rates MC_MOVE_POS and MC_MOVE_NEG select, in units per second. These are the
+// rates of the NexStar hand controller's rate card: one to seven are multiples of
+// the sidereal rate and eight and nine are fixed angular rates. Rate two was
+// measured on a NexStar SE at one times sidereal, which is what fixes the card to
+// this table rather than to the doubling one might otherwise assume. Rate zero is
+// the stop the protocol document describes.
+static const double move_rates[10] = {
+	0,
+	0.5 * SIDEREAL_SPEED,
+	1 * SIDEREAL_SPEED,
+	4 * SIDEREAL_SPEED,
+	8 * SIDEREAL_SPEED,
+	16 * SIDEREAL_SPEED,
+	32 * SIDEREAL_SPEED,
+	64 * SIDEREAL_SPEED,
+	1.0 * DEGREES_PER_SECOND,
+	4.0 * DEGREES_PER_SECOND
+};
+
+// A motor controller has one velocity register per axis. A guide rate, a rate
+// move and a goto all write it, so whichever command came last is the one the
+// axis obeys - which is why a rate move of zero stops the tracking drive as
+// well, and why the tracking rate has to be sent again afterwards. This was
+// confirmed on a NexStar mount through a SkyPortal module: a guide pulse, a
+// released manual motion and an abort all leave the right ascension axis
+// standing still until the guide rate is written again.
 typedef struct {
 	double position;
 	double target;
+	double start;
 	double speed;
 	bool slewing;
-	bool tracking;
+	bool stalled;
 	uint8_t guide_rate;
 } axis_state;
 
@@ -57,9 +90,16 @@ static simulator_options options = {
 	.ready_file = NULL,
 	.profile = "normal"
 };
-static axis_state azm = { 0x800000, 0x800000, 0, false, false, 0x80 };
-static axis_state alt = { 0x000000, 0x000000, 0, false, false, 0x80 };
+static axis_state azm = { 0x800000, 0x800000, 0x800000, 0, false, false, 0x80 };
+static axis_state alt = { 0x000000, 0x000000, 0x000000, 0, false, false, 0x80 };
 static bool answer_version = true;
+// A NexStar SE stops a goto at a limit and answers MC_SLEW_DONE with 0xff while the
+// axis stands short of the target, and it acknowledges MC_SET_AUTOGUIDE_RATE while
+// keeping the rate it had. Both are per model, so they are selectable and off by
+// default; the well behaved controller stays the one the other cases run against.
+static double stall_after = 0;
+static bool stall_reports_done = true;
+static bool store_guide_rate = true;
 static double slew_rate = 0x200000;
 static FILE *events = NULL;
 static double last_update;
@@ -74,7 +114,8 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after TCP setup\n");
 	printf("  --trace                 Log protocol packets\n");
-	printf("  --profile <name>        normal, no-version or slow-slew, default is normal\n");
+	printf("  --profile <name>        normal, no-version, slow-slew, stalling or deaf-guide-rate,\n");
+	printf("                          default is normal\n");
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_NEXSTARAUX_EVENTS names a file receiving '<dst> <cmd> <data>' per request.\n");
@@ -136,14 +177,45 @@ static void apply_profile(void) {
 		answer_version = false;
 	} else if (!strcmp(options.profile, "slow-slew")) {
 		slew_rate = 0x8000;
+	} else if (!strcmp(options.profile, "stalling")) {
+		// The axis gives up a third of the way and reports the goto as complete.
+		stall_after = 1.0 / 3.0;
+	} else if (!strcmp(options.profile, "deaf-guide-rate")) {
+		store_guide_rate = false;
+	} else if (!strcmp(options.profile, "never-arrives")) {
+		// The axis gives up and the controller keeps calling the goto unfinished.
+		stall_after = 1.0 / 3.0;
+		stall_reports_done = false;
 	}
+}
+
+// The encoder is a circle, so the way from one position to another is the shorter
+// of the two, expressed as a signed offset of at most half a turn.
+static double shortest_way(double delta) {
+	while (delta > UNITS_PER_TURN / 2) {
+		delta -= UNITS_PER_TURN;
+	}
+	while (delta < -UNITS_PER_TURN / 2) {
+		delta += UNITS_PER_TURN;
+	}
+	return delta;
 }
 
 static void advance_axis(axis_state *axis, double elapsed) {
 	if (axis->slewing) {
-		double remaining = axis->target - axis->position;
+		// The distance left has to be measured round the circle on every step. An
+		// axis whose goto crosses zero wraps its position, and a difference taken
+		// without the wrap then grows to almost a full turn, which no step can
+		// ever cover: the goto runs forever and MC_SLEW_DONE never reports done.
+		double remaining = shortest_way(axis->target - axis->position);
 		double step = axis->speed * elapsed;
-		if (fabs(step) >= fabs(remaining)) {
+		// A controller that gives up leaves the axis where it stopped and still
+		// reports the goto as done, which is what the driver has to notice.
+		if (stall_after > 0 && fabs(shortest_way(axis->position - axis->start)) >= stall_after * fabs(shortest_way(axis->target - axis->start))) {
+			axis->slewing = stall_reports_done ? false : axis->slewing;
+			axis->stalled = true;
+			axis->speed = 0;
+		} else if (fabs(step) >= fabs(remaining)) {
 			axis->position = axis->target;
 			axis->slewing = false;
 			axis->speed = 0;
@@ -154,10 +226,10 @@ static void advance_axis(axis_state *axis, double elapsed) {
 		axis->position += axis->speed * elapsed;
 	}
 	while (axis->position < 0) {
-		axis->position += 0x1000000;
+		axis->position += UNITS_PER_TURN;
 	}
-	while (axis->position >= 0x1000000) {
-		axis->position -= 0x1000000;
+	while (axis->position >= UNITS_PER_TURN) {
+		axis->position -= UNITS_PER_TURN;
 	}
 }
 
@@ -274,39 +346,63 @@ static void handle_axis_command(uint8_t src, uint8_t dst, uint8_t command, const
 		case 0x17:
 			if (data_length >= 3) {
 				axis->target = ((uint32_t)data[0] << 16) | ((uint32_t)data[1] << 8) | data[2];
+				axis->start = axis->position;
+				axis->stalled = false;
 				// The shorter way round the 24 bit circle is the one the mount takes.
-				double delta = axis->target - axis->position;
-				if (delta > 0x800000) {
-					axis->target -= 0x1000000;
-				} else if (delta < -0x800000) {
-					axis->target += 0x1000000;
-				}
-				axis->slewing = axis->target != axis->position;
-				axis->speed = axis->slewing ? (axis->target > axis->position ? slew_rate : -slew_rate) : 0;
+				double delta = shortest_way(axis->target - axis->position);
+				axis->slewing = delta != 0;
+				axis->speed = axis->slewing ? (delta > 0 ? slew_rate : -slew_rate) : 0;
 			}
 			send_reply(dst, src, command, NULL, 0);
 			break;
 		case 0x04:
+			// Writing the encoder makes a running goto meaningless, but it does
+			// not touch the velocity register: a mount that is tracking keeps
+			// tracking across a synchronization.
 			if (data_length >= 3) {
 				axis->position = ((uint32_t)data[0] << 16) | ((uint32_t)data[1] << 8) | data[2];
 				axis->target = axis->position;
 				axis->slewing = false;
-				axis->speed = 0;
 			}
 			send_reply(dst, src, command, NULL, 0);
 			break;
 		case 0x06:
 		case 0x07:
-			// A zero guide rate stops the sidereal drive.
-			axis->tracking = data_length >= 2 && (data[0] != 0 || data[1] != 0);
+			// The guide rate writes the axis velocity register, so it cancels a
+			// slew the same way a rate move does. Sixteen bits carry one of the
+			// three named rates or a stop. The twenty four bit form carries the
+			// rate itself in a unit the protocol document does not state; the
+			// hand controller uses it only to stop an axis and no INDIGO driver
+			// sends another value, so the scale here is a placeholder that keeps
+			// zero meaning stop.
+			axis->slewing = false;
+			axis->target = axis->position;
+			axis->speed = 0;
+			if (data_length >= 2) {
+				double magnitude = 0;
+				uint16_t value = (uint16_t)((data[0] << 8) | data[1]);
+				if (data_length >= 3) {
+					magnitude = (((uint32_t)data[0] << 16) | ((uint32_t)data[1] << 8) | data[2]) / 1024.0;
+				} else if (value == 0xFFFF) {
+					magnitude = SIDEREAL_SPEED;
+				} else if (value == 0xFFFE) {
+					magnitude = SOLAR_SPEED;
+				} else if (value == 0xFFFD) {
+					magnitude = LUNAR_SPEED;
+				} else {
+					magnitude = value / 1024.0;
+				}
+				axis->speed = (command == 0x06 ? 1 : -1) * magnitude;
+			}
 			send_reply(dst, src, command, NULL, 0);
 			break;
 		case 0x24:
 		case 0x25:
-			// A rate move overrides a slew; rate zero stops the axis.
+			// A rate move writes the same velocity register, so it overrides a
+			// slew and a tracking drive alike; rate zero stops the axis.
 			axis->slewing = false;
-			if (data_length >= 1 && data[0] != 0) {
-				axis->speed = (command == 0x24 ? 1 : -1) * data[0] * 0x8000;
+			if (data_length >= 1 && data[0] > 0 && data[0] < 10) {
+				axis->speed = (command == 0x24 ? 1 : -1) * move_rates[data[0]];
 			} else {
 				axis->speed = 0;
 			}
@@ -318,7 +414,8 @@ static void handle_axis_command(uint8_t src, uint8_t dst, uint8_t command, const
 			send_reply(dst, src, command, reply, 1);
 			break;
 		case 0x46:
-			if (data_length >= 1) {
+			// A controller that does not implement the setting still acknowledges it.
+			if (data_length >= 1 && store_guide_rate) {
 				axis->guide_rate = data[0];
 			}
 			send_reply(dst, src, command, NULL, 0);
