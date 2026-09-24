@@ -1390,7 +1390,7 @@ On Advanced VX, `COMMAND_GUIDE_RATE` retains its legacy `GUIDE_50` and `GUIDE_10
 
 On SynScan V4 hand controllers, `COMMAND_GUIDE_RATE` selects fixed HC motion indices 1 and 2 (manual nominal 1x and 8x sidereal). `MOUNT_GUIDE_RATE` is hidden because SynScan serial protocol 3.3 does not define the Celestron ST4-rate read/write commands used by that property.
 
-Driver-specific use of existing properties: `GEOGRAPHIC_COORDINATES`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `MOUNT_ABORT_MOTION`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_GUIDE_RATE`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET` (CURRENT captures signed DEC), `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
+Driver-specific use of existing properties: `GEOGRAPHIC_COORDINATES`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `MOUNT_ABORT_MOTION`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_GUIDE_RATE`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET` (CURRENT reads mechanical axes from the HC and stores the inverse park-command encoding, including signed DEC), `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
 
 Source: `indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver`; generated output in `indigo_drivers/mount_nexstar/indigo_mount_nexstar.c`.
 

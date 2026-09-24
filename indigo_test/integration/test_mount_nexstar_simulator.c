@@ -449,6 +449,43 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static void nexstar_partial_site_changes_preserve_readback(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator_hc(&simulator, "nexstar"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	unsigned revision;
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48 + 8.0 / 60, 0.001));
+	double latitude = cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME);
+	double longitude = cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME);
+	const char *items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME };
+	double values[] = { latitude, longitude };
+	for (int i = 0; i < 2; i++) {
+		clear_simulator_events(&simulator);
+		revision = property_revision(GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, items[i], values[i]));
+		SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "57", 1));
+		SERIAL_CHECK_TRUE(wait_for_property_state_after(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+		SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "77", 2));
+		SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) - latitude) < 0.001);
+		SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) - longitude) < 0.001);
+	}
+	clear_simulator_events(&simulator);
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "drop", "w"));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "77", 1));
+	revision = property_revision(GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 49));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "57", 1));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "77", 2));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) - 49) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) - longitude) < 0.001);
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void nexstar_nexstar_hc_sets_time_and_location(void) {
 	const char *location_items[] = {
 		GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME,
@@ -777,6 +814,54 @@ static void nexstar_mount_aborts_queued_park(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(check_queued_abort(nexstar_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, 0, true, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void nexstar_current_park_uses_mechanical_axes(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--dialect", "celestron", "--hc-type", "nexstar", "--model-id", "11", "--firmware", "5.35", "--axis-offset", "118.960369,23.238359", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_NEXSTAR_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME));
+	double ha = cached_number_value(MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_PARK_POSITION_HA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_PARK_POSITION_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(fabs((ha + 12) * 15 - 208.960369) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(dec - 68.238359) < 0.01);
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 45, 0.2));
+	const char *faults[] = { "drop", "short", "malformed" };
+	for (int i = 0; i < ARRAY_SIZE(faults); i++) {
+		SERIAL_CHECK_TRUE(set_simulator_control(&simulator, faults[i], "z"));
+		unsigned revision = property_revision(MOUNT_PARK_SET_PROPERTY_NAME);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_SET_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+		SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_PARK_POSITION_HA_ITEM_NAME) - ha) < 0.001);
+		SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_PARK_POSITION_DEC_ITEM_NAME) - dec) < 0.001);
+	}
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void nexstar_binary_firmware_hash_keeps_se_capabilities(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--dialect", "celestron", "--hc-type", "nexstar", "--model-id", "11", "--firmware", "5.35", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_NEXSTAR_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_text_item_value(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "NexStar 4/5 SE"));
+	SERIAL_CHECK_TRUE(wait_for_text_item_value(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME, "NexStar  5.35"));
+	SERIAL_CHECK_TRUE(find_cached_item(TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME) != NULL);
+	SERIAL_CHECK_TRUE(select_mount_switch(TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) == NULL);
 cleanup:
 	if (context.connected) {
 		stop_serial_driver(&nexstar_mount);
@@ -1156,6 +1241,7 @@ int main(void) {
 		{ "nexstar_mount_connects_both_protocol_dialects", nexstar_mount_connects_both_protocol_dialects },
 		{ "nexstar_skywatcher_executes_coordinates_tracking_and_motion", nexstar_skywatcher_executes_coordinates_tracking_and_motion },
 		{ "nexstar_celestron_mount_passes_serial_compliance_checks", nexstar_celestron_mount_passes_serial_compliance_checks },
+		{ "nexstar_partial_site_changes_preserve_readback", nexstar_partial_site_changes_preserve_readback },
 		{ "nexstar_nexstar_hc_sets_time_and_location", nexstar_nexstar_hc_sets_time_and_location },
 		{ "nexstar_mount_tracks_syncs_and_aborts_coordinate_changes", nexstar_mount_tracks_syncs_and_aborts_coordinate_changes },
 		{ "nexstar_mount_rejects_coordinates_when_unaligned", nexstar_mount_rejects_coordinates_when_unaligned },
@@ -1163,6 +1249,8 @@ int main(void) {
 		{ "nexstar_mount_moves_manually_and_parks", nexstar_mount_moves_manually_and_parks },
 		{ "nexstar_negative_and_current_park_preserve_declination", nexstar_negative_and_current_park_preserve_declination },
 		{ "nexstar_mount_aborts_queued_park", nexstar_mount_aborts_queued_park },
+		{ "nexstar_current_park_uses_mechanical_axes", nexstar_current_park_uses_mechanical_axes },
+		{ "nexstar_binary_firmware_hash_keeps_se_capabilities", nexstar_binary_firmware_hash_keeps_se_capabilities },
 		{ "nexstar_tracking_mode_is_exposed_for_altaz_models", nexstar_tracking_mode_is_exposed_for_altaz_models },
 		{ "nexstar_celestron_gps_device_reports_fix", nexstar_celestron_gps_device_reports_fix },
 		{ "nexstar_celestron_guider_passes_serial_compliance_checks", nexstar_celestron_guider_passes_serial_compliance_checks },

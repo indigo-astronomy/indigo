@@ -762,9 +762,9 @@ test-mount-lx200-tcp: $(INTEGRATION_BUILD)/test_mount_lx200_simulator $(INTEGRAT
 	$(INTEGRATION_BUILD)/test_mount_lx200_simulator --tcp; lx200_normal_status=$$?; $(INTEGRATION_BUILD)/test_mount_lx200_simulator_sanitize --tcp; lx200_sanitize_status=$$?; test $$lx200_normal_status -eq 0 -a $$lx200_sanitize_status -eq 0
 
 $(INTEGRATION_BUILD)/mount_nexstar_simulator: ../indigo_drivers/mount_nexstar/mount_nexstar_simulator/mount_nexstar_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $<
+	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
-$(INTEGRATION_BUILD)/test_mount_nexstar_simulator: integration/test_mount_nexstar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstar_simulator $(BUILD_DRIVERS)/indigo_mount_nexstar.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_nexstar_simulator: integration/test_mount_nexstar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstar_simulator $(BUILD_DRIVERS)/indigo_mount_nexstar.a ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_NEXSTAR_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/mount_nexstaraux_simulator: ../indigo_drivers/mount_nexstaraux/mount_nexstaraux_simulator/mount_nexstaraux_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -2642,3 +2642,11 @@ test-mount-temma-mountsim test-mount-rainbow-mountsim test-mount-ioptron-mountsi
 	@printf "MountSim acceptance requires macOS and a GUI session.\n"
 	@exit 2
 endif
+
+# Physical NexStar HC acceptance is opt-in and independent of MountSim.
+$(TEST_BUILD)/hardware/test_mount_nexstar_hw: hardware/test_mount_nexstar_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_nexstar.a ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter -Wno-sign-compare $< -o $@ $(MOUNT_NEXSTAR_SIMULATOR_TEST_LDFLAGS)
+
+.PHONY: test-mount-nexstar-hw
+test-mount-nexstar-hw: check-lib $(TEST_BUILD)/hardware/test_mount_nexstar_hw
+	$(TEST_BUILD)/hardware/test_mount_nexstar_hw --run

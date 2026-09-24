@@ -28,6 +28,7 @@
 //+ include
 
 #include <errno.h>
+#include <ctype.h>
 #include <time.h>
 #include <unistd.h>
 #include <indigo/indigo_align.h>
@@ -46,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000026
+#define DRIVER_VERSION       0x03000029
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -96,6 +97,7 @@ typedef struct {
 	indigo_property *tracking_mode_property;
 	indigo_property *command_guide_rate_property;
 	//+ data
+	char response[18];
 	bool initialized;
 	bool configured;
 	int dev_id;
@@ -370,10 +372,14 @@ static void nexstar_update_position(indigo_device *device) {
 		res = tc_get_location(dev_id, &lon, &lat);
 		if (res != RC_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_location(%d) = %d (%s)", dev_id, res, strerror(errno));
-			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			if (MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
 		} else {
 			location_valid = true;
-			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			if (MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			}
 		}
 		if (lon < 0) {
 			lon += 360;
@@ -430,6 +436,10 @@ static void nexstar_update_position(indigo_device *device) {
 		if (location_valid) {
 			MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
 			MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+			if (MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+				MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = lon;
+				MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = lat;
+			}
 		}
 		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		if (time_valid) {
@@ -560,6 +570,25 @@ static bool nexstar_set_coordinates(indigo_device *device) {
 		return false;
 	}
 	return true;
+}
+
+static bool nexstar_get_park_axes(indigo_device *device, double *ha, double *dec) {
+	char *response = PRIVATE_DATA->response;
+	if (write_telescope(PRIVATE_DATA->dev_id, "z", 1) != 1 || read_telescope(PRIVATE_DATA->dev_id, response, 18) != 18 || response[8] != ',' || response[17] != '#') {
+		return false;
+	}
+	for (int i = 0; i < 17; i++) {
+		if (i != 8 && !isxdigit((unsigned char)response[i])) {
+			return false;
+		}
+	}
+	response[8] = response[17] = 0;
+	*ha = strtoul(response, NULL, 16) * 24.0 / 4294967296.0 - 12;
+	*dec = strtoul(response + 9, NULL, 16) * 360.0 / 4294967296.0;
+	if (*dec > 180) {
+		*dec -= 360;
+	}
+	return *dec >= -90 && *dec <= 90;
 }
 
 static bool nexstar_set_tracking(indigo_device *device) {
@@ -974,6 +1003,10 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 static void mount_geographic_coordinates_handler(indigo_device *device) {
 	//+ mount.MOUNT_GEOGRAPHIC_COORDINATES.on_change
 	MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = nexstar_set_location(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	if (MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE) {
+		MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+		MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
+	}
 	//- mount.MOUNT_GEOGRAPHIC_COORDINATES.on_change
 	indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 }
@@ -1079,6 +1112,36 @@ static void mount_motion_ra_handler(indigo_device *device) {
 	indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 }
 
+static void mount_park_set_handler(indigo_device *device) {
+	MOUNT_PARK_SET_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_PARK_SET.on_change
+	bool update_position = false;
+	if (MOUNT_PARK_SET_CURRENT_ITEM->sw.value) {
+		double ha, dec;
+		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+		bool valid = nexstar_get_park_axes(device, &ha, &dec);
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		if (valid) {
+			MOUNT_PARK_POSITION_HA_ITEM->number.value = MOUNT_PARK_POSITION_HA_ITEM->number.target = ha;
+			MOUNT_PARK_POSITION_DEC_ITEM->number.value = MOUNT_PARK_POSITION_DEC_ITEM->number.target = dec;
+			update_position = true;
+		} else {
+			MOUNT_PARK_SET_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	} else if (MOUNT_PARK_SET_DEFAULT_ITEM->sw.value) {
+		MOUNT_PARK_POSITION_HA_ITEM->number.value = MOUNT_PARK_POSITION_HA_ITEM->number.target = 6;
+		MOUNT_PARK_POSITION_DEC_ITEM->number.value = MOUNT_PARK_POSITION_DEC_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value > 0 ? 90 : -90;
+		update_position = true;
+	}
+	MOUNT_PARK_SET_CURRENT_ITEM->sw.value = MOUNT_PARK_SET_DEFAULT_ITEM->sw.value = false;
+	if (update_position) {
+		MOUNT_PARK_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_PARK_POSITION_PROPERTY, NULL);
+	}
+	//- mount.MOUNT_PARK_SET.on_change
+	indigo_update_property(device, MOUNT_PARK_SET_PROPERTY, NULL);
+}
+
 static void mount_park_handler(indigo_device *device) {
 	//+ mount.MOUNT_PARK.on_change
 	if (MOUNT_PARK_PARKED_ITEM->sw.value) {
@@ -1181,6 +1244,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 		MOUNT_MOTION_DEC_PROPERTY->hidden = false;
 		MOUNT_MOTION_RA_PROPERTY->hidden = false;
+		MOUNT_PARK_SET_PROPERTY->hidden = false;
 		MOUNT_PARK_PROPERTY->hidden = false;
 		MOUNT_ABORT_MOTION_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1233,6 +1297,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_RA_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_MOTION_RA_PROPERTY, "Mount is parked!");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_RA_PROPERTY, mount_motion_ra_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_PARK_SET_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PARK_SET_PROPERTY, mount_park_set_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_PARK_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PARK_PROPERTY, mount_park_handler);

@@ -1,7 +1,7 @@
 /**************************************************************
 	Celestron NexStar compatible telescope control library
 
-	(C)2013-2016 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+	(C)2013-2026 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 ***************************************************************/
 #include <stdio.h>
 #include <math.h>
@@ -122,6 +122,23 @@ int _read_telescope(int devfd, char *reply, int len, char fl) {
 	return RC_FAILED;
 }
 
+/* Celestron V has two binary payload bytes: revision 35 is itself '#'.
+ * SynScan V has six ASCII payload bytes. Do not use delimiter-only framing. */
+static int read_version_reply(int dev, char *reply) {
+	int length = 3;
+	for (int count = 0; count < length; count++) {
+		if (read(dev, reply + count, 1) != 1) {
+			debug("version read FAILED", reply, count);
+			return RC_FAILED;
+		}
+		if (count == 2 && reply[2] != '#') {
+			length = 7;
+		}
+	}
+	debug("version read", reply, length);
+	return reply[length - 1] == '#' ? length : RC_FAILED;
+}
+
 int guess_mount_vendor(int dev) {
 	char reply[7];
 	int res;
@@ -130,7 +147,7 @@ int guess_mount_vendor(int dev) {
 
 	if (write_telescope(dev, "V", 1) < 1) return RC_FAILED;
 
-	res = read_telescope_vl(dev, reply, sizeof reply);
+	res = read_version_reply(dev, reply);
 	if (res < 1) return RC_FAILED;
 
 	if (res < 4) { /* Celestron */
@@ -437,7 +454,7 @@ int tc_get_version(int dev, char *major, char *minor) {
 
 	if (write_telescope(dev, "V", 1) < 1) return RC_FAILED;
 
-	res = read_telescope_vl(dev, reply, (sizeof reply));
+	res = read_version_reply(dev, reply);
 	if (res < 0) return RC_FAILED;
 
 	if (res == 3 || res == 2) { /* Celestron */

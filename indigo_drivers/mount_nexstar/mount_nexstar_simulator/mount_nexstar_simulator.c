@@ -12,6 +12,7 @@
 #define _XOPEN_SOURCE 600
 
 #include <errno.h>
+#include <math.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -49,6 +50,8 @@ typedef struct {
 	simulator_dialect dialect;
 	simulator_hc_type hc_type;
 	int model_id;
+	int firmware_major, firmware_minor;
+	uint32_t axis_ra_offset, axis_dec_offset;
 	char control_file[PATH_MAX];
 	char event_file[PATH_MAX];
 } simulator_options;
@@ -82,6 +85,8 @@ static simulator_options options = {
 	.ready_file = NULL,
 	.dialect = DIALECT_CELESTRON,
 	.hc_type = HC_STARSENSE,
+	.firmware_major = 4,
+	.firmware_minor = 15,
 	.model_id = -1
 };
 static simulator_state state = {
@@ -117,6 +122,8 @@ static void usage(const char *name) {
 	printf("  --dialect <name>        celestron or skywatcher\n");
 	printf("  --hc-type <name>        nexstar or starsense\n");
 	printf("  --model-id <id>         Override the dialect default model id\n");
+	printf("  --axis-offset <ra,dec>  Mechanical-axis offsets from sky coordinates (degrees)\n");
+	printf("  --firmware <major.minor> Celestron binary firmware version\n");
 	printf("  --unaligned             Report the mount as not aligned\n");
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
@@ -166,6 +173,18 @@ static bool parse_args(int argc, char *argv[]) {
 		} else if (!strcmp(argv[i], "--hc-type")) {
 			if (++i == argc || !parse_hc_type(argv[i], &options.hc_type)) {
 				fprintf(stderr, "--hc-type requires nexstar or starsense\n");
+				return false;
+			}
+		} else if (!strcmp(argv[i], "--axis-offset")) {
+			double ra, dec;
+			if (++i == argc || sscanf(argv[i], "%lf,%lf", &ra, &dec) != 2 || !isfinite(ra) || !isfinite(dec)) {
+				return false;
+			}
+			options.axis_ra_offset = (uint32_t)(fmod(fmod(ra, 360) + 360, 360) / 360 * 4294967296.0);
+			options.axis_dec_offset = (uint32_t)(fmod(fmod(dec, 360) + 360, 360) / 360 * 4294967296.0);
+		} else if (!strcmp(argv[i], "--firmware")) {
+			if (++i == argc || sscanf(argv[i], "%d.%d", &options.firmware_major, &options.firmware_minor) != 2 || options.firmware_major < 0 || options.firmware_major > 255 || options.firmware_minor < 0 || options.firmware_minor > 255) {
+				fprintf(stderr, "--firmware requires two byte values\n");
 				return false;
 			}
 		} else if (!strcmp(argv[i], "--unaligned")) {
@@ -498,8 +517,8 @@ static void handle_command(const uint8_t *command, size_t length) {
 			break;
 		case 'V':
 			if (options.dialect == DIALECT_CELESTRON) {
-				response[0] = 4;
-				response[1] = 15;
+				response[0] = options.firmware_major;
+				response[1] = options.firmware_minor;
 				write_reply(response, 2);
 			} else {
 				write_reply((const uint8_t *)"042507", 6);
@@ -568,15 +587,15 @@ static void handle_command(const uint8_t *command, size_t length) {
 			write_reply((uint8_t *)text, 9);
 			break;
 		case 'z':
-			format_hex32(text, state.ra);
+			format_hex32(text, state.ra + options.axis_ra_offset);
 			text[8] = ',';
-			format_hex32(text + 9, state.dec);
+			format_hex32(text + 9, state.dec + options.axis_dec_offset);
 			write_reply((uint8_t *)text, 17);
 			break;
 		case 'Z':
-			format_hex16(text, state.ra);
+			format_hex16(text, state.ra + options.axis_ra_offset);
 			text[4] = ',';
-			format_hex16(text + 5, state.dec);
+			format_hex16(text + 5, state.dec + options.axis_dec_offset);
 			write_reply((uint8_t *)text, 9);
 			break;
 		case 's':
@@ -600,11 +619,11 @@ static void handle_command(const uint8_t *command, size_t length) {
 			write_empty_reply();
 			break;
 		case 'b':
-			start_motion(read_hex32(command + 1), read_hex32(command + 10));
+			start_motion(read_hex32(command + 1) - options.axis_ra_offset, read_hex32(command + 10) - options.axis_dec_offset);
 			write_empty_reply();
 			break;
 		case 'B':
-			start_motion(read_hex16(command + 1), read_hex16(command + 6));
+			start_motion(read_hex16(command + 1) - options.axis_ra_offset, read_hex16(command + 6) - options.axis_dec_offset);
 			write_empty_reply();
 			break;
 		case 'P':
