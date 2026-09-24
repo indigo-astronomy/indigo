@@ -727,7 +727,7 @@ $(INTEGRATION_BUILD)/test_gps_gpsd_simulator_sanitize: integration/test_gps_gpsd
 test-gps-gpsd-simulator-sanitize: $(INTEGRATION_BUILD)/test_gps_gpsd_simulator_sanitize
 	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_gps_gpsd_simulator_sanitize
 
-IOPTRON_TEST_CFLAGS = $(TEST_CFLAGS) -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter -Wno-sign-compare
+IOPTRON_TEST_CFLAGS = $(TEST_CFLAGS) -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter -Wno-sign-compare
 
 $(INTEGRATION_BUILD)/test_mount_ioptron_simulator: integration/test_mount_ioptron_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_ioptron_simulator $(BUILD_DRIVERS)/indigo_mount_ioptron.a | $(INTEGRATION_BUILD)
 	$(CC) $(IOPTRON_TEST_CFLAGS) -o $@ $< $(MOUNT_IOPTRON_SIMULATOR_TEST_LDFLAGS)
@@ -739,7 +739,7 @@ $(INTEGRATION_BUILD)/test_mount_ioptron_simulator_sanitize: integration/test_mou
 test-mount-ioptron-tcp: $(INTEGRATION_BUILD)/test_mount_ioptron_simulator $(INTEGRATION_BUILD)/test_mount_ioptron_simulator_sanitize
 	$(INTEGRATION_BUILD)/test_mount_ioptron_simulator --tcp; ioptron_normal_status=$$?; $(INTEGRATION_BUILD)/test_mount_ioptron_simulator_sanitize --tcp; ioptron_sanitize_status=$$?; test $$ioptron_normal_status -eq 0 -a $$ioptron_sanitize_status -eq 0
 
-LX200_TEST_CFLAGS = $(TEST_CFLAGS) -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter -Wno-sign-compare
+LX200_TEST_CFLAGS = $(TEST_CFLAGS) -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter -Wno-sign-compare
 
 $(INTEGRATION_BUILD)/mount_lx200_simulator: ../indigo_drivers/mount_lx200/mount_lx200_simulator/mount_lx200_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(LX200_TEST_CFLAGS) -o $@ $< -lm

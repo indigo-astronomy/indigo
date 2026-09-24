@@ -649,6 +649,13 @@ static void format_signed(char *buffer, size_t size, long value, int digits) {
 // ---------------------------------------------------------------- control file
 
 static void add_rule(const char *command, const char *reply, int count) {
+	size_t command_length = strlen(command), reply_length = strlen(reply);
+	// A shortened rule would match the wrong command or answer the wrong bytes, and the test would
+	// fail somewhere else, so refuse it and say so.
+	if (command_length >= sizeof(rules[0].command) || reply_length >= sizeof(rules[0].reply)) {
+		fprintf(stderr, "control: rule too long, command %zu of %zu bytes, reply %zu of %zu bytes\n", command_length, sizeof(rules[0].command), reply_length, sizeof(rules[0].reply));
+		return;
+	}
 	for (int i = 0; i < MAX_RULES; i++) {
 		if (rules[i].command[0] && !strcmp(rules[i].command, command)) {
 			rules[i].command[0] = 0;
@@ -659,8 +666,8 @@ static void add_rule(const char *command, const char *reply, int count) {
 	}
 	for (int i = 0; i < MAX_RULES; i++) {
 		if (!rules[i].command[0]) {
-			snprintf(rules[i].command, sizeof(rules[i].command), "%s", command);
-			snprintf(rules[i].reply, sizeof(rules[i].reply), "%s", reply);
+			memcpy(rules[i].command, command, command_length + 1);
+			memcpy(rules[i].reply, reply, reply_length + 1);
 			rules[i].count = count;
 			return;
 		}
