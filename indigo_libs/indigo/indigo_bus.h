@@ -945,10 +945,6 @@ INDIGO_EXTERN bool indigo_use_blob_caching;
  */
 INDIGO_EXTERN bool indigo_proxy_blob;
 
-/** Use recursive locks for dispaching all bus messages
- */
-INDIGO_EXTERN bool indigo_use_strict_locking;
-
 /** Allocate, assert and zero
  */
 
