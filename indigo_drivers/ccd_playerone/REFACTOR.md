@@ -466,60 +466,64 @@ are not applicable to this model, exactly as on macOS.
 
 ## Found defects — 2026-09-24
 
-### POA-D02 — a crossed libusb/SDK binding now removes a camera that is still present (BLOCKED)
+### POA-D02 — a crossed libusb/SDK binding removed a camera that was still present (FIXED, version 28)
 
-Observable impact: `indigo_test/integration/test_ccd_playerone_sdk.c` fails two cases, 47/49 instead of
-49/49, on both macOS arm64 and Linux arm64:
+Observable impact: `indigo_test/integration/test_ccd_playerone_sdk.c` failed two cases, 47/49, on both
+macOS arm64 and Linux arm64:
 
 - `Optional guider, capacity and SDK identity removal`, line 988: after a `DEVICE_LEFT` event whose
-  libusb pointer had been bound to a camera the SDK still reports, three logical devices are detached
-  instead of two — the absent camera **and** the camera that is still there. `counter expected 3, got 2`.
-- `Completion sdk_discovery_identity_and_strings`, line 1724: with `POAGetCameraCount()` failing, so
-  that no removal can be confirmed, the device whose recorded `usbdev` matches the event is detached
-  anyway. `expected 4, got 2`.
+  libusb pointer had been bound to a camera the SDK still reports, three logical devices were detached
+  instead of two — the absent camera **and** the camera that was still there. `counter expected 3, got 2`.
+- `Completion sdk_discovery_identity_and_strings`, line 1724: with `POAGetCameraCount()` failing, the
+  device whose recorded `usbdev` matched the event was detached anyway. `expected 4, got 2`.
 
-In both cases the driver loses a camera that is physically present, and it does not come back without a
-replug, because no further `DEVICE_LEFT` event follows for it.
+In both cases the driver lost a camera that was physically present, and it could not come back without
+a replug, because no further `DEVICE_LEFT` event follows for it.
 
-Root cause: commit `0057e7302` changed the generator's SDK hot-plug template from
-`if (last_action != INDIGO_DRIVER_SHUTDOWN)` to `if (!unplug_result && last_action != INDIGO_DRIVER_SHUTDOWN)`
-around the `sdk.unplug_match` block, so `private_data->usbdev == dev` became decisive and the hook can
-no longer refuse a removal libusb has reported — see `indigo_ccd_playerone.c:2151` and
-`indigo_tools/indigo_generator.c:2297`. That is correct for a driver whose libusb-to-SDK binding is
-trustworthy, and it fixed QHY2-001. It is wrong for this driver: the `plug` block in
-`indigo_ccd_playerone.driver:969` binds the arriving `dev` to *the first SDK camera not already
-attached*, because the Player One SDK exposes no USB path. With two cameras whose USB arrival order
-differs from `POAGetCameraProperties()` enumeration order the binding is crossed, which is exactly what
-both failing cases model. The SDK-identity hook exists precisely to be authoritative over that
-unreliable pointer.
+Root cause: the `plug` block bound an arriving `libusb_device *` to *the first SDK camera not already
+attached*, so when the USB arrival order differed from the `POAGetCameraProperties()` enumeration order
+the binding was crossed. Commit `0057e7302` then made `private_data->usbdev == dev` decisive in the
+generated removal path, so a removal event could no longer be refused by the SDK-identity hook and the
+crossed pointer decided which camera went.
 
-Proof that this is a regression of `0057e7302` and not a pre-existing failure: rebuilding the same
-suite against the current driver with only that one condition restored gives 49/49 (`EXIT=0`), and the
-unmodified driver gives 47/49 (`EXIT=1`), on the same machine with the same test source.
+Fix, in `indigo_ccd_playerone.driver`, not in the generator: `POACameraProperties` carries
+`localPath`, documented as "the path of the camera in the computer host", and both the Linux `.so` and
+the macOS `.dylib` format it with the same `%04x:%04x:%04x:%04x` as vid:pid:bus:address, followed by
+the port. Measured on the bench camera it reads `a0a0:6620:0004:0002:0001` while libusb reports
+bus 4, address 2 for the same device, so the arrival can be attributed exactly. The new
+`playerone_path_matches()` helper parses that path and compares vid, pid, bus and address against the
+arriving device; the `plug` block prefers the camera whose path is this device and keeps the historical
+first-unattached rule as a fallback, so a host whose path cannot be matched still attaches its cameras
+instead of none. The binding is therefore trustworthy and `usbdev == dev` being decisive is correct.
+Version 27 -> 28.
 
-Status: **not fixed — blocked on a generator decision.** The hook can only ever set `unplug_result`
-to true and is now unreachable when libusb has matched, so no change confined to
-`indigo_ccd_playerone.driver` can restore the behaviour; and the Player One SDK offers nothing to tie a
-`libusb_device *` to a `cameraID`, so the binding cannot be made trustworthy instead. The fix belongs
-in `indigo_tools/indigo_generator.c`, which the root `AGENTS.md` puts behind explicit user approval of
-a concrete proposed change. The same template change regenerated 16 other drivers; `ccd_asi`,
-`ccd_qhy2`, `ccd_svb`, `ccd_qsi`, `ccd_mi`, `ccd_fli`, `focuser_astroasis`, `wheel_astroasis`,
-`guider_asi`, `wheel_playerone` and others all match on an SDK-side identity rather than on the libusb
-pointer, so the same exposure should be assumed for them until each is re-run. `ccd_atik` was re-run on
-the same day and is **not** affected: its fake-SDK suite is 43/43 on Linux arm64, because its cases do
-not model a crossed binding.
+Because the binding can no longer be crossed, the two failing cases needed the fake SDK to stop
+contradicting itself: it now models `localPath`, with `camera_token[i]` saying which USB token camera
+`i` physically sits behind, so a case can still make the arrival order differ from the SDK enumeration
+order. `Optional guider, capacity and SDK identity removal` keeps its original assertions unchanged and
+only sends the departing camera's own token. `Completion sdk_discovery_identity_and_strings` now checks
+that a removal for a path **no device is bound to** detaches nothing while the SDK inventory is
+unavailable, which is what its `count_fail` guard was written to protect; a removal for a token a device
+does hold is authoritative and detaches that device, since libusb reporting its own path gone is not
+something the SDK can overrule.
 
-Regression test: none added. The two failing cases already reproduce the defect hardware-free and were
-written before it existed; they must keep failing until the removal decision is fixed, so they are
-recorded here as expected baseline failures rather than weakened to accept the new behaviour. The
-defect was found hardware-free and needs no hardware observation to reproduce. It was *not* reachable
-from this session's hardware scope: one camera cannot produce a crossed binding, and physical hot-plug
-was out of scope.
+Regression test: `Crossed USB arrival order removes only the camera that left` in
+`indigo_test/integration/test_ccd_playerone_sdk.c`. Two cameras arrive in the opposite order to the SDK
+enumeration, one leaves, and the other must survive with a working exposure; a second phase sets
+`path_fail` so the unmatched-path fallback is exercised too. Verified A/B on macOS arm64: against the
+pre-fix driver the case fails at its first arrival (`counter expected 4, got 3`, the crossed binding
+picking the ST4-less camera), against the fixed driver the suite is 50/50. The earlier record in this
+file called the defect blocked on a generator decision; that was wrong — the generator's removal rule is
+sound once the binding it relies on is trustworthy, and nothing outside this driver had to change. The
+~14 other SDK drivers regenerated by `0057e7302` are affected only if their own libusb-to-SDK binding can
+be crossed; `ccd_atik` was measured the same day and is not (43/43).
 
 ## Final test summary — 2026-09-24
 
-- Simulated (fake SDK) tests: 49 run, 47 passed — the two failures are POA-D02, reproduced on both
-  macOS arm64 and Linux arm64.
-- Hardware tests: 33 run, 33 passed on Linux arm64 — 27 Mars-C II cases plus 6 dynamic reload cases,
-  each of the 27 confirmed twice. Four physical hot-plug cases and the flash-suffix replug case exist
-  and were not run; they need an operator, so hot-plug coverage is not established on this platform.
+- Simulated (fake SDK) tests: 50 run, 50 passed on macOS arm64 and 50 run, 50 passed on Linux arm64,
+  with POA-D02 fixed and covered by a dedicated regression case.
+- Hardware tests: 33 run, 33 passed on Linux arm64 — 27 Mars-C II cases plus 6 dynamic reload cases.
+  The 27-case suite was run twice on driver version 27 with byte-identical output and once more on
+  version 28 after the POA-D02 fix, again 27/27. Four physical hot-plug cases and the flash-suffix
+  replug case exist and were not run; they need an operator, so hot-plug coverage is not established on
+  this platform.

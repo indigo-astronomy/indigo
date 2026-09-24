@@ -71,6 +71,14 @@ static observed_device observed[CAMERAS * 2];
 static pthread_mutex_t observation_mutex = PTHREAD_MUTEX_INITIALIZER;
 static libusb_hotplug_callback_fn usb_callback;
 static int usb_devices[CAMERAS];
+// POACameraProperties.localPath is the camera's host path, vid:pid:bus:address:port with %04x
+// fields, and the driver binds an arrival by matching it against the libusb device. camera_token[i]
+// is the USB token camera i physically sits behind, so a case can make the USB arrival order differ
+// from the SDK enumeration order without making the fake contradict itself. path_fail models a host
+// whose path cannot be matched, which must still attach through the legacy first-unattached rule.
+#define POA_TEST_USB_BUS 4
+static atomic_int camera_token[CAMERAS];
+static atomic_int path_fail;
 static atomic_int usb_ref_balance[CAMERAS], invalid_usb_unref, usb_refs, attached;
 static atomic_int sdk_after_close, blobs, bad_blob, pulse_writes, short_waits, fail_attach, fail_configs;
 typedef struct {
@@ -396,6 +404,26 @@ int poa_test_usb_deregister_poll(libusb_context *ctx, libusb_hotplug_callback_ha
 	return LIBUSB_SUCCESS;
 }
 
+static int usb_token_of(libusb_device *device) {
+	return (int)((int *)device - usb_devices);
+}
+
+uint8_t LIBUSB_CALL poa_test_usb_bus(libusb_device *device) {
+	return POA_TEST_USB_BUS;
+}
+
+uint8_t LIBUSB_CALL poa_test_usb_address(libusb_device *device) {
+	return (uint8_t)(usb_token_of(device) + 1);
+}
+
+static void fill_local_path(POACameraProperties *info, int index) {
+	if (atomic_load(&path_fail)) {
+		info->localPath[0] = 0;
+		return;
+	}
+	snprintf(info->localPath, sizeof(info->localPath), "%04x:%04x:%04x:%04x:%04x", 0xa0a0, 0x1001, POA_TEST_USB_BUS, atomic_load(&camera_token[index]) + 1, 1);
+}
+
 libusb_device *LIBUSB_CALL poa_test_usb_ref(libusb_device *device) {
 	atomic_fetch_add(&usb_refs, 1);
 	atomic_fetch_add(&usb_ref_balance[(int *)device - usb_devices], 1);
@@ -441,6 +469,7 @@ POAErrors POAGetCameraProperties(int index, POACameraProperties *info) {
 	for (int i = 0; i < CAMERAS; i++) {
 		if (atomic_load(&cameras[i].visible) && index-- == 0) {
 			*info = cameras[i].info;
+			fill_local_path(info, i);
 			return POA_OK;
 		}
 	}
@@ -451,6 +480,7 @@ POAErrors POAGetCameraPropertiesByID(int id, POACameraProperties *info) {
 	for (int i = 0; i < CAMERAS; i++) {
 		if (cameras[i].info.cameraID == id && atomic_load(&cameras[i].visible)) {
 			*info = cameras[i].info;
+			fill_local_path(info, i);
 			return POA_OK;
 		}
 	}
@@ -965,8 +995,10 @@ static void connection_rollback(void) {
 
 static void optional_guider_capacity_and_identity(void) {
 	cameras[1].info.cameraID = 101;
+	atomic_store(&camera_token[1], 2); // USB order deliberately differs from SDK order.
+	atomic_store(&camera_token[2], 1);
 	atomic_store(&cameras[1].visible, true);
-	usb_event(2, true); // USB order deliberately differs from SDK order.
+	usb_event(2, true);
 	ASSERT_TRUE(wait_count(&attached, 4));
 	cameras[2].info.cameraID = 201;
 	cameras[2].info.isHasST4Port = false;
@@ -984,7 +1016,7 @@ static void optional_guider_capacity_and_identity(void) {
 	indigo_release_property(p);
 	ASSERT_TRUE(connect_device(4, false));
 	atomic_store(&cameras[1].visible, false);
-	usb_event(1, false); // This event pointer was associated with camera 2; remove SDK-absent camera 1.
+	usb_event(2, false); // Camera 1 sits behind token 2: its own path leaves as the SDK stops listing it.
 	ASSERT_TRUE(wait_count(&attached, 3));
 	ASSERT_EQ_INT(-1, state(2, "CONNECTION"));
 	ASSERT_TRUE(connect_device(4, true));
@@ -1691,6 +1723,43 @@ static void geometry_errors_and_recovery(void) {
 	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
 }
 
+// POA-D02. The Player One SDK hands out cameras in its own enumeration order, so the USB arrival
+// order can disagree with it. A removal must then be attributed by the camera's host path: before
+// the driver matched on localPath, the arrival bound to "the first camera not yet handed out" and a
+// removal detached whichever camera happened to hold the token, which lost a camera that was still
+// present and could not come back without a replug.
+static void crossed_usb_order_removes_only_the_camera_that_left(void) {
+	atomic_store(&camera_token[1], 2);
+	atomic_store(&camera_token[2], 1);
+	// MAX_DEVICES is 5 and camera 0 already holds two slots, so the survivor is the ST4-less camera.
+	cameras[1].info.isHasST4Port = false;
+	atomic_store(&cameras[1].visible, true);
+	atomic_store(&cameras[2].visible, true);
+	usb_event(1, true); // Token 1 is camera 2, which the SDK enumerates second.
+	ASSERT_TRUE(wait_count(&attached, 4));
+	usb_event(2, true); // Token 2 is camera 1, which the SDK enumerates first.
+	ASSERT_TRUE(wait_count(&attached, 5));
+	ASSERT_TRUE(connect_device(2, true));
+	ASSERT_TRUE(connect_device(4, true));
+	atomic_store(&cameras[2].visible, false);
+	usb_event(1, false);
+	ASSERT_TRUE(wait_count(&attached, 3));
+	// Camera 1 is the survivor: the SDK still lists it and its own path never left. Assert it by
+	// identity and by a working exposure rather than by the absence of the removed device, whose
+	// cached properties are cleared by a bus notification that can still be in flight here.
+	ASSERT_TRUE(strstr(observed[4].name, "POA test 1") != NULL);
+	ASSERT_TRUE(change_number(4, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+	ASSERT_TRUE(connect_device(4, false));
+	// A host whose path cannot be matched falls back to the historical rule and still attaches.
+	atomic_store(&path_fail, 1);
+	atomic_store(&cameras[2].visible, true);
+	usb_event(1, true);
+	ASSERT_TRUE(wait_count(&attached, 5));
+	atomic_store(&cameras[2].visible, false);
+	usb_event(1, false);
+	ASSERT_TRUE(wait_count(&attached, 3));
+}
+
 static void sdk_discovery_identity_and_strings(void) {
 	atomic_store(&cameras[0].visible, false);
 	usb_event(0, false);
@@ -1717,19 +1786,22 @@ static void sdk_discovery_identity_and_strings(void) {
 	ASSERT_TRUE(connect_device(0, true));
 	ASSERT_TRUE(connect_device(2, true));
 	atomic_store(&count_fail, 1);
-	usb_event(0, false);
+	// A removal for a path no device is bound to cannot be attributed, and with the SDK inventory
+	// unavailable it must not be guessed at either, so nothing may be detached.
+	usb_event(2, false);
 	barrier = atomic_load(&barriers) + 1;
 	indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_barrier, NULL);
 	ASSERT_TRUE(wait_count(&barriers, barrier));
 	ASSERT_EQ_INT(4, atomic_load(&attached));
 	atomic_store(&count_fail, 0);
 	atomic_store(&cameras[0].visible, false);
-	usb_event(1, false);
-	ASSERT_TRUE(wait_count(&attached, 2));
-	ASSERT_TRUE(change_number(2, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
-	ASSERT_TRUE(connect_device(2, false));
-	atomic_store(&cameras[1].visible, false);
 	usb_event(0, false);
+	ASSERT_TRUE(wait_count(&attached, 2));
+	// Token 1 is camera 1, so the survivor of camera 0's removal is the pair attached first.
+	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
+	ASSERT_TRUE(connect_device(0, false));
+	atomic_store(&cameras[1].visible, false);
+	usb_event(1, false);
 	ASSERT_TRUE(wait_count(&attached, 0));
 	memset(cameras[0].info.cameraModelName, 'M', sizeof(cameras[0].info.cameraModelName));
 	memset(cameras[0].info.sensorModelName, 'S', sizeof(cameras[0].info.sensorModelName));
@@ -2061,8 +2133,10 @@ static bool begin_fixture(void) {
 	atomic_store(&short_waits, 0);
 	atomic_store(&bad_blob, 0);
 	atomic_store(&sdk_after_close, 0);
+	atomic_store(&path_fail, 0);
 	for (int i = 0; i < CAMERAS; i++) {
 		mock_camera *c = cameras + i;
+		atomic_store(&camera_token[i], i);
 		c->info.cameraID = i;
 		snprintf(c->info.cameraModelName, sizeof(c->info.cameraModelName), "POA test %d", i);
 		snprintf(c->info.sensorModelName, sizeof(c->info.sensorModelName), "IMX-test");
@@ -2203,6 +2277,7 @@ int main(int argc, char **argv) {
 		{ "Readout error and subsequent acquisition", failed_readout_recovers },
 		{ "Open, Init and config failure rollback", connection_rollback },
 		{ "Optional guider, capacity and SDK identity removal", optional_guider_capacity_and_identity },
+		{ "Crossed USB arrival order removes only the camera that left", crossed_usb_order_removes_only_the_camera_that_left },
 		{ "Failed master attach is retryable without orphan guider", failed_attach_is_retryable },
 		{ "Busy guards preserve requested values", property_busy_guard },
 		{ "Configuration round trip and suffix boundaries", configuration_and_suffix },

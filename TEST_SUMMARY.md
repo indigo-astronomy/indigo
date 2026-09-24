@@ -63,9 +63,9 @@
 | ccd_ogma | 2026-09-21 14:02 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_omegonpro | 2026-09-21 14:04 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_playerone | 2026-09-21 21:23 | 3.0.0.26 | mac arm64 | Mars-C II | 27 / 27 | ✅ OK |
-|  | 2026-09-24 08:30 | 3.0.0.27 | linux arm64 | Mars-C II | 27 / 27 | ✅ OK |
-|  | 2026-09-24 08:34 | 3.0.0.27 | linux arm64 | fake SDK | 49 / 47 | ❌ Failed |
-|  | 2026-09-24 08:46 | 3.0.0.27 | mac arm64 | fake SDK | 49 / 47 | ❌ Failed |
+|  | 2026-09-24 09:08 | 3.0.0.28 | mac arm64 | fake SDK | 50 / 50 | ✅ OK |
+|  | 2026-09-24 09:09 | 3.0.0.28 | linux arm64 | fake SDK | 50 / 50 | ✅ OK |
+|  | 2026-09-24 09:11 | 3.0.0.28 | linux arm64 | Mars-C II | 27 / 27 | ✅ OK |
 | ccd_ptp | 2026-09-21 14:14 | 3.0.0.52 | mac arm64 | fake SDK | 128 / 128 | ✅ OK |
 | ccd_qhy | 2026-09-22 19:25 | 3.0.0.37 | mac arm64 | fake SDK | 38 / 38 | ✅ OK |
 |  | 2026-09-22 20:15 | 3.0.0.37 | mac arm64 | QHY5LII-M | 1 / 0 | ❌ Failed |

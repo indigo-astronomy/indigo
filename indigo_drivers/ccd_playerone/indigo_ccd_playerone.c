@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001B
+#define DRIVER_VERSION       0x0300001C
 #define DRIVER_NAME          "indigo_ccd_playerone"
 #define DRIVER_LABEL         "Player One Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -158,6 +158,24 @@ static void ccd_exposure_handler(indigo_device *device);
 static void ccd_streaming_handler(indigo_device *device);
 
 static void acquisition_finalizer(indigo_device *device);
+
+// POACameraProperties.localPath is the camera's host path, formatted as vid:pid:bus:address:port
+// with %04x fields by both the Linux and the macOS SDK build, so an arriving libusb device can be
+// matched against it. Without that match an arrival can only be bound to the first camera
+// POAGetCameraProperties() has not handed out yet, and when the USB arrival order differs from the
+// SDK enumeration order that binding is crossed: a later removal then detaches a camera that is
+// still present, and it cannot come back without a replug.
+static bool playerone_path_matches(const char *local_path, libusb_device *dev) {
+	unsigned vid = 0, pid = 0, bus = 0, address = 0;
+	if (local_path == NULL || sscanf(local_path, "%4x:%4x:%4x:%4x", &vid, &pid, &bus, &address) != 4) {
+		return false;
+	}
+	struct libusb_device_descriptor descriptor = { 0 };
+	if (libusb_get_device_descriptor(dev, &descriptor) != LIBUSB_SUCCESS) {
+		return false;
+	}
+	return vid == descriptor.idVendor && pid == descriptor.idProduct && bus == libusb_get_bus_number(dev) && address == libusb_get_device_address(dev);
+}
 
 static int get_pixel_depth(indigo_device *device) {
 	int item = 0;
@@ -2044,7 +2062,9 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 			}
 		}
 		int count = POAGetCameraCount();
-		for (int index = 0; index < count; index++) {
+		POACameraProperties matched = { 0 }, fallback = { 0 };
+		bool have_matched = false, have_fallback = false;
+		for (int index = 0; index < count && !have_matched; index++) {
 			POACameraProperties info = { 0 };
 			if (POAGetCameraProperties(index, &info) != POA_OK || info.cameraID < 0 || slots < (info.isHasST4Port ? 2 : 1)) {
 				continue;
@@ -2059,6 +2079,19 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 			if (attached) {
 				continue;
 			}
+			info.localPath[sizeof(info.localPath) - 1] = 0;
+			if (playerone_path_matches(info.localPath, dev)) {
+				matched = info;
+				have_matched = true;
+			} else if (!have_fallback) {
+				fallback = info;
+				have_fallback = true;
+			}
+		}
+		// The fallback keeps the historical first-unattached rule, so a host whose SDK path cannot be
+		// matched against libusb still attaches its cameras instead of none.
+		if (have_matched || have_fallback) {
+			POACameraProperties info = have_matched ? matched : fallback;
 			info.cameraModelName[sizeof(info.cameraModelName) - 1] = 0;
 			info.sensorModelName[sizeof(info.sensorModelName) - 1] = 0;
 			info.SN[sizeof(info.SN) - 1] = 0;
@@ -2083,7 +2116,6 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 			indigo_make_name_unique(name, "%d", info.cameraID);
 			indigo_make_name_unique(private_data->guider_name, "%d", info.cameraID);
 			plug_result = true;
-			break;
 		}
 		//- sdk.plug
 	}
