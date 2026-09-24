@@ -135,3 +135,11 @@ Plan: restore these assignments in the generator input, increment version 28 to 
 Completed: restored the legacy value assignments and OK state in `configure_ccd()` for kinds 0 and 1, version 29; regenerated outputs. The driver build and `make -C indigo_test build/integration/test_ccd_simulator` passed. `indigo_test/build/integration/test_ccd_simulator` passed all 19 cases on macOS arm64, including lens values and state for both cameras. A second generator run produced byte-identical C/header/main outputs; `git diff --check` passed. Updated the test record and regenerated `TEST_SUMMARY.md`. No property definitions changed; no new files or case-count changes require project/status registration. Other platforms were not executed.
 
 Final test summary for this fix: simulator regression baseline 1 run / 0 passed (expected); final simulator suite 19 run / 19 passed; hardware 0 run / 0 passed.
+
+## Silent sensor-size change (2026-09-24)
+
+Found during the Linux x86_64 agent test run: the Guider Agent case `selection subframe restore` failed deterministically (expected 1600, got 400). Root cause in this simulator: the `guider_ccd.SIMULATION_SETUP.on_change` block resized `CCD_INFO` and `CCD_FRAME` (value, target and max) and relabelled `CCD_MODE` to the new image size, but published only `SIMULATION_SETUP`. Clients, including the Guider Agent, kept the old 1600x1200 frame, saved it before subframing and sent it back afterwards, where the camera correctly clipped it to the real 400 px width with ALERT.
+
+Fix: when connected, the block now updates `CCD_INFO` and `CCD_FRAME` and redefines `CCD_MODE` so the new labels reach clients. Version 29 to 30; the regenerated `indigo_ccd_simulator.c` differs from the input only by this block and the version. Regression: `integration/test_agent_guider.c` `selection subframe restore`, which now compares the real 400 px frame before guiding with the restored one. The 19-case simulator suite and all agent suites that use this simulator were rerun on Linux x86_64. macOS and Windows were not run for this fix.
+
+Final test summary for this fix: simulator suite 19 run / 19 passed; hardware 0 run / 0 passed.
