@@ -99,6 +99,14 @@ indigo_build_c:
 
 libindigo: indigo_build_c libusb libhidapi libjpeg libtiff libftd2xx libraw libindigocat $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) libindigo_client
 
+# The external libraries install the headers libindigo sources include (jpeglib.h,
+# tiffio.h, libraw, hidapi, ftd2xx) into $(BUILD_INCLUDE), so with parallel make the
+# objects must not be compiled before they are installed. indigo_build.o is
+# compiled by indigo_build_c from the generated indigo_build.c.
+$(LIBINDIGO_FILES): | $(LIBUSB) $(LIBHIDAPI).a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libraw.a
+
+indigo_build.o: indigo_build_c
+
 $(BUILD_LIB)/libindigo.a: $(LIBINDIGO_FILES)
 	$(AR) $(ARFLAGS) $@ $^
 
@@ -182,7 +190,7 @@ $(BUILD_LIB)/libusb-1.0.dylib:
 
 libhidapi: $(LIBHIDAPI).a
 
-$(LIBHIDAPI).a:
+$(LIBHIDAPI).a: | $(LIBUSB)
 	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS) -lusb-1.0"; cd externals/hidapi; autoreconf -fiv; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic; make; make install
 
 #---------------------------------------------------------------------
