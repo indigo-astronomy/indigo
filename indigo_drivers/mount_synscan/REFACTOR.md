@@ -1577,11 +1577,38 @@ Two things still stand in the way, neither of them the guider defect:
 The axes were left stopped (`:K1`, `:K2`, both then reporting `=100`). No motors or sensors were
 attached, so nothing here validates physical motion.
 
-### The portable suite does not run on this host
+### The portable suite did not run on this host - diagnosed and fixed in the framework
 
-Worth recording separately, because it cost time: `indigo_test/build/integration/test_mount_synscan_simulator`
-fails every case on the Pi with `No SynScan response from /dev/pts/N` at connect, 4 of 19, while the
-same commit passes 18/18 on macOS arm64. Reverting every change of this session and rebuilding on the
-Pi reproduces the same 4 of 18, so it is not caused by the fix above - it is a platform problem with
-this suite on Linux/aarch64 that has not been diagnosed. The hardware-free verification of this fix
-was therefore done on macOS.
+`test_mount_synscan_simulator` failed every serial case on the Pi with `No SynScan response from
+/dev/pts/N` at connect, 4 of 19, while the same commit passed 18/18 on macOS arm64. Reverting every
+driver change of this session reproduced it, so it was not the guider fix. The cause was in the
+framework, not in this driver or its suite.
+
+`indigo_uni_is_valid()` in `indigo_libs/indigo_uni_io.c` treated a failing `ioctl(TIOCMGET)` as a lost
+connection. A pseudo-terminal slave has no modem lines, so that ioctl fails on one - measured as
+`errno 25`, `ENOTTY`, on both Linux and macOS. The function carried a **macOS-only** exemption for
+names starting with `/dev/ttys`, which is what macOS calls its pseudo-terminal slaves; Linux calls
+them `/dev/pts/N` and had no equivalent, so on Linux every PTY-backed handle was reported as
+disconnected at the first command. The timing in the trace makes it unambiguous: the connection was
+declared lost 7 microseconds after the port was opened, before any command was written.
+
+```
+10:58:23.590904  0 <- // /dev/pts/1 opened
+10:58:23.590911  0 <- // Lost connection
+```
+
+It only hit the serial cases because `synscan_validate_handle()` returns early for a UDP handle, which
+is exactly the four cases that passed.
+
+Fixed by exempting `ENOTTY` instead of matching device names, which covers both platforms and retires
+the macOS special case. An earlier attempt also exempted `EINVAL` on the assumption that it meant the
+same thing; it did not, and it broke `ioptron_guider_directions_overlap_and_timing` on macOS, so the
+exemption is limited to the one errno that was actually measured.
+
+Verified on both platforms after the change: `mount_synscan` 19/19 on Linux arm64 and 19/19 on macOS
+arm64, `mount_nexstaraux` 40/40 on both, `mount_lx200` 99/99 and `mount_ioptron` 105/105 on macOS as
+regression controls - `mount_ioptron` was 105/105 before the change too, and 104/1 with the `EINVAL`
+version, which is how that regression was caught. Note that `mount_lx200_simulator.c` and
+`mount_ioptron_simulator.c` do not compile at all with gcc on Linux, failing
+`-Werror=format-truncation` and `-Werror=stringop-truncation`, so those two suites could not be run
+there; that is a separate matter from this fix.
