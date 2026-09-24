@@ -201,6 +201,7 @@
 #include "wheel_astroasis/indigo_wheel_astroasis.h"
 #include "focuser_qhy/indigo_focuser_qhy.h"
 #include "aux_svbpowerbox/indigo_aux_svbpowerbox.h"
+#include "polaralign_mlastro/indigo_polaralign_mlastro.h"
 #include "polaralign_simulator/indigo_polaralign_simulator.h"
 #include "focuser_askar/indigo_focuser_askar.h"
 #ifndef __aarch64__
@@ -347,6 +348,7 @@ driver_entry_point static_drivers[] = {
 	indigo_mount_starbook,
 	indigo_mount_synscan,
 	indigo_mount_temma,
+	indigo_polaralign_mlastro,
 	indigo_polaralign_simulator,
 	indigo_rotator_asi,
 	indigo_rotator_falcon,
