@@ -192,14 +192,33 @@ endif
 clean-all: status
 	git clean -dfx
 
-$(SDK_LIB_A): $(SDK_DIR)/Makefile
+# Everything an SDK build generates (configure output, objects, the build/ prefix) is ignored by git,
+# so a tree copied from another machine or moved to another path keeps it. $(SDK_DIR)/Makefile then
+# already exists, configure never runs, and make drives the foreign configuration - on Linux a
+# libtool that calls /usr/bin/clang with -arch flags. The stamp records the host and the path the SDK
+# was configured for, resolved because several drivers share one SDK through a symlink. When the
+# stamp is missing or names anything else, the generated files are wiped first and the SDK is
+# configured and built from scratch.
+ifneq ($(SDK_DIR),)
+SDK_HOST_STAMP = $(SDK_DIR)/.indigo_sdk_host
+SDK_HOST_ID = $(OS_DETECTED) $(ARCH_DETECTED) $(realpath $(SDK_DIR))
+ifneq ($(shell cat $(SDK_HOST_STAMP) 2>/dev/null),$(SDK_HOST_ID))
+.PHONY: $(SDK_HOST_STAMP)
+endif
+
+$(SDK_HOST_STAMP):
+	if git -C $(SDK_DIR) rev-parse --is-inside-work-tree >/dev/null 2>&1; then git -C $(SDK_DIR) clean -fdXq .; elif [ -f $(SDK_DIR)/Makefile ]; then make -C $(SDK_DIR) distclean || make -C $(SDK_DIR) clean || true; fi
+	echo "$(SDK_HOST_ID)" >$@
+endif
+
+$(SDK_LIB_A): $(SDK_DIR)/Makefile $(SDK_HOST_STAMP)
 ifneq ($(wildcard $(SDK_CONFIGURE_IN)),)
 	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)"; make -C $(SDK_DIR) install
 else
 	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)"; make -C $(SDK_DIR)
 endif
 
-$(SDK_LIB_SO): $(SDK_DIR)/Makefile
+$(SDK_LIB_SO): $(SDK_DIR)/Makefile $(SDK_HOST_STAMP)
 ifneq ($(wildcard $(SDK_CONFIGURE_IN)),)
 	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)"; make -C $(SDK_DIR) install
 else
@@ -213,5 +232,5 @@ else
 	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd $(SDK_DIR); ./configure --prefix=$(abspath $(SDK_DIR)/build) --enable-shared=yes --enable-static=no $(CONFIGURE_FLAGS)
 endif
 
-$(SDK_DIR)/configure: $(SDK_CONFIGURE_IN)
+$(SDK_DIR)/configure: $(SDK_CONFIGURE_IN) $(SDK_HOST_STAMP)
 	cd $(SDK_DIR); autoreconf -fiv

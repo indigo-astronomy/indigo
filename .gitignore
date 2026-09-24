@@ -9,6 +9,7 @@
 **/*.lo
 **/*.la
 **/.deps
+**/.indigo_sdk_host
 **/*.log
 !indigo_libs/externals/libjpeg/change.log
 **/a.out
