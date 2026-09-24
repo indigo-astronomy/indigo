@@ -1128,3 +1128,22 @@ The user attached a GPS accessory to the NexStar SE / NexStar+ 5.35 and requeste
 
 Simulated tests: **0 run, 0 passed** (no production change; prior 17/17 portable and 17/17 sanitizer acceptance remains separately recorded above).
 Hardware tests: **1 run, 1 passed**, GPS detection/status and sibling survival only. The preceding full mount hardware acceptance remains **12/12**.
+
+## StarSense HC follow-up — 2026-09-24, complete
+
+Interactive physical run on NexStar 4/5 SE in EQ wedge configuration with StarSense HC 1.20 (HC type 0x13), serial port USB-Serial Controller D. Physical USB hot-plug excluded by the earlier user choice. User confirms that rejecting site/time writes after alignment is an intentional StarSense feature.
+
+Baseline strict HW executable build: `make -C indigo_test build/hardware/test_mount_nexstar_hw` passed. Read-only identity 1/1 passed; full baseline showed 12/12 nominal PASS, but site/time case was a false positive because polling published OK after the driver published ALERT. The controller reported 2026-09-09 and site 48°08′33″N 17°07′E; those values were only read, not treated as accurate current time. GPS accessory was absent through this HC.
+
+Plan and current state:
+1. **Done:** change StarSense-specific HW site/time assertions to capture transient ALERT and unchanged readback; leave NexStar+ writable branch intact. The first rerun confirmed both refusals and exposed the separate tracking race.
+2. **Done:** one-shot delayed `h` reply reproduced the race in the original version 41: the new integration test failed waiting for `T 00`, while simulator events showed `T 02` (/tmp/nexstar-starsense-sim-baseline.log).
+3. **Done:** with explicit user approval, guarded the polling readback while MOUNT_TRACKING is BUSY, bumped version 41 → 42, regenerated C/H/main twice with identical SHA-1 hashes, and built driver and strict-warning test binaries. No generator implementation changed.
+4. **Done:** portable simulator 19/19 and ASan/UBSan 19/19 passed, including two new cases: the tracking race and StarSense 1.20 with forbidden site/time writes plus GPS 11.1 no fix. Physical StarSense + GPS acceptance 12/12 passed after the production fix (/tmp/nexstar-starsense-hw-final.log); the log shows `T 00` followed by readback `t → 00 #` and then `T 02`. README Testing and TEST_SUMMARY record the result; MIGRATION_STATUS counts are 19 / 12. No push.
+
+Found defect (physical observation): With a StarSense request to turn tracking OFF while position polling was reading time, `nexstar_update_position()` observed the pending OFF item, queried current HC mode (still ON), then changed the item back to ON despite BUSY. Queued `mount_tracking_handler()` subsequently issued `T 02` (EQ ON) rather than `T 00`. The edited HW case captured the absent `T 00` and failed, /tmp/nexstar-starsense-accepted.log. The fix and simulator regression are in steps 2–3. The simulator also models the physical StarSense 1.20 three-byte `t` payload and GPS 11.1 with an unlinked/no-fix status as selectable settings. The physical GPS follow-up did not establish satellite-fix accuracy. This is a driver race, distinct from the expected StarSense prohibition of site/time writes.
+
+### Final test summary for this follow-up
+
+Simulated tests: **38 run, 38 passed** in the final portable validation: 19 normal plus 19 ASan/UBSan. Baseline regression failed as expected on version 41. A sanitizer run found a test-cache use-after-free during GPS cleanup; the new test waits for asynchronous GPS property deletion before switching its cached device context, and both full suites passed after that correction. Logs: `/tmp/nexstar-starsense-sim-final.log`, `/tmp/nexstar-starsense-asan-final.log`.
+Hardware tests: **12 run, 12 passed** in the final StarSense 1.20 + GPS 11.1 run. The GPS firmware was 11.1 and reported no satellite fix; fix accuracy was not evaluated indoors. The original nominal baseline's site/time PASS was invalid; two intermediate corrected attempts exposed the tracking race before the fix. Physical hot-plug was not exercised. Other mount models, Windows and Linux remain unverified for this follow-up.

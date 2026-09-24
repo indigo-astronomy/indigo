@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000029
+#define DRIVER_VERSION       0x0300002A
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -392,7 +392,7 @@ static void nexstar_update_position(indigo_device *device) {
 			time_valid = true;
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
+		if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE && MOUNT_TRACKING_OFF_ITEM->sw.value) {
 			int mode = tc_get_tracking_mode(dev_id);
 			if (mode < 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_tracking_mode(%d) = %d (%s)", dev_id, mode, strerror(errno));

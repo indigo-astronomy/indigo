@@ -897,6 +897,83 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static void nexstar_tracking_change_survives_poll_in_flight(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator_model(&simulator, "12"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(select_mount_switch(TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "54 02", 1));
+	indigo_usleep(200000);
+	clear_simulator_events(&simulator);
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "delay", "h"));
+	char control_path[PATH_MAX];
+	nexstar_simulator_path(&simulator, "control", control_path, sizeof(control_path));
+	double deadline = indigo_monotonic_time() + 10;
+	while (access(control_path, F_OK) == 0 && indigo_monotonic_time() < deadline) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(access(control_path, F_OK) != 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "54 00", 1));
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "54 02"));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void nexstar_starsense_120_refuses_site_time_and_reports_gps_no_fix(void) {
+	const char *arguments[] = { "--dialect", "celestron", "--hc-type", "starsense", "--model-id", "11", "--firmware", "1.20", "--gps-firmware", "11.1", "--gps-no-fix", NULL };
+	external_serial_simulator simulator = { 0 };
+	bool mount_connected = false, gps_connected = false, driver_started = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_NEXSTAR_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	mount_connected = driver_started = true;
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(wait_for_text_item_value(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "NexStar 4/5 SE"));
+	SERIAL_CHECK_TRUE(wait_for_text_item_value(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME, "StarSense  1.20"));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "74", 1));
+	clear_simulator_events(&simulator);
+	unsigned revision = property_revision(GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 49));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "57"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48 + 8.0 / 60, 0.001));
+	revision = property_revision(UTC_TIME_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&simulator_test_client, nexstar_mount.device_name, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME, "2026-09-13T12:34:56"));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(UTC_TIME_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "48"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&nexstar_gps, NULL));
+	gps_connected = true;
+	SERIAL_CHECK_TRUE(wait_for_text_item_value(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, "11.1"));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(GPS_STATUS_PROPERTY_NAME, GPS_STATUS_NO_FIX_ITEM_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	if (gps_connected) {
+		disconnect_serial_device(&nexstar_gps);
+		for (int i = 0; i < 100 && has_defined_property(GPS_ADVANCED_PROPERTY_NAME); i++) {
+			indigo_usleep(10000);
+		}
+		if (has_defined_property(GPS_ADVANCED_PROPERTY_NAME)) {
+			fprintf(stderr, "StarSense GPS properties were not deleted before cleanup\n");
+			indigo_test_failures++;
+		}
+		context.connected = false;
+	}
+	if (mount_connected) {
+		disconnect_serial_device(&nexstar_mount);
+	}
+	if (driver_started) {
+		tear_down_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void nexstar_celestron_gps_device_reports_fix(void) {
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
@@ -1252,6 +1329,8 @@ int main(void) {
 		{ "nexstar_current_park_uses_mechanical_axes", nexstar_current_park_uses_mechanical_axes },
 		{ "nexstar_binary_firmware_hash_keeps_se_capabilities", nexstar_binary_firmware_hash_keeps_se_capabilities },
 		{ "nexstar_tracking_mode_is_exposed_for_altaz_models", nexstar_tracking_mode_is_exposed_for_altaz_models },
+		{ "nexstar_tracking_change_survives_poll_in_flight", nexstar_tracking_change_survives_poll_in_flight },
+		{ "nexstar_starsense_120_refuses_site_time_and_reports_gps_no_fix", nexstar_starsense_120_refuses_site_time_and_reports_gps_no_fix },
 		{ "nexstar_celestron_gps_device_reports_fix", nexstar_celestron_gps_device_reports_fix },
 		{ "nexstar_celestron_guider_passes_serial_compliance_checks", nexstar_celestron_guider_passes_serial_compliance_checks },
 		{ "nexstar_shared_devices_survive_both_connection_orders", nexstar_shared_devices_survive_both_connection_orders }

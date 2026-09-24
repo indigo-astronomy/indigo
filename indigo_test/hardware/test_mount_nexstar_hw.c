@@ -35,9 +35,11 @@ extern void (*tc_debug)(const char *format, ...);
 static int mount = -1;
 static int gps = -1;
 static bool gps_only = false;
+static bool gps_required = false;
 static pthread_mutex_t edge_mutex = PTHREAD_MUTEX_INITIALIZER;
 static double edge_on[2], edge_off[2];
 static unsigned site_queries;
+static unsigned tracking_writes[4];
 static double original_site[2];
 static bool site_captured = false;
 
@@ -57,6 +59,12 @@ static void protocol_log(const char *format, ...) {
 		} else if (edge_on[axis] && !edge_off[axis]) {
 			edge_off[axis] = timestamp;
 		}
+		pthread_mutex_unlock(&edge_mutex);
+	}
+	unsigned tracking_mode;
+	if (sscanf(line, "libnexstar: write 54 %x", &tracking_mode) == 1 && tracking_mode < ARRAY_SIZE(tracking_writes)) {
+		pthread_mutex_lock(&edge_mutex);
+		tracking_writes[tracking_mode]++;
 		pthread_mutex_unlock(&edge_mutex);
 	}
 	if (!strcmp(line, "libnexstar: write 77")) {
@@ -157,29 +165,94 @@ static bool fresh_site_readback(void) {
 	return false;
 }
 
+static bool published_state(int device, const char *property, indigo_property_state state, double timeout) {
+	double deadline = indigo_monotonic_time() + timeout;
+	while (indigo_monotonic_time() < deadline) {
+		if (hw_states_seen(device, property) & (1u << state)) {
+			return true;
+		}
+		indigo_usleep(20000);
+	}
+	return false;
+}
+
+static bool fresh_tracking_command(int mode, unsigned before) {
+	double deadline = indigo_monotonic_time() + 10;
+	while (indigo_monotonic_time() < deadline) {
+		pthread_mutex_lock(&edge_mutex);
+		bool sent = tracking_writes[mode] > before;
+		pthread_mutex_unlock(&edge_mutex);
+		if (sent) {
+			double ra, dec;
+			return fresh_position(&ra, &dec);
+		}
+		indigo_usleep(20000);
+	}
+	return false;
+}
+
 static void nexstar_site_clock_and_tracking(void) {
+	char firmware[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(hw_text_item(mount, MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME, firmware, sizeof(firmware)));
+	bool starsense = strstr(firmware, "StarSense") != NULL;
 	double lat, lon;
 	ASSERT_TRUE(hw_number_item(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, &lat));
 	ASSERT_TRUE(hw_number_item(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, &lon));
 	original_site[0] = lat;
 	original_site[1] = lon;
-	site_captured = true;
-	ASSERT_TRUE(hw_set_number(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, lat, INDIGO_OK_STATE, 10));
-	ASSERT_TRUE(fresh_site_readback());
-	double readback;
-	ASSERT_TRUE(hw_number_item(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, &readback));
-	ASSERT_TRUE(fabs(readback - lon) < 1.0 / 3600);
-	ASSERT_TRUE(hw_set_number(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, lon, INDIGO_OK_STATE, 10));
-	ASSERT_TRUE(fresh_site_readback());
-	ASSERT_TRUE(hw_number_item(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, &readback));
-	ASSERT_TRUE(fabs(readback - lat) < 1.0 / 3600);
+	site_captured = !starsense;
+	if (starsense) {
+		hw_forget_states();
+		hw_request_number(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, lat);
+		ASSERT_TRUE(published_state(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, 10));
+		ASSERT_TRUE(fresh_site_readback());
+		double readback;
+		ASSERT_TRUE(hw_number_item(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, &readback));
+		ASSERT_TRUE(fabs(readback - lat) < 1.0 / 3600);
+		hw_forget_states();
+		hw_request_number(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, lon);
+		ASSERT_TRUE(published_state(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, 10));
+		ASSERT_TRUE(fresh_site_readback());
+		ASSERT_TRUE(hw_number_item(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, &readback));
+		ASSERT_TRUE(fabs(readback - lon) < 1.0 / 3600);
+	} else {
+		ASSERT_TRUE(hw_set_number(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, lat, INDIGO_OK_STATE, 10));
+		ASSERT_TRUE(fresh_site_readback());
+		double readback;
+		ASSERT_TRUE(hw_number_item(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, &readback));
+		ASSERT_TRUE(fabs(readback - lon) < 1.0 / 3600);
+		ASSERT_TRUE(hw_set_number(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, lon, INDIGO_OK_STATE, 10));
+		ASSERT_TRUE(fresh_site_readback());
+		ASSERT_TRUE(hw_number_item(mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, &readback));
+		ASSERT_TRUE(fabs(readback - lat) < 1.0 / 3600);
+	}
 	char utc[INDIGO_VALUE_SIZE];
 	ASSERT_TRUE(hw_text_item(mount, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME, utc, sizeof(utc)));
 	printf("Controller UTC %s site %.6f %.6f\n", utc, lat, lon);
-	ASSERT_TRUE(hw_set_text(mount, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME, utc, INDIGO_OK_STATE, 10));
-	ASSERT_TRUE(hw_set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, INDIGO_OK_STATE, 10));
+	if (starsense) {
+		hw_forget_states();
+		indigo_change_text_property_1(&hw_client, hw_device_name(mount), UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME, utc);
+		ASSERT_TRUE(published_state(mount, UTC_TIME_PROPERTY_NAME, INDIGO_ALERT_STATE, 10));
+		ASSERT_TRUE(fresh_site_readback());
+		char readback[INDIGO_VALUE_SIZE];
+		ASSERT_TRUE(hw_text_item(mount, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME, readback, sizeof(readback)));
+		ASSERT_TRUE(!strncmp(readback, utc, 11));
+		printf("StarSense correctly refused site and time writes after alignment\n");
+	} else {
+		ASSERT_TRUE(hw_set_text(mount, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME, utc, INDIGO_OK_STATE, 10));
+	}
+	pthread_mutex_lock(&edge_mutex);
+	unsigned off_before = tracking_writes[0];
+	pthread_mutex_unlock(&edge_mutex);
+	hw_request_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true);
+	ASSERT_TRUE(fresh_tracking_command(0, off_before));
 	ASSERT_TRUE(selected(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
-	ASSERT_TRUE(hw_set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE, 10));
+	pthread_mutex_lock(&edge_mutex);
+	unsigned on_before = tracking_writes[2];
+	pthread_mutex_unlock(&edge_mutex);
+	hw_request_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+	ASSERT_TRUE(fresh_tracking_command(2, on_before));
+	ASSERT_TRUE(selected(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
 }
 
 static void nexstar_sync_and_small_goto(void) {
@@ -401,7 +474,7 @@ static void nexstar_gps_presence_and_sibling_survival(void) {
 	} else {
 		ASSERT_EQ_INT(INDIGO_ALERT_STATE, hw_property_state(gps, CONNECTION_PROPERTY_NAME));
 		printf("GPS accessory absent: rejection verified, fix acquisition not applicable\n");
-		ASSERT_TRUE(!gps_only);
+		ASSERT_TRUE(!gps_required);
 	}
 	double ra, dec;
 	ASSERT_TRUE(fresh_position(&ra, &dec));
@@ -427,8 +500,8 @@ static void nexstar_refused_port_and_driver_reinitialization(void) {
 }
 
 int main(int argc, char **argv) {
-	if (argc != 2 || (strcmp(argv[1], "--identity") && strcmp(argv[1], "--run") && strcmp(argv[1], "--gps"))) {
-		fprintf(stderr, "Use --identity, --gps or --run with MOUNT_NEXSTAR_HW_PORT set.\n");
+	if (argc != 2 || (strcmp(argv[1], "--identity") && strcmp(argv[1], "--run") && strcmp(argv[1], "--gps") && strcmp(argv[1], "--run-gps-required"))) {
+		fprintf(stderr, "Use --identity, --gps, --run or --run-gps-required with MOUNT_NEXSTAR_HW_PORT set.\n");
 		return 2;
 	}
 	const char *port = getenv("MOUNT_NEXSTAR_HW_PORT");
@@ -436,6 +509,7 @@ int main(int argc, char **argv) {
 		return 2;
 	}
 	gps_only = !strcmp(argv[1], "--gps");
+	gps_required = gps_only || !strcmp(argv[1], "--run-gps-required");
 	setvbuf(stdout, NULL, _IONBF, 0);
 	indigo_set_log_level(INDIGO_LOG_DEBUG);
 	tc_debug = protocol_log;
@@ -483,7 +557,7 @@ cleanup:
 	if (guider >= 0 && !hw_disconnect(guider, 20)) {
 		indigo_test_failures++;
 	}
-	if (!strcmp(argv[1], "--run") && mount >= 0 && hw_connected(mount)) {
+	if ((!strcmp(argv[1], "--run") || !strcmp(argv[1], "--run-gps-required")) && mount >= 0 && hw_connected(mount)) {
 		if (!hw_set_switch(mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE, 15)) {
 			indigo_test_failures++;
 		}

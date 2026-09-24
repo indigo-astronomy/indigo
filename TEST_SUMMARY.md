@@ -176,8 +176,9 @@
 |  | 2026-09-24 07:19 | 3.0.0.37 | mac arm64 | MountSim 2.3 (CGX) | 21 / 21 | ✅ OK |
 |  | 2026-09-24 08:00 | 3.0.0.38 | mac arm64 | MountSim 2.3 (SynScan) | 18 / 18 | ✅ OK |
 |  | 2026-09-24 21:14 | 3.0.0.41 | mac arm64 | Celestron NexStar 4/5 SE (NexStar+ 5.35, EQ wedge) | 12 / 12 | ✅ OK |
-|  | 2026-09-24 21:19 | 3.0.0.41 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 |  | 2026-09-24 21:25 | 3.0.0.41 | mac arm64 | Celestron GPS (NexStar+ 5.35, detection only) | 1 / 1 | ✅ OK |
+|  | 2026-09-24 21:57 | 3.0.0.42 | mac arm64 | Celestron NexStar 4/5 SE (StarSense 1.20, EQ wedge, GPS 11.1) | 12 / 12 | ✅ OK |
+|  | 2026-09-24 22:07 | 3.0.0.42 | mac arm64 | simulator | 19 / 19 | ✅ OK |
 | mount_nexstaraux | 2026-09-20 21:29 | 3.0.0.14 | mac arm64 | simulator | 30 / 30 | ✅ OK |
 |  | 2026-09-24 00:12 | 3.0.0.18 | linux arm64 | simulator | 40 / 40 | ✅ OK |
 |  | 2026-09-24 05:44 | 3.0.0.18 | linux arm64 | NexStar SE & NexStar+ HC | 36 / 36 | ✅ OK |

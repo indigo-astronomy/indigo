@@ -51,6 +51,8 @@ typedef struct {
 	simulator_hc_type hc_type;
 	int model_id;
 	int firmware_major, firmware_minor;
+	int gps_firmware_major, gps_firmware_minor;
+	bool gps_linked;
 	uint32_t axis_ra_offset, axis_dec_offset;
 	char control_file[PATH_MAX];
 	char event_file[PATH_MAX];
@@ -87,6 +89,9 @@ static simulator_options options = {
 	.hc_type = HC_STARSENSE,
 	.firmware_major = 4,
 	.firmware_minor = 15,
+	.gps_firmware_major = 1,
+	.gps_firmware_minor = 2,
+	.gps_linked = true,
 	.model_id = -1
 };
 static simulator_state state = {
@@ -124,6 +129,8 @@ static void usage(const char *name) {
 	printf("  --model-id <id>         Override the dialect default model id\n");
 	printf("  --axis-offset <ra,dec>  Mechanical-axis offsets from sky coordinates (degrees)\n");
 	printf("  --firmware <major.minor> Celestron binary firmware version\n");
+	printf("  --gps-firmware <major.minor> GPS accessory firmware version\n");
+	printf("  --gps-no-fix           GPS accessory present without a satellite fix\n");
 	printf("  --unaligned             Report the mount as not aligned\n");
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
@@ -187,6 +194,13 @@ static bool parse_args(int argc, char *argv[]) {
 				fprintf(stderr, "--firmware requires two byte values\n");
 				return false;
 			}
+		} else if (!strcmp(argv[i], "--gps-firmware")) {
+			if (++i == argc || sscanf(argv[i], "%d.%d", &options.gps_firmware_major, &options.gps_firmware_minor) != 2 || options.gps_firmware_major < 0 || options.gps_firmware_major > 255 || options.gps_firmware_minor < 0 || options.gps_firmware_minor > 255) {
+				fprintf(stderr, "--gps-firmware requires two byte values\n");
+				return false;
+			}
+		} else if (!strcmp(argv[i], "--gps-no-fix")) {
+			options.gps_linked = false;
 		} else if (!strcmp(argv[i], "--unaligned")) {
 			state.aligned = false;
 		} else if (!strcmp(argv[i], "--model-id")) {
@@ -312,6 +326,10 @@ static bool apply_control(const uint8_t *command, size_t length) {
 		static const uint8_t reply[] = { 'B', 'A', 'D', '#' };
 		write_all(reply, sizeof(reply));
 		return true;
+	}
+	if (!strcmp(action, "delay")) {
+		usleep(500000);
+		return false;
 	}
 	if (!strcmp(action, "close")) {
 		running = 0;
@@ -488,11 +506,11 @@ static void handle_pass_through(const uint8_t *command) {
 	} else if (pass_command == 0x26 || pass_command == 0x27) {
 		write_empty_reply();
 	} else if (pass_command == 0x37 && destination == GPS) {
-		response[0] = 1;
+		response[0] = options.gps_linked ? 1 : 0;
 		write_reply(response, 1);
 	} else if (pass_command == 0xFE) {
-		response[0] = 1;
-		response[1] = 2;
+		response[0] = destination == GPS ? options.gps_firmware_major : 1;
+		response[1] = destination == GPS ? options.gps_firmware_minor : 2;
 		write_reply(response, 2);
 	} else {
 		write_empty_reply();
@@ -554,7 +572,13 @@ static void handle_command(const uint8_t *command, size_t length) {
 			break;
 		case 't':
 			response[0] = state.tracking_mode;
-			write_reply(response, 1);
+			if (options.hc_type == HC_STARSENSE && options.firmware_major == 1 && options.firmware_minor == 20) {
+				response[1] = 1;
+				response[2] = 20;
+				write_reply(response, 3);
+			} else {
+				write_reply(response, 1);
+			}
 			break;
 		case 'T':
 			state.tracking_mode = command[1];
