@@ -22,7 +22,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <time.h>
 #include <limits.h>
+#include <pthread.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_uni_io.h>
@@ -90,11 +96,228 @@ static void read_section_still_ignores_and_terminates(void) {
 	unlink(path);
 }
 
+// ---- indigo_uni_discover() ----
+
+// Loopback UDP responder: answers every request with 'replies' datagrams "R<n>" and counts the requests.
+typedef struct {
+	int fd;
+	int port;
+	int replies;
+	int requests;
+	char last_request[64];
+	pthread_t thread;
+} discovery_responder;
+
+static void *discovery_responder_thread(void *data) {
+	discovery_responder *responder = (discovery_responder *)data;
+	while (true) {
+		char request[64] = { 0 };
+		struct sockaddr_in from;
+		socklen_t from_length = sizeof(from);
+		long length = recvfrom(responder->fd, request, sizeof(request) - 1, 0, (struct sockaddr *)&from, &from_length);
+		if (length <= 0) {
+			break;
+		}
+		responder->requests++;
+		strncpy(responder->last_request, request, sizeof(responder->last_request) - 1);
+		for (int i = 0; i < responder->replies; i++) {
+			char reply[16];
+			snprintf(reply, sizeof(reply), "R%d", i);
+			sendto(responder->fd, reply, strlen(reply), 0, (struct sockaddr *)&from, from_length);
+		}
+	}
+	return NULL;
+}
+
+static bool start_discovery_responder(discovery_responder *responder, int replies) {
+	memset(responder, 0, sizeof(*responder));
+	responder->replies = replies;
+	responder->fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (responder->fd < 0) {
+		return false;
+	}
+	struct sockaddr_in address = { 0 };
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	socklen_t length = sizeof(address);
+	struct timeval tv = { 3, 0 };
+	setsockopt(responder->fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+	if (bind(responder->fd, (struct sockaddr *)&address, sizeof(address)) < 0 || getsockname(responder->fd, (struct sockaddr *)&address, &length) < 0) {
+		close(responder->fd);
+		return false;
+	}
+	responder->port = ntohs(address.sin_port);
+	return pthread_create(&responder->thread, NULL, discovery_responder_thread, responder) == 0;
+}
+
+static void stop_discovery_responder(discovery_responder *responder) {
+	shutdown(responder->fd, SHUT_RDWR);
+	close(responder->fd);
+	pthread_join(responder->thread, NULL);
+}
+
+typedef struct {
+	int count;
+	int stop_after;
+	char replies[8][16];
+	char responder[32];
+} discovery_result;
+
+static bool collect_reply(const char *responder, int responder_port, const char *reply, long length, void *context) {
+	discovery_result *result = (discovery_result *)context;
+	if (result->count < 8) {
+		strncpy(result->replies[result->count], reply, sizeof(result->replies[0]) - 1);
+	}
+	strncpy(result->responder, responder, sizeof(result->responder) - 1);
+	result->count++;
+	return result->stop_after == 0 || result->count < result->stop_after;
+}
+
+static double now_seconds(void) {
+	struct timespec time;
+	clock_gettime(CLOCK_MONOTONIC, &time);
+	return time.tv_sec + time.tv_nsec / 1e9;
+}
+
+// Every reply is passed to the callback together with the responder address.
+static void discover_collects_all_replies(void) {
+	discovery_responder responder;
+	discovery_result result = { 0 };
+	ASSERT_TRUE(start_discovery_responder(&responder, 3));
+	int count = indigo_uni_discover("127.0.0.1", responder.port, "hello", 5, 1, INDIGO_DELAY(0.3), false, collect_reply, &result);
+	stop_discovery_responder(&responder);
+	ASSERT_EQ_INT(3, count);
+	ASSERT_EQ_INT(3, result.count);
+	ASSERT_STREQ("R0", result.replies[0]);
+	ASSERT_STREQ("R2", result.replies[2]);
+	ASSERT_STREQ("127.0.0.1", result.responder);
+	ASSERT_STREQ("hello", responder.last_request);
+	ASSERT_EQ_INT(1, responder.requests);
+}
+
+// Each poll sends the request again; duplicates are left to the caller.
+static void discover_repeats_request_for_each_poll(void) {
+	discovery_responder responder;
+	discovery_result result = { 0 };
+	ASSERT_TRUE(start_discovery_responder(&responder, 1));
+	int count = indigo_uni_discover("127.0.0.1", responder.port, "hello", 5, 3, INDIGO_DELAY(0.2), false, collect_reply, &result);
+	stop_discovery_responder(&responder);
+	ASSERT_EQ_INT(3, responder.requests);
+	ASSERT_EQ_INT(3, count);
+}
+
+// Returning false from the callback ends the discovery immediately.
+static void discover_stops_when_callback_returns_false(void) {
+	discovery_responder responder;
+	discovery_result result = { 0 };
+	result.stop_after = 2;
+	ASSERT_TRUE(start_discovery_responder(&responder, 5));
+	int count = indigo_uni_discover("127.0.0.1", responder.port, "hello", 5, 3, INDIGO_DELAY(0.3), false, collect_reply, &result);
+	stop_discovery_responder(&responder);
+	ASSERT_EQ_INT(2, count);
+	ASSERT_EQ_INT(1, responder.requests);
+}
+
+// Without any responder the call returns after polls * timeout with no reply.
+static void discover_without_responder_times_out(void) {
+	discovery_responder responder;
+	discovery_result result = { 0 };
+	ASSERT_TRUE(start_discovery_responder(&responder, 0));
+	double start = now_seconds();
+	int count = indigo_uni_discover("127.0.0.1", responder.port, "hello", 5, 2, INDIGO_DELAY(0.2), false, collect_reply, &result);
+	double elapsed = now_seconds() - start;
+	stop_discovery_responder(&responder);
+	ASSERT_EQ_INT(0, count);
+	ASSERT_EQ_INT(2, responder.requests);
+	ASSERT_TRUE(elapsed >= 0.35 && elapsed < 2.0);
+}
+
+// Invalid arguments are rejected without sending anything.
+static void discover_rejects_invalid_arguments(void) {
+	discovery_result result = { 0 };
+	ASSERT_EQ_INT(0, indigo_uni_discover("not an address", 1, "hello", 5, 1, INDIGO_DELAY(0.1), false, collect_reply, &result));
+	ASSERT_EQ_INT(0, indigo_uni_discover("127.0.0.1", 1, NULL, 5, 1, INDIGO_DELAY(0.1), false, collect_reply, &result));
+	ASSERT_EQ_INT(0, indigo_uni_discover("127.0.0.1", 1, "hello", 5, 1, INDIGO_DELAY(0.1), false, NULL, &result));
+	ASSERT_EQ_INT(0, result.count);
+}
+
+// ---- indigo_uni_open_client_socket_with_timeout() ----
+
+static int open_tcp_listener(int *port) {
+	int fd = socket(AF_INET, SOCK_STREAM, 0);
+	struct sockaddr_in address = { 0 };
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	socklen_t length = sizeof(address);
+	if (fd < 0 || bind(fd, (struct sockaddr *)&address, sizeof(address)) < 0 || listen(fd, 4) < 0 || getsockname(fd, (struct sockaddr *)&address, &length) < 0) {
+		if (fd >= 0) {
+			close(fd);
+		}
+		return -1;
+	}
+	*port = ntohs(address.sin_port);
+	return fd;
+}
+
+// A listening peer is connected within the timeout and the socket is left in blocking mode.
+static void connect_with_timeout_succeeds(void) {
+	int port = 0;
+	int listener = open_tcp_listener(&port);
+	ASSERT_TRUE(listener >= 0);
+	indigo_uni_handle *handle = indigo_uni_open_client_socket_with_timeout("127.0.0.1", port, SOCK_STREAM, INDIGO_DELAY(1), INDIGO_LOG_ERROR);
+	ASSERT_TRUE(handle != NULL);
+	ASSERT_EQ_INT(INDIGO_TCP_HANDLE, handle->type);
+	ASSERT_EQ_INT(0, fcntl(handle->fd, F_GETFL, 0) & O_NONBLOCK);
+	indigo_uni_close(&handle);
+	close(listener);
+}
+
+// A refused connection fails immediately, not after the timeout.
+static void connect_with_timeout_reports_refused_connection(void) {
+	int port = 0;
+	int listener = open_tcp_listener(&port);
+	ASSERT_TRUE(listener >= 0);
+	close(listener);
+	double start = now_seconds();
+	indigo_uni_handle *handle = indigo_uni_open_client_socket_with_timeout("127.0.0.1", port, SOCK_STREAM, INDIGO_DELAY(3), INDIGO_LOG_ERROR);
+	double elapsed = now_seconds() - start;
+	ASSERT_TRUE(handle == NULL);
+	ASSERT_TRUE(elapsed < 1.0);
+}
+
+// A peer that doesn't complete the handshake never blocks longer than the timeout. On Linux a listener with
+// zero backlog whose accept queue is already occupied drops further SYNs, so the connection attempt hangs.
+static void connect_with_timeout_is_bounded(void) {
+#if defined(__linux__)
+	int port = 0;
+	int listener = open_tcp_listener(&port);
+	ASSERT_TRUE(listener >= 0);
+	ASSERT_EQ_INT(0, listen(listener, 0));
+	indigo_uni_handle *filler = indigo_uni_open_client_socket_with_timeout("127.0.0.1", port, SOCK_STREAM, INDIGO_DELAY(1), INDIGO_LOG_ERROR);
+	ASSERT_TRUE(filler != NULL);
+	double start = now_seconds();
+	indigo_uni_handle *handle = indigo_uni_open_client_socket_with_timeout("127.0.0.1", port, SOCK_STREAM, INDIGO_DELAY(0.3), INDIGO_LOG_ERROR);
+	double elapsed = now_seconds() - start;
+	ASSERT_TRUE(handle == NULL);
+	ASSERT_TRUE(elapsed >= 0.25 && elapsed < 1.5);
+	indigo_uni_close(&filler);
+	close(listener);
+#endif
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "read_section_accepts_null_ignore_list", read_section_accepts_null_ignore_list },
 		{ "read_section_accepts_null_terminator_list", read_section_accepts_null_terminator_list },
-		{ "read_section_still_ignores_and_terminates", read_section_still_ignores_and_terminates }
+		{ "read_section_still_ignores_and_terminates", read_section_still_ignores_and_terminates },
+		{ "discover_collects_all_replies", discover_collects_all_replies },
+		{ "discover_repeats_request_for_each_poll", discover_repeats_request_for_each_poll },
+		{ "discover_stops_when_callback_returns_false", discover_stops_when_callback_returns_false },
+		{ "discover_without_responder_times_out", discover_without_responder_times_out },
+		{ "discover_rejects_invalid_arguments", discover_rejects_invalid_arguments },
+		{ "connect_with_timeout_succeeds", connect_with_timeout_succeeds },
+		{ "connect_with_timeout_reports_refused_connection", connect_with_timeout_reports_refused_connection },
+		{ "connect_with_timeout_is_bounded", connect_with_timeout_is_bounded }
 	};
 	return indigo_run_tests("indigo_uni_io unit tests", tests, sizeof(tests) / sizeof(tests[0]));
 }

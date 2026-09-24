@@ -49,6 +49,8 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
+#include <net/if.h>
+#include <ifaddrs.h>
 #elif defined(INDIGO_WINDOWS)
 #include <io.h>
 #include <direct.h>
@@ -1036,7 +1038,205 @@ bool indigo_perform_active_discovery(const char *host, int port, int timeout, co
 	return result;
 }
 
+int indigo_uni_discover(const char *target, int port, const char *payload, long payload_length, int polls, long timeout, bool include_loopback, indigo_uni_discovery_callback callback, void *context) {
+	int count = 0;
+	struct in_addr targets[INDIGO_UNI_DISCOVERY_MAX_TARGETS];
+	int target_count = 0;
+	if (payload == NULL || payload_length <= 0 || callback == NULL) {
+		return 0;
+	}
+	if (target != NULL) {
+		if (inet_pton(AF_INET, target, &targets[0]) != 1) {
+			indigo_error("Invalid discovery target '%s'", target);
+			return 0;
+		}
+		target_count = 1;
+	}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	int sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sock < 0) {
+		indigo_error("Can't create discovery socket (%s)", strerror(errno));
+		return 0;
+	}
+	int broadcast = 1;
+	setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+	if (target == NULL) {
+		struct ifaddrs *ifaddr = NULL;
+		if (getifaddrs(&ifaddr) == 0) {
+			for (struct ifaddrs *ifa = ifaddr; ifa != NULL && target_count < INDIGO_UNI_DISCOVERY_MAX_TARGETS; ifa = ifa->ifa_next) {
+				if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET || !(ifa->ifa_flags & IFF_UP) || !(ifa->ifa_flags & IFF_BROADCAST) || (ifa->ifa_flags & IFF_LOOPBACK) || ifa->ifa_broadaddr == NULL) {
+					continue;
+				}
+				targets[target_count++] = ((struct sockaddr_in *)ifa->ifa_broadaddr)->sin_addr;
+			}
+			freeifaddrs(ifaddr);
+		}
+	}
+#elif defined(INDIGO_WINDOWS)
+	SOCKET sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sock == INVALID_SOCKET) {
+		indigo_error("Can't create discovery socket (%s)", indigo_last_wsa_error());
+		return 0;
+	}
+	BOOL broadcast = TRUE;
+	setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (const char *)&broadcast, sizeof(broadcast));
+	if (target == NULL) {
+		INTERFACE_INFO if_list[INDIGO_UNI_DISCOVERY_MAX_TARGETS];
+		DWORD bytes_returned = 0;
+		if (WSAIoctl(sock, SIO_GET_INTERFACE_LIST, NULL, 0, if_list, sizeof(if_list), &bytes_returned, NULL, NULL) == 0) {
+			int if_count = (int)(bytes_returned / sizeof(INTERFACE_INFO));
+			for (int i = 0; i < if_count && target_count < INDIGO_UNI_DISCOVERY_MAX_TARGETS; i++) {
+				u_long flags = if_list[i].iiFlags;
+				if (!(flags & IFF_UP) || !(flags & IFF_BROADCAST) || (flags & IFF_LOOPBACK)) {
+					continue;
+				}
+				u_long ip = if_list[i].iiAddress.AddressIn.sin_addr.s_addr;
+				u_long mask = if_list[i].iiNetmask.AddressIn.sin_addr.s_addr;
+				targets[target_count++].s_addr = ip | ~mask;
+			}
+		}
+	}
+#else
+#pragma message ("TODO: indigo_uni_discover()")
+	return 0;
+#endif
+	if (target == NULL) {
+		if (target_count == 0) {
+			targets[target_count++].s_addr = htonl(INADDR_BROADCAST);
+		}
+		if (include_loopback && target_count < INDIGO_UNI_DISCOVERY_MAX_TARGETS) {
+			inet_pton(AF_INET, "127.255.255.255", &targets[target_count++]);
+		}
+	}
+	struct sockaddr_in address;
+	memset(&address, 0, sizeof(address));
+	address.sin_family = AF_INET;
+	address.sin_port = htons(port);
+	bool done = false;
+	for (int poll = 0; poll < polls && !done; poll++) {
+		for (int i = 0; i < target_count; i++) {
+			address.sin_addr = targets[i];
+			char address_string[INET_ADDRSTRLEN];
+			inet_ntop(AF_INET, &targets[i], address_string, sizeof(address_string));
+			if (sendto(sock, payload, (int)payload_length, 0, (struct sockaddr *)&address, sizeof(address)) < 0) {
+				indigo_debug("Discovery request to %s:%d failed", address_string, port);
+			} else {
+				indigo_debug("Discovery request sent to %s:%d", address_string, port);
+			}
+		}
+		// replies are collected until no other reply arrives within the timeout
+		while (!done) {
+			fd_set readout;
+			FD_ZERO(&readout);
+			FD_SET(sock, &readout);
+			struct timeval tv;
+			tv.tv_sec = timeout / ONE_SECOND_DELAY;
+			tv.tv_usec = timeout % ONE_SECOND_DELAY;
+			if (select((int)sock + 1, &readout, NULL, NULL, &tv) <= 0) {
+				break;
+			}
+			struct sockaddr_in from;
+#if defined(INDIGO_WINDOWS)
+			int from_length = sizeof(from);
+#else
+			socklen_t from_length = sizeof(from);
+#endif
+			char reply[1024];
+			long length = recvfrom(sock, reply, sizeof(reply) - 1, 0, (struct sockaddr *)&from, &from_length);
+			if (length <= 0) {
+				break;
+			}
+			reply[length] = 0;
+			char responder[INET_ADDRSTRLEN];
+			inet_ntop(AF_INET, &from.sin_addr, responder, sizeof(responder));
+			count++;
+			if (!callback(responder, ntohs(from.sin_port), reply, length, context)) {
+				done = true;
+			}
+		}
+	}
+#if defined(INDIGO_WINDOWS)
+	closesocket(sock);
+#else
+	close(sock);
+#endif
+	return count;
+}
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+
+// connect() with optional timeout in microseconds, negative timeout means blocking connect
+static int connect_with_timeout(int fd, const struct sockaddr *address, socklen_t address_length, long timeout) {
+	if (timeout < 0) {
+		return connect(fd, address, address_length);
+	}
+	int flags = fcntl(fd, F_GETFL, 0);
+	fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+	int result = connect(fd, address, address_length);
+	if (result < 0 && errno == EINPROGRESS) {
+		fd_set writeout;
+		FD_ZERO(&writeout);
+		FD_SET(fd, &writeout);
+		struct timeval tv;
+		tv.tv_sec = timeout / ONE_SECOND_DELAY;
+		tv.tv_usec = timeout % ONE_SECOND_DELAY;
+		result = select(fd + 1, NULL, &writeout, NULL, &tv);
+		if (result > 0) {
+			int error = 0;
+			socklen_t error_length = sizeof(error);
+			getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &error_length);
+			if (error) {
+				errno = error;
+				result = -1;
+			} else {
+				result = 0;
+			}
+		} else if (result == 0) {
+			errno = ETIMEDOUT;
+			result = -1;
+		}
+	}
+	fcntl(fd, F_SETFL, flags);
+	return result;
+}
+
+#elif defined(INDIGO_WINDOWS)
+
+static int connect_with_timeout(SOCKET sock, const struct sockaddr *address, int address_length, long timeout) {
+	if (timeout < 0) {
+		return connect(sock, address, address_length);
+	}
+	u_long non_blocking = 1;
+	ioctlsocket(sock, FIONBIO, &non_blocking);
+	int result = connect(sock, address, address_length);
+	if (result == SOCKET_ERROR && WSAGetLastError() == WSAEWOULDBLOCK) {
+		fd_set writeout, exceptout;
+		FD_ZERO(&writeout);
+		FD_SET(sock, &writeout);
+		FD_ZERO(&exceptout);
+		FD_SET(sock, &exceptout);
+		struct timeval tv;
+		tv.tv_sec = timeout / ONE_SECOND_DELAY;
+		tv.tv_usec = timeout % ONE_SECOND_DELAY;
+		result = select(0, NULL, &writeout, &exceptout, &tv);
+		if (result > 0 && FD_ISSET(sock, &writeout)) {
+			result = 0;
+		} else {
+			result = SOCKET_ERROR;
+		}
+	}
+	non_blocking = 0;
+	ioctlsocket(sock, FIONBIO, &non_blocking);
+	return result;
+}
+
+#endif
+
 indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int type, int log_level) {
+	return indigo_uni_open_client_socket_with_timeout(host, port, type, -1, log_level);
+}
+
+indigo_uni_handle *indigo_uni_open_client_socket_with_timeout(const char *host, int port, int type, long timeout, int log_level) {
 	indigo_uni_handle *handle = NULL;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	struct addrinfo hints = {0}, *address_list = NULL, *address;
@@ -1051,7 +1251,7 @@ indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int
 				indigo_error("Can't create %s socket for '%s:%d' (%s)", type == SOCK_STREAM ? "TCP" : "UDP", host, port, strerror(errno));
 				continue;
 			}
-			if (connect(fd, address->ai_addr, address->ai_addrlen) == 0) {
+			if (connect_with_timeout(fd, address->ai_addr, address->ai_addrlen, timeout) == 0) {
 				handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 				handle->index = next_handle_index();
 				handle->type = type == SOCK_STREAM ? INDIGO_TCP_HANDLE : INDIGO_UDP_HANDLE;
@@ -1081,7 +1281,7 @@ indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int
 	address.sin_family = AF_INET;
 	address.sin_port = htons(port);
 	address.sin_addr = *((struct in_addr *)he->h_addr);
-	if (connect(sock, (struct sockaddr *)&address, sizeof(struct sockaddr)) == 0) {
+	if (connect_with_timeout(sock, (struct sockaddr *)&address, sizeof(struct sockaddr), timeout) == 0) {
 		handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 		handle->index = next_handle_index();
 		handle->type = type == SOCK_STREAM ? INDIGO_TCP_HANDLE : INDIGO_UDP_HANDLE;

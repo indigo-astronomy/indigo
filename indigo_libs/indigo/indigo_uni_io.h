@@ -200,9 +200,26 @@ INDIGO_EXTERN bool indigo_perform_passive_discovery(int port, int timeout, char 
  */
 INDIGO_EXTERN bool indigo_perform_active_discovery(const char *host, int port, int timeout, const char *payload, int payload_size, char *responder, int max_responder, char *message, int max_message);
 
+#define INDIGO_UNI_DISCOVERY_MAX_TARGETS	32
+
+/** Callback for indigo_uni_discover(), called for every reply; return false to stop the discovery.
+ */
+typedef bool (*indigo_uni_discovery_callback)(const char *responder, int responder_port, const char *reply, long length, void *context);
+
+/** Perform UDP discovery with multiple responders. The request is sent to target (IPv4 address) or, when target is NULL,
+    to the broadcast address of every broadcast capable IPv4 interface (and 127.255.255.255 if include_loopback is set).
+    Each of the polls sends the request and collects replies until no reply arrives within timeout (in microseconds).
+    Returns the number of replies passed to callback.
+ */
+INDIGO_EXTERN int indigo_uni_discover(const char *target, int port, const char *payload, long payload_length, int polls, long timeout, bool include_loopback, indigo_uni_discovery_callback callback, void *context);
+
 /** Open client socket.
  */
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int type, int log_level);
+
+/** Open client socket, connection attempt is limited by timeout (in microseconds, negative value means no limit).
+ */
+INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_client_socket_with_timeout(const char *host, int port, int type, long timeout, int log_level);
 
 #define indigo_uni_client_tcp_socket(host, port, log_level) indigo_uni_open_client_socket(host, port, SOCK_STREAM, log_level);
 #define indigo_uni_client_udp_socket(host, port, log_level) indigo_uni_open_client_socket(host, port, SOCK_DGRAM, log_level);
