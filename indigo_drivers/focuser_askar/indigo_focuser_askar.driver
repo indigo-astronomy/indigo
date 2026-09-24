@@ -20,7 +20,7 @@ driver askar {
 	label = "Askar-WAF Focuser";
 	author = "Rumen G. Bogdanovski";
 	copyright = "Copyright (C) 2026 Rumen G. Bogdanovski";
-	version = 6;
+	version = 7;
 	serial {
 		configurable_speed = true;
 	}
@@ -37,8 +37,6 @@ driver askar {
 		#include <sys/socket.h>
 		#include <netinet/in.h>
 		#include <arpa/inet.h>
-		#include <net/if.h>
-		#include <ifaddrs.h>
 		#elif defined(INDIGO_WINDOWS)
 		#include <winsock2.h>
 		#include <ws2tcpip.h>
@@ -55,7 +53,6 @@ driver askar {
 		#define ASKAR_DISCOVERY_REQUEST "WAF:discover"
 		#define ASKAR_DISCOVERY_TIMEOUT 1
 		#define ASKAR_DISCOVERY_RETRIES 3
-		#define ASKAR_DISCOVERY_MAX_IFACES 32
 		#define ASKAR_DISCOVERY_MAX_DEVICES 20
 	}
 	data {
@@ -321,128 +318,26 @@ driver askar {
 			return false;
 		}
 
+		typedef struct {
+			askar_wifi_device *list;
+			int max;
+			int found;
+		} askar_discovery_context;
+
+		static bool askar_discovery_callback(const char *responder, int responder_port, const char *reply, long length, void *data) {
+			askar_discovery_context *context = (askar_discovery_context *)data;
+			askar_wifi_device dev;
+			if (askar_parse_reply(reply, &dev) && !askar_wifi_list_contains(context->list, context->found, dev.url)) {
+				context->list[context->found++] = dev;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "WAF discovery: focuser detected at %s", dev.label);
+			}
+			return context->found < context->max;
+		}
+
 		static int askar_discover_all(askar_wifi_device *list, int max) {
-			int found = 0;
-			struct in_addr targets[ASKAR_DISCOVERY_MAX_IFACES];
-			int target_count = 0;
-		#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-			int sock = socket(AF_INET, SOCK_DGRAM, 0);
-			if (sock < 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "WAF discovery: socket() failed (%s)", strerror(errno));
-				return 0;
-			}
-			int broadcast = 1;
-			struct timeval tv;
-			tv.tv_sec = ASKAR_DISCOVERY_TIMEOUT;
-			tv.tv_usec = 0;
-			setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
-			setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-			struct ifaddrs *ifaddr = NULL;
-			if (getifaddrs(&ifaddr) == 0) {
-				for (struct ifaddrs *ifa = ifaddr; ifa != NULL && target_count < ASKAR_DISCOVERY_MAX_IFACES; ifa = ifa->ifa_next) {
-					if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET) {
-						continue;
-					}
-					if (!(ifa->ifa_flags & IFF_UP) || !(ifa->ifa_flags & IFF_BROADCAST) || (ifa->ifa_flags & IFF_LOOPBACK)) {
-						continue;
-					}
-					if (ifa->ifa_broadaddr == NULL) {
-						continue;
-					}
-					targets[target_count++] = ((struct sockaddr_in *)ifa->ifa_broadaddr)->sin_addr;
-				}
-				freeifaddrs(ifaddr);
-			}
-			if (target_count == 0) {
-				targets[target_count++].s_addr = htonl(INADDR_BROADCAST);
-			}
-			struct sockaddr_in addr;
-			memset(&addr, 0, sizeof(addr));
-			addr.sin_family = AF_INET;
-			addr.sin_port = htons(ASKAR_DISCOVERY_PORT);
-			for (int i = 0; i < ASKAR_DISCOVERY_RETRIES && found < max; i++) {
-				for (int t = 0; t < target_count; t++) {
-					addr.sin_addr = targets[t];
-					if (sendto(sock, ASKAR_DISCOVERY_REQUEST, strlen(ASKAR_DISCOVERY_REQUEST), 0, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "WAF discovery: sendto(%s) failed (%s)", inet_ntoa(targets[t]), strerror(errno));
-					}
-				}
-				while (found < max) {
-					struct sockaddr_in from;
-					socklen_t from_len = sizeof(from);
-					char reply[64] = { 0 };
-					long n = recvfrom(sock, reply, sizeof(reply) - 1, 0, (struct sockaddr *)&from, &from_len);
-					if (n <= 0) {
-						break;
-					}
-					reply[n] = 0;
-					askar_wifi_device dev;
-					if (askar_parse_reply(reply, &dev) && !askar_wifi_list_contains(list, found, dev.url)) {
-						list[found++] = dev;
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "WAF discovery: focuser detected at %s", dev.label);
-					}
-				}
-			}
-			close(sock);
-		#elif defined(INDIGO_WINDOWS)
-			SOCKET sock = socket(AF_INET, SOCK_DGRAM, 0);
-			if (sock == INVALID_SOCKET) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "WAF discovery: socket() failed (%d)", WSAGetLastError());
-				return 0;
-			}
-			BOOL broadcast = TRUE;
-			DWORD timeout_ms = ASKAR_DISCOVERY_TIMEOUT * 1000;
-			setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (const char *)&broadcast, sizeof(broadcast));
-			setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
-			INTERFACE_INFO if_list[ASKAR_DISCOVERY_MAX_IFACES];
-			DWORD bytes_returned = 0;
-			if (WSAIoctl(sock, SIO_GET_INTERFACE_LIST, NULL, 0, if_list, sizeof(if_list), &bytes_returned, NULL, NULL) == 0) {
-				int count = (int)(bytes_returned / sizeof(INTERFACE_INFO));
-				for (int i = 0; i < count && target_count < ASKAR_DISCOVERY_MAX_IFACES; i++) {
-					u_long flags = if_list[i].iiFlags;
-					if (!(flags & IFF_UP) || !(flags & IFF_BROADCAST) || (flags & IFF_LOOPBACK)) {
-						continue;
-					}
-					u_long ip = if_list[i].iiAddress.AddressIn.sin_addr.s_addr;
-					u_long mask = if_list[i].iiNetmask.AddressIn.sin_addr.s_addr;
-					targets[target_count++].s_addr = ip | ~mask;
-				}
-			}
-			if (target_count == 0) {
-				targets[target_count++].s_addr = htonl(INADDR_BROADCAST);
-			}
-			struct sockaddr_in addr;
-			memset(&addr, 0, sizeof(addr));
-			addr.sin_family = AF_INET;
-			addr.sin_port = htons(ASKAR_DISCOVERY_PORT);
-			for (int i = 0; i < ASKAR_DISCOVERY_RETRIES && found < max; i++) {
-				for (int t = 0; t < target_count; t++) {
-					addr.sin_addr = targets[t];
-					if (sendto(sock, ASKAR_DISCOVERY_REQUEST, (int)strlen(ASKAR_DISCOVERY_REQUEST), 0, (struct sockaddr *)&addr, sizeof(addr)) == SOCKET_ERROR) {
-						char ip_str[INET_ADDRSTRLEN];
-						inet_ntop(AF_INET, &targets[t], ip_str, sizeof(ip_str));
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "WAF discovery: sendto(%s) failed (%d)", ip_str, WSAGetLastError());
-					}
-				}
-				while (found < max) {
-					struct sockaddr_in from;
-					int from_len = sizeof(from);
-					char reply[64] = { 0 };
-					int n = recvfrom(sock, reply, sizeof(reply) - 1, 0, (struct sockaddr *)&from, &from_len);
-					if (n <= 0) {
-						break;
-					}
-					reply[n] = 0;
-					askar_wifi_device dev;
-					if (askar_parse_reply(reply, &dev) && !askar_wifi_list_contains(list, found, dev.url)) {
-						list[found++] = dev;
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "WAF discovery: focuser detected at %s", dev.label);
-					}
-				}
-			}
-			closesocket(sock);
-		#endif
-			return found;
+			askar_discovery_context context = { list, max, 0 };
+			indigo_uni_discover(NULL, ASKAR_DISCOVERY_PORT, ASKAR_DISCOVERY_REQUEST, strlen(ASKAR_DISCOVERY_REQUEST), ASKAR_DISCOVERY_RETRIES, INDIGO_DELAY(ASKAR_DISCOVERY_TIMEOUT), false, askar_discovery_callback, &context);
+			return context.found;
 		}
 
 		static void askar_scan_ports(indigo_device *device) {
