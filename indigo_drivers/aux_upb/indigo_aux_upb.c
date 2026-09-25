@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001C
+#define DRIVER_VERSION       0x0300001D
 #define DRIVER_NAME          "indigo_aux_upb"
 #define DRIVER_LABEL         "PegasusAstro Ultimate Powerbox"
 #define AUX_DEVICE_NAME      "Ultimate Powerbox"
@@ -273,6 +273,7 @@ static void aux_timer_callback(indigo_device *device) {
 	bool updateAutoHeater = false;
 	bool updateHub = false;
 	bool updateUSBPorts = false;
+	bool updateUSBPortState = false;
 	if (upb_command(device, "PA")) {
 		char *pnt = NULL, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
@@ -550,10 +551,15 @@ static void aux_timer_callback(indigo_device *device) {
 					if (port_state & 0x00000008) {
 						state = INDIGO_ALERT_STATE;
 					}
-					if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled || AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value != state) {
+					// The status light is read-only and keeps following the hub, but a
+					// pending port request must not be overwritten with the old hub state.
+					if (upb_adopt(AUX_USB_PORT_PROPERTY) && AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled) {
 						AUX_USB_PORT_PROPERTY->items[i - 1].sw.value = is_enabled;
-						AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value = state;
 						updateUSBPorts = true;
+					}
+					if (AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value != state) {
+						AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value = state;
+						updateUSBPortState = true;
 					}
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
@@ -594,6 +600,8 @@ static void aux_timer_callback(indigo_device *device) {
 	}
 	if (updateUSBPorts) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_USB_PORT_PROPERTY, INDIGO_OK_STATE, NULL);
+	}
+	if (updateUSBPorts || updateUSBPortState) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_USB_PORT_STATE_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	indigo_execute_handler_in(device, 2, aux_timer_callback);

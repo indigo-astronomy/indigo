@@ -26,7 +26,7 @@ driver upb {
 	label = "PegasusAstro Ultimate Powerbox";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 28;
+	version = 29;
 	serial {
 		pattern {
 			product = "UPB";
@@ -119,6 +119,7 @@ driver upb {
 			bool updateAutoHeater = false;
 			bool updateHub = false;
 			bool updateUSBPorts = false;
+			bool updateUSBPortState = false;
 			if (upb_command(device, "PA")) {
 				char *pnt = NULL, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
@@ -396,10 +397,15 @@ driver upb {
 							if (port_state & 0x00000008) {
 								state = INDIGO_ALERT_STATE;
 							}
-							if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled || AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value != state) {
+							// The status light is read-only and keeps following the hub, but a
+							// pending port request must not be overwritten with the old hub state.
+							if (upb_adopt(AUX_USB_PORT_PROPERTY) && AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled) {
 								AUX_USB_PORT_PROPERTY->items[i - 1].sw.value = is_enabled;
-								AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value = state;
 								updateUSBPorts = true;
+							}
+							if (AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value != state) {
+								AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value = state;
+								updateUSBPortState = true;
 							}
 						} else {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
@@ -440,6 +446,8 @@ driver upb {
 			}
 			if (updateUSBPorts) {
 				INDIGO_UPDATE_PROPERTY_STATE(AUX_USB_PORT_PROPERTY, INDIGO_OK_STATE, NULL);
+			}
+			if (updateUSBPorts || updateUSBPortState) {
 				INDIGO_UPDATE_PROPERTY_STATE(AUX_USB_PORT_STATE_PROPERTY, INDIGO_OK_STATE, NULL);
 			}
 			indigo_execute_handler_in(device, 2, aux_timer_callback);

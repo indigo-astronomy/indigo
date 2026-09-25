@@ -23,6 +23,9 @@
 // focuser that shares the port through its master - so both are exercised, each
 // in its own driver lifecycle over a fresh simulator.
 
+#include <pthread.h>
+
+#include <indigo/indigo_usb_utils.h>
 #include <indigo_drivers/aux_upb/indigo_aux_upb.h>
 
 #include "serial_simulator_test_common.h"
@@ -37,6 +40,199 @@ static const simulator_driver_case aux = {
 static const simulator_driver_case focuser = {
 	"Ultimate Powerbox focuser", "indigo_aux_upb", "Ultimate Powerbox (focuser)", indigo_aux_upb, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
+
+// ---------------------------------------------------------------- smart hub
+
+// The v1 box switches its six USB ports through an internal Microchip USB2517 hub
+// that the driver finds and drives over libusb rather than over the serial link.
+// The driver object linked here is compiled with its libusb calls renamed to the
+// functions below (see the Makefile), so the v1 cases see this fake hub instead of
+// whatever hub happens to be on the host's USB bus.
+//
+// Port status words are the ones a real UPB v1.7 returned to GET_STATUS: 0x0100 for
+// a powered port with nothing attached, 0x0103 for the internal port that carries
+// the box's own serial bridge. Clearing PORT_POWER drops the port to 0x0000.
+
+#define HUB_PORTS 7
+#define HUB_PORT_POWER 0x0100
+#define HUB_PORT_ATTACHED 0x0003
+#define HUB_PORT_OVERCURRENT 0x0008
+
+static struct {
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
+	bool present;
+	uint16_t status[HUB_PORTS + 1];
+	int set_power[HUB_PORTS + 1];
+	int clear_power[HUB_PORTS + 1];
+	int status_reads;
+	bool hold_armed;
+	bool holding;
+	unsigned int ok_revision_at_power_change;
+} smart_hub = { .mutex = PTHREAD_MUTEX_INITIALIZER, .cond = PTHREAD_COND_INITIALIZER };
+
+static char smart_hub_token;
+
+static void smart_hub_reset(bool present) {
+	pthread_mutex_lock(&smart_hub.mutex);
+	smart_hub.present = present;
+	for (int i = 1; i <= HUB_PORTS; i++) {
+		smart_hub.status[i] = HUB_PORT_POWER;
+		smart_hub.set_power[i] = smart_hub.clear_power[i] = 0;
+	}
+	smart_hub.status[HUB_PORTS] = HUB_PORT_POWER | HUB_PORT_ATTACHED;
+	smart_hub.status_reads = 0;
+	smart_hub.hold_armed = smart_hub.holding = false;
+	smart_hub.ok_revision_at_power_change = 0;
+	pthread_mutex_unlock(&smart_hub.mutex);
+}
+
+ssize_t LIBUSB_CALL upb_test_get_device_list(libusb_context *ctx, libusb_device ***list) {
+	(void)ctx;
+	libusb_device **devices = calloc(2, sizeof(libusb_device *));
+	pthread_mutex_lock(&smart_hub.mutex);
+	bool present = smart_hub.present;
+	pthread_mutex_unlock(&smart_hub.mutex);
+	if (present) {
+		devices[0] = (libusb_device *)&smart_hub_token;
+	}
+	*list = devices;
+	return present ? 1 : 0;
+}
+
+void LIBUSB_CALL upb_test_free_device_list(libusb_device **list, int unref_devices) {
+	(void)unref_devices;
+	free(list);
+}
+
+int LIBUSB_CALL upb_test_get_device_descriptor(libusb_device *dev, struct libusb_device_descriptor *descriptor) {
+	memset(descriptor, 0, sizeof(*descriptor));
+	if (dev != (libusb_device *)&smart_hub_token) {
+		return LIBUSB_ERROR_NO_DEVICE;
+	}
+	descriptor->bDeviceClass = LIBUSB_CLASS_HUB;
+	descriptor->idVendor = 0x0424;
+	descriptor->idProduct = 0x2517;
+	return LIBUSB_SUCCESS;
+}
+
+int LIBUSB_CALL upb_test_open(libusb_device *dev, libusb_device_handle **handle) {
+	*handle = (libusb_device_handle *)dev;
+	return LIBUSB_SUCCESS;
+}
+
+void LIBUSB_CALL upb_test_close(libusb_device_handle *handle) {
+	(void)handle;
+}
+
+int LIBUSB_CALL upb_test_control_transfer(libusb_device_handle *handle, uint8_t request_type, uint8_t request, uint16_t value, uint16_t index, unsigned char *data, uint16_t length, unsigned int timeout) {
+	(void)handle;
+	(void)timeout;
+	if (index < 1 || index > HUB_PORTS) {
+		return LIBUSB_ERROR_PIPE;
+	}
+	int result = LIBUSB_ERROR_PIPE;
+	pthread_mutex_lock(&smart_hub.mutex);
+	if (request_type == (LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER) && request == LIBUSB_REQUEST_GET_STATUS && length == 4) {
+		// A held read parks the poll inside the hub loop until the test lets it go,
+		// which is exactly where a real poll is while its serial exchange runs.
+		if (smart_hub.hold_armed) {
+			smart_hub.hold_armed = false;
+			smart_hub.holding = true;
+			pthread_cond_broadcast(&smart_hub.cond);
+			while (smart_hub.holding) {
+				pthread_cond_wait(&smart_hub.cond, &smart_hub.mutex);
+			}
+		}
+		uint32_t status = smart_hub.status[index];
+		memcpy(data, &status, sizeof(status));
+		smart_hub.status_reads++;
+		pthread_cond_broadcast(&smart_hub.cond);
+		result = 4;
+	} else if (request_type == (LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER) && value == 8 && length == 0) {
+		if (request == LIBUSB_REQUEST_SET_FEATURE) {
+			smart_hub.status[index] |= HUB_PORT_POWER;
+			smart_hub.set_power[index]++;
+			result = 0;
+		} else if (request == LIBUSB_REQUEST_CLEAR_FEATURE) {
+			smart_hub.status[index] = 0;
+			smart_hub.clear_power[index]++;
+			result = 0;
+		}
+		smart_hub.ok_revision_at_power_change = property_state_revision(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE);
+	}
+	pthread_mutex_unlock(&smart_hub.mutex);
+	return result;
+}
+
+static bool smart_hub_wait(bool (*done)(void *), void *context) {
+	struct timespec deadline;
+	clock_gettime(CLOCK_REALTIME, &deadline);
+	deadline.tv_sec += 10;
+	pthread_mutex_lock(&smart_hub.mutex);
+	bool result = done(context);
+	while (!result && pthread_cond_timedwait(&smart_hub.cond, &smart_hub.mutex, &deadline) == 0) {
+		result = done(context);
+	}
+	result = done(context);
+	pthread_mutex_unlock(&smart_hub.mutex);
+	return result;
+}
+
+static bool smart_hub_is_holding(void *context) {
+	(void)context;
+	return smart_hub.holding;
+}
+
+static bool smart_hub_read_past(void *context) {
+	return smart_hub.status_reads >= *(int *)context;
+}
+
+// Park the next port status read, which is the poll's once nothing else is pending.
+static bool smart_hub_hold_poll(void) {
+	pthread_mutex_lock(&smart_hub.mutex);
+	smart_hub.hold_armed = true;
+	pthread_mutex_unlock(&smart_hub.mutex);
+	if (!smart_hub_wait(smart_hub_is_holding, NULL)) {
+		fprintf(stderr, "The poll never read the smart hub\n");
+		return false;
+	}
+	return true;
+}
+
+static void smart_hub_release_poll(void) {
+	pthread_mutex_lock(&smart_hub.mutex);
+	smart_hub.hold_armed = smart_hub.holding = false;
+	pthread_cond_broadcast(&smart_hub.cond);
+	pthread_mutex_unlock(&smart_hub.mutex);
+}
+
+// Wait until the hub has answered this many more status reads, which covers at
+// least one complete poll of all its ports.
+static bool smart_hub_wait_for_reads(int more) {
+	pthread_mutex_lock(&smart_hub.mutex);
+	int target = smart_hub.status_reads + more;
+	pthread_mutex_unlock(&smart_hub.mutex);
+	if (!smart_hub_wait(smart_hub_read_past, &target)) {
+		fprintf(stderr, "The smart hub was not polled again\n");
+		return false;
+	}
+	return true;
+}
+
+static void smart_hub_set_status(int port, uint16_t status) {
+	pthread_mutex_lock(&smart_hub.mutex);
+	smart_hub.status[port] = status;
+	pthread_mutex_unlock(&smart_hub.mutex);
+}
+
+static void smart_hub_counts(int port, uint16_t *status, int *set_power, int *clear_power) {
+	pthread_mutex_lock(&smart_hub.mutex);
+	*status = smart_hub.status[port];
+	*set_power = smart_hub.set_power[port];
+	*clear_power = smart_hub.clear_power[port];
+	pthread_mutex_unlock(&smart_hub.mutex);
+}
 
 // ---------------------------------------------------------------- utilities
 
@@ -391,6 +587,129 @@ static void usb_hub_switches_on_the_v1_box(void) {
 cleanup:
 	stop_serial_driver(&aux);
 	stop_external_serial_simulator(&simulator);
+}
+
+static const char * const usb_port_items[] = {
+	AUX_USB_PORT_1_ITEM_NAME, AUX_USB_PORT_2_ITEM_NAME, AUX_USB_PORT_3_ITEM_NAME,
+	AUX_USB_PORT_4_ITEM_NAME, AUX_USB_PORT_5_ITEM_NAME, AUX_USB_PORT_6_ITEM_NAME
+};
+static const char * const usb_port_state_items[] = {
+	AUX_USB_PORT_STATE_1_ITEM_NAME, AUX_USB_PORT_STATE_2_ITEM_NAME, AUX_USB_PORT_STATE_3_ITEM_NAME,
+	AUX_USB_PORT_STATE_4_ITEM_NAME, AUX_USB_PORT_STATE_5_ITEM_NAME, AUX_USB_PORT_STATE_6_ITEM_NAME
+};
+
+// Without a smart hub on the bus the v1 box has no per port USB control at all.
+static void v1_without_a_smart_hub_hides_the_usb_ports(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "upb", NULL };
+	smart_hub_reset(false);
+	SERIAL_CHECK_TRUE(start_upb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(!has_defined_property(AUX_USB_PORT_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(AUX_USB_PORT_STATE_PROPERTY_NAME));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
+// Each port is switched with its own PORT_POWER request and the others are left
+// alone; the status lights follow the hub's port status word.
+static void v1_usb_ports_switch_through_the_smart_hub(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "upb", NULL };
+	smart_hub_reset(true);
+	SERIAL_CHECK_TRUE(start_upb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_EQ_INT(6, property_count(AUX_USB_PORT_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(6, property_count(AUX_USB_PORT_STATE_PROPERTY_NAME));
+	for (int i = 0; i < 6; i++) {
+		SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, usb_port_items[i], true));
+		SERIAL_CHECK_TRUE(wait_for_light_item_value(AUX_USB_PORT_STATE_PROPERTY_NAME, usb_port_state_items[i], INDIGO_IDLE_STATE));
+	}
+	smart_hub_set_status(3, HUB_PORT_POWER | HUB_PORT_ATTACHED);
+	smart_hub_set_status(4, HUB_PORT_POWER | HUB_PORT_OVERCURRENT);
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(AUX_USB_PORT_STATE_PROPERTY_NAME, usb_port_state_items[2], INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(AUX_USB_PORT_STATE_PROPERTY_NAME, usb_port_state_items[3], INDIGO_ALERT_STATE));
+	for (int i = 0; i < 6; i++) {
+		uint16_t status;
+		int set_power, clear_power;
+		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(set_switch(&aux, AUX_USB_PORT_PROPERTY_NAME, usb_port_items[i], false));
+		SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, usb_port_items[i], false));
+		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
+		smart_hub_counts(i + 1, &status, &set_power, &clear_power);
+		SERIAL_CHECK_EQ_INT(0, status);
+		SERIAL_CHECK_EQ_INT(0, set_power);
+		SERIAL_CHECK_EQ_INT(1, clear_power);
+		SERIAL_CHECK_TRUE(wait_for_light_item_value(AUX_USB_PORT_STATE_PROPERTY_NAME, usb_port_state_items[i], INDIGO_IDLE_STATE));
+	}
+	SERIAL_CHECK_TRUE(set_switch(&aux, AUX_USB_PORT_PROPERTY_NAME, usb_port_items[2], true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, usb_port_items[2], true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
+	for (int i = 0; i < 6; i++) {
+		uint16_t status;
+		int set_power, clear_power;
+		smart_hub_counts(i + 1, &status, &set_power, &clear_power);
+		SERIAL_CHECK_EQ_INT(i == 2 ? HUB_PORT_POWER : 0, status);
+		SERIAL_CHECK_EQ_INT(i == 2 ? 1 : 0, set_power);
+		SERIAL_CHECK_EQ_INT(1, clear_power);
+	}
+	// A poll after the last change still reports what was requested.
+	SERIAL_CHECK_TRUE(smart_hub_wait_for_reads(2 * 6));
+	for (int i = 0; i < 6; i++) {
+		SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, usb_port_items[i], i == 2));
+	}
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+	smart_hub_reset(false);
+}
+
+// A request that arrives while the poll is reading the hub must survive it. The
+// hardware lost 4 of 11 such requests: the poll overwrote the requested value with
+// the old hub state, the handler found nothing to switch and published OK with the
+// old value. The status light is read-only and keeps following the hub meanwhile,
+// but it must not publish the pending switch as OK before its handler has run.
+static void v1_usb_port_change_survives_a_concurrent_poll(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "upb", NULL };
+	bool held = false;
+	uint16_t status;
+	int set_power, clear_power;
+	smart_hub_reset(true);
+	SERIAL_CHECK_TRUE(start_upb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, usb_port_items[1], true));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(AUX_USB_PORT_STATE_PROPERTY_NAME, usb_port_state_items[0], INDIGO_IDLE_STATE));
+	unsigned int ok_revision = property_state_revision(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(held = smart_hub_hold_poll());
+	smart_hub_set_status(1, HUB_PORT_POWER | HUB_PORT_ATTACHED);
+	SERIAL_CHECK_TRUE(set_switch(&aux, AUX_USB_PORT_PROPERTY_NAME, usb_port_items[1], false));
+	smart_hub_release_poll();
+	held = false;
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, usb_port_items[1], false));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
+	smart_hub_counts(2, &status, &set_power, &clear_power);
+	SERIAL_CHECK_EQ_INT(1, clear_power);
+	SERIAL_CHECK_EQ_INT(0, status);
+	pthread_mutex_lock(&smart_hub.mutex);
+	unsigned int ok_revision_at_power_change = smart_hub.ok_revision_at_power_change;
+	pthread_mutex_unlock(&smart_hub.mutex);
+	SERIAL_CHECK_EQ_INT(ok_revision, ok_revision_at_power_change);
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(AUX_USB_PORT_STATE_PROPERTY_NAME, usb_port_state_items[0], INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(smart_hub_wait_for_reads(2 * 6));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, usb_port_items[1], false));
+	smart_hub_counts(2, &status, &set_power, &clear_power);
+	SERIAL_CHECK_EQ_INT(1, clear_power);
+	SERIAL_CHECK_EQ_INT(0, set_power);
+cleanup:
+	if (held) {
+		smart_hub_release_poll();
+	}
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+	smart_hub_reset(false);
 }
 
 static void variable_power_outlet_round_trips(void) {
@@ -825,6 +1144,9 @@ int main(void) {
 		{ "autodew_state_is_adopted_from_the_device", autodew_state_is_adopted_from_the_device },
 		{ "each_usb_port_switches_on_its_own", each_usb_port_switches_on_its_own },
 		{ "usb_hub_switches_on_the_v1_box", usb_hub_switches_on_the_v1_box },
+		{ "v1_without_a_smart_hub_hides_the_usb_ports", v1_without_a_smart_hub_hides_the_usb_ports },
+		{ "v1_usb_ports_switch_through_the_smart_hub", v1_usb_ports_switch_through_the_smart_hub },
+		{ "v1_usb_port_change_survives_a_concurrent_poll", v1_usb_port_change_survives_a_concurrent_poll },
 		{ "variable_power_outlet_round_trips", variable_power_outlet_round_trips },
 		{ "outlet_names_relabel_the_controls", outlet_names_relabel_the_controls },
 		{ "reboot_is_momentary", reboot_is_momentary },

@@ -1821,8 +1821,16 @@ $(INTEGRATION_BUILD)/test_wheel_atik_usb: integration/test_usb_outputs.c $(INTEG
 $(INTEGRATION_BUILD)/aux_upb_simulator: ../indigo_drivers/aux_upb/aux_upb_simulator/aux_upb_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/test_aux_upb_simulator: integration/test_aux_upb_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_upb_simulator $(BUILD_DRIVERS)/indigo_aux_upb.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_aux_upb.a $(TEST_LDFLAGS) -lusb-1.0
+# The v1 box's USB ports sit behind an internal smart hub that the driver drives over
+# libusb, so the suite links a driver object whose hub calls go to the fake hub in the
+# test instead of to whatever hub is on the host's USB bus.
+AUX_UPB_SMART_HUB_REPLACEMENTS = -Dlibusb_get_device_list=upb_test_get_device_list -Dlibusb_free_device_list=upb_test_free_device_list -Dlibusb_get_device_descriptor=upb_test_get_device_descriptor -Dlibusb_open=upb_test_open -Dlibusb_close=upb_test_close -Dlibusb_control_transfer=upb_test_control_transfer
+
+$(INTEGRATION_BUILD)/aux_upb_smart_hub_driver.o: ../indigo_drivers/aux_upb/indigo_aux_upb.c ../indigo_drivers/aux_upb/indigo_aux_upb.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(AUX_UPB_SMART_HUB_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_aux_upb_simulator: integration/test_aux_upb_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_upb_simulator $(INTEGRATION_BUILD)/aux_upb_smart_hub_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(INTEGRATION_BUILD)/aux_upb_smart_hub_driver.o $(TEST_LDFLAGS) -lusb-1.0
 
 $(INTEGRATION_BUILD)/gps_nmea_transport.o: ../indigo_drivers/gps_nmea/indigo_gps_nmea.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -Dindigo_uni_open_serial_with_config=nmea_test_open -Dindigo_uni_read_section=nmea_test_read -Dindigo_uni_close=nmea_test_close -c $< -o $@

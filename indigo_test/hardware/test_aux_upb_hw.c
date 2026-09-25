@@ -84,11 +84,11 @@ static const char *serial_port = NULL;
 
 // The box state captured once it is connected. Every scenario works relative to these values and
 // the session restores them before it disconnects.
-static bool outlets_initial[4];
+static bool outlets_initial[4], usb_ports_initial[6];
 static double heaters_initial[3];
 static char dew_initial[INDIGO_NAME_SIZE], hub_initial[INDIGO_NAME_SIZE];
 static double variable_initial;
-static int outlet_count, heater_count;
+static int outlet_count, heater_count, usb_port_count;
 static bool has_hub, has_variable, has_usb_ports;
 static bool settings_captured;
 
@@ -449,6 +449,13 @@ static bool capture_initial_settings(void) {
 	if (has_hub && !selected_switch(aux, X_AUX_HUB_PROPERTY_NAME, hub_initial, sizeof(hub_initial))) {
 		return false;
 	}
+	usb_port_count = has_usb_ports ? property_count(aux, AUX_USB_PORT_PROPERTY_NAME) : 0;
+	for (int i = 0; i < usb_port_count && i < 6; i++) {
+		char item[INDIGO_NAME_SIZE];
+		if (!item_name_at(aux, AUX_USB_PORT_PROPERTY_NAME, i, item, sizeof(item)) || !switch_item(aux, AUX_USB_PORT_PROPERTY_NAME, item, usb_ports_initial + i)) {
+			return false;
+		}
+	}
 	if (has_variable && !number_item(aux, X_AUX_VARIABLE_PROPERTY_NAME, X_AUX_VARIABLE_ITEM_NAME, &variable_initial)) {
 		return false;
 	}
@@ -466,10 +473,20 @@ static void restore_initial_settings(void) {
 			set_number(aux, AUX_HEATER_OUTLET_PROPERTY_NAME, item, heaters_initial[i], SHORT_TIMEOUT);
 		}
 	}
+	// An outlet or port already in its initial state is left alone, so a session that never
+	// touched it sends it nothing.
 	for (int i = 0; i < outlet_count && i < 4; i++) {
 		char item[INDIGO_NAME_SIZE];
-		if (item_name_at(aux, AUX_POWER_OUTLET_PROPERTY_NAME, i, item, sizeof(item))) {
+		bool value;
+		if (item_name_at(aux, AUX_POWER_OUTLET_PROPERTY_NAME, i, item, sizeof(item)) && switch_item(aux, AUX_POWER_OUTLET_PROPERTY_NAME, item, &value) && value != outlets_initial[i]) {
 			set_switch(aux, AUX_POWER_OUTLET_PROPERTY_NAME, item, outlets_initial[i], SHORT_TIMEOUT);
+		}
+	}
+	for (int i = 0; i < usb_port_count && i < 6; i++) {
+		char item[INDIGO_NAME_SIZE];
+		bool value;
+		if (item_name_at(aux, AUX_USB_PORT_PROPERTY_NAME, i, item, sizeof(item)) && switch_item(aux, AUX_USB_PORT_PROPERTY_NAME, item, &value) && value != usb_ports_initial[i]) {
+			set_switch(aux, AUX_USB_PORT_PROPERTY_NAME, item, usb_ports_initial[i], SHORT_TIMEOUT);
 		}
 	}
 	if (*dew_initial) {
@@ -610,7 +627,7 @@ static void upb_switches_dew_control(void) {
 
 static void upb_switches_the_usb_control(void) {
 	if (has_usb_ports) {
-		// The v2 box switches its ports itself.
+		// The v2 box switches its ports through the protocol, the v1 box through its internal smart hub.
 		char item[INDIGO_NAME_SIZE];
 		ASSERT_TRUE(item_name_at(aux, AUX_USB_PORT_PROPERTY_NAME, 0, item, sizeof(item)));
 		bool initial = false;
@@ -625,6 +642,42 @@ static void upb_switches_the_usb_control(void) {
 	} else {
 		printf("    no USB control on this model\n");
 	}
+}
+
+// On the v1 box a USB port request that arrived while the status poll was running was lost in
+// 4 of 11 tries: the poll overwrote the requested value with the hub's old state and the driver
+// published OK without switching the port. The requests here are spread across the poll period so
+// that several of them land inside a poll, and every one must switch the port, be published with
+// the requested value and still hold after the following poll. Only port #2 is switched.
+static void upb_usb_port_changes_survive_the_poll(void) {
+	if (!has_usb_ports || usb_port_count < 2) {
+		printf("    no per port USB control on this box\n");
+		return;
+	}
+	char item[INDIGO_NAME_SIZE];
+	ASSERT_TRUE(item_name_at(aux, AUX_USB_PORT_PROPERTY_NAME, 1, item, sizeof(item)));
+	bool value = usb_ports_initial[1];
+	int lost = 0, reverted = 0;
+	const int requests = 16;
+	for (int i = 0; i < requests; i++) {
+		bool now = false;
+		value = !value;
+		ASSERT_TRUE(set_switch(aux, AUX_USB_PORT_PROPERTY_NAME, item, value, SHORT_TIMEOUT));
+		if (!switch_item(aux, AUX_USB_PORT_PROPERTY_NAME, item, &now) || now != value) {
+			printf("    request %d: %s was published %s\n", i + 1, value ? "on" : "off", now ? "on" : "off");
+			lost++;
+		}
+		// Offsets of 0.9 to 3.1 s step through the 2 s poll period plus its own duration.
+		indigo_usleep(900000 + (i * 700000) % 2300000);
+		if (!switch_item(aux, AUX_USB_PORT_PROPERTY_NAME, item, &now) || now != value) {
+			printf("    request %d: %s reverted to %s after a poll\n", i + 1, value ? "on" : "off", now ? "on" : "off");
+			reverted++;
+		}
+	}
+	printf("    %d requests, %d lost, %d reverted\n", requests, lost, reverted);
+	ASSERT_TRUE(set_switch(aux, AUX_USB_PORT_PROPERTY_NAME, item, usb_ports_initial[1], SHORT_TIMEOUT));
+	ASSERT_TRUE(lost == 0);
+	ASSERT_TRUE(reverted == 0);
 }
 
 static void upb_sets_the_variable_outlet(void) {
@@ -720,6 +773,7 @@ int main(int argc, char **argv) {
 		{ "upb_sets_heater_duty_cycles", upb_sets_heater_duty_cycles },
 		{ "upb_switches_dew_control", upb_switches_dew_control },
 		{ "upb_switches_the_usb_control", upb_switches_the_usb_control },
+		{ "upb_usb_port_changes_survive_the_poll", upb_usb_port_changes_survive_the_poll },
 		{ "upb_sets_the_variable_outlet", upb_sets_the_variable_outlet },
 		{ "upb_renames_an_outlet", upb_renames_an_outlet },
 		{ "upb_connects_the_focuser", upb_connects_the_focuser },

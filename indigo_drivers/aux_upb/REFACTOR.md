@@ -99,8 +99,133 @@ voltage outlet and the per port USB switching are v2 features this box does not 
 has no motor attached, so only its contract, position readback and an idle abort were exercised, not
 motion; physical hot-plug was not part of the run.
 
+## v1 smart hub port change lost to the poll (2026-09-25)
+
+### Observation
+
+On the Pegasus UPB v1.7 bench box (`/dev/cu.usbserial-PA36T4RB`, macOS arm64, `indigo_server -vv`,
+2026-09-25 00:55), 11 `AUX_USB_PORT` requests for port #2 sent through `indigo_agent_alpaca`
+every ~4.5 s produced only 7 `Turning port #2 on/off` log lines. The lost requests arrived while
+the status poll's `PA`/`PC` exchange was in progress (request 00:55:53.645, poll `PA` at
+00:55:53.462), and the value read back afterwards contradicted the request. ASCOM ConformU reported
+the same on the USB port switches as "GetSwitch returned True after SetSwitch(False)" and "Set/Read
+differ by 90-100% of SwitchStep".
+
+### Audit
+
+`aux_timer_callback` reads each downstream port of the internal Microchip USB2517 hub
+(`0x0424:0x2517`) with `LIBUSB_REQUEST_GET_STATUS` and assigns `AUX_USB_PORT` from it without
+checking the property state, while the v2 branch of the same poll guards the assignment with
+`upb_adopt()` (UPB-02). `INDIGO_COPY_VALUES_PROCESS_CHANGE` copies the requested value and
+publishes BUSY on the client thread; the poll then overwrites it with the old hub state, and
+`aux_usb_port_handler`, which only sends `SET_FEATURE`/`CLEAR_FEATURE(PORT_POWER)` for ports whose
+requested value differs from the hub, sends nothing and publishes OK with the old value.
+
+A second, related problem in the same block: one flag, `updateUSBPorts`, publishes both
+`AUX_USB_PORT` and `AUX_USB_PORT_STATE` in OK. A port status light that changes while a request is
+pending would therefore publish `AUX_USB_PORT` OK before its handler has run.
+
+`AUX_USB_PORT_STATE` is a read-only light the handler never reads, so it keeps following the hub
+while a request is pending; only the writable `AUX_USB_PORT` is guarded.
+
+Why the earlier suite missed it: the v1 smart hub is a USB device, which the serial simulator
+cannot present, so the v1 cases ran against whatever libusb found on the host. On this Mac that
+was the real UPB hub - the v1 simulator cases opened it and read its ports.
+
+Measured hub replies used to model it (read-only `GET_STATUS`, 2026-09-25, this box): ports 1-6
+`0x00000100` (powered, nothing attached), port 7 `0x00000103` (the box's own serial bridge).
+
+### Decisions
+
+- Hardware testing: yes, on the same UPB v1.7. Only `AUX_USB_PORT` port #2 is switched; nothing is
+  attached to any downstream hub port (all six read `0x0100`), and no power outlet is switched. The
+  ASI294MC Pro powered from an outlet is not affected.
+- The v1 path is modelled hardware-free with a fake smart hub in the test binary, using the same
+  compile-time libusb replacement as `test_ccd_ssag_usb`, so the existing suite stops depending on
+  the host's USB bus.
+
+### Plan and results
+
+1. **Done.** Fake smart hub in `indigo_test/integration/test_aux_upb_simulator.c`. The suite now
+   links `build/integration/aux_upb_smart_hub_driver.o`, the driver source compiled with
+   `libusb_get_device_list`, `libusb_free_device_list`, `libusb_get_device_descriptor`,
+   `libusb_open`, `libusb_close` and `libusb_control_transfer` renamed to the fake
+   (`AUX_UPB_SMART_HUB_REPLACEMENTS` in `indigo_test/Makefile`). The hub answers `GET_STATUS` with
+   the measured words, applies `SET_FEATURE`/`CLEAR_FEATURE(PORT_POWER)`, counts them per port and
+   can park the next status read until the test releases it. It is absent by default, so the
+   existing v1 cases no longer reach the host's USB bus. Three cases were added:
+   `v1_without_a_smart_hub_hides_the_usb_ports`, `v1_usb_ports_switch_through_the_smart_hub`
+   (each port switched with exactly one request, the others untouched, the connection, overcurrent
+   and idle lights from the status word, readback after a later poll) and the reproducer below.
+2. **Done, failed as expected.** `v1_usb_port_change_survives_a_concurrent_poll` parks the poll
+   in its first port read, switches port #2 off, changes port #1's status meanwhile and releases the
+   poll. Against the original driver (version 28): `test_aux_upb_simulator.c:694: expected 1,
+   got 0`, meaning no `CLEAR_FEATURE` reached the hub. The other 39 cases passed except
+   `focuser_overlapping_request_is_rejected`; see "Unrelated intermittent failure" below.
+3. **Done, failed as expected.** Hardware reproducer `upb_usb_port_changes_survive_the_poll` in
+   `indigo_test/hardware/test_aux_upb_hw.c`: 16 requests on port #2, spaced 0.9-3.1 s apart so they
+   step through the poll period. Each one must be published with the requested value and still
+   hold before the next request. Original driver, 2026-09-25 12:12:
+   `16 requests, 2 lost, 2 reverted` (requests 1 and 16 published with the old value, only 14
+   `Turning port #2` lines), FAIL. The session restore now skips outlets and USB ports that are
+   already in their initial state, and it restores the USB ports too. The only commands this
+   filtered run sent besides the port requests were the unchanged heater (`P5:0`, `P6:0`), dew
+   (`PD:0`) and hub (`PU:1`) values. No power outlet was switched.
+4. **Done.** `indigo_aux_upb.driver`: in the v1 hub loop the `AUX_USB_PORT` assignment is guarded
+   with `upb_adopt(AUX_USB_PORT_PROPERTY)`, the same guard the v2 branch uses. The light is assigned
+   separately and published through its own `updateUSBPortState` flag, so a light change no
+   longer publishes the pending `AUX_USB_PORT` as OK. v2 publishes as before, because
+   `updateUSBPorts` still publishes both. Version 29 (`0x0300001D`). Regenerated with
+   `../../build/bin/indigo_generator indigo_aux_upb.driver`. A second regeneration in a clean
+   directory is byte-identical for `.c`, `.h` and `_main.c`. The generator's five
+   `FOCUSER_*->hidden set to false` notices are pre-existing (the version 28 `.driver` prints the
+   same five) and do not change the output. `make -f ../../Makefile.drv all` produces no compiler
+   warnings, and `-Wall -Wextra` on the driver and both test sources is clean.
+5. **Done.** Results below.
+
+### Defect
+
+| Defect | Impact | Root cause | Fix | Test |
+| --- | --- | --- | --- | --- |
+| UPB-03 | On a v1 box a USB port request that arrives while the status poll runs is lost: the driver publishes OK with the old value and never switches the port (4 of 11 via ConformU, 2 of 16 in the hardware reproducer). | The v1 smart hub branch of `aux_timer_callback` assigned `AUX_USB_PORT` from `GET_STATUS` without the UPB-02 guard, and one flag published both the switch and its light in OK. | `upb_adopt(AUX_USB_PORT_PROPERTY)` before the assignment, and a separate publish flag for `AUX_USB_PORT_STATE`. | `v1_usb_port_change_survives_a_concurrent_poll` (simulator + fake hub), `upb_usb_port_changes_survive_the_poll` (hardware) |
+
+Reproduced both hardware-free and on hardware. The hardware observation (ConformU and the
+`indigo_server -vv` log of 2026-09-25 00:55) is what the fake hub's held status read models.
+
+### Verification
+
+```sh
+make -C indigo_drivers/aux_upb -f ../../Makefile.drv all
+cd indigo_test && make build/integration/test_aux_upb_simulator && ./build/integration/test_aux_upb_simulator
+cd indigo_test && make build/hardware/test_aux_upb_hw && UPB_HW_PORT=/dev/cu.usbserial-PA36T4RB INDIGO_TEST_CASE_FILTER=upb_usb_port_changes ./build/hardware/test_aux_upb_hw --run
+```
+
+- Simulator suite, fixed driver, macOS arm64: 40/40 passed in each of three consecutive full runs.
+- Hardware, fixed driver, Pegasus UPB v1 (USB product "UPB v1.7", firmware 1.4) on
+  `/dev/cu.usbserial-PA36T4RB`, 2026-09-25 12:13:
+  `16 requests, 0 lost, 0 reverted`, 16 `Turning port #2` lines, PASS. Hub ports 1-6 read
+  `0x0100` again afterwards, and the ASI294MC Pro was still enumerated on USB.
+- Only the new scenario was run on hardware (`INDIGO_TEST_CASE_FILTER`). The other 14 hardware
+  cases switch every power outlet, and one outlet powers the ASI294MC Pro, so they were not repeated.
+
+### Unrelated intermittent failure
+
+`focuser_overlapping_request_is_rejected` failed once in the first full run ("Refused
+FOCUSER_STEPS was never published in ALERT, state is 1"), on a binary whose driver was still the
+unmodified version 28. It passed 4/4 in isolation both with the original binary (driver archive,
+real libusb) and with the fake-hub binary, and it passed in two full runs of the original binary
+and all three full runs after the fix. Under ASan + UBSan it fails far more often: 1 of 40 in the
+full run, 2 of 3 filtered runs with the fixed driver, and 3 of 3 filtered runs with the **original**
+driver and the **original** test source. So it is a pre-existing timing dependency in that case or in
+the focuser reject path, not something UPB-03 or the fake hub introduced. It concerns the focuser's
+motion timing, not the USB path, and is not addressed here.
+
 ## Final test summary
 
-- Simulated tests run: 37; passed: 37. Sanitizer run (ASan + UBSan, arm64): 36 run, 36 passed, before
-  the probe-less case below was added.
-- Hardware tests run: 14; passed: 14. Pegasus Ultimate Powerbox v1, firmware 1.4.
+- Simulated tests run: 40; passed: 40 (latest full run of `test_aux_upb_simulator`, driver version
+  29). Sanitizer run (ASan + UBSan, arm64, leak detection off) of the same 40 cases: 40
+  run, 39 passed, no sanitizer report; the one failure is the pre-existing
+  `focuser_overlapping_request_is_rejected` timing failure described above.
+- Hardware tests run: 1; passed: 1 (`upb_usb_port_changes_survive_the_poll`, Pegasus UPB v1 firmware 1.4,
+  driver version 29). The last full hardware run, 14 run and 14 passed, was on driver version 28 and
+  did not include this case.
