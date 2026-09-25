@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000014
+#define DRIVER_VERSION       0x03000015
 #define DRIVER_NAME          "indigo_focuser_efa"
 #define DRIVER_LABEL         "Celestron / PlaneWave EFA Focuser"
 #define FOCUSER_DEVICE_NAME  "EFA Focuser"
@@ -473,6 +473,23 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 		PRIVATE_DATA->active = PRIVATE_DATA->calibrating = PRIVATE_DATA->uncertain = false;
 		//- focuser.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			FOCUSER_SPEED_PROPERTY,
+			FOCUSER_TEMPERATURE_PROPERTY,
+			FOCUSER_ON_POSITION_SET_PROPERTY,
+			FOCUSER_LIMITS_PROPERTY,
+			FOCUSER_POSITION_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_ABORT_MOTION_PROPERTY,
+			X_FOCUSER_FANS_PROPERTY,
+			X_FOCUSER_CALIBRATION_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_FOCUSER_FANS_PROPERTY, NULL);
 		indigo_delete_property(device, X_FOCUSER_CALIBRATION_PROPERTY, NULL);
 		efa_close(device);

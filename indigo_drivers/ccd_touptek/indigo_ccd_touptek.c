@@ -38,7 +38,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION											0x03000032
+#define DRIVER_VERSION											0x03000034
 #define PRIVATE_DATA												((DRIVER_PRIVATE_DATA *)device->private_data)
 
 #define ADVANCED_GROUP											"Advanced"
@@ -903,17 +903,16 @@ static void ccd_connection_handler(indigo_device *device) {
 	bool failed_connection = false;
 	indigo_cancel_pending_handlers(device);
 	indigo_lock_master_device(device);
-	// Cancelled requests must not leave properties BUSY in the next session.
+	// Cancelled requests must not leave properties BUSY: a new session starts in a clean state.
 	indigo_property *properties[] = {
 		CCD_MODE_PROPERTY, CCD_BIN_PROPERTY, CCD_FRAME_PROPERTY, CCD_EXPOSURE_PROPERTY,
 		CCD_STREAMING_PROPERTY, CCD_ABORT_EXPOSURE_PROPERTY, CCD_COOLER_PROPERTY, CCD_TEMPERATURE_PROPERTY,
 		CCD_GAIN_PROPERTY, CCD_OFFSET_PROPERTY, X_CCD_ADVANCED_PROPERTY, X_CCD_FAN_PROPERTY,
-		X_CCD_HEATER_PROPERTY, X_CCD_CONVERSION_GAIN_PROPERTY, X_CCD_LED_PROPERTY, X_CCD_BIN_MODE_PROPERTY,
-		CONFIG_PROPERTY
+		X_CCD_HEATER_PROPERTY, X_CCD_CONVERSION_GAIN_PROPERTY, X_CCD_LED_PROPERTY, X_CCD_BIN_MODE_PROPERTY
 	};
 	for (unsigned i = 0; i < sizeof(properties) / sizeof(properties[0]); i++) {
 		if (properties[i] && properties[i]->state == INDIGO_BUSY_STATE) {
-			properties[i]->state = INDIGO_ALERT_STATE;
+			properties[i]->state = INDIGO_OK_STATE;
 		}
 	}
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -1517,18 +1516,6 @@ static void save_if_published(indigo_device *device, indigo_property *property) 
 	}
 }
 
-static void ccd_config_handler(indigo_device *device) {
-	if (CONFIG_SAVE_ITEM->sw.value) {
-		save_if_published(device, X_CCD_ADVANCED_PROPERTY);
-		save_if_published(device, X_CCD_CONVERSION_GAIN_PROPERTY);
-		save_if_published(device, X_CCD_BIN_MODE_PROPERTY);
-		save_if_published(device, X_CCD_LED_PROPERTY);
-	}
-	CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_property *property = indigo_copy_property(NULL, CONFIG_PROPERTY);
-	indigo_ccd_change_property(device, NULL, property);
-	indigo_release_property(property);
-}
 
 #pragma mark - Device API (ccd)
 
@@ -1780,8 +1767,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, ccd_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CONFIG_PROPERTY, ccd_config_handler);
-		return INDIGO_OK;
+		// CONFIG is handled on the bus thread, as in the base class. CONFIG stays defined across connection changes, so a queued request
+		// cancelled by a connection change would leave it BUSY for every client.
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			save_if_published(device, X_CCD_ADVANCED_PROPERTY);
+			save_if_published(device, X_CCD_CONVERSION_GAIN_PROPERTY);
+			save_if_published(device, X_CCD_BIN_MODE_PROPERTY);
+			save_if_published(device, X_CCD_LED_PROPERTY);
+		}
+		return indigo_ccd_change_property(device, client, property);
 	} else if (!IS_CONNECTED || CONNECTION_PROPERTY->state != INDIGO_OK_STATE) {
 		return indigo_ccd_change_property(device, client, property);
 	} else if (indigo_property_match_changeable(CCD_MODE_PROPERTY, property)) {
@@ -1876,13 +1870,13 @@ static indigo_result ccd_detach(indigo_device *device) {
 static void guider_connection_handler(indigo_device *device) {
 	indigo_cancel_pending_handlers(device);
 	indigo_lock_master_device(device);
-	// Cancelled requests must not leave properties BUSY in the next session.
+	// Cancelled requests must not leave properties BUSY: a new session starts in a clean state.
 	indigo_property *properties[] = {
 		GUIDER_GUIDE_DEC_PROPERTY, GUIDER_GUIDE_RA_PROPERTY
 	};
 	for (unsigned i = 0; i < sizeof(properties) / sizeof(properties[0]); i++) {
 		if (properties[i] && properties[i]->state == INDIGO_BUSY_STATE) {
-			properties[i]->state = INDIGO_ALERT_STATE;
+			properties[i]->state = INDIGO_OK_STATE;
 		}
 	}
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -2014,13 +2008,17 @@ static indigo_result guider_detach(indigo_device *device) {
 static void wheel_connection_handler(indigo_device *device) {
 	indigo_cancel_pending_handlers(device);
 	indigo_lock_master_device(device);
-	// Cancelled requests must not leave properties BUSY in the next session.
+	// Cancelled requests must not leave properties BUSY: a new session starts in a clean state.
 	indigo_property *properties[] = {
-		WHEEL_SLOT_PROPERTY, X_CALIBRATE_PROPERTY, X_WHEEL_MODEL_PROPERTY, CONFIG_PROPERTY
+		WHEEL_SLOT_PROPERTY, X_CALIBRATE_PROPERTY, X_WHEEL_MODEL_PROPERTY
 	};
 	for (unsigned i = 0; i < sizeof(properties) / sizeof(properties[0]); i++) {
 		if (properties[i] && properties[i]->state == INDIGO_BUSY_STATE) {
-			properties[i]->state = INDIGO_ALERT_STATE;
+			properties[i]->state = INDIGO_OK_STATE;
+			// X_WHEEL_MODEL stays defined while disconnected, so clients must see the reset now.
+			if (properties[i] == X_WHEEL_MODEL_PROPERTY) {
+				indigo_update_property(device, X_WHEEL_MODEL_PROPERTY, NULL);
+			}
 		}
 	}
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -2119,16 +2117,6 @@ static void wheel_x_wheel_model_handler(indigo_device *device) {
 	indigo_wheel_change_property(device, NULL, X_WHEEL_MODEL_PROPERTY);
 }
 
-static void wheel_config_handler(indigo_device *device) {
-	if (CONFIG_SAVE_ITEM->sw.value) {
-		indigo_save_property(device, NULL, X_WHEEL_MODEL_PROPERTY);
-	}
-	CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_property *property = indigo_copy_property(NULL, CONFIG_PROPERTY);
-	indigo_wheel_change_property(device, NULL, property);
-	indigo_release_property(property);
-}
-
 #pragma mark - Device API (wheel)
 
 static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -2180,8 +2168,11 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, wheel_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CONFIG_PROPERTY, wheel_config_handler);
-		return INDIGO_OK;
+		// CONFIG is handled on the bus thread, see ccd_change_property().
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, X_WHEEL_MODEL_PROPERTY);
+		}
+		return indigo_wheel_change_property(device, client, property);
 	} else if (indigo_property_match_changeable(X_WHEEL_MODEL_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_WHEEL_MODEL_PROPERTY, wheel_x_wheel_model_handler);
 		return INDIGO_OK;
@@ -2216,15 +2207,15 @@ static indigo_result wheel_detach(indigo_device *device) {
 static void focuser_connection_handler(indigo_device *device) {
 	indigo_cancel_pending_handlers(device);
 	indigo_lock_master_device(device);
-	// Cancelled requests must not leave properties BUSY in the next session.
+	// Cancelled requests must not leave properties BUSY: a new session starts in a clean state.
 	indigo_property *properties[] = {
 		FOCUSER_REVERSE_MOTION_PROPERTY, FOCUSER_POSITION_PROPERTY, FOCUSER_LIMITS_PROPERTY, FOCUSER_BACKLASH_PROPERTY,
 		FOCUSER_STEPS_PROPERTY, FOCUSER_ABORT_MOTION_PROPERTY, FOCUSER_COMPENSATION_PROPERTY, X_BEEP_PROPERTY,
-		FOCUSER_MODE_PROPERTY, CONFIG_PROPERTY
+		FOCUSER_MODE_PROPERTY
 	};
 	for (unsigned i = 0; i < sizeof(properties) / sizeof(properties[0]); i++) {
 		if (properties[i] && properties[i]->state == INDIGO_BUSY_STATE) {
-			properties[i]->state = INDIGO_ALERT_STATE;
+			properties[i]->state = INDIGO_OK_STATE;
 		}
 	}
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -2530,16 +2521,6 @@ static void focuser_mode_handler(indigo_device *device) {
 	indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
 }
 
-static void focuser_config_handler(indigo_device *device) {
-	if (CONFIG_SAVE_ITEM->sw.value) {
-		//indigo_save_property(device, NULL, EAF_BEEP_PROPERTY);
-	}
-	CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_property *property = indigo_copy_property(NULL, CONFIG_PROPERTY);
-	indigo_focuser_change_property(device, NULL, property);
-	indigo_release_property(property);
-}
-
 #pragma mark - Device API (focuser)
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -2611,8 +2592,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, focuser_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CONFIG_PROPERTY, focuser_config_handler);
-		return INDIGO_OK;
+		// CONFIG is handled on the bus thread, see ccd_change_property().
+		return indigo_focuser_change_property(device, client, property);
 	} else if (!IS_CONNECTED || CONNECTION_PROPERTY->state != INDIGO_OK_STATE) {
 		return indigo_focuser_change_property(device, client, property);
 	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {

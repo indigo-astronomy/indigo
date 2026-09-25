@@ -28,7 +28,7 @@ driver wbplusv3 {
 	label = "WandererBox Plus V3 Powerbox";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2024-2026 Rumen G. Bogdanovski";
-	version = 6;
+	version = 7;
 	serial;
 	define {
 		#define AUX_GROUP	"Powerbox"

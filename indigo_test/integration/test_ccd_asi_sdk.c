@@ -1177,6 +1177,28 @@ static void abort_overtakes_pending_start(void) {
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state(0, "CCD_EXPOSURE"));
 }
 
+// Disconnect cancels pending change handlers. A property whose handler was cancelled must not stay BUSY:
+// the BUSY guard would silently refuse every later change to it after reconnect.
+static void cancelled_change_does_not_survive_disconnect(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	arm_gate(&queue_gate);
+	indigo_execute_handler(logical[0], block_queue);
+	ASSERT_TRUE(wait_count(&queue_gate.entered, 1));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_GAIN", "GAIN", 17));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(0, "CCD_GAIN"));
+	ASSERT_TRUE(set_switch(0, "CONNECTION", "DISCONNECTED", true));
+	// Give the disconnect handler, which runs on the driver queue, time to cancel the gain handler held behind the gate.
+	// Releasing too early can only let the gain handler run, which makes the case pass without exercising the cancellation.
+	indigo_usleep(300000);
+	release_gate(&queue_gate);
+	ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_OK_STATE));
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(0, "CCD_GAIN"));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_GAIN", "GAIN", 23));
+	ASSERT_TRUE(wait_state(0, "CCD_GAIN", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(23, cameras[0].config[ASI_GAIN]);
+}
+
 static void idle_abort_terminal(void) {
 	ASSERT_TRUE(connect_device(0, true));
 	ASSERT_TRUE(set_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true));
@@ -2399,6 +2421,7 @@ int main(int argc, char **argv) {
 		{ "Finite streaming baseline", finite_stream },
 		{ "Long indefinite stream abort restart", long_stream_abort_restart },
 		{ "Urgent abort overtakes pending start", abort_overtakes_pending_start },
+		{ "Cancelled change does not survive disconnect", cancelled_change_does_not_survive_disconnect },
 		{ "Idle abort terminal", idle_abort_terminal },
 		{ "Guide axes and disconnect", guide_all_axes_and_disconnect },
 		{ "Initialization read rollback", initialization_read_rollback },

@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_aux_uch"
 #define DRIVER_LABEL         "PegasusAstro USB Control Hub"
 #define AUX_DEVICE_NAME      "USB Control Hub"
@@ -248,6 +248,21 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AUX_USB_PORT_PROPERTY,
+			AUX_INFO_PROPERTY,
+			X_AUX_REBOOT_PROPERTY,
+			AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (AUX_OUTLET_NAMES_PROPERTY != NULL && AUX_OUTLET_NAMES_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_OUTLET_NAMES_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		indigo_delete_property(device, AUX_USB_PORT_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_REBOOT_PROPERTY, NULL);

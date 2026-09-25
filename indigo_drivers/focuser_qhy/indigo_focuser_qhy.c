@@ -70,7 +70,7 @@ typedef struct {
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_focuser_qhy"
 #define DRIVER_LABEL         "QHY Q-Focuser"
 #define FOCUSER_DEVICE_NAME  "Q-Focuser"
@@ -618,6 +618,27 @@ static void focuser_connection_handler(indigo_device *device) {
 		PRIVATE_DATA->moving = PRIVATE_DATA->motion_uncertain = false;
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		//- focuser.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			SIMULATION_PROPERTY,
+			FOCUSER_LIMITS_PROPERTY,
+			FOCUSER_SPEED_PROPERTY,
+			FOCUSER_DIRECTION_PROPERTY,
+			FOCUSER_MODE_PROPERTY,
+			FOCUSER_TEMPERATURE_PROPERTY,
+			FOCUSER_COMPENSATION_PROPERTY,
+			FOCUSER_ON_POSITION_SET_PROPERTY,
+			FOCUSER_REVERSE_MOTION_PROPERTY,
+			FOCUSER_BACKLASH_PROPERTY,
+			FOCUSER_POSITION_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_ABORT_MOTION_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		qhy_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

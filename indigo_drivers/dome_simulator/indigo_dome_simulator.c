@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_dome_simulator"
 #define DRIVER_LABEL         "Dome Simulator"
 #define DOME_DEVICE_NAME     DRIVER_LABEL
@@ -145,6 +145,22 @@ static void dome_connection_handler(indigo_device *device) {
 			DOME_SHUTTER_PROPERTY->state = DOME_STATE_OPEN_ITEM->light.value = INDIGO_ALERT_STATE;
 		}
 		//- dome.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			DOME_SPEED_PROPERTY,
+			DOME_HORIZONTAL_COORDINATES_PROPERTY,
+			DOME_SLAVING_PARAMETERS_PROPERTY,
+			DOME_STEPS_PROPERTY,
+			DOME_ABORT_MOTION_PROPERTY,
+			DOME_SHUTTER_PROPERTY,
+			DOME_PARK_PROPERTY,
+			DOME_STATE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}

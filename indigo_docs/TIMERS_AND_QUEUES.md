@@ -303,6 +303,12 @@ never touch tasks belonging to a sibling device sharing the same queue:
 - `indigo_cancel_pending_handler(device, handler)` drops only the pending tasks
   bound to that one handler.
 
+A dropped change handler never finishes its property, so that property stays
+BUSY, and the BUSY guard of `INDIGO_COPY_*_PROCESS_CHANGE` then refuses every
+later change to it. Code that cancels pending handlers, typically on
+disconnect, must return such properties to OK. Generated drivers do this after
+`on_disconnect`, and `ccd_touptek` does it in its connection handlers.
+
 Both wait if the currently running task also matches, unless they are called
 from the queue worker itself. A handler can therefore cancel its own siblings
 without deadlocking.

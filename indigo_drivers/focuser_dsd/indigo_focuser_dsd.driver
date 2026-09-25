@@ -22,7 +22,7 @@ driver dsd {
 	label = "Deep Sky Dad Focuser";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2019-2026 Rumen G. Bogdanovski";
-	version = 19;
+	version = 20;
 	serial {
 		configurable_speed = true;
 	}

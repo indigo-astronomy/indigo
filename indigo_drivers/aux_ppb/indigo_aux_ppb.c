@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001D
+#define DRIVER_VERSION       0x0300001E
 #define DRIVER_NAME          "indigo_aux_ppb"
 #define DRIVER_LABEL         "PegasusAstro Pocket Powerbox"
 #define AUX_DEVICE_NAME      "Pocket Powerbox"
@@ -370,6 +370,26 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AUX_POWER_OUTLET_PROPERTY,
+			AUX_DSLR_POWER_PROPERTY,
+			AUX_POWER_OUTLET_STATE_PROPERTY,
+			AUX_HEATER_OUTLET_PROPERTY,
+			AUX_DEW_CONTROL_PROPERTY,
+			AUX_WEATHER_PROPERTY,
+			AUX_INFO_PROPERTY,
+			X_AUX_REBOOT_PROPERTY,
+			AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (AUX_OUTLET_NAMES_PROPERTY != NULL && AUX_OUTLET_NAMES_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_OUTLET_NAMES_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DSLR_POWER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);

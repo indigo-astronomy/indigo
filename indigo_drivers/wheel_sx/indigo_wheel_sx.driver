@@ -22,7 +22,7 @@ driver sx {
 	label = "Starlight Xpress Filter Wheel";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 6;
+	version = 7;
 	hid {
 		hotplug = true;
 		vid = SX_VENDOR_ID;

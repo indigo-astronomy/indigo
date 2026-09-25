@@ -22,7 +22,7 @@ driver nexdome3 {
 	label = "NexDome3";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2019-2026 Rumen G. Bogdanovski";
-	version = 14;
+	version = 15;
 	serial;
 	include {
 		#include <math.h>

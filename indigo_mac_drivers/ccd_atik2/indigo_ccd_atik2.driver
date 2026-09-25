@@ -24,7 +24,7 @@ driver atik2 {
 	label = "Atik (legacy) Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 15;
+	version = 16;
 	max_devices = 16;
 	multi_device_support = true;
 	include {

@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_mount_starbook"
 #define DRIVER_LABEL         "Vixen StarBook Mount"
 #define MOUNT_DEVICE_NAME    "Mount Vixen StarBook"
@@ -536,6 +536,31 @@ static void mount_connection_handler(indigo_device *device) {
 		starbook_move(device, false, false, false, false);
 		starbook_set(device, "/STOP", NULL);
 		//- mount.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			TIMEZONE_PROPERTY,
+			RESET_PROPERTY,
+			MOUNT_SET_HOST_TIME_PROPERTY,
+			MOUNT_UTC_TIME_PROPERTY,
+			MOUNT_TRACK_RATE_PROPERTY,
+			MOUNT_GUIDE_RATE_PROPERTY,
+			MOUNT_PARK_POSITION_PROPERTY,
+			MOUNT_PARK_SET_PROPERTY,
+			MOUNT_SIDE_OF_PIER_PROPERTY,
+			MOUNT_PARK_PROPERTY,
+			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY,
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY,
+			MOUNT_ABORT_MOTION_PROPERTY,
+			MOUNT_MOTION_DEC_PROPERTY,
+			MOUNT_MOTION_RA_PROPERTY,
+			MOUNT_SLEW_RATE_PROPERTY,
+			DEVICE_PORT_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, TIMEZONE_PROPERTY, NULL);
 		indigo_delete_property(device, RESET_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
@@ -843,6 +868,16 @@ static void guider_connection_handler(indigo_device *device) {
 		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 		//- guider.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			GUIDER_GUIDE_DEC_PROPERTY,
+			GUIDER_GUIDE_RA_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		if (--PRIVATE_DATA->count == 0) {
 			starbook_close(device);
 		}

@@ -554,9 +554,10 @@ Each part was checked against the old code by reverting it on its own:
 
 Validation, fake SDK, macOS arm64/x86_64:
 
-- The ToupTek suite passes 31 of 32 cases. The Altair variant gives the same result.
-- The one failing case, `Driver configuration persistence` (`configs == 3`), also fails with this change stashed,
-  so it existed before this change and is not fixed here.
+- The ToupTek suite passed 30 of its 31 cases at the time, and the Altair variant gave the same result. (This was
+  first recorded as 31 of 32, which miscounted the cases.)
+- The one failing case, `Driver configuration persistence` (`configs == 3`), also failed with this change stashed,
+  so it was not caused by this change. The cause was the test harness, which is fixed under TT-D05 below.
 - All ten OEM variants that include this source (Altair, BacCam, Bresser, OmegonPro, StarshootG, Rising, Mallin,
   Meade, Ogma, SVBony) build without compiler warnings.
 
@@ -566,3 +567,71 @@ Still needed on hardware:
   point. If it counted from an earlier point, every exposure started after an idle period would fail at once with
   `pull_callback(0085) reported failure`.
 - Confirm that a lost GPM462M frame now ends in ALERT within exposure + about 4 s.
+
+## TT-D05 — CONFIG stayed BUSY for clients after a connection change (2026-09-25)
+
+Observed impact: the configuration control of a ToupTek camera, wheel or focuser could stay BUSY in clients
+long after the request was over.
+
+Root cause: the refactor to queues moved `CONFIG` onto the device queue, through `INDIGO_COPY_VALUES_PROCESS_CHANGE`.
+The request published BUSY at once and queued `ccd_config_handler()`, `wheel_config_handler()` or
+`focuser_config_handler()`. A connection change starts with `indigo_cancel_pending_handlers()`, which removed a
+config handler that had not run yet. The connection handler then set `CONFIG` to ALERT in memory only; it never
+published the change. The other properties in that cleanup list are deleted and redefined on connect and
+disconnect, so clients do receive their new state. `CONFIG` stays defined the whole time, so clients kept the
+BUSY state indefinitely. A connect or disconnect sent together with a `CONFIG` request is enough to trigger this,
+for example a client that saves the configuration just before it disconnects. The disconnect path also cancels
+pending handlers a second time, and nothing reset `CONFIG` there at all.
+
+A second effect of queuing: while `CONFIG` was BUSY, a new `CONFIG` request was silently dropped by the macro.
+Because the request reached the base class only through the queued handler, the base class never gave its
+"Configuration restore is in progress" answer.
+
+Fix, version `0x03000032` -> `0x03000033`:
+
+- The camera, wheel and focuser handle `CONFIG` on the bus thread, as the generated drivers do (compare
+  `ccd_asi`). On SAVE they write their own properties, then pass the request to the base class.
+- The three config handlers are removed, and so is `CONFIG_PROPERTY` in the three connection-cleanup lists.
+- The driver no longer marks `CONFIG` BUSY itself. A LOAD is still BUSY while the framework's restore runs,
+  because the base class sets that state.
+
+Regression test: `Configuration request survives a connection change` holds the camera queue, sends `CONFIG SAVE`,
+disconnects, and then requires the last `CONFIG` state published to clients to be OK. It runs for the camera and
+for the wheel. Against the previous driver it fails: the last published state is BUSY.
+
+Test harness fix: `test_ccd_touptek_sdk.c` still redirected the configuration folder with the compile-time
+replacement of `indigo_uni_config_folder()`. Commit `7cbd43fb4` removed that replacement from the Makefile, so the
+suite saved to and loaded from the developer's own `~/.indigo`. That is why `Driver configuration persistence`
+failed (`configs == 3`), and each run left fake `Touptek_*` and `Altair_*` files in `~/.indigo`. The suite now
+uses `indigo_test_mkdtemp_home()` from `test_runner.h`, reads the configs from `<test folder>/.indigo` and removes
+the whole folder at exit. A full run leaves no files in `~/.indigo`.
+
+Validation, fake SDK, macOS arm64/x86_64:
+
+- ToupTek suite: 32 of 32 cases pass.
+- Altair variant: 32 of 32 cases pass.
+- All ten OEM variants that include this source build without compiler warnings.
+- Not verified on hardware.
+
+## TT-D06 — a connection change reset cancelled requests to ALERT (2026-09-25)
+
+Each of the four connection handlers starts with `indigo_cancel_pending_handlers()` and then set every listed
+property still BUSY to ALERT, without publishing it. Two things were wrong with that:
+
+- A new session should start in a clean state. A request cancelled by the connection change belongs to the old
+  session, and ALERT reported a failure the user never had.
+- `X_WHEEL_MODEL` stays defined while the wheel is disconnected, and its change is queued. Because the reset was not
+  published, clients kept seeing it BUSY.
+
+Fix, version `0x03000033` -> `0x03000034`: the four loops reset to OK. The wheel loop also publishes
+`X_WHEEL_MODEL` when it resets it. The generated drivers got the same behaviour through the generator (TOOLS-014,
+DRV-217).
+
+Regression test: `Cancelled change does not survive a connection change` covers two cases:
+
+- **Camera:** the camera queue is held, a `CCD_GAIN` change is queued, and the camera disconnects and reconnects.
+  `CCD_GAIN` must come back OK and accept the next value.
+- **Wheel:** the same with an `X_WHEEL_MODEL` change. The reset to OK must be published while the wheel is
+  disconnected.
+
+Against the previous driver the case fails at the camera's `CCD_GAIN` state.

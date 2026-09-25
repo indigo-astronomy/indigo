@@ -26,7 +26,7 @@ driver dragonfly {
 	label = "Lunatico Dragonfly Relay Controller";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
-	version = 7;
+	version = 8;
 	// The controller is reached over UDP, so DEVICE_PORT carries a host name or
 	// a URL and no serial port list is published.
 	serial {

@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_wheel_mi"
 #define DRIVER_LABEL         "Moravian Instruments SFW"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -231,6 +231,16 @@ static void wheel_connection_handler(indigo_device *device) {
 		PRIVATE_DATA->reinit_pending = false;
 		REINIT_ITEM->sw.value = false;
 		//- wheel.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			WHEEL_SLOT_PROPERTY,
+			X_MI_SFW_COMMANDS_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_MI_SFW_COMMANDS_PROPERTY, NULL);
 		mi_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);

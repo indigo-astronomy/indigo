@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000010
+#define DRIVER_VERSION       0x03000011
 #define DRIVER_NAME          "indigo_mount_temma"
 #define DRIVER_LABEL         "Takahashi Temma Mount"
 #define MOUNT_DEVICE_NAME    "Takahashi Temma Mount"
@@ -471,6 +471,30 @@ static void mount_connection_handler(indigo_device *device) {
 		MOUNT_PARK_PARKED_ITEM->sw.value = false;
 		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		//- mount.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			CORRECTION_SPEED_PROPERTY,
+			HIGH_SPEED_PROPERTY,
+			ZENITH_PROPERTY,
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY,
+			MOUNT_ABORT_MOTION_PROPERTY,
+			MOUNT_TRACK_RATE_PROPERTY,
+			MOUNT_TRACKING_PROPERTY,
+			MOUNT_MOTION_DEC_PROPERTY,
+			MOUNT_MOTION_RA_PROPERTY,
+			MOUNT_SET_HOST_TIME_PROPERTY,
+			MOUNT_UTC_TIME_PROPERTY,
+			MOUNT_PARK_POSITION_PROPERTY,
+			MOUNT_PARK_SET_PROPERTY,
+			MOUNT_SIDE_OF_PIER_PROPERTY,
+			MOUNT_PARK_PROPERTY,
+			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, CORRECTION_SPEED_PROPERTY, NULL);
 		indigo_delete_property(device, HIGH_SPEED_PROPERTY, NULL);
 		indigo_delete_property(device, ZENITH_PROPERTY, NULL);
@@ -847,6 +871,16 @@ static void guider_connection_handler(indigo_device *device) {
 			temma_update_motion(device);
 		}
 		//- guider.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			GUIDER_GUIDE_DEC_PROPERTY,
+			GUIDER_GUIDE_RA_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		if (--PRIVATE_DATA->count == 0) {
 			temma_close(device);
 		}

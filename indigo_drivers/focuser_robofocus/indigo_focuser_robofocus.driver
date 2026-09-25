@@ -20,7 +20,7 @@ driver robofocus {
 	label = "RoboFocus Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2020-2026 CloudMakers, s. r. o.";
-	version = 3;
+	version = 4;
 	serial;
 	include {
 		#include <stdint.h>

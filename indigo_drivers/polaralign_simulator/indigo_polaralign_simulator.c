@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_polaralign_simulator"
 #define DRIVER_LABEL         "Polar Aligner Simulator"
 #define POLARALIGN_DEVICE_NAME DRIVER_LABEL
@@ -105,6 +105,19 @@ static void polaralign_connection_handler(indigo_device *device) {
 		POLARALIGN_OFFSET_AZ_ITEM->number.value = POLARALIGN_OFFSET_AZ_ITEM->number.target = PRIVATE_DATA->current_azimuth;
 		POLARALIGN_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 		//- polaralign.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			POLARALIGN_OFFSET_PROPERTY,
+			POLARALIGN_ABORT_MOTION_PROPERTY,
+			POLARALIGN_STEPS_PER_DEGREE_PROPERTY,
+			POLARALIGN_RESET_POSITION_ALT_PROPERTY,
+			POLARALIGN_RESET_POSITION_AZ_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}

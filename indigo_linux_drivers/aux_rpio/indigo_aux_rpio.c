@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_aux_rpio"
 #define DRIVER_LABEL         "Raspberry Pi GPIO"
 #define AUX_DEVICE_NAME      "Raspberry Pi GPIO"
@@ -382,6 +382,28 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 		rpio_sysfs_unexport_all(&PRIVATE_DATA->sysfs);
 		//- aux.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AUX_GPIO_OUTLETS_PROPERTY,
+			AUX_OUTLET_PULSE_LENGTHS_PROPERTY,
+			AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY,
+			AUX_GPIO_OUTLET_DUTY_PROPERTY,
+			AUX_GPIO_SENSORS_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (AUX_OUTLET_NAMES_PROPERTY != NULL && AUX_OUTLET_NAMES_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_OUTLET_NAMES_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
+		if (X_AUX_PWM_PROPERTY != NULL && X_AUX_PWM_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(X_AUX_PWM_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
+		if (AUX_SENSOR_NAMES_PROPERTY != NULL && AUX_SENSOR_NAMES_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_SENSOR_NAMES_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		indigo_delete_property(device, AUX_GPIO_OUTLETS_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);

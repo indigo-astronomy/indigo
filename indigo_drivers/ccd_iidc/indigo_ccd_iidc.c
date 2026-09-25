@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000014
+#define DRIVER_VERSION       0x03000015
 #define DRIVER_NAME          "indigo_ccd_iidc"
 #define DRIVER_LABEL         "IIDC Compatible Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -490,6 +490,21 @@ static void ccd_connection_handler(indigo_device *device) {
 		//+ ccd.on_disconnect
 		iidc_stop(device);
 		//- ccd.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			CCD_MODE_PROPERTY,
+			CCD_FRAME_PROPERTY,
+			CCD_EXPOSURE_PROPERTY,
+			CCD_STREAMING_PROPERTY,
+			CCD_ABORT_EXPOSURE_PROPERTY,
+			CCD_GAIN_PROPERTY,
+			CCD_GAMMA_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		iidc_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1030,7 +1045,7 @@ indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *i
 #include "indigo_ccd_iidc.h"
 
 indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "IIDC Compatible Camera", __FUNCTION__, 0x03000014, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "IIDC Compatible Camera", __FUNCTION__, 0x03000015, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

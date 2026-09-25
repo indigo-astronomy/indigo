@@ -27,7 +27,7 @@ driver mypro2 {
 	label = "myFocuserPro2 Focuser";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2020-2026 Rumen G. Bogdanovski";
-	version = 12;
+	version = 13;
 	serial {
 		configurable_speed = true;
 	}

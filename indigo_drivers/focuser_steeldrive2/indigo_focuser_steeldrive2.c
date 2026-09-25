@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_focuser_steeldrive2"
 #define DRIVER_LABEL         "Baader Planetarium SteelDriveII Focuser"
 #define FOCUSER_DEVICE_NAME  "SteelDriveII (focuser)"
@@ -706,6 +706,31 @@ static void focuser_connection_handler(indigo_device *device) {
 		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		//- focuser.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			X_NAME_PROPERTY,
+			X_SAVED_VALUES_PROPERTY,
+			X_STATUS_PROPERTY,
+			X_SELECT_TC_SENSOR_PROPERTY,
+			X_RESET_PROPERTY,
+			X_USE_ENDSTOP_PROPERTY,
+			X_START_ZEROING_PROPERTY,
+			FOCUSER_TEMPERATURE_PROPERTY,
+			FOCUSER_SPEED_PROPERTY,
+			FOCUSER_REVERSE_MOTION_PROPERTY,
+			FOCUSER_ON_POSITION_SET_PROPERTY,
+			FOCUSER_LIMITS_PROPERTY,
+			FOCUSER_MODE_PROPERTY,
+			FOCUSER_COMPENSATION_PROPERTY,
+			FOCUSER_POSITION_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_ABORT_MOTION_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_NAME_PROPERTY, NULL);
 		indigo_delete_property(device, X_SAVED_VALUES_PROPERTY, NULL);
 		indigo_delete_property(device, X_STATUS_PROPERTY, NULL);
@@ -1166,6 +1191,20 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AUX_HEATER_OUTLET_PROPERTY,
+			X_USE_AUTO_DEW_PROPERTY,
+			X_USE_PID_PROPERTY,
+			X_PID_SETTINGS_PROPERTY,
+			X_SELECT_PID_SENSOR_PROPERTY,
+			X_SELECT_AMB_SENSOR_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, X_USE_AUTO_DEW_PROPERTY, NULL);
 		indigo_delete_property(device, X_USE_PID_PROPERTY, NULL);

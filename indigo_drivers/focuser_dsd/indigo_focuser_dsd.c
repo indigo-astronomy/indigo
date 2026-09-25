@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000013
+#define DRIVER_VERSION       0x03000014
 #define DRIVER_NAME          "indigo_focuser_dsd"
 #define DRIVER_LABEL         "Deep Sky Dad Focuser"
 #define FOCUSER_DEVICE_NAME  "Focuser DSD AF"
@@ -502,6 +502,31 @@ static void focuser_connection_handler(indigo_device *device) {
 		//+ focuser.on_disconnect
 		dsd_command(device, NULL, 0, "[STOP]");
 		//- focuser.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			FOCUSER_LIMITS_PROPERTY,
+			FOCUSER_SPEED_PROPERTY,
+			FOCUSER_REVERSE_MOTION_PROPERTY,
+			FOCUSER_ON_POSITION_SET_PROPERTY,
+			FOCUSER_BACKLASH_PROPERTY,
+			FOCUSER_COMPENSATION_PROPERTY,
+			FOCUSER_POSITION_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_ABORT_MOTION_PROPERTY,
+			FOCUSER_MODE_PROPERTY,
+			X_DSD_STEP_MODE_PROPERTY,
+			X_DSD_COILS_MODE_PROPERTY,
+			X_DSD_CURRENT_CONTROL_PROPERTY,
+			X_DSD_TIMINGS_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (X_DSD_MODEL_HINT_PROPERTY != NULL && X_DSD_MODEL_HINT_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(X_DSD_MODEL_HINT_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		indigo_delete_property(device, X_DSD_STEP_MODE_PROPERTY, NULL);
 		indigo_delete_property(device, X_DSD_COILS_MODE_PROPERTY, NULL);
 		indigo_delete_property(device, X_DSD_CURRENT_CONTROL_PROPERTY, NULL);

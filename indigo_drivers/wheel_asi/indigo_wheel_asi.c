@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000010
+#define DRIVER_VERSION       0x03000011
 #define DRIVER_NAME          "indigo_wheel_asi"
 #define DRIVER_LABEL         "ZWO ASI Filter Wheel"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -236,6 +236,17 @@ static void wheel_connection_handler(indigo_device *device) {
 		X_CALIBRATE_START_ITEM->sw.value = false;
 		X_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
 		//- wheel.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			WHEEL_SLOT_PROPERTY,
+			X_CALIBRATE_PROPERTY,
+			X_CUSTOM_SUFFIX_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_CALIBRATE_PROPERTY, NULL);
 		indigo_delete_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
 		asi_close(device);

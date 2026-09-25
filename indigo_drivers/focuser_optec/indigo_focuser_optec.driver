@@ -20,7 +20,7 @@ driver optec {
 	label = "Optec TCF-S Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 8;
+	version = 9;
 	serial;
 	include {
 		#include <stdarg.h>

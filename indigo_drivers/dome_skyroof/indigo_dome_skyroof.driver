@@ -22,7 +22,7 @@ driver skyroof {
 	label = "Interactive Astronomy SkyRoof";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 9;
+	version = 10;
 	serial;
 	// include { }
 	// define { }

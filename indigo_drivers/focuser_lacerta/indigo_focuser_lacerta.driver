@@ -20,7 +20,7 @@ driver lacerta {
 	label = "LACERTA Motorfocus Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2024-2026 CloudMakers, s. r. o.";
-	version = 7;
+	version = 8;
 	serial;
 	include {
 		#include <stdarg.h>

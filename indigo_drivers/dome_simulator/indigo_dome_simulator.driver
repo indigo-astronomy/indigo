@@ -26,7 +26,7 @@ driver simulator {
 	label = "Dome Simulator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2017-2026 CloudMakers, s. r. o.";
-	version = 8;
+	version = 9;
 	// include { }
 	// define { }
 	data {

@@ -52,7 +52,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001E
+#define DRIVER_VERSION       0x0300001F
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -1186,6 +1186,20 @@ static void imager_ccd_connection_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, imager_ccd_ccd_streaming_handler);
 		abort_acquisition(device);
 		//- imager_ccd.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			CCD_EXPOSURE_PROPERTY,
+			CCD_STREAMING_PROPERTY,
+			CCD_ABORT_EXPOSURE_PROPERTY,
+			CCD_BIN_PROPERTY,
+			CCD_COOLER_PROPERTY,
+			CCD_TEMPERATURE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -1333,6 +1347,20 @@ static void guider_ccd_connection_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, guider_ccd_ccd_streaming_handler);
 		abort_acquisition(device);
 		//- guider_ccd.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			CCD_EXPOSURE_PROPERTY,
+			CCD_STREAMING_PROPERTY,
+			CCD_ABORT_EXPOSURE_PROPERTY,
+			CCD_BIN_PROPERTY,
+			GUIDER_MODE_PROPERTY,
+			SIMULATION_SETUP_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, GUIDER_MODE_PROPERTY, NULL);
 		indigo_delete_property(device, SIMULATION_SETUP_PROPERTY, NULL);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
@@ -1535,6 +1563,18 @@ static void bahtinov_ccd_connection_handler(indigo_device *device) {
 				indigo_cancel_pending_handler(device, bahtinov_ccd_ccd_streaming_handler);
 				abort_acquisition(device);
 		//- bahtinov_ccd.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			CCD_EXPOSURE_PROPERTY,
+			CCD_STREAMING_PROPERTY,
+			CCD_ABORT_EXPOSURE_PROPERTY,
+			BAHTINOV_SETTINGS_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, BAHTINOV_SETTINGS_PROPERTY, NULL);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1652,6 +1692,24 @@ static void dslr_ccd_connection_handler(indigo_device *device) {
 				indigo_cancel_pending_handler(device, dslr_ccd_ccd_streaming_handler);
 				abort_acquisition(device);
 		//- dslr_ccd.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			CCD_EXPOSURE_PROPERTY,
+			CCD_STREAMING_PROPERTY,
+			CCD_ABORT_EXPOSURE_PROPERTY,
+			DSLR_PROGRAM_PROPERTY,
+			DSLR_CAPTURE_MODE_PROPERTY,
+			DSLR_SHUTTER_PROPERTY,
+			DSLR_APERTURE_PROPERTY,
+			DSLR_COMPRESSION_PROPERTY,
+			DSLR_ISO_PROPERTY,
+			DSLR_BATTERY_LEVEL_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, DSLR_PROGRAM_PROPERTY, NULL);
 		indigo_delete_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
 		indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
@@ -1851,6 +1909,23 @@ static void file_ccd_connection_handler(indigo_device *device) {
 		abort_acquisition(device);
 		close_file_image(device);
 		//- file_ccd.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			CCD_EXPOSURE_PROPERTY,
+			CCD_STREAMING_PROPERTY,
+			CCD_ABORT_EXPOSURE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (FILE_NAME_PROPERTY != NULL && FILE_NAME_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(FILE_NAME_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
+		if (BAYERPAT_PROPERTY != NULL && BAYERPAT_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(BAYERPAT_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -1969,6 +2044,15 @@ static void wheel_connection_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, wheel_slot_handler);
 		indigo_cancel_pending_handler(device, wheel_move_finalizer);
 		//- wheel.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			WHEEL_SLOT_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -2043,6 +2127,23 @@ static void focuser_connection_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, focuser_move_finalizer);
 		PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 		//- focuser.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			FOCUSER_POSITION_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_ABORT_MOTION_PROPERTY,
+			FOCUSER_DIRECTION_PROPERTY,
+			FOCUSER_COMPENSATION_PROPERTY,
+			FOCUSER_BACKLASH_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (FOCUSER_SETUP_PROPERTY != NULL && FOCUSER_SETUP_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_SETUP_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -2199,6 +2300,17 @@ static void guider_connection_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, guider_ra_finalizer);
 		indigo_cancel_pending_handler(device, guider_dec_finalizer);
 		//- guider.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			GUIDER_GUIDE_RA_PROPERTY,
+			GUIDER_GUIDE_DEC_PROPERTY,
+			GUIDER_RATE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -2302,6 +2414,17 @@ static void ao_connection_handler(indigo_device *device) {
 		indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AO_GUIDE_RA_PROPERTY,
+			AO_GUIDE_DEC_PROPERTY,
+			AO_RESET_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}

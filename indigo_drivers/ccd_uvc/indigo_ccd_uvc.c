@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001C
+#define DRIVER_VERSION       0x0300001D
 #define DRIVER_NAME          "indigo_ccd_uvc"
 #define DRIVER_LABEL         "UVC Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -474,6 +474,20 @@ static void ccd_connection_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, streaming_finalizer);
 		uvc_stop(device);
 		//- ccd.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			CCD_MODE_PROPERTY,
+			CCD_EXPOSURE_PROPERTY,
+			CCD_STREAMING_PROPERTY,
+			CCD_ABORT_EXPOSURE_PROPERTY,
+			CCD_GAIN_PROPERTY,
+			CCD_GAMMA_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		uvc_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -943,7 +957,7 @@ indigo_result indigo_ccd_uvc(indigo_driver_action action, indigo_driver_info *in
 #include "indigo_ccd_uvc.h"
 
 indigo_result indigo_ccd_uvc(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "UVC Camera", __FUNCTION__, 0x0300001C, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "UVC Camera", __FUNCTION__, 0x0300001D, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

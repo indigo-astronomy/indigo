@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_aux_upb3"
 #define DRIVER_LABEL         "PegasusAstro Ultimate Powerbox v3"
 #define AUX_DEVICE_NAME      "Ultimate Powerbox 3"
@@ -494,6 +494,28 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AUX_POWER_OUTLET_PROPERTY,
+			AUX_POWER_OUTLET_CURRENT_PROPERTY,
+			AUX_HEATER_OUTLET_PROPERTY,
+			AUX_DEW_CONTROL_PROPERTY,
+			AUX_USB_PORT_PROPERTY,
+			AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY,
+			AUX_REBOOT_PROPERTY,
+			AUX_VARIABLE_POWER_OUTLET_PROPERTY,
+			AUX_POWER_OUTLET_STATE_PROPERTY,
+			AUX_WEATHER_PROPERTY,
+			AUX_INFO_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (AUX_OUTLET_NAMES_PROPERTY != NULL && AUX_OUTLET_NAMES_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_OUTLET_NAMES_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
@@ -956,6 +978,20 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			FOCUSER_SPEED_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_POSITION_PROPERTY,
+			FOCUSER_ABORT_MOTION_PROPERTY,
+			FOCUSER_REVERSE_MOTION_PROPERTY,
+			FOCUSER_BACKLASH_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		if (--PRIVATE_DATA->count == 0) {
 			upb3_close(device);
 		}

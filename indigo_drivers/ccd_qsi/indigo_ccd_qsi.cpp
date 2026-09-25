@@ -48,7 +48,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000013
+#define DRIVER_VERSION       0x03000014
 #define DRIVER_NAME          "indigo_ccd_qsi"
 #define DRIVER_LABEL         "QSI Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -658,6 +658,23 @@ static void ccd_connection_handler(indigo_device *device) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		//- ccd.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			CCD_EXPOSURE_PROPERTY,
+			CCD_ABORT_EXPOSURE_PROPERTY,
+			CCD_COOLER_PROPERTY,
+			CCD_TEMPERATURE_PROPERTY,
+			CCD_GAIN_PROPERTY,
+			X_QSI_READOUT_SPEED_PROPERTY,
+			X_QSI_ANTI_BLOOM_PROPERTY,
+			X_QSI_PRE_EXPOSURE_FLUSH_PROPERTY,
+			X_QSI_FAN_MODE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_QSI_READOUT_SPEED_PROPERTY, NULL);
 		indigo_delete_property(device, X_QSI_ANTI_BLOOM_PROPERTY, NULL);
 		indigo_delete_property(device, X_QSI_PRE_EXPOSURE_FLUSH_PROPERTY, NULL);
@@ -978,6 +995,15 @@ static void wheel_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			WHEEL_SLOT_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		if (--PRIVATE_DATA->count == 0) {
 			qsi_close(device);
 		}
@@ -1395,7 +1421,7 @@ indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *in
 #include "indigo_ccd_qsi.h"
 
 indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "QSI Camera", __FUNCTION__, 0x03000013, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "QSI Camera", __FUNCTION__, 0x03000014, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

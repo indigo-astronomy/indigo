@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001C
+#define DRIVER_VERSION       0x0300001D
 #define DRIVER_NAME          "indigo_ccd_playerone"
 #define DRIVER_LABEL         "Player One Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1110,6 +1110,29 @@ static void ccd_connection_handler(indigo_device *device) {
 		PRIVATE_DATA->can_check_temperature = false;
 		indigo_unlock_master_device(device);
 		//- ccd.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			CCD_EXPOSURE_PROPERTY,
+			CCD_STREAMING_PROPERTY,
+			CCD_ABORT_EXPOSURE_PROPERTY,
+			CCD_COOLER_PROPERTY,
+			CCD_TEMPERATURE_PROPERTY,
+			CCD_GAIN_PROPERTY,
+			CCD_OFFSET_PROPERTY,
+			CCD_FRAME_PROPERTY,
+			CCD_MODE_PROPERTY,
+			CCD_BIN_PROPERTY,
+			X_PIXEL_FORMAT_PROPERTY,
+			X_ADVANCED_PROPERTY,
+			X_PRESETS_PROPERTY,
+			X_CUSTOM_SUFFIX_PROPERTY,
+			X_SENSOR_MODE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_PIXEL_FORMAT_PROPERTY, NULL);
 		indigo_delete_property(device, X_ADVANCED_PROPERTY, NULL);
 		indigo_delete_property(device, X_PRESETS_PROPERTY, NULL);
@@ -1840,6 +1863,16 @@ static void guider_connection_handler(indigo_device *device) {
 		guider_dec_finalizer(device);
 		indigo_unlock_master_device(device);
 		//- guider.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			GUIDER_GUIDE_RA_PROPERTY,
+			GUIDER_GUIDE_DEC_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		if (--PRIVATE_DATA->count == 0) {
 			playerone_close(device);
 		}

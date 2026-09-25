@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000013
 #define DRIVER_NAME          "indigo_mount_nexstaraux"
 #define DRIVER_LABEL         "NexStar AUX Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar AUX"
@@ -664,6 +664,23 @@ static void mount_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			MOUNT_TRACKING_PROPERTY,
+			MOUNT_TRACK_RATE_PROPERTY,
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY,
+			MOUNT_PARK_PROPERTY,
+			MOUNT_ABORT_MOTION_PROPERTY,
+			MOUNT_MOTION_RA_PROPERTY,
+			MOUNT_MOTION_DEC_PROPERTY,
+			MOUNT_GUIDE_RATE_PROPERTY,
+			MOUNT_STATE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		if (--PRIVATE_DATA->count == 0) {
 			nexstaraux_close(device);
 		}
@@ -1008,6 +1025,17 @@ static void guider_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			GUIDER_GUIDE_RA_PROPERTY,
+			GUIDER_GUIDE_DEC_PROPERTY,
+			GUIDER_RATE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		if (--PRIVATE_DATA->count == 0) {
 			nexstaraux_close(device);
 		}

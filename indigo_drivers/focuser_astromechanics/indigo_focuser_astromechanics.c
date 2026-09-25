@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_focuser_astromechanics"
 #define DRIVER_LABEL         "ASTROMECHANICS Focuser"
 #define FOCUSER_DEVICE_NAME  "ASTROMECHANICS Focuser"
@@ -158,6 +158,17 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			X_FOCUSER_APERTURE_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_POSITION_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_FOCUSER_APERTURE_PROPERTY, NULL);
 		astromechanics_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);

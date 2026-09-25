@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_aux_wcv4ec"
 #define DRIVER_LABEL         "WandererCover V4-EC Cover"
 #define AUX_DEVICE_NAME      "WandererCover V4-EC"
@@ -303,6 +303,20 @@ static void aux_connection_handler(indigo_device *device) {
 		wcv4ec_command(device, 9999); // turn light off
 		wcv4ec_command(device, 2000); // turn the heater off
 		//- aux.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AUX_LIGHT_SWITCH_PROPERTY,
+			AUX_LIGHT_INTENSITY_PROPERTY,
+			AUX_DETECT_OPEN_CLOSE_PROPERTY,
+			AUX_SET_OPEN_CLOSE_PROPERTY,
+			AUX_HEATER_PROPERTY,
+			AUX_COVER_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DETECT_OPEN_CLOSE_PROPERTY, NULL);

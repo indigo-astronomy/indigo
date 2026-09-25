@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_dome_nexdome3"
 #define DRIVER_LABEL         "NexDome3"
 #define DOME_DEVICE_NAME     "NexDome3"
@@ -868,6 +868,32 @@ static void dome_connection_handler(indigo_device *device) {
 		nexdome3_clear_messages(device);
 		PRIVATE_DATA->pending_count = 0;
 		//- dome.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			DOME_SPEED_PROPERTY,
+			DOME_ON_COORDINATES_SET_PROPERTY,
+			DOME_SLAVING_PARAMETERS_PROPERTY,
+			DOME_HORIZONTAL_COORDINATES_PROPERTY,
+			DOME_STEPS_PROPERTY,
+			DOME_ABORT_MOTION_PROPERTY,
+			DOME_SHUTTER_PROPERTY,
+			DOME_PARK_PROPERTY,
+			X_FIND_HOME_PROPERTY,
+			X_HOME_POSITION_PROPERTY,
+			X_MOVE_THRESHOLD_PROPERTY,
+			X_BATTERY_POWER_PROPERTY,
+			X_ACCELERATION_TIME_PROPERTY,
+			X_VELOCITY_PROPERTY,
+			X_RANGE_PROPERTY,
+			X_SETTINGS_PROPERTY,
+			X_RAIN_SENSOR_PROPERTY,
+			X_XB_STATE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_FIND_HOME_PROPERTY, NULL);
 		indigo_delete_property(device, X_HOME_POSITION_PROPERTY, NULL);
 		indigo_delete_property(device, X_MOVE_THRESHOLD_PROPERTY, NULL);

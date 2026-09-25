@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000041
+#define DRIVER_VERSION       0x03000042
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -2954,6 +2954,43 @@ static void mount_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
 		indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
 		//- mount.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			MOUNT_MODE_PROPERTY,
+			ZWO_BUZZER_PROPERTY,
+			NYX_WIFI_AP_PROPERTY,
+			NYX_WIFI_CL_PROPERTY,
+			NYX_WIFI_RESET_PROPERTY,
+			NYX_LEVELER_PROPERTY,
+			ONSTEP_PREFERRED_PIER_SIDE_PROPERTY,
+			ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY,
+			ONSTEP_MERIDIAN_LIMITS_PROPERTY,
+			ONSTEP_ALTITUDE_LIMITS_PROPERTY,
+			MOUNT_STATE_PROPERTY,
+			MOUNT_PARK_PROPERTY,
+			MOUNT_PARK_SET_PROPERTY,
+			MOUNT_HOME_PROPERTY,
+			MOUNT_HOME_SET_PROPERTY,
+			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY,
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY,
+			MOUNT_ABORT_MOTION_PROPERTY,
+			MOUNT_MOTION_DEC_PROPERTY,
+			MOUNT_MOTION_RA_PROPERTY,
+			MOUNT_SET_HOST_TIME_PROPERTY,
+			MOUNT_UTC_TIME_PROPERTY,
+			MOUNT_TRACKING_PROPERTY,
+			MOUNT_TRACK_RATE_PROPERTY,
+			MOUNT_PEC_PROPERTY,
+			MOUNT_GUIDE_RATE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (MOUNT_TYPE_PROPERTY != NULL && MOUNT_TYPE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_TYPE_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		indigo_delete_property(device, MOUNT_MODE_PROPERTY, NULL);
 		indigo_delete_property(device, ZWO_BUZZER_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_AP_PROPERTY, NULL);
@@ -3773,6 +3810,16 @@ static void guider_connection_handler(indigo_device *device) {
 		meade_classic_cancel_guides(device);
 		PRIVATE_DATA->classicGuider = NULL;
 		//- guider.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			GUIDER_GUIDE_DEC_PROPERTY,
+			GUIDER_GUIDE_RA_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		if (--PRIVATE_DATA->count == 0) {
 			lx200_close(device);
 		}
@@ -3926,6 +3973,17 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			FOCUSER_SPEED_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_ABORT_MOTION_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		if (--PRIVATE_DATA->count == 0) {
 			lx200_close(device);
 		}
@@ -4077,6 +4135,18 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AUX_WEATHER_PROPERTY,
+			AUX_INFO_PROPERTY,
+			AUX_HEATER_OUTLET_PROPERTY,
+			AUX_POWER_OUTLET_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
