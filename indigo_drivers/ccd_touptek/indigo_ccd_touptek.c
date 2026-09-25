@@ -38,7 +38,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION											0x03000034
+#define DRIVER_VERSION											0x03000035
 #define PRIVATE_DATA												((DRIVER_PRIVATE_DATA *)device->private_data)
 
 #define ADVANCED_GROUP											"Advanced"
@@ -164,6 +164,11 @@ typedef struct {
 	int left, top, width, height;
 	bool aborting;
 	bool video_mode;
+	/* Lost frame diagnostics, reset on each Trigger(1) */
+	bool hardware_events;
+	bool exposure_started, exposure_stopped;
+	int packets_at_trigger;
+	double trigger_time;
 	indigo_property *advanced_property;
 	indigo_property *fan_property;
 	indigo_property *heater_property;
@@ -334,6 +339,9 @@ static void stop_video_mode(indigo_device *device) {
 	bool aborting = CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
 	HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 1);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 1) -> %08x", result);
+	// Exposures flush only the SDK buffers, so discard stream frames still cached by the camera here.
+	result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FLUSH), 3);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FLUSH, 3) -> %08x", result);
 	// The SDK has joined its callback. Discard notifications from the stopped stream.
 	atomic_store(&PRIVATE_DATA->event_generation, (atomic_load(&PRIVATE_DATA->event_generation) + 1) & (UINTPTR_MAX >> 16));
 	if (aborting) {
@@ -349,8 +357,33 @@ static void cleanup_aborted_exposure(indigo_device *device) {
 	}
 }
 
+static int get_diagnostic_option(indigo_device *device, unsigned option) {
+	int value = -1;
+	if (FAILED(SDK_CALL(get_Option)(PRIVATE_DATA->handle, option, &value))) {
+		return -1;
+	}
+	return value;
+}
+
+static const char *hardware_event_state(indigo_device *device, bool seen) {
+	return PRIVATE_DATA->hardware_events ? (seen ? "yes" : "no") : "not reported";
+}
+
 static void ccd_exposure_watchdog_handler(indigo_device *device) {
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "pull_callback() was not called in time");
+	// Tell a trigger the camera never executed (no exposure start, no packets) from a frame lost in transfer (packets received) or dropped by the SDK.
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Lost frame %.1fs after Trigger(1): exposure start %s, exposure stop %s, packets %d -> %d, frames dropped by SDK %d, frontend queue %d (full %d), backend queue %d (full %d)",
+		indigo_monotonic_time() - PRIVATE_DATA->trigger_time,
+		hardware_event_state(device, PRIVATE_DATA->exposure_started),
+		hardware_event_state(device, PRIVATE_DATA->exposure_stopped),
+		PRIVATE_DATA->packets_at_trigger,
+		get_diagnostic_option(device, SDK_DEF(OPTION_PACKET_NUMBER)),
+		get_diagnostic_option(device, SDK_DEF(OPTION_NUMBER_DROP_FRAME)),
+		get_diagnostic_option(device, SDK_DEF(OPTION_FRONTEND_DEQUE_CURRENT)),
+		get_diagnostic_option(device, SDK_DEF(OPTION_FRONTEND_FULL)),
+		get_diagnostic_option(device, SDK_DEF(OPTION_BACKEND_DEQUE_CURRENT)),
+		get_diagnostic_option(device, SDK_DEF(OPTION_BACKEND_FULL))
+	);
 	// Flush the frame buffer to unstick the SDK pipeline.  With multiple cameras and short exposures the SDK occasionally stops delivering EVENT_IMAGE, leaving
 	// the buffer full so that every subsequent Trigger() is also silently dropped. Flushing clears that condition.  We also reset PRIVATE_DATA->mode so that the
 	// next call to setup_exposure() unconditionally re-calls StartPullModeWithCallback(), recovering from any case where the SDK silently
@@ -451,6 +484,12 @@ static void ccd_event_handler(indigo_device *device, void *data) {
 			}
 			break;
 		}
+		case SDK_DEF(EVENT_EXPO_START):
+			PRIVATE_DATA->exposure_started = true;
+			break;
+		case SDK_DEF(EVENT_EXPO_STOP):
+			PRIVATE_DATA->exposure_stopped = true;
+			break;
 	}
 }
 
@@ -637,15 +676,24 @@ static void ccd_start_exposure_handler(indigo_device *device) {
 	if (!exposure_setup_pending(device)) {
 		return;
 	}
-	HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FLUSH), 3);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FLUSH) -> %08x", result);
+	// Soft flush only: a hard flush (camera DDR) issued immediately before Trigger(1) is suspected of occasionally discarding the triggered frame
+	// with no SDK notification at all. Paths that may leave frames in the camera (abort, stream stop, watchdog, SDK error) hard flush themselves.
+	HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FLUSH), 2);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FLUSH, 2) -> %08x", result);
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		result = SDK_CALL(put_ExpoTime)(PRIVATE_DATA->handle, (unsigned)(CCD_EXPOSURE_ITEM->number.target * 1000000));
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_ExpoTime(%u) -> %08x", (unsigned)(CCD_EXPOSURE_ITEM->number.target * 1000000), result);
 		PRIVATE_DATA->aborting = false;
 		set_no_packet_timeout(device, CCD_EXPOSURE_ITEM->number.target);
+		PRIVATE_DATA->exposure_started = PRIVATE_DATA->exposure_stopped = false;
+		PRIVATE_DATA->packets_at_trigger = get_diagnostic_option(device, SDK_DEF(OPTION_PACKET_NUMBER));
+		PRIVATE_DATA->trigger_time = indigo_monotonic_time();
 		result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 1);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(1) -> %08x", result);
+		if (FAILED(result)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Trigger(1) -> %08x", result);
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(1) -> %08x", result);
+		}
 		double whatchdog_timeout = (CCD_EXPOSURE_ITEM->number.target > 50) ? 1.5 * CCD_EXPOSURE_ITEM->number.target : CCD_EXPOSURE_ITEM->number.target + 25;
 		indigo_execute_handler_in(device, whatchdog_timeout, ccd_exposure_watchdog_handler);
 		indigo_ccd_change_property(device, NULL, CCD_EXPOSURE_PROPERTY);
@@ -946,6 +994,15 @@ static void ccd_connection_handler(indigo_device *device) {
 			}
 			result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_CALLBACK_THREAD), 1);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_CALLBACK_THREAD, 1) -> %08x", result);
+			// Exposure start/stop notifications tell a lost trigger from a lost frame in the watchdog report.
+			PRIVATE_DATA->hardware_events = false;
+			if (PRIVATE_DATA->cam.model->flag & SDK_DEF(FLAG_EVENT_HARDWARE)) {
+				HRESULT master = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_EVENT_HARDWARE), 1);
+				HRESULT start = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_EVENT_HARDWARE) | SDK_DEF(EVENT_EXPO_START), 1);
+				HRESULT stop = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_EVENT_HARDWARE) | SDK_DEF(EVENT_EXPO_STOP), 1);
+				PRIVATE_DATA->hardware_events = SUCCEEDED(master) && SUCCEEDED(start) && SUCCEEDED(stop);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_EVENT_HARDWARE, 1) -> %08x, EXPO_START -> %08x, EXPO_STOP -> %08x", master, start, stop);
+			}
 			result = SDK_CALL(get_SerialNumber)(PRIVATE_DATA->handle, INFO_DEVICE_SERIAL_NUM_ITEM->text.value);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_SerialNumber() -> %08x", result);
 			result = SDK_CALL(get_HwVersion)(PRIVATE_DATA->handle, INFO_DEVICE_HW_REVISION_ITEM->text.value);
@@ -1280,6 +1337,9 @@ static void ccd_abort_exposure_handler(indigo_device *device) {
 			result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 0);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(0) -> %08x", result);
 			set_no_packet_timeout(device, -1);
+			// Exposures flush only the SDK buffers, so discard a frame of the aborted exposure still cached by the camera here.
+			result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FLUSH), 3);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FLUSH, 3) -> %08x", result);
 		}
 	}
 	indigo_ccd_change_property(device, NULL, CCD_ABORT_EXPOSURE_PROPERTY);

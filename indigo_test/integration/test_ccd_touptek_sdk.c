@@ -53,6 +53,8 @@
 #define TOUPCAM_AAF_SETZERO SDK_DEF(AAF_SETZERO)
 #define TOUPCAM_EVENT_ERROR SDK_DEF(EVENT_ERROR)
 #define TOUPCAM_EVENT_EXPOSURE SDK_DEF(EVENT_EXPOSURE)
+#define TOUPCAM_EVENT_EXPO_START SDK_DEF(EVENT_EXPO_START)
+#define TOUPCAM_EVENT_EXPO_STOP SDK_DEF(EVENT_EXPO_STOP)
 #define TOUPCAM_EVENT_IMAGE SDK_DEF(EVENT_IMAGE)
 #define TOUPCAM_EVENT_NOFRAMETIMEOUT SDK_DEF(EVENT_NOFRAMETIMEOUT)
 #define TOUPCAM_EVENT_NOPACKETTIMEOUT SDK_DEF(EVENT_NOPACKETTIMEOUT)
@@ -74,6 +76,7 @@
 #define TOUPCAM_FLAG_RAW8 SDK_DEF(FLAG_RAW8)
 #define TOUPCAM_FLAG_ROI_HARDWARE SDK_DEF(FLAG_ROI_HARDWARE)
 #define TOUPCAM_FLAG_ST4 SDK_DEF(FLAG_ST4)
+#define TOUPCAM_FLAG_EVENT_HARDWARE SDK_DEF(FLAG_EVENT_HARDWARE)
 #define TOUPCAM_FLAG_TEC_ONOFF SDK_DEF(FLAG_TEC_ONOFF)
 #define TOUPCAM_OPTION_BINNING SDK_DEF(OPTION_BINNING)
 #define TOUPCAM_OPTION_BLACKLEVEL SDK_DEF(OPTION_BLACKLEVEL)
@@ -83,6 +86,8 @@
 #define TOUPCAM_OPTION_FILTERWHEEL_SLOT SDK_DEF(OPTION_FILTERWHEEL_SLOT)
 #define TOUPCAM_OPTION_HEAT SDK_DEF(OPTION_HEAT)
 #define TOUPCAM_OPTION_HEAT_MAX SDK_DEF(OPTION_HEAT_MAX)
+#define TOUPCAM_OPTION_EVENT_HARDWARE SDK_DEF(OPTION_EVENT_HARDWARE)
+#define TOUPCAM_OPTION_FLUSH SDK_DEF(OPTION_FLUSH)
 #define TOUPCAM_OPTION_NOPACKET_TIMEOUT SDK_DEF(OPTION_NOPACKET_TIMEOUT)
 #define TOUPCAM_OPTION_RAW SDK_DEF(OPTION_RAW)
 #define TOUPCAM_OPTION_TAILLIGHT SDK_DEF(OPTION_TAILLIGHT)
@@ -190,6 +195,8 @@ static atomic_bool track_controls, fail_control, deliver_image, image_on_stop;
 static atomic_int pulled_images, triggers, stream_frames, watchdog_seconds;
 // No-packet timeout in force when an acquisition was started.
 static atomic_int armed_no_packet_timeout;
+// Flush mode in force when an exposure was triggered, and enabled hardware event switches.
+static atomic_int flush_at_trigger, hardware_event_switches;
 static atomic_bool fast_watchdog;
 static _Atomic(indigo_timer_callback) monitor_tasks[4], move_tasks[4];
 static atomic_int replay_done;
@@ -1511,6 +1518,45 @@ cleanup:
 	stop_properties();
 }
 
+// A hard flush right before Trigger(1) is suspected of discarding the triggered frame, so exposures flush only the SDK buffers. Paths that
+// can leave frames in the camera hard flush themselves. Hardware exposure events are enabled where supported and must not end an exposure.
+static void flush_modes_and_hardware_events(void) {
+	CHECK_TRUE(start_properties());
+	atomic_store(&deliver_image, true);
+	atomic_store(&option_values[TOUPCAM_OPTION_FLUSH], 3);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
+	CHECK_EQ_INT(atomic_load(&flush_at_trigger), 2);
+	atomic_store(&deliver_image, false);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 10, INDIGO_BUSY_STATE));
+	CHECK_EQ_INT(atomic_load(&flush_at_trigger), 2);
+	CHECK_TRUE(change_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
+	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_FLUSH]), 3);
+	atomic_store(&option_values[TOUPCAM_OPTION_FLUSH], 0);
+	atomic_store(&stream_frames, 2);
+	unsigned before = revision(0, "CCD_STREAMING");
+	indigo_change_number_property(NULL, logical[0]->name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.1, 2 });
+	CHECK_TRUE(wait_property(0, "CCD_STREAMING", before, INDIGO_OK_STATE));
+	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_FLUSH]), 3);
+	atomic_store(&stream_frames, 0);
+	CHECK_EQ_INT(atomic_load(&hardware_event_switches), 0);
+	stop_properties();
+	models[0].flag |= TOUPCAM_FLAG_EVENT_HARDWARE;
+	atomic_store(&hardware_event_switches, 0);
+	CHECK_TRUE(start_properties());
+	CHECK_EQ_INT(atomic_load(&hardware_event_switches), 3);
+	// The watchdog reports the diagnostics and must still end an exposure that produced only an exposure start.
+	atomic_store(&deliver_image, true);
+	atomic_store(&sdk_event, TOUPCAM_EVENT_EXPO_START);
+	atomic_store(&fast_watchdog, true);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 1, INDIGO_ALERT_STATE));
+	CHECK_EQ_INT(atomic_load(&watchdog_seconds), 26);
+cleanup:
+	models[0].flag &= ~TOUPCAM_FLAG_EVENT_HARDWARE;
+	atomic_store(&fast_watchdog, false);
+	atomic_store(&sdk_event, TOUPCAM_EVENT_IMAGE);
+	stop_properties();
+}
+
 static void disconnected_recurring_tasks(void) {
 	enable_full_camera();
 	CHECK_TRUE(start_properties());
@@ -2221,6 +2267,7 @@ int main(void) {
 		{ "CCD property handlers and base dispatch", camera_properties },
 		{ "Acquisition finalizers, watchdog and streaming", acquisition_finalizers },
 		{ "Acquisition no-packet timeout and unrelated SDK events", acquisition_timeouts },
+		{ "Flush modes and hardware exposure events", flush_modes_and_hardware_events },
 		{ "Guider property handlers on camera queue", guider_properties },
 		{ "Wheel property handlers", wheel_properties },
 		{ "Focuser property handlers", focuser_properties },
@@ -2340,6 +2387,7 @@ HRESULT Toupcam_Trigger(HToupcam h, unsigned short nNumber) {
 	if (atomic_load(&fail_trigger)) { return -1; }
 	if (nNumber) {
 		atomic_store(&armed_no_packet_timeout, atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]));
+		atomic_store(&flush_at_trigger, atomic_load(&option_values[TOUPCAM_OPTION_FLUSH]));
 		atomic_fetch_add(&triggers, 1);
 		if (atomic_load(&deliver_image)) { emit_image(); }
 	}
@@ -2366,6 +2414,7 @@ HRESULT Toupcam_put_Option(HToupcam h, unsigned iOption, int iValue) {
 	control_call(h);
 	if ((int)iOption == atomic_load(&fail_option)) { return -1; }
 	if (iOption < 256) { atomic_store(&option_values[iOption], iValue); atomic_fetch_add(&option_calls[iOption], 1); }
+	if ((iOption & TOUPCAM_OPTION_EVENT_HARDWARE) && iValue) { atomic_fetch_add(&hardware_event_switches, 1); }
 	if (iOption == TOUPCAM_OPTION_FILTERWHEEL_SLOT) { atomic_store(&wheel_slots, iValue); }
 	if (iOption == TOUPCAM_OPTION_TRIGGER) {
 		if (iValue == 0) {

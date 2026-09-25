@@ -635,3 +635,49 @@ Regression test: `Cancelled change does not survive a connection change` covers 
   disconnected.
 
 Against the previous driver the case fails at the camera's `CCD_GAIN` state.
+
+## TT-D07 — lost guide frames: pre-trigger hard flush removed, watchdog diagnostics (2026-09-25)
+
+Follow-up to TT-D04. On hardware the problem still occurs, and the no-packet timeout armed by TT-D04 never fires: the
+SDK sends no notification of any kind after `Trigger(1)`. So the SDK apparently receives no data for the lost frame.
+
+The only difference found from INDI's toupbase driver is the flush. INDI never flushes before `Trigger(1)`; it flushes
+only when a frame arrives while no exposure runs, and in its optional exposure timeout, which is off by default and
+has no retry. INDIGO has done a hard flush (`OPTION_FLUSH` 3, which also discards frames cached in the camera)
+immediately before every trigger since at least 2022. Suspected cause, not yet confirmed: when USB is loaded by a
+second camera, the hard-flush command sometimes discards the frame the trigger has just requested, and the SDK reports
+nothing.
+
+Changes, version `0x03000034` -> `0x03000035`:
+
+- **Pre-trigger flush:** before each exposure the driver now does a soft flush only (`OPTION_FLUSH` 2, the SDK's own
+  buffers). The paths that can leave frames in the camera still hard flush themselves:
+  - watchdog expiry and SDK failure events, as before;
+  - now also after a single-exposure abort (`Trigger(0)`);
+  - now also when streaming stops.
+- **Watchdog report:** when the watchdog fires, it logs at error level:
+  - the time since `Trigger(1)`;
+  - whether the camera reported exposure start and exposure stop;
+  - the received-packet count at trigger time and now (`OPTION_PACKET_NUMBER`);
+  - the frames the SDK dropped (`OPTION_NUMBER_DROP_FRAME`);
+  - the current and full counts of the SDK's frontend and backend frame queues.
+- **Hardware exposure events:** on cameras with `FLAG_EVENT_HARDWARE`, exposure start and stop events are enabled at
+  connect and recorded for each trigger. They do not end the exposure.
+- **Failed `Trigger(1)`:** now logged at error level; it was debug only.
+
+Reading the watchdog report: no exposure start (on a camera that reports it) and no new packets means the camera
+never executed the trigger. New packets, or frames dropped by the SDK, mean the frame was lost in transfer or dropped
+by the SDK.
+
+Regression test: `Flush modes and hardware exposure events` in `indigo_test/integration/test_ccd_touptek_sdk.c`
+checks:
+
+- the flush in force at `Trigger(1)` is 2, for both a completed and a running exposure;
+- abort and stream stop leave a hard flush (3);
+- a camera with `FLAG_EVENT_HARDWARE` enables the master switch and both sub-switches, and one without it enables none;
+- an exposure that produces only an exposure-start event still ends through the watchdog.
+
+Against the previous driver the case fails at the first flush check (3 instead of 2).
+
+Validation, fake SDK, macOS arm64/x86_64: the ToupTek suite passes 34 of 34, and the Altair variant 34 of 34. All ten
+OEM variants build without compiler warnings. Not verified on hardware.
