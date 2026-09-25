@@ -681,3 +681,57 @@ Against the previous driver the case fails at the first flush check (3 instead o
 
 Validation, fake SDK, macOS arm64/x86_64: the ToupTek suite passes 34 of 34, and the Altair variant 34 of 34. All ten
 OEM variants build without compiler warnings. Not verified on hardware.
+
+## TT-D08 — measured exposure watchdog, last-good-frame report, no-packet timeout removed (2026-09-25)
+
+Two watchdog reports from the GPM462M guide camera, taken with the TT-D07 driver:
+
+| Report | Packets after `Trigger(1)` | Frontend queue | Backend queue |
+| --- | --- | --- | --- |
+| First | none (56544 -> 56544) | 6 | 0 |
+| Second | 10 (2592 -> 2602) | 6 | 0 |
+
+In both the SDK dropped no frames and neither queue had ever been full. The camera does not report hardware exposure
+events. The packet counter restarts when pull mode is restarted after a watchdog.
+
+What this shows:
+
+- The soft pre-trigger flush of TT-D07 did not remove the problem.
+- The no-packet timeout of TT-D04 did not fire even after packets stopped, so it does not catch this failure.
+- Without values from a healthy frame, the queue level of 6 and the 10 packets cannot be interpreted.
+
+Changes, version `0x03000035` -> `0x03000036`:
+
+- **Last-good-frame values.** For every frame that arrives after `Trigger(1)`, the driver records the download time
+  (time to the image minus the exposure), the packets received, both queue levels, and the number of stale frames the
+  soft flush removed before the trigger. The watchdog report adds a second line comparing these with the lost frame.
+- **Measured watchdog.** A fixed short timeout would falsely fail cameras whose downloads take more than 10 s, so the
+  margin after the exposure comes from the camera's own measured downloads:
+  - margin = 3 × the longest download measured, but at least 5 s;
+  - the result is never longer than the fixed timeout (exposure + 25 s, or 1.5 × exposure above 50 s);
+  - the fixed timeout still applies until a download has been measured.
+- **When the measurement is discarded:** on connect, on a mode change (bit depth, binning, binning mode, and the mode
+  restart after an abort or watchdog), on an ROI change, and on an `X_CCD_ADVANCED` change (USB speed).
+- **No-packet timeout removed:** the option is no longer set anywhere.
+- **Hard flush restored (user decision):** the flush before every `Trigger(1)` is `OPTION_FLUSH` 3 again. The hard
+  flushes on abort and stream stop that TT-D07 added only to make up for the soft flush are removed, so every flush is
+  back where it was before TT-D07. The value the flush returns (stale frames discarded from the SDK buffers) is still
+  recorded for the report. The TT-D07 test `Flush modes and hardware exposure events` is reduced to
+  `Hardware exposure events`.
+
+Regression tests:
+
+- `Measured exposure watchdog` checks:
+  - the fixed timeout before any measurement (26 s for a 1 s exposure);
+  - exposure + 5 s after a fast download;
+  - the fixed timeout again after the watchdog's restart;
+  - a simulated 2.5 s download giving a 7.5 s margin (107 s for a 100 s exposure);
+  - the reset after an ROI change.
+- `Acquisition failure and unrelated SDK events` keeps the TT-D04 event checks without the no-packet assertions.
+- The test harness now treats any scheduled delay over 5 s as the watchdog, because the driver schedules nothing else
+  that long.
+
+Against the previous driver the new case fails at its first measured check (26 instead of 6).
+
+Validation, fake SDK, macOS arm64/x86_64, repeated after the hard flush was restored: the ToupTek suite passes 35 of
+35, and the Altair variant 35 of 35. All ten OEM variants build without compiler warnings. Not verified on hardware.

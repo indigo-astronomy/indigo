@@ -87,8 +87,6 @@
 #define TOUPCAM_OPTION_HEAT SDK_DEF(OPTION_HEAT)
 #define TOUPCAM_OPTION_HEAT_MAX SDK_DEF(OPTION_HEAT_MAX)
 #define TOUPCAM_OPTION_EVENT_HARDWARE SDK_DEF(OPTION_EVENT_HARDWARE)
-#define TOUPCAM_OPTION_FLUSH SDK_DEF(OPTION_FLUSH)
-#define TOUPCAM_OPTION_NOPACKET_TIMEOUT SDK_DEF(OPTION_NOPACKET_TIMEOUT)
 #define TOUPCAM_OPTION_RAW SDK_DEF(OPTION_RAW)
 #define TOUPCAM_OPTION_TAILLIGHT SDK_DEF(OPTION_TAILLIGHT)
 #define TOUPCAM_OPTION_TEC SDK_DEF(OPTION_TEC)
@@ -194,9 +192,10 @@ static ToupcamModelV2 models[3] = {
 static atomic_bool track_controls, fail_control, deliver_image, image_on_stop;
 static atomic_int pulled_images, triggers, stream_frames, watchdog_seconds;
 // No-packet timeout in force when an acquisition was started.
-static atomic_int armed_no_packet_timeout;
-// Flush mode in force when an exposure was triggered, and enabled hardware event switches.
-static atomic_int flush_at_trigger, hardware_event_switches;
+// Delay before a triggered image is delivered, to simulate a slow download.
+static atomic_int image_delay_ms;
+// Enabled hardware event switches.
+static atomic_int hardware_event_switches;
 static atomic_bool fast_watchdog;
 static _Atomic(indigo_timer_callback) monitor_tasks[4], move_tasks[4];
 static atomic_int replay_done;
@@ -324,7 +323,8 @@ void touptek_test_execute_handler_in(indigo_device *device, double delay, indigo
 			atomic_store(&move_tasks[index], handler);
 		}
 	}
-	if (delay >= 25) {
+	// Apart from the exposure watchdog the driver schedules nothing later than 5 s.
+	if (delay > 5) {
 		atomic_store(&watchdog_seconds, delay);
 		if (atomic_load(&fast_watchdog)) { delay = 0.05; }
 	}
@@ -1476,68 +1476,69 @@ cleanup:
 	restore_camera();
 }
 
-// The SDK reports a frame lost on USB only while the no-packet timeout is armed, so it must be armed for every acquisition and disarmed
-// when the acquisition ends. Only image and error notifications may end an exposure; any other notification must leave the watchdog armed.
+// Only image and error notifications may end an exposure; any other notification must leave the watchdog armed.
 static void acquisition_timeouts(void) {
 	CHECK_TRUE(start_properties());
 	atomic_store(&deliver_image, true);
 	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 2, INDIGO_OK_STATE));
-	CHECK_EQ_INT(atomic_load(&armed_no_packet_timeout), 6040);
-	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]), 0);
 	const int events[] = { TOUPCAM_EVENT_NOPACKETTIMEOUT, TOUPCAM_EVENT_TRIGGERFAIL, TOUPCAM_EVENT_ERROR };
 	for (unsigned i = 0; i < ARRAY_SIZE(events); i++) {
 		atomic_store(&sdk_event, events[i]);
-		atomic_store(&armed_no_packet_timeout, 0);
 		CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 1, INDIGO_ALERT_STATE));
-		CHECK_EQ_INT(atomic_load(&armed_no_packet_timeout), 5020);
-		CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]), 0);
 	}
 	atomic_store(&sdk_event, TOUPCAM_EVENT_EXPOSURE);
 	atomic_store(&fast_watchdog, true);
 	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 1, INDIGO_ALERT_STATE));
-	CHECK_EQ_INT(atomic_load(&watchdog_seconds), 26);
-	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]), 0);
-	atomic_store(&fast_watchdog, false);
-	atomic_store(&sdk_event, TOUPCAM_EVENT_IMAGE);
-	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.5, INDIGO_OK_STATE));
-	atomic_store(&deliver_image, false);
-	atomic_store(&stream_frames, 2);
-	unsigned before = revision(0, "CCD_STREAMING");
-	indigo_change_number_property(NULL, logical[0]->name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 1, 2 });
-	CHECK_TRUE(wait_property(0, "CCD_STREAMING", before, INDIGO_OK_STATE));
-	CHECK_EQ_INT(atomic_load(&armed_no_packet_timeout), 5020);
-	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]), 0);
-	atomic_store(&stream_frames, 0);
-	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 10, INDIGO_BUSY_STATE));
-	CHECK_TRUE(wait_value(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT], 14200));
-	CHECK_TRUE(change_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
-	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]), 0);
+	// The first exposure measured the download, so the watchdog is the exposure plus the minimum margin.
+	CHECK_EQ_INT(atomic_load(&watchdog_seconds), 6);
 	CHECK_EQ_INT(atomic_load(&wrong_thread), 0);
 cleanup:
+	atomic_store(&fast_watchdog, false);
 	atomic_store(&sdk_event, TOUPCAM_EVENT_IMAGE);
 	stop_properties();
 }
 
-// A hard flush right before Trigger(1) is suspected of discarding the triggered frame, so exposures flush only the SDK buffers. Paths that
-// can leave frames in the camera hard flush themselves. Hardware exposure events are enabled where supported and must not end an exposure.
-static void flush_modes_and_hardware_events(void) {
+// Download times differ between cameras, so the watchdog margin comes from the camera's own measured downloads: three times the longest
+// one, at least five seconds, never more than the fixed timeout used before anything was measured. A changed frame setup discards the
+// measurement, and so does the recovery after a watchdog.
+static void measured_exposure_watchdog(void) {
 	CHECK_TRUE(start_properties());
-	atomic_store(&deliver_image, true);
-	atomic_store(&option_values[TOUPCAM_OPTION_FLUSH], 3);
-	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.1, INDIGO_OK_STATE));
-	CHECK_EQ_INT(atomic_load(&flush_at_trigger), 2);
+	atomic_store(&fast_watchdog, true);
 	atomic_store(&deliver_image, false);
-	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 10, INDIGO_BUSY_STATE));
-	CHECK_EQ_INT(atomic_load(&flush_at_trigger), 2);
-	CHECK_TRUE(change_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
-	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_FLUSH]), 3);
-	atomic_store(&option_values[TOUPCAM_OPTION_FLUSH], 0);
-	atomic_store(&stream_frames, 2);
-	unsigned before = revision(0, "CCD_STREAMING");
-	indigo_change_number_property(NULL, logical[0]->name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 0.1, 2 });
-	CHECK_TRUE(wait_property(0, "CCD_STREAMING", before, INDIGO_OK_STATE));
-	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_FLUSH]), 3);
-	atomic_store(&stream_frames, 0);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 1, INDIGO_ALERT_STATE));
+	CHECK_EQ_INT(atomic_load(&watchdog_seconds), 26);
+	atomic_store(&deliver_image, true);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 1, INDIGO_OK_STATE));
+	atomic_store(&deliver_image, false);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 1, INDIGO_ALERT_STATE));
+	CHECK_EQ_INT(atomic_load(&watchdog_seconds), 6);
+	// The recovery after a watchdog restarts the camera mode, so the next exposure is not measured yet.
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 1, INDIGO_ALERT_STATE));
+	CHECK_EQ_INT(atomic_load(&watchdog_seconds), 26);
+	// A slow download of about 2.5 s after the exposure gives a margin of three times that.
+	atomic_store(&image_delay_ms, 3000);
+	atomic_store(&deliver_image, true);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.5, INDIGO_OK_STATE));
+	atomic_store(&image_delay_ms, 0);
+	atomic_store(&deliver_image, false);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 100, INDIGO_ALERT_STATE));
+	CHECK_EQ_INT(atomic_load(&watchdog_seconds), 107);
+	// A changed frame discards the measurement.
+	atomic_store(&deliver_image, true);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 1, INDIGO_OK_STATE));
+	atomic_store(&deliver_image, false);
+	CHECK_TRUE(change_number(0, "CCD_FRAME", "WIDTH", 320, INDIGO_OK_STATE));
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 1, INDIGO_ALERT_STATE));
+	CHECK_EQ_INT(atomic_load(&watchdog_seconds), 26);
+cleanup:
+	atomic_store(&image_delay_ms, 0);
+	atomic_store(&fast_watchdog, false);
+	stop_properties();
+}
+
+// Hardware exposure events are enabled where supported and must not end an exposure.
+static void hardware_exposure_events(void) {
+	CHECK_TRUE(start_properties());
 	CHECK_EQ_INT(atomic_load(&hardware_event_switches), 0);
 	stop_properties();
 	models[0].flag |= TOUPCAM_FLAG_EVENT_HARDWARE;
@@ -2266,8 +2267,9 @@ int main(void) {
 		{ "SDK lifecycle queue", lifecycle },
 		{ "CCD property handlers and base dispatch", camera_properties },
 		{ "Acquisition finalizers, watchdog and streaming", acquisition_finalizers },
-		{ "Acquisition no-packet timeout and unrelated SDK events", acquisition_timeouts },
-		{ "Flush modes and hardware exposure events", flush_modes_and_hardware_events },
+		{ "Acquisition failure and unrelated SDK events", acquisition_timeouts },
+		{ "Measured exposure watchdog", measured_exposure_watchdog },
+		{ "Hardware exposure events", hardware_exposure_events },
 		{ "Guider property handlers on camera queue", guider_properties },
 		{ "Wheel property handlers", wheel_properties },
 		{ "Focuser property handlers", focuser_properties },
@@ -2386,10 +2388,11 @@ HRESULT Toupcam_Trigger(HToupcam h, unsigned short nNumber) {
 	control_call(h);
 	if (atomic_load(&fail_trigger)) { return -1; }
 	if (nNumber) {
-		atomic_store(&armed_no_packet_timeout, atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]));
-		atomic_store(&flush_at_trigger, atomic_load(&option_values[TOUPCAM_OPTION_FLUSH]));
 		atomic_fetch_add(&triggers, 1);
-		if (atomic_load(&deliver_image)) { emit_image(); }
+		if (atomic_load(&deliver_image)) {
+			if (atomic_load(&image_delay_ms)) { indigo_usleep(atomic_load(&image_delay_ms) * 1000); }
+			emit_image();
+		}
 	}
 	return 0;
 }
@@ -2418,7 +2421,6 @@ HRESULT Toupcam_put_Option(HToupcam h, unsigned iOption, int iValue) {
 	if (iOption == TOUPCAM_OPTION_FILTERWHEEL_SLOT) { atomic_store(&wheel_slots, iValue); }
 	if (iOption == TOUPCAM_OPTION_TRIGGER) {
 		if (iValue == 0) {
-			atomic_store(&armed_no_packet_timeout, atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]));
 			atomic_fetch_add(&stream_started, 1);
 			for (int i = 0; i < atomic_load(&stream_frames); i++) { emit_image(); }
 		} else if (atomic_load(&image_on_stop)) {

@@ -38,7 +38,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION											0x03000035
+#define DRIVER_VERSION											0x03000036
 #define PRIVATE_DATA												((DRIVER_PRIVATE_DATA *)device->private_data)
 
 #define ADVANCED_GROUP											"Advanced"
@@ -167,8 +167,15 @@ typedef struct {
 	/* Lost frame diagnostics, reset on each Trigger(1) */
 	bool hardware_events;
 	bool exposure_started, exposure_stopped;
-	int packets_at_trigger;
+	int packets_at_trigger, flushed_at_trigger;
 	double trigger_time;
+	/* Last frame received after Trigger(1), for comparison in the watchdog report */
+	bool last_frame_valid;
+	int last_frame_packets, last_frame_frontend, last_frame_backend, last_frame_flushed;
+	double last_frame_download;
+	/* Longest time from Trigger(1) to the image, minus the exposure, since the frame setup last changed */
+	bool download_measured;
+	double max_download_time;
 	indigo_property *advanced_property;
 	indigo_property *fan_property;
 	indigo_property *heater_property;
@@ -322,26 +329,14 @@ static void finish_exposure(indigo_device *device) {
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 }
 
-static void set_no_packet_timeout(indigo_device *device, double exposure) {
-	// Without this timeout the SDK silently drops a frame lost on USB and the exposure waits for the watchdog. It is armed only while an acquisition runs,
-	// with the trigger timeout recommended by the SDK documentation (exposure * 102% + 4 s), and disarmed (negative exposure) when the acquisition ends.
-	int timeout = exposure < 0 ? 0 : (int)(exposure * 1020 + 4000);
-	HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_NOPACKET_TIMEOUT), timeout);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_NOPACKET_TIMEOUT, %d) -> %08x", timeout, result);
-}
-
 static void stop_video_mode(indigo_device *device) {
 	if (!PRIVATE_DATA->video_mode) {
 		return;
 	}
 	PRIVATE_DATA->video_mode = false;
-	set_no_packet_timeout(device, -1);
 	bool aborting = CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
 	HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 1);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 1) -> %08x", result);
-	// Exposures flush only the SDK buffers, so discard stream frames still cached by the camera here.
-	result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FLUSH), 3);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FLUSH, 3) -> %08x", result);
 	// The SDK has joined its callback. Discard notifications from the stopped stream.
 	atomic_store(&PRIVATE_DATA->event_generation, (atomic_load(&PRIVATE_DATA->event_generation) + 1) & (UINTPTR_MAX >> 16));
 	if (aborting) {
@@ -369,6 +364,23 @@ static const char *hardware_event_state(indigo_device *device, bool seen) {
 	return PRIVATE_DATA->hardware_events ? (seen ? "yes" : "no") : "not reported";
 }
 
+// Download times differ a lot between cameras (more than 10 s for some large sensors), so the margin after the exposure comes from this
+// camera's own downloads: three times the longest one measured since the frame setup last changed, and at least WATCHDOG_MIN_MARGIN.
+// It never exceeds the fixed timeout, which also applies until a download has been measured.
+#define WATCHDOG_MIN_MARGIN 5.0
+#define WATCHDOG_DOWNLOAD_FACTOR 3.0
+
+static double exposure_watchdog_timeout(indigo_device *device, double exposure) {
+	double timeout = exposure > 50 ? 1.5 * exposure : exposure + 25;
+	if (PRIVATE_DATA->download_measured) {
+		double measured = exposure + fmax(WATCHDOG_MIN_MARGIN, WATCHDOG_DOWNLOAD_FACTOR * PRIVATE_DATA->max_download_time);
+		if (measured < timeout) {
+			timeout = measured;
+		}
+	}
+	return timeout;
+}
+
 static void ccd_exposure_watchdog_handler(indigo_device *device) {
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "pull_callback() was not called in time");
 	// Tell a trigger the camera never executed (no exposure start, no packets) from a frame lost in transfer (packets received) or dropped by the SDK.
@@ -384,6 +396,12 @@ static void ccd_exposure_watchdog_handler(indigo_device *device) {
 		get_diagnostic_option(device, SDK_DEF(OPTION_BACKEND_DEQUE_CURRENT)),
 		get_diagnostic_option(device, SDK_DEF(OPTION_BACKEND_FULL))
 	);
+	if (PRIVATE_DATA->last_frame_valid) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Lost frame: %d stale frames flushed before Trigger(1); last good frame: download %.2fs, %d packets, frontend queue %d, backend queue %d, %d stale frames flushed before its trigger",
+			PRIVATE_DATA->flushed_at_trigger, PRIVATE_DATA->last_frame_download, PRIVATE_DATA->last_frame_packets, PRIVATE_DATA->last_frame_frontend, PRIVATE_DATA->last_frame_backend, PRIVATE_DATA->last_frame_flushed);
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Lost frame: %d stale frames flushed before Trigger(1); no good frame since connect", PRIVATE_DATA->flushed_at_trigger);
+	}
 	// Flush the frame buffer to unstick the SDK pipeline.  With multiple cameras and short exposures the SDK occasionally stops delivering EVENT_IMAGE, leaving
 	// the buffer full so that every subsequent Trigger() is also silently dropped. Flushing clears that condition.  We also reset PRIVATE_DATA->mode so that the
 	// next call to setup_exposure() unconditionally re-calls StartPullModeWithCallback(), recovering from any case where the SDK silently
@@ -391,7 +409,6 @@ static void ccd_exposure_watchdog_handler(indigo_device *device) {
 	HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FLUSH), 3);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FLUSH, 3) -> %08x", result);
 	PRIVATE_DATA->mode = -1;
-	set_no_packet_timeout(device, -1);
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed, pull callback was not called");
 }
@@ -417,12 +434,29 @@ static void ccd_event_handler(indigo_device *device, void *data) {
 		case SDK_DEF(EVENT_IMAGE): {
 			// Only the image and error events end an exposure; any other notification must leave the watchdog armed.
 			indigo_cancel_pending_handler(device, ccd_exposure_watchdog_handler);
-			if (!PRIVATE_DATA->video_mode) {
-				set_no_packet_timeout(device, -1);
-			}
+			// Frame statistics for the watchdog report and the measured watchdog timeout, taken before the image is pulled.
+			bool triggered = !PRIVATE_DATA->video_mode && !PRIVATE_DATA->aborting && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE;
+			double download = triggered ? indigo_monotonic_time() - PRIVATE_DATA->trigger_time - CCD_EXPOSURE_ITEM->number.target : 0;
+			int packets = triggered ? get_diagnostic_option(device, SDK_DEF(OPTION_PACKET_NUMBER)) : -1;
+			int frontend = triggered ? get_diagnostic_option(device, SDK_DEF(OPTION_FRONTEND_DEQUE_CURRENT)) : -1;
+			int backend = triggered ? get_diagnostic_option(device, SDK_DEF(OPTION_BACKEND_DEQUE_CURRENT)) : -1;
 			result = SDK_CALL(PullImageV2)(PRIVATE_DATA->handle, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->bits, &frameInfo);
 			if (result >= 0) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PullImageV2(%d, ->[%d x %d, %x, %d]) -> %08x", PRIVATE_DATA->bits, frameInfo.width, frameInfo.height, frameInfo.flag, frameInfo.seq, result);
+				if (triggered) {
+					download = download < 0 ? 0 : download;
+					PRIVATE_DATA->last_frame_valid = true;
+					PRIVATE_DATA->last_frame_packets = packets >= 0 && PRIVATE_DATA->packets_at_trigger >= 0 ? packets - PRIVATE_DATA->packets_at_trigger : -1;
+					PRIVATE_DATA->last_frame_frontend = frontend;
+					PRIVATE_DATA->last_frame_backend = backend;
+					PRIVATE_DATA->last_frame_flushed = PRIVATE_DATA->flushed_at_trigger;
+					PRIVATE_DATA->last_frame_download = download;
+					if (!PRIVATE_DATA->download_measured || download > PRIVATE_DATA->max_download_time) {
+						PRIVATE_DATA->max_download_time = download;
+					}
+					PRIVATE_DATA->download_measured = true;
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Frame after Trigger(1): download %.2fs (max %.2fs), %d packets, frontend queue %d, backend queue %d", download, PRIVATE_DATA->max_download_time, PRIVATE_DATA->last_frame_packets, frontend, backend);
+				}
 				if (PRIVATE_DATA->aborting) {
 					// Abort path (single-exposure or streaming): discard this frame, finalize any open video file, and clean up.
 					PRIVATE_DATA->aborting = false;
@@ -468,9 +502,6 @@ static void ccd_event_handler(indigo_device *device, void *data) {
 		case SDK_DEF(EVENT_ERROR): {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "pull_callback(%04x) reported failure", event);
 			indigo_cancel_pending_handler(device, ccd_exposure_watchdog_handler);
-			if (!PRIVATE_DATA->video_mode) {
-				set_no_packet_timeout(device, -1);
-			}
 			result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FLUSH), 3);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FLUSH, 3) -> %08x", result);
 			indigo_ccd_failure_cleanup(device);
@@ -581,6 +612,8 @@ static void setup_exposure_frame(indigo_device *device) {
 			PRIVATE_DATA->top = top;
 			PRIVATE_DATA->width = width;
 			PRIVATE_DATA->height = height;
+			// The frame size changes the download time; measure it again.
+			PRIVATE_DATA->download_measured = false;
 			indigo_execute_handler_in(device, 0.1, ccd_start_exposure_handler);
 			return;
 		}
@@ -663,6 +696,8 @@ static void setup_exposure(indigo_device *device) {
 					PRIVATE_DATA->bits = 24;
 				}
 				PRIVATE_DATA->mode = i;
+				// Mode, bit depth and binning change the download time; measure it again.
+				PRIVATE_DATA->download_measured = false;
 				indigo_execute_handler_in(device, 0.1, ccd_setup_binning_handler);
 				return;
 			}
@@ -676,15 +711,14 @@ static void ccd_start_exposure_handler(indigo_device *device) {
 	if (!exposure_setup_pending(device)) {
 		return;
 	}
-	// Soft flush only: a hard flush (camera DDR) issued immediately before Trigger(1) is suspected of occasionally discarding the triggered frame
-	// with no SDK notification at all. Paths that may leave frames in the camera (abort, stream stop, watchdog, SDK error) hard flush themselves.
-	HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FLUSH), 2);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FLUSH, 2) -> %08x", result);
+	HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FLUSH), 3);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FLUSH, 3) -> %08x", result);
+	// A successful flush returns the number of frames it discarded from the SDK buffers.
+	PRIVATE_DATA->flushed_at_trigger = result;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		result = SDK_CALL(put_ExpoTime)(PRIVATE_DATA->handle, (unsigned)(CCD_EXPOSURE_ITEM->number.target * 1000000));
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_ExpoTime(%u) -> %08x", (unsigned)(CCD_EXPOSURE_ITEM->number.target * 1000000), result);
 		PRIVATE_DATA->aborting = false;
-		set_no_packet_timeout(device, CCD_EXPOSURE_ITEM->number.target);
 		PRIVATE_DATA->exposure_started = PRIVATE_DATA->exposure_stopped = false;
 		PRIVATE_DATA->packets_at_trigger = get_diagnostic_option(device, SDK_DEF(OPTION_PACKET_NUMBER));
 		PRIVATE_DATA->trigger_time = indigo_monotonic_time();
@@ -694,15 +728,15 @@ static void ccd_start_exposure_handler(indigo_device *device) {
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(1) -> %08x", result);
 		}
-		double whatchdog_timeout = (CCD_EXPOSURE_ITEM->number.target > 50) ? 1.5 * CCD_EXPOSURE_ITEM->number.target : CCD_EXPOSURE_ITEM->number.target + 25;
-		indigo_execute_handler_in(device, whatchdog_timeout, ccd_exposure_watchdog_handler);
+		double watchdog_timeout = exposure_watchdog_timeout(device, CCD_EXPOSURE_ITEM->number.target);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Exposure watchdog in %.2fs", watchdog_timeout);
+		indigo_execute_handler_in(device, watchdog_timeout, ccd_exposure_watchdog_handler);
 		indigo_ccd_change_property(device, NULL, CCD_EXPOSURE_PROPERTY);
 	} else {
 		result = SDK_CALL(put_ExpoTime)(PRIVATE_DATA->handle, (unsigned)(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000));
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_ExpoTime(%u) -> %08x", (unsigned)(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000), result);
 		PRIVATE_DATA->aborting = false;
 		PRIVATE_DATA->video_mode = true;
-		set_no_packet_timeout(device, CCD_STREAMING_EXPOSURE_ITEM->number.target);
 		result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 0);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 0) -> %08x", result);
 		indigo_ccd_change_property(device, NULL, CCD_STREAMING_PROPERTY);
@@ -963,6 +997,8 @@ static void ccd_connection_handler(indigo_device *device) {
 			properties[i]->state = INDIGO_OK_STATE;
 		}
 	}
+	PRIVATE_DATA->download_measured = false;
+	PRIVATE_DATA->last_frame_valid = false;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0) {
 			char id[66];
@@ -1155,8 +1191,6 @@ disconnect:
 			result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
 			atomic_store(&PRIVATE_DATA->event_generation, (atomic_load(&PRIVATE_DATA->event_generation) + 1) & (UINTPTR_MAX >> 16));
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
-			// The guider may keep the shared handle open; do not leave an acquisition timeout armed on it.
-			set_no_packet_timeout(device, -1);
 		}
 		// Stop has joined the SDK callback; drain its last queued notifications before freeing the buffer.
 		indigo_unlock_master_device(device);
@@ -1336,10 +1370,6 @@ static void ccd_abort_exposure_handler(indigo_device *device) {
 			PRIVATE_DATA->aborting = true;
 			result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 0);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(0) -> %08x", result);
-			set_no_packet_timeout(device, -1);
-			// Exposures flush only the SDK buffers, so discard a frame of the aborted exposure still cached by the camera here.
-			result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FLUSH), 3);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FLUSH, 3) -> %08x", result);
 		}
 	}
 	indigo_ccd_change_property(device, NULL, CCD_ABORT_EXPOSURE_PROPERTY);
@@ -1434,6 +1464,8 @@ static void ccd_offset_handler(indigo_device *device) {
 
 static void ccd_x_advanced_handler(indigo_device *device) {
 	HRESULT result;
+	// The USB speed changes the download time; measure it again.
+	PRIVATE_DATA->download_measured = false;
 	X_CCD_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
 	if (X_CCD_ADVANCED_PROPERTY->count != 1) {
 		result = SDK_CALL(put_Contrast)(PRIVATE_DATA->handle, (int)X_CCD_CONTRAST_ITEM->number.value);
