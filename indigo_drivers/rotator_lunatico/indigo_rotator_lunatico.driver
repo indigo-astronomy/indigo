@@ -36,7 +36,7 @@ driver lunatico {
 	label = "Lunatico Astronomia Rotator";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
-	version = 12;
+	version = 13;
 	multi_device_support = true;
 	serial {
 		configurable_speed = true;

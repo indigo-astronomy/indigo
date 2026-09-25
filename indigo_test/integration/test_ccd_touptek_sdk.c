@@ -52,9 +52,11 @@
 #define TOUPCAM_AAF_SETPOSITION SDK_DEF(AAF_SETPOSITION)
 #define TOUPCAM_AAF_SETZERO SDK_DEF(AAF_SETZERO)
 #define TOUPCAM_EVENT_ERROR SDK_DEF(EVENT_ERROR)
+#define TOUPCAM_EVENT_EXPOSURE SDK_DEF(EVENT_EXPOSURE)
 #define TOUPCAM_EVENT_IMAGE SDK_DEF(EVENT_IMAGE)
 #define TOUPCAM_EVENT_NOFRAMETIMEOUT SDK_DEF(EVENT_NOFRAMETIMEOUT)
 #define TOUPCAM_EVENT_NOPACKETTIMEOUT SDK_DEF(EVENT_NOPACKETTIMEOUT)
+#define TOUPCAM_EVENT_TRIGGERFAIL SDK_DEF(EVENT_TRIGGERFAIL)
 #define TOUPCAM_FLAG_AUTOFOCUSER SDK_DEF(FLAG_AUTOFOCUSER)
 #define TOUPCAM_FLAG_BLACKLEVEL SDK_DEF(FLAG_BLACKLEVEL)
 #define TOUPCAM_FLAG_CG SDK_DEF(FLAG_CG)
@@ -81,6 +83,7 @@
 #define TOUPCAM_OPTION_FILTERWHEEL_SLOT SDK_DEF(OPTION_FILTERWHEEL_SLOT)
 #define TOUPCAM_OPTION_HEAT SDK_DEF(OPTION_HEAT)
 #define TOUPCAM_OPTION_HEAT_MAX SDK_DEF(OPTION_HEAT_MAX)
+#define TOUPCAM_OPTION_NOPACKET_TIMEOUT SDK_DEF(OPTION_NOPACKET_TIMEOUT)
 #define TOUPCAM_OPTION_RAW SDK_DEF(OPTION_RAW)
 #define TOUPCAM_OPTION_TAILLIGHT SDK_DEF(OPTION_TAILLIGHT)
 #define TOUPCAM_OPTION_TEC SDK_DEF(OPTION_TEC)
@@ -185,6 +188,8 @@ static ToupcamModelV2 models[3] = {
 // Record control calls independently of lifecycle calls: CCD and guider share a worker.
 static atomic_bool track_controls, fail_control, deliver_image, image_on_stop;
 static atomic_int pulled_images, triggers, stream_frames, watchdog_seconds;
+// No-packet timeout in force when an acquisition was started.
+static atomic_int armed_no_packet_timeout;
 static atomic_bool fast_watchdog;
 static _Atomic(indigo_timer_callback) monitor_tasks[4], move_tasks[4];
 static atomic_int replay_done;
@@ -339,18 +344,11 @@ static int index_for(const char *name) {
 	return strstr(name, "guider") ? 1 : (strstr(name, "Camera") ? 0 : -1);
 }
 
-// Isolate real framework CONFIG and image files without changing the user's HOME.
+// Isolate real framework CONFIG and image files: the test folder becomes HOME, so both copies of the
+// framework (the one compiled into this test and the one in libindigo) save to and load from
+// <test folder>/.indigo, never the developer's own ~/.indigo.
 static char test_output_folder[] = "/tmp/indigo_touptek_XXXXXX";
-
-static const char *config_folder;
-
-static void touptek_test_set_config_folder(const char *folder) {
-	config_folder = folder;
-}
-
-const char *touptek_test_config_folder(void) {
-	return config_folder;
-}
+static char config_folder[PATH_MAX];
 
 #define PROPERTY_CAPACITY 128
 static atomic_llong guide_started_ns[2];
@@ -1471,6 +1469,48 @@ cleanup:
 	restore_camera();
 }
 
+// The SDK reports a frame lost on USB only while the no-packet timeout is armed, so it must be armed for every acquisition and disarmed
+// when the acquisition ends. Only image and error notifications may end an exposure; any other notification must leave the watchdog armed.
+static void acquisition_timeouts(void) {
+	CHECK_TRUE(start_properties());
+	atomic_store(&deliver_image, true);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 2, INDIGO_OK_STATE));
+	CHECK_EQ_INT(atomic_load(&armed_no_packet_timeout), 6040);
+	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]), 0);
+	const int events[] = { TOUPCAM_EVENT_NOPACKETTIMEOUT, TOUPCAM_EVENT_TRIGGERFAIL, TOUPCAM_EVENT_ERROR };
+	for (unsigned i = 0; i < ARRAY_SIZE(events); i++) {
+		atomic_store(&sdk_event, events[i]);
+		atomic_store(&armed_no_packet_timeout, 0);
+		CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 1, INDIGO_ALERT_STATE));
+		CHECK_EQ_INT(atomic_load(&armed_no_packet_timeout), 5020);
+		CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]), 0);
+	}
+	atomic_store(&sdk_event, TOUPCAM_EVENT_EXPOSURE);
+	atomic_store(&fast_watchdog, true);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 1, INDIGO_ALERT_STATE));
+	CHECK_EQ_INT(atomic_load(&watchdog_seconds), 26);
+	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]), 0);
+	atomic_store(&fast_watchdog, false);
+	atomic_store(&sdk_event, TOUPCAM_EVENT_IMAGE);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.5, INDIGO_OK_STATE));
+	atomic_store(&deliver_image, false);
+	atomic_store(&stream_frames, 2);
+	unsigned before = revision(0, "CCD_STREAMING");
+	indigo_change_number_property(NULL, logical[0]->name, "CCD_STREAMING", 2, (const char *[]){ "EXPOSURE", "COUNT" }, (double []){ 1, 2 });
+	CHECK_TRUE(wait_property(0, "CCD_STREAMING", before, INDIGO_OK_STATE));
+	CHECK_EQ_INT(atomic_load(&armed_no_packet_timeout), 5020);
+	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]), 0);
+	atomic_store(&stream_frames, 0);
+	CHECK_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 10, INDIGO_BUSY_STATE));
+	CHECK_TRUE(wait_value(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT], 14200));
+	CHECK_TRUE(change_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
+	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]), 0);
+	CHECK_EQ_INT(atomic_load(&wrong_thread), 0);
+cleanup:
+	atomic_store(&sdk_event, TOUPCAM_EVENT_IMAGE);
+	stop_properties();
+}
+
 static void disconnected_recurring_tasks(void) {
 	enable_full_camera();
 	CHECK_TRUE(start_properties());
@@ -1825,14 +1865,14 @@ cleanup:
 }
 
 static bool retain_configuration_properties(const char *name, const char * const *properties, unsigned count) {
-	DIR *directory = opendir(test_output_folder);
+	DIR *directory = opendir(config_folder);
 	if (directory == NULL) { return false; }
 	bool found = false;
 	struct dirent *entry;
 	while ((entry = readdir(directory))) {
 		if (strstr(entry->d_name, ".config") == NULL) { continue; }
 		char path[1024], temporary[1024], line[512];
-		snprintf(path, sizeof(path), "%s/%s", test_output_folder, entry->d_name);
+		snprintf(path, sizeof(path), "%s/%s", config_folder, entry->d_name);
 		FILE *input = fopen(path, "r");
 		if (input == NULL) { continue; }
 		bool matches_device = false;
@@ -1875,7 +1915,7 @@ static void configuration_workflows(void) {
 	for (int d = 0; d < 4; d++) {
 		CHECK_TRUE(change_switch(d, "CONFIG", "SAVE", INDIGO_OK_STATE));
 	}
-	DIR *directory = opendir(test_output_folder);
+	DIR *directory = opendir(config_folder);
 	int configs = 0;
 	if (directory) {
 		struct dirent *entry;
@@ -1935,6 +1975,81 @@ static void configuration_restore_survives_a_refused_property(void) {
 	CHECK_EQ_INT(21, (int)item_number(0, "CCD_GAIN", "GAIN", false));
 cleanup:
 	restore_camera();
+}
+
+// CONFIG stays defined across connection changes, so no later definition can correct a stale BUSY state a
+// client has already seen. A configuration request queued behind other camera work used to be cancelled by a
+// connection change, leaving CONFIG BUSY for every client. The request must complete even while the queue is busy.
+static void configuration_request_survives_connection_change(void) {
+	indigo_property *copy = NULL;
+	for (int d = 0; d < 4; d += 2) {
+		CHECK_TRUE(start_properties());
+		arm_gate(&queue_gate);
+		indigo_execute_handler(logical[d], queue_gate_handler);
+		CHECK_TRUE(wait_value(&queue_gate.entered, 1));
+		unsigned before = revision(d, "CONFIG");
+		indigo_change_switch_property_1(NULL, logical[d]->name, "CONFIG", "SAVE", true);
+		connect_device(d, false);
+		// Let the connection handler cancel whatever is pending on the held queue before releasing it.
+		indigo_usleep(200000);
+		release_gate(&queue_gate);
+		CHECK_TRUE(wait_value(&connection[d], 0));
+		CHECK_TRUE(revision(d, "CONFIG") > before);
+		copy = snapshot(d, "CONFIG");
+		CHECK_TRUE(copy != NULL);
+		CHECK_EQ_INT(copy->state, INDIGO_OK_STATE);
+		indigo_release_property(copy);
+		copy = NULL;
+		stop_properties();
+	}
+	return;
+cleanup:
+	release_gate(&queue_gate);
+	indigo_release_property(copy);
+	stop_properties();
+}
+
+// A connection change cancels pending change handlers. A property whose handler was cancelled must return to
+// OK: a new session starts in a clean state, and a BUSY property would refuse every later change. The wheel
+// model stays defined while disconnected, so its reset must be published at once.
+static void cancelled_change_does_not_survive_connection_change(void) {
+	CHECK_TRUE(start_properties());
+	arm_gate(&queue_gate);
+	indigo_execute_handler(logical[0], queue_gate_handler);
+	CHECK_TRUE(wait_value(&queue_gate.entered, 1));
+	unsigned before = revision(0, "CCD_GAIN");
+	indigo_change_number_property_1(NULL, logical[0]->name, "CCD_GAIN", "GAIN", 17);
+	CHECK_TRUE(wait_property(0, "CCD_GAIN", before, INDIGO_BUSY_STATE));
+	connect_device(0, false);
+	// Let the connection handler cancel the gain handler held behind the gate. Releasing too early can only
+	// let the gain handler run, which makes the case pass without exercising the cancellation.
+	indigo_usleep(200000);
+	release_gate(&queue_gate);
+	CHECK_TRUE(wait_value(&connection[0], 0));
+	connect_device(0, true);
+	CHECK_TRUE(wait_value(&connection[0], 1));
+	indigo_property *gain = snapshot(0, "CCD_GAIN");
+	CHECK_TRUE(gain != NULL);
+	CHECK_EQ_INT(gain->state, INDIGO_OK_STATE);
+	indigo_release_property(gain);
+	CHECK_TRUE(change_number(0, "CCD_GAIN", "GAIN", 23, INDIGO_OK_STATE));
+	CHECK_EQ_INT(atomic_load(&last_gain), 23);
+	arm_gate(&queue_gate);
+	indigo_execute_handler(logical[2], queue_gate_handler);
+	CHECK_TRUE(wait_value(&queue_gate.entered, 1));
+	before = revision(2, "X_WHEEL_MODEL");
+	indigo_change_switch_property_1(NULL, logical[2]->name, "X_WHEEL_MODEL", "5_POSITIONS", true);
+	CHECK_TRUE(wait_property(2, "X_WHEEL_MODEL", before, INDIGO_BUSY_STATE));
+	before = revision(2, "X_WHEEL_MODEL");
+	connect_device(2, false);
+	indigo_usleep(200000);
+	release_gate(&queue_gate);
+	CHECK_TRUE(wait_value(&connection[2], 0));
+	CHECK_TRUE(wait_property(2, "X_WHEEL_MODEL", before, INDIGO_OK_STATE));
+	CHECK_TRUE(change_switch(2, "X_WHEEL_MODEL", "8_POSITIONS", INDIGO_OK_STATE));
+cleanup:
+	release_gate(&queue_gate);
+	stop_properties();
 }
 
 static bool poll_camera(void) {
@@ -2096,8 +2211,8 @@ cleanup:
 }
 
 int main(void) {
-	if (mkdtemp(test_output_folder) == NULL) { return 1; }
-	touptek_test_set_config_folder(test_output_folder);
+	if (indigo_test_mkdtemp_home(test_output_folder) == NULL) { return 1; }
+	snprintf(config_folder, sizeof(config_folder), "%s/.indigo", test_output_folder);
 	const indigo_test_case tests[] = {
 		{ "Multiple camera identity and capacity recovery", multiple_camera_identity_and_capacity },
 		{ "Camera read failures and cooling", camera_read_failures_and_cooling },
@@ -2105,6 +2220,7 @@ int main(void) {
 		{ "SDK lifecycle queue", lifecycle },
 		{ "CCD property handlers and base dispatch", camera_properties },
 		{ "Acquisition finalizers, watchdog and streaming", acquisition_finalizers },
+		{ "Acquisition no-packet timeout and unrelated SDK events", acquisition_timeouts },
 		{ "Guider property handlers on camera queue", guider_properties },
 		{ "Wheel property handlers", wheel_properties },
 		{ "Focuser property handlers", focuser_properties },
@@ -2128,7 +2244,9 @@ int main(void) {
 		{ "Race: rapid hot-plug and pending shutdown", hotplug_pending_races },
 		{ "Guider pulse timing accuracy", guider_timing },
 		{ "Driver configuration persistence", configuration_workflows },
-		{ "Configuration restore survives a refused property", configuration_restore_survives_a_refused_property }
+		{ "Configuration restore survives a refused property", configuration_restore_survives_a_refused_property },
+		{ "Configuration request survives a connection change", configuration_request_survives_connection_change },
+		{ "Cancelled change does not survive a connection change", cancelled_change_does_not_survive_connection_change }
 	};
 	setvbuf(stdout, NULL, _IONBF, 0);
 	int result = 0;
@@ -2143,19 +2261,7 @@ int main(void) {
 		result = indigo_run_tests(TOUPTEK_SDK_TEST_LABEL, tests, ARRAY_SIZE(tests));
 	}
 	clear_observer();
-	DIR *directory = opendir(test_output_folder);
-	if (directory) {
-		struct dirent *entry;
-		while ((entry = readdir(directory))) {
-			if (entry->d_name[0] != '.') {
-				char path[1024];
-				snprintf(path, sizeof(path), "%s/%s", test_output_folder, entry->d_name);
-				if (unlink(path)) { result = 1; }
-			}
-		}
-		closedir(directory);
-	}
-	if (rmdir(test_output_folder)) { result = 1; }
+	indigo_test_remove_tree(test_output_folder);
 	return result;
 }
 
@@ -2233,6 +2339,7 @@ HRESULT Toupcam_Trigger(HToupcam h, unsigned short nNumber) {
 	control_call(h);
 	if (atomic_load(&fail_trigger)) { return -1; }
 	if (nNumber) {
+		atomic_store(&armed_no_packet_timeout, atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]));
 		atomic_fetch_add(&triggers, 1);
 		if (atomic_load(&deliver_image)) { emit_image(); }
 	}
@@ -2262,6 +2369,7 @@ HRESULT Toupcam_put_Option(HToupcam h, unsigned iOption, int iValue) {
 	if (iOption == TOUPCAM_OPTION_FILTERWHEEL_SLOT) { atomic_store(&wheel_slots, iValue); }
 	if (iOption == TOUPCAM_OPTION_TRIGGER) {
 		if (iValue == 0) {
+			atomic_store(&armed_no_packet_timeout, atomic_load(&option_values[TOUPCAM_OPTION_NOPACKET_TIMEOUT]));
 			atomic_fetch_add(&stream_started, 1);
 			for (int i = 0; i < atomic_load(&stream_frames); i++) { emit_image(); }
 		} else if (atomic_load(&image_on_stop)) {

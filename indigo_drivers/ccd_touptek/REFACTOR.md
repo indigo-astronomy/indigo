@@ -508,3 +508,130 @@ is still unknown. The framework change makes the restore report it by name when 
   each. The cameras were not available after the fix, so it is not known whether that case now passes;
   the test is unchanged and still asserts the real contract. Two physical hot-plug cases exist behind
   `--hotplug` and were not run; they need an operator at the cable.
+
+## TT-D04 — a lost guide frame stalled guiding for exposure + 25 s (2026-09-25)
+
+Observed impact: with two ToupTek cameras acquiring at the same time (SkyEye 26AM plus as the imager, GPM462M as
+the guider), the guide camera sometimes got no SDK notification after `Trigger(1)`. That happened three times in
+two hours. The exposure then waited for `ccd_exposure_watchdog_handler()`, which fires after exposure + 25 s, and
+the guiding was ruined.
+
+Probable cause, not yet confirmed on hardware: the frame is lost on USB and the SDK throws it away without
+notifying anyone. `OPTION_NOPACKET_TIMEOUT` and `OPTION_NOFRAME_TIMEOUT` are both disabled by default. The GPM462M
+has no frame buffer on the camera, so if the host is late reading its data while the imager downloads a large
+frame, part of the frame is lost.
+
+A second defect was found in the same path: `ccd_event_handler()` cancelled the watchdog for every SDK event
+before checking the event type, and it ignored `EVENT_TRIGGERFAIL` ("trigger failed, for example bad frame data
+or timeout"). So any unrelated event, or a trigger failure, left the exposure BUSY forever.
+
+Fix, version `0x03000031` -> `0x03000032`:
+
+- `set_no_packet_timeout()` arms `OPTION_NOPACKET_TIMEOUT` before every `Trigger(1)` and every stream start. The
+  value is exposure * 1020 + 4000 ms, the trigger timeout the SDK documentation recommends. The timeout is disarmed
+  (set to 0) when the image arrives, on SDK failure, on watchdog expiry, on single-exposure abort, when video mode
+  stops and on CCD disconnect, so it is never armed while the camera is idle. The SDK documents the option as
+  changeable while the camera is running.
+- The watchdog is cancelled only by `EVENT_IMAGE` and by the failure events. `EVENT_TRIGGERFAIL` joins
+  `EVENT_ERROR`, `EVENT_NOFRAMETIMEOUT` and `EVENT_NOPACKETTIMEOUT`, and each failure is now logged at error level
+  with its event code.
+
+Regression test: `Acquisition no-packet timeout and unrelated SDK events` in
+`indigo_test/integration/test_ccd_touptek_sdk.c` covers these cases:
+
+- the timeout is armed before the trigger and at stream start with the expected value;
+- it is disarmed after an image, after each failure event, after the watchdog, after streaming and after an abort;
+- `EVENT_NOPACKETTIMEOUT`, `EVENT_TRIGGERFAIL` and `EVENT_ERROR` end a single exposure in ALERT;
+- an unrelated event (`EVENT_EXPOSURE`) leaves the watchdog to end the exposure.
+
+Each part was checked against the old code by reverting it on its own:
+
+| Reverted part | Where the test fails |
+| --- | --- |
+| Whole driver change | Arming assertion |
+| `EVENT_TRIGGERFAIL` handling | Failure-event loop |
+| Watchdog cancel for every event | Unrelated-event case |
+
+Validation, fake SDK, macOS arm64/x86_64:
+
+- The ToupTek suite passed 30 of its 31 cases at the time, and the Altair variant gave the same result. (This was
+  first recorded as 31 of 32, which miscounted the cases.)
+- The one failing case, `Driver configuration persistence` (`configs == 3`), also failed with this change stashed,
+  so it was not caused by this change. The cause was the test harness, which is fixed under TT-D05 below.
+- All ten OEM variants that include this source (Altair, BacCam, Bresser, OmegonPro, StarshootG, Rising, Mallin,
+  Meade, Ogma, SVBony) build without compiler warnings.
+
+Still needed on hardware:
+
+- Confirm the SDK counts the no-packet timeout from the trigger or from the last packet, not from some earlier
+  point. If it counted from an earlier point, every exposure started after an idle period would fail at once with
+  `pull_callback(0085) reported failure`.
+- Confirm that a lost GPM462M frame now ends in ALERT within exposure + about 4 s.
+
+## TT-D05 — CONFIG stayed BUSY for clients after a connection change (2026-09-25)
+
+Observed impact: the configuration control of a ToupTek camera, wheel or focuser could stay BUSY in clients
+long after the request was over.
+
+Root cause: the refactor to queues moved `CONFIG` onto the device queue, through `INDIGO_COPY_VALUES_PROCESS_CHANGE`.
+The request published BUSY at once and queued `ccd_config_handler()`, `wheel_config_handler()` or
+`focuser_config_handler()`. A connection change starts with `indigo_cancel_pending_handlers()`, which removed a
+config handler that had not run yet. The connection handler then set `CONFIG` to ALERT in memory only; it never
+published the change. The other properties in that cleanup list are deleted and redefined on connect and
+disconnect, so clients do receive their new state. `CONFIG` stays defined the whole time, so clients kept the
+BUSY state indefinitely. A connect or disconnect sent together with a `CONFIG` request is enough to trigger this,
+for example a client that saves the configuration just before it disconnects. The disconnect path also cancels
+pending handlers a second time, and nothing reset `CONFIG` there at all.
+
+A second effect of queuing: while `CONFIG` was BUSY, a new `CONFIG` request was silently dropped by the macro.
+Because the request reached the base class only through the queued handler, the base class never gave its
+"Configuration restore is in progress" answer.
+
+Fix, version `0x03000032` -> `0x03000033`:
+
+- The camera, wheel and focuser handle `CONFIG` on the bus thread, as the generated drivers do (compare
+  `ccd_asi`). On SAVE they write their own properties, then pass the request to the base class.
+- The three config handlers are removed, and so is `CONFIG_PROPERTY` in the three connection-cleanup lists.
+- The driver no longer marks `CONFIG` BUSY itself. A LOAD is still BUSY while the framework's restore runs,
+  because the base class sets that state.
+
+Regression test: `Configuration request survives a connection change` holds the camera queue, sends `CONFIG SAVE`,
+disconnects, and then requires the last `CONFIG` state published to clients to be OK. It runs for the camera and
+for the wheel. Against the previous driver it fails: the last published state is BUSY.
+
+Test harness fix: `test_ccd_touptek_sdk.c` still redirected the configuration folder with the compile-time
+replacement of `indigo_uni_config_folder()`. Commit `7cbd43fb4` removed that replacement from the Makefile, so the
+suite saved to and loaded from the developer's own `~/.indigo`. That is why `Driver configuration persistence`
+failed (`configs == 3`), and each run left fake `Touptek_*` and `Altair_*` files in `~/.indigo`. The suite now
+uses `indigo_test_mkdtemp_home()` from `test_runner.h`, reads the configs from `<test folder>/.indigo` and removes
+the whole folder at exit. A full run leaves no files in `~/.indigo`.
+
+Validation, fake SDK, macOS arm64/x86_64:
+
+- ToupTek suite: 32 of 32 cases pass.
+- Altair variant: 32 of 32 cases pass.
+- All ten OEM variants that include this source build without compiler warnings.
+- Not verified on hardware.
+
+## TT-D06 — a connection change reset cancelled requests to ALERT (2026-09-25)
+
+Each of the four connection handlers starts with `indigo_cancel_pending_handlers()` and then set every listed
+property still BUSY to ALERT, without publishing it. Two things were wrong with that:
+
+- A new session should start in a clean state. A request cancelled by the connection change belongs to the old
+  session, and ALERT reported a failure the user never had.
+- `X_WHEEL_MODEL` stays defined while the wheel is disconnected, and its change is queued. Because the reset was not
+  published, clients kept seeing it BUSY.
+
+Fix, version `0x03000033` -> `0x03000034`: the four loops reset to OK. The wheel loop also publishes
+`X_WHEEL_MODEL` when it resets it. The generated drivers got the same behaviour through the generator (TOOLS-014,
+DRV-217).
+
+Regression test: `Cancelled change does not survive a connection change` covers two cases:
+
+- **Camera:** the camera queue is held, a `CCD_GAIN` change is queued, and the camera disconnects and reconnects.
+  `CCD_GAIN` must come back OK and accept the next value.
+- **Wheel:** the same with an `X_WHEEL_MODEL` change. The reset to OK must be published while the wheel is
+  disconnected.
+
+Against the previous driver the case fails at the camera's `CCD_GAIN` state.

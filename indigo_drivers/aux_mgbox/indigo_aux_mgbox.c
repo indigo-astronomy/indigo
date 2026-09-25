@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_aux_mgbox"
 #define DRIVER_LABEL         "Astromi.ch MGBox"
 #define AUX_DEVICE_NAME      "MGBox Weather"
@@ -633,6 +633,27 @@ static void aux_connection_handler(indigo_device *device) {
 		X_CALIBRATION_PROPERTY->state = X_SEND_WEATHER_MOUNT_PROPERTY->state = X_REBOOT_PROPERTY->state = AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 		AUX_GPIO_OUTLET_1_ITEM->sw.value = X_REBOOT_ITEM->sw.value = false;
 		//- aux.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AUX_GPIO_OUTLET_PROPERTY,
+			AUX_OUTLET_PULSE_LENGTHS_PROPERTY,
+			AUX_DEW_WARNING_PROPERTY,
+			X_CALIBRATION_PROPERTY,
+			AUX_WEATHER_PROPERTY,
+			X_SEND_WEATHER_MOUNT_PROPERTY,
+			X_REBOOT_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (AUX_OUTLET_NAMES_PROPERTY != NULL && AUX_OUTLET_NAMES_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_OUTLET_NAMES_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
+		if (AUX_DEW_THRESHOLD_PROPERTY != NULL && AUX_DEW_THRESHOLD_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_DEW_THRESHOLD_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
@@ -964,6 +985,19 @@ static void gps_connection_handler(indigo_device *device) {
 		X_SEND_GPS_MOUNT_PROPERTY->state = X_REBOOT_GPS_PROPERTY->state = INDIGO_OK_STATE;
 		X_REBOOT_GPS_ITEM->sw.value = false;
 		//- gps.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			GPS_ADVANCED_PROPERTY,
+			GPS_GEOGRAPHIC_COORDINATES_PROPERTY,
+			GPS_UTC_TIME_PROPERTY,
+			X_SEND_GPS_MOUNT_PROPERTY,
+			X_REBOOT_GPS_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
 		indigo_delete_property(device, X_REBOOT_GPS_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {

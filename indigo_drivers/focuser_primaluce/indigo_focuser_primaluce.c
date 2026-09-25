@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -845,6 +845,35 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			X_CONFIG_PROPERTY,
+			X_STATE_PROPERTY,
+			X_WIFI_PROPERTY,
+			X_WIFI_AP_PROPERTY,
+			X_WIFI_STA_PROPERTY,
+			X_LEDS_PROPERTY,
+			X_RUNPRESET_L_PROPERTY,
+			X_RUNPRESET_M_PROPERTY,
+			X_RUNPRESET_S_PROPERTY,
+			X_RUNPRESET_1_PROPERTY,
+			X_RUNPRESET_2_PROPERTY,
+			X_RUNPRESET_3_PROPERTY,
+			X_RUNPRESET_PROPERTY,
+			X_HOLD_CURR_PROPERTY,
+			X_CALIBRATE_F_PROPERTY,
+			FOCUSER_TEMPERATURE_PROPERTY,
+			FOCUSER_BACKLASH_PROPERTY,
+			FOCUSER_POSITION_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_SPEED_PROPERTY,
+			FOCUSER_ABORT_MOTION_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_CONFIG_PROPERTY, NULL);
 		indigo_delete_property(device, X_STATE_PROPERTY, NULL);
 		indigo_delete_property(device, X_WIFI_PROPERTY, NULL);
@@ -1481,6 +1510,18 @@ static void rotator_connection_handler(indigo_device *device) {
 		//+ rotator.on_disconnect
 		primaluce_command(device, "{\"req\":{\"set\": {\"ARCO\":0}}}");
 		//- rotator.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			X_CALIBRATE_R_PROPERTY,
+			ROTATOR_ON_POSITION_SET_PROPERTY,
+			ROTATOR_POSITION_PROPERTY,
+			ROTATOR_ABORT_MOTION_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_CALIBRATE_R_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
 			primaluce_close(device);

@@ -26,7 +26,7 @@ driver usbdp {
 	label = "USB Dewpoint";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2019-2026 Rumen G. Bogdanovski";
-	version = 11;
+	version = 12;
 	serial;
 	define {
 		#define AUX_GROUP "Auxiliary"

@@ -26,7 +26,7 @@ driver cgusbst4 {
 	label = "CG-USB-ST4 Adapter";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 7;
+	version = 8;
 	serial {
 		pattern {
 			product = "USB to ST4 Astrogene_1000";

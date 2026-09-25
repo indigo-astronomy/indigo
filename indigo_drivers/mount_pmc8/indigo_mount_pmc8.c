@@ -770,6 +770,27 @@ static void mount_connection_handler(indigo_device *device) {
 		//+ mount.on_disconnect
 		pmc8_update_mount_type_perm(device, INDIGO_RW_PERM);
 		//- mount.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY,
+			MOUNT_TRACKING_PROPERTY,
+			MOUNT_TRACK_RATE_PROPERTY,
+			MOUNT_PARK_PROPERTY,
+			MOUNT_ABORT_MOTION_PROPERTY,
+			MOUNT_MOTION_DEC_PROPERTY,
+			MOUNT_MOTION_RA_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (CONNECTION_MODE_PROPERTY != NULL && CONNECTION_MODE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_MODE_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
+		if (MOUNT_TYPE_PROPERTY != NULL && MOUNT_TYPE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_TYPE_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		if (--PRIVATE_DATA->count == 0) {
 			pmc8_close(device);
 		}
@@ -1179,6 +1200,17 @@ static void guider_connection_handler(indigo_device *device) {
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		//- guider.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			GUIDER_GUIDE_RA_PROPERTY,
+			GUIDER_GUIDE_DEC_PROPERTY,
+			GUIDER_RATE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		if (--PRIVATE_DATA->count == 0) {
 			pmc8_close(device);
 		}

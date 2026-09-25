@@ -22,7 +22,7 @@ driver qhy {
 	label = "QHY Q-Focuser";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2024-2026 Rumen G. Bogdanovski";
-	version = 8;
+	version = 9;
 	serial {
 		configurable_speed = true;
 	}

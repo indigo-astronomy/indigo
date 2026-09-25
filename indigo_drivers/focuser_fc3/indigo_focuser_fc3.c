@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_focuser_fc3"
 #define DRIVER_LABEL         "PegasusAstro FocusCube v3 Focuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus FocusCube3"
@@ -191,6 +191,24 @@ static void focuser_connection_handler(indigo_device *device) {
 		//+ focuser.on_disconnect
 		fc3_command(device, "FH");
 		//- focuser.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			FOCUSER_BACKLASH_PROPERTY,
+			FOCUSER_REVERSE_MOTION_PROPERTY,
+			FOCUSER_TEMPERATURE_PROPERTY,
+			FOCUSER_SPEED_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_ON_POSITION_SET_PROPERTY,
+			FOCUSER_POSITION_PROPERTY,
+			FOCUSER_ABORT_MOTION_PROPERTY,
+			FOCUSER_DIRECTION_PROPERTY,
+			FOCUSER_LIMITS_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		fc3_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

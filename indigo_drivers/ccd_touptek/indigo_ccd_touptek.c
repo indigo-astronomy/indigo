@@ -38,7 +38,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION											0x03000031
+#define DRIVER_VERSION											0x03000034
 #define PRIVATE_DATA												((DRIVER_PRIVATE_DATA *)device->private_data)
 
 #define ADVANCED_GROUP											"Advanced"
@@ -317,11 +317,20 @@ static void finish_exposure(indigo_device *device) {
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 }
 
+static void set_no_packet_timeout(indigo_device *device, double exposure) {
+	// Without this timeout the SDK silently drops a frame lost on USB and the exposure waits for the watchdog. It is armed only while an acquisition runs,
+	// with the trigger timeout recommended by the SDK documentation (exposure * 102% + 4 s), and disarmed (negative exposure) when the acquisition ends.
+	int timeout = exposure < 0 ? 0 : (int)(exposure * 1020 + 4000);
+	HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_NOPACKET_TIMEOUT), timeout);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_NOPACKET_TIMEOUT, %d) -> %08x", timeout, result);
+}
+
 static void stop_video_mode(indigo_device *device) {
 	if (!PRIVATE_DATA->video_mode) {
 		return;
 	}
 	PRIVATE_DATA->video_mode = false;
+	set_no_packet_timeout(device, -1);
 	bool aborting = CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE;
 	HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 1);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 1) -> %08x", result);
@@ -349,6 +358,7 @@ static void ccd_exposure_watchdog_handler(indigo_device *device) {
 	HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FLUSH), 3);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FLUSH, 3) -> %08x", result);
 	PRIVATE_DATA->mode = -1;
+	set_no_packet_timeout(device, -1);
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed, pull callback was not called");
 }
@@ -362,7 +372,6 @@ static void ccd_event_handler(indigo_device *device, void *data) {
 	SDK_TYPE(FrameInfoV2) frameInfo = { 0 };
 	HRESULT result;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pull_callback(%04x) called", event);
-	indigo_cancel_pending_handler(device, ccd_exposure_watchdog_handler);
 	indigo_fits_keyword keywords[] = {
 		{ INDIGO_FITS_STRING, "BAYERPAT", .string = PRIVATE_DATA->bayer_pattern, "Bayer color pattern" },
 		{ 0 }
@@ -373,6 +382,11 @@ static void ccd_event_handler(indigo_device *device, void *data) {
 	}
 	switch (event) {
 		case SDK_DEF(EVENT_IMAGE): {
+			// Only the image and error events end an exposure; any other notification must leave the watchdog armed.
+			indigo_cancel_pending_handler(device, ccd_exposure_watchdog_handler);
+			if (!PRIVATE_DATA->video_mode) {
+				set_no_packet_timeout(device, -1);
+			}
 			result = SDK_CALL(PullImageV2)(PRIVATE_DATA->handle, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->bits, &frameInfo);
 			if (result >= 0) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PullImageV2(%d, ->[%d x %d, %x, %d]) -> %08x", PRIVATE_DATA->bits, frameInfo.width, frameInfo.height, frameInfo.flag, frameInfo.seq, result);
@@ -417,7 +431,13 @@ static void ccd_event_handler(indigo_device *device, void *data) {
 		}
 		case SDK_DEF(EVENT_NOFRAMETIMEOUT):
 		case SDK_DEF(EVENT_NOPACKETTIMEOUT):
+		case SDK_DEF(EVENT_TRIGGERFAIL):
 		case SDK_DEF(EVENT_ERROR): {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "pull_callback(%04x) reported failure", event);
+			indigo_cancel_pending_handler(device, ccd_exposure_watchdog_handler);
+			if (!PRIVATE_DATA->video_mode) {
+				set_no_packet_timeout(device, -1);
+			}
 			result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FLUSH), 3);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FLUSH, 3) -> %08x", result);
 			indigo_ccd_failure_cleanup(device);
@@ -623,6 +643,7 @@ static void ccd_start_exposure_handler(indigo_device *device) {
 		result = SDK_CALL(put_ExpoTime)(PRIVATE_DATA->handle, (unsigned)(CCD_EXPOSURE_ITEM->number.target * 1000000));
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_ExpoTime(%u) -> %08x", (unsigned)(CCD_EXPOSURE_ITEM->number.target * 1000000), result);
 		PRIVATE_DATA->aborting = false;
+		set_no_packet_timeout(device, CCD_EXPOSURE_ITEM->number.target);
 		result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 1);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(1) -> %08x", result);
 		double whatchdog_timeout = (CCD_EXPOSURE_ITEM->number.target > 50) ? 1.5 * CCD_EXPOSURE_ITEM->number.target : CCD_EXPOSURE_ITEM->number.target + 25;
@@ -633,6 +654,7 @@ static void ccd_start_exposure_handler(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_ExpoTime(%u) -> %08x", (unsigned)(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000), result);
 		PRIVATE_DATA->aborting = false;
 		PRIVATE_DATA->video_mode = true;
+		set_no_packet_timeout(device, CCD_STREAMING_EXPOSURE_ITEM->number.target);
 		result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 0);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 0) -> %08x", result);
 		indigo_ccd_change_property(device, NULL, CCD_STREAMING_PROPERTY);
@@ -881,17 +903,16 @@ static void ccd_connection_handler(indigo_device *device) {
 	bool failed_connection = false;
 	indigo_cancel_pending_handlers(device);
 	indigo_lock_master_device(device);
-	// Cancelled requests must not leave properties BUSY in the next session.
+	// Cancelled requests must not leave properties BUSY: a new session starts in a clean state.
 	indigo_property *properties[] = {
 		CCD_MODE_PROPERTY, CCD_BIN_PROPERTY, CCD_FRAME_PROPERTY, CCD_EXPOSURE_PROPERTY,
 		CCD_STREAMING_PROPERTY, CCD_ABORT_EXPOSURE_PROPERTY, CCD_COOLER_PROPERTY, CCD_TEMPERATURE_PROPERTY,
 		CCD_GAIN_PROPERTY, CCD_OFFSET_PROPERTY, X_CCD_ADVANCED_PROPERTY, X_CCD_FAN_PROPERTY,
-		X_CCD_HEATER_PROPERTY, X_CCD_CONVERSION_GAIN_PROPERTY, X_CCD_LED_PROPERTY, X_CCD_BIN_MODE_PROPERTY,
-		CONFIG_PROPERTY
+		X_CCD_HEATER_PROPERTY, X_CCD_CONVERSION_GAIN_PROPERTY, X_CCD_LED_PROPERTY, X_CCD_BIN_MODE_PROPERTY
 	};
 	for (unsigned i = 0; i < sizeof(properties) / sizeof(properties[0]); i++) {
 		if (properties[i] && properties[i]->state == INDIGO_BUSY_STATE) {
-			properties[i]->state = INDIGO_ALERT_STATE;
+			properties[i]->state = INDIGO_OK_STATE;
 		}
 	}
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -1077,6 +1098,8 @@ disconnect:
 			result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
 			atomic_store(&PRIVATE_DATA->event_generation, (atomic_load(&PRIVATE_DATA->event_generation) + 1) & (UINTPTR_MAX >> 16));
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
+			// The guider may keep the shared handle open; do not leave an acquisition timeout armed on it.
+			set_no_packet_timeout(device, -1);
 		}
 		// Stop has joined the SDK callback; drain its last queued notifications before freeing the buffer.
 		indigo_unlock_master_device(device);
@@ -1256,6 +1279,7 @@ static void ccd_abort_exposure_handler(indigo_device *device) {
 			PRIVATE_DATA->aborting = true;
 			result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 0);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(0) -> %08x", result);
+			set_no_packet_timeout(device, -1);
 		}
 	}
 	indigo_ccd_change_property(device, NULL, CCD_ABORT_EXPOSURE_PROPERTY);
@@ -1492,18 +1516,6 @@ static void save_if_published(indigo_device *device, indigo_property *property) 
 	}
 }
 
-static void ccd_config_handler(indigo_device *device) {
-	if (CONFIG_SAVE_ITEM->sw.value) {
-		save_if_published(device, X_CCD_ADVANCED_PROPERTY);
-		save_if_published(device, X_CCD_CONVERSION_GAIN_PROPERTY);
-		save_if_published(device, X_CCD_BIN_MODE_PROPERTY);
-		save_if_published(device, X_CCD_LED_PROPERTY);
-	}
-	CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_property *property = indigo_copy_property(NULL, CONFIG_PROPERTY);
-	indigo_ccd_change_property(device, NULL, property);
-	indigo_release_property(property);
-}
 
 #pragma mark - Device API (ccd)
 
@@ -1755,8 +1767,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, ccd_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CONFIG_PROPERTY, ccd_config_handler);
-		return INDIGO_OK;
+		// CONFIG is handled on the bus thread, as in the base class. CONFIG stays defined across connection changes, so a queued request
+		// cancelled by a connection change would leave it BUSY for every client.
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			save_if_published(device, X_CCD_ADVANCED_PROPERTY);
+			save_if_published(device, X_CCD_CONVERSION_GAIN_PROPERTY);
+			save_if_published(device, X_CCD_BIN_MODE_PROPERTY);
+			save_if_published(device, X_CCD_LED_PROPERTY);
+		}
+		return indigo_ccd_change_property(device, client, property);
 	} else if (!IS_CONNECTED || CONNECTION_PROPERTY->state != INDIGO_OK_STATE) {
 		return indigo_ccd_change_property(device, client, property);
 	} else if (indigo_property_match_changeable(CCD_MODE_PROPERTY, property)) {
@@ -1851,13 +1870,13 @@ static indigo_result ccd_detach(indigo_device *device) {
 static void guider_connection_handler(indigo_device *device) {
 	indigo_cancel_pending_handlers(device);
 	indigo_lock_master_device(device);
-	// Cancelled requests must not leave properties BUSY in the next session.
+	// Cancelled requests must not leave properties BUSY: a new session starts in a clean state.
 	indigo_property *properties[] = {
 		GUIDER_GUIDE_DEC_PROPERTY, GUIDER_GUIDE_RA_PROPERTY
 	};
 	for (unsigned i = 0; i < sizeof(properties) / sizeof(properties[0]); i++) {
 		if (properties[i] && properties[i]->state == INDIGO_BUSY_STATE) {
-			properties[i]->state = INDIGO_ALERT_STATE;
+			properties[i]->state = INDIGO_OK_STATE;
 		}
 	}
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -1989,13 +2008,17 @@ static indigo_result guider_detach(indigo_device *device) {
 static void wheel_connection_handler(indigo_device *device) {
 	indigo_cancel_pending_handlers(device);
 	indigo_lock_master_device(device);
-	// Cancelled requests must not leave properties BUSY in the next session.
+	// Cancelled requests must not leave properties BUSY: a new session starts in a clean state.
 	indigo_property *properties[] = {
-		WHEEL_SLOT_PROPERTY, X_CALIBRATE_PROPERTY, X_WHEEL_MODEL_PROPERTY, CONFIG_PROPERTY
+		WHEEL_SLOT_PROPERTY, X_CALIBRATE_PROPERTY, X_WHEEL_MODEL_PROPERTY
 	};
 	for (unsigned i = 0; i < sizeof(properties) / sizeof(properties[0]); i++) {
 		if (properties[i] && properties[i]->state == INDIGO_BUSY_STATE) {
-			properties[i]->state = INDIGO_ALERT_STATE;
+			properties[i]->state = INDIGO_OK_STATE;
+			// X_WHEEL_MODEL stays defined while disconnected, so clients must see the reset now.
+			if (properties[i] == X_WHEEL_MODEL_PROPERTY) {
+				indigo_update_property(device, X_WHEEL_MODEL_PROPERTY, NULL);
+			}
 		}
 	}
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -2094,16 +2117,6 @@ static void wheel_x_wheel_model_handler(indigo_device *device) {
 	indigo_wheel_change_property(device, NULL, X_WHEEL_MODEL_PROPERTY);
 }
 
-static void wheel_config_handler(indigo_device *device) {
-	if (CONFIG_SAVE_ITEM->sw.value) {
-		indigo_save_property(device, NULL, X_WHEEL_MODEL_PROPERTY);
-	}
-	CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_property *property = indigo_copy_property(NULL, CONFIG_PROPERTY);
-	indigo_wheel_change_property(device, NULL, property);
-	indigo_release_property(property);
-}
-
 #pragma mark - Device API (wheel)
 
 static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -2155,8 +2168,11 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, wheel_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CONFIG_PROPERTY, wheel_config_handler);
-		return INDIGO_OK;
+		// CONFIG is handled on the bus thread, see ccd_change_property().
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, X_WHEEL_MODEL_PROPERTY);
+		}
+		return indigo_wheel_change_property(device, client, property);
 	} else if (indigo_property_match_changeable(X_WHEEL_MODEL_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_WHEEL_MODEL_PROPERTY, wheel_x_wheel_model_handler);
 		return INDIGO_OK;
@@ -2191,15 +2207,15 @@ static indigo_result wheel_detach(indigo_device *device) {
 static void focuser_connection_handler(indigo_device *device) {
 	indigo_cancel_pending_handlers(device);
 	indigo_lock_master_device(device);
-	// Cancelled requests must not leave properties BUSY in the next session.
+	// Cancelled requests must not leave properties BUSY: a new session starts in a clean state.
 	indigo_property *properties[] = {
 		FOCUSER_REVERSE_MOTION_PROPERTY, FOCUSER_POSITION_PROPERTY, FOCUSER_LIMITS_PROPERTY, FOCUSER_BACKLASH_PROPERTY,
 		FOCUSER_STEPS_PROPERTY, FOCUSER_ABORT_MOTION_PROPERTY, FOCUSER_COMPENSATION_PROPERTY, X_BEEP_PROPERTY,
-		FOCUSER_MODE_PROPERTY, CONFIG_PROPERTY
+		FOCUSER_MODE_PROPERTY
 	};
 	for (unsigned i = 0; i < sizeof(properties) / sizeof(properties[0]); i++) {
 		if (properties[i] && properties[i]->state == INDIGO_BUSY_STATE) {
-			properties[i]->state = INDIGO_ALERT_STATE;
+			properties[i]->state = INDIGO_OK_STATE;
 		}
 	}
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -2505,16 +2521,6 @@ static void focuser_mode_handler(indigo_device *device) {
 	indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
 }
 
-static void focuser_config_handler(indigo_device *device) {
-	if (CONFIG_SAVE_ITEM->sw.value) {
-		//indigo_save_property(device, NULL, EAF_BEEP_PROPERTY);
-	}
-	CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_property *property = indigo_copy_property(NULL, CONFIG_PROPERTY);
-	indigo_focuser_change_property(device, NULL, property);
-	indigo_release_property(property);
-}
-
 #pragma mark - Device API (focuser)
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -2586,8 +2592,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, focuser_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CONFIG_PROPERTY, focuser_config_handler);
-		return INDIGO_OK;
+		// CONFIG is handled on the bus thread, see ccd_change_property().
+		return indigo_focuser_change_property(device, client, property);
 	} else if (!IS_CONNECTED || CONNECTION_PROPERTY->state != INDIGO_OK_STATE) {
 		return indigo_focuser_change_property(device, client, property);
 	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {

@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_wheel_playerone"
 #define DRIVER_LABEL         "Player One Filter Wheel"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -219,6 +219,17 @@ static void wheel_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			WHEEL_SLOT_PROPERTY,
+			X_RESET_PROPERTY,
+			X_CUSTOM_SUFFIX_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_RESET_PROPERTY, NULL);
 		indigo_delete_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
 		playerone_close(device);

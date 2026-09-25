@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_guider_asi"
 #define DRIVER_LABEL         "ZWO ASI USB-St4 Guider"
 #define GUIDER_DEVICE_NAME   "%s"
@@ -262,6 +262,16 @@ static void guider_connection_handler(indigo_device *device) {
 		GUIDER_GUIDE_RA_PROPERTY->hidden = true;
 		GUIDER_GUIDE_DEC_PROPERTY->hidden = true;
 		//- guider.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			GUIDER_GUIDE_DEC_PROPERTY,
+			GUIDER_GUIDE_RA_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		asi_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -649,7 +659,7 @@ indigo_result indigo_guider_asi(indigo_driver_action action, indigo_driver_info 
 #include "indigo_guider_asi.h"
 
 indigo_result indigo_guider_asi(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "ZWO ASI USB-St4 Guider", __FUNCTION__, 0x0300000B, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "ZWO ASI USB-St4 Guider", __FUNCTION__, 0x0300000C, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

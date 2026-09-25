@@ -1584,6 +1584,41 @@ void write_c_timer_callback(device_type *device) {
 	write_line("");
 }
 
+// Disconnect cancels the pending change handlers, and a property whose handler was cancelled would stay
+// BUSY: the BUSY guard of INDIGO_COPY_*_PROCESS_CHANGE would then silently refuse every later change to
+// it, in this session and after reconnect. A new session starts in a clean state, so every property still
+// BUSY once on_disconnect has run returns to OK. A property that stays defined while disconnected is
+// republished now; the others carry the clean state into their definition on the next connect.
+static void write_c_disconnect_state_reset(device_type *device) {
+	bool first_one = true;
+	for (property_type *property = device->properties; property; property = property->next) {
+		if (property->always_defined || !strcmp(property->id, "CONNECTION") || !strcmp(property->id, "CONFIG")) {
+			continue;
+		}
+		if (first_one) {
+			write_line("\t\t// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.");
+			write_line("\t\tindigo_property *cancelled_properties[] = {");
+			first_one = false;
+		}
+		write_line("\t\t\t%s,", property->handle);
+	}
+	if (!first_one) {
+		write_line("\t\t};");
+		write_line("\t\tfor (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {");
+		write_line("\t\t\tif (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {");
+		write_line("\t\t\t\tcancelled_properties[i]->state = INDIGO_OK_STATE;");
+		write_line("\t\t\t}");
+		write_line("\t\t}");
+	}
+	for (property_type *property = device->properties; property; property = property->next) {
+		if (property->always_defined && strcmp(property->id, "CONNECTION") && strcmp(property->id, "CONFIG")) {
+			write_line("\t\tif (%s != NULL && %s->state == INDIGO_BUSY_STATE) {", property->handle, property->handle);
+			write_line("\t\t\tINDIGO_UPDATE_PROPERTY_STATE(%s, INDIGO_OK_STATE, NULL);", property->handle);
+			write_line("\t\t}");
+		}
+	}
+}
+
 void write_c_connection_change_handler(device_type *device) {
 	bool is_multi_device = driver.devices != NULL && driver.devices->next != NULL;
 	bool is_master_device = device == driver.devices;
@@ -1675,6 +1710,7 @@ void write_c_connection_change_handler(device_type *device) {
 	write_line("\t} else {");
 	write_line("\t\tindigo_cancel_pending_handlers(device);");
 	write_c_code_blocks(device->on_disconnect, 2, "%s.on_disconnect", device->id);
+	write_c_disconnect_state_reset(device);
 	for (property_type *property2 = device->properties; property2; property2 = property2->next) {
 		if (property2->type[0] != 'i' && !property2->always_defined) {
 			write_line("\t\tindigo_delete_property(device, %s, NULL);", property2->handle);

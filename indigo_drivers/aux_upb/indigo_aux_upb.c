@@ -824,6 +824,32 @@ static void aux_connection_handler(indigo_device *device) {
 			PRIVATE_DATA->smart_hub = 0;
 		}
 		//- aux.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AUX_POWER_OUTLET_PROPERTY,
+			AUX_POWER_OUTLET_STATE_PROPERTY,
+			AUX_POWER_OUTLET_CURRENT_PROPERTY,
+			AUX_HEATER_OUTLET_PROPERTY,
+			AUX_HEATER_OUTLET_STATE_PROPERTY,
+			AUX_HEATER_OUTLET_CURRENT_PROPERTY,
+			AUX_DEW_CONTROL_PROPERTY,
+			AUX_USB_PORT_PROPERTY,
+			AUX_USB_PORT_STATE_PROPERTY,
+			AUX_WEATHER_PROPERTY,
+			AUX_INFO_PROPERTY,
+			X_AUX_HUB_PROPERTY,
+			X_AUX_REBOOT_PROPERTY,
+			X_AUX_VARIABLE_POWER_OUTLET_PROPERTY,
+			AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (AUX_OUTLET_NAMES_PROPERTY != NULL && AUX_OUTLET_NAMES_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_OUTLET_NAMES_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
@@ -1351,6 +1377,23 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			FOCUSER_BACKLASH_PROPERTY,
+			FOCUSER_REVERSE_MOTION_PROPERTY,
+			FOCUSER_TEMPERATURE_PROPERTY,
+			FOCUSER_SPEED_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_ON_POSITION_SET_PROPERTY,
+			FOCUSER_LIMITS_PROPERTY,
+			FOCUSER_POSITION_PROPERTY,
+			FOCUSER_ABORT_MOTION_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		if (--PRIVATE_DATA->count == 0) {
 			upb_close(device);
 		}

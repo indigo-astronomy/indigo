@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_dome_baader"
 #define DRIVER_LABEL         "Baader Classic Dome"
 #define DOME_DEVICE_NAME     "Baader Classic Dome"
@@ -551,6 +551,24 @@ static void dome_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			DOME_SPEED_PROPERTY,
+			DOME_ON_COORDINATES_SET_PROPERTY,
+			DOME_SLAVING_PARAMETERS_PROPERTY,
+			DOME_HORIZONTAL_COORDINATES_PROPERTY,
+			DOME_STEPS_PROPERTY,
+			DOME_PARK_PROPERTY,
+			DOME_ABORT_MOTION_PROPERTY,
+			DOME_SHUTTER_PROPERTY,
+			DOME_FLAP_PROPERTY,
+			X_EMERGENCY_CLOSE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_EMERGENCY_CLOSE_PROPERTY, NULL);
 		baader_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);

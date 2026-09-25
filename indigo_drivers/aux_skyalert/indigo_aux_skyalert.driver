@@ -26,7 +26,7 @@ driver skyalert {
 	label = "Interactive Astronomy SkyAlert";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 7;
+	version = 8;
 	serial;
 	data {
 		char response[32];

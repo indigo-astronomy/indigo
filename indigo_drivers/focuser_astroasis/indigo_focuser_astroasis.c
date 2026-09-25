@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_focuser_astroasis"
 #define DRIVER_LABEL         "Astroasis Oasis Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -394,6 +394,30 @@ static void focuser_connection_handler(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserStopMove() failed, ret = %d", res);
 		}
 		//- focuser.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			FOCUSER_REVERSE_MOTION_PROPERTY,
+			FOCUSER_POSITION_PROPERTY,
+			FOCUSER_LIMITS_PROPERTY,
+			FOCUSER_BACKLASH_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_ABORT_MOTION_PROPERTY,
+			FOCUSER_COMPENSATION_PROPERTY,
+			FOCUSER_MODE_PROPERTY,
+			X_BEEP_ON_POWER_UP_PROPERTY,
+			X_BEEP_ON_MOVE_PROPERTY,
+			X_BACKLASH_DIRECTION_PROPERTY,
+			X_CUSTOM_SUFFIX_PROPERTY,
+			X_BLUETOOTH_PROPERTY,
+			X_BLUETOOTH_NAME_PROPERTY,
+			X_FACTORY_RESET_PROPERTY,
+			X_BOARD_TEMPERATURE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_BEEP_ON_POWER_UP_PROPERTY, NULL);
 		indigo_delete_property(device, X_BEEP_ON_MOVE_PROPERTY, NULL);
 		indigo_delete_property(device, X_BACKLASH_DIRECTION_PROPERTY, NULL);
@@ -1212,7 +1236,7 @@ indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_drive
 #include "indigo_focuser_astroasis.h"
 
 indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, 0x0300000B, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, 0x0300000C, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

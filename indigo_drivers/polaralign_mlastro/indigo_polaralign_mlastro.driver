@@ -34,7 +34,7 @@ driver mlastro {
 	label = "MLAstro RPA";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2026 by Rumen G.Bogdanovski";
-	version = 4;
+	version = 5;
 	serial;
 	define {
 		#define MLASTRO_BAUDRATE 115200

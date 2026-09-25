@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_ccd_fli"
 #define DRIVER_LABEL         "FLI Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -484,6 +484,21 @@ static void ccd_connection_handler(indigo_device *device) {
 		}
 		PRIVATE_DATA->rbi_phase = false;
 		//- ccd.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			CCD_EXPOSURE_PROPERTY,
+			CCD_ABORT_EXPOSURE_PROPERTY,
+			CCD_TEMPERATURE_PROPERTY,
+			CCD_COOLER_PROPERTY,
+			CCD_FRAME_PROPERTY,
+			FLI_NFLUSHES_PROPERTY,
+			FLI_CAMERA_MODE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, FLI_NFLUSHES_PROPERTY, NULL);
 		indigo_delete_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
 		fli_close(device);

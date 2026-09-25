@@ -26,7 +26,7 @@ driver cloudwatcher {
 	label = "AAG CloudWatcher";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2020-2026 Rumen G. Bogdanovski";
-	version = 13;
+	version = 14;
 	serial;
 	include {
 		#include <ctype.h>

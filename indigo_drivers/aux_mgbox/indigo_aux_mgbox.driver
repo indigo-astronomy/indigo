@@ -25,7 +25,7 @@ driver mgbox {
 	label = "Astromi.ch MGBox";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
-	version = 10;
+	version = 11;
 	serial { configurable_speed = true; }
 	include {
 		#include <math.h>

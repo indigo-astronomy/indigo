@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_rotator_asi"
 #define DRIVER_LABEL         "ZWO CAA Rotator"
 #define ROTATOR_DEVICE_NAME  "%s"
@@ -347,6 +347,23 @@ static void rotator_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			ROTATOR_DIRECTION_PROPERTY,
+			ROTATOR_POSITION_PROPERTY,
+			ROTATOR_LIMITS_PROPERTY,
+			ROTATOR_RELATIVE_MOVE_PROPERTY,
+			ROTATOR_ABORT_MOTION_PROPERTY,
+			ROTATOR_ON_POSITION_SET_PROPERTY,
+			ROTATOR_BACKLASH_PROPERTY,
+			CAA_BEEP_PROPERTY,
+			CAA_CUSTOM_SUFFIX_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, CAA_BEEP_PROPERTY, NULL);
 		indigo_delete_property(device, CAA_CUSTOM_SUFFIX_PROPERTY, NULL);
 		asi_close(device);

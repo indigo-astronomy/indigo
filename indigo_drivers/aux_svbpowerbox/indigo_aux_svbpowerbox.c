@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000002
+#define DRIVER_VERSION       0x03000003
 #define DRIVER_NAME          "indigo_aux_svbpowerbox"
 #define DRIVER_LABEL         "SVBONY PowerBox"
 #define AUX_DEVICE_NAME      "SVBONY PowerBox"
@@ -469,6 +469,27 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AUX_POWER_OUTLET_PROPERTY,
+			AUX_POWER_OUTLET_VOLTAGE_PROPERTY,
+			AUX_POWER_OUTLET_CURRENT_PROPERTY,
+			AUX_USB_PORT_PROPERTY,
+			AUX_HEATER_OUTLET_PROPERTY,
+			AUX_DEW_CONTROL_PROPERTY,
+			AUX_WEATHER_PROPERTY,
+			AUX_TEMPERATURE_SENSORS_PROPERTY,
+			AUX_DEW_WARNING_PROPERTY,
+			AUX_INFO_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (AUX_OUTLET_NAMES_PROPERTY != NULL && AUX_OUTLET_NAMES_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_OUTLET_NAMES_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_POWER_OUTLET_VOLTAGE_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);

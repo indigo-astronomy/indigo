@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_focuser_lakeside"
 #define DRIVER_LABEL         "LakesideAstro Focuser"
 #define FOCUSER_DEVICE_NAME  "LakesideAstro Focuser"
@@ -329,6 +329,23 @@ static void focuser_connection_handler(indigo_device *device) {
 		PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		//- focuser.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			FOCUSER_SPEED_PROPERTY,
+			FOCUSER_TEMPERATURE_PROPERTY,
+			FOCUSER_POSITION_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_ABORT_MOTION_PROPERTY,
+			FOCUSER_BACKLASH_PROPERTY,
+			FOCUSER_COMPENSATION_PROPERTY,
+			FOCUSER_MODE_PROPERTY,
+			X_FOCUSER_ACTIVE_SLOPE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_FOCUSER_ACTIVE_SLOPE_PROPERTY, NULL);
 		lakeside_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);

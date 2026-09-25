@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_dome_nexdome"
 #define DRIVER_LABEL         "NexDome"
 #define DOME_DEVICE_NAME     "NexDome"
@@ -501,6 +501,27 @@ static void dome_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			DOME_SPEED_PROPERTY,
+			DOME_ON_COORDINATES_SET_PROPERTY,
+			DOME_SLAVING_PARAMETERS_PROPERTY,
+			DOME_HORIZONTAL_COORDINATES_PROPERTY,
+			DOME_STEPS_PROPERTY,
+			DOME_PARK_PROPERTY,
+			DOME_ABORT_MOTION_PROPERTY,
+			DOME_SHUTTER_PROPERTY,
+			X_REVERSED_PROPERTY,
+			X_RESET_SHUTTER_COMM_PROPERTY,
+			X_FIND_HOME_PROPERTY,
+			X_CALIBRATE_PROPERTY,
+			X_POWER_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_REVERSED_PROPERTY, NULL);
 		indigo_delete_property(device, X_RESET_SHUTTER_COMM_PROPERTY, NULL);
 		indigo_delete_property(device, X_FIND_HOME_PROPERTY, NULL);

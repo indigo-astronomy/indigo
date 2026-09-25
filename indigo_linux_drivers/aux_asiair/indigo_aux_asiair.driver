@@ -26,7 +26,7 @@ driver asiair {
 	label = "ZWO Power Ports ASIAIR";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2025-2026 Rumen G. Bogdanovski";
-	version = 4;
+	version = 5;
 	// The ports are reached through sysfs files, so the driver has no transport
 	// of its own and exposes one static device.
 	include {

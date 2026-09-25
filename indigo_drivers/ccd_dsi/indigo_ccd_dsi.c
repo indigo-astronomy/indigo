@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000011
+#define DRIVER_VERSION       0x03000012
 #define DRIVER_NAME          "indigo_ccd_dsi"
 #define DRIVER_LABEL         "Meade DSI Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -353,6 +353,19 @@ static void ccd_connection_handler(indigo_device *device) {
 		//+ ccd.on_disconnect
 		PRIVATE_DATA->can_check_temperature = false;
 		//- ccd.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			CCD_EXPOSURE_PROPERTY,
+			CCD_ABORT_EXPOSURE_PROPERTY,
+			CCD_GAIN_PROPERTY,
+			CCD_OFFSET_PROPERTY,
+			CCD_BIN_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		dsi_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

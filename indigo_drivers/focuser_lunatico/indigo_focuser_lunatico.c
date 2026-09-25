@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_focuser_lunatico"
 #define DRIVER_LABEL         "Lunatico Astronomia Focuser"
 #define FOCUSER_MAIN_DEVICE_NAME "Focuser Lunatico (Main)"
@@ -421,6 +421,30 @@ static void focuser_main_connection_handler(indigo_device *device) {
 		//+ focuser_main.on_disconnect
 		lunatico_release_port(device);
 		//- focuser_main.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			FOCUSER_TEMPERATURE_PROPERTY,
+			FOCUSER_ON_POSITION_SET_PROPERTY,
+			FOCUSER_SPEED_PROPERTY,
+			FOCUSER_LIMITS_PROPERTY,
+			FOCUSER_BACKLASH_PROPERTY,
+			FOCUSER_COMPENSATION_PROPERTY,
+			FOCUSER_MODE_PROPERTY,
+			FOCUSER_REVERSE_MOTION_PROPERTY,
+			FOCUSER_POSITION_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_ABORT_MOTION_PROPERTY,
+			X_FOCUSER_STEP_MODE_MAIN_PROPERTY,
+			X_FOCUSER_POWER_CONTROL_MAIN_PROPERTY,
+			X_FOCUSER_MOTOR_WIRING_MAIN_PROPERTY,
+			X_FOCUSER_MOTOR_TYPE_MAIN_PROPERTY,
+			X_FOCUSER_TEMPERATURE_SENSOR_MAIN_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_FOCUSER_STEP_MODE_MAIN_PROPERTY, NULL);
 		indigo_delete_property(device, X_FOCUSER_POWER_CONTROL_MAIN_PROPERTY, NULL);
 		indigo_delete_property(device, X_FOCUSER_MOTOR_WIRING_MAIN_PROPERTY, NULL);
@@ -790,6 +814,30 @@ static void focuser_exp_connection_handler(indigo_device *device) {
 		//+ focuser_exp.on_disconnect
 		lunatico_release_port(device);
 		//- focuser_exp.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			FOCUSER_TEMPERATURE_PROPERTY,
+			FOCUSER_ON_POSITION_SET_PROPERTY,
+			FOCUSER_SPEED_PROPERTY,
+			FOCUSER_LIMITS_PROPERTY,
+			FOCUSER_BACKLASH_PROPERTY,
+			FOCUSER_COMPENSATION_PROPERTY,
+			FOCUSER_MODE_PROPERTY,
+			FOCUSER_REVERSE_MOTION_PROPERTY,
+			FOCUSER_POSITION_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_ABORT_MOTION_PROPERTY,
+			X_FOCUSER_STEP_MODE_EXP_PROPERTY,
+			X_FOCUSER_POWER_CONTROL_EXP_PROPERTY,
+			X_FOCUSER_MOTOR_WIRING_EXP_PROPERTY,
+			X_FOCUSER_MOTOR_TYPE_EXP_PROPERTY,
+			X_FOCUSER_TEMPERATURE_SENSOR_EXP_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_FOCUSER_STEP_MODE_EXP_PROPERTY, NULL);
 		indigo_delete_property(device, X_FOCUSER_POWER_CONTROL_EXP_PROPERTY, NULL);
 		indigo_delete_property(device, X_FOCUSER_MOTOR_WIRING_EXP_PROPERTY, NULL);
@@ -1143,6 +1191,24 @@ static void rotator_exp_connection_handler(indigo_device *device) {
 		//+ rotator_exp.on_disconnect
 		lunatico_release_port(device);
 		//- rotator_exp.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			ROTATOR_STEPS_PER_REVOLUTION_PROPERTY,
+			ROTATOR_DIRECTION_PROPERTY,
+			ROTATOR_BACKLASH_PROPERTY,
+			ROTATOR_LIMITS_PROPERTY,
+			ROTATOR_POSITION_PROPERTY,
+			ROTATOR_ABORT_MOTION_PROPERTY,
+			X_ROTATOR_STEP_MODE_EXP_PROPERTY,
+			X_ROTATOR_POWER_CONTROL_EXP_PROPERTY,
+			X_ROTATOR_MOTOR_WIRING_EXP_PROPERTY,
+			X_ROTATOR_MOTOR_TYPE_EXP_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_ROTATOR_STEP_MODE_EXP_PROPERTY, NULL);
 		indigo_delete_property(device, X_ROTATOR_POWER_CONTROL_EXP_PROPERTY, NULL);
 		indigo_delete_property(device, X_ROTATOR_MOTOR_WIRING_EXP_PROPERTY, NULL);
@@ -1421,6 +1487,22 @@ static void aux_exp_connection_handler(indigo_device *device) {
 		//+ aux_exp.on_disconnect
 		lunatico_release_port(device);
 		//- aux_exp.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AUX_POWER_OUTLET_EXP_PROPERTY,
+			AUX_GPIO_SENSORS_EXP_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (AUX_OUTLET_NAMES_EXP_PROPERTY != NULL && AUX_OUTLET_NAMES_EXP_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_OUTLET_NAMES_EXP_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
+		if (AUX_SENSOR_NAMES_EXP_PROPERTY != NULL && AUX_SENSOR_NAMES_EXP_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_SENSOR_NAMES_EXP_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		indigo_delete_property(device, AUX_POWER_OUTLET_EXP_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_GPIO_SENSORS_EXP_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
@@ -1602,6 +1684,30 @@ static void focuser_third_connection_handler(indigo_device *device) {
 		//+ focuser_third.on_disconnect
 		lunatico_release_port(device);
 		//- focuser_third.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			FOCUSER_TEMPERATURE_PROPERTY,
+			FOCUSER_ON_POSITION_SET_PROPERTY,
+			FOCUSER_SPEED_PROPERTY,
+			FOCUSER_LIMITS_PROPERTY,
+			FOCUSER_BACKLASH_PROPERTY,
+			FOCUSER_COMPENSATION_PROPERTY,
+			FOCUSER_MODE_PROPERTY,
+			FOCUSER_REVERSE_MOTION_PROPERTY,
+			FOCUSER_POSITION_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_ABORT_MOTION_PROPERTY,
+			X_FOCUSER_STEP_MODE_THIRD_PROPERTY,
+			X_FOCUSER_POWER_CONTROL_THIRD_PROPERTY,
+			X_FOCUSER_MOTOR_WIRING_THIRD_PROPERTY,
+			X_FOCUSER_MOTOR_TYPE_THIRD_PROPERTY,
+			X_FOCUSER_TEMPERATURE_SENSOR_THIRD_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_FOCUSER_STEP_MODE_THIRD_PROPERTY, NULL);
 		indigo_delete_property(device, X_FOCUSER_POWER_CONTROL_THIRD_PROPERTY, NULL);
 		indigo_delete_property(device, X_FOCUSER_MOTOR_WIRING_THIRD_PROPERTY, NULL);
@@ -1955,6 +2061,24 @@ static void rotator_third_connection_handler(indigo_device *device) {
 		//+ rotator_third.on_disconnect
 		lunatico_release_port(device);
 		//- rotator_third.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			ROTATOR_STEPS_PER_REVOLUTION_PROPERTY,
+			ROTATOR_DIRECTION_PROPERTY,
+			ROTATOR_BACKLASH_PROPERTY,
+			ROTATOR_LIMITS_PROPERTY,
+			ROTATOR_POSITION_PROPERTY,
+			ROTATOR_ABORT_MOTION_PROPERTY,
+			X_ROTATOR_STEP_MODE_THIRD_PROPERTY,
+			X_ROTATOR_POWER_CONTROL_THIRD_PROPERTY,
+			X_ROTATOR_MOTOR_WIRING_THIRD_PROPERTY,
+			X_ROTATOR_MOTOR_TYPE_THIRD_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_ROTATOR_STEP_MODE_THIRD_PROPERTY, NULL);
 		indigo_delete_property(device, X_ROTATOR_POWER_CONTROL_THIRD_PROPERTY, NULL);
 		indigo_delete_property(device, X_ROTATOR_MOTOR_WIRING_THIRD_PROPERTY, NULL);
@@ -2233,6 +2357,22 @@ static void aux_third_connection_handler(indigo_device *device) {
 		//+ aux_third.on_disconnect
 		lunatico_release_port(device);
 		//- aux_third.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AUX_POWER_OUTLET_THIRD_PROPERTY,
+			AUX_GPIO_SENSORS_THIRD_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (AUX_OUTLET_NAMES_THIRD_PROPERTY != NULL && AUX_OUTLET_NAMES_THIRD_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_OUTLET_NAMES_THIRD_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
+		if (AUX_SENSOR_NAMES_THIRD_PROPERTY != NULL && AUX_SENSOR_NAMES_THIRD_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_SENSOR_NAMES_THIRD_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		indigo_delete_property(device, AUX_POWER_OUTLET_THIRD_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_GPIO_SENSORS_THIRD_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {

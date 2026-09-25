@@ -23,7 +23,7 @@ driver efa {
 	label = "Celestron / PlaneWave EFA Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 20;
+	version = 21;
 	serial;
 	define {
 		#define RESPONSE (PRIVATE_DATA->response + 5)

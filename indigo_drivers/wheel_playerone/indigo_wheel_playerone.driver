@@ -24,7 +24,7 @@ driver playerone {
 	label = "Player One Filter Wheel";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2023-2026 Rumen G. Bogdanovski";
-	version = 13;
+	version = 14;
 	multi_device_support = true;
 	include {
 		#include <PlayerOnePW.h>

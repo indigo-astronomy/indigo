@@ -22,7 +22,7 @@ driver steeldrive2 {
 	label = "Baader Planetarium SteelDriveII Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 15;
+	version = 16;
 	serial;
 	include {
 		#include <ctype.h>

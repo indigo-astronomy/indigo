@@ -20,7 +20,7 @@ driver askar {
 	label = "Askar-WAF Focuser";
 	author = "Rumen G. Bogdanovski";
 	copyright = "Copyright (C) 2026 Rumen G. Bogdanovski";
-	version = 7;
+	version = 8;
 	serial {
 		configurable_speed = true;
 	}

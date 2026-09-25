@@ -28,7 +28,7 @@ driver wcv4ec {
 	label = "WandererCover V4-EC Cover";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2024-2026 Rumen G. Bogdanovski";
-	version = 8;
+	version = 9;
 	serial;
 	define {
 		#define DEVICE_ID "WandererCoverV4"

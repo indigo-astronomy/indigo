@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002A
+#define DRIVER_VERSION       0x0300002B
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -968,6 +968,27 @@ static void mount_connection_handler(indigo_device *device) {
 		PRIVATE_DATA->guiding_in_progress = false;
 		PRIVATE_DATA->park_in_progress = false;
 		//- mount.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY,
+			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY,
+			MOUNT_SET_HOST_TIME_PROPERTY,
+			MOUNT_UTC_TIME_PROPERTY,
+			MOUNT_TRACKING_PROPERTY,
+			TRACKING_MODE_PROPERTY,
+			MOUNT_GUIDE_RATE_PROPERTY,
+			MOUNT_SLEW_RATE_PROPERTY,
+			MOUNT_MOTION_DEC_PROPERTY,
+			MOUNT_MOTION_RA_PROPERTY,
+			MOUNT_PARK_SET_PROPERTY,
+			MOUNT_PARK_PROPERTY,
+			MOUNT_ABORT_MOTION_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, TRACKING_MODE_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
 			nexstar_close(device);
@@ -1369,6 +1390,17 @@ static void guider_connection_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
 		PRIVATE_DATA->guiding_in_progress = false;
 		//- guider.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			GUIDER_GUIDE_RA_PROPERTY,
+			GUIDER_GUIDE_DEC_PROPERTY,
+			COMMAND_GUIDE_RATE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
 			nexstar_close(device);

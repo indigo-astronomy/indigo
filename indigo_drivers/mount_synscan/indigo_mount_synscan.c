@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -1709,6 +1709,43 @@ static void mount_connection_handler(indigo_device *device) {
 		//+ mount.on_disconnect
 		PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_IDLE;
 		//- mount.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			DEVICE_BAUDRATE_PROPERTY,
+			MOUNT_EPOCH_PROPERTY,
+			MOUNT_STATE_PROPERTY,
+			MOUNT_PARK_SET_PROPERTY,
+			MOUNT_PARK_POSITION_PROPERTY,
+			MOUNT_HOME_SET_PROPERTY,
+			MOUNT_HOME_POSITION_PROPERTY,
+			MOUNT_RAW_COORDINATES_PROPERTY,
+			MOUNT_SIDE_OF_PIER_PROPERTY,
+			MOUNT_ALIGNMENT_MODE_PROPERTY,
+			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY,
+			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY,
+			MOUNT_PARK_PROPERTY,
+			MOUNT_HOME_PROPERTY,
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY,
+			MOUNT_TRACKING_PROPERTY,
+			MOUNT_TRACK_RATE_PROPERTY,
+			MOUNT_MOTION_RA_PROPERTY,
+			MOUNT_MOTION_DEC_PROPERTY,
+			MOUNT_ABORT_MOTION_PROPERTY,
+			MOUNT_STATE_PROPERTY,
+			MOUNT_POLARSCOPE_PROPERTY,
+			MOUNT_USE_ENCODERS_PROPERTY,
+			MOUNT_GUIDE_RATE_PROPERTY,
+			MOUNT_PEC_PROPERTY,
+			MOUNT_PEC_TRAINING_PROPERTY,
+			MOUNT_AUTOHOME_PROPERTY,
+			MOUNT_AUTOHOME_SETTINGS_PROPERTY,
+			MOUNT_OPERATING_MODE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
 		indigo_delete_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
 		indigo_delete_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
@@ -2292,6 +2329,17 @@ static void guider_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			GUIDER_GUIDE_RA_PROPERTY,
+			GUIDER_GUIDE_DEC_PROPERTY,
+			GUIDER_RATE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		if (--PRIVATE_DATA->count == 0) {
 			synscan_close(device);
 		}
@@ -2509,6 +2557,16 @@ static void aux_connection_handler(indigo_device *device) {
 			synscan_set_snap_port(device, false);
 		}
 		//- aux.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			CCD_ABORT_EXPOSURE_PROPERTY,
+			CCD_EXPOSURE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 		indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
