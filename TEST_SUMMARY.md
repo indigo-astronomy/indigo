@@ -53,8 +53,8 @@
 | aux_sqm | 2026-09-21 23:28 | 3.0.0.20 | mac arm64 | simulator | 10 / 10 | ✅ OK |
 | aux_svbpowerbox | 2026-09-21 19:38 | 3.0.0.2 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 | aux_uch | 2026-09-21 22:45 | 3.0.0.6 | mac arm64 | simulator | 11 / 11 | ✅ OK |
-| aux_upb | 2026-09-25 12:13 | 3.0.0.29 | mac arm64 | Pegasus UPB v1 | 1 / 1 | ✅ OK |
-|  | 2026-09-25 12:14 | 3.0.0.29 | mac arm64 | simulator | 40 / 40 | ✅ OK |
+| aux_upb | 2026-09-25 12:33 | 3.0.0.30 | mac arm64 | Pegasus UPB v1 | 1 / 1 | ✅ OK |
+|  | 2026-09-25 12:34 | 3.0.0.30 | mac arm64 | simulator | 40 / 40 | ✅ OK |
 | aux_upb3 | 2026-09-21 22:12 | 3.0.0.5 | mac arm64 | simulator | 29 / 29 | ✅ OK |
 | aux_usbdp | 2026-09-21 23:40 | 3.0.0.11 | mac arm64 | simulator | 16 / 16 | ✅ OK |
 | aux_wbplusv3 | 2026-09-21 19:41 | 3.0.0.6 | mac arm64 | simulator | 17 / 17 | ✅ OK |

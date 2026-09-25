@@ -183,6 +183,12 @@ Measured hub replies used to model it (read-only `GET_STATUS`, 2026-09-25, this 
    warnings, and `-Wall -Wextra` on the driver and both test sources is clean.
 5. **Done.** Results below.
 
+6. **Done.** Merged `origin/refactoring`. Its generator change TOOLS-014 (commit `d19397b8d`,
+   which resets BUSY properties on disconnect) had also taken version 29 for this driver, so the
+   combined driver is version 30 (`0x0300001E`). Regenerating with the rebuilt generator reproduces
+   the merged `indigo_aux_upb.c` exactly except for `DRIVER_VERSION`. The results recorded in the
+   README are the runs on version 30: simulator 40/40, and hardware `16 requests, 0 lost, 0 reverted`.
+
 ### Defect
 
 | Defect | Impact | Root cause | Fix | Test |
@@ -223,9 +229,9 @@ motion timing, not the USB path, and is not addressed here.
 ## Final test summary
 
 - Simulated tests run: 40; passed: 40 (latest full run of `test_aux_upb_simulator`, driver version
-  29). Sanitizer run (ASan + UBSan, arm64, leak detection off) of the same 40 cases: 40
+  30). Sanitizer run (ASan + UBSan, arm64, leak detection off) of the same 40 cases: 40
   run, 39 passed, no sanitizer report; the one failure is the pre-existing
   `focuser_overlapping_request_is_rejected` timing failure described above.
 - Hardware tests run: 1; passed: 1 (`upb_usb_port_changes_survive_the_poll`, Pegasus UPB v1 firmware 1.4,
-  driver version 29). The last full hardware run, 14 run and 14 passed, was on driver version 28 and
+  driver version 30). The last full hardware run, 14 run and 14 passed, was on driver version 28 and
   did not include this case.
