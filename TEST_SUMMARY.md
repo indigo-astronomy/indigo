@@ -70,11 +70,11 @@
 | ccd_atik | 2026-09-22 10:06 | 3.0.0.44 | mac arm64 | Atik One | 1 / 1 | ✅ OK |
 |  | 2026-09-22 10:08 | 3.0.0.44 | mac arm64 | ArtemisCCD VS | 1 / 1 | ✅ OK |
 |  | 2026-09-22 13:22 | 3.0.0.44 | mac arm64 | Atik Horizon | 1 / 1 | ✅ OK |
-|  | 2026-09-22 14:05 | 3.0.0.45 | mac arm64 | fake SDK | 43 / 43 | ✅ OK |
 |  | 2026-09-22 14:31 | 3.0.0.45 | mac arm64 | Atik 11000 | 1 / 1 | ✅ OK |
 |  | 2026-09-24 08:31 | 3.0.0.45 | linux arm64 | fake SDK | 43 / 43 | ✅ OK |
 |  | 2026-09-24 08:33 | 3.0.0.45 | linux arm64 | Atik Titan | 1 / 1 | ✅ OK |
-|  | 2026-09-26 19:35 | 3.0.0.46 | mac arm64 | Atik Titan | 1 / 1 | ✅ OK |
+|  | 2026-09-26 19:42 | 3.0.0.47 | mac arm64 | fake SDK | 43 / 43 | ✅ OK |
+|  | 2026-09-26 19:56 | 3.0.0.47 | mac arm64 | Atik Titan | 1 / 1 | ✅ OK |
 | ccd_atik2 | 2026-09-22 09:45 | 3.0.0.14 | mac arm64 | Atik One | 1 / 1 | ✅ OK |
 |  | 2026-09-22 09:48 | 3.0.0.14 | mac arm64 | Atik VS | 1 / 1 | ✅ OK |
 |  | 2026-09-22 09:51 | 3.0.0.14 | mac arm64 | Atik Titan | 1 / 1 | ✅ OK |
