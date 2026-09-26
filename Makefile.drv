@@ -177,7 +177,7 @@ endif
 clean: status
 	rm -f $(DRIVER_O) $(DRIVER_MAIN_O) $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 ifneq ($(wildcard $(SDK_DIR)/Makefile),)
-	make -C $(SDK_DIR) clean
+	$(MAKE) -C $(SDK_DIR) clean
 ifneq ($(SDK_LIB_A),)
 	rm -f $(SDK_LIB_A)
 endif
@@ -207,22 +207,22 @@ ifneq ($(shell cat $(SDK_HOST_STAMP) 2>/dev/null),$(SDK_HOST_ID))
 endif
 
 $(SDK_HOST_STAMP):
-	if git -C $(SDK_DIR) rev-parse --is-inside-work-tree >/dev/null 2>&1; then git -C $(SDK_DIR) clean -fdXq .; elif [ -f $(SDK_DIR)/Makefile ]; then make -C $(SDK_DIR) distclean || make -C $(SDK_DIR) clean || true; fi
+	if git -C $(SDK_DIR) rev-parse --is-inside-work-tree >/dev/null 2>&1; then git -C $(SDK_DIR) clean -fdXq .; elif [ -f $(SDK_DIR)/Makefile ]; then $(MAKE) -C $(SDK_DIR) distclean || $(MAKE) -C $(SDK_DIR) clean || true; fi
 	echo "$(SDK_HOST_ID)" >$@
 endif
 
 $(SDK_LIB_A): $(SDK_DIR)/Makefile $(SDK_HOST_STAMP)
 ifneq ($(wildcard $(SDK_CONFIGURE_IN)),)
-	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)"; make -C $(SDK_DIR) install
+	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)"; $(MAKE) -C $(SDK_DIR) install
 else
-	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)"; make -C $(SDK_DIR)
+	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)"; $(MAKE) -C $(SDK_DIR)
 endif
 
 $(SDK_LIB_SO): $(SDK_DIR)/Makefile $(SDK_HOST_STAMP)
 ifneq ($(wildcard $(SDK_CONFIGURE_IN)),)
-	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)"; make -C $(SDK_DIR) install
+	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)"; $(MAKE) -C $(SDK_DIR) install
 else
-	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)"; make -C $(SDK_DIR)
+	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)"; $(MAKE) -C $(SDK_DIR)
 endif
 
 $(SDK_DIR)/Makefile: $(SDK_CONFIGURE)
