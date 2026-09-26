@@ -1147,3 +1147,53 @@ Found defect (physical observation): With a StarSense request to turn tracking O
 
 Simulated tests: **38 run, 38 passed** in the final portable validation: 19 normal plus 19 ASan/UBSan. Baseline regression failed as expected on version 41. A sanitizer run found a test-cache use-after-free during GPS cleanup; the new test waits for asynchronous GPS property deletion before switching its cached device context, and both full suites passed after that correction. Logs: `/tmp/nexstar-starsense-sim-final.log`, `/tmp/nexstar-starsense-asan-final.log`.
 Hardware tests: **12 run, 12 passed** in the final StarSense 1.20 + GPS 11.1 run. The GPS firmware was 11.1 and reported no satellite fix; fix accuracy was not evaluated indoors. The original nominal baseline's site/time PASS was invalid; two intermediate corrected attempts exposed the tracking race before the fix. Physical hot-plug was not exercised. Other mount models, Windows and Linux remain unverified for this follow-up.
+
+## Switch, number and UTC targets (2026-09-26)
+
+Version 46, findings TGT-007, TGT-028, TGT-C01 and the nexstar parts of TGT-B04 and TGT-B05 of
+`indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this change.
+
+- TGT-007: while tracking is off, `nexstar_update_position()` asks the mount for its tracking mode and,
+  with AUTO selected, replaced `TRACKING_MODE` by the detected EQ/AA without checking that property for
+  BUSY. A client AUTO copied before the poll became EQ, the handler kept tracking on and reported OK. The
+  poll now leaves a BUSY `TRACKING_MODE` alone; the handler sends the targets, applies them with
+  `indigo_apply_switch_targets()` and on failure shows the mode the mount reports with ALERT.
+- TGT-028: the poll checked `MOUNT_TRACKING` for BUSY before the `t` round trip and wrote ON with OK
+  after it, so an OFF request copied during the round trip was sent as ON. The poll checks BUSY again
+  after the round trip; the handler reads the request with `indigo_get_switch_target()` and on failure
+  shows the tracking the mount reports with ALERT. `nexstar_set_tracking()` takes the requested state and
+  mode as arguments and no longer sets `TRACKING_MODE` OK; the `MOUNT_TRACKING` handler clears it only
+  when no mode request is pending.
+- TGT-C01, TGT-B05: the poll wrote the mount clock into `MOUNT_UTC_TIME` and published it OK on every
+  pass, also over a pending request, so the handler sent the mount its own time back. The change branch
+  records the request with `indigo_mount_set_utc_target()`, the handler sends
+  `indigo_mount_get_utc_target()` and writes it into the items once the mount accepted it, and the poll
+  writes items and state only while the property is not BUSY.
+- TGT-B04: a guide pulse copied while the previous pulse's finalizer waited for its axis stop was zeroed
+  by that finalizer and dropped with OK. The finalizers already cleared only the values; the handlers now
+  restore them from the targets.
+
+The simulator gained the control action `track` (the hand controller starts EQ tracking and the answer
+comes 500 ms late). Regression tests in `integration/test_mount_nexstar_simulator.c`, each failing
+against version 45 and passing with version 46:
+
+- `nexstar_tracking_mode_request_survives_detection`: tracking off, the poll's `t` is answered late with EQ
+  tracking; AUTO requested meanwhile. Before: `TRACKING_MODE` ended EQ, no `T 00`.
+- `nexstar_tracking_request_survives_detection_round_trip`: same setup, OFF requested. Before: no `T 00`,
+  the handler sent `T 02`.
+- `nexstar_utc_request_survives_poll`: the poll's `h` is answered late, a time is requested meanwhile.
+  Before: the mount got `xx:15:30` (its own clock) instead of `xx:34:56`.
+- `nexstar_guider_pulse_survives_previous_finalizer`: the first pulse's stop (`P .. 24 00`) is answered
+  late, the opposite pulse is requested meanwhile, on both axes. Before: the second pulse was dropped;
+  now it runs about 300 ms.
+
+The TGT-B04 window of this driver is the finalizer's own stop round trip: the guide handlers are queued
+as TIME tasks without delay and run ahead of an overdue TIME finalizer, which they cancel, so a gate
+holding the queue does not reproduce it.
+
+Recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py mount_nexstar` on Linux x64:
+23/23. MIGRATION_STATUS.md hardware-free count 19 -> 23.
+
+### Final test summary for this change
+
+Simulated tests: **23 run, 23 passed** (recorded run). Hardware tests: **0 run, 0 passed**.

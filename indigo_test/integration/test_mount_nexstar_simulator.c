@@ -928,6 +928,226 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The simulator removes the control file when the command it selects arrives, before it delays the answer.
+static bool wait_for_control_consumed(const external_serial_simulator *simulator) {
+	char control_path[PATH_MAX];
+	nexstar_simulator_path(simulator, "control", control_path, sizeof(control_path));
+	double deadline = indigo_monotonic_time() + 10;
+	while (access(control_path, F_OK) == 0 && indigo_monotonic_time() < deadline) {
+		indigo_usleep(10000);
+	}
+	return access(control_path, F_OK) != 0;
+}
+
+// Counts the results (publications in any state but BUSY) of one property and remembers when the last one came.
+static const char *watch_device, *watch_property;
+static atomic_bool watch_on;
+static atomic_int watch_results;
+static _Atomic double watch_last_result;
+
+static indigo_result watch_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (atomic_load(&watch_on) && !strcmp(property->device, watch_device) && !strcmp(property->name, watch_property) && property->state != INDIGO_BUSY_STATE) {
+		atomic_store(&watch_last_result, indigo_monotonic_time());
+		atomic_fetch_add(&watch_results, 1);
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static void watch_results_of(const char *device, const char *property) {
+	atomic_store(&watch_on, false);
+	watch_device = device;
+	watch_property = property;
+	atomic_store(&watch_results, 0);
+	atomic_store(&watch_last_result, 0);
+	simulator_test_client.update_property = watch_update;
+	atomic_store(&watch_on, true);
+}
+
+static void stop_watching(void) {
+	atomic_store(&watch_on, false);
+	simulator_test_client.update_property = simulator_client_update_property;
+}
+
+static bool wait_for_results(int expected) {
+	for (int i = 0; i < 300 && atomic_load(&watch_results) < expected; i++) {
+		indigo_usleep(10000);
+	}
+	if (atomic_load(&watch_results) < expected) {
+		fprintf(stderr, "    %s published %d results, expected %d\n", watch_property, atomic_load(&watch_results), expected);
+		return false;
+	}
+	return true;
+}
+
+// Tracking is off and the poll asks the mount for its tracking mode on every pass; the next query is answered late,
+// after the hand controller started EQ tracking, so a request copied now races the poll's detection.
+static bool detect_tracking_started_on_hand_controller(const external_serial_simulator *simulator) {
+	if (!select_mount_switch(TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME) || !select_mount_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME) || !wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true) || !wait_for_simulator_event_count(simulator, "54 00", 1)) {
+		return false;
+	}
+	indigo_usleep(200000);
+	clear_simulator_events(simulator);
+	return set_simulator_control(simulator, "track", "t") && wait_for_control_consumed(simulator);
+}
+
+// TGT-007: the poll replaced a pending AUTO with the EQ/AA mode it detected, so the handler kept tracking on.
+static void nexstar_tracking_mode_request_survives_detection(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator_model(&simulator, "12"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(detect_tracking_started_on_hand_controller(&simulator));
+	unsigned int revision = property_revision(TRACKING_MODE_PROPERTY_NAME);
+	watch_results_of(nexstar_mount.device_name, TRACKING_MODE_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, TRACKING_MODE_PROPERTY_NAME, TRACKING_AUTO_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(TRACKING_MODE_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(find_cached_item(TRACKING_MODE_PROPERTY_NAME, TRACKING_AUTO_ITEM_NAME)->sw.value);
+	// AUTO switches tracking off, so the poll detects the mode again once tracking is started.
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "54 00", 1));
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "54 02"));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	// Only the handler published a result, the poll left the pending request alone.
+	indigo_usleep(300000);
+	SERIAL_CHECK_EQ_INT(1, atomic_load(&watch_results));
+	SERIAL_CHECK_TRUE(find_cached_item(TRACKING_MODE_PROPERTY_NAME, TRACKING_AUTO_ITEM_NAME)->sw.value);
+cleanup:
+	stop_watching();
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-028: the poll checked MOUNT_TRACKING before its tracking mode round trip and switched a request for OFF copied
+// during that round trip to ON, so the handler started tracking.
+static void nexstar_tracking_request_survives_detection_round_trip(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator_model(&simulator, "12"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(detect_tracking_started_on_hand_controller(&simulator));
+	unsigned int revision = property_revision(MOUNT_TRACKING_PROPERTY_NAME);
+	watch_results_of(nexstar_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "54 00", 1));
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "54 02"));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME)->sw.value);
+	indigo_usleep(300000);
+	SERIAL_CHECK_EQ_INT(1, atomic_load(&watch_results));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME)->sw.value);
+cleanup:
+	stop_watching();
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The minute and second of the last time the driver set ('H' hour minute second month day year offset dst).
+static bool read_set_time(const external_serial_simulator *simulator, unsigned int *minute, unsigned int *second) {
+	char path[PATH_MAX];
+	char line[256];
+	nexstar_simulator_path(simulator, "events", path, sizeof(path));
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return false;
+	}
+	bool found = false;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		double timestamp = 0;
+		unsigned int bytes[4] = { 0 };
+		if (sscanf(line, "%lf %x %x %x %x", &timestamp, bytes, bytes + 1, bytes + 2, bytes + 3) == 5 && bytes[0] == 'H') {
+			*minute = bytes[2];
+			*second = bytes[3];
+			found = true;
+		}
+	}
+	fclose(file);
+	return found;
+}
+
+// TGT-C01, TGT-B05: the poll wrote the mount clock into MOUNT_UTC_TIME and published it OK over a pending request, so
+// the handler sent the mount its own time back.
+static void nexstar_utc_request_survives_poll(void) {
+	external_serial_simulator simulator = { 0 };
+	unsigned int minute = 0, second = 0;
+	SERIAL_CHECK_TRUE(start_nexstar_simulator_hc(&simulator, "nexstar"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	clear_simulator_events(&simulator);
+	// The poll reads the mount clock late, the request is copied while it waits for the answer.
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "delay", "h"));
+	SERIAL_CHECK_TRUE(wait_for_control_consumed(&simulator));
+	unsigned int revision = property_revision(UTC_TIME_PROPERTY_NAME);
+	watch_results_of(nexstar_mount.device_name, UTC_TIME_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&simulator_test_client, nexstar_mount.device_name, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME, "2026-09-13T12:34:56"));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(UTC_TIME_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "48", 1));
+	SERIAL_CHECK_TRUE(read_set_time(&simulator, &minute, &second));
+	printf("    time set to xx:%02u:%02u\n", minute, second);
+	SERIAL_CHECK_EQ_INT(34, minute);
+	SERIAL_CHECK_EQ_INT(56, second);
+	SERIAL_CHECK_EQ_INT(1, atomic_load(&watch_results));
+cleanup:
+	stop_watching();
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The finalizer of a pulse stops the axis ('P' 02 axis 24 00) before it clears the values. That answer comes late, so
+// the next pulse is copied while the finalizer waits for it and the finalizer then clears the values of that pulse.
+static bool pulse_survives_previous_finalizer(const external_serial_simulator *simulator, const char *property_name, int axis, const char *first_item, const char *first_start, const char *next_item, const char *next_start) {
+	int first_pulses = count_simulator_events(simulator, first_start);
+	if (indigo_change_number_property_1(&simulator_test_client, nexstar_guider.device_name, property_name, first_item, 500) != INDIGO_OK || !wait_for_simulator_event_count(simulator, first_start, first_pulses + 1)) {
+		return false;
+	}
+	if (!set_simulator_control(simulator, "delay", "P24") || !wait_for_control_consumed(simulator)) {
+		return false;
+	}
+	int next_pulses = count_simulator_events(simulator, next_start);
+	watch_results_of(nexstar_guider.device_name, property_name);
+	if (indigo_change_number_property_1(&simulator_test_client, nexstar_guider.device_name, property_name, next_item, 300) != INDIGO_OK) {
+		return false;
+	}
+	if (!wait_for_simulator_event_count(simulator, next_start, next_pulses + 1)) {
+		fprintf(stderr, "    %s: the %s pulse requested while the %s pulse ended was dropped\n", property_name, next_item, first_item);
+		return false;
+	}
+	// The finalizer of the first pulse and the one of the next pulse both publish their result.
+	if (!wait_for_results(2) || !wait_for_number_item_value(property_name, next_item, 0, 0.001)) {
+		return false;
+	}
+	stop_watching();
+	double started = 0, stopped = 0;
+	if (!read_guide_event_times(simulator, axis, 0x25, &started, &stopped)) {
+		return false;
+	}
+	double elapsed = (stopped - started) * 1000.0;
+	printf("    %s %s pulse requested while the %s pulse ended ran %.0f ms\n", property_name, next_item, first_item, elapsed);
+	return elapsed > 250 && elapsed < 1000;
+}
+
+// TGT-B04: GUIDER_GUIDE_RA/DEC accept a pulse while one runs. A pulse requested while the previous one's finalizer runs
+// must still be started instead of being read as zero and reported OK.
+static void nexstar_guider_pulse_survives_previous_finalizer(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_shared_serial_device_with_master_case(&nexstar_guider, &nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	// Guide rate 1: 'P' 02 axis 24 (positive) or 25 (negative) 01.
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(&simulator, GUIDER_GUIDE_RA_PROPERTY_NAME, 0x10, GUIDER_GUIDE_EAST_ITEM_NAME, "50 02 10 24 01", GUIDER_GUIDE_WEST_ITEM_NAME, "50 02 10 25 01"));
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(&simulator, GUIDER_GUIDE_DEC_PROPERTY_NAME, 0x11, GUIDER_GUIDE_NORTH_ITEM_NAME, "50 02 11 24 01", GUIDER_GUIDE_SOUTH_ITEM_NAME, "50 02 11 25 01"));
+cleanup:
+	stop_watching();
+	if (context.connected) {
+		stop_serial_driver(&nexstar_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void nexstar_starsense_120_refuses_site_time_and_reports_gps_no_fix(void) {
 	const char *arguments[] = { "--dialect", "celestron", "--hc-type", "starsense", "--model-id", "11", "--firmware", "1.20", "--gps-firmware", "11.1", "--gps-no-fix", NULL };
 	external_serial_simulator simulator = { 0 };
@@ -1333,7 +1553,11 @@ int main(void) {
 		{ "nexstar_starsense_120_refuses_site_time_and_reports_gps_no_fix", nexstar_starsense_120_refuses_site_time_and_reports_gps_no_fix },
 		{ "nexstar_celestron_gps_device_reports_fix", nexstar_celestron_gps_device_reports_fix },
 		{ "nexstar_celestron_guider_passes_serial_compliance_checks", nexstar_celestron_guider_passes_serial_compliance_checks },
-		{ "nexstar_shared_devices_survive_both_connection_orders", nexstar_shared_devices_survive_both_connection_orders }
+		{ "nexstar_shared_devices_survive_both_connection_orders", nexstar_shared_devices_survive_both_connection_orders },
+		{ "nexstar_tracking_mode_request_survives_detection", nexstar_tracking_mode_request_survives_detection },
+		{ "nexstar_tracking_request_survives_detection_round_trip", nexstar_tracking_request_survives_detection_round_trip },
+		{ "nexstar_utc_request_survives_poll", nexstar_utc_request_survives_poll },
+		{ "nexstar_guider_pulse_survives_previous_finalizer", nexstar_guider_pulse_survives_previous_finalizer }
 	};
 	return indigo_run_tests("NexStar mount serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }

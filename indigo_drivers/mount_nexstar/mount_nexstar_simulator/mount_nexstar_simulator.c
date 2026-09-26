@@ -136,7 +136,9 @@ static void usage(const char *name) {
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  Runtime control is read once from <ready-file>.control as ACTION SELECTOR\n");
-	printf("  and every command is recorded in <ready-file>.events.\n");
+	printf("  and every command is recorded in <ready-file>.events. Actions: drop, short,\n");
+	printf("  malformed, delay (answer 500 ms late), track (hand controller starts EQ\n");
+	printf("  tracking, answer 500 ms late) and close.\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -328,6 +330,12 @@ static bool apply_control(const uint8_t *command, size_t length) {
 		return true;
 	}
 	if (!strcmp(action, "delay")) {
+		usleep(500000);
+		return false;
+	}
+	if (!strcmp(action, "track")) {
+		// EQ north tracking started on the hand controller while this command is on the way, answered late like "delay"
+		state.tracking_mode = 2;
 		usleep(500000);
 		return false;
 	}

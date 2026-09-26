@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002D
+#define DRIVER_VERSION       0x0300002E
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -385,18 +385,19 @@ static void nexstar_update_position(indigo_device *device) {
 		res = (int)tc_get_time(dev_id, &ttime, &tz, &dst);
 		if (res == -1) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_time(%d) = %d (%s)", dev_id, res, strerror(errno));
-			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			time_valid = true;
-			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE && MOUNT_TRACKING_OFF_ITEM->sw.value) {
 			int mode = tc_get_tracking_mode(dev_id);
+			// A request copied during the round trip owns the property, its handler reads the target
 			if (mode < 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_tracking_mode(%d) = %d (%s)", dev_id, mode, strerror(errno));
-				MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else if (mode != TC_TRACK_OFF) {
-				if (!TRACKING_MODE_PROPERTY->hidden && TRACKING_AUTO_ITEM->sw.value) {
+				if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
+					MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			} else if (mode != TC_TRACK_OFF && MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
+				if (!TRACKING_MODE_PROPERTY->hidden && TRACKING_MODE_PROPERTY->state != INDIGO_BUSY_STATE && TRACKING_AUTO_ITEM->sw.value) {
 					if (mode == TC_TRACK_ALT_AZ) {
 						indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
 					} else {
@@ -440,9 +441,14 @@ static void nexstar_update_position(indigo_device *device) {
 			}
 		}
 		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-		if (time_valid) {
-			indigo_timetoisolocal(ttime - ((tz + dst) * 3600), MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-			snprintf(MOUNT_UTC_OFFSET_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", tz + dst);
+		if (MOUNT_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) { // never overwrite a requested time before it is applied
+			if (time_valid) {
+				indigo_timetoisolocal(ttime - ((tz + dst) * 3600), MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+				snprintf(MOUNT_UTC_OFFSET_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", tz + dst);
+				MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
 		}
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
@@ -589,12 +595,12 @@ static bool nexstar_get_park_axes(indigo_device *device, double *ha, double *dec
 	return *dec >= -90 && *dec <= 90;
 }
 
-static bool nexstar_set_tracking(indigo_device *device) {
+static bool nexstar_set_tracking(indigo_device *device, bool on, bool eq, bool aa) {
 	int tracking_mode = TC_TRACK_OFF;
-	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
-		if (TRACKING_EQ_ITEM->sw.value || (PRIVATE_DATA->capabilities & TRUE_EQ_MOUNT)) {
+	if (on) {
+		if (eq || (PRIVATE_DATA->capabilities & TRUE_EQ_MOUNT)) {
 			tracking_mode = TC_TRACK_EQ;
-		} else if (TRACKING_AA_ITEM->sw.value) {
+		} else if (aa) {
 			tracking_mode = TC_TRACK_ALT_AZ;
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Tracking mode is not set");
@@ -608,8 +614,14 @@ static bool nexstar_set_tracking(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 		return false;
 	}
-	TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
 	return true;
+}
+
+static int nexstar_get_tracking_mode(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	int tracking_mode = tc_get_tracking_mode(PRIVATE_DATA->dev_id);
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	return tracking_mode;
 }
 
 static bool nexstar_set_st4_guiding_rate(indigo_device *device) {
@@ -695,14 +707,12 @@ static bool nexstar_move_axis(indigo_device *device, int axis, bool positive, bo
 	return true;
 }
 
-static bool nexstar_set_utc(indigo_device *device) {
-	time_t utc_time = indigo_isogmtotime(MOUNT_UTC_ITEM->text.value);
+static bool nexstar_set_utc(indigo_device *device, time_t utc_time, int offset) {
 	if (utc_time == -1) {
 		indigo_send_message(device, ALERT_PROPERTY, "Wrong date/time format!");
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Wrong date/time format!");
 		return false;
 	}
-	int offset = atoi(MOUNT_UTC_OFFSET_ITEM->text.value);
 	int dst = 0;
 	tzset();
 	if (indigo_get_dst_state() != 0) {
@@ -855,6 +865,7 @@ static void guider_guide_ra_finalizer(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value && !(PRIVATE_DATA->capabilities & CAN_PULSE_GUIDE)) {
 		ok = nexstar_stop_axis(device->master_device, TC_AXIS_RA);
 	}
+	// Only the values, the target of a pulse requested while this one ends is read by its handler.
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	GUIDER_GUIDE_RA_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
@@ -867,6 +878,7 @@ static void guider_guide_dec_finalizer(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value && !(PRIVATE_DATA->capabilities & CAN_PULSE_GUIDE)) {
 		ok = nexstar_stop_axis(device->master_device, TC_AXIS_DE);
 	}
+	// Only the values, the target of a pulse requested while this one ends is read by its handler.
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_DEC_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
@@ -1038,8 +1050,16 @@ static void mount_set_host_time_handler(indigo_device *device) {
 }
 
 static void mount_utc_time_handler(indigo_device *device) {
+	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_UTC_TIME.on_change
-	MOUNT_UTC_TIME_PROPERTY->state = nexstar_set_utc(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	int offset = 0;
+	time_t utc_time = indigo_mount_get_utc_target(device, &offset);
+	if (nexstar_set_utc(device, utc_time, offset)) {
+		indigo_timetoisogm(utc_time, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+		snprintf(MOUNT_UTC_OFFSET_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", offset);
+	} else {
+		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- mount.MOUNT_UTC_TIME.on_change
 	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 }
@@ -1052,16 +1072,22 @@ static void mount_tracking_handler(indigo_device *device) {
 	}
 	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_TRACKING.on_change
-	bool ok = nexstar_set_tracking(device);
-	if (!ok) {
-		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		int tracking_mode = tc_get_tracking_mode(PRIVATE_DATA->dev_id);
-		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	// The status poll detects tracking started on the hand controller and may overwrite the value between the copy
+	// of the request and this handler, the target keeps the requested value. On failure the switch shows the
+	// tracking the mount reports.
+	bool on = indigo_get_switch_target(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM_NAME);
+	if (nexstar_set_tracking(device, on, TRACKING_EQ_ITEM->sw.value, TRACKING_AA_ITEM->sw.value)) {
+		indigo_apply_switch_targets(MOUNT_TRACKING_PROPERTY);
+		if (TRACKING_MODE_PROPERTY->state != INDIGO_BUSY_STATE) {
+			TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	} else {
+		int tracking_mode = nexstar_get_tracking_mode(device);
 		if (tracking_mode >= 0) {
 			indigo_set_switch(MOUNT_TRACKING_PROPERTY, tracking_mode == TC_TRACK_OFF ? MOUNT_TRACKING_OFF_ITEM : MOUNT_TRACKING_ON_ITEM, true);
 		}
+		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	MOUNT_TRACKING_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, TRACKING_MODE_PROPERTY, NULL);
 	//- mount.MOUNT_TRACKING.on_change
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
@@ -1071,10 +1097,24 @@ static void mount_tracking_mode_handler(indigo_device *device) {
 	TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.TRACKING_MODE.on_change
 	if (IS_CONNECTED && !TRACKING_MODE_PROPERTY->hidden) {
-		if (TRACKING_AUTO_ITEM->sw.value) {
-			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+		// The status poll detects the mode while tracking is off and may overwrite the value between the copy of
+		// the request and this handler, the targets keep the requested mode. AUTO switches tracking off, so the
+		// poll detects the mode again. On failure the switch shows the mode the mount reports.
+		bool automatic = indigo_get_switch_target(TRACKING_MODE_PROPERTY, TRACKING_AUTO_ITEM_NAME);
+		if (nexstar_set_tracking(device, !automatic && MOUNT_TRACKING_ON_ITEM->sw.value, indigo_get_switch_target(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM_NAME), indigo_get_switch_target(TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM_NAME))) {
+			indigo_apply_switch_targets(TRACKING_MODE_PROPERTY);
+			if (automatic) {
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+			}
+		} else {
+			int tracking_mode = nexstar_get_tracking_mode(device);
+			if (tracking_mode == TC_TRACK_ALT_AZ) {
+				indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
+			} else if (tracking_mode > TC_TRACK_ALT_AZ) {
+				indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
+			}
+			TRACKING_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		TRACKING_MODE_PROPERTY->state = nexstar_set_tracking(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	}
 	//- mount.TRACKING_MODE.on_change
@@ -1299,6 +1339,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_SET_HOST_TIME_PROPERTY, mount_set_host_time_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_UTC_TIME_PROPERTY, property)) {
+		//+ mount.MOUNT_UTC_TIME.on_change_request
+		// The status poll refreshes the items from the mount clock, so the handler sends the
+		// requested time recorded here instead of the copied items.
+		indigo_mount_set_utc_target(device, property);
+		//- mount.MOUNT_UTC_TIME.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_UTC_TIME_PROPERTY, mount_utc_time_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {
@@ -1419,6 +1464,9 @@ static void guider_connection_handler(indigo_device *device) {
 static void guider_guide_ra_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_RA.on_change
 	indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+	// The finalizer of the previous pulse may have zeroed the values after the request was copied, the targets keep it.
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target;
+	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target;
 	int duration = 0;
 	if (guider_start_ra(device, &duration)) {
 		if (duration > 0) {
@@ -1439,6 +1487,9 @@ static void guider_guide_ra_handler(indigo_device *device) {
 static void guider_guide_dec_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_DEC.on_change
 	indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+	// The finalizer of the previous pulse may have zeroed the values after the request was copied, the targets keep it.
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target;
+	GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target;
 	int duration = 0;
 	if (guider_start_dec(device, &duration)) {
 		if (duration > 0) {
