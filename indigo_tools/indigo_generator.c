@@ -1787,7 +1787,7 @@ void write_c_high_level_code_section(device_type *device) {
 	}
 	write_c_connection_change_handler(device);
 	for (property_type *property = device->properties; property; property = property->next) {
-		if (property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO") && !c_code_is_empty(property->on_change) && (property->type[0] != 'i' || property->on_change)) {
+		if (property->handle_change && strcmp(property->perm, "INDIGO_RO_PERM") && !c_code_is_empty(property->on_change) && (property->type[0] != 'i' || property->on_change)) {
 			write_c_property_change_handler(device, property);
 		}
 	}
@@ -1944,11 +1944,11 @@ void write_c_change_property(device_type *device) {
 	}
 	write_line("\t\treturn INDIGO_OK;");
 	for (property_type *property = device->properties; property; property = property->next) {
-		bool change_branch = property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO") && (property->type[0] != 'i' || property->on_change);
+		bool change_branch = property->handle_change && strcmp(property->perm, "INDIGO_RO_PERM") && (property->type[0] != 'i' || property->on_change);
 		if (property->rejects && !change_branch) {
 			report_error("'%s' has no change branch, its reject_change block(s) would be ignored", property->handle);
 		}
-		if (property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO")) {
+		if (property->handle_change && strcmp(property->perm, "INDIGO_RO_PERM")) {
 			persistent |= property->persistent;
 			if (property->type[0] != 'i' || property->on_change) {
 				write_line("\t} else if (indigo_property_match_changeable(%s, property)) {", property->handle);
