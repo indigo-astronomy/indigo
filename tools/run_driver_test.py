@@ -128,14 +128,24 @@ def find_driver(driver):
 
 def driver_version(driver_dir, driver):
 	"""Return the driver version the way INDIGO reports it, e.g. 3.0.0.17."""
-	source = os.path.join(driver_dir, "indigo_%s.c" % driver)
-	try:
+	# Drivers are written in C, C++ (ccd_qhy2, ccd_qsi) or Objective-C (aux_joystick), and the
+	# version can live in a local header (ccd_ptp) or in another driver's source that a variant
+	# includes (ccd_altair and the other ToupTek OEM drivers include ccd_touptek), so the local
+	# includes of the main source are followed until the definition turns up.
+	pending = [os.path.join(driver_dir, "indigo_%s.%s" % (driver, extension)) for extension in ("c", "cpp", "m")]
+	seen = set()
+	match = None
+	while pending and match is None:
+		source = os.path.normpath(pending.pop(0))
+		if source in seen or not os.path.isfile(source):
+			continue
+		seen.add(source)
 		with open(source, "r", encoding="utf-8", errors="replace") as file:
-			match = re.search(r"^#define\s+DRIVER_VERSION\s+(0x[0-9A-Fa-f]+)", file.read(), re.M)
-	except OSError:
-		match = None
+			text = file.read()
+		match = re.search(r"^#define\s+DRIVER_VERSION\s+(0x[0-9A-Fa-f]+)", text, re.M)
+		pending += [os.path.join(os.path.dirname(source), include) for include in re.findall(r'^#include\s+"([^"]+)"', text, re.M)]
 	if match is None:
-		fail("no DRIVER_VERSION in %s" % source)
+		fail("no DRIVER_VERSION in the sources of %s" % driver)
 	value = int(match.group(1), 16)
 	return "%d.%d.%d.%d" % ((value >> 24) & 0xFF, (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF)
 
