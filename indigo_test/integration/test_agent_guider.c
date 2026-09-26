@@ -1787,6 +1787,9 @@ static void mkgp_learning_reset(void) {
 	   Predictive PEC run and reset; a reset model would read 0 until it holds
 	   more than ten points */
 	ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_CORRECTION_MODE_RA", "MKGP", true, INDIGO_OK_STATE));
+	/* the switch shows the selected model's current state at once */
+	ASSERT_TRUE(value(AGENT, "AGENT_GUIDER_STATS", "MKGP_LEARNING") >= learning);
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_GUIDER_STATS", "PPEC_LEARNING"));
 	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
 	ASSERT_TRUE(frames(3));
 	ASSERT_TRUE(value(AGENT, "AGENT_GUIDER_STATS", "MKGP_LEARNING") >= learning);

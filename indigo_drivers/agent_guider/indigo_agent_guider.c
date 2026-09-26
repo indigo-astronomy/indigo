@@ -1420,12 +1420,24 @@ static bool guide_and_capture_frame(indigo_device *device, double ra, double dec
 	return true;
 }
 
-/* Clear the statistics of Predictive PEC (mkgp = false) or Multi Kernel GP (mkgp = true). */
-static void clear_gp_stats(indigo_device *device, bool mkgp) {
-	if (mkgp) {
-		AGENT_GUIDER_STATS_MKGP_LEARNING_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_PERIOD_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM->number.value = 0;
-	} else {
-		AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = 0;
+/* Show the current state of the selected mode's model in its statistics; the
+   items of the other GP mode, or of both when neither is selected, read 0. */
+static void update_gp_stats(indigo_device *device) {
+	AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = 0;
+	AGENT_GUIDER_STATS_MKGP_LEARNING_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_PERIOD_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM->number.value = 0;
+	guider_gp_state *gp = active_gp(device);
+	if (gp != NULL && gp->model != NULL) {
+		double learning = 100.0 * indigo_gp_guider_get_learning_progress(gp->model);
+		double period = indigo_gp_guider_get_stage_period(gp->model, 0);
+		if (gp == &DEVICE_PRIVATE_DATA->mkgp_ra) {
+			AGENT_GUIDER_STATS_MKGP_LEARNING_ITEM->number.value = learning;
+			AGENT_GUIDER_STATS_MKGP_PERIOD_ITEM->number.value = period;
+			AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM->number.value = indigo_gp_guider_get_stage_period(gp->model, 1);
+			AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM->number.value = 100.0 * indigo_gp_guider_get_stage_weight(gp->model, 1);
+		} else {
+			AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = learning;
+			AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = period;
+		}
 	}
 }
 
@@ -1438,7 +1450,7 @@ static void reset_gp_model(indigo_device *device, bool mkgp) {
 		indigo_gp_guider_reset_model(gp->model);
 	}
 	gp->reset_requested = false;
-	clear_gp_stats(device, mkgp);
+	update_gp_stats(device);
 }
 
 /* Handle AGENT_GUIDER_RESET_PPEC (mkgp = false) or AGENT_GUIDER_RESET_MKGP (mkgp = true). */
@@ -1469,7 +1481,7 @@ static bool calibrate(indigo_device *device) {
 	int last_count = 0; // Number of completed pulses in the preceding outward leg.
 	DEVICE_PRIVATE_DATA->silence_warnings = false;
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
-	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ST_ITEM->number.value = AGENT_GUIDER_STATS_SNR_ITEM->number.value = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_LEARNING_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_PERIOD_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM->number.value = 0;
+	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ST_ITEM->number.value = AGENT_GUIDER_STATS_SNR_ITEM->number.value = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, NULL);
@@ -1857,6 +1869,7 @@ static bool guide(indigo_device *device) {
 		bool retained = indigo_gp_guider_session_start(gp->model, ra, sop, retain_pct);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s model %s on guiding start (RA = %.4f h, SOP = %d)", mkgp ? "Multi Kernel GP" : "Predictive PEC", retained ? "retained" : "reset", ra, sop);
 	}
+	update_gp_stats(device);
 	if (AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM->sw.value) {
 		open_log(device);
 		write_log_header(device, "Guiding");
@@ -1981,9 +1994,6 @@ static bool guide(indigo_device *device) {
 		}
 		double correction_ra = 0, correction_dec = 0;
 		double max_safe_correction = AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value * SAFE_RADIUS_FACTOR;
-		/* learning progress and measured periods are meaningful only while Predictive PEC or Multi Kernel GP drives RA */
-		clear_gp_stats(device, false);
-		clear_gp_stats(device, true);
 
 		// RA correction
 		if (AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM->sw.value) {
@@ -2000,7 +2010,7 @@ static bool guide(indigo_device *device) {
 			/* Multi Kernel GP adds a second periodic stage for a further gear
 			   stage. Plain Predictive PEC leaves it disabled, so selecting that
 			   mode gives exactly the single-kernel behaviour. Each mode takes its
-			   tuning from its own settings items and publishes its own statistics.
+			   tuning from its own settings items and has its own statistics.
 			   Both stages take the same 0 = auto convention; note a stage only
 			   engages if its spectral line is actually strong enough, whatever
 			   the user asks. */
@@ -2017,17 +2027,7 @@ static bool guide(indigo_device *device) {
 			/* The horizon the feed-forward term must cover is the real guiding period, not the nominal exposure + delay. */
 			double time_step = get_guide_cycle_time(device);
 			correction_ra = indigo_gp_guider_response(gp->model, drift_ra, AGENT_GUIDER_STATS_SNR_ITEM->number.value, time_step);
-			double learning = 100.0 * indigo_gp_guider_get_learning_progress(gp->model);
-			double stage_period = indigo_gp_guider_get_stage_period(gp->model, 0);
-			if (mkgp) {
-				AGENT_GUIDER_STATS_MKGP_LEARNING_ITEM->number.value = learning;
-				AGENT_GUIDER_STATS_MKGP_PERIOD_ITEM->number.value = stage_period;
-				AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM->number.value = indigo_gp_guider_get_stage_period(gp->model, 1);
-				AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM->number.value = 100.0 * indigo_gp_guider_get_stage_weight(gp->model, 1);
-			} else {
-				AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = learning;
-				AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = stage_period;
-			}
+			update_gp_stats(device);
 		} else {
 			// should not happen, but just a safety measure fallback to PI if no RA correction mode is selected
 			correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, get_guide_cycle_time(device), min_error, drift_ra, avg_drift_ra);
@@ -2786,6 +2786,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY, property, false);
+		/* no process runs, so the selected mode's model can be read directly */
+		update_gp_stats(device);
+		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 		AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY, NULL);
