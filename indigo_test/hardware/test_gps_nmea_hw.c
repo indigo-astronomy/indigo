@@ -367,7 +367,7 @@ int main(int argc, char **argv) {
 	if (!indigo_test_use_private_home()) {
 		return 1;
 	}
-	serial_port = getenv("GPS_NMEA_HW_PORT");
+	serial_port = hw_port("GPS_NMEA_HW_PORT");
 	const char *requested = getenv("GPS_NMEA_HW_SYSTEM");
 	if (requested != NULL && *requested) {
 		present_system = requested;

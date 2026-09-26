@@ -422,7 +422,7 @@ int main(int argc, char **argv) {
 	if (!indigo_test_use_private_home()) {
 		return 1;
 	}
-	serial_port = getenv("FOCUSDREAMPRO_HW_PORT");
+	serial_port = hw_port("FOCUSDREAMPRO_HW_PORT");
 	const char *requested_travel = getenv("FOCUSDREAMPRO_HW_TRAVEL");
 	if (requested_travel != NULL && atoi(requested_travel) > 0) {
 		travel = atoi(requested_travel);

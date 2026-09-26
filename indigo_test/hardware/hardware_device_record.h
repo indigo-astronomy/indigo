@@ -133,6 +133,17 @@ static indigo_result hw_record_detach(indigo_client *client) {
 	return INDIGO_OK;
 }
 
+// The port or URL a hardware suite connects to: the suite's own variable, such as
+// MOUNT_PMC8_HW_PORT, or INDIGO_TEST_PORT, which 'run_driver_test.py --port' sets for any suite.
+// The suite's own variable wins, so existing commands keep working. NULL when neither is set.
+static const char *hw_port(const char *variable) {
+	const char *port = getenv(variable);
+	if (port == NULL || !*port) {
+		port = getenv("INDIGO_TEST_PORT");
+	}
+	return port != NULL && *port ? port : NULL;
+}
+
 // Starts the bus like indigo_start() and, when the run is being recorded,
 // attaches the device recorder to it.
 static indigo_result hw_start(void) {

@@ -1429,7 +1429,7 @@ int main(int argc, char **argv) {
 	if (!indigo_test_use_private_home()) {
 		return 1;
 	}
-	configured_url = getenv("MOUNT_NEXSTARAUX_HW_URL");
+	configured_url = hw_port("MOUNT_NEXSTARAUX_HW_URL");
 	if (configured_url != NULL && !*configured_url) {
 		configured_url = NULL;
 	}

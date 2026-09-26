@@ -762,7 +762,7 @@ int main(int argc, char **argv) {
 	if (getenv("UPB_HW_DEBUG")) {
 		indigo_set_log_level(INDIGO_LOG_DEBUG);
 	}
-	serial_port = getenv("UPB_HW_PORT");
+	serial_port = hw_port("UPB_HW_PORT");
 	client = (indigo_client){ .name = "Ultimate Powerbox hardware test", .version = INDIGO_VERSION_CURRENT, .define_property = define_property, .update_property = update_property, .delete_property = delete_property, .send_message = report_message };
 	const indigo_test_case tests[] = {
 		{ "upb_reports_identity_and_capabilities", upb_reports_identity_and_capabilities },

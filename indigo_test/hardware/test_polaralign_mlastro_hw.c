@@ -470,7 +470,7 @@ int main(int argc, char **argv) {
 	if (!indigo_test_use_private_home()) {
 		return 1;
 	}
-	serial_port = getenv("MLASTRO_HW_PORT");
+	serial_port = hw_port("MLASTRO_HW_PORT");
 	const indigo_test_case tests[] = {
 		{ "mlastro_reports_identity", mlastro_reports_identity },
 		{ "mlastro_publishes_the_property_contract", mlastro_publishes_the_property_contract },

@@ -410,7 +410,7 @@ static void nexstar_current_park_and_unpark(void) {
 	ASSERT_TRUE(hw_number_item(mount, MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_PARK_POSITION_HA_ITEM_NAME, &ha));
 	ASSERT_TRUE(hw_number_item(mount, MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_PARK_POSITION_DEC_ITEM_NAME, &park_dec));
 	ASSERT_TRUE(hw_disconnect(mount, 20));
-	int descriptor = open_telescope(getenv("MOUNT_NEXSTAR_HW_PORT"));
+	int descriptor = open_telescope((char *)hw_port("MOUNT_NEXSTAR_HW_PORT"));
 	ASSERT_TRUE(descriptor >= 0);
 	double axis_ra, axis_dec;
 	int status = _tc_get_azalt(descriptor, &axis_ra, &axis_dec, 1);
@@ -428,7 +428,7 @@ static void nexstar_current_park_and_unpark(void) {
 	ASSERT_TRUE(selected(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
 	ASSERT_TRUE(hw_set_switch(mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, INDIGO_OK_STATE, 10));
 	ASSERT_TRUE(hw_disconnect(mount, 20));
-	descriptor = open_telescope(getenv("MOUNT_NEXSTAR_HW_PORT"));
+	descriptor = open_telescope((char *)hw_port("MOUNT_NEXSTAR_HW_PORT"));
 	ASSERT_TRUE(descriptor >= 0);
 	double parked_ra, parked_dec;
 	status = _tc_get_azalt(descriptor, &parked_ra, &parked_dec, 1);
@@ -485,7 +485,7 @@ static void nexstar_refused_port_and_driver_reinitialization(void) {
 	ASSERT_TRUE(hw_set_text(mount, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, "/dev/null", INDIGO_OK_STATE, 10));
 	ASSERT_TRUE(hw_set_switch(mount, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, INDIGO_ALERT_STATE, 15));
 	ASSERT_TRUE(!hw_connected(mount));
-	ASSERT_TRUE(hw_set_text(mount, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, getenv("MOUNT_NEXSTAR_HW_PORT"), INDIGO_OK_STATE, 10));
+	ASSERT_TRUE(hw_set_text(mount, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, hw_port("MOUNT_NEXSTAR_HW_PORT"), INDIGO_OK_STATE, 10));
 	ASSERT_TRUE(hw_connect(mount, 30));
 	double ra, dec;
 	ASSERT_TRUE(fresh_position(&ra, &dec));
@@ -494,7 +494,7 @@ static void nexstar_refused_port_and_driver_reinitialization(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_mount_nexstar(INDIGO_DRIVER_INIT, NULL));
 	mount = hw_wait_for_device("Mount Nexstar", 10);
 	ASSERT_TRUE(mount >= 0);
-	ASSERT_TRUE(hw_set_text(mount, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, getenv("MOUNT_NEXSTAR_HW_PORT"), INDIGO_OK_STATE, 10));
+	ASSERT_TRUE(hw_set_text(mount, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, hw_port("MOUNT_NEXSTAR_HW_PORT"), INDIGO_OK_STATE, 10));
 	ASSERT_TRUE(hw_connect(mount, 30));
 	ASSERT_TRUE(fresh_position(&ra, &dec));
 }
@@ -504,7 +504,7 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "Use --identity, --gps, --run or --run-gps-required with MOUNT_NEXSTAR_HW_PORT set.\n");
 		return 2;
 	}
-	const char *port = getenv("MOUNT_NEXSTAR_HW_PORT");
+	const char *port = hw_port("MOUNT_NEXSTAR_HW_PORT");
 	if (port == NULL || !indigo_test_use_private_home()) {
 		return 2;
 	}

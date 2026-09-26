@@ -1826,7 +1826,7 @@ int main(int argc, char **argv) {
 	if (!indigo_test_use_private_home()) {
 		return 1;
 	}
-	serial_port = getenv("MOUNT_LX200_HW_PORT");
+	serial_port = hw_port("MOUNT_LX200_HW_PORT");
 	const indigo_test_case tests[] = {
 		{ "lx200_reports_identity_and_capabilities", lx200_reports_identity_and_capabilities },
 		{ "lx200_publishes_the_property_contract", lx200_publishes_the_property_contract },

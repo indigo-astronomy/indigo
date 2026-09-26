@@ -930,7 +930,7 @@ int main(int argc, char **argv) {
 	if (getenv("PRIMALUCE_HW_DEBUG")) {
 		indigo_set_log_level(INDIGO_LOG_DEBUG);
 	}
-	serial_port = getenv("PRIMALUCE_HW_PORT");
+	serial_port = hw_port("PRIMALUCE_HW_PORT");
 	const char *travel = getenv("PRIMALUCE_HW_TRAVEL");
 	if (travel && *travel) {
 		long_travel = atof(travel);

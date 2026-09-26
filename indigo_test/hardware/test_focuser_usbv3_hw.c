@@ -452,7 +452,7 @@ int main(int argc, char **argv) {
 	if (!indigo_test_use_private_home()) {
 		return 1;
 	}
-	serial_port = getenv("USBV3_HW_PORT");
+	serial_port = hw_port("USBV3_HW_PORT");
 	const indigo_test_case tests[] = {
 		{ "usbv3_reports_identity_and_capabilities", usbv3_reports_identity_and_capabilities },
 		{ "usbv3_publishes_the_property_contract", usbv3_publishes_the_property_contract },

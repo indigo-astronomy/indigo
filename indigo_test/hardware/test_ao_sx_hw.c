@@ -829,7 +829,7 @@ int main(int argc, char **argv) {
 			indigo_set_log_level(INDIGO_LOG_DEBUG);
 		}
 	}
-	serial_port = getenv("AO_SX_HW_PORT");
+	serial_port = hw_port("AO_SX_HW_PORT");
 	client = (indigo_client){ .name = "Starlight Xpress AO hardware test", .version = INDIGO_VERSION_CURRENT, .define_property = define_property, .update_property = update_property, .delete_property = delete_property, .send_message = report_message };
 	const indigo_test_case tests[] = {
 		{ "sx_ao_reports_identity_and_capabilities", sx_ao_reports_identity_and_capabilities },
