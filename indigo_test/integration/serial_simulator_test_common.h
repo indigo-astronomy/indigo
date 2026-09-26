@@ -41,10 +41,10 @@
 } while (0)
 
 #define SERIAL_CHECK_EQ_INT(expected, actual) do { \
-	int expected_value = (expected); \
-	int actual_value = (actual); \
-	if (expected_value != actual_value) { \
-		fprintf(stderr, "%s:%d: expected %d, got %d\n", __FILE__, __LINE__, expected_value, actual_value); \
+	int indigo_assert_expected = (expected); \
+	int indigo_assert_actual = (actual); \
+	if (indigo_assert_expected != indigo_assert_actual) { \
+		fprintf(stderr, "%s:%d: expected %d, got %d\n", __FILE__, __LINE__, indigo_assert_expected, indigo_assert_actual); \
 		indigo_test_failures++; \
 		goto cleanup; \
 	} \

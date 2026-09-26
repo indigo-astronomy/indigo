@@ -52,40 +52,40 @@
 } while (0)
 
 #define CHECK_EQ(expected, actual) do { \
-	long long expected_value = (long long)(expected); \
-	long long actual_value = (long long)(actual); \
-	if (expected_value != actual_value) { \
-		fprintf(stderr, "%s:%d: expected %lld, got %lld: %s\n", __FILE__, __LINE__, expected_value, actual_value, #actual); \
+	long long indigo_assert_expected = (long long)(expected); \
+	long long indigo_assert_actual = (long long)(actual); \
+	if (indigo_assert_expected != indigo_assert_actual) { \
+		fprintf(stderr, "%s:%d: expected %lld, got %lld: %s\n", __FILE__, __LINE__, indigo_assert_expected, indigo_assert_actual, #actual); \
 		indigo_test_failures++; \
 		goto cleanup; \
 	} \
 } while (0)
 
 #define CHECK_NEAR(expected, actual, tolerance) do { \
-	double expected_value = (expected); \
-	double actual_value = (actual); \
-	if (!(fabs(expected_value - actual_value) <= (tolerance))) { \
-		fprintf(stderr, "%s:%d: expected %g, got %g: %s\n", __FILE__, __LINE__, expected_value, actual_value, #actual); \
+	double indigo_assert_expected = (expected); \
+	double indigo_assert_actual = (actual); \
+	if (!(fabs(indigo_assert_expected - indigo_assert_actual) <= (tolerance))) { \
+		fprintf(stderr, "%s:%d: expected %g, got %g: %s\n", __FILE__, __LINE__, indigo_assert_expected, indigo_assert_actual, #actual); \
 		indigo_test_failures++; \
 		goto cleanup; \
 	} \
 } while (0)
 
 #define CHECK_STR(expected, actual) do { \
-	const char *expected_value = (expected); \
-	const char *actual_value = (actual); \
-	if (actual_value == NULL || strcmp(expected_value, actual_value)) { \
-		fprintf(stderr, "%s:%d: expected \"%s\", got \"%s\": %s\n", __FILE__, __LINE__, expected_value, actual_value ? actual_value : "(null)", #actual); \
+	const char *indigo_assert_expected = (expected); \
+	const char *indigo_assert_actual = (actual); \
+	if (indigo_assert_actual == NULL || strcmp(indigo_assert_expected, indigo_assert_actual)) { \
+		fprintf(stderr, "%s:%d: expected \"%s\", got \"%s\": %s\n", __FILE__, __LINE__, indigo_assert_expected, indigo_assert_actual ? indigo_assert_actual : "(null)", #actual); \
 		indigo_test_failures++; \
 		goto cleanup; \
 	} \
 } while (0)
 
 #define EXPECT_EQ(expected, actual) do { \
-	long long expected_value = (long long)(expected); \
-	long long actual_value = (long long)(actual); \
-	if (expected_value != actual_value) { \
-		fprintf(stderr, "%s:%d: invariant expected %lld, got %lld: %s\n", __FILE__, __LINE__, expected_value, actual_value, #actual); \
+	long long indigo_assert_expected = (long long)(expected); \
+	long long indigo_assert_actual = (long long)(actual); \
+	if (indigo_assert_expected != indigo_assert_actual) { \
+		fprintf(stderr, "%s:%d: invariant expected %lld, got %lld: %s\n", __FILE__, __LINE__, indigo_assert_expected, indigo_assert_actual, #actual); \
 		indigo_test_failures++; \
 	} \
 } while (0)

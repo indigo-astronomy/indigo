@@ -47,6 +47,11 @@ static int indigo_test_failures = 0;
 // Shared helpers use it to label per-case diagnostic artifacts.
 static const char *indigo_current_test_name = NULL;
 
+// The assertion macros copy their arguments into locals prefixed indigo_assert_, a name no caller
+// uses. With plain names such as expected_value, a helper that passed its own expected_value
+// parameter expanded to 'const char *expected_value = (expected_value);', which initializes the
+// local from itself: in the pmc8 TCP case it happened to hold the right pointer on macOS, the
+// previous call's value at -O0 and NULL at -O3 on Linux, where it crashed the suite.
 #define ASSERT_TRUE(condition) do { \
 	if (!(condition)) { \
 		fprintf(stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #condition); \
@@ -58,41 +63,41 @@ static const char *indigo_current_test_name = NULL;
 #define ASSERT_FALSE(condition) ASSERT_TRUE(!(condition))
 
 #define ASSERT_EQ_INT(expected, actual) do { \
-	int expected_value = (expected); \
-	int actual_value = (actual); \
-	if (expected_value != actual_value) { \
-		fprintf(stderr, "%s:%d: expected %d, got %d\n", __FILE__, __LINE__, expected_value, actual_value); \
+	int indigo_assert_expected = (expected); \
+	int indigo_assert_actual = (actual); \
+	if (indigo_assert_expected != indigo_assert_actual) { \
+		fprintf(stderr, "%s:%d: expected %d, got %d\n", __FILE__, __LINE__, indigo_assert_expected, indigo_assert_actual); \
 		indigo_test_failures++; \
 		return; \
 	} \
 } while (0)
 
 #define ASSERT_EQ_TOKEN(expected, actual) do { \
-	indigo_token expected_value = (expected); \
-	indigo_token actual_value = (actual); \
-	if (expected_value != actual_value) { \
-		fprintf(stderr, "%s:%d: expected 0x%llx, got 0x%llx\n", __FILE__, __LINE__, expected_value, actual_value); \
+	indigo_token indigo_assert_expected = (expected); \
+	indigo_token indigo_assert_actual = (actual); \
+	if (indigo_assert_expected != indigo_assert_actual) { \
+		fprintf(stderr, "%s:%d: expected 0x%llx, got 0x%llx\n", __FILE__, __LINE__, indigo_assert_expected, indigo_assert_actual); \
 		indigo_test_failures++; \
 		return; \
 	} \
 } while (0)
 
 #define ASSERT_NEAR(expected, actual, tolerance) do { \
-	double expected_value = (expected); \
-	double actual_value = (actual); \
-	double tolerance_value = (tolerance); \
-	if (fabs(expected_value - actual_value) > tolerance_value) { \
-		fprintf(stderr, "%s:%d: expected %.12g, got %.12g, tolerance %.12g\n", __FILE__, __LINE__, expected_value, actual_value, tolerance_value); \
+	double indigo_assert_expected = (expected); \
+	double indigo_assert_actual = (actual); \
+	double indigo_assert_tolerance = (tolerance); \
+	if (fabs(indigo_assert_expected - indigo_assert_actual) > indigo_assert_tolerance) { \
+		fprintf(stderr, "%s:%d: expected %.12g, got %.12g, tolerance %.12g\n", __FILE__, __LINE__, indigo_assert_expected, indigo_assert_actual, indigo_assert_tolerance); \
 		indigo_test_failures++; \
 		return; \
 	} \
 } while (0)
 
 #define ASSERT_STREQ(expected, actual) do { \
-	const char *expected_value = (expected); \
-	const char *actual_value = (actual); \
-	if (strcmp(expected_value, actual_value)) { \
-		fprintf(stderr, "%s:%d: expected \"%s\", got \"%s\"\n", __FILE__, __LINE__, expected_value, actual_value); \
+	const char *indigo_assert_expected = (expected); \
+	const char *indigo_assert_actual = (actual); \
+	if (strcmp(indigo_assert_expected, indigo_assert_actual)) { \
+		fprintf(stderr, "%s:%d: expected \"%s\", got \"%s\"\n", __FILE__, __LINE__, indigo_assert_expected, indigo_assert_actual); \
 		indigo_test_failures++; \
 		return; \
 	} \
