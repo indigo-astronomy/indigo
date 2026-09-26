@@ -15,16 +15,23 @@
 #
 # Hardware run (--hw): runs the make target 'test-<driver>-hw' with '_' replaced
 # by '-', or the targets given with --target. Arguments after '--' are passed to
-# make, e.g. 'HW_DRIVER=indigo_ccd_touptek' or 'HW_HOTPLUG=1'. The type recorded
-# is the model of the device the suite connected to, as the driver detected it;
-# --type overrides it.
+# make, e.g. 'HW_DRIVER=indigo_ccd_touptek'. The type recorded is the model of
+# the device the suite connected to, as the driver detected it; --type overrides
+# it.
+#
+# Hot-plug run (--hot-plug): a hardware run that includes the opt-in unplug and
+# replug case. It runs 'test-<driver>-hw' with HW_HOTPLUG=1 when that target
+# supports it, otherwise 'test-<driver>-hotplug-hw'. The type gets the suffix
+# ' (hot-plug)', so a hot-plug run and a plain hardware run of the same device
+# keep separate records. Passing HW_HOTPLUG=1 to make makes a run a hot-plug
+# run too.
 #
 # Every test writes its results into the file named by INDIGO_TEST_RESULTS (see
 # indigo_test/AGENTS.md), so the recorded counts do not depend on the text a
 # suite prints. A run passes when every test binary or target exits with 0 and
 # every planned case passed.
 #
-# Usage: run_driver_test.py <driver> [--hw] [--target <target> ...] [--type <type>]
+# Usage: run_driver_test.py <driver> [--hw | --hot-plug] [--target <target> ...] [--type <type>]
 #                           [--no-build] [--no-record] [--dry-run] [-- <make arguments>]
 
 import argparse
@@ -40,6 +47,9 @@ import make_test_summary
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEST_DIR = os.path.join(ROOT, "indigo_test")
+
+HOT_PLUG = "HW_HOTPLUG=1"
+HOT_PLUG_SUFFIX = " (hot-plug)"
 
 FAKE_SDK_KINDS = ("sdk", "usb", "hid", "sysfs", "ica")
 SANITIZER_KINDS = ("sanitize", "asan")
@@ -76,7 +86,8 @@ with 'make all' in the project root before the first run.
 A hardware-free run executes every test named test_<driver> or
 test_<driver>_<kind>, and is recorded as 'simulator' or 'fake SDK'. A hardware
 run executes 'make test-<driver>-hw' and is recorded under the model of the
-device the suite connected to.
+device the suite connected to. A hot-plug run adds the unplug and replug case
+and is recorded under the model followed by ' (hot-plug)'.
 
 examples:
   run the simulator tests of a driver and record them
@@ -87,6 +98,9 @@ examples:
 
   run the hardware suite, passing variables to make
     tools/run_driver_test.py ccd_touptek --hw -- HW_DRIVER=indigo_ccd_touptek
+
+  run the hardware suite with its hot-plug case
+    tools/run_driver_test.py ccd_touptek --hot-plug
 
   run a hardware suite through another target and name the hardware yourself
     tools/run_driver_test.py ccd_touptek --hw --target test-ccd-touptek-hotplug-hw --type "Touptek GPCMOS01200KMB"
@@ -173,6 +187,28 @@ def driver_tests(driver):
 			continue
 		tests.append(path)
 	return tests
+
+
+def make_commands(target, make_arguments):
+	"""Return what make would run for the target, or None when it cannot."""
+	result = subprocess.run(["make", "-n", target] + make_arguments, cwd=TEST_DIR, capture_output=True, text=True)
+	return result.stdout if result.returncode == 0 else None
+
+
+def hot_plug_targets(driver, make_arguments):
+	"""Return the targets and make arguments of a hot-plug run of the driver.
+
+	The plain hardware target is preferred when it adds the hot-plug case for
+	HW_HOTPLUG=1, a dedicated hot-plug target is used otherwise.
+	"""
+	name = driver.replace("_", "-")
+	arguments = make_arguments + ([HOT_PLUG] if HOT_PLUG not in make_arguments else [])
+	commands = make_commands("test-%s-hw" % name, arguments)
+	if commands is not None and "--hotplug" in commands:
+		return ["test-%s-hw" % name], arguments
+	if make_commands("test-%s-hotplug-hw" % name, make_arguments) is not None:
+		return ["test-%s-hotplug-hw" % name], make_arguments
+	fail("%s has no hot-plug case: test-%s-hw ignores %s and there is no test-%s-hotplug-hw" % (driver, name, HOT_PLUG, name))
 
 
 def hardware_free_type(tests):
@@ -265,6 +301,7 @@ def main():
 		epilog=EXAMPLES)
 	parser.add_argument("driver", help="driver directory name, e.g. focuser_dsd")
 	parser.add_argument("--hw", action="store_true", help="run the hardware suite instead of the hardware-free tests")
+	parser.add_argument("--hot-plug", action="store_true", help="run the hardware suite with its unplug and replug case, recorded as '<model> (hot-plug)'")
 	parser.add_argument("--target", action="append", help="make target to run for a hardware run, instead of test-<driver>-hw (repeatable)")
 	parser.add_argument("--type", help="type to record instead of the detected one")
 	parser.add_argument("--no-build", action="store_true", help="do not rebuild the driver first")
@@ -277,6 +314,8 @@ def main():
 
 	driver = args.driver.strip("/")
 	driver_dir = find_driver(driver)
+	hot_plug = args.hot_plug or HOT_PLUG in make_arguments
+	hardware = args.hw or hot_plug
 	readme = os.path.join(driver_dir, "README.md")
 	if not os.path.isfile(readme):
 		fail("%s has no README.md" % driver_dir)
@@ -294,8 +333,15 @@ def main():
 	env = dict(os.environ, INDIGO_TEST_RESULTS=results)
 	failures = []
 	try:
-		if args.hw:
-			targets = args.target or ["test-%s-hw" % driver.replace("_", "-")]
+		if hardware:
+			if args.target:
+				targets = args.target
+				if args.hot_plug and HOT_PLUG not in make_arguments:
+					make_arguments = make_arguments + [HOT_PLUG]
+			elif args.hot_plug:
+				targets, make_arguments = hot_plug_targets(driver, make_arguments)
+			else:
+				targets = ["test-%s-hw" % driver.replace("_", "-")]
 			for target in targets:
 				if run(["make", target] + make_arguments, TEST_DIR, env) != 0:
 					failures.append(target)
@@ -316,8 +362,10 @@ def main():
 	finally:
 		os.unlink(results)
 
-	if args.hw and test_type is None:
+	if hardware and test_type is None:
 		test_type = hardware_type(driver, devices)
+	if hot_plug and test_type is not None and not test_type.endswith(HOT_PLUG_SUFFIX):
+		test_type += HOT_PLUG_SUFFIX
 	ok = not failures and planned > 0 and passed == planned
 	print()
 	for failure in failures:

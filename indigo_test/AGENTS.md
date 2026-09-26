@@ -534,7 +534,9 @@ python3 tools/run_driver_test.py ccd_touptek --hw -- HW_DRIVER=indigo_ccd_toupte
 Run it without arguments for the full usage. A hardware-free run executes every
 test in `INTEGRATION_TESTS` named after the driver (see "Test Naming"); a
 hardware run executes `test-<driver>-hw` and records the model of the device
-the suite connected to, several models sorted and joined with `and`. Use
+the suite connected to, several models sorted and joined with `and`. A
+`--hot-plug` run adds the opt-in unplug and replug case and records the model
+followed by ` (hot-plug)`, so it never replaces the plain hardware run. Use
 `--type` only where the detected name is not the one to record. Record by hand,
 following the rules below, only a run the script cannot perform.
 
