@@ -172,10 +172,63 @@ PWM channel 1 rather than channel 3.
   machine, so the PWM path is covered by the fake only. See D15.
 - The driver exposes no guider interface, so the guiding pulse accuracy measurement does not apply.
 
+## Switch target adoption: PWM requests and the pulse finalizer (3.0.0.6, 2026-09-27)
+
+Findings TGT-018 and the aux_asiair part of TGT-B03 in `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Linux x64 (Ubuntu 24.04, gcc 13.3), hardware-free suite only; no hardware run.
+
+- **Baseline on Linux x64 (reproduced, fixed in the test build):** the unchanged 3.0.0.5 suite
+  failed 14 of 16 cases. Ubuntu's gcc enables `_FORTIFY_SOURCE` by default, so glibc's inlined
+  fortified `open()` and `read()`, renamed by the `-Dopen=sysfs_test_open` / `-Dread=...`
+  replacements, called the real functions through their asm aliases (`nm -u` of the test object
+  showed `open` and `read`, not the fakes); every connect then failed on
+  `/sys/class/gpio/export`. `AUX_RPIO_SYSFS_TEST_REPLACEMENTS` in `indigo_test/Makefile` now starts
+  with `-U_FORTIFY_SOURCE` (shared with `aux_rpio`). The contract case pinned `0x03000004` while
+  the driver was already 3.0.0.5; it now asserts the API generation, as `indigo_test/AGENTS.md`
+  requires.
+- **TGT-B03 (reproduced):** the 1 s poll `asiair_update_pwm()` wrote value and target of
+  `AUX_GPIO_OUTLET_FREQUENCIES` and `AUX_GPIO_OUTLET_DUTY` from the channels and published them OK
+  without a BUSY check. Polls are `INDIGO_TASK_PRIORITY_TIME` tasks and run ahead of a queued
+  change handler, so a request copied while the poll came due was shown OK with the old value
+  before it was applied, and the handler, which programs the channels from `number.target` in
+  `asiair_apply_pwm()`, programmed the old setting again. **Fix:** the poll leaves value, target
+  and state of a BUSY PWM property alone and publishes only the one that is not BUSY; the handlers
+  already program the channels from the targets and are unchanged. A property that is not BUSY
+  keeps being refreshed with value and target, so a handler of the other property still programs
+  the setting the channel reports.
+- **Regression tests:** `PWM duty request survives the poll` and `PWM frequency request survives
+  the poll` hold the device queue with a gate handler, send the request for Output #1, change the
+  other setting of channel 0 in the fake (as a reprogramming outside the driver would) so the poll
+  publishes the other PWM property as a witness, let the poll come due behind the gate, and check
+  that the first result after the request is OK with the requested value, published after the
+  poll ran, and that the channel runs at the requested setting with the external one kept. Against
+  3.0.0.5 both failed (first result OK with the old 100, channel left at 50 Hz / 100 % and
+  100 Hz / 50 %); both pass with 3.0.0.6, also in the ASan build.
+- **TGT-018 (analysis, Won't fix):** `relay_pulse_finalizer()` writes `sw.value = false` only for
+  an output whose pulse has elapsed, switches that output off in the same step and publishes; the
+  handler compares every item with a fresh read of the outputs. An ON request for that output
+  copied before the finalizer ran is ignored exactly like the same request a moment earlier while
+  the pulse ran (the value was already ON), so no request is lost. The target cannot replace the
+  write, the same way as in `aux_dragonfly` TGT-016: items an any-of-many request does not carry
+  keep their previous target, so a handler reading targets cannot tell a new ON from the ON of the
+  finished pulse. A temporary case (not kept) held the queue past the end of a 500 ms pulse on
+  Output #3 and queued a request for Output #2 only. Unchanged driver: `value 26 0` from the
+  finalizer, then only `value 13 1`, Output #3 off. With the finalizer skipping a BUSY property and
+  the handler reading targets: Output #3 was pulsed again (`value 26 1`, 500 ms later
+  `value 26 0`), and after its pulse length had been set to 0 it was switched on for good. No code
+  change for TGT-018.
+- **Verification:** `TZ=Europe/Bratislava python3 tools/run_driver_test.py aux_asiair`, 18/18.
+  Regeneration reproduces the checked-in output.
+
+```sh
+cd indigo_test && INDIGO_TEST_FILTER="request survives the poll" ./build/integration/test_aux_asiair_sysfs
+```
+
 ## Final test summary
 
-- Simulated tests: 16 executed, 16 passed. The pre-migration baseline against the unmodified
-  driver was 15 executed, 8 passed.
+- Simulated tests: 18 executed, 18 passed (Linux x64, 3.0.0.6). Earlier: 16 executed, 16 passed on
+  the Raspberry Pi 5. The pre-migration baseline against the unmodified driver was 15 executed,
+  8 passed.
 - Hardware tests: 3 executed, 3 passed, on a Raspberry Pi 5 Model B Rev 1.0 with nothing connected
   to the 40-pin header, and repeated twice with identical results. All four ports physically
   switch, measured through `pinctrl` rather than through the driver's own interface. Before the

@@ -26,7 +26,7 @@ driver asiair {
 	label = "ZWO Power Ports ASIAIR";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2025-2026 Rumen G. Bogdanovski";
-	version = 5;
+	version = 6;
 	// The ports are reached through sysfs files, so the driver has no transport
 	// of its own and exposes one static device.
 	include {
@@ -169,11 +169,15 @@ driver asiair {
 		}
 
 		// The channels can be reprogrammed from outside the driver, so the
-		// published settings are refreshed from the device.
+		// published settings are refreshed from the device. A pending request
+		// owns value, target and state of its property: its handler programs
+		// the channels from the targets and publishes the result.
 		static void asiair_update_pwm(indigo_device *device) {
 			if (!PRIVATE_DATA->sysfs.pwm_present) {
 				return;
 			}
+			bool frequency_pending = AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state == INDIGO_BUSY_STATE;
+			bool duty_pending = AUX_GPIO_OUTLET_DUTY_PROPERTY->state == INDIGO_BUSY_STATE;
 			bool ok = true;
 			for (int i = 0; i < PWM_COUNT; i++) {
 				double frequency = 0;
@@ -181,15 +185,24 @@ driver asiair {
 				if (rpio_sysfs_get_pwm(&PRIVATE_DATA->sysfs, i, &frequency, &duty)) {
 					indigo_item *frequency_item = AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->items + i;
 					indigo_item *duty_item = AUX_GPIO_OUTLET_DUTY_PROPERTY->items + i;
-					frequency_item->number.value = frequency_item->number.target = frequency;
-					duty_item->number.value = duty_item->number.target = duty;
+					if (!frequency_pending) {
+						frequency_item->number.value = frequency_item->number.target = frequency;
+					}
+					if (!duty_pending) {
+						duty_item->number.value = duty_item->number.target = duty;
+					}
 				} else {
 					ok = false;
 				}
 			}
-			AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = AUX_GPIO_OUTLET_DUTY_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-			indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
-			indigo_update_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
+			if (!frequency_pending) {
+				AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
+			}
+			if (!duty_pending) {
+				AUX_GPIO_OUTLET_DUTY_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				indigo_update_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
+			}
 		}
 	}
 	aux {

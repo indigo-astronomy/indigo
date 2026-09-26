@@ -1748,7 +1748,10 @@ test-aux-joystick-hid-asan: $(INTEGRATION_BUILD)/test_aux_joystick_hid_asan
 # The Raspberry Pi GPIO driver reaches the hardware only through sysfs files, so
 # the whole boundary is replaced by the fake in test_aux_rpio_sysfs.c. stat is
 # replaced through a function-like macro so that struct stat is left alone.
-AUX_RPIO_SYSFS_TEST_REPLACEMENTS = -Dopen=sysfs_test_open -Dclose=sysfs_test_close -Dread=sysfs_test_read -Dwrite=sysfs_test_write -Dopendir=sysfs_test_opendir -Dreaddir=sysfs_test_readdir -Dclosedir=sysfs_test_closedir -D'stat(path,buffer)=sysfs_test_stat(path,buffer)' -Dindigo_usleep=sysfs_test_usleep
+# Compilers that enable _FORTIFY_SOURCE by default (Ubuntu gcc) inline glibc's
+# fortified open() and read(), which call the real functions through asm
+# aliases and so bypass the fake; the replacements need it off.
+AUX_RPIO_SYSFS_TEST_REPLACEMENTS = -U_FORTIFY_SOURCE -Dopen=sysfs_test_open -Dclose=sysfs_test_close -Dread=sysfs_test_read -Dwrite=sysfs_test_write -Dopendir=sysfs_test_opendir -Dreaddir=sysfs_test_readdir -Dclosedir=sysfs_test_closedir -D'stat(path,buffer)=sysfs_test_stat(path,buffer)' -Dindigo_usleep=sysfs_test_usleep
 AUX_RPIO_SYSFS_TEST_CFLAGS = $(TEST_CFLAGS) $(AUX_RPIO_SYSFS_TEST_REPLACEMENTS)
 
 $(INTEGRATION_BUILD)/aux_rpio_sysfs.o: ../indigo_linux_drivers/aux_rpio/indigo_aux_rpio.c ../indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.h ../indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.c Makefile | $(INTEGRATION_BUILD)
