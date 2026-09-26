@@ -353,6 +353,70 @@ static void numeric_copy_still_clamps_finite_inputs(void) {
 	indigo_release_property(property);
 }
 
+static indigo_property *init_switch_target_property(indigo_rule rule, indigo_property_perm perm) {
+	indigo_property *property = indigo_init_switch_property(NULL, "Device", "SWITCH", "Group", "Switch", INDIGO_OK_STATE, perm, rule, 3);
+	indigo_init_switch_item(property->items + 0, "A", "A", true);
+	indigo_init_switch_item(property->items + 1, "B", "B", false);
+	indigo_init_switch_item(property->items + 2, "C", "C", false);
+	return property;
+}
+
+static indigo_property *init_switch_request(const char *name, bool value) {
+	indigo_property *request = indigo_init_switch_property(NULL, "Device", "SWITCH", NULL, NULL, INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+	indigo_init_switch_item(request->items, name, NULL, value);
+	return request;
+}
+
+static void switch_target_follows_init_and_copy(void) {
+	indigo_property *property = init_switch_target_property(INDIGO_ONE_OF_MANY_RULE, INDIGO_RW_PERM);
+	ASSERT_TRUE(property->items[0].sw.target && !property->items[1].sw.target && !property->items[2].sw.target);
+	ASSERT_TRUE(indigo_get_switch_target(property, "A") && !indigo_get_switch_target(property, "B") && !indigo_get_switch_target(property, "missing"));
+	indigo_property *request = init_switch_request("B", true);
+	indigo_property_copy_values(property, request, false);
+	for (int i = 0; i < 3; i++) {
+		ASSERT_TRUE(property->items[i].sw.value == (i == 1));
+		ASSERT_TRUE(property->items[i].sw.target == (i == 1));
+	}
+	indigo_release_property(request);
+	indigo_release_property(property);
+}
+
+static void switch_target_survives_a_poll_overwriting_the_value(void) {
+	indigo_property *property = init_switch_target_property(INDIGO_ONE_OF_MANY_RULE, INDIGO_RW_PERM);
+	indigo_property *request = init_switch_request("C", true);
+	indigo_property_copy_values(property, request, false);
+	// a status poll that checked the state before the request was copied writes the device state afterwards
+	indigo_set_switch(property, property->items + 0, true);
+	ASSERT_TRUE(property->items[0].sw.value && !property->items[2].sw.value);
+	ASSERT_TRUE(!indigo_get_switch_target(property, "A") && indigo_get_switch_target(property, "C"));
+	indigo_release_property(request);
+	indigo_release_property(property);
+}
+
+static void switch_target_keeps_unnamed_items_for_any_of_many(void) {
+	indigo_property *property = init_switch_target_property(INDIGO_ANY_OF_MANY_RULE, INDIGO_RW_PERM);
+	indigo_property *request = init_switch_request("B", true);
+	indigo_property_copy_values(property, request, false);
+	ASSERT_TRUE(property->items[0].sw.target && property->items[1].sw.target && !property->items[2].sw.target);
+	ASSERT_TRUE(property->items[0].sw.value && property->items[1].sw.value && !property->items[2].sw.value);
+	indigo_release_property(request);
+	indigo_release_property(property);
+}
+
+static void switch_target_is_not_written_for_read_only_or_empty_requests(void) {
+	indigo_property *property = init_switch_target_property(INDIGO_ONE_OF_MANY_RULE, INDIGO_RO_PERM);
+	indigo_property *request = init_switch_request("B", true);
+	indigo_property_copy_values(property, request, false);
+	ASSERT_TRUE(property->items[0].sw.target && !property->items[1].sw.target);
+	indigo_release_property(property);
+	property = init_switch_target_property(INDIGO_ONE_OF_MANY_RULE, INDIGO_RW_PERM);
+	request->count = 0;
+	indigo_property_copy_values(property, request, false);
+	ASSERT_TRUE(property->items[0].sw.target && !property->items[1].sw.target && !property->items[2].sw.target);
+	indigo_release_property(request);
+	indigo_release_property(property);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "properties_are_initialized_for_all_vector_types", properties_are_initialized_for_all_vector_types },
@@ -360,7 +424,11 @@ int main(void) {
 		{ "copied_properties_are_independent_for_all_vector_types", copied_properties_are_independent_for_all_vector_types },
 		{ "resized_properties_preserve_items_for_all_vector_types", resized_properties_preserve_items_for_all_vector_types },
 		{ "numeric_copy_ignores_nonfinite_inputs", numeric_copy_ignores_nonfinite_inputs },
-		{ "numeric_copy_still_clamps_finite_inputs", numeric_copy_still_clamps_finite_inputs }
+		{ "numeric_copy_still_clamps_finite_inputs", numeric_copy_still_clamps_finite_inputs },
+		{ "switch_target_follows_init_and_copy", switch_target_follows_init_and_copy },
+		{ "switch_target_survives_a_poll_overwriting_the_value", switch_target_survives_a_poll_overwriting_the_value },
+		{ "switch_target_keeps_unnamed_items_for_any_of_many", switch_target_keeps_unnamed_items_for_any_of_many },
+		{ "switch_target_is_not_written_for_read_only_or_empty_requests", switch_target_is_not_written_for_read_only_or_empty_requests }
 	};
 	return indigo_run_tests("bus property unit tests", tests, (int)(sizeof(tests) / sizeof(tests[0])));
 }

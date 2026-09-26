@@ -269,6 +269,7 @@ typedef struct {/* there is no .name =  because of g++ C99 bug affecting string 
 			bool value;                     ///< item value (for switch properties)
 			bool default_value;            	///< item default value (for switch properties)
 			bool previous_value;            ///< item previous value (for switch properties)
+			bool target;                    ///< item target value (for switch properties), the last requested value; set with value by indigo_property_copy_values(), never sent over the protocol
 		} sw;
 		/** Light property item specific fields.
 		 */
@@ -749,6 +750,12 @@ INDIGO_EXTERN indigo_item *indigo_get_item(indigo_property *property, const char
 /** Get switch item value.
  */
 INDIGO_EXTERN bool indigo_get_switch(indigo_property *property, const char *item_name);
+
+/** Get switch item target, the value last requested by a client.
+ A change handler reads the target instead of the value, because a status poll may overwrite the value
+ between the moment the request is copied and the moment the handler runs; the poll never writes the target.
+ */
+INDIGO_EXTERN bool indigo_get_switch_target(indigo_property *property, const char *item_name);
 
 /** Copy item values from other property into property (optionally including property state).
  */

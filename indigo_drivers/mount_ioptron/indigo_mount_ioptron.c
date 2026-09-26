@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000038
+#define DRIVER_VERSION       0x03000039
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -1924,8 +1924,12 @@ static void mount_tracking_handler(indigo_device *device) {
 	}
 	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_TRACKING.on_change
-	if (ioptron_set_tracking(device, MOUNT_TRACKING_ON_ITEM->sw.value)) {
-		MOUNT_STATE_TRACKING_ITEM->light.value = MOUNT_TRACKING_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+	// The status poll may overwrite the value between the copy of the request and this handler,
+	// the target keeps the requested value. On failure the next poll restores the real state.
+	bool on = MOUNT_TRACKING_ON_ITEM->sw.target;
+	if (ioptron_set_tracking(device, on)) {
+		indigo_set_switch(MOUNT_TRACKING_PROPERTY, on ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
+		MOUNT_STATE_TRACKING_ITEM->light.value = on ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 	} else {
 		MOUNT_TRACKING_PROPERTY->state = MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_ALERT_STATE;
 	}

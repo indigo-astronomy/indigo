@@ -1521,7 +1521,7 @@ void indigo_init_switch_item(indigo_item *item, const char *name, const char *la
 	memset(item, 0, sizeof(indigo_item));
 	INDIGO_COPY_NAME(item->name, name);
 	INDIGO_COPY_VALUE(item->label, label ? label : "");
-	item->sw.value = item->sw.default_value = item->sw.previous_value = value;
+	item->sw.value = item->sw.default_value = item->sw.previous_value = item->sw.target = value;
 }
 
 void indigo_init_light_item(indigo_item *item, const char *name, const char *label, indigo_property_state value) {
@@ -1882,6 +1882,16 @@ bool indigo_get_switch(indigo_property *property, const char *item_name) {
 	return false;
 }
 
+bool indigo_get_switch_target(indigo_property *property, const char *item_name) {
+	assert(property != NULL);
+	assert(property->type == INDIGO_SWITCH_VECTOR);
+	assert(item_name != NULL);
+	for (int i = 0; i < property->count; i++)
+		if (!strcmp(property->items[i].name, item_name))
+			return property->items[i].sw.target;
+	return false;
+}
+
 void indigo_property_copy_values(indigo_property *property, indigo_property *other, bool with_state) {
 	assert(property != NULL);
 	assert(other != NULL);
@@ -1893,7 +1903,7 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 			property->access_token = other->access_token;
 			if (property->type == INDIGO_SWITCH_VECTOR && other->count > 0 && property->rule != INDIGO_ANY_OF_MANY_RULE) {
 				for (int j = 0; j < property->count; j++) {
-					property->items[j].sw.value = false;
+					property->items[j].sw.target = property->items[j].sw.value = false;
 				}
 			}
 			for (int i = 0; i < other->count; i++) {
@@ -1918,7 +1928,7 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 							}
 							break;
 						case INDIGO_SWITCH_VECTOR:
-							property_item->sw.value = other_item->sw.value;
+							property_item->sw.target = property_item->sw.value = other_item->sw.value;
 							break;
 						case INDIGO_BLOB_VECTOR:
 							property_item->blob.value = indigo_safe_realloc_copy(property_item->blob.value, property_item->blob.size = other_item->blob.size, other_item->blob.value);
