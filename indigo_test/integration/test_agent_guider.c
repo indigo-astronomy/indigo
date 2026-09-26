@@ -555,7 +555,7 @@ static bool configured_guiding(void) {
 }
 
 static void metadata(void) {
-	const char *names[] = { "FILTER_CCD_LIST", "FILTER_GUIDER_LIST", "FILTER_RELATED_AGENT_LIST", "AGENT_START_PROCESS", "AGENT_ABORT_PROCESS", "AGENT_GUIDER_CORRECTION_MODE_RA", "AGENT_GUIDER_CORRECTION_MODE_DEC", "AGENT_GUIDER_DETECTION_MODE", "AGENT_GUIDER_DEC_MODE", "AGENT_GUIDER_APPLY_DEC_BACKLASH", "AGENT_PROCESS_FEATURES", "AGENT_GUIDER_MOUNT_COORDINATES", "AGENT_GUIDER_SETTINGS", "AGENT_GUIDER_FLIP_REVERSES_DEC", "AGENT_GUIDER_STARS", "AGENT_GUIDER_SELECTION", "AGENT_GUIDER_STATS", "AGENT_GUIDER_LOG", "AGENT_GUIDER_DITHERING_OFFSETS", "AGENT_GUIDER_DITHERING_STRATEGY", "AGENT_GUIDER_DITHER", "AGENT_GUIDER_RESET_PPEC" };
+	const char *names[] = { "FILTER_CCD_LIST", "FILTER_GUIDER_LIST", "FILTER_RELATED_AGENT_LIST", "AGENT_START_PROCESS", "AGENT_ABORT_PROCESS", "AGENT_GUIDER_CORRECTION_MODE_RA", "AGENT_GUIDER_CORRECTION_MODE_DEC", "AGENT_GUIDER_DETECTION_MODE", "AGENT_GUIDER_DEC_MODE", "AGENT_GUIDER_APPLY_DEC_BACKLASH", "AGENT_PROCESS_FEATURES", "AGENT_GUIDER_MOUNT_COORDINATES", "AGENT_GUIDER_SETTINGS", "AGENT_GUIDER_FLIP_REVERSES_DEC", "AGENT_GUIDER_STARS", "AGENT_GUIDER_SELECTION", "AGENT_GUIDER_STATS", "AGENT_GUIDER_LOG", "AGENT_GUIDER_DITHERING_OFFSETS", "AGENT_GUIDER_DITHERING_STRATEGY", "AGENT_GUIDER_DITHER", "AGENT_GUIDER_RESET_PPEC", "AGENT_GUIDER_RESET_MKGP" };
 	for (int i = 0; i < ARRAY_SIZE(names); i++) {
 		ASSERT_TRUE(revision(AGENT, names[i]) > 0);
 	}
@@ -1747,6 +1747,67 @@ static void zero_drift_statistics(void) {
 	ASSERT_EQ_INT(commands, final_commands);
 }
 
+static void mkgp_learning_reset(void) {
+	ASSERT_TRUE(configured_guiding());
+	ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_CORRECTION_MODE_RA", "MKGP", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MKGP_PERIOD_RA", 100));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MKGP_PERIOD_FIXED", 1));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MKGP_RETAIN_MODEL_RA", 80));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "PPEC_PERIOD_RA", 20));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "PPEC_PERIOD_FIXED", 1));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_MOUNT_COORDINATES", "SIDE_OF_PIER", 1));
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(3));
+	freeze_motion = true;
+	move_image(1, 0);
+	ASSERT_TRUE(frames(30));
+	/* Multi Kernel GP runs from its own settings and publishes its own statistics */
+	double learning = value(AGENT, "AGENT_GUIDER_STATS", "MKGP_LEARNING");
+	ASSERT_TRUE(learning > 0);
+	ASSERT_NEAR(100, value(AGENT, "AGENT_GUIDER_STATS", "MKGP_PERIOD"), 0.5);
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_GUIDER_STATS", "PPEC_LEARNING"));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_GUIDER_STATS", "PPEC_PERIOD"));
+	/* a Predictive PEC reset must not touch the Multi Kernel GP model */
+	ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_RESET_PPEC", "RESET", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(frames(value(AGENT, "AGENT_GUIDER_STATS", "FRAME") + 2));
+	ASSERT_TRUE(value(AGENT, "AGENT_GUIDER_STATS", "MKGP_LEARNING") >= learning);
+	learning = value(AGENT, "AGENT_GUIDER_STATS", "MKGP_LEARNING");
+	ASSERT_TRUE(abort_running());
+	/* Predictive PEC learns its own model, from its own settings */
+	ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_CORRECTION_MODE_RA", "PPEC", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(15));
+	ASSERT_TRUE(value(AGENT, "AGENT_GUIDER_STATS", "PPEC_LEARNING") > 0);
+	ASSERT_NEAR(20, value(AGENT, "AGENT_GUIDER_STATS", "PPEC_PERIOD"), 0.5);
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_GUIDER_STATS", "MKGP_LEARNING"));
+	ASSERT_TRUE(abort_running());
+	ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_RESET_PPEC", "RESET", true, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_GUIDER_STATS", "PPEC_LEARNING"));
+	/* switching back retains the Multi Kernel GP model, untouched by the
+	   Predictive PEC run and reset; a reset model would read 0 until it holds
+	   more than ten points */
+	ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_CORRECTION_MODE_RA", "MKGP", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(3));
+	ASSERT_TRUE(value(AGENT, "AGENT_GUIDER_STATS", "MKGP_LEARNING") >= learning);
+	/* a Multi Kernel GP reset while it guides is deferred to the guiding loop */
+	ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_RESET_MKGP", "RESET", true, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_GUIDER_RESET_MKGP", "RESET"));
+	ASSERT_TRUE(frames(value(AGENT, "AGENT_GUIDER_STATS", "FRAME") + 2));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_GUIDER_STATS", "MKGP_LEARNING"));
+	ASSERT_TRUE(frames(value(AGENT, "AGENT_GUIDER_STATS", "FRAME") + 15));
+	ASSERT_TRUE(value(AGENT, "AGENT_GUIDER_STATS", "MKGP_LEARNING") > 0);
+	ASSERT_TRUE(abort_running());
+	/* an idle Multi Kernel GP reset takes effect immediately */
+	ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_RESET_MKGP", "RESET", true, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_GUIDER_RESET_MKGP", "RESET"));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_GUIDER_STATS", "MKGP_LEARNING"));
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(frames(3));
+	ASSERT_EQ_INT(0, value(AGENT, "AGENT_GUIDER_STATS", "MKGP_LEARNING"));
+	ASSERT_TRUE(abort_running());
+}
+
 static void zero_drift_ppec_learning(void) {
 	ASSERT_TRUE(configured_guiding());
 	ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_CORRECTION_MODE_RA", "PPEC", true, INDIGO_OK_STATE));
@@ -1816,10 +1877,10 @@ static void logging_algorithms(void) {
 	ASSERT_TRUE(configured_guiding());
 	ASSERT_TRUE(txt(AGENT, "AGENT_GUIDER_LOG", "DIR", config_folder, INDIGO_OK_STATE));
 	ASSERT_TRUE(sw(AGENT, "AGENT_PROCESS_FEATURES", "ENABLE_LOGGING", true, INDIGO_OK_STATE));
-	const char *modes[] = { "HYSTERESIS", "LINEAR_TREND", "PPEC" };
+	const char *modes[] = { "HYSTERESIS", "LINEAR_TREND", "PPEC", "MKGP" };
 	for (int i = 0; i < ARRAY_SIZE(modes); i++) {
 		ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_CORRECTION_MODE_RA", modes[i], true, INDIGO_OK_STATE));
-		ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_CORRECTION_MODE_DEC", i == 2 ? "RESIST_SWITCH" : modes[i], true, INDIGO_OK_STATE));
+		ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_CORRECTION_MODE_DEC", i >= 2 ? "RESIST_SWITCH" : modes[i], true, INDIGO_OK_STATE));
 		ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
 		ASSERT_TRUE(frames(3));
 		ASSERT_TRUE(abort_running());
@@ -1959,6 +2020,7 @@ static const indigo_test_case tests[] = {
 	{ "declination scaling", declination_scaling },
 	{ "pulse thresholds", pulse_thresholds },
 	{ "ppec learning reset", ppec_learning_reset },
+	{ "mkgp separate model, reset and mode switch", mkgp_learning_reset },
 	{ "shutdown active", shutdown_active },
 	{ "shutdown subframe", shutdown_subframe },
 	{ "shutdown exposure", shutdown_exposure },

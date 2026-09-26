@@ -25,7 +25,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x03000030
+#define DRIVER_VERSION 0x03000031
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -60,7 +60,7 @@
 
 #define SAFE_RADIUS_FACTOR (0.9)   /* factor to multiply SELECTION_RADIUS in which the star will not be lost */
 
-#define PPEC_RETAIN_MODEL_PCT (40.0)   /* max worm rotation (% of period) to retain the Predictive PEC model on restart */
+#define GP_RETAIN_MODEL_PCT (40.0)     /* max worm rotation (% of period) to retain the Predictive PEC / Multi Kernel GP model on restart */
 
 #define GUIDE_CYCLE_TIME_SMOOTHING (0.25)     /* how far a new sample pulls the estimate towards it: 0 = ignore it, 1 = jump to it */
 #define GUIDE_CYCLE_TIME_OUTLIER_FACTOR (2.0) /* sample/estimate ratio beyond which a sample is rejected as a one-off stall */
@@ -75,11 +75,6 @@
 #define AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM	(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->items+2)
 #define AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM	(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->items+3)
 #define AGENT_GUIDER_CORRECTION_MODE_RA_MKGP_ITEM	(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->items+4)
-
-/* Predictive PEC and Multi Kernel GP are the same controller - the second only
-   adds a further periodic kernel - so everything outside the correction itself
-   (dithering, session retain, logging) treats them alike. */
-#define AGENT_GUIDER_CORRECTION_MODE_RA_IS_GP	(AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM->sw.value || AGENT_GUIDER_CORRECTION_MODE_RA_MKGP_ITEM->sw.value)
 
 #define AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY	(DEVICE_PRIVATE_DATA->agent_guider_correction_mode_dec_property)
 #define AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM		(AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY->items+0)
@@ -157,8 +152,13 @@
 #define AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+33)
 #define AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+34)
 #define AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+35)
-#define AGENT_GUIDER_SETTINGS_MKGP_PERIOD2_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+36)
-#define AGENT_GUIDER_SETTINGS_MKGP_PERIOD2_FIXED_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+37)
+#define AGENT_GUIDER_SETTINGS_MKGP_REACTIVE_GAIN_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+36)
+#define AGENT_GUIDER_SETTINGS_MKGP_PRED_GAIN_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+37)
+#define AGENT_GUIDER_SETTINGS_MKGP_PERIOD_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+38)
+#define AGENT_GUIDER_SETTINGS_MKGP_PERIOD_FIXED_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+39)
+#define AGENT_GUIDER_SETTINGS_MKGP_PERIOD2_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+40)
+#define AGENT_GUIDER_SETTINGS_MKGP_PERIOD2_FIXED_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+41)
+#define AGENT_GUIDER_SETTINGS_MKGP_RETAIN_MODEL_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+42)
 
 #define AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY	(DEVICE_PRIVATE_DATA->agent_flip_reverses_dec_property)
 #define AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM		(AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY->items+0)
@@ -212,10 +212,12 @@
 #define AGENT_GUIDER_STATS_DITHERING_ITEM			(AGENT_GUIDER_STATS_PROPERTY->items+22)
 #define AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM	(AGENT_GUIDER_STATS_PROPERTY->items+23)
 #define AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM	(AGENT_GUIDER_STATS_PROPERTY->items+24)
-#define AGENT_GUIDER_STATS_CORR_RESPONSE_RA_ITEM	(AGENT_GUIDER_STATS_PROPERTY->items+25)
-#define AGENT_GUIDER_STATS_CORR_RESPONSE_DEC_ITEM	(AGENT_GUIDER_STATS_PROPERTY->items+26)
+#define AGENT_GUIDER_STATS_MKGP_LEARNING_ITEM	(AGENT_GUIDER_STATS_PROPERTY->items+25)
+#define AGENT_GUIDER_STATS_MKGP_PERIOD_ITEM	(AGENT_GUIDER_STATS_PROPERTY->items+26)
 #define AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM	(AGENT_GUIDER_STATS_PROPERTY->items+27)
 #define AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM	(AGENT_GUIDER_STATS_PROPERTY->items+28)
+#define AGENT_GUIDER_STATS_CORR_RESPONSE_RA_ITEM	(AGENT_GUIDER_STATS_PROPERTY->items+29)
+#define AGENT_GUIDER_STATS_CORR_RESPONSE_DEC_ITEM	(AGENT_GUIDER_STATS_PROPERTY->items+30)
 
 #define AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY			(DEVICE_PRIVATE_DATA->agent_dithering_strategy_property)
 #define AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_SPIRAL_ITEM	(AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->items+0)
@@ -232,6 +234,9 @@
 
 #define AGENT_GUIDER_RESET_PPEC_PROPERTY		(DEVICE_PRIVATE_DATA->agent_reset_ppec_property)
 #define AGENT_GUIDER_RESET_PPEC_ITEM				(AGENT_GUIDER_RESET_PPEC_PROPERTY->items+0)
+
+#define AGENT_GUIDER_RESET_MKGP_PROPERTY		(DEVICE_PRIVATE_DATA->agent_reset_mkgp_property)
+#define AGENT_GUIDER_RESET_MKGP_ITEM				(AGENT_GUIDER_RESET_MKGP_PROPERTY->items+0)
 
 #define AGENT_GUIDER_LOG_PROPERTY           (DEVICE_PRIVATE_DATA->agent_log_property)
 #define AGENT_GUIDER_LOG_DIR_ITEM           (AGENT_GUIDER_LOG_PROPERTY->items+0)
@@ -261,6 +266,12 @@ double drand48() {
 }
 #endif
 
+/* learned RA model of one GP based correction mode */
+typedef struct {
+	indigo_gp_guider *model;
+	bool reset_requested; /* user asked to clear the learned model; consumed by the guiding loop */
+} guider_gp_state;
+
 typedef struct {
 	indigo_property *agent_guider_correction_mode_ra_property;
 	indigo_property *agent_guider_correction_mode_dec_property;
@@ -279,6 +290,7 @@ typedef struct {
 	indigo_property *agent_dithering_offsets_property;
 	indigo_property *agent_dither_property;
 	indigo_property *agent_reset_ppec_property;
+	indigo_property *agent_reset_mkgp_property;
 	indigo_property *agent_log_property;
 	indigo_property *agent_process_features_property;
 	indigo_property_state guide_ra_state, guide_dec_state;
@@ -297,8 +309,7 @@ typedef struct {
 	double hysteresis_prev_drift_ra, hysteresis_prev_drift_dec;
 	indigo_linear_trend_history trend_ra, trend_dec;
 	indigo_resist_switch_history resist_switch_dec;
-	indigo_gp_guider *ppec_ra;
-	bool ppec_reset_requested; /* user asked to clear the learned model; consumed by the guiding loop */
+	guider_gp_state ppec_ra, mkgp_ra; /* Predictive PEC and Multi Kernel GP each learn their own model */
 	double rmse_ra_sum, rmse_dec_sum;
 	double rmse_ra_s_sum, rmse_dec_s_sum;
 	double rmse_ra_threshold, rmse_dec_threshold;
@@ -334,6 +345,21 @@ typedef struct {
 } guider_agent_private_data;
 
 static char default_log_path[PATH_MAX] = { 0 };
+
+/* Predictive PEC and Multi Kernel GP are the same controller - the second only
+   adds a further periodic kernel - so dithering and session handling treat them
+   alike. Each has its own settings, statistics, reset and learned model, so
+   switching between them keeps what either one has learned. This returns the
+   model of the selected RA correction mode, NULL unless it is one of them. */
+static guider_gp_state *active_gp(indigo_device *device) {
+	if (AGENT_GUIDER_CORRECTION_MODE_RA_MKGP_ITEM->sw.value) {
+		return &DEVICE_PRIVATE_DATA->mkgp_ra;
+	}
+	if (AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM->sw.value) {
+		return &DEVICE_PRIVATE_DATA->ppec_ra;
+	}
+	return NULL;
+}
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
 
@@ -465,7 +491,7 @@ static void write_log_header(indigo_device *device, const char *log_type) {
 			} else if (AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM->sw.value) {
 				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "RA Settings [%s]: Reactive Gain = %.3f %%, Predictive Gain = %.3f %%, Worm Period = %.3f s\r\n", AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM->label, AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM->number.value);
 			} else if (AGENT_GUIDER_CORRECTION_MODE_RA_MKGP_ITEM->sw.value) {
-				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "RA Settings [%s]: Reactive Gain = %.3f %%, Predictive Gain = %.3f %%, Worm Period = %.3f s, 2nd Stage Period = %.3f s\r\n", AGENT_GUIDER_CORRECTION_MODE_RA_MKGP_ITEM->label, AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_MKGP_PERIOD2_RA_ITEM->number.value);
+				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "RA Settings [%s]: Reactive Gain = %.3f %%, Predictive Gain = %.3f %%, Worm Period = %.3f s, 2nd Stage Period = %.3f s\r\n", AGENT_GUIDER_CORRECTION_MODE_RA_MKGP_ITEM->label, AGENT_GUIDER_SETTINGS_MKGP_REACTIVE_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_MKGP_PRED_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_MKGP_PERIOD_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_MKGP_PERIOD2_RA_ITEM->number.value);
 			} else {
 				const char *ra_mode = "Unknown";
 				for (int i = 0; i < AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->count; i++) {
@@ -627,14 +653,15 @@ static void do_dither(indigo_device *device) {
 	static const char *names[] = { AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM_NAME, AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM_NAME };
 	double item_values[] = { x_value, y_value };
 	indigo_change_number_property(NULL, device->name, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY_NAME, 2, names, item_values);
-	/* Tell the Predictive PEC model a dither was applied so it switches to
-	   prediction-only while the mount is moved, keeping its GP/FFT consistent. */
-	if (AGENT_GUIDER_CORRECTION_MODE_RA_IS_GP && DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
+	/* Tell the Predictive PEC / Multi Kernel GP model a dither was applied. Until
+	   the dither settles it corrects proportionally only. */
+	guider_gp_state *gp = active_gp(device);
+	if (gp != NULL && gp->model != NULL) {
 		double angle = -PI * get_rotation_angle(device) / 180;
 		double dither_ra = x_value * cos(angle) + y_value * sin(angle);
 		double cos_dec = (DEVICE_PRIVATE_DATA->cos_dec > MIN_COS_DEC) ? DEVICE_PRIVATE_DATA->cos_dec : MIN_COS_DEC;
 		double ra_rate = AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value * cos_dec;
-		indigo_gp_guider_dithered(DEVICE_PRIVATE_DATA->ppec_ra, dither_ra, ra_rate);
+		indigo_gp_guider_dithered(gp->model, dither_ra, ra_rate);
 	}
 	for (int i = 0; i < 15; i++) { // wait up to 3s to start dithering
 		if (IS_DITHERING) {
@@ -655,8 +682,8 @@ static void do_dither(indigo_device *device) {
 		for (int i = 0; i < time_limit; i++) { // wait up to time limit to finish dithering
 			if (NOT_DITHERING) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering finished");
-				if (AGENT_GUIDER_CORRECTION_MODE_RA_IS_GP && DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
-					indigo_gp_guider_dither_settle_done(DEVICE_PRIVATE_DATA->ppec_ra, true);
+				if (gp != NULL && gp->model != NULL) {
+					indigo_gp_guider_dither_settle_done(gp->model, true);
 				}
 				break;
 			}
@@ -1393,12 +1420,56 @@ static bool guide_and_capture_frame(indigo_device *device, double ra, double dec
 	return true;
 }
 
+/* Clear the statistics of Predictive PEC (mkgp = false) or Multi Kernel GP (mkgp = true). */
+static void clear_gp_stats(indigo_device *device, bool mkgp) {
+	if (mkgp) {
+		AGENT_GUIDER_STATS_MKGP_LEARNING_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_PERIOD_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM->number.value = 0;
+	} else {
+		AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = 0;
+	}
+}
+
+/* Forget the model learned by Predictive PEC (mkgp = false) or Multi Kernel GP
+   (mkgp = true). Call it only from the guiding loop or when the guiding loop
+   does not drive that model, so it never races indigo_gp_guider_response(). */
+static void reset_gp_model(indigo_device *device, bool mkgp) {
+	guider_gp_state *gp = mkgp ? &DEVICE_PRIVATE_DATA->mkgp_ra : &DEVICE_PRIVATE_DATA->ppec_ra;
+	if (gp->model != NULL) {
+		indigo_gp_guider_reset_model(gp->model);
+	}
+	gp->reset_requested = false;
+	clear_gp_stats(device, mkgp);
+}
+
+/* Handle AGENT_GUIDER_RESET_PPEC (mkgp = false) or AGENT_GUIDER_RESET_MKGP (mkgp = true). */
+static void handle_gp_reset(indigo_device *device, indigo_property *reset_property, bool mkgp) {
+	const char *name = mkgp ? "Multi Kernel GP" : "Predictive PEC";
+	guider_gp_state *gp = mkgp ? &DEVICE_PRIVATE_DATA->mkgp_ra : &DEVICE_PRIVATE_DATA->ppec_ra;
+	reset_property->state = INDIGO_OK_STATE;
+	if (!reset_property->items[0].sw.value) {
+		indigo_update_property(device, reset_property, NULL);
+	} else {
+		reset_property->items[0].sw.value = false;
+		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE && active_gp(device) == gp) {
+			/* defer the actual reset to the guiding loop to avoid racing the worker thread */
+			gp->reset_requested = true;
+			indigo_update_property(device, reset_property, "%s model will be reset", name);
+		} else {
+			/* no worker thread drives this model (the RA correction mode can not
+			   change while a process runs): reset directly */
+			reset_gp_model(device, mkgp);
+			indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+			indigo_update_property(device, reset_property, "%s model reset", name);
+		}
+	}
+}
+
 static bool calibrate(indigo_device *device) {
 	double last_drift = 0, dec_angle = 0;
 	int last_count = 0; // Number of completed pulses in the preceding outward leg.
 	DEVICE_PRIVATE_DATA->silence_warnings = false;
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
-	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ST_ITEM->number.value = AGENT_GUIDER_STATS_SNR_ITEM->number.value = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM->number.value = 0;
+	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ST_ITEM->number.value = AGENT_GUIDER_STATS_SNR_ITEM->number.value = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_LEARNING_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_PERIOD_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM->number.value = AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM->number.value = 0;
 	AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, NULL);
@@ -1767,18 +1838,24 @@ static bool guide(indigo_device *device) {
 	memset(&DEVICE_PRIVATE_DATA->trend_dec, 0, sizeof(DEVICE_PRIVATE_DATA->trend_dec));
 	memset(&DEVICE_PRIVATE_DATA->resist_switch_dec, 0, sizeof(DEVICE_PRIVATE_DATA->resist_switch_dec));
 	DEVICE_PRIVATE_DATA->resist_switch_dec.count = INDIGO_RESIST_SWITCH_HISTORY_SIZE;
-	if (DEVICE_PRIVATE_DATA->ppec_ra == NULL) {
-		DEVICE_PRIVATE_DATA->ppec_ra = indigo_gp_guider_create();
+	/* Only the model of the selected mode takes part in this session; the other
+	   one keeps its stop time, so its next start still measures the whole time
+	   the worm has turned since it last guided. */
+	guider_gp_state *gp = active_gp(device);
+	if (gp != NULL && gp->model == NULL) {
+		gp->model = indigo_gp_guider_create();
 	}
-	/* Decide whether to retain the learned Predictive PEC model across a
-	   stop/restart. Retain only with a known, unchanged side of pier; if the
-	   mount feeds no usable pointing info (SOP = 0) the RA is passed as unknown
-	   which forces a reset (the safe default). */
-	if (DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
+	/* Decide whether to retain the learned Predictive PEC / Multi Kernel GP
+	   model across a stop/restart. Retain only with a known, unchanged side of
+	   pier; if the mount feeds no usable pointing info (SOP = 0) the RA is
+	   passed as unknown which forces a reset (the safe default). */
+	if (gp != NULL && gp->model != NULL) {
+		bool mkgp = AGENT_GUIDER_CORRECTION_MODE_RA_MKGP_ITEM->sw.value;
 		int sop = (int)AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value;
 		double ra = (sop != 0) ? AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM->number.value : NAN;
-		bool retained = indigo_gp_guider_session_start(DEVICE_PRIVATE_DATA->ppec_ra, ra, sop, AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Predictive PEC model %s on guiding start (RA = %.4f h, SOP = %d)", retained ? "retained" : "reset", ra, sop);
+		double retain_pct = (mkgp ? AGENT_GUIDER_SETTINGS_MKGP_RETAIN_MODEL_RA_ITEM : AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM)->number.value;
+		bool retained = indigo_gp_guider_session_start(gp->model, ra, sop, retain_pct);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s model %s on guiding start (RA = %.4f h, SOP = %d)", mkgp ? "Multi Kernel GP" : "Predictive PEC", retained ? "retained" : "reset", ra, sop);
 	}
 	if (AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM->sw.value) {
 		open_log(device);
@@ -1863,16 +1940,15 @@ static bool guide(indigo_device *device) {
 			indigo_send_message(device, BUSY_PROPERTY, "Guiding recovered");
 			DEVICE_PRIVATE_DATA->silence_warnings = false;
 		}
-		/* consume a user-requested Predictive PEC reset here, on the worker thread,
-		   so it never races indigo_gp_guider_response() */
-		if (DEVICE_PRIVATE_DATA->ppec_reset_requested && DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
-			indigo_gp_guider_reset_model(DEVICE_PRIVATE_DATA->ppec_ra);
-			DEVICE_PRIVATE_DATA->ppec_reset_requested = false;
-			AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = 0;
-			AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = 0;
-			AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM->number.value = 0;
-			AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM->number.value = 0;
-			indigo_update_property(device, AGENT_GUIDER_RESET_PPEC_PROPERTY, "Predictive PEC model reset");
+		/* consume a user-requested Predictive PEC / Multi Kernel GP reset here, on
+		   the worker thread, so it never races indigo_gp_guider_response() */
+		if (gp != NULL && gp->reset_requested) {
+			reset_gp_model(device, gp == &DEVICE_PRIVATE_DATA->mkgp_ra);
+			if (gp == &DEVICE_PRIVATE_DATA->mkgp_ra) {
+				indigo_update_property(device, AGENT_GUIDER_RESET_MKGP_PROPERTY, "Multi Kernel GP model reset");
+			} else {
+				indigo_update_property(device, AGENT_GUIDER_RESET_PPEC_PROPERTY, "Predictive PEC model reset");
+			}
 		}
 		double angle = -PI * get_rotation_angle(device) / 180;
 		double sin_angle = sin(angle);
@@ -1905,11 +1981,9 @@ static bool guide(indigo_device *device) {
 		}
 		double correction_ra = 0, correction_dec = 0;
 		double max_safe_correction = AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value * SAFE_RADIUS_FACTOR;
-		/* learning progress and measured period are meaningful only while Predictive PEC drives RA */
-		AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = 0;
-		AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = 0;
-		AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM->number.value = 0;
-		AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM->number.value = 0;
+		/* learning progress and measured periods are meaningful only while Predictive PEC or Multi Kernel GP drives RA */
+		clear_gp_stats(device, false);
+		clear_gp_stats(device, true);
 
 		// RA correction
 		if (AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM->sw.value) {
@@ -1918,40 +1992,41 @@ static bool guide(indigo_device *device) {
 			correction_ra = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_ra);
 		} else if (AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM->sw.value) {
 			correction_ra = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->trend_ra);
-		} else if (AGENT_GUIDER_CORRECTION_MODE_RA_IS_GP && DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
+		} else if (gp != NULL && gp->model != NULL) {
 			/* With period 0 the worm period is estimated online from the default;
 			   with a fixed period > 0 the estimate is still refined (allowed to drift)
 			   unless the fixed-period item is set, in which case it is held constant.
 			 */
-			double period = AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM->number.value;
-			bool period_fixed = AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM->number.value > 0.5;
 			/* Multi Kernel GP adds a second periodic stage for a further gear
 			   stage. Plain Predictive PEC leaves it disabled, so selecting that
-			   mode gives exactly the single-kernel behaviour. Both stages take
-			   the same 0 = auto convention; note a stage only engages if its
-			   spectral line is actually strong enough, whatever the user asks. */
+			   mode gives exactly the single-kernel behaviour. Each mode takes its
+			   tuning from its own settings items and publishes its own statistics.
+			   Both stages take the same 0 = auto convention; note a stage only
+			   engages if its spectral line is actually strong enough, whatever
+			   the user asks. */
 			bool mkgp = AGENT_GUIDER_CORRECTION_MODE_RA_MKGP_ITEM->sw.value;
+			double reactive_gain = (mkgp ? AGENT_GUIDER_SETTINGS_MKGP_REACTIVE_GAIN_RA_ITEM : AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM)->number.value;
+			double prediction_gain = (mkgp ? AGENT_GUIDER_SETTINGS_MKGP_PRED_GAIN_RA_ITEM : AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM)->number.value;
+			double period = (mkgp ? AGENT_GUIDER_SETTINGS_MKGP_PERIOD_RA_ITEM : AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM)->number.value;
+			bool period_fixed = (mkgp ? AGENT_GUIDER_SETTINGS_MKGP_PERIOD_FIXED_RA_ITEM : AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM)->number.value > 0.5;
 			double period2 = AGENT_GUIDER_SETTINGS_MKGP_PERIOD2_RA_ITEM->number.value;
 			bool period2_fixed = AGENT_GUIDER_SETTINGS_MKGP_PERIOD2_FIXED_RA_ITEM->number.value > 0.5;
-			indigo_gp_guider_set_parameters(
-				DEVICE_PRIVATE_DATA->ppec_ra,
-				AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM->number.value / 100,
-				AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM->number.value / 100,
-				min_error
-			);
-			indigo_gp_guider_set_stage(DEVICE_PRIVATE_DATA->ppec_ra, 0, true, period <= 0 || !period_fixed, period);
-			indigo_gp_guider_set_stage(DEVICE_PRIVATE_DATA->ppec_ra, 1, mkgp, period2 <= 0 || !period2_fixed, mkgp ? period2 : 0);
+			indigo_gp_guider_set_parameters(gp->model, reactive_gain / 100, prediction_gain / 100, min_error);
+			indigo_gp_guider_set_stage(gp->model, 0, true, period <= 0 || !period_fixed, period);
+			indigo_gp_guider_set_stage(gp->model, 1, mkgp, period2 <= 0 || !period2_fixed, mkgp ? period2 : 0);
 			/* The horizon the feed-forward term must cover is the real guiding period, not the nominal exposure + delay. */
 			double time_step = get_guide_cycle_time(device);
-			correction_ra = indigo_gp_guider_response(DEVICE_PRIVATE_DATA->ppec_ra, drift_ra, AGENT_GUIDER_STATS_SNR_ITEM->number.value, time_step);
-			AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = 100.0 * indigo_gp_guider_get_learning_progress(DEVICE_PRIVATE_DATA->ppec_ra);
-			AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = indigo_gp_guider_get_stage_period(DEVICE_PRIVATE_DATA->ppec_ra, 0);
+			correction_ra = indigo_gp_guider_response(gp->model, drift_ra, AGENT_GUIDER_STATS_SNR_ITEM->number.value, time_step);
+			double learning = 100.0 * indigo_gp_guider_get_learning_progress(gp->model);
+			double stage_period = indigo_gp_guider_get_stage_period(gp->model, 0);
 			if (mkgp) {
-				AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM->number.value = indigo_gp_guider_get_stage_period(DEVICE_PRIVATE_DATA->ppec_ra, 1);
-				AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM->number.value = 100.0 * indigo_gp_guider_get_stage_weight(DEVICE_PRIVATE_DATA->ppec_ra, 1);
+				AGENT_GUIDER_STATS_MKGP_LEARNING_ITEM->number.value = learning;
+				AGENT_GUIDER_STATS_MKGP_PERIOD_ITEM->number.value = stage_period;
+				AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM->number.value = indigo_gp_guider_get_stage_period(gp->model, 1);
+				AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM->number.value = 100.0 * indigo_gp_guider_get_stage_weight(gp->model, 1);
 			} else {
-				AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM->number.value = 0;
-				AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM->number.value = 0;
+				AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = learning;
+				AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = stage_period;
 			}
 		} else {
 			// should not happen, but just a safety measure fallback to PI if no RA correction mode is selected
@@ -2171,10 +2246,10 @@ static bool guide(indigo_device *device) {
 		update_guide_cycle_time(device, indigo_monotonic_time() - cycle_start);
 	}
 	DEVICE_PRIVATE_DATA->silence_warnings = false;
-	/* record stop time so the Predictive PEC model can decide whether it may be
-	   retained on the next guiding start */
-	if (DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
-		indigo_gp_guider_session_stop(DEVICE_PRIVATE_DATA->ppec_ra);
+	/* record stop time so the Predictive PEC / Multi Kernel GP model can decide
+	   whether it may be retained on the next guiding start */
+	if (gp != NULL && gp->model != NULL) {
+		indigo_gp_guider_session_stop(gp->model);
 	}
 	close_log(device);
 	allow_abort_by_mount_agent(device, false);
@@ -2447,7 +2522,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM_NAME, "Side of Pier (-1=E, 1=W, 0=undef)", -1, 1, 1, 0);
 		DEVICE_PRIVATE_DATA->cos_dec = 1; /* default dec is 0 until set */
 		// -------------------------------------------------------------------------------- Guiding settings
-		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 38);
+		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 43);
 		if (AGENT_GUIDER_SETTINGS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -2486,9 +2561,14 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM_NAME, "RA PPEC predictive gain (%)", 0, 100, 5, 50);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM_NAME, "RA PPEC period (s, 0=auto)", 0, 2000, 10, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM_NAME, "RA PPEC fixed period (0=auto-adjust, 1=fixed)", 0, 1, 1, 0);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM_NAME, "RA PPEC retain model (% of period)", 0, 80, 5, PPEC_RETAIN_MODEL_PCT);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM_NAME, "RA PPEC retain model (% of period)", 0, 80, 5, GP_RETAIN_MODEL_PCT);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MKGP_REACTIVE_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_MKGP_REACTIVE_GAIN_RA_ITEM_NAME, "RA MKGP reactive gain (%)", 0, 100, 5, 60);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MKGP_PRED_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_MKGP_PRED_GAIN_RA_ITEM_NAME, "RA MKGP predictive gain (%)", 0, 100, 5, 50);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MKGP_PERIOD_RA_ITEM, AGENT_GUIDER_SETTINGS_MKGP_PERIOD_RA_ITEM_NAME, "RA MKGP period (s, 0=auto)", 0, 2000, 10, 0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MKGP_PERIOD_FIXED_RA_ITEM, AGENT_GUIDER_SETTINGS_MKGP_PERIOD_FIXED_RA_ITEM_NAME, "RA MKGP fixed period (0=auto-adjust, 1=fixed)", 0, 1, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MKGP_PERIOD2_RA_ITEM, AGENT_GUIDER_SETTINGS_MKGP_PERIOD2_RA_ITEM_NAME, "RA MKGP 2nd stage period (s, 0=auto)", 0, 2000, 10, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MKGP_PERIOD2_FIXED_RA_ITEM, AGENT_GUIDER_SETTINGS_MKGP_PERIOD2_FIXED_RA_ITEM_NAME, "RA MKGP 2nd stage fixed period (0=auto-adjust, 1=fixed)", 0, 1, 1, 0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MKGP_RETAIN_MODEL_RA_ITEM, AGENT_GUIDER_SETTINGS_MKGP_RETAIN_MODEL_RA_ITEM_NAME, "RA MKGP retain model (% of period)", 0, 80, 5, GP_RETAIN_MODEL_PCT);
 		// -------------------------------------------------------------------------------- FLIP_REVERSE_DEC
 		AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY_NAME, "Agent", "Reverse Dec speed after meridian flip", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY == NULL) {
@@ -2533,7 +2613,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		}
 		AGENT_GUIDER_SELECTION_PROPERTY->count = 14;
 		// -------------------------------------------------------------------------------- Guiding stats
-		AGENT_GUIDER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_STATS_PROPERTY_NAME, "Agent", "Statistics", INDIGO_OK_STATE, INDIGO_RO_PERM, 29);
+		AGENT_GUIDER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_STATS_PROPERTY_NAME, "Agent", "Statistics", INDIGO_OK_STATE, INDIGO_RO_PERM, 31);
 		if (AGENT_GUIDER_STATS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -2562,10 +2642,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_STATS_DITHERING_ITEM, AGENT_GUIDER_STATS_DITHERING_ITEM_NAME, "Dithering offset (px)", 0, 100, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM, AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM_NAME, "Predictive PEC learning (%)", 0, 100, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM, AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM_NAME, "Predictive PEC period (s)", 0, 2000, 0, 0);
-		indigo_init_number_item(AGENT_GUIDER_STATS_CORR_RESPONSE_RA_ITEM, AGENT_GUIDER_STATS_CORR_RESPONSE_RA_ITEM_NAME, "Correction response RA", -1, 1, 0, 0);
-		indigo_init_number_item(AGENT_GUIDER_STATS_CORR_RESPONSE_DEC_ITEM, AGENT_GUIDER_STATS_CORR_RESPONSE_DEC_ITEM_NAME, "Correction response Dec", -1, 1, 0, 0);
+		indigo_init_number_item(AGENT_GUIDER_STATS_MKGP_LEARNING_ITEM, AGENT_GUIDER_STATS_MKGP_LEARNING_ITEM_NAME, "Multi Kernel GP learning (%)", 0, 100, 0, 0);
+		indigo_init_number_item(AGENT_GUIDER_STATS_MKGP_PERIOD_ITEM, AGENT_GUIDER_STATS_MKGP_PERIOD_ITEM_NAME, "Multi Kernel GP period (s)", 0, 2000, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM, AGENT_GUIDER_STATS_MKGP_PERIOD2_ITEM_NAME, "Multi Kernel GP 2nd stage period (s)", 0, 2000, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM, AGENT_GUIDER_STATS_MKGP_STRENGTH2_ITEM_NAME, "Multi Kernel GP 2nd stage weight (%)", 0, 100, 0, 0);
+		indigo_init_number_item(AGENT_GUIDER_STATS_CORR_RESPONSE_RA_ITEM, AGENT_GUIDER_STATS_CORR_RESPONSE_RA_ITEM_NAME, "Correction response RA", -1, 1, 0, 0);
+		indigo_init_number_item(AGENT_GUIDER_STATS_CORR_RESPONSE_DEC_ITEM, AGENT_GUIDER_STATS_CORR_RESPONSE_DEC_ITEM_NAME, "Correction response Dec", -1, 1, 0, 0);
 		// -------------------------------------------------------------------------------- Logging
 		AGENT_GUIDER_LOG_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_GUIDER_LOG_PROPERTY_NAME, "Agent", "Logging", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (AGENT_GUIDER_LOG_PROPERTY == NULL) {
@@ -2601,6 +2683,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(AGENT_GUIDER_RESET_PPEC_ITEM, AGENT_GUIDER_RESET_PPEC_ITEM_NAME, "Reset learned model", false);
+		// -------------------------------------------------------------------------------- Reset Multi Kernel GP
+		AGENT_GUIDER_RESET_MKGP_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_RESET_MKGP_PROPERTY_NAME, "Agent", "Reset Multi Kernel GP", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		if (AGENT_GUIDER_RESET_MKGP_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(AGENT_GUIDER_RESET_MKGP_ITEM, AGENT_GUIDER_RESET_MKGP_ITEM_NAME, "Reset learned model", false);
 
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
@@ -2635,6 +2723,7 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_GUIDER_DITHER_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_GUIDER_RESET_PPEC_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_GUIDER_RESET_MKGP_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_GUIDER_LOG_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PROCESS_FEATURES_PROPERTY);
 	return indigo_filter_enumerate_properties(device, client, property);
@@ -3000,29 +3089,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_GUIDER_RESET_PPEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_GUIDER_RESET_PPEC
 		indigo_property_copy_values(AGENT_GUIDER_RESET_PPEC_PROPERTY, property, false);
-		if (AGENT_GUIDER_RESET_PPEC_ITEM->sw.value) {
-			AGENT_GUIDER_RESET_PPEC_ITEM->sw.value = false;
-			if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-				/* defer the actual reset to the guiding loop to avoid racing the worker thread */
-				DEVICE_PRIVATE_DATA->ppec_reset_requested = true;
-				AGENT_GUIDER_RESET_PPEC_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, AGENT_GUIDER_RESET_PPEC_PROPERTY, "Predictive PEC model will be reset");
-			} else {
-				/* no process running, so no worker thread touches the model: reset directly */
-				if (DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
-					indigo_gp_guider_reset_model(DEVICE_PRIVATE_DATA->ppec_ra);
-				}
-				DEVICE_PRIVATE_DATA->ppec_reset_requested = false;
-				AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM->number.value = 0;
-				AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM->number.value = 0;
-				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-				AGENT_GUIDER_RESET_PPEC_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, AGENT_GUIDER_RESET_PPEC_PROPERTY, "Predictive PEC model reset");
-			}
-		} else {
-			AGENT_GUIDER_RESET_PPEC_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, AGENT_GUIDER_RESET_PPEC_PROPERTY, NULL);
-		}
+		handle_gp_reset(device, AGENT_GUIDER_RESET_PPEC_PROPERTY, false);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_GUIDER_RESET_MKGP_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_GUIDER_RESET_MKGP
+		indigo_property_copy_values(AGENT_GUIDER_RESET_MKGP_PROPERTY, property, false);
+		handle_gp_reset(device, AGENT_GUIDER_RESET_MKGP_PROPERTY, true);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_GUIDER_LOG_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_LOG
@@ -3117,10 +3189,10 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->last_image_mutex);
 	indigo_safe_free(DEVICE_PRIVATE_DATA->last_image);
 	DEVICE_PRIVATE_DATA->last_image_size = 0;
-	if (DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
-		indigo_gp_guider_destroy(DEVICE_PRIVATE_DATA->ppec_ra);
-		DEVICE_PRIVATE_DATA->ppec_ra = NULL;
-	}
+	indigo_gp_guider_destroy(DEVICE_PRIVATE_DATA->ppec_ra.model);
+	DEVICE_PRIVATE_DATA->ppec_ra.model = NULL;
+	indigo_gp_guider_destroy(DEVICE_PRIVATE_DATA->mkgp_ra.model);
+	DEVICE_PRIVATE_DATA->mkgp_ra.model = NULL;
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_filter_device_detach(device);
 }
