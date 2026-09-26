@@ -4962,6 +4962,7 @@
 		59FA7C0B301DCEA000A35CFB /* DRIVER_TESTING_RULES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DRIVER_TESTING_RULES.md; sourceTree = "<group>"; };
 		59FA7C0C301DD71000A35CFB /* test_timer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_timer.c; sourceTree = "<group>"; };
 		59FA7C0D301DD8A000A35CFB /* REVIEW.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW.md; sourceTree = "<group>"; };
+		5DE1C4FB1E2B03972B9A43BA /* REVIEW_SWITCH_TARGETS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW_SWITCH_TARGETS.md; sourceTree = "<group>"; };
 		59FA7C0F301DDB2200A35CFB /* REVIEW.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW.md; sourceTree = "<group>"; };
 		59FA7C10301E27AE00A35CFB /* REVIEW.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW.md; sourceTree = "<group>"; };
 		59FA7C11301E296100A35CFB /* REVIEW.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW.md; sourceTree = "<group>"; };
@@ -11244,6 +11245,7 @@
 			children = (
 				C0DE20260913000100000001 /* AGENTS.override.md */,
 				59FA7C0F301DDB2200A35CFB /* REVIEW.md */,
+				5DE1C4FB1E2B03972B9A43BA /* REVIEW_SWITCH_TARGETS.md */,
 				597BD149260137E500239274 /* agent_alpaca */,
 				597E79DB25A5DB6E009B0817 /* agent_astrometry */,
 				9DC4967C22BA7B810052AB3E /* agent_auxiliary */,
