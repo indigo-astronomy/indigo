@@ -395,3 +395,40 @@ connected with every request ending in ALERT. `goto_loses_the_answer` and `trans
 the mount to be disconnected after the loss; the fault stops the simulator, so a fresh session stays
 covered by `reconnect`. The `device->master_device == NULL ? device : ...` fallback in the `.driver`
 source is gone.
+
+## Switch and number targets (2026-09-26)
+
+Version 22, findings TGT-006, TGT-B04 and TGT-B05 (nexstaraux parts) and TGT-C05 of
+`indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+
+- TGT-006: `mount_slew_finalizer` switches `MOUNT_TRACKING` on when a goto ends. It is an
+  `INDIGO_TASK_PRIORITY_TIME` task re-queued every 0.1 s during the goto, the tracking handler a normal
+  one, so a tracking request copied just before the goto ended was overwritten and the handler sent
+  tracking ON and reported OK. The handler now reads the request with `indigo_get_switch_target()`,
+  applies it with `indigo_apply_switch_targets()` and on failure shows the rate the mount was last
+  given (`track_rate`) with ALERT.
+- TGT-B05: the same finalizer published `MOUNT_TRACKING` OK/ALERT over the pending BUSY. It still starts
+  tracking and writes the value, but leaves state and publication to a pending request.
+- TGT-B04: `GUIDER_GUIDE_RA`/`DEC` accept a pulse while one runs. A pulse copied while the previous
+  pulse's URGENT finalizer was due was zeroed by that finalizer and the new handler read 0, dropping the
+  pulse with OK. The finalizers already cleared only the values; the handlers now restore the values from
+  the targets before reading them.
+- TGT-C05 (won't fix): `MOUNT_UTC_TIME` stays hidden in this driver, so it is never defined and no client
+  request exists for the poll to overwrite.
+
+Regression tests in `integration/test_mount_nexstaraux_simulator.c`:
+
+- `tracking_request_survives_slew_end`: a gate handler is queued from the debug log of the finalizer's
+  declination `MC_GOTO_SLOW` write, tracking OFF is requested while the gate holds the queue and the slow
+  approach ends, so the finalizer's completion runs ahead of the handler. Before the fix tracking ended ON
+  (fails at the OFF assertion); with only the handler fixed the finalizer still published a second result
+  (fails at `expected 1, got 2`); now the mount gets `00 00` after the finalizer's `FF FF` and only the
+  handler publishes.
+- `guider_pulse_survives_previous_finalizer`: a gate holds the queue past the deadline of a 200 ms pulse,
+  the opposite 300 ms pulse is requested, then the gate is released, on both axes. Before the fix the
+  second pulse was never sent ("was dropped"); now it runs about 300 ms.
+
+Both cases failed against the version 21 driver and pass with version 22. Recorded run through
+`tools/run_driver_test.py mount_nexstaraux` on Linux x64: 42/42. No hardware run for this change.
+
+Final test summary for this change: simulator suite 42 run / 42 passed; hardware 0 run / 0 passed.

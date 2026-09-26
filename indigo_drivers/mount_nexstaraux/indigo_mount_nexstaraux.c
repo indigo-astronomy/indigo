@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000015
+#define DRIVER_VERSION       0x03000016
 #define DRIVER_NAME          "indigo_mount_nexstaraux"
 #define DRIVER_LABEL         "NexStar AUX Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar AUX"
@@ -553,17 +553,14 @@ static void mount_slew_finalizer(indigo_device *device) {
 			} else if (PRIVATE_DATA->centering) {
 				bool arrived = nexstaraux_reached_target(device);
 				if (!PRIVATE_DATA->parking) {
-					if (nexstaraux_set_tracking(device, true)) {
-						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
-						MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+					bool tracking = nexstaraux_set_tracking(device, true);
+					indigo_set_switch(MOUNT_TRACKING_PROPERTY, tracking ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
+					// A pending request owns the state, its handler reads the target and publishes the result
+					if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
+						MOUNT_TRACKING_PROPERTY->state = tracking ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 						indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-						MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_OK_STATE;
-					} else {
-						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-						MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-						MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_ALERT_STATE;
 					}
+					MOUNT_STATE_TRACKING_ITEM->light.value = tracking ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				}
 				PRIVATE_DATA->centering = PRIVATE_DATA->slewing = false;
 				MOUNT_STATE_SLEW_ITEM->light.value = arrived ? INDIGO_IDLE_STATE : INDIGO_ALERT_STATE;
@@ -603,11 +600,13 @@ static void mount_slew_finalizer(indigo_device *device) {
 //+ guider.code
 
 static void guider_guide_dec_finalizer(indigo_device *device) {
+	// Only the values, the target of a pulse requested while this one ends is read by its handler.
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, nexstaraux_guide_dec(device, 0) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 
 static void guider_guide_ra_finalizer(indigo_device *device) {
+	// Only the values, the target of a pulse requested while this one ends is read by its handler.
 	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, nexstaraux_guide_ra(device, 0) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
@@ -701,10 +700,17 @@ static void mount_tracking_handler(indigo_device *device) {
 	}
 	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_TRACKING.on_change
-	if (!nexstaraux_set_tracking(device, MOUNT_TRACKING_ON_ITEM->sw.value)) {
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+	// The slew finalizer turns tracking on at the end of a goto and may overwrite the value between the copy of the
+	// request and this handler, the target keeps the requested value. On failure the switch shows the rate the mount
+	// was last given.
+	bool on = indigo_get_switch_target(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM_NAME);
+	if (nexstaraux_set_tracking(device, on)) {
+		indigo_apply_switch_targets(MOUNT_TRACKING_PROPERTY);
+		MOUNT_STATE_TRACKING_ITEM->light.value = on ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+	} else {
+		indigo_set_switch(MOUNT_TRACKING_PROPERTY, PRIVATE_DATA->track_rate != 0 ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
+		MOUNT_TRACKING_PROPERTY->state = MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_ALERT_STATE;
 	}
-	MOUNT_STATE_TRACKING_ITEM->light.value = MOUNT_TRACKING_PROPERTY->state == INDIGO_ALERT_STATE ? INDIGO_ALERT_STATE : MOUNT_TRACKING_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	//- mount.MOUNT_TRACKING.on_change
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
@@ -1057,6 +1063,9 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	// A new request replaces the running pulse, so the finaliser of the superseded
 	// one must not end the new pulse on the old deadline.
 	indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+	// The finalizer of the previous pulse may have zeroed the values after the request was copied, the targets keep it.
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target;
+	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target;
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 	unsigned duration = 0;
 	int direction = 0;
@@ -1083,6 +1092,9 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	// A new request replaces the running pulse, so the finaliser of the superseded
 	// one must not end the new pulse on the old deadline.
 	indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+	// The finalizer of the previous pulse may have zeroed the values after the request was copied, the targets keep it.
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target;
+	GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target;
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 	unsigned duration = 0;
 	int direction = 0;

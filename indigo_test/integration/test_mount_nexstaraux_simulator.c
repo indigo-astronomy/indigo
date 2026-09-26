@@ -1102,6 +1102,238 @@ cleanup:
 	driver_stop();
 }
 
+// ----------------------------------------------------------------- requests racing a finalizer
+
+// The number of requests with exactly this destination, command and payload.
+static int payload_requests(const char *prefix, const char *payload) {
+	char expected[128];
+	snprintf(expected, sizeof(expected), "%s %s", prefix, payload);
+	FILE *file = fopen(event_path, "r");
+	if (file == NULL) {
+		return -1;
+	}
+	char line[256];
+	int count = 0;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		line[strcspn(line, "\r\n")] = '\0';
+		if (!strcasecmp(line, expected)) {
+			count++;
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+static bool wait_for_payload_requests(const char *prefix, const char *payload, int expected) {
+	for (int i = 0; i < 200; i++) {
+		if (payload_requests(prefix, payload) >= expected) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	char reason[160];
+	snprintf(reason, sizeof(reason), "Fewer than %d '%s %s' requests", expected, prefix, payload);
+	print_journal(reason);
+	return false;
+}
+
+static const char *lookup_name;
+static indigo_device *lookup_device;
+
+static indigo_result lookup_define(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, lookup_name)) {
+		lookup_device = device;
+	}
+	return INDIGO_OK;
+}
+
+// The driver's device structure, so a gate can be queued on its handler queue.
+static indigo_device *driver_device(const char *name) {
+	indigo_client observer = { .name = "Gate observer", .version = INDIGO_VERSION_CURRENT, .define_property = lookup_define };
+	lookup_name = name;
+	lookup_device = NULL;
+	indigo_attach_client(&observer);
+	indigo_enumerate_properties(&observer, &INDIGO_ALL_PROPERTIES);
+	indigo_detach_client(&observer);
+	return lookup_device;
+}
+
+// A gate handler holds the device queue, so a request is copied and queued while a finalizer comes due behind it. The
+// finalizers are INDIGO_TASK_PRIORITY_TIME (slew) and INDIGO_TASK_PRIORITY_URGENT (guide pulse) tasks and run ahead of
+// the queued change handler once the gate ends.
+static atomic_bool gate_entered, gate_release;
+static _Atomic(indigo_device *) gate_on_slow_goto;
+
+static void gate_handler(indigo_device *device) {
+	atomic_store(&gate_entered, true);
+	for (int i = 0; i < 5000 && !atomic_load(&gate_release); i++) {
+		indigo_usleep(1000);
+	}
+}
+
+static void queue_gate(indigo_device *device) {
+	atomic_store(&gate_entered, false);
+	atomic_store(&gate_release, false);
+	indigo_execute_handler(device, gate_handler);
+}
+
+static bool wait_for_gate(void) {
+	for (int i = 0; i < 5000 && !atomic_load(&gate_entered); i++) {
+		indigo_usleep(1000);
+	}
+	if (!atomic_load(&gate_entered)) {
+		fprintf(stderr, "The gate never held the device queue\n");
+		return false;
+	}
+	return true;
+}
+
+// The I/O layer logs every write on the debug level from the writing thread. The slew finalizer sends the slow approach
+// of the declination axis last and polls for its end 0.1 s later, so a gate queued from the log of that write holds the
+// queue before the finalizer can see the goto finish.
+static void slow_goto_log_handler(indigo_log_levels level, const char *message) {
+	if (strstr(message, "<- 3B 06 20 11 17 ") != NULL) {
+		indigo_device *device = atomic_exchange(&gate_on_slow_goto, NULL);
+		if (device != NULL) {
+			queue_gate(device);
+		}
+	} else if (level == INDIGO_LOG_ERROR) {
+		fprintf(stderr, "%s\n", message);
+	}
+}
+
+// Counts the results (publications in any state but BUSY) of one property and remembers when the last one came.
+static const char *watch_device, *watch_property;
+static atomic_bool watch_on;
+static atomic_int watch_results;
+static _Atomic double watch_last_result;
+
+static indigo_result watch_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (atomic_load(&watch_on) && !strcmp(property->device, watch_device) && !strcmp(property->name, watch_property) && property->state != INDIGO_BUSY_STATE) {
+		atomic_store(&watch_last_result, indigo_monotonic_time());
+		atomic_fetch_add(&watch_results, 1);
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static void watch_results_of(const char *device, const char *property) {
+	atomic_store(&watch_on, false);
+	watch_device = device;
+	watch_property = property;
+	atomic_store(&watch_results, 0);
+	atomic_store(&watch_last_result, 0);
+	simulator_test_client.update_property = watch_update;
+	atomic_store(&watch_on, true);
+}
+
+static void stop_watching(void) {
+	atomic_store(&watch_on, false);
+	simulator_test_client.update_property = simulator_client_update_property;
+}
+
+static bool wait_for_results(int expected) {
+	for (int i = 0; i < 300 && atomic_load(&watch_results) < expected; i++) {
+		indigo_usleep(10000);
+	}
+	if (atomic_load(&watch_results) < expected) {
+		fprintf(stderr, "    %s published %d results, expected %d\n", watch_property, atomic_load(&watch_results), expected);
+		return false;
+	}
+	return true;
+}
+
+// TGT-006, TGT-B05: the slew finalizer turns tracking on when a goto ends. A tracking request copied while the finalizer
+// comes due ahead of its handler must still be sent to the mount, and the finalizer must not publish over the pending
+// BUSY.
+static void tracking_request_survives_slew_end(void) {
+	indigo_log_levels log_level = indigo_get_log_level();
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	indigo_device *mount = driver_device(nexstaraux_mount.device_name);
+	SERIAL_CHECK_TRUE(mount != NULL);
+	atomic_store(&gate_on_slow_goto, mount);
+	indigo_log_message_handler = slow_goto_log_handler;
+	indigo_set_log_level(INDIGO_LOG_DEBUG);
+	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_gate());
+	int starts = payload_requests(AZM_SET_POS_GUIDERATE, "FF FF");
+	int stops = payload_requests(AZM_SET_POS_GUIDERATE, "00 00");
+	unsigned int revision = property_revision(MOUNT_TRACKING_PROPERTY_NAME);
+	watch_results_of(nexstaraux_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(indigo_change_switch_property_1(&simulator_test_client, nexstaraux_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_TRACKING_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	// The slow approach ends while the queue is held, so the finalizer takes the completion path ahead of the handler.
+	indigo_usleep(500000);
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(coordinates_are(4, 35, .1));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	// The finalizer started the drive first, then the request stopped it.
+	SERIAL_CHECK_TRUE(wait_for_payload_requests(AZM_SET_POS_GUIDERATE, "FF FF", starts + 1));
+	SERIAL_CHECK_TRUE(wait_for_payload_requests(AZM_SET_POS_GUIDERATE, "00 00", stops + 1));
+	SERIAL_CHECK_EQ_INT(starts + 1, payload_requests(AZM_SET_POS_GUIDERATE, "FF FF"));
+	// Only the handler published a result, the finalizer left the pending request alone.
+	indigo_usleep(300000);
+	SERIAL_CHECK_EQ_INT(1, atomic_load(&watch_results));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+cleanup:
+	stop_watching();
+	atomic_store(&gate_on_slow_goto, NULL);
+	atomic_store(&gate_release, true);
+	indigo_set_log_level(log_level);
+	indigo_log_message_handler = NULL;
+	driver_stop();
+}
+
+// The gate holds the queue past the deadline of the first pulse, so its URGENT finalizer clears the values after the
+// next pulse was copied and before the handler of that pulse reads them.
+static bool pulse_survives_previous_finalizer(indigo_device *guider, const char *property_name, const char *first_item, const char *first_command, const char *next_item, const char *next_command) {
+	int first_pulses = payload_requests(first_command, "01");
+	if (indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, property_name, first_item, 200) != INDIGO_OK || !wait_for_payload_requests(first_command, "01", first_pulses + 1)) {
+		return false;
+	}
+	queue_gate(guider);
+	if (!wait_for_gate()) {
+		return false;
+	}
+	indigo_usleep(400000);
+	int next_pulses = payload_requests(next_command, "01");
+	watch_results_of(nexstaraux_guider.device_name, property_name);
+	bool requested = indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, property_name, next_item, 300) == INDIGO_OK;
+	double released = indigo_monotonic_time();
+	atomic_store(&gate_release, true);
+	if (!requested) {
+		return false;
+	}
+	if (!wait_for_payload_requests(next_command, "01", next_pulses + 1)) {
+		fprintf(stderr, "    %s: the %s pulse requested while the %s pulse ended was dropped\n", property_name, next_item, first_item);
+		return false;
+	}
+	// The finalizer of the first pulse and the one of the next pulse both publish their result.
+	if (!wait_for_results(2)) {
+		return false;
+	}
+	double elapsed = (atomic_load(&watch_last_result) - released) * 1000.0;
+	printf("    %s %s pulse requested while the %s pulse ended ran %.0f ms\n", property_name, next_item, first_item, elapsed);
+	return elapsed > 250 && number_is(property_name, next_item, 0, 0);
+}
+
+// TGT-B04: GUIDER_GUIDE_RA/DEC accept a pulse while one runs. A pulse requested while the previous one's finalizer is due
+// must still be started instead of being read as zero and reported OK.
+static void guider_pulse_survives_previous_finalizer(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_guider());
+	indigo_device *guider = driver_device(nexstaraux_guider.device_name);
+	SERIAL_CHECK_TRUE(guider != NULL);
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, AZM_MOVE_POS, GUIDER_GUIDE_WEST_ITEM_NAME, AZM_MOVE_NEG));
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, ALT_MOVE_POS, GUIDER_GUIDE_SOUTH_ITEM_NAME, ALT_MOVE_NEG));
+cleanup:
+	stop_watching();
+	atomic_store(&gate_release, true);
+	driver_stop();
+}
+
 // ----------------------------------------------------------------- runner
 
 typedef struct { const char *name; void (*run)(void); const char *profile; } simulated_case;
@@ -1147,7 +1379,9 @@ int main(void) {
 		{ "guider_pulses", guider_pulses, "normal" },
 		{ "guider_pulse_failure", guider_pulse_failure, "normal" },
 		{ "guider_rate", guider_rate, "normal" },
-		{ "shared_connection", shared_connection, "normal" }
+		{ "shared_connection", shared_connection, "normal" },
+		{ "tracking_request_survives_slew_end", tracking_request_survives_slew_end, "normal" },
+		{ "guider_pulse_survives_previous_finalizer", guider_pulse_survives_previous_finalizer, "normal" }
 	};
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	if (mkdtemp(fixture_directory) == NULL) {
