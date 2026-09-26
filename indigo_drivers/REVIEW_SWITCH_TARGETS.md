@@ -176,6 +176,7 @@ Text items get no target (design note section 8); the mount context target used 
 | TGT-D04 | aux_wcv4ec | 269, 282-284 | The DETECT handler publishes AUX_SET_OPEN_CLOSE instead of AUX_DETECT_OPEN_CLOSE; the read loop has no bound, so a lost reply blocks the device queue. | Open |
 | TGT-D05 | wheel_qhy | on_connect 85 | The fallback sets X_MODEL to CFW1 and publishes without a guard; one-shot, the X_MODEL handler is trivial. Low. | Open |
 | TGT-D06 | ccd_pentax | DSLR_PROGRAM, DSLR_APERTURE, DSLR_SHUTTER (poll 640, 678, 687/693/706) | RW properties without a change handler: client writes are ignored. | Open |
+| TGT-D07 | framework (seen with mount_simulator) | `indigo_test` `test_mount_simulator_asan` on Linux | The sanitizer build reports a leak of about one light property per driver start-up and shutdown, allocated in `indigo_init_light_property` (libindigo). Reproduced with the unchanged 3.0.0.21 driver and test, so it predates this branch; not part of the recorded run. To be checked in `indigo_libs`, not in the drivers. | Open |
 
 ## E. Already fixed another way (candidates for simplification with the target)
 
