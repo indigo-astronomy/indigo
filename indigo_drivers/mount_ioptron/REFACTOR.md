@@ -680,3 +680,18 @@ and build/test logs are retained locally under
 Follow-up MountSim attempts: 19 run / 18 passed (unchanged baseline 0/1,
 instrumented before 5/5, instrumented after 5/5, final acceptance 8/8).
 Final CEM120 acceptance: 8 run / 8 passed; physical hardware: 0 run / 0 passed.
+
+## Guider timing case racing the previous GOTO (2026-09-26)
+
+`ioptron_guider_directions_overlap_and_timing` failed intermittently at
+`wait_event(simulator, "MS1", before)` in its GOTO workload (the 2026-09-26 14:52
+detach-abort run, and earlier on 2026-09-24): the second direction's GOTO produced no
+`:SRA`/`:Sd`/`:MS1#`, only status polls. The case requested each direction's GOTO without
+waiting for the previous one, and `MOUNT_EQUATORIAL_COORDINATES` requests arriving while the
+property is still BUSY are dropped by the framework's `INDIGO_COPY_TARGETS_PROCESS_CHANGE`
+guard. A simulator slew at 100 deg/s lasts 1.4-1.6 s after `:MS1#` while one direction's
+seven pulses take about 2 s, so the case passed only while the slew and its polled OK won
+that race. Test defect, no driver change: the case now tracks the mount's coordinates state
+in the timed client callback (its property cache follows the guider) and waits for the
+preceding slew to leave BUSY before the next GOTO. With `--slew-rate 40` the old case fails
+deterministically at the same assertion and the new one passes.

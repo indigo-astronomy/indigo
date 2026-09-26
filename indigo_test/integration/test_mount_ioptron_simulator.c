@@ -230,6 +230,8 @@ static uint64_t io_monotonic_ns(void) {
 static atomic_uint_fast64_t guide_completed[2];
 static atomic_uint_fast64_t guide_alerted[2];
 static atomic_uint_fast64_t coordinates_ok_after;
+// Last published MOUNT_EQUATORIAL_COORDINATES state, for cases whose property cache tracks the guider.
+static atomic_int mount_coordinates_state;
 
 static indigo_result timed_client_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, ioptron_guider.device_name)) {
@@ -239,11 +241,25 @@ static indigo_result timed_client_update(indigo_client *client, indigo_device *d
 		} else if (axis >= 0 && property->state == INDIGO_ALERT_STATE) {
 			atomic_store(guide_alerted + axis, io_monotonic_ns());
 		}
-	} else if (!strcmp(property->device, ioptron_mount.device_name) && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
-		uint_fast64_t expected = 0;
-		atomic_compare_exchange_strong(&coordinates_ok_after, &expected, io_monotonic_ns());
+	} else if (!strcmp(property->device, ioptron_mount.device_name) && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
+		atomic_store(&mount_coordinates_state, property->state);
+		if (property->state == INDIGO_OK_STATE) {
+			uint_fast64_t expected = 0;
+			atomic_compare_exchange_strong(&coordinates_ok_after, &expected, io_monotonic_ns());
+		}
 	}
 	return simulator_client_update_property(client, device, property, message);
+}
+
+// The end of a GOTO is a BUSY -> OK/ALERT transition, which the driver always publishes.
+static bool wait_mount_coordinates_not_busy(void) {
+	for (int i = 0; i < 200; i++) {
+		if (atomic_load(&mount_coordinates_state) != INDIGO_BUSY_STATE) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	return false;
 }
 
 // Every operation waits for a fresh update, never a cached pre-request state.
@@ -1671,6 +1687,9 @@ static void ioptron_guider_directions_overlap_and_timing(void) {
 	for (int workload = 0; workload < 2; workload++) {
 		for (int direction = 0; direction < 4; direction++) {
 			if (workload) {
+				// A GOTO requested while the previous one is still BUSY is dropped by the framework's
+				// BUSY guard, so wait for the preceding slew to finish before starting the next one.
+				SERIAL_CHECK_TRUE(wait_mount_coordinates_not_busy());
 				int before = event_count(simulator, "MS1");
 				const char *coordinate_items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 				double coordinates[] = { direction % 2 ? 2 : 22, direction % 2 ? 60 : -60 };
@@ -1701,6 +1720,7 @@ static void ioptron_guider_directions_overlap_and_timing(void) {
 			}
 		}
 		if (!workload) {
+			atomic_store(&mount_coordinates_state, INDIGO_OK_STATE);
 			fixture.mount = connect_serial_device(&ioptron_mount, NULL);
 			SERIAL_CHECK_TRUE(fixture.mount);
 			SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
