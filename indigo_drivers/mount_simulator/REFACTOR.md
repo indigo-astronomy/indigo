@@ -245,3 +245,19 @@ Regression test in `integration/test_mount_simulator.c`: `mount_shares_pointing_
 Validation on macOS arm64: `test_mount_simulator` 17/17, `test_mount_simulator_asan` and `test_detach_abort` passed. In the repeated runs, `mount_goto_runs_on_queue_and_rejects_overlap` failed once (1 of about 50 runs, line 487: the GOTO did not end at RA 1.4). It was not reproduced in 33 further runs, including 18 under parallel load, nor in 30 runs of the unmodified test and driver. The GOTO path does not move through the new code (a slewing mount is not guidable, so the shared state equals the raw position). The case's own window, a second GOTO that must arrive during the first one's roughly 0.4 s slew, remains the suspected cause. The end-to-end camera case is in the CCD simulator suite. Linux and Windows were not run.
 
 Final test summary for this change: simulator suite 17 run / 17 passed (plus the ASan run); hardware 0 run / 0 passed.
+
+## Switch and number targets (2026-09-26)
+
+Version 22, findings TGT-001 and TGT-B04 (mount_simulator part) of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+
+- TGT-001: `position_handler` switches `MOUNT_TRACKING` on at the end of a slew when it reads OFF. A tracking request copied while the handler was queued was overwritten when that step ran first (it is an `INDIGO_TASK_PRIORITY_TIME` task, the tracking handler a normal one), so a client's OFF ended as ON, reported OK. The `MOUNT_TRACKING` handler now reads the request with `indigo_get_switch_target()` and applies it with `indigo_apply_switch_targets()`; the simulated mount always accepts it, so there is no ALERT path. The park/home writers in `position_handler` cannot meet a pending request (the parked guard refuses it once PARKED is copied) and were left unchanged.
+- TGT-B04: `GUIDER_GUIDE_RA`/`DEC` accept a pulse while one runs. When the request was copied while the previous pulse's finalizer ran, the finalizer zeroed value and target and the new handler read 0 and dropped the pulse. The handler is queued with `INDIGO_TASK_PRIORITY_TIME` and no delay, so it already runs ahead of a finalizer that is only due; the window is a copy on the bus thread while the finalizer runs. The finalizers now clear only the values; the handlers first restore the values from the targets, which the `on_change_request` block and disconnect still clear. After a pulse the target keeps the last requested duration.
+
+Regression tests in `integration/test_mount_simulator.c`:
+
+- `mount_tracking_request_survives_slew_end`: a one-step GOTO with tracking off; when the step reaching the target publishes, a gate handler holds the device queue, tracking OFF is requested, the slew end comes due and runs first. Before the fix tracking ended ON (fails at the OFF assertion), now OFF with the tracking light idle.
+- `guider_pulse_survives_previous_finalizer`: the 300 ms pulse of the opposite direction is requested from the client update of the mount movement that the 100 ms pulse's finalizer publishes before it clears the pulse, on both axes. Before the fix no BUSY followed the finalizer's OK ("the pulse requested while the previous one ended was dropped"), now the pulse runs about 300 ms.
+
+Both cases failed against the version 21 driver and pass with version 22. `test_mount_simulator` 19/19 on Linux x64. `test_mount_simulator_asan` reports a LeakSanitizer leak from `indigo_init_light_property` (one light property per driver lifecycle) that the unchanged version 21 test and driver report as well; not addressed here.
+
+Final test summary for this change: simulator suite 19 run / 19 passed; hardware 0 run / 0 passed.

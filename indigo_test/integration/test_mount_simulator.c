@@ -781,6 +781,158 @@ cleanup:
 	}
 }
 
+// A gate handler holds the device queue so a request is copied while a finalizer comes due behind it
+static atomic_bool gate_entered, gate_release, gate_arm_at_slew_end;
+
+static void gate_handler(indigo_device *device) {
+	atomic_store(&gate_entered, true);
+	for (int i = 0; i < 5000 && !atomic_load(&gate_release); i++) {
+		indigo_usleep(1000);
+	}
+}
+
+static void reset_gate(void) {
+	atomic_store(&gate_entered, false);
+	atomic_store(&gate_release, false);
+	atomic_store(&gate_arm_at_slew_end, false);
+}
+
+static indigo_result gate_at_slew_end_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (context.driver_case != NULL && !strcmp(property->device, context.driver_case->device_name)) {
+		// The slew step that reaches the target publishes the target coordinates while still BUSY; the step finishing the
+		// slew follows 200 ms later on the queue, so the gate queued here runs between the two.
+		if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_BUSY_STATE && atomic_load(&gate_arm_at_slew_end)) {
+			bool reached = true;
+			for (int i = 0; i < property->count; i++) {
+				reached &= fabs(property->items[i].number.value - property->items[i].number.target) < 1e-6;
+			}
+			if (reached) {
+				atomic_store(&gate_arm_at_slew_end, false);
+				indigo_execute_handler(device, gate_handler);
+			}
+		}
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+// TGT-001: the end of a slew turns tracking on; a tracking OFF request copied just before must still be applied
+static void mount_tracking_request_survives_slew_end(void) {
+	reset_gate();
+	simulator_test_client.update_property = gate_at_slew_end_update;
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	SERIAL_CHECK_TRUE(unpark_mount());
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(1, 45));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+	// A slew short enough to reach the target in one step
+	atomic_store(&gate_arm_at_slew_end, true);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(1.05, 45.5));
+	for (int i = 0; i < 2000 && !atomic_load(&gate_entered); i++) {
+		indigo_usleep(1000);
+	}
+	SERIAL_CHECK_TRUE(atomic_load(&gate_entered));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_TRACKING_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	// Let the slew end come due, it runs ahead of the queued tracking handler and switches tracking on
+	indigo_usleep(400000);
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME)->light.value == INDIGO_IDLE_STATE);
+cleanup:
+	atomic_store(&gate_release, true);
+	stop_serial_driver(&mount_simulator);
+	simulator_test_client.update_property = simulator_client_update_property;
+}
+
+// TGT-B04: the request of the next pulse is copied on the bus while the previous pulse's finalizer runs. The finalizer
+// publishes the mount's movement before it clears the pulse, so the request is sent from that update, which models the
+// concurrent bus thread deterministically.
+static const char *next_pulse_property, *next_pulse_item;
+static atomic_bool next_pulse_armed, next_pulse_sent, next_pulse_started;
+
+static indigo_result next_pulse_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (atomic_load(&next_pulse_sent) && !strcmp(property->device, mount_guider_simulator.device_name) && !strcmp(property->name, next_pulse_property) && property->state == INDIGO_BUSY_STATE) {
+		atomic_store(&next_pulse_started, true);
+	}
+	// The bus publishes only changes and a tracking mount stands still, so while armed this is the pulse's movement
+	if (!strcmp(property->device, mount_simulator.device_name) && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && atomic_exchange(&next_pulse_armed, false)) {
+		indigo_change_number_property_1(client, mount_guider_simulator.device_name, next_pulse_property, next_pulse_item, 300);
+		atomic_store(&next_pulse_sent, true);
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static bool pulse_survives_previous_finalizer(const char *property_name, const char *first_item, const char *next_item) {
+	next_pulse_property = property_name;
+	next_pulse_item = next_item;
+	atomic_store(&next_pulse_sent, false);
+	atomic_store(&next_pulse_started, false);
+	atomic_store(&next_pulse_armed, true);
+	if (indigo_change_number_property_1(&simulator_test_client, mount_guider_simulator.device_name, property_name, first_item, 100) != INDIGO_OK) {
+		return false;
+	}
+	for (int i = 0; i < 2000 && !atomic_load(&next_pulse_sent); i++) {
+		indigo_usleep(1000);
+	}
+	if (!atomic_load(&next_pulse_sent)) {
+		fprintf(stderr, "    %s: the 100 ms pulse did not move the mount\n", property_name);
+		return false;
+	}
+	double started = indigo_monotonic_time();
+	// The finalizer publishes OK for the finished pulse, the handler of the next one must then start it
+	for (int i = 0; i < 1000 && !atomic_load(&next_pulse_started); i++) {
+		indigo_usleep(1000);
+	}
+	if (!atomic_load(&next_pulse_started)) {
+		fprintf(stderr, "    %s: the pulse requested while the previous one ended was dropped\n", property_name);
+		return false;
+	}
+	if (!wait_for_property_state(property_name, INDIGO_OK_STATE) || !wait_for_number_item_value(property_name, next_item, 0, 0)) {
+		return false;
+	}
+	double elapsed = (indigo_monotonic_time() - started) * 1000.0;
+	printf("    %s %s pulse requested while the %s pulse ended ran %.0f ms\n", property_name, next_item, first_item, elapsed);
+	return elapsed > 250;
+}
+
+static void guider_pulse_survives_previous_finalizer(void) {
+	bool driver_started = false, mount_connected = false, guider_connected = false;
+	atomic_store(&next_pulse_armed, false);
+	simulator_test_client.update_property = next_pulse_update;
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	mount_connected = true;
+	// Unparked, tracking and away from the pole, so the mount moves only by guide pulses and follows both axes
+	SERIAL_CHECK_TRUE(unpark_mount());
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(3, 30));
+	SERIAL_CHECK_TRUE(simulated_pointing_matches(3, 30, 1e-9));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_guider_simulator, NULL));
+	guider_connected = true;
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME));
+cleanup:
+	atomic_store(&next_pulse_armed, false);
+	if (guider_connected) {
+		disconnect_serial_device(&mount_guider_simulator);
+	}
+	if (mount_connected) {
+		disconnect_serial_device(&mount_simulator);
+	}
+	if (driver_started) {
+		tear_down_serial_driver(&mount_simulator);
+	}
+	simulator_test_client.update_property = simulator_client_update_property;
+}
+
 #ifdef MOUNT_SIMULATOR_TIMING_BENCHMARK
 
 #define TIMING_SAMPLE_COUNT 4
@@ -918,6 +1070,8 @@ int main(void) {
 	const indigo_test_case tests[] = {
 		{ "guider_pending_disconnect_and_replacement", guider_pending_disconnect_and_replacement },
 		{ "guider_axes_complete_independently", guider_axes_complete_independently },
+		{ "guider_pulse_survives_previous_finalizer", guider_pulse_survives_previous_finalizer },
+		{ "mount_tracking_request_survives_slew_end", mount_tracking_request_survives_slew_end },
 		{ "mount_manual_motion_disconnect", mount_manual_motion_disconnect },
 		{ "mount_goto_runs_on_queue_and_rejects_overlap", mount_goto_runs_on_queue_and_rejects_overlap },
 		{ "mount_abort_allows_fresh_goto", mount_abort_allows_fresh_goto },

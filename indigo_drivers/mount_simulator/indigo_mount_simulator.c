@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000015
+#define DRIVER_VERSION       0x03000016
 #define DRIVER_NAME          "indigo_mount_simulator"
 #define DRIVER_LABEL         "Mount Simulator"
 #define MOUNT_DEVICE_NAME    DRIVER_LABEL
@@ -258,8 +258,9 @@ static void guider_apply_dec_pulse(indigo_device *device) {
 static void guider_guide_ra_finalizer(indigo_device *device) {
 	guider_apply_ra_pulse(device);
 	if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
-		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
-		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+		// only the values, the target of a pulse requested while this one ends is read by its handler
+		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 	}
@@ -268,8 +269,9 @@ static void guider_guide_ra_finalizer(indigo_device *device) {
 static void guider_guide_dec_finalizer(indigo_device *device) {
 	guider_apply_dec_pulse(device);
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
-		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
-		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+		// only the values, the target of a pulse requested while this one ends is read by its handler
+		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	}
@@ -541,9 +543,13 @@ static void mount_tracking_handler(indigo_device *device) {
 	}
 	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_TRACKING.on_change
+	// The end of a slew in position_handler may overwrite the value between the copy of the request and this handler,
+	// the target keeps the requested value. The simulated mount always accepts it.
+	bool on = indigo_get_switch_target(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM_NAME);
+	indigo_apply_switch_targets(MOUNT_TRACKING_PROPERTY);
 	time_t utc = indigo_get_mount_utc(device);
 	PRIVATE_DATA->ha = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
-	MOUNT_STATE_TRACKING_ITEM->light.value = MOUNT_TRACKING_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+	MOUNT_STATE_TRACKING_ITEM->light.value = on ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	//- mount.MOUNT_TRACKING.on_change
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
@@ -687,6 +693,9 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_DEC.on_change
 	indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
 	guider_apply_dec_pulse(device);
+	// the previous pulse's finalizer may have zeroed the values after the request was copied, the targets keep it
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target;
+	GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target;
 	double duration = GUIDER_GUIDE_NORTH_ITEM->number.value > 0 ? GUIDER_GUIDE_NORTH_ITEM->number.value : GUIDER_GUIDE_SOUTH_ITEM->number.value;
 	if (duration > 0) {
 		PRIVATE_DATA->guide_dec_rate = (GUIDER_GUIDE_NORTH_ITEM->number.value > 0 ? 1 : -1) * GUIDER_DEC_RATE_ITEM->number.value / 100.0 * SIDEREAL_DEC_RATE;
@@ -706,6 +715,9 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_RA.on_change
 	indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
 	guider_apply_ra_pulse(device);
+	// the previous pulse's finalizer may have zeroed the values after the request was copied, the targets keep it
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target;
+	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target;
 	double duration = GUIDER_GUIDE_EAST_ITEM->number.value > 0 ? GUIDER_GUIDE_EAST_ITEM->number.value : GUIDER_GUIDE_WEST_ITEM->number.value;
 	if (duration > 0) {
 		// the sky's RA grows towards east, a west pulse moves the pointing to a lower RA

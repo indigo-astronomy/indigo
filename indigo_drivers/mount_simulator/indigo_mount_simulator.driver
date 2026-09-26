@@ -26,7 +26,7 @@ driver simulator {
 	label = "Mount Simulator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 21;
+	version = 22;
 	data {
 		bool parking, parked, going_home, at_home;
 		double ha;
@@ -443,9 +443,13 @@ driver simulator {
 		}
 		inherited MOUNT_TRACKING {
 			on_change {
+				// The end of a slew in position_handler may overwrite the value between the copy of the request and this handler,
+				// the target keeps the requested value. The simulated mount always accepts it.
+				bool on = indigo_get_switch_target(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM_NAME);
+				indigo_apply_switch_targets(MOUNT_TRACKING_PROPERTY);
 				time_t utc = indigo_get_mount_utc(device);
 				PRIVATE_DATA->ha = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
-				MOUNT_STATE_TRACKING_ITEM->light.value = MOUNT_TRACKING_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+				MOUNT_STATE_TRACKING_ITEM->light.value = on ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 				indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 			}
 		}
@@ -477,8 +481,9 @@ driver simulator {
 			static void guider_guide_ra_finalizer(indigo_device *device) {
 				guider_apply_ra_pulse(device);
 				if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
-					GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
-					GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+					// only the values, the target of a pulse requested while this one ends is read by its handler
+					GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+					GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 				}
@@ -487,8 +492,9 @@ driver simulator {
 			static void guider_guide_dec_finalizer(indigo_device *device) {
 				guider_apply_dec_pulse(device);
 				if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
-					GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
-					GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+					// only the values, the target of a pulse requested while this one ends is read by its handler
+					GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
+					GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 				}
@@ -513,6 +519,9 @@ driver simulator {
 			on_change {
 				indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
 				guider_apply_dec_pulse(device);
+				// the previous pulse's finalizer may have zeroed the values after the request was copied, the targets keep it
+				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target;
+				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target;
 				double duration = GUIDER_GUIDE_NORTH_ITEM->number.value > 0 ? GUIDER_GUIDE_NORTH_ITEM->number.value : GUIDER_GUIDE_SOUTH_ITEM->number.value;
 				if (duration > 0) {
 					PRIVATE_DATA->guide_dec_rate = (GUIDER_GUIDE_NORTH_ITEM->number.value > 0 ? 1 : -1) * GUIDER_DEC_RATE_ITEM->number.value / 100.0 * SIDEREAL_DEC_RATE;
@@ -538,6 +547,9 @@ driver simulator {
 			on_change {
 				indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
 				guider_apply_ra_pulse(device);
+				// the previous pulse's finalizer may have zeroed the values after the request was copied, the targets keep it
+				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target;
+				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target;
 				double duration = GUIDER_GUIDE_EAST_ITEM->number.value > 0 ? GUIDER_GUIDE_EAST_ITEM->number.value : GUIDER_GUIDE_WEST_ITEM->number.value;
 				if (duration > 0) {
 					// the sky's RA grows towards east, a west pulse moves the pointing to a lower RA
