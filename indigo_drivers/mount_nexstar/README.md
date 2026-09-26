@@ -48,4 +48,4 @@ A non-standard switch property "Guider rate" is provided by this driver.
 2026-09-24 21:14 3.0.0.41 mac arm64 Celestron NexStar 4/5 SE (NexStar+ 5.35, EQ wedge) 12/12 OK
 2026-09-24 21:25 3.0.0.41 mac arm64 Celestron GPS (NexStar+ 5.35, detection only) 1/1 OK
 2026-09-24 21:57 3.0.0.42 mac arm64 Celestron NexStar 4/5 SE (StarSense 1.20, EQ wedge, GPS 11.1) 12/12 OK
-2026-09-24 22:07 3.0.0.42 mac arm64 simulator 19/19 OK
+2026-09-26 14:52 3.0.0.44 mac arm64 simulator 19/19 OK

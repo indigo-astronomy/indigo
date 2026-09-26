@@ -70,6 +70,10 @@
 
 static indigo_device *devices[MAX_DEVICES];
 static indigo_client *clients[MAX_CLIENTS];
+// attach generation of clients[i], see indigo_client_ref; guarded by bus_mutex
+static uint64_t client_generations[MAX_CLIENTS];
+// last generation given to an attached client, never reset so no generation is reused, 0 means no client
+static uint64_t last_client_generation = 0;
 static indigo_blob_entry *blobs[MAX_BLOBS];
 
 static pthread_mutex_t bus_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
@@ -79,6 +83,154 @@ static pthread_mutex_t bus_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
 static pthread_mutex_t blob_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static bool is_started = false;
+
+// Registry of operations started by a client that must be aborted if the client detaches before they end,
+// see indigo_register_detach_abort(). It is empty unless drivers register operations; guarded by bus_mutex.
+// The bus never infers the end of an operation, entries are removed only by indigo_unregister_detach_abort(),
+// by a later registration for the same property, when their client detaches and, as a safety net for the device
+// pointer they hold, when their device detaches.
+
+#define MAX_DETACH_ABORTS	64
+
+typedef struct {
+	indigo_client_ref owner;                                          ///< owner, owner.client is NULL for unused entry
+	indigo_device *device;                                            ///< device running the operation
+	char device_name[INDIGO_NAME_SIZE];                               ///< name of the device running the operation
+	char property_name[INDIGO_NAME_SIZE];                             ///< property representing the operation
+	indigo_property *abort;                                           ///< change request aborting the operation
+} detach_abort_entry;
+
+static detach_abort_entry detach_aborts[MAX_DETACH_ABORTS];
+static int detach_abort_count = 0;
+
+// called with bus_mutex locked
+static void remove_detach_abort(detach_abort_entry *entry, bool release) {
+	if (release) {
+		indigo_release_property(entry->abort);
+	}
+	memset(entry, 0, sizeof(detach_abort_entry));
+	detach_abort_count--;
+}
+
+// called by indigo_detach_client() with the reference of the attachment that ended and by indigo_detach_device()
+static void release_detach_aborts(indigo_client_ref client, indigo_device *device) {
+	pthread_mutex_lock(&bus_mutex);
+	if (detach_abort_count > 0) {
+		indigo_property *aborts[MAX_DETACH_ABORTS];
+		int count = 0;
+		for (int i = 0; i < MAX_DETACH_ABORTS; i++) {
+			detach_abort_entry *entry = detach_aborts + i;
+			if (entry->owner.client != NULL && ((entry->owner.client == client.client && entry->owner.generation == client.generation) || entry->device == device)) {
+				if (client.client != NULL) {
+					INDIGO_LOG(indigo_log("Aborting '%s'.%s started by detached client '%s'", entry->device_name, entry->property_name, client.client->name));
+					// the abort is the device's own request, it must pass the device's current access token
+					entry->abort->access_token = entry->device->access_token;
+					aborts[count++] = entry->abort;
+					remove_detach_abort(entry, false);
+				} else {
+					INDIGO_LOG(indigo_log("Forgetting '%s'.%s left registered by detached device", entry->device_name, entry->property_name));
+					remove_detach_abort(entry, true);
+				}
+			}
+		}
+		// entries are removed first, the abort requests pass through the device's change_property() which may unregister
+		for (int i = 0; i < count; i++) {
+			indigo_change_property(NULL, aborts[i]);
+			indigo_release_property(aborts[i]);
+		}
+	}
+	pthread_mutex_unlock(&bus_mutex);
+}
+
+// called with bus_mutex locked, the slot of client in clients[] or -1
+static int client_slot(indigo_client *client) {
+	if (client != NULL) {
+		for (int i = 0; i < MAX_CLIENTS; i++) {
+			if (clients[i] == client) {
+				return i;
+			}
+		}
+	}
+	return -1;
+}
+
+// called with bus_mutex locked, true if the attachment referenced by client has not ended yet
+static bool is_client_attached(indigo_client_ref client) {
+	int slot = client_slot(client.client);
+	return slot >= 0 && client_generations[slot] == client.generation;
+}
+
+indigo_client_ref indigo_current_client_ref(indigo_client *client) {
+	indigo_client_ref ref = { NULL, 0 };
+	pthread_mutex_lock(&bus_mutex);
+	int slot = client_slot(client);
+	if (slot >= 0) {
+		ref.client = client;
+		ref.generation = client_generations[slot];
+	}
+	pthread_mutex_unlock(&bus_mutex);
+	return ref;
+}
+
+indigo_result indigo_register_detach_abort(indigo_device *device, const indigo_client_ref *client, indigo_property *property, indigo_property *abort) {
+	if (device == NULL || client == NULL || property == NULL || abort == NULL) {
+		return INDIGO_FAILED;
+	}
+	pthread_mutex_lock(&bus_mutex);
+	// the owner is read under the same mutex under which change_property() records it, and it is checked against
+	// the attached clients under the mutex indigo_detach_client() removes it with, so an owner detached before this
+	// point is refused here and one detached after it finds the entry; the generation refuses also an owner that
+	// detached and was replaced by a client attached at the same address (or re-attached) in the meantime
+	indigo_client_ref owner = *client;
+	if (!is_client_attached(owner)) {
+		pthread_mutex_unlock(&bus_mutex);
+		return INDIGO_NOT_FOUND;
+	}
+	detach_abort_entry *entry = NULL;
+	for (int i = 0; i < MAX_DETACH_ABORTS; i++) {
+		detach_abort_entry *tmp = detach_aborts + i;
+		if (tmp->owner.client != NULL && tmp->device == device && !strcmp(tmp->property_name, property->name)) {
+			entry = tmp;
+			break;
+		}
+		if (tmp->owner.client == NULL && entry == NULL) {
+			entry = tmp;
+		}
+	}
+	if (entry == NULL) {
+		pthread_mutex_unlock(&bus_mutex);
+		indigo_error("[%s:%d] Max detach abort count reached", __FUNCTION__, __LINE__);
+		return INDIGO_TOO_MANY_ELEMENTS;
+	}
+	if (entry->owner.client != NULL) {
+		remove_detach_abort(entry, true);
+	}
+	entry->owner = owner;
+	entry->device = device;
+	INDIGO_COPY_NAME(entry->device_name, device->name);
+	INDIGO_COPY_NAME(entry->property_name, property->name);
+	entry->abort = indigo_copy_property(NULL, abort);
+	detach_abort_count++;
+	pthread_mutex_unlock(&bus_mutex);
+	return INDIGO_OK;
+}
+
+indigo_result indigo_unregister_detach_abort(indigo_device *device, const char *property_name) {
+	if (device == NULL || property_name == NULL) {
+		return INDIGO_FAILED;
+	}
+	indigo_result result = INDIGO_NOT_FOUND;
+	pthread_mutex_lock(&bus_mutex);
+	for (int i = 0; detach_abort_count > 0 && i < MAX_DETACH_ABORTS; i++) {
+		detach_abort_entry *entry = detach_aborts + i;
+		if (entry->owner.client != NULL && entry->device == device && !strcmp(entry->property_name, property_name)) {
+			remove_detach_abort(entry, true);
+			result = INDIGO_OK;
+		}
+	}
+	pthread_mutex_unlock(&bus_mutex);
+	return result;
+}
 
 char *indigo_property_type_text[] = {
 	"UNDEFINED",
@@ -519,6 +671,7 @@ indigo_result indigo_start() {
 #endif
 		memset(devices, 0, MAX_DEVICES * sizeof(indigo_device *));
 		memset(clients, 0, MAX_CLIENTS * sizeof(indigo_client *));
+		memset(client_generations, 0, MAX_CLIENTS * sizeof(uint64_t));
 		memset(blobs, 0, MAX_BLOBS * sizeof(indigo_property *));
 		memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
 		is_started = true;
@@ -583,6 +736,7 @@ indigo_result indigo_attach_client(indigo_client *client) {
 				INDIGO_TRACE(indigo_trace("%d clients attached", max_index + 1));
 			}
 			clients[i] = client;
+			client_generations[i] = ++last_client_generation;
 			pthread_mutex_unlock(&client_mutex);
 			if (client->attach != NULL) {
 				client->last_result = client->attach(client);
@@ -611,6 +765,9 @@ indigo_result indigo_detach_device(indigo_device *device) {
 				indigo_release_property(all_properties);
 				device->last_result = device->detach(device);
 			}
+			// the driver unregisters its operations on detach, this only drops the ones it left behind
+			indigo_client_ref no_client = { NULL, 0 };
+			release_detach_aborts(no_client, device);
 			return INDIGO_OK;
 		}
 	}
@@ -625,11 +782,14 @@ indigo_result indigo_detach_client(indigo_client *client) {
 	INDIGO_DEBUG(indigo_trace_bus("B <- Detach client '%s'", client->name));
 	for (int i = 0; i < MAX_CLIENTS; i++) {
 		if (clients[i] == client) {
+			indigo_client_ref ref = { client, client_generations[i] };
 			clients[i] = NULL;
+			client_generations[i] = 0;
 			pthread_mutex_unlock(&client_mutex);
 			if (client->detach != NULL) {
 				client->last_result = client->detach(client);
 			}
+			release_detach_aborts(ref, NULL);
 			return INDIGO_OK;
 		}
 	}

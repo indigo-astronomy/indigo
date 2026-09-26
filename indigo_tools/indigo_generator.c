@@ -1748,6 +1748,11 @@ void write_c_connection_change_handler(device_type *device) {
 void write_c_property_change_handler(device_type *device, property_type *property) {
 //	write_line("");
 //	write_line("// %s change handler", property->id);
+	// Manual motion runs until the client releases it. After the driver started or stopped it, running
+	// motion is registered with the bus to be released if the client recorded by the change branch
+	// detaches; stopped or refused (ALERT) motion and an abort unregister. The commit ends the handler
+	// and the parked-mount guard below; an early return in on_change code skips it.
+	bool commits_motion = !strcmp(property->id, "MOUNT_MOTION_DEC") || !strcmp(property->id, "MOUNT_MOTION_RA") || !strcmp(property->id, "MOUNT_ABORT_MOTION");
 	write_line("");
 	write_line("static void %s(indigo_device *device) {", property->handler);
 	// The matching admission check in the change branch refuses a request that arrives while the
@@ -1758,6 +1763,9 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 		write_line("\tif (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {");
 		write_line("\t\tindigo_send_message(device, %s, \"Mount is parked!\");", property->handle);
 		write_line("\t\tINDIGO_UPDATE_PROPERTY_STATE(%s, INDIGO_ALERT_STATE, NULL);", property->handle);
+		if (commits_motion) {
+			write_line("\t\tindigo_mount_commit_motion_client(device, %s);", property->handle);
+		}
 		write_line("\t\treturn;");
 		write_line("\t}");
 	}
@@ -1770,6 +1778,9 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 		write_line("\tindigo_update_coordinates(device, NULL);");
 	} else if (!has_finalizer) {
 		write_line("\tindigo_update_property(device, %s, NULL);", property->handle);
+	}
+	if (commits_motion) {
+		write_line("\tindigo_mount_commit_motion_client(device, %s);", property->handle);
 	}
 	write_line("}");
 	write_line("");
@@ -1787,7 +1798,7 @@ void write_c_high_level_code_section(device_type *device) {
 	}
 	write_c_connection_change_handler(device);
 	for (property_type *property = device->properties; property; property = property->next) {
-		if (property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO") && !c_code_is_empty(property->on_change) && (property->type[0] != 'i' || property->on_change)) {
+		if (property->handle_change && strcmp(property->perm, "INDIGO_RO_PERM") && !c_code_is_empty(property->on_change) && (property->type[0] != 'i' || property->on_change)) {
 			write_c_property_change_handler(device, property);
 		}
 	}
@@ -1944,11 +1955,11 @@ void write_c_change_property(device_type *device) {
 	}
 	write_line("\t\treturn INDIGO_OK;");
 	for (property_type *property = device->properties; property; property = property->next) {
-		bool change_branch = property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO") && (property->type[0] != 'i' || property->on_change);
+		bool change_branch = property->handle_change && strcmp(property->perm, "INDIGO_RO_PERM") && (property->type[0] != 'i' || property->on_change);
 		if (property->rejects && !change_branch) {
 			report_error("'%s' has no change branch, its reject_change block(s) would be ignored", property->handle);
 		}
-		if (property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO")) {
+		if (property->handle_change && strcmp(property->perm, "INDIGO_RO_PERM")) {
 			persistent |= property->persistent;
 			if (property->type[0] != 'i' || property->on_change) {
 				write_line("\t} else if (indigo_property_match_changeable(%s, property)) {", property->handle);
@@ -1964,6 +1975,11 @@ void write_c_change_property(device_type *device) {
 					write_line("\t\tINDIGO_REJECT_CHANGE_IF(%s, %s, \"%s\");", reject->condition, property->handle, reject->message);
 				}
 				write_c_code_blocks(property->on_change_request, 2, "%s.%s.on_change_request", device->id, property->id);
+				// Manual motion runs until the client releases it. The client of an admitted request is
+				// recorded here, the change handler registers the started motion with the bus for it.
+				if (!strcmp(property->id, "MOUNT_MOTION_DEC") || !strcmp(property->id, "MOUNT_MOTION_RA")) {
+					write_line("\t\tindigo_mount_record_motion_client(device, client, property);");
+				}
 				if (c_code_is_empty(property->on_change)) {
 					if (property->preserve_values) {
 						write_line("\t\tindigo_property_copy_targets(%s, property, false);", property->handle);

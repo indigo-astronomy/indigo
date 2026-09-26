@@ -27,6 +27,7 @@
 | agent_guider | 2026-09-24 12:56 | 3.0.0.48 | linux x64 | simulator | 88 / 88 | ✅ OK |
 | agent_imager | 2026-09-24 12:56 | 3.0.0.61 | linux x64 | simulator | 53 / 53 | ✅ OK |
 | agent_mount | 2026-09-24 12:56 | 3.0.0.23 | linux x64 | simulator | 69 / 69 | ✅ OK |
+|  | 2026-09-26 14:52 | 3.0.0.23 | mac arm64 | simulator | 69 / 69 | ✅ OK |
 | agent_scripting | 2026-09-24 12:56 | 3.0.0.13 | linux x64 | simulator | 60 / 60 | ✅ OK |
 | ao_sx | 2026-09-20 23:35 | 3.0.0.13 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 |  | 2026-09-20 23:43 | 3.0.0.13 | mac arm64 | SX AO-L | 16 / 16 | ✅ OK |
@@ -180,17 +181,17 @@
 |  | 2026-09-23 15:01 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron SmartEQ) | 8 / 8 | ✅ OK |
 |  | 2026-09-23 15:02 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron ZEQ25) | 8 / 8 | ✅ OK |
 |  | 2026-09-23 15:04 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM70) | 8 / 8 | ✅ OK |
-|  | 2026-09-23 15:10 | 3.0.0.53 | mac arm64 | simulator | 108 / 108 | ✅ OK |
 |  | 2026-09-23 18:32 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM120) | 8 / 8 | ✅ OK |
+|  | 2026-09-26 14:52 | 3.0.0.55 | mac arm64 | simulator | 105 / 104 | ❌ Failed |
 | mount_lx200 | 2026-09-23 00:11 | 3.0.0.58 | mac arm64 | OnStepX | 33 / 33 | ✅ OK |
 |  | 2026-09-23 10:06 | 3.0.0.59 | mac arm64 | aGotino | 35 / 35 | ✅ OK |
 |  | 2026-09-23 11:17 | 3.0.0.60 | mac arm64 | OpenAstroTracker | 35 / 35 | ✅ OK |
 |  | 2026-09-23 14:18 | 3.0.0.63 | mac arm64 | ESP32Go | 35 / 35 | ✅ OK |
 |  | 2026-09-23 19:34 | 3.0.0.64 | mac arm64 | MountSim 2.3 (StarGO) | 14 / 14 | ✅ OK |
 |  | 2026-09-23 20:26 | 3.0.0.65 | mac arm64 | MountSim 2.3 (LX200Classic) | 15 / 15 | ✅ OK |
-|  | 2026-09-23 20:38 | 3.0.0.65 | mac arm64 | simulator | 99 / 99 | ✅ OK |
 |  | 2026-09-24 23:20 | 3.0.0.65 | mac arm64 | Pegasus NYX-101 | 35 / 35 | ✅ OK |
 |  | 2026-09-24 23:26 | 3.0.0.65 | mac arm64 | Pegasus NYX-101 (WiFi) | 35 / 35 | ✅ OK |
+|  | 2026-09-26 14:52 | 3.0.0.67 | mac arm64 | simulator | 99 / 99 | ✅ OK |
 | mount_nexstar | 2026-09-23 23:55 | 3.0.0.35 | mac arm64 | MountSim 2.3 (SE wedge EQ) | 20 / 20 | ✅ OK |
 |  | 2026-09-24 06:25 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGEM) | 21 / 21 | ✅ OK |
 |  | 2026-09-24 06:32 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGE) | 20 / 20 | ✅ OK |
@@ -200,27 +201,27 @@
 |  | 2026-09-24 21:14 | 3.0.0.41 | mac arm64 | Celestron NexStar 4/5 SE (NexStar+ 5.35, EQ wedge) | 12 / 12 | ✅ OK |
 |  | 2026-09-24 21:25 | 3.0.0.41 | mac arm64 | Celestron GPS (NexStar+ 5.35, detection only) | 1 / 1 | ✅ OK |
 |  | 2026-09-24 21:57 | 3.0.0.42 | mac arm64 | Celestron NexStar 4/5 SE (StarSense 1.20, EQ wedge, GPS 11.1) | 12 / 12 | ✅ OK |
-|  | 2026-09-24 22:07 | 3.0.0.42 | mac arm64 | simulator | 19 / 19 | ✅ OK |
-| mount_nexstaraux | 2026-09-20 21:29 | 3.0.0.14 | mac arm64 | simulator | 30 / 30 | ✅ OK |
-|  | 2026-09-24 00:12 | 3.0.0.18 | linux arm64 | simulator | 40 / 40 | ✅ OK |
+|  | 2026-09-26 14:52 | 3.0.0.44 | mac arm64 | simulator | 19 / 19 | ✅ OK |
+| mount_nexstaraux | 2026-09-24 00:12 | 3.0.0.18 | linux arm64 | simulator | 40 / 40 | ✅ OK |
 |  | 2026-09-24 05:44 | 3.0.0.18 | linux arm64 | NexStar SE & NexStar+ HC | 36 / 36 | ✅ OK |
 |  | 2026-09-24 11:00 | 3.0.0.18 | mac arm64 | NexStar SE & NexStar+ HC | 36 / 36 | ✅ OK |
-| mount_pmc8 | 2026-09-24 23:44 | 3.0.0.12 | mac arm64 | simulator | 19 / 19 | ✅ OK |
-|  | 2026-09-24 23:45 | 3.0.0.12 | mac arm64 | iEXOS-100 | 38 / 38 | ✅ OK |
+|  | 2026-09-26 14:52 | 3.0.0.20 | mac arm64 | simulator | 40 / 40 | ✅ OK |
+| mount_pmc8 | 2026-09-24 23:45 | 3.0.0.12 | mac arm64 | iEXOS-100 | 38 / 38 | ✅ OK |
+|  | 2026-09-26 14:52 | 3.0.0.13 | mac arm64 | simulator | 19 / 19 | ✅ OK |
 | mount_rainbow | 2026-09-23 14:04 | 3.0.0.18 | mac arm64 | MountSim 2.3 (RainbowAstro RST135) | 13 / 13 | ✅ OK |
-|  | 2026-09-23 14:05 | 3.0.0.18 | mac arm64 | simulator | 15 / 15 | ✅ OK |
-| mount_simulator | 2026-09-21 12:42 | 3.0.0.16 | mac arm64 | simulator | 16 / 16 | ✅ OK |
-|  | 2026-09-24 17:55 | 3.0.0.17 | linux x64 | simulator | 16 / 16 | ✅ OK |
-| mount_starbook | 2026-09-20 20:49 | 3.0.0.7 | mac arm64 | simulator | 11 / 11 | ✅ OK |
+|  | 2026-09-26 14:52 | 3.0.0.20 | mac arm64 | simulator | 15 / 15 | ✅ OK |
+| mount_simulator | 2026-09-24 17:55 | 3.0.0.17 | linux x64 | simulator | 16 / 16 | ✅ OK |
+|  | 2026-09-26 14:52 | 3.0.0.19 | mac arm64 | simulator | 16 / 16 | ✅ OK |
+| mount_starbook | 2026-09-26 14:52 | 3.0.0.9 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | mount_synscan | 2026-09-24 09:35 | 3.0.0.7 | mac arm64 | MountSim 2.3 (EQMOD) | 15 / 15 | ✅ OK |
 |  | 2026-09-24 14:23 | 3.0.0.8 | linux arm64 | simulator | 19 / 19 | ✅ OK |
 |  | 2026-09-24 21:27 | 3.0.0.8 | linux arm64 | AstroEQ 8.25 (ESP32-S3) | 16 / 16 | ✅ OK |
-|  | 2026-09-24 21:41 | 3.0.0.9 | mac arm64 | simulator | 20 / 20 | ✅ OK |
 |  | 2026-09-24 21:48 | 3.0.0.9 | mac arm64 | AstroEQ 8.25 (ESP32-S3) | 16 / 16 | ✅ OK |
 |  | 2026-09-24 22:07 | 3.0.0.9 | mac arm64 | SkyWatcher AZ-GTi | 16 / 16 | ✅ OK |
+|  | 2026-09-26 14:52 | 3.0.0.11 | mac arm64 | simulator | 20 / 20 | ✅ OK |
 | mount_temma | 2026-09-23 13:37 | 3.0.0.15 | mac arm64 | MountSim 2.3 (Temma) | 12 / 12 | ✅ OK |
-|  | 2026-09-23 13:37 | 3.0.0.15 | mac arm64 | simulator | 16 / 16 | ✅ OK |
 |  | 2026-09-24 18:01 | 3.0.0.16 | linux x64 | simulator | 16 / 13 | ❌ Failed |
+|  | 2026-09-26 14:52 | 3.0.0.18 | mac arm64 | simulator | 16 / 16 | ✅ OK |
 | polaralign_mlastro | 2026-09-24 22:28 | 3.0.0.3 | mac arm64 | MLAstro RPA firmware 1.8.1 (TTGO ESP32) | 18 / 14 | ❌ Failed |
 |  | 2026-09-24 22:46 | 3.0.0.4 | mac arm64 | simulator | 29 / 29 | ✅ OK |
 | polaralign_simulator | 2026-09-21 10:53 | 3.0.0.4 | mac arm64 | simulator | 11 / 11 | ✅ OK |

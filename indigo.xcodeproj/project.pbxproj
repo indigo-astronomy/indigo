@@ -1406,6 +1406,8 @@
 		592007832A5B2D050063C472 /* indigo_aux_uch_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_uch_main.c; sourceTree = "<group>"; };
 		592007842A5B2D050063C472 /* indigo_aux_uch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_aux_uch.h; sourceTree = "<group>"; };
 		592089392F857B5800E4A595 /* DRIVER_GENERATOR_MIGRATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DRIVER_GENERATOR_MIGRATION.md; sourceTree = "<group>"; };
+		5920893A2F857B5800E4A595 /* DRIVER_GENERATOR_BASICS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DRIVER_GENERATOR_BASICS.md; sourceTree = "<group>"; };
+		5920893B2F857B5800E4A595 /* DRIVER_TESTING_BASICS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DRIVER_TESTING_BASICS.md; sourceTree = "<group>"; };
 		5920EDAF2B8E57AA00BF85F7 /* wifi_channel_selector.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = wifi_channel_selector.pl; sourceTree = "<group>"; };
 		5920EDB02B8E57AA00BF85F7 /* rpi_ctrl_v2.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = rpi_ctrl_v2.sh; sourceTree = "<group>"; };
 		5920EDB12B8E57DC00BF85F7 /* rpi_ctrl_fake.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = rpi_ctrl_fake.sh; sourceTree = "<group>"; };
@@ -4943,6 +4945,7 @@
 		59FA7BF0301D386600A35CFB /* test_md5.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_md5.c; sourceTree = "<group>"; };
 		59FA7BF1301D386600A35CFB /* test_polynomial_fit.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_polynomial_fit.c; sourceTree = "<group>"; };
 		59FA7BF2301D3A5800A35CFB /* test_bus_lifecycle.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_bus_lifecycle.c; sourceTree = "<group>"; };
+		C0DE20260926D0AB00000001 /* test_detach_abort.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_detach_abort.c; sourceTree = "<group>"; };
 		59FA7BF4301D3B9200A35CFB /* test_ccd_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_simulator.c; sourceTree = "<group>"; };
 		59FA7BF6301D3F5A00A35CFB /* simulator_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = simulator_test_common.h; sourceTree = "<group>"; };
 		59FA7BF7301D3F5A00A35CFB /* test_dome_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_simulator.c; sourceTree = "<group>"; };
@@ -6193,8 +6196,10 @@
 				5912C80C23D2447400A48B75 /* INDI-COMPARISON.md */,
 				5912C80823D2447400A48B75 /* CLIENT_DEVELOPMENT_BASICS.md */,
 				5912C80B23D2447400A48B75 /* DRIVER_DEVELOPMENT_BASICS.md */,
+				5920893A2F857B5800E4A595 /* DRIVER_GENERATOR_BASICS.md */,
 				592089392F857B5800E4A595 /* DRIVER_GENERATOR_MIGRATION.md */,
 				59FA7C1A301E348B00A35CFB /* SERIAL_DEVICE_SIMULATORS.md */,
+				5920893B2F857B5800E4A595 /* DRIVER_TESTING_BASICS.md */,
 				9DEF3982304AD9A600FD4BC4 /* TIMERS_AND_QUEUES.md */,
 				5912C80923D2447400A48B75 /* Introduction to INDIGO.pdf */,
 			);
@@ -14096,9 +14101,9 @@
 				59FA7BED301D386600A35CFB /* test_base64.c */,
 				59FA7BEE301D386600A35CFB /* test_bus_helpers.c */,
 				59FA7BEF301D386600A35CFB /* test_dome_azimuth.c */,
-				59FA7BF0301D386600A35CFB /* test_md5.c */,
 				D21A672ED1F723F9846A3C92 /* test_driver_loader.c */,
 				D2D6E33C60E4FE67E85DA347 /* test_driver_loader_fixture.c */,
+				59FA7BF0301D386600A35CFB /* test_md5.c */,
 				59FA7BF1301D386600A35CFB /* test_polynomial_fit.c */,
 				59FA7BE6301D35FD00A35CFB /* test_bus_property.c */,
 				59FA7BE7301D35FD00A35CFB /* test_raw_image.c */,
@@ -14161,6 +14166,7 @@
 				5907ACD0301E7C9C0009AA99 /* test_aux_wbprov3_simulator.c */,
 				5907ACD3301E7DC60009AA99 /* test_aux_wcv4ec_simulator.c */,
 				59FA7BF2301D3A5800A35CFB /* test_bus_lifecycle.c */,
+				C0DE20260926D0AB00000001 /* test_detach_abort.c */,
 				C0DE20260911000100000001 /* test_ccd_altair_sdk.c */,
 				59910AA43054836E00FB1C2F /* test_ccd_asi_sdk.c */,
 				9D56D35A3058283B00725436 /* test_ccd_atik_sdk.c */,

@@ -56,6 +56,7 @@
 #include <direct.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <mstcpip.h>
 #else
 #pragma message ("TODO: Unified I/O")
 #endif
@@ -1163,7 +1164,44 @@ int indigo_uni_discover(const char *target, int port, const char *payload, long 
 	return count;
 }
 
+// TCP keepalive of client sockets and of connections accepted by the server, a dead peer (e.g. lost Wi-Fi) is detected after idle + interval * count seconds
+#define TCP_KEEPALIVE_IDLE_TIME				10
+#define TCP_KEEPALIVE_PROBE_INTERVAL	3
+#define TCP_KEEPALIVE_PROBE_COUNT			3
+// keepalive doesn't run while sent data wait for acknowledgement (e.g. a server sending updates to a lost client), such a connection is dropped after this time
+#define TCP_RETRANSMISSION_TIMEOUT		20
+
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+
+static void set_socket_option(int fd, int level, int option, const char *option_name, int value) {
+	if (setsockopt(fd, level, option, &value, sizeof(value)) < 0) {
+		indigo_debug("Can't set %s on socket %d (%s)", option_name, fd, strerror(errno));
+	}
+}
+
+// failures are only logged, the connection works without these options
+static void configure_tcp_client_socket(int fd) {
+#if defined(SO_NOSIGPIPE)
+	set_socket_option(fd, SOL_SOCKET, SO_NOSIGPIPE, "SO_NOSIGPIPE", 1);
+#endif
+	set_socket_option(fd, SOL_SOCKET, SO_KEEPALIVE, "SO_KEEPALIVE", 1);
+#if defined(TCP_KEEPALIVE)
+	set_socket_option(fd, IPPROTO_TCP, TCP_KEEPALIVE, "TCP_KEEPALIVE", TCP_KEEPALIVE_IDLE_TIME);
+#elif defined(TCP_KEEPIDLE)
+	set_socket_option(fd, IPPROTO_TCP, TCP_KEEPIDLE, "TCP_KEEPIDLE", TCP_KEEPALIVE_IDLE_TIME);
+#endif
+#if defined(TCP_KEEPINTVL)
+	set_socket_option(fd, IPPROTO_TCP, TCP_KEEPINTVL, "TCP_KEEPINTVL", TCP_KEEPALIVE_PROBE_INTERVAL);
+#endif
+#if defined(TCP_KEEPCNT)
+	set_socket_option(fd, IPPROTO_TCP, TCP_KEEPCNT, "TCP_KEEPCNT", TCP_KEEPALIVE_PROBE_COUNT);
+#endif
+#if defined(TCP_RXT_CONNDROPTIME)
+	set_socket_option(fd, IPPROTO_TCP, TCP_RXT_CONNDROPTIME, "TCP_RXT_CONNDROPTIME", TCP_RETRANSMISSION_TIMEOUT);
+#elif defined(TCP_USER_TIMEOUT)
+	set_socket_option(fd, IPPROTO_TCP, TCP_USER_TIMEOUT, "TCP_USER_TIMEOUT", TCP_RETRANSMISSION_TIMEOUT * 1000);
+#endif
+}
 
 // connect() with optional timeout in microseconds, negative timeout means blocking connect
 static int connect_with_timeout(int fd, const struct sockaddr *address, socklen_t address_length, long timeout) {
@@ -1201,6 +1239,31 @@ static int connect_with_timeout(int fd, const struct sockaddr *address, socklen_
 }
 
 #elif defined(INDIGO_WINDOWS)
+
+// failures are only logged, the connection works without these options
+static void configure_tcp_client_socket(SOCKET sock) {
+	BOOL keepalive = TRUE;
+	if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (const char *)&keepalive, sizeof(keepalive)) == SOCKET_ERROR) {
+		indigo_debug("Can't set SO_KEEPALIVE on socket (%d)", WSAGetLastError());
+	}
+	struct tcp_keepalive settings = { .onoff = 1, .keepalivetime = TCP_KEEPALIVE_IDLE_TIME * 1000, .keepaliveinterval = TCP_KEEPALIVE_PROBE_INTERVAL * 1000 };
+	DWORD returned = 0;
+	if (WSAIoctl(sock, SIO_KEEPALIVE_VALS, &settings, sizeof(settings), NULL, 0, &returned, NULL, NULL) == SOCKET_ERROR) {
+		indigo_debug("Can't set SIO_KEEPALIVE_VALS on socket (%d)", WSAGetLastError());
+	}
+#if defined(TCP_KEEPCNT)
+	DWORD count = TCP_KEEPALIVE_PROBE_COUNT;
+	if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, (const char *)&count, sizeof(count)) == SOCKET_ERROR) {
+		indigo_debug("Can't set TCP_KEEPCNT on socket (%d)", WSAGetLastError());
+	}
+#endif
+#if defined(TCP_MAXRT)
+	DWORD max_retransmission_time = TCP_RETRANSMISSION_TIMEOUT;
+	if (setsockopt(sock, IPPROTO_TCP, TCP_MAXRT, (const char *)&max_retransmission_time, sizeof(max_retransmission_time)) == SOCKET_ERROR) {
+		indigo_debug("Can't set TCP_MAXRT on socket (%d)", WSAGetLastError());
+	}
+#endif
+}
 
 static int connect_with_timeout(SOCKET sock, const struct sockaddr *address, int address_length, long timeout) {
 	if (timeout < 0) {
@@ -1252,6 +1315,9 @@ indigo_uni_handle *indigo_uni_open_client_socket_with_timeout(const char *host, 
 				continue;
 			}
 			if (connect_with_timeout(fd, address->ai_addr, address->ai_addrlen, timeout) == 0) {
+				if (type == SOCK_STREAM) {
+					configure_tcp_client_socket(fd);
+				}
 				handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 				handle->index = next_handle_index();
 				handle->type = type == SOCK_STREAM ? INDIGO_TCP_HANDLE : INDIGO_UDP_HANDLE;
@@ -1282,6 +1348,9 @@ indigo_uni_handle *indigo_uni_open_client_socket_with_timeout(const char *host, 
 	address.sin_port = htons(port);
 	address.sin_addr = *((struct in_addr *)he->h_addr);
 	if (connect_with_timeout(sock, (struct sockaddr *)&address, sizeof(struct sockaddr), timeout) == 0) {
+		if (type == SOCK_STREAM) {
+			configure_tcp_client_socket(sock);
+		}
 		handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 		handle->index = next_handle_index();
 		handle->type = type == SOCK_STREAM ? INDIGO_TCP_HANDLE : INDIGO_UDP_HANDLE;
@@ -1437,6 +1506,7 @@ void indigo_uni_open_tcp_server_socket_with_callback(int *port, indigo_uni_handl
 			close(client_socket);
 			break;
 		}
+		configure_tcp_client_socket(client_socket);
 
 		indigo_uni_worker_data *worker_data = indigo_safe_malloc(sizeof(indigo_uni_worker_data));
 		worker_data->handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
@@ -1521,6 +1591,7 @@ void indigo_uni_open_tcp_server_socket_with_callback(int *port, indigo_uni_handl
 			closesocket(client_socket);
 			return;
 		}
+		configure_tcp_client_socket(client_socket);
 		indigo_uni_worker_data* worker_data = indigo_safe_malloc(sizeof(indigo_uni_worker_data));
 		worker_data->handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 		worker_data->handle->index = next_handle_index();

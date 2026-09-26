@@ -217,3 +217,17 @@ numbers. Background and the defect that motivated the refusal macro are in `indi
 
 Verification: the complete simulator suite was re-run after regeneration —
 `indigo_test/build/integration/test_mount_simulator`, macOS arm64, 16/16 passed on 2026-09-21 12:42.
+
+## Client-detach motion release (2026-09-26)
+
+Test-only change. `indigo_test/integration/test_detach_abort.c` exercises the generated
+`indigo_mount_record_motion_client()` / `indigo_mount_commit_motion_client()` calls of this driver
+with in-process owners that detach (`simulator_*`, 14 cases, and `agent_owner_detach_releases_motion`
+through the Mount Agent) and, in the opt-in `--network` mode (`make -C indigo_test
+test-detach-abort-network`), with TCP peers of the in-process server (`network_*`, 4 cases on this
+driver). Scenarios: release on orderly detach, TCP close, connection reset and a cut connection; no
+release after an own release, after `MOUNT_ABORT_MOTION` or a release by another client; takeover by
+another client; disconnect and driver shutdown leave no entry; a finite goto keeps running; the
+parked-mount guard refusing a request with and without a registered motion; both axes; direction
+change; detach before the commit; repeated detach/close races; a mount locked by an access token.
+Registrations are proven by the bus log markers and a device-queue fence, not by sleeps.
