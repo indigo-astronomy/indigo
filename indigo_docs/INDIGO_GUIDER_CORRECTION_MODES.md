@@ -1,6 +1,6 @@
 # INDIGO Guider Agent - Drift Correction Modes
 
-Revision: 02.08.2026 (draft)
+Revision: 26.09.2026 (draft)
 
 Author: **Rumen G. Bogdanovski**
 
@@ -8,9 +8,9 @@ e-mail: *rumenastro@gmail.com*
 
 ## Overview
 
-INDIGO Guider Agent provides five drift correction modes. They can be selected independently for the Right Ascension and Declination axes.
+INDIGO Guider Agent provides six drift correction modes. They can be selected independently for the Right Ascension and Declination axes.
 
-* **RA** supports: **Proportional-Integral**, **Hysteresis**, **Linear Trend**, and **Predictive PEC**.
+* **RA** supports: **Proportional-Integral**, **Hysteresis**, **Linear Trend**, **Predictive PEC**, and **Multi Kernel GP**.
 * **Dec** supports: **Proportional-Integral**, **Hysteresis**, **Linear Trend**, and **Resist Switch**.
 
 Each mode converts the measured guide-star drift into a correction pulse in a different way. No single mode is always best. The best choice depends on the mount mechanics, guide exposure, seeing, backlash, and the shape of the tracking error.
@@ -212,9 +212,11 @@ The model needs to observe the mount before it can predict. While it is still **
 
 The worm period can be entered manually or estimated automatically. With **worm period 0** the model is seeded with a sensible built-in default and the controller analyses the recorded error with an FFT to slowly track the dominant period, so it converges on the true worm period on its own. A known period can be entered instead: the model is seeded with that value and, by default, still keeps **auto-adjusting** it online — refining the period toward what the FFT measures. Changing the entered value re-seeds the model to the new period (and it then auto-adjusts again from there); turning **fixed period** on holds the entered value constant instead.
 
-The learned model is also retained across short interruptions. If guiding is stopped and restarted on the same side of the pier at a similar RA, and the worm has not rotated too far in the meantime (up to a configurable fraction of a period, 40% by default), the model is kept and gear time is shifted to match, instead of relearning from scratch. Larger moves, a meridian flip, or a long pause cause a clean reset. Dithering is handled the same way: the model is preserved and only the reactive part is applied for a few settling frames.
+The learned model is also retained across short interruptions. If guiding is stopped and restarted on the same side of the pier at a similar RA, and the worm has not rotated too far in the meantime (up to a configurable fraction of a period, 40% by default), the model is kept and gear time is shifted to match, instead of relearning from scratch. Larger moves, a meridian flip, or a long pause cause a clean reset. When the model is retained, the first 4 frames after the restart apply only the reactive part while guiding locks on again. Dithering is handled the same way: the model is preserved and only the reactive part is applied until the dither has settled.
 
 A **Reset Predictive PEC** action is available to discard the learned model manually (including the learned worm period) and start learning again from the default prior. The worm period returns to the built-in default, and your current period setting is re-applied on the next guiding frame — so an entered or fixed period is preserved across a reset, while an auto (0) period simply relearns from the default.
+
+Predictive PEC and **Multi Kernel GP** (Mode 6) keep separate learned models, settings, and statistics. Switching between the two modes does not discard either model.
 
 ### Parameters
 
@@ -243,6 +245,80 @@ The shared **Min error** (min move) applies as in the other modes: drift below i
 
 ---
 
+## Mode 6: Multi Kernel GP (MKGP)
+
+*Available for: **RA only**.*
+
+### How It Works
+
+Multi Kernel GP extends Predictive PEC to mounts whose RA error comes from **two gear stages** rather than one. Typical examples are a worm driven through a belt or a transfer gear, or a strain-wave drive with a separate input stage. Each stage repeats with its own period. When the two periods are not simple multiples of each other, their errors **beat** against each other, and the combined error never repeats on a single cycle. Predictive PEC models only one periodic component, so on such a mount it learns the dominant stage and the reactive part has to chase the rest.
+
+Multi Kernel GP is the same controller as Predictive PEC with one more periodic component in the model:
+
+* The **first stage** is the worm, or the dominant stage. It is modelled exactly as in Predictive PEC and has the same period handling.
+* The **second stage** is a separate periodic component with its own period. It represents the whole repeating shape of that stage, including its harmonics, not just a single sine wave.
+
+The correction is formed as in Predictive PEC:
+
+```math
+correction = -\left(\text{reactive\_gain} \cdot \text{drift} + \text{prediction\_gain} \cdot \text{predicted\_error}\right)
+```
+
+The only difference is that $\text{predicted\_error}$ now includes both stages.
+
+The second stage is used only when the guiding data supports it:
+
+* **Evidence gate** — The controller measures how strong the second stage's line in the error spectrum is, relative to the first stage's. Below about 15% of the first stage's amplitude, the second stage is switched off entirely. It is fully engaged at about 35%. The **Multi Kernel GP 2nd stage weight (%)** indicator shows where the gate currently stands. A mount without a second gear stage therefore guides exactly as with Predictive PEC.
+* **Harmonic rejection** — A candidate period that is a simple multiple or fraction (up to 5×) of the first stage's period is refused. That error is a harmonic of the first stage, which the first stage already models.
+* **Search range** — With the second-stage period set to 0 (auto), the period is found from the spectrum. The first stage's line and its harmonics are excluded, and the search is limited to periods between 20 s and 1.2 × the first stage's period. Anything slower than the worm is treated as drift, not as a gear stage.
+* **Tolerance to period error** — A second stage is often much faster than the worm, so many of its cycles fit into the learning window. A strictly periodic model would then need its period to within about 0.2%. The second stage therefore gradually forgets data older than about 20 of its own periods. This keeps prediction accurate even when the auto-detected period is off by a percent or two.
+
+Learning works as in Predictive PEC. The prediction is blended in gradually, and roughly two first-stage periods of data are needed before it is fully trusted. While the second stage is engaged, the **Multi Kernel GP learning (%)** indicator also accounts for how well its period has converged.
+
+Retaining the model across short interruptions, dither handling, and the restart settling frames all work exactly as in Predictive PEC. The Multi Kernel GP model is separate from the Predictive PEC model, so switching between the two modes keeps both. The statistics always show the model of the selected mode.
+
+A **Reset Multi Kernel GP** action discards the learned model, including both learned periods. Your period settings are re-applied on the next guiding frame, as for Predictive PEC.
+
+Guidance on the second-stage period:
+
+* **Auto (0) usually finds the second stage on its own.** In simulations of a 130 s worm combined with a 47 s second stage, Multi Kernel GP cut the residual RA error by about a third compared with Predictive PEC when it found the second-stage period itself, and roughly halved it when the period was entered. With a single periodic component, the residual was unchanged.
+* **Enter the period when you know it.** If the second stage's own harmonic is stronger than its fundamental, the automatic search locks onto the harmonic. That still helps compared with Predictive PEC, but noticeably less than a correctly entered period. Entering a known period limits the search to ±30% around it, so a harmonic cannot be picked instead.
+
+### Parameters
+
+* **RA MKGP reactive gain (%)** — Gain of the immediate proportional response to the current drift, as in Predictive PEC. Default: 60%.
+* **RA MKGP predictive gain (%)** — How much of the predicted error of both stages is applied. Setting this to 0 disables the prediction. Default: 50%.
+* **RA MKGP period (s, 0=auto)** — Period of the first stage (normally the worm), handled exactly like the Predictive PEC worm period. Default: 0 (auto).
+* **RA MKGP fixed period (0=auto-adjust, 1=fixed)** — Holds the entered first-stage period constant instead of refining it online. Has effect only when a period is entered. Default: 0 (auto-adjust).
+* **RA MKGP 2nd stage period (s, 0=auto)** — Period of the second stage. Set to 0 to find it from the spectrum within the search range described above. Enter a known value to seed it. By default the seeded period is still refined online within ±30% of the entered value. Default: 0 (auto).
+* **RA MKGP 2nd stage fixed period (0=auto-adjust, 1=fixed)** — Holds the entered second-stage period constant. Has effect only when a second-stage period is entered. Default: 0 (auto-adjust).
+* **RA MKGP retain model (% of period)** — How far the first stage may rotate during a guiding interruption while still keeping the learned model, as for Predictive PEC. Default: 40%.
+
+The shared **Min error** (min move) applies as in the other modes.
+
+Statistics:
+
+* **Multi Kernel GP learning (%)** — Learning progress of the model.
+* **Multi Kernel GP period (s)** — Current first-stage period estimate.
+* **Multi Kernel GP 2nd stage period (s)** — Current second-stage period estimate.
+* **Multi Kernel GP 2nd stage weight (%)** — How strongly the second stage contributes: 0% means it is switched off, 100% means it is fully engaged. This tells you whether the mount actually shows a second gear stage.
+
+### When to Use
+
+* **RA error that beats or never quite repeats** — The guide graph shows the worm period, but its amplitude or shape changes from cycle to cycle. This is the typical signature of two gear stages with unrelated periods.
+* **Worm plus belt or transfer-gear drives** — The worm is the first stage, and the belt pulley or the transfer gear is the second.
+* **Strain-wave mounts with a distinct input stage** — Their error is dominated by two regular periodic components rather than one.
+* **Predictive PEC helps but leaves a periodic residual** — If the RA residual under Predictive PEC still shows a clear period, try Multi Kernel GP and watch the **2nd stage weight (%)** indicator.
+
+### When Not to Use
+
+* **Dec guiding** — It is not available for Dec.
+* **Mounts with a single periodic component** — It guides the same as Predictive PEC there, because the evidence gate keeps the second stage off. The only cost is a little extra computation per frame, which is negligible. Predictive PEC is the simpler choice.
+* **Error that is a worm with harmonics** — Harmonics of the worm are already modelled by the first stage and are deliberately refused as a second stage.
+* **Rough, broadband, or non-repeating RA error**, **mounts without real periodic error**, and **very short sessions** — The same limits as Predictive PEC apply.
+
+---
+
 ## Comparison Summary
 
 | Mode | Axes | Usually best for | Usually not ideal for |
@@ -252,6 +328,7 @@ The shared **Min error** (min move) applies as in the other modes: drift below i
 | **Linear Trend** | RA, Dec | Smooth monotonic drift; long, gentle trends | Rough PE; turbulent seeing; backlash-dominated Dec |
 | **Resist Switch** | Dec | Significant Dec backlash; conservative one-side Dec guiding | Low-backlash systems; continuous Dec drift; RA |
 | **Predictive PEC** | RA | Worm-gear RA with smooth, repeating periodic error; long sessions | Mounts without real worm PE; rough or non-periodic RA error; short sessions; Dec |
+| **Multi Kernel GP** | RA | RA error from two gear stages with unrelated periods (worm plus belt or transfer gear, strain wave with an input stage); beating PE; long sessions | Single-stage PE, where Predictive PEC is simpler; rough or non-periodic RA error; short sessions; Dec |
 
 ---
 
@@ -261,11 +338,11 @@ The table below gives **typical** recommendations. It is intentionally conservat
 
 | Mount / drive type | Typical behavior | Usually suitable modes | Usually not the first choice | Notes |
 |--------------------|------------------|------------------------|------------------------------|-------|
-| **Worm gear** | Often smooth RA periodic error; Dec backlash is common; behavior is usually predictable | **RA:** PI, **Predictive PEC** when the worm PE is strong and the session is long enough to learn it, sometimes Linear Trend if PE is smooth and guide cadence is short enough. **Dec:** PI, Hysteresis, or Resist Switch if backlash is significant | **Dec:** Linear Trend on backlash-heavy mounts; Hysteresis with high $h$ when clear systematic drift is present | This is the most common case. If the mount is mechanically sound, PI is usually the best starting point on both axes; Predictive PEC is the natural next step for the RA axis when the dominant error is repeating worm PE |
-| **Strain wave / harmonic drive** | Usually little classical backlash, but RA error can be rough, asymmetric, and steep; some mounts show elasticity or high-frequency components | **RA:** PI, often P-only or with a small I term; Hysteresis can also help if the RA trace is dominated by high-frequency jitter or centroid noise. **Dec:** PI or Hysteresis. | Linear Trend is often a poor fit for rough or jagged RA error. Resist Switch is usually unnecessary unless Dec backlash is actually observed | Predictive PEC can help appreciably on strain-wave mounts whose RA error is dominated by a few strong harmonics (a fairly regular, repeating pattern), but it will not benefit every harmonic-drive mount: those whose error is rough, broadband, or rich in many harmonics give the model little to predict. Use short enough guide exposures to sample the steeper RA error. If the high-frequency oscillation is real mount motion rather than guide noise, PI is usually safer than Hysteresis. Choose by measured behavior, not by the harmonic label alone |
+| **Worm gear** | Often smooth RA periodic error; Dec backlash is common; behavior is usually predictable | **RA:** PI, **Predictive PEC** when the worm PE is strong and the session is long enough to learn it, sometimes Linear Trend if PE is smooth and guide cadence is short enough. **Dec:** PI, Hysteresis, or Resist Switch if backlash is significant | **Dec:** Linear Trend on backlash-heavy mounts; Hysteresis with high $h$ when clear systematic drift is present | This is the most common case. If the mount is mechanically sound, PI is usually the best starting point on both axes; Predictive PEC is the natural next step for the RA axis when the dominant error is repeating worm PE, and Multi Kernel GP when the worm error beats with a second gear stage |
+| **Strain wave / harmonic drive** | Usually little classical backlash, but RA error can be rough, asymmetric, and steep; some mounts show elasticity or high-frequency components | **RA:** PI, often P-only or with a small I term; Hysteresis can also help if the RA trace is dominated by high-frequency jitter or centroid noise. **Dec:** PI or Hysteresis. | Linear Trend is often a poor fit for rough or jagged RA error. Resist Switch is usually unnecessary unless Dec backlash is actually observed | Predictive PEC can help appreciably on strain-wave mounts whose RA error is dominated by a few strong harmonics (a fairly regular, repeating pattern), but it will not benefit every harmonic-drive mount: those whose error is rough, broadband, or rich in many harmonics give the model little to predict. Multi Kernel GP is worth trying when the error is dominated by two such regular components with unrelated periods, such as a separate input stage. Use short enough guide exposures to sample the steeper RA error. If the high-frequency oscillation is real mount motion rather than guide noise, PI is usually safer than Hysteresis. Choose by measured behavior, not by the harmonic label alone |
 | **Friction drive / roller drive** | Very low backlash and little classical gear PE, but slip, stiction, or wind sensitivity may appear | **RA/Dec:** PI or Hysteresis; Linear Trend if the drift is smooth and monotonic | Resist Switch unless there is real Dec reversal deadband | These mounts often do not need backlash-specific strategies, but may benefit from a calmer controller if the centroid is noisy |
 | **Direct drive** | Very low backlash; no worm PE, but servo jitter, encoder noise, or external disturbances may dominate | **RA/Dec:** PI or Hysteresis | Resist Switch in most cases; Linear Trend as a default | If the mount already tracks very smoothly, Hysteresis can reduce chasing tiny noise. Use PI if there is real low-frequency drift |
-| **Belt-reduced / hybrid gear trains** | Behavior depends strongly on what the belt drives; backlash can be low, but compliance and irregular error may appear | Usually PI first, then Hysteresis if the guide data is noisy | Linear Trend if the error is irregular; Resist Switch unless Dec backlash is confirmed | Treat these mounts by their measured guide behavior, not by the presence of a belt alone |
+| **Belt-reduced / hybrid gear trains** | Behavior depends strongly on what the belt drives; backlash can be low, but compliance and irregular error may appear | Usually PI first, then Hysteresis if the guide data is noisy; **Multi Kernel GP** on RA when a worm and a belt stage both leave clear periodic error | Linear Trend if the error is irregular; Resist Switch unless Dec backlash is confirmed | Treat these mounts by their measured guide behavior, not by the presence of a belt alone |
 
 ### Practical interpretation
 
@@ -273,6 +350,7 @@ The table below gives **typical** recommendations. It is intentionally conservat
 * **If the mount has smooth, slow error**, **PI** or **Linear Trend** can work well.
 * **If the mount has rough or jagged RA error**, **PI** is usually the safest first choice. **Hysteresis** can also work well when part of the roughness is guide-star noise or short-term jitter, but **Linear Trend** is usually a poor fit.
 * **If the RA error is dominated by smooth, repeating worm periodic error**, **Predictive PEC** can outperform the reactive modes once it has learned the mount, especially over long sessions.
+* **If the RA periodic error beats, so its amplitude or shape changes from one worm cycle to the next**, the mount probably has a second gear stage, and **Multi Kernel GP** is the mode to try.
 * **If the graph is mostly noisy rather than drifting**, **Hysteresis** is often the right mode to try.
 
 ---
@@ -309,6 +387,13 @@ Refer to [GUIDING_PI_CONTROLLER_TUNING.md](GUIDING_PI_CONTROLLER_TUNING.md) for 
 * **Dec:** Proportional-Integral, or Resist Switch if Dec backlash is significant
 
 Let the **Predictive PEC learning (%)** indicator climb before judging the RA trace; the prediction is only fully trusted after roughly two worm periods. If the worm period is known, entering it directly speeds up learning.
+
+### Mount with two gear stages (worm plus belt or transfer gear, long session)
+
+* **RA:** Multi Kernel GP, reactive gain 60%, predictive gain 50%, period 0 (auto), 2nd stage period 0 (auto)
+* **Dec:** Proportional-Integral, or Resist Switch if Dec backlash is significant
+
+Enter the worm period and the second-stage period if you know them, for example from the mount's documentation or from a periodic error analysis. After a few worm periods, check the **Multi Kernel GP 2nd stage weight (%)** indicator. If it stays near 0%, the mount shows no significant second stage, and Predictive PEC is the simpler choice.
 
 ### Typical harmonic / strain-wave mount starting point
 
