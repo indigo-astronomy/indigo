@@ -160,7 +160,7 @@ typedef struct {
 
 typedef struct {
 	char name[INDIGO_NAME_SIZE];
-	unsigned revision, busy, alert, ok_closed, defines, deletes;
+	unsigned revision, busy, alert, ok_closed, ok_parked, defines, deletes;
 	int defined_state;
 	char last_trace[1024];
 } observed_property;
@@ -200,6 +200,7 @@ static char trace_text[TRACE_SIZE], trace_pending[TRACE_SIZE / 4];
 static size_t trace_length, trace_pending_length;
 static atomic_bool trace_active;
 static int trace_mark;
+static _Atomic(indigo_device *) driver_device;
 
 // ---------------------------------------------------------------------------- utilities
 
@@ -567,12 +568,21 @@ static void note_state(observed_property *entry, indigo_property *property) {
 			}
 		}
 	}
+	// the dome is shown parked
+	if (!strcmp(property->name, DOME_PARK_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, DOME_PARK_PARKED_ITEM_NAME) && property->items[i].sw.value) {
+				entry->ok_parked++;
+			}
+		}
+	}
 }
 
 static indigo_result observe_define(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	pthread_mutex_lock(&observe_mutex);
 	indigo_result result = simulator_client_define_property(client, device, property, message);
 	if (is_current_device(property)) {
+		atomic_store(&driver_device, device);
 		observed_property *entry = observed_entry(property->name, true);
 		if (entry) {
 			entry->defines++;
@@ -590,6 +600,7 @@ static indigo_result observe_update(indigo_client *client, indigo_device *device
 	pthread_mutex_lock(&observe_mutex);
 	indigo_result result = simulator_client_update_property(client, device, property, message);
 	if (is_current_device(property)) {
+		atomic_store(&driver_device, device);
 		observed_property *entry = observed_entry(property->name, true);
 		if (entry) {
 			note_state(entry, property);
@@ -668,6 +679,14 @@ static unsigned ok_closed_of(const char *name) {
 	pthread_mutex_lock(&observe_mutex);
 	observed_property *entry = observed_entry(name, false);
 	unsigned result = entry ? entry->ok_closed : 0;
+	pthread_mutex_unlock(&observe_mutex);
+	return result;
+}
+
+static unsigned ok_parked_of(const char *name) {
+	pthread_mutex_lock(&observe_mutex);
+	observed_property *entry = observed_entry(name, false);
+	unsigned result = entry ? entry->ok_parked : 0;
 	pthread_mutex_unlock(&observe_mutex);
 	return result;
 }
@@ -2243,6 +2262,121 @@ cleanup:
 	driver_down();
 }
 
+// ---------------------------------------------------------------------------- switch requests and background writers
+
+// A gate handler holds the device queue, so a message the reader hands over is queued ahead of a client request's
+// handler and runs first once the gate opens, as when a report arrives just before the request.
+static atomic_bool gate_entered, gate_release;
+
+static void gate_handler(indigo_device *device) {
+	(void)device;
+	atomic_store(&gate_entered, true);
+	for (int i = 0; i < 1000 && !atomic_load(&gate_release); i++) {
+		indigo_usleep(10000);
+	}
+}
+
+static bool hold_queue(void) {
+	indigo_device *device = atomic_load(&driver_device);
+	if (device == NULL) {
+		fprintf(stderr, "No device seen, the queue cannot be held\n");
+		return false;
+	}
+	atomic_store(&gate_entered, false);
+	atomic_store(&gate_release, false);
+	indigo_execute_handler(device, gate_handler);
+	for (int i = 0; i < 500 && !atomic_load(&gate_entered); i++) {
+		indigo_usleep(10000);
+	}
+	return atomic_load(&gate_entered);
+}
+
+static void release_queue(void) {
+	atomic_store(&gate_release, true);
+}
+
+// The reader logs a message just before it hands it over to the device queue.
+static char awaited_response[128];
+static atomic_bool response_seen;
+
+static void response_log_handler(indigo_log_levels level, const char *message) {
+	(void)level;
+	if (strstr(message, awaited_response) != NULL) {
+		atomic_store(&response_seen, true);
+	}
+}
+
+// emits an unsolicited message and waits until the reader has queued it
+static bool emit_and_queue(const char *message) {
+	indigo_log_levels log_level = indigo_get_log_level();
+	snprintf(awaited_response, sizeof(awaited_response), "Response -> %s", message);
+	atomic_store(&response_seen, false);
+	indigo_log_message_handler = response_log_handler;
+	indigo_set_log_level(INDIGO_LOG_DEBUG);
+	bool result = control("emit", message);
+	for (int i = 0; result && i < 300 && !atomic_load(&response_seen); i++) {
+		indigo_usleep(10000);
+	}
+	result = result && atomic_load(&response_seen);
+	indigo_set_log_level(log_level);
+	indigo_log_message_handler = NULL;
+	// the reader queues the message right after its log line
+	indigo_usleep(200000);
+	if (!result) {
+		fprintf(stderr, "The reader did not receive %s\n", message);
+	}
+	return result;
+}
+
+// TGT-008: a `:SES` report handled after a shutter request was copied must not overwrite the request. The shutter is
+// closed; the report is queued ahead of an OPEN request, and the request must still open the shutter, without an OK
+// closed shutter shown in between.
+static void shutter_request_survives_status_report(void) {
+	CHECK(start_connected());
+	CHECK(switch_of(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME));
+	unsigned closed = ok_closed_of(DOME_SHUTTER_PROPERTY_NAME);
+	CHECK(hold_queue());
+	CHECK(emit_and_queue(":SES,0,46000,0,1#"));
+	unsigned before = revision_of(DOME_SHUTTER_PROPERTY_NAME);
+	CHECK_EQ(INDIGO_OK, request_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME));
+	release_queue();
+	CHECK(wait_settled(DOME_SHUTTER_PROPERTY_NAME, before, INDIGO_OK_STATE, 20));
+	CHECK_EQ(closed, ok_closed_of(DOME_SHUTTER_PROPERTY_NAME));
+	CHECK(switch_of(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME));
+	CHECK_EQ(1, rx_count("OPS"));
+	CHECK_EQ(0, rx_count("CLS"));
+	CHECK(wait_message(DOME_SHUTTER_PROPERTY_NAME, "Shutter is open."));
+cleanup:
+	release_queue();
+	driver_down();
+}
+
+// TGT-009: the first status report after connection marks a dome in the park position PARKED. An UNPARK request
+// copied before that report is handled must stay UNPARKED, and the dome must accept a GOTO afterwards. The status
+// request of the connection is not answered; the same report arrives as an unsolicited message while the queue is held.
+static void unpark_request_survives_park_detection(void) {
+	CHECK(driver_up());
+	CHECK(inject("SRR", "lost", 1));
+	CHECK(connect_to(simulator.port, INDIGO_OK_STATE, true));
+	CHECK(switch_of(DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME));
+	unsigned parked = ok_parked_of(DOME_PARK_PROPERTY_NAME);
+	CHECK(hold_queue());
+	CHECK(emit_and_queue(":SER,0,0,55080,0,300#"));
+	unsigned before = revision_of(DOME_PARK_PROPERTY_NAME);
+	CHECK_EQ(INDIGO_OK, request_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME));
+	release_queue();
+	CHECK(wait_settled(DOME_PARK_PROPERTY_NAME, before, INDIGO_OK_STATE, 5));
+	indigo_usleep(300000);
+	CHECK(switch_of(DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME));
+	CHECK_EQ(parked, ok_parked_of(DOME_PARK_PROPERTY_NAME));
+	CHECK(goto_and_wait(90, INDIGO_OK_STATE, 15));
+	CHECK_EQ(0, message_total(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, "Dome is parked."));
+	CHECK_NEAR(90, azimuth_value(), 1e-4);
+cleanup:
+	release_queue();
+	driver_down();
+}
+
 // ---------------------------------------------------------------------------- network transport (opt-in, loopback TCP)
 
 static bool network_url(char *url, size_t size) {
@@ -2595,6 +2729,8 @@ static const nexdome3_case cases[] = {
 	{ "NX3-15 failed_find_home_cleared", nx3_15_failed_find_home_cleared, "--azimuth 10 --speed-factor 20", false, false },
 	{ "NX3-16 shutter_waits_for_motion", nx3_16_shutter_waits_for_motion, "--shutter-latency 4 --speed-factor 20", false, false },
 	{ "NX3-17 overlong_output_ignored", nx3_17_overlong_output_ignored, "--azimuth 90 --speed-factor 20", false, false },
+	{ "shutter_request_survives_status_report", shutter_request_survives_status_report, NULL, false, false },
+	{ "unpark_request_survives_park_detection", unpark_request_survives_park_detection, "--azimuth 0 --speed-factor 20", false, false },
 };
 
 static const char *case_name(int index) {

@@ -447,7 +447,7 @@ $(INTEGRATION_BUILD)/dome_nexdome_simulator: ../indigo_drivers/dome_nexdome/dome
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/dome_nexdome3_simulator: ../indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/dome_nexdome3_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $<
+	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/dome_skyroof_simulator: ../indigo_drivers/dome_skyroof/dome_skyroof_simulator/dome_skyroof_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<

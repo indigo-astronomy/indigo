@@ -265,3 +265,38 @@ cd indigo_test && ./build/integration/test_dome_nexdome3_simulator
 
 - Simulated tests run: 49; passed: 49.
 - Hardware tests run: 0; passed: 0.
+
+## Switch targets for DOME_SHUTTER and DOME_PARK (2026-09-27, 3.0.0.16)
+
+Rows TGT-008, TGT-009 and the dome_nexdome3 part of TGT-B08 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+
+- **Baseline on Linux x64:** the suite did not build: the simulator rule in `indigo_test/Makefile` linked without
+  `-lm` (`undefined reference to lround`; macOS links libm implicitly). With `-lm` added, the unchanged 3.0.0.15
+  driver passed 49/49 and the opt-in network cases 3/3.
+- **TGT-008 (reproduced):** `handle_shutter_status` (reader thread, handed over to the device queue) wrote the reported
+  end position into DOME_SHUTTER and published OK without a BUSY check. A `:SES` report queued ahead of a shutter
+  request's handler overwrote the request: with the shutter closed, an OPEN request was shown OK closed and sent as
+  `CLS`. Fix: the report still records the shutter position (`shutter_closed`) but leaves value and state of a
+  DOME_SHUTTER that is BUSY while no shutter operation is active or moving (a request whose handler has not run) alone;
+  the handler sends the request read with `indigo_get_switch_target()` and applies it with
+  `indigo_apply_switch_targets()` once the command is written; on a write failure it shows the last reported shutter
+  state with ALERT as before. Regression test `shutter_request_survives_status_report` (queue held by a gate handler,
+  `:SES,0,46000,0,1#` emitted and queued, then OPEN requested): against 3.0.0.15 `expected 2, got 4:
+  ok_closed_of(...)` (an OK closed shutter published for the OPEN request), passes with 3.0.0.16.
+- **TGT-009 (reproduced):** the park detection of the first status report after connection set DOME_PARK PARKED over
+  a pending UNPARK, and the handler then read PARKED and left the dome parked. Fix: the detection skips a DOME_PARK that
+  is BUSY while no park is active, and the handler decides on and applies the request read from the targets.
+  Regression test `unpark_request_survives_park_detection` (connection `SRR` lost, queue held, `:SER,0,0,55080,0,300#`
+  emitted and queued, then UNPARK requested): against 3.0.0.15 the dome ends PARKED, passes with 3.0.0.16 (UNPARKED,
+  no PARKED published, a following GOTO is accepted).
+- **TGT-B08 (not a defect, won't fix):** `handle_shutter_move` shows a shutter motion the driver did not start (panel,
+  rain close) as BUSY; that is the characterized behaviour (`unsolicited_events`, `rain_sensor`), a request during it
+  is dropped by the framework guard exactly like one during a driver-started motion (`busy_requests_rejected`, see
+  "Intentional behaviour differences"), the next `:SES` ends it and DOME_ABORT_MOTION stops it. No code change.
+- **Verification:** both new cases failed against the regenerated 3.0.0.15 driver (the old `.driver` regenerates
+  the checked-in output unchanged) and pass with 3.0.0.16; complete suite 51/51, opt-in network cases 3/3; recorded run
+  `TZ=Europe/Bratislava python3 tools/run_driver_test.py dome_nexdome3`: 51/51 OK on linux x64.
+- Simulated tests of this change: baseline 49/49 (3.0.0.15); new cases against 3.0.0.15 4 run, 0 passed (expected
+  failures); development single-case runs with the fix 5 run, 2 passed (a test mistake: the simulator answers `SRR`
+  from inside the command, so `mute` does not suppress the status and `lost` is needed; two diagnostic reruns);
+  complete run 51/51; opt-in network cases 3/3; recorded run 51/51. Hardware tests: 0 run, 0 passed.

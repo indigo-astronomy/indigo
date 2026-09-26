@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_dome_nexdome3"
 #define DRIVER_LABEL         "NexDome3"
 #define DOME_DEVICE_NAME     "NexDome3"
@@ -557,7 +557,9 @@ static void handle_rotator_status(indigo_device *device, const char *message, bo
 		indigo_update_property(device, X_FIND_HOME_PROPERTY, "Dome is at home.");
 		PRIVATE_DATA->home_active = false;
 	}
-	if ((PRIVATE_DATA->park_active && nexdome3_in_park_position(device, true)) || (PRIVATE_DATA->park_detection && nexdome3_in_park_position(device, false))) {
+	// a park request copied before this report is BUSY before its handler ran; its value and state belong to that handler
+	bool park_pending = DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE && !PRIVATE_DATA->park_active;
+	if ((PRIVATE_DATA->park_active && nexdome3_in_park_position(device, true)) || (PRIVATE_DATA->park_detection && !park_pending && nexdome3_in_park_position(device, false))) {
 		DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
 		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
@@ -590,10 +592,16 @@ static void handle_shutter_status(indigo_device *device, const char *message, bo
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
 		return;
 	}
+	// a shutter request copied before this report is BUSY before its handler ran; its value and state belong to that handler
+	bool pending = DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE && !PRIVATE_DATA->shutter_active && !PRIVATE_DATA->shutter_moving;
 	if (!reply) {
 		PRIVATE_DATA->shutter_moving = false;
 	}
 	bool closed = close_switch || position <= 0, open = !closed && (open_switch || position >= max_position);
+	if (pending) {
+		PRIVATE_DATA->shutter_closed = closed;
+		return;
+	}
 	if (PRIVATE_DATA->shutter_active && !PRIVATE_DATA->shutter_motion_seen && ((PRIVATE_DATA->shutter_open_target && closed) || (!PRIVATE_DATA->shutter_open_target && open))) {
 		// the shutter has not started to move over the wireless link yet
 		PRIVATE_DATA->shutter_closed = closed;
@@ -1003,11 +1011,12 @@ static void dome_abort_motion_handler(indigo_device *device) {
 
 static void dome_shutter_handler(indigo_device *device) {
 	//+ dome.DOME_SHUTTER.on_change
-	bool open = DOME_SHUTTER_OPENED_ITEM->sw.value;
+	bool open = indigo_get_switch_target(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM_NAME);
 	if (!nexdome3_command(device, open ? "OPS" : "CLS")) {
 		nexdome3_update_shutter_switches(device);
 		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
+		indigo_apply_switch_targets(DOME_SHUTTER_PROPERTY);
 		PRIVATE_DATA->shutter_active = true;
 		PRIVATE_DATA->shutter_open_target = open;
 		PRIVATE_DATA->shutter_motion_seen = PRIVATE_DATA->shutter_stop_requested = false;
@@ -1022,10 +1031,12 @@ static void dome_shutter_handler(indigo_device *device) {
 static void dome_park_handler(indigo_device *device) {
 	DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 	//+ dome.DOME_PARK.on_change
-	if (DOME_PARK_UNPARKED_ITEM->sw.value) {
+	if (!indigo_get_switch_target(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM_NAME)) {
+		indigo_apply_switch_targets(DOME_PARK_PROPERTY);
 		DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		PRIVATE_DATA->park_active = PRIVATE_DATA->park_detection = false;
 	} else if (nexdome3_in_park_position(device, true)) {
+		indigo_apply_switch_targets(DOME_PARK_PROPERTY);
 		DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);

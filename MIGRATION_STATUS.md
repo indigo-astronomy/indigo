@@ -71,7 +71,7 @@
 | dome_beaver             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 49 / 0 | |
 | dome_dragonfly          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 22 / 0 | |
 | dome_nexdome            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 49 / 0 | |
-| dome_nexdome3           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 52 / 0 | |
+| dome_nexdome3           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 54 / 0 | |
 | dome_simulator          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 7 / 0 | |
 | dome_skyroof            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 11 / 0 | |
 | dome_talon6ror          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 33 / 0 | |
