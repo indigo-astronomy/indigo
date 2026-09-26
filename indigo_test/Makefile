@@ -395,8 +395,9 @@ $(INTEGRATION_BUILD)/test_bus_lifecycle: integration/test_bus_lifecycle.c test_r
 $(INTEGRATION_BUILD)/ccd_simulator_test_driver.o: ../indigo_drivers/ccd_simulator/indigo_ccd_simulator.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -Dindigo_set_timer=sim_test_set_timer -Dindigo_reschedule_timer=sim_test_reschedule_timer -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_ccd_simulator: integration/test_ccd_simulator.c integration/simulator_test_common.h integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_simulator_test_driver.o $(BUILD_DRIVERS)/indigo_ccd_simulator.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $< $(INTEGRATION_BUILD)/ccd_simulator_test_driver.o $(CCD_SIMULATOR_TEST_LDFLAGS)
+# The mount simulator is linked in for the camera following the mount's pointing and guide pulses
+$(INTEGRATION_BUILD)/test_ccd_simulator: integration/test_ccd_simulator.c integration/simulator_test_common.h integration/ccd_test_noise.h test_runner.h $(INTEGRATION_BUILD)/ccd_simulator_test_driver.o $(BUILD_DRIVERS)/indigo_ccd_simulator.a $(BUILD_DRIVERS)/indigo_mount_simulator.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(INTEGRATION_BUILD)/ccd_simulator_test_driver.o $(BUILD_DRIVERS)/indigo_mount_simulator.a $(CCD_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_dome_simulator: integration/test_dome_simulator.c integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h integration/serial_simulator_test_common.h $(BUILD_DRIVERS)/indigo_dome_simulator.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_SIMULATOR_TEST_LDFLAGS)

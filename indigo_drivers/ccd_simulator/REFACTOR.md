@@ -143,3 +143,27 @@ Found during the Linux x86_64 agent test run: the Guider Agent case `selection s
 Fix: when connected, the block now updates `CCD_INFO` and `CCD_FRAME` and redefines `CCD_MODE` so the new labels reach clients. Version 29 to 30; the regenerated `indigo_ccd_simulator.c` differs from the input only by this block and the version. Regression: `integration/test_agent_guider.c` `selection subframe restore`, which now compares the real 400 px frame before guiding with the restored one. The 19-case simulator suite and all agent suites that use this simulator were rerun on Linux x86_64. macOS and Windows were not run for this fix.
 
 Final test summary for this fix: simulator suite 19 run / 19 passed; hardware 0 run / 0 passed.
+
+## Mount simulator integration (2026-09-26)
+
+Reported: `CCD Guider Simulator` no longer changed the generated star field when `Mount Simulator` moved.
+
+Root cause: the master driver followed the mount through `CCD_SET_FITS_HEADER`. The Mount Agent sent `OBJCTRA`, `OBJCTDEC`, `PIERSIDE`, `SITELAT` and `SITELONG` to the related Imager/Guider Agent, which forwarded them to the camera, and the camera parsed them into its guider-image setup. The generator migration (`6b6b9bd69`) did not carry that `CCD_SET_FITS_HEADER` branch into the `.driver` source, so `SIMULATION_SETUP` `RA`/`DEC`/`SIDE_OF_PIER`/`LAT`/`LONG` changed only on client requests. The old path also needed both agents to be related, parsed whole arcseconds only and read Dec between -1° and 0° as positive.
+
+Fix (version 31 to 32): the FITS-header path is not restored. The camera and the mount simulator now share state through `libindigo` (`indigo_set_simulated_mount_state()`, `indigo_get_simulated_mount_state()` and `indigo_simulated_mount_guide()` in `indigo_mount_driver.h`). The library is the only state both drivers share: they are separate static archives or `dlopen()`ed modules, and those are loaded without `RTLD_GLOBAL`.
+
+- `search_stars()` first takes the published physical (raw) pointing, epoch, site and side of pier into `SIMULATION_SETUP` and publishes it when it changed. Epoch 0 selects the JNow catalogue positions and any other epoch selects J2000. Without a connected mount simulator, the client's own values stay.
+- Star positions are kept as `double` instead of truncated to whole pixels. A 7° field over 1200 px is about 21″ per pixel, so a real guide pulse moves stars by a fraction of a pixel. With truncation, the image would move only in whole-pixel steps.
+- While a mount simulator is connected, `CCD Guider Simulator (guider)` pulses move the mount at the physical rate (`GUIDER_RATE` % of sidereal) through `indigo_simulated_mount_guide()`, and the image follows the mount. Without a mount, the pixel-offset model (`GUIDER_GUIDE_SCALE`) is unchanged.
+- The off-by-one `star_count++ == GUIDER_MAX_STARS` wrote one element past the star arrays when the field held more than `GUIDER_MAX_STARS` stars. It is now `++star_count == GUIDER_MAX_STARS`.
+
+Limitation: sharing needs both drivers in one process. With standalone driver executables or drivers on different servers, the camera keeps the client's setup.
+
+Regression tests in `integration/test_ccd_simulator.c` (the mount simulator archive is now linked into this binary):
+
+- `simulator_guider_camera_follows_simulated_mount`: a published pointing places Betelgeuse in the frame centre and is reflected in `SIMULATION_SETUP`. A Dec move of 0.5 px moves the star centroid by 0.487 px. JNow and the west side of the pier are taken over. Once the mount is withdrawn, the client's RA/Dec stay.
+- `simulator_guider_camera_follows_mount_simulator_guiding`: the real `Mount Simulator` is synced to Betelgeuse. A 3 s north pulse of `Mount Simulator (guider)` moves the star 1.035 px (expected 1.074 px), and a 3 s west pulse moves it 1.029 px (expected 1.065 px). 3 s south and east pulses of `CCD Guider Simulator (guider)` return it within 0.06 px, and the mount keeps that position after its next update.
+
+Validation on macOS arm64: `test_ccd_simulator` 21/21 passed, and the two new cases were repeated five times with identical results. Linux and Windows were not run.
+
+Final test summary for this change: simulator suite 21 run / 21 passed; hardware 0 run / 0 passed.

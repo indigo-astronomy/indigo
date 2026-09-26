@@ -20,6 +20,8 @@
 
 #include <indigo_drivers/ccd_simulator/indigo_ccd_simulator.h>
 #include <indigo_drivers/ccd_simulator/indigo_ccd_simulator_data.h>
+#include <indigo_drivers/mount_simulator/indigo_mount_simulator.h>
+#include <indigo/indigo_mount_driver.h>
 
 #include "simulator_test_common.h"
 #include "ccd_test_noise.h"
@@ -561,6 +563,8 @@ static int sim_property_index(const char *name) {
 }
 static atomic_uint sim_width, sim_height, sim_signature;
 static atomic_bool sim_check_noise;
+static atomic_bool sim_capture;
+static uint16_t *sim_image;
 static char sim_raw_path[] = "/tmp/indigo_ccd_noise_XXXXXX";
 
 static indigo_result sim_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
@@ -577,6 +581,10 @@ static indigo_result sim_update(indigo_client *client, indigo_device *device, in
 				int bytes = header.signature == INDIGO_RAW_MONO8 ? 1 : header.signature == INDIGO_RAW_MONO16 ? 2 : header.signature == INDIGO_RAW_RGB24 ? 3 : header.signature == INDIGO_RAW_RGB48 ? 6 : 0;
 				size_t length = (size_t)header.width * header.height * bytes;
 				valid = bytes && header.width && header.height && item->blob.size >= sizeof(header) + length;
+				if (valid && atomic_load(&sim_capture) && header.signature == INDIGO_RAW_MONO16) {
+					sim_image = indigo_safe_realloc(sim_image, length);
+					memcpy(sim_image, (char *)item->blob.value + sizeof(header), length);
+				}
 				if (valid && atomic_load(&sim_check_noise)) {
 					const unsigned char *pixels = (unsigned char *)item->blob.value + sizeof(header);
 					for (size_t i = 0; i < length; i++) {
@@ -885,6 +893,190 @@ cleanup:
 	simulator_test_client.update_property = simulator_client_update_property;
 }
 
+#ifndef CCD_SIMULATOR_TIMING_BENCHMARK
+
+// Betelgeuse (HIP 27989, J2000), the brightest star within the guider camera field around it
+#define FOLLOW_RA               5.919529
+#define FOLLOW_DEC              7.407064
+// Guider camera field is GUIDER_FOV (7 degrees) over the default 1200 px image height
+#define FOLLOW_PX_PER_DEGREE    (1200.0 / 7.0)
+
+// Centroid of the brightest star: a window around the brightest pixel, weighted by the signal above the background
+static bool sim_star_centroid(double *cx, double *cy) {
+	int width = (int)atomic_load(&sim_width), height = (int)atomic_load(&sim_height);
+	if (sim_image == NULL || width == 0 || height == 0) {
+		return false;
+	}
+	int brightest = 0;
+	for (int i = 1; i < width * height; i++) {
+		if (sim_image[i] > sim_image[brightest]) {
+			brightest = i;
+		}
+	}
+	double sum = 0, sum_x = 0, sum_y = 0;
+	for (int y = brightest / width - 12; y <= brightest / width + 12; y++) {
+		for (int x = brightest % width - 12; x <= brightest % width + 12; x++) {
+			if (x < 0 || x >= width || y < 0 || y >= height) {
+				continue;
+			}
+			double weight = fmax(0, sim_image[y * width + x] - 2000.0);
+			sum += weight;
+			sum_x += weight * x;
+			sum_y += weight * y;
+		}
+	}
+	if (sum == 0) {
+		return false;
+	}
+	*cx = sum_x / sum;
+	*cy = sum_y / sum;
+	return true;
+}
+
+// Stars only, no periodic error and no rotation, so a pointing change maps to the image axes
+static bool sim_follow_begin(void) {
+	sim_begin(&ccd_guider_camera_simulator);
+	atomic_store(&sim_capture, true);
+	return sim_switch("GUIDER_MODE", "STARS", INDIGO_OK_STATE) && sim_number("SIMULATION_SETUP", 2, (const char *[]){ "IMAGE_ROTATION_ANGLE", "PER_ERR_CYCLE" }, (double []){ 0, 0 }, INDIGO_OK_STATE);
+}
+
+static void sim_follow_end(void) {
+	atomic_store(&sim_capture, false);
+	free(sim_image);
+	sim_image = NULL;
+	sim_end(&ccd_guider_camera_simulator);
+}
+
+static bool sim_expose_centroid(double *cx, double *cy) {
+	return sim_expose() && sim_star_centroid(cx, cy);
+}
+
+static void simulator_guider_camera_follows_simulated_mount(void) {
+	static indigo_device publisher;
+	indigo_simulated_mount_state state = { .ra = FOLLOW_RA, .dec = FOLLOW_DEC, .epoch = 2000, .latitude = 48.5, .longitude = 17.5, .west = false };
+	double x0, y0, x1, y1;
+	SIM_CHECK(sim_follow_begin());
+	indigo_set_simulated_mount_state(&publisher, &state);
+	SIM_CHECK(sim_expose_centroid(&x0, &y0));
+	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "RA") == FOLLOW_RA);
+	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "DEC") == FOLLOW_DEC);
+	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "LAT") == 48.5);
+	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "LONG") == 17.5);
+	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "SIDE_OF_PIER") == 0);
+	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "J2000") == 2000);
+	printf("    star at %.2f, %.2f in %u x %u frame\n", x0, y0, atomic_load(&sim_width), atomic_load(&sim_height));
+	SIM_CHECK(fabs(x0 - atomic_load(&sim_width) / 2.0) < 2 && fabs(y0 - atomic_load(&sim_height) / 2.0) < 2);
+	// Half a pixel in Dec: the star has to move by a fraction of a pixel, not by zero or a whole one
+	state.dec += 0.5 / FOLLOW_PX_PER_DEGREE;
+	indigo_set_simulated_mount_state(&publisher, &state);
+	SIM_CHECK(sim_expose_centroid(&x1, &y1));
+	printf("    0.5 px Dec move shifted the star by %.3f, %.3f px\n", x1 - x0, y1 - y0);
+	SIM_CHECK(fabs(fabs(y1 - y0) - 0.5) < 0.2 && fabs(x1 - x0) < 0.2);
+	// JNow and the west side of the pier are taken over as well
+	state.epoch = 0;
+	state.west = true;
+	indigo_set_simulated_mount_state(&publisher, &state);
+	SIM_CHECK(sim_expose());
+	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "J2000") == 0);
+	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "SIDE_OF_PIER") == 1);
+	// Once the mount is gone, the client's own pointing is kept
+	indigo_set_simulated_mount_state(&publisher, NULL);
+	SIM_CHECK(sim_number("SIMULATION_SETUP", 2, (const char *[]){ "RA", "DEC" }, (double []){ 1, 20 }, INDIGO_OK_STATE));
+	SIM_CHECK(sim_expose());
+	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "RA") == 1);
+	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "DEC") == 20);
+cleanup:
+	indigo_set_simulated_mount_state(&publisher, NULL);
+	sim_follow_end();
+}
+
+static bool mount_state_matches(bool connected, double ra, double dec, double tolerance, double timeout) {
+	for (double deadline = indigo_monotonic_time() + timeout; indigo_monotonic_time() < deadline; indigo_usleep(20000)) {
+		indigo_simulated_mount_state state;
+		bool published = indigo_get_simulated_mount_state(&state);
+		if (published == connected && (!connected || isnan(ra) || (fabs(state.ra - ra) < tolerance && fabs(state.dec - dec) < tolerance))) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool mount_state_changes(double ra, double dec, double timeout) {
+	for (double deadline = indigo_monotonic_time() + timeout; indigo_monotonic_time() < deadline; indigo_usleep(20000)) {
+		indigo_simulated_mount_state state;
+		if (indigo_get_simulated_mount_state(&state) && (state.ra != ra || state.dec != dec)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool mount_connect(const char *device_name, bool connected) {
+	return indigo_change_switch_property_1(&simulator_test_client, device_name, CONNECTION_PROPERTY_NAME, connected ? CONNECTION_CONNECTED_ITEM_NAME : CONNECTION_DISCONNECTED_ITEM_NAME, true) == INDIGO_OK;
+}
+
+// Mount Simulator and CCD Guider Simulator in one process: pulses of either guider move the same mount and the image follows it
+static void simulator_guider_camera_follows_mount_simulator_guiding(void) {
+	bool mount_started = false;
+	double x0, y0, x1, y1, x2, y2, x3, y3;
+	indigo_simulated_mount_state state;
+	SIM_CHECK(sim_follow_begin());
+	SIM_CHECK(indigo_mount_simulator(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
+	mount_started = true;
+	SIM_CHECK(mount_connect("Mount Simulator", true));
+	SIM_CHECK(mount_state_matches(true, NAN, NAN, 0, 5));
+	SIM_CHECK(indigo_change_switch_property_1(&simulator_test_client, "Mount Simulator", MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true) == INDIGO_OK);
+	SIM_CHECK(indigo_change_switch_property_1(&simulator_test_client, "Mount Simulator", MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true) == INDIGO_OK);
+	SIM_CHECK(indigo_change_number_property(&simulator_test_client, "Mount Simulator", MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, (const char *[]){ MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME }, (double []){ FOLLOW_RA, FOLLOW_DEC }) == INDIGO_OK);
+	SIM_CHECK(mount_state_matches(true, FOLLOW_RA, FOLLOW_DEC, 1e-9, 5));
+	SIM_CHECK(sim_expose_centroid(&x0, &y0));
+	SIM_CHECK(fabs(cached_number_value("SIMULATION_SETUP", "RA") - FOLLOW_RA) < 1e-9);
+	SIM_CHECK(fabs(cached_number_value("SIMULATION_SETUP", "DEC") - FOLLOW_DEC) < 1e-9);
+	SIM_CHECK(fabs(x0 - atomic_load(&sim_width) / 2.0) < 2 && fabs(y0 - atomic_load(&sim_height) / 2.0) < 2);
+	SIM_CHECK(mount_connect("Mount Simulator (guider)", true));
+	indigo_usleep(200000);
+	// 3 s at the default 50 % of sidereal rate is 22.6 arcsec, about 1.07 px
+	double expected = 0.5 * 15.0410686 / 3600.0 * 3 * FOLLOW_PX_PER_DEGREE;
+	SIM_CHECK(indigo_get_simulated_mount_state(&state));
+	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, "Mount Simulator (guider)", GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 3000) == INDIGO_OK);
+	SIM_CHECK(mount_state_changes(state.ra, state.dec, 6));
+	SIM_CHECK(sim_expose_centroid(&x1, &y1));
+	printf("    3 s north pulse shifted the star by %.3f, %.3f px, expected %.3f px\n", x1 - x0, y1 - y0, expected);
+	SIM_CHECK(fabs(fabs(y1 - y0) - expected) < 0.25 && fabs(x1 - x0) < 0.25);
+	SIM_CHECK(indigo_get_simulated_mount_state(&state));
+	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, "Mount Simulator (guider)", GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 3000) == INDIGO_OK);
+	SIM_CHECK(mount_state_changes(state.ra, state.dec, 6));
+	SIM_CHECK(sim_expose_centroid(&x2, &y2));
+	// the RA axis turns by the same angle, the sky moves by cos(dec) of it
+	expected *= 1.00273791 * 15 / 15.0410686 * cos(FOLLOW_DEC * M_PI / 180);
+	printf("    3 s west pulse shifted the star by %.3f, %.3f px, expected %.3f px\n", x2 - x1, y2 - y1, expected);
+	SIM_CHECK(fabs(fabs(x2 - x1) - expected) < 0.25 && fabs(y2 - y1) < 0.25);
+	// The camera's own guider moves the mount back: the star returns and the mount takes the move over
+	SIM_CHECK(mount_connect("CCD Guider Simulator (guider)", true));
+	indigo_usleep(200000);
+	SIM_CHECK(indigo_get_simulated_mount_state(&state));
+	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, "CCD Guider Simulator (guider)", GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 3000) == INDIGO_OK);
+	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, "CCD Guider Simulator (guider)", GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 3000) == INDIGO_OK);
+	SIM_CHECK(mount_state_matches(true, FOLLOW_RA, FOLLOW_DEC, 1e-6, 6));
+	SIM_CHECK(sim_expose_centroid(&x3, &y3));
+	printf("    3 s south and east pulses of the camera guider moved the star back to %.3f, %.3f px from the start\n", x3 - x0, y3 - y0);
+	SIM_CHECK(fabs(x3 - x0) < 0.25 && fabs(y3 - y0) < 0.25);
+	// the mount republishes its own position every second, the pointing stays where the pulses left it
+	indigo_usleep(1500000);
+	SIM_CHECK(mount_state_matches(true, FOLLOW_RA, FOLLOW_DEC, 1e-6, 0.1));
+cleanup:
+	if (mount_started) {
+		mount_connect("CCD Guider Simulator (guider)", false);
+		mount_connect("Mount Simulator (guider)", false);
+		mount_connect("Mount Simulator", false);
+		mount_state_matches(false, NAN, NAN, 0, 5);
+		for (double deadline = indigo_monotonic_time() + 5; indigo_mount_simulator(INDIGO_DRIVER_SHUTDOWN, NULL) != INDIGO_OK && indigo_monotonic_time() < deadline; indigo_usleep(50000));
+	}
+	sim_follow_end();
+}
+
+#endif
+
 #ifdef CCD_SIMULATOR_TIMING_BENCHMARK
 
 #define TIMING_SAMPLE_COUNT 4
@@ -986,6 +1178,8 @@ int main(int argc, char **argv) {
 		{ "simulator_cooling_target_and_polling", simulator_cooling_target_and_polling },
 		{ "simulator_camera_modes_and_settings", simulator_camera_modes_and_settings },
 		{ "simulator_file_noise_formats_and_failure", simulator_file_noise_formats_and_failure },
+		{ "simulator_guider_camera_follows_simulated_mount", simulator_guider_camera_follows_simulated_mount },
+		{ "simulator_guider_camera_follows_mount_simulator_guiding", simulator_guider_camera_follows_mount_simulator_guiding },
 		{ "driver_info_reports_simulator_metadata", driver_info_reports_simulator_metadata },
 		{ "simulator_initializes_enumerates_connects_disconnects_and_shuts_down", simulator_initializes_enumerates_connects_disconnects_and_shuts_down },
 		{ "ccd_imager_passes_compliance_checks", ccd_imager_passes_compliance_checks },

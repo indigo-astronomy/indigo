@@ -29,6 +29,7 @@
 
 #include <math.h>
 #include <indigo/indigo_align.h>
+#include <indigo/indigo_mount_driver.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_uni_io.h>
 #include <indigo/indigocat/indigocat_star.h>
@@ -52,7 +53,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001F
+#define DRIVER_VERSION       0x03000020
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -263,7 +264,8 @@ typedef struct {
 	char *file_image, *raw_file_image;
 	indigo_raw_header file_image_header;
 	double ra, dec, lat, lon, ew_error, ns_error, lst;
-	int side_of_pier, star_count, star_x[GUIDER_MAX_STARS], star_y[GUIDER_MAX_STARS], star_a[GUIDER_MAX_STARS];
+	int side_of_pier, star_count, star_a[GUIDER_MAX_STARS];
+	double star_x[GUIDER_MAX_STARS], star_y[GUIDER_MAX_STARS];
 	int hotpixel_x[GUIDER_MAX_HOTPIXELS + 1], hotpixel_y[GUIDER_MAX_HOTPIXELS + 1], eclipse;
 	double exposure_deadline[5], streaming_deadline[5];
 	bool exposure_active[5], streaming_active[5];
@@ -311,7 +313,32 @@ static int ccd_index(indigo_device *device) {
 
 static int mags[] = { 760000, 305000, 122000, 49000, 20000, 7800, 3100, 1200, 500 };
 
+// A mount simulator connected in the same process overrides the pointing set up by the client
+static void follow_simulated_mount(indigo_device *device) {
+	indigo_simulated_mount_state mount;
+	if (!indigo_get_simulated_mount_state(&mount)) {
+		return;
+	}
+	int side_of_pier = mount.west ? 1 : 0;
+	// the star catalog has J2000 and current positions only
+	double epoch = mount.epoch == 0 ? 0 : 2000;
+	if (RA_ITEM->number.value == mount.ra && DEC_ITEM->number.value == mount.dec && SIDE_OF_PIER_ITEM->number.value == side_of_pier && LAT_ITEM->number.value == mount.latitude && LONG_ITEM->number.value == mount.longitude && J2000_ITEM->number.value == epoch) {
+		return;
+	}
+	if (J2000_ITEM->number.value != epoch) {
+		PRIVATE_DATA->lst = 0;
+	}
+	RA_ITEM->number.value = RA_ITEM->number.target = mount.ra;
+	DEC_ITEM->number.value = DEC_ITEM->number.target = mount.dec;
+	SIDE_OF_PIER_ITEM->number.value = SIDE_OF_PIER_ITEM->number.target = side_of_pier;
+	LAT_ITEM->number.value = LAT_ITEM->number.target = mount.latitude;
+	LONG_ITEM->number.value = LONG_ITEM->number.target = mount.longitude;
+	J2000_ITEM->number.value = J2000_ITEM->number.target = epoch;
+	indigo_update_property(device, SIMULATION_SETUP_PROPERTY, NULL);
+}
+
 static void search_stars(indigo_device *device) {
+	follow_simulated_mount(device);
 	double lst = indigo_lst(NULL, LONG_ITEM->number.target);
 	if (lst - PRIVATE_DATA->lst >= IMAGE_AGE_ITEM->number.value || PRIVATE_DATA->ra != RA_ITEM->number.value || PRIVATE_DATA->dec != DEC_ITEM->number.value || PRIVATE_DATA->side_of_pier != SIDE_OF_PIER_ITEM->number.value || PRIVATE_DATA->lat != LAT_ITEM->number.value || PRIVATE_DATA->lon != LONG_ITEM->number.value || PRIVATE_DATA->ew_error != ALT_POLAR_ERROR_ITEM->number.value || PRIVATE_DATA->ns_error != AZ_POLAR_ERROR_ITEM->number.value) {
 		double h2r = M_PI / 12;
@@ -358,10 +385,10 @@ static void search_stars(indigo_device *device) {
 			double y = ppr_cos * sy - ppr_sin * sx + IMAGE_HEIGHT_ITEM->number.target / 2;
 			if (x >= 0 && x < IMAGE_WIDTH_ITEM->number.target && y >= 0 && y < IMAGE_HEIGHT_ITEM->number.target) {
 				//printf("HIP%5d %6.4f %+7.4f %6.1f %6.1f\n", star_data->hip, star_data->ra, star_data->dec, x, y);
-				PRIVATE_DATA->star_x[PRIVATE_DATA->star_count] = (int)x;
-				PRIVATE_DATA->star_y[PRIVATE_DATA->star_count] = (int)y;
+				PRIVATE_DATA->star_x[PRIVATE_DATA->star_count] = x;
+				PRIVATE_DATA->star_y[PRIVATE_DATA->star_count] = y;
 				PRIVATE_DATA->star_a[PRIVATE_DATA->star_count] = mags[(int)star_data->mag];
-				if (PRIVATE_DATA->star_count++ == GUIDER_MAX_STARS) {
+				if (++PRIVATE_DATA->star_count == GUIDER_MAX_STARS) {
 					break;
 				}
 			} else {
@@ -1128,11 +1155,15 @@ static void start_focuser_move(indigo_device *device, int target) {
 
 //+ guider.code
 
+// Sidereal rate in RA hours and in Dec degrees per second
+#define SIDEREAL_RA_RATE     (1.00273791 / 3600.0)
+#define SIDEREAL_DEC_RATE    (15.0410686 / 3600.0)
+
 static void guider_ra_finalizer(indigo_device *device) {
-	if (SIDE_OF_PIER_ITEM->number.value == 0) {
-		IMAGE_RA_OFFSET_ITEM->number.value += cos(M_PI * DEC_ITEM->number.value / 180.0) * PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / GUIDER_GUIDE_SCALE;
-	} else {
-		IMAGE_RA_OFFSET_ITEM->number.value -= cos(M_PI * DEC_ITEM->number.value / 180.0) * PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / GUIDER_GUIDE_SCALE;
+	// a connected mount simulator is guided at the physical guide rate and the image follows its pointing
+	if (!indigo_simulated_mount_guide(PRIVATE_DATA->guide_rate * SIDEREAL_RA_RATE * (GUIDER_GUIDE_EAST_ITEM->number.value - GUIDER_GUIDE_WEST_ITEM->number.value) / 1000.0, 0)) {
+		double offset = cos(M_PI * DEC_ITEM->number.value / 180.0) * PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / GUIDER_GUIDE_SCALE;
+		IMAGE_RA_OFFSET_ITEM->number.value += SIDE_OF_PIER_ITEM->number.value == 0 ? offset : -offset;
 	}
 	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
@@ -1140,7 +1171,9 @@ static void guider_ra_finalizer(indigo_device *device) {
 }
 
 static void guider_dec_finalizer(indigo_device *device) {
-	IMAGE_DEC_OFFSET_ITEM->number.value += PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / GUIDER_GUIDE_SCALE;
+	if (!indigo_simulated_mount_guide(0, PRIVATE_DATA->guide_rate * SIDEREAL_DEC_RATE * (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / 1000.0)) {
+		IMAGE_DEC_OFFSET_ITEM->number.value += PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / GUIDER_GUIDE_SCALE;
+	}
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
 	indigo_update_property(PRIVATE_DATA->guider_camera, SIMULATION_SETUP_PROPERTY, NULL);
