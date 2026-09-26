@@ -22,7 +22,7 @@ driver starbook {
 	label = "Vixen StarBook Mount";
 	author = "Koji Tsunoda <tsunoda@astroarts.co.jp>, generator migration by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2017-2026 Koji Tsunoda";
-	version = 8;
+	version = 9;
 	serial {
 	}
 	include {

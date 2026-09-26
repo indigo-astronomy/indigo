@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_mount_starbook"
 #define DRIVER_LABEL         "Vixen StarBook Mount"
 #define MOUNT_DEVICE_NAME    "Mount Vixen StarBook"
@@ -679,12 +679,14 @@ static void mount_abort_motion_handler(indigo_device *device) {
 	indigo_update_coordinates(device, ok ? "Aborted" : "Abort failed");
 	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 	//- mount.MOUNT_ABORT_MOTION.on_change
+	indigo_mount_commit_motion_client(device, MOUNT_ABORT_MOTION_PROPERTY);
 }
 
 static void mount_motion_dec_handler(indigo_device *device) {
 	if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
 		indigo_send_message(device, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked!");
 		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		indigo_mount_commit_motion_client(device, MOUNT_MOTION_DEC_PROPERTY);
 		return;
 	}
 	MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -693,12 +695,14 @@ static void mount_motion_dec_handler(indigo_device *device) {
 	else MOUNT_MOTION_DEC_PROPERTY->state = starbook_move(device, MOUNT_MOTION_NORTH_ITEM->sw.value, MOUNT_MOTION_SOUTH_ITEM->sw.value, MOUNT_MOTION_EAST_ITEM->sw.value, MOUNT_MOTION_WEST_ITEM->sw.value) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	//- mount.MOUNT_MOTION_DEC.on_change
 	indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+	indigo_mount_commit_motion_client(device, MOUNT_MOTION_DEC_PROPERTY);
 }
 
 static void mount_motion_ra_handler(indigo_device *device) {
 	if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
 		indigo_send_message(device, MOUNT_MOTION_RA_PROPERTY, "Mount is parked!");
 		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		indigo_mount_commit_motion_client(device, MOUNT_MOTION_RA_PROPERTY);
 		return;
 	}
 	MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -707,6 +711,7 @@ static void mount_motion_ra_handler(indigo_device *device) {
 	else MOUNT_MOTION_RA_PROPERTY->state = starbook_move(device, MOUNT_MOTION_NORTH_ITEM->sw.value, MOUNT_MOTION_SOUTH_ITEM->sw.value, MOUNT_MOTION_EAST_ITEM->sw.value, MOUNT_MOTION_WEST_ITEM->sw.value) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	//- mount.MOUNT_MOTION_RA.on_change
 	indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+	indigo_mount_commit_motion_client(device, MOUNT_MOTION_RA_PROPERTY);
 }
 
 static void mount_slew_rate_handler(indigo_device *device) {
@@ -810,10 +815,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked!");
+		indigo_mount_record_motion_client(device, client, property);
 		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_DEC_PROPERTY, mount_motion_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_RA_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_MOTION_RA_PROPERTY, "Mount is parked!");
+		indigo_mount_record_motion_client(device, client, property);
 		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_RA_PROPERTY, mount_motion_ra_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_SLEW_RATE_PROPERTY, property)) {
