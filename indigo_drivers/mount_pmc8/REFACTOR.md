@@ -787,7 +787,45 @@ each way against 0.01045 deg expected.
 | sim | 3.0.0.12 | 19/19 passed |
 | hw run 3 | 3.0.0.12 | 38/38 passed |
 
+## Switch and number targets (2026-09-27)
+
+Version 15, findings TGT-005 and the pmc8 parts of TGT-B04 and TGT-B05 of
+`indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this change.
+
+- TGT-005, TGT-B05: `mount_goto_complete()`, called by `mount_goto_finalizer` at the end of a GOTO and by the
+  SYNC branch of the coordinates handler, switched `MOUNT_TRACKING` on and published OK/ALERT without a BUSY
+  check. The GOTO finalizer is a TIME task and runs ahead of a queued tracking handler, so a tracking request
+  copied just before the GOTO ended was overwritten, and the handler, reading the value through
+  `pmc8_set_tracking_rate()`, sent the drive rate instead of the request and reported OK; the finalizer also
+  published OK over the pending BUSY. `pmc8_set_tracking(device, on, offset)` now takes the requested state
+  (`pmc8_set_tracking_rate()` stays the wrapper for the current switch). The handler sends
+  `indigo_get_switch_target()`, applies it with `indigo_apply_switch_targets()` and on failure shows the drive
+  state the controller reports (`ESGx`) with ALERT; it no longer publishes twice. `mount_goto_complete()` still
+  starts tracking and writes the value but leaves state and publication to a pending request.
+- TGT-B04: a guide pulse copied while the previous pulse's finalizer ended its axis (`ESTr` or `ESSr10000`
+  round trip) was zeroed by that finalizer and dropped with OK. The finalizers already cleared only the values;
+  the handlers now restore them from the targets.
+
+Regression tests in `integration/test_mount_pmc8_simulator.c`, each failing against version 14 and passing
+with version 15 (Linux x64):
+
+- `pmc8_mount_tracking_request_survives_goto_end`: a gate is queued from the debug log of the zero
+  declination rate that ends the third GOTO pass, OFF is requested while it holds the queue, and the
+  finalizer comes due during the 0.5 s settle. Before: tracking ended ON (`!tracking` failed). With only
+  the handler fixed the case still failed on the finalizer's extra publication (2 results instead of 1).
+- `pmc8_guider_pulse_survives_previous_finalizer`: the opposite 300 ms pulse is requested from the debug
+  log of the finalizer's end command (`<- ESTr0000!` for RA with the drive off, `<- ESSr10000!` for DEC).
+  Before: 1 of 2 pulses started and the property ended OK after 0 ms, on each axis. After: both started, the
+  second ended after 301 ms.
+
+The window cannot be reproduced with a gate for the guide pulses: their handlers are TIME tasks without
+delay and run ahead of an overdue TIME finalizer, which they cancel.
+
+Recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py mount_pmc8` on Linux x64: 21/21.
+MIGRATION_STATUS.md hardware-free count 19 -> 21.
+
 ## Final test summary
 
-- Simulated: 19 cases run, 19 passed (`test_mount_pmc8_simulator`, macOS arm64).
+- Simulated: 21 cases run, 21 passed (`test_mount_pmc8_simulator`, Linux x64, version 15); the earlier
+  19/19 run was on macOS arm64 with version 12.
 - Hardware: 38 cases run, 38 passed (`test_mount_pmc8_hw`, iEXOS-100 over serial, macOS arm64).

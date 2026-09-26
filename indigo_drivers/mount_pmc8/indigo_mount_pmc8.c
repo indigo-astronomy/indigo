@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_mount_pmc8"
 #define DRIVER_LABEL         "PMC Eight Mount"
 #define MOUNT_DEVICE_NAME    "Mount PMC Eight"
@@ -355,9 +355,9 @@ static bool pmc8_get_tracking_rate(indigo_device *device) {
 	return false;
 }
 
-static bool pmc8_set_tracking_rate(indigo_device *device, int offset) {
+static bool pmc8_set_tracking(indigo_device *device, bool on, int offset) {
 	int rate = 0;
-	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
+	if (on) {
 		if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
 			rate = PRIVATE_DATA->rate[0];
 		} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
@@ -381,6 +381,10 @@ static bool pmc8_set_tracking_rate(indigo_device *device, int offset) {
 		return true;
 	}
 	return false;
+}
+
+static bool pmc8_set_tracking_rate(indigo_device *device, int offset) {
+	return pmc8_set_tracking(device, MOUNT_TRACKING_ON_ITEM->sw.value, offset);
 }
 
 // The right ascension counts grow towards the west in the northern hemisphere and towards the
@@ -567,12 +571,12 @@ static void mount_switch_connection_handler(indigo_device *device) {
 // A slew or a sync ends with the mount tracking at the selected rate.
 static void mount_goto_complete(indigo_device *device) {
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
-	if (pmc8_set_tracking_rate(device, 0)) {
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+	bool tracking = pmc8_set_tracking(device, true, 0);
+	// A pending request owns the state, its handler reads the target and publishes the result
+	if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
+		MOUNT_TRACKING_PROPERTY->state = tracking ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	}
-	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -645,6 +649,7 @@ static void guider_guide_ra_finalizer(indigo_device *device) {
 		return;
 	}
 	pmc8_set_tracking_rate(device->master_device, 0);
+	// Only the values, the target of a pulse requested while this one ends is read by its handler.
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -656,6 +661,7 @@ static void guider_guide_dec_finalizer(indigo_device *device) {
 		return;
 	}
 	pmc8_move(device, 1, 0, 0);
+	// Only the values, the target of a pulse requested while this one ends is read by its handler.
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -866,12 +872,18 @@ static void mount_tracking_handler(indigo_device *device) {
 	}
 	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_TRACKING.on_change
-	if (pmc8_set_tracking_rate(device, 0)) {
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+	// The end of a GOTO or SYNC turns tracking on and may overwrite the value between the copy of the request and
+	// this handler, the target keeps the requested value. On failure the switch shows the drive state the
+	// controller reports.
+	bool on = indigo_get_switch_target(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM_NAME);
+	if (pmc8_set_tracking(device, on, 0)) {
+		indigo_apply_switch_targets(MOUNT_TRACKING_PROPERTY);
 	} else {
+		if (pmc8_command(device, "ESGx!")) {
+			indigo_set_switch(MOUNT_TRACKING_PROPERTY, strtol(PMC8_RESPONSE + 4, NULL, 16) == 0 ? MOUNT_TRACKING_OFF_ITEM : MOUNT_TRACKING_ON_ITEM, true);
+		}
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	//- mount.MOUNT_TRACKING.on_change
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 }
@@ -1228,6 +1240,9 @@ static void guider_connection_handler(indigo_device *device) {
 static void guider_guide_ra_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_RA.on_change
 	indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+	// The finalizer of the previous pulse may have zeroed the values after the request was copied, the targets keep it.
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target;
+	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target;
 	int rate = PRIVATE_DATA->rate[0] * (GUIDER_RATE_ITEM->number.value / 100.0);
 	double duration = 0;
 	if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
@@ -1250,6 +1265,9 @@ static void guider_guide_ra_handler(indigo_device *device) {
 static void guider_guide_dec_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_DEC.on_change
 	indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+	// The finalizer of the previous pulse may have zeroed the values after the request was copied, the targets keep it.
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target;
+	GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target;
 	int rate = PRIVATE_DATA->rate[0] * (GUIDER_RATE_ITEM->number.value / 2500.0);
 	double duration = 0;
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {

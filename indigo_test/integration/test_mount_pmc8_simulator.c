@@ -957,6 +957,225 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// ------------------------------------------------------------------ requests copied while a finalizer ends its work
+
+// Remembers the mount device for the gate and counts the results (publications in any state but BUSY) of one property.
+static _Atomic(indigo_device *) mount_device;
+static const char *watch_device, *watch_property;
+static atomic_bool watch_on;
+static atomic_int watch_results;
+static _Atomic double watch_last_result;
+
+static indigo_result watch_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, PMC8_MOUNT_DEVICE_NAME)) {
+		atomic_store(&mount_device, device);
+	}
+	if (atomic_load(&watch_on) && !strcmp(property->device, watch_device) && !strcmp(property->name, watch_property) && property->state != INDIGO_BUSY_STATE) {
+		atomic_store(&watch_last_result, indigo_monotonic_time());
+		atomic_fetch_add(&watch_results, 1);
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static void install_watch(void) {
+	atomic_store(&watch_on, false);
+	atomic_store(&mount_device, NULL);
+	simulator_test_client.update_property = watch_update;
+}
+
+static void watch_results_of(const char *device, const char *property) {
+	atomic_store(&watch_on, false);
+	watch_device = device;
+	watch_property = property;
+	atomic_store(&watch_results, 0);
+	atomic_store(&watch_last_result, 0);
+	atomic_store(&watch_on, true);
+}
+
+static void remove_watch(void) {
+	atomic_store(&watch_on, false);
+	simulator_test_client.update_property = simulator_client_update_property;
+}
+
+// A gate handler holds the mount's device queue, so a request is copied and queued while a finalizer comes due behind
+// it. Finalizers are INDIGO_TASK_PRIORITY_TIME tasks and run ahead of a queued change handler once the gate ends.
+static atomic_bool gate_entered, gate_release;
+
+static void gate_handler(indigo_device *device) {
+	atomic_store(&gate_entered, true);
+	for (int i = 0; i < 5000 && !atomic_load(&gate_release); i++) {
+		indigo_usleep(1000);
+	}
+}
+
+static bool wait_for_gate(double seconds) {
+	double deadline = indigo_monotonic_time() + seconds;
+	while (!atomic_load(&gate_entered) && indigo_monotonic_time() < deadline) {
+		indigo_usleep(10000);
+	}
+	if (!atomic_load(&gate_entered)) {
+		fprintf(stderr, "    the gate did not hold the device queue within %.0f s\n", seconds);
+	}
+	return atomic_load(&gate_entered);
+}
+
+// The GOTO finalizer points three times and ends each pass once it reads both axis rates as zero, then settles for
+// 0.5 s. A gate queued from the log of the zero declination rate after the third point holds the queue before the
+// finalizer comes due for the completion.
+static atomic_int goto_points;
+static atomic_bool goto_ra_stopped, goto_gate_armed;
+
+static void goto_end_log_handler(indigo_log_levels level, const char *message) {
+	if (strstr(message, "<- ESPt1") != NULL) {
+		atomic_fetch_add(&goto_points, 1);
+	} else if (strstr(message, "Command ESGr0! -> ") != NULL) {
+		atomic_store(&goto_ra_stopped, strstr(message, "-> ESGr00000") != NULL);
+	} else if (strstr(message, "Command ESGr1! -> ESGr10000") != NULL && atomic_load(&goto_points) >= 3 && atomic_load(&goto_ra_stopped) && atomic_exchange(&goto_gate_armed, false)) {
+		indigo_execute_handler(atomic_load(&mount_device), gate_handler);
+	} else if (level == INDIGO_LOG_ERROR) {
+		fprintf(stderr, "%s\n", message);
+	}
+}
+
+// TGT-005, TGT-B05: the end of a GOTO turns tracking on. A tracking request copied while the GOTO finalizer comes due
+// ahead of its handler must still reach the controller, and the finalizer must not publish over the pending BUSY.
+static void pmc8_mount_tracking_request_survives_goto_end(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--speed-scale", "50", NULL };
+	indigo_log_levels log_level = indigo_get_log_level();
+	bool tracking = true;
+	char last[64] = "";
+	install_watch();
+	atomic_store(&gate_entered, false);
+	atomic_store(&gate_release, false);
+	atomic_store(&goto_points, 0);
+	atomic_store(&goto_ra_stopped, false);
+	atomic_store(&goto_gate_armed, true);
+	SERIAL_CHECK_TRUE(start_mount_at_site(&simulator, arguments));
+	SERIAL_CHECK_TRUE(atomic_load(&mount_device) != NULL);
+	SERIAL_CHECK_TRUE(cached_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, &tracking));
+	SERIAL_CHECK_TRUE(!tracking);
+	indigo_log_message_handler = goto_end_log_handler;
+	indigo_set_log_level(INDIGO_LOG_DEBUG);
+	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(-5), 80));
+	SERIAL_CHECK_TRUE(wait_for_gate(20));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	int rates = event_count(&simulator, "ESTr");
+	int stops = event_count(&simulator, "ESTr0000!");
+	unsigned int revision = property_revision(MOUNT_TRACKING_PROPERTY_NAME);
+	watch_results_of(PMC8_MOUNT_DEVICE_NAME, MOUNT_TRACKING_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, pmc8_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_TRACKING_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	// The last pass settles for 0.5 s, so the finalizer comes due while the queue is held.
+	indigo_usleep(1000000);
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, 10));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(cached_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, &tracking));
+	SERIAL_CHECK_TRUE(!tracking);
+	// The finalizer started the drive first, then the request stopped it.
+	SERIAL_CHECK_TRUE(wait_for_event(&simulator, "ESTr0000!", stops));
+	SERIAL_CHECK_EQ_INT(rates + 2, event_count(&simulator, "ESTr"));
+	SERIAL_CHECK_EQ_INT(stops + 1, event_count(&simulator, "ESTr0000!"));
+	scan_events(&simulator, "ESTr", last, sizeof(last));
+	SERIAL_CHECK_TRUE(!strcmp(last, "ESTr0000!"));
+	// Only the handler published a result, the finalizer left the pending request alone.
+	indigo_usleep(300000);
+	SERIAL_CHECK_EQ_INT(1, atomic_load(&watch_results));
+	SERIAL_CHECK_TRUE(cached_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, &tracking));
+	SERIAL_CHECK_TRUE(!tracking);
+
+cleanup:
+	atomic_store(&goto_gate_armed, false);
+	atomic_store(&gate_release, true);
+	indigo_set_log_level(log_level);
+	indigo_log_message_handler = NULL;
+	remove_watch();
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-B04: the next pulse is copied while the previous pulse's finalizer runs, between the command that ends the pulse
+// and the clearing of the values. The I/O layer logs every write on the debug level from the writing thread, so the
+// next pulse is requested from the log of that command ("ESTr0000" ends a right ascension pulse while the drive is off,
+// "ESSr10000" stops the declination axis), which models the concurrent bus thread deterministically.
+static const char *next_pulse_property, *next_pulse_item, *next_pulse_command;
+static atomic_bool next_pulse_armed, next_pulse_sent;
+static _Atomic double next_pulse_requested;
+
+static void next_pulse_log_handler(indigo_log_levels level, const char *message) {
+	if (atomic_load(&next_pulse_armed) && strstr(message, next_pulse_command) != NULL && atomic_exchange(&next_pulse_armed, false)) {
+		atomic_store(&next_pulse_requested, indigo_monotonic_time());
+		indigo_change_number_property_1(&simulator_test_client, PMC8_GUIDER_DEVICE_NAME, next_pulse_property, next_pulse_item, 300);
+		atomic_store(&next_pulse_sent, true);
+	} else if (level == INDIGO_LOG_ERROR) {
+		fprintf(stderr, "%s\n", message);
+	}
+}
+
+// Sends a 100 ms pulse, requests a 300 ms pulse the other way from the log of its end command and checks that the
+// second pulse was started and ran its duration.
+static bool pulse_survives_previous_finalizer(external_serial_simulator *simulator, const char *property_name, const char *first_item, const char *next_item, const char *end_command, const char *start_event) {
+	int starts = event_count(simulator, start_event);
+	next_pulse_property = property_name;
+	next_pulse_item = next_item;
+	next_pulse_command = end_command;
+	atomic_store(&next_pulse_sent, false);
+	atomic_store(&next_pulse_requested, 0);
+	atomic_store(&next_pulse_armed, true);
+	watch_results_of(PMC8_GUIDER_DEVICE_NAME, property_name);
+	if (indigo_change_number_property_1(&simulator_test_client, PMC8_GUIDER_DEVICE_NAME, property_name, first_item, 100) != INDIGO_OK) {
+		return false;
+	}
+	for (int i = 0; i < 2000 && !atomic_load(&next_pulse_sent); i++) {
+		indigo_usleep(1000);
+	}
+	if (!atomic_load(&next_pulse_sent)) {
+		fprintf(stderr, "    %s: the finalizer of the 100 ms pulse did not send '%s'\n", property_name, end_command);
+		return false;
+	}
+	// Both pulses are over well within a second.
+	indigo_usleep(1000000);
+	if (!wait_for_property_not_busy(property_name) || !wait_for_number_item_value(property_name, next_item, 0, 0.001)) {
+		return false;
+	}
+	int started = event_count(simulator, start_event) - starts;
+	double elapsed = (atomic_load(&watch_last_result) - atomic_load(&next_pulse_requested)) * 1000.0;
+	printf("    %s %s pulse requested while the %s pulse ended: %d of 2 pulses started, ended after %.0f ms\n", property_name, next_item, first_item, started, elapsed);
+	return started == 2 && elapsed > 250 && elapsed < 900;
+}
+
+static void pmc8_guider_pulse_survives_previous_finalizer(void) {
+	external_serial_simulator simulator = { 0 };
+	indigo_log_levels log_level = indigo_get_log_level();
+	install_watch();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_PMC8_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_shared_serial_device_with_master_case(&pmc8_guider, &pmc8_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 50));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_log_message_handler = next_pulse_log_handler;
+	indigo_set_log_level(INDIGO_LOG_DEBUG);
+	// The drive is off: both right ascension pulses run the axis at half the sidereal rate (ESTr0258), and the
+	// finalizer ends each with ESTr0000. Both declination pulses run at half the sidereal rate (ESSr10018).
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(&simulator, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, "<- ESTr0000!", "ESTr0258!"));
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(&simulator, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, "<- ESSr10000!", "ESSr10018!"));
+
+cleanup:
+	atomic_store(&next_pulse_armed, false);
+	indigo_set_log_level(log_level);
+	indigo_log_message_handler = NULL;
+	remove_watch();
+	if (context.connected) {
+		stop_serial_driver(&pmc8_guider);
+	} else {
+		tear_down_serial_driver(&pmc8_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "pmc8_mount_defines_custom_properties_while_disconnected", pmc8_mount_defines_custom_properties_while_disconnected },
@@ -977,7 +1196,9 @@ int main(void) {
 		{ "pmc8_mount_aborts_a_park", pmc8_mount_aborts_a_park },
 		{ "pmc8_mount_moves_in_the_requested_directions", pmc8_mount_moves_in_the_requested_directions },
 		{ "pmc8_mount_keeps_its_position_across_a_controller_reboot", pmc8_mount_keeps_its_position_across_a_controller_reboot },
-		{ "pmc8_guider_guides_in_the_requested_directions", pmc8_guider_guides_in_the_requested_directions }
+		{ "pmc8_guider_guides_in_the_requested_directions", pmc8_guider_guides_in_the_requested_directions },
+		{ "pmc8_mount_tracking_request_survives_goto_end", pmc8_mount_tracking_request_survives_goto_end },
+		{ "pmc8_guider_pulse_survives_previous_finalizer", pmc8_guider_pulse_survives_previous_finalizer }
 	};
 	return indigo_run_tests("PMC-Eight mount serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }
