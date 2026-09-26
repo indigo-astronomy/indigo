@@ -84,7 +84,7 @@ Drivers that talk to a vendor SDK, libusb, hidapi or sysfs are tested against a 
 * **Network:** targets such as `test-mount-lx200-tcp`, `test-mount-ioptron-tcp`, `test-detach-abort-network` and `test-dome-<name>-simulator-network` run the `--tcp` or `--network` mode of a suite. Some bind fixed loopback ports; `test-dome-baader-simulator-network` uses 8080, for example. They are not part of `test-integration`.
 * **Sanitizers:** many suites have a `$(INTEGRATION_BUILD)/test_<driver>_simulator_sanitize` (or `_asan`) build that compiles the driver source with `-O1 -fsanitize=address,undefined -fno-omit-frame-pointer`. A `test-<driver>-sanitize` phony target runs it with `ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1`. Coverage is per driver, not global; check `indigo_test/Makefile` for the driver you are working on. Several sanitize rules hard-code `-arch arm64`, so they target Apple Silicon as written. Valgrind is not used or wired anywhere in the repository.
 * **MountSim:** `make -C indigo_test test-mount-<driver>-mountsim` (temma, rainbow, ioptron, lx200, nexstar, synscan) drives the real driver against the MountSim macOS application through `mountsim/run_mountsim.py`. It needs macOS, a GUI session and a built MountSim (`MOUNTSIM_APP`). See [MountSim harness usage](../indigo_test/mountsim/USAGE.md) and *Testing mounts with MountSim* in [indigo_drivers/AGENTS.override.md](../indigo_drivers/AGENTS.override.md).
-* **Hardware:** `make -C indigo_test test-<driver>-hw` builds `indigo_test/hardware/test_<driver>_hw.c`, most of them on top of `hardware/hardware_test_common.h`. The binaries refuse to run without `--run`, which the targets pass. Ports and options come from per-driver environment variables documented above each target, such as `MOUNT_PMC8_HW_PORT`, `HW_DEBUG=1`, `HW_PARK=1` and `HW_TRACE=1`. Camera suites select the camera with `INDIGO_TEST_DEVICE` when more than one is attached and use the only one otherwise (ASI wants the exact discovered name, Atik a unique substring). The opt-in unplug and replug case runs with `HW_HOTPLUG=1` or through a separate `test-<driver>-hotplug-hw` target. Mounts and focusers move during these tests. A hardware run is started only when explicitly requested, in one of the four modes defined in [AGENTS.md](../AGENTS.md), and its recorded run goes through [`tools/run_driver_test.py`](#running-and-recording-with-run_driver_testpy) with `--hw` or `--hot-plug`.
+* **Hardware:** `make -C indigo_test test-<driver>-hw` builds `indigo_test/hardware/test_<driver>_hw.c`, most of them on top of `hardware/hardware_test_common.h`. The binaries refuse to run without `--run`, which the targets pass. Options come from per-driver environment variables documented above each target, such as `HW_DEBUG=1`, `HW_PARK=1` and `HW_TRACE=1`. The device port or URL comes from the suite's own variable, such as `MOUNT_PMC8_HW_PORT`, or from the common `INDIGO_TEST_PORT` that `run_driver_test.py --port` sets. Camera suites select the camera with `INDIGO_TEST_DEVICE` (`--device`) when more than one is attached and use the only one otherwise (ASI wants the exact discovered name, Atik a unique substring). The opt-in unplug and replug case runs with `HW_HOTPLUG=1` or through a separate `test-<driver>-hotplug-hw` target. Mounts and focusers move during these tests. A hardware run is started only when explicitly requested, in one of the four modes defined in [AGENTS.md](../AGENTS.md), and its recorded run goes through [`tools/run_driver_test.py`](#running-and-recording-with-run_driver_testpy) with `--hw` or `--hot-plug`.
 
 ---
 
@@ -126,7 +126,7 @@ This header contains the in-process client and a property cache for **one device
 * `integration/parallel_case_runner.h`: runs each case in its own forked child with its own bus, simulator and fixture directory, several at a time, and replays output in registration order. `INDIGO_TEST_JOBS` sets parallelism: by default the processor count, at least 2 and capped at 8. Set `INDIGO_TEST_JOBS=1` for a serial run.
 * `integration/abort_queue_test_common.h`, `aux_test_isolation.h`, `lunatico_test_common.h`, `fli_sdk_test_common.h` and `ccd_test_noise.h`: class- or family-specific helpers.
 * `hardware/hardware_test_common.h`, `usb_hotplug_test_common.h` and `powerbox_hotplug_test_common.h`: a multi-device client cache and hot-plug helpers for hardware suites.
-* `hardware/hardware_device_record.h`: every hardware suite starts the bus with `hw_start()` instead of `indigo_start()`. When `INDIGO_TEST_RESULTS` is set it also attaches a passive client that adds a `device <driver> <interface> <device name> <model>` record for every device the suite connects, with the model the driver detected (`INFO_DEVICE_MODEL`, or the device name when the driver does not publish it). Ordinary runs attach nothing.
+* `hardware/hardware_device_record.h`: every hardware suite starts the bus with `hw_start()` instead of `indigo_start()`. When `INDIGO_TEST_RESULTS` is set it also attaches a passive client that adds a `device <driver> <interface> <device name> <model>` record for every device the suite connects, with the model the driver detected: `MOUNT_INFO_MODEL` for a mount, where mount drivers publish it, `INFO_DEVICE_MODEL` otherwise, and the device name when the driver publishes neither. Ordinary runs attach nothing. The header also provides `hw_port("<SUITE>_HW_PORT")`, which every suite uses to read the port or URL of its device: the suite's own variable, or `INDIGO_TEST_PORT` when that is not set.
 * `mountsim/mountsim_test_common.h` and `run_mountsim.py`: the MountSim launcher, PTY relay and artifacts.
 
 ---
@@ -257,8 +257,8 @@ python3 tools/run_driver_test.py focuser_dsd                       # simulator o
 python3 tools/run_driver_test.py mount_lx200 --dry-run             # show the record, write nothing
 python3 tools/run_driver_test.py ccd_asi --hw                      # hardware suite
 python3 tools/run_driver_test.py ccd_touptek --hot-plug            # hardware suite with unplug and replug
-python3 tools/run_driver_test.py ccd_atik --hw -- INDIGO_TEST_DEVICE=Titan
-python3 tools/run_driver_test.py mount_lx200 --hw -- MOUNT_LX200_HW_PORT=/dev/cu.usbserial-1
+python3 tools/run_driver_test.py ccd_atik --hw --device Titan
+python3 tools/run_driver_test.py mount_pmc8 --hw --port /dev/cu.usbserial-AK06KTVZ
 ```
 
 | Option | Meaning |
@@ -267,6 +267,8 @@ python3 tools/run_driver_test.py mount_lx200 --hw -- MOUNT_LX200_HW_PORT=/dev/cu
 | `--hw` | run the hardware suite instead of the hardware-free tests |
 | `--hot-plug` | run the hardware suite with its unplug and replug case |
 | `--target <target>` | make target to run for a hardware run instead of `test-<driver>-hw` (repeatable) |
+| `--port <port>` | port or URL of the device for a hardware run; sets `INDIGO_TEST_PORT` |
+| `--device <name>` | the device for a hardware run when several are attached; sets `INDIGO_TEST_DEVICE` |
 | `--type <type>` | type to record instead of the detected one |
 | `--no-build` | do not rebuild the driver first |
 | `--no-record` | run the tests, leave `README.md` and `TEST_SUMMARY.md` alone |
@@ -280,7 +282,7 @@ python3 tools/run_driver_test.py mount_lx200 --hw -- MOUNT_LX200_HW_PORT=/dev/cu
    * **Hardware-free run** (default): every executable in `INTEGRATION_TESTS` or `OPT_IN_DRIVER_TESTS` named `test_<driver>` or `test_<driver>_<kind>`, without sanitizer builds, found through `make -s print-variable VAR=...`. `OPT_IN_DRIVER_TESTS` holds the driver tests that `test-integration` leaves out because they open loopback sockets (the Dragonfly suites and the Lunatico UDP variant); they still belong to their driver's recorded run. This is why tests must follow *Test Naming* in [indigo_test/AGENTS.md](../indigo_test/AGENTS.md).
    * **Hardware run** (`--hw`): `make test-<driver>-hw`, or the targets given with `--target`.
    * **Hot-plug run** (`--hot-plug`): `test-<driver>-hw` with `HW_HOTPLUG=1` when that target adds the hot-plug case for it (checked with `make -n`), otherwise `test-<driver>-hotplug-hw`. A driver with neither is refused.
-3. Runs the tests one after another with `INDIGO_TEST_RESULTS` pointing to a temporary file, with the output going straight to the terminal.
+3. Runs the tests one after another with `INDIGO_TEST_RESULTS` pointing to a temporary file, and with `INDIGO_TEST_PORT` and `INDIGO_TEST_DEVICE` set from `--port` and `--device`, with the output going straight to the terminal.
 4. Counts the records (see `INDIGO_TEST_RESULTS` under [`test_runner.h`](#test_runnerh)) and decides the result: `OK` only when every binary or target exited with 0 and every planned case passed. A case that crashed counts as planned and not passed.
 5. Writes one line into the driver's `README.md` `## Testing` section, adding the section when it is missing, replacing the previous run of the same operating system, architecture and type, and keeping the lines ordered by timestamp. Then it regenerates `TEST_SUMMARY.md` with `tools/make_test_summary.py`. Nothing is committed; commit the record with the driver's change, one driver per commit.
 
@@ -296,11 +298,12 @@ The line has the form `<timestamp> <version> <os> <architecture> <type> <total>/
 
 ### Hardware suites and their parameters
 
-Each hardware suite takes its device, port or site from environment variables of its own, documented in the suite and above its make target. Pass them after `--`:
+Each hardware suite takes its device, port or site from environment variables of its own, documented in the suite and above its make target. The two that almost every run needs have options of their own:
 
-* Cameras: `INDIGO_TEST_DEVICE` selects the camera when more than one is attached; with a single camera the suites pick it themselves.
-* Serial devices: a port variable such as `MOUNT_LX200_HW_PORT`, `UPB_HW_PORT` or `PRIMALUCE_HW_PORT`; some suites find the port through the driver's own USB matching when it is not set.
-* Mounts: some also need the site, for example `MOUNT_PMC8_HW_LATITUDE` and `MOUNT_PMC8_HW_LONGITUDE`.
+* `--port <port>` sets `INDIGO_TEST_PORT`, which every suite with a device port or URL uses when its own variable (`MOUNT_LX200_HW_PORT`, `UPB_HW_PORT`, `SYNSCAN_HW_URL`, ...) is not set, through `hw_port()` in `hardware/hardware_device_record.h`. Some suites find the port through the driver's own USB matching when neither is set. Prefer a stable name such as `/dev/serial/by-id/...` on Linux.
+* `--device <name>` sets `INDIGO_TEST_DEVICE`, which selects the camera when more than one is attached; with a single camera the suites pick it themselves.
+
+Anything else goes after `--`, for example the site of a mount: `MOUNT_PMC8_HW_LATITUDE` and `MOUNT_PMC8_HW_LONGITUDE`.
 
 A hardware suite that ran no case usually lacks one of these; the script then says so after the suite's own message. The hot-plug case waits for the device to disappear and come back; on Linux it can be answered by disabling the USB port as described in *Hot-Plug Cases Without Touching the Cable* in [indigo_test/AGENTS.md](../indigo_test/AGENTS.md).
 

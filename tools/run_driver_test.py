@@ -98,11 +98,12 @@ examples:
   see what would be recorded, without touching any file
     tools/run_driver_test.py mount_lx200 --dry-run
 
-  run the hardware suite, telling it which camera to use; hardware suites take
-  their device, port or site from variables passed after '--', and print the
-  ones they need when they are missing
-    tools/run_driver_test.py ccd_atik --hw -- INDIGO_TEST_DEVICE="Atik One"
-    tools/run_driver_test.py mount_lx200 --hw -- MOUNT_LX200_HW_PORT=/dev/cu.usbserial-1
+  run the hardware suite, telling it which port or camera to use; anything
+  else a suite needs, such as the site, goes after '--' as variables, and a
+  suite prints the ones it needs when they are missing
+    tools/run_driver_test.py mount_pmc8 --hw --port /dev/cu.usbserial-AK06KTVZ
+    tools/run_driver_test.py ccd_atik --hw --device "Atik One"
+    tools/run_driver_test.py mount_synscan --hw -- SYNSCAN_HW_LATITUDE=48.1 SYNSCAN_HW_LONGITUDE=17.1
 
   run the hardware suite with its hot-plug case
     tools/run_driver_test.py ccd_touptek --hot-plug
@@ -326,6 +327,8 @@ def main():
 	parser.add_argument("--hw", action="store_true", help="run the hardware suite instead of the hardware-free tests")
 	parser.add_argument("--hot-plug", action="store_true", help="run the hardware suite with its unplug and replug case, recorded as '<model> (hot-plug)'")
 	parser.add_argument("--target", action="append", help="make target to run for a hardware run, instead of test-<driver>-hw (repeatable)")
+	parser.add_argument("--port", help="port or URL of the device for a hardware run (sets INDIGO_TEST_PORT)")
+	parser.add_argument("--device", help="name of the device for a hardware run when several are attached (sets INDIGO_TEST_DEVICE)")
 	parser.add_argument("--type", help="type to record instead of the detected one")
 	parser.add_argument("--no-build", action="store_true", help="do not rebuild the driver first")
 	parser.add_argument("--no-record", action="store_true", help="run the tests but leave README.md and TEST_SUMMARY.md alone")
@@ -354,6 +357,11 @@ def main():
 	handle, results = tempfile.mkstemp(prefix="indigo-test-results.", suffix=".txt")
 	os.close(handle)
 	env = dict(os.environ, INDIGO_TEST_RESULTS=results)
+	# Every hardware suite falls back to these when its own variable, such as MOUNT_PMC8_HW_PORT, is not set.
+	if args.port:
+		env["INDIGO_TEST_PORT"] = args.port
+	if args.device:
+		env["INDIGO_TEST_DEVICE"] = args.device
 	failures = []
 	try:
 		if hardware:
@@ -399,8 +407,8 @@ def main():
 		print("run_driver_test: only some cases were selected, the run will not be recorded", file=sys.stderr)
 		record = False
 	if hardware and planned == 0:
-		print("run_driver_test: the hardware suite ran no case. It usually has to be told which device or port to use;"
-			" pass the variables its message above asks for after '--', e.g. '-- INDIGO_TEST_DEVICE=<model>' or '-- <NAME>_HW_PORT=<port>'", file=sys.stderr)
+		print("run_driver_test: the hardware suite ran no case. It usually has to be told which device or port to use:"
+			" pass --port <port> or --device <name>, or the variables its message above asks for after '--'", file=sys.stderr)
 	if test_type is None:
 		if record or args.dry_run:
 			print("run_driver_test: no device of %s was connected, the run cannot be recorded without --type" % driver, file=sys.stderr)

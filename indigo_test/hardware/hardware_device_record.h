@@ -23,16 +23,17 @@
 //
 // Every hardware suite starts the bus with hw_start() instead of indigo_start().
 // When INDIGO_TEST_RESULTS is set, hw_start() also attaches a passive client that
-// watches INFO and CONNECTION of every device and appends a record
+// watches INFO, MOUNT_INFO and CONNECTION of every device and appends a record
 //
 //   device  <driver>  <interface>  <device name>  <model>
 //
 // through indigo_test_record() whenever a connected device reports its INFO. The
-// model is INFO_DEVICE_MODEL, which drivers fill in with the model they detected
-// on connection. The framework publishes only the first four INFO items unless
-// the driver asks for more, so a driver that leaves the model out is recorded
-// under its device name instead. A reader takes the last record of each device. Without INDIGO_TEST_RESULTS no client is
-// attached, so an ordinary run is not changed in any way.
+// model is the one the driver detected on connection: MOUNT_INFO_MODEL for a mount,
+// where mount drivers publish it, and INFO_DEVICE_MODEL otherwise. The framework
+// publishes only the first four INFO items unless the driver asks for more, so a
+// device with neither is recorded under its device name. A reader takes the last
+// record of each device. Without INDIGO_TEST_RESULTS no client is attached, so an
+// ordinary run is not changed in any way.
 
 #ifndef hardware_device_record_h
 #define hardware_device_record_h
@@ -53,6 +54,7 @@ typedef struct {
 	char driver[INDIGO_VALUE_SIZE];
 	char interface[INDIGO_VALUE_SIZE];
 	char model[INDIGO_VALUE_SIZE];
+	char mount_model[INDIGO_VALUE_SIZE];
 	bool connected;
 	char recorded[4 * INDIGO_VALUE_SIZE];
 } hw_record_device;
@@ -84,7 +86,8 @@ static void hw_record_emit(hw_record_device *entry) {
 		return;
 	}
 	char line[sizeof(entry->recorded)];
-	snprintf(line, sizeof(line), "%s\t%s\t%s\t%s", entry->driver, entry->interface, entry->name, *entry->model ? entry->model : entry->name);
+	const char *model = *entry->mount_model ? entry->mount_model : *entry->model ? entry->model : entry->name;
+	snprintf(line, sizeof(line), "%s\t%s\t%s\t%s", entry->driver, entry->interface, entry->name, model);
 	if (strcmp(line, entry->recorded)) {
 		snprintf(entry->recorded, sizeof(entry->recorded), "%s", line);
 		indigo_test_record("device\t%s", line);
@@ -96,8 +99,9 @@ static indigo_result hw_record_property(indigo_client *client, indigo_device *de
 	(void)device;
 	(void)message;
 	bool info = !strcmp(property->name, INFO_PROPERTY_NAME);
+	bool mount_info = !strcmp(property->name, MOUNT_INFO_PROPERTY_NAME);
 	bool connection = !strcmp(property->name, CONNECTION_PROPERTY_NAME);
-	if (!info && !connection) {
+	if (!info && !mount_info && !connection) {
 		return INDIGO_OK;
 	}
 	pthread_mutex_lock(&hw_record_mutex);
@@ -111,6 +115,8 @@ static indigo_result hw_record_property(indigo_client *client, indigo_device *de
 				snprintf(entry->interface, sizeof(entry->interface), "%s", item->text.value);
 			} else if (info && !strcmp(item->name, INFO_DEVICE_MODEL_ITEM_NAME)) {
 				snprintf(entry->model, sizeof(entry->model), "%s", item->text.value);
+			} else if (mount_info && !strcmp(item->name, MOUNT_INFO_MODEL_ITEM_NAME)) {
+				snprintf(entry->mount_model, sizeof(entry->mount_model), "%s", item->text.value);
 			} else if (connection && !strcmp(item->name, CONNECTION_CONNECTED_ITEM_NAME)) {
 				entry->connected = item->sw.value && property->state == INDIGO_OK_STATE;
 			}
@@ -131,6 +137,17 @@ static indigo_result hw_record_attach(indigo_client *client) {
 static indigo_result hw_record_detach(indigo_client *client) {
 	(void)client;
 	return INDIGO_OK;
+}
+
+// The port or URL a hardware suite connects to: the suite's own variable, such as
+// MOUNT_PMC8_HW_PORT, or INDIGO_TEST_PORT, which 'run_driver_test.py --port' sets for any suite.
+// The suite's own variable wins, so existing commands keep working. NULL when neither is set.
+static const char *hw_port(const char *variable) {
+	const char *port = getenv(variable);
+	if (port == NULL || !*port) {
+		port = getenv("INDIGO_TEST_PORT");
+	}
+	return port != NULL && *port ? port : NULL;
 }
 
 // Starts the bus like indigo_start() and, when the run is being recorded,

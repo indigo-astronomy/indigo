@@ -1249,7 +1249,7 @@ int main(int argc, char **argv) {
 	if (getenv("SYNSCAN_HW_DEBUG")) {
 		indigo_set_log_level(INDIGO_LOG_DEBUG);
 	}
-	const char *url = getenv("SYNSCAN_HW_URL");
+	const char *url = hw_port("SYNSCAN_HW_URL");
 	if (url && *url) {
 		mount_url = url;
 	}

@@ -591,7 +591,7 @@ int main(int argc, char **argv) {
 			hotplug = true;
 		}
 	}
-	driver_port = getenv("AUX_RTS_HW_PORT");
+	driver_port = hw_port("AUX_RTS_HW_PORT");
 	monitor_port = getenv("AUX_RTS_HW_MONITOR_PORT");
 	if (driver_port == NULL || !*driver_port || monitor_port == NULL || !*monitor_port) {
 		fprintf(stderr, "Set AUX_RTS_HW_PORT to the port the driver drives and AUX_RTS_HW_MONITOR_PORT to the\n");

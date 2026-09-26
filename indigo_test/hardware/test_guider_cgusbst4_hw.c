@@ -329,7 +329,7 @@ int main(int argc, char **argv) {
 	if (!indigo_test_use_private_home()) {
 		return 1;
 	}
-	serial_port = getenv("CGUSBST4_HW_PORT");
+	serial_port = hw_port("CGUSBST4_HW_PORT");
 	const indigo_test_case tests[] = {
 		{ "cgusbst4_reports_identity_and_capabilities", cgusbst4_reports_identity_and_capabilities },
 		{ "cgusbst4_publishes_the_property_contract", cgusbst4_publishes_the_property_contract },

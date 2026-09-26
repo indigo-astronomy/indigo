@@ -84,6 +84,9 @@ Records from forked children land in the same file.
   passive client that adds a `device <driver> <interface> <device name> <model>`
   record for every device the suite connects, with the model the driver detected,
   so a recorded hardware run names the hardware it ran against by itself.
+- A hardware suite reads the port or URL of its device with `hw_port("<SUITE>_HW_PORT")`
+  from the same header, never with `getenv()` alone. It falls back to `INDIGO_TEST_PORT`, which
+  `run_driver_test.py --port` sets, so every suite takes its port the same way.
 
 ## Parallel Case Runners
 

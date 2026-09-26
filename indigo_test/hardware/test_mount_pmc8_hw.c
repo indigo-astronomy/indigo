@@ -1100,7 +1100,7 @@ int main(int argc, char **argv) {
 			indigo_set_log_level(INDIGO_LOG_DEBUG);
 		}
 	}
-	serial_port = getenv("MOUNT_PMC8_HW_PORT");
+	serial_port = hw_port("MOUNT_PMC8_HW_PORT");
 	if (serial_port == NULL || !*serial_port) {
 		fprintf(stderr, "MOUNT_PMC8_HW_PORT is not set\n");
 		return 2;
