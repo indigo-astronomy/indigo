@@ -4945,6 +4945,7 @@
 		59FA7BF2301D3A5800A35CFB /* test_bus_lifecycle.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_bus_lifecycle.c; sourceTree = "<group>"; };
 		59FA7BF4301D3B9200A35CFB /* test_ccd_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_simulator.c; sourceTree = "<group>"; };
 		59FA7BF6301D3F5A00A35CFB /* simulator_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = simulator_test_common.h; sourceTree = "<group>"; };
+		C0DE20260926D0AB00000001 /* test_detach_abort.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_detach_abort.c; sourceTree = "<group>"; };
 		59FA7BF7301D3F5A00A35CFB /* test_dome_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_simulator.c; sourceTree = "<group>"; };
 		59FA7BF8301D3F5A00A35CFB /* test_gps_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_simulator.c; sourceTree = "<group>"; };
 		59FA7BF9301D3F5A00A35CFB /* test_mount_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_simulator.c; sourceTree = "<group>"; };
@@ -14165,6 +14166,7 @@
 				59910AA43054836E00FB1C2F /* test_ccd_asi_sdk.c */,
 				9D56D35A3058283B00725436 /* test_ccd_atik_sdk.c */,
 				59910B493055E73500FB1C2F /* test_ccd_atik2_sdk.c */,
+				C0DE20260926D0AB00000001 /* test_detach_abort.c */,
 				C0DE20260911000200000001 /* test_ccd_baccam_sdk.c */,
 				C0DE20260911000300000001 /* test_ccd_bresser_sdk.c */,
 				59910A5B305289D700FB1C2F /* test_ccd_countdown.c */,

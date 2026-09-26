@@ -2265,3 +2265,19 @@ acceptance limits.
   simulator suite.
 * Hardware tests: 105 run, 105 passed against the Pegasus Astro NYX-101, 70 over
   USB serial and 35 over WiFi.
+
+## Client-detach motion release (2026-09-26)
+
+Test-only change. `indigo_test/integration/test_detach_abort.c` runs this driver against the LX200
+serial simulator and detaches the client that started manual motion:
+
+* `lx200_owner_detach_releases_motion` (OnStep): the registered release reaches the driver, which
+  sends `:Qn#`, and no entry is left.
+* `lx200_detach_during_handler_ends_motion` (OnStep, 5 repetitions): the owner detaches while the
+  motion handler does serial I/O; exactly one release is sent and the axis is stopped.
+* `lx200_classic_guiding_refusal_registers_nothing` (classic profile): manual motion requested while a
+  classic guide pulse runs is refused ("Classic guiding is active", ALERT); the refusal's commit leaves
+  no entry and the owner's detach sends nothing. A classic pulse cannot start while manual motion runs
+  (`meade_classic_guide_start()`), so a refusal with a registered motion is not reachable.
+* `network_lx200_close_releases_motion` (opt-in `--network`): the same as the first case with a TCP
+  peer of the in-process server closing its connection.

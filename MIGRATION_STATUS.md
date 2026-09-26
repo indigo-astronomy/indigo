@@ -9,7 +9,7 @@
 | agent_config            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 56 / 0 | |
 | agent_guider            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 88 / 0 | |
 | agent_imager            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 53 / 0 | |
-| agent_mount             | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 69 / 0 | |
+| agent_mount             | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 71 / 0 | |
 | agent_scripting         | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 60 / 0 | |
 | agent_astrometry        | 2️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Sim | 31 / 0 | |
 | ao_sx                   | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 11 / 16 | |
@@ -114,13 +114,13 @@
 | guider_gpusb            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 16 / 10 | |
 | mount_asi               | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ Sim | 10 / 0 | |
 | mount_ioptron           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 108 / 0 | |
-| mount_lx200             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 99 / 35 | |
+| mount_lx200             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 103 / 35 | |
 | mount_mxhd              | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ❌ No  | 0 / 0 | |
 | mount_nexstar           | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 19 / 12 | ⏰ TODO - make libnexstar for Windows |
 | mount_nexstaraux        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 40 / 36 | |
 | mount_pmc8              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 19 / 38 | |
 | mount_rainbow           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 15 / 0 | |
-| mount_simulator         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 16 / 0 | |
+| mount_simulator         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 34 / 0 | |
 | mount_starbook          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 11 / 0 | |
 | mount_synscan           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 20 / 16 | |
 | mount_temma             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 16 / 0 | |

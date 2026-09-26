@@ -111,6 +111,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_focuser_astroasis_sdk \
 	$(INTEGRATION_BUILD)/test_rotator_asi_sdk \
 	$(INTEGRATION_BUILD)/test_bus_lifecycle \
+	$(INTEGRATION_BUILD)/test_detach_abort \
 	$(INTEGRATION_BUILD)/test_ccd_countdown \
 	$(INTEGRATION_BUILD)/test_agent_imager \
 	$(INTEGRATION_BUILD)/test_agent_guider \
@@ -768,6 +769,23 @@ $(INTEGRATION_BUILD)/test_mount_asi_simulator: integration/test_mount_asi_simula
 
 $(INTEGRATION_BUILD)/test_mount_lx200_simulator_sanitize: integration/test_mount_lx200_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h ../indigo_drivers/mount_lx200/indigo_mount_lx200.c $(INTEGRATION_BUILD)/mount_lx200_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/mount_lx200/indigo_mount_lx200.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
+
+# Detach-abort registry and mount manual-motion ownership: the bus API, the generated mount
+# simulator and LX200 drivers (LX200 against its serial simulator) and the Mount Agent, with owners
+# that detach from the in-process bus. The --network mode (test-detach-abort-network, not part of
+# test-integration because it opens loopback sockets) runs the production TCP server on an ephemeral
+# port and closes, resets or cuts real TCP connections.
+DETACH_ABORT_TEST_ARCHIVES = $(BUILD_DRIVERS)/indigo_mount_simulator.a $(BUILD_DRIVERS)/indigo_mount_lx200.a $(BUILD_DRIVERS)/indigo_agent_mount.a
+
+$(INTEGRATION_BUILD)/test_detach_abort: integration/test_detach_abort.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_lx200_simulator $(DETACH_ABORT_TEST_ARCHIVES) | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(DETACH_ABORT_TEST_ARCHIVES) $(TEST_LDFLAGS) -lindigocat
+
+.PHONY: test-detach-abort test-detach-abort-network
+test-detach-abort: check-lib $(INTEGRATION_BUILD)/test_detach_abort
+	$(INTEGRATION_BUILD)/test_detach_abort
+
+test-detach-abort-network: check-lib $(INTEGRATION_BUILD)/test_detach_abort
+	$(INTEGRATION_BUILD)/test_detach_abort --network
 
 .PHONY: test-mount-lx200-tcp
 test-mount-lx200-tcp: $(INTEGRATION_BUILD)/test_mount_lx200_simulator $(INTEGRATION_BUILD)/test_mount_lx200_simulator_sanitize
