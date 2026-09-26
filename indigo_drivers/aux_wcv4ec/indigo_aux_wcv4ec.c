@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_aux_wcv4ec"
 #define DRIVER_LABEL         "WandererCover V4-EC Cover"
 #define AUX_DEVICE_NAME      "WandererCover V4-EC"
@@ -200,6 +200,12 @@ static bool wcv4ec_open(indigo_device *device) {
 	return false;
 }
 
+// the cover switch as the last status frame reports it: the side the live position is at, or none in between
+static void wcv4ec_show_cover(indigo_device *device) {
+	AUX_COVER_CLOSE_ITEM->sw.value = fabs(PRIVATE_DATA->close_position - PRIVATE_DATA->current_position) < 6;
+	AUX_COVER_OPEN_ITEM->sw.value = !AUX_COVER_CLOSE_ITEM->sw.value && fabs(PRIVATE_DATA->open_position - PRIVATE_DATA->current_position) < 6;
+}
+
 static void wcv4ec_close(indigo_device *device) {
 	INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
@@ -218,22 +224,29 @@ static void aux_timer_callback(indigo_device *device) {
 	//+ aux.on_timer
 	if (wcv4ec_read_status(device)) {
 		bool update = false;
+		// a cover request copied after AUX_DETECT_OPEN_CLOSE is BUSY before its handler starts the move and sets
+		// operation_start_time; its value and state belong to that handler, so only the detection is finished here
+		bool cover_pending = AUX_COVER_PROPERTY->state == INDIGO_BUSY_STATE && PRIVATE_DATA->operation_start_time == 0;
 		if (fabs(PRIVATE_DATA->close_position - PRIVATE_DATA->current_position) < 6 && PRIVATE_DATA->operation_running) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"Close");
-			AUX_COVER_CLOSE_ITEM->sw.value = true;
-			AUX_COVER_OPEN_ITEM->sw.value = false;
-			AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
+			if (!cover_pending) {
+				AUX_COVER_CLOSE_ITEM->sw.value = true;
+				AUX_COVER_OPEN_ITEM->sw.value = false;
+				AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
+				update = true;
+			}
 			PRIVATE_DATA->operation_running = false;
 			PRIVATE_DATA->operation_start_time = 0;
-			update = true;
 		} else if (fabs(PRIVATE_DATA->open_position - PRIVATE_DATA->current_position) < 6 && PRIVATE_DATA->operation_running) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"Open");
-			AUX_COVER_CLOSE_ITEM->sw.value = false;
-			AUX_COVER_OPEN_ITEM->sw.value = true;
-			AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
+			if (!cover_pending) {
+				AUX_COVER_CLOSE_ITEM->sw.value = false;
+				AUX_COVER_OPEN_ITEM->sw.value = true;
+				AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
+				update = true;
+			}
 			PRIVATE_DATA->operation_running = false;
 			PRIVATE_DATA->operation_start_time = 0;
-			update = true;
 		} else if (PRIVATE_DATA->operation_running && AUX_COVER_PROPERTY->state != INDIGO_BUSY_STATE) {
 			AUX_COVER_CLOSE_ITEM->sw.value = false;
 			AUX_COVER_OPEN_ITEM->sw.value = false;
@@ -360,7 +373,9 @@ static void aux_detect_open_close_handler(indigo_device *device) {
 	AUX_DETECT_OPEN_CLOSE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_DETECT_OPEN_CLOSE.on_change
 	if (PRIVATE_DATA->operation_running) {
-			INDIGO_UPDATE_PROPERTY_STATE(AUX_SET_OPEN_CLOSE_PROPERTY, INDIGO_ALERT_STATE, "Operation in progress");
+		AUX_DETECT_OPEN_CLOSE_OPEN_ITEM->sw.value = false;
+		AUX_DETECT_OPEN_CLOSE_CLOSE_ITEM->sw.value = false;
+		INDIGO_UPDATE_PROPERTY_STATE(AUX_DETECT_OPEN_CLOSE_PROPERTY, INDIGO_ALERT_STATE, "Operation in progress");
 		return;
 	} else {
 		bool success = false;
@@ -371,11 +386,20 @@ static void aux_detect_open_close_handler(indigo_device *device) {
 		}
 		if (success) {
 			PRIVATE_DATA->operation_running = true; // let the status callback set correct open/close when we are done
-			char status_line[128] = {0};
+			char status_line[128] = { 0 };
 			indigo_uni_discard(PRIVATE_DATA->handle);
-			do {
-				indigo_uni_read_line(PRIVATE_DATA->handle, status_line, sizeof(status_line) - 1);
-			} while (strncmp(status_line, "OpenSet", strlen("OpenSet")) && strncmp(status_line, "CloseSet", strlen("CloseSet")));
+			// the box sends a status frame every second, so a reply lost on the wire is given up after ten lines or 5 s of silence
+			bool confirmed = false;
+			for (int i = 0; i < 10 && !confirmed; i++) {
+				if (indigo_uni_read_section2(PRIVATE_DATA->handle, status_line, sizeof(status_line) - 1, "\n", "\r\n", INDIGO_DELAY(5), INDIGO_DELAY(1)) <= 0) {
+					break;
+				}
+				confirmed = !strncmp(status_line, "OpenSet", strlen("OpenSet")) || !strncmp(status_line, "CloseSet", strlen("CloseSet"));
+			}
+			if (!confirmed) {
+				AUX_DETECT_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Autodetect open/close not confirmed");
+			}
 		} else {
 			AUX_DETECT_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Autodetect open/close failed");
@@ -436,15 +460,18 @@ static void aux_cover_handler(indigo_device *device) {
 	AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_COVER.on_change
 	if (PRIVATE_DATA->operation_running) {
+		wcv4ec_show_cover(device);
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_COVER_PROPERTY, INDIGO_ALERT_STATE, "Operation in progress");
 		return;
 	}
-	if (wcv4ec_command(device, AUX_COVER_OPEN_ITEM->sw.value ? 1001 : 1000)) {
+	if (wcv4ec_command(device, indigo_get_switch_target(AUX_COVER_PROPERTY, AUX_COVER_OPEN_ITEM_NAME) ? 1001 : 1000)) {
+		indigo_apply_switch_targets(AUX_COVER_PROPERTY);
 		PRIVATE_DATA->operation_start_time = time(NULL);
 		PRIVATE_DATA->operation_running = true;
 		AUX_COVER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_sleep(1);
 	} else {
+		wcv4ec_show_cover(device);
 		AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- aux.AUX_COVER.on_change

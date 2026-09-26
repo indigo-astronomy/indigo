@@ -41,6 +41,8 @@ typedef struct {
 	const char *ready_file;
 	const char *model;
 	const char *firmware;
+	int detect_reply_delay;
+	bool lose_detect_reply;
 } simulator_options;
 
 static simulator_options options = {
@@ -48,7 +50,9 @@ static simulator_options options = {
 	.trace = true,
 	.ready_file = NULL,
 	.model = "WandererCoverV4",
-	.firmware = "20240618"
+	.firmware = "20240618",
+	.detect_reply_delay = 0,
+	.lose_detect_reply = false
 };
 
 static const char *simulator_name = "aux_wcv4ec";
@@ -61,6 +65,8 @@ static void usage(const char *name) {
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  --model <WandererCoverV4> Select simulated model, default is WandererCoverV4\n");
 	printf("  --firmware <version>    Set reported firmware version\n");
+	printf("  --detect-reply-delay <ms> Delay the OpenSet/CloseSet reply to 100001/100000\n");
+	printf("  --lose-detect-reply     Teach the angle on 100001/100000 but lose the OpenSet/CloseSet reply on the wire\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -96,6 +102,14 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.firmware = argv[i];
+		} else if (!strcmp(argv[i], "--detect-reply-delay")) {
+			if (++i == argc) {
+				fprintf(stderr, "--detect-reply-delay requires milliseconds\n");
+				return false;
+			}
+			options.detect_reply_delay = atoi(argv[i]);
+		} else if (!strcmp(argv[i], "--lose-detect-reply")) {
+			options.lose_detect_reply = true;
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -295,6 +309,14 @@ static void dispatch_command(int fd, const char *buffer) {
 	pthread_mutex_unlock(&state_mutex);
 
 	if (response != NULL) {
+		// the detection itself has already taken effect; only its confirmation is delayed or lost
+		if (options.lose_detect_reply) {
+			serial_simulator_trace_line(options.trace, "xx", response);
+			return;
+		}
+		if (options.detect_reply_delay > 0) {
+			usleep(options.detect_reply_delay * 1000);
+		}
 		sim_printf(fd, "%s", response);
 	}
 }
