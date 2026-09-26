@@ -139,6 +139,38 @@ static bool lx_number(const simulator_driver_case *device, const char *property,
 	return indigo_change_number_property_1(&simulator_test_client, device->device_name, property, item, value) == INDIGO_OK && wait_for_property_state_seen_after(property, state, revision);
 }
 
+// A request made after the connection is gone reports the loss one of two ways. It ends in ALERT
+// where the dead port still looks usable (macOS keeps a pseudo terminal whose simulator has exited
+// open until a write fails), or the driver has already noticed the dead port and disconnected every
+// device that shares the connection, the master included (Linux reports the hang-up at once).
+// Either is correct; *disconnected tells which one happened.
+static bool wait_for_alert_or_disconnect(const char *property, unsigned int revision, bool *disconnected) {
+	for (int i = 0; i < 100; i++) {
+		if (!context.connected) {
+			*disconnected = true;
+			return true;
+		}
+		if (property_state_revision(property, INDIGO_ALERT_STATE) > revision) {
+			*disconnected = false;
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static bool lx_number_after_loss(const simulator_driver_case *device, const char *property, const char *item, double value, bool *disconnected) {
+	unsigned int revision = property_revision(property);
+	indigo_change_number_property_1(&simulator_test_client, device->device_name, property, item, value);
+	return wait_for_alert_or_disconnect(property, revision, disconnected);
+}
+
+static bool lx_switch_after_loss(const simulator_driver_case *device, const char *property, const char *item, bool value, bool *disconnected) {
+	unsigned int revision = property_revision(property);
+	indigo_change_switch_property_1(&simulator_test_client, device->device_name, property, item, value);
+	return wait_for_alert_or_disconnect(property, revision, disconnected);
+}
+
 static int event_count(external_serial_simulator *simulator, const char *command, double *last_time) {
 	char path[PATH_MAX];
 	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
@@ -2079,8 +2111,12 @@ static void lx200_transport_loss_and_fresh_session(void) {
 	SERIAL_CHECK_TRUE(lx_coordinates(22, -60, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", 0));
 	stop_external_serial_simulator(&simulator);
-	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_ALERT_STATE));
-	disconnect_serial_device(&lx200_mount);
+	bool disconnected = false;
+	SERIAL_CHECK_TRUE(lx_switch_after_loss(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, &disconnected));
+	printf("    the lost connection was reported by %s\n", disconnected ? "disconnecting the mount" : "ALERT");
+	if (!disconnected) {
+		disconnect_serial_device(&lx200_mount);
+	}
 	SERIAL_CHECK_TRUE(start_lx200_simulator(&simulator, "onstep"));
 	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
@@ -2667,16 +2703,23 @@ static void lx200_guider_transport_failure_and_recovery(void) {
 	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_guider, "meade", NULL));
 	online = true;
 	stop_external_serial_simulator(&simulator);
-	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100, INDIGO_ALERT_STATE));
-	unsigned int ra_revision = property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME);
-	unsigned int dec_revision = property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME);
-	indigo_usleep(200000);
-	SERIAL_CHECK_EQ_INT(ra_revision, property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME));
-	SERIAL_CHECK_EQ_INT(dec_revision, property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME));
-	SERIAL_CHECK_TRUE(cached_number_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME) == 0);
-	SERIAL_CHECK_TRUE(cached_number_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME) == 0);
-	disconnect_serial_device(&lx200_guider);
+	bool disconnected = false;
+	SERIAL_CHECK_TRUE(lx_number_after_loss(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100, &disconnected));
+	if (!disconnected) {
+		SERIAL_CHECK_TRUE(lx_number_after_loss(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100, &disconnected));
+	}
+	printf("    the lost connection was reported by %s\n", disconnected ? "disconnecting the guider" : "ALERT");
+	if (!disconnected) {
+		// A failed pulse is over: no pulse stays pending and no late update follows the ALERT.
+		unsigned int ra_revision = property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME);
+		unsigned int dec_revision = property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME);
+		indigo_usleep(200000);
+		SERIAL_CHECK_EQ_INT(ra_revision, property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME));
+		SERIAL_CHECK_EQ_INT(dec_revision, property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+		SERIAL_CHECK_TRUE(cached_number_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME) == 0);
+		SERIAL_CHECK_TRUE(cached_number_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME) == 0);
+		disconnect_serial_device(&lx200_guider);
+	}
 	SERIAL_CHECK_TRUE(start_lx200_simulator(&simulator, "meade"));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, lx200_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
 	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_guider, NULL));
