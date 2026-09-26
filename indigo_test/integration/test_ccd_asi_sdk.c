@@ -1365,18 +1365,32 @@ static void discovery_filter_failures_retry(void) {
 	ASSERT_EQ_INT(0, attached);
 	discovery_fail = 0;
 	ASSERT_TRUE(wait_count(&attached, 2)); // generated retry, no second event
+	// A removal libusb cannot identify (a pointer that is not the camera's) is
+	// confirmed through the SDK's unplug_match, which must refuse it while the SDK
+	// cannot say which cameras are left. The camera is made to look gone, so the
+	// same events without the failures would remove it.
+	cameras[0].visible = false;
 	count_fail = 1;
-	usb_event(0, false);
+	usb_event(1, false);
 	ASSERT_TRUE(drain_discovery());
 	ASSERT_EQ_INT(2, attached);
 	count_fail = 0;
+	cameras[1].visible = true; // another camera, so discovery has a camera to fail on
 	discovery_fail = 1;
-	usb_event(0, false);
+	usb_event(1, false);
 	ASSERT_TRUE(drain_discovery());
 	ASSERT_EQ_INT(2, attached);
 	discovery_fail = 0;
+	cameras[1].visible = false;
+	cameras[0].visible = true;
 	ASSERT_TRUE(connect_device(0, true));
 	ASSERT_TRUE(take_image(0, 0.01));
+	// A removal libusb has identified is never vetoed by the SDK: a camera switched
+	// off while connected goes away even when the SDK fails to enumerate (QHY2-001).
+	count_fail = 1;
+	usb_event(0, false);
+	ASSERT_TRUE(wait_count(&attached, 0));
+	count_fail = 0;
 }
 
 static void discovery_attach_and_init_rollback(void) {
