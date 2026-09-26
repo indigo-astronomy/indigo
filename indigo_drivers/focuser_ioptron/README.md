@@ -40,3 +40,4 @@ INDIGO Astronomy open-source license.
 ## Testing
 
 2026-09-21 19:06 3.0.0.8 mac arm64 simulator 40/40 OK
+2026-09-27 00:32 3.0.0.10 linux x64 simulator 42/42 OK

@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_focuser_ioptron"
 #define DRIVER_LABEL         "iOptron iEAF Focuser"
 #define FOCUSER_DEVICE_NAME  "iOptron iEAF"
@@ -167,16 +167,22 @@ static void ioptron_publish(indigo_device *device) {
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-	indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reversed ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
-	FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+	// A pending request owns value and state, its handler reads the target and publishes the result.
+	if (FOCUSER_REVERSE_MOTION_PROPERTY->state != INDIGO_BUSY_STATE) {
+		indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reversed ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+	}
 }
 
 static void ioptron_read_error(indigo_device *device) {
 	ioptron_motion_state(device, INDIGO_ALERT_STATE);
-	FOCUSER_TEMPERATURE_PROPERTY->state = FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-	indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+	if (FOCUSER_REVERSE_MOTION_PROPERTY->state != INDIGO_BUSY_STATE) {
+		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+	}
 }
 
 static void motion_finalizer(indigo_device *device) {
@@ -338,13 +344,17 @@ static void focuser_steps_handler(indigo_device *device) {
 static void focuser_reverse_motion_handler(indigo_device *device) {
 	FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_REVERSE_MOTION.on_change
-	bool requested = FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
+	// The status poll may overwrite the value between the copy of the request and this handler, the target keeps
+	// the request. On failure the switch shows the direction the focuser last reported.
+	bool requested = indigo_get_switch_target(FOCUSER_REVERSE_MOTION_PROPERTY, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME);
 	bool result = IS_CONNECTED && !PRIVATE_DATA->active && !PRIVATE_DATA->moving && !PRIVATE_DATA->uncertain && ioptron_status(device);
 	if (result && requested != PRIVATE_DATA->reversed) {
 		result = ioptron_command(device, false, ":FR#") && ioptron_status(device) && PRIVATE_DATA->reversed == requested;
 	}
-	indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reversed ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
-	if (!result) {
+	if (result) {
+		indigo_apply_switch_targets(FOCUSER_REVERSE_MOTION_PROPERTY);
+	} else {
+		indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reversed ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.FOCUSER_REVERSE_MOTION.on_change

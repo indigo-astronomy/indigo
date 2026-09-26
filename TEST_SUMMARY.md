@@ -147,6 +147,7 @@
 | focuser_focusdreampro | 2026-09-22 21:02 | 3.0.0.9 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 |  | 2026-09-22 21:05 | 3.0.0.9 | mac arm64 | AstroGadget FocusDreamPro | 15 / 15 | ✅ OK |
 | focuser_ioptron | 2026-09-21 19:06 | 3.0.0.8 | mac arm64 | simulator | 40 / 40 | ✅ OK |
+|  | 2026-09-27 00:32 | 3.0.0.10 | linux x64 | simulator | 42 / 42 | ✅ OK |
 | focuser_lacerta | 2026-09-21 17:33 | 3.0.0.7 | mac arm64 | simulator | 43 / 43 | ✅ OK |
 | focuser_lakeside | 2026-09-21 17:34 | 3.0.0.8 | mac arm64 | simulator | 34 / 34 | ✅ OK |
 | focuser_lunatico | 2026-09-26 21:10 | 3.0.0.15 | mac arm64 | simulator | 50 / 50 | ✅ OK |

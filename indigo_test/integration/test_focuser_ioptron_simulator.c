@@ -187,6 +187,11 @@ static int run_cases(const ioptron_test *cases, int count) {
 
 static const char *observed_names[] = { CONNECTION_PROPERTY_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_ABORT_MOTION_PROPERTY_NAME, "X_FOCUSER_ZERO_SYNC", FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_TEMPERATURE_PROPERTY_NAME };
 static atomic_uint revisions[8], motion_busy;
+static _Atomic(indigo_device *) focuser_device;
+static atomic_bool reverse_watch;
+static atomic_int reverse_results, reverse_first_state;
+static atomic_bool reverse_first_enabled;
+static atomic_uint reverse_first_temperature;
 
 static int observed_index(const char *name) {
 	for (int i = 0; i < 8; i++) {
@@ -200,6 +205,18 @@ static int observed_index(const char *name) {
 static indigo_result observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	indigo_result result = simulator_client_update_property(client, device, property, message);
 	int i = observed_index(property->name);
+	if (!strcmp(property->device, ioptron_focuser.device_name)) {
+		atomic_store(&focuser_device, device);
+	}
+	if (i == 6 && atomic_load(&reverse_watch) && property->state != INDIGO_BUSY_STATE && atomic_fetch_add(&reverse_results, 1) == 0) {
+		for (int j = 0; j < property->count; j++) {
+			if (!strcmp(property->items[j].name, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME)) {
+				atomic_store(&reverse_first_enabled, property->items[j].sw.value);
+			}
+		}
+		atomic_store(&reverse_first_temperature, atomic_load(&revisions[7]));
+		atomic_store(&reverse_first_state, property->state);
+	}
 	if (i >= 0) {
 		atomic_fetch_add(&revisions[i], 1);
 	}
@@ -580,6 +597,70 @@ cleanup:
 	driver_stop();
 }
 
+// A gate handler holds the device queue, so a request is copied and queued while the 1 s status poll comes due
+// behind it. The poll is an INDIGO_TASK_PRIORITY_TIME task and runs ahead of the queued change handler once the
+// gate ends.
+static atomic_bool gate_entered, gate_release;
+
+static void gate_handler(indigo_device *device) {
+	atomic_store(&gate_entered, true);
+	for (int i = 0; i < 5000 && !atomic_load(&gate_release); i++) {
+		indigo_usleep(1000);
+	}
+}
+
+// TGT-010, TGT-B05: a FOCUSER_REVERSE_MOTION request copied while the status poll comes due ahead of its handler
+// must still reach the focuser, and the poll (or, with the "poll_failure" profile, its read error path) must not
+// publish over the pending BUSY. The first result published after the request is the handler's ENABLED/OK.
+static void reverse_request_survives_poll(void) {
+	atomic_store(&gate_entered, false);
+	atomic_store(&gate_release, false);
+	atomic_store(&reverse_watch, false);
+	atomic_store(&focuser_device, NULL);
+	bool failure = !strcmp(current_profile, "poll_failure");
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(at_position(1000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!find_cached_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(atomic_load(&focuser_device) != NULL);
+	indigo_execute_handler(atomic_load(&focuser_device), gate_handler);
+	for (int i = 0; i < 300 && !atomic_load(&gate_entered); i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(atomic_load(&gate_entered));
+	atomic_store(&reverse_results, 0);
+	atomic_store(&reverse_watch, true);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, ioptron_focuser.device_name, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_REVERSE_MOTION_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	// The poll consumes the fault with its status read: a new temperature (published by the poll only) or a malformed
+	// reply (read error path).
+	SERIAL_CHECK_TRUE(failure ? fault("I", "malformed") : fault("temperature", "26815"));
+	// The poll comes due within 1 s while the queue is held.
+	indigo_usleep(1200000);
+	unsigned temperature = atomic_load(&revisions[7]);
+	atomic_store(&gate_release, true);
+	for (int i = 0; i < 300 && atomic_load(&reverse_results) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(atomic_load(&reverse_results) > 0);
+	printf("    first result after the request: state %d, ENABLED %d, poll ran first %d, %d :FR#\n", atomic_load(&reverse_first_state), atomic_load(&reverse_first_enabled), atomic_load(&reverse_first_temperature) > temperature, commands(":FR#"));
+	// The poll published FOCUSER_TEMPERATURE before the first FOCUSER_REVERSE_MOTION result, so it ran in the window.
+	SERIAL_CHECK_TRUE(atomic_load(&reverse_first_temperature) > temperature);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, atomic_load(&reverse_first_state));
+	SERIAL_CHECK_TRUE(atomic_load(&reverse_first_enabled));
+	SERIAL_CHECK_EQ_INT(1, commands(":FR#"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME)->sw.value);
+	// Later polls read the reversed direction back and keep it.
+	indigo_usleep(1200000);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_REVERSE_MOTION_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME)->sw.value);
+cleanup:
+	atomic_store(&reverse_watch, false);
+	atomic_store(&gate_release, true);
+	driver_stop();
+}
+
 int main(void) {
 	simulator_test_client.update_property = observe_update;
 	const ioptron_test tests[] = {
@@ -591,6 +672,8 @@ int main(void) {
 		{ "motion_read_failure", motion_failure, "normal" },
 		{ "stalled_motion", motion_failure, "stall" },
 		{ "pending_control", pending_control, "normal" },
+		{ "reverse_request_survives_poll", reverse_request_survives_poll, "normal" },
+		{ "reverse_request_survives_poll_failure", reverse_request_survives_poll, "poll_failure" },
 		{ "normal", capabilities, "normal" },
 		{ "iafs", capabilities, "iafs" },
 		{ "split", capabilities, "split" },
