@@ -1926,12 +1926,13 @@ static void mount_tracking_handler(indigo_device *device) {
 	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_TRACKING.on_change
 	// The status poll may overwrite the value between the copy of the request and this handler,
-	// the target keeps the requested value. On failure the next poll restores the real state.
-	bool on = MOUNT_TRACKING_ON_ITEM->sw.target;
+	// the target keeps the requested value. On failure the switch shows the last polled mount state.
+	bool on = indigo_get_switch_target(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM_NAME);
 	if (ioptron_set_tracking(device, on)) {
-		indigo_set_switch(MOUNT_TRACKING_PROPERTY, on ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
+		indigo_apply_switch_targets(MOUNT_TRACKING_PROPERTY);
 		MOUNT_STATE_TRACKING_ITEM->light.value = on ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 	} else {
+		indigo_set_switch(MOUNT_TRACKING_PROPERTY, PRIVATE_DATA->tracking ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
 		MOUNT_TRACKING_PROPERTY->state = MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);

@@ -754,8 +754,17 @@ INDIGO_EXTERN bool indigo_get_switch(indigo_property *property, const char *item
 /** Get switch item target, the value last requested by a client.
  A change handler reads the target instead of the value, because a status poll may overwrite the value
  between the moment the request is copied and the moment the handler runs; the poll never writes the target.
+ The target is internal and never sent over the protocol. It is safe only for requests guarded by BUSY
+ (INDIGO_COPY_VALUES_PROCESS_CHANGE); a request accepted while BUSY (the _ANYTIME variants) may overwrite
+ the targets while the handler reads them, one item of a one-of-many property at a time.
  */
 INDIGO_EXTERN bool indigo_get_switch_target(indigo_property *property, const char *item_name);
+
+/** Apply switch item targets to the values.
+ A change handler that sent the targets to the device calls it when the device accepted them. On failure
+ the handler sets the values to the state the device reports instead, e.g. with indigo_set_switch().
+ */
+INDIGO_EXTERN void indigo_apply_switch_targets(indigo_property *property);
 
 /** Copy item values from other property into property (optionally including property state).
  */

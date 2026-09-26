@@ -172,6 +172,23 @@ if (WHEEL_SLOT_ITEM->number.value == WHEEL_SLOT_ITEM->number.target) {
 indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 ```
 
+#### Switch Item Target
+Switch items have an internal *sw.target* as well, but unlike the numeric target it is never sent to the clients: they see exactly what they saw before, the requested value during <span style="color:orange">**BUSY**</span> and the device state afterwards. `indigo_property_copy_values()` writes the target together with the value (including the reset of the other items of a one-of-many property), `indigo_set_switch()` writes only the value.
+
+The target solves one race. A status poll on the device queue checks that the property is not <span style="color:orange">**BUSY**</span> and then writes the device state into the items, while a client request is copied on the bus thread. A request copied between that check and that write is overwritten, and a handler that reads *sw.value* then sends the device the poll's state instead of the request. A handler of a property that a poll writes therefore reads the request with `indigo_get_switch_target()`, calls `indigo_apply_switch_targets()` when the device accepted it, and on failure sets the values to the state the device reports before publishing <span style="color:red">**ALERT**</span>:
+
+```C
+bool on = indigo_get_switch_target(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM_NAME);
+if (set_tracking(device, on)) {
+	indigo_apply_switch_targets(MOUNT_TRACKING_PROPERTY);
+} else {
+	indigo_set_switch(MOUNT_TRACKING_PROPERTY, PRIVATE_DATA->tracking ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
+	MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+}
+```
+
+The poll keeps its <span style="color:orange">**BUSY**</span> check. Only requests guarded by <span style="color:orange">**BUSY**</span> (`INDIGO_COPY_VALUES_PROCESS_CHANGE`) may rely on the target: a request accepted while <span style="color:orange">**BUSY**</span> (the `_ANYTIME` variants) may overwrite the targets while the handler reads them. Selector properties that an action reads right after them on the bus thread (for example `MOUNT_ON_COORDINATES_SET`) stay synchronous and do not need the target. Text items have no target.
+
 ## Types of INDIGO Drivers
 
 There are three types of INDIGO drivers. The build system of INDIGO automatically produces the three of them:

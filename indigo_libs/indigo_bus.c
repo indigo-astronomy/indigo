@@ -1892,6 +1892,14 @@ bool indigo_get_switch_target(indigo_property *property, const char *item_name) 
 	return false;
 }
 
+void indigo_apply_switch_targets(indigo_property *property) {
+	assert(property != NULL);
+	assert(property->type == INDIGO_SWITCH_VECTOR);
+	for (int i = 0; i < property->count; i++) {
+		property->items[i].sw.value = property->items[i].sw.target;
+	}
+}
+
 void indigo_property_copy_values(indigo_property *property, indigo_property *other, bool with_state) {
 	assert(property != NULL);
 	assert(other != NULL);

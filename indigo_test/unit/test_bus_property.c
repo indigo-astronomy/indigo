@@ -393,6 +393,21 @@ static void switch_target_survives_a_poll_overwriting_the_value(void) {
 	indigo_release_property(property);
 }
 
+static void switch_targets_are_applied_after_a_poll_overwrote_the_values(void) {
+	indigo_property *property = init_switch_target_property(INDIGO_ONE_OF_MANY_RULE, INDIGO_RW_PERM);
+	indigo_property *request = init_switch_request("C", true);
+	indigo_property_copy_values(property, request, false);
+	indigo_set_switch(property, property->items + 0, true);
+	// the handler sent the targets and the device accepted them
+	indigo_apply_switch_targets(property);
+	for (int i = 0; i < 3; i++) {
+		ASSERT_TRUE(property->items[i].sw.value == (i == 2));
+		ASSERT_TRUE(property->items[i].sw.target == (i == 2));
+	}
+	indigo_release_property(request);
+	indigo_release_property(property);
+}
+
 static void switch_target_keeps_unnamed_items_for_any_of_many(void) {
 	indigo_property *property = init_switch_target_property(INDIGO_ANY_OF_MANY_RULE, INDIGO_RW_PERM);
 	indigo_property *request = init_switch_request("B", true);
@@ -427,6 +442,7 @@ int main(void) {
 		{ "numeric_copy_still_clamps_finite_inputs", numeric_copy_still_clamps_finite_inputs },
 		{ "switch_target_follows_init_and_copy", switch_target_follows_init_and_copy },
 		{ "switch_target_survives_a_poll_overwriting_the_value", switch_target_survives_a_poll_overwriting_the_value },
+		{ "switch_targets_are_applied_after_a_poll_overwrote_the_values", switch_targets_are_applied_after_a_poll_overwrote_the_values },
 		{ "switch_target_keeps_unnamed_items_for_any_of_many", switch_target_keeps_unnamed_items_for_any_of_many },
 		{ "switch_target_is_not_written_for_read_only_or_empty_requests", switch_target_is_not_written_for_read_only_or_empty_requests }
 	};

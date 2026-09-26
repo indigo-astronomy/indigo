@@ -754,13 +754,24 @@ status, while the request is copied on the bus thread. A request copied between 
 write is overwritten, and the handler sends the mount's current state instead of the request.
 Prototype: switch items carry an internal `sw.target`, written by `indigo_property_copy_values()`
 together with the value and never by `indigo_set_switch()` or sent over the protocol. The
-`MOUNT_TRACKING` handler sends the target and writes the value once the mount accepted it; the poll is
-unchanged. Unit coverage is in `indigo_test/unit/test_bus_property.c`.
+`MOUNT_TRACKING` handler reads the request with `indigo_get_switch_target()`, sends it, and applies it to
+the values with `indigo_apply_switch_targets()` once the mount accepted it. On failure it sets the switch
+to the last polled mount state before publishing ALERT, so a rejected request is not left displayed
+(`ioptron_option_command_failures_recover` checks it; without that write the case fails). The poll is
+unchanged. Unit coverage is in `indigo_test/unit/test_bus_property.c`, the driver-side rules in
+`indigo_docs/DRIVER_DEVELOPMENT_BASICS.md` ("Switch Item Target"), including that only BUSY guarded
+requests may rely on the target, not the `_ANYTIME` variants.
+
+Side question from the design note: `indigo_property_copy_targets()` does not copy `access_token` while
+`indigo_property_copy_values()` does. It has no functional effect: the lock check in `indigo_bus.c`
+compares the token of the incoming request before the driver sees it, and XML/JSON send a token only
+with a client's outgoing change request, so the token stored in a driver's property is only shown in
+bus traces. Left unchanged.
 
 Proof with an instrumented copy of the driver (not committed): `indigo_usleep(900000)` right after the
 poll's BUSY check, and in `check_tracking_rates()` the `MOUNT_TRACKING` OFF request sent 150 ms after a
 `:GLS#` poll. With the handler reading `sw.value` the mount receives `:ST1#` instead of `:ST0#` and
 `ioptron_tracking_rates_0205` / `_0300` fail at `wait_event(simulator, "ST0", 0)` in 6/6 runs; with
-`sw.target` both pass in 6/6 runs (Linux x64). Without the alignment the 900 ms sleep alone never hit
+`sw.target` both pass in 6/6 runs (Linux x64), again 6/6 with the final handler using the helpers. Without the alignment the 900 ms sleep alone never hit
 the window, because the case sends each request right after the previous handler's OK, before the next
 poll reaches its check.

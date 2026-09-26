@@ -1281,7 +1281,10 @@ static void ioptron_option_command_failures_recover(void) {
 	SERIAL_CHECK_TRUE(io_open_mount(&fixture, "0300", NULL, NULL));
 	SERIAL_CHECK_TRUE(inject(simulator, "ST1", "0", 1));
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	// The rejected request is not left displayed, the switch shows the mount's real state.
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
 	SERIAL_CHECK_TRUE(inject(simulator, "RT2", "0", 1));
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true, INDIGO_OK_STATE));
