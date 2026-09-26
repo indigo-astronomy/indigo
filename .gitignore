@@ -3,6 +3,7 @@
 **/.hg
 **/.hgignore
 **/.DS_Store
+**/__pycache__/
 **/GTAGS
 **/GPATH
 **/GRTAGS

@@ -43,6 +43,8 @@ import subprocess
 import sys
 import tempfile
 
+# Importing make_test_summary would otherwise leave tools/__pycache__ behind in the checkout.
+sys.dont_write_bytecode = True
 import make_test_summary
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
