@@ -571,6 +571,87 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// Changes the side flag of the simulated mount the way the hand controller does, through the
+// simulator's control file, and waits until the simulator has consumed the request.
+static bool set_simulator_side(external_serial_simulator *simulator, char side) {
+	char path[PATH_MAX], temporary[PATH_MAX];
+	if (!simulator_fixture_path(path, sizeof(path), "%s.control", simulator->ready_file, NULL) || !simulator_fixture_path(temporary, sizeof(temporary), "%s.inject", simulator->ready_file, NULL)) {
+		return false;
+	}
+	FILE *file = fopen(temporary, "w");
+	if (file == NULL) {
+		return false;
+	}
+	fprintf(file, "side %c\n", side);
+	fclose(file);
+	if (rename(temporary, path) != 0) {
+		return false;
+	}
+	for (int i = 0; i < 300 && access(path, F_OK) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	return access(path, F_OK) != 0;
+}
+
+// Several 0.5 s polls read the same side: none of them may publish MOUNT_SIDE_OF_PIER, while the
+// coordinates they read are published, which shows that the polls ran.
+static bool side_of_pier_is_quiet(const char *item_name) {
+	unsigned int revision = property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	unsigned int coordinates_revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	indigo_usleep(1600000);
+	if (property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) < coordinates_revision + 2) {
+		fprintf(stderr, "    the poll did not run\n");
+		return false;
+	}
+	if (property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME) != revision) {
+		fprintf(stderr, "    %s was published %u times while the side stayed the same\n", MOUNT_SIDE_OF_PIER_PROPERTY_NAME, property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME) - revision);
+		return false;
+	}
+	return cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, item_name);
+}
+
+static bool wait_for_side_of_pier_update(unsigned int revision, const char *item_name, const char *other_item_name) {
+	for (int i = 0; i < 30; i++) {
+		if (property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME) > revision && cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, item_name) && !cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, other_item_name)) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	fprintf(stderr, "    no update of %s to %s was received\n", MOUNT_SIDE_OF_PIER_PROPERTY_NAME, item_name);
+	return false;
+}
+
+// TGT-D08: the side of the mount can change while a client is connected, for example from the hand
+// controller. The poll reads it from the E reply and has to publish the change, once, and nothing
+// while the side stays the same. The client asks for redundant updates too, so a driver that
+// publishes the side on every poll is seen even though the bus would drop an unchanged update.
+static void temma_side_of_pier_change_is_published(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	simulator_test_client.force_property_updates = true;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_TEMMA_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&temma_mount, simulator.port));
+	driver_started = true;
+	// The simulator reports the telescope on the west side of the mount.
+	SERIAL_CHECK_TRUE(side_of_pier_is_quiet(MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	unsigned int revision = property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(set_simulator_side(&simulator, 'E'));
+	SERIAL_CHECK_TRUE(wait_for_side_of_pier_update(revision, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(side_of_pier_is_quiet(MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME));
+	revision = property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(set_simulator_side(&simulator, 'W'));
+	SERIAL_CHECK_TRUE(wait_for_side_of_pier_update(revision, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(side_of_pier_is_quiet(MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&temma_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+	simulator_test_client.force_property_updates = false;
+}
+
 static void temma_timeout_and_open_failures_recover(void) {
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
@@ -1080,6 +1161,7 @@ int main(void) {
 		{ "temma_protocol_failures_recover", temma_protocol_failures_recover },
 		{ "temma_position_units_are_hundredths_of_a_minute", temma_position_units_are_hundredths_of_a_minute },
 		{ "temma_position_reply_codes_and_trailer", temma_position_reply_codes_and_trailer },
+		{ "temma_side_of_pier_change_is_published", temma_side_of_pier_change_is_published },
 #ifndef __linux__
 		{ "temma_timeout_and_open_failures_recover", temma_timeout_and_open_failures_recover },
 #endif

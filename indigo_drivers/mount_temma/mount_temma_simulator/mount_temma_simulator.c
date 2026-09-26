@@ -103,6 +103,8 @@ static void usage(const char *name) {
 	printf("  --fault-reply <cmd> <r> Return one reply override for a protocol command\n");
 	printf("  --drop-reply <cmd>      Drop one reply for a protocol command\n");
 	printf("  -h, --help              Show this help and exit\n");
+	printf("Test control: a line \"side E\" or \"side W\" in <ready-file>.control changes the side of the\n");
+	printf("mount the way the hand controller does; the file is consumed when it is read.\n");
 }
 
 static bool parse_args(int argc, char *argv[]) {
@@ -260,6 +262,31 @@ static bool inject_fault(const char *command) {
 		send_line(options.fault_reply);
 	}
 	return true;
+}
+
+// The side flag of the mount can be changed from the hand controller while a client is
+// connected. A test models that with "side E" or "side W" in <ready-file>.control, which the
+// test renames into place so a request is never read half written.
+static void read_control(void) {
+	if (options.ready_file == NULL) {
+		return;
+	}
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.control", options.ready_file);
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return;
+	}
+	char line[64];
+	while (fgets(line, sizeof(line), file) != NULL) {
+		line[strcspn(line, "\r\n")] = 0;
+		if (!strcmp(line, "side E") || !strcmp(line, "side W")) {
+			state.telescope_side = line[5];
+			serial_simulator_trace_line(options.trace, "control", line);
+		}
+	}
+	fclose(file);
+	unlink(path);
 }
 
 static void update_slew(void) {
@@ -442,6 +469,7 @@ static void run_loop(void) {
 		FD_SET(serial_fd, &readfds);
 		struct timeval timeout = { .tv_sec = 0, .tv_usec = 100000 };
 		int selected = select(serial_fd + 1, &readfds, NULL, NULL, &timeout);
+		read_control();
 		if (selected < 0) {
 			if (errno == EINTR) {
 				continue;

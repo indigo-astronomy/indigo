@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000015
+#define DRIVER_VERSION       0x03000016
 #define DRIVER_NAME          "indigo_mount_temma"
 #define DRIVER_LABEL         "Takahashi Temma Mount"
 #define MOUNT_DEVICE_NAME    "Takahashi Temma Mount"
@@ -266,10 +266,17 @@ static bool temma_update_position(indigo_device *device) {
 	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->current_dec;
 	// F says the automatic introduction has just finished, not which side the mount is
 	// on, so the last known side is kept instead of being replaced by a value that is
-	// not a side at all. The GOTO state is followed through s.
+	// not a side at all. The GOTO state is followed through s. The mount changes side by
+	// itself, for example from the hand controller, so a change is published, but only a
+	// change: this runs on every poll. While connecting the property is not defined yet and
+	// is defined with the side read here.
 	if (PRIVATE_DATA->response[13] != 'F') {
+		bool changed = PRIVATE_DATA->telescope_side != PRIVATE_DATA->response[13];
 		PRIVATE_DATA->telescope_side = PRIVATE_DATA->response[13];
 		indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, PRIVATE_DATA->telescope_side == 'W' ? MOUNT_SIDE_OF_PIER_WEST_ITEM : MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+		if (changed && IS_CONNECTED) {
+			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+		}
 	}
 	return true;
 }

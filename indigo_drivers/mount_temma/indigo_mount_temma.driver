@@ -22,7 +22,7 @@ driver temma {
 	label = "Takahashi Temma Mount";
 	author = "";
 	copyright = "Copyright (c) 2017-2026 CloudMakers, s. r. o.";
-	version = 21;
+	version = 22;
 	serial {
 	}
 	include {
@@ -204,10 +204,17 @@ driver temma {
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->current_dec;
 			// F says the automatic introduction has just finished, not which side the mount is
 			// on, so the last known side is kept instead of being replaced by a value that is
-			// not a side at all. The GOTO state is followed through s.
+			// not a side at all. The GOTO state is followed through s. The mount changes side by
+			// itself, for example from the hand controller, so a change is published, but only a
+			// change: this runs on every poll. While connecting the property is not defined yet and
+			// is defined with the side read here.
 			if (PRIVATE_DATA->response[13] != 'F') {
+				bool changed = PRIVATE_DATA->telescope_side != PRIVATE_DATA->response[13];
 				PRIVATE_DATA->telescope_side = PRIVATE_DATA->response[13];
 				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, PRIVATE_DATA->telescope_side == 'W' ? MOUNT_SIDE_OF_PIER_WEST_ITEM : MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+				if (changed && IS_CONNECTED) {
+					indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+				}
 			}
 			return true;
 		}
