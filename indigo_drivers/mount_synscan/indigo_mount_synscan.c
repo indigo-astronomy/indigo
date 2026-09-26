@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -224,6 +224,8 @@ typedef struct {
 	int guide_dec_direction;
 	double current_tracking_rate;
 	bool southern_hemisphere;
+	bool ra_encoder;
+	bool dec_encoder;
 	//- data
 } synscan_private_data;
 
@@ -784,6 +786,7 @@ static bool synscan_perform_autohome(indigo_device *device) {
 	long dec_offset = lrint(10.0 / 360.0 * PRIVATE_DATA->dec_total_steps);
 	PRIVATE_DATA->abort_motion = false;
 	MOUNT_USE_RA_ENCODER_ITEM->sw.value = MOUNT_USE_DEC_ENCODER_ITEM->sw.value = false;
+	PRIVATE_DATA->ra_encoder = PRIVATE_DATA->dec_encoder = false;
 	ok = ok && synscan_ext_setting(device, SYNSCAN_AXIS_RA, SYNSCAN_EXT_TURN_ENCODER_OFF);
 	ok = ok && synscan_ext_setting(device, SYNSCAN_AXIS_DEC, SYNSCAN_EXT_TURN_ENCODER_OFF);
 	ok = ok && synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_RA, &PRIVATE_DATA->abort_motion);
@@ -848,8 +851,11 @@ static void synscan_clear_tracking_state(indigo_device *device) {
 		PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
 	}
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+	// A pending request owns the state, its handler reads the target and publishes the result
+	if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
+		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+	}
 }
 
 static long synscan_position_to_steps(long zero, long total, double position) {
@@ -1093,15 +1099,16 @@ static bool synscan_ext_setting(indigo_device *device, synscan_axis axis, long s
 static void synscan_ppec_training_timer(indigo_device *device) {
 	bool ok = synscan_ext_inquiry(device, SYNSCAN_AXIS_RA, SYNSCAN_EXT_GET_FEATURES, &PRIVATE_DATA->ra_features);
 	ok = ok && synscan_ext_inquiry(device, SYNSCAN_AXIS_DEC, SYNSCAN_EXT_GET_FEATURES, &PRIVATE_DATA->dec_features);
-	if (!ok) {
-		MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, "Failed to read PPEC training state.");
-	} else if ((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_IN_PPEC_TRAINING) || (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_IN_PPEC_TRAINING)) {
+	bool training = ok && ((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_IN_PPEC_TRAINING) || (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_IN_PPEC_TRAINING));
+	if (training) {
 		indigo_execute_handler_in(device, 1, synscan_ppec_training_timer);
-	} else {
+	} else if (ok) {
 		indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
-		MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, "Cleared PPEC training state.");
+	}
+	// A request copied while training ended owns the state, its handler reads the target and publishes the result
+	if (!training && MOUNT_PEC_TRAINING_PROPERTY->state != INDIGO_BUSY_STATE) {
+		MOUNT_PEC_TRAINING_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, ok ? "Cleared PPEC training state." : "Failed to read PPEC training state.");
 	}
 }
 
@@ -1556,8 +1563,11 @@ static void mount_equatorial_coordinates_finalizer(indigo_device *device) {
 		ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->current_tracking_rate);
 		PRIVATE_DATA->ra_axis_mode = ok ? SYNSCAN_AXIS_TRACKING : SYNSCAN_AXIS_IDLE;
 		indigo_set_switch(MOUNT_TRACKING_PROPERTY, ok ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
-		MOUNT_TRACKING_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+		// A pending request owns the state, its handler reads the target and publishes the result
+		if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
+			MOUNT_TRACKING_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+		}
 	} else if (ok) {
 		synscan_clear_tracking_state(device);
 	}
@@ -1635,6 +1645,7 @@ static void guider_guide_ra_finalizer(indigo_device *device) {
 	PRIVATE_DATA->guide_ra_deadline = 0;
 	PRIVATE_DATA->guide_ra_direction = 0;
 	PRIVATE_DATA->ra_axis_mode = ok ? SYNSCAN_AXIS_TRACKING : SYNSCAN_AXIS_IDLE;
+	// only the values, the target of a pulse requested while this one ends is read by its handler
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	GUIDER_GUIDE_RA_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
@@ -1651,6 +1662,7 @@ static void guider_guide_dec_finalizer(indigo_device *device) {
 	PRIVATE_DATA->guide_dec_deadline = 0;
 	PRIVATE_DATA->guide_dec_direction = 0;
 	PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_IDLE;
+	// only the values, the target of a pulse requested while this one ends is read by its handler
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_DEC_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
@@ -1863,8 +1875,12 @@ static void mount_tracking_handler(indigo_device *device) {
 	}
 	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_TRACKING.on_change
+	// The slew, park and home finalizers, the failed motion path, abort and auto home write the tracking state
+	// between the copy of the request and this handler, the target keeps the requested value. On failure the
+	// switch shows the state of the RA axis.
+	bool on = indigo_get_switch_target(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM_NAME);
 	bool ok = true;
-	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
+	if (on) {
 		PRIVATE_DATA->current_tracking_rate = synscan_tracking_rate(device);
 		PRIVATE_DATA->southern_hemisphere = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
 		ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->current_tracking_rate);
@@ -1874,7 +1890,10 @@ static void mount_tracking_handler(indigo_device *device) {
 		PRIVATE_DATA->current_tracking_rate = 0;
 		PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
 	}
-	if (!ok) {
+	if (ok) {
+		indigo_apply_switch_targets(MOUNT_TRACKING_PROPERTY);
+	} else {
+		indigo_set_switch(MOUNT_TRACKING_PROPERTY, PRIVATE_DATA->ra_axis_mode == SYNSCAN_AXIS_TRACKING ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	synscan_update_mount_state(device);
@@ -2022,9 +2041,20 @@ static void mount_polarscope_handler(indigo_device *device) {
 static void mount_use_encoders_handler(indigo_device *device) {
 	MOUNT_USE_ENCODERS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_USE_ENCODERS.on_change
-	bool ok = true;
-	ok = ok && synscan_ext_setting(device, SYNSCAN_AXIS_RA, MOUNT_USE_RA_ENCODER_ITEM->sw.value ? SYNSCAN_EXT_TURN_ENCODER_ON : SYNSCAN_EXT_TURN_ENCODER_OFF);
-	ok = ok && synscan_ext_setting(device, SYNSCAN_AXIS_DEC, MOUNT_USE_DEC_ENCODER_ITEM->sw.value ? SYNSCAN_EXT_TURN_ENCODER_ON : SYNSCAN_EXT_TURN_ENCODER_OFF);
+	// Auto home turns the encoders off and writes the values between the copy of a request and this handler,
+	// the targets keep the request. The values show what the mount accepted.
+	bool ra = indigo_get_switch_target(MOUNT_USE_ENCODERS_PROPERTY, MOUNT_USE_RA_ENCODER_ITEM_NAME);
+	bool dec = indigo_get_switch_target(MOUNT_USE_ENCODERS_PROPERTY, MOUNT_USE_DEC_ENCODER_ITEM_NAME);
+	bool ok = synscan_ext_setting(device, SYNSCAN_AXIS_RA, ra ? SYNSCAN_EXT_TURN_ENCODER_ON : SYNSCAN_EXT_TURN_ENCODER_OFF);
+	if (ok) {
+		PRIVATE_DATA->ra_encoder = ra;
+	}
+	ok = ok && synscan_ext_setting(device, SYNSCAN_AXIS_DEC, dec ? SYNSCAN_EXT_TURN_ENCODER_ON : SYNSCAN_EXT_TURN_ENCODER_OFF);
+	if (ok) {
+		PRIVATE_DATA->dec_encoder = dec;
+	}
+	MOUNT_USE_RA_ENCODER_ITEM->sw.value = PRIVATE_DATA->ra_encoder;
+	MOUNT_USE_DEC_ENCODER_ITEM->sw.value = PRIVATE_DATA->dec_encoder;
 	if (!ok) {
 		MOUNT_USE_ENCODERS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -2059,11 +2089,17 @@ static void mount_pec_handler(indigo_device *device) {
 static void mount_pec_training_handler(indigo_device *device) {
 	MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_PEC_TRAINING.on_change
-	bool ok = synscan_ext_setting(device, SYNSCAN_AXIS_RA, MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value ? SYNSCAN_EXT_START_PPEC_TRAINING : SYNSCAN_EXT_STOP_PPEC_TRAINING);
-	if (!ok) {
+	// The training timer writes STOPPED when training ends between the copy of a request and this handler,
+	// the target keeps the request. On failure the switch shows the training state the mount last reported.
+	bool start = indigo_get_switch_target(MOUNT_PEC_TRAINING_PROPERTY, MOUNT_PEC_TRAINIG_STARTED_ITEM_NAME);
+	if (synscan_ext_setting(device, SYNSCAN_AXIS_RA, start ? SYNSCAN_EXT_START_PPEC_TRAINING : SYNSCAN_EXT_STOP_PPEC_TRAINING)) {
+		indigo_apply_switch_targets(MOUNT_PEC_TRAINING_PROPERTY);
+		if (start) {
+			indigo_execute_handler_in(device, 1, synscan_ppec_training_timer);
+		}
+	} else {
+		indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, (PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_IN_PPEC_TRAINING) || (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_IN_PPEC_TRAINING) ? MOUNT_PEC_TRAINIG_STARTED_ITEM : MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
 		MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else if (MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value) {
-		indigo_execute_handler_in(device, 1, synscan_ppec_training_timer);
 	}
 	//- mount.MOUNT_PEC_TRAINING.on_change
 	indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
@@ -2358,6 +2394,9 @@ static void guider_connection_handler(indigo_device *device) {
 
 static void guider_guide_ra_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_RA.on_change
+	// the previous pulse's finalizer may have zeroed the values after the request was copied, the targets keep it
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target;
+	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target;
 	double duration = 0;
 	int direction = 0;
 	if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
@@ -2400,6 +2439,9 @@ static void guider_guide_ra_handler(indigo_device *device) {
 
 static void guider_guide_dec_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_DEC.on_change
+	// the previous pulse's finalizer may have zeroed the values after the request was copied, the targets keep it
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target;
+	GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target;
 	double duration = 0;
 	int direction = 0;
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {

@@ -105,6 +105,7 @@ typedef struct {
 	uint32_t dec_features;
 	const char *ready_file;
 	int stop_lag;
+	double ppec_training_seconds;
 } simulator_options;
 
 static simulator_options options = {
@@ -121,7 +122,8 @@ static simulator_options options = {
 	.ra_features = FEATURES,
 	.dec_features = FEATURES,
 	.ready_file = NULL,
-	.stop_lag = 0
+	.stop_lag = 0,
+	.ppec_training_seconds = 0
 };
 
 static const char *simulator_name = "mount_synscan";
@@ -137,6 +139,8 @@ static void usage(const char *name) {
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  --pcdirect              Start axes as initialized for PC Direct style probing\n");
 	printf("  --stop-lag <n>          Report an axis as still running for n status queries after a stop\n");
+	printf("  --ppec-training-seconds <s>  End PPEC training by itself s seconds after it started, as the\n");
+	printf("                          mount does after one worm revolution (default: never)\n");
 	printf("  --model-code <hex>      Motor controller model code for :e replies\n");
 	printf("  --ra-features <hex>     Override RA axis feature bits for :q1000100 replies\n");
 	printf("  --dec-features <hex>    Override DEC axis feature bits for :q2000100 replies\n");
@@ -227,6 +231,18 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.stop_lag = (int)value;
+		} else if (!strcmp(argv[i], "--ppec-training-seconds")) {
+			if (++i == argc) {
+				fprintf(stderr, "--ppec-training-seconds requires a value\n");
+				return false;
+			}
+			char *end = NULL;
+			double value = strtod(argv[i], &end);
+			if (end == argv[i] || *end != 0 || value < 0) {
+				fprintf(stderr, "--ppec-training-seconds requires a non-negative number\n");
+				return false;
+			}
+			options.ppec_training_seconds = value;
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -248,6 +264,12 @@ static volatile sig_atomic_t running = 1;
 // Command log for tests and reference traces, "<ready-file>.events": one "<monotonic seconds>\t<command>"
 // line per command the simulator executed, including commands whose reply is withheld.
 static FILE *events;
+
+static double monotonic_seconds(void) {
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return now.tv_sec + now.tv_nsec / 1e9;
+}
 
 static void record_event(const char *command) {
 	if (events != NULL) {
@@ -278,6 +300,8 @@ static uint32_t axis_brake[2] = { 0, 0 };
 static uint32_t axis_features[2] = { FEATURES, FEATURES };
 static int32_t axis_abs_position[2] = { 0, 0 };
 static int32_t axis_home_index[2] = { 0, 0 };
+// Monotonic time PPEC training started on each axis, for --ppec-training-seconds.
+static double axis_ppec_training_started[2] = { 0, 0 };
 static bool axis_home_index_hit[2] = { false, false };
 
 static void initialize_state(void) {
@@ -472,6 +496,7 @@ static char *process_command(char *buffer) {
 			switch (parse_24(buffer + 3)) {
 				case START_PPEC_TRAINING_CMD:
 					axis_features[axis] |= IN_PPEC_TRAINING;
+					axis_ppec_training_started[axis] = monotonic_seconds();
 					return "=";
 				case STOP_PPEC_TRAINING_CMD:
 					axis_features[axis] &= ~IN_PPEC_TRAINING;
@@ -531,6 +556,10 @@ static char *process_command(char *buffer) {
 				case GET_INDEXER_CMD:
 					return reply_24(axis_home_index[axis]);
 				case GET_FEATURES_CMD:
+					// The mount ends training by itself after one worm revolution
+					if (options.ppec_training_seconds > 0 && (axis_features[axis] & IN_PPEC_TRAINING) && monotonic_seconds() - axis_ppec_training_started[axis] >= options.ppec_training_seconds) {
+						axis_features[axis] &= ~IN_PPEC_TRAINING;
+					}
 					return reply_24(axis_features[axis]);
 			}
 			return "!0";

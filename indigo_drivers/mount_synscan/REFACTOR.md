@@ -1741,3 +1741,25 @@ the spread, as expected.
 - Hardware tests run: 32. Passed: 32 (version 9, macOS arm64: 16 on the AstroEQ 8.25 ESP32-S3 over
   USB serial, 16 on the Sky-Watcher AZ-GTi over UDP).
 - Defects found: 1 (SYNSCAN-D02). Fixed: 1. Driver version: 8 before, 9 after.
+
+## Switch and number targets (2026-09-26)
+
+Version 12, findings TGT-003, TGT-004, TGT-072 and the mount_synscan parts of TGT-B04 and TGT-B05 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. All confirmed in the source and reproduced against version 11.
+
+- TGT-003 / TGT-B05: `MOUNT_TRACKING` is written by `synscan_clear_tracking_state()` (park and home finalizers, `mount_motion_failed()`, abort, auto home) and by the slew finalizer when it starts tracking after a GOTO. The finalizers are `INDIGO_TASK_PRIORITY_TIME` tasks and run ahead of a queued tracking handler, so a request copied before them was overwritten, and they also published OK over the pending BUSY. The handler now reads the request with `indigo_get_switch_target()`, applies it with `indigo_apply_switch_targets()` when the axis command succeeded, and on failure shows the RA axis state (`ra_axis_mode`) with ALERT. The writers keep writing the value (the tracking light and `MOUNT_TRACK_RATE` read it as the current state) but set the state and publish only when the property is not BUSY. A tracking request queued before an abort is now carried out after it, as requested; before, the abort's write turned it into OFF by accident.
+- TGT-004: `synscan_ppec_training_timer` writes STOPPED when the mount ends training. A START copied while the timer came due was turned into STOP. The handler reads and applies the target, on failure shows the training state the mount last reported (`IN_PPEC_TRAINING` feature bits) with ALERT; the timer writes the value but publishes the state (OK or the read failure ALERT) only when no request is pending.
+- TGT-072: auto home turns the encoders off and writes `MOUNT_USE_ENCODERS`; an encoders request queued behind auto home was read as off. The handler sends the targets; the encoder state the mount accepted is kept in `PRIVATE_DATA->ra_encoder` / `dec_encoder` (also cleared by auto home) and written to the values, so a failed command shows the state still in effect with ALERT. Auto home still writes the values, which the coordinate readout uses.
+- TGT-B04: `GUIDER_GUIDE_RA`/`DEC` accept a pulse while one runs. A request copied while the previous pulse's finalizer ran, between the command that ends the pulse and the clearing of the values, was zeroed and the new handler dropped it with OK. The finalizers already cleared only `number.value`; the handlers now restore the values from the targets first, as in mount_simulator and mount_temma.
+
+Simulator: `--ppec-training-seconds <s>` ends PPEC training by itself `s` seconds after it started, as the mount does after one worm revolution; without it training never ends, as before.
+
+Regression tests in `integration/test_mount_synscan_simulator.c`:
+
+- `synscan_mount_tracking_request_survives_home_finalizer`: homing to the current position, a gate handler is queued from the home handler's busy MOUNT_STATE update, tracking ON is requested while the home finalizer comes due behind the gate. Version 11 ended OFF (the finalizer published OFF/OK over BUSY, the handler stopped the axis); version 12 ends ON.
+- `synscan_mount_pec_training_request_survives_training_end`: with `--ppec-training-seconds 0.5`, a new training is requested behind a gate while the training timer comes due. Version 11 sent `:W1010000` (stop) and ended STOPPED; version 12 sends `:W1000000` and ends STARTED.
+- `synscan_mount_encoders_request_survives_autohome`: auto home and an encoders request are queued behind a gate. Version 11 ended with both encoders off (last `:W1` was `050000`); version 12 turns them on after auto home.
+- `synscan_guider_pulse_survives_previous_finalizer`: the next pulse is requested from the debug log of the command the finalizer writes (`:I1` restoring the tracking period, `:K2` stopping DEC). Version 11 dropped it; version 12 runs it for 301 ms on both axes.
+
+All four failed against the version 11 driver and pass with version 12 on Linux x64; recorded run `tools/run_driver_test.py mount_synscan` 24/24 on Linux x64. macOS and hardware were not run for this change.
+
+Final test summary for this change: simulated tests run 24, passed 24 (Linux x64); hardware tests run 0, passed 0.

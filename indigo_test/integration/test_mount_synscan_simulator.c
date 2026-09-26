@@ -917,6 +917,289 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A gate handler holds the mount's device queue, so a request is copied and queued while a finalizer or timer comes
+// due behind it. Those are INDIGO_TASK_PRIORITY_TIME tasks and run ahead of a queued change handler once the gate ends.
+static _Atomic(indigo_device *) gate_device;
+static atomic_bool gate_entered, gate_release, gate_on_home_busy;
+
+static void gate_handler(indigo_device *device) {
+	atomic_store(&gate_entered, true);
+	for (int i = 0; i < 5000 && !atomic_load(&gate_release); i++) {
+		indigo_usleep(1000);
+	}
+}
+
+static void queue_gate(indigo_device *device) {
+	atomic_store(&gate_entered, false);
+	atomic_store(&gate_release, false);
+	indigo_execute_handler(device, gate_handler);
+}
+
+static indigo_result gate_device_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, synscan_mount.device_name)) {
+		atomic_store(&gate_device, device);
+		// The home handler publishes the busy home light before it schedules its finalizer, so a gate queued from here
+		// is in the queue before the finalizer comes due.
+		if (!strcmp(property->name, MOUNT_STATE_PROPERTY_NAME) && atomic_load(&gate_on_home_busy)) {
+			for (int i = 0; i < property->count; i++) {
+				if (!strcmp(property->items[i].name, MOUNT_STATE_HOME_ITEM_NAME) && property->items[i].light.value == INDIGO_BUSY_STATE) {
+					atomic_store(&gate_on_home_busy, false);
+					queue_gate(device);
+				}
+			}
+		}
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static void install_gate(void) {
+	atomic_store(&gate_device, NULL);
+	atomic_store(&gate_release, true);
+	atomic_store(&gate_on_home_busy, false);
+	simulator_test_client.update_property = gate_device_update;
+}
+
+static void remove_gate(void) {
+	atomic_store(&gate_release, true);
+	atomic_store(&gate_on_home_busy, false);
+	simulator_test_client.update_property = simulator_client_update_property;
+}
+
+static bool wait_for_gate(void) {
+	for (int i = 0; i < 2000 && !atomic_load(&gate_entered); i++) {
+		indigo_usleep(1000);
+	}
+	return atomic_load(&gate_entered);
+}
+
+static bool hold_device_queue(void) {
+	indigo_device *device = atomic_load(&gate_device);
+	if (device == NULL) {
+		fprintf(stderr, "    no update from '%s' was seen, the gate cannot be queued\n", synscan_mount.device_name);
+		return false;
+	}
+	queue_gate(device);
+	return wait_for_gate();
+}
+
+// TGT-003, TGT-B05: the home finalizer clears the tracking state. A tracking request copied while the finalizer comes
+// due ahead of its handler must still be carried out, and the finalizer must not publish OK over the pending BUSY.
+static void synscan_mount_tracking_request_survives_home_finalizer(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	install_gate();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	// Home at the current position, so the home finalizer finds the axes stopped on its first run
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	atomic_store(&gate_on_home_busy, true);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_gate());
+	// The finalizer has not run yet
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_HOME_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	unsigned int revision = property_revision(MOUNT_TRACKING_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_TRACKING_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	// The home finalizer comes due 0.2 s after the home handler and runs ahead of the tracking handler
+	indigo_usleep(500000);
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	remove_gate();
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-004: the PPEC training timer writes STOPPED once the mount ends training. A new training requested while the
+// timer comes due ahead of its handler must be started, not turned into a stop.
+static void synscan_mount_pec_training_request_survives_training_end(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	const char *arguments[] = { "--ppec-training-seconds", "0.5", NULL };
+	int mark = 0;
+	install_gate();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_PEC_TRAINING_PROPERTY_NAME, MOUNT_PEC_TRAINIG_STARTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PEC_TRAINING_PROPERTY_NAME, INDIGO_OK_STATE));
+	// The training timer is due 1 s after the start, the simulated mount ends training after 0.5 s
+	SERIAL_CHECK_TRUE(hold_device_queue());
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":", NULL, 0, &mark) >= 0);
+	unsigned int revision = property_revision(MOUNT_PEC_TRAINING_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_PEC_TRAINING_PROPERTY_NAME, MOUNT_PEC_TRAINIG_STARTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_PEC_TRAINING_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	indigo_usleep(1300000);
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_PEC_TRAINING_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	assert_switch_item_value(MOUNT_PEC_TRAINING_PROPERTY_NAME, MOUNT_PEC_TRAINIG_STARTED_ITEM_NAME, true);
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(&simulator, mark, ":W1010000", NULL, 0, NULL));
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, mark, ":W1000000", NULL, 0, NULL));
+cleanup:
+	remove_gate();
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-072: auto home turns the encoders off and writes MOUNT_USE_ENCODERS. An encoders request queued behind auto
+// home must still be sent to the mount afterwards.
+static void synscan_mount_encoders_request_survives_autohome(void) {
+	const char *encoder_items[] = {
+		MOUNT_USE_RA_ENCODER_ITEM_NAME,
+		MOUNT_USE_DEC_ENCODER_ITEM_NAME
+	};
+	bool encoder_values[] = {
+		true,
+		true
+	};
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	int mark = 0;
+	char last[32] = "";
+	install_gate();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(hold_device_queue());
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":", NULL, 0, &mark) >= 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, true));
+	unsigned int revision = property_revision(MOUNT_USE_ENCODERS_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property(&simulator_test_client, synscan_mount.device_name, MOUNT_USE_ENCODERS_PROPERTY_NAME, ARRAY_SIZE(encoder_items), encoder_items, encoder_values));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_USE_ENCODERS_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_AUTOHOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_USE_ENCODERS_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	assert_switch_item_value(MOUNT_USE_ENCODERS_PROPERTY_NAME, MOUNT_USE_RA_ENCODER_ITEM_NAME, true);
+	assert_switch_item_value(MOUNT_USE_ENCODERS_PROPERTY_NAME, MOUNT_USE_DEC_ENCODER_ITEM_NAME, true);
+	// Auto home turned the encoders off first, the queued request turned them on afterwards
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":W1050000", NULL, 0, NULL) > 0);
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":W10", last, sizeof(last), NULL) > 0);
+	SERIAL_CHECK_TRUE(!strcmp(last, ":W1040000"));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":W20", last, sizeof(last), NULL) > 0);
+	SERIAL_CHECK_TRUE(!strcmp(last, ":W2040000"));
+cleanup:
+	remove_gate();
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-B04: the request of the next pulse is copied on the bus while the previous pulse's finalizer runs, between the
+// command that ends the pulse and the clearing of the values. The I/O layer logs every write on the debug level from
+// the writing thread, so the next pulse is requested from the log of that command (":I1" restores the tracking period,
+// ":K2" stops DEC), which models the concurrent bus thread deterministically. The RA handler of the first pulse sends
+// one ":I1" of its own to start the pulse, which is skipped.
+static const char *next_pulse_property, *next_pulse_item, *next_pulse_command;
+static atomic_int next_pulse_skip;
+static atomic_bool next_pulse_armed, next_pulse_sent, next_pulse_watch;
+static _Atomic double next_pulse_started, next_pulse_finished;
+
+static void next_pulse_log_handler(indigo_log_levels level, const char *message) {
+	if (atomic_load(&next_pulse_armed) && strstr(message, next_pulse_command) != NULL && atomic_fetch_sub(&next_pulse_skip, 1) == 0 && atomic_exchange(&next_pulse_armed, false)) {
+		indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, next_pulse_property, next_pulse_item, 300);
+		atomic_store(&next_pulse_sent, true);
+		atomic_store(&next_pulse_watch, true);
+	} else if (level == INDIGO_LOG_ERROR) {
+		fprintf(stderr, "%s\n", message);
+	}
+}
+
+static indigo_result next_pulse_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, synscan_guider.device_name) && next_pulse_property != NULL && !strcmp(property->name, next_pulse_property)) {
+		// After the request: the finalizer of the finished pulse publishes OK, the handler of the next one BUSY, its finalizer OK
+		if (atomic_load(&next_pulse_watch)) {
+			if (property->state == INDIGO_BUSY_STATE && atomic_load(&next_pulse_started) == 0) {
+				atomic_store(&next_pulse_started, indigo_monotonic_time());
+			} else if (property->state == INDIGO_OK_STATE && atomic_load(&next_pulse_started) != 0 && atomic_load(&next_pulse_finished) == 0) {
+				atomic_store(&next_pulse_finished, indigo_monotonic_time());
+			}
+		}
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static bool pulse_survives_previous_finalizer(const char *property_name, const char *first_item, const char *next_item, const char *command, int skip) {
+	next_pulse_property = property_name;
+	next_pulse_item = next_item;
+	next_pulse_command = command;
+	atomic_store(&next_pulse_skip, skip);
+	atomic_store(&next_pulse_sent, false);
+	atomic_store(&next_pulse_watch, false);
+	atomic_store(&next_pulse_started, 0);
+	atomic_store(&next_pulse_finished, 0);
+	atomic_store(&next_pulse_armed, true);
+	if (indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, property_name, first_item, 100) != INDIGO_OK) {
+		return false;
+	}
+	for (int i = 0; i < 2000 && !atomic_load(&next_pulse_sent); i++) {
+		indigo_usleep(1000);
+	}
+	if (!atomic_load(&next_pulse_sent)) {
+		fprintf(stderr, "    %s: the finalizer of the 100 ms pulse did not send '%s'\n", property_name, command);
+		return false;
+	}
+	for (int i = 0; i < 2000 && atomic_load(&next_pulse_finished) == 0; i++) {
+		indigo_usleep(1000);
+	}
+	atomic_store(&next_pulse_watch, false);
+	if (atomic_load(&next_pulse_started) == 0) {
+		fprintf(stderr, "    %s: the pulse requested while the previous one ended was dropped\n", property_name);
+		return false;
+	}
+	if (atomic_load(&next_pulse_finished) == 0 || !wait_for_number_item_value(property_name, next_item, 0, 0.001)) {
+		return false;
+	}
+	double elapsed = (atomic_load(&next_pulse_finished) - atomic_load(&next_pulse_started)) * 1000.0;
+	printf("    %s %s pulse requested while the %s pulse ended ran %.0f ms\n", property_name, next_item, first_item, elapsed);
+	return elapsed > 250;
+}
+
+// TGT-B04: GUIDER_GUIDE_RA/DEC accept a pulse while one runs. A pulse requested while the previous one's finalizer
+// runs must still be started instead of being read as zero and reported OK.
+static void synscan_guider_pulse_survives_previous_finalizer(void) {
+	external_serial_simulator simulator = { 0 };
+	bool mount_connected = false;
+	indigo_log_levels log_level = indigo_get_log_level();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	mount_connected = true;
+	// RA pulses need a tracking mount
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_guider, NULL));
+	simulator_test_client.update_property = next_pulse_update;
+	indigo_log_message_handler = next_pulse_log_handler;
+	indigo_set_log_level(INDIGO_LOG_DEBUG);
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, "<- :I1", 1));
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, "<- :K2", 0));
+cleanup:
+	atomic_store(&next_pulse_armed, false);
+	atomic_store(&next_pulse_watch, false);
+	indigo_set_log_level(log_level);
+	indigo_log_message_handler = NULL;
+	simulator_test_client.update_property = simulator_client_update_property;
+	next_pulse_property = NULL;
+	if (context.connected) {
+		disconnect_serial_device(&synscan_guider);
+	}
+	if (mount_connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	if (indigo_test_mkdtemp_home(park_folder) == NULL) {
 		return 1;
@@ -932,10 +1215,14 @@ int main(void) {
 		{ "synscan_mount_reports_home_state_after_home", synscan_mount_reports_home_state_after_home },
 		{ "synscan_mount_stops_tracking_after_home", synscan_mount_stops_tracking_after_home },
 		{ "synscan_mount_autohome_finds_home_index", synscan_mount_autohome_finds_home_index },
+		{ "synscan_mount_tracking_request_survives_home_finalizer", synscan_mount_tracking_request_survives_home_finalizer },
+		{ "synscan_mount_pec_training_request_survives_training_end", synscan_mount_pec_training_request_survives_training_end },
+		{ "synscan_mount_encoders_request_survives_autohome", synscan_mount_encoders_request_survives_autohome },
 		{ "synscan_mount_reports_new_model_codes", synscan_mount_reports_new_model_codes },
 		{ "synscan_guider_passes_serial_compliance_checks", synscan_guider_passes_serial_compliance_checks },
 		{ "synscan_guider_finishes_a_dec_pulse_while_the_axis_decelerates", synscan_guider_finishes_a_dec_pulse_while_the_axis_decelerates },
 		{ "synscan_guider_guides_ra_without_stopping_tracking", synscan_guider_guides_ra_without_stopping_tracking },
+		{ "synscan_guider_pulse_survives_previous_finalizer", synscan_guider_pulse_survives_previous_finalizer },
 		{ "synscan_aux_passes_shutter_compliance_checks", synscan_aux_passes_shutter_compliance_checks },
 		{ "synscan_mount_disconnects_after_serial_loss", synscan_mount_disconnects_after_serial_loss },
 		{ "synscan_mount_reports_failed_serial_connection", synscan_mount_reports_failed_serial_connection },
