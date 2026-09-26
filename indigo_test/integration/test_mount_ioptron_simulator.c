@@ -262,6 +262,17 @@ static bool wait_mount_coordinates_not_busy(void) {
 	return false;
 }
 
+// Waits for a guide pulse ALERT on the axis (0 = RA, 1 = Dec) newer than the timestamp read before the request.
+static bool wait_guide_alerted(int axis, uint_fast64_t before) {
+	for (int i = 0; i < 100; i++) {
+		if (atomic_load(guide_alerted + axis) != before) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
 // Every operation waits for a fresh update, never a cached pre-request state.
 static bool io_switch(const simulator_driver_case *device, const char *property, const char *item, bool value, indigo_property_state state) {
 	unsigned int revision = property_revision(property);
@@ -1794,15 +1805,28 @@ static void ioptron_guider_transport_failure_and_recovery(void) {
 	io_fixture fixture = { 0 };
 	SERIAL_CHECK_TRUE(io_open_guider(&fixture, "0300", TRACKING_ARGS));
 	stop_external_serial_simulator(&fixture.simulator);
-	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100, INDIGO_ALERT_STATE));
-	unsigned int ra_revision = property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME);
-	unsigned int dec_revision = property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME);
+	// The pulse fails with ALERT on every platform, seen by the client callback because the property
+	// may be deleted right after it. A Linux pseudo-terminal then reports the hangup of its closed
+	// master (EIO), as a removed USB serial adapter does, and the driver drops the lost port and
+	// disconnects the guider. A macOS one keeps answering ENOTTY, the guider stays connected and
+	// every further pulse fails with ALERT without leaving a pulse behind.
+	uint_fast64_t alerted = atomic_load(guide_alerted + 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ioptron_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(wait_guide_alerted(0, alerted));
 	indigo_usleep(300000);
-	SERIAL_CHECK_EQ_INT(ra_revision, property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME));
-	SERIAL_CHECK_EQ_INT(dec_revision, property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME));
-	SERIAL_CHECK_TRUE(cached_number_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME) == 0);
-	SERIAL_CHECK_TRUE(cached_number_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME) == 0);
+	if (find_cached_property(GUIDER_GUIDE_RA_PROPERTY_NAME) == NULL) {
+		SERIAL_CHECK_TRUE(wait_for_simulator_connection_state(false));
+		SERIAL_CHECK_TRUE(find_cached_property(GUIDER_GUIDE_DEC_PROPERTY_NAME) == NULL);
+	} else {
+		SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+		unsigned int ra_revision = property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME);
+		unsigned int dec_revision = property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME);
+		indigo_usleep(300000);
+		SERIAL_CHECK_EQ_INT(ra_revision, property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME));
+		SERIAL_CHECK_EQ_INT(dec_revision, property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+		SERIAL_CHECK_TRUE(cached_number_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME) == 0);
+		SERIAL_CHECK_TRUE(cached_number_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME) == 0);
+	}
 	disconnect_serial_device(&ioptron_guider);
 	fixture.guider = false;
 	SERIAL_CHECK_TRUE(io_replace_simulator(&fixture, "0300", TRACKING_ARGS));

@@ -1541,11 +1541,12 @@ static void handle_command(const char *command) {
 	if (options.trace) {
 		fprintf(stderr, "-> :%s#\n", command);
 	}
+	// Only valid while the command is handled, the command lives in the caller's buffer.
 	current_command = command;
-	if (handle_identity(command) || handle_status(command) || handle_target(command) || handle_motion(command) || handle_park_home(command) || handle_rates(command) || handle_time_site(command)) {
-		return;
+	if (!(handle_identity(command) || handle_status(command) || handle_target(command) || handle_motion(command) || handle_park_home(command) || handle_rates(command) || handle_time_site(command))) {
+		unsupported();
 	}
-	unsupported();
+	current_command = NULL;
 }
 
 static void handle_byte(char ch, char *buffer, size_t *length) {

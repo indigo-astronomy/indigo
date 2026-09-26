@@ -721,3 +721,27 @@ requested time. Residual: in that window the poll still publishes OK with the mo
 the handler runs, so a client can see an early OK with the old time until the handler publishes the
 requested one; the instrumented run fails the case's immediate cached-value check for that reason.
 The production window is a few instructions, and no permanent case can hit it deterministically.
+
+## Linux simulator run (2026-09-26, 3.0.0.58)
+
+The first Linux x64 run of the suite failed two cases deterministically; both failed identically
+with 3.0.0.56, and macOS runs did not show them.
+
+- `ioptron_configured_baudrate_requires_product_reply`, driver defect: `:MountInfo#` was read with
+  `indigo_uni_read_section()`, which has no inter-byte timeout, so the injected two-byte reply `01`
+  waited for the port's termios `VTIME` of 5 s before failing. The case's 5 s connection wait expired
+  first and saw BUSY instead of ALERT; on real hardware every short or foreign reply to the product
+  probe cost 5 s. The reply is now read with `indigo_uni_read_section2()` and a 100 ms inter-byte
+  timeout, the same one the `#` terminated replies use.
+- `ioptron_guider_transport_failure_and_recovery`, test defect: after the simulator is killed, a Linux
+  pseudo-terminal answers `TIOCMGET` with EIO like a removed USB serial adapter, so
+  `indigo_uni_is_valid()` reports the lost port. The pulse is still answered with ALERT, but the driver
+  then closes the port and disconnects the guider, deleting `GUIDER_GUIDE_*` before the property cache
+  could show the ALERT. A macOS pseudo-terminal keeps answering ENOTTY and the guider stays connected.
+  The case now sees the ALERT through the client callback and accepts either outcome: a disconnected
+  guider without guide properties, or (macOS) further pulses failing with ALERT without a stale pulse.
+  Reconnect and recovery are checked in both cases. The Linux branch is verified here; the macOS branch
+  is the previous assertion sequence and still needs a macOS run.
+
+The simulator also had to clear `current_command` after each command to build with gcc
+(`-Werror=dangling-pointer`).

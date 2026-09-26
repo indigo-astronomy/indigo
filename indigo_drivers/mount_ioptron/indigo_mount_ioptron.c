@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000038
+#define DRIVER_VERSION       0x0300003A
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -245,7 +245,8 @@ static bool ioptron_simple_reply_command(indigo_device *device, char *command, .
 	}
 	if (result >= 0) {
 		if (!strcmp(command, ":MountInfo#")) {
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, 4, "", "", INDIGO_DELAY(1));
+			// A short or foreign reply must not wait for the port's VTIME between bytes.
+			result = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, 4, "", "", INDIGO_DELAY(1), INDIGO_DELAY(0.1));
 		} else if (!strcmp(command, ":CM#")) {
 			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, 1, "", "", INDIGO_DELAY(10));
 		} else {
