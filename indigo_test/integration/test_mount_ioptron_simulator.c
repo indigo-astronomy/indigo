@@ -230,6 +230,8 @@ static uint64_t io_monotonic_ns(void) {
 static atomic_uint_fast64_t guide_completed[2];
 static atomic_uint_fast64_t guide_alerted[2];
 static atomic_uint_fast64_t coordinates_ok_after;
+// Time of the last MOUNT_ABORT_MOTION ALERT, seen even when the property is deleted right after it.
+static atomic_uint_fast64_t abort_alerted;
 // Last published MOUNT_EQUATORIAL_COORDINATES state, for cases whose property cache tracks the guider.
 static atomic_int mount_coordinates_state;
 
@@ -240,6 +242,10 @@ static indigo_result timed_client_update(indigo_client *client, indigo_device *d
 			atomic_store(guide_completed + axis, io_monotonic_ns());
 		} else if (axis >= 0 && property->state == INDIGO_ALERT_STATE) {
 			atomic_store(guide_alerted + axis, io_monotonic_ns());
+		}
+	} else if (!strcmp(property->device, ioptron_mount.device_name) && !strcmp(property->name, MOUNT_ABORT_MOTION_PROPERTY_NAME)) {
+		if (property->state == INDIGO_ALERT_STATE) {
+			atomic_store(&abort_alerted, io_monotonic_ns());
 		}
 	} else if (!strcmp(property->device, ioptron_mount.device_name) && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
 		atomic_store(&mount_coordinates_state, property->state);
@@ -1947,7 +1953,20 @@ static void ioptron_transport_loss_and_fresh_session(void) {
 	SERIAL_CHECK_TRUE(io_goto(22, -60, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, "MS1", 0));
 	stop_external_serial_simulator(&fixture.simulator);
-	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	// The abort fails with ALERT on every platform, seen by the client callback because the property
+	// may be deleted right after it. A Linux pseudo-terminal reports the hangup of its closed master
+	// (EIO), as a removed USB serial adapter does, and the driver then disconnects every device of the
+	// lost port, the mount included. A macOS one keeps answering ENOTTY and the mount stays connected.
+	uint_fast64_t alerted = atomic_load(&abort_alerted);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, ioptron_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	for (int i = 0; i < 100 && atomic_load(&abort_alerted) == alerted; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(atomic_load(&abort_alerted) != alerted);
+	indigo_usleep(300000);
+	if (find_cached_property(MOUNT_ABORT_MOTION_PROPERTY_NAME) == NULL) {
+		SERIAL_CHECK_TRUE(wait_for_simulator_connection_state(false));
+	}
 	disconnect_serial_device(&ioptron_mount);
 	fixture.mount = false;
 	SERIAL_CHECK_TRUE(io_replace_simulator(&fixture, "0300", TRACKING_ARGS));

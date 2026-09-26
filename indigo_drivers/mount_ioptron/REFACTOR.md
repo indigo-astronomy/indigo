@@ -775,3 +775,15 @@ poll's BUSY check, and in `check_tracking_rates()` the `MOUNT_TRACKING` OFF requ
 `sw.target` both pass in 6/6 runs (Linux x64), again 6/6 with the final handler using the helpers. Without the alignment the 900 ms sleep alone never hit
 the window, because the case sends each request right after the previous handler's OK, before the next
 poll reaches its check.
+
+## Transport loss disconnects the mount too (2026-09-26, 3.0.0.60)
+
+Since the generator makes the master device its own `master_device` (8531b6c on `refactoring`),
+`indigo_disconnect_slave_devices()` called by `ioptron_validate_handle()` on a lost port disconnects
+the mount as well as the guider, as hand-written drivers always did. On Linux a pseudo-terminal
+reports the hangup of the killed simulator (EIO), so `ioptron_transport_loss_and_fresh_session` no
+longer saw the ABORT's ALERT in the property cache: the mount was disconnected and its properties
+deleted right after it (105/104 on Linux, macOS unaffected because its pseudo-terminal keeps answering
+ENOTTY). Driver behaviour is correct; the case now sees the ALERT through the client callback, like
+`ioptron_guider_transport_failure_and_recovery`, and accepts either a mount still connected or one the
+driver disconnected, before reconnecting to a fresh simulator.
