@@ -211,7 +211,8 @@
 |  | 2026-09-24 11:00 | 3.0.0.18 | mac arm64 | NexStar SE & NexStar+ HC | 36 / 36 | ✅ OK |
 |  | 2026-09-26 22:20 | 3.0.0.21 | mac arm64 | simulator | 40 / 40 | ✅ OK |
 | mount_pmc8 | 2026-09-24 23:45 | 3.0.0.12 | mac arm64 | iEXOS-100 | 38 / 38 | ✅ OK |
-|  | 2026-09-26 21:55 | 3.0.0.14 | mac arm64 | simulator | 19 / 19 | ✅ OK |
+|  | 2026-09-26 21:30 | 3.0.0.14 | linux arm64 | simulator | 19 / 19 | ✅ OK |
+|  | 2026-09-26 23:29 | 3.0.0.14 | mac arm64 | simulator | 19 / 19 | ✅ OK |
 | mount_rainbow | 2026-09-23 14:04 | 3.0.0.18 | mac arm64 | MountSim 2.3 (RainbowAstro RST135) | 13 / 13 | ✅ OK |
 |  | 2026-09-26 14:52 | 3.0.0.20 | mac arm64 | simulator | 15 / 15 | ✅ OK |
 | mount_simulator | 2026-09-24 17:55 | 3.0.0.17 | linux x64 | simulator | 16 / 16 | ✅ OK |
