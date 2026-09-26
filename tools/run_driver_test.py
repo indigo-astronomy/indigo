@@ -96,8 +96,11 @@ examples:
   see what would be recorded, without touching any file
     tools/run_driver_test.py mount_lx200 --dry-run
 
-  run the hardware suite, passing variables to make
-    tools/run_driver_test.py ccd_touptek --hw -- HW_DRIVER=indigo_ccd_touptek
+  run the hardware suite, telling it which camera to use; hardware suites take
+  their device, port or site from variables passed after '--', and print the
+  ones they need when they are missing
+    tools/run_driver_test.py ccd_atik --hw -- INDIGO_TEST_DEVICE="Atik One"
+    tools/run_driver_test.py mount_lx200 --hw -- MOUNT_LX200_HW_PORT=/dev/cu.usbserial-1
 
   run the hardware suite with its hot-plug case
     tools/run_driver_test.py ccd_touptek --hot-plug
@@ -375,11 +378,14 @@ def main():
 	if filtered and record:
 		print("run_driver_test: only some cases were selected, the run will not be recorded", file=sys.stderr)
 		record = False
+	if hardware and planned == 0:
+		print("run_driver_test: the hardware suite ran no case. It usually has to be told which device or port to use;"
+			" pass the variables its message above asks for after '--', e.g. '-- INDIGO_TEST_DEVICE=<model>' or '-- <NAME>_HW_PORT=<port>'", file=sys.stderr)
 	if test_type is None:
-		if record:
-			print("run_driver_test: no device of %s was connected, pass --type to record the run" % driver, file=sys.stderr)
+		if record or args.dry_run:
+			print("run_driver_test: no device of %s was connected, the run cannot be recorded without --type" % driver, file=sys.stderr)
 		record = False
-	if record or args.dry_run:
+	elif record or args.dry_run:
 		line = "%s %s %s %s %s %d/%d %s" % (timestamp, driver_version(driver_dir, driver), host_os(), host_architecture(), test_type, planned, passed, "OK" if ok else "Failed")
 		if make_test_summary.RECORD.match(line) is None:
 			fail("cannot record '%s', the type does not fit the record format" % line)

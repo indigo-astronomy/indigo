@@ -524,7 +524,10 @@ otherwise the cable has to be pulled by hand.
 
 Record driver test runs with `tools/run_driver_test.py` from the project root.
 It builds the driver and its tests, runs them, and writes the record and
-`TEST_SUMMARY.md` exactly as described below, for people and agents alike:
+`TEST_SUMMARY.md` exactly as described below, for people and agents alike. The
+final, recorded run of a driver is always made through the script, never by
+running test binaries or make targets by hand, so that every defect of the
+script, the harness or the test naming surfaces in ordinary use:
 
 ```bash
 python3 tools/run_driver_test.py focuser_dsd
