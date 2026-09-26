@@ -578,6 +578,41 @@ INDIGO_EXTERN indigo_result indigo_send_message(indigo_device *device, indigo_pr
  */
 INDIGO_EXTERN indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property);
 
+/** Identity of one attachment of a client to the bus. The bus gives a client a new, never reused generation every time
+    it is attached, so a reference taken while the client was attached never matches a later attachment, even of another
+    client allocated at the same address after the first one was detached and freed. Treat it as an opaque value.
+ */
+typedef struct {
+	indigo_client *client;						///< client pointer, NULL for no client
+	uint64_t generation;							///< attach generation, 0 for no client
+} indigo_client_ref;
+
+/** Return the reference of the current attachment of client, or a reference matching no client ({ NULL, 0 }) if client
+    is NULL or not attached. The pointer and the generation are read together under the bus mutex, so the result is
+    consistent also when called from change_property() (which the bus calls with its mutex locked).
+ */
+INDIGO_EXTERN indigo_client_ref indigo_current_client_ref(indigo_client *client);
+
+/** Register an operation that the device started on behalf of a client and that is potentially dangerous to leave
+    running if the client detaches from the bus (e.g. because its network connection was lost) before the operation ends.
+    client is the address of the device's record of the requesting client, taken by indigo_current_client_ref() when the
+    request was accepted; the record is written by the device's change_property() (which the bus calls with its mutex
+    locked) and dereferenced here under the same mutex, so no other lock is needed. If the recorded client is NULL or its
+    attachment has ended (it detached, even if a client was attached at the same address since then), nothing is
+    registered and INDIGO_NOT_FOUND is returned; the device should then stop the operation itself. The operation is identified by the device and the name of the property,
+    a later registration for the same property replaces the previous one (e.g. when another client takes the operation
+    over). If the client detaches, abort (copied at registration: device, name and items) is sent with the device's
+    current access token through indigo_change_property() and the entry is removed. The bus does not infer the end of the
+    operation from property updates or deletions: the device must call indigo_unregister_detach_abort() whenever the
+    operation ends or is stopped (including disconnect and detach). Entries left behind by a detached device are dropped
+    with a log message.
+ */
+INDIGO_EXTERN indigo_result indigo_register_detach_abort(indigo_device *device, const indigo_client_ref *client, indigo_property *property, indigo_property *abort);
+
+/** Unregister an operation registered by indigo_register_detach_abort(), e.g. when it ended or was stopped normally.
+ */
+INDIGO_EXTERN indigo_result indigo_unregister_detach_abort(indigo_device *device, const char *property_name);
+
 /** Broadcast property change request.
  */
 INDIGO_EXTERN indigo_result indigo_change_property(indigo_client *client, indigo_property *property);
