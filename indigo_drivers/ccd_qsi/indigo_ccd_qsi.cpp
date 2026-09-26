@@ -48,7 +48,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000014
+#define DRIVER_VERSION       0x03000015
 #define DRIVER_NAME          "indigo_ccd_qsi"
 #define DRIVER_LABEL         "QSI Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1280,7 +1280,7 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 			indigo_device *device = devices[j];
 			private_data = PRIVATE_DATA;
 			bool unplug_result = private_data->usbdev == dev;
-			if (!unplug_result && last_action != INDIGO_DRIVER_SHUTDOWN) {
+			if (last_action != INDIGO_DRIVER_SHUTDOWN) {
 				//+ sdk.unplug_match
 				std::string serials[QSICamera::MAXCAMERAS];
 				std::string descriptions[QSICamera::MAXCAMERAS];
@@ -1421,7 +1421,7 @@ indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *in
 #include "indigo_ccd_qsi.h"
 
 indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "QSI Camera", __FUNCTION__, 0x03000014, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "QSI Camera", __FUNCTION__, 0x03000015, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif
