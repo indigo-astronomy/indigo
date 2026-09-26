@@ -24,7 +24,7 @@ driver nexstar {
 	label = "Nexstar Mount";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>, generator migration by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 Rumen G. Bogdanovski";
-	version = 43;
+	version = 44;
 	serial {
 		pattern {
 			vendor = "Prolific";
