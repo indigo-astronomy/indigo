@@ -7,7 +7,7 @@ Status: hardware-free validation complete. Production defects `DRV-124` through 
 - The Guider Agent is a hand-written agent/filter driver tested through the public INDIGO bus with the production agent, filter and CCD simulator. The test boundary keeps real agent timers, image analysis, correction algorithms and configuration paths, with a test-local configuration directory.
 - `integration/test_agent_guider.c` contains fork-isolated cases. Each child starts INDIGO independently, owns temporary files/logs and performs cleanup; the parent removes child artifacts even after assertion failures, signals or watchdog timeouts.
 - Normal preview images come from the CCD simulator. A deterministic camera boundary supplies Gaussian-star or full-frame centroid fixtures, and a guider spy records pulse direction and duration, translating software pulse commands into image displacement at 10 px/s. This is software boundary evidence, not physical relay timing or real mount motion.
-- Covered behavior includes metadata and public properties, missing peer preconditions, one-shot and continuous preview, RAW/FITS restoration, retries, camera disconnection/reselection, star selection, detection/correction modes, pulse direction and thresholds, DEC modes, calibration, loss-of-star policy, dithering, PPEC, logging, configuration reload, additional instances, related-mount coordination and active shutdown.
+- Covered behavior includes metadata and public properties, missing peer preconditions, one-shot and continuous preview, RAW/FITS restoration, retries, camera disconnection/reselection, star selection, detection/correction modes, pulse direction and thresholds, DEC modes, calibration, loss-of-star policy, dithering, PPEC, Multi Kernel GP (own settings, statistics, reset and learned model, kept across switches between PPEC and MKGP), logging, configuration reload, additional instances, related-mount coordination and active shutdown.
 - Remaining gaps include physical mount/camera timing, long-period PPEC prediction/convergence, full-duration timeout paths, forced allocation/attach failure, real network/BLOB download transport, serial/USB behavior of underlying drivers and Linux/Windows execution.
 
 ## Recorded test evidence
@@ -25,6 +25,7 @@ Status: hardware-free validation complete. Production defects `DRV-124` through 
 - `DRV-133` zero-drift processing: 17 focused cases passed, including zero-drift statistics, zero-drift PPEC learning, correction response, PI integral history, PPEC reset, selection cases, dithering cases, transient-pulse recovery and pulse thresholds.
 - `DRV-145` empty-start extension: the Guider `empty start`, single preview, preview abort/restart, BUSY guards and reset defaults checks passed as part of an 11/11 Mount/Imager/Guider/shared-platesolver validation on macOS arm64, with macOS arm64/x86_64 builds.
 - The 2026-09-14 Sequencer sanitizer run reproduced `DRV-182`: frame metadata arriving before binning caused division by zero while caching selection dimensions. The positive-binning guard and simulator-guiding regression pass under UBSan.
+- 2026-09-26 Multi Kernel GP separation: MKGP got its own settings, statistics, `AGENT_GUIDER_RESET_MKGP` and learned model, separate from PPEC. Only the model of the selected mode takes part in a guiding session, so the other one keeps its stop time for the retain decision. The new `mkgp separate model, reset and mode switch` case covers MKGP-only settings/statistics, PPEC runs and resets leaving the MKGP model alone, MKGP model retention across a PPEC run, and deferred and idle MKGP resets. A mutation that made MKGP use the PPEC model failed the case as expected. The complete `make -C indigo_test test-agent-guider` run passed 89 / 89 cases on macOS arm64. `test-agent-scripting-sequencer` passed 25 / 25 in four of five runs; one run failed in an unidentified case that was not captured. The driver version is `0x03000031`.
 - The subsequent complete 88-case run passed 87 unaffected cases and reproduced deferred `DRV-130`. The proposed sine/cosine unit-vector projection was declined for now, so `dither RA projection preserves magnitude` remains the one known failure. The Sequencer calibration/guiding scenario passes because it does not assert RA-only projection magnitude. The driver version is `0x0300002F` for the independently fixed DRV-182 discovery issue.
 
 ## Acceptance boundary
@@ -36,7 +37,7 @@ Status: hardware-free validation complete. Production defects `DRV-124` through 
 
 ## Final test summary
 
-- Simulated/fake hardware-free tests: 87 / 88 passed. The sole failure, `dither RA projection preserves magnitude`, records the open and intentionally deferred DRV-130 finding. DRV-182's focused UBSan and Sequencer simulator-guiding regressions passed.
+- Simulated/fake hardware-free tests: 89 / 89 passed in the 2026-09-26 run. Before that, 87 / 88 passed. The sole failure, `dither RA projection preserves magnitude`, records the open and intentionally deferred DRV-130 finding. DRV-182's focused UBSan and Sequencer simulator-guiding regressions passed.
 - Hardware tests: 0 executed, 0 passed.
 
 ## Linux agent test run (2026-09-24)
