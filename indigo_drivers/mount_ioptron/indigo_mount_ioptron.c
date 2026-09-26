@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000037
+#define DRIVER_VERSION       0x03000038
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -1901,15 +1901,16 @@ static void mount_set_host_time_handler(indigo_device *device) {
 static void mount_utc_time_handler(indigo_device *device) {
 	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_UTC_TIME.on_change
-	time_t secs = indigo_isogmtotime(MOUNT_UTC_ITEM->text.value);
+	int offset = 0;
+	time_t secs = indigo_mount_get_utc_target(device, &offset);
 	if (secs == -1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Wrong date/time format!");
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else if (ioptron_set_utc(device, secs, offset)) {
+		indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+		sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", offset);
 	} else {
-		int offset = atoi(MOUNT_UTC_OFFSET_ITEM->text.value);
-		if (!ioptron_set_utc(device, secs, offset)) {
-			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
+		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- mount.MOUNT_UTC_TIME.on_change
 	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
@@ -2150,6 +2151,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_SET_HOST_TIME_PROPERTY, mount_set_host_time_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_UTC_TIME_PROPERTY, property)) {
+		//+ mount.MOUNT_UTC_TIME.on_change_request
+		// The status poll refreshes the items from the mount clock, so the handler sends the
+		// requested time recorded here instead of the copied items.
+		indigo_mount_set_utc_target(device, property);
+		//- mount.MOUNT_UTC_TIME.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_UTC_TIME_PROPERTY, mount_utc_time_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {

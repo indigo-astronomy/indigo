@@ -81,6 +81,46 @@ void indigo_mount_record_motion_client(indigo_device *device, indigo_client *cli
 	}
 }
 
+// The target is written on the bus thread and read by the handler on the device queue. Queuing the handler after the
+// write orders the two; the accesses are atomic for a request arriving while an earlier handler is still starting.
+#if defined(_MSC_VER)
+// MSVC volatile accesses of aligned scalars are atomic with acquire/release semantics (/volatile:ms)
+#define MOUNT_TARGET_STORE(type, target, value) (*(volatile type *)&(target) = (value))
+#define MOUNT_TARGET_LOAD(type, target) (*(volatile type *)&(target))
+#else
+#define MOUNT_TARGET_STORE(type, target, value) __atomic_store_n(&(target), (type)(value), __ATOMIC_RELEASE)
+#define MOUNT_TARGET_LOAD(type, target) __atomic_load_n(&(target), __ATOMIC_ACQUIRE)
+#endif
+
+void indigo_mount_set_utc_target(indigo_device *device, indigo_property *request) {
+	assert(device != NULL);
+	assert(request != NULL);
+	if (MOUNT_UTC_TIME_PROPERTY->state == INDIGO_BUSY_STATE) {
+		return;
+	}
+	time_t secs = -1;
+	int offset = atoi(MOUNT_UTC_OFFSET_ITEM->text.value);
+	for (int i = 0; i < request->count; i++) {
+		indigo_item *item = request->items + i;
+		if (!strcmp(item->name, MOUNT_UTC_ITEM->name)) {
+			secs = indigo_isogmtotime(item->text.value);
+		} else if (!strcmp(item->name, MOUNT_UTC_OFFSET_ITEM->name)) {
+			offset = atoi(item->text.value);
+		}
+	}
+	MOUNT_TARGET_STORE(int, MOUNT_CONTEXT->utc_offset_target, offset);
+	MOUNT_TARGET_STORE(time_t, MOUNT_CONTEXT->utc_target, secs);
+}
+
+time_t indigo_mount_get_utc_target(indigo_device *device, int *offset) {
+	assert(device != NULL);
+	time_t secs = MOUNT_TARGET_LOAD(time_t, MOUNT_CONTEXT->utc_target);
+	if (offset != NULL) {
+		*offset = MOUNT_TARGET_LOAD(int, MOUNT_CONTEXT->utc_offset_target);
+	}
+	return secs;
+}
+
 void indigo_mount_commit_motion_client(indigo_device *device, indigo_property *property) {
 	assert(device != NULL);
 	assert(property != NULL);

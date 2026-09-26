@@ -182,7 +182,7 @@
 |  | 2026-09-23 15:02 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron ZEQ25) | 8 / 8 | ✅ OK |
 |  | 2026-09-23 15:04 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM70) | 8 / 8 | ✅ OK |
 |  | 2026-09-23 18:32 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM120) | 8 / 8 | ✅ OK |
-|  | 2026-09-26 16:26 | 3.0.0.55 | mac arm64 | simulator | 105 / 105 | ✅ OK |
+|  | 2026-09-26 16:55 | 3.0.0.56 | mac arm64 | simulator | 105 / 105 | ✅ OK |
 | mount_lx200 | 2026-09-23 00:11 | 3.0.0.58 | mac arm64 | OnStepX | 33 / 33 | ✅ OK |
 |  | 2026-09-23 10:06 | 3.0.0.59 | mac arm64 | aGotino | 35 / 35 | ✅ OK |
 |  | 2026-09-23 11:17 | 3.0.0.60 | mac arm64 | OpenAstroTracker | 35 / 35 | ✅ OK |

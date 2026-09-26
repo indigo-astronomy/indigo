@@ -695,3 +695,29 @@ that race. Test defect, no driver change: the case now tracks the mount's coordi
 in the timed client callback (its property cache follows the guider) and waits for the
 preceding slew to leave BUSY before the next GOTO. With `--slew-rate 40` the old case fails
 deterministically at the same assertion and the new one passes.
+
+## UTC time request overwritten by the status poll (2026-09-26, 3.0.0.56)
+
+One full run while verifying the fix above failed `ioptron_settings_translation_0205` at
+`wait_event(simulator, d->utc_time, 0)`: a `UTC_TIME` request for 2026-09-15T23:30:45 with offset 2
+reached the mount as `:SL154912#` / `:SC260926#` / `:SG+120#`, the host clock. The status poll
+refreshes `UTC_TIME` from the mount clock on the device queue and guards the write with
+`MOUNT_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE`, but the request is copied on the bus thread.
+A request copied between the poll's check and its write is overwritten with the mount clock, the
+poll publishes OK, and the queued handler then sends the overwritten value. The settings cases
+send the request right after connecting, while the first poll is between its status read and
+that check, so they hit the few-instruction window more often than chance.
+
+The requested time is now recorded in the mount context by `indigo_mount_set_utc_target()` from
+`MOUNT_UTC_TIME.on_change_request`, parsed from the incoming request on the bus thread before it is
+copied and only while the property is not BUSY. The handler sends `indigo_mount_get_utc_target()`
+to the mount and writes it back into the items once the mount accepted it. The poll keeps its
+BUSY guard. No mutex is involved.
+
+Proof with an instrumented copy of the driver (400 ms sleep between the poll's check and its
+write, request sent 150 ms after a `:GLS#` poll): the 3.0.0.55 driver sends the host time and fails
+the 0205 and 0300 settings cases at the `:SL` / `:SUT` wait; with 3.0.0.56 the mount receives the
+requested time. Residual: in that window the poll still publishes OK with the mount clock before
+the handler runs, so a client can see an early OK with the old time until the handler publishes the
+requested one; the instrumented run fails the case's immediate cached-value check for that reason.
+The production window is a few instructions, and no permanent case can hit it deterministically.

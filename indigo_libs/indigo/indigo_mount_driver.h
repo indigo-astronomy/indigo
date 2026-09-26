@@ -537,6 +537,8 @@ typedef struct {
 	indigo_property *mount_state_property;									///< MOUNT_STATE property pointer
 	indigo_client_ref motion_dec_client;										///< attachment of the client that last requested MOUNT_MOTION_DEC, written in change_property() under the bus mutex, read only by the bus under its mutex
 	indigo_client_ref motion_ra_client;											///< attachment of the client that last requested MOUNT_MOTION_RA, written in change_property() under the bus mutex, read only by the bus under its mutex
+	time_t utc_target;																			///< UTC time of the last admitted MOUNT_UTC_TIME request, -1 if it was missing or unparsable, see indigo_mount_set_utc_target()
+	int utc_offset_target;																	///< UTC offset in hours of the last admitted MOUNT_UTC_TIME request, see indigo_mount_set_utc_target()
 } indigo_mount_context;
 
 /** Attach callback function.
@@ -571,6 +573,23 @@ INDIGO_EXTERN void indigo_mount_record_motion_client(indigo_device *device, indi
     the device disconnects or detaches. Generated drivers call it automatically.
  */
 INDIGO_EXTERN void indigo_mount_commit_motion_client(indigo_device *device, indigo_property *property);
+
+/** Record the time requested by a MOUNT_UTC_TIME change, call it from the MOUNT_UTC_TIME change branch of change_property()
+    with the incoming request, before its values are copied and processed. A driver whose status poll refreshes
+    MOUNT_UTC_ITEM and MOUNT_UTC_OFFSET_ITEM on the device queue cannot rely on the copied items: the poll's check of the
+    BUSY state and its write are not atomic with the copy on the bus thread, so the requested time can be replaced by
+    the mount clock before the handler reads it. The handler therefore sends the target recorded here (read it with
+    indigo_mount_get_utc_target()) and writes it back into the items once the mount accepted it.
+    The time and the offset are parsed from the request itself; a missing or unparsable time is recorded as -1, a
+    missing offset keeps the current MOUNT_UTC_OFFSET_ITEM. The target is recorded only while MOUNT_UTC_TIME_PROPERTY is
+    not BUSY, so a request the framework drops as BUSY does not replace the target of the handler it is waiting for.
+ */
+INDIGO_EXTERN void indigo_mount_set_utc_target(indigo_device *device, indigo_property *request);
+
+/** Get the target recorded by indigo_mount_set_utc_target(), call it from the MOUNT_UTC_TIME change handler.
+    Returns the requested UTC time, or -1 if the request carried no valid time; offset receives the UTC offset in hours.
+ */
+INDIGO_EXTERN time_t indigo_mount_get_utc_target(indigo_device *device, int *offset);
 
 /** Translate coordinates to native.
  */
