@@ -65,7 +65,6 @@
 | ccd_altair | 2026-09-21 20:54 | 3.0.0.49 | mac arm64 | Altair ALTAIRGP224C | 28 / 28 | ✅ OK |
 |  | 2026-09-21 13:49 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_asi | 2026-09-21 21:17 | 3.0.0.65 | mac arm64 | ASI294MC Pro | 28 / 28 | ✅ OK |
-|  | 2026-09-21 21:20 | 3.0.0.65 | mac arm64 | ASI120MC-S | 28 / 28 | ✅ OK |
 |  | 2026-09-26 19:50 | 3.0.0.68 | mac arm64 | ZWO ASI120MC-S | 28 / 28 | ✅ OK |
 |  | 2026-09-26 19:59 | 3.0.0.68 | mac arm64 | ZWO ASI120MC-S (hot-plug) | 32 / 32 | ✅ OK |
 |  | 2026-09-26 21:01 | 3.0.0.69 | mac arm64 | fake SDK | 52 / 52 | ✅ OK |
