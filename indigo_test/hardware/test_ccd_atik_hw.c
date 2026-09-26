@@ -397,7 +397,12 @@ static void hardware_workflows(void) {
 	printf("Driver %s version 0x%08x, process %zu-bit\n", info.name, info.version, sizeof(void *) * 8);
 	CHECK(driver_entry(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	initialized = true;
+	// Without INDIGO_TEST_DEVICE the suite runs against the only camera attached, like the ASI suite,
+	// and refuses to guess when there are more.
 	const char *requested = getenv("INDIGO_TEST_DEVICE");
+	if (requested == NULL) {
+		requested = "";
+	}
 	for (int attempt = 0; attempt < 6000; attempt++) {
 		bool found = false;
 		pthread_mutex_lock(&mutex);
@@ -409,6 +414,10 @@ static void hardware_workflows(void) {
 			break;
 		}
 		indigo_usleep(10000);
+	}
+	if (!*requested) {
+		// Let every attached camera appear before counting them.
+		indigo_usleep(2000000);
 	}
 	int matches = 0;
 	pthread_mutex_lock(&mutex);
@@ -422,6 +431,9 @@ static void hardware_workflows(void) {
 		}
 	}
 	pthread_mutex_unlock(&mutex);
+	if (matches != 1) {
+		fprintf(stderr, "Expected one camera, found %d; set INDIGO_TEST_DEVICE to a unique model/name substring.\n", matches);
+	}
 	CHECK(matches == 1);
 	printf("Selected %s\n", devices[camera].name);
 	CHECK(switch_value(camera, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
@@ -748,8 +760,8 @@ cleanup:
 }
 
 int main(int argc, char **argv) {
-	if (argc != 4 || strcmp(argv[1], "--run") || !getenv("INDIGO_TEST_DEVICE") || !*getenv("INDIGO_TEST_DEVICE")) {
-		fprintf(stderr, "Set INDIGO_TEST_DEVICE to a unique model/name substring and run --run <driver-library> <entry-symbol>. ATIK_HW_CASE optionally selects exposure, frame_types, geometry, settings, cooling, presets, wheel, reject, abort, guide, hotplug, hotplug_idle or hotplug_active.\n");
+	if (argc != 4 || strcmp(argv[1], "--run")) {
+		fprintf(stderr, "Run --run <driver-library> <entry-symbol>. INDIGO_TEST_DEVICE selects the camera by a unique model/name substring when more than one is attached. ATIK_HW_CASE optionally selects exposure, frame_types, geometry, settings, cooling, presets, wheel, reject, abort, guide, hotplug, hotplug_idle or hotplug_active.\n");
 		return 2;
 	}
 	library_path = argv[2];
