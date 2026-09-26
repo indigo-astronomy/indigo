@@ -47,5 +47,5 @@ Driver is tested and verified with:
 2026-09-23 15:01 3.0.0.53 mac arm64 MountSim 2.3 (iOptron SmartEQ) 8/8 OK
 2026-09-23 15:02 3.0.0.53 mac arm64 MountSim 2.3 (iOptron ZEQ25) 8/8 OK
 2026-09-23 15:04 3.0.0.53 mac arm64 MountSim 2.3 (iOptron CEM70) 8/8 OK
-2026-09-23 15:10 3.0.0.53 mac arm64 simulator 108/108 OK
 2026-09-23 18:32 3.0.0.53 mac arm64 MountSim 2.3 (iOptron CEM120) 8/8 OK
+2026-09-26 14:52 3.0.0.55 mac arm64 simulator 105/104 Failed
