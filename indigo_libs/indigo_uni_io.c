@@ -596,6 +596,25 @@ static bool configure_tty_options(struct termios *options, const char *baudrate)
 	return true;
 }
 
+#if defined(INDIGO_LINUX)
+
+// A Linux pseudo-terminal cannot carry parity: the kernel clears PARENB and forces CS8 on every
+// TCSETS. glibc's tcsetattr() reads the settings back and fails with EINVAL when none of the
+// requested changes took effect, so the first open of a PTY with parity succeeds, because the
+// speed and modes change, and every later open of the same PTY fails, because they are already
+// in place and only the parity is still missing. Accept the settings when the character format
+// is the only difference, as the first open already does.
+static bool tty_ignores_only_character_format(int fd, const struct termios *requested) {
+	struct termios actual;
+	if (tcgetattr(fd, &actual) == -1) {
+		return false;
+	}
+	tcflag_t format = CSIZE | PARENB | PARODD;
+	return actual.c_iflag == requested->c_iflag && actual.c_oflag == requested->c_oflag && actual.c_lflag == requested->c_lflag && (actual.c_cflag & ~format) == (requested->c_cflag & ~format) && cfgetispeed(&actual) == cfgetispeed(requested) && cfgetospeed(&actual) == cfgetospeed(requested) && actual.c_cc[VMIN] == requested->c_cc[VMIN] && actual.c_cc[VTIME] == requested->c_cc[VTIME];
+}
+
+#endif
+
 static indigo_uni_handle *open_tty(const char *serial, const struct termios *options, int log_level) {
 	if (!strncmp(serial, "auto://", 7)) {
 		serial += 7;
@@ -605,7 +624,18 @@ static indigo_uni_handle *open_tty(const char *serial, const struct termios *opt
 		indigo_error("Failed to open %s (%s)", serial, strerror(errno));
 		return NULL;
 	}
-	if (tcsetattr(fd, TCSANOW, options) == -1) {
+	int result = tcsetattr(fd, TCSANOW, options);
+#if defined(INDIGO_LINUX)
+	if (result == -1 && errno == EINVAL) {
+		if (tty_ignores_only_character_format(fd, options)) {
+			indigo_log_on_level(log_level & 0xFFF, "%s ignores the requested parity or character size", serial);
+			result = 0;
+		} else {
+			errno = EINVAL;
+		}
+	}
+#endif
+	if (result == -1) {
 		indigo_error("Failed to open %s (%s)", serial, strerror(errno));
 		close(fd);
 		return NULL;

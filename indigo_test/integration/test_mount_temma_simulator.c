@@ -831,17 +831,23 @@ static bool measure_pulse(const char *trace_path, const char *property_name, con
 	if (start < 0 || !pulse_and_wait(property_name, item_name, requested)) {
 		return false;
 	}
-	int count = load_trace(trace_path, after, ARRAY_SIZE(after));
-	int on = -1;
-	for (int i = start; i < count; i++) {
-		if (after[i].length == 2 && after[i].bytes[0] == 'M') {
-			if (on < 0 && (after[i].bytes[1] & direction_bit)) {
-				on = i;
-			} else if (on >= 0 && !(after[i].bytes[1] & direction_bit)) {
-				*actual = (after[i].timestamp - after[on].timestamp) * 1000;
-				return isfinite(*actual) && *actual >= 0;
+	// The driver publishes OK as soon as it has written the closing relay mask, which can be before
+	// the simulator has read that command and recorded it, so the trace is polled for it. The
+	// pulse length comes from the simulator's receive timestamps and does not depend on the wait.
+	for (int attempt = 0; attempt < 50; attempt++) {
+		int count = load_trace(trace_path, after, ARRAY_SIZE(after));
+		int on = -1;
+		for (int i = start; i < count; i++) {
+			if (after[i].length == 2 && after[i].bytes[0] == 'M') {
+				if (on < 0 && (after[i].bytes[1] & direction_bit)) {
+					on = i;
+				} else if (on >= 0 && !(after[i].bytes[1] & direction_bit)) {
+					*actual = (after[i].timestamp - after[on].timestamp) * 1000;
+					return isfinite(*actual) && *actual >= 0;
+				}
 			}
 		}
+		indigo_usleep(20000);
 	}
 	return false;
 }
