@@ -169,7 +169,7 @@
 | gps_nmea | 2026-09-22 21:28 | 3.0.0.20 | mac arm64 | simulator | 5 / 5 | ✅ OK |
 |  | 2026-09-22 21:38 | 3.0.0.20 | mac arm64 | u-blox 7 | 9 / 9 | ✅ OK |
 | gps_simulator | 2026-09-21 17:06 | 3.0.0.9 | mac arm64 | simulator | 4 / 4 | ✅ OK |
-| guider_asi | 2026-09-21 10:47 | 3.0.0.10 | mac arm64 | fake SDK | 16 / 16 | ✅ OK |
+| guider_asi | 2026-09-26 19:49 | 3.0.0.13 | mac arm64 | fake SDK | 16 / 16 | ✅ OK |
 | guider_cgusbst4 | 2026-09-21 23:52 | 3.0.0.7 | mac arm64 | CG-USB-ST4 | 10 / 10 | ✅ OK |
 |  | 2026-09-21 23:53 | 3.0.0.7 | mac arm64 | simulator | 5 / 5 | ✅ OK |
 | guider_gpusb | 2026-09-21 23:31 | 3.0.0.10 | mac arm64 | GPUSB | 10 / 10 | ✅ OK |

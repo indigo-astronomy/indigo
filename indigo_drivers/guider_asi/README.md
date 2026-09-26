@@ -27,4 +27,4 @@ Driver is developed without the physical hardware and tested by ZWO with:
 
 ## Testing
 
-2026-09-21 10:47 3.0.0.10 mac arm64 fake SDK 16/16 OK
+2026-09-26 19:49 3.0.0.13 mac arm64 fake SDK 16/16 OK
