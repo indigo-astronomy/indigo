@@ -522,6 +522,22 @@ otherwise the cable has to be pulled by hand.
 
 ## Recording Test Runs
 
+Record driver test runs with `tools/run_driver_test.py` from the project root.
+It builds the driver and its tests, runs them, and writes the record and
+`TEST_SUMMARY.md` exactly as described below, for people and agents alike:
+
+```bash
+python3 tools/run_driver_test.py focuser_dsd
+python3 tools/run_driver_test.py ccd_touptek --hw -- HW_DRIVER=indigo_ccd_touptek
+```
+
+Run it without arguments for the full usage. A hardware-free run executes every
+test in `INTEGRATION_TESTS` named after the driver (see "Test Naming"); a
+hardware run executes `test-<driver>-hw` and records the model of the device
+the suite connected to, several models sorted and joined with `and`. Use
+`--type` only where the detected name is not the one to record. Record by hand,
+following the rules below, only a run the script cannot perform.
+
 After every driver test run, record the outcome in that driver's `README.md`:
 
 - Add a `## Testing` section if the file does not have one yet.

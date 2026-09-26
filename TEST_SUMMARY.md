@@ -226,7 +226,7 @@
 |  | 2026-09-24 22:46 | 3.0.0.4 | mac arm64 | simulator | 29 / 29 | ✅ OK |
 | polaralign_simulator | 2026-09-21 10:53 | 3.0.0.4 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | rotator_asi | 2026-09-21 14:41 | 3.0.0.7 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
-| rotator_falcon | 2026-09-21 10:51 | 3.0.0.9 | mac arm64 | simulator | 13 / 13 | ✅ OK |
+| rotator_falcon | 2026-09-26 19:06 | 3.0.0.10 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 | rotator_lunatico | 2026-09-21 17:09 | 3.0.0.12 | mac arm64 | simulator | 27 / 27 | ✅ OK |
 | rotator_optec | 2026-09-21 12:43 | 3.0.0.4 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | rotator_simulator | 2026-09-21 10:52 | 3.0.0.7 | mac arm64 | simulator | 9 / 9 | ✅ OK |
@@ -234,7 +234,7 @@
 | wheel_asi | 2026-09-21 00:42 | 3.0.0.15 | mac arm64 | ASI EFW mini | 16 / 16 | ✅ OK |
 |  | 2026-09-21 14:16 | 3.0.0.16 | mac arm64 | fake SDK | 5 / 5 | ✅ OK |
 | wheel_astroasis | 2026-09-21 14:16 | 3.0.0.5 | mac arm64 | fake SDK | 10 / 10 | ✅ OK |
-| wheel_atik | 2026-09-21 14:17 | 3.0.0.6 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
+| wheel_atik | 2026-09-26 19:06 | 3.0.0.7 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
 | wheel_fli | 2026-09-21 14:17 | 3.0.0.11 | mac arm64 | fake SDK | 14 / 14 | ✅ OK |
 | wheel_indigo | 2026-09-21 17:13 | 3.0.0.7 | mac arm64 | simulator | 5 / 5 | ✅ OK |
 | wheel_manual | 2026-09-21 10:55 | 3.0.0.6 | mac arm64 | simulator | 2 / 2 | ✅ OK |

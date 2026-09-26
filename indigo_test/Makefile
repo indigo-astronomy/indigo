@@ -1073,6 +1073,12 @@ $(INTEGRATION_BUILD)/test_aux_usbdp_simulator: integration/test_aux_usbdp_simula
 $(INTEGRATION_BUILD)/test_polaralign_mlastro_simulator: integration/test_polaralign_mlastro_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/polaralign_mlastro_simulator $(BUILD_DRIVERS)/indigo_polaralign_mlastro.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(POLARALIGN_MLASTRO_SIMULATOR_TEST_LDFLAGS)
 
+# Print the value of a variable, e.g. 'make -s print-variable VAR=INTEGRATION_TESTS',
+# which is how tools/run_driver_test.py finds the tests of a driver.
+.PHONY: print-variable
+print-variable:
+	@echo $($(VAR))
+
 test-clean:
 	rm -rf $(TEST_BUILD)
 
