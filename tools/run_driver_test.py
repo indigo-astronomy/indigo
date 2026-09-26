@@ -7,8 +7,8 @@
 # indigo_test/AGENTS.md describes it, then regenerates TEST_SUMMARY.md with
 # tools/make_test_summary.py. Nothing is committed.
 #
-# Hardware-free run (the default): runs every test in INTEGRATION_TESTS that is
-# named after the driver, 'test_<driver>' or 'test_<driver>_<kind>', without the
+# Hardware-free run (the default): runs every test in INTEGRATION_TESTS or
+# OPT_IN_DRIVER_TESTS that is named after the driver, 'test_<driver>' or 'test_<driver>_<kind>', without the
 # sanitizer builds. The run is a 'fake SDK' run when one of the tests stands in
 # for a vendor SDK or system interface (kind sdk, usb, hid, sysfs or ica), and a
 # 'simulator' run otherwise.
@@ -191,10 +191,18 @@ def build_driver(driver_dir):
 
 
 def driver_tests(driver):
-	"""Return the hardware-free test binaries of the driver, relative to indigo_test."""
-	output = subprocess.run(["make", "-s", "print-variable", "VAR=INTEGRATION_TESTS"], cwd=TEST_DIR, capture_output=True, text=True, check=True).stdout
+	"""Return the hardware-free test binaries of the driver, relative to indigo_test.
+
+	They come from INTEGRATION_TESTS and from OPT_IN_DRIVER_TESTS, the driver tests
+	test-integration leaves out because they open loopback sockets.
+	"""
+	output = ""
+	for variable in ("INTEGRATION_TESTS", "OPT_IN_DRIVER_TESTS"):
+		output += " " + subprocess.run(["make", "-s", "print-variable", "VAR=" + variable], cwd=TEST_DIR, capture_output=True, text=True, check=True).stdout
 	tests = []
 	for path in output.split():
+		if path in tests:
+			continue
 		name = os.path.basename(path)
 		if name != "test_" + driver and not name.startswith("test_%s_" % driver):
 			continue

@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_mount_pmc8"
 #define DRIVER_LABEL         "PMC Eight Mount"
 #define MOUNT_DEVICE_NAME    "Mount PMC Eight"
@@ -308,9 +308,7 @@ static bool pmc8_configure_mount(indigo_device *device) {
 }
 
 static void pmc8_close(indigo_device *device) {
-	if (device->master_device != NULL) {
-		device = device->master_device;
-	}
+	device = device->master_device;
 	if (PRIVATE_DATA->handle != NULL) {
 		// Closing the serial port drops DTR, which reboots the controller: it stops both axes where
 		// they are and clears its position counters. The position read here is therefore where
@@ -1357,6 +1355,7 @@ indigo_result indigo_mount_pmc8(indigo_driver_action action, indigo_driver_info 
 			private_data = (pmc8_private_data *)indigo_safe_malloc(sizeof(pmc8_private_data));
 			mount = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 			mount->private_data = private_data;
+			mount->master_device = mount;
 			indigo_attach_device(mount);
 			guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;

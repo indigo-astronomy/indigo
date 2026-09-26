@@ -33,4 +33,4 @@ Driver is developed and tested with SkyPortal WiFi module and NextStar 4SE mount
 2026-09-24 00:12 3.0.0.18 linux arm64 simulator 40/40 OK
 2026-09-24 05:44 3.0.0.18 linux arm64 NexStar SE & NexStar+ HC 36/36 OK
 2026-09-24 11:00 3.0.0.18 mac arm64 NexStar SE & NexStar+ HC 36/36 OK
-2026-09-26 14:52 3.0.0.20 mac arm64 simulator 40/40 OK
+2026-09-26 22:20 3.0.0.21 mac arm64 simulator 40/40 OK

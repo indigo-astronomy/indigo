@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_focuser_prodigy"
 #define DRIVER_LABEL         "PegasusAstro Prodigy Microfocuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus Prodigy Focuser"
@@ -905,6 +905,7 @@ indigo_result indigo_focuser_prodigy(indigo_driver_action action, indigo_driver_
 			private_data = (prodigy_private_data *)indigo_safe_malloc(sizeof(prodigy_private_data));
 			focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
+			focuser->master_device = focuser;
 			indigo_attach_device(focuser);
 			aux = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;

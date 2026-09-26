@@ -120,7 +120,9 @@ indigo_result sx_test_attach(indigo_device *device) {
 		atomic_store(&attach_entered, 1);
 		for (int i = 0; i < 5000 && !atomic_load(&attach_release); i++) { indigo_usleep(1000); }
 	}
-	if (atomic_load(&fail_attach) == (device->master_device ? 2 : 1)) { return INDIGO_FAILED; }
+	// The master device is its own master_device; only the guider has another one.
+	bool slave = device->master_device && device->master_device != device;
+	if (atomic_load(&fail_attach) == (slave ? 2 : 1)) { return INDIGO_FAILED; }
 	indigo_result result = indigo_attach_device(device);
 	if (result == INDIGO_OK) {
 		for (int i = 0; i < ARRAY_SIZE(logical_devices); i++) {

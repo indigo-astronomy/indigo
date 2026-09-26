@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300003A
+#define DRIVER_VERSION       0x0300003B
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -325,7 +325,7 @@ static bool ioptron_validate_handle(indigo_device *device) {
 	}
 	if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
 		ioptron_close(device);
-		indigo_execute_handler(device->master_device != NULL ? device->master_device : device, indigo_disconnect_slave_devices);
+		indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
 		return false;
 	}
 	return true;
@@ -2380,6 +2380,7 @@ indigo_result indigo_mount_ioptron(indigo_driver_action action, indigo_driver_in
 			private_data = (ioptron_private_data *)indigo_safe_malloc(sizeof(ioptron_private_data));
 			mount = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 			mount->private_data = private_data;
+			mount->master_device = mount;
 			indigo_attach_device(mount);
 			guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;

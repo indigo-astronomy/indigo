@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001E
+#define DRIVER_VERSION       0x0300001F
 #define DRIVER_NAME          "indigo_aux_upb"
 #define DRIVER_LABEL         "PegasusAstro Ultimate Powerbox"
 #define AUX_DEVICE_NAME      "Ultimate Powerbox"
@@ -1630,6 +1630,7 @@ indigo_result indigo_aux_upb(indigo_driver_action action, indigo_driver_info *in
 			private_data = (upb_private_data *)indigo_safe_malloc(sizeof(upb_private_data));
 			aux = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
+			aux->master_device = aux;
 			indigo_attach_device(aux);
 			focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;

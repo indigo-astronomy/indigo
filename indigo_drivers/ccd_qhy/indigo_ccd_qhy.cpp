@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000026
+#define DRIVER_VERSION       0x03000027
 #define DRIVER_NAME          "indigo_ccd_qhy"
 #define DRIVER_LABEL         "QHY CCD (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1337,6 +1337,7 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 	if (plug_result) {
 		indigo_device *ccd = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 		ccd->private_data = private_data;
+		ccd->master_device = ccd;
 		snprintf(ccd->name, INDIGO_NAME_SIZE, "%s", private_data->camera_name);
 		bool ccd_attached = false;
 		for (int j = 0; j < MAX_DEVICES; j++) {

@@ -23,7 +23,7 @@ driver ioptron {
 	label = "iOptron Mount";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 58;
+	version = 59;
 	serial {
 		configurable_speed = true;
 	}
@@ -262,7 +262,7 @@ driver ioptron {
 			}
 			if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
 				ioptron_close(device);
-				indigo_execute_handler(device->master_device != NULL ? device->master_device : device, indigo_disconnect_slave_devices);
+				indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
 				return false;
 			}
 			return true;

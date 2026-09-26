@@ -53,7 +53,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000020
+#define DRIVER_VERSION       0x03000021
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -2593,6 +2593,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			private_data = (simulator_private_data *)indigo_safe_malloc(sizeof(simulator_private_data));
 			imager_ccd = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &imager_ccd_template);
 			imager_ccd->private_data = private_data;
+			imager_ccd->master_device = imager_ccd;
 			indigo_attach_device(imager_ccd);
 			guider_ccd = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_ccd_template);
 			guider_ccd->private_data = private_data;

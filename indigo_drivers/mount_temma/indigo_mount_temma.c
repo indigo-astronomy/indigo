@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000013
 #define DRIVER_NAME          "indigo_mount_temma"
 #define DRIVER_LABEL         "Takahashi Temma Mount"
 #define MOUNT_DEVICE_NAME    "Takahashi Temma Mount"
@@ -224,7 +224,7 @@ static unsigned char temma_motion_byte(indigo_device *device) {
 }
 
 static bool temma_update_motion(indigo_device *device) {
-	indigo_device *mount = device->master_device == NULL ? device : device->master_device;
+	indigo_device *mount = device->master_device;
 	return temma_no_reply_command(mount, "M%c", temma_motion_byte(mount));
 }
 
@@ -1028,6 +1028,7 @@ indigo_result indigo_mount_temma(indigo_driver_action action, indigo_driver_info
 			private_data = (temma_private_data *)indigo_safe_malloc(sizeof(temma_private_data));
 			mount = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 			mount->private_data = private_data;
+			mount->master_device = mount;
 			indigo_attach_device(mount);
 			guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;

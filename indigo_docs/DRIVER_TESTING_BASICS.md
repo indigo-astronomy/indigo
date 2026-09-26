@@ -277,7 +277,7 @@ python3 tools/run_driver_test.py mount_lx200 --hw -- MOUNT_LX200_HW_PORT=/dev/cu
 
 1. Builds the driver (`make -C <driver dir> [-f ../../Makefile.drv] all`) unless `--no-build` is given. The INDIGO library must already be built with `make all` in the project root.
 2. Selects the tests:
-   * **Hardware-free run** (default): every executable in `INTEGRATION_TESTS` named `test_<driver>` or `test_<driver>_<kind>`, without sanitizer builds, found through `make -s print-variable VAR=INTEGRATION_TESTS`. This is why tests must follow *Test Naming* in [indigo_test/AGENTS.md](../indigo_test/AGENTS.md).
+   * **Hardware-free run** (default): every executable in `INTEGRATION_TESTS` or `OPT_IN_DRIVER_TESTS` named `test_<driver>` or `test_<driver>_<kind>`, without sanitizer builds, found through `make -s print-variable VAR=...`. `OPT_IN_DRIVER_TESTS` holds the driver tests that `test-integration` leaves out because they open loopback sockets (the Dragonfly suites and the Lunatico UDP variant); they still belong to their driver's recorded run. This is why tests must follow *Test Naming* in [indigo_test/AGENTS.md](../indigo_test/AGENTS.md).
    * **Hardware run** (`--hw`): `make test-<driver>-hw`, or the targets given with `--target`.
    * **Hot-plug run** (`--hot-plug`): `test-<driver>-hw` with `HW_HOTPLUG=1` when that target adds the hot-plug case for it (checked with `make -n`), otherwise `test-<driver>-hotplug-hw`. A driver with neither is refused.
 3. Runs the tests one after another with `INDIGO_TEST_RESULTS` pointing to a temporary file, with the output going straight to the terminal.

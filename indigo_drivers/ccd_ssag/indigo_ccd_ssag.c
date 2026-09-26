@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_ccd_ssag"
 #define DRIVER_LABEL         "SSAG/QHY5 Camera"
 #define CCD_DEVICE_NAME      "SSAG%s"
@@ -772,6 +772,7 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 		private_data->usbdev = dev;
 			indigo_device *ccd = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 			ccd->private_data = private_data;
+			ccd->master_device = ccd;
 			snprintf(ccd->name, INDIGO_NAME_SIZE, "SSAG%s", name);
 			bool ccd_attached = false;
 			for (int j = 0; j < MAX_DEVICES; j++) {

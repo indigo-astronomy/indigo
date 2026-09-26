@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -987,9 +987,7 @@ static void synscan_de2h(double ha, double dec, double latitude, double *az, dou
 static bool synscan_read_mount_coordinates(indigo_device *device) {
 	// Reached from the guider's finalizers too, whose device_context is an indigo_guider_context,
 	// so resolve the master device before touching any MOUNT_* property.
-	if (device->master_device != NULL) {
-		device = device->master_device;
-	}
+	device = device->master_device;
 	if (!synscan_update_axis_positions(device)) {
 		return false;
 	}
@@ -1025,9 +1023,7 @@ static bool synscan_read_mount_coordinates(indigo_device *device) {
 static bool synscan_update_mount_coordinates(indigo_device *device) {
 	// Reached from the guider's finalizers too, whose device_context is an indigo_guider_context,
 	// so resolve the master device before touching any MOUNT_* property.
-	if (device->master_device != NULL) {
-		device = device->master_device;
-	}
+	device = device->master_device;
 	if (!synscan_read_mount_coordinates(device)) {
 		return false;
 	}
@@ -1496,7 +1492,7 @@ static void synscan_handle_connection_loss(indigo_device *device) {
 			return;
 		}
 		bool was_connected = CONNECTION_CONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state == INDIGO_OK_STATE;
-		indigo_device *master = device->master_device != NULL ? device->master_device : device;
+		indigo_device *master = device->master_device;
 		synscan_close(master);
 		if (was_connected) {
 			indigo_device_disconnect(NULL, master->name);
@@ -2318,7 +2314,7 @@ static void guider_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ guider.on_connect
 			if (!PRIVATE_DATA->configured) {
-				indigo_device *master = device->master_device != NULL ? device->master_device : device;
+				indigo_device *master = device->master_device;
 				connection_result = synscan_configure(master);
 			}
 			//- guider.on_connect
@@ -2532,7 +2528,7 @@ static void aux_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ aux.on_connect
 			if (!PRIVATE_DATA->configured) {
-				indigo_device *master = device->master_device != NULL ? device->master_device : device;
+				indigo_device *master = device->master_device;
 				connection_result = synscan_configure(master);
 			}
 			if (connection_result && !PRIVATE_DATA->snap_port_supported) {
@@ -2708,6 +2704,7 @@ indigo_result indigo_mount_synscan(indigo_driver_action action, indigo_driver_in
 			private_data = (synscan_private_data *)indigo_safe_malloc(sizeof(synscan_private_data));
 			mount = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 			mount->private_data = private_data;
+			mount->master_device = mount;
 			indigo_attach_device(mount);
 			guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;

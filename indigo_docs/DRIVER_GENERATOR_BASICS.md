@@ -152,7 +152,7 @@ focuser {
 | `on_detach { }` | Runs in `<id>_detach()` before the driver's properties are released. |
 | property blocks | See below. |
 
-With more than one device block, all logical devices share one private data structure and one hardware session: the generator adds `int count` to the private data, calls `<name>_open()` for the first connecting device (with the master device) and `<name>_close()` when the last one disconnects. Secondary devices get `master_device` set, so their handlers run on the master's queue.
+With more than one device block, all logical devices share one private data structure and one hardware session: the generator adds `int count` to the private data, calls `<name>_open()` for the first connecting device (with the master device) and `<name>_close()` when the last one disconnects. Every device, the master included, gets `master_device` set to the master, so the handlers of all of them run on the master's queue and driver code can use `device->master_device` from any device's context without a `NULL` fallback.
 
 ### Property blocks
 

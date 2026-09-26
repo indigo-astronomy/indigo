@@ -2198,10 +2198,13 @@ void write_c_hotplug_section(void) {
 		write_line("\tif (%s_match(dev, &name)) {", driver.name);
 		write_line("\t\tprivate_data = (%s_private_data *)indigo_safe_malloc(sizeof(%s_private_data));", driver.name, driver.name);
 		write_line("\t\tprivate_data->usbdev = dev;");
+			// In a driver with several devices the first one is the master of all of them, itself
+			// included, as hand-written drivers always did: driver code passes device->master_device on
+			// from the master's own context too, and a NULL there crashed mount_lx200 on a lost link.
 			for (device_type *device = driver.devices; device; device = device->next) {
 				write_line("\t\t\tindigo_device *%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->id, device->id);
 				write_line("\t\t\t%s->private_data = private_data;", device->id);
-			if (device != driver.devices) {
+			if (device != driver.devices || driver.devices->next) {
 				write_line("\t\t\t%s->master_device = %s;", device->id, driver.devices->id);
 				}
 				write_line("\t\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, %s, name);", device->id, device->name);
@@ -2258,7 +2261,7 @@ void write_c_hotplug_section(void) {
 				}
 				write_line("\t\tindigo_device *%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->id, device->id);
 				write_line("\t\t%s->private_data = private_data;", device->id);
-			if (device != driver.devices) {
+			if (device != driver.devices || driver.devices->next) {
 				write_line("\t\t%s->master_device = %s;", device->id, driver.devices->id);
 				}
 				if (*device->name_value) {
@@ -2296,7 +2299,7 @@ void write_c_hotplug_section(void) {
 			write_line("\t\t%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->id, device->id);
 			write_line("\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, \"%%s #%%s\", %s, usb_path);", device->id, device->name);
 			write_line("\t\t%s->private_data = private_data;", device->id);
-			if (device != driver.devices) {
+			if (device != driver.devices || driver.devices->next) {
 				write_line("\t\t%s->master_device = %s;", device->id, driver.devices->id);
 			}
 			write_line("\t\tif (indigo_attach_device(%s) != INDIGO_OK) {", device->id);
@@ -2525,7 +2528,7 @@ void write_c_main_section(void) {
 		for (device_type *device = driver.devices; device; device = device->next) {
 			write_line("\t\t\t%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->id, device->id);
 			write_line("\t\t\t%s->private_data = private_data;", device->id);
-			if (device != driver.devices) {
+			if (device != driver.devices || driver.devices->next) {
 				write_line("\t\t\t%s->master_device = %s;", device->id, driver.devices->id);
 			}
 			write_line("\t\t\tindigo_attach_device(%s);", device->id);

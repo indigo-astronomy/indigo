@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002C
+#define DRIVER_VERSION       0x0300002D
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -188,9 +188,7 @@ static bool nexstar_open(indigo_device *device) {
 }
 
 static void nexstar_close(indigo_device *device) {
-	if (device->master_device != NULL) {
-		device = device->master_device;
-	}
+	device = device->master_device;
 	if (PRIVATE_DATA->dev_id >= 0) {
 		close_telescope(PRIVATE_DATA->dev_id);
 		PRIVATE_DATA->dev_id = -1;
@@ -217,7 +215,7 @@ static void nexstar_attach_gps(indigo_device *device) {
 	static indigo_device gps_template = INDIGO_DEVICE_INITIALIZER(GPS_DEVICE_NAME, gps_attach, indigo_gps_enumerate_properties, gps_change_property, NULL, gps_detach);
 	PRIVATE_DATA->gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
 	PRIVATE_DATA->gps->private_data = PRIVATE_DATA;
-	PRIVATE_DATA->gps->master_device = device->master_device != NULL ? device->master_device : device;
+	PRIVATE_DATA->gps->master_device = device->master_device;
 	indigo_attach_device(PRIVATE_DATA->gps);
 }
 
@@ -1582,6 +1580,7 @@ indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_in
 			private_data = (nexstar_private_data *)indigo_safe_malloc(sizeof(nexstar_private_data));
 			mount = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 			mount->private_data = private_data;
+			mount->master_device = mount;
 			indigo_attach_device(mount);
 			guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;

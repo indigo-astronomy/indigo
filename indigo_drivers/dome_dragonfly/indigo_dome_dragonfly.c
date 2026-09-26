@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_dome_dragonfly"
 #define DRIVER_LABEL         "Lunatico Dragonfly Dome"
 #define DOME_DEVICE_NAME     "Dome Dragonfly"
@@ -837,6 +837,7 @@ indigo_result indigo_dome_dragonfly(indigo_driver_action action, indigo_driver_i
 			private_data = (dragonfly_private_data *)indigo_safe_malloc(sizeof(dragonfly_private_data));
 			dome = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &dome_template);
 			dome->private_data = private_data;
+			dome->master_device = dome;
 			indigo_attach_device(dome);
 			aux = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;

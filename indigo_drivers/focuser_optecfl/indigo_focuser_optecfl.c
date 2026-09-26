@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_focuser_optecfl"
 #define DRIVER_LABEL         "Optec FocusLynx Focuser"
 #define FOCUSER_1_DEVICE_NAME "Optec FocusLynx #1"
@@ -983,6 +983,7 @@ indigo_result indigo_focuser_optecfl(indigo_driver_action action, indigo_driver_
 			private_data = (optecfl_private_data *)indigo_safe_malloc(sizeof(optecfl_private_data));
 			focuser_1 = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_1_template);
 			focuser_1->private_data = private_data;
+			focuser_1->master_device = focuser_1;
 			indigo_attach_device(focuser_1);
 			focuser_2 = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_2_template);
 			focuser_2->private_data = private_data;

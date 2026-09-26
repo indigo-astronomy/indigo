@@ -385,3 +385,13 @@ current source was newer. It reproduced the already-fixed southern-declination a
 and aborted during the slew test. After rebuilding the archive and relinking the test, the full run
 above passed; the earlier attempt is not counted as validation of the current driver. A read-only
 `MC_SLEW_DONE` check before the repeat found both axes reporting complete.
+
+## 2026-09-26 the mount is its own master again
+
+The generator now sets `master_device` of the master device to itself, as this driver did before its
+migration (`mount->master_device = mount`). `indigo_disconnect_slave_devices()` therefore disconnects
+the mount too when the connection is lost, as the hand-written driver did, instead of leaving it
+connected with every request ending in ALERT. `goto_loses_the_answer` and `transport_loss` now require
+the mount to be disconnected after the loss; the fault stops the simulator, so a fresh session stays
+covered by `reconnect`. The `device->master_device == NULL ? device : ...` fallback in the `.driver`
+source is gone.
