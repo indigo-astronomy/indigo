@@ -300,6 +300,14 @@ ifneq ($(OS_DETECTED),Darwin)
 INTEGRATION_TESTS += $(INTEGRATION_BUILD)/test_aux_rpio_sysfs $(INTEGRATION_BUILD)/test_aux_asiair_sysfs
 endif
 
+# Driver tests kept out of test-integration because they open loopback sockets,
+# which the normal integration target does not do. They are still part of their
+# driver's recorded run: tools/run_driver_test.py selects a driver's tests from
+# INTEGRATION_TESTS and this list.
+OPT_IN_DRIVER_TESTS = $(INTEGRATION_BUILD)/test_aux_dragonfly_simulator \
+	$(INTEGRATION_BUILD)/test_dome_dragonfly_simulator \
+	$(INTEGRATION_BUILD)/test_rotator_lunatico_udp_simulator
+
 test-integration: check-lib $(INTEGRATION_TESTS)
 	@for test in $(INTEGRATION_TESTS); do \
 		printf "Running %s\n" "$$test"; \

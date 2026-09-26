@@ -326,6 +326,16 @@ static void driver_stop(void) {
 	tear_down_serial_driver(&nexstaraux_mount);
 }
 
+// A lost connection is reported by disconnecting the mount together with the devices that share
+// its connection, as the hand-written driver did before its generator migration.
+static bool wait_for_disconnection(double timeout) {
+	double deadline = indigo_monotonic_time() + timeout;
+	while (context.connected && indigo_monotonic_time() < deadline) {
+		indigo_usleep(100000);
+	}
+	return !context.connected;
+}
+
 // The mount is unparked and pointed at a known place before every motion test,
 // so the assertions do not depend on where the simulator happened to start.
 static bool prepare_mount(double ra, double dec) {
@@ -823,19 +833,16 @@ cleanup:
 
 // A goto whose poll stops being answered must not be abandoned while the property is still busy.
 // Seen on a NexStar SE: one lost answer left MOUNT_PARK busy indefinitely, and the parked guard
-// then refused tracking, motion and coordinates for the rest of the session.
+// then refused tracking, motion and coordinates for the rest of the session. The lost answer ends
+// the session instead of leaving the request busy. The fault stops the simulator, so a fresh
+// session is covered by reconnect.
 static void goto_loses_the_answer(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
-	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(fault(AZM_SLEW_DONE, "close"));
 	SERIAL_CHECK_TRUE(coordinates_change(5, 50, INDIGO_BUSY_STATE));
-	double deadline = indigo_monotonic_time() + 60;
-	while (indigo_monotonic_time() < deadline && property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE) <= alerts) {
-		indigo_usleep(100000);
-	}
-	SERIAL_CHECK_TRUE(property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE) > alerts);
+	SERIAL_CHECK_TRUE(wait_for_disconnection(60));
 cleanup:
 	driver_stop();
 }
@@ -956,18 +963,13 @@ cleanup:
 	driver_stop();
 }
 
-// Losing the transport has to be reported instead of being published as
-// success, and the driver must still release the dead socket.
+// Losing the transport has to be reported instead of being published as success: the mount is
+// disconnected, which releases the dead socket.
 static void transport_loss(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
 	SERIAL_CHECK_TRUE(fault(AZM_GET_POSITION, "close"));
-	indigo_usleep(1500000);
-	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(number_change(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 60, INDIGO_ALERT_STATE));
-	disconnect_serial_device(&nexstaraux_mount);
-	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(wait_for_disconnection(10));
 cleanup:
 	driver_stop();
 }

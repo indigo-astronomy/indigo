@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_ao_sx"
 #define DRIVER_LABEL         "StarlightXpress AO"
 #define AO_DEVICE_NAME       "SX AO"
@@ -73,9 +73,7 @@ static bool sx_command(indigo_device *device, char *command, int response, ...) 
 // calls the close helper with whichever logical device released the last reference, so both
 // helpers step up to the master before touching DEVICE_PORT or INFO.
 static bool sx_open(indigo_device *device) {
-	if (device->master_device != NULL) {
-		device = device->master_device;
-	}
+	device = device->master_device;
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
 		if (sx_command(device, "X", 1) && PRIVATE_DATA->response[0] == 'Y') {
@@ -92,9 +90,7 @@ static bool sx_open(indigo_device *device) {
 }
 
 static void sx_close(indigo_device *device) {
-	if (device->master_device != NULL) {
-		device = device->master_device;
-	}
+	device = device->master_device;
 	INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 	indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -419,6 +415,7 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 			private_data = (sx_private_data *)indigo_safe_malloc(sizeof(sx_private_data));
 			ao = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &ao_template);
 			ao->private_data = private_data;
+			ao->master_device = ao;
 			indigo_attach_device(ao);
 			guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;

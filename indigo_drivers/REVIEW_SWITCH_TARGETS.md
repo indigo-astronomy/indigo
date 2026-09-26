@@ -223,3 +223,12 @@ Text items get no target (design note section 8); the mount context target used 
 One commit per driver on `refactoring_targets`, each with the driver's version bump, a test that
 reproduces the window where the suite can, the test record from `tools/run_driver_test.py`, and the
 status of its rows above updated to `Fixed`.
+
+### Merge of `refactoring` (2026-09-26, c6a7641)
+
+`refactoring` regenerated 32 multi-device drivers after the generator change that makes the master
+device its own `master_device` (8531b6c) and bumped them, reusing the version numbers this branch had
+already given four drivers: mount_ioptron 59, mount_simulator 22, mount_synscan 12 and mount_temma 19.
+The merged drivers carry both changes and are bumped once more to mount_ioptron 60, mount_simulator 23,
+mount_synscan 13 and mount_temma 20, regenerated with the new generator and retested. The `Fixed
+(3.0.0.N)` notes above name the version in which the fix was first made on this branch.

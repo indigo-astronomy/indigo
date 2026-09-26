@@ -71,6 +71,6 @@ After aborting a long snapshot, ASI120 video frames may initially arrive more sl
 
 2026-09-21 21:17 3.0.0.65 mac arm64 ASI294MC Pro 28/28 OK
 2026-09-21 21:20 3.0.0.65 mac arm64 ASI120MC-S 28/28 OK
-2026-09-26 19:41 3.0.0.68 mac arm64 fake SDK 52/52 OK
 2026-09-26 19:50 3.0.0.68 mac arm64 ZWO ASI120MC-S 28/28 OK
 2026-09-26 19:59 3.0.0.68 mac arm64 ZWO ASI120MC-S (hot-plug) 32/32 OK
+2026-09-26 21:01 3.0.0.69 mac arm64 fake SDK 52/52 OK

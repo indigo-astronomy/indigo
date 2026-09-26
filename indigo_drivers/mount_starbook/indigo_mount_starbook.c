@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_mount_starbook"
 #define DRIVER_LABEL         "Vixen StarBook Mount"
 #define MOUNT_DEVICE_NAME    "Mount Vixen StarBook"
@@ -1017,6 +1017,7 @@ indigo_result indigo_mount_starbook(indigo_driver_action action, indigo_driver_i
 			private_data = (starbook_private_data *)indigo_safe_malloc(sizeof(starbook_private_data));
 			mount = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 			mount->private_data = private_data;
+			mount->master_device = mount;
 			indigo_attach_device(mount);
 			guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;

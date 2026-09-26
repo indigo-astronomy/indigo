@@ -48,7 +48,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000015
+#define DRIVER_VERSION       0x03000016
 #define DRIVER_NAME          "indigo_ccd_qsi"
 #define DRIVER_LABEL         "QSI Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1222,6 +1222,7 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 	if (plug_result) {
 		indigo_device *ccd = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 		ccd->private_data = private_data;
+		ccd->master_device = ccd;
 		snprintf(ccd->name, INDIGO_NAME_SIZE, "%s", name);
 		bool ccd_attached = false;
 		for (int j = 0; j < MAX_DEVICES; j++) {
@@ -1421,7 +1422,7 @@ indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *in
 #include "indigo_ccd_qsi.h"
 
 indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "QSI Camera", __FUNCTION__, 0x03000015, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "QSI Camera", __FUNCTION__, 0x03000016, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000014
+#define DRIVER_VERSION       0x03000015
 #define DRIVER_NAME          "indigo_mount_nexstaraux"
 #define DRIVER_LABEL         "NexStar AUX Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar AUX"
@@ -247,7 +247,7 @@ static bool nexstaraux_validate_handle(indigo_device *device) {
 	if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
 		nexstaraux_close(device);
 		// The mount is its own master and has no master_device pointer.
-		indigo_execute_handler(device->master_device == NULL ? device : device->master_device, indigo_disconnect_slave_devices);
+		indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
 		return false;
 	}
 	return true;
@@ -1198,6 +1198,7 @@ indigo_result indigo_mount_nexstaraux(indigo_driver_action action, indigo_driver
 			private_data = (nexstaraux_private_data *)indigo_safe_malloc(sizeof(nexstaraux_private_data));
 			mount = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 			mount->private_data = private_data;
+			mount->master_device = mount;
 			indigo_attach_device(mount);
 			guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;

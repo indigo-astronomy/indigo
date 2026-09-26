@@ -435,3 +435,10 @@ coverage is established by it.
 ### Test totals for this run
 
 Simulated tests run 0, passed 0. Hardware tests run 9, passed 9.
+
+## 2026-09-26 the camera is its own master_device
+
+The generator now sets `master_device` of the master device to itself. The fake `indigo_attach_device()`
+in `test_ccd_sx_usb.c` told the camera from the guider by `master_device` being `NULL`; it now treats a
+device as the guider only when its `master_device` is another device, as the ASI, SVB and PlayerOne
+suites already did.

@@ -22,7 +22,7 @@ driver pmc8 {
 	label = "PMC Eight Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2020-2026 CloudMakers, s. r. o.";
-	version = 13;
+	version = 14;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -244,9 +244,7 @@ driver pmc8 {
 		}
 
 		static void pmc8_close(indigo_device *device) {
-			if (device->master_device != NULL) {
-				device = device->master_device;
-			}
+			device = device->master_device;
 			if (PRIVATE_DATA->handle != NULL) {
 				// Closing the serial port drops DTR, which reboots the controller: it stops both axes where
 				// they are and clears its position counters. The position read here is therefore where

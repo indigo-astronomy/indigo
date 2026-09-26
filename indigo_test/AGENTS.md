@@ -275,7 +275,7 @@ can be found from its name alone:
 ## Makefile Rules
 
 - Add new unit executables to `UNIT_TESTS`.
-- Add new integration executables to `INTEGRATION_TESTS`.
+- Add new integration executables to `INTEGRATION_TESTS`. A driver test that opens loopback sockets stays out of `INTEGRATION_TESTS` and goes to `OPT_IN_DRIVER_TESTS` instead, so `test-integration` keeps its no-socket rule while `tools/run_driver_test.py` still runs it as part of the driver's recorded run.
 - Add new benchmark executables to `BENCHMARKS`.
 - List every driver archive a test links as a prerequisite of that test's rule, not only inside its `*_TEST_LDFLAGS` variable, so a rebuilt driver relinks the test.
 - Add every new test source or header to its appropriate Xcode project group in `../indigo.xcodeproj/project.pbxproj`.

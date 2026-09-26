@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_aux_mgbox"
 #define DRIVER_LABEL         "Astromi.ch MGBox"
 #define AUX_DEVICE_NAME      "MGBox Weather"
@@ -1148,6 +1148,7 @@ indigo_result indigo_aux_mgbox(indigo_driver_action action, indigo_driver_info *
 			private_data = (mgbox_private_data *)indigo_safe_malloc(sizeof(mgbox_private_data));
 			aux = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
+			aux->master_device = aux;
 			indigo_attach_device(aux);
 			gps = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
 			gps->private_data = private_data;

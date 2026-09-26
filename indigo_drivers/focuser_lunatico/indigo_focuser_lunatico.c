@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_focuser_lunatico"
 #define DRIVER_LABEL         "Lunatico Astronomia Focuser"
 #define FOCUSER_MAIN_DEVICE_NAME "Focuser Lunatico (Main)"
@@ -2556,6 +2556,7 @@ indigo_result indigo_focuser_lunatico(indigo_driver_action action, indigo_driver
 			private_data = (lunatico_private_data *)indigo_safe_malloc(sizeof(lunatico_private_data));
 			focuser_main = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_main_template);
 			focuser_main->private_data = private_data;
+			focuser_main->master_device = focuser_main;
 			indigo_attach_device(focuser_main);
 			focuser_exp = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_exp_template);
 			focuser_exp->private_data = private_data;

@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000044
+#define DRIVER_VERSION       0x03000045
 #define DRIVER_NAME          "indigo_ccd_asi"
 #define DRIVER_LABEL         "ZWO ASI Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1962,6 +1962,7 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 	if (plug_result) {
 		indigo_device *ccd = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 		ccd->private_data = private_data;
+		ccd->master_device = ccd;
 		snprintf(ccd->name, INDIGO_NAME_SIZE, "%s", name);
 		bool ccd_attached = false;
 		for (int j = 0; j < MAX_DEVICES; j++) {
