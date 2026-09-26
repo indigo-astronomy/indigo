@@ -185,6 +185,34 @@ static void select_context(const simulator_driver_case *device_case) {
 	enumerate_simulator_device();
 }
 
+// MOUNT_SIDE_OF_PIER reports the side of the mount the E reply carries and is read-only, as the framework defines it. PT
+// only changes the controller's side flag without any motion, so the driver never sends it: a change request is
+// ignored, nothing is written to the mount and the property keeps the reported side and state.
+static bool side_of_pier_request_is_refused(const char *trace_path, const char *item_name, const char *reported_item_name) {
+	indigo_property *property = find_cached_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	if (property == NULL || property->perm != INDIGO_RO_PERM) {
+		fprintf(stderr, "    %s is missing or not read-only\n", MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+		return false;
+	}
+	int mark = trace_count(trace_path);
+	unsigned int revision = property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	if (indigo_change_switch_property_1(&simulator_test_client, temma_mount.device_name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, item_name, true) != INDIGO_OK) {
+		return false;
+	}
+	// The change reaches the driver synchronously, so a handler would already be queued. A poll every 0.5 s lets it run.
+	indigo_usleep(700000);
+	if (trace_contains_after(trace_path, "PT", mark)) {
+		fprintf(stderr, "    a request for %s sent PT\n", item_name);
+		return false;
+	}
+	property = find_cached_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	if (property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME) != revision || property->state != INDIGO_OK_STATE) {
+		fprintf(stderr, "    a request for %s changed %s\n", item_name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+		return false;
+	}
+	return cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, reported_item_name);
+}
+
 static bool set_master_port(const char *port) {
 	unsigned int revision = property_revision(DEVICE_PORT_PROPERTY_NAME);
 	return indigo_change_text_property_1_raw(&simulator_test_client, temma_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, port) == INDIGO_OK && wait_for_property_state_after(DEVICE_PORT_PROPERTY_NAME, INDIGO_OK_STATE, revision);
@@ -419,15 +447,12 @@ static void temma_location_pier_and_park(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
 	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "I-33300", mark));
 	SERIAL_CHECK_TRUE(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) > 289.7);
-	mark = trace_count(trace_path);
-	// The simulator starts with the telescope on the west side of the mount, so EAST needs PT.
-	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "PT", mark));
-	assert_switch_item_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true);
-	mark = trace_count(trace_path);
-	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, true, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "PT", mark));
-	assert_switch_item_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, true);
+	// The simulator reports the telescope on the west side of the mount. The side is read-only: neither a request for the
+	// other side nor one for the reported side reaches the mount, and the property keeps reporting WEST.
+	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(side_of_pier_request_is_refused(trace_path, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(!cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(side_of_pier_request_is_refused(trace_path, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
 	SERIAL_CHECK_TRUE(change_number_and_wait(&temma_mount, MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_PARK_POSITION_HA_ITEM_NAME, 1.5, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(change_number_and_wait(&temma_mount, MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_PARK_POSITION_DEC_ITEM_NAME, 30, INDIGO_OK_STATE));
 	mark = trace_count(trace_path);
@@ -436,6 +461,9 @@ static void temma_location_pier_and_park(void) {
 	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, false);
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 30, .01));
 	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
+	// Parking does not change the side the mount reports, and no PT was sent on the way.
+	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(!trace_contains_after(trace_path, "PT", 0));
 cleanup:
 	if (driver_started) {
 		stop_serial_driver(&temma_mount);
@@ -716,90 +744,6 @@ cleanup:
 	}
 	stop_external_serial_simulator(&simulator);
 	stop_external_serial_simulator(&replacement);
-	if (*trace_path) {
-		unlink(trace_path);
-	}
-}
-
-// A gate handler holds the device queue, so a request is copied and queued while the poll comes due behind it. The poll
-// is an INDIGO_TASK_PRIORITY_TIME task and runs ahead of a queued change handler once the gate ends.
-static const char *gate_device_name;
-static _Atomic(indigo_device *) gate_device;
-static atomic_bool gate_entered, gate_release;
-
-static void gate_handler(indigo_device *device) {
-	atomic_store(&gate_entered, true);
-	for (int i = 0; i < 5000 && !atomic_load(&gate_release); i++) {
-		indigo_usleep(1000);
-	}
-}
-
-static indigo_result gate_device_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (gate_device_name != NULL && !strcmp(property->device, gate_device_name)) {
-		atomic_store(&gate_device, device);
-	}
-	return simulator_client_update_property(client, device, property, message);
-}
-
-static void install_gate(const char *device_name) {
-	gate_device_name = device_name;
-	atomic_store(&gate_device, NULL);
-	atomic_store(&gate_release, true);
-	simulator_test_client.update_property = gate_device_update;
-}
-
-static void remove_gate(void) {
-	atomic_store(&gate_release, true);
-	simulator_test_client.update_property = simulator_client_update_property;
-	gate_device_name = NULL;
-}
-
-static bool hold_device_queue(void) {
-	indigo_device *device = atomic_load(&gate_device);
-	if (device == NULL) {
-		fprintf(stderr, "    no update from '%s' was seen, the gate cannot be queued\n", gate_device_name);
-		return false;
-	}
-	atomic_store(&gate_entered, false);
-	atomic_store(&gate_release, false);
-	indigo_execute_handler(device, gate_handler);
-	for (int i = 0; i < 2000 && !atomic_load(&gate_entered); i++) {
-		indigo_usleep(1000);
-	}
-	return atomic_load(&gate_entered);
-}
-
-// TGT-002: the poll, the GOTO and the park finalizers write the side the mount reports into MOUNT_SIDE_OF_PIER. A pier
-// flip requested while the poll comes due ahead of its handler must still be sent as PT and end on the requested side.
-static void temma_side_of_pier_request_survives_poll(void) {
-	external_serial_simulator simulator = { 0 };
-	bool driver_started = false;
-	char trace_path[PATH_MAX] = "";
-	install_gate(temma_mount.device_name);
-	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
-	const char *args[] = { "--trace-file", trace_path, NULL };
-	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_TEMMA_SIMULATOR_EXECUTABLE, args));
-	SERIAL_CHECK_TRUE(start_serial_driver(&temma_mount, simulator.port));
-	driver_started = true;
-	// The simulator starts with the telescope on the west side of the mount, so EAST needs PT.
-	assert_switch_item_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, true);
-	int mark = trace_count(trace_path);
-	SERIAL_CHECK_TRUE(hold_device_queue());
-	unsigned int revision = property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, temma_mount.device_name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
-	// The 0.5 s poll comes due while the queue is held and runs ahead of the queued handler, writing WEST into the switch
-	indigo_usleep(700000);
-	atomic_store(&gate_release, true);
-	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, INDIGO_OK_STATE, revision));
-	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "PT", mark));
-	assert_switch_item_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true);
-cleanup:
-	remove_gate();
-	if (driver_started) {
-		stop_serial_driver(&temma_mount);
-	}
-	stop_external_serial_simulator(&simulator);
 	if (*trace_path) {
 		unlink(trace_path);
 	}
@@ -1133,7 +1077,6 @@ int main(void) {
 		{ "temma_sync_goto_overlap_abort_and_recovery", temma_sync_goto_overlap_abort_and_recovery },
 		{ "temma_manual_motion_all_directions_rates_and_abort", temma_manual_motion_all_directions_rates_and_abort },
 		{ "temma_location_pier_and_park", temma_location_pier_and_park },
-		{ "temma_side_of_pier_request_survives_poll", temma_side_of_pier_request_survives_poll },
 		{ "temma_protocol_failures_recover", temma_protocol_failures_recover },
 		{ "temma_position_units_are_hundredths_of_a_minute", temma_position_units_are_hundredths_of_a_minute },
 		{ "temma_position_reply_codes_and_trailer", temma_position_reply_codes_and_trailer },

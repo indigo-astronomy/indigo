@@ -22,7 +22,7 @@ driver temma {
 	label = "Takahashi Temma Mount";
 	author = "";
 	copyright = "Copyright (c) 2017-2026 CloudMakers, s. r. o.";
-	version = 20;
+	version = 21;
 	serial {
 	}
 	include {
@@ -386,7 +386,6 @@ driver temma {
 			MOUNT_PARK_POSITION_PROPERTY->hidden = false;
 			MOUNT_PARK_SET_PROPERTY->hidden = false;
 			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-			MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RW_PERM;
 			MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 			ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		}
@@ -608,20 +607,7 @@ driver temma {
 		}
 		inherited MOUNT_SIDE_OF_PIER {
 			hidden = false;
-			on_change {
-				// The poll and the GOTO and park finalizers write the side the mount reports between the copy of the request and this handler,
-				// the target keeps the requested side. On failure the switch shows the last side the mount reported.
-				bool east = indigo_get_switch_target(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME);
-				bool west = indigo_get_switch_target(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME);
-				bool switch_side = (east && PRIVATE_DATA->telescope_side == 'W') || (west && PRIVATE_DATA->telescope_side == 'E');
-				if (!switch_side || temma_no_reply_command(device, "PT")) {
-					indigo_apply_switch_targets(MOUNT_SIDE_OF_PIER_PROPERTY);
-					temma_update_position(device);
-				} else {
-					indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, PRIVATE_DATA->telescope_side == 'W' ? MOUNT_SIDE_OF_PIER_WEST_ITEM : MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
-					MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-			}
+			// on_change { }
 			// on_attach { }
 			// on_detach { }
 		}

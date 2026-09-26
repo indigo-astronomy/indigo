@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000014
+#define DRIVER_VERSION       0x03000015
 #define DRIVER_NAME          "indigo_mount_temma"
 #define DRIVER_LABEL         "Takahashi Temma Mount"
 #define MOUNT_DEVICE_NAME    "Takahashi Temma Mount"
@@ -671,25 +671,6 @@ static void mount_motion_ra_handler(indigo_device *device) {
 	indigo_mount_commit_motion_client(device, MOUNT_MOTION_RA_PROPERTY);
 }
 
-static void mount_side_of_pier_handler(indigo_device *device) {
-	MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
-	//+ mount.MOUNT_SIDE_OF_PIER.on_change
-	// The poll and the GOTO and park finalizers write the side the mount reports between the copy of the request and this handler,
-	// the target keeps the requested side. On failure the switch shows the last side the mount reported.
-	bool east = indigo_get_switch_target(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME);
-	bool west = indigo_get_switch_target(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME);
-	bool switch_side = (east && PRIVATE_DATA->telescope_side == 'W') || (west && PRIVATE_DATA->telescope_side == 'E');
-	if (!switch_side || temma_no_reply_command(device, "PT")) {
-		indigo_apply_switch_targets(MOUNT_SIDE_OF_PIER_PROPERTY);
-		temma_update_position(device);
-	} else {
-		indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, PRIVATE_DATA->telescope_side == 'W' ? MOUNT_SIDE_OF_PIER_WEST_ITEM : MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
-		MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	//- mount.MOUNT_SIDE_OF_PIER.on_change
-	indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-}
-
 static void mount_park_handler(indigo_device *device) {
 	//+ mount.MOUNT_PARK.on_change
 	if (MOUNT_PARK_PARKED_ITEM->sw.value && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE && PRIVATE_DATA->mount_motion_mask == 0 && PRIVATE_DATA->guider_motion_mask == 0) {
@@ -739,7 +720,6 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_PARK_POSITION_PROPERTY->hidden = false;
 		MOUNT_PARK_SET_PROPERTY->hidden = false;
 		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-		MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RW_PERM;
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		//- mount.on_attach
@@ -825,9 +805,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_MOTION_RA_PROPERTY, "Mount is parked!");
 		indigo_mount_record_motion_client(device, client, property);
 		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_RA_PROPERTY, mount_motion_ra_handler);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_SIDE_OF_PIER_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_SIDE_OF_PIER_PROPERTY, mount_side_of_pier_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_PARK_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PARK_PROPERTY, mount_park_handler);
