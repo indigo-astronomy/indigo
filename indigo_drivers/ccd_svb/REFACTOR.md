@@ -230,3 +230,15 @@ The test's make rule did not list `test_runner.h` or `hardware_test_common.h` am
 The run covered all four hardware pixel formats at bin 1 and bin 2, ROI 256x256 at (16,24) in both bins, gain and offset, the configuration roundtrip, the `reject_change` guards during an exposure and during streaming, a sustained stream of 61 frames in about ten seconds, the guider, disconnect/reconnect and a driver shutdown/reinitialization with a fresh exposure.
 
 Hot-plug was not established in this run: the camera hangs on the Powerbox hub, whose port switch is invisible to the host's hub driver on macOS (see `indigo_drivers/ccd_atik/REFACTOR.md`). The Linux hot-plug run of 2026-09-22 07:02 stands.
+
+## 2026-09-26 unplug_match decides every removal again
+
+Commit `0057e7302` (2026-09-22) made the generator consult `sdk.unplug_match` only for a removal
+libusb had not identified. That identity is only as good as the plug block that recorded it, and
+most vendor SDKs cannot say which USB device a camera or wheel enumerates from: when several arrive
+together the plug block binds each USB device to the first SDK device not attached yet, so a
+removal trusted on the libusb pointer alone detached a device that was still plugged in. The
+generator consults the block for every removal again, and a driver that has to trust the libusb
+identity guards its own block with `if (!unplug_result)`, as `ccd_qhy2` does for QHY2-001.
+
+`Matrix discovery_filter_failures_retry` keeps its inconclusive events on a libusb device no logical device was created from and no longer requires the camera libusb names to leave while the SDK still lists it. Recorded with `tools/run_driver_test.py`: fake SDK 47/47.
