@@ -73,6 +73,7 @@ static int clock_gettime(int clk_id, struct timespec *tp) {
 #define FFT_SIZE 4096             /* zero-padding for the FFT (>= REGULAR_BUFFER_SIZE) */
 #define GRID_INTERVAL 5.0
 #define MAX_DITHER_STEPS 60       /* maximum number of dither steps if dither settle down is not signalled */
+#define RESUME_STEPS 4            /* dither-like steps after a retained session restart; no dither settle is ever signalled for it */
 #define DEFAULT_LEARNING_RATE 0.01
 #define HYSTERESIS 0.1
 #define JITTER 1e-6
@@ -1872,11 +1873,11 @@ bool indigo_gp_guider_session_start(indigo_gp_guider *g, double current_ra, int 
 	if (need_reset) {
 		indigo_gp_guider_reset(g);
 	} else {
-		/* resume: shift gear time by the RA slew and predict-only for a few
-		   frames, exactly like settling after a dither */
+		/* resume: shift gear time by the RA slew and settle for a few frames
+		   like after a dither (nothing signals the settle here asume settled in RESUME_STEPS frames) */
 		g->dither_offset += ra_offset;
 		g->dithering_active = true;
-		g->dither_steps = MAX_DITHER_STEPS;
+		g->dither_steps = RESUME_STEPS;
 	}
 
 	g->prev_ra = current_ra;
