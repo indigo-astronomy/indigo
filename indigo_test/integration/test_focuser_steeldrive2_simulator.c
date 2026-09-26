@@ -69,6 +69,12 @@ static const char *observed_names[] = {
 	X_SELECT_PID_SENSOR_PROPERTY_NAME, X_SELECT_AMB_SENSOR_PROPERTY_NAME, X_USE_AUTO_DEW_PROPERTY_NAME
 };
 static atomic_uint revisions[ARRAY_SIZE(observed_names)], motion_busy;
+static _Atomic(indigo_device *) focuser_device, aux_device;
+static atomic_int watch_index = -1, watch_results, watch_first_state;
+static _Atomic double watch_first_value;
+static atomic_uint watch_first_witness;
+static const char *watch_item;
+static int witness_index = -1;
 
 static int observed_index(const char *name) {
 	for (int i = 0; i < (int)ARRAY_SIZE(observed_names); i++) {
@@ -82,6 +88,21 @@ static int observed_index(const char *name) {
 static indigo_result observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	indigo_result result = simulator_client_update_property(client, device, property, message);
 	int index = observed_index(property->name);
+	if (!strcmp(property->device, focuser.device_name)) {
+		atomic_store(&focuser_device, device);
+	} else if (!strcmp(property->device, aux.device_name)) {
+		atomic_store(&aux_device, device);
+	}
+	// The first result (not BUSY) of a watched property: its value, state and how often the witness was published by then.
+	if (index >= 0 && index == atomic_load(&watch_index) && property->state != INDIGO_BUSY_STATE && atomic_fetch_add(&watch_results, 1) == 0) {
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, watch_item)) {
+				atomic_store(&watch_first_value, property->type == INDIGO_SWITCH_VECTOR ? property->items[i].sw.value : property->items[i].number.value);
+			}
+		}
+		atomic_store(&watch_first_witness, witness_index >= 0 ? atomic_load(&revisions[witness_index]) : 0);
+		atomic_store(&watch_first_state, property->state);
+	}
 	if (index >= 0) {
 		atomic_fetch_add(&revisions[index], 1);
 	}
@@ -631,6 +652,142 @@ cleanup:
 	driver_stop(&focuser);
 }
 
+// A gate handler holds the device queue, so a request is copied and queued while a poll comes due behind it. Polls
+// are INDIGO_TASK_PRIORITY_TIME tasks and run ahead of the queued change handler once the gate ends. The focuser and
+// aux devices share one queue.
+static atomic_bool gate_entered, gate_release;
+
+static void gate_handler(indigo_device *device) {
+	atomic_store(&gate_entered, true);
+	for (int i = 0; i < 5000 && !atomic_load(&gate_release); i++) {
+		indigo_usleep(1000);
+	}
+}
+
+static bool hold_queue(indigo_device *device) {
+	atomic_store(&gate_entered, false);
+	atomic_store(&gate_release, false);
+	if (device == NULL) {
+		return false;
+	}
+	indigo_execute_handler(device, gate_handler);
+	for (int i = 0; i < 300 && !atomic_load(&gate_entered); i++) {
+		indigo_usleep(10000);
+	}
+	return atomic_load(&gate_entered);
+}
+
+static void start_watch(const char *property, const char *item, const char *witness) {
+	atomic_store(&watch_index, -1);
+	watch_item = item;
+	witness_index = witness == NULL ? -1 : observed_index(witness);
+	atomic_store(&watch_results, 0);
+	atomic_store(&watch_index, observed_index(property));
+}
+
+static bool wait_for_watch(void) {
+	for (int i = 0; i < 2000 && atomic_load(&watch_results) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	return atomic_load(&watch_results) > 0;
+}
+
+// TGT-011, TGT-012, TGT-B03, TGT-B05: an X_USE_PID, X_USE_AUTO_DEW or AUX_HEATER_OUTLET request copied while the 1 s
+// aux poll comes due ahead of its handler must still reach the device, and the poll must neither overwrite the request
+// nor publish over the pending BUSY. The first result published after the request is the handler's, with the
+// requested value, and the poll (seen by the witness property it publishes) ran before it. The witness changes on the
+// device meanwhile (PWM or PID control set from the hand controller).
+static void aux_request_survives_poll(void) {
+	bool heater = strstr(current_case, "heater") != NULL;
+	bool auto_dew = strstr(current_case, "auto_dew") != NULL;
+	const char *property = heater ? AUX_HEATER_OUTLET_PROPERTY_NAME : auto_dew ? X_USE_AUTO_DEW_PROPERTY_NAME : X_USE_PID_PROPERTY_NAME;
+	const char *item = heater ? AUX_HEATER_OUTLET_1_ITEM_NAME : auto_dew ? AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME : "ENABLED";
+	const char *witness = heater ? X_USE_PID_PROPERTY_NAME : AUX_HEATER_OUTLET_PROPERTY_NAME;
+	const char *command = heater ? "$BS SET PWM:40" : auto_dew ? "$BS SET AUTO_DEW:1" : "$BS SET PID_CTRL:1";
+	double requested = heater ? 40 : 1;
+	atomic_store(&aux_device, NULL);
+	SERIAL_CHECK_TRUE(start_aux());
+	SERIAL_CHECK_TRUE(wait_for_property_state(property, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(heater ? find_cached_item(property, item)->number.value == 50 : !find_cached_item(property, item)->sw.value);
+	SERIAL_CHECK_TRUE(hold_queue(atomic_load(&aux_device)));
+	start_watch(property, item, witness);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, heater ? indigo_change_number_property_1(&simulator_test_client, aux.device_name, property, item, requested) : indigo_change_switch_property_1(&simulator_test_client, aux.device_name, property, item, true));
+	SERIAL_CHECK_TRUE(find_cached_property(property)->state == INDIGO_BUSY_STATE);
+	// The poll's first command applies an external change of the witness, so the poll publishes it (unchanged
+	// properties are not republished). The poll comes due within 1 s while the queue is held.
+	SERIAL_CHECK_TRUE(heater ? fault("external_pid_ctrl", "1") : fault("external_pwm", "67"));
+	indigo_usleep(1200000);
+	unsigned before = atomic_load(&revisions[witness_index]);
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(wait_for_watch());
+	printf("    first %s result after the request: state %d, %s %g, poll ran first %d, %d '%s'\n", property, atomic_load(&watch_first_state), item, atomic_load(&watch_first_value), atomic_load(&watch_first_witness) > before, request_count(command), command);
+	SERIAL_CHECK_TRUE(atomic_load(&watch_first_witness) > before);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, atomic_load(&watch_first_state));
+	SERIAL_CHECK_TRUE(atomic_load(&watch_first_value) == requested);
+	SERIAL_CHECK_EQ_INT(1, request_count(command));
+	// Later polls read the new setting back and keep it.
+	indigo_usleep(1200000);
+	SERIAL_CHECK_TRUE(find_cached_property(property)->state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(heater ? find_cached_item(property, item)->number.value == requested : find_cached_item(property, item)->sw.value);
+cleanup:
+	atomic_store(&watch_index, -1);
+	atomic_store(&gate_release, true);
+	driver_stop(&aux);
+}
+
+// TGT-011 (AUX_HEATER_OUTLET handler as the writer): an X_USE_PID request queued behind an AUX_HEATER_OUTLET request
+// must still reach the device although the heater handler reads the aux state back (and the device disables PID
+// control when the PWM is set).
+static void aux_pid_request_survives_heater_change(void) {
+	atomic_store(&aux_device, NULL);
+	SERIAL_CHECK_TRUE(start_aux());
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_USE_PID_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!find_cached_item(X_USE_PID_PROPERTY_NAME, "ENABLED")->sw.value);
+	SERIAL_CHECK_TRUE(hold_queue(atomic_load(&aux_device)));
+	start_watch(X_USE_PID_PROPERTY_NAME, "ENABLED", NULL);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, aux.device_name, AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME, 40));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, aux.device_name, X_USE_PID_PROPERTY_NAME, "ENABLED", true));
+	SERIAL_CHECK_TRUE(find_cached_property(X_USE_PID_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(wait_for_watch());
+	printf("    first X_USE_PID result after the request: state %d, ENABLED %g, %d '$BS SET PID_CTRL:1'\n", atomic_load(&watch_first_state), atomic_load(&watch_first_value), request_count("$BS SET PID_CTRL:1"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, atomic_load(&watch_first_state));
+	SERIAL_CHECK_TRUE(atomic_load(&watch_first_value) == 1);
+	SERIAL_CHECK_EQ_INT(1, request_count("$BS SET PWM:40"));
+	SERIAL_CHECK_EQ_INT(1, request_count("$BS SET PID_CTRL:1"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_HEATER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE) && wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME, 40, .01));
+cleanup:
+	atomic_store(&watch_index, -1);
+	atomic_store(&gate_release, true);
+	driver_stop(&aux);
+}
+
+// TGT-B03: a FOCUSER_POSITION request copied while the 0.5 s focuser poll comes due ahead of its handler must still
+// move the focuser; the poll must neither overwrite the requested target nor publish over the pending BUSY. The first
+// result published after the request is the end of the motion to the requested position.
+static void position_request_survives_poll(void) {
+	atomic_store(&focuser_device, NULL);
+	SERIAL_CHECK_TRUE(start_focuser());
+	SERIAL_CHECK_TRUE(at_position(1000));
+	SERIAL_CHECK_TRUE(hold_queue(atomic_load(&focuser_device)));
+	start_watch(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, NULL);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	// Two polls come due while the queue is held.
+	indigo_usleep(1200000);
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(wait_for_watch());
+	printf("    first FOCUSER_POSITION result after the request: state %d, POSITION %g, %d '$BS GO 1500'\n", atomic_load(&watch_first_state), atomic_load(&watch_first_value), request_count("$BS GO 1500"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, atomic_load(&watch_first_state));
+	SERIAL_CHECK_TRUE(atomic_load(&watch_first_value) == 1500);
+	SERIAL_CHECK_EQ_INT(1, request_count("$BS GO 1500"));
+	SERIAL_CHECK_TRUE(at_position(1500));
+cleanup:
+	atomic_store(&watch_index, -1);
+	atomic_store(&gate_release, true);
+	driver_stop(&focuser);
+}
+
 typedef struct {
 	const char *name;
 	void (*run)(void);
@@ -727,6 +884,11 @@ int main(void) {
 		{ "aux_capabilities_split", aux_capabilities, "split" },
 		{ "aux_controls", aux_controls, "normal" },
 		{ "aux_failure_and_external", aux_failure_and_external, "normal" },
+		{ "aux_pid_request_survives_poll", aux_request_survives_poll, "normal" },
+		{ "aux_auto_dew_request_survives_poll", aux_request_survives_poll, "normal" },
+		{ "aux_heater_request_survives_poll", aux_request_survives_poll, "normal" },
+		{ "aux_pid_request_survives_heater_change", aux_pid_request_survives_heater_change, "normal" },
+		{ "position_request_survives_poll", position_request_survives_poll, "normal" },
 		{ "shared_focuser_first", shared_lifecycle, "normal" },
 		{ "shared_aux_first", shared_lifecycle, "normal" },
 		{ "reset", reset_and_reboot, "normal" },

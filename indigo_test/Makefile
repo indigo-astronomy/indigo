@@ -543,7 +543,7 @@ $(INTEGRATION_BUILD)/focuser_robofocus_simulator: ../indigo_drivers/focuser_robo
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/focuser_steeldrive2_simulator: ../indigo_drivers/focuser_steeldrive2/focuser_steeldrive2_simulator/focuser_steeldrive2_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $<
+	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/focuser_usbv3_simulator: ../indigo_drivers/focuser_usbv3/focuser_usbv3_simulator/focuser_usbv3_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<

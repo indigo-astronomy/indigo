@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000011
+#define DRIVER_VERSION       0x03000012
 #define DRIVER_NAME          "indigo_focuser_steeldrive2"
 #define DRIVER_LABEL         "Baader Planetarium SteelDriveII Focuser"
 #define FOCUSER_DEVICE_NAME  "SteelDriveII (focuser)"
@@ -191,9 +191,9 @@ typedef struct {
 	char response[512];
 	char firmware[64];
 	char name[20];
-	int position, target, limit, focus, pwm, last_position, stalled, failures;
+	int position, target, limit, focus, pwm, pid_ctrl, auto_dew, last_position, stalled, failures;
 	double temperature_0, temperature_1, temperature_average;
-	bool crc_enabled, moving, active, uncertain, zeroing;
+	bool crc_enabled, moving, active, uncertain, zeroing, external;
 	//- data
 } steeldrive2_private_data;
 
@@ -481,7 +481,7 @@ static bool steeldrive2_load_focuser(indigo_device *device) {
 	INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Baader Planetarium SteelDriveII");
 	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
 	PRIVATE_DATA->target = PRIVATE_DATA->position;
-	PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->zeroing = false;
+	PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->zeroing = PRIVATE_DATA->external = false;
 	return true;
 }
 
@@ -495,9 +495,18 @@ static bool steeldrive2_read_aux(indigo_device *device, bool complete) {
 		return false;
 	}
 	PRIVATE_DATA->pwm = (int)pwm;
-	AUX_HEATER_OUTLET_1_ITEM->number.value = AUX_HEATER_OUTLET_1_ITEM->number.target = pwm;
-	steeldrive2_set_switch(X_USE_PID_PROPERTY, pid ? 1 : 0);
-	steeldrive2_set_switch(X_USE_AUTO_DEW_PROPERTY, auto_dew ? 1 : 0);
+	PRIVATE_DATA->pid_ctrl = pid;
+	PRIVATE_DATA->auto_dew = auto_dew;
+	// A pending request owns value and target of its property, its handler reads the target and publishes the result.
+	if (AUX_HEATER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
+		AUX_HEATER_OUTLET_1_ITEM->number.value = AUX_HEATER_OUTLET_1_ITEM->number.target = pwm;
+	}
+	if (X_USE_PID_PROPERTY->state != INDIGO_BUSY_STATE) {
+		steeldrive2_set_switch(X_USE_PID_PROPERTY, pid ? 1 : 0);
+	}
+	if (X_USE_AUTO_DEW_PROPERTY->state != INDIGO_BUSY_STATE) {
+		steeldrive2_set_switch(X_USE_AUTO_DEW_PROPERTY, auto_dew ? 1 : 0);
+	}
 	if (complete) {
 		steeldrive2_set_switch(X_SELECT_PID_SENSOR_PROPERTY, pid_sensor);
 		steeldrive2_set_switch(X_SELECT_AMB_SENSOR_PROPERTY, ambient_sensor);
@@ -552,6 +561,8 @@ static void steeldrive2_publish_focuser(indigo_device *device, indigo_property_s
 	X_STATUS_SENSOR_0_ITEM->number.value = PRIVATE_DATA->temperature_0;
 	X_STATUS_SENSOR_1_ITEM->number.value = PRIVATE_DATA->temperature_1;
 	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = motion_state;
+	// BUSY without an active motion is only published by the poll, for a motion the driver did not start.
+	PRIVATE_DATA->external = motion_state == INDIGO_BUSY_STATE && !PRIVATE_DATA->active;
 	FOCUSER_TEMPERATURE_PROPERTY->state = X_STATUS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -643,11 +654,15 @@ static void focuser_timer_callback(indigo_device *device) {
 		return;
 	}
 	//+ focuser.on_timer
-	if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain) {
+	// A pending FOCUSER_POSITION or FOCUSER_STEPS request (BUSY not published by the poll itself) owns target and
+	// state, its handler reads the target and publishes the result.
+	bool pending = !PRIVATE_DATA->external && (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE);
+	if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain && !pending) {
 		if (steeldrive2_summary(device)) {
 			FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 			steeldrive2_publish_focuser(device, PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE);
 		} else {
+			PRIVATE_DATA->external = false;
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = FOCUSER_TEMPERATURE_PROPERTY->state = X_STATUS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -946,7 +961,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 			FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 			steeldrive2_publish_focuser(device, INDIGO_OK_STATE);
 		} else {
-			PRIVATE_DATA->active = false;
+			PRIVATE_DATA->active = PRIVATE_DATA->external = false;
 			PRIVATE_DATA->uncertain = true;
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1143,14 +1158,15 @@ static void aux_timer_callback(indigo_device *device) {
 		return;
 	}
 	//+ aux.on_timer
-	if (steeldrive2_read_aux(device, false)) {
-		AUX_HEATER_OUTLET_PROPERTY->state = X_USE_PID_PROPERTY->state = X_USE_AUTO_DEW_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		AUX_HEATER_OUTLET_PROPERTY->state = X_USE_PID_PROPERTY->state = X_USE_AUTO_DEW_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_property_state state = steeldrive2_read_aux(device, false) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	// A pending request owns the state of its property, its handler publishes the result.
+	indigo_property *polled[] = { AUX_HEATER_OUTLET_PROPERTY, X_USE_PID_PROPERTY, X_USE_AUTO_DEW_PROPERTY };
+	for (int i = 0; i < 3; i++) {
+		if (polled[i]->state != INDIGO_BUSY_STATE) {
+			polled[i]->state = state;
+			indigo_update_property(device, polled[i], NULL);
+		}
 	}
-	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-	indigo_update_property(device, X_USE_PID_PROPERTY, NULL);
-	indigo_update_property(device, X_USE_AUTO_DEW_PROPERTY, NULL);
 	indigo_execute_handler_in(device, 1, aux_timer_callback);
 	//- aux.on_timer
 }
@@ -1226,9 +1242,12 @@ static void aux_connection_handler(indigo_device *device) {
 static void aux_heater_outlet_handler(indigo_device *device) {
 	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_HEATER_OUTLET.on_change
-	int requested = (int)AUX_HEATER_OUTLET_1_ITEM->number.value;
+	// The poll leaves a pending request alone, the target keeps it. On failure the outlet shows the PWM the
+	// device last reported.
+	int requested = (int)AUX_HEATER_OUTLET_1_ITEM->number.target;
 	bool accepted = steeldrive2_ok(device, "$BS SET PWM:%d", requested);
 	if (!steeldrive2_read_aux(device, false) || !accepted || PRIVATE_DATA->pwm != requested) {
+		AUX_HEATER_OUTLET_1_ITEM->number.value = AUX_HEATER_OUTLET_1_ITEM->number.target = PRIVATE_DATA->pwm;
 		AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, X_USE_PID_PROPERTY, NULL);
@@ -1240,13 +1259,19 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 static void aux_x_use_auto_dew_handler(indigo_device *device) {
 	X_USE_AUTO_DEW_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.X_USE_AUTO_DEW.on_change
-	int requested = AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? 1 : 0;
+	// The poll may overwrite the value between the copy of the request and this handler, the target keeps the
+	// request. On failure the switch shows the setting the device last reported.
+	int requested = indigo_get_switch_target(X_USE_AUTO_DEW_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME) ? 1 : 0;
 	int actual;
-	if (!steeldrive2_ok(device, "$BS SET AUTO_DEW:%d", requested) || !steeldrive2_get_switch(device, "AUTO_DEW", "AUTO_DEW", 1, &actual) || actual != requested) {
-		X_USE_AUTO_DEW_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
+	bool accepted = steeldrive2_ok(device, "$BS SET AUTO_DEW:%d", requested) && steeldrive2_get_switch(device, "AUTO_DEW", "AUTO_DEW", 1, &actual) && actual == requested;
 	if (steeldrive2_get_switch(device, "AUTO_DEW", "AUTO_DEW", 1, &actual)) {
-		steeldrive2_set_switch(X_USE_AUTO_DEW_PROPERTY, actual ? 1 : 0);
+		PRIVATE_DATA->auto_dew = actual;
+	}
+	if (accepted && PRIVATE_DATA->auto_dew == requested) {
+		indigo_apply_switch_targets(X_USE_AUTO_DEW_PROPERTY);
+	} else {
+		steeldrive2_set_switch(X_USE_AUTO_DEW_PROPERTY, PRIVATE_DATA->auto_dew ? 1 : 0);
+		X_USE_AUTO_DEW_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- aux.X_USE_AUTO_DEW.on_change
 	indigo_update_property(device, X_USE_AUTO_DEW_PROPERTY, NULL);
@@ -1255,13 +1280,19 @@ static void aux_x_use_auto_dew_handler(indigo_device *device) {
 static void aux_x_use_pid_handler(indigo_device *device) {
 	X_USE_PID_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.X_USE_PID.on_change
-	int requested = X_USE_PID_ENABLED_ITEM->sw.value ? 1 : 0;
+	// The poll and the AUX_HEATER_OUTLET handler may overwrite the value between the copy of the request and this
+	// handler, the target keeps the request. On failure the switch shows the setting the device last reported.
+	int requested = indigo_get_switch_target(X_USE_PID_PROPERTY, X_USE_PID_ENABLED_ITEM_NAME) ? 1 : 0;
 	int actual;
-	if (!steeldrive2_ok(device, "$BS SET PID_CTRL:%d", requested) || !steeldrive2_get_switch(device, "PID_CTRL", "PID_CTRL", 1, &actual) || actual != requested) {
-		X_USE_PID_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
+	bool accepted = steeldrive2_ok(device, "$BS SET PID_CTRL:%d", requested) && steeldrive2_get_switch(device, "PID_CTRL", "PID_CTRL", 1, &actual) && actual == requested;
 	if (steeldrive2_get_switch(device, "PID_CTRL", "PID_CTRL", 1, &actual)) {
-		steeldrive2_set_switch(X_USE_PID_PROPERTY, actual ? 1 : 0);
+		PRIVATE_DATA->pid_ctrl = actual;
+	}
+	if (accepted && PRIVATE_DATA->pid_ctrl == requested) {
+		indigo_apply_switch_targets(X_USE_PID_PROPERTY);
+	} else {
+		steeldrive2_set_switch(X_USE_PID_PROPERTY, PRIVATE_DATA->pid_ctrl ? 1 : 0);
+		X_USE_PID_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- aux.X_USE_PID.on_change
 	indigo_update_property(device, X_USE_PID_PROPERTY, NULL);

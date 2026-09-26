@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/select.h>
+#include <termios.h>
 #include <unistd.h>
 
 #include "../../../indigo_test/simulator_common/serial_motion.h"
@@ -170,7 +171,7 @@ static void apply_external_fault(void) {
 	if (file == NULL) {
 		return;
 	}
-	if (fscanf(file, "%79s %79s", key, value) != 2 || (strcmp(key, "external_position") && strcmp(key, "external_temperature") && strcmp(key, "external_pwm"))) {
+	if (fscanf(file, "%79s %79s", key, value) != 2 || (strcmp(key, "external_position") && strcmp(key, "external_temperature") && strcmp(key, "external_pwm") && strcmp(key, "external_pid_ctrl"))) {
 		fclose(file);
 		return;
 	}
@@ -189,6 +190,12 @@ static void apply_external_fault(void) {
 		if (!*end && isfinite(parsed) && parsed >= -128 && parsed <= 150) {
 			temp0 = parsed;
 			temp1 = parsed + 1;
+		}
+	} else if (!strcmp(key, "external_pid_ctrl")) {
+		char *end;
+		long parsed = strtol(value, &end, 10);
+		if (!*end && parsed >= 0 && parsed <= 1) {
+			pid_ctrl = (int)parsed;
 		}
 	} else {
 		char *end;
@@ -567,6 +574,14 @@ int main(int argc, char *argv[]) {
 	signal(SIGINT, stop_signal);
 	char port[256];
 	serial_fd = serial_simulator_open_pty(port, sizeof(port));
+	// A serial line does not echo. With the default terminal settings the pseudo-terminal echoes the boot banner
+	// back until the driver opens the port, the simulator answers its own output and a partial echo corrupts the
+	// driver's first command (seen on Linux when the driver opens the port later than 100 ms after start).
+	struct termios settings;
+	if (serial_fd >= 0 && tcgetattr(serial_fd, &settings) == 0) {
+		cfmakeraw(&settings);
+		tcsetattr(serial_fd, TCSANOW, &settings);
+	}
 	if (serial_fd < 0 || (ready_file != NULL && !serial_simulator_write_ready_file(ready_file, "focuser_steeldrive2", port))) {
 		return 1;
 	}
