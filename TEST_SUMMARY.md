@@ -161,6 +161,7 @@
 | focuser_primaluce | 2026-09-20 19:54 | 3.0.0.13 | mac arm64 | SESTO SENSO 2 | 18 / 18 | ✅ OK |
 |  | 2026-09-26 21:14 | 3.0.0.15 | mac arm64 | simulator | 36 / 36 | ✅ OK |
 | focuser_prodigy | 2026-09-26 21:19 | 3.0.0.7 | mac arm64 | simulator | 55 / 55 | ✅ OK |
+|  | 2026-09-27 01:04 | 3.0.0.8 | linux x64 | simulator | 57 / 57 | ✅ OK |
 | focuser_qhy | 2026-09-21 19:20 | 3.0.0.8 | mac arm64 | simulator | 31 / 31 | ✅ OK |
 | focuser_robofocus | 2026-09-21 19:12 | 3.0.0.3 | mac arm64 | simulator | 19 / 19 | ✅ OK |
 | focuser_steeldrive2 | 2026-09-26 21:26 | 3.0.0.17 | mac arm64 | simulator | 50 / 50 | ✅ OK |

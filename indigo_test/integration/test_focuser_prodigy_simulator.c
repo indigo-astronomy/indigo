@@ -52,7 +52,7 @@ static const simulator_driver_case prodigy_powerbox = { "Pegasus Prodigy Powerbo
 static external_serial_simulator fixture, second_fixture;
 static char fixture_dir[] = "/tmp/indigo-prodigy.XXXXXX";
 static char event_path[256], fault_path[256];
-static const char *current_profile;
+static const char *current_profile, *current_case;
 
 static bool fault(const char *command, const char *action) {
 	char temporary[280];
@@ -141,6 +141,7 @@ static int run_cases(const prodigy_test *cases, int count) {
 			continue;
 		}
 		current_profile = cases[i].profile;
+		current_case = cases[i].name;
 		unlink(fault_path);
 		const char *args[] = { "--profile", current_profile, NULL };
 		if (!start_external_serial_simulator_with_args(&fixture, FOCUSER_PRODIGY_SIMULATOR_EXECUTABLE, args)) {
@@ -190,6 +191,10 @@ static int run_cases(const prodigy_test *cases, int count) {
 
 static const char *observed_names[] = { CONNECTION_PROPERTY_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_ABORT_MOTION_PROPERTY_NAME, "X_FOCUSER_PARK", "X_AUX_REBOOT", FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_BACKLASH_PROPERTY_NAME, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_USB_PORT_PROPERTY_NAME, AUX_OUTLET_NAMES_PROPERTY_NAME };
 static atomic_uint revisions[13], motion_busy;
+static _Atomic(indigo_device *) aux_device;
+static atomic_int watch_index = -1, watch_results, watch_busy, watch_first_state;
+static atomic_bool watch_first_values[2];
+static atomic_uint watch_first_reboot;
 
 static int observed_index(const char *name) {
 	for (int i = 0; i < 13; i++) {
@@ -203,6 +208,22 @@ static int observed_index(const char *name) {
 static indigo_result observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	indigo_result result = simulator_client_update_property(client, device, property, message);
 	int i = context.driver_case && !strcmp(property->device, context.driver_case->device_name) ? observed_index(property->name) : -1;
+	if (!strcmp(property->device, prodigy_powerbox.device_name)) {
+		atomic_store(&aux_device, device);
+	}
+	// Every publication of a watched property after the request: BUSY ones are counted, the first result (not BUSY)
+	// records its state, both item values and how often X_AUX_REBOOT was published by then.
+	if (i >= 0 && i == atomic_load(&watch_index)) {
+		if (property->state == INDIGO_BUSY_STATE) {
+			atomic_fetch_add(&watch_busy, 1);
+		} else if (atomic_fetch_add(&watch_results, 1) == 0) {
+			for (int j = 0; j < property->count && j < 2; j++) {
+				atomic_store(&watch_first_values[j], property->items[j].sw.value);
+			}
+			atomic_store(&watch_first_reboot, atomic_load(&revisions[5]));
+			atomic_store(&watch_first_state, property->state);
+		}
+	}
 	if (i >= 0) {
 		atomic_fetch_add(&revisions[i], 1);
 	}
@@ -712,6 +733,74 @@ cleanup:
 	driver_stop();
 }
 
+// A gate handler holds the device queue, so a request is copied and queued while a finalizer comes due behind it.
+// Finalizers are INDIGO_TASK_PRIORITY_TIME tasks and run ahead of the queued change handler once the gate ends. The
+// focuser and powerbox devices share one queue.
+static atomic_bool gate_entered, gate_release;
+
+static void gate_handler(indigo_device *device) {
+	atomic_store(&gate_entered, true);
+	for (int i = 0; i < 5000 && !atomic_load(&gate_release); i++) {
+		indigo_usleep(1000);
+	}
+}
+
+static bool hold_queue(indigo_device *device) {
+	atomic_store(&gate_entered, false);
+	atomic_store(&gate_release, false);
+	if (device == NULL) {
+		return false;
+	}
+	indigo_execute_handler(device, gate_handler);
+	for (int i = 0; i < 300 && !atomic_load(&gate_entered); i++) {
+		indigo_usleep(10000);
+	}
+	return atomic_load(&gate_entered);
+}
+
+// TGT-013, TGT-014: an AUX_POWER_OUTLET or AUX_USB_PORT request copied while reboot_finalizer comes due ahead of its
+// handler must still reach the device. The finalizer succeeds (the simulator answers again 0.7 s after Q, the
+// finalizer runs 1 s after it) and publishes the ports it read back, but must neither overwrite the pending request
+// nor publish over its BUSY. The first result after the request is the handler's, with the requested values, and the
+// finalizer (seen by the X_AUX_REBOOT result it publishes) ran before it.
+static void port_request_survives_reboot(void) {
+	bool usb = strstr(current_case, "usb") != NULL;
+	const char *property = usb ? AUX_USB_PORT_PROPERTY_NAME : AUX_POWER_OUTLET_PROPERTY_NAME;
+	const char *item = usb ? AUX_USB_PORT_1_ITEM_NAME : AUX_POWER_OUTLET_1_ITEM_NAME;
+	const char *command = usb ? "U:1" : "X:1";
+	atomic_store(&aux_device, NULL);
+	SERIAL_CHECK_TRUE(aux_start());
+	SERIAL_CHECK_TRUE(wait_for_property_state(property, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!find_cached_item(property, item)->sw.value);
+	SERIAL_CHECK_TRUE(switch_change("X_AUX_REBOOT", "REBOOT", true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(hold_queue(atomic_load(&aux_device)));
+	unsigned before = atomic_load(&revisions[5]);
+	atomic_store(&watch_results, 0);
+	atomic_store(&watch_busy, 0);
+	atomic_store(&watch_index, observed_index(property));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, prodigy_powerbox.device_name, property, item, true));
+	SERIAL_CHECK_TRUE(find_cached_property(property)->state == INDIGO_BUSY_STATE);
+	// reboot_finalizer comes due 1 s after the reboot request while the queue is held.
+	indigo_usleep(1200000);
+	atomic_store(&gate_release, true);
+	for (int i = 0; i < 500 && atomic_load(&watch_results) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(atomic_load(&watch_results) > 0);
+	printf("    first %s result after the request: state %d, items %d %d, BUSY updates %d, reboot finished first %d, %d '%s'\n", property, atomic_load(&watch_first_state), atomic_load(&watch_first_values[0]), atomic_load(&watch_first_values[1]), atomic_load(&watch_busy), atomic_load(&watch_first_reboot) > before, commands(command), command);
+	SERIAL_CHECK_TRUE(atomic_load(&watch_first_reboot) > before);
+	SERIAL_CHECK_TRUE(find_cached_property("X_AUX_REBOOT")->state == INDIGO_OK_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, atomic_load(&watch_first_state));
+	SERIAL_CHECK_TRUE(atomic_load(&watch_first_values[0]) && !atomic_load(&watch_first_values[1]));
+	// Only the copy of the request published BUSY, the finalizer left the pending property alone.
+	SERIAL_CHECK_EQ_INT(1, atomic_load(&watch_busy));
+	SERIAL_CHECK_EQ_INT(1, commands(command));
+cleanup:
+	atomic_store(&watch_index, -1);
+	atomic_store(&gate_release, true);
+	driver_stop();
+}
+
 int main(void) {
 	simulator_test_client.update_property = observe_update;
 	const prodigy_test cases[] = {
@@ -762,6 +851,8 @@ int main(void) {
 		{ "shared", shared, "normal" },
 		{ "reboot", reboot_case, "normal" },
 		{ "reboot_timeout", reboot_case, "reboot_timeout" },
+		{ "power_request_survives_reboot", port_request_survives_reboot, "normal" },
+		{ "usb_request_survives_reboot", port_request_survives_reboot, "normal" },
 		{ "disconnect_motion", lifecycle, "normal" },
 		{ "disconnect_read", lifecycle, "disconnect_read" },
 		{ "init_identity", rejected_connection, "init_#_reply=OK_OTHER" },

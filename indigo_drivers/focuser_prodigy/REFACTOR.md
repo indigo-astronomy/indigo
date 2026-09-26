@@ -136,3 +136,19 @@ cd indigo_test && ./build/integration/test_focuser_prodigy_simulator
 
 - Simulated tests run: 55; passed: 55.
 - Hardware tests run: 0; passed: 0.
+
+## Switch target adoption: AUX_POWER_OUTLET and AUX_USB_PORT (3.0.0.8, 2026-09-27)
+
+Findings TGT-013 and TGT-014 in `indigo_drivers/REVIEW_SWITCH_TARGETS.md`, both reproduced before the fix.
+
+- **Defects (reproduced):** `reboot_finalizer`, on success, called `prodigy_publish_ports()`, which wrote the four port items from the ports it read back and published AUX_POWER_OUTLET and AUX_USB_PORT without a BUSY check. Finalizers are `INDIGO_TASK_PRIORITY_TIME` tasks and run ahead of a queued change handler, so a power or USB request copied while the finalizer came due was overwritten and republished (still BUSY) with the old values; the handler then read the overwritten values, sent the device its current state, read it back as matching and reported OK. The request was never applied. The window is narrow: only a change queued while the reboot completes successfully.
+- **Fix:** `prodigy_publish_ports()` leaves the values of a BUSY AUX_POWER_OUTLET or AUX_USB_PORT alone and does not publish it. Both handlers send the request read item by item with `indigo_get_switch_target()`, apply it with `indigo_apply_switch_targets()` when the device accepted and reports it, and otherwise show the ports the device last reported with ALERT (the command order `X`/`Y` or `U`/`J`, then `D`, is unchanged).
+- **Regression tests:** `power_request_survives_reboot` and `usb_request_survives_reboot` start a reboot, hold the shared device queue with a gate handler, send the request, let `reboot_finalizer` come due behind the gate (the simulator answers again 0.7 s after `Q`, the finalizer runs 1 s after it) and check that the first result after the request is the handler's OK with the requested values, published after the reboot's OK, that only the copy of the request published BUSY, and that `X:1` / `U:1` was sent exactly once. Against 3.0.0.7 both failed (first result OK with both items off, two BUSY publications, no `X:1` / `U:1` sent); both pass with 3.0.0.8, also in the ASan build.
+- **Verification (Linux x64):** `TZ=Europe/Bratislava python3 tools/run_driver_test.py focuser_prodigy` 57/57 OK. Regeneration reproduces the checked-in output.
+- **Observed, not changed:** the powerbox `on_connect` block publishes both port properties through `prodigy_publish_ports()` before the generated connection handler defines them, so the test client logs "updated without being defined" on every powerbox connect; this is unrelated to the target change and left as is.
+
+```sh
+cd indigo_test && PRODIGY_TEST_FILTER=request_survives_reboot ./build/integration/test_focuser_prodigy_simulator
+```
+
+Final test summary: 57 simulated tests run, 57 passed; 0 hardware tests run, 0 passed.

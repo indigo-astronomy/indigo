@@ -20,7 +20,7 @@ driver prodigy {
 	label = "PegasusAstro Prodigy Microfocuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2022-2026 CloudMakers, s. r. o.";
-	version = 7;
+	version = 8;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -427,12 +427,17 @@ driver prodigy {
 		interface = INDIGO_INTERFACE_AUX_POWERBOX;
 		code {
 			static void prodigy_publish_ports(indigo_device *device) {
-				AUX_POWER_OUTLET_1_ITEM->sw.value = PRIVATE_DATA->outlets[0];
-				AUX_POWER_OUTLET_2_ITEM->sw.value = PRIVATE_DATA->outlets[1];
-				AUX_USB_PORT_1_ITEM->sw.value = PRIVATE_DATA->outlets[2];
-				AUX_USB_PORT_2_ITEM->sw.value = PRIVATE_DATA->outlets[3];
-				indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-				indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
+				// A pending request owns the values and state of its property, its handler publishes the result.
+				if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
+					AUX_POWER_OUTLET_1_ITEM->sw.value = PRIVATE_DATA->outlets[0];
+					AUX_POWER_OUTLET_2_ITEM->sw.value = PRIVATE_DATA->outlets[1];
+					indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+				}
+				if (AUX_USB_PORT_PROPERTY->state != INDIGO_BUSY_STATE) {
+					AUX_USB_PORT_1_ITEM->sw.value = PRIVATE_DATA->outlets[2];
+					AUX_USB_PORT_2_ITEM->sw.value = PRIVATE_DATA->outlets[3];
+					indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
+				}
 			}
 
 			static void reboot_finalizer(indigo_device *device) {
@@ -494,18 +499,22 @@ driver prodigy {
 			perm = INDIGO_RW_PERM;
 			rule = INDIGO_ANY_OF_MANY_RULE;
 			on_change {
-				bool first = AUX_POWER_OUTLET_1_ITEM->sw.value, second = AUX_POWER_OUTLET_2_ITEM->sw.value;
+				// The reboot completion may overwrite the values between the copy of the request and this handler, the targets
+				// keep the request. On failure the outlets show the state the device last reported.
+				bool first = indigo_get_switch_target(AUX_POWER_OUTLET_PROPERTY, AUX_POWER_OUTLET_1_ITEM_NAME), second = indigo_get_switch_target(AUX_POWER_OUTLET_PROPERTY, AUX_POWER_OUTLET_2_ITEM_NAME);
 				bool ok = !PRIVATE_DATA->rebooting && prodigy_set(device, 'X', first) && prodigy_set(device, 'Y', second);
 				if (!PRIVATE_DATA->rebooting && prodigy_ports(device)) {
 					ok = ok && PRIVATE_DATA->outlets[0] == first && PRIVATE_DATA->outlets[1] == second;
 				} else {
 					ok = false;
 				}
-				if (!ok) {
+				if (ok) {
+					indigo_apply_switch_targets(AUX_POWER_OUTLET_PROPERTY);
+				} else {
+					AUX_POWER_OUTLET_1_ITEM->sw.value = PRIVATE_DATA->outlets[0];
+					AUX_POWER_OUTLET_2_ITEM->sw.value = PRIVATE_DATA->outlets[1];
 					AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
-				AUX_POWER_OUTLET_1_ITEM->sw.value = PRIVATE_DATA->outlets[0];
-				AUX_POWER_OUTLET_2_ITEM->sw.value = PRIVATE_DATA->outlets[1];
 			}
 			item AUX_POWER_OUTLET_1 { name = AUX_POWER_OUTLET_1_ITEM_NAME; label = "Outlet #1"; value = false; }
 			item AUX_POWER_OUTLET_2 { name = AUX_POWER_OUTLET_2_ITEM_NAME; label = "Outlet #2"; value = false; }
@@ -517,18 +526,22 @@ driver prodigy {
 			perm = INDIGO_RW_PERM;
 			rule = INDIGO_ANY_OF_MANY_RULE;
 			on_change {
-				bool first = AUX_USB_PORT_1_ITEM->sw.value, second = AUX_USB_PORT_2_ITEM->sw.value;
+				// The reboot completion may overwrite the values between the copy of the request and this handler, the targets
+				// keep the request. On failure the ports show the state the device last reported.
+				bool first = indigo_get_switch_target(AUX_USB_PORT_PROPERTY, AUX_USB_PORT_1_ITEM_NAME), second = indigo_get_switch_target(AUX_USB_PORT_PROPERTY, AUX_USB_PORT_2_ITEM_NAME);
 				bool ok = !PRIVATE_DATA->rebooting && prodigy_set(device, 'U', first) && prodigy_set(device, 'J', second);
 				if (!PRIVATE_DATA->rebooting && prodigy_ports(device)) {
 					ok = ok && PRIVATE_DATA->outlets[2] == first && PRIVATE_DATA->outlets[3] == second;
 				} else {
 					ok = false;
 				}
-				if (!ok) {
+				if (ok) {
+					indigo_apply_switch_targets(AUX_USB_PORT_PROPERTY);
+				} else {
+					AUX_USB_PORT_1_ITEM->sw.value = PRIVATE_DATA->outlets[2];
+					AUX_USB_PORT_2_ITEM->sw.value = PRIVATE_DATA->outlets[3];
 					AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
-				AUX_USB_PORT_1_ITEM->sw.value = PRIVATE_DATA->outlets[2];
-				AUX_USB_PORT_2_ITEM->sw.value = PRIVATE_DATA->outlets[3];
 			}
 			item AUX_USB_PORT_1 { name = AUX_USB_PORT_1_ITEM_NAME; label = "Port #1"; value = false; }
 			item AUX_USB_PORT_2 { name = AUX_USB_PORT_2_ITEM_NAME; label = "Port #2"; value = false; }
