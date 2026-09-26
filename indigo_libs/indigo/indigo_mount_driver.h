@@ -627,6 +627,33 @@ INDIGO_EXTERN void indigo_mount_save_alignment_points(indigo_device *device);
 
 INDIGO_EXTERN void indigo_mount_update_alignment_points(indigo_device *device);
 
+/** Pointing of a simulated mount shared with simulated cameras loaded into the same process.
+ */
+typedef struct {
+	double ra;					///< raw (physical) RA in hours, in the epoch below
+	double dec;					///< raw (physical) Dec in degrees, in the epoch below
+	double epoch;				///< epoch of ra/dec, 0 = JNow
+	double latitude;		///< site latitude in degrees
+	double longitude;		///< site longitude in degrees
+	bool west;					///< OTA is on the west side of the pier
+	bool guidable;			///< mount follows guide pulses (it is neither parked nor slewing)
+} indigo_simulated_mount_state;
+
+/** Publish the pointing of a simulated mount, or withdraw it if state is NULL and device is the last publisher.
+ Guide offsets requested by indigo_simulated_mount_guide() since the last call are added to state->ra and state->dec,
+ the mount has to move its own position by the same amount.
+ */
+INDIGO_EXTERN void indigo_set_simulated_mount_state(indigo_device *device, indigo_simulated_mount_state *state);
+
+/** Get the pointing of a simulated mount, return false if no simulated mount is connected.
+ */
+INDIGO_EXTERN bool indigo_get_simulated_mount_state(indigo_simulated_mount_state *state);
+
+/** Move a simulated mount by ra hours and dec degrees, return false if no simulated mount is connected.
+ A mount which does not follow guide pulses ignores the request.
+ */
+INDIGO_EXTERN bool indigo_simulated_mount_guide(double ra, double dec);
+
 #ifdef __cplusplus
 }
 #endif

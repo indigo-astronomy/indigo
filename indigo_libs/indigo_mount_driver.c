@@ -1337,3 +1337,55 @@ void indigo_update_coordinates(indigo_device *device, const char *message) {
 	indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, message);
 }
+
+// Drivers are separate modules (static archives or dlopen()ed libraries loaded without RTLD_GLOBAL), so the only
+// state a mount simulator and a camera simulator can share is the one owned by the library they both link.
+// Guide offsets requested by a camera simulator's guider are visible to indigo_get_simulated_mount_state() at once
+// and handed over to the mount on its next indigo_set_simulated_mount_state().
+static pthread_mutex_t simulated_mount_mutex = PTHREAD_MUTEX_INITIALIZER;
+static indigo_device *simulated_mount_owner = NULL;
+static indigo_simulated_mount_state simulated_mount_state;
+static double simulated_mount_ra_offset, simulated_mount_dec_offset;
+
+static void add_simulated_mount_offset(indigo_simulated_mount_state *state, double ra, double dec) {
+	state->ra = fmod(state->ra + ra + 24, 24);
+	state->dec = fmax(-90, fmin(90, state->dec + dec));
+}
+
+void indigo_set_simulated_mount_state(indigo_device *device, indigo_simulated_mount_state *state) {
+	pthread_mutex_lock(&simulated_mount_mutex);
+	if (state != NULL) {
+		if (simulated_mount_owner == device && state->guidable) {
+			add_simulated_mount_offset(state, simulated_mount_ra_offset, simulated_mount_dec_offset);
+		}
+		simulated_mount_ra_offset = simulated_mount_dec_offset = 0;
+		simulated_mount_owner = device;
+		simulated_mount_state = *state;
+	} else if (simulated_mount_owner == device) {
+		simulated_mount_owner = NULL;
+		simulated_mount_ra_offset = simulated_mount_dec_offset = 0;
+	}
+	pthread_mutex_unlock(&simulated_mount_mutex);
+}
+
+bool indigo_get_simulated_mount_state(indigo_simulated_mount_state *state) {
+	pthread_mutex_lock(&simulated_mount_mutex);
+	bool result = simulated_mount_owner != NULL;
+	if (result) {
+		*state = simulated_mount_state;
+	}
+	pthread_mutex_unlock(&simulated_mount_mutex);
+	return result;
+}
+
+bool indigo_simulated_mount_guide(double ra, double dec) {
+	pthread_mutex_lock(&simulated_mount_mutex);
+	bool result = simulated_mount_owner != NULL;
+	if (result && simulated_mount_state.guidable) {
+		simulated_mount_ra_offset += ra;
+		simulated_mount_dec_offset += dec;
+		add_simulated_mount_offset(&simulated_mount_state, ra, dec);
+	}
+	pthread_mutex_unlock(&simulated_mount_mutex);
+	return result;
+}

@@ -231,3 +231,17 @@ another client; disconnect and driver shutdown leave no entry; a finite goto kee
 parked-mount guard refusing a request with and without a registered motion; both axes; direction
 change; detach before the commit; repeated detach/close races; a mount locked by an access token.
 Registrations are proven by the bus log markers and a device-queue fence, not by sleeps.
+
+## Camera simulator integration and moving guide pulses (2026-09-26)
+
+Versions 19 to 21. The mount publishes its physical (raw) pointing, epoch, site, side of pier and whether it follows guide pulses through `indigo_set_simulated_mount_state()` in `libindigo`. It does so after every position update, manual-motion step, SYNC and guide move, and withdraws the state on disconnect. `CCD Guider Simulator` renders its star field from this state; see `indigo_drivers/ccd_simulator/REFACTOR.md`.
+
+Guide pulses of `Mount Simulator (guider)` previously only completed the property and did not move the mount. They now move the raw position at `GUIDER_RATE`/`GUIDER_DEC_RATE` % of sidereal. East and north increase RA and Dec. A pulse replaced mid-flight contributes only the time it ran. A parked, parking or slewing mount ignores pulses. Pulses of a camera simulator's guider arrive through `indigo_simulated_mount_guide()`: the shared state shows them at once, and the mount takes them over on its next position update.
+
+Manual motion used the opposite RA direction: `MOUNT_MOTION_WEST` raised the RA, although the sky's RA grows towards the east. Version 21 lowers the RA on west and raises it on east, the same directions as the guide pulses. `mount_manual_axes_reverse_and_abort` now asserts that east/north raise RA/Dec and west/south lower them again; no other suite depends on the direction (`test_detach_abort` uses the items only for motion ownership and passed).
+
+Regression test in `integration/test_mount_simulator.c`: `mount_shares_pointing_and_follows_guide_pulses`. It covers the published pointing after SYNC, epoch and site; a camera-guider move being visible at once and then taken over by `MOUNT_EQUATORIAL_COORDINATES`; 2 s north and west pulses within 10 %; a 2 s north pulse replaced after 500 ms by a 500 ms south pulse cancelling out; a parking mount not being guidable; and withdrawal on disconnect. The new case adds two more of the harness's existing "CONNECTION was updated without being defined" notes, the same ones `logical_devices_survive_both_connection_orders` already prints when it switches between the two logical devices.
+
+Validation on macOS arm64: `test_mount_simulator` 17/17, `test_mount_simulator_asan` and `test_detach_abort` passed. In the repeated runs, `mount_goto_runs_on_queue_and_rejects_overlap` failed once (1 of about 50 runs, line 487: the GOTO did not end at RA 1.4). It was not reproduced in 33 further runs, including 18 under parallel load, nor in 30 runs of the unmodified test and driver. The GOTO path does not move through the new code (a slewing mount is not guidable, so the shared state equals the raw position). The case's own window, a second GOTO that must arrive during the first one's roughly 0.4 s slew, remains the suspected cause. The end-to-end camera case is in the CCD simulator suite. Linux and Windows were not run.
+
+Final test summary for this change: simulator suite 17 run / 17 passed (plus the ASan run); hardware 0 run / 0 passed.

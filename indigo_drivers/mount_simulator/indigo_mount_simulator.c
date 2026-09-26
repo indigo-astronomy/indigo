@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000013
+#define DRIVER_VERSION       0x03000015
 #define DRIVER_NAME          "indigo_mount_simulator"
 #define DRIVER_LABEL         "Mount Simulator"
 #define MOUNT_DEVICE_NAME    DRIVER_LABEL
@@ -49,6 +49,8 @@ typedef struct {
 	bool parking, parked, going_home, at_home;
 	double ha;
 	bool slew_in_progress;
+	double guide_ra_rate, guide_ra_start, guide_ra_duration;
+	double guide_dec_rate, guide_dec_start, guide_dec_duration;
 	//- data
 } simulator_private_data;
 
@@ -61,6 +63,41 @@ typedef struct {
 //- code
 
 //+ mount.code
+
+static void move_raw_position(indigo_device *device, double ra, double dec) {
+	double old_ra = MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
+	MOUNT_RAW_COORDINATES_RA_ITEM->number.value = MOUNT_RAW_COORDINATES_RA_ITEM->number.target = ra;
+	MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = MOUNT_RAW_COORDINATES_DEC_ITEM->number.target = dec;
+	PRIVATE_DATA->ha -= remainder(ra - old_ra, 24);
+	indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
+	indigo_update_coordinates(device, NULL);
+	indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
+}
+
+// Share the physical pointing with camera simulators and take over the guide pulses of their guiders
+static void publish_simulated_mount_state(indigo_device *device) {
+	indigo_simulated_mount_state state = { 0 };
+	state.ra = MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
+	state.dec = MOUNT_RAW_COORDINATES_DEC_ITEM->number.value;
+	state.epoch = MOUNT_EPOCH_ITEM->number.value;
+	state.latitude = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
+	state.longitude = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+	state.west = MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value;
+	state.guidable = !(PRIVATE_DATA->parked || PRIVATE_DATA->parking || PRIVATE_DATA->slew_in_progress);
+	indigo_set_simulated_mount_state(device, &state);
+	if (state.ra != MOUNT_RAW_COORDINATES_RA_ITEM->number.value || state.dec != MOUNT_RAW_COORDINATES_DEC_ITEM->number.value) {
+		move_raw_position(device, state.ra, state.dec);
+	}
+}
+
+// A guide pulse moves the physical pointing, ra in hours and dec in degrees; a parked or slewing mount ignores it
+static void guide_move(indigo_device *device, double ra, double dec) {
+	if (!IS_CONNECTED || PRIVATE_DATA->parked || PRIVATE_DATA->parking || PRIVATE_DATA->slew_in_progress) {
+		return;
+	}
+	move_raw_position(device, fmod(MOUNT_RAW_COORDINATES_RA_ITEM->number.value + ra + 24, 24), fmax(-90, fmin(90, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value + dec)));
+	publish_simulated_mount_state(device);
+}
 
 static void position_handler(indigo_device *device) {
 	if (!IS_CONNECTED) {
@@ -149,6 +186,7 @@ static void position_handler(indigo_device *device) {
 	indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 	indigo_update_coordinates(device, NULL);
 	indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
+	publish_simulated_mount_state(device);
 }
 
 static void manual_motion_finalizer(indigo_device *device) {
@@ -171,10 +209,11 @@ static void manual_motion_finalizer(indigo_device *device) {
 	} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
 		decStep = -speed * 15;
 	}
+	// the sky's RA grows towards east, moving west lowers the RA like a west guide pulse
 	double raStep = 0;
-	if (MOUNT_MOTION_WEST_ITEM->sw.value) {
+	if (MOUNT_MOTION_EAST_ITEM->sw.value) {
 		raStep = speed;
-	} else if (MOUNT_MOTION_EAST_ITEM->sw.value) {
+	} else if (MOUNT_MOTION_WEST_ITEM->sw.value) {
 		raStep = -speed;
 	}
 	if (raStep == 0 && decStep == 0) {
@@ -188,13 +227,36 @@ static void manual_motion_finalizer(indigo_device *device) {
 	indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 	indigo_update_coordinates(device, NULL);
 	indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
+	publish_simulated_mount_state(device);
 }
 
 //- mount.code
 
 //+ guider.code
 
+// Sidereal rate in RA hours and in Dec degrees per second, GUIDER_RATE is a percentage of it
+#define SIDEREAL_RA_RATE     (1.00273791 / 3600.0)
+#define SIDEREAL_DEC_RATE    (15.0410686 / 3600.0)
+
+// Move the mount by the part of the pulse that elapsed; a replaced pulse contributes only until it was replaced
+static void guider_apply_ra_pulse(indigo_device *device) {
+	if (PRIVATE_DATA->guide_ra_rate != 0) {
+		double elapsed = fmin(indigo_monotonic_time() - PRIVATE_DATA->guide_ra_start, PRIVATE_DATA->guide_ra_duration);
+		guide_move(device->master_device, PRIVATE_DATA->guide_ra_rate * elapsed, 0);
+		PRIVATE_DATA->guide_ra_rate = 0;
+	}
+}
+
+static void guider_apply_dec_pulse(indigo_device *device) {
+	if (PRIVATE_DATA->guide_dec_rate != 0) {
+		double elapsed = fmin(indigo_monotonic_time() - PRIVATE_DATA->guide_dec_start, PRIVATE_DATA->guide_dec_duration);
+		guide_move(device->master_device, 0, PRIVATE_DATA->guide_dec_rate * elapsed);
+		PRIVATE_DATA->guide_dec_rate = 0;
+	}
+}
+
 static void guider_guide_ra_finalizer(indigo_device *device) {
+	guider_apply_ra_pulse(device);
 	if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
 		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
@@ -204,6 +266,7 @@ static void guider_guide_ra_finalizer(indigo_device *device) {
 }
 
 static void guider_guide_dec_finalizer(indigo_device *device) {
+	guider_apply_dec_pulse(device);
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
@@ -238,6 +301,7 @@ static void mount_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_pending_handlers(device);
 		//+ mount.on_disconnect
+		indigo_set_simulated_mount_state(device, NULL);
 		PRIVATE_DATA->slew_in_progress = PRIVATE_DATA->parking = PRIVATE_DATA->going_home = false;
 		if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
@@ -363,6 +427,7 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		MOUNT_RAW_COORDINATES_DEC_ITEM->number.target = MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
+		publish_simulated_mount_state(device);
 	} else if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 		PRIVATE_DATA->at_home = false;
 		indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &MOUNT_RAW_COORDINATES_RA_ITEM->number.target, &MOUNT_RAW_COORDINATES_DEC_ITEM->number.target);
@@ -594,6 +659,7 @@ static void guider_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_pending_handlers(device);
 		//+ guider.on_disconnect
+		PRIVATE_DATA->guide_ra_rate = PRIVATE_DATA->guide_dec_rate = 0;
 		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
 		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
@@ -620,8 +686,12 @@ static void guider_connection_handler(indigo_device *device) {
 static void guider_guide_dec_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_DEC.on_change
 	indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+	guider_apply_dec_pulse(device);
 	double duration = GUIDER_GUIDE_NORTH_ITEM->number.value > 0 ? GUIDER_GUIDE_NORTH_ITEM->number.value : GUIDER_GUIDE_SOUTH_ITEM->number.value;
 	if (duration > 0) {
+		PRIVATE_DATA->guide_dec_rate = (GUIDER_GUIDE_NORTH_ITEM->number.value > 0 ? 1 : -1) * GUIDER_DEC_RATE_ITEM->number.value / 100.0 * SIDEREAL_DEC_RATE;
+		PRIVATE_DATA->guide_dec_start = indigo_monotonic_time();
+		PRIVATE_DATA->guide_dec_duration = duration / 1000.0;
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_dec_finalizer);
@@ -635,8 +705,13 @@ static void guider_guide_dec_handler(indigo_device *device) {
 static void guider_guide_ra_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_RA.on_change
 	indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+	guider_apply_ra_pulse(device);
 	double duration = GUIDER_GUIDE_EAST_ITEM->number.value > 0 ? GUIDER_GUIDE_EAST_ITEM->number.value : GUIDER_GUIDE_WEST_ITEM->number.value;
 	if (duration > 0) {
+		// the sky's RA grows towards east, a west pulse moves the pointing to a lower RA
+		PRIVATE_DATA->guide_ra_rate = (GUIDER_GUIDE_EAST_ITEM->number.value > 0 ? 1 : -1) * GUIDER_RATE_ITEM->number.value / 100.0 * SIDEREAL_RA_RATE;
+		PRIVATE_DATA->guide_ra_start = indigo_monotonic_time();
+		PRIVATE_DATA->guide_ra_duration = duration / 1000.0;
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_ra_finalizer);
