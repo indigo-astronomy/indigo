@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000013
 #define DRIVER_NAME          "indigo_mount_temma"
 #define DRIVER_LABEL         "Takahashi Temma Mount"
 #define MOUNT_DEVICE_NAME    "Takahashi Temma Mount"
@@ -375,6 +375,7 @@ static void mount_motion_finalizer(indigo_device *device) {
 static void guider_guide_ra_finalizer(indigo_device *device) {
 	PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_RA_EAST | TEMMA_MOTION_RA_WEST);
 	bool ok = temma_update_motion(device);
+	// only the values, the target of a pulse requested while this one ends is read by its handler
 	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	GUIDER_GUIDE_RA_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
@@ -383,6 +384,7 @@ static void guider_guide_ra_finalizer(indigo_device *device) {
 static void guider_guide_dec_finalizer(indigo_device *device) {
 	PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_DEC_NORTH | TEMMA_MOTION_DEC_SOUTH);
 	bool ok = temma_update_motion(device);
+	// only the values, the target of a pulse requested while this one ends is read by its handler
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_DEC_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
@@ -672,10 +674,17 @@ static void mount_motion_ra_handler(indigo_device *device) {
 static void mount_side_of_pier_handler(indigo_device *device) {
 	MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_SIDE_OF_PIER.on_change
-	bool switch_side = (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value && PRIVATE_DATA->telescope_side == 'W') || (MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value && PRIVATE_DATA->telescope_side == 'E');
-	MOUNT_SIDE_OF_PIER_PROPERTY->state = !switch_side || temma_no_reply_command(device, "PT") ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-	if (MOUNT_SIDE_OF_PIER_PROPERTY->state == INDIGO_OK_STATE) {
+	// The poll and the GOTO and park finalizers write the side the mount reports between the copy of the request and this handler,
+	// the target keeps the requested side. On failure the switch shows the last side the mount reported.
+	bool east = indigo_get_switch_target(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME);
+	bool west = indigo_get_switch_target(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME);
+	bool switch_side = (east && PRIVATE_DATA->telescope_side == 'W') || (west && PRIVATE_DATA->telescope_side == 'E');
+	if (!switch_side || temma_no_reply_command(device, "PT")) {
+		indigo_apply_switch_targets(MOUNT_SIDE_OF_PIER_PROPERTY);
 		temma_update_position(device);
+	} else {
+		indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, PRIVATE_DATA->telescope_side == 'W' ? MOUNT_SIDE_OF_PIER_WEST_ITEM : MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+		MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- mount.MOUNT_SIDE_OF_PIER.on_change
 	indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
@@ -901,6 +910,9 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_DEC.on_change
 	indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
 	PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_DEC_NORTH | TEMMA_MOTION_DEC_SOUTH);
+	// the previous pulse's finalizer may have zeroed the values after the request was copied, the targets keep it
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target;
+	GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target;
 	double duration = 0;
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 		PRIVATE_DATA->guider_motion_mask |= TEMMA_MOTION_DEC_NORTH;
@@ -929,6 +941,9 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_RA.on_change
 	indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
 	PRIVATE_DATA->guider_motion_mask &= ~(TEMMA_MOTION_RA_EAST | TEMMA_MOTION_RA_WEST);
+	// the previous pulse's finalizer may have zeroed the values after the request was copied, the targets keep it
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target;
+	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target;
 	double duration = 0;
 	if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
 		PRIVATE_DATA->guider_motion_mask |= TEMMA_MOTION_RA_WEST;

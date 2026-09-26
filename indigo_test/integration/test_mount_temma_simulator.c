@@ -721,6 +721,193 @@ cleanup:
 	}
 }
 
+// A gate handler holds the device queue, so a request is copied and queued while the poll comes due behind it. The poll
+// is an INDIGO_TASK_PRIORITY_TIME task and runs ahead of a queued change handler once the gate ends.
+static const char *gate_device_name;
+static _Atomic(indigo_device *) gate_device;
+static atomic_bool gate_entered, gate_release;
+
+static void gate_handler(indigo_device *device) {
+	atomic_store(&gate_entered, true);
+	for (int i = 0; i < 5000 && !atomic_load(&gate_release); i++) {
+		indigo_usleep(1000);
+	}
+}
+
+static indigo_result gate_device_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (gate_device_name != NULL && !strcmp(property->device, gate_device_name)) {
+		atomic_store(&gate_device, device);
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static void install_gate(const char *device_name) {
+	gate_device_name = device_name;
+	atomic_store(&gate_device, NULL);
+	atomic_store(&gate_release, true);
+	simulator_test_client.update_property = gate_device_update;
+}
+
+static void remove_gate(void) {
+	atomic_store(&gate_release, true);
+	simulator_test_client.update_property = simulator_client_update_property;
+	gate_device_name = NULL;
+}
+
+static bool hold_device_queue(void) {
+	indigo_device *device = atomic_load(&gate_device);
+	if (device == NULL) {
+		fprintf(stderr, "    no update from '%s' was seen, the gate cannot be queued\n", gate_device_name);
+		return false;
+	}
+	atomic_store(&gate_entered, false);
+	atomic_store(&gate_release, false);
+	indigo_execute_handler(device, gate_handler);
+	for (int i = 0; i < 2000 && !atomic_load(&gate_entered); i++) {
+		indigo_usleep(1000);
+	}
+	return atomic_load(&gate_entered);
+}
+
+// TGT-002: the poll, the GOTO and the park finalizers write the side the mount reports into MOUNT_SIDE_OF_PIER. A pier
+// flip requested while the poll comes due ahead of its handler must still be sent as PT and end on the requested side.
+static void temma_side_of_pier_request_survives_poll(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = "";
+	install_gate(temma_mount.device_name);
+	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
+	const char *args[] = { "--trace-file", trace_path, NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_TEMMA_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&temma_mount, simulator.port));
+	driver_started = true;
+	// The simulator starts with the telescope on the west side of the mount, so EAST needs PT.
+	assert_switch_item_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, true);
+	int mark = trace_count(trace_path);
+	SERIAL_CHECK_TRUE(hold_device_queue());
+	unsigned int revision = property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, temma_mount.device_name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	// The 0.5 s poll comes due while the queue is held and runs ahead of the queued handler, writing WEST into the switch
+	indigo_usleep(700000);
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "PT", mark));
+	assert_switch_item_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true);
+cleanup:
+	remove_gate();
+	if (driver_started) {
+		stop_serial_driver(&temma_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
+}
+
+// TGT-B04: the request of the next pulse is copied on the bus while the previous pulse's finalizer runs. A queued
+// handler with no delay already runs ahead of a finalizer that is only due, so the window is inside the finalizer,
+// between the relay mask it writes and the clearing of the pulse. The I/O layer logs every write on the debug level
+// from the writing thread, so the next pulse is requested from the log of that mask, which models the concurrent bus
+// thread deterministically. Nothing on the change path logs below the trace level, so the log mutex held around the
+// handler is not taken again.
+static const char *next_pulse_property, *next_pulse_item;
+static atomic_bool next_pulse_armed, next_pulse_sent, next_pulse_watch;
+static _Atomic double next_pulse_started, next_pulse_finished;
+
+static void next_pulse_log_handler(indigo_log_levels level, const char *message) {
+	size_t length = strlen(message);
+	if (length >= 5 && !strcmp(message + length - 5, "<- MA") && atomic_exchange(&next_pulse_armed, false)) {
+		indigo_change_number_property_1(&simulator_test_client, temma_guider.device_name, next_pulse_property, next_pulse_item, 300);
+		atomic_store(&next_pulse_sent, true);
+		atomic_store(&next_pulse_watch, true);
+	} else if (level == INDIGO_LOG_ERROR) {
+		fprintf(stderr, "%s\n", message);
+	}
+}
+
+static indigo_result next_pulse_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// After the request: the finalizer of the finished pulse publishes OK, the handler of the next one BUSY, its finalizer OK
+	if (atomic_load(&next_pulse_watch) && !strcmp(property->device, temma_guider.device_name) && !strcmp(property->name, next_pulse_property)) {
+		if (property->state == INDIGO_BUSY_STATE && atomic_load(&next_pulse_started) == 0) {
+			atomic_store(&next_pulse_started, indigo_monotonic_time());
+		} else if (property->state == INDIGO_OK_STATE && atomic_load(&next_pulse_started) != 0 && atomic_load(&next_pulse_finished) == 0) {
+			atomic_store(&next_pulse_finished, indigo_monotonic_time());
+		}
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static bool pulse_survives_previous_finalizer(const char *trace_path, const char *property_name, const char *first_item, const char *next_item, unsigned char next_bit) {
+	next_pulse_property = property_name;
+	next_pulse_item = next_item;
+	atomic_store(&next_pulse_sent, false);
+	atomic_store(&next_pulse_watch, false);
+	atomic_store(&next_pulse_started, 0);
+	atomic_store(&next_pulse_finished, 0);
+	int mark = trace_count(trace_path);
+	unsigned int revision = property_revision(property_name);
+	atomic_store(&next_pulse_armed, true);
+	if (indigo_change_number_property_1(&simulator_test_client, temma_guider.device_name, property_name, first_item, 100) != INDIGO_OK || !wait_for_property_state_after(property_name, INDIGO_BUSY_STATE, revision)) {
+		return false;
+	}
+	for (int i = 0; i < 2000 && !atomic_load(&next_pulse_sent); i++) {
+		indigo_usleep(1000);
+	}
+	if (!atomic_load(&next_pulse_sent)) {
+		fprintf(stderr, "    %s: the finalizer of the 100 ms pulse did not write the relay mask\n", property_name);
+		return false;
+	}
+	bool sent = trace_motion_after(trace_path, 0x40 | next_bit, mark);
+	for (int i = 0; i < 2000 && atomic_load(&next_pulse_finished) == 0; i++) {
+		indigo_usleep(1000);
+	}
+	atomic_store(&next_pulse_watch, false);
+	if (!sent || atomic_load(&next_pulse_started) == 0) {
+		fprintf(stderr, "    %s: the pulse requested while the previous one ended was dropped\n", property_name);
+		return false;
+	}
+	if (atomic_load(&next_pulse_finished) == 0 || !wait_for_number_item_value(property_name, next_item, 0, 0.001)) {
+		return false;
+	}
+	double elapsed = (atomic_load(&next_pulse_finished) - atomic_load(&next_pulse_started)) * 1000.0;
+	printf("    %s %s pulse requested while the %s pulse ended ran %.0f ms\n", property_name, next_item, first_item, elapsed);
+	return elapsed > 250;
+}
+
+// TGT-B04: GUIDER_GUIDE_RA/DEC accept a pulse while one runs. A pulse requested while the previous one's finalizer
+// runs must still be started instead of being read as zero and reported OK.
+static void temma_guider_pulse_survives_previous_finalizer(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = "";
+	indigo_log_levels log_level = indigo_get_log_level();
+	atomic_store(&next_pulse_armed, false);
+	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
+	const char *args[] = { "--trace-file", trace_path, NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_TEMMA_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_shared_serial_device_with_master_case(&temma_guider, &temma_mount, simulator.port));
+	driver_started = true;
+	simulator_test_client.update_property = next_pulse_update;
+	indigo_log_message_handler = next_pulse_log_handler;
+	indigo_set_log_level(INDIGO_LOG_DEBUG);
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(trace_path, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, TEMMA_MOTION_RA_WEST));
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(trace_path, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, TEMMA_MOTION_DEC_SOUTH));
+cleanup:
+	atomic_store(&next_pulse_armed, false);
+	atomic_store(&next_pulse_watch, false);
+	indigo_set_log_level(log_level);
+	indigo_log_message_handler = NULL;
+	simulator_test_client.update_property = simulator_client_update_property;
+	if (driver_started) {
+		stop_serial_driver(&temma_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
+}
+
 static void temma_shared_lifecycle_and_pending_disconnect(void) {
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
@@ -946,6 +1133,7 @@ int main(void) {
 		{ "temma_sync_goto_overlap_abort_and_recovery", temma_sync_goto_overlap_abort_and_recovery },
 		{ "temma_manual_motion_all_directions_rates_and_abort", temma_manual_motion_all_directions_rates_and_abort },
 		{ "temma_location_pier_and_park", temma_location_pier_and_park },
+		{ "temma_side_of_pier_request_survives_poll", temma_side_of_pier_request_survives_poll },
 		{ "temma_protocol_failures_recover", temma_protocol_failures_recover },
 		{ "temma_position_units_are_hundredths_of_a_minute", temma_position_units_are_hundredths_of_a_minute },
 		{ "temma_position_reply_codes_and_trailer", temma_position_reply_codes_and_trailer },
@@ -955,6 +1143,7 @@ int main(void) {
 		{ "temma_malformed_position_reply_recovers", temma_malformed_position_reply_recovers },
 		{ "temma_guider_directions_replacement_axes_and_zero", temma_guider_directions_replacement_axes_and_zero },
 		{ "temma_guider_command_failure_recovers", temma_guider_command_failure_recovers },
+		{ "temma_guider_pulse_survives_previous_finalizer", temma_guider_pulse_survives_previous_finalizer },
 #ifndef __linux__
 		{ "temma_shared_lifecycle_and_pending_disconnect", temma_shared_lifecycle_and_pending_disconnect },
 #endif
@@ -973,3 +1162,4 @@ int main(void) {
 	}
 	return indigo_run_tests("Takahashi Temma mount serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }
+

@@ -231,3 +231,19 @@ Temma is the only driver that opens its port with parity (`19200-8E1`), and the 
 `temma_guider_timing_idle_and_mount_workload` also failed intermittently on Linux (4 of 12 runs on Linux arm64): `measure_pulse()` read the simulator trace once, right after the guide property turned OK, and could miss the closing relay mask the driver had already written but the simulator had not recorded yet. It now polls the trace for up to a second, like `trace_contains_after()`. The measured pulse length comes from the simulator's receive timestamps and is not affected.
 
 The generator migration (`1db9fb0ff`) dropped the `CRTSCTS` hardware flow control the hand-written driver set; `19200-8E1` sets `CLOCAL` and no flow control. Whether a physical Temma needs RTS/CTS is not verified.
+
+## Switch and number targets (2026-09-26)
+
+Version 19, findings TGT-002 and TGT-B04 (mount_temma part) of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+
+- TGT-002: `MOUNT_SIDE_OF_PIER` is writable (a request other than the current side sends `PT`). `temma_update_position()` writes the side the mount reports into the switch from the 0.5 s poll and from the GOTO and park finalizers, all `INDIGO_TASK_PRIORITY_TIME` tasks that run ahead of the queued handler. A pier flip copied before one of them ran was replaced by the current side, the handler saw no change, sent no `PT` and reported OK. The handler now reads the request with `indigo_get_switch_target()`, applies it with `indigo_apply_switch_targets()` when no flip is needed or `PT` was sent (the following `E` reading then shows the side the mount reports), and on a failed `PT` sets the switch to the last reported side before publishing ALERT. `temma_update_position()` keeps writing the value, which the alignment points read as the real side, and does not touch the property state.
+- TGT-B04: `GUIDER_GUIDE_RA`/`DEC` accept a pulse while one runs. A handler queued with no delay already runs ahead of a finalizer that is only due, so the window is a copy on the bus thread while the previous pulse's finalizer runs, between the relay mask it writes and the clearing of the values: the finalizer zeroed the new request and the handler read 0, dropped the pulse and reported OK. The finalizers already cleared only `number.value`; the handlers now first restore the values from the targets, which the `on_change_request` blocks still clear before each copy. As in mount_simulator, the finalizer of the finished pulse still publishes OK before the handler of the new one publishes BUSY.
+
+Regression tests in `integration/test_mount_temma_simulator.c`:
+
+- `temma_side_of_pier_request_survives_poll`: a gate handler holds the device queue, EAST is requested (the simulator starts WEST), the poll comes due and runs ahead of the handler once the gate ends. Before the fix no `PT` was sent (fails at the `PT` trace assertion), now `PT` is sent and the switch ends EAST.
+- `temma_guider_pulse_survives_previous_finalizer`: the I/O layer logs each write on the debug level from the writing thread, so the 300 ms pulse of the opposite direction is requested from a log handler when the 100 ms pulse's finalizer writes the closing relay mask `MA`, on both axes. Before the fix the next pulse was dropped ("the pulse requested while the previous one ended was dropped"), now it runs 300 ms.
+
+Both cases failed against the version 18 driver and pass with version 19 on Linux x64; `test_mount_temma_simulator` 15/15 on Linux x64 (the three reconnection cases are compiled out on Linux, see above). macOS was not run for this change.
+
+Final test summary for this change: simulator suite 15 run / 15 passed (Linux x64); MountSim 0 run; hardware 0 run / 0 passed.
