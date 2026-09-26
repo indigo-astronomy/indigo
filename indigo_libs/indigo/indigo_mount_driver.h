@@ -535,6 +535,8 @@ typedef struct {
 	indigo_property *mount_pec_training_property;						///< MOUNT_PEC_TRAINING property pointer
 	indigo_property *mount_alignment_reset_property;				///< MOUNT_ALIGNMENT_RESET property pointer
 	indigo_property *mount_state_property;									///< MOUNT_STATE property pointer
+	indigo_client_ref motion_dec_client;										///< attachment of the client that last requested MOUNT_MOTION_DEC, written in change_property() under the bus mutex, read only by the bus under its mutex
+	indigo_client_ref motion_ra_client;											///< attachment of the client that last requested MOUNT_MOTION_RA, written in change_property() under the bus mutex, read only by the bus under its mutex
 } indigo_mount_context;
 
 /** Attach callback function.
@@ -549,6 +551,26 @@ INDIGO_EXTERN indigo_result indigo_mount_change_property(indigo_device *device, 
 /** Detach callback function.
  */
 INDIGO_EXTERN indigo_result indigo_mount_detach(indigo_device *device);
+
+/** Record the client requesting manual motion, call it from the MOUNT_MOTION_DEC and MOUNT_MOTION_RA change branches
+    of change_property() with the incoming request once it passed the driver's admission checks, just before its values
+    are copied and processed. It records the reference of the client's current bus attachment (indigo_current_client_ref()),
+    so the motion is not handed to another client attached at the same address if the requester detaches before the
+    commit. A request without a client, or from a client no longer attached, records no client. Generated drivers call it
+    automatically.
+ */
+INDIGO_EXTERN void indigo_mount_record_motion_client(indigo_device *device, indigo_client *client, indigo_property *property);
+
+/** Commit the client recorded by indigo_mount_record_motion_client() as the owner of the manual motion of MOUNT_MOTION_DEC
+    or MOUNT_MOTION_RA (property), call it from their change handlers after the driver started or stopped the motion. If
+    an item is On and the property is not in ALERT state, the release of the motion (all items switched Off) is registered
+    by indigo_register_detach_abort() to be sent if that client detaches, e.g. because its network connection was lost;
+    if that attachment has already ended (or the request had no client), the release is sent at once through
+    indigo_change_property(). Otherwise the motion is unregistered. Called with MOUNT_ABORT_MOTION_PROPERTY from the abort
+    handler it unregisters both axes. It does not publish the property. The base class also unregisters both axes when
+    the device disconnects or detaches. Generated drivers call it automatically.
+ */
+INDIGO_EXTERN void indigo_mount_commit_motion_client(indigo_device *device, indigo_property *property);
 
 /** Translate coordinates to native.
  */

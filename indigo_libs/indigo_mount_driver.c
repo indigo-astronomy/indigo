@@ -44,6 +44,76 @@ static double indigo_range24(double ha) {
 	return fmod(ha + (24000), 24);
 }
 
+// Manual motion (MOUNT_MOTION_DEC/RA) runs until the client releases it, so it is registered with the bus to be
+// released (all items of the same property switched off) if the client that started it detaches, e.g. because its
+// network connection was lost. The requester is recorded by change_property() when the request is accepted, as the
+// reference of its current bus attachment, and the registration is done by the change handler once the driver has
+// started the motion; the reference makes the bus refuse it if the requester detached in between, even if a new client
+// was attached at the same address meanwhile. The bus does not guess when the
+// motion ends, the entries are unregistered here when it is released, aborted, the device disconnects or detaches.
+static void mount_forget_manual_motion(indigo_device *device) {
+	if (MOUNT_MOTION_DEC_PROPERTY != NULL) {
+		indigo_unregister_detach_abort(device, MOUNT_MOTION_DEC_PROPERTY->name);
+	}
+	if (MOUNT_MOTION_RA_PROPERTY != NULL) {
+		indigo_unregister_detach_abort(device, MOUNT_MOTION_RA_PROPERTY->name);
+	}
+}
+
+// the context field recording the requester of the motion property matching name, NULL for other properties
+static indigo_client_ref *mount_motion_client(indigo_device *device, const char *name) {
+	if (MOUNT_MOTION_DEC_PROPERTY != NULL && !strcmp(name, MOUNT_MOTION_DEC_PROPERTY->name)) {
+		return &MOUNT_CONTEXT->motion_dec_client;
+	}
+	if (MOUNT_MOTION_RA_PROPERTY != NULL && !strcmp(name, MOUNT_MOTION_RA_PROPERTY->name)) {
+		return &MOUNT_CONTEXT->motion_ra_client;
+	}
+	return NULL;
+}
+
+void indigo_mount_record_motion_client(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(property != NULL);
+	indigo_client_ref *owner = mount_motion_client(device, property->name);
+	if (owner != NULL) {
+		// change_property() runs with the bus mutex locked, the bus reads the record under the same mutex
+		*owner = indigo_current_client_ref(client);
+	}
+}
+
+void indigo_mount_commit_motion_client(indigo_device *device, indigo_property *property) {
+	assert(device != NULL);
+	assert(property != NULL);
+	if (property == MOUNT_ABORT_MOTION_PROPERTY) {
+		mount_forget_manual_motion(device);
+		return;
+	}
+	indigo_client_ref *owner = mount_motion_client(device, property->name);
+	if (owner == NULL) {
+		return;
+	}
+	bool running = false;
+	for (int i = 0; i < property->count; i++) {
+		running = running || property->items[i].sw.value;
+	}
+	if (!running || property->state == INDIGO_ALERT_STATE) {
+		indigo_unregister_detach_abort(device, property->name);
+		return;
+	}
+	indigo_property *release = indigo_init_switch_property(NULL, device->name, property->name, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, property->count);
+	for (int i = 0; i < property->count; i++) {
+		indigo_init_switch_item(release->items + i, property->items[i].name, NULL, false);
+	}
+	if (indigo_register_detach_abort(device, owner, property, release) != INDIGO_OK) {
+		// the requesting client is already gone (or unknown) or the registry is full, nobody could stop the motion, so it
+		// is released now; the release passes the change handler again with all items off, which unregisters, no loop
+		INDIGO_LOG(indigo_log("Releasing '%s'.%s, its requesting client is not attached or the motion can't be registered", device->name, property->name));
+		release->access_token = device->access_token;
+		indigo_change_property(NULL, release);
+	}
+	indigo_release_property(release);
+}
+
 indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
 	if (MOUNT_CONTEXT == NULL) {
@@ -464,6 +534,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_define_property(device, MOUNT_PEC_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
 		} else {
+			mount_forget_manual_motion(device);
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -826,6 +897,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 
 indigo_result indigo_mount_detach(indigo_device *device) {
 	assert(device != NULL);
+	mount_forget_manual_motion(device);
 	indigo_release_property(MOUNT_INFO_PROPERTY);
 	indigo_release_property(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY);
 	indigo_release_property(MOUNT_LST_TIME_PROPERTY);
