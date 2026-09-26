@@ -177,6 +177,7 @@ Text items get no target (design note section 8); the mount context target used 
 | TGT-D05 | wheel_qhy | on_connect 85 | The fallback sets X_MODEL to CFW1 and publishes without a guard; one-shot, the X_MODEL handler is trivial. Low. | Open |
 | TGT-D06 | ccd_pentax | DSLR_PROGRAM, DSLR_APERTURE, DSLR_SHUTTER (poll 640, 678, 687/693/706) | RW properties without a change handler: client writes are ignored. | Open |
 | TGT-D07 | framework (seen with mount_simulator) | `indigo_test` `test_mount_simulator_asan` on Linux | The sanitizer build reports a leak of about one light property per driver start-up and shutdown, allocated in `indigo_init_light_property` (libindigo). Reproduced with the unchanged 3.0.0.21 driver and test, so it predates this branch; not part of the recorded run. To be checked in `indigo_libs`, not in the drivers. | Open |
+| TGT-D08 | mount_temma | `temma_update_position()` (poll, GOTO and park finalizers) | The side of pier read from the `E` reply is written into MOUNT_SIDE_OF_PIER but never published after connect, so clients keep seeing the side from connection time even when the mount changes side (for example after a GOTO across the meridian). Found while making the property read-only (3.0.0.21). | Open |
 
 ## E. Already fixed another way (candidates for simplification with the target)
 
