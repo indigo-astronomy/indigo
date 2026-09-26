@@ -65,7 +65,6 @@
 | ccd_altair | 2026-09-21 20:54 | 3.0.0.49 | mac arm64 | Altair ALTAIRGP224C | 28 / 28 | ✅ OK |
 |  | 2026-09-21 13:49 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_asi | 2026-09-21 21:17 | 3.0.0.65 | mac arm64 | ASI294MC Pro | 28 / 28 | ✅ OK |
-|  | 2026-09-21 21:20 | 3.0.0.65 | mac arm64 | ASI120MC-S | 28 / 28 | ✅ OK |
 |  | 2026-09-26 19:50 | 3.0.0.68 | mac arm64 | ZWO ASI120MC-S | 28 / 28 | ✅ OK |
 |  | 2026-09-26 19:59 | 3.0.0.68 | mac arm64 | ZWO ASI120MC-S (hot-plug) | 32 / 32 | ✅ OK |
 |  | 2026-09-26 21:01 | 3.0.0.69 | mac arm64 | fake SDK | 52 / 52 | ✅ OK |
@@ -197,6 +196,7 @@
 |  | 2026-09-24 23:26 | 3.0.0.65 | mac arm64 | Pegasus NYX-101 (WiFi) | 35 / 35 | ✅ OK |
 |  | 2026-09-26 21:03 | 3.0.0.68 | linux arm64 | simulator | 99 / 99 | ✅ OK |
 |  | 2026-09-26 21:36 | 3.0.0.68 | mac arm64 | simulator | 99 / 99 | ✅ OK |
+|  | 2026-09-26 22:15 | 3.0.0.68 | linux arm64 | NYX-101 | 35 / 35 | ✅ OK |
 | mount_nexstar | 2026-09-23 23:55 | 3.0.0.35 | mac arm64 | MountSim 2.3 (SE wedge EQ) | 20 / 20 | ✅ OK |
 |  | 2026-09-24 06:25 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGEM) | 21 / 21 | ✅ OK |
 |  | 2026-09-24 06:32 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGE) | 20 / 20 | ✅ OK |
@@ -215,6 +215,7 @@
 |  | 2026-09-26 23:13 | 3.0.0.22 | linux x64 | simulator | 42 / 42 | ✅ OK |
 | mount_pmc8 | 2026-09-24 23:45 | 3.0.0.12 | mac arm64 | iEXOS-100 | 38 / 38 | ✅ OK |
 |  | 2026-09-26 21:30 | 3.0.0.14 | linux arm64 | simulator | 19 / 19 | ✅ OK |
+|  | 2026-09-26 22:07 | 3.0.0.14 | linux arm64 | Explore Scientific iEXOS-100 | 38 / 38 | ✅ OK |
 |  | 2026-09-26 23:29 | 3.0.0.14 | mac arm64 | simulator | 19 / 19 | ✅ OK |
 |  | 2026-09-27 00:26 | 3.0.0.15 | linux x64 | simulator | 21 / 21 | ✅ OK |
 | mount_rainbow | 2026-09-23 14:04 | 3.0.0.18 | mac arm64 | MountSim 2.3 (RainbowAstro RST135) | 13 / 13 | ✅ OK |

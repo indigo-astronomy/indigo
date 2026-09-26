@@ -62,3 +62,4 @@ Driver is developed and tested with:
 2026-09-24 23:26 3.0.0.65 mac arm64 Pegasus NYX-101 (WiFi) 35/35 OK
 2026-09-26 21:03 3.0.0.68 linux arm64 simulator 99/99 OK
 2026-09-26 21:36 3.0.0.68 mac arm64 simulator 99/99 OK
+2026-09-26 22:15 3.0.0.68 linux arm64 NYX-101 35/35 OK
