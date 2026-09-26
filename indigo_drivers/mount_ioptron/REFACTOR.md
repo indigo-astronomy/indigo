@@ -721,3 +721,37 @@ requested time. Residual: in that window the poll still publishes OK with the mo
 the handler runs, so a client can see an early OK with the old time until the handler publishes the
 requested one; the instrumented run fails the case's immediate cached-value check for that reason.
 The production window is a few instructions, and no permanent case can hit it deterministically.
+
+## Switch target prototype on MOUNT_TRACKING (2026-09-26, 3.0.0.57, branch `refactoring_targets`)
+
+`MOUNT_TRACKING` has the same window as `UTC_TIME` above: the status poll checks
+`MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE` and then writes the switch from the mount
+status, while the request is copied on the bus thread. A request copied between the check and the
+write is overwritten, and the handler sends the mount's current state instead of the request.
+Prototype: switch items carry an internal `sw.target`, written by `indigo_property_copy_values()`
+together with the value and never by `indigo_set_switch()` or sent over the protocol. The
+`MOUNT_TRACKING` handler sends the target and writes the value once the mount accepted it; the poll is
+unchanged. Unit coverage is in `indigo_test/unit/test_bus_property.c`.
+
+Proof with an instrumented copy of the driver (not committed): `indigo_usleep(900000)` right after the
+poll's BUSY check, and in `check_tracking_rates()` the `MOUNT_TRACKING` OFF request sent 150 ms after a
+`:GLS#` poll. With the handler reading `sw.value` the mount receives `:ST1#` instead of `:ST0#` and
+`ioptron_tracking_rates_0205` / `_0300` fail at `wait_event(simulator, "ST0", 0)` in 6/6 runs; with
+`sw.target` both pass in 6/6 runs (Linux x64). Without the alignment the 900 ms sleep alone never hit
+the window, because the case sends each request right after the previous handler's OK, before the next
+poll reaches its check.
+
+Linux x64 full suite with 3.0.0.57 (three runs): 103/105, deterministically failing two cases that
+fail identically with 3.0.0.56 from `refactoring`, so they are not caused by the prototype:
+
+- `ioptron_configured_baudrate_requires_product_reply`: `:MountInfo#` is read with
+  `indigo_uni_read_section()` without an inter-byte timeout, so the injected two-byte reply `01` waits
+  for the termios `VTIME` of 5 s; the case's 5 s connection wait expires first and sees BUSY instead of
+  ALERT. Proposed driver fix: read the reply with `indigo_uni_read_section2()` and an explicit
+  inter-byte timeout.
+- `ioptron_guider_transport_failure_and_recovery`: after the simulator is killed, a Linux PTY returns
+  EIO at once, the poll closes the handle and disconnects the guider, so the guide request is not
+  answered with ALERT as it is on macOS. The expectation needs to accept the disconnect.
+
+The Linux build also required `mount_ioptron_simulator.c` to clear `current_command` after each
+command (gcc `-Werror=dangling-pointer`).
