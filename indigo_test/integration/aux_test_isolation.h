@@ -65,6 +65,11 @@ static int run_aux_simulated(const char *suite, const char *executable, const au
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	int failures = 0;
 	const char *filter = getenv("AUX_TEST_FILTER");
+	int selected = 0;
+	for (int i = 0; i < count; i++) {
+		if (!filter || strstr(tests[i].name, filter)) { selected++; }
+	}
+	indigo_test_plan(suite, selected, filter);
 	for (int i = 0; i < count; i++) {
 		if (filter && !strstr(tests[i].name, filter)) { continue; }
 		// AUX_TEST_TRACE makes every simulator log the ordered protocol
@@ -74,7 +79,7 @@ static int run_aux_simulated(const char *suite, const char *executable, const au
 		if (getenv("AUX_TEST_TRACE") != NULL) {
 			args[2] = "--trace";
 		}
-		if (!start_external_serial_simulator_with_args(&aux_simulator, executable, args)) { fprintf(stderr, "Simulator startup failed\n"); return 1; }
+		if (!start_external_serial_simulator_with_args(&aux_simulator, executable, args)) { fprintf(stderr, "Simulator startup failed\n"); indigo_test_plan_recorded = false; return 1; }
 		fflush(NULL);
 		pid_t child = fork();
 		if (child == 0) {
@@ -92,6 +97,7 @@ static int run_aux_simulated(const char *suite, const char *executable, const au
 			printf("FAIL: %s (exit=%d, signal=%d)\n", tests[i].name, WIFEXITED(status) ? WEXITSTATUS(status) : -1, WIFSIGNALED(status) ? WTERMSIG(status) : 0);
 		}
 	}
+	indigo_test_plan_recorded = false;
 	printf("%s: %d failing scenarios\n", suite, failures);
 	return failures ? 1 : 0;
 }

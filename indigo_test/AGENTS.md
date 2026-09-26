@@ -56,6 +56,28 @@ Run `make all` from the repository root first if `build/lib/libindigo` or the re
 
 After validating changes that build tests, run `make -C indigo_test test-clean` unless the user asks to keep build artifacts.
 
+## Machine Readable Results
+
+Setting `INDIGO_TEST_RESULTS=<path>` makes every suite append a record of its
+run to `<path>`, one tab separated line per event, as described in
+`test_runner.h`: `plan <count> <suite>` before a suite runs its cases,
+`pass <suite> <case>` or `fail <suite> <case>` after each case, and
+`filter <value>` when only some cases were selected. The result of a run is the
+number of `pass` records out of the sum of the `plan` counts, so a case that
+crashes or is killed by its watchdog still counts as planned and not passed.
+Records from forked children land in the same file.
+
+- `indigo_run_tests()` writes the records itself, so a suite that calls it
+  needs nothing more.
+- A runner that forks its cases and calls `indigo_run_tests()` once per child
+  calls `indigo_test_plan()` in the parent, before the first fork, with the
+  number of cases it selected, and clears `indigo_test_plan_recorded` when it
+  is done. `run_parallel_cases()` and `run_aux_simulated()` already do.
+  Without the call each child plans its own case, and a child that dies before
+  reaching `indigo_run_tests()` silently drops out of the total.
+- The records never replace the exit code. A binary that exits non-zero failed,
+  whatever its records say.
+
 ## Parallel Case Runners
 
 Suites that run every case in its own forked child, each with its own simulator
