@@ -1,5 +1,13 @@
 # Serial Device Simulators
 
+Revision: 26.09.2026 (draft)
+
+Author: **Peter Polakovic**
+
+e-mail: *peter.polakovic@cloudmakers.eu*
+
+Co-authored by: **Claude** (Anthropic, Claude Opus 5.5)
+
 This document defines the recommended contract for standalone serial device simulators used by automated INDIGO driver tests.
 
 The reference model is a simulator executable that implements the hardware serial protocol behind a pseudo terminal. The INDIGO driver under test connects to the pseudo-terminal slave path through its normal `DEVICE_PORT` property, so the same driver code path is exercised as with real hardware.
