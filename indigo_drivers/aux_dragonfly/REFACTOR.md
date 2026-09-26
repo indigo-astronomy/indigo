@@ -639,6 +639,30 @@ behaviour for non-NULL lists. Verified as a real reproducer: against the unfixed
 executable dies with SIGSEGV (`rc=139`); against the fixed library all three pass.
 `make -C indigo_test test-unit` — 154/154 passed.
 
+### TGT-016 — pulse finalizer writes `AUX_GPIO_OUTLETS` behind a queued request (audit, Won't fix)
+
+*Finding.* `indigo_drivers/REVIEW_SWITCH_TARGETS.md` TGT-016: `relay_pulse_finalizer()` in
+`shared/dragonfly_shared.c` sets a relay whose pulse has elapsed to false and publishes without a
+BUSY check, and `AUX_GPIO_OUTLETS` stays OK while pulses run, so a request can be copied before
+the finalizer (a TIME task) runs ahead of its handler.
+
+*Analysis (2026-09-27, 3.0.0.8).* The write reaches only relays whose pulse has elapsed but is
+still shown ON. `dragonfly_set_outlets()` treats such a relay as running (`relay_pulse_until`
+set), so an ON request copied in that window is not sent with or without the finalizer's write,
+exactly like the same request a moment earlier while the pulse runs. After the relay's pulse
+length was set to 0, the write is what keeps the stale ON from switching the relay on. The switch
+target cannot replace it: in an any-of-many request the items the client did not send keep their
+previous target, so a handler reading targets cannot tell a new ON from the ON of the finished
+pulse.
+
+*Evidence.* A temporary case (not kept) held the device queue with a gate handler past the end of
+a 500 ms pulse on relay 1 and then sent one request. Unchanged driver: `OUTLET_1 = ON` sends
+nothing and ends OK with relay 1 off; `OUTLET_2 = ON` sends only `rlset 0 1 1` and ends OK with
+relay 2 on, relay 1 off. With the finalizer leaving a BUSY property alone and the handler reading
+targets, `OUTLET_2 = ON` pulsed relay 1 again (`rlpulse 0 0 500`), and after relay 1's length was
+set to 0 switched it on for good (`rlset 0 0 1`). The finalizer's update during BUSY shows the
+device state and does not change the property state. No code change; the version stays 3.0.0.8.
+
 ## Final test summary
 
 Counted per registered scenario of the two Dragonfly suites.

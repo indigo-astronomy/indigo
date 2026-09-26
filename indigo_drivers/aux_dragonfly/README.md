@@ -30,3 +30,7 @@ Driver is developed and tested with:
 * Requires firmware version 5.29 or newer.
 
 * This driver can not be loaded if *indigo_dome_dragonfly* is loaded.
+
+## Testing
+
+2026-09-27 01:32 3.0.0.8 linux x64 simulator 17/17 OK
