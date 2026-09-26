@@ -283,3 +283,15 @@ instruction, so a QHY5L-II on that driver still drifts.
 - Simulated tests run: 41; passed: 41 (`build/integration/test_ccd_qhy2_sdk`).
 - Hardware tests run: 5; passed: 5. QHY5L-II-M, QHY5-M and QHY-8PRO on a Pegasus Ultimate Powerbox
   v1.7 hub, macOS arm64, plus the unattended hot-plug run on the QHY5L-II-M.
+
+## 2026-09-26 unplug_match decides every removal again
+
+Commit `0057e7302` (2026-09-22) made the generator consult `sdk.unplug_match` only for a removal
+libusb had not identified. That identity is only as good as the plug block that recorded it, and
+most vendor SDKs cannot say which USB device a camera or wheel enumerates from: when several arrive
+together the plug block binds each USB device to the first SDK device not attached yet, so a
+removal trusted on the libusb pointer alone detached a device that was still plugged in. The
+generator consults the block for every removal again, and a driver that has to trust the libusb
+identity guards its own block with `if (!unplug_result)`, as `ccd_qhy2` does for QHY2-001.
+
+This driver's `unplug_match` carries the `if (!unplug_result)` guard again, so a removal libusb identified is confirmed without `ScanQHYCCD()` (QHY2-001). That trusts the identity the plug block recorded, which binds each USB device to the first camera not attached yet; two cameras arriving together can be bound crosswise, and unplugging one of them then detaches the other. This is the behaviour before 2026-09-22 and is accepted as the lesser defect. Recorded with `tools/run_driver_test.py`: fake SDK 41/41.

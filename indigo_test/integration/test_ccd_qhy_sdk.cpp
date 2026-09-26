@@ -1013,8 +1013,8 @@ static void discovery_capacity_and_identity(void) {
 	ASSERT_TRUE(devices[0] && devices[3]); ASSERT_TRUE(strcmp(devices[0]->name, devices[3]->name));
 	#ifdef QHY2
 	ASSERT_TRUE(usb_callback != NULL);
-	// The unplug hook confirms a removal libusb could not identify; a removal libusb named is
-	// certain and the hook is not consulted for it. A malformed SDK inventory therefore has to
+	// The QHY2 unplug hook rescans only for a removal libusb could not identify and confirms one
+	// libusb named without asking the SDK (QHY2-001). A malformed SDK inventory therefore has to
 	// leave the devices alone only for an event that names none of them.
 	scan_error = 1;
 	usb_callback(NULL, (libusb_device *)&foreign_usb_token, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
