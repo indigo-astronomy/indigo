@@ -134,7 +134,7 @@
 | focuser_asi | 2026-09-21 14:19 | 3.0.0.34 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
 | focuser_askar | 2026-09-21 17:16 | 3.0.0.6 | mac arm64 | simulator | 10 / 10 | ✅ OK |
 |  | 2026-09-24 17:14 | 3.0.0.7 | linux x64 | simulator | 10 / 10 | ✅ OK |
-| focuser_astroasis | 2026-09-21 14:39 | 3.0.0.10 | mac arm64 | fake SDK | 33 / 33 | ✅ OK |
+| focuser_astroasis | 2026-09-26 19:48 | 3.0.0.13 | mac arm64 | fake SDK | 33 / 33 | ✅ OK |
 | focuser_astromechanics | 2026-09-21 17:17 | 3.0.0.6 | mac arm64 | simulator | 12 / 12 | ✅ OK |
 | focuser_dmfc | 2026-09-21 12:44 | 3.0.0.17 | mac arm64 | simulator | 24 / 24 | ✅ OK |
 | focuser_dsd | 2026-09-21 17:23 | 3.0.0.19 | mac arm64 | simulator | 42 / 42 | ✅ OK |
