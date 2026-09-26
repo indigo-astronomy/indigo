@@ -24,7 +24,7 @@ driver synscan {
 	label = "SynScan Mount";
 	author = "CloudMakers, s. r. o. based on INDIGO 2.0 code by David Hulse";
 	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
-	version = 10;
+	version = 11;
 	serial {
 		configurable_speed = true;
 	}
