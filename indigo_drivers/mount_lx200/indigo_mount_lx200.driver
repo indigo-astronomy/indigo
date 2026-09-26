@@ -23,7 +23,7 @@ driver lx200 {
 	label = "LX200 Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 66;
+	version = 67;
 	serial {
 		configurable_speed = true;
 		// NYX_TEMPLATE_INDEX - Pegasus Astro NYX mount
@@ -3181,6 +3181,7 @@ driver lx200 {
 				if (MOUNT_TYPE_CLASSIC_ITEM->sw.value && (PRIVATE_DATA->classicGuideNS || PRIVATE_DATA->classicGuideWE)) {
 					MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Classic guiding is active");
+					indigo_mount_commit_motion_client(device, MOUNT_MOTION_DEC_PROPERTY);
 					return;
 				}
 				if (meade_set_slew_rate(device) && meade_motion_dec(device)) {
@@ -3197,6 +3198,7 @@ driver lx200 {
 				if (MOUNT_TYPE_CLASSIC_ITEM->sw.value && (PRIVATE_DATA->classicGuideNS || PRIVATE_DATA->classicGuideWE)) {
 					MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, "Classic guiding is active");
+					indigo_mount_commit_motion_client(device, MOUNT_MOTION_RA_PROPERTY);
 					return;
 				}
 				if (meade_set_slew_rate(device) && meade_motion_ra(device)) {
