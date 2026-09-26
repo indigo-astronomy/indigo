@@ -157,3 +157,15 @@ and confirms the register held 15 while mode 85 was selected - a combination the
 **Stale expectation repaired in the same run.** `Hotplug identity and inconclusive removal` failed before any change of this session. Commit `0057e7302` made `sdk.unplug_match` confirm a removal libusb could not identify rather than veto one it reported, so a failing `dc1394_camera_enumerate()` no longer keeps a device whose own libusb device left. The case now sends the inconclusive event with a foreign libusb token, which is the path the block still serves, and additionally requires that a camera the enumeration keeps listing does not survive its own `DEVICE_LEFT`.
 
 **Results.** `make -C indigo_test test-ccd-iidc-sdk` 16/16, `test-ccd-iidc-sdk-sanitize` 16/16, `make -C indigo_test test-ccd-iidc-hw` 1/1 with all 10 modes exercised and 0 invalid frames, repeated three times with identical output. Hot-plug was out of scope for this camera: it is attached directly to the host, not to the Pegasus UPB hub that the other cameras of the session use for unattended unplug.
+
+## 2026-09-26 unplug_match decides every removal again
+
+Commit `0057e7302` (2026-09-22) made the generator consult `sdk.unplug_match` only for a removal
+libusb had not identified. That identity is only as good as the plug block that recorded it, and
+most vendor SDKs cannot say which USB device a camera or wheel enumerates from: when several arrive
+together the plug block binds each USB device to the first SDK device not attached yet, so a
+removal trusted on the libusb pointer alone detached a device that was still plugged in. The
+generator consults the block for every removal again, and a driver that has to trust the libusb
+identity guards its own block with `if (!unplug_result)`, as `ccd_qhy2` does for QHY2-001.
+
+`Hotplug identity and inconclusive removal` keeps its inconclusive events on a foreign libusb token, which still exercises the block, and no longer requires a camera the enumeration keeps listing to leave on its own `DEVICE_LEFT`. Recorded with `tools/run_driver_test.py`: fake SDK 16/16.
