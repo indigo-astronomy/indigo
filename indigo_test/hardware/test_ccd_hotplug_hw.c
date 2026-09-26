@@ -485,7 +485,7 @@ int main(int argc, char **argv) {
 	// The driver saves its camera settings on a CONFIG request, so the run keeps its configuration
 	// out of the user's own folder.
 	HW_CHECK(indigo_test_use_private_home());
-	HW_CHECK(indigo_start() == INDIGO_OK);
+	HW_CHECK(hw_start() == INDIGO_OK);
 	started = true;
 	HW_CHECK(hw_attach_client(TEST_NAME " hot-plug test") == INDIGO_OK);
 	// Liveness is observed in front of the shared harness, never instead of it.

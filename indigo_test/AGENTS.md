@@ -62,7 +62,8 @@ Setting `INDIGO_TEST_RESULTS=<path>` makes every suite append a record of its
 run to `<path>`, one tab separated line per event, as described in
 `test_runner.h`: `plan <count> <suite>` before a suite runs its cases,
 `pass <suite> <case>` or `fail <suite> <case>` after each case, and
-`filter <value>` when only some cases were selected. The result of a run is the
+`filter <value>` when only some cases were selected, and `device ...` for the
+hardware a hardware suite connected to. The result of a run is the
 number of `pass` records out of the sum of the `plan` counts, so a case that
 crashes or is killed by its watchdog still counts as planned and not passed.
 Records from forked children land in the same file.
@@ -77,6 +78,12 @@ Records from forked children land in the same file.
   reaching `indigo_run_tests()` silently drops out of the total.
 - The records never replace the exit code. A binary that exits non-zero failed,
   whatever its records say.
+- Hardware suites start the bus with `hw_start()` from
+  `hardware/hardware_device_record.h` instead of `indigo_start()`, and list that
+  header as a prerequisite of their rule. When the run is recorded it attaches a
+  passive client that adds a `device <driver> <interface> <device name> <model>`
+  record for every device the suite connects, with the model the driver detected,
+  so a recorded hardware run names the hardware it ran against by itself.
 
 ## Parallel Case Runners
 
@@ -251,7 +258,11 @@ can be found from its name alone:
   `test_rotator_falcon2_simulator` after a model the driver supports.
 - A host-side simulator of a driver is `<driver>_simulator`, in the directory of
   the same name below the driver. A simulator that emulates several models
-  selects them with an option such as `--model`, not with its name.
+  selects them with an option such as `--model`, not with its name. The rule
+  covers the C simulators written for this test suite, the ones whose header
+  says they were generated or refactored by an AI agent; older standalone tools
+  by other authors, such as the Perl `relio_simulator` and `ascol_simulator`,
+  keep their names.
 - `<kind>` says what stands in for the device: `simulator` for a serial or
   network simulator, `sdk`, `usb`, `hid`, `sysfs` or `ica` for a fake vendor SDK
   or system interface, and `transport`, `motion` and similar for suites that

@@ -1308,7 +1308,7 @@ $(TEST_BUILD)/hardware/ccd_touptek_hw_driver.o: ../indigo_drivers/ccd_touptek/in
 $(TEST_BUILD)/hardware/ccd_touptek_hw_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
-$(TEST_BUILD)/hardware/test_ccd_touptek_hw: hardware/test_ccd_touptek_hw.c test_runner.h $(TEST_BUILD)/hardware/ccd_touptek_hw_driver.o $(TEST_BUILD)/hardware/ccd_altair_hw_driver.o $(TEST_BUILD)/hardware/ccd_touptek_hw_framework.o
+$(TEST_BUILD)/hardware/test_ccd_touptek_hw: hardware/test_ccd_touptek_hw.c hardware/hardware_device_record.h test_runner.h $(TEST_BUILD)/hardware/ccd_touptek_hw_driver.o $(TEST_BUILD)/hardware/ccd_altair_hw_driver.o $(TEST_BUILD)/hardware/ccd_touptek_hw_framework.o
 	$(CC) $(TEST_CFLAGS) $< $(TEST_BUILD)/hardware/ccd_touptek_hw_driver.o $(TEST_BUILD)/hardware/ccd_altair_hw_driver.o $(TEST_BUILD)/hardware/ccd_touptek_hw_framework.o -o $@ $(TEST_LDFLAGS) -ltoupcam -laltaircam -lusb-1.0
 
 $(TEST_BUILD)/hardware/ccd_altair_hw_driver.o: ../indigo_drivers/ccd_altair/indigo_ccd_altair.c ../indigo_drivers/ccd_altair/indigo_ccd_altair.h ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.h ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(TEST_BUILD)/hardware
@@ -1390,7 +1390,7 @@ test-ccd-iidc-sdk-sanitize: $(INTEGRATION_BUILD)/test_ccd_iidc_sdk_sanitize
 test-ccd-iidc-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_iidc_hw
 	INDIGO_TEST_SKIP_MODES=$(HW_SKIP_MODES) $(TEST_BUILD)/hardware/test_ccd_iidc_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug)
 
-$(TEST_BUILD)/hardware/test_ccd_iidc_hw: hardware/test_ccd_iidc_hw.c test_runner.h ../build/drivers/indigo_ccd_iidc.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_ccd_iidc_hw: hardware/test_ccd_iidc_hw.c hardware/hardware_device_record.h test_runner.h ../build/drivers/indigo_ccd_iidc.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_iidc.a -o $@ $(TEST_LDFLAGS) -ldc1394 -lusb-1.0
 
 UVC_SDK_TEST_INCLUDE = -I../indigo_drivers/ccd_uvc
@@ -1435,7 +1435,7 @@ test-mount-synscan-hw: check-lib $(TEST_BUILD)/hardware/test_mount_synscan_hw
 test-aux-rpio-hw: check-lib $(TEST_BUILD)/hardware/test_aux_rpio_hw
 	$(TEST_BUILD)/hardware/test_aux_rpio_hw --run
 
-$(TEST_BUILD)/hardware/test_aux_rpio_hw: hardware/test_aux_rpio_hw.c test_runner.h ../build/drivers/indigo_aux_rpio.a Makefile | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_aux_rpio_hw: hardware/test_aux_rpio_hw.c hardware/hardware_device_record.h test_runner.h ../build/drivers/indigo_aux_rpio.a Makefile | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_aux_rpio.a -o $@ $(TEST_LDFLAGS)
 
 # The physical ASIAIR power port test switches all four ports of the 40-pin
@@ -1444,7 +1444,7 @@ $(TEST_BUILD)/hardware/test_aux_rpio_hw: hardware/test_aux_rpio_hw.c test_runner
 test-aux-asiair-hw: check-lib $(TEST_BUILD)/hardware/test_aux_asiair_hw
 	$(TEST_BUILD)/hardware/test_aux_asiair_hw --run
 
-$(TEST_BUILD)/hardware/test_aux_asiair_hw: hardware/test_aux_asiair_hw.c test_runner.h ../build/drivers/indigo_aux_asiair.a Makefile | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_aux_asiair_hw: hardware/test_aux_asiair_hw.c hardware/hardware_device_record.h test_runner.h ../build/drivers/indigo_aux_asiair.a Makefile | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_aux_asiair.a -o $@ $(TEST_LDFLAGS)
 
 # The physical RTS-on-COM shutter test needs a serial loopback: two USB serial
@@ -1458,13 +1458,13 @@ $(TEST_BUILD)/hardware/test_aux_asiair_hw: hardware/test_aux_asiair_hw.c test_ru
 test-aux-rts-hw: check-lib $(TEST_BUILD)/hardware/test_aux_rts_hw
 	$(TEST_BUILD)/hardware/test_aux_rts_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug) $(if $(filter 1,$(HW_DEBUG)),--debug)
 
-$(TEST_BUILD)/hardware/test_aux_rts_hw: hardware/test_aux_rts_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_rts.a Makefile | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_aux_rts_hw: hardware/test_aux_rts_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_rts.a Makefile | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< $(BUILD_DRIVERS)/indigo_aux_rts.a -o $@ $(TEST_LDFLAGS)
 
 $(TEST_BUILD)/hardware/mount_synscan_hw_driver.o: ../indigo_drivers/mount_synscan/indigo_mount_synscan.c ../indigo_drivers/mount_synscan/indigo_mount_synscan.h Makefile | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
-$(TEST_BUILD)/hardware/test_mount_synscan_hw: hardware/test_mount_synscan_hw.c test_runner.h $(TEST_BUILD)/hardware/mount_synscan_hw_driver.o | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_mount_synscan_hw: hardware/test_mount_synscan_hw.c hardware/hardware_device_record.h test_runner.h $(TEST_BUILD)/hardware/mount_synscan_hw_driver.o | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< $(TEST_BUILD)/hardware/mount_synscan_hw_driver.o -o $@ $(TEST_LDFLAGS) -lindigocat
 
 # A physically connected PrimaluceLab focuser is opt-in and excluded from normal integration tests.
@@ -1480,7 +1480,7 @@ test-aux-upb-hw: check-lib $(TEST_BUILD)/hardware/test_aux_upb_hw
 
 AUX_UPB_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_upb.a $(TEST_LDFLAGS) -lusb-1.0
 
-$(TEST_BUILD)/hardware/test_aux_upb_hw: hardware/test_aux_upb_hw.c test_runner.h $(BUILD_DRIVERS)/indigo_aux_upb.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_aux_upb_hw: hardware/test_aux_upb_hw.c hardware/hardware_device_record.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_upb.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_UPB_HW_TEST_LDFLAGS)
 
 .PHONY: test-focuser-primaluce-hw
@@ -1489,7 +1489,7 @@ test-focuser-primaluce-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_primalu
 
 FOCUSER_PRIMALUCE_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_primaluce.a $(TEST_LDFLAGS)
 
-$(TEST_BUILD)/hardware/test_focuser_primaluce_hw: hardware/test_focuser_primaluce_hw.c test_runner.h $(BUILD_DRIVERS)/indigo_focuser_primaluce.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_focuser_primaluce_hw: hardware/test_focuser_primaluce_hw.c hardware/hardware_device_record.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_primaluce.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_PRIMALUCE_HW_TEST_LDFLAGS)
 
 # Physical Starlight Xpress filter wheel hardware is opt-in and excluded from normal integration
@@ -1502,7 +1502,7 @@ test-wheel-sx-hw: check-lib $(TEST_BUILD)/hardware/test_wheel_sx_hw
 
 WHEEL_SX_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_sx.a $(TEST_LDFLAGS) -lusb-1.0
 
-$(TEST_BUILD)/hardware/test_wheel_sx_hw: hardware/test_wheel_sx_hw.c test_runner.h $(BUILD_DRIVERS)/indigo_wheel_sx.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_wheel_sx_hw: hardware/test_wheel_sx_hw.c hardware/hardware_device_record.h test_runner.h $(BUILD_DRIVERS)/indigo_wheel_sx.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(WHEEL_SX_HW_TEST_LDFLAGS)
 
 # Physical ZWO ASI EFW filter wheel hardware is opt-in and excluded from normal integration tests.
@@ -1517,7 +1517,7 @@ test-wheel-asi-hw: check-lib $(TEST_BUILD)/hardware/test_wheel_asi_hw
 WHEEL_ASI_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),../indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/macOS/libEFWFilter.a,../indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/Linux/$(ARCH_DETECTED)/libEFWFilter.a)
 WHEEL_ASI_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_asi.a $(WHEEL_ASI_HW_TEST_SDK) $(TEST_LDFLAGS) -lusb-1.0 -lstdc++
 
-$(TEST_BUILD)/hardware/test_wheel_asi_hw: hardware/test_wheel_asi_hw.c test_runner.h $(BUILD_DRIVERS)/indigo_wheel_asi.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_wheel_asi_hw: hardware/test_wheel_asi_hw.c hardware/hardware_device_record.h test_runner.h $(BUILD_DRIVERS)/indigo_wheel_asi.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $(EFW_SDK_TEST_INCLUDE) $< -o $@ $(WHEEL_ASI_HW_TEST_LDFLAGS)
 
 # Physical Starlight Xpress AO hardware is opt-in and excluded from normal integration tests. The
@@ -1529,7 +1529,7 @@ test-ao-sx-hw: check-lib $(TEST_BUILD)/hardware/test_ao_sx_hw
 
 AO_SX_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_ao_sx.a $(TEST_LDFLAGS)
 
-$(TEST_BUILD)/hardware/test_ao_sx_hw: hardware/test_ao_sx_hw.c test_runner.h $(BUILD_DRIVERS)/indigo_ao_sx.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_ao_sx_hw: hardware/test_ao_sx_hw.c hardware/hardware_device_record.h test_runner.h $(BUILD_DRIVERS)/indigo_ao_sx.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(AO_SX_HW_TEST_LDFLAGS)
 
 # Physical UVC camera hardware is opt-in and excluded from normal integration tests.
@@ -1537,7 +1537,7 @@ $(TEST_BUILD)/hardware/test_ao_sx_hw: hardware/test_ao_sx_hw.c test_runner.h $(B
 test-ccd-uvc-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_uvc_hw
 	$(TEST_BUILD)/hardware/test_ccd_uvc_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug)
 
-$(TEST_BUILD)/hardware/test_ccd_uvc_hw: hardware/test_ccd_uvc_hw.c ../build/drivers/indigo_ccd_uvc.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_ccd_uvc_hw: hardware/test_ccd_uvc_hw.c hardware/hardware_device_record.h ../build/drivers/indigo_ccd_uvc.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_uvc.a -o $@ $(TEST_LDFLAGS) -ljpeg -lusb-1.0
 
 # Physical Starlight Xpress camera hardware is opt-in and excluded from normal integration tests.
@@ -1545,7 +1545,7 @@ $(TEST_BUILD)/hardware/test_ccd_uvc_hw: hardware/test_ccd_uvc_hw.c ../build/driv
 test-ccd-sx-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_sx_hw
 	$(TEST_BUILD)/hardware/test_ccd_sx_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug) $(if $(filter 1,$(HW_DEBUG)),--debug) $(HW_FILTER)
 
-$(TEST_BUILD)/hardware/test_ccd_sx_hw: hardware/test_ccd_sx_hw.c test_runner.h ../build/drivers/indigo_ccd_sx.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_ccd_sx_hw: hardware/test_ccd_sx_hw.c hardware/hardware_device_record.h test_runner.h ../build/drivers/indigo_ccd_sx.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_sx.a -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
 
@@ -1554,7 +1554,7 @@ $(TEST_BUILD)/hardware/test_ccd_sx_hw: hardware/test_ccd_sx_hw.c test_runner.h .
 test-ccd-asi-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_asi_hw
 	$(TEST_BUILD)/hardware/test_ccd_asi_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug)
 
-$(TEST_BUILD)/hardware/test_ccd_asi_hw: hardware/test_ccd_asi_hw.c ../build/drivers/indigo_ccd_asi.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_asi_sdk_framework.o | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_ccd_asi_hw: hardware/test_ccd_asi_hw.c hardware/hardware_device_record.h ../build/drivers/indigo_ccd_asi.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_asi_sdk_framework.o | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_asi.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_asi_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS) $(if $(filter Darwin,$(OS_DETECTED)),-L../indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS) -lASICamera2
 
 # Dynamic-loader acceptance uses the shared bus and never saves user configuration.
@@ -1562,7 +1562,7 @@ $(TEST_BUILD)/hardware/test_ccd_asi_hw: hardware/test_ccd_asi_hw.c ../build/driv
 test-ccd-asi-reload-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_asi_reload_hw
 	$(TEST_BUILD)/hardware/test_ccd_asi_reload_hw --run
 
-$(TEST_BUILD)/hardware/test_ccd_asi_reload_hw: hardware/test_ccd_asi_hw.c ../build/drivers/indigo_ccd_asi.$(SOEXT) ../build/drivers/indigo_agent_imager.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_ccd_asi_reload_hw: hardware/test_ccd_asi_hw.c hardware/hardware_device_record.h ../build/drivers/indigo_ccd_asi.$(SOEXT) ../build/drivers/indigo_agent_imager.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) -DASI_DYNAMIC_DRIVER -DASI_DRIVER_PATH='"$(BUILD_DRIVERS)/indigo_ccd_asi.$(SOEXT)"' $< -o $@ ../build/drivers/indigo_agent_imager.a $(TEST_LDFLAGS) -ldl
 
 # Physical Player One hardware is opt-in and excluded from normal integration tests.
@@ -1570,7 +1570,7 @@ $(TEST_BUILD)/hardware/test_ccd_asi_reload_hw: hardware/test_ccd_asi_hw.c ../bui
 test-ccd-playerone-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_playerone_hw
 	$(TEST_BUILD)/hardware/test_ccd_playerone_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug)
 
-$(TEST_BUILD)/hardware/test_ccd_playerone_hw: hardware/test_ccd_playerone_hw.c ../build/drivers/indigo_ccd_playerone.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_ccd_playerone_hw: hardware/test_ccd_playerone_hw.c hardware/hardware_device_record.h ../build/drivers/indigo_ccd_playerone.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_playerone.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_playerone_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS) -lPlayerOneCamera
 
 # Dynamic-loader acceptance uses the shared bus and never saves user configuration.
@@ -1578,7 +1578,7 @@ $(TEST_BUILD)/hardware/test_ccd_playerone_hw: hardware/test_ccd_playerone_hw.c .
 test-ccd-playerone-reload-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw
 	$(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw --run
 
-$(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw: hardware/test_ccd_playerone_hw.c ../build/drivers/indigo_ccd_playerone.$(SOEXT) ../build/drivers/indigo_agent_imager.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw: hardware/test_ccd_playerone_hw.c hardware/hardware_device_record.h ../build/drivers/indigo_ccd_playerone.$(SOEXT) ../build/drivers/indigo_agent_imager.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) -DPOA_DYNAMIC_DRIVER -DPOA_DRIVER_PATH='"$(BUILD_DRIVERS)/indigo_ccd_playerone.$(SOEXT)"' $< -o $@ ../build/drivers/indigo_agent_imager.a $(TEST_LDFLAGS) -ldl
 
 # Physical SVB camera hardware is opt-in and excluded from normal integration tests.
@@ -1586,7 +1586,7 @@ $(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw: hardware/test_ccd_playerone
 test-ccd-svb-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_svb_hw
 	$(TEST_BUILD)/hardware/test_ccd_svb_hw --run $(if $(filter 1,$(HW_ACCEPTANCE)),--acceptance,$(if $(filter 1,$(HW_HOTPLUG)),--hotplug))
 
-$(TEST_BUILD)/hardware/test_ccd_svb_hw: hardware/test_ccd_svb_hw.c hardware/hardware_test_common.h test_runner.h ../build/drivers/indigo_ccd_svb.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_ccd_svb_hw: hardware/test_ccd_svb_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h ../build/drivers/indigo_ccd_svb.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_svb.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS) $(if $(filter Darwin,$(OS_DETECTED)),-L../indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/macOS) -lSVBCameraSDK
 
 # Physical Moravian Instruments camera hardware is opt-in and excluded from normal integration tests.
@@ -1597,7 +1597,7 @@ MI_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),../indigo_drivers/ccd_mi/b
 test-ccd-mi-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_mi_hw
 	$(TEST_BUILD)/hardware/test_ccd_mi_hw --run
 
-$(TEST_BUILD)/hardware/test_ccd_mi_hw: hardware/test_ccd_mi_hw.c test_runner.h ../build/drivers/indigo_ccd_mi.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_ccd_mi_hw: hardware/test_ccd_mi_hw.c hardware/hardware_device_record.h test_runner.h ../build/drivers/indigo_ccd_mi.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_mi.a $(MI_HW_TEST_SDK) -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
 
 # Native SX command/transfer emulation; production driver is compiled separately.
@@ -1634,7 +1634,7 @@ SSAG_HW_TEST_REPLACEMENTS = -Dlibusb_hotplug_register_callback=ssag_hw_register 
 $(TEST_BUILD)/hardware/ccd_ssag_hw_driver.o: ../indigo_drivers/ccd_ssag/indigo_ccd_ssag.c Makefile | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $(SSAG_HW_TEST_REPLACEMENTS) -c $< -o $@
 
-$(TEST_BUILD)/hardware/test_ccd_ssag_hw: hardware/test_ccd_ssag_hw.c test_runner.h $(TEST_BUILD)/hardware/ccd_ssag_hw_driver.o | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_ccd_ssag_hw: hardware/test_ccd_ssag_hw.c hardware/hardware_device_record.h test_runner.h $(TEST_BUILD)/hardware/ccd_ssag_hw_driver.o | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< $(TEST_BUILD)/hardware/ccd_ssag_hw_driver.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
 
 OUTPUT_TRANSPORT_REPLACEMENTS = -Dindigo_uni_open_serial=output_open -Dindigo_uni_close=output_close -Dindigo_uni_discard=output_discard -Dindigo_uni_vprintf=output_write -Dindigo_uni_vtprintf=output_write_line -Dindigo_uni_read_section=output_read -Dindigo_uni_set_rts=output_rts
@@ -2266,7 +2266,7 @@ $(INTEGRATION_BUILD)/ccd_qhy_sdk_framework.o: ../indigo_libs/indigo_driver.c Mak
 # Physical acceptance requires explicit --run, library and device selection. The driver is loaded
 # through dlopen(), so the same binary serves the QHY SDK driver and its legacy sibling; set
 # INDIGO_TEST_DEVICE to a unique substring of the camera name.
-$(TEST_BUILD)/hardware/test_ccd_qhy_hw: hardware/test_ccd_qhy_hw.c hardware/powerbox_hotplug_test_common.h test_runner.h | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_ccd_qhy_hw: hardware/test_ccd_qhy_hw.c hardware/hardware_device_record.h hardware/powerbox_hotplug_test_common.h test_runner.h | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
 .PHONY: test-ccd-qhy-hw
@@ -2332,7 +2332,7 @@ $(INTEGRATION_BUILD)/test_ccd_atik2_sdk: integration/test_ccd_atik2_sdk.c integr
 test-ccd-atik2-sdk: $(INTEGRATION_BUILD)/test_ccd_atik2_sdk
 	$(INTEGRATION_BUILD)/test_ccd_atik2_sdk
 
-$(TEST_BUILD)/hardware/test_ccd_atik_hw: hardware/test_ccd_atik_hw.c test_runner.h | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_ccd_atik_hw: hardware/test_ccd_atik_hw.c hardware/hardware_device_record.h test_runner.h | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS) -ldl
 
 .PHONY: test-ccd-atik-hw
@@ -2458,7 +2458,7 @@ test-guider-gpusb-hw: check-lib $(TEST_BUILD)/hardware/test_guider_gpusb_hw
 GUIDER_GPUSB_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),../indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/macOS/libgpusb.a,../indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/Linux/$(ARCH_DETECTED)/libgpusb.a)
 GUIDER_GPUSB_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_guider_gpusb.a $(GUIDER_GPUSB_HW_TEST_SDK) $(TEST_LDFLAGS) -lusb-1.0
 
-$(TEST_BUILD)/hardware/test_guider_gpusb_hw: hardware/test_guider_gpusb_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_guider_gpusb.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_guider_gpusb_hw: hardware/test_guider_gpusb_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_guider_gpusb.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(GUIDER_GPUSB_HW_TEST_LDFLAGS)
 
 # Physical Shoestring DSUSB hardware is opt-in and excluded from normal integration tests. The
@@ -2472,7 +2472,7 @@ test-aux-dsusb-hw: check-lib $(TEST_BUILD)/hardware/test_aux_dsusb_hw
 AUX_DSUSB_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),../indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/macOS/libdsusb.a,../indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/Linux/$(ARCH_DETECTED)/libdsusb.a)
 AUX_DSUSB_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_dsusb.a $(AUX_DSUSB_HW_TEST_SDK) $(TEST_LDFLAGS) -lusb-1.0
 
-$(TEST_BUILD)/hardware/test_aux_dsusb_hw: hardware/test_aux_dsusb_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_dsusb.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_aux_dsusb_hw: hardware/test_aux_dsusb_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_dsusb.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_DSUSB_HW_TEST_LDFLAGS)
 
 # Unattended hot-plug acceptance for the USB camera drivers. One source, one binary per driver,
@@ -2500,7 +2500,7 @@ CCD_HOTPLUG_HW_LDFLAGS += -lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi
 endif
 
 HW_HOTPLUG_ARGS = --run $(if $(filter 1,$(HW_KEEP_OTHERS)),--keep-others) $(if $(filter 1,$(HW_DEBUG)),--debug)
-CCD_HOTPLUG_HW_SOURCES = hardware/test_ccd_hotplug_hw.c hardware/hardware_test_common.h hardware/usb_hotplug_test_common.h test_runner.h
+CCD_HOTPLUG_HW_SOURCES = hardware/test_ccd_hotplug_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h hardware/usb_hotplug_test_common.h test_runner.h
 
 .PHONY: test-ccd-svb-hotplug-hw
 test-ccd-svb-hotplug-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_svb_hotplug_hw
@@ -2534,7 +2534,7 @@ test-focuser-fcusb-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_fcusb_hw
 FOCUSER_FCUSB_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),../indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS/libfcusb.a,../indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a)
 FOCUSER_FCUSB_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_fcusb.a $(FOCUSER_FCUSB_HW_TEST_SDK) $(TEST_LDFLAGS) -lusb-1.0
 
-$(TEST_BUILD)/hardware/test_focuser_fcusb_hw: hardware/test_focuser_fcusb_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_fcusb.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_focuser_fcusb_hw: hardware/test_focuser_fcusb_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_fcusb.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_FCUSB_HW_TEST_LDFLAGS)
 
 # Physical CG-USB-ST4 hardware is opt-in and excluded from normal integration tests. The adapter
@@ -2546,7 +2546,7 @@ test-guider-cgusbst4-hw: check-lib $(TEST_BUILD)/hardware/test_guider_cgusbst4_h
 
 GUIDER_CGUSBST4_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a $(TEST_LDFLAGS)
 
-$(TEST_BUILD)/hardware/test_guider_cgusbst4_hw: hardware/test_guider_cgusbst4_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_guider_cgusbst4_hw: hardware/test_guider_cgusbst4_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(GUIDER_CGUSBST4_HW_TEST_LDFLAGS)
 
 # Physical USB_Focus v3 hardware is opt-in and excluded from normal integration tests. THE MOTOR
@@ -2559,7 +2559,7 @@ test-focuser-usbv3-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_usbv3_hw
 
 FOCUSER_USBV3_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_usbv3.a $(TEST_LDFLAGS)
 
-$(TEST_BUILD)/hardware/test_focuser_usbv3_hw: hardware/test_focuser_usbv3_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_usbv3.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_focuser_usbv3_hw: hardware/test_focuser_usbv3_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_usbv3.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_USBV3_HW_TEST_LDFLAGS)
 
 # A physically connected NMEA 0183 receiver is opt-in and excluded from normal integration tests.
@@ -2574,7 +2574,7 @@ test-gps-nmea-hw: check-lib $(TEST_BUILD)/hardware/test_gps_nmea_hw
 
 GPS_NMEA_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_gps_nmea.a $(TEST_LDFLAGS)
 
-$(TEST_BUILD)/hardware/test_gps_nmea_hw: hardware/test_gps_nmea_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_gps_nmea.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_gps_nmea_hw: hardware/test_gps_nmea_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_gps_nmea.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(GPS_NMEA_HW_TEST_LDFLAGS)
 
 # Physical AstroGadget FocusDreamPro hardware is opt-in and excluded from normal integration tests.
@@ -2587,7 +2587,7 @@ test-focuser-focusdreampro-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_foc
 
 FOCUSER_FOCUSDREAMPRO_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_focusdreampro.a $(TEST_LDFLAGS)
 
-$(TEST_BUILD)/hardware/test_focuser_focusdreampro_hw: hardware/test_focuser_focusdreampro_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_focusdreampro.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_focuser_focusdreampro_hw: hardware/test_focuser_focusdreampro_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_focusdreampro.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_FOCUSDREAMPRO_HW_TEST_LDFLAGS)
 
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
@@ -2600,7 +2600,7 @@ test-polaralign-mlastro-hw: check-lib $(TEST_BUILD)/hardware/test_polaralign_mla
 
 POLARALIGN_MLASTRO_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_mlastro.a $(TEST_LDFLAGS)
 
-$(TEST_BUILD)/hardware/test_polaralign_mlastro_hw: hardware/test_polaralign_mlastro_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_polaralign_mlastro.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_polaralign_mlastro_hw: hardware/test_polaralign_mlastro_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_polaralign_mlastro.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(POLARALIGN_MLASTRO_HW_TEST_LDFLAGS)
 
 # A physically connected LX200 protocol mount is opt-in and excluded from normal integration tests.
@@ -2616,7 +2616,7 @@ test-mount-lx200-hw: check-lib $(TEST_BUILD)/hardware/test_mount_lx200_hw
 
 MOUNT_LX200_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_lx200.a $(TEST_LDFLAGS) -lindigocat
 
-$(TEST_BUILD)/hardware/test_mount_lx200_hw: hardware/test_mount_lx200_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_lx200.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_mount_lx200_hw: hardware/test_mount_lx200_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_lx200.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(MOUNT_LX200_HW_TEST_LDFLAGS)
 
 # A physically connected Celestron mount reached over the NexStar AUX protocol is opt-in and
@@ -2637,7 +2637,7 @@ test-mount-nexstaraux-hw: check-lib $(TEST_BUILD)/hardware/test_mount_nexstaraux
 
 MOUNT_NEXSTARAUX_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_nexstaraux.a $(TEST_LDFLAGS) -lindigocat
 
-$(TEST_BUILD)/hardware/test_mount_nexstaraux_hw: hardware/test_mount_nexstaraux_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_nexstaraux.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_mount_nexstaraux_hw: hardware/test_mount_nexstaraux_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_nexstaraux.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(MOUNT_NEXSTARAUX_HW_TEST_LDFLAGS)
 
 # A physically connected Explore Scientific PMC-Eight mount (iEXOS-100, EXOS-2, G11, Titan) on its
@@ -2653,7 +2653,7 @@ test-mount-pmc8-hw: check-lib $(TEST_BUILD)/hardware/test_mount_pmc8_hw
 
 MOUNT_PMC8_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_pmc8.a $(TEST_LDFLAGS) -lindigocat
 
-$(TEST_BUILD)/hardware/test_mount_pmc8_hw: hardware/test_mount_pmc8_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_pmc8.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_mount_pmc8_hw: hardware/test_mount_pmc8_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_pmc8.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(MOUNT_PMC8_HW_TEST_LDFLAGS)
 
 # Opt-in Cocoa application acceptance; excluded from headless integration tests.
@@ -2715,7 +2715,7 @@ test-mount-temma-mountsim test-mount-rainbow-mountsim test-mount-ioptron-mountsi
 endif
 
 # Physical NexStar HC acceptance is opt-in and independent of MountSim.
-$(TEST_BUILD)/hardware/test_mount_nexstar_hw: hardware/test_mount_nexstar_hw.c hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_nexstar.a ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_mount_nexstar_hw: hardware/test_mount_nexstar_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_mount_nexstar.a ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter -Wno-sign-compare $< -o $@ $(MOUNT_NEXSTAR_SIMULATOR_TEST_LDFLAGS)
 
 .PHONY: test-mount-nexstar-hw

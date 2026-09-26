@@ -515,7 +515,7 @@ int main(int argc, char **argv) {
 	tc_debug = protocol_log;
 	bool started = false, initialized = false, attached = false;
 	int result = 1;
-	HW_CHECK(indigo_start() == INDIGO_OK);
+	HW_CHECK(hw_start() == INDIGO_OK);
 	started = true;
 	HW_CHECK(hw_attach_client("NexStar hardware acceptance") == INDIGO_OK);
 	attached = true;

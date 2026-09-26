@@ -26,6 +26,7 @@
 #include <indigo/indigo_driver.h>
 #include <dlfcn.h>
 #include "../test_runner.h"
+#include "hardware_device_record.h"
 
 #define MAX_DEVICES 16
 #define MAX_PROPERTIES 128
@@ -389,7 +390,7 @@ static bool selected(const char *name) {
 static void hardware_workflows(void) {
 	bool initialized = false;
 	indigo_property *format = NULL, *frame = NULL, *bins = NULL, *gain = NULL, *advanced = NULL, *mode = NULL, *frame_type = NULL, *cooler = NULL, *temperature = NULL;
-	CHECK(indigo_start() == INDIGO_OK);
+	CHECK(hw_start() == INDIGO_OK);
 	CHECK(indigo_attach_client(&client) == INDIGO_OK);
 	indigo_driver_info info;
 	CHECK(driver_entry(INDIGO_DRIVER_INFO, &info) == INDIGO_OK);

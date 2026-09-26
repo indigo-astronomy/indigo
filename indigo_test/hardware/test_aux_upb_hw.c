@@ -45,6 +45,7 @@
 #include <indigo/indigo_timer.h>
 #include <indigo_drivers/aux_upb/indigo_aux_upb.h>
 #include "../test_runner.h"
+#include "hardware_device_record.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define MAX_DEVICES 4
@@ -785,7 +786,7 @@ int main(int argc, char **argv) {
 	if (!indigo_test_use_private_home()) {
 		return 1;
 	}
-	CHECK(indigo_start() == INDIGO_OK);
+	CHECK(hw_start() == INDIGO_OK);
 	started = true;
 	CHECK(indigo_attach_client(&client) == INDIGO_OK);
 	CHECK(indigo_aux_upb(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);

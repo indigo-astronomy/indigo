@@ -32,6 +32,7 @@
 #include <indigo_drivers/ccd_asi/indigo_ccd_asi.h>
 #include <indigo_drivers/agent_imager/indigo_agent_imager.h>
 #include "../test_runner.h"
+#include "hardware_device_record.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define TEST_SUFFIX "INDIGOT1"
@@ -1106,7 +1107,7 @@ static bool driver_initialized;
 // Brings the driver up and selects the camera the session runs against. INDIGO_TEST_DEVICE picks one
 // when more than one ASI camera is attached.
 static bool begin_session(void) {
-	if (indigo_start() != INDIGO_OK || indigo_attach_client(&client) != INDIGO_OK) {
+	if (hw_start() != INDIGO_OK || indigo_attach_client(&client) != INDIGO_OK) {
 		return false;
 	}
 	if (driver_entry(INDIGO_DRIVER_INIT, NULL) != INDIGO_OK) {

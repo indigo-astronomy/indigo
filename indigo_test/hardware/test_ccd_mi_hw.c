@@ -29,6 +29,7 @@
 #include <indigo/indigo_driver.h>
 #include <indigo_drivers/ccd_mi/indigo_ccd_mi.h>
 #include "../test_runner.h"
+#include "hardware_device_record.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define MAX_DEVICES 16
@@ -582,7 +583,7 @@ static bool shared_connection_cycles(void) {
 
 static void hardware_workflows(void) {
 	bool initialized = false;
-	CHECK(indigo_start() == INDIGO_OK);
+	CHECK(hw_start() == INDIGO_OK);
 	CHECK(indigo_attach_client(&client) == INDIGO_OK);
 	CHECK(driver_entry(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	initialized = true;

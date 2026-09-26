@@ -28,6 +28,7 @@
 #include <indigo_drivers/ccd_iidc/indigo_ccd_iidc.h>
 
 #include "../test_runner.h"
+#include "hardware_device_record.h"
 
 #define MAX_DEVICES 16
 #define MAX_PROPERTIES 128
@@ -440,7 +441,7 @@ static bool exercise_control(const char *property_name, const char *item_name) {
 
 static void hardware_workflows(void) {
 	bool initialized = false;
-	CHECK(indigo_start() == INDIGO_OK);
+	CHECK(hw_start() == INDIGO_OK);
 	CHECK(indigo_attach_client(&client) == INDIGO_OK);
 	CHECK(indigo_ccd_iidc(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	initialized = true;
