@@ -2341,12 +2341,14 @@ void write_c_hotplug_section(void) {
 		if (driver.sdk && driver.sdk->unplug_match) {
 			write_line("\t\t\tprivate_data = PRIVATE_DATA;");
 			write_line("\t\t\tbool unplug_result = private_data->usbdev == dev;");
-			// The match block confirms a removal libusb has not identified; it never vetoes one it
-			// has. Running it unconditionally threw the libusb identity away, and an SDK that goes
-			// on reporting a camera whose handle is still open then refused the removal of a
-			// device that was switched off while connected. No second DEVICE_LEFT event follows,
-			// so the driver kept publishing a device that answered no request. That is QHY2-001.
-			write_line("\t\t\tif (!unplug_result && last_action != INDIGO_DRIVER_SHUTDOWN) {");
+			// The match block always decides, with unplug_result preset from the libusb identity.
+			// That identity is only as good as the plug block that recorded it: most vendor SDKs
+			// cannot say which USB device a camera or wheel enumerates from, so when several
+			// arrive together the plug block binds each USB device to whichever SDK device is not
+			// attached yet, and a removal trusted on the pointer alone detaches a device that is
+			// still plugged in. A driver that has to trust the libusb identity anyway guards its
+			// own match block with 'if (!unplug_result)', as ccd_qhy2 does for QHY2-001.
+			write_line("\t\t\tif (last_action != INDIGO_DRIVER_SHUTDOWN) {");
 			write_c_code_blocks(driver.sdk->unplug_match, 4, "sdk.unplug_match");
 			write_line("\t\t\t}");
 			write_line("\t\t\tif (unplug_result) {");

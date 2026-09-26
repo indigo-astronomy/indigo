@@ -82,7 +82,7 @@ Example:
 
 ```sh
 tmp_dir=$(mktemp -d /tmp/indigo-falcon2.XXXXXX)
-./rotator_falcon2_simulator --headless --ready-file "$tmp_dir/ready.env" &
+./rotator_falcon_simulator --headless --ready-file "$tmp_dir/ready.env" &
 sim_pid=$!
 
 # The test harness should implement bounded waiting and validation here.
@@ -352,7 +352,7 @@ int main(int argc, char *argv[]) {
 
 Device-specific simulators should replace `simulator_name`, extend `parse_device_option()` for options such as `--model`, `--device-id`, or fault injection, and implement `dispatch_command()` plus any state update threads or timers required by the hardware protocol.
 
-The nonblocking reader must never treat `EAGAIN`, `EWOULDBLOCK`, or `EIO` as fatal: INDIGO drivers probe by opening and closing the pseudo-terminal slave repeatedly during baud-rate and model detection, so the read loop has to keep running until the process is signalled. Copy the read loop from an existing simulator (`rotator_falcon2_simulator.c`, `aux_wcv4ec_simulator.c`) rather than reimplementing it.
+The nonblocking reader must never treat `EAGAIN`, `EWOULDBLOCK`, or `EIO` as fatal: INDIGO drivers probe by opening and closing the pseudo-terminal slave repeatedly during baud-rate and model detection, so the read loop has to keep running until the process is signalled. Copy the read loop from an existing simulator (`rotator_falcon_simulator.c`, `aux_wcv4ec_simulator.c`) rather than reimplementing it.
 
 ## Build and Test Integration
 

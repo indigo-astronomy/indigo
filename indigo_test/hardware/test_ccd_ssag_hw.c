@@ -27,6 +27,7 @@
 #include <indigo_drivers/ccd_ssag/indigo_ccd_ssag.h>
 
 #include "../test_runner.h"
+#include "hardware_device_record.h"
 
 #define CHECK(condition) do { if (!(condition)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #condition); indigo_test_failures++; goto cleanup; } } while (0)
 #define MAX_PROPERTIES 64
@@ -320,7 +321,7 @@ static bool is_connected(observed_device *device) {
 static void physical_acceptance(void) {
 	bool initialized = false;
 	indigo_set_log_level(INDIGO_LOG_DEBUG);
-	CHECK(indigo_start() == INDIGO_OK);
+	CHECK(hw_start() == INDIGO_OK);
 	CHECK(indigo_attach_client(&client) == INDIGO_OK);
 	indigo_driver_info info;
 	CHECK(indigo_ccd_ssag(INDIGO_DRIVER_INFO, &info) == INDIGO_OK);
@@ -397,7 +398,7 @@ cleanup:
 static void physical_hotplug_acceptance(void) {
 	bool initialized = false;
 	indigo_set_log_level(INDIGO_LOG_DEBUG);
-	CHECK(indigo_start() == INDIGO_OK);
+	CHECK(hw_start() == INDIGO_OK);
 	CHECK(indigo_attach_client(&client) == INDIGO_OK);
 	CHECK(indigo_ccd_ssag(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	initialized = true;

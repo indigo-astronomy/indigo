@@ -51,6 +51,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "../test_runner.h"
+
 #define PARALLEL_CASE_RUNNER_MIN_JOBS 2
 #define PARALLEL_CASE_RUNNER_MAX_JOBS 32
 // The cases wait on simulator hand-shakes, connect delays and driver timeouts
@@ -202,6 +204,13 @@ static int run_parallel_cases(const parallel_case_runner *runner, int *run_count
 		fprintf(stderr, "%s: cannot allocate the case results\n", runner->label);
 		return runner->count;
 	}
+	int selected = 0;
+	for (int index = 0; index < runner->count; index++) {
+		if (runner->selected == NULL || runner->selected(index)) {
+			selected++;
+		}
+	}
+	indigo_test_plan(runner->label, selected, NULL);
 	for (int slot = 0; slot < jobs; slot++) {
 		slots[slot].pid = 0;
 		slots[slot].index = -1;
@@ -295,6 +304,7 @@ static int run_parallel_cases(const parallel_case_runner *runner, int *run_count
 	free(finished);
 	free(failure);
 	free(duration);
+	indigo_test_plan_recorded = false;
 	return failed;
 }
 

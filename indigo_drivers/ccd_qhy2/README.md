@@ -56,4 +56,4 @@ This will come at the cost of somewhat reduced performance.
 2026-09-22 19:37 3.0.0.40 mac arm64 QHY5-M 1/1 OK
 2026-09-22 19:39 3.0.0.40 mac arm64 QHY8PRO-C 1/1 OK
 2026-09-22 19:41 3.0.0.40 mac arm64 QHY5LII-M 2/2 OK
-2026-09-22 19:42 3.0.0.40 mac arm64 fake SDK 41/41 OK
+2026-09-26 19:53 3.0.0.42 mac arm64 fake SDK 41/41 OK

@@ -47,6 +47,7 @@
 #include <indigo_linux_drivers/aux_asiair/indigo_aux_asiair.h>
 
 #include "../test_runner.h"
+#include "hardware_device_record.h"
 
 #define ARRAY_SIZE(array) ((int)(sizeof(array) / sizeof((array)[0])))
 #define ASIAIR_DEVICE_NAME "ZWO Power Ports ASIAIR"
@@ -171,7 +172,7 @@ static bool set_outlet(int line, bool value) {
 }
 
 static void connect_and_export(void) {
-	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	ASSERT_EQ_INT(INDIGO_OK, hw_start());
 	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(&test_client));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_aux_asiair(INDIGO_DRIVER_INIT, NULL));
 	indigo_change_switch_property_1(&test_client, ASIAIR_DEVICE_NAME, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);

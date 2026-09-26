@@ -26,6 +26,7 @@
 #include <indigo/indigo_driver.h>
 #include <dlfcn.h>
 #include "../test_runner.h"
+#include "hardware_device_record.h"
 #include "powerbox_hotplug_test_common.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
@@ -467,7 +468,7 @@ static bool reject_change_guards(void) {
 static void hardware_workflows(void) {
 	bool initialized = false;
 	indigo_property *format = NULL, *frame = NULL, *bins = NULL, *gain = NULL, *advanced = NULL, *mode = NULL;
-	CHECK(indigo_start() == INDIGO_OK);
+	CHECK(hw_start() == INDIGO_OK);
 	CHECK(indigo_attach_client(&client) == INDIGO_OK);
 	indigo_driver_info info;
 	CHECK(driver_entry(INDIGO_DRIVER_INFO, &info) == INDIGO_OK);

@@ -473,7 +473,7 @@ int main(int argc, char **argv) {
 	};
 	int result = 1;
 	bool started = false, initialized = false;
-	HW_CHECK(indigo_start() == INDIGO_OK);
+	HW_CHECK(hw_start() == INDIGO_OK);
 	started = true;
 	HW_CHECK(hw_attach_client("USB_Focus v3 hardware test") == INDIGO_OK);
 	HW_CHECK(indigo_focuser_usbv3(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);

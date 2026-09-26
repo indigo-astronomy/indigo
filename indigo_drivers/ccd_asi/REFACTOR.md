@@ -636,3 +636,15 @@ Root cause: the two `on_change_request` blocks in `indigo_ccd_asi.driver` refuse
 Fix: both are now `reject_change` blocks, so the generator emits the house refusal — every item marked `do_update`, `INDIGO_ALERT_STATE` and a message — and the client gets its unchanged values back. Version 64 -> 65.
 
 Regression test: `Edges rejected_change_alerts_and_keeps_values` in `indigo_test/integration/test_ccd_asi_sdk.c` now requests streaming during an exposure and requires `CCD_STREAMING` to reach `INDIGO_ALERT_STATE`. Against the pre-fix driver it fails at that assertion; the suite is 51/51 after the fix.
+
+## 2026-09-26 unplug_match decides every removal again
+
+Commit `0057e7302` (2026-09-22) made the generator consult `sdk.unplug_match` only for a removal
+libusb had not identified. That identity is only as good as the plug block that recorded it, and
+most vendor SDKs cannot say which USB device a camera or wheel enumerates from: when several arrive
+together the plug block binds each USB device to the first SDK device not attached yet, so a
+removal trusted on the libusb pointer alone detached a device that was still plugged in. The
+generator consults the block for every removal again, and a driver that has to trust the libusb
+identity guards its own block with `if (!unplug_result)`, as `ccd_qhy2` does for QHY2-001.
+
+`Matrix discovery_filter_failures_retry` injects its SDK failures into a removal whose camera is made to look gone, so only the failure keeps it attached; the step that required an identified removal to go through a failing SDK was dropped. Recorded with `tools/run_driver_test.py`: fake SDK 52/52, ZWO ASI120MC-S 28/28 (no hot-plug).

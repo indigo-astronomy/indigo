@@ -32,6 +32,7 @@
 #include <indigo_drivers/ccd_sx/indigo_ccd_sx.h>
 
 #include "../test_runner.h"
+#include "hardware_device_record.h"
 
 #define MAX_DEVICES 16
 #define MAX_PROPERTIES 64
@@ -562,7 +563,7 @@ static bool start_driver(void) {
 		memset(devices + d, 0, sizeof(observed_device));
 	}
 	pthread_mutex_unlock(&mutex);
-	if (indigo_start() != INDIGO_OK || indigo_attach_client(&client) != INDIGO_OK) {
+	if (hw_start() != INDIGO_OK || indigo_attach_client(&client) != INDIGO_OK) {
 		return false;
 	}
 	if (indigo_ccd_sx(INDIGO_DRIVER_INIT, NULL) != INDIGO_OK) {

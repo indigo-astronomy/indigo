@@ -28,6 +28,7 @@
 #include <indigo_drivers/ccd_uvc/indigo_ccd_uvc.h>
 
 #include "../test_runner.h"
+#include "hardware_device_record.h"
 
 #define MAX_DEVICES 16
 #define MAX_PROPERTIES 128
@@ -349,7 +350,7 @@ static bool connect_camera(void) {
 // The bus, the driver and the camera selection are shared by every case: bringing them up per case
 // would cost a driver reload each time and would report the same discovery failure once per case.
 static bool begin_session(void) {
-	if (indigo_start() != INDIGO_OK || indigo_attach_client(&client) != INDIGO_OK) {
+	if (hw_start() != INDIGO_OK || indigo_attach_client(&client) != INDIGO_OK) {
 		return false;
 	}
 	if (indigo_ccd_uvc(INDIGO_DRIVER_INIT, NULL) != INDIGO_OK) {

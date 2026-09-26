@@ -42,4 +42,4 @@ Since version 2.0.0.4 the kernel driver is not required any more as it uses libu
 
 ## Testing
 
-2026-09-21 14:40 3.0.0.11 mac arm64 fake SDK 17/17 OK
+2026-09-26 19:48 3.0.0.14 mac arm64 fake SDK 17/17 OK

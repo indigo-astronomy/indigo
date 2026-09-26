@@ -56,6 +56,35 @@ Run `make all` from the repository root first if `build/lib/libindigo` or the re
 
 After validating changes that build tests, run `make -C indigo_test test-clean` unless the user asks to keep build artifacts.
 
+## Machine Readable Results
+
+Setting `INDIGO_TEST_RESULTS=<path>` makes every suite append a record of its
+run to `<path>`, one tab separated line per event, as described in
+`test_runner.h`: `plan <count> <suite>` before a suite runs its cases,
+`pass <suite> <case>` or `fail <suite> <case>` after each case, and
+`filter <value>` when only some cases were selected, and `device ...` for the
+hardware a hardware suite connected to. The result of a run is the
+number of `pass` records out of the sum of the `plan` counts, so a case that
+crashes or is killed by its watchdog still counts as planned and not passed.
+Records from forked children land in the same file.
+
+- `indigo_run_tests()` writes the records itself, so a suite that calls it
+  needs nothing more.
+- A runner that forks its cases and calls `indigo_run_tests()` once per child
+  calls `indigo_test_plan()` in the parent, before the first fork, with the
+  number of cases it selected, and clears `indigo_test_plan_recorded` when it
+  is done. `run_parallel_cases()` and `run_aux_simulated()` already do.
+  Without the call each child plans its own case, and a child that dies before
+  reaching `indigo_run_tests()` silently drops out of the total.
+- The records never replace the exit code. A binary that exits non-zero failed,
+  whatever its records say.
+- Hardware suites start the bus with `hw_start()` from
+  `hardware/hardware_device_record.h` instead of `indigo_start()`, and list that
+  header as a prerequisite of their rule. When the run is recorded it attaches a
+  passive client that adds a `device <driver> <interface> <device name> <model>`
+  record for every device the suite connects, with the model the driver detected,
+  so a recorded hardware run names the hardware it ran against by itself.
+
 ## Parallel Case Runners
 
 Suites that run every case in its own forked child, each with its own simulator
@@ -217,6 +246,31 @@ implement.
   already produced a false finding once.
 - For driver-related benchmarks, record comparison results, environment, sample counts
   and anything left open in the relevant driver's `REFACTOR.md`.
+
+## Test Naming
+
+Every test of a driver is named after the driver directory, so a driver's tests
+can be found from its name alone:
+
+- A test executable and its source are `test_<driver>` or `test_<driver>_<kind>`,
+  where `<driver>` is the driver directory name exactly, e.g.
+  `test_rotator_falcon_simulator` for `indigo_drivers/rotator_falcon`, never
+  `test_rotator_falcon2_simulator` after a model the driver supports.
+- A host-side simulator of a driver is `<driver>_simulator`, in the directory of
+  the same name below the driver. A simulator that emulates several models
+  selects them with an option such as `--model`, not with its name. The rule
+  covers the C simulators written for this test suite, the ones whose header
+  says they were generated or refactored by an AI agent; older standalone tools
+  by other authors, such as the Perl `relio_simulator` and `ascol_simulator`,
+  keep their names.
+- `<kind>` says what stands in for the device: `simulator` for a serial or
+  network simulator, `sdk`, `usb`, `hid`, `sysfs` or `ica` for a fake vendor SDK
+  or system interface, and `transport`, `motion` and similar for suites that
+  drive the same stand-in from another angle. `hw` is a hardware suite.
+- Sanitizer builds append `_sanitize` or `_asan` to the name of the test they
+  instrument.
+- Tests that exercise the framework rather than a driver (`test_bus_lifecycle`,
+  `test_detach_abort`, ...) must not start with a driver directory name.
 
 ## Makefile Rules
 
@@ -467,6 +521,27 @@ macOS has no equivalent control. A hub with per-port power switching driven by
 otherwise the cable has to be pulled by hand.
 
 ## Recording Test Runs
+
+Record driver test runs with `tools/run_driver_test.py` from the project root.
+It builds the driver and its tests, runs them, and writes the record and
+`TEST_SUMMARY.md` exactly as described below, for people and agents alike. The
+final, recorded run of a driver is always made through the script, never by
+running test binaries or make targets by hand, so that every defect of the
+script, the harness or the test naming surfaces in ordinary use:
+
+```bash
+python3 tools/run_driver_test.py focuser_dsd
+python3 tools/run_driver_test.py ccd_touptek --hw -- HW_DRIVER=indigo_ccd_touptek
+```
+
+Run it without arguments for the full usage. A hardware-free run executes every
+test in `INTEGRATION_TESTS` named after the driver (see "Test Naming"); a
+hardware run executes `test-<driver>-hw` and records the model of the device
+the suite connected to, several models sorted and joined with `and`. A
+`--hot-plug` run adds the opt-in unplug and replug case and records the model
+followed by ` (hot-plug)`, so it never replaces the plain hardware run. Use
+`--type` only where the detected name is not the one to record. Record by hand,
+following the rules below, only a run the script cannot perform.
 
 After every driver test run, record the outcome in that driver's `README.md`:
 

@@ -48,7 +48,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000024
+#define DRIVER_VERSION       0x03000025
 #define DRIVER_NAME          "indigo_ccd_mi"
 #define DRIVER_LABEL         "Moravian Instruments Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1251,7 +1251,7 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 			indigo_device *device = devices[j];
 			private_data = PRIVATE_DATA;
 			bool unplug_result = private_data->usbdev == dev;
-			if (!unplug_result && last_action != INDIGO_DRIVER_SHUTDOWN) {
+			if (last_action != INDIGO_DRIVER_SHUTDOWN) {
 				//+ sdk.unplug_match
 				unplug_result = !camera_is_enumerated(private_data->eid);
 				//- sdk.unplug_match

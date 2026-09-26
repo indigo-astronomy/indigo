@@ -618,7 +618,7 @@ int main(int argc, char **argv) {
 	bool started = false, initialized = false, monitoring = false;
 	HW_CHECK(monitor_start());
 	monitoring = true;
-	HW_CHECK(indigo_start() == INDIGO_OK);
+	HW_CHECK(hw_start() == INDIGO_OK);
 	started = true;
 	HW_CHECK(hw_attach_client("RTS-on-COM hardware test") == INDIGO_OK);
 	HW_CHECK(indigo_aux_rts(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);

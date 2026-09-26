@@ -50,6 +50,7 @@
 #include <indigo/indigo_timer.h>
 #include <indigo_drivers/mount_synscan/indigo_mount_synscan.h>
 #include "../test_runner.h"
+#include "hardware_device_record.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define MAX_DEVICES 8
@@ -1290,7 +1291,7 @@ int main(int argc, char **argv) {
 	};
 	int result = 1;
 	bool started = false, initialized = false;
-	CHECK(indigo_start() == INDIGO_OK);
+	CHECK(hw_start() == INDIGO_OK);
 	started = true;
 	CHECK(indigo_attach_client(&client) == INDIGO_OK);
 	CHECK(indigo_mount_synscan(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);

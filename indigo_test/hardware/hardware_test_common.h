@@ -38,6 +38,7 @@
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_timer.h>
 #include "../test_runner.h"
+#include "hardware_device_record.h"
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))

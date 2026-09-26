@@ -164,3 +164,15 @@ No sleep/retry loop may monopolize the driver queue. If SDK discovery needs a re
 | Hot-plug | Two or more wheels, reordered SDK enumeration, connect in reverse order, unplug the correct wheel while idle/moving, failed attach retry, capacity overflow/recovery, repeated arrival, unrelated USB product, shutdown with pending work. |
 
 Completion requires reproducible generation, a successful narrow build, passing SDK-backed integration scenarios and an explained generated diff. Stub tests cannot establish real SDK readiness timing, physical USB-to-handle mapping or reset/replug behavior; record any unavailable hardware checks as deferred rather than claiming full validation.
+
+## 2026-09-26 unplug_match decides every removal again
+
+Commit `0057e7302` (2026-09-22) made the generator consult `sdk.unplug_match` only for a removal
+libusb had not identified. That identity is only as good as the plug block that recorded it, and
+most vendor SDKs cannot say which USB device a camera or wheel enumerates from: when several arrive
+together the plug block binds each USB device to the first SDK device not attached yet, so a
+removal trusted on the libusb pointer alone detached a device that was still plugged in. The
+generator consults the block for every removal again, and a driver that has to trust the libusb
+identity guards its own block with `if (!unplug_result)`, as `ccd_qhy2` does for QHY2-001.
+
+`simultaneous arrivals and SDK-based removal identity` failed from 2026-09-22 on: with the SDK enumerating in reverse, unplugging wheel 1 closed wheels 1 and 2, because wheel 2 had been bound to wheel 1's USB device. It passes unchanged with the generator fix. Recorded with `tools/run_driver_test.py`: fake SDK 12/12.

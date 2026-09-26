@@ -15,10 +15,10 @@ instead of an update that carries no items.
 Before this change `ROTATOR_POSITION` published BUSY only for itself, so `ROTATOR_RELATIVE_MOVE` stayed idle during an absolute goto and a relative move request reached the controller in the middle of the running motion. This was a genuine concurrent-command defect, not only a reporting problem.
 
 Driver version is now `0x03000007`. Regression coverage is the existing suite in
-`indigo_test/integration/test_rotator_falcon2_simulator.c`, which was re-run after the change.
+`indigo_test/integration/test_rotator_falcon_simulator.c`, which was re-run after the change.
 
 ```sh
-cd indigo_test && ./build/integration/test_rotator_falcon2_simulator
+cd indigo_test && ./build/integration/test_rotator_falcon_simulator
 ```
 
 - Simulated tests run: 1; passed: 1.

@@ -30,6 +30,7 @@
 #include <indigo_drivers/ccd_touptek/indigo_ccd_touptek.h>
 #include <indigo_drivers/ccd_altair/indigo_ccd_altair.h>
 #include "../test_runner.h"
+#include "hardware_device_record.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define MAX_DEVICES 16
@@ -805,7 +806,7 @@ static bool exercise_reconnect(void) {
 static bool driver_initialized;
 
 static bool begin_session(void) {
-	if (indigo_start() != INDIGO_OK || indigo_attach_client(&client) != INDIGO_OK) {
+	if (hw_start() != INDIGO_OK || indigo_attach_client(&client) != INDIGO_OK) {
 		return false;
 	}
 	if (driver_entry(INDIGO_DRIVER_INIT, NULL) != INDIGO_OK) {

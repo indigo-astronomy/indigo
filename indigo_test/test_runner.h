@@ -22,8 +22,10 @@
 #define indigo_test_runner_h
 
 #include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <ftw.h>
 #include <stdbool.h>
@@ -176,11 +178,80 @@ static void indigo_test_remove_private_home(void) {
 	}
 }
 
+// INDIGO_TEST_RESULTS=<path> makes every suite append a machine readable record of its run to
+// <path>, which is what tools/run_driver_test.py reads to record a driver test run. One record is
+// one tab separated line:
+//
+//   plan    <count>  <suite>   the suite is about to run <count> cases
+//   pass    <suite>  <case>    the case passed
+//   fail    <suite>  <case>    the case failed
+//   filter  <value>            only the cases matching <value> were selected
+//
+// The file is opened in append mode and every record is written with a single write(), so forked
+// cases running concurrently append whole lines to the same file. A case that crashes or is killed
+// by its watchdog leaves a plan without a result, which is how a reader tells the planned count
+// from the completed one: the result of a run is the number of pass records out of the sum of the
+// plan records.
+static void indigo_test_record(const char *format, ...) {
+	const char *path = getenv("INDIGO_TEST_RESULTS");
+	if (path == NULL || *path == 0) {
+		return;
+	}
+	char line[1024];
+	va_list args;
+	va_start(args, format);
+	int length = vsnprintf(line, sizeof(line) - 1, format, args);
+	va_end(args);
+	if (length < 0) {
+		return;
+	}
+	if (length > (int)sizeof(line) - 2) {
+		length = (int)sizeof(line) - 2;
+	}
+	line[length++] = '\n';
+	int file = open(path, O_WRONLY | O_APPEND | O_CREAT, 0644);
+	if (file < 0) {
+		perror(path);
+		return;
+	}
+	if (write(file, line, length) != length) {
+		perror(path);
+	}
+	close(file);
+}
+
+// Set once a runner has recorded the plan for cases it runs in forked children. The children
+// inherit it, so the indigo_run_tests() call each of them makes does not plan its case again.
+static bool indigo_test_plan_recorded = false;
+
+// A runner that forks its cases calls this in the parent, before the first fork, with the number of
+// cases it selected and the filter it selected them by (NULL when it runs all of them). A case whose
+// child never reports then counts as planned but not passed, instead of disappearing from the run.
+static void indigo_test_plan(const char *suite_name, int count, const char *filter) {
+	if (filter != NULL) {
+		indigo_test_record("filter\t%s", filter);
+	}
+	indigo_test_record("plan\t%d\t%s", count, suite_name);
+	indigo_test_plan_recorded = true;
+}
+
 static int indigo_run_tests(const char *suite_name, const indigo_test_case *tests, int count) {
 	int initial_failures = indigo_test_failures;
 	// INDIGO_TEST_CASE_FILTER runs only the cases whose name contains it, which is how a
 	// single case is repeated while a flaky or failing one is being tracked down.
 	const char *filter = getenv("INDIGO_TEST_CASE_FILTER");
+	if (!indigo_test_plan_recorded) {
+		int selected = 0;
+		for (int i = 0; i < count; i++) {
+			if (filter == NULL || strstr(tests[i].name, filter) != NULL) {
+				selected++;
+			}
+		}
+		if (filter != NULL) {
+			indigo_test_record("filter\t%s", filter);
+		}
+		indigo_test_record("plan\t%d\t%s", selected, suite_name);
+	}
 	printf("Running %s\n", suite_name);
 	for (int i = 0; i < count; i++) {
 		if (filter != NULL && strstr(tests[i].name, filter) == NULL) {
@@ -192,8 +263,10 @@ static int indigo_run_tests(const char *suite_name, const indigo_test_case *test
 		indigo_current_test_name = NULL;
 		if (indigo_test_failures == before) {
 			printf("  PASS %s\n", tests[i].name);
+			indigo_test_record("pass\t%s\t%s", suite_name, tests[i].name);
 		} else {
 			printf("  FAIL %s\n", tests[i].name);
+			indigo_test_record("fail\t%s\t%s", suite_name, tests[i].name);
 		}
 	}
 	if (indigo_test_failures == initial_failures) {

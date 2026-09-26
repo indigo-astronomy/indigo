@@ -637,10 +637,9 @@ static void active_removal_and_recovery(void) {
 	end();
 }
 
-// The unplug hook confirms a removal libusb could not identify; it is not consulted for a device
-// libusb named, because that removal is already certain. A foreign token therefore stands for the
-// unidentified event: a failed enumeration leaves it inconclusive and the device stays, while a
-// successful one that no longer lists the camera removes it.
+// The unplug hook confirms every removal through the SDK enumeration. A foreign token stands for an
+// event libusb cannot attribute: a failed enumeration leaves it inconclusive and the device stays,
+// while a successful one that no longer lists the camera removes it.
 static void hotplug_identity_and_inconclusive_removal(void) {
 	libusb_device *foreign = (libusb_device *)(usb_tokens + 5);
 	ASSERT_TRUE(begin(false));
@@ -656,12 +655,6 @@ static void hotplug_identity_and_inconclusive_removal(void) {
 	usb_callback(NULL, foreign, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
 	ASSERT_TRUE(wait_atomic(&attached, 0));
 	cameras[0].visible = true;
-	usb_callback(NULL, (libusb_device *)usb_tokens, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
-	ASSERT_TRUE(wait_atomic(&attached, 1));
-	// The device libusb names goes away whatever the vendor SDK still reports, so a camera the
-	// enumeration keeps listing must not survive its own DEVICE_LEFT event.
-	usb_callback(NULL, (libusb_device *)usb_tokens, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
-	ASSERT_TRUE(wait_atomic(&attached, 0));
 	usb_callback(NULL, (libusb_device *)usb_tokens, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
 	ASSERT_TRUE(wait_atomic(&attached, 1));
 	end();

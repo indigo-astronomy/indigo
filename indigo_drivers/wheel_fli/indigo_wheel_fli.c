@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_wheel_fli"
 #define DRIVER_LABEL         "FLI Filter Wheel"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -376,7 +376,7 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 			indigo_device *device = devices[j];
 			private_data = PRIVATE_DATA;
 			bool unplug_result = private_data->usbdev == dev;
-			if (!unplug_result && last_action != INDIGO_DRIVER_SHUTDOWN) {
+			if (last_action != INDIGO_DRIVER_SHUTDOWN) {
 				//+ sdk.unplug_match
 				unplug_result = !fli_is_enumerated(private_data->dev_file_name);
 				//- sdk.unplug_match
