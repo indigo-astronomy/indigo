@@ -466,7 +466,7 @@ Compliance scenarios:
 
 ### Rotator Driver Test Standard
 
-Apply the shared scope above. Reference scenarios: `integration/test_rotator_asi_sdk.c`, `test_rotator_falcon2_simulator.c`, `test_rotator_optec_simulator.c` and `test_rotator_wa_simulator.c`.
+Apply the shared scope above. Reference scenarios: `integration/test_rotator_asi_sdk.c`, `test_rotator_falcon_simulator.c`, `test_rotator_optec_simulator.c` and `test_rotator_wa_simulator.c`.
 
 #### Fake SDK or protocol coverage
 

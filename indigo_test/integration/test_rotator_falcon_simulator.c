@@ -29,8 +29,8 @@
 
 #include "serial_simulator_test_common.h"
 
-#ifndef ROTATOR_FALCON2_SIMULATOR_EXECUTABLE
-#define ROTATOR_FALCON2_SIMULATOR_EXECUTABLE "build/integration/rotator_falcon2_simulator"
+#ifndef ROTATOR_FALCON_SIMULATOR_EXECUTABLE
+#define ROTATOR_FALCON_SIMULATOR_EXECUTABLE "build/integration/rotator_falcon_simulator"
 #endif
 
 static const simulator_driver_case falcon_rotator = {
@@ -44,9 +44,9 @@ static const simulator_driver_case falcon_rotator = {
 
 static bool start_falcon(external_serial_simulator *simulator, const char * const *arguments) {
 	if (arguments == NULL) {
-		return start_external_serial_simulator(simulator, ROTATOR_FALCON2_SIMULATOR_EXECUTABLE);
+		return start_external_serial_simulator(simulator, ROTATOR_FALCON_SIMULATOR_EXECUTABLE);
 	}
-	return start_external_serial_simulator_with_args(simulator, ROTATOR_FALCON2_SIMULATOR_EXECUTABLE, arguments);
+	return start_external_serial_simulator_with_args(simulator, ROTATOR_FALCON_SIMULATOR_EXECUTABLE, arguments);
 }
 
 static double position(void) {

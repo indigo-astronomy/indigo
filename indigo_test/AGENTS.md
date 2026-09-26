@@ -240,6 +240,27 @@ implement.
 - For driver-related benchmarks, record comparison results, environment, sample counts
   and anything left open in the relevant driver's `REFACTOR.md`.
 
+## Test Naming
+
+Every test of a driver is named after the driver directory, so a driver's tests
+can be found from its name alone:
+
+- A test executable and its source are `test_<driver>` or `test_<driver>_<kind>`,
+  where `<driver>` is the driver directory name exactly, e.g.
+  `test_rotator_falcon_simulator` for `indigo_drivers/rotator_falcon`, never
+  `test_rotator_falcon2_simulator` after a model the driver supports.
+- A host-side simulator of a driver is `<driver>_simulator`, in the directory of
+  the same name below the driver. A simulator that emulates several models
+  selects them with an option such as `--model`, not with its name.
+- `<kind>` says what stands in for the device: `simulator` for a serial or
+  network simulator, `sdk`, `usb`, `hid`, `sysfs` or `ica` for a fake vendor SDK
+  or system interface, and `transport`, `motion` and similar for suites that
+  drive the same stand-in from another angle. `hw` is a hardware suite.
+- Sanitizer builds append `_sanitize` or `_asan` to the name of the test they
+  instrument.
+- Tests that exercise the framework rather than a driver (`test_bus_lifecycle`,
+  `test_detach_abort`, ...) must not start with a driver directory name.
+
 ## Makefile Rules
 
 - Add new unit executables to `UNIT_TESTS`.

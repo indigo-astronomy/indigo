@@ -4999,7 +4999,7 @@
 		59FE348121886A17004FB5D4 /* indigo_focuser_lakeside_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_lakeside_main.c; sourceTree = "<group>"; };
 		59FE348321886A17004FB5D4 /* focuser_lakeside_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = focuser_lakeside_simulator.ino; sourceTree = "<group>"; };
 		59FEFFC6301E6891007FB62D /* serial_simulator_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = serial_simulator_test_common.h; sourceTree = "<group>"; };
-		59FEFFC7301E6891007FB62D /* test_rotator_falcon2_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_rotator_falcon2_simulator.c; sourceTree = "<group>"; };
+		59FEFFC7301E6891007FB62D /* test_rotator_falcon_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_rotator_falcon_simulator.c; sourceTree = "<group>"; };
 		59FEFFC8301E6891007FB62D /* test_focuser_fc3_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_fc3_simulator.c; sourceTree = "<group>"; };
 		59FEFFC9301E6891007FB62D /* test_aux_upb3_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_upb3_simulator.c; sourceTree = "<group>"; };
 		59FEFFCB301E6A44007FB62D /* focuser_qhy_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_qhy_simulator.c; sourceTree = "<group>"; };
@@ -5302,7 +5302,7 @@
 		9D74A55A2D4B660400A31003 /* indigo_aux_asiair.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_asiair.c; sourceTree = "<group>"; };
 		9D74A55B2D4B660400A31003 /* indigo_aux_asiair_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_asiair_main.c; sourceTree = "<group>"; };
 		9D74A55C2D4B660400A31003 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		9D7BA5042C47F18200091C68 /* rotator_falcon2_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = rotator_falcon2_simulator.c; sourceTree = "<group>"; };
+		9D7BA5042C47F18200091C68 /* rotator_falcon_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = rotator_falcon_simulator.c; sourceTree = "<group>"; };
 		9D7BA5062C48010100091C68 /* 99-indigo_rotator_falcon.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_rotator_falcon.rules"; sourceTree = "<group>"; };
 		9D7D59191DF6B21B003D2B59 /* rjsmin.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = rjsmin.py; sourceTree = "<group>"; };
 		9D7FC60B2C4906B2004496F2 /* focuser_fc3_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = focuser_fc3_simulator.c; sourceTree = "<group>"; };
@@ -10846,7 +10846,7 @@
 				9D0A8B6E2DD7425200B2F5D2 /* indigo_rotator_falcon.driver */,
 				59B51361297078DE0075C8A1 /* Falcon_Serial_Command_Table.pdf */,
 				9D7BA5062C48010100091C68 /* 99-indigo_rotator_falcon.rules */,
-				9D9BB0AD2DD74D4500A2D03A /* rotator_falcon2_simulator */,
+				9D9BB0AD2DD74D4500A2D03A /* rotator_falcon_simulator */,
 			);
 			path = rotator_falcon;
 			sourceTree = "<group>";
@@ -14252,7 +14252,7 @@
 				59FA7BFA301D3F5A00A35CFB /* test_polaralign_simulator.c */,
 				091BAE0B20A3D3A4C5044E18 /* test_polaralign_mlastro_simulator.c */,
 				592C33AE304F6126004D5AE6 /* test_rotator_asi_sdk.c */,
-				59FEFFC7301E6891007FB62D /* test_rotator_falcon2_simulator.c */,
+				59FEFFC7301E6891007FB62D /* test_rotator_falcon_simulator.c */,
 				59910A5C305289D700FB1C2F /* test_rotator_lunatico_simulator.c */,
 				C0DE20270913000400000008 /* lunatico_test_common.h */,
 				94BE8552FF00DAB86CD2672A /* test_focuser_lunatico_simulator.c */,
@@ -15806,12 +15806,12 @@
 			path = externals/libdc1394;
 			sourceTree = "<group>";
 		};
-		9D9BB0AD2DD74D4500A2D03A /* rotator_falcon2_simulator */ = {
+		9D9BB0AD2DD74D4500A2D03A /* rotator_falcon_simulator */ = {
 			isa = PBXGroup;
 			children = (
-				9D7BA5042C47F18200091C68 /* rotator_falcon2_simulator.c */,
+				9D7BA5042C47F18200091C68 /* rotator_falcon_simulator.c */,
 			);
-			path = rotator_falcon2_simulator;
+			path = rotator_falcon_simulator;
 			sourceTree = "<group>";
 		};
 		9D9EA69F1DBE1F5000E11841 /* ccd_atik */ = {

@@ -151,7 +151,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_rotator_wa_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_astromechanics_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_askar_simulator \
-	$(INTEGRATION_BUILD)/test_rotator_falcon2_simulator \
+	$(INTEGRATION_BUILD)/test_rotator_falcon_simulator \
 	$(INTEGRATION_BUILD)/test_wheel_xagyl_simulator \
 	$(INTEGRATION_BUILD)/test_wheel_indigo_simulator \
 	$(INTEGRATION_BUILD)/test_wheel_quantum_simulator \
@@ -230,7 +230,7 @@ ROTATOR_OPTEC_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_rotator_optec.a $
 ROTATOR_WA_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_rotator_wa.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_ASTROMECHANICS_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_astromechanics.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_ASKAR_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_askar.a $(TEST_LDFLAGS) -lindigocat
-ROTATOR_FALCON2_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_rotator_falcon.a $(TEST_LDFLAGS) -lindigocat
+ROTATOR_FALCON_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_rotator_falcon.a $(TEST_LDFLAGS) -lindigocat
 WHEEL_XAGYL_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_xagyl.a $(TEST_LDFLAGS) -lindigocat
 WHEEL_INDIGO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_indigo.a $(TEST_LDFLAGS) -lindigocat
 WHEEL_QUANTUM_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_quantum.a $(TEST_LDFLAGS) -lindigocat
@@ -459,7 +459,7 @@ $(INTEGRATION_BUILD)/focuser_astromechanics_simulator: ../indigo_drivers/focuser
 $(INTEGRATION_BUILD)/focuser_askar_simulator: ../indigo_drivers/focuser_askar/focuser_askar_simulator/focuser_askar_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
 
-$(INTEGRATION_BUILD)/rotator_falcon2_simulator: ../indigo_drivers/rotator_falcon/rotator_falcon2_simulator/rotator_falcon2_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/rotator_falcon_simulator: ../indigo_drivers/rotator_falcon/rotator_falcon_simulator/rotator_falcon_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/wheel_xagyl_simulator: ../indigo_drivers/wheel_xagyl/wheel_xagyl_simulator/wheel_xagyl_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -844,8 +844,8 @@ $(INTEGRATION_BUILD)/test_mount_temma_simulator: integration/test_mount_temma_si
 $(INTEGRATION_BUILD)/test_focuser_astromechanics_simulator: integration/test_focuser_astromechanics_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_astromechanics_simulator $(BUILD_DRIVERS)/indigo_focuser_astromechanics.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_ASTROMECHANICS_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_rotator_falcon2_simulator: integration/test_rotator_falcon2_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_falcon2_simulator $(BUILD_DRIVERS)/indigo_rotator_falcon.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $< $(ROTATOR_FALCON2_SIMULATOR_TEST_LDFLAGS)
+$(INTEGRATION_BUILD)/test_rotator_falcon_simulator: integration/test_rotator_falcon_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_falcon_simulator $(BUILD_DRIVERS)/indigo_rotator_falcon.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(ROTATOR_FALCON_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/rotator_optec_simulator: ../indigo_drivers/rotator_optec/rotator_optec_simulator/rotator_optec_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
