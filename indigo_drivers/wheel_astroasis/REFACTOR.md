@@ -161,3 +161,15 @@ Each step has one concrete outcome and a verification gate. Record actual comman
 | Teardown | Disconnect/unplug during movement and calibration, held SDK read before close, cancellation of delayed work, no updates after property deletion, ignored disconnected requests, normal shutdown/reinit and balanced SDK/global-lock/USB ownership. |
 
 Stub tests establish software behavior under modeled SDK replies. They do not prove thread safety inside the proprietary SDK, USB discovery readiness, maximum operation durations, payload limits or physical calibration/reset/replug behavior. Do not infer arbitrary concurrent hot-plug/shutdown safety from ordinary teardown cases.
+
+## 2026-09-26 unplug_match decides every removal again
+
+Commit `0057e7302` (2026-09-22) made the generator consult `sdk.unplug_match` only for a removal
+libusb had not identified. That identity is only as good as the plug block that recorded it, and
+most vendor SDKs cannot say which USB device a camera or wheel enumerates from: when several arrive
+together the plug block binds each USB device to the first SDK device not attached yet, so a
+removal trusted on the libusb pointer alone detached a device that was still plugged in. The
+generator consults the block for every removal again, and a driver that has to trust the libusb
+identity guards its own block with `if (!unplug_result)`, as `ccd_qhy2` does for QHY2-001.
+
+`SDK discovery identity and capacity` failed from 2026-09-22 on, because a failing enumeration no longer kept a wheel whose libusb device was reported. It passes unchanged with the generator fix. Recorded with `tools/run_driver_test.py`: fake SDK 10/10.
