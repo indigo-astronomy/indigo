@@ -318,11 +318,46 @@ while AUX_POWER_OUTLET_STATE followed the box. Reproduced with the simulator.
   aux_upb`: 47/47.
 - Not verified on hardware.
 
+## One dew control mode when the connect status fails, TGT-D22 (2026-09-27, 3.0.0.34)
+
+Finding TGT-D22 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+
+### Defect
+
+Both items of the one-of-many AUX_DEW_CONTROL were initialised ON. The dew control mode is read only
+from the `Autodew` field of the `PA` status frame. A truncated frame refuses the connection, but a `PA`
+that is not answered at all (or does not start with `UPB`) skips the whole parse and the connect still
+succeeds, so the property was defined with MANUAL and AUTOMATIC both on. The poll compares only the
+AUTOMATIC item with the reported mode, so on a box in automatic dew mode nothing changed and both items
+stayed on for the whole session. Reproduced with the simulator.
+
+### Fix
+
+AUTOMATIC is initialised OFF, so the property starts with MANUAL only. MANUAL is the mode of a box whose
+automatic dew control has not been switched on (`PD:0`, the simulator's default), and it matches the
+zero-initialised `automatic_dew` that a failed dew control request falls back to. The adoption at connect
+and in the poll is unchanged; a poll that reports automatic mode now switches the property over. Regenerated
+with the unchanged generator; the only generated changes are that item and the version. Regeneration
+reproducible.
+
+### Verification (Linux x64)
+
+- New case `dew_control_has_one_mode_when_the_connect_status_fails` starts the simulator with the existing
+  `--autodew --fault-once PA silent`, checks that exactly one item is on after the connect, and that the
+  poll then adopts AUTOMATIC with MANUAL off and the property OK. 3.0.0.33 failed 3/3 (MANUAL and AUTOMATIC
+  both on), 3.0.0.34 passed 3/3 in isolation.
+- Recorded run through `TZ=Europe/Bratislava python3 tools/run_driver_test.py aux_upb`:
+  2026-09-27 15:53 3.0.0.34 linux x64 simulator 48/48 OK.
+- Not verified on hardware.
+- Noticed, not changed: a connect whose `PA` goes unanswered also leaves the outlet, USB port and heater
+  values at their initial values until the first poll, and it still sends `PU:1`; the build prints the
+  pre-existing `-Wformat-truncation` warnings for the outlet labels copied from the outlet names.
+
 ## Final test summary
 
-- Simulated tests run: 47; passed: 47 (recorded run of `test_aux_upb_simulator` through
-  `tools/run_driver_test.py`, driver version 33, Linux x64). The previous macOS arm64 runs of the 40
+- Simulated tests run: 48; passed: 48 (recorded run of `test_aux_upb_simulator` through
+  `tools/run_driver_test.py`, driver version 34, Linux x64). The previous macOS arm64 runs of the 40
   earlier cases and the ASan + UBSan note above refer to driver version 30.
 - Hardware tests run: 1; passed: 1 (`upb_usb_port_changes_survive_the_poll`, Pegasus UPB v1 firmware 1.4,
   driver version 30). The last full hardware run, 14 run and 14 passed, was on driver version 28 and
-  did not include this case. Versions 32 and 33 were not run on hardware.
+  did not include this case. Versions 32 to 34 were not run on hardware.

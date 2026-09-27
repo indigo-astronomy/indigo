@@ -561,6 +561,28 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// TGT-D22: when the status frame of the connect goes unanswered the connect still succeeds without reading the dew
+// control mode, so the one-of-many dew control is defined with its initial items; exactly one of them has to be on,
+// and the poll then adopts the automatic mode the box reports.
+static void dew_control_has_one_mode_when_the_connect_status_fails(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--autodew", "--fault-once", "PA", "silent", NULL };
+	SERIAL_CHECK_TRUE(start_upb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected);
+	indigo_item *manual = find_cached_item(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME);
+	indigo_item *automatic = find_cached_item(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(manual != NULL && automatic != NULL);
+	fprintf(stderr, "Dew control after a failed PA: manual %s, automatic %s\n", manual->sw.value ? "on" : "off", automatic->sw.value ? "on" : "off");
+	SERIAL_CHECK_EQ_INT(1, (manual->sw.value ? 1 : 0) + (automatic->sw.value ? 1 : 0));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_DEW_CONTROL_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
 static void each_usb_port_switches_on_its_own(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_upb(&simulator, NULL));
@@ -1298,6 +1320,7 @@ int main(void) {
 		{ "heater_state_and_current_follow_the_duty_cycle", heater_state_and_current_follow_the_duty_cycle },
 		{ "automatic_dew_control_round_trips", automatic_dew_control_round_trips },
 		{ "autodew_state_is_adopted_from_the_device", autodew_state_is_adopted_from_the_device },
+		{ "dew_control_has_one_mode_when_the_connect_status_fails", dew_control_has_one_mode_when_the_connect_status_fails },
 		{ "each_usb_port_switches_on_its_own", each_usb_port_switches_on_its_own },
 		{ "usb_hub_switches_on_the_v1_box", usb_hub_switches_on_the_v1_box },
 		{ "v1_without_a_smart_hub_hides_the_usb_ports", v1_without_a_smart_hub_hides_the_usb_ports },

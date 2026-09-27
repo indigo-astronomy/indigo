@@ -30,4 +30,4 @@ Tested with physical device.
 2026-09-25 12:33 3.0.0.30 mac arm64 Pegasus UPB v1 1/1 OK
 2026-09-26 20:59 3.0.0.31 mac arm64 simulator 40/40 OK
 2026-09-26 22:05 3.0.0.31 linux arm64 PeagasusAstro UPB 15/15 OK
-2026-09-27 14:49 3.0.0.33 linux x64 simulator 47/47 OK
+2026-09-27 15:53 3.0.0.34 linux x64 simulator 48/48 OK
