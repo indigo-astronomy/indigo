@@ -268,6 +268,9 @@ int main(int argc, char **argv) {
 			outlet_current = atoi(argv[++i]);
 		} else if (!strcmp(argv[i], "--autodew")) {
 			automatic = 1;
+		} else if (!strcmp(argv[i], "--hub-off")) {
+			// A box whose USB hub was left disabled reports it in the status frame until PU:1 enables it.
+			hub = 0;
 		} else if (!strcmp(argv[i], "--fault-after") && i + 3 < argc) {
 			fault_skip = atoi(argv[++i]);
 			fault_once = true;
@@ -286,7 +289,7 @@ int main(int argc, char **argv) {
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
 		} else if (strcmp(argv[i], "--headless")) {
-			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file path] [--model upb|upb2] [--overcurrent FLAGS] [--weather T H D] [--power V A W] [--autodew] [--no-probe] [--outlet-current N] [--fault CMD invalid|short|silent|close] [--fault-once CMD MODE] [--fault-after N CMD MODE]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file path] [--model upb|upb2] [--overcurrent FLAGS] [--weather T H D] [--power V A W] [--autodew] [--hub-off] [--no-probe] [--outlet-current N] [--fault CMD invalid|short|silent|close] [--fault-once CMD MODE] [--fault-after N CMD MODE]\n", argv[0]);
 			return 1;
 		}
 	}

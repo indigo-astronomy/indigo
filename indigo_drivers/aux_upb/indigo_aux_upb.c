@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001F
+#define DRIVER_VERSION       0x03000020
 #define DRIVER_NAME          "indigo_aux_upb"
 #define DRIVER_LABEL         "PegasusAstro Ultimate Powerbox"
 #define AUX_DEVICE_NAME      "Ultimate Powerbox"
@@ -188,6 +188,10 @@ typedef struct {
 	int version;
 	libusb_device_handle *smart_hub;
 	char response[128];
+	bool power_outlets[4];
+	bool usb_ports[6];
+	bool hub;
+	bool automatic_dew;
 	//- data
 } upb_private_data;
 
@@ -318,68 +322,42 @@ static void aux_timer_callback(indigo_device *device) {
 				AUX_WEATHER_DEWPOINT_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok_r(NULL, ":", &pnt)) && upb_adopt(AUX_POWER_OUTLET_PROPERTY)) { // portstatus
-			bool state = token[0] == '1';
-			if (AUX_POWER_OUTLET_1_ITEM->sw.value != state) {
-				AUX_POWER_OUTLET_1_ITEM->sw.value = state;
-				updatePowerOutletState = true;
+		// The switch states the box reports are always recorded, a failed request shows them; a pending request
+		// owns the values of its property and its handler sends the targets, which the poll never writes.
+		if ((token = strtok_r(NULL, ":", &pnt))) { // portstatus
+			for (int i = 0; i < 4; i++) {
+				PRIVATE_DATA->power_outlets[i] = token[i] == '1';
 			}
-			state = token[1] == '1';
-			if (AUX_POWER_OUTLET_2_ITEM->sw.value != state) {
-				AUX_POWER_OUTLET_2_ITEM->sw.value = state;
-				updatePowerOutletState = true;
-			}
-			state = token[2] == '1';
-			if (AUX_POWER_OUTLET_3_ITEM->sw.value != state) {
-				AUX_POWER_OUTLET_3_ITEM->sw.value = state;
-				updatePowerOutletState = true;
-			}
-			state = token[3] == '1';
-			if (AUX_POWER_OUTLET_4_ITEM->sw.value != state) {
-				AUX_POWER_OUTLET_4_ITEM->sw.value = state;
-				updatePowerOutletState = true;
+			if (upb_adopt(AUX_POWER_OUTLET_PROPERTY)) {
+				for (int i = 0; i < 4; i++) {
+					if (AUX_POWER_OUTLET_PROPERTY->items[i].sw.value != PRIVATE_DATA->power_outlets[i]) {
+						AUX_POWER_OUTLET_PROPERTY->items[i].sw.value = PRIVATE_DATA->power_outlets[i];
+						updatePowerOutletState = true;
+					}
+				}
 			}
 		}
 		if (PRIVATE_DATA->version == 1) {
-			if ((token = strtok_r(NULL, ":", &pnt)) && upb_adopt(X_AUX_HUB_PROPERTY)) { // USB Hub
-				bool state = token[0] == '0';
-				if (X_AUX_HUB_ENABLED_ITEM->sw.value != state) {
-					indigo_set_switch(X_AUX_HUB_PROPERTY, state ? X_AUX_HUB_ENABLED_ITEM : X_AUX_HUB_DISABLED_ITEM, true);
-					updateAutoHeater = true;
+			if ((token = strtok_r(NULL, ":", &pnt))) { // USB Hub
+				PRIVATE_DATA->hub = token[0] == '0';
+				if (upb_adopt(X_AUX_HUB_PROPERTY) && X_AUX_HUB_ENABLED_ITEM->sw.value != PRIVATE_DATA->hub) {
+					indigo_set_switch(X_AUX_HUB_PROPERTY, PRIVATE_DATA->hub ? X_AUX_HUB_ENABLED_ITEM : X_AUX_HUB_DISABLED_ITEM, true);
+					updateHub = true;
 				}
 			}
 		}
 		if (PRIVATE_DATA->version == 2) {
-			if ((token = strtok_r(NULL, ":", &pnt)) && upb_adopt(AUX_USB_PORT_PROPERTY)) { // USB status
-				bool state = token[0] == '1';
-				if (AUX_USB_PORT_1_ITEM->sw.value != state) {
-					AUX_USB_PORT_1_ITEM->sw.value = state;
-					updateUSBPorts = true;
+			if ((token = strtok_r(NULL, ":", &pnt))) { // USB status
+				for (int i = 0; i < 6; i++) {
+					PRIVATE_DATA->usb_ports[i] = token[i] == '1';
 				}
-				state = token[1] == '1';
-				if (AUX_USB_PORT_2_ITEM->sw.value != state) {
-					AUX_USB_PORT_2_ITEM->sw.value = state;
-					updateUSBPorts = true;
-				}
-				state = token[2] == '1';
-				if (AUX_USB_PORT_3_ITEM->sw.value != state) {
-					AUX_USB_PORT_3_ITEM->sw.value = state;
-					updateUSBPorts = true;
-				}
-				state = token[3] == '1';
-				if (AUX_USB_PORT_4_ITEM->sw.value != state) {
-					AUX_USB_PORT_4_ITEM->sw.value = state;
-					updateUSBPorts = true;
-				}
-				state = token[4] == '1';
-				if (AUX_USB_PORT_5_ITEM->sw.value != state) {
-					AUX_USB_PORT_5_ITEM->sw.value = state;
-					updateUSBPorts = true;
-				}
-				state = token[5] == '1';
-				if (AUX_USB_PORT_6_ITEM->sw.value != state) {
-					AUX_USB_PORT_6_ITEM->sw.value = state;
-					updateUSBPorts = true;
+				if (upb_adopt(AUX_USB_PORT_PROPERTY)) {
+					for (int i = 0; i < 6; i++) {
+						if (AUX_USB_PORT_PROPERTY->items[i].sw.value != PRIVATE_DATA->usb_ports[i]) {
+							AUX_USB_PORT_PROPERTY->items[i].sw.value = PRIVATE_DATA->usb_ports[i];
+							updateUSBPorts = true;
+						}
+					}
 				}
 			}
 		}
@@ -500,10 +478,10 @@ static void aux_timer_callback(indigo_device *device) {
 				}
 			}
 		}
-		if ((token = strtok_r(NULL, ":", &pnt)) && upb_adopt(AUX_DEW_CONTROL_PROPERTY)) { // Autodew
-			bool state = token[0] == '1';
-			if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != state) {
-				indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, state ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
+			PRIVATE_DATA->automatic_dew = token[0] == '1';
+			if (upb_adopt(AUX_DEW_CONTROL_PROPERTY) && AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != PRIVATE_DATA->automatic_dew) {
+				indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, PRIVATE_DATA->automatic_dew ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
 				updateAutoHeater = true;
 			}
 		}
@@ -551,6 +529,7 @@ static void aux_timer_callback(indigo_device *device) {
 					if (port_state & 0x00000008) {
 						state = INDIGO_ALERT_STATE;
 					}
+					PRIVATE_DATA->usb_ports[i - 1] = is_enabled;
 					// The status light is read-only and keeps following the hub, but a
 					// pending port request must not be overwritten with the old hub state.
 					if (upb_adopt(AUX_USB_PORT_PROPERTY) && AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled) {
@@ -586,7 +565,8 @@ static void aux_timer_callback(indigo_device *device) {
 	if (updateHeaterOutletCurrent) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_HEATER_OUTLET_CURRENT_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
-	if (updateAutoHeater) {
+	// A request copied after the checks above owns the state of its property, its handler publishes the result.
+	if (updateAutoHeater && upb_adopt(AUX_DEW_CONTROL_PROPERTY)) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_DEW_CONTROL_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	if (updateWeather) {
@@ -595,10 +575,10 @@ static void aux_timer_callback(indigo_device *device) {
 	if (updateInfo) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_INFO_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
-	if (updateHub) {
+	if (updateHub && upb_adopt(X_AUX_HUB_PROPERTY)) {
 		INDIGO_UPDATE_PROPERTY_STATE(X_AUX_HUB_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
-	if (updateUSBPorts) {
+	if (updateUSBPorts && upb_adopt(AUX_USB_PORT_PROPERTY)) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_USB_PORT_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	if (updateUSBPorts || updateUSBPortState) {
@@ -653,10 +633,10 @@ static void aux_connection_handler(indigo_device *device) {
 					AUX_WEATHER_DEWPOINT_ITEM->number.value = indigo_atod(token);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // portstatus
-					AUX_POWER_OUTLET_1_ITEM->sw.value = token[0] == '1';
-					AUX_POWER_OUTLET_2_ITEM->sw.value = token[1] == '1';
-					AUX_POWER_OUTLET_3_ITEM->sw.value = token[2] == '1';
-					AUX_POWER_OUTLET_4_ITEM->sw.value = token[3] == '1';
+					AUX_POWER_OUTLET_1_ITEM->sw.value = PRIVATE_DATA->power_outlets[0] = token[0] == '1';
+					AUX_POWER_OUTLET_2_ITEM->sw.value = PRIVATE_DATA->power_outlets[1] = token[1] == '1';
+					AUX_POWER_OUTLET_3_ITEM->sw.value = PRIVATE_DATA->power_outlets[2] = token[2] == '1';
+					AUX_POWER_OUTLET_4_ITEM->sw.value = PRIVATE_DATA->power_outlets[3] = token[3] == '1';
 				}
 				if (PRIVATE_DATA->version == 1) {
 					if ((token = strtok_r(NULL, ":", &pnt))) { // USB Hub
@@ -665,12 +645,12 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 				if (PRIVATE_DATA->version == 2) {
 					if ((token = strtok_r(NULL, ":", &pnt))) { // USB status
-						AUX_USB_PORT_1_ITEM->sw.value =  token[0] == '1';
-						AUX_USB_PORT_2_ITEM->sw.value =  token[1] == '1';
-						AUX_USB_PORT_3_ITEM->sw.value =  token[2] == '1';
-						AUX_USB_PORT_4_ITEM->sw.value =  token[3] == '1';
-						AUX_USB_PORT_5_ITEM->sw.value =  token[4] == '1';
-						AUX_USB_PORT_6_ITEM->sw.value =  token[5] == '1';
+						AUX_USB_PORT_1_ITEM->sw.value = PRIVATE_DATA->usb_ports[0] = token[0] == '1';
+						AUX_USB_PORT_2_ITEM->sw.value = PRIVATE_DATA->usb_ports[1] = token[1] == '1';
+						AUX_USB_PORT_3_ITEM->sw.value = PRIVATE_DATA->usb_ports[2] = token[2] == '1';
+						AUX_USB_PORT_4_ITEM->sw.value = PRIVATE_DATA->usb_ports[3] = token[3] == '1';
+						AUX_USB_PORT_5_ITEM->sw.value = PRIVATE_DATA->usb_ports[4] = token[4] == '1';
+						AUX_USB_PORT_6_ITEM->sw.value = PRIVATE_DATA->usb_ports[5] = token[5] == '1';
 					}
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
@@ -723,7 +703,8 @@ static void aux_connection_handler(indigo_device *device) {
 					}
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
-					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, atoi(token) == 0 ? AUX_DEW_CONTROL_MANUAL_ITEM : AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
+					PRIVATE_DATA->automatic_dew = atoi(token) != 0;
+					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, PRIVATE_DATA->automatic_dew ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'PA' response");
 					connection_result = false;
@@ -731,6 +712,7 @@ static void aux_connection_handler(indigo_device *device) {
 			}
 			upb_command(device, "PU:1");
 			indigo_set_switch(X_AUX_HUB_PROPERTY, X_AUX_HUB_ENABLED_ITEM, true);
+			PRIVATE_DATA->hub = true;
 			if (PRIVATE_DATA->version == 1) {
 				libusb_context *ctx = NULL;
 				libusb_device **usb_devices;
@@ -761,7 +743,7 @@ static void aux_connection_handler(indigo_device *device) {
 									if (port_state & 0x00000008) {
 										state = INDIGO_ALERT_STATE;
 									}
-									AUX_USB_PORT_PROPERTY->items[i - 1].sw.value = port_state & 0x00000100;
+									AUX_USB_PORT_PROPERTY->items[i - 1].sw.value = PRIVATE_DATA->usb_ports[i - 1] = port_state & 0x00000100;
 									AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value = state;
 								} else {
 									INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
@@ -938,10 +920,18 @@ static void aux_outlet_names_handler(indigo_device *device) {
 static void aux_power_outlet_handler(indigo_device *device) {
 	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_POWER_OUTLET.on_change
-	upb_command(device, "P1:%d", AUX_POWER_OUTLET_1_ITEM->sw.value ? 1 : 0);
-	upb_command(device, "P2:%d", AUX_POWER_OUTLET_2_ITEM->sw.value ? 1 : 0);
-	upb_command(device, "P3:%d", AUX_POWER_OUTLET_3_ITEM->sw.value ? 1 : 0);
-	upb_command(device, "P4:%d", AUX_POWER_OUTLET_4_ITEM->sw.value ? 1 : 0);
+	// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+	// request. An outlet the box did not answer for shows the state it last reported.
+	for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+		indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
+		bool on = item->sw.target;
+		if (upb_command(device, "P%d:%d", i + 1, on ? 1 : 0)) {
+			item->sw.value = PRIVATE_DATA->power_outlets[i] = on;
+		} else {
+			item->sw.value = PRIVATE_DATA->power_outlets[i];
+			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	}
 	//- aux.AUX_POWER_OUTLET.on_change
 	indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 }
@@ -961,7 +951,16 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 static void aux_dew_control_handler(indigo_device *device) {
 	AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_DEW_CONTROL.on_change
-	upb_command(device, "PD:%d", AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? 1 : 0);
+	// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+	// request. On failure the switch shows the mode the box last reported.
+	bool automatic = indigo_get_switch_target(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME);
+	if (upb_command(device, "PD:%d", automatic ? 1 : 0)) {
+		PRIVATE_DATA->automatic_dew = automatic;
+		indigo_apply_switch_targets(AUX_DEW_CONTROL_PROPERTY);
+	} else {
+		indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, PRIVATE_DATA->automatic_dew ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
+		AUX_DEW_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- aux.AUX_DEW_CONTROL.on_change
 	indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 }
@@ -969,15 +968,20 @@ static void aux_dew_control_handler(indigo_device *device) {
 static void aux_usb_port_handler(indigo_device *device) {
 	AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_USB_PORT.on_change
+	// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+	// request. A port that could not be read or switched, and the ports after it, show the state last reported.
 	if (PRIVATE_DATA->version == 1) {
 		if (PRIVATE_DATA->smart_hub) {
-			for (int i = 1; i < 7; i++) {
+			int i = 1;
+			for (; i < 7; i++) {
 				uint32_t port_state;
 				int rc;
+				bool on = AUX_USB_PORT_PROPERTY->items[i - 1].sw.target;
 				if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
 					bool is_enabled = port_state & 0x00000100;
-					if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled) {
-						if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value) {
+					PRIVATE_DATA->usb_ports[i - 1] = is_enabled;
+					if (on != is_enabled) {
+						if (on) {
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Turning port #%d on", i);
 							rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_SET_FEATURE, 8, i, NULL, 0, 3000);
 						} else {
@@ -989,12 +993,17 @@ static void aux_usb_port_handler(indigo_device *device) {
 							AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
 							break;
 						}
+						PRIVATE_DATA->usb_ports[i - 1] = on;
 					}
+					AUX_USB_PORT_PROPERTY->items[i - 1].sw.value = on;
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
 					AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
 					break;
 				}
+			}
+			for (; i < 7; i++) {
+				AUX_USB_PORT_PROPERTY->items[i - 1].sw.value = PRIVATE_DATA->usb_ports[i - 1];
 			}
 		} else {
 			AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1002,7 +1011,14 @@ static void aux_usb_port_handler(indigo_device *device) {
 	}
 	if (PRIVATE_DATA->version == 2) {
 		for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
-			upb_command(device, "U%d:%d", i + 1, AUX_USB_PORT_PROPERTY->items[i].sw.value ? 1 : 0);
+			indigo_item *item = AUX_USB_PORT_PROPERTY->items + i;
+			bool on = item->sw.target;
+			if (upb_command(device, "U%d:%d", i + 1, on ? 1 : 0)) {
+				item->sw.value = PRIVATE_DATA->usb_ports[i] = on;
+			} else {
+				item->sw.value = PRIVATE_DATA->usb_ports[i];
+				AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
 		}
 	}
 	//- aux.AUX_USB_PORT.on_change
@@ -1012,7 +1028,16 @@ static void aux_usb_port_handler(indigo_device *device) {
 static void aux_x_aux_hub_handler(indigo_device *device) {
 	X_AUX_HUB_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.X_AUX_HUB.on_change
-	upb_command(device, "PU:%d", X_AUX_HUB_ENABLED_ITEM->sw.value ? 1 : 0);
+	// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+	// request. On failure the switch shows the hub state the box last reported.
+	bool enabled = indigo_get_switch_target(X_AUX_HUB_PROPERTY, X_AUX_HUB_ENABLED_ITEM_NAME);
+	if (upb_command(device, "PU:%d", enabled ? 1 : 0)) {
+		PRIVATE_DATA->hub = enabled;
+		indigo_apply_switch_targets(X_AUX_HUB_PROPERTY);
+	} else {
+		indigo_set_switch(X_AUX_HUB_PROPERTY, PRIVATE_DATA->hub ? X_AUX_HUB_ENABLED_ITEM : X_AUX_HUB_DISABLED_ITEM, true);
+		X_AUX_HUB_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- aux.X_AUX_HUB.on_change
 	indigo_update_property(device, X_AUX_HUB_PROPERTY, NULL);
 }
@@ -1229,6 +1254,16 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_OUTLET_NAMES_PROPERTY, aux_outlet_names_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_POWER_OUTLET_PROPERTY, property)) {
+		//+ aux.AUX_POWER_OUTLET.on_change_request
+		// The poll writes the outlet states the box reports into the values only and the handler sends the targets,
+		// so the outlets a request does not carry must keep the reported state in their targets as well. A BUSY
+		// property is left alone, the framework drops the request and its handler reads the targets.
+		if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
+			for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+				AUX_POWER_OUTLET_PROPERTY->items[i].sw.target = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value;
+			}
+		}
+		//- aux.AUX_POWER_OUTLET.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_POWER_OUTLET_PROPERTY, aux_power_outlet_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_HEATER_OUTLET_PROPERTY, property)) {
@@ -1238,6 +1273,16 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_DEW_CONTROL_PROPERTY, aux_dew_control_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_USB_PORT_PROPERTY, property)) {
+		//+ aux.AUX_USB_PORT.on_change_request
+		// The poll writes the port states the box or its hub reports into the values only and the handler sends the
+		// targets, so the ports a request does not carry must keep the reported state in their targets as well. A
+		// BUSY property is left alone, the framework drops the request and its handler reads the targets.
+		if (AUX_USB_PORT_PROPERTY->state != INDIGO_BUSY_STATE) {
+			for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
+				AUX_USB_PORT_PROPERTY->items[i].sw.target = AUX_USB_PORT_PROPERTY->items[i].sw.value;
+			}
+		}
+		//- aux.AUX_USB_PORT.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_USB_PORT_PROPERTY, aux_usb_port_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_AUX_HUB_PROPERTY, property)) {

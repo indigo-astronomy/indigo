@@ -68,6 +68,7 @@ static struct {
 	int status_reads;
 	bool hold_armed;
 	bool holding;
+	bool fail_power;
 	unsigned int ok_revision_at_power_change;
 } smart_hub = { .mutex = PTHREAD_MUTEX_INITIALIZER, .cond = PTHREAD_COND_INITIALIZER };
 
@@ -83,6 +84,7 @@ static void smart_hub_reset(bool present) {
 	smart_hub.status[HUB_PORTS] = HUB_PORT_POWER | HUB_PORT_ATTACHED;
 	smart_hub.status_reads = 0;
 	smart_hub.hold_armed = smart_hub.holding = false;
+	smart_hub.fail_power = false;
 	smart_hub.ok_revision_at_power_change = 0;
 	pthread_mutex_unlock(&smart_hub.mutex);
 }
@@ -150,7 +152,10 @@ int LIBUSB_CALL upb_test_control_transfer(libusb_device_handle *handle, uint8_t 
 		pthread_cond_broadcast(&smart_hub.cond);
 		result = 4;
 	} else if (request_type == (LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER) && value == 8 && length == 0) {
-		if (request == LIBUSB_REQUEST_SET_FEATURE) {
+		// A hub that stops answering port power requests leaves the port as it was.
+		if (smart_hub.fail_power) {
+			result = LIBUSB_ERROR_IO;
+		} else if (request == LIBUSB_REQUEST_SET_FEATURE) {
 			smart_hub.status[index] |= HUB_PORT_POWER;
 			smart_hub.set_power[index]++;
 			result = 0;
@@ -223,6 +228,12 @@ static bool smart_hub_wait_for_reads(int more) {
 static void smart_hub_set_status(int port, uint16_t status) {
 	pthread_mutex_lock(&smart_hub.mutex);
 	smart_hub.status[port] = status;
+	pthread_mutex_unlock(&smart_hub.mutex);
+}
+
+static void smart_hub_fail_power(bool fail) {
+	pthread_mutex_lock(&smart_hub.mutex);
+	smart_hub.fail_power = fail;
 	pthread_mutex_unlock(&smart_hub.mutex);
 }
 
@@ -712,6 +723,133 @@ cleanup:
 	smart_hub_reset(false);
 }
 
+// TGT-040: a port the hub refuses to switch is shown in the state the hub reported, with ALERT, instead of
+// the request. The ALERT itself carries that state, the following polls find nothing to correct and publish nothing.
+static void v1_usb_port_failure_shows_the_hub_state(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "upb", NULL };
+	uint16_t status;
+	int set_power, clear_power;
+	smart_hub_reset(true);
+	SERIAL_CHECK_TRUE(start_upb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, usb_port_items[1], true));
+	smart_hub_fail_power(true);
+	unsigned int revision = property_state_revision(AUX_USB_PORT_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	unsigned int ok_revision = property_state_revision(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(set_switch(&aux, AUX_USB_PORT_PROPERTY_NAME, usb_port_items[1], false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_USB_PORT_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(smart_hub_wait_for_reads(2 * 6));
+	for (int i = 0; i < 6; i++) {
+		SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, usb_port_items[i], true));
+	}
+	SERIAL_CHECK_EQ_INT(ok_revision, property_state_revision(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
+	smart_hub_counts(2, &status, &set_power, &clear_power);
+	SERIAL_CHECK_EQ_INT(HUB_PORT_POWER, status);
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+	smart_hub_reset(false);
+}
+
+// TGT-039: a port the box does not answer for is shown in the state the box reported, with ALERT, and a later
+// request for another port does not send the refused request again.
+static void usb_port_failure_shows_the_box_state(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--fault-once", "U3:0", "silent", NULL };
+	SERIAL_CHECK_TRUE(start_upb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
+	unsigned int revision = property_state_revision(AUX_USB_PORT_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_switch(&aux, AUX_USB_PORT_PROPERTY_NAME, usb_port_items[2], false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_USB_PORT_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, usb_port_items[2], true));
+	revision = property_state_revision(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(set_switch(&aux, AUX_USB_PORT_PROPERTY_NAME, usb_port_items[3], false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, usb_port_items[3], false));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, usb_port_items[2], true));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-038: an outlet the box does not answer for is shown in the state the box reported, with ALERT. The poll writes
+// only the values, so a later request for another outlet must not send the refused request from a stale target.
+static void power_outlet_failure_shows_the_box_state(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--fault-once", "P2:0", "silent", NULL };
+	SERIAL_CHECK_TRUE(start_upb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE));
+	unsigned int revision = property_state_revision(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_switch(&aux, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, true));
+	revision = property_state_revision(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(set_switch(&aux, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_3_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_3_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, true));
+	// The state lights follow the box on every poll, so outlet 2 is still powered.
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(AUX_POWER_OUTLET_STATE_PROPERTY_NAME, AUX_POWER_OUTLET_STATE_3_ITEM_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(AUX_POWER_OUTLET_STATE_PROPERTY_NAME, AUX_POWER_OUTLET_STATE_2_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-041: a dew control request the box does not answer is shown as the mode the box reported, with ALERT.
+static void dew_control_failure_shows_the_box_state(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--fault-once", "PD:1", "silent", NULL };
+	SERIAL_CHECK_TRUE(start_upb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, true));
+	unsigned int revision = property_state_revision(AUX_DEW_CONTROL_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_switch(&aux, AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_DEW_CONTROL_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, true));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-042: a hub request the box does not answer is shown as the hub state the box reported, with ALERT.
+static void v1_hub_failure_shows_the_box_state(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "upb", "--fault-once", "PU:0", "silent", NULL };
+	SERIAL_CHECK_TRUE(start_upb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value("X_AUX_HUB", "ENABLED", true));
+	unsigned int revision = property_state_revision("X_AUX_HUB", INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_switch(&aux, "X_AUX_HUB", "DISABLED", true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after("X_AUX_HUB", INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value("X_AUX_HUB", "ENABLED", true));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-D02: a hub state the v1 box reports differently from what the driver shows is published as X_AUX_HUB, and
+// AUX_DEW_CONTROL, which did not change, is not published for it. The PU:1 of the connect is lost, so the box keeps
+// the hub it was left with.
+static void v1_hub_change_reported_by_the_box_is_published(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "upb", "--hub-off", "--fault-once", "PU:1", "silent", NULL };
+	smart_hub_reset(false);
+	SERIAL_CHECK_TRUE(start_upb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	unsigned int dew_revision = property_revision(AUX_DEW_CONTROL_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value("X_AUX_HUB", "DISABLED", true));
+	SERIAL_CHECK_TRUE(wait_for_property_state("X_AUX_HUB", INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(dew_revision, property_revision(AUX_DEW_CONTROL_PROPERTY_NAME));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
 static void variable_power_outlet_round_trips(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_upb(&simulator, NULL));
@@ -1147,6 +1285,12 @@ int main(void) {
 		{ "v1_without_a_smart_hub_hides_the_usb_ports", v1_without_a_smart_hub_hides_the_usb_ports },
 		{ "v1_usb_ports_switch_through_the_smart_hub", v1_usb_ports_switch_through_the_smart_hub },
 		{ "v1_usb_port_change_survives_a_concurrent_poll", v1_usb_port_change_survives_a_concurrent_poll },
+		{ "v1_usb_port_failure_shows_the_hub_state", v1_usb_port_failure_shows_the_hub_state },
+		{ "usb_port_failure_shows_the_box_state", usb_port_failure_shows_the_box_state },
+		{ "power_outlet_failure_shows_the_box_state", power_outlet_failure_shows_the_box_state },
+		{ "dew_control_failure_shows_the_box_state", dew_control_failure_shows_the_box_state },
+		{ "v1_hub_failure_shows_the_box_state", v1_hub_failure_shows_the_box_state },
+		{ "v1_hub_change_reported_by_the_box_is_published", v1_hub_change_reported_by_the_box_is_published },
 		{ "variable_power_outlet_round_trips", variable_power_outlet_round_trips },
 		{ "outlet_names_relabel_the_controls", outlet_names_relabel_the_controls },
 		{ "reboot_is_momentary", reboot_is_momentary },

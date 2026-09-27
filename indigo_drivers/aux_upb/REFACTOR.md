@@ -226,12 +226,70 @@ driver and the **original** test source. So it is a pre-existing timing dependen
 the focuser reject path, not something UPB-03 or the fake hub introduced. It concerns the focuser's
 motion timing, not the USB path, and is not addressed here.
 
+## Switch requests read from their targets (2026-09-27, 3.0.0.32)
+
+Findings TGT-038 to TGT-042 and TGT-D02 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+
+### Defects
+
+- TGT-038 to TGT-042: the status poll checks AUX_POWER_OUTLET, AUX_USB_PORT (v2 status frame and v1
+  smart hub loop), AUX_DEW_CONTROL and X_AUX_HUB for BUSY with `upb_adopt()` and then writes the state
+  the box reports into the values. A request copied on the bus thread between that check and the write
+  was overwritten, and the handler, which read `sw.value`, sent the box its current state and reported
+  OK. The handlers also ignored a missing reply and published the request as OK.
+- TGT-D02: an X_AUX_HUB change adopted by the v1 poll set `updateAutoHeater` instead of `updateHub`, so
+  the hub change was never published and AUX_DEW_CONTROL was published OK instead.
+
+### Fix
+
+- The poll records the outlet, USB port, hub and dew states the box (or the v1 smart hub) reports in
+  private data on every poll and adopts them into the values only while the property is not BUSY, as
+  before. It sets `updateHub` for a hub change and publishes AUX_DEW_CONTROL, X_AUX_HUB and AUX_USB_PORT
+  only when they are still not BUSY at the end of the poll.
+- AUX_DEW_CONTROL and X_AUX_HUB (one-of-many) send the target read with `indigo_get_switch_target()`,
+  apply it with `indigo_apply_switch_targets()` once the box answered and otherwise show the state last
+  reported with ALERT.
+- AUX_POWER_OUTLET and AUX_USB_PORT (any-of-many) copy the values into the targets in
+  `on_change_request` while not BUSY, because the poll writes values only and the items a request does
+  not carry would otherwise keep a stale target (the mount_lx200 TGT-025 pattern). The handler sends
+  each target in the original order (`P1`..`P4`, `U1`..`U6`, or the v1 hub ports 1..6 compared with the
+  status read before switching) and writes an accepted one into the value; an item the box did not
+  answer for, or a hub port that could not be read or switched and the ports after it, shows the state
+  last reported with ALERT.
+- The simulator gets `--hub-off` (a box whose hub was left disabled); the fake smart hub in the test can
+  refuse port power requests.
+
+### Verification (Linux x64)
+
+- Unchanged 3.0.0.31 suite: 40/40 passed before the change.
+- The check-to-write windows have no I/O or log line inside them, so no permanent case can hit them.
+  A temporary instrumented copy of the generated driver (debug line right after each poll check,
+  request sent from that log line by a temporary case; neither committed) lost every request on
+  3.0.0.31 in 3/3 runs: OUTLET_1 OFF published ON and the outlet stayed powered, v2 PORT_2 OFF published
+  ON, no CLEAR_FEATURE for v1 hub port 2, `PD:0` sent for AUTOMATIC, `PU:1` sent for DISABLED. On
+  3.0.0.32 every request was sent and published as requested in 3/3 runs, and after the end-of-poll
+  checks the first OK after each request was the handler's.
+- New cases, each failing on 3.0.0.31 and passing on 3.0.0.32:
+  `v1_hub_change_reported_by_the_box_is_published` (TGT-D02),
+  `power_outlet_failure_shows_the_box_state` (TGT-038, also a request for another outlet after the
+  failure does not resend the refused one), `usb_port_failure_shows_the_box_state` (TGT-039),
+  `v1_usb_port_failure_shows_the_hub_state` (TGT-040), `dew_control_failure_shows_the_box_state`
+  (TGT-041), `v1_hub_failure_shows_the_box_state` (TGT-042).
+- Regeneration from the `.driver` is reproducible. Recorded run through `tools/run_driver_test.py
+  aux_upb`: 46/46.
+- Not verified on hardware.
+
+### Left open
+
+- TGT-D15: the poll never sets `updatePowerOutlet`, so an outlet change the driver did not make is
+  adopted into AUX_POWER_OUTLET but not published (AUX_POWER_OUTLET_STATE does follow it). Found by
+  reading, not reproducible with the simulator, not changed here.
+
 ## Final test summary
 
-- Simulated tests run: 40; passed: 40 (latest full run of `test_aux_upb_simulator`, driver version
-  30). Sanitizer run (ASan + UBSan, arm64, leak detection off) of the same 40 cases: 40
-  run, 39 passed, no sanitizer report; the one failure is the pre-existing
-  `focuser_overlapping_request_is_rejected` timing failure described above.
+- Simulated tests run: 46; passed: 46 (recorded run of `test_aux_upb_simulator` through
+  `tools/run_driver_test.py`, driver version 32, Linux x64). The previous macOS arm64 runs of the 40
+  earlier cases and the ASan + UBSan note above refer to driver version 30.
 - Hardware tests run: 1; passed: 1 (`upb_usb_port_changes_survive_the_poll`, Pegasus UPB v1 firmware 1.4,
   driver version 30). The last full hardware run, 14 run and 14 passed, was on driver version 28 and
-  did not include this case.
+  did not include this case. Version 32 was not run on hardware.
