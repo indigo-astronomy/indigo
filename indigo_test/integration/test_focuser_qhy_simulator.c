@@ -81,6 +81,25 @@ static int commands(const char *request) {
 	return count;
 }
 
+// Line of the n-th (from 1) received request in the event log, -1 if there is none.
+static int command_line(const char *request, int occurrence) {
+	FILE *file = fopen(event_path, "r");
+	if (!file) {
+		return -1;
+	}
+	char line[512], kind[16], value[300];
+	double timestamp;
+	int number = 0, result = -1;
+	while (result < 0 && fgets(line, sizeof(line), file)) {
+		number++;
+		if (sscanf(line, "%lf %15s %299[^\r\n]", &timestamp, kind, value) == 3 && !strcmp(kind, "RX") && !strcmp(value, request) && --occurrence == 0) {
+			result = number;
+		}
+	}
+	fclose(file);
+	return result;
+}
+
 static bool wait_commands(const char *request, int expected) {
 	for (int i = 0; i < 100; i++) {
 		if (commands(request) >= expected) {
@@ -121,6 +140,10 @@ static const char *observed_names[] = {
 	FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_MODE_PROPERTY_NAME
 };
 static atomic_uint revisions[ARRAY_SIZE(observed_names)], position_busy;
+static _Atomic(indigo_device *) focuser_device;
+static atomic_bool watch_position;
+static atomic_int watch_results, watch_first_state;
+static _Atomic double watch_first_value;
 
 static int observed_index(const char *name) {
 	for (int i = 0; i < (int)ARRAY_SIZE(observed_names); i++) {
@@ -134,6 +157,14 @@ static int observed_index(const char *name) {
 static indigo_result observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	indigo_result result = simulator_client_update_property(client, device, property, message);
 	int index = observed_index(property->name);
+	if (!strcmp(property->device, qhy_focuser.device_name)) {
+		atomic_store(&focuser_device, device);
+	}
+	// The first FOCUSER_POSITION result (not BUSY) published after a watched request: its state and position.
+	if (index == 1 && atomic_load(&watch_position) && property->state != INDIGO_BUSY_STATE && atomic_fetch_add(&watch_results, 1) == 0) {
+		atomic_store(&watch_first_value, property->items[0].number.value);
+		atomic_store(&watch_first_state, property->state);
+	}
 	if (index >= 0) {
 		atomic_fetch_add(&revisions[index], 1);
 	}
@@ -308,6 +339,64 @@ static void abort_and_overlap(void) {
 	SERIAL_CHECK_TRUE(commands("{\"cmd_id\":3}") == 1);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 51000, INDIGO_OK_STATE));
 cleanup:
+	driver_stop();
+}
+
+// A gate handler holds the device queue, so a request is copied and queued while the poll comes due behind it. The
+// poll is an INDIGO_TASK_PRIORITY_TIME task and runs ahead of the queued change handler once the gate ends.
+static atomic_bool gate_entered, gate_release;
+
+static void gate_handler(indigo_device *device) {
+	atomic_store(&gate_entered, true);
+	for (int i = 0; i < 5000 && !atomic_load(&gate_release); i++) {
+		indigo_usleep(1000);
+	}
+}
+
+static bool hold_queue(indigo_device *device) {
+	atomic_store(&gate_entered, false);
+	atomic_store(&gate_release, false);
+	if (device == NULL) {
+		return false;
+	}
+	indigo_execute_handler(device, gate_handler);
+	for (int i = 0; i < 300 && !atomic_load(&gate_entered); i++) {
+		indigo_usleep(10000);
+	}
+	return atomic_load(&gate_entered);
+}
+
+// TGT-B03: a FOCUSER_POSITION request copied while the 2 s poll comes due ahead of its handler must still move the
+// focuser; the poll must neither overwrite the requested target with the current position nor publish over the
+// pending BUSY. The poll (its temperature read) runs before the move is sent, and the first result published after
+// the request is the end of the motion to the requested position.
+static void position_request_survives_poll(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(at_position(50000));
+	SERIAL_CHECK_TRUE(hold_queue(atomic_load(&focuser_device)));
+	int polls = commands("{\"cmd_id\":4}");
+	atomic_store(&watch_results, 0);
+	atomic_store(&watch_position, true);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 52000));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	// The poll comes due while the queue is held.
+	indigo_usleep(2300000);
+	atomic_store(&gate_release, true);
+	for (int i = 0; i < 1000 && atomic_load(&watch_results) == 0; i++) {
+		indigo_usleep(20000);
+	}
+	int move = command_line("{\"cmd_id\":6,\"tar\":52000}", 1);
+	int poll = command_line("{\"cmd_id\":4}", polls + 1);
+	printf("    first FOCUSER_POSITION result after the request: state %d, POSITION %g, %d moves to 52000, poll line %d, move line %d\n", atomic_load(&watch_first_state), atomic_load(&watch_first_value), commands("{\"cmd_id\":6,\"tar\":52000}"), poll, move);
+	SERIAL_CHECK_TRUE(atomic_load(&watch_results) > 0);
+	SERIAL_CHECK_TRUE(poll > 0 && move > poll);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, atomic_load(&watch_first_state));
+	SERIAL_CHECK_TRUE(atomic_load(&watch_first_value) == 52000);
+	SERIAL_CHECK_EQ_INT(1, commands("{\"cmd_id\":6,\"tar\":52000}"));
+	SERIAL_CHECK_TRUE(at_position(52000));
+cleanup:
+	atomic_store(&watch_position, false);
+	atomic_store(&gate_release, true);
 	driver_stop();
 }
 
@@ -597,6 +686,7 @@ int main(void) {
 		{ "limits_speed_reverse", limits_and_controls, "normal", false, false },
 		{ "abort_overlap", abort_and_overlap, "normal", false, false },
 		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal", false, false },
+		{ "position_request_survives_poll", position_request_survives_poll, "normal", false, false },
 		{ "init_version_failure", rejected_connection, "VERSION", false, false },
 		{ "init_position_failure", rejected_connection, "POSITION", false, false },
 		{ "init_speed_failure", rejected_connection, "SPEED", false, false },

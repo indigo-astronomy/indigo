@@ -70,7 +70,7 @@ typedef struct {
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_focuser_qhy"
 #define DRIVER_LABEL         "QHY Q-Focuser"
 #define FOCUSER_DEVICE_NAME  "Q-Focuser"
@@ -549,14 +549,18 @@ static void focuser_timer_callback(indigo_device *device) {
 	//+ focuser.on_timer
 	if (!PRIVATE_DATA->moving && !PRIVATE_DATA->motion_uncertain) {
 		int position = 0;
+		indigo_property_state state = INDIGO_ALERT_STATE;
 		if (qhy_get_position(device, &position) && position >= 0 && position <= QHY_MAX_POSITION) {
 			PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = PRIVATE_DATA->last_position = position;
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			// The target belongs to FOCUSER_POSITION requests, one may be copied while the position is read.
+			FOCUSER_POSITION_ITEM->number.value = position;
+			state = INDIGO_OK_STATE;
 		}
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		// A pending FOCUSER_POSITION request owns the state, its handler reads the target and publishes the result.
+		if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
+			FOCUSER_POSITION_PROPERTY->state = state;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		}
 	}
 	double chip = 0, outside = 0;
 	if (qhy_get_temperature_voltage(device, &chip, &outside, NULL)) {

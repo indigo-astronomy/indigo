@@ -84,3 +84,16 @@ Covered by the `rejected_change` scenario in `indigo_test/integration/test_focus
 ```sh
 cd indigo_test && QHY_TEST_FILTER=rejected_change ./build/integration/test_focuser_qhy_simulator
 ```
+
+## Position request overwritten by the poll (TGT-B03, 3.0.0.10, 2026-09-27)
+
+Found by the switch target review (`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, TGT-B03), reproduced on Linux x64 with the simulator.
+
+- Impact: a FOCUSER_POSITION request copied while the 2 s idle poll was due or running was replaced by the current position. The poll wrote `number.target` together with `number.value` and published FOCUSER_POSITION OK over the pending BUSY; the queued handler then read the current position as its target, sent no command 6 and reported OK, so a queued GOTO never moved (and the BUSY guard reopened before the handler ran).
+- Root cause: `on_timer` wrote value, target and state without regard to a pending request. The poll is an `INDIGO_TASK_PRIORITY_TIME` task and runs ahead of the queued change handler; the request can also be copied on the bus thread while the poll is inside its command 5 round trip, so a BUSY check before the read is not enough.
+- Fix: the poll writes only `number.value` from the position read, never the target, and sets and publishes the FOCUSER_POSITION state only when it is not BUSY after the read; the handler already sends `number.target`.
+- Regression test `position_request_survives_poll`: a gate handler holds the device queue, a GOTO to 52000 is requested and the poll comes due behind it; after the release the poll (its command 4) must run before the move, the first FOCUSER_POSITION result after the request must be OK at 52000 and `{"cmd_id":6,"tar":52000}` must be sent once. On 3.0.0.9 it failed 3/3 (first result OK at 50000, no move sent); with 3.0.0.10 it passed 5/5 and under ASan.
+- The same race made `move_wrong_reply` fail intermittently on the unchanged driver: `on_connect` queues the first poll at once, and the test's GOTO was copied during that poll's command 5 round trip, so the MOVE fault was never hit and no ALERT came (1/30 isolated runs on 3.0.0.9; 5/40 with a draft that only skipped the poll while BUSY before the read; 0/60 with 3.0.0.10).
+- Verification: `TZ=Europe/Bratislava python3 tools/run_driver_test.py focuser_qhy`, 32/32 simulator cases (the suite had 31 cases before, `MIGRATION_STATUS.md` still said 30 and now says 32); regeneration reproducible. No hardware test was run.
+
+Final test summary: 32 simulated tests run and passed in the recorded run, 0 hardware tests run.
