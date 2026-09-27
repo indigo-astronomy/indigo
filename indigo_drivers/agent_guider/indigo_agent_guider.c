@@ -25,7 +25,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x03000031
+#define DRIVER_VERSION 0x03000032
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -1088,7 +1088,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
 			}
-			AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->snr;
+			AGENT_GUIDER_STATS_SNR_ITEM->number.value = digest.snr;
 		} else if (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) {
 			int count = (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value;
 			int used = 0;
@@ -2410,7 +2410,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			}
 		}
 	} else if (!strcmp(property->name, FILTER_GUIDER_LIST_PROPERTY_NAME)) { // Snoop guider
-		if (!INDIGO_FILTER_ROTATOR_SELECTED) {
+		if (!INDIGO_FILTER_GUIDER_SELECTED) {
 			DEVICE_PRIVATE_DATA->guide_ra_state = INDIGO_IDLE_STATE;
 			DEVICE_PRIVATE_DATA->guide_dec_state = INDIGO_IDLE_STATE;
 		}

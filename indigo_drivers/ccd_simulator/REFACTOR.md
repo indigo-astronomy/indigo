@@ -167,3 +167,22 @@ Regression tests in `integration/test_ccd_simulator.c` (the mount simulator arch
 Validation on macOS arm64: `test_ccd_simulator` 21/21 passed, and the two new cases were repeated five times with identical results. Linux and Windows were not run.
 
 Final test summary for this change: simulator suite 21 run / 21 passed; hardware 0 run / 0 passed.
+
+## Guide axes on a rotated image and on the west side of the pier (2026-09-27)
+
+Reported: with the mount simulator connected, the Guider Agent saw the periodic error in Dec, as if RA and Dec were swapped.
+
+Root cause, fixed in `226977c11` (version 33 to 34): the catalog projection in `search_stars()` turns the field by minus `IMAGE_ROTATION_ANGLE`, while the offset model in `create_frame()` (periodic error, `IMAGE_RA_OFFSET`, `IMAGE_DEC_OFFSET`) turned it by plus that angle. On master both guide pulses and the periodic error go through the offset model, so the mismatch never showed. Since `2eb7a75f4`, pulses move the mount simulator and show through the projection, while the periodic error stayed in the offset model, 72° off the calibrated RA axis at the default 36°. The `2eb7a75f4` tests pinned `IMAGE_ROTATION_ANGLE` to 0 and turned the periodic error off, where the sin terms vanish and the two models agree whatever their sign.
+
+Remaining defect fixed here (version 34 to 35): the offset model ignored the side of the pier except for the sign of RA guide pulses. On the west side the projection turns the field by 180°, so without a mount simulator a north pulse moved the stars the wrong way, like a mount that reverses Dec after a meridian flip. The offset model now turns with the field (`IMAGE_ROTATION_ANGLE` plus 180° on the west side), and `guider_ra_finalizer()` no longer flips RA by itself.
+
+Regression tests in `integration/test_ccd_simulator.c`:
+
+- All follow tests run on an image rotated by 36° (`FOLLOW_ROTATION`) and check each shift as a vector against the projection's north and west axes (`follow_axis()`, `shifted_along()`), not only its length.
+- `simulator_guider_periodic_error_follows_ra_axis`: the periodic error moves the stars along the RA axis.
+- `simulator_guider_offset_model_pulses_follow_mount_axes`: without a mount, 3 s north and west pulses of `CCD Guider Simulator (guider)` move the stars 7.5 px along the mount's axes on both sides of the pier.
+- Against the source before `226977c11`, `simulator_guider_offsets_follow_simulated_mount_axes`, `simulator_guider_periodic_error_follows_ra_axis` and `simulator_guider_offset_model_pulses_follow_mount_axes` fail. Before this fix, the west side of `simulator_guider_offset_model_pulses_follow_mount_axes` failed.
+
+Validation on macOS arm64: `test_ccd_simulator` 24/24 passed, `test_agent_guider` 90/90 passed. Linux and Windows were not run.
+
+Final test summary for this change: simulator suite 24 run / 24 passed; hardware 0 run / 0 passed.
