@@ -107,6 +107,7 @@ typedef struct {
 	int read_mode;
 	int gain_value;
 	float temperature_target;
+	float temperature_log[16];
 	int16_t ra;
 	int16_t dec;
 	int filter;
@@ -133,6 +134,8 @@ static atomic_int fast_poll, usb_refs, usb_unref_errors;
 static _Atomic double clock_offset;
 static _Atomic double guide_sdk_entry, guide_ra_completion, guide_dec_completion;
 static fake_gate read_gate = { .mutex = PTHREAD_MUTEX_INITIALIZER, .condition = PTHREAD_COND_INITIALIZER };
+static fake_gate queue_gate = { .mutex = PTHREAD_MUTEX_INITIALIZER, .condition = PTHREAD_COND_INITIALIZER };
+static atomic_int queue_marks;
 static bool fixture_running;
 
 static const simulator_driver_case ccd_case = { "Moravian Instruments Camera", "indigo_ccd_mi", "MI G0-0300 Test", indigo_ccd_mi, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
@@ -613,7 +616,10 @@ int gxccd_set_temperature(camera_t *handle, float target) {
 	int result = camera == NULL || atomic_exchange(&camera->fail_temperature, 0) ? -1 : 0;
 	if (result == 0) {
 		camera->temperature_target = target;
-		atomic_fetch_add(&camera->temperature_writes, 1);
+		int write = atomic_fetch_add(&camera->temperature_writes, 1);
+		if (write < 16) {
+			camera->temperature_log[write] = target;
+		}
 	}
 	sdk_leave();
 	return result;
@@ -985,6 +991,65 @@ static void cooler_gain_polling_errors_and_recovery(void) {
 	fixture_stop();
 }
 
+static void block_queue(indigo_device *device) {
+	gate_enter(&queue_gate);
+}
+
+static void mark_queue(indigo_device *device) {
+	atomic_fetch_add(&queue_marks, 1);
+}
+
+static bool wait_switch_item(const char *property_name, const char *item_name, bool expected) {
+	for (int i = 0; i < 300; i++) {
+		indigo_item *item = find_cached_item(property_name, item_name);
+		if (item != NULL && item->sw.value == expected) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "%s.%s did not become %s\n", property_name, item_name, expected ? "ON" : "OFF");
+	return false;
+}
+
+// TGT-061: a cooler OFF sent after a temperature change is the newer request. The temperature
+// handler still sends the new setpoint, but it must not turn the queued OFF into ON.
+static void cooler_off_queued_behind_a_temperature_change_survives(void) {
+	MI_CHECK_TRUE(fixture_start(false));
+	atomic_store(&fast_poll, 1);
+	MI_CHECK_TRUE(connect_device(&ccd_case));
+	int writes = atomic_load(&cameras[0].temperature_writes);
+	indigo_change_number_property_1(&simulator_test_client, ccd_case.device_name, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME, -10);
+	MI_CHECK_TRUE(wait_atomic(&cameras[0].temperature_writes, writes + 1));
+	// The sensor reaches the setpoint, so the poll ends the BUSY state that would reject the next change.
+	cameras[0].temperature = -10;
+	MI_CHECK_TRUE(wait_for_property_state(CCD_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+	// Without a pending cooler request a setpoint still turns the cooler ON.
+	MI_CHECK_TRUE(wait_switch_item(CCD_COOLER_PROPERTY_NAME, CCD_COOLER_ON_ITEM_NAME, true));
+	MI_CHECK_TRUE(wait_for_property_state(CCD_COOLER_PROPERTY_NAME, INDIGO_OK_STATE));
+	writes = atomic_load(&cameras[0].temperature_writes);
+	gate_arm(&queue_gate);
+	indigo_execute_handler(logical_devices[0], block_queue);
+	MI_CHECK_TRUE(wait_bool(&queue_gate.entered, true));
+	indigo_change_number_property_1(&simulator_test_client, ccd_case.device_name, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME, -15);
+	indigo_change_switch_property_1(&simulator_test_client, ccd_case.device_name, CCD_COOLER_PROPERTY_NAME, CCD_COOLER_OFF_ITEM_NAME, true);
+	MI_CHECK_TRUE(wait_for_property_state(CCD_COOLER_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	gate_release(&queue_gate);
+	// The marker runs after both queued handlers.
+	atomic_store(&queue_marks, 0);
+	indigo_execute_handler(logical_devices[0], mark_queue);
+	MI_CHECK_TRUE(wait_atomic(&queue_marks, 1));
+	// The setpoint, then the cooler OFF (TEMP_COOLER_OFF, 50 C) as the last word.
+	MI_CHECK_EQ(writes + 2, atomic_load(&cameras[0].temperature_writes));
+	MI_CHECK_TRUE(cameras[0].temperature_log[writes] == -15);
+	MI_CHECK_TRUE(cameras[0].temperature_log[writes + 1] == 50);
+	MI_CHECK_TRUE(wait_for_property_state(CCD_COOLER_PROPERTY_NAME, INDIGO_OK_STATE));
+	MI_CHECK_TRUE(wait_switch_item(CCD_COOLER_PROPERTY_NAME, CCD_COOLER_OFF_ITEM_NAME, true));
+	MI_CHECK_TRUE(wait_for_property_state(CCD_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+	cleanup:
+	gate_release(&queue_gate);
+	fixture_stop();
+}
+
 static bool pulse(const char *property, const char *item, int duration) {
 	unsigned busy = property_state_revision(property, INDIGO_BUSY_STATE);
 	if (indigo_change_number_property_1(&simulator_test_client, guider_case.device_name, property, item, duration) != INDIGO_OK) {
@@ -1330,6 +1395,7 @@ int main(void) {
 		{ "abort, overlap rejection and disconnect/read race", abort_overlap_and_disconnect_read_race },
 		{ "read mode, binning and control failures", read_mode_binning_and_control_failures },
 		{ "cooler, gain and polling errors and recovery", cooler_gain_polling_errors_and_recovery },
+		{ "cooler OFF queued behind a temperature change survives", cooler_off_queued_behind_a_temperature_change_survives },
 		{ "guider directions, overlap, failure and timing", guider_directions_overlap_failure_and_timing },
 		{ "guider during acquisition and shared teardown", guider_during_acquisition_and_shared_teardown },
 		{ "wheel slots, failures and shared ownership", wheel_slots_failures_and_shared_ownership },

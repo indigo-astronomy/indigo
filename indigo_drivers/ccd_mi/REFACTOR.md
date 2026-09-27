@@ -200,3 +200,44 @@ Physical hot-plug was not part of this run and no hot-plug coverage is establish
 ### Test totals for this run
 
 Simulated tests run 0, passed 0. Hardware tests run 1, passed 1.
+
+## Queued cooler request (TGT-061, 2026-09-27)
+
+Version 39, finding TGT-061 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+
+### Defect (reproduced)
+
+The CCD_TEMPERATURE handler turns CCD_COOLER ON with `indigo_set_switch()` after a successful
+`gxccd_set_temperature()` below `TEMP_COOLER_OFF`, whatever the state of CCD_COOLER. A cooler OFF
+sent after a temperature change is copied into CCD_COOLER on the bus thread and queued behind the
+temperature handler, which then overwrote it with ON; the CCD_COOLER handler read `sw.value`, sent
+the setpoint again instead of `TEMP_COOLER_OFF` and reported ON/OK, so the camera kept cooling
+although the client asked it to stop. The poll reads only temperature and cooler power and never
+writes CCD_COOLER, so it is unchanged.
+
+### Fix
+
+- The CCD_COOLER handler sends the request read with `indigo_get_switch_target()` (the temperature
+  target for ON, `TEMP_COOLER_OFF` for OFF) and applies it with `indigo_apply_switch_targets()` when
+  the SDK accepts it. On failure it still shows the cooler state the camera was last left in
+  (`cooler_on`) with ALERT.
+- The CCD_TEMPERATURE handler still sends the new setpoint and, with no cooler request pending,
+  still switches CCD_COOLER; it leaves a BUSY CCD_COOLER to its own handler, so the last client
+  request wins.
+
+### Fake SDK and tests
+
+- `gxccd_set_temperature()` now also logs the first 16 accepted setpoints in order
+  (`temperature_log`), so a case can check the sequence the camera received.
+- New case `cooler_off_queued_behind_a_temperature_change_survives` ("cooler OFF queued behind a
+  temperature change survives"): after a -10 C setpoint has turned the cooler ON and the sensor has
+  reached it, the device queue is held by a gate handler, a -15 C setpoint and then a cooler OFF are
+  sent, the gate is released and a marker handler waits for both handlers. Version 38 failed 3/3
+  (the camera received -15 twice, no cooler OFF); version 39 passes 3/3 (-15, then 50 C, CCD_COOLER
+  OFF and OK, CCD_TEMPERATURE OK).
+- Unchanged version 38 suite on Linux x64: 17/17. Regeneration is reproducible.
+
+### Test totals for this change
+
+Simulated (fake SDK) tests run 18, passed 18 (Linux x64, `tools/run_driver_test.py ccd_mi`).
+Hardware tests run 0.

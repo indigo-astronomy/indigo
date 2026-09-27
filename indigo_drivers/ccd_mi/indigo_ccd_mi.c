@@ -48,7 +48,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000026
+#define DRIVER_VERSION       0x03000027
 #define DRIVER_NAME          "indigo_ccd_mi"
 #define DRIVER_LABEL         "Moravian Instruments Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -543,12 +543,14 @@ static void ccd_read_mode_handler(indigo_device *device) {
 static void ccd_cooler_handler(indigo_device *device) {
 	CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ccd.CCD_COOLER.on_change
-	bool requested_on = CCD_COOLER_ON_ITEM->sw.value;
+	// The CCD_TEMPERATURE handler may have written the switch after the request was copied, the targets keep the request.
+	bool requested_on = indigo_get_switch_target(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM_NAME);
 	float target = requested_on ? CCD_TEMPERATURE_ITEM->number.target : TEMP_COOLER_OFF;
 	if (gxccd_set_temperature(PRIVATE_DATA->camera, target) != 0) {
 		indigo_set_switch(CCD_COOLER_PROPERTY, PRIVATE_DATA->cooler_on ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
 		CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
+		indigo_apply_switch_targets(CCD_COOLER_PROPERTY);
 		PRIVATE_DATA->cooler_on = requested_on;
 		PRIVATE_DATA->target_temperature = target;
 		CCD_TEMPERATURE_PROPERTY->state = requested_on ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
@@ -568,9 +570,12 @@ static void ccd_temperature_handler(indigo_device *device) {
 	} else {
 		PRIVATE_DATA->target_temperature = target;
 		PRIVATE_DATA->cooler_on = target < TEMP_COOLER_OFF;
-		indigo_set_switch(CCD_COOLER_PROPERTY, PRIVATE_DATA->cooler_on ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
-		CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+		// A setpoint switches the cooler, but a CCD_COOLER request queued after this one is newer and decides.
+		if (CCD_COOLER_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_set_switch(CCD_COOLER_PROPERTY, PRIVATE_DATA->cooler_on ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
+			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+		}
 		CCD_TEMPERATURE_PROPERTY->state = PRIVATE_DATA->cooler_on ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 	}
 	//- ccd.CCD_TEMPERATURE.on_change
