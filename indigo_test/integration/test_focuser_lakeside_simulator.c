@@ -195,13 +195,18 @@ static void simulator_protocol(void) {
 		SERIAL_CHECK_TRUE(simulator_exchange(handle, commands[i][0], commands[i][1]));
 	}
 	if (strcmp(current_profile, "split")) {
-		SERIAL_CHECK_TRUE(simulator_exchange(handle, "CI1000#", NULL));
+		// an inward move lowers the position; the motor may still step between the progress read and the halt,
+		// so the halted position lies between the target and the progress, and stays there
+		SERIAL_CHECK_TRUE(simulator_exchange(handle, "CI10000#", NULL));
 		indigo_usleep(150000);
 		int progress = simulator_position(handle);
-		SERIAL_CHECK_TRUE(progress >= 0 && progress < 32768);
+		SERIAL_CHECK_TRUE(progress > 22768 && progress < 32768);
 		SERIAL_CHECK_TRUE(simulator_exchange(handle, "CH#", NULL));
 		indigo_usleep(100000);
-		SERIAL_CHECK_TRUE(simulator_position(handle) >= progress);
+		int halted = simulator_position(handle);
+		SERIAL_CHECK_TRUE(halted > 22768 && halted <= progress);
+		indigo_usleep(100000);
+		SERIAL_CHECK_TRUE(simulator_position(handle) == halted);
 	}
 	SERIAL_CHECK_TRUE(simulator_exchange(handle, "INVALID#", "!"));
 cleanup:
