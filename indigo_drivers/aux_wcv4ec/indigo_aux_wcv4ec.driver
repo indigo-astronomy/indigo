@@ -28,7 +28,7 @@ driver wcv4ec {
 	label = "WandererCover V4-EC Cover";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2024-2026 Rumen G. Bogdanovski";
-	version = 10;
+	version = 11;
 	serial;
 	define {
 		#define DEVICE_ID "WandererCoverV4"
@@ -46,20 +46,31 @@ driver wcv4ec {
 		bool ready;
 	}
 	code {
+		// the box sends a line in one go, so a line that stalls for a second is given up; only a line ended by '\n'
+		// counts (returned without it, 0 when empty), a stalled one is -1 and its fragment is left in the buffer
+		static long wcv4ec_read_line(indigo_device *device, char *line, long length) {
+			long res = indigo_uni_read_section2(PRIVATE_DATA->handle, line, length, "\n", "\r", INDIGO_DELAY(5), INDIGO_DELAY(1));
+			if (res > 0 && line[res - 1] == '\n') {
+				line[--res] = '\0';
+				return res;
+			}
+			return res > 0 ? -1 : res;
+		}
+
 		static bool wcv4ec_read_status(indigo_device *device) {
 			char status[256] = { 0 };
 			indigo_uni_discard(PRIVATE_DATA->handle);
 			PRIVATE_DATA->ready = false;
-			long res = indigo_uni_read_line(PRIVATE_DATA->handle, status, sizeof(status) - 1);
+			long res = wcv4ec_read_line(device, status, sizeof(status) - 1);
 			if (strncmp(status, DEVICE_ID, strlen(DEVICE_ID))) {   // first part of the message is cleared by tcflush() or "done";
 				if (status[0] == '\0') {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "BRANCH: no id, status= '%s'", status);
-					res = indigo_uni_read_line(PRIVATE_DATA->handle, status, sizeof(status) - 1);
+					res = wcv4ec_read_line(device, status, sizeof(status) - 1);
 				}
 				if (!strncmp(status, "done", strlen("done"))) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "BRANCH: done");
 					PRIVATE_DATA->ready = true;
-					res = indigo_uni_read_line(PRIVATE_DATA->handle, status, sizeof(status) - 1);
+					res = wcv4ec_read_line(device, status, sizeof(status) - 1);
 				}
 			}
 			if (res > 0) {
@@ -285,6 +296,8 @@ driver wcv4ec {
 					return;
 				} else {
 					bool success = false;
+					// stale status frames are dropped before the command, so a reply the box sends at once is kept
+					indigo_uni_discard(PRIVATE_DATA->handle);
 					if (AUX_DETECT_OPEN_CLOSE_OPEN_ITEM->sw.value) {
 						success = wcv4ec_command(device, 100001);
 					} else if (AUX_DETECT_OPEN_CLOSE_CLOSE_ITEM->sw.value) {
@@ -293,7 +306,6 @@ driver wcv4ec {
 					if (success) {
 						PRIVATE_DATA->operation_running = true; // let the status callback set correct open/close when we are done
 						char status_line[128] = { 0 };
-						indigo_uni_discard(PRIVATE_DATA->handle);
 						// the box sends a status frame every second, so a reply lost on the wire is given up after ten lines or 5 s of silence
 						bool confirmed = false;
 						for (int i = 0; i < 10 && !confirmed; i++) {

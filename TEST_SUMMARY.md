@@ -75,7 +75,7 @@
 | aux_wbprov3 | 2026-09-21 19:43 | 3.0.0.6 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 |  | 2026-09-27 06:53 | 3.0.0.8 | linux x64 | simulator | 20 / 20 | ✅ OK |
 | aux_wcv4ec | 2026-09-21 19:45 | 3.0.0.8 | mac arm64 | simulator | 15 / 15 | ✅ OK |
-|  | 2026-09-27 01:22 | 3.0.0.10 | linux x64 | simulator | 18 / 18 | ✅ OK |
+|  | 2026-09-27 13:37 | 3.0.0.11 | linux x64 | simulator | 20 / 20 | ✅ OK |
 | ccd_altair | 2026-09-21 20:54 | 3.0.0.49 | mac arm64 | Altair ALTAIRGP224C | 28 / 28 | ✅ OK |
 |  | 2026-09-21 13:49 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_asi | 2026-09-21 21:17 | 3.0.0.65 | mac arm64 | ASI294MC Pro | 28 / 28 | ✅ OK |

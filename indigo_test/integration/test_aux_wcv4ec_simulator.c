@@ -546,6 +546,92 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The driver's debug log of the detect command write runs on the driver thread right after the write, so holding it
+// there stands for a host that is preempted between sending the command and its next serial call while the box
+// answers at once.
+static atomic_bool detect_open_held;
+
+static void hold_after_detect_log_handler(indigo_log_levels level, const char *message) {
+	if (strstr(message, "<- 100001") != NULL && !atomic_exchange(&detect_open_held, true)) {
+		indigo_usleep(300000);
+	}
+}
+
+// TGT-D10: the box answers 100001 with OpenSet as soon as it has taught the angle. The handler has to read that reply
+// even when it is already waiting in the input when the handler gets to read, instead of discarding it with the
+// stale status frames and ending the detection with ALERT after ten status lines.
+static void fast_detection_reply_is_not_discarded(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	indigo_log_levels log_level = indigo_get_log_level();
+	SERIAL_CHECK_TRUE(start_wcv4ec(&simulator, NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&wcv4ec_aux, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_first_poll());
+	unsigned int revision = property_revision(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME);
+	atomic_store(&detect_open_held, false);
+	indigo_log_message_handler = hold_after_detect_log_handler;
+	indigo_set_log_level(INDIGO_LOG_DEBUG);
+	double start = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(set_switch(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, true));
+	for (int i = 0; i < 150; i++) {
+		indigo_property *property = find_cached_property(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME);
+		if (property != NULL && property_revision(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME) > revision && property->state != INDIGO_BUSY_STATE) {
+			break;
+		}
+		indigo_usleep(100000);
+	}
+	indigo_set_log_level(log_level);
+	indigo_log_message_handler = NULL;
+	indigo_property *detect = find_cached_property(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(detect != NULL);
+	printf("Detection held %d, ended with state %d after %.1f s\n", atomic_load(&detect_open_held), detect->state, indigo_monotonic_time() - start);
+	SERIAL_CHECK_TRUE(atomic_load(&detect_open_held));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, detect->state);
+	assert_switch_item_value(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, false);
+	SERIAL_CHECK_TRUE(wait_for_confirmed_number(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, SIMULATED_CLOSE_POSITION, .01));
+cleanup:
+	indigo_set_log_level(log_level);
+	indigo_log_message_handler = NULL;
+	if (online) { stop_serial_driver(&wcv4ec_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-D10: the box sends a status frame in one go. A frame that stalls mid-line and trickles a byte every 2 s, each
+// within the 5 s serial read timeout, must not keep the status read going for as long as the trickle lasts (12 s)
+// and hold the device queue: the read gives up after a second of silence, rejects the unterminated line, and a
+// request sent during the stall is served. The frames that follow are read again.
+static void stalled_status_frame_does_not_hold_the_queue(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--stall-frame-at", "5000", NULL };
+	double started = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(start_wcv4ec(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&wcv4ec_aux, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_first_poll());
+	// The stalled frame starts 5 s after the simulator; 2 s later its first trickled byte has arrived and the status
+	// timer is reading it.
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - started < 5);
+	while (indigo_monotonic_time() - started < 7) {
+		indigo_usleep(10000);
+	}
+	unsigned int revision = property_revision(AUX_HEATER_PROPERTY_NAME);
+	double sent = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(set_switch(AUX_HEATER_PROPERTY_NAME, AUX_HEATER_LOW_ITEM_NAME, true));
+	bool served = wait_for_state_after(AUX_HEATER_PROPERTY_NAME, INDIGO_OK_STATE, revision, 7);
+	printf("Heater request during the stalled frame served %d after %.1f s\n", served, indigo_monotonic_time() - sent);
+	SERIAL_CHECK_TRUE(served);
+	assert_switch_item_value(AUX_HEATER_PROPERTY_NAME, AUX_HEATER_LOW_ITEM_NAME, true);
+	// The frames after the stall are read again: a new travel reaches the property through them.
+	SERIAL_CHECK_TRUE(set_positions(150, 15));
+	SERIAL_CHECK_TRUE(wait_for_confirmed_number(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, 150, .01));
+	SERIAL_CHECK_TRUE(wait_for_confirmed_number(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, 15, .01));
+cleanup:
+	if (online) { stop_serial_driver(&wcv4ec_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
 // -------------------------------------------------------------------------------- light and heater
 
 static void light_switches_and_dims(void) {
@@ -672,6 +758,8 @@ int main(void) {
 		{ "cover_request_survives_detection_end", cover_request_survives_detection_end },
 		{ "detection_refused_while_the_cover_moves", detection_refused_while_the_cover_moves },
 		{ "lost_detection_reply_does_not_block_the_queue", lost_detection_reply_does_not_block_the_queue },
+		{ "fast_detection_reply_is_not_discarded", fast_detection_reply_is_not_discarded },
+		{ "stalled_status_frame_does_not_hold_the_queue", stalled_status_frame_does_not_hold_the_queue },
 		{ "light_switches_and_dims", light_switches_and_dims },
 		{ "heater_levels_are_exclusive", heater_levels_are_exclusive },
 		{ "reconnect_resumes_polling", reconnect_resumes_polling },

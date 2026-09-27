@@ -28,4 +28,4 @@ Tested with physical WandererCover V4-EC device
 ## Testing
 
 2026-09-21 19:45 3.0.0.8 mac arm64 simulator 15/15 OK
-2026-09-27 01:22 3.0.0.10 linux x64 simulator 18/18 OK
+2026-09-27 13:37 3.0.0.11 linux x64 simulator 20/20 OK
