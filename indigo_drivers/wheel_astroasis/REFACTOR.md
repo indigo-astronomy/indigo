@@ -173,3 +173,16 @@ generator consults the block for every removal again, and a driver that has to t
 identity guards its own block with `if (!unplug_result)`, as `ccd_qhy2` does for QHY2-001.
 
 `SDK discovery identity and capacity` failed from 2026-09-22 on, because a failing enumeration no longer kept a wheel whose libusb device was reported. It passes unchanged with the generator fix. Recorded with `tools/run_driver_test.py`: fake SDK 10/10.
+
+## Suffix request overwritten by the factory reset (TGT-C06, 3.0.0.9, 2026-09-27)
+
+Found by the switch target review (`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, TGT-C06), reproduced on Linux x64 with the fake SDK.
+
+- Impact: an X_CUSTOM_SUFFIX request copied while a factory reset was queued or running was lost. The reset handler read the suffix back with `astroasis_read_names()`, wrote it into the item and published X_CUSTOM_SUFFIX OK over the pending BUSY; the queued suffix handler then sent the reset suffix to the wheel instead of the request and reported OK.
+- Root cause: `astroasis_read_names()` wrote value and state of X_CUSTOM_SUFFIX without regard to a pending request, and the reset handler published it unconditionally.
+- Fix: `astroasis_read_names()` still records the suffix the wheel reports in `custom_suffix`, which the suffix handler shows with ALERT on failure, but leaves value and state of a BUSY X_CUSTOM_SUFFIX alone (checked right before the write, no I/O in between), and the reset handler publishes X_CUSTOM_SUFFIX only when it is not BUSY. The suffix handler already sends the request and keeps it on success. Text items have no target, so a copy landing between that check and the write is not covered; the window has no I/O.
+- X_BLUETOOTH and X_BLUETOOTH_NAME take the same path in `astroasis_read_names()` but are not changed: both are hidden, so `indigo_define_property()` never defines them and `indigo_property_match_changeable()` refuses every request for them; no client request can be pending. `initialization and invalid completion` already checks that requests for them reach no SDK setter.
+- Regression test `suffix_request_survives_factory_reset` ("suffix request survives a factory reset"): the fake SDK holds the status read inside the reset handler, a suffix request is sent and stays BUSY, the read is released; the reset must end OK and the wheel and the property must hold the requested suffix. On 3.0.0.8 it failed 3/3 (the wheel got the reset suffix `""`), with 3.0.0.9 it passed 5/5.
+- Verification: `TZ=Europe/Bratislava python3 tools/run_driver_test.py wheel_astroasis`, 11/11 fake SDK cases (`MIGRATION_STATUS.md` 10 / 0 -> 11 / 0); regeneration reproducible. No hardware test was run.
+
+Final test summary: 11 simulated tests run and passed in the recorded run, 0 hardware tests run.

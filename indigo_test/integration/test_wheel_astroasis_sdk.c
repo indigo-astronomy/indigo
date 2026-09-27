@@ -785,6 +785,27 @@ static void suffix_and_reset(void) {
 	atomic_store(&wheels[0].suffix_read_error, 0);
 }
 
+// TGT-C06: a suffix request copied while a factory reset runs is queued behind it and must not be replaced by the suffix the reset reads back.
+static void suffix_request_survives_factory_reset(void) {
+	snprintf(wheels[0].suffix, sizeof(wheels[0].suffix), "%s", "old");
+	ASSERT_TRUE(connect_wheel(0, true));
+	atomic_store(&hold_read, true);
+	ASSERT_TRUE(set_switch(0, RESET_PROPERTY, "RESET", true));
+	ASSERT_TRUE(wait_count(&read_entered, 1));
+	ASSERT_TRUE(set_suffix(0, "kept"));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(0, SUFFIX_PROPERTY));
+	atomic_store(&release_read, true);
+	ASSERT_TRUE(wait_state(0, RESET_PROPERTY, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(1, atomic_load(&wheels[0].resets));
+	ASSERT_TRUE(wait_count(&wheels[0].writes, 1));
+	ASSERT_TRUE(wait_state(0, SUFFIX_PROPERTY, INDIGO_OK_STATE));
+	ASSERT_STREQ("kept", wheels[0].suffix);
+	indigo_property *property = snapshot(0, SUFFIX_PROPERTY);
+	ASSERT_STREQ("kept", property->items[0].text.value);
+	indigo_release_property(property);
+	atomic_store(&hold_read, false);
+}
+
 static void discovery(void) {
 	atomic_store(&enumerate_reverse, true);
 	for (int i = 1; i < 5; i++) {
@@ -1025,6 +1046,7 @@ int main(void) {
 		{ "movement states and failures", movement },
 		{ "calibration and conflicting requests", calibration },
 		{ "suffix boundaries and reset readback", suffix_and_reset },
+		{ "suffix request survives a factory reset", suffix_request_survives_factory_reset },
 		{ "SDK discovery identity and capacity", discovery },
 		{ "disconnect cancels delayed and active work", teardown },
 		{ "probe failures, retry, filtering and replug", discovery_failures_and_replug },

@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_wheel_astroasis"
 #define DRIVER_LABEL         "Astroasis Oasis Wheel"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -155,14 +155,19 @@ static bool astroasis_idle(indigo_device *device) {
 
 static bool astroasis_read_names(indigo_device *device) {
 	char suffix[OFW_NAME_LEN + 1] = { 0 };
+	// A suffix request copied while a factory reset runs is left to its queued handler: it sends the request and on failure shows the suffix read here.
 	if (OFWGetFriendlyName(PRIVATE_DATA->dev_id, suffix) != AO_SUCCESS) {
-		X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (X_CUSTOM_SUFFIX_PROPERTY->state != INDIGO_BUSY_STATE) {
+			X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		return false;
 	}
 	suffix[OFW_NAME_LEN] = 0;
-	INDIGO_COPY_VALUE(X_CUSTOM_SUFFIX_ITEM->text.value, suffix);
 	snprintf(PRIVATE_DATA->custom_suffix, sizeof(PRIVATE_DATA->custom_suffix), "%s", suffix);
-	X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
+	if (X_CUSTOM_SUFFIX_PROPERTY->state != INDIGO_BUSY_STATE) {
+		INDIGO_COPY_VALUE(X_CUSTOM_SUFFIX_ITEM->text.value, suffix);
+		X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
+	}
 	OFWConfig config = { 0 };
 	int res = OFWGetConfig(PRIVATE_DATA->dev_id, &config);
 	X_BLUETOOTH_PROPERTY->state = res == AO_SUCCESS ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
@@ -400,7 +405,9 @@ static void wheel_x_factory_reset_handler(indigo_device *device) {
 			}
 			WHEEL_SLOT_PROPERTY->state = position_valid ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-			indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
+			if (X_CUSTOM_SUFFIX_PROPERTY->state != INDIGO_BUSY_STATE) {
+				indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
+			}
 			if (!names_valid || !position_valid) {
 				X_FACTORY_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
@@ -753,7 +760,7 @@ indigo_result indigo_wheel_astroasis(indigo_driver_action action, indigo_driver_
 #include "indigo_wheel_astroasis.h"
 
 indigo_result indigo_wheel_astroasis(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "Astroasis Oasis Wheel", __FUNCTION__, 0x03000008, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "Astroasis Oasis Wheel", __FUNCTION__, 0x03000009, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif
