@@ -65,6 +65,8 @@ static void usage(const char *name) {
 	printf("  --set <name> <value>    Start with a stored setting or reading other than the default:\n");
 	printf("                          output1-3, cal1, cal2, cal_amb, threshold1, threshold2, auto,\n");
 	printf("                          linked, aggressivity, temp1, temp2, dewpoint\n");
+	printf("  --set-after <n> <name> <value>  Test control: the same setting or reading changes, without a\n");
+	printf("                          command, from the status frame after the first <n> status replies\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -78,8 +80,12 @@ static struct {
 	bool once;
 } faults[MAX_FAULTS];
 static int fault_count;
+// Test control: after this many status replies the named setting or reading takes the
+// value, the way a sensor or a setting changed on the controller shows up in the next frame.
+static int change_after = -1;
+static const char *change_name, *change_value;
 
-static bool set_state(const char *name, const char *value);
+static bool set_state(const char *name, const char *value, bool apply);
 
 static bool parse_args(int argc, char *argv[]) {
 	for (int i = 1; i < argc; i++) {
@@ -119,11 +125,23 @@ static bool parse_args(int argc, char *argv[]) {
 				fprintf(stderr, "--set requires a name and a value\n");
 				return false;
 			}
-			if (!set_state(argv[i + 1], argv[i + 2])) {
+			if (!set_state(argv[i + 1], argv[i + 2], true)) {
 				fprintf(stderr, "Unknown setting '%s'\n", argv[i + 1]);
 				return false;
 			}
 			i += 2;
+		} else if (!strcmp(argv[i], "--set-after")) {
+			if (i + 3 >= argc) {
+				fprintf(stderr, "--set-after requires a count, a name and a value\n");
+				return false;
+			}
+			change_after = atoi(argv[++i]);
+			change_name = argv[++i];
+			change_value = argv[++i];
+			if (change_after < 0 || !set_state(change_name, change_value, false)) {
+				fprintf(stderr, "Invalid --set-after '%s' '%s'\n", argv[i - 2], change_name);
+				return false;
+			}
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -168,7 +186,7 @@ static int auto_mode = 0, ch2_3_linked = 0, aggressivity = 1;
 static float temp_loc = 23.5f;
 
 // The controller keeps its settings in EEPROM, so it can start with other values than the driver's defaults.
-static bool set_state(const char *name, const char *value) {
+static bool set_state(const char *name, const char *value, bool apply) {
 	static const struct {
 		const char *name;
 		int *value;
@@ -186,13 +204,17 @@ static bool set_state(const char *name, const char *value) {
 	};
 	for (size_t i = 0; i < sizeof(ints) / sizeof(ints[0]); i++) {
 		if (!strcmp(name, ints[i].name)) {
-			*ints[i].value = atoi(value);
+			if (apply) {
+				*ints[i].value = atoi(value);
+			}
 			return true;
 		}
 	}
 	for (size_t i = 0; i < sizeof(floats) / sizeof(floats[0]); i++) {
 		if (!strcmp(name, floats[i].name)) {
-			*floats[i].value = (float)atof(value);
+			if (apply) {
+				*floats[i].value = (float)atof(value);
+			}
 			return true;
 		}
 	}
@@ -298,6 +320,9 @@ static void dispatch_command(int fd, const char *cmd) {
 			sim_printf(fd, "UDP2(1446)\n");
 		}
 	} else if (!strcmp(cmd, "SGETAL")) {
+		if (change_after >= 0 && change_after-- == 0) {
+			set_state(change_name, change_value, true);
+		}
 		if (options.model == MODEL_V1) {
 			sim_printf(fd, "Tloc=%.1f-Tamb=%.1f-RH=%.1f-DP=%.1f-TH=2-C=0\n",
 				temp_loc, temp_amb, rh, dewpoint);

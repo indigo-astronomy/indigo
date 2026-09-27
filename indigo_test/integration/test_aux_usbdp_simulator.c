@@ -604,6 +604,28 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// TGT-D16: a v2 status frame in which only sensor #2 changed must publish the new reading;
+// the simulator changes temp2 alone from the third status frame on, sensor #1 stays 23.5.
+static void d16_sensor_2_change_alone_is_published(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "v2", "--set-after", "2", "temp2", "18.4", NULL };
+	SERIAL_CHECK_TRUE(start_usbdp(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&usbdp_case, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM_NAME, 23.5, 0.05));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME, 22.1, 0.05));
+	if (!wait_for_number_item_value(AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME, 18.4, 0.05)) {
+		indigo_item *item = find_cached_item(AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME);
+		fprintf(stderr, "Sensor #2 published as %.2f, expected 18.40\n", item == NULL ? -1.0 : item->number.value);
+		SERIAL_CHECK_TRUE(false);
+	}
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM_NAME, 23.5, 0.05));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	stop_serial_driver(&usbdp_case);
+	stop_external_serial_simulator(&simulator);
+}
+
 // ------------------------------------------------------------------ lifecycle
 
 // Disconnecting stops the heaters on purpose - the controller would otherwise keep
@@ -683,6 +705,7 @@ int main(void) {
 		{ "silent_identity_is_refused", silent_identity_is_refused },
 		{ "vanished_port_is_refused", vanished_port_is_refused },
 		{ "malformed_status_frame_is_ignored", malformed_status_frame_is_ignored },
+		{ "d16_sensor_2_change_alone_is_published", d16_sensor_2_change_alone_is_published },
 		{ "disconnect_stops_the_heaters_and_reconnect_resumes_polling", disconnect_stops_the_heaters_and_reconnect_resumes_polling },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
 		{ "shutdown_is_refused_while_connected", shutdown_is_refused_while_connected },

@@ -26,7 +26,7 @@ driver usbdp {
 	label = "USB Dewpoint";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2019-2026 Rumen G. Bogdanovski";
-	version = 13;
+	version = 14;
 	serial;
 	define {
 		#define AUX_GROUP "Auxiliary"
@@ -200,7 +200,7 @@ driver usbdp {
 							AUX_WEATHER_DEWPOINT_ITEM->number.value = dewpoint;
 							updateWeather = true;
 						}
-						if ((fabs(((double)temp_ch1 - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1) || (fabs(((double)temp_ch1 - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1)) {
+						if ((fabs(((double)temp_ch1 - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1) || (fabs(((double)temp_ch2 - AUX_TEMPERATURE_SENSOR_2_ITEM->number.value)*100) >= 1)) {
 							AUX_TEMPERATURE_SENSOR_1_ITEM->number.value = temp_ch1;
 							AUX_TEMPERATURE_SENSOR_2_ITEM->number.value = temp_ch2;
 							updateSensors = true;

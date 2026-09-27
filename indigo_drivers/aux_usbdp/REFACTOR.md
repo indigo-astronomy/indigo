@@ -117,13 +117,48 @@ Findings TGT-053, TGT-054, TGT-055, TGT-D01 and the aux_usbdp part of TGT-B07 of
 
 - The sensor comparison in the v2 poll tests `temp_ch1` twice instead of `temp_ch1` and `temp_ch2`, so a
   change of sensor #2 alone is published only with the next change of sensor #1. Found by reading while
-  fixing the rows above; outside their scope, not reproduced.
+  fixing the rows above; outside their scope, not reproduced. TGT-D16, fixed in 3.0.0.14, see below.
 
-Driver version is now `0x0300000D`.
+## Sensor #2 changes are published (2026-09-27, 3.0.0.14)
+
+Finding TGT-D16 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+
+### Defect
+
+The v2 status poll decided whether AUX_TEMPERATURE_SENSORS changed by comparing `temp_ch1` with sensor #1
+twice; `temp_ch2` was never compared. A frame in which only sensor #2 changed was not written or
+published, so clients kept the old sensor #2 reading until sensor #1 also changed (then both were
+written). Reproduced with the simulator.
+
+### Fix
+
+- The second comparison uses `temp_ch2` and AUX_TEMPERATURE_SENSOR_2_ITEM. Nothing else changed: the same
+  0.01 threshold, both items are still written together, no serial command changed. Regenerated with the
+  unchanged generator; the only generated changes are that line and the version.
+- Simulator test control `--set-after <n> <name> <value>`: from the status frame after the first `<n>`
+  status replies the named setting or reading (the `--set` names) takes the value without a command,
+  the way a reading changes on the controller.
+
+### Verification (Linux x64)
+
+- New case `d16_sensor_2_change_alone_is_published`: `--set-after 2 temp2 18.4`; sensor #1 23.5 and
+  sensor #2 22.1 are published first, then sensor #2 must be published as 18.4 with sensor #1 still 23.5
+  and the property OK. 3.0.0.13 failed 4/4 (sensor #2 stayed 22.10), 3.0.0.14 passed 3/3.
+- Regeneration reproducible.
+- Recorded run: 2026-09-27 14:54 3.0.0.14 linux x64 simulator 20/20 OK.
+
+### Noticed, not changed
+
+- The v1 branch and the weather comparison were checked and compare the right fields.
+- Building the driver still prints the pre-existing `-Wformat-truncation` warnings for the
+  AUX_DEW_WARNING and heater labels copied from the outlet names (`snprintf` of a 512-byte text into a
+  128-byte label, truncated by design).
+
+Driver version is now `0x0300000E`.
 
 ```sh
 cd indigo_test && ./build/integration/test_aux_usbdp_simulator
 ```
 
-- Simulated tests run: 19; passed: 19.
+- Simulated tests run: 20; passed: 20.
 - Hardware tests run: 0; passed: 0. No USB_Dewpoint was available.

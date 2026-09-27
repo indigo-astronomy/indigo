@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_aux_usbdp"
 #define DRIVER_LABEL         "USB Dewpoint"
 #define AUX_DEVICE_NAME      "USB Dewpoint"
@@ -305,7 +305,7 @@ static void aux_timer_callback(indigo_device *device) {
 					AUX_WEATHER_DEWPOINT_ITEM->number.value = dewpoint;
 					updateWeather = true;
 				}
-				if ((fabs(((double)temp_ch1 - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1) || (fabs(((double)temp_ch1 - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1)) {
+				if ((fabs(((double)temp_ch1 - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1) || (fabs(((double)temp_ch2 - AUX_TEMPERATURE_SENSOR_2_ITEM->number.value)*100) >= 1)) {
 					AUX_TEMPERATURE_SENSOR_1_ITEM->number.value = temp_ch1;
 					AUX_TEMPERATURE_SENSOR_2_ITEM->number.value = temp_ch2;
 					updateSensors = true;
