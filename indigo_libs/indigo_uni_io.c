@@ -1311,7 +1311,7 @@ indigo_uni_handle *indigo_uni_open_client_socket_with_timeout(const char *host, 
 		for (address = address_list; address != NULL; address = address->ai_next) {
 			int fd = socket(address->ai_family, address->ai_socktype, address->ai_protocol);
 			if (fd == -1) {
-				indigo_error("Can't create %s socket for '%s:%d' (%s)", type == SOCK_STREAM ? "TCP" : "UDP", host, port, strerror(errno));
+				indigo_log_on_level(log_level, "Can't create %s socket for '%s:%d' (%s)", type == SOCK_STREAM ? "TCP" : "UDP", host, port, strerror(errno));
 				continue;
 			}
 			if (connect_with_timeout(fd, address->ai_addr, address->ai_addrlen, timeout) == 0) {
@@ -1330,7 +1330,7 @@ indigo_uni_handle *indigo_uni_open_client_socket_with_timeout(const char *host, 
 			close(fd);
 		}
 	}
-	indigo_error("Can't connect %s socket for '%s:%d' (%s)", type == SOCK_STREAM ? "TCP" : "UDP", host, port, strerror(errno));
+	indigo_log_on_level(log_level, "Can't connect %s socket for '%s:%d' (%s)", type == SOCK_STREAM ? "TCP" : "UDP", host, port, strerror(errno));
 	freeaddrinfo(address_list);
 	return handle;
 #elif defined(INDIGO_WINDOWS)
@@ -1359,7 +1359,7 @@ indigo_uni_handle *indigo_uni_open_client_socket_with_timeout(const char *host, 
 		indigo_log_on_level(log_level, "%d <- // %s socket connected to '%s:%d'", handle->index, type == SOCK_STREAM ? "TCP" : "UDP", host, port);
 		return handle;
 	}
-	indigo_error("Can't connect %s socket for '%s:%d'", type == SOCK_STREAM ? "TCP" : "UDP", host, port);
+	indigo_log_on_level(log_level, "Can't connect %s socket for '%s:%d'", type == SOCK_STREAM ? "TCP" : "UDP", host, port);
 	closesocket(sock);
 	return NULL;
 #else
