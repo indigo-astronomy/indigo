@@ -185,4 +185,14 @@ Found by the switch target review (`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, TG
 - Regression test `suffix_request_survives_factory_reset` ("suffix request survives a factory reset"): the fake SDK holds the status read inside the reset handler, a suffix request is sent and stays BUSY, the read is released; the reset must end OK and the wheel and the property must hold the requested suffix. On 3.0.0.8 it failed 3/3 (the wheel got the reset suffix `""`), with 3.0.0.9 it passed 5/5.
 - Verification: `TZ=Europe/Bratislava python3 tools/run_driver_test.py wheel_astroasis`, 11/11 fake SDK cases (`MIGRATION_STATUS.md` 10 / 0 -> 11 / 0); regeneration reproducible. No hardware test was run.
 
-Final test summary: 11 simulated tests run and passed in the recorded run, 0 hardware tests run.
+## Slot request overwritten by the factory reset (TGT-D19, 3.0.0.10, 2026-09-27)
+
+Found while fixing TGT-C06 (`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, TGT-D19), reproduced on Linux x64 with the fake SDK.
+
+- Impact: a WHEEL_SLOT request copied while a factory reset was running was lost. `astroasis_idle()` in the reset handler wrote the current slot into the value, the handler then wrote the slot read back after the reset into value and target and published WHEEL_SLOT OK over the pending BUSY; the queued slot handler read the overwritten value, found the wheel already there and reported OK without moving.
+- Root cause: `astroasis_idle()` and the reset handler wrote value, target and state of WHEEL_SLOT without regard to a pending request.
+- Fix: `astroasis_idle()` still records the reported slot in `current_slot` but writes WHEEL_SLOT's value only while the property is not BUSY (checked right after the status read, no I/O in between), and the reset handler records the slot read back in `current_slot` and leaves value, target and state of a BUSY WHEEL_SLOT alone and does not publish it. The slot handler reads the request, moves from `current_slot` and ends the request with OK or ALERT as before. It still reads `number.value`, as the NAN case in `movement states and failures` relies on; the wheel base driver (`indigo_wheel_driver.c`) leaves WHEEL_SLOT changes and its target to the driver.
+- Regression test `slot_request_survives_factory_reset` ("slot request survives a factory reset"): the wheel starts at slot 3, the fake SDK holds the status read inside the reset handler, a slot 4 request is sent and stays BUSY, the read is released; the reset must end OK (wheel at slot 1), then exactly one move to slot 4 must be sent and WHEEL_SLOT must end OK with value and target 4. On 3.0.0.9 it failed 3/3 (no move was sent), with 3.0.0.10 it passed 5/5.
+- Verification: `TZ=Europe/Bratislava python3 tools/run_driver_test.py wheel_astroasis`, 12/12 fake SDK cases (`MIGRATION_STATUS.md` 11 / 0 -> 12 / 0); regeneration reproducible. No hardware test was run.
+
+Final test summary: 12 simulated tests run and passed in the recorded run, 0 hardware tests run.

@@ -24,7 +24,7 @@ driver astroasis {
 	label = "Astroasis Oasis Wheel";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2016-2026 Rumen G. Bogdanovski";
-	version = 9;
+	version = 10;
 	supported_architecture = "!defined(__i386__)";
 	include {
 		#include <OasisFilterWheel.h>
@@ -73,7 +73,11 @@ driver astroasis {
 			if (!astroasis_status(device, &status) || status.filterStatus != STATUS_IDLE) {
 				return false;
 			}
-			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot = status.filterPosition;
+			PRIVATE_DATA->current_slot = status.filterPosition;
+			// A slot request copied during the status read keeps its value for its queued handler.
+			if (WHEEL_SLOT_PROPERTY->state != INDIGO_BUSY_STATE) {
+				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+			}
 			return true;
 		}
 
@@ -383,10 +387,16 @@ driver astroasis {
 						bool names_valid = astroasis_read_names(device);
 						bool position_valid = astroasis_status(device, &status) && status.filterStatus == STATUS_IDLE;
 						if (position_valid) {
-							WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot = status.filterPosition;
+							PRIVATE_DATA->current_slot = status.filterPosition;
 						}
-						WHEEL_SLOT_PROPERTY->state = position_valid ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-						indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+						// A slot request copied while the reset runs is left to its queued handler, which moves from the slot read here.
+						if (WHEEL_SLOT_PROPERTY->state != INDIGO_BUSY_STATE) {
+							if (position_valid) {
+								WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot;
+							}
+							WHEEL_SLOT_PROPERTY->state = position_valid ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+							indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+						}
 						if (X_CUSTOM_SUFFIX_PROPERTY->state != INDIGO_BUSY_STATE) {
 							indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
 						}

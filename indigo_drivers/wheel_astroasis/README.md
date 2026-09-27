@@ -29,4 +29,4 @@ Driver is developed and tested with:
 ## Testing
 
 2026-09-26 19:49 3.0.0.8 mac arm64 fake SDK 10/10 OK
-2026-09-27 13:16 3.0.0.9 linux x64 fake SDK 11/11 OK
+2026-09-27 15:03 3.0.0.10 linux x64 fake SDK 12/12 OK
