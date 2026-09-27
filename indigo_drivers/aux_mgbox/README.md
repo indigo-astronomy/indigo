@@ -42,3 +42,4 @@ Edit `indigo_aux_mgbox.driver` and regenerate the C, header and main with `indig
 ## Testing
 
 2026-09-26 20:56 3.0.0.12 mac arm64 simulator 32/32 OK
+2026-09-27 07:47 3.0.0.13 linux x64 simulator 35/35 OK

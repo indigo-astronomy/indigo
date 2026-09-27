@@ -378,6 +378,62 @@ cleanup:
 	aux_stop(&gps);
 }
 
+static bool alert_shows(const char *property, bool value) {
+	if (!wait_for_property_state(property, INDIGO_ALERT_STATE)) {
+		fprintf(stderr, "%s did not end in ALERT\n", property);
+		return false;
+	}
+	indigo_item *item = find_cached_item(property, "ENABLED");
+	if (!item || item->sw.value != value) {
+		fprintf(stderr, "%s shows %s instead of the state the device reported\n", property, item && item->sw.value ? "ON" : "OFF");
+		return false;
+	}
+	return true;
+}
+
+// TGT-057: a weather forwarding request refused during a reboot is shown with the forwarding state the device last
+// reported (MM,1 of the simulator), not with the request.
+static void weather_forwarding_refusal_shows_the_device_state(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(aux_wait_switch("X_SEND_WEATHER_DATA_TO_MOUNT", "ENABLED", true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primary.device_name, "X_REBOOT_DEVICE", "REBOOT", true));
+	SERIAL_CHECK_TRUE(wait_events("RX", ":reboot*", 1, NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primary.device_name, "X_SEND_WEATHER_DATA_TO_MOUNT", "ENABLED", false));
+	SERIAL_CHECK_TRUE(alert_shows("X_SEND_WEATHER_DATA_TO_MOUNT", true));
+	SERIAL_CHECK_EQ_INT(0, event_count("RX", ":mm,", NULL));
+cleanup:
+	aux_stop(&primary);
+}
+
+// TGT-057: a weather forwarding request that cannot be written after the transport was lost is shown with the
+// forwarding state the device last reported, not with the request.
+static void weather_forwarding_write_failure_shows_the_device_state(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(aux_wait_switch("X_SEND_WEATHER_DATA_TO_MOUNT", "ENABLED", true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primary.device_name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, primary.device_name, "X_SEND_WEATHER_DATA_TO_MOUNT", "ENABLED", false));
+	SERIAL_CHECK_TRUE(alert_shows("X_SEND_WEATHER_DATA_TO_MOUNT", true));
+	SERIAL_CHECK_EQ_INT(0, event_count("RX", ":mm,", NULL));
+cleanup:
+	aux_stop(&primary);
+}
+
+// TGT-058: a GPS forwarding request refused during a GPS reboot is shown with the forwarding state the device last
+// reported (MG,0 of the simulator), not with the request.
+static void gps_forwarding_refusal_shows_the_device_state(void) {
+	SERIAL_CHECK_TRUE(start_shared_serial_device(&gps, primary.device_name, aux_simulator.port));
+	SERIAL_CHECK_TRUE(wait_events("TX", "PCAL,", 1, NULL));
+	SERIAL_CHECK_TRUE(aux_wait_switch("X_SEND_GPS_DATA_TO_MOUNT", "ENABLED", false));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, gps.device_name, "X_REBOOT_GPS", "REBOOT", true));
+	SERIAL_CHECK_TRUE(wait_events("RX", ":rebootgps*", 1, NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, gps.device_name, "X_SEND_GPS_DATA_TO_MOUNT", "ENABLED", true));
+	SERIAL_CHECK_TRUE(alert_shows("X_SEND_GPS_DATA_TO_MOUNT", false));
+	SERIAL_CHECK_EQ_INT(0, event_count("RX", ":mg,", NULL));
+cleanup:
+	aux_stop(&gps);
+}
+
 static void pulse_overlap(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, primary.device_name, AUX_OUTLET_PULSE_LENGTHS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, 1500));
@@ -539,6 +595,9 @@ int main(void) {
 		{ "gps_settings", gps_settings, "normal" },
 		{ "readback_timeout", readback_timeout, "no-cal-reply" },
 		{ "gps_readback_timeout", gps_readback_timeout, "no-cal-reply" },
+		{ "weather_forwarding_refusal_shows_the_device_state", weather_forwarding_refusal_shows_the_device_state, "normal" },
+		{ "weather_forwarding_write_failure_shows_the_device_state", weather_forwarding_write_failure_shows_the_device_state, "drop-after-pulse" },
+		{ "gps_forwarding_refusal_shows_the_device_state", gps_forwarding_refusal_shows_the_device_state, "normal" },
 		{ "pulse_overlap", pulse_overlap, "normal" },
 		{ "pulse_disconnect", pulse_disconnect, "normal" },
 		{ "reboot_disconnect", reboot_disconnect, "normal" },

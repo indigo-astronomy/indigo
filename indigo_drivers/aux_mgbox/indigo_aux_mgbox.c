@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_aux_mgbox"
 #define DRIVER_LABEL         "Astromi.ch MGBox"
 #define AUX_DEVICE_NAME      "MGBox Weather"
@@ -304,14 +304,19 @@ static void mgbox_process_line(indigo_device *device, char *buffer) {
 			X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		mgbox_update(device, X_CALIBRATION_PROPERTY);
+		// A forwarding request copied after the BUSY check keeps its value in the target, which its handler
+		// sends, and owns the state of the property, so the state is set and published only while it is
+		// still not BUSY.
 		for (int i = 7; i + 1 < count; i += 2) {
 			if (!strcmp(tokens[i], "MM")) {
 				PRIVATE_DATA->weather_forwarding = atoi(tokens[i + 1]);
 				PRIVATE_DATA->weather_sequence++;
 				if (!PRIVATE_DATA->weather_forwarding_pending && X_SEND_WEATHER_MOUNT_PROPERTY->state != INDIGO_BUSY_STATE) {
 					X_SEND_WEATHER_MOUNT_ITEM->sw.value = PRIVATE_DATA->weather_forwarding;
-					X_SEND_WEATHER_MOUNT_PROPERTY->state = INDIGO_OK_STATE;
-					mgbox_update(device, X_SEND_WEATHER_MOUNT_PROPERTY);
+					if (X_SEND_WEATHER_MOUNT_PROPERTY->state != INDIGO_BUSY_STATE) {
+						X_SEND_WEATHER_MOUNT_PROPERTY->state = INDIGO_OK_STATE;
+						mgbox_update(device, X_SEND_WEATHER_MOUNT_PROPERTY);
+					}
 				}
 			} else if (!strcmp(tokens[i], "MG")) {
 				device = PRIVATE_DATA->gps_device;
@@ -319,8 +324,10 @@ static void mgbox_process_line(indigo_device *device, char *buffer) {
 				PRIVATE_DATA->gps_sequence++;
 				if (!PRIVATE_DATA->gps_forwarding_pending && X_SEND_GPS_MOUNT_PROPERTY->state != INDIGO_BUSY_STATE) {
 					X_SEND_GPS_MOUNT_ITEM->sw.value = PRIVATE_DATA->gps_forwarding;
-					X_SEND_GPS_MOUNT_PROPERTY->state = INDIGO_OK_STATE;
-					mgbox_update(device, X_SEND_GPS_MOUNT_PROPERTY);
+					if (X_SEND_GPS_MOUNT_PROPERTY->state != INDIGO_BUSY_STATE) {
+						X_SEND_GPS_MOUNT_PROPERTY->state = INDIGO_OK_STATE;
+						mgbox_update(device, X_SEND_GPS_MOUNT_PROPERTY);
+					}
 				}
 				device = PRIVATE_DATA->aux_device;
 			}
@@ -526,25 +533,33 @@ static void calibration_finalizer(indigo_device *device) {
 }
 
 static void weather_forwarding_finalizer(indigo_device *device) {
-	bool confirmed = PRIVATE_DATA->weather_sequence > PRIVATE_DATA->weather_after && X_SEND_WEATHER_MOUNT_ITEM->sw.value == PRIVATE_DATA->weather_forwarding;
+	bool confirmed = PRIVATE_DATA->weather_sequence > PRIVATE_DATA->weather_after && indigo_get_switch_target(X_SEND_WEATHER_MOUNT_PROPERTY, X_SEND_WEATHER_MOUNT_ITEM_NAME) == PRIVATE_DATA->weather_forwarding;
 	if (!confirmed && !PRIVATE_DATA->transport_failed && --PRIVATE_DATA->weather_attempts > 0) {
 		indigo_execute_handler_in(device, 0.1, weather_forwarding_finalizer);
 		return;
 	}
 	PRIVATE_DATA->weather_forwarding_pending = false;
-	X_SEND_WEATHER_MOUNT_ITEM->sw.value = PRIVATE_DATA->weather_forwarding;
+	if (confirmed) {
+		indigo_apply_switch_targets(X_SEND_WEATHER_MOUNT_PROPERTY);
+	} else {
+		X_SEND_WEATHER_MOUNT_ITEM->sw.value = PRIVATE_DATA->weather_forwarding;
+	}
 	X_SEND_WEATHER_MOUNT_PROPERTY->state = confirmed && !PRIVATE_DATA->transport_failed ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, X_SEND_WEATHER_MOUNT_PROPERTY, NULL);
 }
 
 static void gps_forwarding_finalizer(indigo_device *device) {
-	bool confirmed = PRIVATE_DATA->gps_sequence > PRIVATE_DATA->gps_after && X_SEND_GPS_MOUNT_ITEM->sw.value == PRIVATE_DATA->gps_forwarding;
+	bool confirmed = PRIVATE_DATA->gps_sequence > PRIVATE_DATA->gps_after && indigo_get_switch_target(X_SEND_GPS_MOUNT_PROPERTY, X_SEND_GPS_MOUNT_ITEM_NAME) == PRIVATE_DATA->gps_forwarding;
 	if (!confirmed && !PRIVATE_DATA->transport_failed && --PRIVATE_DATA->gps_attempts > 0) {
 		indigo_execute_handler_in(device, 0.1, gps_forwarding_finalizer);
 		return;
 	}
 	PRIVATE_DATA->gps_forwarding_pending = false;
-	X_SEND_GPS_MOUNT_ITEM->sw.value = PRIVATE_DATA->gps_forwarding;
+	if (confirmed) {
+		indigo_apply_switch_targets(X_SEND_GPS_MOUNT_PROPERTY);
+	} else {
+		X_SEND_GPS_MOUNT_ITEM->sw.value = PRIVATE_DATA->gps_forwarding;
+	}
 	X_SEND_GPS_MOUNT_PROPERTY->state = confirmed && !PRIVATE_DATA->transport_failed ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
 }
@@ -744,7 +759,10 @@ static void aux_x_calibration_handler(indigo_device *device) {
 
 static void aux_x_send_weather_mount_handler(indigo_device *device) {
 	//+ aux.X_SEND_WEATHER_MOUNT.on_change
+	// A CAL frame may overwrite the value between the copy of the request and this handler, the target keeps
+	// the request. On failure the switch shows the forwarding state the device last reported.
 	if (!IS_CONNECTED || PRIVATE_DATA->rebooting || !strchr(PRIVATE_DATA->device_type, 'M')) {
+		X_SEND_WEATHER_MOUNT_ITEM->sw.value = PRIVATE_DATA->weather_forwarding;
 		X_SEND_WEATHER_MOUNT_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, X_SEND_WEATHER_MOUNT_PROPERTY, NULL);
 		return;
@@ -752,10 +770,11 @@ static void aux_x_send_weather_mount_handler(indigo_device *device) {
 	PRIVATE_DATA->weather_after = PRIVATE_DATA->weather_sequence;
 	PRIVATE_DATA->weather_attempts = 50;
 	PRIVATE_DATA->weather_forwarding_pending = true;
-	if (mgbox_command(device, X_SEND_WEATHER_MOUNT_ITEM->sw.value ? ":mm,1*" : ":mm,0*")) {
+	if (mgbox_command(device, indigo_get_switch_target(X_SEND_WEATHER_MOUNT_PROPERTY, X_SEND_WEATHER_MOUNT_ITEM_NAME) ? ":mm,1*" : ":mm,0*")) {
 		indigo_execute_handler_in(device, 0.1, weather_forwarding_finalizer);
 	} else {
 		PRIVATE_DATA->weather_forwarding_pending = false;
+		X_SEND_WEATHER_MOUNT_ITEM->sw.value = PRIVATE_DATA->weather_forwarding;
 		X_SEND_WEATHER_MOUNT_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, X_SEND_WEATHER_MOUNT_PROPERTY, NULL);
 	}
@@ -898,6 +917,14 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(X_CALIBRATION_PROPERTY, aux_x_calibration_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_SEND_WEATHER_MOUNT_PROPERTY, property)) {
+		//+ aux.X_SEND_WEATHER_MOUNT.on_change_request
+		// A CAL frame writes the forwarding state the device reports into the value only and the handler sends
+		// the target, so a request that does not carry the item must keep the reported state in its target as
+		// well. A BUSY property is left alone, the framework drops the request and its handler reads the target.
+		if (X_SEND_WEATHER_MOUNT_PROPERTY->state != INDIGO_BUSY_STATE) {
+			X_SEND_WEATHER_MOUNT_ITEM->sw.target = X_SEND_WEATHER_MOUNT_ITEM->sw.value;
+		}
+		//- aux.X_SEND_WEATHER_MOUNT.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_SEND_WEATHER_MOUNT_PROPERTY, aux_x_send_weather_mount_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_REBOOT_PROPERTY, property)) {
@@ -1014,7 +1041,10 @@ static void gps_connection_handler(indigo_device *device) {
 
 static void gps_x_send_gps_mount_handler(indigo_device *device) {
 	//+ gps.X_SEND_GPS_MOUNT.on_change
+	// A CAL frame may overwrite the value between the copy of the request and this handler, the target keeps
+	// the request. On failure the switch shows the forwarding state the device last reported.
 	if (!IS_CONNECTED || PRIVATE_DATA->rebooting || PRIVATE_DATA->gps_rebooting) {
+		X_SEND_GPS_MOUNT_ITEM->sw.value = PRIVATE_DATA->gps_forwarding;
 		X_SEND_GPS_MOUNT_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
 		return;
@@ -1022,10 +1052,11 @@ static void gps_x_send_gps_mount_handler(indigo_device *device) {
 	PRIVATE_DATA->gps_after = PRIVATE_DATA->gps_sequence;
 	PRIVATE_DATA->gps_attempts = 50;
 	PRIVATE_DATA->gps_forwarding_pending = true;
-	if (mgbox_command(device, X_SEND_GPS_MOUNT_ITEM->sw.value ? ":mg,1*" : ":mg,0*")) {
+	if (mgbox_command(device, indigo_get_switch_target(X_SEND_GPS_MOUNT_PROPERTY, X_SEND_GPS_MOUNT_ITEM_NAME) ? ":mg,1*" : ":mg,0*")) {
 		indigo_execute_handler_in(device, 0.1, gps_forwarding_finalizer);
 	} else {
 		PRIVATE_DATA->gps_forwarding_pending = false;
+		X_SEND_GPS_MOUNT_ITEM->sw.value = PRIVATE_DATA->gps_forwarding;
 		X_SEND_GPS_MOUNT_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
 	}
@@ -1102,6 +1133,14 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 		INDIGO_PROCESS_CONNECT(gps_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_SEND_GPS_MOUNT_PROPERTY, property)) {
+		//+ gps.X_SEND_GPS_MOUNT.on_change_request
+		// A CAL frame writes the forwarding state the device reports into the value only and the handler sends
+		// the target, so a request that does not carry the item must keep the reported state in its target as
+		// well. A BUSY property is left alone, the framework drops the request and its handler reads the target.
+		if (X_SEND_GPS_MOUNT_PROPERTY->state != INDIGO_BUSY_STATE) {
+			X_SEND_GPS_MOUNT_ITEM->sw.target = X_SEND_GPS_MOUNT_ITEM->sw.value;
+		}
+		//- gps.X_SEND_GPS_MOUNT.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_SEND_GPS_MOUNT_PROPERTY, gps_x_send_gps_mount_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_REBOOT_GPS_PROPERTY, property)) {

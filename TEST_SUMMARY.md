@@ -47,6 +47,7 @@
 | aux_geoptikflat | 2026-09-21 22:48 | 3.0.0.8 | mac arm64 | simulator | 12 / 12 | ✅ OK |
 | aux_joystick | 2026-09-21 14:42 | 3.0.0.10 | mac arm64 | fake SDK | 14 / 14 | ✅ OK |
 | aux_mgbox | 2026-09-26 20:56 | 3.0.0.12 | mac arm64 | simulator | 32 / 32 | ✅ OK |
+|  | 2026-09-27 07:47 | 3.0.0.13 | linux x64 | simulator | 35 / 35 | ✅ OK |
 | aux_ppb | 2026-09-21 21:47 | 3.0.0.29 | mac arm64 | simulator | 29 / 29 | ✅ OK |
 |  | 2026-09-27 06:05 | 3.0.0.31 | linux x64 | simulator | 32 / 32 | ✅ OK |
 | aux_rpio | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | fake SDK | 19 / 19 | ✅ OK |

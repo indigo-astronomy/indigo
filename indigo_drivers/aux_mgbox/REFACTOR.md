@@ -224,7 +224,23 @@ Validation: universal x86_64/arm64 production/test builds passed, as did strict 
 
 Updated the `aux_mgbox` row in root `MIGRATION_STATUS.md` to generated code, async queues, simulator retesting and available automated tests, with the recorded 32-scenario/nine-ASan evidence and hardware/TCP/Windows-runtime limitations. Preserved the existing Windows support designation; no new Windows validation is claimed. Added a repository-wide rule in `AGENTS.md` requiring this status update after every completed driver migration, consistent with its `REFACTOR.md`. This documentation-only follow-up was checked with `git diff --check`; no build or simulator rerun was needed.
 
+## Switch targets for mount forwarding (2026-09-27, 3.0.0.13)
+
+Findings `TGT-057` and `TGT-058` in `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. Hardware testing was not performed.
+
+| Defect | Impact | Root cause | Fix | Test |
+| --- | --- | --- | --- | --- |
+| TGT-057 `X_SEND_WEATHER_DATA_TO_MOUNT` | A request copied while a CAL frame was being processed was sent as the state the box already had (`:mm,1*` for an OFF request) and ended OK with that state; the frame also published OK before the handler ran, which reopened the BUSY guard. A refused or unwritten request was shown ALERT with the request instead of the box state. | `mgbox_process_line()` checks `!weather_forwarding_pending` and BUSY, then writes `MM` into the value; the pending flag is set only inside the handler, so it does not cover the time between the copy and the handler, and the handler read `sw.value`. | The handler sends `indigo_get_switch_target()`, the finalizer confirms against the target and applies it with `indigo_apply_switch_targets()`; every failure path shows the forwarding state the box last reported with ALERT. The CAL frame sets and publishes OK only while the property is still not BUSY after its write. `on_change_request` copies the value into the target while not BUSY, so a request without the item keeps the reported state. | `weather_forwarding_refusal_shows_the_device_state`, `weather_forwarding_write_failure_shows_the_device_state` |
+| TGT-058 `X_SEND_GPS_DATA_TO_MOUNT` | Same for `MG` (`:mg,0*` sent for an ON request). | Same code for `gps_forwarding_pending`. | Same fix. | `gps_forwarding_refusal_shows_the_device_state` |
+
+The window has no I/O or log line between the check and the write. A CAL frame processed while a request is queued behind a gate handler finds the property BUSY and leaves it alone on 3.0.0.12 already, so no permanent case can hit the window. It was reproduced with a temporary instrumented copy (debug line and 200 ms pause right after the check, request sent from that line, not committed): on 3.0.0.12 an OFF weather request copied during the CAL replies of a calibration sent `:mm,1*` and ended OK ON, and an ON GPS request copied during the connection's CAL reply sent `:mg,0*` and ended OK OFF, 3/3 each, each time with the overwritten value published OK before the command; on 3.0.0.13 `:mm,0*` / `:mg,1*` were sent and the only OK after the request was the handler's with the requested value, 3/3 each; with only the publication re-check removed the overwritten value was still published OK before the command 3/3 each.
+
+The pending flags, sequence counters and finalizer confirmation (review section E) stay. The sequence counter and the confirmation are what tells the finalizer that a CAL frame after the command reports the request; the target does not replace them. A pending flag implies BUSY except where a frame has already set OK over the copied request, and `gps_forwarding_pending` also guards `X_REBOOT_GPS`, so removing them is not clearly safe.
+
+Validation on Linux x64: the unchanged 3.0.0.12 suite passed 32/32; the three new cases fail on 3.0.0.12 (the switch shows the request) and pass on 3.0.0.13; the full suite passes 35/35; the ASan build passes the three new cases and `aux_settings` / `gps_settings`. Regeneration is reproducible byte-for-byte. The GPS write-failure path is the same code as the weather one and is not covered separately.
+
 ## Final test summary
 
-- Latest complete simulated validation: 41 tests executed, 41 passed (32 ordinary and 9 driver-instrumented ASan cases).
+- Latest complete simulated validation (2026-09-27, Linux x64): 35 tests executed, 35 passed; driver-instrumented ASan: 5 selected cases executed, 5 passed.
+- Earlier simulated validation (2026-09-09, macOS arm64): 41 tests executed, 41 passed (32 ordinary and 9 driver-instrumented ASan cases).
 - Hardware tests: 0 executed, 0 passed.
