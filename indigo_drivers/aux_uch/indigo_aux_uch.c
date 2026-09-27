@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_aux_uch"
 #define DRIVER_LABEL         "PegasusAstro USB Control Hub"
 #define AUX_DEVICE_NAME      "USB Control Hub"
@@ -88,6 +88,7 @@ typedef struct {
 	indigo_property *aux_save_outlet_states_as_default_property;
 	//+ data
 	char response[128];
+	bool usb_ports[6];
 	//- data
 } uch_private_data;
 
@@ -156,39 +157,19 @@ static void aux_timer_callback(indigo_device *device) {
 				AUX_INFO_VOLTAGE_ITEM->number.value = value;
 			}
 		}	
-		// A change request accepted meanwhile has already copied the client's values and
-		// published BUSY, so a status frame read before it must not overwrite them - the
-		// queued handler would then send the stale state back to the hub.
-		if ((token = strtok_r(NULL, ":", &pnt)) && AUX_USB_PORT_PROPERTY->state != INDIGO_BUSY_STATE) { // USB status
-			bool state = token[0] == '1';
-			if (AUX_USB_PORT_1_ITEM->sw.value != state) {
-				AUX_USB_PORT_1_ITEM->sw.value = state;
-				updateUSBPorts = true;
+		// The port states the hub reports are always recorded, a failed request shows them; a pending request owns
+		// the values of its property and its handler sends the targets, which the poll never writes.
+		if ((token = strtok_r(NULL, ":", &pnt))) { // USB status
+			for (int i = 0; i < 6; i++) {
+				PRIVATE_DATA->usb_ports[i] = token[i] == '1';
 			}
-			state = token[1] == '1';
-			if (AUX_USB_PORT_2_ITEM->sw.value != state) {
-				AUX_USB_PORT_2_ITEM->sw.value = state;
-				updateUSBPorts = true;
-			}
-			state = token[2] == '1';
-			if (AUX_USB_PORT_3_ITEM->sw.value != state) {
-				AUX_USB_PORT_3_ITEM->sw.value = state;
-				updateUSBPorts = true;
-			}
-			state = token[3] == '1';
-			if (AUX_USB_PORT_4_ITEM->sw.value != state) {
-				AUX_USB_PORT_4_ITEM->sw.value = state;
-				updateUSBPorts = true;
-			}
-			state = token[4] == '1';
-			if (AUX_USB_PORT_5_ITEM->sw.value != state) {
-				AUX_USB_PORT_5_ITEM->sw.value = state;
-				updateUSBPorts = true;
-			}
-			state = token[5] == '1';
-			if (AUX_USB_PORT_6_ITEM->sw.value != state) {
-				AUX_USB_PORT_6_ITEM->sw.value = state;
-				updateUSBPorts = true;
+			if (AUX_USB_PORT_PROPERTY->state != INDIGO_BUSY_STATE) {
+				for (int i = 0; i < 6; i++) {
+					if (AUX_USB_PORT_PROPERTY->items[i].sw.value != PRIVATE_DATA->usb_ports[i]) {
+						AUX_USB_PORT_PROPERTY->items[i].sw.value = PRIVATE_DATA->usb_ports[i];
+						updateUSBPorts = true;
+					}
+				}
 			}
 		}
 	}
@@ -205,7 +186,8 @@ static void aux_timer_callback(indigo_device *device) {
 	if (updateInfo) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_INFO_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
-	if (updateUSBPorts) {
+	// A request copied after the check above owns the state of its property, its handler publishes the result.
+	if (updateUSBPorts && AUX_USB_PORT_PROPERTY->state != INDIGO_BUSY_STATE) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_USB_PORT_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	indigo_execute_handler_in(device, 2, aux_timer_callback);
@@ -224,12 +206,12 @@ static void aux_connection_handler(indigo_device *device) {
 					AUX_INFO_VOLTAGE_ITEM->number.value = indigo_atod(token);
 				}	
 				if ((token = strtok_r(NULL, ":", &pnt))) { // USB status
-					AUX_USB_PORT_1_ITEM->sw.value =  token[0] == '1';
-					AUX_USB_PORT_2_ITEM->sw.value =  token[1] == '1';
-					AUX_USB_PORT_3_ITEM->sw.value =  token[2] == '1';
-					AUX_USB_PORT_4_ITEM->sw.value =  token[3] == '1';
-					AUX_USB_PORT_5_ITEM->sw.value =  token[4] == '1';
-					AUX_USB_PORT_6_ITEM->sw.value =  token[5] == '1';
+					AUX_USB_PORT_1_ITEM->sw.value = PRIVATE_DATA->usb_ports[0] = token[0] == '1';
+					AUX_USB_PORT_2_ITEM->sw.value = PRIVATE_DATA->usb_ports[1] = token[1] == '1';
+					AUX_USB_PORT_3_ITEM->sw.value = PRIVATE_DATA->usb_ports[2] = token[2] == '1';
+					AUX_USB_PORT_4_ITEM->sw.value = PRIVATE_DATA->usb_ports[3] = token[3] == '1';
+					AUX_USB_PORT_5_ITEM->sw.value = PRIVATE_DATA->usb_ports[4] = token[4] == '1';
+					AUX_USB_PORT_6_ITEM->sw.value = PRIVATE_DATA->usb_ports[5] = token[5] == '1';
 				}
 			}
 			//- aux.on_connect
@@ -298,8 +280,17 @@ static void aux_outlet_names_handler(indigo_device *device) {
 static void aux_usb_port_handler(indigo_device *device) {
 	AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_USB_PORT.on_change
+	// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+	// request. A port the hub did not answer for shows the state it last reported.
 	for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
-		uch_command(device, "U%d:%d", i + 1, AUX_USB_PORT_PROPERTY->items[i].sw.value ? 1 : 0);
+		indigo_item *item = AUX_USB_PORT_PROPERTY->items + i;
+		bool on = item->sw.target;
+		if (uch_command(device, "U%d:%d", i + 1, on ? 1 : 0)) {
+			item->sw.value = PRIVATE_DATA->usb_ports[i] = on;
+		} else {
+			item->sw.value = PRIVATE_DATA->usb_ports[i];
+			AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
 	//- aux.AUX_USB_PORT.on_change
 	indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
@@ -409,6 +400,16 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_OUTLET_NAMES_PROPERTY, aux_outlet_names_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_USB_PORT_PROPERTY, property)) {
+		//+ aux.AUX_USB_PORT.on_change_request
+		// The poll writes the port states the hub reports into the values only and the handler sends the targets,
+		// so the ports a request does not carry must keep the reported state in their targets as well. A BUSY
+		// property is left alone, the framework drops the request and its handler reads the targets.
+		if (AUX_USB_PORT_PROPERTY->state != INDIGO_BUSY_STATE) {
+			for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
+				AUX_USB_PORT_PROPERTY->items[i].sw.target = AUX_USB_PORT_PROPERTY->items[i].sw.value;
+			}
+		}
+		//- aux.AUX_USB_PORT.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_USB_PORT_PROPERTY, aux_usb_port_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_AUX_REBOOT_PROPERTY, property)) {

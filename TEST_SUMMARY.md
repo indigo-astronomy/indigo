@@ -59,6 +59,7 @@
 | aux_svbpowerbox | 2026-09-21 19:38 | 3.0.0.2 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 |  | 2026-09-27 06:25 | 3.0.0.4 | linux x64 | simulator | 15 / 15 | ✅ OK |
 | aux_uch | 2026-09-21 22:45 | 3.0.0.6 | mac arm64 | simulator | 11 / 11 | ✅ OK |
+|  | 2026-09-27 07:04 | 3.0.0.8 | linux x64 | simulator | 13 / 13 | ✅ OK |
 | aux_upb | 2026-09-25 12:33 | 3.0.0.30 | mac arm64 | Pegasus UPB v1 | 1 / 1 | ✅ OK |
 |  | 2026-09-26 20:59 | 3.0.0.31 | mac arm64 | simulator | 40 / 40 | ✅ OK |
 |  | 2026-09-26 22:05 | 3.0.0.31 | linux arm64 | PeagasusAstro UPB | 15 / 15 | ✅ OK |

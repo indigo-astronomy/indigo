@@ -26,6 +26,8 @@
 
 #include <indigo_drivers/aux_uch/indigo_aux_uch.h>
 
+#include <stdatomic.h>
+
 #include "serial_simulator_test_common.h"
 
 #ifndef AUX_UCH_SIMULATOR_EXECUTABLE
@@ -209,6 +211,118 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// TGT-052: a port the hub does not answer for is shown in the state the hub reported, with ALERT, instead of the
+// request. The poll writes only the values, so a later request for another port must not send the refused request
+// again from a stale target.
+static void usb_port_failure_shows_the_hub_state(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--fault-once", "U3:0", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, AUX_UCH_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&uch_case, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_first_poll());
+	unsigned int revision = property_state_revision(AUX_USB_PORT_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_port(AUX_USB_PORT_3_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_USB_PORT_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_port(AUX_USB_PORT_3_ITEM_NAME, true));
+	revision = property_state_revision(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(set_port(AUX_USB_PORT_4_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_port(AUX_USB_PORT_4_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_port(AUX_USB_PORT_3_ITEM_NAME, true));
+	// A poll later the hub still reports port 3 on, so the display does not change.
+	indigo_usleep(2500000);
+	SERIAL_CHECK_TRUE(wait_for_port(AUX_USB_PORT_3_ITEM_NAME, true));
+cleanup:
+	if (online) { stop_serial_driver(&uch_case); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// Driver log lines and publications seen by b07_request_copied_after_the_check_is_published_by_its_handler. Both come
+// from the device queue, so their order is the order in which the driver wrote the command and published the result.
+static atomic_bool b07_armed, b07_rebooted_status_seen, b07_in_uptime_read, b07_port_2_sent, b07_watch_on;
+static atomic_int b07_first_ok, b07_first_ok_after_command;
+
+static void b07_log_handler(indigo_log_levels level, const char *message) {
+	if (!atomic_load(&b07_armed)) {
+		return;
+	}
+	if (strstr(message, "-> UCH:5.1:011111") != NULL) {
+		atomic_store(&b07_rebooted_status_seen, true);
+	} else if (atomic_load(&b07_rebooted_status_seen) && strstr(message, "<- PC") != NULL) {
+		atomic_store(&b07_in_uptime_read, true);
+		atomic_store(&b07_armed, false);
+	}
+}
+
+static void b07_command_log_handler(indigo_log_levels level, const char *message) {
+	if (strstr(message, "<- U2:0") != NULL) {
+		atomic_store(&b07_port_2_sent, true);
+	}
+}
+
+static indigo_result b07_watch_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (atomic_load(&b07_watch_on) && !strcmp(property->device, uch_case.device_name) && !strcmp(property->name, AUX_USB_PORT_PROPERTY_NAME) && property->state == INDIGO_OK_STATE && atomic_fetch_add(&b07_first_ok, 1) == 0) {
+		atomic_store(&b07_first_ok_after_command, atomic_load(&b07_port_2_sent));
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+// TGT-B07: the poll adopts a port change the hub made on its own (a reboot restores the power status on boot) and
+// publishes it after the uptime read. A request copied during that read owns the state of the property: the poll
+// must not publish it OK before its handler sent it. The request is sent from the driver's log line of the uptime
+// command, which the hub answers 0.5 s late.
+static void b07_request_copied_after_the_check_is_published_by_its_handler(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	indigo_log_levels log_level = indigo_get_log_level();
+	const char *arguments[] = { "--slow-uptime", "500", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, AUX_UCH_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&uch_case, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_first_poll());
+	// Port 1 is off on boot, but on now.
+	SERIAL_CHECK_TRUE(set_port(AUX_USB_PORT_1_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_port(AUX_USB_PORT_1_ITEM_NAME, false));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, uch_case.device_name, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY_NAME, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(set_port(AUX_USB_PORT_1_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_port(AUX_USB_PORT_1_ITEM_NAME, true));
+	atomic_store(&b07_rebooted_status_seen, false);
+	atomic_store(&b07_in_uptime_read, false);
+	atomic_store(&b07_armed, true);
+	indigo_log_message_handler = b07_log_handler;
+	indigo_set_log_level(INDIGO_LOG_DEBUG);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, uch_case.device_name, "X_AUX_REBOOT", "REBOOT", true));
+	for (int i = 0; i < 10000 && !atomic_load(&b07_in_uptime_read); i++) {
+		indigo_usleep(1000);
+	}
+	SERIAL_CHECK_TRUE(atomic_load(&b07_in_uptime_read));
+	atomic_store(&b07_port_2_sent, false);
+	atomic_store(&b07_first_ok, 0);
+	atomic_store(&b07_first_ok_after_command, false);
+	indigo_log_message_handler = b07_command_log_handler;
+	simulator_test_client.update_property = b07_watch_update;
+	atomic_store(&b07_watch_on, true);
+	SERIAL_CHECK_TRUE(set_port(AUX_USB_PORT_2_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_port(AUX_USB_PORT_2_ITEM_NAME, false));
+	atomic_store(&b07_watch_on, false);
+	printf("First OK after the request: %d, published after U2:0 was sent: %d\n", atomic_load(&b07_first_ok) > 0, atomic_load(&b07_first_ok_after_command));
+	SERIAL_CHECK_TRUE(atomic_load(&b07_first_ok) > 0);
+	SERIAL_CHECK_TRUE(atomic_load(&b07_first_ok_after_command));
+	// The reboot switched port 1 off, the request switched port 2 off.
+	SERIAL_CHECK_TRUE(wait_for_port(AUX_USB_PORT_1_ITEM_NAME, false));
+cleanup:
+	atomic_store(&b07_armed, false);
+	atomic_store(&b07_watch_on, false);
+	simulator_test_client.update_property = simulator_client_update_property;
+	indigo_set_log_level(log_level);
+	indigo_log_message_handler = NULL;
+	if (online) { stop_serial_driver(&uch_case); }
+	stop_external_serial_simulator(&simulator);
+}
+
 static void saving_the_defaults_is_accepted(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -315,6 +429,8 @@ int main(void) {
 		{ "every_usb_port_switches", every_usb_port_switches },
 		{ "switching_one_port_leaves_the_others_alone", switching_one_port_leaves_the_others_alone },
 		{ "a_change_survives_a_status_frame_in_flight", a_change_survives_a_status_frame_in_flight },
+		{ "usb_port_failure_shows_the_hub_state", usb_port_failure_shows_the_hub_state },
+		{ "b07_request_copied_after_the_check_is_published_by_its_handler", b07_request_copied_after_the_check_is_published_by_its_handler },
 		{ "saving_the_defaults_is_accepted", saving_the_defaults_is_accepted },
 		{ "reboot_request_is_accepted_and_resets", reboot_request_is_accepted_and_resets },
 		{ "outlet_names_are_writable", outlet_names_are_writable },
