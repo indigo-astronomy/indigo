@@ -67,7 +67,7 @@
 |  | 2026-09-26 22:05 | 3.0.0.31 | linux arm64 | PeagasusAstro UPB | 15 / 15 | ✅ OK |
 |  | 2026-09-27 14:49 | 3.0.0.33 | linux x64 | simulator | 47 / 47 | ✅ OK |
 | aux_upb3 | 2026-09-26 21:00 | 3.0.0.7 | mac arm64 | simulator | 29 / 29 | ✅ OK |
-|  | 2026-09-27 12:57 | 3.0.0.8 | linux x64 | simulator | 30 / 30 | ✅ OK |
+|  | 2026-09-27 14:57 | 3.0.0.9 | linux x64 | simulator | 31 / 31 | ✅ OK |
 | aux_usbdp | 2026-09-21 23:40 | 3.0.0.11 | mac arm64 | simulator | 16 / 16 | ✅ OK |
 |  | 2026-09-27 14:54 | 3.0.0.14 | linux x64 | simulator | 20 / 20 | ✅ OK |
 | aux_wbplusv3 | 2026-09-21 19:41 | 3.0.0.6 | mac arm64 | simulator | 17 / 17 | ✅ OK |

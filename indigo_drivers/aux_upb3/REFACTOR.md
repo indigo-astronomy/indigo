@@ -65,11 +65,34 @@ Finding TGT-D03 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`, on branch `refacto
   poll never writes these switches, no queued request can be overwritten by it and the switch target
   pattern is not needed for them.
 - **Left open:** both AUX_DEW_CONTROL items are initialised ON in a one-of-many property, so when
-  the `PD` query fails at connect the property is defined with both items on (TGT-D18).
+  the `PD` query fails at connect the property is defined with both items on (TGT-D18, fixed in
+  3.0.0.9, see below).
 
 Recorded run: `TZ=Europe/Bratislava python3 tools/run_driver_test.py aux_upb3`, 30/30 on linux x64.
 
+## One dew control mode when `PD` fails, TGT-D18 (3.0.0.9, 2026-09-27)
+
+Finding TGT-D18 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`, on branch `refactoring_targets`.
+
+- **Defect (reproduced):** both items of the one-of-many AUX_DEW_CONTROL were initialised ON. When
+  the `PD` query failed at connect nothing was adopted, so the property was defined with MANUAL and
+  AUTOMATIC both on.
+- **Fix:** AUTOMATIC is initialised OFF, so the property starts with MANUAL only. MANUAL is the mode
+  of a box whose automatic dew control has not been switched on (`PD:000`, also the simulator's
+  default). The `on_connect` adoption of TGT-D03 is unchanged, and on a later connect whose `PD`
+  fails the mode shown before stays, still exactly one item. Regenerated with the unchanged
+  generator; the only generated changes are that item and the version. Regeneration reproducible.
+- **Regression test:** `dew_control_has_one_mode_when_pd_fails` connects to a simulator started
+  with the existing `--fault PD silent` and checks that exactly one item, MANUAL, is on. 3.0.0.8
+  failed 3/3 (both items on), 3.0.0.9 passed 3/3; `dew_state_is_adopted_at_connect` still passes.
+- **Noticed, not changed:** any `PD` reply other than `PD:000`, including a malformed one, selects
+  AUTOMATIC; the build still prints the pre-existing `-Wformat-truncation` warnings for the outlet
+  labels copied from the outlet names.
+
+Recorded run: `TZ=Europe/Bratislava python3 tools/run_driver_test.py aux_upb3`,
+2026-09-27 14:57 3.0.0.9 linux x64 simulator 31/31 OK.
+
 ## Final test summary
 
-- Simulated tests run: 30; passed: 30.
+- Simulated tests run: 31; passed: 31.
 - Hardware tests run: 0; passed: 0. No Ultimate Powerbox v3 was available.

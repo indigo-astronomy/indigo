@@ -179,6 +179,25 @@ cleanup:
 	stop_external_serial_simulator(&automatic);
 }
 
+// TGT-D18: when the PD query goes unanswered at connect nothing is adopted, so
+// the one-of-many dew control is defined with its initial items; exactly one of
+// them has to be on.
+static void dew_control_has_one_mode_when_pd_fails(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--fault", "PD", "silent", NULL };
+	SERIAL_CHECK_TRUE(start_upb3(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	indigo_item *manual = find_cached_item(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME);
+	indigo_item *automatic = find_cached_item(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(manual != NULL && automatic != NULL);
+	fprintf(stderr, "Dew control after a failed PD: manual %s, automatic %s\n", manual->sw.value ? "on" : "off", automatic->sw.value ? "on" : "off");
+	SERIAL_CHECK_EQ_INT(1, (manual->sw.value ? 1 : 0) + (automatic->sw.value ? 1 : 0));
+	SERIAL_CHECK_TRUE(manual->sw.value);
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
 static void each_power_outlet_switches_on_its_own(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_upb3(&simulator, NULL));
@@ -620,6 +639,7 @@ int main(void) {
 		{ "connect_adopts_the_outlet_state", connect_adopts_the_outlet_state },
 		{ "a_box_left_off_comes_up_off", a_box_left_off_comes_up_off },
 		{ "dew_state_is_adopted_at_connect", dew_state_is_adopted_at_connect },
+		{ "dew_control_has_one_mode_when_pd_fails", dew_control_has_one_mode_when_pd_fails },
 		{ "each_power_outlet_switches_on_its_own", each_power_outlet_switches_on_its_own },
 		{ "each_usb_port_switches_on_its_own", each_usb_port_switches_on_its_own },
 		{ "heaters_hold_independent_duty_cycles", heaters_hold_independent_duty_cycles },
