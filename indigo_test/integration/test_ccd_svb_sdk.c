@@ -1399,6 +1399,91 @@ static bool take_image(int index, double exposure) {
 	return set_switch(index, "CCD_IMAGE_FORMAT", "RAW", true) && indigo_change_number_property_1(&test_client, observed[index].name, "CCD_EXPOSURE", "EXPOSURE", exposure) == INDIGO_OK && wait_state(index, "CCD_EXPOSURE", INDIGO_OK_STATE) && wait_count(&blobs, expected);
 }
 
+static bool hold_device_queue(void) {
+	arm_gate(&queue_gate);
+	indigo_execute_handler(logical[0], block_queue);
+	return wait_count(&queue_gate.entered, 1);
+}
+
+// Releases the gate and waits for a marker queued behind every handler queued before it.
+static bool release_device_queue(void) {
+	release_gate(&queue_gate);
+	int expected = atomic_load(&barriers) + 1;
+	indigo_execute_handler(logical[0], queue_barrier);
+	return wait_count(&barriers, expected);
+}
+
+// TGT-068: CCD_MODE is a view of X_PIXEL_FORMAT and CCD_BIN, and X_PIXEL_FORMAT of the bit depth in
+// CCD_FRAME. Of two requests queued together the later one wins; the handler of the earlier one must
+// not rewrite the later one before its own handler reads it.
+static void mode_format_bin_and_frame_requests_queued_together_keep_the_last(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	// CCD_MODE, then X_PIXEL_FORMAT: the format changes, the binning of the mode stays.
+	ASSERT_TRUE(hold_device_queue());
+	ASSERT_TRUE(set_switch(0, "CCD_MODE", "RAW 8 2x2", true));
+	ASSERT_TRUE(set_switch(0, PIXEL_PROPERTY, "RAW 16", true));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(0, PIXEL_PROPERTY));
+	ASSERT_TRUE(release_device_queue());
+	ASSERT_TRUE(wait_state(0, PIXEL_PROPERTY, INDIGO_OK_STATE));
+	ASSERT_TRUE(switch_value(0, PIXEL_PROPERTY, "RAW 16"));
+	ASSERT_TRUE(switch_value(0, "CCD_MODE", "RAW 16 2x2"));
+	ASSERT_EQ_INT(2, number_value(0, "CCD_BIN", "HORIZONTAL"));
+	ASSERT_EQ_INT(16, number_value(0, "CCD_FRAME", "BITS_PER_PIXEL"));
+	ASSERT_TRUE(take_image(0, 0.01));
+	ASSERT_EQ_INT(SVB_IMG_RAW16, atomic_load(&cameras[0].format));
+	ASSERT_EQ_INT(2, atomic_load(&cameras[0].bin));
+	// X_PIXEL_FORMAT, then CCD_MODE: the mode decides both.
+	ASSERT_TRUE(hold_device_queue());
+	ASSERT_TRUE(set_switch(0, PIXEL_PROPERTY, "RAW 8", true));
+	ASSERT_TRUE(set_switch(0, "CCD_MODE", "RAW 16 1x1", true));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(0, "CCD_MODE"));
+	ASSERT_TRUE(release_device_queue());
+	ASSERT_TRUE(wait_state(0, "CCD_MODE", INDIGO_OK_STATE));
+	ASSERT_TRUE(switch_value(0, "CCD_MODE", "RAW 16 1x1"));
+	ASSERT_TRUE(switch_value(0, PIXEL_PROPERTY, "RAW 16"));
+	ASSERT_EQ_INT(1, number_value(0, "CCD_BIN", "HORIZONTAL"));
+	ASSERT_EQ_INT(16, number_value(0, "CCD_FRAME", "BITS_PER_PIXEL"));
+	// CCD_BIN, then CCD_MODE.
+	ASSERT_TRUE(hold_device_queue());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_BIN", "HORIZONTAL", 2));
+	ASSERT_TRUE(set_switch(0, "CCD_MODE", "RAW 8 1x1", true));
+	ASSERT_TRUE(release_device_queue());
+	ASSERT_TRUE(wait_state(0, "CCD_MODE", INDIGO_OK_STATE));
+	ASSERT_TRUE(switch_value(0, "CCD_MODE", "RAW 8 1x1"));
+	ASSERT_TRUE(switch_value(0, PIXEL_PROPERTY, "RAW 8"));
+	ASSERT_EQ_INT(1, number_value(0, "CCD_BIN", "HORIZONTAL"));
+	// CCD_MODE, then CCD_BIN: the binning changes, the format of the mode stays.
+	ASSERT_TRUE(hold_device_queue());
+	ASSERT_TRUE(set_switch(0, "CCD_MODE", "RAW 16 2x2", true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_BIN", "HORIZONTAL", 1));
+	ASSERT_TRUE(release_device_queue());
+	ASSERT_TRUE(wait_state(0, "CCD_BIN", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(1, number_value(0, "CCD_BIN", "HORIZONTAL"));
+	ASSERT_TRUE(switch_value(0, PIXEL_PROPERTY, "RAW 16"));
+	ASSERT_TRUE(switch_value(0, "CCD_MODE", "RAW 16 1x1"));
+	// CCD_FRAME with a bit depth, then X_PIXEL_FORMAT.
+	ASSERT_TRUE(hold_device_queue());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_FRAME", "BITS_PER_PIXEL", 16));
+	ASSERT_TRUE(set_switch(0, PIXEL_PROPERTY, "RAW 8", true));
+	ASSERT_TRUE(release_device_queue());
+	ASSERT_TRUE(wait_state(0, PIXEL_PROPERTY, INDIGO_OK_STATE));
+	ASSERT_TRUE(switch_value(0, PIXEL_PROPERTY, "RAW 8"));
+	ASSERT_TRUE(switch_value(0, "CCD_MODE", "RAW 8 1x1"));
+	ASSERT_EQ_INT(8, number_value(0, "CCD_FRAME", "BITS_PER_PIXEL"));
+	// X_PIXEL_FORMAT, then CCD_FRAME with a bit depth.
+	ASSERT_TRUE(hold_device_queue());
+	ASSERT_TRUE(set_switch(0, PIXEL_PROPERTY, "RGB 24", true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_FRAME", "BITS_PER_PIXEL", 16));
+	ASSERT_TRUE(release_device_queue());
+	ASSERT_TRUE(wait_state(0, "CCD_FRAME", INDIGO_OK_STATE));
+	ASSERT_TRUE(switch_value(0, PIXEL_PROPERTY, "RAW 16"));
+	ASSERT_TRUE(switch_value(0, "CCD_MODE", "RAW 16 1x1"));
+	ASSERT_EQ_INT(16, number_value(0, "CCD_FRAME", "BITS_PER_PIXEL"));
+	ASSERT_TRUE(take_image(0, 0.01));
+	ASSERT_EQ_INT(SVB_IMG_RAW16, atomic_load(&cameras[0].format));
+	ASSERT_EQ_INT(1, atomic_load(&cameras[0].bin));
+}
+
 static bool drain_discovery(void) {
 	int expected = barriers + 1;
 	indigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_barrier, NULL);
@@ -2509,6 +2594,7 @@ int main(int argc, char **argv) {
 		{ "Finite streaming baseline", finite_stream },
 		{ "Long indefinite stream abort restart", long_stream_abort_restart },
 		{ "Urgent abort overtakes pending start", abort_overtakes_pending_start },
+		{ "Mode format bin and frame requests queued together keep the last", mode_format_bin_and_frame_requests_queued_together_keep_the_last },
 		{ "Idle abort terminal", idle_abort_terminal },
 		{ "Guide axes and disconnect", guide_all_axes_and_disconnect },
 		{ "Initialization read rollback", initialization_read_rollback },

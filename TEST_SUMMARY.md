@@ -133,6 +133,7 @@
 | ccd_svb | 2026-09-22 07:02 | 3.0.0.28 | linux arm64 | SVBONY SV305PRO | 6 / 6 | ✅ OK |
 |  | 2026-09-22 11:25 | 3.0.0.29 | mac arm64 | SVBONY SV305PRO | 1 / 1 | ✅ OK |
 |  | 2026-09-26 21:08 | 3.0.0.32 | mac arm64 | fake SDK | 47 / 47 | ✅ OK |
+|  | 2026-09-27 09:06 | 3.0.0.33 | linux x64 | fake SDK | 48 / 48 | ✅ OK |
 | ccd_svb2 | 2026-09-21 14:10 | 3.0.0.49 | mac arm64 | fake SDK | 30 / 30 | ✅ OK |
 | ccd_sx | 2026-09-22 15:52 | 3.0.0.20 | mac arm64 | SXVR-H694 and LodeStar | 9 / 9 | ✅ OK |
 |  | 2026-09-26 22:19 | 3.0.0.22 | mac arm64 | fake SDK | 24 / 24 | ✅ OK |
