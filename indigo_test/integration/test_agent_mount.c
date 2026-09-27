@@ -1332,6 +1332,12 @@ static void related_agents(void) {
 		CHECK(requests(5, "AGENT_START_PROCESS") > 0);
 		CHECK(requests(6, "AGENT_START_PROCESS") > 0);
 	}
+	immediate = true;
+	int im = requests(5, "AGENT_ABORT_PROCESS"), gu = requests(6, "AGENT_ABORT_PROCESS");
+	CHECK(operation("SLEW", 0, "MOUNT_EQUATORIAL_COORDINATES", INDIGO_OK_STATE));
+	CHECK(requests(5, "AGENT_ABORT_PROCESS") == im + 1);
+	CHECK(requests(6, "AGENT_ABORT_PROCESS") == gu + 1);
+	immediate = false;
 	CHECK(num(AGENT, "GEOGRAPHIC_COORDINATES", "LATITUDE", 48.5));
 	CHECK(!strcmp(header_value(5, "SITELAT"), "'48 30 00'"));
 	CHECK(sw(peer_names[0], "MOUNT_SIDE_OF_PIER", "EAST", true, INDIGO_OK_STATE));
