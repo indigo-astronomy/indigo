@@ -990,6 +990,44 @@ cleanup:
 	sim_follow_end();
 }
 
+// The periodic error and the offset guide model shift the stars by IMAGE_RA_OFFSET and IMAGE_DEC_OFFSET; on a rotated
+// image a shift has to land where the same move of the mount puts the star, or the guider calibrated on the mount sees
+// the periodic error in Dec
+static void simulator_guider_offsets_follow_simulated_mount_axes(void) {
+	static indigo_device publisher;
+	indigo_simulated_mount_state state = { .ra = FOLLOW_RA, .dec = FOLLOW_DEC, .epoch = 2000, .latitude = 48.5, .longitude = 17.5, .west = false };
+	double x0, y0, x1, y1, x2, y2;
+	SIM_CHECK(sim_follow_begin());
+	SIM_CHECK(sim_number("SIMULATION_SETUP", 1, (const char *[]){ "IMAGE_ROTATION_ANGLE" }, (double []){ 36 }, INDIGO_OK_STATE));
+	indigo_set_simulated_mount_state(&publisher, &state);
+	SIM_CHECK(sim_expose_centroid(&x0, &y0));
+	// 3 px of RA offset against a 3 px move of the mount to the west
+	SIM_CHECK(sim_number("SIMULATION_SETUP", 1, (const char *[]){ "IMAGE_RA_OFFSET" }, (double []){ 3 }, INDIGO_OK_STATE));
+	SIM_CHECK(sim_expose_centroid(&x1, &y1));
+	SIM_CHECK(sim_number("SIMULATION_SETUP", 1, (const char *[]){ "IMAGE_RA_OFFSET" }, (double []){ 0 }, INDIGO_OK_STATE));
+	state.ra = FOLLOW_RA - 3 / FOLLOW_PX_PER_DEGREE / 15 / cos(FOLLOW_DEC * M_PI / 180);
+	indigo_set_simulated_mount_state(&publisher, &state);
+	SIM_CHECK(sim_expose_centroid(&x2, &y2));
+	printf("    RA offset shifted the star by %.3f, %.3f px, the mount by %.3f, %.3f px\n", x1 - x0, y1 - y0, x2 - x0, y2 - y0);
+	SIM_CHECK(fabs(hypot(x1 - x0, y1 - y0) - 3) < 0.3);
+	SIM_CHECK(hypot(x1 - x2, y1 - y2) < 0.3);
+	// 3 px of Dec offset against a 3 px move of the mount to the north
+	state.ra = FOLLOW_RA;
+	indigo_set_simulated_mount_state(&publisher, &state);
+	SIM_CHECK(sim_number("SIMULATION_SETUP", 1, (const char *[]){ "IMAGE_DEC_OFFSET" }, (double []){ 3 }, INDIGO_OK_STATE));
+	SIM_CHECK(sim_expose_centroid(&x1, &y1));
+	SIM_CHECK(sim_number("SIMULATION_SETUP", 1, (const char *[]){ "IMAGE_DEC_OFFSET" }, (double []){ 0 }, INDIGO_OK_STATE));
+	state.dec = FOLLOW_DEC + 3 / FOLLOW_PX_PER_DEGREE;
+	indigo_set_simulated_mount_state(&publisher, &state);
+	SIM_CHECK(sim_expose_centroid(&x2, &y2));
+	printf("    Dec offset shifted the star by %.3f, %.3f px, the mount by %.3f, %.3f px\n", x1 - x0, y1 - y0, x2 - x0, y2 - y0);
+	SIM_CHECK(fabs(hypot(x1 - x0, y1 - y0) - 3) < 0.3);
+	SIM_CHECK(hypot(x1 - x2, y1 - y2) < 0.3);
+cleanup:
+	indigo_set_simulated_mount_state(&publisher, NULL);
+	sim_follow_end();
+}
+
 static bool mount_state_matches(bool connected, double ra, double dec, double tolerance, double timeout) {
 	for (double deadline = indigo_monotonic_time() + timeout; indigo_monotonic_time() < deadline; indigo_usleep(20000)) {
 		indigo_simulated_mount_state state;
@@ -1179,6 +1217,7 @@ int main(int argc, char **argv) {
 		{ "simulator_camera_modes_and_settings", simulator_camera_modes_and_settings },
 		{ "simulator_file_noise_formats_and_failure", simulator_file_noise_formats_and_failure },
 		{ "simulator_guider_camera_follows_simulated_mount", simulator_guider_camera_follows_simulated_mount },
+		{ "simulator_guider_offsets_follow_simulated_mount_axes", simulator_guider_offsets_follow_simulated_mount_axes },
 		{ "simulator_guider_camera_follows_mount_simulator_guiding", simulator_guider_camera_follows_mount_simulator_guiding },
 		{ "driver_info_reports_simulator_metadata", driver_info_reports_simulator_metadata },
 		{ "simulator_initializes_enumerates_connects_disconnects_and_shuts_down", simulator_initializes_enumerates_connects_disconnects_and_shuts_down },
