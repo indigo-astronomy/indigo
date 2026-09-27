@@ -248,3 +248,68 @@ Counts include development runs; a registered case run inside a complete suite r
 - Simulated tests, original driver: 120 run, 83 passed. Breakdown: pre-existing smoke test 1/1; `simulator_protocol` development runs 3 run, 1 passed (2 test mistakes); first complete characterization run 23 run, 17 passed (6 harness failures, step 3) and 4 reruns after the fixes 4/4; defect reproducers 10 run, 0 passed (all failed as expected); the T6R-06 ASan run 1 run, 0 passed (expected, stack-buffer-overflow); trace captures 6/6; complete run with the installed fixture 23 run, 22 passed; `T6R-03 close_waits_for_mount_park` rerun 1 run, 0 passed and `urgent_abort_cancels_queued_open` rerun 1 run, 0 passed (both expected); complete run with the final harness 33 run, 21 passed (12 expected failures); `additional_instance` isolation runs 14 run, 11 passed (3 timeouts of the original driver, analysed above).
 - Simulated tests, generated driver: 148 run, 145 passed. Breakdown: bring-up cases 3/3; defect reproducers 10 run, 9 passed (the tenth exposed a test mistake, fixed) and its rerun 1/1; first complete run 23 run, 21 passed (the fixture and the queue case, both resolved in step 7); `urgent_abort_cancels_queued_open` rerun 1/1; trace captures 3/3; complete suite after promotion 33/33; `additional_instance` isolation runs 8/8; ASan + UBSan complete run 33/33 with no sanitizer report; final verification run of the checked-in state after `test-clean` 33/33.
 - Hardware tests: 0 run, 0 passed.
+
+## Switch targets for DOME_SHUTTER and X_CLOSE_COND (2026-09-27, 3.0.0.5, branch `refactoring_targets`)
+
+Rows TGT-034, TGT-073 and the dome_talon6ror part of TGT-B08 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this change.
+
+- **Baseline on Linux x64:** the suite did not build: the simulator rule in `indigo_test/Makefile` linked without
+  `-lm` (`undefined reference to lround`; macOS links libm implicitly), the same defect the other dome simulators had.
+  With `-lm` added, the unchanged 3.0.0.4 driver passed 32/33: `reference_trace` failed on every platform because the
+  trace recorded `DEVICE_VERSION` and the fixture still said 3.0.0.3 after d19397b8d bumped the driver to 3.0.0.4 (a
+  pinned driver version, which `indigo_test/AGENTS.md` forbids). The trace now writes `DEVICE_VERSION=*` and both
+  fixtures were updated on that one line only. Regenerating the unchanged `.driver` reproduced the checked-in output.
+- **TGT-034 (reproduced):** `dome_status_poll` checks DOME_SHUTTER for a queued request (BUSY, no driver request, no
+  observed motion) and otherwise calls `talon6ror_mirror_state()`, which read the property state again
+  (`state != OK || !item`) to decide whether to publish the reported roof state. A request copied after the check made
+  that condition true, so the poll wrote the reported end position, published OK and the queued handler sent the
+  opposite command. The check and the write have no I/O or log line between them, so no permanent case can hit the
+  window. Proof with a temporary instrumented copy of the generated driver (a debug line at the start of the mirror
+  branch and one before the mirror's write of a first observed opening, and temporary cases sending a request from
+  those lines; neither committed): on 3.0.0.4 an OPEN request with the roof closed was sent as `&P` and ended OK
+  closed, and a CLOSE request during a keypad opening was sent as `&O` and ended OK open, 3/3 each; on 3.0.0.5 `&O` /
+  `&P` were sent as requested and the roof ended OK open / closed, 3/3 each.
+- **TGT-034 fix:** the poll reads the DOME_SHUTTER items and then its state once at its check (a request copies the
+  items first and sets BUSY after them) and `talon6ror_mirror_state()` decides from that snapshot; it leaves the
+  property alone when it became BUSY after the check. The handler sends the request read with
+  `indigo_get_switch_target()`, applies it with `indigo_apply_switch_targets()` once the controller acknowledged it,
+  and a rejected command still shows the last reported roof state with ALERT (`T6R-01 rejected_commands_alert`).
+  DOME_SHUTTER is at-most-one, so the copy resets every target and the targets hold the whole request. The
+  pending-request path stays covered by `T6R-02 queued_request_survives_status_poll`.
+- **TGT-073 (reproduced):** a failed configuration write restored the whole configuration buffer and unpacked it into
+  all three configuration properties, so an X_CLOSE_COND request queued behind a rejected X_MOTOR_CONF or X_DELAY_CONF
+  write was reverted before its handler ran, and its handler wrote and published the old conditions OK. The same
+  mechanism reverted value and target of a queued X_MOTOR_CONF or X_DELAY_CONF request (not a switch, not in the
+  review table, fixed by the same change).
+- **TGT-073 fix:** the unpack is split per property (`talon6ror_unpack_motor_configuration()`,
+  `talon6ror_unpack_delay_configuration()`, `talon6ror_unpack_close_conditions()`; `talon6ror_unpack_configuration()`
+  still unpacks all three at connection) and `talon6ror_write_configuration()` restores only the property of the
+  running handler after a failure. Nothing else writes these properties after connection, so the X_CLOSE_COND handler
+  keeps reading `sw.value`. It must not read targets: X_CLOSE_COND is any-of-many, the connection readback writes only
+  values, and the items a request does not carry keep stale targets; a temporary variant whose handler read and applied
+  the targets wrote conditions 0x02 instead of 0x03 for a WEATHER-only request against a controller with POWER
+  enabled (`--conditions 1`), while 3.0.0.5 wrote 0x03 (not committed).
+- **Regression tests:** `T6R-11 close_conditions_request_survives_failed_write` and
+  `T6R-11 motor_request_survives_failed_write` hold the device queue with a delayed status reply, reject the first
+  `&a` write and queue an X_DELAY_CONF request followed by an X_CLOSE_COND (X_MOTOR_CONF) request. On 3.0.0.4 both
+  failed at the defect (POWER published OK off; KP 180 instead of 200); on 3.0.0.5 both pass.
+- **TGT-B08 (Won't fix):** `talon6ror_mirror_state()` deliberately shows a roof motion the driver did not start
+  (keypad, close conditions) as BUSY and marks it `status_busy`, so, like dome_nexdome and unlike dome_beaver, the next
+  poll does not take it for a queued request but ends it with OK when the controller reports open or closed (ALERT for
+  a stop between the end positions); `on_connect` clears the flag and a disconnect resets the property state. A request
+  during it is dropped by the framework guard like one during a driver-started motion (`busy_requests_rejected`) and
+  DOME_ABORT_MOTION stops it (`manual_open_by_button`, `condition_close`). A temporary case (keypad opening with a
+  CLOSE request during it, then a reconnect during a second opening; not committed) showed the request dropped, OK
+  open after each motion and later CLOSE requests sent and completed, 1/1 on 3.0.0.4 and 2/2 on 3.0.0.5.
+- **Left open (found by source audit, not reproduced):** the poll's checksum-error branch sets DOME_SHUTTER ALERT
+  without looking for a queued request, so a request copied before it is shown ALERT and the framework guard reopens
+  before its handler runs; the handler still sends the request (display only, TGT-B05 class). One isolated
+  `reference_trace` run failed right after the version masking (unchanged 3.0.0.4 driver) without a kept trace; the
+  next 30 isolated runs and the recorded run passed, so the cause is not known.
+- **Verification:** regeneration reproducible; recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py
+  dome_talon6ror`: 35/35 OK on linux x64 (3.0.0.5). `MIGRATION_STATUS.md` hardware-free count 33 -> 35.
+- Simulated tests of this change: baseline 33 run, 32 passed (3.0.0.4, `reference_trace` fixture); isolated
+  `reference_trace` runs 31 run, 30 passed; new cases 2 run, 0 passed on 3.0.0.4 (expected) and 2/2 on 3.0.0.5;
+  temporary window cases 6 run, 0 passed on 3.0.0.4 (expected) and 6/6 on 3.0.0.5; temporary target-variant case
+  1/1 on 3.0.0.5 and 1 run, 0 passed on the variant (expected); temporary observed-motion case 3/3; recorded run
+  35/35. Hardware tests: 0 run, 0 passed.

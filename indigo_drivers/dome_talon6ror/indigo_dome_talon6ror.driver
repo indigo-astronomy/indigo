@@ -22,7 +22,7 @@ driver talon6ror {
 	label = "Talon6 ROR";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 4;
+	version = 5;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -225,7 +225,7 @@ driver talon6ror {
 			static void dome_status_poll(indigo_device *device);
 			static void dome_shutter_handler(indigo_device *device);
 
-			static void talon6ror_unpack_configuration(indigo_device *device) {
+			static void talon6ror_unpack_motor_configuration(indigo_device *device) {
 				uint8_t *configuration = PRIVATE_DATA->configuration;
 				X_MOTOR_CONF_KP_ITEM->number.value = X_MOTOR_CONF_KP_ITEM->number.target = talon6ror_unpack(configuration + 1);
 				X_MOTOR_CONF_KI_ITEM->number.value = X_MOTOR_CONF_KI_ITEM->number.target = talon6ror_unpack(configuration + 4);
@@ -233,27 +233,42 @@ driver talon6ror {
 				X_MOTOR_CONF_MAX_SPEED_ITEM->number.value = X_MOTOR_CONF_MAX_SPEED_ITEM->number.target = talon6ror_unpack(configuration + 10);
 				X_MOTOR_CONF_MIN_SPEED_ITEM->number.value = X_MOTOR_CONF_MIN_SPEED_ITEM->number.target = talon6ror_unpack(configuration + 13);
 				X_MOTOR_CONF_ACCELERATION_ITEM->number.value = X_MOTOR_CONF_ACCELERATION_ITEM->number.target = talon6ror_unpack(configuration + 16);
+				X_MOTOR_CONF_FULL_ENC_ITEM->number.value = X_MOTOR_CONF_FULL_ENC_ITEM->number.target = talon6ror_unpack(configuration + 37);
+				X_MOTOR_CONF_RAMP_ITEM->number.value = X_MOTOR_CONF_RAMP_ITEM->number.target = talon6ror_unpack(configuration + 40);
+				X_MOTOR_CONF_ENC_FACTOR_ITEM->number.value = X_MOTOR_CONF_ENC_FACTOR_ITEM->number.target = configuration[46] & 0x7F;
+				X_MOTOR_CONF_REVERSE_ITEM->number.value = X_MOTOR_CONF_REVERSE_ITEM->number.target = configuration[47] & 0x0F;
+			}
+
+			static void talon6ror_unpack_delay_configuration(indigo_device *device) {
+				uint8_t *configuration = PRIVATE_DATA->configuration;
 				X_DELAY_CONF_PARK_ITEM->number.value = X_DELAY_CONF_PARK_ITEM->number.target = talon6ror_unpack(configuration + 19);
 				X_DELAY_CONF_WEATHER_ITEM->number.value = X_DELAY_CONF_WEATHER_ITEM->number.target = talon6ror_unpack(configuration + 22);
 				X_DELAY_CONF_POWER_ITEM->number.value = X_DELAY_CONF_POWER_ITEM->number.target = talon6ror_unpack(configuration + 25);
-				// 28 communication delay, 31 maximum aperture, 34 IP switch are not exposed
-				X_MOTOR_CONF_FULL_ENC_ITEM->number.value = X_MOTOR_CONF_FULL_ENC_ITEM->number.target = talon6ror_unpack(configuration + 37);
-				X_MOTOR_CONF_RAMP_ITEM->number.value = X_MOTOR_CONF_RAMP_ITEM->number.target = talon6ror_unpack(configuration + 40);
 				X_DELAY_CONF_TIMEOUT_ITEM->number.value = X_DELAY_CONF_TIMEOUT_ITEM->number.target = talon6ror_unpack(configuration + 43);
-				X_MOTOR_CONF_ENC_FACTOR_ITEM->number.value = X_MOTOR_CONF_ENC_FACTOR_ITEM->number.target = configuration[46] & 0x7F;
-				X_MOTOR_CONF_REVERSE_ITEM->number.value = X_MOTOR_CONF_REVERSE_ITEM->number.target = configuration[47] & 0x0F;
+			}
+
+			static void talon6ror_unpack_close_conditions(indigo_device *device) {
+				uint8_t *configuration = PRIVATE_DATA->configuration;
 				X_CLOSE_COND_POWER_ITEM->sw.value = (configuration[48] & (1 << 0)) != 0;
 				X_CLOSE_COND_WEATHER_ITEM->sw.value = (configuration[48] & (1 << 1)) != 0;
 				X_CLOSE_COND_TIMEOUT_ITEM->sw.value = (configuration[48] & (1 << 2)) != 0;
-				// 49 dummy, 52 TW time are not exposed
 			}
 
-			static bool talon6ror_write_configuration(indigo_device *device) {
+			// 28 communication delay, 31 maximum aperture, 34 IP switch, 49 dummy and 52 TW time are not exposed
+			static void talon6ror_unpack_configuration(indigo_device *device) {
+				talon6ror_unpack_motor_configuration(device);
+				talon6ror_unpack_delay_configuration(device);
+				talon6ror_unpack_close_conditions(device);
+			}
+
+			// on failure only the property of the running handler is restored: another configuration property may hold a
+			// request copied before this handler ran, and its own handler writes it next
+			static bool talon6ror_write_configuration(indigo_device *device, void (*restore)(indigo_device *device)) {
 				PRIVATE_DATA->configuration[55] = talon6ror_checksum(PRIVATE_DATA->configuration + 1, 54);
 				if (!talon6ror_ack(device, "&%s", (char *)PRIVATE_DATA->configuration)) {
 					// the rejected values must not be sent again by the next write
 					memcpy(PRIVATE_DATA->configuration, PRIVATE_DATA->confirmed_configuration, sizeof(PRIVATE_DATA->configuration));
-					talon6ror_unpack_configuration(device);
+					restore(device);
 					return false;
 				}
 				memcpy(PRIVATE_DATA->confirmed_configuration, PRIVATE_DATA->configuration, sizeof(PRIVATE_DATA->confirmed_configuration));
@@ -270,16 +285,22 @@ driver talon6ror {
 				}
 			}
 
-			// publishes the roof state reported by the controller when no request of this driver is active
-			static void talon6ror_mirror_state(indigo_device *device, int state) {
+			// publishes the roof state reported by the controller when no request of this driver is active; shown, opened and
+			// closed are the property as the poll saw it at its check for a queued request, they are not read again here, so a
+			// request copied after that check is not taken for a stale roof state and overwritten
+			static void talon6ror_mirror_state(indigo_device *device, int state, indigo_property_state shown, bool opened, bool closed) {
 				if (state == PRIVATE_DATA->failed_state) {
 					// a failed request keeps its ALERT until the controller reports another state
+					return;
+				}
+				if (shown != INDIGO_BUSY_STATE && DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
+					// a request was copied after the check, its handler owns the property
 					return;
 				}
 				switch (state) {
 					case TALON6ROR_STATE_OPEN:
 						PRIVATE_DATA->status_busy = false;
-						if (DOME_SHUTTER_PROPERTY->state != INDIGO_OK_STATE || !DOME_SHUTTER_OPENED_ITEM->sw.value) {
+						if (shown != INDIGO_OK_STATE || !opened) {
 							DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 							indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
 							indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof opened");
@@ -287,7 +308,7 @@ driver talon6ror {
 						break;
 					case TALON6ROR_STATE_CLOSED:
 						PRIVATE_DATA->status_busy = false;
-						if (DOME_SHUTTER_PROPERTY->state != INDIGO_OK_STATE || !DOME_SHUTTER_CLOSED_ITEM->sw.value) {
+						if (shown != INDIGO_OK_STATE || !closed) {
 							DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 							indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
 							indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof closed");
@@ -295,7 +316,7 @@ driver talon6ror {
 						break;
 					case TALON6ROR_STATE_OPENING:
 						PRIVATE_DATA->status_busy = true;
-						if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE || !DOME_SHUTTER_OPENED_ITEM->sw.value) {
+						if (shown != INDIGO_BUSY_STATE || !opened) {
 							DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 							indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
 							indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof opening");
@@ -303,7 +324,7 @@ driver talon6ror {
 						break;
 					case TALON6ROR_STATE_CLOSING:
 						PRIVATE_DATA->status_busy = true;
-						if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE || !DOME_SHUTTER_CLOSED_ITEM->sw.value) {
+						if (shown != INDIGO_BUSY_STATE || !closed) {
 							DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 							indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
 							indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof closing");
@@ -311,7 +332,7 @@ driver talon6ror {
 						break;
 					default:
 						PRIVATE_DATA->status_busy = false;
-						if (DOME_SHUTTER_PROPERTY->state != INDIGO_ALERT_STATE) {
+						if (shown != INDIGO_ALERT_STATE) {
 							DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 							indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Error reported");
 						}
@@ -371,13 +392,16 @@ driver talon6ror {
 							PRIVATE_DATA->failed_state = TALON6ROR_STATE_UNKNOWN;
 						}
 						PRIVATE_DATA->last_state = state;
-						if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE && PRIVATE_DATA->request == 0 && !PRIVATE_DATA->status_busy) {
+						// the items are read before the state: a request copies the items first and sets BUSY after them
+						bool opened = DOME_SHUTTER_OPENED_ITEM->sw.value, closed = DOME_SHUTTER_CLOSED_ITEM->sw.value;
+						indigo_property_state shown = DOME_SHUTTER_PROPERTY->state;
+						if (shown == INDIGO_BUSY_STATE && PRIVATE_DATA->request == 0 && !PRIVATE_DATA->status_busy) {
 							// a request is queued behind this poll; its handler owns the property
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Shutter request queued");
 						} else if (PRIVATE_DATA->request) {
 							talon6ror_finish_request(device, state, action);
 						} else {
-							talon6ror_mirror_state(device, state);
+							talon6ror_mirror_state(device, state, shown, opened, closed);
 						}
 						const char *last_action = talon6ror_last_action[action];
 						if (PRIVATE_DATA->last_action != last_action) {
@@ -477,8 +501,9 @@ driver talon6ror {
 				DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 				// keep the framework BUSY guard closed while the device command runs
 				PRIVATE_DATA->failed_state = TALON6ROR_STATE_UNKNOWN;
-				bool open = DOME_SHUTTER_OPENED_ITEM->sw.value;
-				if (!open && !DOME_SHUTTER_CLOSED_ITEM->sw.value) {
+				// the poll may have overwritten the value after the request was copied, the targets keep the request
+				bool open = indigo_get_switch_target(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM_NAME);
+				if (!open && !indigo_get_switch_target(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM_NAME)) {
 					talon6ror_update_switches(device);
 					DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 				} else if (!talon6ror_ack(device, open ? "&O" : "&P")) {
@@ -486,6 +511,7 @@ driver talon6ror {
 					DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_send_message(device, DOME_SHUTTER_PROPERTY, open ? "Roof open failed" : "Roof close failed");
 				} else {
+					indigo_apply_switch_targets(DOME_SHUTTER_PROPERTY);
 					PRIVATE_DATA->request = open ? 'O' : 'P';
 					PRIVATE_DATA->request_time = indigo_monotonic_time();
 					PRIVATE_DATA->request_motion = false;
@@ -575,7 +601,7 @@ driver talon6ror {
 				talon6ror_pack(PRIVATE_DATA->configuration + 40, X_MOTOR_CONF_RAMP_ITEM->number.value);
 				PRIVATE_DATA->configuration[46] = 0x80 | (int)X_MOTOR_CONF_ENC_FACTOR_ITEM->number.value;
 				PRIVATE_DATA->configuration[47] = (PRIVATE_DATA->configuration[47] & 0xF0) | (((int)X_MOTOR_CONF_REVERSE_ITEM->number.value) & 0x0F);
-				if (talon6ror_write_configuration(device)) {
+				if (talon6ror_write_configuration(device, talon6ror_unpack_motor_configuration)) {
 					X_MOTOR_CONF_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
 					X_MOTOR_CONF_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -674,7 +700,7 @@ driver talon6ror {
 				talon6ror_pack(PRIVATE_DATA->configuration + 22, X_DELAY_CONF_WEATHER_ITEM->number.value);
 				talon6ror_pack(PRIVATE_DATA->configuration + 25, X_DELAY_CONF_POWER_ITEM->number.value);
 				talon6ror_pack(PRIVATE_DATA->configuration + 43, X_DELAY_CONF_TIMEOUT_ITEM->number.value);
-				if (talon6ror_write_configuration(device)) {
+				if (talon6ror_write_configuration(device, talon6ror_unpack_delay_configuration)) {
 					X_DELAY_CONF_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
 					X_DELAY_CONF_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -726,7 +752,7 @@ driver talon6ror {
 				PRIVATE_DATA->configuration[48] = PRIVATE_DATA->configuration[48] | (X_CLOSE_COND_POWER_ITEM->sw.value ? (1 << 0) : 0);
 				PRIVATE_DATA->configuration[48] = PRIVATE_DATA->configuration[48] | (X_CLOSE_COND_WEATHER_ITEM->sw.value ? (1 << 1) : 0);
 				PRIVATE_DATA->configuration[48] = PRIVATE_DATA->configuration[48] | (X_CLOSE_COND_TIMEOUT_ITEM->sw.value ? (1 << 2) : 0);
-				if (talon6ror_write_configuration(device)) {
+				if (talon6ror_write_configuration(device, talon6ror_unpack_close_conditions)) {
 					X_CLOSE_COND_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
 					X_CLOSE_COND_PROPERTY->state = INDIGO_ALERT_STATE;

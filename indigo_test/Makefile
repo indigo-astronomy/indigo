@@ -453,7 +453,7 @@ $(INTEGRATION_BUILD)/dome_skyroof_simulator: ../indigo_drivers/dome_skyroof/dome
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/dome_talon6ror_simulator: ../indigo_drivers/dome_talon6ror/dome_talon6ror_simulator/dome_talon6ror_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $<
+	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/gps_nmea_simulator: ../indigo_drivers/gps_nmea/gps_nmea_simulator/gps_nmea_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<

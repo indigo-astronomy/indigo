@@ -554,6 +554,9 @@ static void trace_property(observed_property *entry, const char *kind, indigo_pr
 				case INDIGO_TEXT_VECTOR:
 					if (!strcmp(property->name, DEVICE_PORT_PROPERTY_NAME)) {
 						length += (size_t)snprintf(line + length, sizeof(line) - length, " %s=PORT", item->name);
+					} else if (!strcmp(property->name, INFO_PROPERTY_NAME) && !strcmp(item->name, INFO_DEVICE_VERSION_ITEM_NAME)) {
+						// the driver version is bumped with every fix, it is not part of the traced behaviour
+						length += (size_t)snprintf(line + length, sizeof(line) - length, " %s=*", item->name);
 					} else {
 						length += (size_t)snprintf(line + length, sizeof(line) - length, " %s=%s", item->name, indigo_get_text_item_value(item));
 					}
@@ -1725,6 +1728,53 @@ cleanup:
 	driver_down();
 }
 
+// TGT-073: a close conditions request queued behind a configuration write the controller rejects keeps its value
+static void t6r11_close_conditions_request_survives_failed_write(void) {
+	uint8_t bytes[64];
+	CHECK(start_connected());
+	// both requests are queued behind a status poll delayed by 1.5 s, the delay write is rejected
+	CHECK(inject_argument("G", "slow", 1, "1500"));
+	CHECK(wait_rx(STATUS_REQUEST, rx_count(STATUS_REQUEST) + 1, 5));
+	CHECK(inject("a", "error", 1));
+	unsigned delay_before = revision_of(X_DELAY_CONF_PROPERTY_NAME);
+	unsigned before = revision_of(X_CLOSE_COND_PROPERTY_NAME);
+	CHECK_EQ(INDIGO_OK, request_number(X_DELAY_CONF_PROPERTY_NAME, X_DELAY_CONF_WEATHER_ITEM_NAME, 90));
+	CHECK_EQ(INDIGO_OK, request_switch(X_CLOSE_COND_PROPERTY_NAME, X_CLOSE_COND_POWER_ITEM_NAME));
+	CHECK(wait_settled(X_DELAY_CONF_PROPERTY_NAME, delay_before, INDIGO_ALERT_STATE, 10));
+	CHECK(wait_settled(X_CLOSE_COND_PROPERTY_NAME, before, INDIGO_OK_STATE, 10));
+	CHECK(switch_of(X_CLOSE_COND_PROPERTY_NAME, X_CLOSE_COND_POWER_ITEM_NAME));
+	CHECK_EQ(2, rx_prefix_count("&a"));
+	CHECK_EQ(59, frame_bytes(last_request_with_prefix("&a"), bytes, sizeof(bytes)));
+	CHECK_EQ(0x01, bytes[49] & 0x07);
+	// the rejected delay is neither kept nor written again
+	CHECK_EQ(60, ((bytes[23] & 0x7F) << 14) | ((bytes[24] & 0x7F) << 7) | (bytes[25] & 0x7F));
+	CHECK_EQ(60, value_of(X_DELAY_CONF_PROPERTY_NAME, X_DELAY_CONF_WEATHER_ITEM_NAME));
+cleanup:
+	driver_down();
+}
+
+// same mechanism for a number property: a motor request queued behind a rejected delay write keeps its value
+static void t6r11_motor_request_survives_failed_write(void) {
+	uint8_t bytes[64];
+	CHECK(start_connected());
+	CHECK(inject_argument("G", "slow", 1, "1500"));
+	CHECK(wait_rx(STATUS_REQUEST, rx_count(STATUS_REQUEST) + 1, 5));
+	CHECK(inject("a", "error", 1));
+	unsigned delay_before = revision_of(X_DELAY_CONF_PROPERTY_NAME);
+	unsigned before = revision_of(X_MOTOR_CONF_PROPERTY_NAME);
+	CHECK_EQ(INDIGO_OK, request_number(X_DELAY_CONF_PROPERTY_NAME, X_DELAY_CONF_WEATHER_ITEM_NAME, 90));
+	CHECK_EQ(INDIGO_OK, request_number(X_MOTOR_CONF_PROPERTY_NAME, X_MOTOR_CONF_KP_ITEM_NAME, 200));
+	CHECK(wait_settled(X_DELAY_CONF_PROPERTY_NAME, delay_before, INDIGO_ALERT_STATE, 10));
+	CHECK(wait_settled(X_MOTOR_CONF_PROPERTY_NAME, before, INDIGO_OK_STATE, 10));
+	CHECK_EQ(200, value_of(X_MOTOR_CONF_PROPERTY_NAME, X_MOTOR_CONF_KP_ITEM_NAME));
+	CHECK_EQ(2, rx_prefix_count("&a"));
+	CHECK_EQ(59, frame_bytes(last_request_with_prefix("&a"), bytes, sizeof(bytes)));
+	CHECK_EQ(200, ((bytes[2] & 0x7F) << 14) | ((bytes[3] & 0x7F) << 7) | (bytes[4] & 0x7F));
+	CHECK_EQ(60, ((bytes[23] & 0x7F) << 14) | ((bytes[24] & 0x7F) << 7) | (bytes[25] & 0x7F));
+cleanup:
+	driver_down();
+}
+
 // ---------------------------------------------------------------------------- reference trace
 
 static void trace_append(const char *line) {
@@ -1930,6 +1980,8 @@ static const talon6ror_case cases[] = {
 	{ "T6R-08 last_action_announced_after_reconnect", t6r08_last_action_announced_after_reconnect, "--last-action 1", false },
 	{ "T6R-09 motor_stall_message", t6r09_motor_stall_message, "--travel-time 6", false },
 	{ "T6R-10 ranges_cover_protocol", t6r10_ranges_cover_protocol, NULL, false },
+	{ "T6R-11 close_conditions_request_survives_failed_write", t6r11_close_conditions_request_survives_failed_write, NULL, false },
+	{ "T6R-11 motor_request_survives_failed_write", t6r11_motor_request_survives_failed_write, NULL, false },
 };
 
 static void run_child(const talon6ror_case *test) {
