@@ -125,9 +125,9 @@ endif
 
 libindigocat: $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libindigocat.$(SOEXT)
 
-# With parallel make the archive and the shared library must not be built by two
-# sub-makes at once, both would compile the same objects in indigocat. The shared
-# library links -lusb-1.0 from LDFLAGS, so it also waits for libusb on macOS.
+# Both libraries are built from the same objects in one sub-make each, so with parallel make the
+# shared library waits for the static one instead of compiling the objects again at the same time.
+# It links -lusb-1.0, which on macOS is the locally built libusb.
 $(BUILD_LIB)/libindigocat.a:
 	@$(MAKE)	-C indigocat $(BUILD_LIB)/libindigocat.a
 
@@ -143,7 +143,7 @@ $(BUILD_LIB)/libindigocat.$(SOEXT): $(BUILD_LIB)/libindigocat.a | $(LIBUSB)
 libraw: $(BUILD_LIB)/libraw.a
 
 $(BUILD_LIB)/libraw.a:
-	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; cd externals/libraw; install -d lib; $(MAKE) -f Makefile.indigo library
+	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; cd externals/libraw; install -d lib; make -f Makefile.indigo library
 	cp externals/libraw/lib/libraw.a $(BUILD_LIB)
 	cp externals/libraw/libraw/* $(BUILD_INCLUDE)
 
@@ -156,7 +156,7 @@ $(BUILD_LIB)/libraw.a:
 libjpeg: $(BUILD_LIB)/libjpeg.a
 
 $(BUILD_LIB)/libjpeg.a:
-	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd externals/libjpeg; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB)  --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)"; $(MAKE) install
+	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd externals/libjpeg; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB)  --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)"; make install
 
 #---------------------------------------------------------------------
 #
@@ -167,7 +167,7 @@ $(BUILD_LIB)/libjpeg.a:
 libtiff: $(BUILD_LIB)/libtiff.a
 
 $(BUILD_LIB)/libtiff.a:
-	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd externals/libtiff; ./configure --disable-ccitt --disable-packbits --disable-thunder --disable-next --disable-logluv --disable-mdi --disable-zlib --disable-pixarlog --disable-jpeg --disable-old-jpeg --disable-jbig --disable-lzma --disable-zstd --disable-webp --enable-shared=no --enable-static=yes --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) CFLAGS="$(CFLAGS)"; $(MAKE) install
+	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd externals/libtiff; ./configure --disable-ccitt --disable-packbits --disable-thunder --disable-next --disable-logluv --disable-mdi --disable-zlib --disable-pixarlog --disable-jpeg --disable-old-jpeg --disable-jbig --disable-lzma --disable-zstd --disable-webp --enable-shared=no --enable-static=yes --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) CFLAGS="$(CFLAGS)"; make install
 
 #---------------------------------------------------------------------
 #
@@ -183,7 +183,7 @@ libusb: $(LIBUSB)
 # pointer from usbi_create_event() and every libusb based driver crashes in
 # libusb_init().
 $(BUILD_LIB)/libusb-1.0.dylib:
-	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd externals/libusb; autoreconf -fiv; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) --enable-shared=yes --enable-static=no CFLAGS="$(CFLAGS)" --with-pic ac_cv_func_pipe2=no; $(MAKE); $(MAKE) install
+	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd externals/libusb; autoreconf -fiv; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) --enable-shared=yes --enable-static=no CFLAGS="$(CFLAGS)" --with-pic ac_cv_func_pipe2=no; make; make install
 
 #---------------------------------------------------------------------
 #
@@ -194,7 +194,7 @@ $(BUILD_LIB)/libusb-1.0.dylib:
 libhidapi: $(LIBHIDAPI).a
 
 $(LIBHIDAPI).a: | $(LIBUSB)
-	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS) -lusb-1.0"; cd externals/hidapi; autoreconf -fiv; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic; $(MAKE); $(MAKE) install
+	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS) -lusb-1.0"; cd externals/hidapi; autoreconf -fiv; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic; make; make install
 
 #---------------------------------------------------------------------
 #
@@ -266,10 +266,9 @@ endif
 
 libindigo_client: $(BUILD_LIB)/libindigo_client.a $(BUILD_LIB)/libindigo_client.$(SOEXT)
 
-# Same as libindigocat: one sub-make at a time in indigo_client, and the shared
-# library links -lusb-1.0 from LDFLAGS.
+# As with libindigocat, the shared library waits for the static one built from the same objects.
 $(BUILD_LIB)/libindigo_client.a:
 	@$(MAKE)	-C indigo_client $(BUILD_LIB)/libindigo_client.a
 
-$(BUILD_LIB)/libindigo_client.$(SOEXT): $(BUILD_LIB)/libindigo_client.a | $(LIBUSB)
+$(BUILD_LIB)/libindigo_client.$(SOEXT): $(BUILD_LIB)/libindigo_client.a
 	@$(MAKE)	-C indigo_client $(BUILD_LIB)/libindigo_client.$(SOEXT)
