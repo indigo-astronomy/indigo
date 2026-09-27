@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_dome_talon6ror"
 #define DRIVER_LABEL         "Talon6 ROR"
 #define DOME_DEVICE_NAME     "Talon6 ROR"
@@ -572,7 +572,8 @@ static void dome_status_poll(indigo_device *device) {
 			}
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Checksum error");
-			if (DOME_SHUTTER_PROPERTY->state != INDIGO_ALERT_STATE) {
+			// a BUSY roof state is a running or queued request: leave its value, target and state to it
+			if (DOME_SHUTTER_PROPERTY->state != INDIGO_ALERT_STATE && DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE) {
 				DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Checksum error");
 			}

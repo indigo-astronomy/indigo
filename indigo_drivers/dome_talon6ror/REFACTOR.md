@@ -313,3 +313,50 @@ Rows TGT-034, TGT-073 and the dome_talon6ror part of TGT-B08 of `indigo_drivers/
   temporary window cases 6 run, 0 passed on 3.0.0.4 (expected) and 6/6 on 3.0.0.5; temporary target-variant case
   1/1 on 3.0.0.5 and 1 run, 0 passed on the variant (expected); temporary observed-motion case 3/3; recorded run
   35/35. Hardware tests: 0 run, 0 passed.
+
+## Checksum error over a queued request and the isolated trace failure (2026-09-27, 3.0.0.6, branch `refactoring_targets`)
+
+Rows TGT-D13 and TGT-D14 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (the two items left open in the previous section).
+No hardware run for this change.
+
+- **TGT-D13 impact (reproduced):** a status reply with a bad checksum made `dome_status_poll` set DOME_SHUTTER ALERT and
+  publish "Checksum error" whenever the property was not already ALERT. A request copied on the bus thread while that
+  poll ran (its handler queued behind the poll) was shown ALERT before the handler sent it, and the framework BUSY guard
+  was open until the handler set BUSY again. The handler still sent the requested command, so the roof did what was
+  asked; display only. By the same branch a single bad reply during a motion the driver started showed ALERT for the
+  rest of that motion (the request completion only publishes the state at the end) and reopened the guard.
+- **Reproduction:** the driver logs "Checksum error" right before that branch, so the new case sends the request from
+  that log line through `indigo_log_message_handler` (on the device queue, inside the poll). On 3.0.0.5 the case failed
+  3/3: `&O` was sent once and the roof ended OK open, but "Checksum error" was published over the request. A temporary
+  variant that only printed the first part's result showed the second part failing 3/3 as well (the driver-started
+  close settled ALERT).
+- **Fix:** the checksum-error branch sets DOME_SHUTTER ALERT only when it is neither ALERT nor BUSY, checked right
+  before the write. A BUSY roof state is a running or queued request, so its value, target and state are left to it;
+  the error is still logged and the next valid reply is handled as before. No serial command changed. Regenerated
+  with the unchanged generator; the only generated changes are the edited block and the version. Regeneration is
+  reproducible.
+- **Regression test `T6R-12 shutter_request_survives_status_checksum_error`:** with the roof closed, the next `&G`
+  reply gets a bad checksum and an OPEN request is sent from the poll's "Checksum error" log line; exactly one `&O`, no
+  `&P`, OK open and no "Checksum error" publication are required. Then a CLOSE request is sent, a bad checksum is
+  injected after `&P` during the motion, and DOME_SHUTTER must settle OK closed without an ALERT in between. 3.0.0.5:
+  failed 3/3; 3.0.0.6: passed 5/5 standalone and in the recorded run.
+- **TGT-D14 (cannot reproduce):** 25 isolated `reference_trace` runs (`TALON6ROR_TEST_FILTER=reference_trace`,
+  `TALON6ROR_KEEP_FIXTURE=1`) on 3.0.0.6 passed 25/25, as did the recorded run. Reading the trace code found one timing
+  cause that makes the case fail: a step starts right after a boundary poll and the next poll is 0.5 s away, so a step
+  whose command is sent later than that records an extra idle `S POLL` line before the command. A temporary 0.6 s stall
+  at the start of every step (not committed) failed at the `open` step (`S POLL state=1 action=0` before `S RX &O%#`).
+  `trace_end()` now drops a leading idle poll that repeats the boundary poll when the step has a command, or does not
+  end with a poll (`disconnect`, where the stall variant failed next); steps without a command that end with a poll
+  keep their poll line, so both fixtures are unchanged. With the stall the case then passed 3/3, without it 3/3.
+  The trace also used to name `actual_trace.txt` in the fixture directory, which the parent removes unless
+  `TALON6ROR_KEEP_FIXTURE` is set; that is why the 3.0.0.4 failure left nothing behind. A mismatch now prints the first
+  differing line of both traces. Whether the 3.0.0.4 failure had this cause is not known; it happened right after the
+  version masking, so a run between the masking change and the fixture update is another possible explanation.
+- **Verification (Linux x64):** recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py dome_talon6ror`:
+  36/36 OK (3.0.0.6). `MIGRATION_STATUS.md` hardware-free count 35 -> 36.
+- Simulated tests of this change: new case on 3.0.0.5 3 run, 0 passed (expected) and its second part alone 3 run,
+  0 passed (expected); new case on 3.0.0.6 5/5; isolated `reference_trace` 25/25 on 3.0.0.6; while the trace change
+  was developed: temporary stall variant 1 run, 0 passed before it, 3 run, 0 passed with a first version that also
+  dropped the `abort idle` poll (plain `reference_trace` 3 run, 0 passed with it), 3 run, 0 passed with a second
+  version that still failed at `disconnect` (plain 3/3), and 3/3 with the final change (plain 3/3);
+  recorded run 36/36. Hardware tests: 0 run, 0 passed.

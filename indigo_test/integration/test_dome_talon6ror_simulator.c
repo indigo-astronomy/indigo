@@ -203,6 +203,7 @@ static char trace_text[TRACE_SIZE], trace_pending[TRACE_SIZE / 4];
 static size_t trace_length, trace_pending_length;
 static atomic_bool trace_active;
 static int trace_mark;
+static bool trace_polling;
 
 // ---------------------------------------------------------------------------- utilities
 
@@ -1775,6 +1776,50 @@ cleanup:
 	driver_down();
 }
 
+static atomic_bool checksum_request_sent;
+static atomic_int checksum_request_result;
+
+// runs on the device queue inside the status poll, between the checksum check and the poll's DOME_SHUTTER write
+static void request_on_checksum_error(indigo_log_levels level, const char *message) {
+	(void)level;
+	if (strstr(message, "Checksum error") && !atomic_exchange(&checksum_request_sent, true)) {
+		atomic_store(&checksum_request_result, request_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME));
+	}
+}
+
+// TGT-D13: a status reply with a bad checksum must not publish ALERT over a request copied before the poll's
+// DOME_SHUTTER write; the request stays BUSY until its handler sent it (ALERT would also reopen the BUSY guard). The
+// request is sent from the poll's "Checksum error" log line, which the driver writes right before that branch. A
+// checksum error during a motion the driver started leaves its BUSY state alone as well.
+static void t6r12_shutter_request_survives_status_checksum_error(void) {
+	CHECK(start_connected());
+	atomic_store(&checksum_request_sent, false);
+	atomic_store(&checksum_request_result, -1);
+	int errors = message_count_of("Checksum error");
+	indigo_log_message_handler = request_on_checksum_error;
+	CHECK(inject("G", "checksum", 1));
+	CHECK(wait_rx("&O%#", 1, 5));
+	indigo_log_message_handler = NULL;
+	CHECK(atomic_load(&checksum_request_sent));
+	CHECK_EQ(INDIGO_OK, atomic_load(&checksum_request_result));
+	CHECK(wait_state(DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, 20));
+	CHECK(switch_of(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME));
+	CHECK_EQ(1, rx_count("&O%#"));
+	CHECK_EQ(0, rx_count("&P%#"));
+	CHECK_EQ(errors, message_count_of("Checksum error"));
+	// a driver-started close keeps BUSY through a checksum error and ends OK
+	unsigned before = revision_of(DOME_SHUTTER_PROPERTY_NAME);
+	CHECK_EQ(INDIGO_OK, request_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME));
+	CHECK(wait_rx("&P%#", 1, 5));
+	CHECK(inject("G", "checksum", 1));
+	CHECK(wait_settled(DOME_SHUTTER_PROPERTY_NAME, before, INDIGO_OK_STATE, 20));
+	CHECK(switch_of(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME));
+	CHECK_EQ(errors, message_count_of("Checksum error"));
+cleanup:
+	indigo_log_message_handler = NULL;
+	driver_down();
+}
+
 // ---------------------------------------------------------------------------- reference trace
 
 static void trace_append(const char *line) {
@@ -1797,6 +1842,7 @@ static bool wait_poll_boundary(void) {
 }
 
 static void trace_begin(bool polling) {
+	trace_polling = polling;
 	if (polling) {
 		wait_poll_boundary();
 	} else {
@@ -1837,10 +1883,37 @@ static bool trace_end(const char *step, bool polling) {
 		int end = poll_end_index(count, polls);
 		count = end >= 0 ? end : count;
 	}
+	// a step started more than one poll period after its boundary poll sees another idle poll before its first command
+	// (or, in a step that does not end with a poll, before its end); it repeats the boundary poll and is not part of
+	// the step
+	char boundary_poll[256] = "";
+	int first_command = count;
+	if (trace_polling) {
+		for (int i = trace_mark - 1; i >= 0; i--) {
+			if (!strcmp(events[i].kind, "RX")) {
+				if (!poll_at(count, i, boundary_poll, sizeof(boundary_poll))) {
+					*boundary_poll = 0;
+				}
+				break;
+			}
+		}
+		for (int i = trace_mark; i < count; i++) {
+			if (poll_at(count, i, line, sizeof(line))) {
+				i++;
+			} else if (!strcmp(events[i].kind, "RX")) {
+				first_command = i;
+				break;
+			}
+		}
+	}
 	snprintf(line, sizeof(line), "## %s", step);
 	trace_append(line);
 	for (int i = trace_mark; i < count; i++) {
 		if (poll_at(count, i, line, sizeof(line))) {
+			if ((first_command < count || !polling) && i < first_command && !strcmp(line, boundary_poll)) {
+				i++;
+				continue;
+			}
 			if (strcmp(line, previous_poll)) {
 				trace_append(line);
 				snprintf(previous_poll, sizeof(previous_poll), "%s", line);
@@ -1927,7 +2000,20 @@ static void reference_trace(void) {
 				fwrite(trace_text, 1, trace_length, file);
 				fclose(file);
 			}
-			fprintf(stderr, "Reference trace mismatch; actual trace kept in %s (diff it against %s)\n", path, TALON6ROR_REFERENCE_TRACE_PATH);
+			// the fixture directory is removed after the run unless TALON6ROR_KEEP_FIXTURE is set, so name the first difference here
+			int line = 1;
+			const char *expected = reference, *actual = trace_text;
+			while (*expected && *expected == *actual) {
+				line += *expected == '\n';
+				expected++;
+				actual++;
+			}
+			while (expected > reference && expected[-1] != '\n') {
+				expected--;
+				actual--;
+			}
+			fprintf(stderr, "Reference trace line %d differs:\n  expected: %.*s\n  actual:   %.*s\n", line, (int)strcspn(expected, "\n"), expected, (int)strcspn(actual, "\n"), actual);
+			fprintf(stderr, "Reference trace mismatch; actual trace kept in %s when TALON6ROR_KEEP_FIXTURE is set (diff it against %s)\n", path, TALON6ROR_REFERENCE_TRACE_PATH);
 			indigo_test_failures++;
 		}
 	}
@@ -1982,6 +2068,7 @@ static const talon6ror_case cases[] = {
 	{ "T6R-10 ranges_cover_protocol", t6r10_ranges_cover_protocol, NULL, false },
 	{ "T6R-11 close_conditions_request_survives_failed_write", t6r11_close_conditions_request_survives_failed_write, NULL, false },
 	{ "T6R-11 motor_request_survives_failed_write", t6r11_motor_request_survives_failed_write, NULL, false },
+	{ "T6R-12 shutter_request_survives_status_checksum_error", t6r12_shutter_request_survives_status_checksum_error, NULL, false },
 };
 
 static void run_child(const talon6ror_case *test) {

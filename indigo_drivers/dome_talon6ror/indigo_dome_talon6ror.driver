@@ -22,7 +22,7 @@ driver talon6ror {
 	label = "Talon6 ROR";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 5;
+	version = 6;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -445,7 +445,8 @@ driver talon6ror {
 						}
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Checksum error");
-						if (DOME_SHUTTER_PROPERTY->state != INDIGO_ALERT_STATE) {
+						// a BUSY roof state is a running or queued request: leave its value, target and state to it
+						if (DOME_SHUTTER_PROPERTY->state != INDIGO_ALERT_STATE && DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE) {
 							DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 							indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Checksum error");
 						}
