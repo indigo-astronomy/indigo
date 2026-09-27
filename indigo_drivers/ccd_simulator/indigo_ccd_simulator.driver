@@ -20,7 +20,7 @@ driver simulator {
 	label = "Camera Simulator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 35;
+	version = 36;
 	multi_device_support = true;
 	include {
 		#include <math.h>
@@ -1403,7 +1403,7 @@ driver simulator {
 			#define SIDEREAL_DEC_RATE    (15.0410686 / 3600.0)
 
 			static void guider_ra_finalizer(indigo_device *device) {
-				// a connected mount simulator is guided at the physical guide rate and the image follows its pointing
+				// a connected, guidable mount simulator is guided at the physical guide rate and the image follows its pointing
 				if (!indigo_simulated_mount_guide(PRIVATE_DATA->guide_rate * SIDEREAL_RA_RATE * (GUIDER_GUIDE_EAST_ITEM->number.value - GUIDER_GUIDE_WEST_ITEM->number.value) / 1000.0, 0)) {
 					double offset = cos(M_PI * DEC_ITEM->number.value / 180.0) * PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / GUIDER_GUIDE_SCALE;
 					IMAGE_RA_OFFSET_ITEM->number.value += offset;

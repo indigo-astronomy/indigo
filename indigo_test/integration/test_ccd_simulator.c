@@ -1149,6 +1149,15 @@ static void simulator_guider_camera_follows_mount_simulator_guiding(void) {
 	mount_started = true;
 	SIM_CHECK(mount_connect("Mount Simulator", true));
 	SIM_CHECK(mount_state_matches(true, NAN, NAN, 0, 5));
+	SIM_CHECK(mount_connect("CCD Guider Simulator (guider)", true));
+	indigo_usleep(200000);
+	SIM_CHECK(indigo_get_simulated_mount_state(&state));
+	double parked_ra = state.ra, parked_dec = state.dec;
+	double before = cached_number_value("SIMULATION_SETUP", "IMAGE_DEC_OFFSET");
+	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, "CCD Guider Simulator (guider)", GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 300) == INDIGO_OK);
+	SIM_CHECK(sim_offset_changes("IMAGE_DEC_OFFSET", before));
+	SIM_CHECK(mount_state_matches(true, parked_ra, parked_dec, 1e-9, 0.1));
+	SIM_CHECK(sim_number("SIMULATION_SETUP", 1, (const char *[]){ "IMAGE_DEC_OFFSET" }, (double []){ 0 }, INDIGO_OK_STATE));
 	SIM_CHECK(indigo_change_switch_property_1(&simulator_test_client, "Mount Simulator", MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true) == INDIGO_OK);
 	SIM_CHECK(indigo_change_switch_property_1(&simulator_test_client, "Mount Simulator", MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true) == INDIGO_OK);
 	SIM_CHECK(indigo_change_number_property(&simulator_test_client, "Mount Simulator", MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, (const char *[]){ MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME }, (double []){ FOLLOW_RA, FOLLOW_DEC }) == INDIGO_OK);
@@ -1176,8 +1185,6 @@ static void simulator_guider_camera_follows_mount_simulator_guiding(void) {
 	printf("    3 s west pulse shifted the star by %.3f, %.3f px, expected %.3f px\n", x2 - x1, y2 - y1, expected);
 	SIM_CHECK(shifted_along(x2 - x1, y2 - y1, false, false, expected, 0.25));
 	// The camera's own guider moves the mount back: the star returns and the mount takes the move over
-	SIM_CHECK(mount_connect("CCD Guider Simulator (guider)", true));
-	indigo_usleep(200000);
 	SIM_CHECK(indigo_get_simulated_mount_state(&state));
 	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, "CCD Guider Simulator (guider)", GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 3000) == INDIGO_OK);
 	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, "CCD Guider Simulator (guider)", GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 3000) == INDIGO_OK);

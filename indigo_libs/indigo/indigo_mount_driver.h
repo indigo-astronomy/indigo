@@ -649,8 +649,8 @@ INDIGO_EXTERN void indigo_set_simulated_mount_state(indigo_device *device, indig
  */
 INDIGO_EXTERN bool indigo_get_simulated_mount_state(indigo_simulated_mount_state *state);
 
-/** Move a simulated mount by ra hours and dec degrees, return false if no simulated mount is connected.
- A mount which does not follow guide pulses ignores the request.
+/** Move a simulated mount by ra hours and dec degrees, return true if a connected simulated mount accepted the request.
+ Return false if no simulated mount is connected or the connected mount can not follow guide pulses.
  */
 INDIGO_EXTERN bool indigo_simulated_mount_guide(double ra, double dec);
 
