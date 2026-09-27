@@ -178,3 +178,56 @@ MountSim's independent `python3 tests/test_control.py --app build/Build/Products
 ### Final test summary for this acceptance run
 
 MountSim simulated acceptance: **13 run / 13 passed**. Portable simulated integration: **15 run / 15 passed**, repeated **15 / 15** under ASan/UBSan. Unique simulated scenarios: **28 / 28**. Physical hardware: **0 run / 0 passed**.
+
+## Reader replies on the device queue (3.0.0.21, 2026-09-27)
+
+Findings TGT-B02, TGT-C02 and the rainbow parts of TGT-B03 and TGT-B05 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Simulator run on Linux x64 only; no hardware and no MountSim run for this change (MountSim needs macOS).
+
+Defects, reproduced against 3.0.0.20 before the fix:
+
+- TGT-B02 / TGT-B05: the `rainbow_reader` thread wrote every reply straight into the properties, truly concurrent
+  with the bus thread and the change handlers. The reply to the poll's `:AT#` or `:Ct?#` replaced a pending
+  `MOUNT_TRACKING` or `MOUNT_TRACK_RATE` request, set it OK before its handler ran (reopening the BUSY guard), and the
+  handler then read the overwritten value: a tracking ON request sent `:CtL#`, a solar rate request `:CtR#`.
+- TGT-C02 / TGT-B05: the replies to `:GC#:GG#:GL#` wrote the mount clock into a pending `MOUNT_UTC_TIME` request and
+  set it OK, so the handler sent the mount its own time back.
+- A failed tracking request (transport lost) left the requested state shown with ALERT instead of the tracking the
+  mount last reported.
+
+Fix: the reader only reads replies, stores them in `PRIVATE_DATA->messages` under `message_mutex` and queues
+`rainbow_process_messages()`, which applies them on the device queue in turn with the change handlers (the same
+hand-over as dome_nexdome3). `rainbow_sync_command()` runs in the connection handler on that queue, so it takes the
+replies over itself while it waits. The reply handling records the reported tracking, track rate, UTC time and offset
+in private data and leaves `MOUNT_TRACKING`, `MOUNT_TRACK_RATE` and `MOUNT_UTC_TIME` alone while they are BUSY.
+The tracking and track rate handlers send `indigo_get_switch_target()`, apply it with `indigo_apply_switch_targets()`
+and on a failed write show the state last reported with ALERT; the UTC change branch records the request with
+`indigo_mount_set_utc_target()`, the handler sends `indigo_mount_get_utc_target()`, writes it into the items once
+written, and otherwise shows the mount clock last reported with ALERT. Commands and their order are unchanged
+(`rainbow_preserves_modern_initialization_order` still matches the original reference trace).
+
+TGT-B03 (rainbow part), won't fix: `:Gt`, `:Gg` and `:CU0=` are only replies to `:Gt#:Gg#` and `:CU0#`, which the
+driver sends only from the connection handler and waits for there (the protocol documents no unsolicited frame), and
+`MOUNT_GEOGRAPHIC_COORDINATES` / `MOUNT_GUIDE_RATE` are not defined until the connection completes, so no request can
+be pending when they arrive; with the move onto the queue they are also serialized with the handlers.
+
+Pre-existing Linux build failure fixed: the simulator uses `lround()` and did not link without `-lm` on Linux
+(`indigo_test/Makefile`), so the suite could not be built there.
+
+Regression tests (`indigo_test/integration/test_mount_rainbow_simulator.c`); the simulator answers the poll's command
+800 ms late (existing `DELAY` injection) while a gate handler holds the device queue. Each case first sends the request
+while the reply is outstanding (fails on 3.0.0.20), then again with the reply read before the request (proves the BUSY
+guard: with the guard removed from the `:AT` handling the first OK after the OFF request shows ON):
+
+- `rainbow_tracking_request_survives_poll_reply`: 3.0.0.20 published OK before the handler ran and sent no `:CtA#`.
+- `rainbow_track_rate_request_survives_poll_reply`: 3.0.0.20 published OK early and sent no `:CtS#`.
+- `rainbow_utc_request_survives_poll_reply`: 3.0.0.20 published OK early and sent the mount clock, not `:SL22:34:56#`.
+- `rainbow_handles_active_transport_loss` now also checks that the failed ON request shows OFF (fails on 3.0.0.20).
+
+Verification: suite 18/18 on Linux x64, the three new cases 5/5 repeated, 18/18 under a temporary Linux
+ASan/UBSan build (the Makefile's sanitize target is arm64 only), regeneration byte-identical, recorded run through
+`tools/run_driver_test.py`.
+
+### Final test summary for this change
+
+Simulated: 18 run / 18 passed. Hardware: 0 run / 0 passed.

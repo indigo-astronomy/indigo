@@ -438,6 +438,8 @@ static void rainbow_handles_active_transport_loss(void) {
 	unsigned int revision = property_revision(MOUNT_TRACKING_PROPERTY_NAME);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rainbow_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	// The failed request shows the tracking the mount last reported.
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true);
 	disconnect_serial_device(&rainbow_mount);
 	stop_external_serial_simulator(&simulator);
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_RAINBOW_SIMULATOR_EXECUTABLE));
@@ -534,10 +536,230 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A gate handler holds the device queue, so a request sent meanwhile waits behind it for its handler.
+static _Atomic(indigo_device *) driver_device;
+static atomic_bool gate_entered, gate_release;
+
+// The first OK publication of the watched property after a request: the switch item that is on, or the UTC item.
+static char watched_property[INDIGO_NAME_SIZE];
+static char first_ok_value[INDIGO_VALUE_SIZE];
+static atomic_bool watch_armed, first_ok_seen;
+
+static indigo_result capture_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, rainbow_mount.device_name)) {
+		atomic_store(&driver_device, device);
+	}
+	return simulator_client_define_property(client, device, property, message);
+}
+
+static indigo_result capture_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (atomic_load(&watch_armed) && property->state == INDIGO_OK_STATE && !strcmp(property->name, watched_property)) {
+		first_ok_value[0] = 0;
+		if (property->type == INDIGO_TEXT_VECTOR) {
+			snprintf(first_ok_value, sizeof(first_ok_value), "%s", indigo_get_text_item_value(property->items));
+		} else if (property->type == INDIGO_SWITCH_VECTOR) {
+			for (int i = 0; i < property->count; i++) {
+				if (property->items[i].sw.value) {
+					snprintf(first_ok_value, sizeof(first_ok_value), "%s", property->items[i].name);
+					break;
+				}
+			}
+		}
+		atomic_store(&watch_armed, false);
+		atomic_store(&first_ok_seen, true);
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static void gate_handler(indigo_device *device) {
+	(void)device;
+	atomic_store(&gate_entered, true);
+	for (int i = 0; i < 1000 && !atomic_load(&gate_release); i++) {
+		indigo_usleep(10000);
+	}
+}
+
+static bool hold_queue(void) {
+	indigo_device *device = atomic_load(&driver_device);
+	if (device == NULL) {
+		fprintf(stderr, "No device seen, the queue cannot be held\n");
+		return false;
+	}
+	atomic_store(&gate_entered, false);
+	atomic_store(&gate_release, false);
+	indigo_execute_handler(device, gate_handler);
+	for (int i = 0; i < 500 && !atomic_load(&gate_entered); i++) {
+		indigo_usleep(10000);
+	}
+	return atomic_load(&gate_entered);
+}
+
+static void release_queue(void) {
+	atomic_store(&gate_release, true);
+}
+
+typedef bool (*rainbow_request)(void);
+
+// The simulator answers the poll's `command` 800 ms late and the device queue is held meanwhile. With reply_first the
+// reply reaches the driver before the request is sent, otherwise the request is sent while the reply is outstanding;
+// either way the reply is read before the request's handler runs. The request must stay BUSY until its handler ran,
+// and its handler's OK must be the first OK published after it.
+static bool request_around_poll_reply(external_serial_simulator *simulator, const char *command, bool reply_first, const char *property, rainbow_request request) {
+	int commands = count_events(simulator, "CMD", command);
+	int delays = count_events(simulator, "DELAY", command);
+	bool result = install_injection(simulator, command, "DELAY:800", 1) && wait_for_event_count(simulator, "CMD", command, commands + 1) && hold_queue();
+	if (result && reply_first) {
+		result = wait_for_event_count(simulator, "DELAY", command, delays + 1);
+		indigo_usleep(300000);
+	}
+	snprintf(watched_property, sizeof(watched_property), "%s", property);
+	atomic_store(&first_ok_seen, false);
+	atomic_store(&watch_armed, true);
+	result = result && request();
+	if (result && !reply_first) {
+		result = wait_for_event_count(simulator, "DELAY", command, delays + 1);
+		indigo_usleep(300000);
+	}
+	if (result && find_cached_property(property)->state != INDIGO_BUSY_STATE) {
+		fprintf(stderr, "%s left BUSY before its handler ran, state %d\n", property, find_cached_property(property)->state);
+		result = false;
+	}
+	release_queue();
+	for (int i = 0; result && i < 100 && !atomic_load(&first_ok_seen); i++) {
+		indigo_usleep(50000);
+	}
+	atomic_store(&watch_armed, false);
+	return result && atomic_load(&first_ok_seen);
+}
+
+static bool first_ok_is(const char *expected) {
+	if (strcmp(first_ok_value, expected)) {
+		fprintf(stderr, "First OK after the request shows '%s', expected '%s'\n", first_ok_value, expected);
+		return false;
+	}
+	return true;
+}
+
+static bool wait_for_switch_ok(const char *property, const char *item) {
+	for (int i = 0; i < 100; i++) {
+		indigo_property *cached = find_cached_property(property);
+		indigo_item *cached_item = find_cached_item(property, item);
+		if (cached != NULL && cached_item != NULL && cached->state == INDIGO_OK_STATE && cached_item->sw.value) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	return false;
+}
+
+static bool request_tracking_on(void) {
+	return indigo_change_switch_property_1(&simulator_test_client, rainbow_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true) == INDIGO_OK;
+}
+
+static bool request_tracking_off(void) {
+	return indigo_change_switch_property_1(&simulator_test_client, rainbow_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true) == INDIGO_OK;
+}
+
+static bool request_solar_rate(void) {
+	return indigo_change_switch_property_1(&simulator_test_client, rainbow_mount.device_name, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true) == INDIGO_OK;
+}
+
+static bool request_lunar_rate(void) {
+	return indigo_change_switch_property_1(&simulator_test_client, rainbow_mount.device_name, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true) == INDIGO_OK;
+}
+
+static bool request_utc(const char *utc, const char *offset) {
+	const char *items[] = { UTC_TIME_ITEM_NAME, UTC_OFFSET_ITEM_NAME };
+	const char *values[] = { utc, offset };
+	return indigo_change_text_property(&simulator_test_client, rainbow_mount.device_name, UTC_TIME_PROPERTY_NAME, ARRAY_SIZE(items), items, values) == INDIGO_OK;
+}
+
+static bool request_first_utc(void) {
+	return request_utc("2026-09-16T12:34:56", "+10");
+}
+
+static bool request_second_utc(void) {
+	return request_utc("2026-10-01T01:02:03", "+2");
+}
+
+// TGT-B02, TGT-B05: the reply to the poll's :AT# replaced a pending tracking request and set it OK before its handler
+// sent the opposite command.
+static void rainbow_tracking_request_survives_poll_reply(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true);
+	int on_count = count_events(&simulator, "CMD", "CtA");
+	SERIAL_CHECK_TRUE(request_around_poll_reply(&simulator, "AT", false, MOUNT_TRACKING_PROPERTY_NAME, request_tracking_on));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "CtA", on_count + 1));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "CtL"));
+	SERIAL_CHECK_TRUE(first_ok_is(MOUNT_TRACKING_ON_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_switch_ok(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SERIAL_CHECK_TRUE(request_around_poll_reply(&simulator, "AT", true, MOUNT_TRACKING_PROPERTY_NAME, request_tracking_off));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "CtL", 1));
+	SERIAL_CHECK_TRUE(first_ok_is(MOUNT_TRACKING_OFF_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_switch_ok(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
+cleanup:
+	release_queue();
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-B02, TGT-B05: the reply to the poll's :Ct?# replaced a pending track rate request and set it OK before its
+// handler sent the old rate.
+static void rainbow_track_rate_request_survives_poll_reply(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(request_around_poll_reply(&simulator, "Ct?", false, MOUNT_TRACK_RATE_PROPERTY_NAME, request_solar_rate));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "CtS", 1));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "CtR"));
+	SERIAL_CHECK_TRUE(first_ok_is(MOUNT_TRACK_RATE_SOLAR_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_switch_ok(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME));
+	SERIAL_CHECK_TRUE(request_around_poll_reply(&simulator, "Ct?", true, MOUNT_TRACK_RATE_PROPERTY_NAME, request_lunar_rate));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "CtM", 1));
+	SERIAL_CHECK_TRUE(first_ok_is(MOUNT_TRACK_RATE_LUNAR_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_switch_ok(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME));
+cleanup:
+	release_queue();
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-C02, TGT-B05: the replies to the poll's :GC#:GG#:GL# replaced a pending UTC request with the mount clock and set
+// it OK, so the handler sent the mount its own time.
+static void rainbow_utc_request_survives_poll_reply(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	SERIAL_CHECK_TRUE(request_around_poll_reply(&simulator, "GC", false, UTC_TIME_PROPERTY_NAME, request_first_utc));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "SL22:34:56", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "SC09/16/26", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "SG-10", 1));
+	SERIAL_CHECK_EQ_INT(1, count_event_prefixes(&simulator, "CMD", "SL"));
+	SERIAL_CHECK_TRUE(first_ok_is("2026-09-16T12:34:56"));
+	SERIAL_CHECK_TRUE(request_around_poll_reply(&simulator, "GC", true, UTC_TIME_PROPERTY_NAME, request_second_utc));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "SL03:02:03", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "SC10/01/26", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "SG-02", 1));
+	SERIAL_CHECK_EQ_INT(2, count_event_prefixes(&simulator, "CMD", "SL"));
+	SERIAL_CHECK_TRUE(first_ok_is("2026-10-01T01:02:03"));
+cleanup:
+	release_queue();
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	if (!indigo_test_use_private_home()) {
 		return 2;
 	}
+	simulator_test_client.define_property = capture_define_property;
+	simulator_test_client.update_property = capture_update_property;
 	const indigo_test_case tests[] = {
 		{ "rainbow_settings_survive_reconnect", rainbow_settings_survive_reconnect },
 		{ "rainbow_park_abort_and_pending_disconnect", rainbow_park_abort_and_pending_disconnect },
@@ -554,7 +776,10 @@ int main(void) {
 		{ "rainbow_recovers_from_faulted_poll_replies", rainbow_recovers_from_faulted_poll_replies },
 		{ "rainbow_reconnects_after_clean_disconnect", rainbow_reconnects_after_clean_disconnect },
 		{ "rainbow_handles_active_transport_loss", rainbow_handles_active_transport_loss },
-		{ "rainbow_rejects_non_rainbow_transport", rainbow_rejects_non_rainbow_transport }
+		{ "rainbow_rejects_non_rainbow_transport", rainbow_rejects_non_rainbow_transport },
+		{ "rainbow_tracking_request_survives_poll_reply", rainbow_tracking_request_survives_poll_reply },
+		{ "rainbow_track_rate_request_survives_poll_reply", rainbow_track_rate_request_survives_poll_reply },
+		{ "rainbow_utc_request_survives_poll_reply", rainbow_utc_request_survives_poll_reply }
 	};
 	int result = indigo_run_tests("RainbowAstro mount serial simulator integration tests", tests, ARRAY_SIZE(tests));
 	indigo_test_remove_private_home();

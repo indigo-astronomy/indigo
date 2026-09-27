@@ -819,7 +819,7 @@ $(INTEGRATION_BUILD)/test_mount_pmc8_simulator: integration/test_mount_pmc8_simu
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_PMC8_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/mount_rainbow_simulator: ../indigo_drivers/mount_rainbow/mount_rainbow_simulator/mount_rainbow_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $<
+	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/test_mount_rainbow_simulator: integration/test_mount_rainbow_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/mount_rainbow/original_reference_trace.txt $(INTEGRATION_BUILD)/mount_rainbow_simulator $(BUILD_DRIVERS)/indigo_mount_rainbow.a | $(INTEGRATION_BUILD)
 	$(CC) $(MOUNT_RAINBOW_TEST_CFLAGS) -o $@ $< $(MOUNT_RAINBOW_SIMULATOR_TEST_LDFLAGS)
