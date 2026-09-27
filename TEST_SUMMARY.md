@@ -149,7 +149,7 @@
 |  | 2026-09-21 20:26 | 3.0.0.27 | linux arm64 | Creative Live! Cam Sync HD VF0770 | 11 / 11 | ✅ OK |
 |  | 2026-09-26 19:47 | 3.0.0.30 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
 | dome_baader | 2026-09-21 15:27 | 3.0.0.9 | mac arm64 | simulator | 44 / 44 | ✅ OK |
-|  | 2026-09-27 16:12 | 3.0.0.15 | linux x64 | simulator | 52 / 52 | ✅ OK |
+|  | 2026-09-27 16:38 | 3.0.0.16 | linux x64 | simulator | 53 / 53 | ✅ OK |
 | dome_beaver | 2026-09-21 15:35 | 3.0.0.7 | mac arm64 | simulator | 47 / 47 | ✅ OK |
 |  | 2026-09-27 03:37 | 3.0.0.9 | linux x64 | simulator | 48 / 48 | ✅ OK |
 | dome_dragonfly | 2026-09-26 22:20 | 3.0.0.10 | mac arm64 | simulator | 22 / 22 | ✅ OK |

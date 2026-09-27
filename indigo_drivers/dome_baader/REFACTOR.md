@@ -511,3 +511,38 @@ run for this change.
 - Simulated tests of this change: new cases on 3.0.0.14 6 run, 0 passed (expected), plus 1 debug-log rerun of the
   shutter/flap case (failed as expected); on 3.0.0.15 10/10; check-only variant 2 run, 0 passed (expected); recorded
   run 52/52. The scratch case for (b) (not a registered case) is not counted. Hardware tests: 0 run, 0 passed.
+
+## Failed requests in the first poll after an abort (2026-09-27, 3.0.0.16, branch `refactoring_targets`)
+
+Row TGT-D27 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this change.
+
+- **Defect (reproduced, fixed):** a request that failed between DOME_ABORT_MOTION and the first status poll after it
+  (a GOTO answered `d#comerro`, a flap OPEN refused with `d#err_sht`, a shutter OPEN answered `d#comerro`) left its
+  property ALERT with the failure message, and that poll's `aborted` branch published it OK. The branch set every
+  non-BUSY rotation property, DOME_SHUTTER and a non-BUSY DOME_FLAP OK whether or not the aborted operation owned it,
+  so the failure disappeared one poll after it was reported. The same republication also cleared a rotation or flap
+  ALERT left from before the abort.
+- **Fix:** the `aborted` branch ends only the rotation / flap operation that is still running since the abort
+  (`rotation_active && rotation_aborted`, `flap_active && flap_aborted`) and publishes only its properties OK. It no
+  longer touches DOME_SHUTTER, whose aborted operation the abort handler already ends. Every other state belongs to a
+  request handled since the abort, whether BUSY (TGT-D12/D20/D24), stopped by an emergency in this poll (TGT-D25) or
+  failed (TGT-D27), and stays. The local `rotation_stopped` and the `shutter_alert` / `flap_alert` checks the branch
+  needed for TGT-D25 are subsumed and were removed from it; both flags keep their other uses. No serial command
+  changed.
+- **Regression test:** `failed_requests_keep_alert_in_first_poll_after_abort` (`--azimuth 900`) handles
+  DOME_ABORT_MOTION and then a failing request right after a status poll, checks that the command was sent and the
+  property settled ALERT before the next `d#getazim`, and requires ALERT with no OK update after two more polls. Three
+  parts, all evaluated: flap OPEN with the shutter closed (`d#err_sht`), shutter OPEN with an injected `d#comerro`,
+  GOTO 180° with an injected `d#comerro` (DOME_HORIZONTAL_COORDINATES and DOME_STEPS); a GOTO 180° afterwards must
+  complete. 3.0.0.15 failed 3/3 (all four properties OK after the first poll, 1 OK update each); 3.0.0.16 passed 5/5.
+- **Reference trace:** `generated_reference_trace.txt` (now 184 lines) loses 5 `U` lines, the poll's republication of
+  properties no aborted operation owned: `DOME_FLAP OK CLOSED` in "abort in motion", and `DOME_HORIZONTAL_COORDINATES`,
+  `DOME_STEPS`, `DOME_SHUTTER` and `DOME_FLAP` OK in "abort idle" (the abort handler's own `DOME_SHUTTER OK` stays).
+  No `S` line changed. Three captures on 3.0.0.16 gave the same difference.
+- **Verification (Linux x64):** regeneration with the unchanged generator; the only generated changes are the edited
+  blocks and the version. Recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py dome_baader`: 53/53 OK
+  (3.0.0.16). `MIGRATION_STATUS.md` count `55 / 0` -> `56 / 0` (53 default cases and 3 opt-in network cases). The
+  sanitizer target builds only on macOS (`-arch`) and was not run.
+- Simulated tests of this change: new case on 3.0.0.15 3 run, 0 passed (expected); on 3.0.0.16 5/5; one complete
+  default run before the fixture update 53 run, 52 passed (`reference_trace` failed on the expected lines); trace
+  captures 3/3; recorded run 53/53. Hardware tests: 0 run, 0 passed.

@@ -2191,6 +2191,52 @@ cleanup:
 	driver_down();
 }
 
+// TGT-D27: a request that fails between DOME_ABORT_MOTION and the first status poll after it is not the aborted
+// operation either. Its ALERT must survive that poll's abort branch and the polls after it, and no OK may follow it.
+// The abort and the failed request are both handled right after a poll, in the 1 s before the next one starts.
+static bool failure_before_first_poll_after_abort(const char *name, const char *item, double value, const char *command, const char *fault, const char *other) {
+	int polls = 0, sent = rx_count(command);
+	if ((fault && !inject(fault, "error", 1)) || !abort_right_after_poll(&polls)) {
+		return false;
+	}
+	unsigned revision = revision_of(name), ok = ok_of(name), other_ok = other ? ok_of(other) : 0;
+	indigo_result result = isnan(value) ? request_switch(name, item) : request_number(name, item, value);
+	if (result != INDIGO_OK || !started_before_first_poll(command, sent, polls) || !wait_settled(name, revision, INDIGO_ALERT_STATE, 2)) {
+		return false;
+	}
+	if (rx_count("d#getazim") != polls) {
+		fprintf(stderr, "The first status poll after the abort started before %s failed\n", name);
+		return false;
+	}
+	// the first poll after the abort and the one after it
+	if (!wait_polls(2, 5)) {
+		return false;
+	}
+	printf("    %s: %s after the first poll after the abort, %u OK update(s) after the failed request\n", name, state_name(state_of(name)), ok_of(name) - ok);
+	bool kept = state_of(name) == INDIGO_ALERT_STATE && ok_of(name) == ok;
+	if (other) {
+		printf("    %s: %s after the first poll after the abort, %u OK update(s) after the failed request\n", other, state_name(state_of(other)), ok_of(other) - other_ok);
+		kept = kept && state_of(other) == INDIGO_ALERT_STATE && ok_of(other) == other_ok;
+	}
+	return kept && rx_count(command) == sent + 1;
+}
+
+static void failed_requests_keep_alert_in_first_poll_after_abort(void) {
+	CHECK(start_connected());
+	// the shutter is closed, so the controller refuses the flap with d#err_sht; all parts are evaluated
+	bool flap = failure_before_first_poll_after_abort(DOME_FLAP_PROPERTY_NAME, DOME_FLAP_OPENED_ITEM_NAME, NAN, "d#opeflap", NULL, NULL);
+	bool shutter = failure_before_first_poll_after_abort(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, NAN, "d#opeshut", "opeshut", NULL);
+	bool rotation = failure_before_first_poll_after_abort(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 180, "d#azi1800", "azi", DOME_STEPS_PROPERTY_NAME);
+	CHECK(flap);
+	CHECK(shutter);
+	CHECK(rotation);
+	CHECK_STR("d#err_sht", last_reply_to("d#opeflap"));
+	CHECK_NEAR(90, azimuth_value(), 1e-4);
+	CHECK(goto_azimuth(180, INDIGO_OK_STATE, 15));
+cleanup:
+	driver_down();
+}
+
 // TGT-D21: a connect publishes DOME_PARK only by its definition, never by an update sent before the definition, and
 // the definition carries the park state read at connect. Checked unparked at 90° and, after a reconnect, parked at 0°.
 static bool park_defined_on_connect(bool parked) {
@@ -2599,6 +2645,7 @@ static const baader_case cases[] = {
 	{ "rotation_and_park_survive_first_poll_after_abort", rotation_and_park_survive_first_poll_after_abort, "--azimuth 900", false },
 	{ "shutter_and_flap_emergency_in_first_poll_after_abort", shutter_and_flap_emergency_in_first_poll_after_abort, NULL, false },
 	{ "rotation_emergency_in_first_poll_after_abort", rotation_emergency_in_first_poll_after_abort, "--azimuth 900", false },
+	{ "failed_requests_keep_alert_in_first_poll_after_abort", failed_requests_keep_alert_in_first_poll_after_abort, "--azimuth 900", false },
 	{ "reference_trace", reference_trace, "--azimuth 900", false },
 	{ "network_baader_and_tcp_urls", network_baader_and_tcp_urls, "--azimuth 900 --tcp-port 0", false, true },
 	{ "network_default_port", network_default_port, "--tcp-port 8080", false, true },

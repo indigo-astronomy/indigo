@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_dome_baader"
 #define DRIVER_LABEL         "Baader Classic Dome"
 #define DOME_DEVICE_NAME     "Baader Classic Dome"
@@ -373,8 +373,6 @@ static void dome_status_poll(indigo_device *device) {
 	// an emergency flag raised during an operation means the controller stopped it
 	int emergency = emergency_read ? baader_emergency_flags(rain, wind, timeout, powercut) : 0;
 	char emergency_message[INDIGO_VALUE_SIZE];
-	// set when the emergency check below stops a rotation in this poll: the abort branch keeps its ALERT
-	bool rotation_stopped = false;
 	/* Handle dome rotation */
 	PRIVATE_DATA->current_position = azimuth;
 	bool rotation_queued = !PRIVATE_DATA->rotation_active && (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE || DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE);
@@ -396,7 +394,6 @@ static void dome_status_poll(indigo_device *device) {
 			indigo_update_property(device, DOME_PARK_PROPERTY, emergency_message);
 		}
 		PRIVATE_DATA->rotation_active = false;
-		rotation_stopped = true;
 	} else if (PRIVATE_DATA->rotation_active) {
 		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 		if (baader_tenths(PRIVATE_DATA->target_position) != baader_tenths(PRIVATE_DATA->current_position)) {
@@ -490,34 +487,20 @@ static void dome_status_poll(indigo_device *device) {
 		}
 	}
 	if (PRIVATE_DATA->aborted) {
-		// only the operations running when the abort was issued end here; one started after it keeps running and is watched
-		if ((!PRIVATE_DATA->rotation_active || PRIVATE_DATA->rotation_aborted) && !rotation_stopped) {
+		// only the rotation / flap operation still running since the abort ends here (the abort handler ended the shutter one);
+		// every other state belongs to a request handled since the abort, whether BUSY, failed or stopped by an emergency, and stays
+		if (PRIVATE_DATA->rotation_active && PRIVATE_DATA->rotation_aborted) {
 			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-			// a BUSY rotation property without a running rotation is a request copied during this poll: leave it to its handler
-			if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->rotation_active) {
-				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
-				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			}
-			if (DOME_STEPS_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->rotation_active) {
-				DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-			}
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
+			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 			PRIVATE_DATA->rotation_active = false;
 		}
-		// the abort handler ended the aborted shutter operation: a BUSY shutter is a request copied during this poll or an operation started after the abort
-		// shutter_alert, cleared by the abort handler, marks an ALERT published by the emergency check of this poll: that ALERT stays
-		if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE && !PRIVATE_DATA->shutter_alert) {
-			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
-		}
-		// flap_alert is set only by the emergency check of this poll (the abort handler cleared it): that ALERT stays
-		if ((!PRIVATE_DATA->flap_active || PRIVATE_DATA->flap_aborted) && !PRIVATE_DATA->flap_alert) {
-			// a BUSY flap without a running operation is a request copied during this poll: leave it to its handler
-			if (DOME_FLAP_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->flap_active) {
-				DOME_FLAP_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, DOME_FLAP_PROPERTY, NULL);
-			}
+		if (PRIVATE_DATA->flap_active && PRIVATE_DATA->flap_aborted) {
+			DOME_FLAP_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DOME_FLAP_PROPERTY, NULL);
 			PRIVATE_DATA->flap_active = false;
 		}
 		PRIVATE_DATA->rotation_aborted = PRIVATE_DATA->flap_aborted = PRIVATE_DATA->aborted = false;
