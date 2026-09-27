@@ -35,6 +35,13 @@
 #endif
 extern "C" indigo_result ENTRY(indigo_driver_action, indigo_driver_info *);
 
+// Set when the driver lets the last of queued coupled CCD_MODE / X_PIXEL_FORMAT / CCD_BIN / CCD_FRAME
+// requests win: ccd_qhy since 3.0.0.40 (TGT-069). ccd_qhy2 (TGT-070) is not fixed yet; its fix removes
+// the #ifndef QHY2 condition so that both builds register the shared case.
+#ifndef QHY2
+#define QHY_COUPLED_REQUESTS_FIXED
+#endif
+
 static std::atomic<int> opens, closes, active, attached, blobs, after_close, bus_calls, resources;
 static std::atomic<bool> fail_mode, fail_bits;
 static std::atomic<int> fail_open, fail_init, fail_chip, fail_start, fail_read, fail_stop, fail_control;
@@ -722,6 +729,181 @@ static void queued_abort_before_start(void) {
 	number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE)); end();
 }
 
+static std::atomic<int> markers;
+
+static void queue_marker(indigo_device *d) {
+	markers++;
+}
+
+static bool hold_device_queue(void) {
+	gate_entered = gate_release = false;
+	indigo_execute_handler(devices[0], queue_gate);
+	for (int i = 0; i < 400 && !gate_entered; i++) { indigo_usleep(10000); }
+	return gate_entered;
+}
+
+// Releases the gate and waits for a marker queued behind every handler queued before it.
+static bool release_device_queue(void) {
+	int expected = markers + 1;
+	release_gate();
+	indigo_execute_handler(devices[0], queue_marker);
+	for (int i = 0; i < 600 && markers < expected; i++) { indigo_usleep(10000); }
+	return markers >= expected;
+}
+
+static indigo_property_state state_of(int d, const char *name) {
+	indigo_property *p = snapshot(d, name);
+	indigo_property_state state = p ? p->state : INDIGO_IDLE_STATE;
+	indigo_release_property(p);
+	return state;
+}
+
+static bool switch_on(int d, const char *name, const char *item) {
+	indigo_property *p = snapshot(d, name);
+	bool on = false;
+	for (int i = 0; p && i < p->count; i++) {
+		if (!strcmp(p->items[i].name, item)) { on = p->items[i].sw.value; }
+	}
+	indigo_release_property(p);
+	return on;
+}
+
+static int number_of(int d, const char *name, const char *item) {
+	indigo_property *p = snapshot(d, name);
+	double value = -1;
+	for (int i = 0; p && i < p->count; i++) {
+		if (!strcmp(p->items[i].name, item)) { value = p->items[i].number.value; }
+	}
+	indigo_release_property(p);
+	return (int)value;
+}
+
+static void frame_request(double left_value, double top_value, double width_value, double height_value) {
+	const char *names[] = { "LEFT", "TOP", "WIDTH", "HEIGHT" };
+	const double values[] = { left_value, top_value, width_value, height_value };
+	mark(0, "CCD_FRAME");
+	indigo_change_number_property(&client, devices[0]->name, "CCD_FRAME", 4, names, values);
+}
+
+static bool settle_mode(const char *mode) {
+	sw(0, "CCD_MODE", mode);
+	return wait_state(0, "CCD_MODE", INDIGO_OK_STATE) && switch_on(0, "CCD_MODE", mode);
+}
+
+static bool coupled_states_ok(void) {
+	for (const char *name : { "CCD_MODE", "X_PIXEL_FORMAT", "CCD_BIN", "CCD_FRAME" }) {
+		if (state_of(0, name) != INDIGO_OK_STATE) {
+			fprintf(stderr, "%s left in state %d\n", name, state_of(0, name));
+			return false;
+		}
+	}
+	return true;
+}
+
+// The frame the fake SDK was programmed with for the exposure: bit depth, binning and ROI in binned pixels.
+static void assert_exposed(int expected_bits, int expected_bin, int expected_left, int expected_top, int expected_width, int expected_height) {
+	number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(expected_bits, bits.load()); ASSERT_EQ_INT(expected_bin, bin.load());
+	ASSERT_EQ_INT(expected_left, left.load()); ASSERT_EQ_INT(expected_top, top.load()); ASSERT_EQ_INT(expected_width, width.load()); ASSERT_EQ_INT(expected_height, height.load());
+}
+
+// CCD_MODE, then X_PIXEL_FORMAT: the format changes, the binning of the mode stays.
+static void queued_mode_then_format(void) {
+	ASSERT_TRUE(settle_mode("RAW 16 1x1"));
+	ASSERT_TRUE(hold_device_queue());
+	sw(0, "CCD_MODE", "RAW 8 2x2"); sw(0, "X_PIXEL_FORMAT", "RAW 16");
+	indigo_property_state pending = state_of(0, "X_PIXEL_FORMAT");
+	ASSERT_TRUE(release_device_queue()); ASSERT_EQ_INT(INDIGO_BUSY_STATE, pending);
+	ASSERT_TRUE(coupled_states_ok());
+	ASSERT_TRUE(switch_on(0, "X_PIXEL_FORMAT", "RAW 16")); ASSERT_TRUE(switch_on(0, "CCD_MODE", "RAW 16 2x2"));
+	ASSERT_EQ_INT(2, number_of(0, "CCD_BIN", "HORIZONTAL")); ASSERT_EQ_INT(16, number_of(0, "CCD_FRAME", "BITS_PER_PIXEL"));
+	assert_exposed(16, 2, 0, 0, 160, 120);
+}
+
+// X_PIXEL_FORMAT, then CCD_MODE: the mode decides format and binning.
+static void queued_format_then_mode(void) {
+	ASSERT_TRUE(settle_mode("RAW 8 2x2"));
+	ASSERT_TRUE(hold_device_queue());
+	sw(0, "X_PIXEL_FORMAT", "RAW 8"); sw(0, "CCD_MODE", "RAW 16 1x1");
+	indigo_property_state pending = state_of(0, "CCD_MODE");
+	ASSERT_TRUE(release_device_queue()); ASSERT_EQ_INT(INDIGO_BUSY_STATE, pending);
+	ASSERT_TRUE(coupled_states_ok());
+	ASSERT_TRUE(switch_on(0, "CCD_MODE", "RAW 16 1x1")); ASSERT_TRUE(switch_on(0, "X_PIXEL_FORMAT", "RAW 16"));
+	ASSERT_EQ_INT(1, number_of(0, "CCD_BIN", "HORIZONTAL")); ASSERT_EQ_INT(16, number_of(0, "CCD_FRAME", "BITS_PER_PIXEL"));
+	assert_exposed(16, 1, 0, 0, 320, 240);
+}
+
+// CCD_BIN, then CCD_MODE: the mode decides format and binning.
+static void queued_bin_then_mode(void) {
+	ASSERT_TRUE(settle_mode("RAW 16 1x1"));
+	ASSERT_TRUE(hold_device_queue());
+	number(0, "CCD_BIN", "HORIZONTAL", 2); sw(0, "CCD_MODE", "RAW 8 1x1");
+	indigo_property_state pending = state_of(0, "CCD_MODE");
+	ASSERT_TRUE(release_device_queue()); ASSERT_EQ_INT(INDIGO_BUSY_STATE, pending);
+	ASSERT_TRUE(coupled_states_ok());
+	ASSERT_TRUE(switch_on(0, "CCD_MODE", "RAW 8 1x1")); ASSERT_TRUE(switch_on(0, "X_PIXEL_FORMAT", "RAW 8"));
+	ASSERT_EQ_INT(1, number_of(0, "CCD_BIN", "HORIZONTAL")); ASSERT_EQ_INT(8, number_of(0, "CCD_FRAME", "BITS_PER_PIXEL"));
+	assert_exposed(8, 1, 0, 0, 320, 240);
+}
+
+// CCD_MODE, then CCD_BIN: the binning changes, the format of the mode stays.
+static void queued_mode_then_bin(void) {
+	ASSERT_TRUE(settle_mode("RAW 16 1x1"));
+	ASSERT_TRUE(hold_device_queue());
+	sw(0, "CCD_MODE", "RAW 16 2x2"); number(0, "CCD_BIN", "HORIZONTAL", 1);
+	indigo_property_state pending = state_of(0, "CCD_BIN");
+	ASSERT_TRUE(release_device_queue()); ASSERT_EQ_INT(INDIGO_BUSY_STATE, pending);
+	ASSERT_TRUE(coupled_states_ok());
+	ASSERT_EQ_INT(1, number_of(0, "CCD_BIN", "HORIZONTAL")); ASSERT_TRUE(switch_on(0, "CCD_MODE", "RAW 16 1x1"));
+	ASSERT_TRUE(switch_on(0, "X_PIXEL_FORMAT", "RAW 16"));
+	assert_exposed(16, 1, 0, 0, 320, 240);
+}
+
+// CCD_MODE, then CCD_FRAME: the region changes, format and binning of the mode stay.
+static void queued_mode_then_frame(void) {
+	ASSERT_TRUE(settle_mode("RAW 16 1x1"));
+	ASSERT_TRUE(hold_device_queue());
+	sw(0, "CCD_MODE", "RAW 8 2x2"); frame_request(16, 8, 256, 128);
+	indigo_property_state pending = state_of(0, "CCD_FRAME");
+	ASSERT_TRUE(release_device_queue()); ASSERT_EQ_INT(INDIGO_BUSY_STATE, pending);
+	ASSERT_TRUE(coupled_states_ok());
+	ASSERT_EQ_INT(16, number_of(0, "CCD_FRAME", "LEFT")); ASSERT_EQ_INT(8, number_of(0, "CCD_FRAME", "TOP"));
+	ASSERT_EQ_INT(256, number_of(0, "CCD_FRAME", "WIDTH")); ASSERT_EQ_INT(128, number_of(0, "CCD_FRAME", "HEIGHT"));
+	ASSERT_TRUE(switch_on(0, "CCD_MODE", "RAW 8 2x2")); ASSERT_TRUE(switch_on(0, "X_PIXEL_FORMAT", "RAW 8"));
+	ASSERT_EQ_INT(2, number_of(0, "CCD_BIN", "HORIZONTAL"));
+	assert_exposed(8, 2, 8, 4, 128, 64);
+}
+
+// CCD_FRAME, then CCD_MODE: the mode resets the region to the full sensor.
+static void queued_frame_then_mode(void) {
+	ASSERT_TRUE(settle_mode("RAW 8 2x2"));
+	ASSERT_TRUE(hold_device_queue());
+	frame_request(32, 16, 128, 128); sw(0, "CCD_MODE", "RAW 16 1x1");
+	indigo_property_state pending = state_of(0, "CCD_MODE");
+	ASSERT_TRUE(release_device_queue()); ASSERT_EQ_INT(INDIGO_BUSY_STATE, pending);
+	ASSERT_TRUE(coupled_states_ok());
+	ASSERT_EQ_INT(0, number_of(0, "CCD_FRAME", "LEFT")); ASSERT_EQ_INT(0, number_of(0, "CCD_FRAME", "TOP"));
+	ASSERT_EQ_INT(320, number_of(0, "CCD_FRAME", "WIDTH")); ASSERT_EQ_INT(240, number_of(0, "CCD_FRAME", "HEIGHT"));
+	ASSERT_TRUE(switch_on(0, "CCD_MODE", "RAW 16 1x1")); ASSERT_TRUE(switch_on(0, "X_PIXEL_FORMAT", "RAW 16"));
+	ASSERT_EQ_INT(1, number_of(0, "CCD_BIN", "HORIZONTAL"));
+	assert_exposed(16, 1, 0, 0, 320, 240);
+}
+
+// TGT-069: CCD_MODE is a view of X_PIXEL_FORMAT and CCD_BIN and resets CCD_FRAME. Of two requests
+// queued together the later one wins; the handler of the earlier one must not rewrite the later one
+// before its own handler reads it. Every pair establishes its own starting mode, so one failing pair
+// does not hide another. Both builds compile the case; it is registered only with QHY_COUPLED_REQUESTS_FIXED.
+__attribute__((unused)) static void queued_coupled_requests_keep_the_last(void) {
+	ASSERT_TRUE(begin()); ASSERT_TRUE(connect(0, true));
+	queued_mode_then_format();
+	queued_format_then_mode();
+	queued_bin_then_mode();
+	queued_mode_then_bin();
+	queued_mode_then_frame();
+	queued_frame_then_mode();
+	end();
+}
+
 static void wheel_timeout_and_malformed_status(void) {
 	ASSERT_TRUE(begin()); ASSERT_TRUE(connect(2, true)); ASSERT_TRUE(wait_state(2, "WHEEL_SLOT", INDIGO_OK_STATE));
 	wheel_status = '0'; number(2, "WHEEL_SLOT", "SLOT", 4); ASSERT_TRUE(wait_state(2, "WHEEL_SLOT", INDIGO_BUSY_STATE));
@@ -1046,6 +1228,9 @@ int main(int argc, char **argv) {
 	bus_thread = pthread_self(); indigo_start(); indigo_attach_client(&client);
 	indigo_driver_info info; ENTRY(INDIGO_DRIVER_INFO, &info); migrated = info.version > 0x0300001A;
 	const indigo_test_case cases[] = { { "discovery capacity identity", discovery_capacity_and_identity }, { "property contract frame types", property_contract_and_frame_types }, { "sibling orders guide overlap", sibling_orders_and_guide_overlap }, { "RAW color payload", raw_color_payload }, { "zero stream failed setting", zero_stream_and_failed_setting }, { "cooler failure recovery", cooler_failure_recovery }, { "lifecycle", basic_lifecycle }, { "acquisition", acquisition }, { "open rollback", open_rollback }, { "advanced failure", failed_advanced }, { "initialization failures", initialization_failures }, { "start and read failures", start_and_read_failures }, { "fractional exposures", fractional_exposures }, { "abort restart", abort_and_restart }, { "streams abort", streams_and_abort }, { "stream errors", stream_errors }, { "guide directions errors", guider_directions_and_failures }, { "wheel position errors", wheel_position_and_errors }, { "controls no bus IO", controls_and_no_bus_io }, { "read modes", read_modes }, { "ROI formats bins", roi_formats_and_bins }, { "acquisition conflicts", acquisition_conflicts }, { "disconnect sibling", disconnect_and_sibling_survival }, { "discovery lifecycle", startup_only_discovery }, { "init enumeration attachment", init_enumeration_and_attachment_rollback }, { "discovery failure reload", discovery_failure_and_reload }, { "metadata readback", metadata_and_readback_errors }, { "queued abort", queued_abort_before_start }, { "wheel timeout status", wheel_timeout_and_malformed_status }, { "setup reinitialize", setup_reinitialize_recovery }, { "mode depth errors", mode_and_depth_errors }, { "stream reset error", stream_reset_error }, { "readout buffer contract", bounded_readout_and_buffer_contract }, { "cooling sensor", cooling_and_sensor_profiles }, { "optional sparse profiles", optional_interfaces_and_sparse_formats }, { "configuration restore", config_and_reopen_settings }, { "guide blocking zero", guide_blocking_and_zero }, 
+	#ifdef QHY_COUPLED_REQUESTS_FIXED
+		{ "queued coupled requests keep the last", queued_coupled_requests_keep_the_last },
+	#endif
 	#ifdef QHY2
 		{ "missing live video", missing_live_video_hides_streaming },
 		{ "unprogrammed cameras", several_unprogrammed_cameras_are_programmed_without_a_double_free },

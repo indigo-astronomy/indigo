@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000028
+#define DRIVER_VERSION       0x03000029
 #define DRIVER_NAME          "indigo_ccd_qhy"
 #define DRIVER_LABEL         "QHY CCD (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -239,6 +239,16 @@ static void qhy_modes(indigo_device *device) {
 		}
 	}
 	CCD_MODE_PROPERTY->count = count;
+}
+
+// Selects the mode of the current binning and bit depth among the items qhy_modes() built. Rebuilding them
+// with indigo_init_switch_item() would reset previous_value, and indigo_update_property() would then drop the update.
+static void qhy_select_mode(indigo_device *device) {
+	for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
+		indigo_item *item = CCD_MODE_PROPERTY->items + i;
+		int bpp = 0, bin = 0;
+		item->sw.value = item->sw.target = sscanf(item->name, "RAW %d %dx", &bpp, &bin) == 2 && bin == CCD_BIN_HORIZONTAL_ITEM->number.value && bpp == CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
+	}
 }
 
 static bool qhy_initialize_ccd(indigo_device *device) {
@@ -837,7 +847,7 @@ static void ccd_bin_handler(indigo_device *device) {
 		CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.target = CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = bin;
 		// A mode requested after this binning is newer and decides, so a BUSY one is left to its handler.
 		if (CCD_MODE_PROPERTY->state != INDIGO_BUSY_STATE) {
-			qhy_modes(device);
+			qhy_select_mode(device);
 			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 		}
 	}
@@ -904,7 +914,7 @@ static void ccd_x_pixel_format_handler(indigo_device *device) {
 		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 	}
 	if (CCD_MODE_PROPERTY->state != INDIGO_BUSY_STATE) {
-		qhy_modes(device);
+		qhy_select_mode(device);
 		indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 	}
 	//- ccd.X_PIXEL_FORMAT.on_change

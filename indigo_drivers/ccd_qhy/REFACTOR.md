@@ -748,7 +748,7 @@ requests queued together the later one wins: the handler of the earlier one stil
 property as a side effect, but leaves one that is BUSY (a request sent after it, still queued) to that
 request's own handler, which then decides and publishes it.
 
-### Defect (source audit, not reproduced)
+### Defect (source audit, reproduced by the regression test below)
 
 All four handlers run on the device queue and rewrote the coupled properties whatever their state:
 
@@ -775,12 +775,50 @@ In each case the later handler applied the earlier request's setting and reporte
 
 ### Verification
 
-- `make -C indigo_drivers -f ../Makefile.drvs ccd_qhy/ OP=all` builds on Linux x64.
-- The existing fake-SDK suite `build/integration/test_ccd_qhy_sdk` passes 38/38 on Linux x64 (run
-  directly, not recorded). It has no case for queued coupled requests, so the fix itself is not tested;
-  no regression test was added.
+- `make -C indigo_drivers -f ../Makefile.drvs ccd_qhy/ OP=all` builds on Linux x64; the existing
+  fake-SDK suite passed 38/38 on version 40.
+
+### Regression test (2026-09-27)
+
+`queued coupled requests keep the last` in `indigo_test/integration/test_ccd_qhy_sdk.cpp`. A gate
+handler holds the device queue, each coupled pair is queued in both orders (CCD_MODE / X_PIXEL_FORMAT,
+CCD_BIN / CCD_MODE, CCD_MODE / CCD_FRAME), the gate is released and a marker handler queued behind them
+waits until all ran. Each pair sets its own starting mode, so a failing pair does not hide another. The
+case checks that the later request was BUSY while queued, that all four properties end OK with the later
+request's values, and what the fake SDK received in the following exposure (`SetQHYCCDBitsMode()`,
+`SetQHYCCDBinMode()`, `SetQHYCCDResolution()`). CCD_FRAME then CCD_MODE ends with the full frame of the
+mode, which was already the behaviour before the fix.
+
+The file is shared with `test_ccd_qhy2_sdk`. Both builds compile the case, but it is registered only
+where `QHY_COUPLED_REQUESTS_FIXED` is defined, which the file does for `#ifndef QHY2`; the ccd_qhy2 fix
+of TGT-070 removes that condition.
+
+Proof on Linux x64, only this case (`build/integration/test_ccd_qhy_sdk "queued coupled"`), the driver
+restored from the `.driver` of each version, regenerated and rebuilt:
+
+- 3.0.0.39 (before TGT-069): FAIL, 5 assertions, one in each order the fix changes: mode then format
+  ended with X_PIXEL_FORMAT RAW 8, format then mode and bin then mode lost the requested mode, mode then
+  bin ended with binning 2, and mode then frame reset the region (LEFT 0 instead of 16). Only frame then
+  mode passed.
+- 3.0.0.40 (TGT-069 fix): FAIL, 2 assertions: after mode then format and after mode then bin the client
+  still saw the previous CCD_MODE (found defect below).
+- 3.0.0.41: PASS. Regenerating from the `.driver` gives no diff.
+
+### Found defect: reselected CCD_MODE not published (3.0.0.41)
+
+- Impact: after an X_PIXEL_FORMAT or CCD_BIN change, clients kept seeing the previous CCD_MODE item
+  selected; the driver itself used the right bit depth and binning. Reproduced by the regression test
+  above on 3.0.0.39 and 3.0.0.40.
+- Root cause: both handlers rebuilt CCD_MODE with `qhy_modes()`, whose `indigo_init_switch_item()` sets
+  `previous_value` equal to the new value. With CCD_MODE already OK, `indigo_update_property()` saw no
+  changed item and no state change and sent no update.
+- Fix: `qhy_select_mode()` sets value and target of the items `qhy_modes()` built at connection time;
+  the X_PIXEL_FORMAT and CCD_BIN handlers call it instead of `qhy_modes()`. The item list only depends on
+  the camera, which does not change while connected.
+- Regression test: `queued coupled requests keep the last` (mode then format, mode then bin).
 
 ## Final test summary
 
-- Simulated tests run: 38; passed: 38 (`build/integration/test_ccd_qhy_sdk`).
+- Simulated tests run: 39; passed: 39 (`build/integration/test_ccd_qhy_sdk`, recorded with
+  `tools/run_driver_test.py ccd_qhy` on Linux x64, version 3.0.0.41).
 - Hardware tests run: 1; passed: 0. QHY5L-II-M on a Pegasus Ultimate Powerbox v1.7 hub, macOS arm64.
