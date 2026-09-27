@@ -935,6 +935,8 @@ Source: `indigo_drivers/ccd_mi/indigo_ccd_mi.driver`.
 
 Driver-specific use of existing properties: `DSLR_APERTURE`, `DSLR_ISO`, `DSLR_PROGRAM`, `DSLR_SHUTTER`.
 
+`DSLR_PROGRAM`, `DSLR_APERTURE` and `DSLR_SHUTTER` are read-only and report the camera settings polled every 3 s; `DSLR_ISO` is read-write.
+
 Source: `indigo_drivers/ccd_pentax/indigo_ccd_pentax.c`.
 
 ### ccd_playerone

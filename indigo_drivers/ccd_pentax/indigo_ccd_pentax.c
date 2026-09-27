@@ -26,7 +26,7 @@
  \file indigo_ccd_pentax.c
  */
 
-#define DRIVER_VERSION 0x02000000
+#define DRIVER_VERSION 0x03000001
 #define DRIVER_NAME "indigo_ccd_pentax"
 
 #include <stdlib.h>
@@ -256,6 +256,7 @@ typedef struct {
 	uint32_t flags;
 	const char *name;
 	uint32_t min_aperture, max_aperture;
+	uint32_t iso;
 	indigo_property *dslr_program_property;
 	indigo_property *dslr_capture_mode_property;
 	indigo_property *dslr_aperture_property;
@@ -647,8 +648,7 @@ uint8_t pentax_get_full_state(indigo_device *device) {
 				value2 = (get_uint32(device, buffer + state + 8) << 16) | get_uint32(device, buffer + state + 12);
 				state = MODEL_INFO[PRIVATE_DATA->model].status[PENTAX_APERTURE];
 				value3 = (get_uint32(device, buffer + state) << 16) | get_uint32(device, buffer + state + 4);
-				indigo_property_perm perm = exposure_mode == PENTAX_EXPOSURE_MODE_M || exposure_mode == PENTAX_EXPOSURE_MODE_B || exposure_mode == PENTAX_EXPOSURE_MODE_AV || exposure_mode == PENTAX_EXPOSURE_MODE_P ? INDIGO_RW_PERM : INDIGO_RO_PERM;
-				if (PRIVATE_DATA->min_aperture != value1 || PRIVATE_DATA->max_aperture != value2 || DSLR_APERTURE_PROPERTY->perm != perm) {
+				if (PRIVATE_DATA->min_aperture != value1 || PRIVATE_DATA->max_aperture != value2) {
 					PRIVATE_DATA->min_aperture = value1;
 					PRIVATE_DATA->max_aperture = value2;
 					indigo_delete_property(device, DSLR_APERTURE_PROPERTY, NULL);
@@ -667,7 +667,6 @@ uint8_t pentax_get_full_state(indigo_device *device) {
 						}
 					}
 					DSLR_APERTURE_PROPERTY->count = count;
-					DSLR_APERTURE_PROPERTY->perm = perm;
 					indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
 				} else {
 					name = uint32_to_hex(value3);
@@ -682,48 +681,37 @@ uint8_t pentax_get_full_state(indigo_device *device) {
 					}
 				}
 				if (exposure_mode == PENTAX_EXPOSURE_MODE_B) {
-					if (DSLR_SHUTTER_PROPERTY->perm == INDIGO_RO_PERM) {
-						indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-						indigo_set_switch(DSLR_SHUTTER_PROPERTY, DSLR_SHUTTER_PROPERTY->items, true);
-						DSLR_SHUTTER_PROPERTY->perm = INDIGO_RW_PERM;
-						indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-					} else {
-						indigo_item *item = DSLR_SHUTTER_PROPERTY->items;
-						if (!item->sw.value) {
-							indigo_set_switch(DSLR_SHUTTER_PROPERTY, item, true);
-							indigo_update_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-						}
+					indigo_item *item = DSLR_SHUTTER_PROPERTY->items;
+					if (!item->sw.value) {
+						indigo_set_switch(DSLR_SHUTTER_PROPERTY, item, true);
+						indigo_update_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 					}
 				} else {
 					state = MODEL_INFO[PRIVATE_DATA->model].status[PENTAX_SHUTTER];
 					value1 = (get_uint32(device, buffer + state) << 16) | get_uint32(device, buffer + state + 4);
 					name = uint32_to_hex(value1);
-					indigo_property_perm perm = exposure_mode == PENTAX_EXPOSURE_MODE_M || exposure_mode == PENTAX_EXPOSURE_MODE_B || exposure_mode == PENTAX_EXPOSURE_MODE_TV || exposure_mode == PENTAX_EXPOSURE_MODE_P ? INDIGO_RW_PERM : INDIGO_RO_PERM;
 					for (int i = 0; i < DSLR_SHUTTER_PROPERTY->count; i++) {
 						indigo_item *item = DSLR_SHUTTER_PROPERTY->items + i;
 						if (!strcmp(item->name, name)) {
-							if (!item->sw.value || DSLR_SHUTTER_PROPERTY->perm != perm) {
+							if (!item->sw.value) {
 								indigo_set_switch(DSLR_SHUTTER_PROPERTY, item, true);
-								if (DSLR_SHUTTER_PROPERTY->perm != perm) {
-									indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-									DSLR_SHUTTER_PROPERTY->perm = perm;
-									indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-								} else {
-									indigo_update_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-								}
+								indigo_update_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 							}
 						}
 					}
 				}
 				state = MODEL_INFO[PRIVATE_DATA->model].status[PENTAX_ISO];
 				value1 = get_uint32(device, buffer + state);
-				name = uint32_to_hex(value1);
-				for (int i = 0; i < DSLR_ISO_PROPERTY->count; i++) {
-					indigo_item *item = DSLR_ISO_PROPERTY->items + i;
-					if (!strcmp(item->name, name)) {
-						if (!item->sw.value) {
-							indigo_set_switch(DSLR_ISO_PROPERTY, item, true);
-							indigo_update_property(device, DSLR_ISO_PROPERTY, NULL);
+				PRIVATE_DATA->iso = value1;
+				if (DSLR_ISO_PROPERTY->state != INDIGO_BUSY_STATE) {
+					name = uint32_to_hex(value1);
+					for (int i = 0; i < DSLR_ISO_PROPERTY->count; i++) {
+						indigo_item *item = DSLR_ISO_PROPERTY->items + i;
+						if (!strcmp(item->name, name)) {
+							if (!item->sw.value) {
+								indigo_set_switch(DSLR_ISO_PROPERTY, item, true);
+								indigo_update_property(device, DSLR_ISO_PROPERTY, NULL);
+							}
 						}
 					}
 				}
@@ -953,22 +941,29 @@ static void ccd_connect_callback(indigo_device *device) {
 	indigo_unlock_master_device(device);
 }
 
-static void iso_callback(indigo_device *device) {
+static void iso_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	DSLR_ISO_PROPERTY->state = INDIGO_OK_STATE;
+	if (!IS_CONNECTED) {
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+		return;
+	}
 	for (int i = 0; i < DSLR_ISO_PROPERTY->count; i++) {
 		indigo_item *item = DSLR_ISO_PROPERTY->items + i;
-		if (item->sw.value) {
+		if (indigo_get_switch_target(DSLR_ISO_PROPERTY, item->name)) {
 			if (pentax_set_iso(device, hex_to_uint32(item->name), MODEL_INFO[PRIVATE_DATA->model].iso.min, MODEL_INFO[PRIVATE_DATA->model].iso.max) == 0) {
-				DSLR_ISO_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, DSLR_ISO_PROPERTY, NULL);
-				break;
+				indigo_apply_switch_targets(DSLR_ISO_PROPERTY);
 			} else {
+				indigo_item *current = indigo_get_item(DSLR_ISO_PROPERTY, uint32_to_hex(PRIVATE_DATA->iso));
+				if (current != NULL) {
+					indigo_set_switch(DSLR_ISO_PROPERTY, current, true);
+				}
 				DSLR_ISO_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, DSLR_ISO_PROPERTY, NULL);
-				break;
 			}
+			break;
 		}
 	}
+	indigo_update_property(device, DSLR_ISO_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -985,16 +980,16 @@ static indigo_result ccd_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DSLR_PROGRAM
 		int count;
 		for (count = 0; exporure_mode_list[count].label; count++) ;
-		DSLR_PROGRAM_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_PROGRAM_PROPERTY_NAME, "DSLR", "Program mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, count);
+		DSLR_PROGRAM_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_PROGRAM_PROPERTY_NAME, "DSLR", "Program mode", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, count);
 		for (int i = 0; i < count; i++) {
 			indigo_init_switch_item(DSLR_PROGRAM_PROPERTY->items + i, uint32_to_hex(exporure_mode_list[i].value), exporure_mode_list[i].label, false);
 		}
 		// -------------------------------------------------------------------------------- DSLR_APERTURE
 		for (count = 0; aperture_list[count].label; count++) ;
-		DSLR_APERTURE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_APERTURE_PROPERTY_NAME, "DSLR", "Aperture", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, count);
+		DSLR_APERTURE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_APERTURE_PROPERTY_NAME, "DSLR", "Aperture", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, count);
 		// -------------------------------------------------------------------------------- DSLR_SHUTTER
 		for (count = 0; shutter_list[count].label; count++) ;
-		DSLR_SHUTTER_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_SHUTTER_PROPERTY_NAME, "DSLR", "Shutter speed", INDIGO_OK_STATE,INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, count);
+		DSLR_SHUTTER_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_SHUTTER_PROPERTY_NAME, "DSLR", "Shutter speed", INDIGO_OK_STATE,INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, count);
 		for (int i = 0; i < count; i++) {
 			indigo_init_switch_item(DSLR_SHUTTER_PROPERTY->items + i, uint32_to_hex(shutter_list[i].value), shutter_list[i].label, false);
 		}
@@ -1033,10 +1028,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DSLR_ISO_PROPERTY, property)) {
-		indigo_property_copy_values(DSLR_ISO_PROPERTY, property, false);
-		DSLR_ISO_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, DSLR_ISO_PROPERTY, NULL);
-		indigo_set_timer(device, 0, iso_callback, NULL);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(DSLR_ISO_PROPERTY, iso_handler);
 		return INDIGO_OK;
 	}
 	return indigo_ccd_change_property(device, client, property);
