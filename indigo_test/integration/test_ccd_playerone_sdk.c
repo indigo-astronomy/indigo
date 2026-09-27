@@ -2257,6 +2257,146 @@ static void shared_countdown_with_blocked_device_queue(void) {
 	ASSERT_TRUE(wait_count(&blobs, 2));
 }
 
+static bool switch_value(int index, const char *property, const char *item) {
+	indigo_property *p = snapshot(index, property);
+	bool result = false;
+	if (p) {
+		for (int i = 0; i < p->count; i++) {
+			if (!strcmp(p->items[i].name, item)) {
+				result = p->items[i].sw.value;
+			}
+		}
+	}
+	indigo_release_property(p);
+	return result;
+}
+
+static bool hold_device_queue(void) {
+	arm_gate(&queue_gate);
+	indigo_execute_handler(logical[0], block_queue);
+	return wait_count(&queue_gate.entered, 1);
+}
+
+// Releases the gate and waits for a marker queued behind every handler queued before it.
+static bool release_device_queue(void) {
+	release_gate(&queue_gate);
+	int expected = atomic_load(&barriers) + 1;
+	indigo_execute_handler(logical[0], queue_barrier);
+	return wait_count(&barriers, expected);
+}
+
+static bool take_image(int index) {
+	int expected = atomic_load(&blobs) + 1;
+	return change_switch(index, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE) && change_number(index, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE) && wait_count(&blobs, expected);
+}
+
+// TGT-067: X_PRESETS is a view of CCD_GAIN and CCD_OFFSET. Of two requests queued together the later
+// one wins: the gain handler must not clear a preset sent after it before the preset handler reads
+// it, and the preset handler must not replace the target of a gain request sent after it.
+static void preset_and_gain_requests_queued_together_keep_the_last(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	// CCD_GAIN, then X_PRESETS: the preset decides gain and offset.
+	ASSERT_TRUE(hold_device_queue());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_GAIN", "GAIN", 40));
+	ASSERT_TRUE(set_switch(0, PRESETS_PROPERTY, "POA_UNITY_GAIN", true));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(0, PRESETS_PROPERTY));
+	ASSERT_TRUE(release_device_queue());
+	ASSERT_EQ_INT(25, cameras[0].config[POA_GAIN].intValue);
+	ASSERT_EQ_INT(15, cameras[0].config[POA_OFFSET].intValue);
+	ASSERT_TRUE(wait_state(0, PRESETS_PROPERTY, INDIGO_OK_STATE));
+	ASSERT_TRUE(switch_value(0, PRESETS_PROPERTY, "POA_UNITY_GAIN"));
+	ASSERT_TRUE(wait_state(0, "CCD_GAIN", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(25, number_value(0, "CCD_GAIN", "GAIN"));
+	ASSERT_EQ_INT(15, number_value(0, "CCD_OFFSET", "OFFSET"));
+	// X_PRESETS, then CCD_GAIN: the gain request decides the gain, the preset still sets the offset.
+	ASSERT_TRUE(hold_device_queue());
+	ASSERT_TRUE(set_switch(0, PRESETS_PROPERTY, "POA_HIGHEST_DR", true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_GAIN", "GAIN", 40));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(0, "CCD_GAIN"));
+	ASSERT_TRUE(release_device_queue());
+	ASSERT_EQ_INT(40, cameras[0].config[POA_GAIN].intValue);
+	ASSERT_EQ_INT(5, cameras[0].config[POA_OFFSET].intValue);
+	ASSERT_TRUE(wait_state(0, "CCD_GAIN", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(40, number_value(0, "CCD_GAIN", "GAIN"));
+	ASSERT_EQ_INT(5, number_value(0, "CCD_OFFSET", "OFFSET"));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(0, PRESETS_PROPERTY));
+	ASSERT_FALSE(switch_value(0, PRESETS_PROPERTY, "POA_HIGHEST_DR"));
+	ASSERT_FALSE(switch_value(0, PRESETS_PROPERTY, "POA_UNITY_GAIN"));
+	ASSERT_FALSE(switch_value(0, PRESETS_PROPERTY, "POA_LOWEST_RN"));
+	ASSERT_FALSE(switch_value(0, PRESETS_PROPERTY, "POA_GAIN_HCG"));
+}
+
+// TGT-067: CCD_MODE is a view of X_PIXEL_FORMAT and CCD_BIN, and X_PIXEL_FORMAT of the bit depth in
+// CCD_FRAME. Of two requests queued together the later one wins; the handler of the earlier one must
+// not rewrite the later one before its own handler reads it.
+static void mode_format_bin_and_frame_requests_queued_together_keep_the_last(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	// CCD_MODE, then X_PIXEL_FORMAT: the format changes, the binning of the mode stays.
+	ASSERT_TRUE(hold_device_queue());
+	ASSERT_TRUE(set_switch(0, "CCD_MODE", "RAW 8 2x2", true));
+	ASSERT_TRUE(set_switch(0, PIXEL_PROPERTY, "RAW 16", true));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(0, PIXEL_PROPERTY));
+	ASSERT_TRUE(release_device_queue());
+	ASSERT_TRUE(wait_state(0, PIXEL_PROPERTY, INDIGO_OK_STATE));
+	ASSERT_TRUE(switch_value(0, PIXEL_PROPERTY, "RAW 16"));
+	ASSERT_TRUE(switch_value(0, "CCD_MODE", "RAW 16 2x2"));
+	ASSERT_EQ_INT(2, number_value(0, "CCD_BIN", "HORIZONTAL"));
+	ASSERT_EQ_INT(16, number_value(0, "CCD_FRAME", "BITS_PER_PIXEL"));
+	ASSERT_TRUE(take_image(0));
+	ASSERT_EQ_INT(POA_RAW16, atomic_load(&cameras[0].format));
+	ASSERT_EQ_INT(2, atomic_load(&cameras[0].bin));
+	// X_PIXEL_FORMAT, then CCD_MODE: the mode decides both.
+	ASSERT_TRUE(hold_device_queue());
+	ASSERT_TRUE(set_switch(0, PIXEL_PROPERTY, "RAW 8", true));
+	ASSERT_TRUE(set_switch(0, "CCD_MODE", "RAW 16 1x1", true));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(0, "CCD_MODE"));
+	ASSERT_TRUE(release_device_queue());
+	ASSERT_TRUE(wait_state(0, "CCD_MODE", INDIGO_OK_STATE));
+	ASSERT_TRUE(switch_value(0, "CCD_MODE", "RAW 16 1x1"));
+	ASSERT_TRUE(switch_value(0, PIXEL_PROPERTY, "RAW 16"));
+	ASSERT_EQ_INT(1, number_value(0, "CCD_BIN", "HORIZONTAL"));
+	ASSERT_EQ_INT(16, number_value(0, "CCD_FRAME", "BITS_PER_PIXEL"));
+	// CCD_BIN, then CCD_MODE.
+	ASSERT_TRUE(hold_device_queue());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_BIN", "HORIZONTAL", 2));
+	ASSERT_TRUE(set_switch(0, "CCD_MODE", "RAW 8 1x1", true));
+	ASSERT_TRUE(release_device_queue());
+	ASSERT_TRUE(wait_state(0, "CCD_MODE", INDIGO_OK_STATE));
+	ASSERT_TRUE(switch_value(0, "CCD_MODE", "RAW 8 1x1"));
+	ASSERT_TRUE(switch_value(0, PIXEL_PROPERTY, "RAW 8"));
+	ASSERT_EQ_INT(1, number_value(0, "CCD_BIN", "HORIZONTAL"));
+	// CCD_MODE, then CCD_BIN: the binning changes, the format of the mode stays.
+	ASSERT_TRUE(hold_device_queue());
+	ASSERT_TRUE(set_switch(0, "CCD_MODE", "RAW 16 2x2", true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_BIN", "HORIZONTAL", 1));
+	ASSERT_TRUE(release_device_queue());
+	ASSERT_TRUE(wait_state(0, "CCD_BIN", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(1, number_value(0, "CCD_BIN", "HORIZONTAL"));
+	ASSERT_TRUE(switch_value(0, PIXEL_PROPERTY, "RAW 16"));
+	ASSERT_TRUE(switch_value(0, "CCD_MODE", "RAW 16 1x1"));
+	// CCD_FRAME with a bit depth, then X_PIXEL_FORMAT.
+	ASSERT_TRUE(hold_device_queue());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_FRAME", "BITS_PER_PIXEL", 16));
+	ASSERT_TRUE(set_switch(0, PIXEL_PROPERTY, "RAW 8", true));
+	ASSERT_TRUE(release_device_queue());
+	ASSERT_TRUE(wait_state(0, PIXEL_PROPERTY, INDIGO_OK_STATE));
+	ASSERT_TRUE(switch_value(0, PIXEL_PROPERTY, "RAW 8"));
+	ASSERT_TRUE(switch_value(0, "CCD_MODE", "RAW 8 1x1"));
+	ASSERT_EQ_INT(8, number_value(0, "CCD_FRAME", "BITS_PER_PIXEL"));
+	// X_PIXEL_FORMAT, then CCD_FRAME with a bit depth.
+	ASSERT_TRUE(hold_device_queue());
+	ASSERT_TRUE(set_switch(0, PIXEL_PROPERTY, "RGB 24", true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_FRAME", "BITS_PER_PIXEL", 16));
+	ASSERT_TRUE(release_device_queue());
+	ASSERT_TRUE(wait_state(0, "CCD_FRAME", INDIGO_OK_STATE));
+	ASSERT_TRUE(switch_value(0, PIXEL_PROPERTY, "RAW 16"));
+	ASSERT_TRUE(switch_value(0, "CCD_MODE", "RAW 16 1x1"));
+	ASSERT_EQ_INT(16, number_value(0, "CCD_FRAME", "BITS_PER_PIXEL"));
+	ASSERT_TRUE(take_image(0));
+	ASSERT_EQ_INT(POA_RAW16, atomic_load(&cameras[0].format));
+	ASSERT_EQ_INT(1, atomic_load(&cameras[0].bin));
+}
+
 int main(int argc, char **argv) {
 	bus_thread = pthread_self();
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -2302,6 +2442,8 @@ int main(int argc, char **argv) {
 		{ "Sensor mode unavailable grow and shrink", sensor_mode_capability_rebuild },
 		{ "Discovery descriptor and vendor filters recover", discovery_filter_and_recovery },
 		{ "Busy controls preserve accepted values and SDK state", busy_controls_preserve_sdk_values },
+		{ "Preset and gain requests queued together keep the last", preset_and_gain_requests_queued_together_keep_the_last },
+		{ "Mode format bin and frame requests queued together keep the last", mode_format_bin_and_frame_requests_queued_together_keep_the_last },
 		{ "Finite stream frame count", finite_stream_frame_count },
 		{ "Completion initialization_read_failures", initialization_read_failures },
 		{ "Completion optional_mode_query_failures", optional_mode_query_failures },

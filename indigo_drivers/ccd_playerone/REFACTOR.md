@@ -527,3 +527,68 @@ be crossed; `ccd_atik` was measured the same day and is not (43/43).
   version 28 after the POA-D02 fix, again 27/27. Four physical hot-plug cases and the flash-suffix
   replug case exist and were not run; they need an operator, so hot-plug coverage is not established on
   this platform.
+
+## Coupled mode, pixel format and preset requests (TGT-067, 2026-09-27)
+
+Version 32, finding TGT-067 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`),
+the same structure as TGT-066 in `ccd_asi` and fixed the same way.
+
+### Semantics
+
+CCD_MODE (pixel format and binning), X_PIXEL_FORMAT (also the bit depth in CCD_FRAME) and X_PRESETS
+(a gain/offset pair; `POA_GAIN_HCG` sets only the gain) are coupled views of the same camera settings.
+Of two requests queued together the later one wins: the handler of the earlier one still updates a
+coupled property as a side effect, but leaves one that is BUSY (a request sent after it, still queued)
+to that request's own handler, which then decides and publishes it.
+
+### Defect (reproduced)
+
+All handlers run on the device queue, and each rewrote the coupled properties whatever their state.
+A request copied into a coupled property on the bus thread and queued behind such a handler was
+overwritten before its own handler read it, and that handler then applied the overwritten value and
+reported OK:
+
+- CCD_GAIN then X_PRESETS: `adjust_preset_switches()` in the gain handler cleared the requested
+  preset, and the preset handler, finding none selected, wrote gain 0 and offset 0 to the camera
+  (instead of the unity preset 25/15 of the fake SDK).
+- X_PRESETS then CCD_GAIN: the preset handler replaced the gain target, and the gain handler sent the
+  preset gain again (0 instead of 40).
+- CCD_MODE then X_PIXEL_FORMAT, X_PIXEL_FORMAT then CCD_MODE, CCD_BIN then CCD_MODE, CCD_MODE then
+  CCD_BIN, CCD_FRAME (bit depth) then X_PIXEL_FORMAT, X_PIXEL_FORMAT then CCD_FRAME (bit depth): the
+  earlier handler rewrote the later request, which ended with the earlier one's format, binning or
+  bit depth.
+
+### Fix
+
+- The CCD_MODE and X_PIXEL_FORMAT handlers apply their request with `indigo_apply_switch_targets()`
+  (after the unchanged acquisition-active refusal) before they derive the coupled properties from it,
+  and the X_PRESETS handler reads its request with `indigo_get_switch_target()`. The preset's
+  `POASetConfig()` writes are the only device I/O that can fail; after them `adjust_preset_switches()`
+  still shows the preset the camera ends with (ALERT on failure), as before.
+- The CCD_GAIN and CCD_OFFSET handlers leave a BUSY X_PRESETS alone; the X_PRESETS handler leaves a
+  BUSY CCD_GAIN or CCD_OFFSET alone (no `POASetConfig()`, no state change, no publication) and the
+  pending request sets it.
+- The CCD_FRAME handler leaves a BUSY X_PIXEL_FORMAT or CCD_MODE alone, the CCD_BIN handler a BUSY
+  CCD_MODE, the CCD_MODE handler a BUSY X_PIXEL_FORMAT, CCD_BIN or CCD_FRAME, and the X_PIXEL_FORMAT
+  handler a BUSY CCD_FRAME or CCD_MODE. The handler that runs last derives the views from the final
+  settings, so they end consistent.
+- Unchanged: a preset request with no item selected still writes gain 0 and offset 0, as before.
+- No `_finalizer` reference was added; the regenerated handlers keep the generated OK prologue and
+  final update.
+
+### Tests
+
+- `Preset and gain requests queued together keep the last`: device queue held by a gate handler,
+  CCD_GAIN then X_PRESETS, released, marker handler; then X_PRESETS then CCD_GAIN. Checks the gain and
+  offset the fake SDK received and the final property values and states.
+- `Mode format bin and frame requests queued together keep the last`: the same for the six
+  mode/format/binning/bit-depth pairs, with exposures checking the format and binning the fake SDK
+  received.
+- Each of the eight pairs, run on its own from a fresh connection (temporary split build, not
+  committed), failed 3/3 on version 31 and passes 3/3 on version 32. The unchanged suite passed 50/50
+  on version 31 on Linux x64. Regeneration is reproducible.
+
+### Test totals for this change
+
+Simulated (fake SDK) tests run 52, passed 52 (Linux x64, `tools/run_driver_test.py ccd_playerone`).
+Hardware tests run 0.
