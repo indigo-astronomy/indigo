@@ -35,7 +35,7 @@
 | aux_upb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 46 / 15 | |
 | aux_upb3                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 29 / 0 | |
 | aux_usbdp               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 16 / 0 | |
-| aux_wbplusv3            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 17 / 0 | |
+| aux_wbplusv3            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 20 / 0 | |
 | aux_wbprov3             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 17 / 0 | |
 | aux_wcv4ec              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 18 / 0 | |
 | ccd_altair              | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 30 | ➡️ Touptek |

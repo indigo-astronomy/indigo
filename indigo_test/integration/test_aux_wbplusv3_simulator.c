@@ -120,6 +120,46 @@ static bool set_number(const char *property_name, const char *item_name, double 
 	return indigo_change_number_property_1(&simulator_test_client, wbplusv3_aux.device_name, property_name, item_name, value) == INDIGO_OK;
 }
 
+// The device the driver publishes its properties from, so a test can put a handler on its queue.
+static _Atomic(indigo_device *) driver_device;
+
+static indigo_result capture_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, wbplusv3_aux.device_name)) {
+		atomic_store(&driver_device, device);
+	}
+	return simulator_client_define_property(client, device, property, message);
+}
+
+// A gate handler holds the device queue, so requests sent meanwhile are queued behind each other in the order sent.
+static atomic_bool gate_entered, gate_release;
+
+static void gate_handler(indigo_device *device) {
+	(void)device;
+	atomic_store(&gate_entered, true);
+	for (int i = 0; i < 1000 && !atomic_load(&gate_release); i++) {
+		indigo_usleep(10000);
+	}
+}
+
+static bool hold_queue(void) {
+	indigo_device *device = atomic_load(&driver_device);
+	if (device == NULL) {
+		fprintf(stderr, "No device seen, the queue cannot be held\n");
+		return false;
+	}
+	atomic_store(&gate_entered, false);
+	atomic_store(&gate_release, false);
+	indigo_execute_handler(device, gate_handler);
+	for (int i = 0; i < 500 && !atomic_load(&gate_entered); i++) {
+		indigo_usleep(10000);
+	}
+	return atomic_load(&gate_entered);
+}
+
+static void release_queue(void) {
+	atomic_store(&gate_release, true);
+}
+
 // -------------------------------------------------------------------------------- metadata
 
 static void metadata_and_property_completeness(void) {
@@ -300,6 +340,50 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// TGT-048: the box never answers a command, so only a command that cannot be written refuses a request. The outlets
+// then show the state the box last reported, with ALERT, not the request.
+static void power_outlet_write_failure_shows_the_box_state(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_wbplusv3(&simulator, NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&wbplusv3_aux, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_first_poll());
+	SERIAL_CHECK_TRUE(wait_for_switch(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_switch(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, false));
+	// The box goes away with the port still open, so every write fails.
+	stop_external_serial_simulator(&simulator);
+	unsigned int revision = property_state_revision(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_switch(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	assert_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, false);
+	assert_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, false);
+cleanup:
+	if (online) { stop_serial_driver(&wbplusv3_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-049: the same for the USB port.
+static void usb_port_write_failure_shows_the_box_state(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_wbplusv3(&simulator, NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&wbplusv3_aux, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_first_poll());
+	SERIAL_CHECK_TRUE(wait_for_switch(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_1_ITEM_NAME, false));
+	stop_external_serial_simulator(&simulator);
+	unsigned int revision = property_state_revision(AUX_USB_PORT_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_switch(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_1_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_USB_PORT_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_USB_PORT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	assert_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_1_ITEM_NAME, false);
+cleanup:
+	if (online) { stop_serial_driver(&wbplusv3_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
 static void usb_port_switches(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -408,6 +492,32 @@ static void automatic_dew_control_stops_the_heater_in_dry_air(void) {
 	// Shutting the heater down is the regulator's own decision and must not flip the mode back.
 	assert_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true);
 cleanup:
+	if (online) { stop_serial_driver(&wbplusv3_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-074: a heater change still switches automatic dew control off, but an AUTOMATIC request sent after it is the
+// newer one. Both are queued behind a gate handler; the heater handler must leave the pending request alone, and the
+// dew control has to end up automatic, never shown OK as manual, and regulate the heater set by hand off in dry air.
+static void automatic_request_queued_behind_a_heater_change_survives(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_wbplusv3(&simulator, NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&wbplusv3_aux, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_first_poll());
+	SERIAL_CHECK_TRUE(wait_for_switch(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(hold_queue());
+	SERIAL_CHECK_TRUE(set_number(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME, 40));
+	unsigned int revision = property_state_revision(AUX_DEW_CONTROL_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(set_switch(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+	release_queue();
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_DEW_CONTROL_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	assert_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_number(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME, 0, .01));
+	SERIAL_CHECK_TRUE(wait_for_switch(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+cleanup:
+	release_queue();
 	if (online) { stop_serial_driver(&wbplusv3_aux); }
 	stop_external_serial_simulator(&simulator);
 }
@@ -542,6 +652,7 @@ cleanup:
 }
 
 int main(void) {
+	simulator_test_client.define_property = capture_define_property;
 	const indigo_test_case tests[] = {
 		{ "metadata_and_property_completeness", metadata_and_property_completeness },
 		{ "identity_and_firmware_reach_info", identity_and_firmware_reach_info },
@@ -549,11 +660,14 @@ int main(void) {
 		{ "dew_warning_is_clear_in_dry_air", dew_warning_is_clear_in_dry_air },
 		{ "first_status_frame_overrides_the_seeded_outlet_state", first_status_frame_overrides_the_seeded_outlet_state },
 		{ "power_outlets_switch_independently", power_outlets_switch_independently },
+		{ "power_outlet_write_failure_shows_the_box_state", power_outlet_write_failure_shows_the_box_state },
 		{ "usb_port_switches", usb_port_switches },
+		{ "usb_port_write_failure_shows_the_box_state", usb_port_write_failure_shows_the_box_state },
 		{ "regulated_outlet_voltage_round_trips", regulated_outlet_voltage_round_trips },
 		{ "heater_outlet_round_trips_through_pwm", heater_outlet_round_trips_through_pwm },
 		{ "manual_heater_change_leaves_automatic_mode", manual_heater_change_leaves_automatic_mode },
 		{ "automatic_dew_control_stops_the_heater_in_dry_air", automatic_dew_control_stops_the_heater_in_dry_air },
+		{ "automatic_request_queued_behind_a_heater_change_survives", automatic_request_queued_behind_a_heater_change_survives },
 		{ "outlet_names_relabel_the_controls", outlet_names_relabel_the_controls },
 		{ "calibration_switch_is_momentary", calibration_switch_is_momentary },
 		{ "out_of_range_requests_are_clamped_before_they_reach_the_device", out_of_range_requests_are_clamped_before_they_reach_the_device },

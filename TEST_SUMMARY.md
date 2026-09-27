@@ -66,6 +66,7 @@
 | aux_upb3 | 2026-09-26 21:00 | 3.0.0.7 | mac arm64 | simulator | 29 / 29 | ✅ OK |
 | aux_usbdp | 2026-09-21 23:40 | 3.0.0.11 | mac arm64 | simulator | 16 / 16 | ✅ OK |
 | aux_wbplusv3 | 2026-09-21 19:41 | 3.0.0.6 | mac arm64 | simulator | 17 / 17 | ✅ OK |
+|  | 2026-09-27 06:37 | 3.0.0.8 | linux x64 | simulator | 20 / 20 | ✅ OK |
 | aux_wbprov3 | 2026-09-21 19:43 | 3.0.0.6 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 | aux_wcv4ec | 2026-09-21 19:45 | 3.0.0.8 | mac arm64 | simulator | 15 / 15 | ✅ OK |
 |  | 2026-09-27 01:22 | 3.0.0.10 | linux x64 | simulator | 18 / 18 | ✅ OK |
