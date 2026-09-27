@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000044
+#define DRIVER_VERSION       0x03000045
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -2000,7 +2000,8 @@ static void meade_update_onstep_state(indigo_device *device) {
 			// A disabled tracking answers 0, which says nothing about the configured rate,
 			// so the rate the driver already holds is kept.
 		}
-		if (rate_item != NULL && !rate_item->sw.value) {
+		// A request copied during the :GT# round trip owns the property, its handler reads the target.
+		if (rate_item != NULL && !rate_item->sw.value && MOUNT_TRACK_RATE_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, rate_item, true);
 			indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
 		}
@@ -2745,12 +2746,14 @@ static void meade_update_mount_state(indigo_device *device) {
 
 static void guider_guide_dec_finalizer(indigo_device *device) {
 	bool stopped = !MOUNT_TYPE_CLASSIC_ITEM->sw.value || meade_classic_guide_stop(device, &PRIVATE_DATA->classicGuideNS);
+	// Only the values, the target of a pulse requested while this one ends is read by its handler.
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, stopped ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 
 static void guider_guide_ra_finalizer(indigo_device *device) {
 	bool stopped = !MOUNT_TYPE_CLASSIC_ITEM->sw.value || meade_classic_guide_stop(device, &PRIVATE_DATA->classicGuideWE);
+	// Only the values, the target of a pulse requested while this one ends is read by its handler.
 	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, stopped ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
@@ -3128,9 +3131,14 @@ static void mount_onstep_preferred_pier_side_handler(indigo_device *device) {
 static void mount_onstep_auto_meridian_flip_handler(indigo_device *device) {
 	ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.ONSTEP_AUTO_MERIDIAN_FLIP.on_change
+	// The OnStep status poll mirrors the setting the mount reports and may overwrite the value between the copy
+	// of the request and this handler, the targets keep the request. After a refusal the next poll shows the
+	// setting the mount reports.
 	char cmd[16];
-	strncpy(cmd, ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM->sw.value ? ":SX95,1#" : ":SX95,0#", sizeof(cmd));
-	if (!(meade_simple_reply_command(device, cmd) && *PRIVATE_DATA->response == '1')) {
+	strncpy(cmd, indigo_get_switch_target(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM_NAME) ? ":SX95,1#" : ":SX95,0#", sizeof(cmd));
+	if (meade_simple_reply_command(device, cmd) && *PRIVATE_DATA->response == '1') {
+		indigo_apply_switch_targets(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY);
+	} else {
 		ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- mount.ONSTEP_AUTO_MERIDIAN_FLIP.on_change
@@ -3180,7 +3188,12 @@ static void mount_onstep_altitude_limits_handler(indigo_device *device) {
 static void mount_park_handler(indigo_device *device) {
 	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_PARK.on_change
-	if (!((PRIVATE_DATA->park_allowed && MOUNT_PARK_PARKED_ITEM->sw.value) || (PRIVATE_DATA->unpark_allowed && MOUNT_PARK_UNPARKED_ITEM->sw.value))) {
+	// The status poll mirrors the park state the mount reports and may overwrite the value between the copy of
+	// the request and this handler, the targets keep the request. Every refusal or failure below shows the
+	// state the mount is in.
+	bool park = indigo_get_switch_target(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM_NAME);
+	bool unpark = indigo_get_switch_target(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM_NAME);
+	if (!((PRIVATE_DATA->park_allowed && park) || (PRIVATE_DATA->unpark_allowed && unpark))) {
 		// A refused request may not leave the rejected value in the property: the
 		// parked item is what the generated guards of the motion and tracking
 		// properties read, so a client would be locked out until the next poll.
@@ -3188,6 +3201,7 @@ static void mount_park_handler(indigo_device *device) {
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		return;
 	}
+	indigo_apply_switch_targets(MOUNT_PARK_PROPERTY);
 	if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 		if (MOUNT_PARK_PROPERTY->count == 1) {
 			MOUNT_PARK_PARKED_ITEM->sw.value = false;
@@ -3246,10 +3260,13 @@ static void mount_park_set_handler(indigo_device *device) {
 static void mount_home_handler(indigo_device *device) {
 	MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_HOME.on_change
-	if (!(PRIVATE_DATA->home_allowed && MOUNT_HOME_ITEM->sw.value)) {
+	// The status poll mirrors the home state the mount reports and may clear the item between the copy of the
+	// request and this handler, the target keeps the request.
+	if (!(PRIVATE_DATA->home_allowed && indigo_get_switch_target(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM_NAME))) {
 		indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 		return;
 	}
+	indigo_apply_switch_targets(MOUNT_HOME_PROPERTY);
 	MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
 	if (MOUNT_HOME_PROPERTY->count == 1) {
 		indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
@@ -3431,8 +3448,11 @@ static void mount_set_host_time_handler(indigo_device *device) {
 		MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
 		time_t secs = time(NULL);
 		if (meade_set_utc(device, secs, indigo_get_utc_offset())) {
-			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_UTC_TIME_PROPERTY, INDIGO_OK_STATE, NULL);
+			// A pending MOUNT_UTC_TIME request owns its items, its handler sets the requested time next.
+			if (MOUNT_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
+				indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+				INDIGO_UPDATE_PROPERTY_STATE(MOUNT_UTC_TIME_PROPERTY, INDIGO_OK_STATE, NULL);
+			}
 		} else {
 			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -3444,11 +3464,16 @@ static void mount_set_host_time_handler(indigo_device *device) {
 static void mount_utc_time_handler(indigo_device *device) {
 	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_UTC_TIME.on_change
-	time_t secs = indigo_isogmtotime(MOUNT_UTC_ITEM->text.value);
+	int offset = 0;
+	time_t secs = indigo_mount_get_utc_target(device, &offset);
 	if (secs == -1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Wrong date/time format!");
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else if (!meade_set_utc(device, secs, atoi(MOUNT_UTC_OFFSET_ITEM->text.value))) {
+	} else if (meade_set_utc(device, secs, offset)) {
+		PRIVATE_DATA->utc_offset = offset;
+		indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+		snprintf(MOUNT_UTC_OFFSET_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", offset);
+	} else {
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- mount.MOUNT_UTC_TIME.on_change
@@ -3463,9 +3488,15 @@ static void mount_tracking_handler(indigo_device *device) {
 	}
 	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_TRACKING.on_change
-	if (meade_set_tracking(device, MOUNT_TRACKING_ON_ITEM->sw.value)) {
-		MOUNT_STATE_TRACKING_ITEM->light.value = MOUNT_TRACKING_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+	// The status poll mirrors the tracking the mount reports and may overwrite the value between the copy of the
+	// request and this handler, the target keeps the request. On failure the switch shows the tracking the mount
+	// last reported.
+	bool on = indigo_get_switch_target(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM_NAME);
+	if (meade_set_tracking(device, on)) {
+		indigo_apply_switch_targets(MOUNT_TRACKING_PROPERTY);
+		MOUNT_STATE_TRACKING_ITEM->light.value = on ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 	} else {
+		indigo_set_switch(MOUNT_TRACKING_PROPERTY, PRIVATE_DATA->tracking ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
 		MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_ALERT_STATE;
 	}
@@ -3479,6 +3510,11 @@ static void mount_tracking_handler(indigo_device *device) {
 static void mount_track_rate_handler(indigo_device *device) {
 	MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_TRACK_RATE.on_change
+	// The OnStep and NYX status polls mirror the rate the mount reports and may overwrite the value between the
+	// copy of the request and this handler, the targets keep the request. meade_set_tracking_rate() sends the
+	// selected item, as it does before a slew, so the request is selected first; a refused rate is shown with
+	// ALERT as before.
+	indigo_apply_switch_targets(MOUNT_TRACK_RATE_PROPERTY);
 	if (!meade_set_tracking_rate(device)) {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -3729,6 +3765,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_SET_HOST_TIME_PROPERTY, mount_set_host_time_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_UTC_TIME_PROPERTY, property)) {
+		//+ mount.MOUNT_UTC_TIME.on_change_request
+		// The status poll refreshes the items from the mount clock and MOUNT_SET_HOST_TIME from the host clock, so
+		// the handler sends the requested time recorded here instead of the copied items.
+		indigo_mount_set_utc_target(device, property);
+		//- mount.MOUNT_UTC_TIME.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_UTC_TIME_PROPERTY, mount_utc_time_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {
@@ -3843,6 +3884,9 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	// A new request replaces the running pulse, so the finaliser of the superseded
 	// one must not end the new pulse on the old deadline.
 	indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+	// The finalizer of the previous pulse may have zeroed the values after the request was copied, the targets keep it.
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target;
+	GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target;
 	int north = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 	int south = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 	if ((north > 0 || south > 0) && !meade_guide_dec(device, north, south)) {
@@ -3865,6 +3909,9 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	// A new request replaces the running pulse, so the finaliser of the superseded
 	// one must not end the new pulse on the old deadline.
 	indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+	// The finalizer of the previous pulse may have zeroed the values after the request was copied, the targets keep it.
+	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target;
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target;
 	int west = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 	int east = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 	if ((west > 0 || east > 0) && !meade_guide_ra(device, west, east)) {
@@ -4193,11 +4240,16 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 static void aux_power_outlet_handler(indigo_device *device) {
 	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_POWER_OUTLET.on_change
+	// The aux poll mirrors the outlet states the controller reports and may overwrite the values between the
+	// copy of the request and this handler, the targets keep the request. An outlet the controller refused is
+	// left to the next poll, which shows the state it reports.
 	for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
 		indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
-		bool val = item->sw.value;
+		bool val = item->sw.target;
 		int slot = ONSTEP_AUX_POWER_OUTLET_MAPPING[i];
-		if (!meade_simple_reply_command(device, ":SXX%d,V%d#", slot, val) || PRIVATE_DATA->response[0] != '1') {
+		if (meade_simple_reply_command(device, ":SXX%d,V%d#", slot, val) && PRIVATE_DATA->response[0] == '1') {
+			item->sw.value = val;
+		} else {
 			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
@@ -4274,6 +4326,16 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(AUX_HEATER_OUTLET_PROPERTY, aux_heater_outlet_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_POWER_OUTLET_PROPERTY, property)) {
+		//+ aux.AUX_POWER_OUTLET.on_change_request
+		// The aux poll writes the outlet states the controller reports into the values only and the handler sends
+		// the targets, so the outlets a request does not carry must keep the reported state in their targets as
+		// well. A BUSY property is left alone, the framework drops the request and its handler reads the targets.
+		if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
+			for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+				AUX_POWER_OUTLET_PROPERTY->items[i].sw.target = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value;
+			}
+		}
+		//- aux.AUX_POWER_OUTLET.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_POWER_OUTLET_PROPERTY, aux_power_outlet_handler);
 		return INDIGO_OK;
 	}

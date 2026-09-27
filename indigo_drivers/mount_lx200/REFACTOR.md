@@ -2281,3 +2281,73 @@ serial simulator and detaches the client that started manual motion:
   (`meade_classic_guide_start()`), so a refusal with a registered motion is not reachable.
 * `network_lx200_close_releases_motion` (opt-in `--network`): the same as the first case with a TCP
   peer of the in-process server closing its connection.
+
+## Switch, number and UTC targets (2026-09-27, 3.0.0.69)
+
+Findings TGT-020 to TGT-025, TGT-C04 and the lx200 part of TGT-B04 of
+`indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this change. Baseline before the change:
+the unchanged suite (3.0.0.68) passed 99/99 on Linux x64.
+
+Every finding is a request copied on the bus thread after a background writer on the device queue checked
+the property for BUSY and before it wrote the state the mount reports, so the queued handler read the
+overwritten value:
+
+- TGT-020 `MOUNT_TRACKING`, TGT-021 `MOUNT_PARK`, TGT-022 `MOUNT_HOME`, TGT-C04 `MOUNT_UTC_TIME`
+  (`meade_update_mount_state()`), TGT-024 `X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP` (OnStep poll) and the NYX part
+  of TGT-023 `MOUNT_TRACK_RATE`: the check and the write are a few instructions apart with no I/O between.
+  A lost tracking OFF was sent as ON, a lost PARK was refused by the `park_allowed` check, a lost HOME was
+  cleared by the poll and ignored, a requested time was replaced by the mount clock, a flip request by the
+  current setting and a rate by the current rate.
+- TGT-023, OnStep: the poll checked `MOUNT_TRACK_RATE` before the `:GT#` round trip and wrote after it.
+- TGT-025 `AUX_POWER_OUTLET`: the aux poll re-checks after each `:GXX#` round trip but logs the reply and
+  then writes the outlet.
+- TGT-C04, second writer found by this audit: `MOUNT_SET_HOST_TIME` wrote the host clock into
+  `MOUNT_UTC_TIME` and published it OK also over a pending request, so the queued `MOUNT_UTC_TIME` handler
+  sent the host time.
+- TGT-B04: the classic finalizer stops the pulse with `:Q<d>#` and then zeroes the values, so a pulse
+  copied during that command (the property accepts pulses while BUSY) was read as 0 and reported OK.
+
+Fix: the `MOUNT_TRACKING`, `MOUNT_PARK`, `MOUNT_HOME`, flip and outlet handlers read the request with
+`indigo_get_switch_target()` and apply it with `indigo_apply_switch_targets()`; `MOUNT_TRACKING` shows the
+tracking the mount last reported with ALERT on failure, `MOUNT_PARK` keeps showing the mount's park state
+on every refusal or failure. `MOUNT_TRACK_RATE` applies the targets before `meade_set_tracking_rate()`,
+which sends the selected item and is shared with the slew; a refused rate is shown with ALERT as before.
+The OnStep poll checks `MOUNT_TRACK_RATE` for BUSY again before its write. `AUX_POWER_OUTLET` is
+any-of-many and the poll writes only values, so the targets of outlets a request does not carry would be
+stale (an outlet reported off would be switched on by the next request for another one); its
+`on_change_request` therefore copies the values into the targets while the property is not BUSY, before
+the request is copied over them. Residual: an outlet the poll changes in the same few instructions keeps
+its previous state in the target. `MOUNT_UTC_TIME` records the request with `indigo_mount_set_utc_target()`
+in `on_change_request`, the handler sends `indigo_mount_get_utc_target()` and writes time, offset and
+`utc_offset` (which the poll publishes) once the mount accepted them; `MOUNT_SET_HOST_TIME` leaves a BUSY
+`MOUNT_UTC_TIME` alone. The guide handlers restore the values from the targets, which the finalizers do not
+touch. The polls keep their BUSY checks.
+
+Regression tests in `integration/test_mount_lx200_simulator.c` (99 -> 103 cases). The request is sent
+from the debug log line the driver writes inside the window, on the writer's own thread, which models the
+concurrent bus thread deterministically; the UTC case holds the queue with the StarGO gate handler. Each
+failed against 3.0.0.68 and passes with 3.0.0.69:
+
+- `lx200_onstep_track_rate_request_survives_frequency_read`: SOLAR requested from the log of `:GT#`.
+  Before: no `:TS#`.
+- `lx200_aux_power_request_survives_poll`: OUTLET_1 off requested from the log of the slot 1 reply.
+  Before: no `:SXX1,V0#`; now also checked that OUTLET_2, reported off, is not switched on.
+- `lx200_classic_guider_pulse_survives_previous_finalizer`: the opposite 300 ms pulse requested from the
+  log of `:Qn#` / `:Qe#`. Before: no `:Ms#`; now both pulses run 300 ms.
+- `lx200_utc_request_survives_host_time`: `MOUNT_SET_HOST_TIME` and a `MOUNT_UTC_TIME` request queued
+  behind the gate. Before: no `:SC09/16/26#`, the mount got the host time twice.
+
+The windows without I/O cannot be hit by a permanent case: no log line lies between the check and the
+write. They were reproduced with a temporary copy of the generated driver (not committed) that logs
+`TGT window <name>` right after each check, and temporary cases sending the request from that line: on
+3.0.0.68 tracking OFF sent no `:Td#`, PARK no `:hP#`, HOME no `:hC#`, the UTC request no `:SL01:30:45#`,
+flip ENABLED no `:SX95,1#` and the NYX SOLAR rate no `:TS#` (6/6 failed); the same instrumentation on
+3.0.0.69 passed 6/6.
+
+Recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py mount_lx200` on Linux x64:
+103/103 OK (2026-09-27 02:25).
+MIGRATION_STATUS.md hardware-free count 103 -> 107.
+
+### Final test summary for this change
+
+Simulated tests: **103 run, 103 passed** (recorded run). Hardware tests: **0 run, 0 passed**.

@@ -23,7 +23,7 @@ driver lx200 {
 	label = "LX200 Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 68;
+	version = 69;
 	serial {
 		configurable_speed = true;
 		// NYX_TEMPLATE_INDEX - Pegasus Astro NYX mount
@@ -1811,7 +1811,8 @@ driver lx200 {
 				// A disabled tracking answers 0, which says nothing about the configured rate,
 				// so the rate the driver already holds is kept.
 			}
-			if (rate_item != NULL && !rate_item->sw.value) {
+			// A request copied during the :GT# round trip owns the property, its handler reads the target.
+			if (rate_item != NULL && !rate_item->sw.value && MOUNT_TRACK_RATE_PROPERTY->state != INDIGO_BUSY_STATE) {
 				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, rate_item, true);
 				indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
 			}
@@ -2903,9 +2904,14 @@ driver lx200 {
 			rule = INDIGO_ONE_OF_MANY_RULE;
 			hidden = true;
 			on_change {
+				// The OnStep status poll mirrors the setting the mount reports and may overwrite the value between the copy
+				// of the request and this handler, the targets keep the request. After a refusal the next poll shows the
+				// setting the mount reports.
 				char cmd[16];
-				strncpy(cmd, ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM->sw.value ? ":SX95,1#" : ":SX95,0#", sizeof(cmd));
-				if (!(meade_simple_reply_command(device, cmd) && *PRIVATE_DATA->response == '1')) {
+				strncpy(cmd, indigo_get_switch_target(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM_NAME) ? ":SX95,1#" : ":SX95,0#", sizeof(cmd));
+				if (meade_simple_reply_command(device, cmd) && *PRIVATE_DATA->response == '1') {
+					indigo_apply_switch_targets(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY);
+				} else {
 					ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
@@ -3005,7 +3011,12 @@ driver lx200 {
 				PRIVATE_DATA->unpark_allowed = PRIVATE_DATA->parked && !PRIVATE_DATA->parking && !PRIVATE_DATA->homing;
 			}
 			on_change {
-				if (!((PRIVATE_DATA->park_allowed && MOUNT_PARK_PARKED_ITEM->sw.value) || (PRIVATE_DATA->unpark_allowed && MOUNT_PARK_UNPARKED_ITEM->sw.value))) {
+				// The status poll mirrors the park state the mount reports and may overwrite the value between the copy of
+				// the request and this handler, the targets keep the request. Every refusal or failure below shows the
+				// state the mount is in.
+				bool park = indigo_get_switch_target(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM_NAME);
+				bool unpark = indigo_get_switch_target(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM_NAME);
+				if (!((PRIVATE_DATA->park_allowed && park) || (PRIVATE_DATA->unpark_allowed && unpark))) {
 					// A refused request may not leave the rejected value in the property: the
 					// parked item is what the generated guards of the motion and tracking
 					// properties read, so a client would be locked out until the next poll.
@@ -3013,6 +3024,7 @@ driver lx200 {
 					indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 					return;
 				}
+				indigo_apply_switch_targets(MOUNT_PARK_PROPERTY);
 				if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 					if (MOUNT_PARK_PROPERTY->count == 1) {
 						MOUNT_PARK_PARKED_ITEM->sw.value = false;
@@ -3070,10 +3082,13 @@ driver lx200 {
 				PRIVATE_DATA->home_allowed = !PRIVATE_DATA->parked && !PRIVATE_DATA->parking && !PRIVATE_DATA->homing && !PRIVATE_DATA->homed;
 			}
 			on_change {
-				if (!(PRIVATE_DATA->home_allowed && MOUNT_HOME_ITEM->sw.value)) {
+				// The status poll mirrors the home state the mount reports and may clear the item between the copy of the
+				// request and this handler, the target keeps the request.
+				if (!(PRIVATE_DATA->home_allowed && indigo_get_switch_target(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM_NAME))) {
 					indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 					return;
 				}
+				indigo_apply_switch_targets(MOUNT_HOME_PROPERTY);
 				MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
 				if (MOUNT_HOME_PROPERTY->count == 1) {
 					indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
@@ -3217,8 +3232,11 @@ driver lx200 {
 					MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
 					time_t secs = time(NULL);
 					if (meade_set_utc(device, secs, indigo_get_utc_offset())) {
-						indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-						INDIGO_UPDATE_PROPERTY_STATE(MOUNT_UTC_TIME_PROPERTY, INDIGO_OK_STATE, NULL);
+						// A pending MOUNT_UTC_TIME request owns its items, its handler sets the requested time next.
+						if (MOUNT_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
+							indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+							INDIGO_UPDATE_PROPERTY_STATE(MOUNT_UTC_TIME_PROPERTY, INDIGO_OK_STATE, NULL);
+						}
 					} else {
 						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
@@ -3227,21 +3245,37 @@ driver lx200 {
 		}
 		inherited MOUNT_UTC_TIME {
 			hidden = true;
+			on_change_request {
+				// The status poll refreshes the items from the mount clock and MOUNT_SET_HOST_TIME from the host clock, so
+				// the handler sends the requested time recorded here instead of the copied items.
+				indigo_mount_set_utc_target(device, property);
+			}
 			on_change {
-				time_t secs = indigo_isogmtotime(MOUNT_UTC_ITEM->text.value);
+				int offset = 0;
+				time_t secs = indigo_mount_get_utc_target(device, &offset);
 				if (secs == -1) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Wrong date/time format!");
 					MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else if (!meade_set_utc(device, secs, atoi(MOUNT_UTC_OFFSET_ITEM->text.value))) {
+				} else if (meade_set_utc(device, secs, offset)) {
+					PRIVATE_DATA->utc_offset = offset;
+					indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+					snprintf(MOUNT_UTC_OFFSET_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", offset);
+				} else {
 					MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
 		}
 		inherited MOUNT_TRACKING {
 			on_change {
-				if (meade_set_tracking(device, MOUNT_TRACKING_ON_ITEM->sw.value)) {
-					MOUNT_STATE_TRACKING_ITEM->light.value = MOUNT_TRACKING_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+				// The status poll mirrors the tracking the mount reports and may overwrite the value between the copy of the
+				// request and this handler, the target keeps the request. On failure the switch shows the tracking the mount
+				// last reported.
+				bool on = indigo_get_switch_target(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM_NAME);
+				if (meade_set_tracking(device, on)) {
+					indigo_apply_switch_targets(MOUNT_TRACKING_PROPERTY);
+					MOUNT_STATE_TRACKING_ITEM->light.value = on ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 				} else {
+					indigo_set_switch(MOUNT_TRACKING_PROPERTY, PRIVATE_DATA->tracking ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
 					MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
 					MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_ALERT_STATE;
 				}
@@ -3252,6 +3286,11 @@ driver lx200 {
 		}
 		inherited MOUNT_TRACK_RATE {
 			on_change {
+				// The OnStep and NYX status polls mirror the rate the mount reports and may overwrite the value between the
+				// copy of the request and this handler, the targets keep the request. meade_set_tracking_rate() sends the
+				// selected item, as it does before a slew, so the request is selected first; a refused rate is shown with
+				// ALERT as before.
+				indigo_apply_switch_targets(MOUNT_TRACK_RATE_PROPERTY);
 				if (!meade_set_tracking_rate(device)) {
 					MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
@@ -3285,12 +3324,14 @@ driver lx200 {
 		code {
 			static void guider_guide_dec_finalizer(indigo_device *device) {
 				bool stopped = !MOUNT_TYPE_CLASSIC_ITEM->sw.value || meade_classic_guide_stop(device, &PRIVATE_DATA->classicGuideNS);
+				// Only the values, the target of a pulse requested while this one ends is read by its handler.
 				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 				INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, stopped ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 			}
 
 			static void guider_guide_ra_finalizer(indigo_device *device) {
 				bool stopped = !MOUNT_TYPE_CLASSIC_ITEM->sw.value || meade_classic_guide_stop(device, &PRIVATE_DATA->classicGuideWE);
+				// Only the values, the target of a pulse requested while this one ends is read by its handler.
 				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 				INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, stopped ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 			}
@@ -3330,6 +3371,9 @@ driver lx200 {
 				// A new request replaces the running pulse, so the finaliser of the superseded
 				// one must not end the new pulse on the old deadline.
 				indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+				// The finalizer of the previous pulse may have zeroed the values after the request was copied, the targets keep it.
+				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target;
+				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target;
 				int north = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 				int south = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 				if ((north > 0 || south > 0) && !meade_guide_dec(device, north, south)) {
@@ -3358,6 +3402,9 @@ driver lx200 {
 				// A new request replaces the running pulse, so the finaliser of the superseded
 				// one must not end the new pulse on the old deadline.
 				indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+				// The finalizer of the previous pulse may have zeroed the values after the request was copied, the targets keep it.
+				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target;
+				GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target;
 				int west = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 				int east = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 				if ((west > 0 || east > 0) && !meade_guide_ra(device, west, east)) {
@@ -3718,12 +3765,27 @@ driver lx200 {
 			rule = INDIGO_ANY_OF_MANY_RULE;
 			hidden = true;
 			pointer = power_outlet_property;
+			on_change_request {
+				// The aux poll writes the outlet states the controller reports into the values only and the handler sends
+				// the targets, so the outlets a request does not carry must keep the reported state in their targets as
+				// well. A BUSY property is left alone, the framework drops the request and its handler reads the targets.
+				if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
+					for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+						AUX_POWER_OUTLET_PROPERTY->items[i].sw.target = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value;
+					}
+				}
+			}
 			on_change {
+				// The aux poll mirrors the outlet states the controller reports and may overwrite the values between the
+				// copy of the request and this handler, the targets keep the request. An outlet the controller refused is
+				// left to the next poll, which shows the state it reports.
 				for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
 					indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
-					bool val = item->sw.value;
+					bool val = item->sw.target;
 					int slot = ONSTEP_AUX_POWER_OUTLET_MAPPING[i];
-					if (!meade_simple_reply_command(device, ":SXX%d,V%d#", slot, val) || PRIVATE_DATA->response[0] != '1') {
+					if (meade_simple_reply_command(device, ":SXX%d,V%d#", slot, val) && PRIVATE_DATA->response[0] == '1') {
+						item->sw.value = val;
+					} else {
 						AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
 				}

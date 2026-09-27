@@ -2752,6 +2752,211 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static bool lx_wait_switch(const char *property, const char *item, bool value) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *cached = find_cached_item(property, item);
+		if (cached != NULL && cached->sw.value == value) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	fprintf(stderr, "%s.%s is not %s\n", property, item, value ? "ON" : "OFF");
+	return false;
+}
+
+// A request copied between a background writer's BUSY check and its write is the race of the switch and number
+// targets. The I/O layer logs every command and the driver some replies on the debug level from the thread that
+// runs the writer, so a request sent from the log line of that command or reply is copied exactly inside the window
+// and models the concurrent bus thread deterministically.
+static const char *log_trigger;
+static void (*log_action)(void);
+static atomic_bool log_armed, log_fired;
+static indigo_log_levels log_level_before;
+
+static void trigger_log_handler(indigo_log_levels level, const char *message) {
+	if (atomic_load(&log_armed) && strstr(message, log_trigger) != NULL && atomic_exchange(&log_armed, false)) {
+		log_action();
+		atomic_store(&log_fired, true);
+	} else if (level == INDIGO_LOG_ERROR) {
+		fprintf(stderr, "%s\n", message);
+	}
+}
+
+static void arm_log_trigger(const char *trigger, void (*action)(void)) {
+	log_trigger = trigger;
+	log_action = action;
+	atomic_store(&log_fired, false);
+	atomic_store(&log_armed, true);
+	log_level_before = indigo_get_log_level();
+	indigo_log_message_handler = trigger_log_handler;
+	indigo_set_log_level(INDIGO_LOG_DEBUG);
+}
+
+static bool wait_for_log_trigger(void) {
+	for (int i = 0; i < 1000 && !atomic_load(&log_fired); i++) {
+		indigo_usleep(10000);
+	}
+	if (!atomic_load(&log_fired)) {
+		fprintf(stderr, "The driver did not log '%s'\n", log_trigger);
+		return false;
+	}
+	return true;
+}
+
+static void disarm_log_trigger(void) {
+	if (indigo_log_message_handler == trigger_log_handler) {
+		atomic_store(&log_armed, false);
+		indigo_set_log_level(log_level_before);
+		indigo_log_message_handler = NULL;
+	}
+}
+
+static void request_solar_rate(void) {
+	indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true);
+}
+
+// TGT-023: an OnStep status without a rate character is resolved by :GT#. The poll checked MOUNT_TRACK_RATE for BUSY
+// before that round trip and wrote the rate it decoded after it, so a rate requested meanwhile was replaced by the
+// current one and the handler sent nothing.
+static void lx200_onstep_track_rate_request_survives_frequency_read(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	int solar = event_count(&simulator, "TS", NULL);
+	unsigned int revision = property_revision(MOUNT_TRACK_RATE_PROPERTY_NAME);
+	arm_log_trigger("<- :GT#", request_solar_rate);
+	SERIAL_CHECK_TRUE(wait_for_log_trigger());
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_TRACK_RATE_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "TS", solar));
+	int polls = event_count(&simulator, "GU", NULL);
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "GU", polls + 1));
+	SERIAL_CHECK_TRUE(lx_wait_switch(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true));
+cleanup:
+	disarm_log_trigger();
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void request_outlet_1_off(void) {
+	indigo_change_switch_property_1(&simulator_test_client, lx200_aux.device_name, AUX_POWER_OUTLET_PROPERTY_NAME, "OUTLET_1", false);
+}
+
+// TGT-025: the aux poll checks AUX_POWER_OUTLET for BUSY again after each :GXX# round trip, but logs the reply before it
+// writes the outlet. A request copied there was replaced by the reported state and the handler sent that state back.
+// The handler sends the targets, so the outlet the request does not carry must keep its reported state (off) as well.
+static void lx200_aux_power_request_survives_poll(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_aux, "onstep", NULL));
+	online = true;
+	// The simulator reports outlet 1 (slot 1) on and outlet 2 (slot 3) off.
+	SERIAL_CHECK_TRUE(lx_wait_switch(AUX_POWER_OUTLET_PROPERTY_NAME, "OUTLET_1", true));
+	SERIAL_CHECK_TRUE(lx_wait_switch(AUX_POWER_OUTLET_PROPERTY_NAME, "OUTLET_2", false));
+	int off = event_count(&simulator, "SXX1,V0", NULL);
+	int other_on = event_count(&simulator, "SXX3,V1", NULL);
+	unsigned int revision = property_revision(AUX_POWER_OUTLET_PROPERTY_NAME);
+	arm_log_trigger("response 1 for slot 1", request_outlet_1_off);
+	SERIAL_CHECK_TRUE(wait_for_log_trigger());
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SXX1,V0", off));
+	SERIAL_CHECK_EQ_INT(other_on, event_count(&simulator, "SXX3,V1", NULL));
+	int polls = event_count(&simulator, "GXX1", NULL);
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "GXX1", polls + 1));
+	SERIAL_CHECK_TRUE(lx_wait_switch(AUX_POWER_OUTLET_PROPERTY_NAME, "OUTLET_1", false));
+	SERIAL_CHECK_TRUE(lx_wait_switch(AUX_POWER_OUTLET_PROPERTY_NAME, "OUTLET_2", false));
+cleanup:
+	disarm_log_trigger();
+	if (online) { stop_serial_driver(&lx200_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static const char *next_pulse_property, *next_pulse_item;
+
+static void request_next_pulse(void) {
+	indigo_change_number_property_1(&simulator_test_client, lx200_guider.device_name, next_pulse_property, next_pulse_item, 300);
+}
+
+// Sends a 100 ms classic pulse, requests a 300 ms pulse the other way from the log of the :Q<d># that ends the first
+// one, before its finalizer clears the values, and checks that the second pulse ran its duration.
+static bool classic_pulse_survives_previous_finalizer(external_serial_simulator *simulator, const char *property, const char *first_item, const char *first_stop, const char *next_item, const char *next_start, const char *next_stop) {
+	int starts = event_count(simulator, next_start, NULL);
+	int stops = event_count(simulator, next_stop, NULL);
+	next_pulse_property = property;
+	next_pulse_item = next_item;
+	arm_log_trigger(first_stop, request_next_pulse);
+	if (indigo_change_number_property_1(&simulator_test_client, lx200_guider.device_name, property, first_item, 100) != INDIGO_OK || !wait_for_log_trigger()) {
+		return false;
+	}
+	if (!wait_event(simulator, next_start, starts)) {
+		fprintf(stderr, "%s: the %s pulse requested while the %s pulse ended was dropped\n", property, next_item, first_item);
+		return false;
+	}
+	if (!wait_event(simulator, next_stop, stops)) {
+		return false;
+	}
+	disarm_log_trigger();
+	double began = 0, ended = 0;
+	event_count(simulator, next_start, &began);
+	event_count(simulator, next_stop, &ended);
+	printf("    %s %s pulse requested while the %s pulse ended ran %.0f ms\n", property, next_item, first_item, (ended - began) * 1000);
+	return ended - began >= .25 && ended - began < 1;
+}
+
+// TGT-B04: GUIDER_GUIDE_RA/DEC accept a pulse while one runs. The finalizer of a classic pulse stops it with :Q<d># and
+// then clears the values, so a pulse copied during that command was read as zero by its handler and reported OK.
+static void lx200_classic_guider_pulse_survives_previous_finalizer(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_guider, "classic", "CLASSIC"));
+	online = true;
+	SERIAL_CHECK_TRUE(classic_pulse_survives_previous_finalizer(&simulator, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, "<- :Qn#", GUIDER_GUIDE_SOUTH_ITEM_NAME, "Ms", "Qs"));
+	SERIAL_CHECK_TRUE(classic_pulse_survives_previous_finalizer(&simulator, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, "<- :Qe#", GUIDER_GUIDE_WEST_ITEM_NAME, "Mw", "Qw"));
+cleanup:
+	disarm_log_trigger();
+	if (online) { stop_serial_driver(&lx200_guider); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-C04: MOUNT_SET_HOST_TIME wrote the host clock into MOUNT_UTC_TIME and published it OK also over a pending request,
+// so the MOUNT_UTC_TIME handler queued behind it sent the host time instead of the requested one. The queue is held by
+// the StarGO gate while both requests are accepted.
+static void lx200_utc_request_survives_host_time(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	atomic_store(&stargo_queue_device, NULL);
+	simulator_test_client.update_property = stargo_capture_device;
+	atomic_store(&stargo_gate_entered, false);
+	atomic_store(&stargo_gate_release, false);
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "meade", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(atomic_load(&stargo_queue_device) != NULL);
+	indigo_execute_handler(atomic_load(&stargo_queue_device), stargo_gate_handler);
+	for (int i = 0; i < 1000 && !atomic_load(&stargo_gate_entered); i++) { indigo_usleep(1000); }
+	SERIAL_CHECK_TRUE(atomic_load(&stargo_gate_entered));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true));
+	const char *items[] = { UTC_TIME_ITEM_NAME, UTC_OFFSET_ITEM_NAME };
+	const char *values[] = { "2026-09-15T23:30:45", "2" };
+	unsigned int revision = property_revision(UTC_TIME_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property(&simulator_test_client, lx200_mount.device_name, UTC_TIME_PROPERTY_NAME, 2, items, values));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(UTC_TIME_PROPERTY_NAME)->state);
+	atomic_store(&stargo_gate_release, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_SET_HOST_TIME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(UTC_TIME_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	// The requested time reaches the mount, not the host time twice.
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SC09/16/26", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SG-02", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SL01:30:45", 0));
+	SERIAL_CHECK_TRUE(!strncmp(find_cached_item(UTC_TIME_PROPERTY_NAME, UTC_OFFSET_ITEM_NAME)->text.value, "2", 2));
+cleanup:
+	atomic_store(&stargo_gate_release, true);
+	if (online) { stop_serial_driver(&lx200_mount); }
+	simulator_test_client.update_property = timed_client_update;
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(int argc, char **argv) {
 	setbuf(stdout, NULL);
 	simulator_test_client.update_property = timed_client_update;
@@ -2851,6 +3056,10 @@ int main(int argc, char **argv) {
 		{ "lx200_generic_profile", lx200_generic_profile },
 		{ "lx200_esp32go_profile", lx200_esp32go_profile },
 		{ "lx200_esp32go_degree_mark_and_status", lx200_esp32go_degree_mark_and_status },
+		{ "lx200_onstep_track_rate_request_survives_frequency_read", lx200_onstep_track_rate_request_survives_frequency_read },
+		{ "lx200_aux_power_request_survives_poll", lx200_aux_power_request_survives_poll },
+		{ "lx200_classic_guider_pulse_survives_previous_finalizer", lx200_classic_guider_pulse_survives_previous_finalizer },
+		{ "lx200_utc_request_survives_host_time", lx200_utc_request_survives_host_time },
 		{ "lx200_mount_passes_serial_compliance_checks", lx200_mount_passes_serial_compliance_checks },
 		{ "lx200_guider_passes_serial_compliance_checks", lx200_guider_passes_serial_compliance_checks },
 		{ "lx200_focuser_passes_serial_compliance_checks", lx200_focuser_passes_serial_compliance_checks },
