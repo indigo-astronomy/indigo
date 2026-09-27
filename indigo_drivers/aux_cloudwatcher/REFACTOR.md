@@ -119,6 +119,7 @@ Hardware testing will **not** be performed. No AAG CloudWatcher or PocketCW is a
 | `reconnect` | normal | Withdrawal of the connection-dependent properties, survival of the always-defined ones, second connection and fresh reading |
 | `wrong_identity` | wrong-identity | `A!` rejection, alert connection state, no property left defined |
 | `relay_error` | relay-error | Rejected acknowledgement of `G!`/`H!` |
+| `relay_failure_shows_the_device_state` | relay-error | TGT-056: a refused relay request shows the state the device reported, with ALERT |
 | `timeout` | timeout | Silent port, bounded recovery, `DRV-086` regression |
 
 Not covered, and why:
@@ -154,7 +155,32 @@ that window every time. Verified both ways: the case fails against the driver wi
 
 Driver version is now `0x0300000D`.
 
+## Switch target for the relay (2026-09-27, 3.0.0.15)
+
+Findings `TGT-056` and the cloudwatcher part of `TGT-B07` in `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+
+| Defect | Impact | Root cause | Fix | Test |
+| --- | --- | --- | --- | --- |
+| TGT-056 | A relay request copied between the poll's BUSY check and its write was lost: the handler sent the relay state the device already had and reported OK. A refused request was shown ALERT with the requested state, not the state of the relay. | CW-01 left a window between the check and the write, and the handler read `sw.value`, which the poll writes. | The poll records the reported relay state in private data (seeded on connect) and still adopts it into the value only while not BUSY; `on_change_request` copies the value into the target while not BUSY; the handler sends `indigo_get_switch_target()`, applies the target once the device acknowledged it and otherwise shows the state last reported with ALERT. | `relay_failure_shows_the_device_state` (fails on 3.0.0.14); the window itself only with an instrumented copy, see below |
+| TGT-B07 | The poll published a request copied after its check as OK before the handler sent it. | The publication after the write did not check BUSY again. | The poll publishes only while the property is still not BUSY. | Instrumented copy only, see below |
+
+The relay is a plain latching output (`G!` opens, `H!` closes, `F!` reads it), not a pulsed one, so
+the target pattern that was wrong for the pulsed relays of aux_dragonfly, aux_asiair and aux_rpio
+applies here. The check, the write and the publication have no I/O or log line between them, so no
+permanent case can hit the window. A temporary instrumented copy (debug line and 200 ms pause right
+after the poll's check, a simulator profile that closes the relay on its own at the first poll, an
+OPEN request sent from that line; none of it committed) gave on Linux x64:
+
+- 3.0.0.14: `H!` sent, OK closed published before any command, relay left closed (4/4 runs).
+- 3.0.0.15: `G!` sent, the first OK (open) published after it, relay open (3/3).
+- 3.0.0.15 without the end-of-poll BUSY check: `G!` sent, but OK closed published before it (3/3).
+
+A request carrying no item at all is the only case `on_change_request` changes; no client sends one,
+so it has no case. Baseline on Linux x64 before the change: 16/16. The regeneration is
+reproducible, the sanitizer build passes the relay cases, and the recorded run through
+`tools/run_driver_test.py` passed 17/17.
+
 ## Final test summary
 
-- Simulated tests: 30 executed, 30 passed (15 ordinary scenarios and the same 15 under AddressSanitizer). Two of the 15 were recorded as expected baseline failures against the original driver and pass as regression tests against the migrated driver. The suite is now 16 scenarios after CW-01 above.
+- Simulated tests: 30 executed, 30 passed (15 ordinary scenarios and the same 15 under AddressSanitizer). Two of the 15 were recorded as expected baseline failures against the original driver and pass as regression tests against the migrated driver. The suite is now 16 scenarios after CW-01 above, and 17 after TGT-056; the recorded Linux x64 run of 3.0.0.15 executed 17 and passed 17.
 - Hardware tests: 0 executed, 0 passed.

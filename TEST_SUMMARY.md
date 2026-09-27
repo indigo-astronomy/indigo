@@ -37,6 +37,7 @@
 |  | 2026-09-27 02:07 | 3.0.0.7 | linux x64 | fake SDK | 20 / 20 | ✅ OK |
 | aux_astromechanics | 2026-09-21 19:31 | 3.0.0.6 | mac arm64 | simulator | 6 / 6 | ✅ OK |
 | aux_cloudwatcher | 2026-09-21 23:05 | 3.0.0.13 | mac arm64 | simulator | 16 / 16 | ✅ OK |
+|  | 2026-09-27 07:28 | 3.0.0.15 | linux x64 | simulator | 17 / 17 | ✅ OK |
 | aux_dragonfly | 2026-09-27 01:32 | 3.0.0.8 | linux x64 | simulator | 17 / 17 | ✅ OK |
 | aux_dsusb | 2026-09-21 23:41 | 3.0.0.16 | mac arm64 | DSUSB | 11 / 11 | ✅ OK |
 |  | 2026-09-21 23:42 | 3.0.0.16 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |

@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_aux_cloudwatcher"
 #define DRIVER_LABEL         "AAG CloudWatcher"
 #define AUX_DEVICE_NAME      "AAG CloudWatcher"
@@ -305,6 +305,7 @@ typedef struct {
 	double wet_start_time;
 	float desired_sensor_temperature;
 	float sensor_heater_power;
+	bool relay_closed;
 	char response[BLOCK_SIZE * MAX_BLOCKS];
 	//- data
 } cloudwatcher_private_data;
@@ -1025,13 +1026,19 @@ static void aux_timer_callback(indigo_device *device) {
 		cloudwatcher_heating_algorithm(device);
 	}
 	bool closed = false;
-	// The BUSY check has to sit after the read, not before it: a change request accepted
-	// while the reading was in flight has already copied the client's value and published
-	// BUSY, and applying the stale reading here would make the queued handler drive the
-	// switch back to where it already was.
-	if (cloudwatcher_get_switch(device, &closed) && AUX_GPIO_OUTLETS_PROPERTY->state != INDIGO_BUSY_STATE && AUX_GPIO_OUTLET_1_ITEM->sw.value != closed) {
-		AUX_GPIO_OUTLET_1_ITEM->sw.value = closed;
-		INDIGO_UPDATE_PROPERTY_STATE(AUX_GPIO_OUTLETS_PROPERTY, INDIGO_OK_STATE, NULL);
+	// The relay state the device reports is always recorded, a failed request shows it. The BUSY
+	// check has to sit after the read, not before it: a change request accepted while the reading
+	// was in flight has already copied the client's value and published BUSY. A request copied
+	// after the check keeps its value in the target, which its handler sends, and owns the state
+	// of the property, so the poll publishes only while it is still not BUSY.
+	if (cloudwatcher_get_switch(device, &closed)) {
+		PRIVATE_DATA->relay_closed = closed;
+		if (AUX_GPIO_OUTLETS_PROPERTY->state != INDIGO_BUSY_STATE && AUX_GPIO_OUTLET_1_ITEM->sw.value != closed) {
+			AUX_GPIO_OUTLET_1_ITEM->sw.value = closed;
+			if (AUX_GPIO_OUTLETS_PROPERTY->state != INDIGO_BUSY_STATE) {
+				INDIGO_UPDATE_PROPERTY_STATE(AUX_GPIO_OUTLETS_PROPERTY, INDIGO_OK_STATE, NULL);
+			}
+		}
 	}
 	double delay = REFRESH_INTERVAL - data.read_duration;
 	if (delay < 1) {
@@ -1049,6 +1056,7 @@ static void aux_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ aux.on_connect
 			cloudwatcher_get_switch(device, &AUX_GPIO_OUTLET_1_ITEM->sw.value);
+			PRIVATE_DATA->relay_closed = AUX_GPIO_OUTLET_1_ITEM->sw.value;
 			cloudwatcher_reset_properties(device);
 			PRIVATE_DATA->anemometer_black = X_ANEMOMETER_TYPE_BLACK_ITEM->sw.value;
 			PRIVATE_DATA->heating_state = normal;
@@ -1181,10 +1189,16 @@ static void aux_outlet_names_handler(indigo_device *device) {
 static void aux_gpio_outlets_handler(indigo_device *device) {
 	AUX_GPIO_OUTLETS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_GPIO_OUTLETS.on_change
-	if (!(AUX_GPIO_OUTLET_1_ITEM->sw.value ? cloudwatcher_close_switch(device) : cloudwatcher_open_switch(device))) {
+	// The poll may overwrite the value between the copy of the request and this handler, the target keeps
+	// the request. On failure the switch shows the relay state the device last reported.
+	bool closed = indigo_get_switch_target(AUX_GPIO_OUTLETS_PROPERTY, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME);
+	if (!(closed ? cloudwatcher_close_switch(device) : cloudwatcher_open_switch(device))) {
+		AUX_GPIO_OUTLET_1_ITEM->sw.value = PRIVATE_DATA->relay_closed;
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_GPIO_OUTLETS_PROPERTY, INDIGO_ALERT_STATE, "Open/Close switch failed");
 		return;
 	}
+	PRIVATE_DATA->relay_closed = closed;
+	indigo_apply_switch_targets(AUX_GPIO_OUTLETS_PROPERTY);
 	//- aux.AUX_GPIO_OUTLETS.on_change
 	indigo_update_property(device, AUX_GPIO_OUTLETS_PROPERTY, NULL);
 }
@@ -1447,6 +1461,14 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_OUTLET_NAMES_PROPERTY, aux_outlet_names_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_GPIO_OUTLETS_PROPERTY, property)) {
+		//+ aux.AUX_GPIO_OUTLETS.on_change_request
+		// The poll writes the relay state the device reports into the value only and the handler sends the
+		// target, so a request that does not carry the item must keep the reported state in its target as
+		// well. A BUSY property is left alone, the framework drops the request and its handler reads the target.
+		if (AUX_GPIO_OUTLETS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			AUX_GPIO_OUTLET_1_ITEM->sw.target = AUX_GPIO_OUTLET_1_ITEM->sw.value;
+		}
+		//- aux.AUX_GPIO_OUTLETS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_GPIO_OUTLETS_PROPERTY, aux_gpio_outlets_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_SKY_CORRECTION_PROPERTY, property)) {

@@ -406,6 +406,18 @@ cleanup:
 	aux_stop(&primary);
 }
 
+// TGT-056: a relay request the device refuses is shown in the state the device reported, with ALERT, instead of
+// the request. The relay-error profile answers G!/H! with !Z and leaves the relay open.
+static void relay_failure_shows_the_device_state(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(switch_is(AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, false));
+	SERIAL_CHECK_EQ_INT(indigo_change_switch_property_1(&simulator_test_client, primary.device_name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, true), INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_GPIO_OUTLETS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_is(AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, false));
+cleanup:
+	aux_stop(&primary);
+}
+
 int main(void) {
 	const aux_simulated_case tests[] = {
 		{ "normal", normal, "normal" },
@@ -423,6 +435,7 @@ int main(void) {
 		{ "wrong_identity", rejected_connection, "wrong-identity" },
 		{ "a_change_survives_a_relay_reading_in_flight", a_change_survives_a_relay_reading_in_flight, "slow-switch" },
 		{ "relay_error", relay_error, "relay-error" },
+		{ "relay_failure_shows_the_device_state", relay_failure_shows_the_device_state, "relay-error" },
 		{ "timeout", rejected_connection, "timeout" },
 	};
 	return run_aux_simulated("cloudwatcher", "build/integration/aux_cloudwatcher_simulator", tests, ARRAY_SIZE(tests));
