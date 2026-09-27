@@ -59,16 +59,31 @@ static bool set_number(const char *property, const char *item, double value) {
 	return indigo_change_number_property_1(&simulator_test_client, svbpowerbox_aux.device_name, property, item, value) == INDIGO_OK;
 }
 
+static bool wait_for_switch_item_value(const char *property_name, const char *item_name, bool expected) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *item = find_cached_item(property_name, item_name);
+		if (item != NULL && item->sw.value == expected) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	indigo_item *item = find_cached_item(property_name, item_name);
+	fprintf(stderr, "Switch %s.%s is %s, expected %s\n", property_name, item_name, item == NULL ? "missing" : item->sw.value ? "on" : "off", expected ? "on" : "off");
+	return false;
+}
+
 static double number_of(const char *property, const char *item) {
 	return cached_number_value(property, item);
 }
 
 // The sensor properties are defined OK at attach with zeroed items, so waiting for a state tells
-// nothing about whether a reading has arrived. The supply voltage is only ever written by a
-// completed poll, so it is the reliable signal that the first status frame has been parsed.
+// nothing about whether a reading has arrived. The supply voltage is only ever written by a poll,
+// but the poll publishes it before it reads the sensors, so it does not mean the readings have
+// been published yet. The simulator never reports exactly 0 C and a missing sensor is published as
+// -273.15, so non-zero temperatures in both sensor properties mean the poll has published them.
 static bool wait_for_first_poll(void) {
 	for (int i = 0; i < 500; i++) {
-		if (cached_number_value(AUX_INFO_PROPERTY_NAME, AUX_INFO_VOLTAGE_ITEM_NAME) > 0) {
+		if (cached_number_value(AUX_INFO_PROPERTY_NAME, AUX_INFO_VOLTAGE_ITEM_NAME) > 0 && cached_number_value(AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM_NAME) != 0 && cached_number_value(AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME) != 0 && cached_number_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME) != 0) {
 			return true;
 		}
 		indigo_usleep(10000);
@@ -165,6 +180,57 @@ static void both_usb_ports_switch(void) {
 		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
 		assert_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, ports[i], true);
 	}
+cleanup:
+	if (online) { stop_serial_driver(&svbpowerbox_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-046: an outlet the box refuses is shown in the state the box reported, with ALERT. The poll writes only the
+// values, so a later request for another outlet must not send the refused request from a stale target.
+static void power_outlet_failure_shows_the_box_state(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--refuse-port-once", "0", NULL };
+	SERIAL_CHECK_TRUE(start_powerbox(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&svbpowerbox_aux, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_first_poll());
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, true));
+	unsigned int revision = property_state_revision(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_switch(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, true));
+	revision = property_state_revision(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(set_switch(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, true));
+cleanup:
+	if (online) { stop_serial_driver(&svbpowerbox_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-047: the same for the USB port groups.
+static void usb_port_failure_shows_the_box_state(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--refuse-port-once", "5", NULL };
+	SERIAL_CHECK_TRUE(start_powerbox(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&svbpowerbox_aux, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_first_poll());
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_1_ITEM_NAME, true));
+	unsigned int revision = property_state_revision(AUX_USB_PORT_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_switch(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_1_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_USB_PORT_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_1_ITEM_NAME, true));
+	revision = property_state_revision(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(set_switch(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_2_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_2_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_1_ITEM_NAME, true));
 cleanup:
 	if (online) { stop_serial_driver(&svbpowerbox_aux); }
 	stop_external_serial_simulator(&simulator);
@@ -356,6 +422,8 @@ int main(void) {
 		{ "metadata_and_property_completeness", metadata_and_property_completeness },
 		{ "every_power_outlet_switches", every_power_outlet_switches },
 		{ "both_usb_ports_switch", both_usb_ports_switch },
+		{ "power_outlet_failure_shows_the_box_state", power_outlet_failure_shows_the_box_state },
+		{ "usb_port_failure_shows_the_box_state", usb_port_failure_shows_the_box_state },
 		{ "heater_outlets_accept_the_full_range", heater_outlets_accept_the_full_range },
 		{ "variable_voltage_rail_is_settable", variable_voltage_rail_is_settable },
 		{ "dew_control_switches_between_manual_and_automatic", dew_control_switches_between_manual_and_automatic },
