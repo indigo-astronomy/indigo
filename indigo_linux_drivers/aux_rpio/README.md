@@ -64,3 +64,4 @@ NOTE: As of version 2.0.0.4 output pin GPIO 19 is replaced with GPIO 21 for AsiA
 
 2026-09-20 22:35 3.0.0.9 linux arm64 fake SDK 19/19 OK
 2026-09-20 22:35 3.0.0.9 linux arm64 Raspberry Pi 5 4/4 OK
+2026-09-27 02:04 3.0.0.11 linux x64 fake SDK 23/23 OK

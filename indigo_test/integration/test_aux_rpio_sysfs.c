@@ -140,7 +140,7 @@ static void contract(void) {
 	driver.entry(INDIGO_DRIVER_INFO, &info);
 	ASSERT_STREQ("indigo_aux_rpio", info.name);
 	ASSERT_STREQ("Raspberry Pi GPIO", info.description);
-	ASSERT_EQ_INT(0x03000009, info.version);
+	ASSERT_EQ_INT(INDIGO_DRIVER_API_3, INDIGO_DRIVER_API_GENERATION(info.version));
 	ASSERT_FALSE(info.multi_device_support);
 	enumerate_simulator_device();
 	assert_defined_property(INFO_PROPERTY_NAME);
@@ -304,6 +304,182 @@ cleanup:
 	stop_driver();
 }
 
+// A gate handler holds the device queue, so a request is copied and queued while the 1 s poll comes due behind it.
+// Polls are INDIGO_TASK_PRIORITY_TIME tasks and run ahead of the queued change handler once the gate ends.
+static _Atomic(indigo_device *) rpio_device;
+static atomic_bool gate_entered, gate_release;
+static atomic_bool watch_on;
+static atomic_int watch_results, watch_first_state;
+static _Atomic double watch_first_value;
+static atomic_uint watch_first_witness;
+static const char *watch_property, *watch_witness;
+
+static indigo_result watch_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	indigo_result result = simulator_client_update_property(client, device, property, message);
+	if (strcmp(property->device, RPIO_DEVICE_NAME)) {
+		return result;
+	}
+	atomic_store(&rpio_device, device);
+	// The first result (not BUSY) of the watched property: its Output #1 item, its state and how often the witness
+	// property, which the poll publishes as well, was published by then.
+	if (atomic_load(&watch_on) && !strcmp(property->name, watch_property) && property->state != INDIGO_BUSY_STATE && atomic_fetch_add(&watch_results, 1) == 0) {
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME)) {
+				atomic_store(&watch_first_value, property->items[i].number.value);
+			}
+		}
+		atomic_store(&watch_first_witness, property_revision(watch_witness));
+		atomic_store(&watch_first_state, property->state);
+	}
+	return result;
+}
+
+static void gate_handler(indigo_device *device) {
+	atomic_store(&gate_entered, true);
+	for (int i = 0; i < 5000 && !atomic_load(&gate_release); i++) {
+		indigo_usleep(1000);
+	}
+}
+
+static bool hold_queue(void) {
+	indigo_device *device = atomic_load(&rpio_device);
+	atomic_store(&gate_entered, false);
+	atomic_store(&gate_release, false);
+	if (device == NULL) {
+		return false;
+	}
+	indigo_execute_handler(device, gate_handler);
+	for (int i = 0; i < 300 && !atomic_load(&gate_entered); i++) {
+		indigo_usleep(10000);
+	}
+	return atomic_load(&gate_entered);
+}
+
+static int fake_pwm_value(int channel, bool period) {
+	pthread_mutex_lock(&fake.mutex);
+	int value = period ? fake.pwm[channel].period : fake.pwm[channel].duty_cycle;
+	pthread_mutex_unlock(&fake.mutex);
+	return value;
+}
+
+// The channel reprogrammed from outside the driver, as the driver's poll expects it can be.
+static void fake_set_pwm(int channel, int period, int duty_cycle) {
+	pthread_mutex_lock(&fake.mutex);
+	fake.pwm[channel].period = period;
+	fake.pwm[channel].duty_cycle = duty_cycle;
+	pthread_mutex_unlock(&fake.mutex);
+}
+
+// TGT-B03: a frequency or duty cycle request copied while the 1 s poll comes due ahead of its handler must still
+// reach the channel. The poll must neither replace the request with the setting it reads from the channel nor publish
+// over the pending BUSY, so the first result after the request is the handler's, with the requested value, published
+// after the poll ran. Meanwhile the other setting of the channel is changed outside the driver, so the poll publishes
+// the other PWM property (the bus drops unchanged updates) as the witness, and the handler keeps that setting.
+static void pwm_request_survives_poll(bool frequency) {
+	const char *property = frequency ? AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY_NAME : AUX_GPIO_OUTLET_DUTY_PROPERTY_NAME;
+	const char *witness = frequency ? AUX_GPIO_OUTLET_DUTY_PROPERTY_NAME : AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY_NAME;
+	double requested = frequency ? 200 : 50;
+	atomic_store(&rpio_device, NULL);
+	simulator_test_client.update_property = watch_update;
+	SERIAL_CHECK_TRUE(start_driver_with_pwm(0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(property, INDIGO_OK_STATE));
+	// Output #1 runs at 100 Hz with a 100 % duty cycle.
+	SERIAL_CHECK_EQ_INT(10000000, fake_pwm_value(0, true));
+	SERIAL_CHECK_EQ_INT(10000000, fake_pwm_value(0, false));
+	SERIAL_CHECK_TRUE(hold_queue());
+	watch_property = property;
+	watch_witness = witness;
+	atomic_store(&watch_results, 0);
+	atomic_store(&watch_on, true);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, RPIO_DEVICE_NAME, property, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, requested));
+	SERIAL_CHECK_TRUE(find_cached_property(property)->state == INDIGO_BUSY_STATE);
+	// Output #1 is set to 100 Hz at 50 % (frequency request) or to 50 Hz at 100 % (duty cycle request) outside the
+	// driver. The poll comes due within 1 s while the queue is held.
+	if (frequency) {
+		fake_set_pwm(0, 10000000, 5000000);
+	} else {
+		fake_set_pwm(0, 20000000, 20000000);
+	}
+	indigo_usleep(1200000);
+	unsigned int before = property_revision(witness);
+	atomic_store(&gate_release, true);
+	for (int i = 0; i < 300 && atomic_load(&watch_results) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	printf("first %s result after the request: state %d, Output #1 %g, poll ran first %d, period %d, duty cycle %d\n", property, atomic_load(&watch_first_state), atomic_load(&watch_first_value), atomic_load(&watch_first_witness) > before, fake_pwm_value(0, true), fake_pwm_value(0, false));
+	SERIAL_CHECK_TRUE(atomic_load(&watch_results) > 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, atomic_load(&watch_first_state));
+	SERIAL_CHECK_TRUE(atomic_load(&watch_first_value) == requested);
+	SERIAL_CHECK_TRUE(atomic_load(&watch_first_witness) > before);
+	// 200 Hz at 50 %, or 50 Hz at 50 %.
+	SERIAL_CHECK_EQ_INT(frequency ? 5000000 : 20000000, fake_pwm_value(0, true));
+	SERIAL_CHECK_EQ_INT(frequency ? 2500000 : 10000000, fake_pwm_value(0, false));
+	// Later polls read the new setting back and keep it.
+	indigo_usleep(1200000);
+	SERIAL_CHECK_TRUE(find_cached_property(property)->state == INDIGO_OK_STATE);
+	ASSERT_TRUE(fabs(find_cached_item(property, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME)->number.value - requested) < 0.001);
+cleanup:
+	atomic_store(&watch_on, false);
+	atomic_store(&gate_release, true);
+	stop_driver();
+	simulator_test_client.update_property = simulator_client_update_property;
+}
+
+static void pwm_duty_request_survives_poll(void) {
+	pwm_request_survives_poll(false);
+}
+
+static void pwm_frequency_request_survives_poll(void) {
+	pwm_request_survives_poll(true);
+}
+
+// TGT-D11: a frequency or duty cycle the kernel rejects must not be reported OK. The first result after the request
+// is ALERT and shows the setting the channel still runs at, not the rejected request.
+static void pwm_write_failure_is_reported(bool frequency) {
+	const char *property = frequency ? AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY_NAME : AUX_GPIO_OUTLET_DUTY_PROPERTY_NAME;
+	double requested = frequency ? 200 : 50;
+	atomic_store(&rpio_device, NULL);
+	simulator_test_client.update_property = watch_update;
+	SERIAL_CHECK_TRUE(start_driver_with_pwm(0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(property, INDIGO_OK_STATE));
+	// Output #1 runs at 100 Hz with a 100 % duty cycle.
+	SERIAL_CHECK_EQ_INT(10000000, fake_pwm_value(0, true));
+	SERIAL_CHECK_EQ_INT(10000000, fake_pwm_value(0, false));
+	pthread_mutex_lock(&fake.mutex);
+	fake.pwm_write_fails = true;
+	pthread_mutex_unlock(&fake.mutex);
+	watch_property = property;
+	watch_witness = property;
+	atomic_store(&watch_results, 0);
+	atomic_store(&watch_on, true);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, RPIO_DEVICE_NAME, property, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, requested));
+	for (int i = 0; i < 300 && atomic_load(&watch_results) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	printf("first %s result after the rejected request: state %d, Output #1 %g, period %d, duty cycle %d\n", property, atomic_load(&watch_first_state), atomic_load(&watch_first_value), fake_pwm_value(0, true), fake_pwm_value(0, false));
+	SERIAL_CHECK_TRUE(atomic_load(&watch_results) > 0);
+	ASSERT_TRUE(fake_trace_count_of("pwm-duty-fail 0") + fake_trace_count_of("pwm-period-fail 0") > 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, atomic_load(&watch_first_state));
+	SERIAL_CHECK_TRUE(atomic_load(&watch_first_value) == 100);
+	SERIAL_CHECK_EQ_INT(10000000, fake_pwm_value(0, true));
+	SERIAL_CHECK_EQ_INT(10000000, fake_pwm_value(0, false));
+cleanup:
+	atomic_store(&watch_on, false);
+	pthread_mutex_lock(&fake.mutex);
+	fake.pwm_write_fails = false;
+	pthread_mutex_unlock(&fake.mutex);
+	stop_driver();
+	simulator_test_client.update_property = simulator_client_update_property;
+}
+
+static void pwm_duty_write_failure_is_reported(void) {
+	pwm_write_failure_is_reported(false);
+}
+
+static void pwm_frequency_write_failure_is_reported(void) {
+	pwm_write_failure_is_reported(true);
+}
+
 // D4 and D7 reproducer. A rejected export must fail the connection with a clear
 // state, and must not leave the connection switch with no item set.
 static void rejected_export_fails_the_connection_cleanly(void) {
@@ -442,6 +618,10 @@ int main(void) {
 		{ "PWM channels are programmed when present", pwm_channels_are_programmed_when_present },
 		{ "plain GPIO is used when no PWM chip is present", pwm_properties_are_hidden_without_a_chip },
 		{ "failed PWM readback is not written back", failed_pwm_readback_is_not_written_back },
+		{ "PWM duty request survives the poll", pwm_duty_request_survives_poll },
+		{ "PWM frequency request survives the poll", pwm_frequency_request_survives_poll },
+		{ "PWM duty write failure is reported", pwm_duty_write_failure_is_reported },
+		{ "PWM frequency write failure is reported", pwm_frequency_write_failure_is_reported },
 		{ "rejected export fails the connection cleanly", rejected_export_fails_the_connection_cleanly },
 		{ "failed connect rolls back exported pins", failed_connect_rolls_back_exported_pins },
 		{ "empty value read is an error", empty_value_read_is_an_error },

@@ -109,6 +109,9 @@ static struct {
 	bool value_read_unterminated;
 	bool pwm_read_fails;
 	bool pwm_zero_period;
+	// The kernel rejects a period or duty cycle the channel cannot generate
+	// with EINVAL and keeps the previous setting.
+	bool pwm_write_fails;
 	bool direction_appears_late;
 	int export_writes;
 	long slept_total;
@@ -151,6 +154,7 @@ static void fake_reset(int gpio_base, bool pwm_chip_present) {
 	fake.value_read_unterminated = false;
 	fake.pwm_read_fails = false;
 	fake.pwm_zero_period = false;
+	fake.pwm_write_fails = false;
 	fake.direction_appears_late = false;
 	fake.export_writes = 0;
 	fake.slept_total = 0;
@@ -628,10 +632,22 @@ ssize_t sysfs_test_write(int fd, const void *buffer, size_t size) {
 			fake_trace("pwm-enable %d %d", index, fake.pwm[index].enable);
 			break;
 		case FAKE_NODE_PWM_PERIOD:
+			if (fake.pwm_write_fails) {
+				fake_trace("pwm-period-fail %d %d", index, value);
+				pthread_mutex_unlock(&fake.mutex);
+				errno = EINVAL;
+				return -1;
+			}
 			fake.pwm[index].period = value;
 			fake_trace("pwm-period %d %d", index, value);
 			break;
 		case FAKE_NODE_PWM_DUTY:
+			if (fake.pwm_write_fails) {
+				fake_trace("pwm-duty-fail %d %d", index, value);
+				pthread_mutex_unlock(&fake.mutex);
+				errno = EINVAL;
+				return -1;
+			}
 			fake.pwm[index].duty_cycle = value;
 			fake_trace("pwm-duty %d %d", index, value);
 			break;

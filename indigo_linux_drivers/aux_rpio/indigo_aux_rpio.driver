@@ -26,7 +26,7 @@ driver rpio {
 	label = "Raspberry Pi GPIO";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
-	version = 10;
+	version = 11;
 	// The pins are reached through sysfs files, so the driver has no transport
 	// of its own and exposes one static device.
 	include {
@@ -166,6 +166,29 @@ driver rpio {
 			return result;
 		}
 
+		// Read both channels back into value and target of the selected PWM
+		// properties.
+		static bool rpio_read_pwm(indigo_device *device, bool frequencies, bool duties) {
+			bool result = true;
+			for (int i = 0; i < PWM_COUNT; i++) {
+				double frequency = 0;
+				double duty = 0;
+				if (rpio_sysfs_get_pwm(&PRIVATE_DATA->sysfs, i, &frequency, &duty)) {
+					indigo_item *frequency_item = AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->items + i;
+					indigo_item *duty_item = AUX_GPIO_OUTLET_DUTY_PROPERTY->items + i;
+					if (frequencies) {
+						frequency_item->number.value = frequency_item->number.target = frequency;
+					}
+					if (duties) {
+						duty_item->number.value = duty_item->number.target = duty;
+					}
+				} else {
+					result = false;
+				}
+			}
+			return result;
+		}
+
 		static void rpio_update_sensors(indigo_device *device) {
 			int values[INPUT_COUNT];
 			if (rpio_sysfs_read_inputs(&PRIVATE_DATA->sysfs, values)) {
@@ -180,22 +203,21 @@ driver rpio {
 			if (!PRIVATE_DATA->sysfs.pwm_present) {
 				return;
 			}
-			bool ok = true;
-			for (int i = 0; i < PWM_COUNT; i++) {
-				double frequency = 0;
-				double duty = 0;
-				if (rpio_sysfs_get_pwm(&PRIVATE_DATA->sysfs, i, &frequency, &duty)) {
-					indigo_item *frequency_item = AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->items + i;
-					indigo_item *duty_item = AUX_GPIO_OUTLET_DUTY_PROPERTY->items + i;
-					frequency_item->number.value = frequency_item->number.target = frequency;
-					duty_item->number.value = duty_item->number.target = duty;
-				} else {
-					ok = false;
-				}
+			// The channels can be reprogrammed from outside the driver, so the
+			// published settings are refreshed from the device. A pending request
+			// owns value, target and state of its property: its handler programs
+			// the channels from the targets and publishes the result.
+			bool frequency_pending = AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state == INDIGO_BUSY_STATE;
+			bool duty_pending = AUX_GPIO_OUTLET_DUTY_PROPERTY->state == INDIGO_BUSY_STATE;
+			bool ok = rpio_read_pwm(device, !frequency_pending, !duty_pending);
+			if (!frequency_pending) {
+				AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
 			}
-			AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = AUX_GPIO_OUTLET_DUTY_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-			indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
-			indigo_update_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
+			if (!duty_pending) {
+				AUX_GPIO_OUTLET_DUTY_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				indigo_update_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
+			}
 		}
 
 		// Program both channels from the stored targets. Used on connect and
@@ -470,7 +492,12 @@ driver rpio {
 			label = "PWM Frequencies (Hz)";
 			persistent = true;
 			on_change {
-				rpio_apply_pwm(device);
+				// A rejected setting leaves the channels as they were, so they are
+				// shown as they report themselves.
+				if (!rpio_apply_pwm(device)) {
+					rpio_read_pwm(device, true, false);
+					AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
 			}
 			item AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1 {
 				name = AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME;
@@ -495,7 +522,12 @@ driver rpio {
 			label = "PWM Duty cycles (%)";
 			persistent = true;
 			on_change {
-				rpio_apply_pwm(device);
+				// A rejected setting leaves the channels as they were, so they are
+				// shown as they report themselves.
+				if (!rpio_apply_pwm(device)) {
+					rpio_read_pwm(device, false, true);
+					AUX_GPIO_OUTLET_DUTY_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
 			}
 			item AUX_GPIO_OUTLET_DUTY_OUTLET_1 {
 				name = AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME;

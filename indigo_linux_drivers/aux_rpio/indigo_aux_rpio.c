@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_aux_rpio"
 #define DRIVER_LABEL         "Raspberry Pi GPIO"
 #define AUX_DEVICE_NAME      "Raspberry Pi GPIO"
@@ -266,6 +266,29 @@ static bool rpio_set_outlets(indigo_device *device) {
 	return result;
 }
 
+// Read both channels back into value and target of the selected PWM
+// properties.
+static bool rpio_read_pwm(indigo_device *device, bool frequencies, bool duties) {
+	bool result = true;
+	for (int i = 0; i < PWM_COUNT; i++) {
+		double frequency = 0;
+		double duty = 0;
+		if (rpio_sysfs_get_pwm(&PRIVATE_DATA->sysfs, i, &frequency, &duty)) {
+			indigo_item *frequency_item = AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->items + i;
+			indigo_item *duty_item = AUX_GPIO_OUTLET_DUTY_PROPERTY->items + i;
+			if (frequencies) {
+				frequency_item->number.value = frequency_item->number.target = frequency;
+			}
+			if (duties) {
+				duty_item->number.value = duty_item->number.target = duty;
+			}
+		} else {
+			result = false;
+		}
+	}
+	return result;
+}
+
 static void rpio_update_sensors(indigo_device *device) {
 	int values[INPUT_COUNT];
 	if (rpio_sysfs_read_inputs(&PRIVATE_DATA->sysfs, values)) {
@@ -280,22 +303,21 @@ static void rpio_update_sensors(indigo_device *device) {
 	if (!PRIVATE_DATA->sysfs.pwm_present) {
 		return;
 	}
-	bool ok = true;
-	for (int i = 0; i < PWM_COUNT; i++) {
-		double frequency = 0;
-		double duty = 0;
-		if (rpio_sysfs_get_pwm(&PRIVATE_DATA->sysfs, i, &frequency, &duty)) {
-			indigo_item *frequency_item = AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->items + i;
-			indigo_item *duty_item = AUX_GPIO_OUTLET_DUTY_PROPERTY->items + i;
-			frequency_item->number.value = frequency_item->number.target = frequency;
-			duty_item->number.value = duty_item->number.target = duty;
-		} else {
-			ok = false;
-		}
+	// The channels can be reprogrammed from outside the driver, so the
+	// published settings are refreshed from the device. A pending request
+	// owns value, target and state of its property: its handler programs
+	// the channels from the targets and publishes the result.
+	bool frequency_pending = AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state == INDIGO_BUSY_STATE;
+	bool duty_pending = AUX_GPIO_OUTLET_DUTY_PROPERTY->state == INDIGO_BUSY_STATE;
+	bool ok = rpio_read_pwm(device, !frequency_pending, !duty_pending);
+	if (!frequency_pending) {
+		AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
 	}
-	AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = AUX_GPIO_OUTLET_DUTY_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-	indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
-	indigo_update_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
+	if (!duty_pending) {
+		AUX_GPIO_OUTLET_DUTY_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
+	}
 }
 
 // Program both channels from the stored targets. Used on connect and
@@ -456,7 +478,12 @@ static void aux_x_aux_pwm_handler(indigo_device *device) {
 static void aux_gpio_outlet_frequencies_handler(indigo_device *device) {
 	AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_GPIO_OUTLET_FREQUENCIES.on_change
-	rpio_apply_pwm(device);
+	// A rejected setting leaves the channels as they were, so they are
+	// shown as they report themselves.
+	if (!rpio_apply_pwm(device)) {
+		rpio_read_pwm(device, true, false);
+		AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- aux.AUX_GPIO_OUTLET_FREQUENCIES.on_change
 	indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
 }
@@ -464,7 +491,12 @@ static void aux_gpio_outlet_frequencies_handler(indigo_device *device) {
 static void aux_gpio_outlet_duty_handler(indigo_device *device) {
 	AUX_GPIO_OUTLET_DUTY_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_GPIO_OUTLET_DUTY.on_change
-	rpio_apply_pwm(device);
+	// A rejected setting leaves the channels as they were, so they are
+	// shown as they report themselves.
+	if (!rpio_apply_pwm(device)) {
+		rpio_read_pwm(device, false, true);
+		AUX_GPIO_OUTLET_DUTY_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- aux.AUX_GPIO_OUTLET_DUTY.on_change
 	indigo_update_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
 }

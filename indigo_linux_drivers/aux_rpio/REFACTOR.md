@@ -495,9 +495,69 @@ its cache but keeps the name in the defined list. A property that has to be gone
 must be checked against the cache instead, which is what `assert_property_deleted()` in the test
 does.
 
+## Switch target adoption: PWM requests, PWM write failures and the pulse finalizer (3.0.0.11, 2026-09-27)
+
+Findings TGT-019, the aux_rpio part of TGT-B03 and the aux_rpio part of TGT-D11 in
+`indigo_drivers/REVIEW_SWITCH_TARGETS.md` (TGT-D11 there is unrelated to D11 in this file). Linux
+x64 (Ubuntu 24.04, gcc 13.3), hardware-free suite only; no hardware run.
+
+- **Baseline on Linux x64:** the unchanged 3.0.0.10 suite failed 1 of 19 cases: the contract case
+  pinned `0x03000009` while the driver was already 3.0.0.10. It now asserts the API generation, as
+  `indigo_test/AGENTS.md` requires. The `-U_FORTIFY_SOURCE` fix of the shared sysfs replacements
+  was already in `indigo_test/Makefile` (aux_asiair 3.0.0.6). Regeneration of the unchanged
+  `.driver` reproduced the checked-in output.
+- **TGT-B03 (reproduced):** the 1 s poll `rpio_update_sensors()` wrote value and target of
+  `AUX_GPIO_OUTLET_FREQUENCIES` and `AUX_GPIO_OUTLET_DUTY` from the channels after the
+  `AUX_GPIO_SENSORS` update and published them OK without a BUSY check. Polls are
+  `INDIGO_TASK_PRIORITY_TIME` tasks and run ahead of a queued change handler, so a request copied
+  while the poll came due was shown OK with the old value before it was applied, and the handler,
+  which programs the channels from `number.target` in `rpio_apply_pwm()`, programmed the old
+  setting again. **Fix:** the readback moved into `rpio_read_pwm()` (one read of each channel per
+  poll, as before), and the poll leaves value, target and state of a BUSY PWM property alone and
+  publishes only the one that is not BUSY.
+- **TGT-D11 (reproduced):** both PWM handlers ignored the result of `rpio_apply_pwm()`, so a
+  setting the kernel rejected was reported OK with the rejected value while the channel kept its
+  old setting. **Fix:** on failure the handler reads the channels back into value and target of
+  its property with `rpio_read_pwm()` and publishes ALERT; the generator still owns the OK
+  prologue and the final update. The next poll refreshes the property from the channels as
+  before (OK when the readback succeeds). The connect-time `rpio_apply_pwm()` is unchanged.
+- **Fake:** `sysfs_gpio_fake.h` got `pwm_write_fails`, off by default: the kernel rejects a
+  `period` or `duty_cycle` the channel cannot generate with `EINVAL` and keeps the previous
+  setting (traced as `pwm-period-fail` / `pwm-duty-fail`).
+- **Regression tests:** `PWM duty request survives the poll` and `PWM frequency request survives
+  the poll` hold the device queue with a gate handler, send the request for Output #1, change the
+  other setting of channel 0 in the fake so the poll publishes the other PWM property as a
+  witness, let the poll come due behind the gate, and check that the first result after the
+  request is OK with the requested value, published after the poll ran, and that the channel runs
+  at the requested setting with the external one kept. Against 3.0.0.10 both failed (first result
+  OK with the old 100, channel left at 50 Hz / 100 % and 100 Hz / 50 %). `PWM duty write failure
+  is reported` and `PWM frequency write failure is reported` make the fake reject the write and
+  check that the first result after the request is ALERT showing the 100 the channel still runs
+  at, with the channel unchanged. Against 3.0.0.10 both failed (first result OK with the rejected
+  50 / 200). All four pass with 3.0.0.11, also in the ASan build.
+- **TGT-019 (analysis, Won't fix):** `relay_pulse_finalizer()`, `rpio_set_outlets()` and the
+  `AUX_GPIO_OUTLETS` handler are the same code as in aux_asiair (TGT-018). The finalizer writes
+  `sw.value = false` only for an output whose pulse has elapsed, switches it off in the same step
+  and publishes; an ON request for that output copied before the finalizer ran is ignored like the
+  same request a moment earlier, so no request is lost. The target cannot replace the write:
+  items an any-of-many request does not carry keep their previous target. A temporary case (not
+  kept) held the queue past the end of a 500 ms pulse on Output #4 and queued a request for
+  Output #2 only. Unchanged 3.0.0.10: `value 26 0` from the finalizer, then only `value 12 1`,
+  Output #4 off, also when its pulse length was set to 0 in the same window. With the finalizer
+  skipping a BUSY property and the handler reading targets: Output #4 was pulsed again
+  (`value 26 1`, 500 ms later `value 26 0`), and after its pulse length had been set to 0 it was
+  switched on for good. No code change for TGT-019.
+- **Verification:** `TZ=Europe/Bratislava python3 tools/run_driver_test.py aux_rpio`, 23/23.
+  Regeneration reproduces the checked-in output.
+
+```sh
+cd indigo_test && INDIGO_TEST_FILTER="PWM" ./build/integration/test_aux_rpio_sysfs
+```
+
 ## Final test summary
 
-- Simulated tests: 19 executed, 19 passed. The pre-migration baseline against the unmodified driver
+- Simulated tests: 23 executed, 23 passed (Linux x64, 3.0.0.11). Earlier: 19 executed, 19 passed.
+  The pre-migration baseline against the unmodified driver
   was 18 executed, 6 passed; the 12 failures were the recorded expected baseline failures for D1,
   D5, D7, D9 and D14, and all of them now pass.
 - Hardware tests: 4 executed, 4 passed, on a Raspberry Pi 5 Model B Rev 1.0 with nothing connected

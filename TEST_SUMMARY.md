@@ -49,6 +49,7 @@
 | aux_ppb | 2026-09-21 21:47 | 3.0.0.29 | mac arm64 | simulator | 29 / 29 | ✅ OK |
 | aux_rpio | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | fake SDK | 19 / 19 | ✅ OK |
 |  | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | Raspberry Pi 5 | 4 / 4 | ✅ OK |
+|  | 2026-09-27 02:04 | 3.0.0.11 | linux x64 | fake SDK | 23 / 23 | ✅ OK |
 | aux_rts | 2026-09-21 23:49 | 3.0.0.10 | mac arm64 | simulator | 9 / 9 | ✅ OK |
 |  | 2026-09-23 19:19 | 3.0.0.11 | linux arm64 | simulator | 10 / 10 | ✅ OK |
 |  | 2026-09-23 19:22 | 3.0.0.11 | linux arm64 | FTDI serial loopback | 9 / 9 | ✅ OK |
