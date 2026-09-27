@@ -283,13 +283,46 @@ Findings TGT-038 to TGT-042 and TGT-D02 of `indigo_drivers/REVIEW_SWITCH_TARGETS
 
 - TGT-D15: the poll never sets `updatePowerOutlet`, so an outlet change the driver did not make is
   adopted into AUX_POWER_OUTLET but not published (AUX_POWER_OUTLET_STATE does follow it). Found by
-  reading, not reproducible with the simulator, not changed here.
+  reading, not reproducible with the simulator, not changed here. Fixed in 3.0.0.33, see below.
+
+## Outlet changes reported by the box are published (2026-09-27, 3.0.0.33)
+
+Finding TGT-D15 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+
+### Defect
+
+The poll adopts the outlet states the box reports into AUX_POWER_OUTLET while it is not BUSY, but set
+only `updatePowerOutletState`; `updatePowerOutlet` was declared and never set. An outlet that changed
+without a request from the driver (a late or repeated request, another tool on the port before the
+driver) was written into the values but never published, so clients kept seeing the old switch state
+while AUX_POWER_OUTLET_STATE followed the box. Reproduced with the simulator.
+
+### Fix
+
+- The adoption loop also sets `updatePowerOutlet` for a changed outlet. The poll publishes
+  AUX_POWER_OUTLET OK only when it is still not BUSY at the end of the poll (`upb_adopt()` re-checked
+  right before the write, like AUX_DEW_CONTROL, X_AUX_HUB and AUX_USB_PORT), so a request copied after
+  the outlet check keeps its values, targets and BUSY state for its handler. The poll still writes no
+  targets; `on_change_request` copies the values into them while not BUSY, as before. No serial command
+  changed.
+- The simulator gets the test control `--outlet-after N OUTLET 0|1`: from the status frame after the
+  first N `PA` replies the outlet reports the given state without any command.
+
+### Verification (Linux x64)
+
+- New case `power_outlet_change_reported_by_the_box_is_published` (outlet 2 switched off by the
+  simulator after the connect and the first poll; the state light goes IDLE, then the switch must be
+  published off with the property OK and outlet 1 still on). 3.0.0.32 failed 4/4 (the light went IDLE,
+  `OUTLET_2` stayed on), 3.0.0.33 passed 3/3 in isolation.
+- Regeneration from the `.driver` is reproducible. Recorded run through `tools/run_driver_test.py
+  aux_upb`: 47/47.
+- Not verified on hardware.
 
 ## Final test summary
 
-- Simulated tests run: 46; passed: 46 (recorded run of `test_aux_upb_simulator` through
-  `tools/run_driver_test.py`, driver version 32, Linux x64). The previous macOS arm64 runs of the 40
+- Simulated tests run: 47; passed: 47 (recorded run of `test_aux_upb_simulator` through
+  `tools/run_driver_test.py`, driver version 33, Linux x64). The previous macOS arm64 runs of the 40
   earlier cases and the ASan + UBSan note above refer to driver version 30.
 - Hardware tests run: 1; passed: 1 (`upb_usb_port_changes_survive_the_poll`, Pegasus UPB v1 firmware 1.4,
   driver version 30). The last full hardware run, 14 run and 14 passed, was on driver version 28 and
-  did not include this case. Version 32 was not run on hardware.
+  did not include this case. Versions 32 and 33 were not run on hardware.

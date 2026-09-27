@@ -800,6 +800,24 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// TGT-D15: an outlet the box reports switched without a request from the driver is published in AUX_POWER_OUTLET,
+// not only in AUX_POWER_OUTLET_STATE. The simulator switches outlet 2 off from the third status frame on, after the
+// connect and the first poll.
+static void power_outlet_change_reported_by_the_box_is_published(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--outlet-after", "2", "2", "0", NULL };
+	SERIAL_CHECK_TRUE(start_upb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(AUX_POWER_OUTLET_STATE_PROPERTY_NAME, AUX_POWER_OUTLET_STATE_2_ITEM_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
 // TGT-041: a dew control request the box does not answer is shown as the mode the box reported, with ALERT.
 static void dew_control_failure_shows_the_box_state(void) {
 	external_serial_simulator simulator = { 0 };
@@ -1288,6 +1306,7 @@ int main(void) {
 		{ "v1_usb_port_failure_shows_the_hub_state", v1_usb_port_failure_shows_the_hub_state },
 		{ "usb_port_failure_shows_the_box_state", usb_port_failure_shows_the_box_state },
 		{ "power_outlet_failure_shows_the_box_state", power_outlet_failure_shows_the_box_state },
+		{ "power_outlet_change_reported_by_the_box_is_published", power_outlet_change_reported_by_the_box_is_published },
 		{ "dew_control_failure_shows_the_box_state", dew_control_failure_shows_the_box_state },
 		{ "v1_hub_failure_shows_the_box_state", v1_hub_failure_shows_the_box_state },
 		{ "v1_hub_change_reported_by_the_box_is_published", v1_hub_change_reported_by_the_box_is_published },

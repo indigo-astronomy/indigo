@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000020
+#define DRIVER_VERSION       0x03000021
 #define DRIVER_NAME          "indigo_aux_upb"
 #define DRIVER_LABEL         "PegasusAstro Ultimate Powerbox"
 #define AUX_DEVICE_NAME      "Ultimate Powerbox"
@@ -332,6 +332,7 @@ static void aux_timer_callback(indigo_device *device) {
 				for (int i = 0; i < 4; i++) {
 					if (AUX_POWER_OUTLET_PROPERTY->items[i].sw.value != PRIVATE_DATA->power_outlets[i]) {
 						AUX_POWER_OUTLET_PROPERTY->items[i].sw.value = PRIVATE_DATA->power_outlets[i];
+						updatePowerOutlet = true;
 						updatePowerOutletState = true;
 					}
 				}
@@ -547,7 +548,8 @@ static void aux_timer_callback(indigo_device *device) {
 			}
 		}
 	}
-	if (updatePowerOutlet) {
+	// A request copied after the outlet check owns the state of AUX_POWER_OUTLET, its handler publishes the result.
+	if (updatePowerOutlet && upb_adopt(AUX_POWER_OUTLET_PROPERTY)) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_POWER_OUTLET_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	if (updatePowerOutletState) {

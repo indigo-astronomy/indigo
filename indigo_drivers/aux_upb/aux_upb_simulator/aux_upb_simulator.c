@@ -49,6 +49,10 @@ static bool fault_once;
 // Matches of the faulted command that are answered normally before the fault
 // applies, so a fault can be aimed at a poll rather than at the connect.
 static int fault_skip;
+// Test control: after this many status frames outlet external_outlet (1-4) takes
+// external_state without a command, the way an outlet changed outside the driver
+// (for example a late or repeated request) shows up in the status frame.
+static int external_after = -1, external_outlet, external_state;
 static serial_motion motion = { .position = 50, .target = 50 };
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
@@ -159,6 +163,9 @@ static void dispatch_command(int fd, const char *cmd) {
 	} else if (!strcmp(cmd, "PV")) {
 		sim_printf(fd, "1.0\n");
 	} else if (!strcmp(cmd, "PA")) {
+		if (external_after >= 0 && external_after-- == 0) {
+			outlets[external_outlet - 1] = external_state;
+		}
 		char response[256];
 		int used = snprintf(response, sizeof(response), "%s:%.1f:%.1f:%d:%.1f:%.0f:%.1f:%d%d%d%d:", version == 2 ? "UPB2" : "UPB", voltage, current, power, temperature, humidity, dewpoint, outlets[0], outlets[1], outlets[2], outlets[3]);
 		if (version == 2) {
@@ -271,6 +278,13 @@ int main(int argc, char **argv) {
 		} else if (!strcmp(argv[i], "--hub-off")) {
 			// A box whose USB hub was left disabled reports it in the status frame until PU:1 enables it.
 			hub = 0;
+		} else if (!strcmp(argv[i], "--outlet-after") && i + 3 < argc) {
+			external_after = atoi(argv[++i]);
+			external_outlet = atoi(argv[++i]);
+			external_state = atoi(argv[++i]) != 0;
+			if (external_after < 0 || external_outlet < 1 || external_outlet > 4) {
+				return 1;
+			}
 		} else if (!strcmp(argv[i], "--fault-after") && i + 3 < argc) {
 			fault_skip = atoi(argv[++i]);
 			fault_once = true;
@@ -289,7 +303,7 @@ int main(int argc, char **argv) {
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
 		} else if (strcmp(argv[i], "--headless")) {
-			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file path] [--model upb|upb2] [--overcurrent FLAGS] [--weather T H D] [--power V A W] [--autodew] [--hub-off] [--no-probe] [--outlet-current N] [--fault CMD invalid|short|silent|close] [--fault-once CMD MODE] [--fault-after N CMD MODE]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file path] [--model upb|upb2] [--overcurrent FLAGS] [--weather T H D] [--power V A W] [--autodew] [--hub-off] [--no-probe] [--outlet-current N] [--outlet-after N OUTLET 0|1] [--fault CMD invalid|short|silent|close] [--fault-once CMD MODE] [--fault-after N CMD MODE]\n", argv[0]);
 			return 1;
 		}
 	}
