@@ -1113,6 +1113,78 @@ cleanup:
 	sim_follow_end();
 }
 
+// A gate handler holds the focuser's device queue while requests are copied on the bus; a marker handler queued after
+// releasing it shows that every handler queued before it has run.
+static indigo_device *focuser_device;
+static atomic_bool focuser_gate_entered, focuser_gate_release, focuser_marker_ran;
+
+static void focuser_gate_handler(indigo_device *device) {
+	atomic_store(&focuser_gate_entered, true);
+	for (int i = 0; i < 5000 && !atomic_load(&focuser_gate_release); i++) {
+		indigo_usleep(1000);
+	}
+}
+
+static void focuser_marker_handler(indigo_device *device) {
+	atomic_store(&focuser_marker_ran, true);
+}
+
+static indigo_result focuser_device_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, ccd_focuser_simulator.device_name)) {
+		focuser_device = device;
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static bool focuser_wait(atomic_bool *flag) {
+	for (int i = 0; i < 2000 && !atomic_load(flag); i++) {
+		indigo_usleep(1000);
+	}
+	return atomic_load(flag);
+}
+
+// TGT-071: FOCUSER_DIRECTION is a selector that clients send right before FOCUSER_STEPS. Of the requests queued behind
+// a busy device queue the last one wins: a direction request is applied at once, is not refused while an earlier one
+// is still queued, and a queued FOCUSER_POSITION move does not overwrite the direction the client selected after it.
+static void simulator_focuser_direction_queued_behind_a_move_keeps_the_last(void) {
+	focuser_device = NULL;
+	atomic_store(&focuser_gate_entered, false);
+	atomic_store(&focuser_gate_release, false);
+	atomic_store(&focuser_marker_ran, false);
+	simulator_test_client.update_property = focuser_device_update;
+	start_connected_simulator(&ccd_focuser_simulator);
+	const char *name = ccd_focuser_simulator.device_name;
+	SIM_CHECK(focuser_device != NULL);
+	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, name, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, bounded_number_value(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 1000)) == INDIGO_OK);
+	SIM_CHECK(wait_for_property_state(FOCUSER_SPEED_PROPERTY_NAME, INDIGO_OK_STATE));
+	SIM_CHECK(indigo_change_switch_property_1(&simulator_test_client, name, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true) == INDIGO_OK);
+	SIM_CHECK(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500) == INDIGO_OK);
+	SIM_CHECK(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SIM_CHECK(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, 0.001));
+	indigo_execute_handler(focuser_device, focuser_gate_handler);
+	SIM_CHECK(focuser_wait(&focuser_gate_entered));
+	// inward, then a move inward, then outward and 100 steps: the steps go outward from 500
+	SIM_CHECK(indigo_change_switch_property_1(&simulator_test_client, name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true) == INDIGO_OK);
+	SIM_CHECK(find_cached_property(FOCUSER_DIRECTION_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 450) == INDIGO_OK);
+	SIM_CHECK(indigo_change_switch_property_1(&simulator_test_client, name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true) == INDIGO_OK);
+	SIM_CHECK(find_cached_property(FOCUSER_DIRECTION_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100) == INDIGO_OK);
+	atomic_store(&focuser_gate_release, true);
+	indigo_execute_handler(focuser_device, focuser_marker_handler);
+	SIM_CHECK(focuser_wait(&focuser_marker_ran));
+	SIM_CHECK(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+	SIM_CHECK(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SIM_CHECK(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 600, 0.001));
+	SIM_CHECK(find_cached_item(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME)->sw.value);
+	SIM_CHECK(find_cached_property(FOCUSER_DIRECTION_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+cleanup:
+	atomic_store(&focuser_gate_release, true);
+	stop_connected_simulator(&ccd_focuser_simulator);
+	simulator_test_client.update_property = simulator_client_update_property;
+}
+
 #endif
 
 #ifdef CCD_SIMULATOR_TIMING_BENCHMARK
@@ -1219,6 +1291,7 @@ int main(int argc, char **argv) {
 		{ "simulator_guider_camera_follows_simulated_mount", simulator_guider_camera_follows_simulated_mount },
 		{ "simulator_guider_offsets_follow_simulated_mount_axes", simulator_guider_offsets_follow_simulated_mount_axes },
 		{ "simulator_guider_camera_follows_mount_simulator_guiding", simulator_guider_camera_follows_mount_simulator_guiding },
+		{ "simulator_focuser_direction_queued_behind_a_move_keeps_the_last", simulator_focuser_direction_queued_behind_a_move_keeps_the_last },
 		{ "driver_info_reports_simulator_metadata", driver_info_reports_simulator_metadata },
 		{ "simulator_initializes_enumerates_connects_disconnects_and_shuts_down", simulator_initializes_enumerates_connects_disconnects_and_shuts_down },
 		{ "ccd_imager_passes_compliance_checks", ccd_imager_passes_compliance_checks },

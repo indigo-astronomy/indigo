@@ -167,3 +167,43 @@ Regression tests in `integration/test_ccd_simulator.c` (the mount simulator arch
 Validation on macOS arm64: `test_ccd_simulator` 21/21 passed, and the two new cases were repeated five times with identical results. Linux and Windows were not run.
 
 Final test summary for this change: simulator suite 21 run / 21 passed; hardware 0 run / 0 passed.
+
+## Focuser direction selector (TGT-071, 2026-09-27)
+
+Version 34, finding TGT-071 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+
+### Defect (reproduced)
+
+`FOCUSER_DIRECTION` selects the direction of the next `FOCUSER_STEPS` move, and clients send it right
+before `FOCUSER_STEPS`. The simulator handled it asynchronously (`INDIGO_COPY_VALUES_PROCESS_CHANGE`
+with a queued handler that precomputed the backlash), unlike the base focuser driver, which applies the
+selector synchronously. `start_focuser_move()`, called from the queued `FOCUSER_POSITION` and
+`FOCUSER_STEPS` handlers, also wrote the direction of every move into the selector. Two requests could
+therefore be lost:
+
+- while an earlier direction request was still queued, the property was BUSY and a newer one was
+  dropped without an answer;
+- a `FOCUSER_POSITION` move queued before a direction request overwrote the selector before the direction
+  and `FOCUSER_STEPS` handlers read it, and both reported OK.
+
+With the focuser queue held by a gate handler, the sequence INWARD, POSITION 450, OUTWARD, STEPS 100 from
+position 500 ended at 400 with the selector INWARD on version 34 (3/3), instead of 600 and OUTWARD.
+
+### Fix
+
+Version 35: `FOCUSER_DIRECTION` has no simulator handler any more, so the base focuser driver applies it
+at once on the bus thread and answers OK; the `FOCUSER_STEPS` handler reads the selector as before.
+`start_focuser_move()` no longer writes the selector. The backlash is taken up when the motor reverses,
+decided from the direction of the last move (`focuser_outward` in the private data, inward at start like
+the default selector) instead of the selector. This gives the same backlash as before for every move,
+except that re-selecting the direction already selected no longer resets the remaining backlash. A
+`FOCUSER_POSITION` move no longer changes the displayed selector.
+
+Regression test `simulator_focuser_direction_queued_behind_a_move_keeps_the_last`: the gate handler holds
+the device queue, the four requests are sent, the direction requests must be OK at once, and after the
+gate is released and a marker handler has run the focuser must end at 600 with the selector OUTWARD. It
+fails on version 34 (3/3: the first direction request stays BUSY; a temporary variant without the state
+checks, not committed, ended at 400 INWARD) and passes on version 35 (3/3). Regeneration is
+reproducible. Linux x86_64 only; macOS and Windows were not run.
+
+Final test summary for this change: simulator suite 23 run / 23 passed; hardware 0 run / 0 passed.

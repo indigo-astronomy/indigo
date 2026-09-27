@@ -53,7 +53,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000022
+#define DRIVER_VERSION       0x03000023
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -271,6 +271,7 @@ typedef struct {
 	bool exposure_active[5], streaming_active[5];
 	double target_temperature, current_temperature;
 	int current_slot, target_position, current_position, backlash_in, backlash_out;
+	bool focuser_outward;
 	double ao_ra_offset, ao_dec_offset, guide_rate;
 	//- data
 } simulator_private_data;
@@ -1135,15 +1136,15 @@ static void focuser_move_finalizer(indigo_device *device) {
 static void start_focuser_move(indigo_device *device, int target) {
 	PRIVATE_DATA->target_position = target;
 	bool inward = target < PRIVATE_DATA->current_position;
-	if (inward && !FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
+	// the backlash is taken up when the motor reverses; FOCUSER_DIRECTION is the client's selector for FOCUSER_STEPS and stays untouched here
+	if (inward && PRIVATE_DATA->focuser_outward) {
 		PRIVATE_DATA->backlash_in = BACKLASH_ITEM->number.value > PRIVATE_DATA->backlash_out ? (int)BACKLASH_ITEM->number.value - PRIVATE_DATA->backlash_out : 0;
 		PRIVATE_DATA->backlash_out = 0;
-	} else if (!inward && !FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
+	} else if (!inward && !PRIVATE_DATA->focuser_outward) {
 		PRIVATE_DATA->backlash_out = BACKLASH_ITEM->number.value > PRIVATE_DATA->backlash_in ? (int)BACKLASH_ITEM->number.value - PRIVATE_DATA->backlash_in : 0;
 		PRIVATE_DATA->backlash_in = 0;
 	}
-	indigo_set_switch(FOCUSER_DIRECTION_PROPERTY, inward ? FOCUSER_DIRECTION_MOVE_INWARD_ITEM : FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM, true);
-	indigo_update_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+	PRIVATE_DATA->focuser_outward = !inward;
 	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -2217,20 +2218,6 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	//- focuser.FOCUSER_ABORT_MOTION.on_change
 }
 
-static void focuser_direction_handler(indigo_device *device) {
-	FOCUSER_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
-	//+ focuser.FOCUSER_DIRECTION.on_change
-	if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
-		PRIVATE_DATA->backlash_out = BACKLASH_ITEM->number.value > PRIVATE_DATA->backlash_in ? (int)BACKLASH_ITEM->number.value - PRIVATE_DATA->backlash_in : 0;
-		PRIVATE_DATA->backlash_in = 0;
-	} else {
-		PRIVATE_DATA->backlash_in = BACKLASH_ITEM->number.value > PRIVATE_DATA->backlash_out ? (int)BACKLASH_ITEM->number.value - PRIVATE_DATA->backlash_out : 0;
-		PRIVATE_DATA->backlash_out = 0;
-	}
-	//- focuser.FOCUSER_DIRECTION.on_change
-	indigo_update_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
-}
-
 #pragma mark - Device API (focuser)
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -2282,9 +2269,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_DIRECTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_DIRECTION_PROPERTY, focuser_direction_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_COMPENSATION_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);

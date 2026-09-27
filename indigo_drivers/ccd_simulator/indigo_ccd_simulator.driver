@@ -20,7 +20,7 @@ driver simulator {
 	label = "Camera Simulator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 34;
+	version = 35;
 	multi_device_support = true;
 	include {
 		#include <math.h>
@@ -57,6 +57,7 @@ driver simulator {
 		bool exposure_active[5], streaming_active[5];
 		double target_temperature, current_temperature;
 		int current_slot, target_position, current_position, backlash_in, backlash_out;
+		bool focuser_outward;
 		double ao_ra_offset, ao_dec_offset, guide_rate;
 	}
 	code {
@@ -1310,15 +1311,15 @@ driver simulator {
 			static void start_focuser_move(indigo_device *device, int target) {
 				PRIVATE_DATA->target_position = target;
 				bool inward = target < PRIVATE_DATA->current_position;
-				if (inward && !FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
+				// the backlash is taken up when the motor reverses; FOCUSER_DIRECTION is the client's selector for FOCUSER_STEPS and stays untouched here
+				if (inward && PRIVATE_DATA->focuser_outward) {
 					PRIVATE_DATA->backlash_in = BACKLASH_ITEM->number.value > PRIVATE_DATA->backlash_out ? (int)BACKLASH_ITEM->number.value - PRIVATE_DATA->backlash_out : 0;
 					PRIVATE_DATA->backlash_out = 0;
-				} else if (!inward && !FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
+				} else if (!inward && !PRIVATE_DATA->focuser_outward) {
 					PRIVATE_DATA->backlash_out = BACKLASH_ITEM->number.value > PRIVATE_DATA->backlash_in ? (int)BACKLASH_ITEM->number.value - PRIVATE_DATA->backlash_in : 0;
 					PRIVATE_DATA->backlash_in = 0;
 				}
-				indigo_set_switch(FOCUSER_DIRECTION_PROPERTY, inward ? FOCUSER_DIRECTION_MOVE_INWARD_ITEM : FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM, true);
-				indigo_update_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+				PRIVATE_DATA->focuser_outward = !inward;
 				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -1372,17 +1373,7 @@ driver simulator {
 				INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_OK_STATE, NULL);
 			}
 		}
-		inherited FOCUSER_DIRECTION {
-			on_change {
-				if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
-					PRIVATE_DATA->backlash_out = BACKLASH_ITEM->number.value > PRIVATE_DATA->backlash_in ? (int)BACKLASH_ITEM->number.value - PRIVATE_DATA->backlash_in : 0;
-					PRIVATE_DATA->backlash_in = 0;
-				} else {
-					PRIVATE_DATA->backlash_in = BACKLASH_ITEM->number.value > PRIVATE_DATA->backlash_out ? (int)BACKLASH_ITEM->number.value - PRIVATE_DATA->backlash_out : 0;
-					PRIVATE_DATA->backlash_out = 0;
-				}
-			}
-		}
+		inherited FOCUSER_DIRECTION { }
 		inherited FOCUSER_COMPENSATION { on_change { } }
 		inherited FOCUSER_BACKLASH { on_change { } }
 		number FOCUSER_SETUP {
