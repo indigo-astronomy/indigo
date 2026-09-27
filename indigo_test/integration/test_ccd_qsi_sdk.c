@@ -1041,6 +1041,8 @@ static void qsi_reports_cooler_and_temperature_failures(void) {
 	camera->fail.cooler_write = 1;
 	indigo_change_switch_property_1(&simulator_test_client, ccd_case.device_name, CCD_COOLER_PROPERTY_NAME, CCD_COOLER_ON_ITEM_NAME, true);
 	QSI_CHECK_TRUE(wait_for_property_state(CCD_COOLER_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	// The camera stays off, so CCD_COOLER shows OFF instead of the rejected request.
+	assert_switch_item_value(CCD_COOLER_PROPERTY_NAME, CCD_COOLER_OFF_ITEM_NAME, true);
 	camera->fail.temperature_write = 1;
 	indigo_change_number_property_1(&simulator_test_client, ccd_case.device_name, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME, -20);
 	QSI_CHECK_TRUE(wait_for_property_state(CCD_TEMPERATURE_PROPERTY_NAME, INDIGO_ALERT_STATE));
@@ -1049,6 +1051,82 @@ static void qsi_reports_cooler_and_temperature_failures(void) {
 	QSI_CHECK_TRUE(set_switch(&ccd_case, CCD_COOLER_PROPERTY_NAME, CCD_COOLER_ON_ITEM_NAME));
 	QSI_CHECK_TRUE(disconnect_device(&ccd_case));
 cleanup:
+	fixture_stop();
+}
+
+static atomic_int queue_entered, queue_released, queue_marks;
+
+static void block_queue(indigo_device *device) {
+	atomic_store(&queue_entered, 1);
+	while (!atomic_load(&queue_released)) {
+		indigo_usleep(1000);
+	}
+}
+
+static void mark_queue(indigo_device *device) {
+	atomic_fetch_add(&queue_marks, 1);
+}
+
+static bool wait_flag(atomic_int *flag) {
+	for (int i = 0; i < 400; i++) {
+		if (atomic_load(flag)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+static indigo_device *logical_device(const char *name) {
+	for (int i = 0; i < (int)(sizeof(logical_devices) / sizeof(logical_devices[0])); i++) {
+		if (logical_devices[i] != NULL && !strcmp(logical_devices[i]->name, name)) {
+			return logical_devices[i];
+		}
+	}
+	return NULL;
+}
+
+// TGT-062: a cooler OFF sent after a temperature change is the newer request. The temperature
+// handler still switches the cooler on and sends the new setpoint, but it must not turn the queued
+// OFF into ON.
+static void qsi_cooler_off_queued_behind_a_temperature_change_survives(void) {
+	QSI_CHECK_TRUE(fixture_start(1));
+	QSI_CHECK_TRUE(connect_device(&ccd_case));
+	qsi_fake_camera *camera = qsi_fake_camera_at(0);
+	indigo_device *device = logical_device(ccd_case.device_name);
+	QSI_CHECK_TRUE(device != NULL);
+	indigo_change_number_property_1(&simulator_test_client, ccd_case.device_name, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME, -10);
+	QSI_CHECK_TRUE(wait_counter_at_least(&camera->temperature_writes, 1));
+	// The fake sensor reaches the setpoint at once, so the poll ends the BUSY state that would reject the next change.
+	QSI_CHECK_TRUE(wait_for_property_state(CCD_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+	QSI_CHECK_TRUE(wait_for_property_state(CCD_COOLER_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(CCD_COOLER_PROPERTY_NAME, CCD_COOLER_ON_ITEM_NAME, true);
+	QSI_CHECK_TRUE(camera->cooler_on);
+	int cooler_writes = qsi_fake_counter(0, &camera->cooler_writes);
+	int temperature_writes = qsi_fake_counter(0, &camera->temperature_writes);
+	atomic_store(&queue_entered, 0);
+	atomic_store(&queue_released, 0);
+	indigo_execute_handler(device, block_queue);
+	QSI_CHECK_TRUE(wait_flag(&queue_entered));
+	indigo_change_number_property_1(&simulator_test_client, ccd_case.device_name, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME, -15);
+	indigo_change_switch_property_1(&simulator_test_client, ccd_case.device_name, CCD_COOLER_PROPERTY_NAME, CCD_COOLER_OFF_ITEM_NAME, true);
+	QSI_CHECK_TRUE(wait_for_property_state(CCD_COOLER_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	atomic_store(&queue_released, 1);
+	// The marker runs after both queued handlers.
+	atomic_store(&queue_marks, 0);
+	indigo_execute_handler(device, mark_queue);
+	QSI_CHECK_TRUE(wait_flag(&queue_marks));
+	// The setpoint is sent, and the cooler OFF is the last word the camera receives.
+	QSI_CHECK_EQ(temperature_writes + 1, qsi_fake_counter(0, &camera->temperature_writes));
+	QSI_CHECK_TRUE(camera->target_temperature < -14.99 && camera->target_temperature > -15.01);
+	QSI_CHECK_TRUE(qsi_fake_counter(0, &camera->cooler_writes) > cooler_writes);
+	QSI_CHECK_TRUE(!camera->cooler_log[qsi_fake_counter(0, &camera->cooler_writes) - 1]);
+	QSI_CHECK_TRUE(!camera->cooler_on);
+	QSI_CHECK_TRUE(wait_for_property_state(CCD_COOLER_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(CCD_COOLER_PROPERTY_NAME, CCD_COOLER_OFF_ITEM_NAME, true);
+	QSI_CHECK_TRUE(disconnect_device(&ccd_case));
+cleanup:
+	atomic_store(&queue_released, 1);
 	fixture_stop();
 }
 
@@ -1605,6 +1683,7 @@ int main(int argc, char **argv) {
 		{ "qsi_rejects_target_change_while_cooling", qsi_rejects_target_change_while_cooling },
 		{ "qsi_enables_cooler_when_target_is_set", qsi_enables_cooler_when_target_is_set },
 		{ "qsi_reports_cooler_and_temperature_failures", qsi_reports_cooler_and_temperature_failures },
+		{ "qsi_cooler_off_queued_behind_a_temperature_change_survives", qsi_cooler_off_queued_behind_a_temperature_change_survives },
 		{ "qsi_writes_readout_speed", qsi_writes_readout_speed },
 		{ "qsi_writes_anti_bloom", qsi_writes_anti_bloom },
 		{ "qsi_writes_pre_exposure_flush", qsi_writes_pre_exposure_flush },

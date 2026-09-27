@@ -48,7 +48,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000016
+#define DRIVER_VERSION       0x03000017
 #define DRIVER_NAME          "indigo_ccd_qsi"
 #define DRIVER_LABEL         "QSI Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -731,7 +731,13 @@ static void ccd_abort_exposure_handler(indigo_device *device) {
 static void ccd_cooler_handler(indigo_device *device) {
 	CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ccd.CCD_COOLER.on_change
-	if (!QSI_CALL("put_CoolerOn", cam.put_CoolerOn(CCD_COOLER_ON_ITEM->sw.value))) {
+	// The CCD_TEMPERATURE handler may have written the switch after the request was copied, the targets keep the request.
+	bool requested_on = indigo_get_switch_target(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM_NAME);
+	if (QSI_CALL("put_CoolerOn", cam.put_CoolerOn(requested_on))) {
+		indigo_apply_switch_targets(CCD_COOLER_PROPERTY);
+		PRIVATE_DATA->cooler_on = requested_on;
+	} else {
+		indigo_set_switch(CCD_COOLER_PROPERTY, PRIVATE_DATA->cooler_on ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
 		CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- ccd.CCD_COOLER.on_change
@@ -742,9 +748,13 @@ static void ccd_temperature_handler(indigo_device *device) {
 	CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ccd.CCD_TEMPERATURE.on_change
 	if (!CCD_COOLER_PROPERTY->hidden && CCD_COOLER_OFF_ITEM->sw.value && QSI_CALL("put_CoolerOn", cam.put_CoolerOn(true))) {
-		indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
-		CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+		PRIVATE_DATA->cooler_on = true;
+		// A setpoint turns the cooler on, but a CCD_COOLER request queued after this one is newer and decides.
+		if (CCD_COOLER_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
+			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+		}
 	}
 	if (QSI_CALL("put_SetCCDTemperature", cam.put_SetCCDTemperature(CCD_TEMPERATURE_ITEM->number.target))) {
 		CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1422,7 +1432,7 @@ indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *in
 #include "indigo_ccd_qsi.h"
 
 indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "QSI Camera", __FUNCTION__, 0x03000016, true, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "QSI Camera", __FUNCTION__, 0x03000017, true, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

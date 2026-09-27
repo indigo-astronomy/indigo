@@ -762,6 +762,9 @@ int QSICamera::put_CoolerOn(bool newVal) {
 	FAIL_CAMERA(cooler_write, QSI_NOTSUPPORTED, "put_CoolerOn")
 	camera->cooler_on = newVal;
 	camera->cooler_power = newVal ? 42 : 0;
+	if (camera->cooler_writes < 16) {
+		camera->cooler_log[camera->cooler_writes] = newVal;
+	}
 	camera->cooler_writes++;
 	RELEASE_CAMERA();
 	record("put_CoolerOn(%s)", newVal ? "true" : "false");

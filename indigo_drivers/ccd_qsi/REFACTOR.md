@@ -317,3 +317,44 @@ Validation: `make -C indigo_drivers/ccd_qsi -f ../../Makefile.drv all` and the 6
 
 - Simulated (fake SDK) tests run: **60**; passed: **60**.
 - Hardware tests run: **0**; passed: **0**.
+
+## Queued cooler request (TGT-062, 2026-09-27)
+
+Version 23, finding TGT-062 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+
+### Defect (reproduced)
+
+The CCD_TEMPERATURE handler turns the cooler on with `put_CoolerOn(true)` when CCD_COOLER shows OFF
+and then sets CCD_COOLER ON, whatever the state of CCD_COOLER. A cooler OFF sent after a temperature
+change is copied into CCD_COOLER on the bus thread and queued behind the temperature handler, which
+then overwrote it with ON; the CCD_COOLER handler read `sw.value`, sent `put_CoolerOn(true)` again
+and reported ON/OK, so the camera kept cooling although the client asked it to stop. A rejected
+cooler request was also shown with the requested state. The poll reads only temperature and cooler
+power and never writes CCD_COOLER, so it is unchanged.
+
+### Fix
+
+- The CCD_COOLER handler sends the request read with `indigo_get_switch_target()` to
+  `put_CoolerOn()` and applies it with `indigo_apply_switch_targets()` when the SDK accepts it. On
+  failure it shows the cooler state the camera was last left in (`cooler_on`, read at connect and
+  now kept by both handlers) with ALERT.
+- The CCD_TEMPERATURE handler still calls `put_CoolerOn(true)` under the same condition and, with no
+  cooler request pending, still turns CCD_COOLER ON; it leaves a BUSY CCD_COOLER to its own handler,
+  so the last client request wins. The order of SDK calls is unchanged.
+
+### Fake SDK and tests
+
+- `put_CoolerOn()` now also logs the first 16 accepted values in order (`cooler_log`).
+- New case `qsi_cooler_off_queued_behind_a_temperature_change_survives`: after a -10 C setpoint has
+  turned the cooler ON and the sensor has reached it, the device queue is held by a gate handler, a
+  -15 C setpoint and then a cooler OFF are sent, the gate is released and a marker handler waits for
+  both handlers. Version 22 failed 3/3 (last `put_CoolerOn(true)`, camera still cooling); version 23
+  passes 3/3 (setpoint -15, last `put_CoolerOn(false)`, CCD_COOLER OFF and OK).
+- `qsi_reports_cooler_and_temperature_failures` now also checks that a rejected cooler ON shows
+  OFF; it fails on version 22.
+- Unchanged version 22 suite on Linux x64: 60/60. Regeneration is reproducible.
+
+### Test totals for this change
+
+Simulated (fake SDK) tests run 61, passed 61 (Linux x64, `tools/run_driver_test.py ccd_qsi`).
+Hardware tests run 0, passed 0.

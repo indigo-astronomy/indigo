@@ -152,6 +152,8 @@ typedef struct {
 	int temperature_reads;
 	int cooler_power_reads;
 	int cooler_writes;
+	// Values of the first 16 accepted put_CoolerOn() calls, in order.
+	bool cooler_log[16];
 	int temperature_writes;
 	int gain_writes;
 	int fan_writes;
