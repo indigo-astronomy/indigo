@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_mount_starbook"
 #define DRIVER_LABEL         "Vixen StarBook Mount"
 #define MOUNT_DEVICE_NAME    "Mount Vixen StarBook"
@@ -442,12 +442,14 @@ static void mount_goto_finalizer(indigo_device *device) {
 }
 
 static void guider_guide_ra_finalizer(indigo_device *device) {
+	// Only the values, the target of a pulse requested while this one ends is read by its handler.
 	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 }
 
 static void guider_guide_dec_finalizer(indigo_device *device) {
+	// Only the values, the target of a pulse requested while this one ends is read by its handler.
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
@@ -477,11 +479,15 @@ static void mount_timer_callback(indigo_device *device) {
 	}
 	time_t utc;
 	int offset;
-	if (starbook_get_utc(device, &utc, &offset)) {
-		indigo_timetoisogm(utc, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-		snprintf(MOUNT_UTC_OFFSET_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", offset);
-		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-	} else MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+	bool utc_valid = starbook_get_utc(device, &utc, &offset);
+	// A pending MOUNT_UTC_TIME request owns its items, its handler sets the requested time next.
+	if (MOUNT_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
+		if (utc_valid) {
+			indigo_timetoisogm(utc, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+			snprintf(MOUNT_UTC_OFFSET_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", offset);
+			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+		} else MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 	indigo_execute_handler_in(device, 0.5, mount_timer_callback);
 	//- mount.on_timer
@@ -609,9 +615,14 @@ static void mount_set_host_time_handler(indigo_device *device) {
 static void mount_utc_time_handler(indigo_device *device) {
 	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_UTC_TIME.on_change
-	time_t utc = indigo_isogmtotime(MOUNT_UTC_ITEM->text.value);
-	int offset = atoi(MOUNT_UTC_OFFSET_ITEM->text.value);
-	MOUNT_UTC_TIME_PROPERTY->state = utc != (time_t)-1 && (PRIVATE_DATA->version > 2.7 || PRIVATE_DATA->current_state == STARBOOK_STATE_INIT) && starbook_set_utc(device, utc, offset) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	int offset = 0;
+	time_t utc = indigo_mount_get_utc_target(device, &offset);
+	if (utc != (time_t)-1 && (PRIVATE_DATA->version > 2.7 || PRIVATE_DATA->current_state == STARBOOK_STATE_INIT) && starbook_set_utc(device, utc, offset)) {
+		indigo_timetoisogm(utc, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+		snprintf(MOUNT_UTC_OFFSET_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", offset);
+	} else {
+		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- mount.MOUNT_UTC_TIME.on_change
 	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 }
@@ -798,6 +809,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_SET_HOST_TIME_PROPERTY, mount_set_host_time_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_UTC_TIME_PROPERTY, property)) {
+		//+ mount.MOUNT_UTC_TIME.on_change_request
+		// The status poll refreshes the items from the mount clock, so the handler sends the
+		// requested time recorded here instead of the copied items.
+		indigo_mount_set_utc_target(device, property);
+		//- mount.MOUNT_UTC_TIME.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_UTC_TIME_PROPERTY, mount_utc_time_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_PARK_PROPERTY, property)) {
@@ -897,6 +913,9 @@ static void guider_connection_handler(indigo_device *device) {
 static void guider_guide_dec_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_DEC.on_change
 	indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+	// The previous pulse may have ended after the request was copied and zeroed the values, the targets keep it.
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target;
+	GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target;
 	int duration = 0, direction = 0;
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 		direction = 0;
@@ -921,6 +940,9 @@ static void guider_guide_dec_handler(indigo_device *device) {
 static void guider_guide_ra_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_RA.on_change
 	indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+	// The previous pulse may have ended after the request was copied and zeroed the values, the targets keep it.
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target;
+	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target;
 	int duration = 0, direction = 2;
 	if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
 		direction = 2;

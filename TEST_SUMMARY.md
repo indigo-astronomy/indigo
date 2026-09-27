@@ -255,6 +255,7 @@
 | mount_simulator | 2026-09-26 21:56 | 3.0.0.22 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 |  | 2026-09-26 22:40 | 3.0.0.23 | linux x64 | simulator | 19 / 19 | ✅ OK |
 | mount_starbook | 2026-09-26 21:56 | 3.0.0.10 | mac arm64 | simulator | 11 / 11 | ✅ OK |
+|  | 2026-09-27 12:08 | 3.0.0.11 | linux x64 | simulator | 13 / 13 | ✅ OK |
 | mount_synscan | 2026-09-24 09:35 | 3.0.0.7 | mac arm64 | MountSim 2.3 (EQMOD) | 15 / 15 | ✅ OK |
 |  | 2026-09-24 14:23 | 3.0.0.8 | linux arm64 | simulator | 19 / 19 | ✅ OK |
 |  | 2026-09-24 21:27 | 3.0.0.8 | linux arm64 | AstroEQ 8.25 (ESP32-S3) | 16 / 16 | ✅ OK |

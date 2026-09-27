@@ -83,3 +83,45 @@ now uses the same pattern as every other INDIGO driver that exposes a guider.
 pulse replaced after 500 ms by a 600 ms pulse in the same direction, and the same pulse replaced by
 a 300 ms pulse in the opposite direction. Waiting only for the property to leave BUSY passes even
 when the second request is discarded, so the replacement was not covered before.
+
+## Number and UTC targets (2026-09-27)
+
+Version 11, finding TGT-C03 and the starbook part of TGT-B04 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+No hardware run for this change.
+
+- TGT-C03: the status poll wrote the mount clock into `MOUNT_UTC_TIME` and published it OK on every pass,
+  also over a pending request, so the handler sent the mount its own time back and reported OK. The change
+  branch records the request with `indigo_mount_set_utc_target()`, the handler sends
+  `indigo_mount_get_utc_target()` and writes it into the items once the mount accepted it (ALERT
+  otherwise), and the poll still reads `/GETTIME` on every pass but writes items and state only while the
+  property is not BUSY.
+- TGT-B04: `GUIDER_GUIDE_RA`/`DEC` accept a pulse while one runs. A pulse copied on the bus thread while the
+  previous pulse's finalizer ran was zeroed by that finalizer and its handler read 0 and reported OK
+  without sending `/MOVEPULSE`. The finalizers already cleared only the values; the handlers now restore
+  them from the targets, which `on_change_request` still clears before every copy.
+
+The simulator reads a runtime control `delay <path> <ms>` from `<ready-file>.control`: the next matching
+request removes the file and is answered late. Regression tests in
+`integration/test_mount_starbook_simulator.c`, each failing against version 10 and passing with version 11:
+
+- `starbook_utc_request_survives_poll`: the poll's `/GETTIME` is answered 1 s late and a time is requested
+  meanwhile. Before: the mount got `/SETTIME?TIME=2026+08+24+22+15+30` (its own clock) instead of the
+  requested `2026+09+13+14+34+56`, and the poll published OK before the handler ran.
+- `starbook_guider_pulse_survives_previous_finalizer`: only the guider is connected, a 100 ms pulse is
+  sent and the opposite 300 ms pulse is requested from the queue's trace line (`Executing task ...`) of the
+  next TIME task after the pulse handler, i.e. the finalizer, before it runs; on both axes. Before: no
+  second `/MOVEPULSE`; now `DIRECT=3`/`DIRECT=1` with `DURATION=300` is sent.
+
+The finalizer clears the values before any I/O or driver log line, and the guide handlers are TIME tasks
+without delay, so they run ahead of an overdue finalizer and cancel it: holding the queue with a late
+`/GETSTATUS2` does not reproduce the window (checked, the case passed against version 10). The queue's
+trace of the task it is about to run is the only line inside the window; the test lowers the log level to
+debug before it sends the request from that line, so the request path does not log while the trace holds
+the log lock.
+
+Recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py mount_starbook` on Linux x64:
+13/13. MIGRATION_STATUS.md hardware-free count 11 -> 13.
+
+### Final test summary for this change
+
+Simulated tests: **13 run, 13 passed** (recorded run). Hardware tests: **0 run, 0 passed**.

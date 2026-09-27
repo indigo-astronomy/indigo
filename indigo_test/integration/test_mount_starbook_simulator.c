@@ -21,6 +21,7 @@
 #include <indigo_drivers/mount_starbook/indigo_mount_starbook.h>
 
 #include <math.h>
+#include <stdatomic.h>
 #include <unistd.h>
 
 #include "serial_simulator_test_common.h"
@@ -448,6 +449,197 @@ cleanup:
 	if (*trace_path) unlink(trace_path);
 }
 
+static bool trace_contains_now(const char *path, const char *needle) {
+	bool found = false;
+	FILE *file = fopen(path, "r");
+	if (file != NULL) {
+		char line[1200];
+		while (!found && fgets(line, sizeof(line), file) != NULL) {
+			found = strstr(line, needle) != NULL;
+		}
+		fclose(file);
+	}
+	return found;
+}
+
+static bool wait_for_trace(const char *path, const char *needle, double timeout) {
+	double deadline = indigo_monotonic_time() + timeout;
+	while (!trace_contains_now(path, needle)) {
+		if (indigo_monotonic_time() > deadline) {
+			fprintf(stderr, "    %s not requested\n", needle);
+			return false;
+		}
+		indigo_usleep(5000);
+	}
+	return true;
+}
+
+// The next request matching the path is answered late; the simulator removes the control file when the request arrives.
+static bool delay_next_reply(const external_serial_simulator *simulator, const char *path, int milliseconds) {
+	char control_path[PATH_MAX + 16];
+	snprintf(control_path, sizeof(control_path), "%s.control", simulator->ready_file);
+	FILE *file = fopen(control_path, "w");
+	if (file == NULL) {
+		return false;
+	}
+	fprintf(file, "delay %s %d\n", path, milliseconds);
+	if (fclose(file) != 0) {
+		return false;
+	}
+	double deadline = indigo_monotonic_time() + 5;
+	while (access(control_path, F_OK) == 0 && indigo_monotonic_time() < deadline) {
+		indigo_usleep(5000);
+	}
+	return access(control_path, F_OK) != 0;
+}
+
+// TGT-C03: the status poll wrote the mount clock into MOUNT_UTC_TIME and published it OK over a pending request, so the
+// handler sent the mount its own time back.
+static void starbook_utc_request_survives_poll(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = { 0 };
+	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
+	const char *args[] = { "--trace-file", trace_path, NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_STARBOOK_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&starbook_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(wait_for_trace(trace_path, "/GETTIME", 5));
+	// The poll reads the mount clock late, the request is copied while it waits for the answer.
+	SERIAL_CHECK_TRUE(delay_next_reply(&simulator, "/GETTIME", 1000));
+	static const char *items[] = { UTC_TIME_ITEM_NAME, UTC_OFFSET_ITEM_NAME };
+	static const char *values[] = { "2026-09-13T12:34:56", "2" };
+	unsigned int revision = property_revision(UTC_TIME_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property(&simulator_test_client, starbook_mount.device_name, UTC_TIME_PROPERTY_NAME, ARRAY_SIZE(items), items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(UTC_TIME_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	// The first result is the handler's, published once the mount accepted the requested local time (UTC + 2 h).
+	bool set_before_result = trace_contains_now(trace_path, "/SETTIME?TIME=2026+09+13+14+34+56");
+	SERIAL_CHECK_TRUE(wait_for_trace(trace_path, "/SETTIME", 3));
+	if (trace_contains_now(trace_path, "/SETTIME?TIME=2026+08+24+22+15+30")) {
+		fprintf(stderr, "    the mount was sent its own time instead of the requested one\n");
+	}
+	SERIAL_CHECK_TRUE(trace_contains_now(trace_path, "/SETTIME?TIME=2026+09+13+14+34+56"));
+	if (!set_before_result) {
+		fprintf(stderr, "    MOUNT_UTC_TIME published OK before the requested time was set\n");
+	}
+	SERIAL_CHECK_TRUE(set_before_result);
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME)->text.value, "2026-09-13T12:34:56"));
+cleanup:
+	if (driver_started) stop_serial_driver(&starbook_mount);
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) unlink(trace_path);
+}
+
+// A request copied while a finalizer runs is the race of the number targets. The finalizer clears the pulse before any
+// I/O, so the only line logged in that window is the queue's trace of the task it is about to run. The first TIME task
+// after a pulse request is its handler; the next one of another callback is its finalizer. A request sent from the
+// trace of that task is copied exactly inside the window and models the concurrent bus thread deterministically.
+static void (*trace_action)(void);
+static void *trace_handler;
+static atomic_bool trace_armed, trace_fired;
+static indigo_log_levels trace_level_before;
+
+static void trigger_trace_handler(indigo_log_levels level, const char *message) {
+	void *callback = NULL;
+	int priority = 0;
+	double delay = 0;
+	if (atomic_load(&trace_armed) && sscanf(message, "Executing task %p: priority %d, delay %lfs", &callback, &priority, &delay) == 3 && priority == INDIGO_TASK_PRIORITY_TIME) {
+		if (trace_handler == NULL) {
+			trace_handler = callback;
+		} else if (callback != trace_handler && atomic_exchange(&trace_armed, false)) {
+			// The request path must not log on the trace level while this thread holds the log.
+			indigo_set_log_level(INDIGO_LOG_DEBUG);
+			trace_action();
+			atomic_store(&trace_fired, true);
+		}
+	} else if (level == INDIGO_LOG_ERROR) {
+		fprintf(stderr, "%s\n", message);
+	}
+}
+
+static void arm_trace_trigger(void (*action)(void)) {
+	trace_action = action;
+	trace_handler = NULL;
+	atomic_store(&trace_fired, false);
+	atomic_store(&trace_armed, true);
+	trace_level_before = indigo_get_log_level();
+	indigo_log_message_handler = trigger_trace_handler;
+	indigo_set_log_level(INDIGO_LOG_TRACE);
+}
+
+static bool wait_for_trace_trigger(void) {
+	for (int i = 0; i < 500 && !atomic_load(&trace_fired); i++) {
+		indigo_usleep(10000);
+	}
+	if (!atomic_load(&trace_fired)) {
+		fprintf(stderr, "    the finalizer of the first pulse was not traced\n");
+		return false;
+	}
+	return true;
+}
+
+static void disarm_trace_trigger(void) {
+	if (indigo_log_message_handler == trigger_trace_handler) {
+		atomic_store(&trace_armed, false);
+		indigo_set_log_level(trace_level_before);
+		indigo_log_message_handler = NULL;
+	}
+}
+
+static const char *next_pulse_property, *next_pulse_item;
+
+static void request_next_pulse(void) {
+	indigo_change_number_property_1(&simulator_test_client, starbook_guider.device_name, next_pulse_property, next_pulse_item, 300);
+}
+
+// Sends a 100 ms pulse, requests a 300 ms pulse the other way when the first pulse's finalizer is about to run and
+// checks that the second pulse was sent.
+static bool pulse_survives_previous_finalizer(const char *trace_path, const char *property_name, const char *first_item, int first_direction, const char *next_item, int next_direction) {
+	char command[64];
+	next_pulse_property = property_name;
+	next_pulse_item = next_item;
+	arm_trace_trigger(request_next_pulse);
+	bool ok = indigo_change_number_property_1(&simulator_test_client, starbook_guider.device_name, property_name, first_item, 100) == INDIGO_OK && wait_for_trace_trigger();
+	disarm_trace_trigger();
+	snprintf(command, sizeof(command), "/MOVEPULSE?DIRECT=%d&DURATION=100", first_direction);
+	if (!ok || !wait_for_trace(trace_path, command, 3)) {
+		return false;
+	}
+	snprintf(command, sizeof(command), "/MOVEPULSE?DIRECT=%d&DURATION=300", next_direction);
+	if (!wait_for_trace(trace_path, command, 3)) {
+		fprintf(stderr, "    %s: the %s pulse requested while the %s pulse ended was dropped\n", property_name, next_item, first_item);
+		return false;
+	}
+	return wait_for_property_not_busy(property_name) && wait_for_number_item_value(property_name, next_item, 0, 0.001);
+}
+
+// TGT-B04: GUIDER_GUIDE_RA/DEC accept a pulse while one runs. The finalizer of a pulse cleared the values, so a pulse
+// copied while it ran was read as zero by its handler and reported OK unsent.
+static void starbook_guider_pulse_survives_previous_finalizer(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = { 0 };
+	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
+	const char *args[] = { "--trace-file", trace_path, NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_STARBOOK_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&starbook_guider));
+	driver_started = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, starbook_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	indigo_usleep(100000);
+	// Only the guider is connected, so no mount poll runs as another TIME task on the shared queue.
+	SERIAL_CHECK_TRUE(connect_serial_device(&starbook_guider, NULL));
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(trace_path, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 2, GUIDER_GUIDE_WEST_ITEM_NAME, 3));
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(trace_path, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, GUIDER_GUIDE_SOUTH_ITEM_NAME, 1));
+cleanup:
+	disarm_trace_trigger();
+	if (driver_started) {
+		disconnect_serial_device(&starbook_guider);
+		tear_down_serial_driver(&starbook_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) unlink(trace_path);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "starbook_mount_passes_http_compliance_checks", starbook_mount_passes_http_compliance_checks },
@@ -460,7 +652,9 @@ int main(void) {
 		{ "starbook_transport_drop_and_near_sun_retry_recover", starbook_transport_drop_and_near_sun_retry_recover },
 		{ "starbook_connection_failure_recovers", starbook_connection_failure_recovers },
 		{ "starbook_shared_lifecycle_survives_active_disconnect", starbook_shared_lifecycle_survives_active_disconnect },
-		{ "starbook_guider_directions_and_timing", starbook_guider_directions_and_timing }
+		{ "starbook_guider_directions_and_timing", starbook_guider_directions_and_timing },
+		{ "starbook_utc_request_survives_poll", starbook_utc_request_survives_poll },
+		{ "starbook_guider_pulse_survives_previous_finalizer", starbook_guider_pulse_survives_previous_finalizer }
 	};
 	return indigo_run_tests("Vixen StarBook mount HTTP simulator integration tests", tests, ARRAY_SIZE(tests));
 }

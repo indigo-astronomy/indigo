@@ -36,6 +36,7 @@ typedef struct {
 	const char *fault_path;
 	const char *fault_reply;
 	const char *drop_path;
+	char control_file[PATH_MAX];
 	bool fault_used;
 	bool drop_used;
 } simulator_options;
@@ -72,6 +73,7 @@ static simulator_options options = {
 	.fault_path = NULL,
 	.fault_reply = NULL,
 	.drop_path = NULL,
+	.control_file = "",
 	.fault_used = false,
 	.drop_used = false
 };
@@ -114,6 +116,9 @@ static void usage(const char *name) {
 	printf("  --version <number>      Select simulated firmware version\n");
 	printf("  --fault-reply <path> <body>  Replace one matching response body\n");
 	printf("  --drop-reply <path>     Drop one matching HTTP response\n");
+	printf("  Runtime control is read from <ready-file>.control as 'delay <path> <ms>': the\n");
+	printf("  next request matching <path> (a trailing '*' matches a prefix) consumes the\n");
+	printf("  file and is answered <ms> milliseconds late.\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -146,6 +151,7 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+			snprintf(options.control_file, sizeof(options.control_file), "%s.control", options.ready_file);
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -177,6 +183,27 @@ static void trace_request(const char *path) {
 		fprintf(file, "%.6f %s\n", monotonic_time(), path);
 		fclose(file);
 	}
+}
+
+// A late answer keeps the requester waiting, like a StarBook busy with another request.
+static void apply_control(const char *path) {
+	if (*options.control_file == '\0') {
+		return;
+	}
+	FILE *file = fopen(options.control_file, "r");
+	if (file == NULL) {
+		return;
+	}
+	char action[16] = { 0 };
+	char expected[256] = { 0 };
+	int milliseconds = 0;
+	int count = fscanf(file, "%15s %255s %d", action, expected, &milliseconds);
+	fclose(file);
+	if (count != 3 || strcmp(action, "delay") || !path_matches(expected, path)) {
+		return;
+	}
+	unlink(options.control_file);
+	usleep(milliseconds * 1000);
 }
 
 static void signal_handler(int sig) {
@@ -398,6 +425,7 @@ static void handle_client(int client_fd) {
 		fprintf(stderr, "-> %s %s\n", method, path);
 	}
 	trace_request(path);
+	apply_control(path);
 	if (!options.drop_used && path_matches(options.drop_path, path)) {
 		options.drop_used = true;
 		return;

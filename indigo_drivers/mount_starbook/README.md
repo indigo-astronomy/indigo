@@ -28,3 +28,4 @@ Driver is developed and tested with:
 ## Testing
 
 2026-09-26 21:56 3.0.0.10 mac arm64 simulator 11/11 OK
+2026-09-27 12:08 3.0.0.11 linux x64 simulator 13/13 OK
