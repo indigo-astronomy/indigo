@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_wheel_astroasis"
 #define DRIVER_LABEL         "Astroasis Oasis Wheel"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -325,27 +325,33 @@ static void wheel_slot_handler(indigo_device *device) {
 
 static void wheel_x_calibrate_handler(indigo_device *device) {
 	//+ wheel.X_CALIBRATE.on_change
-	X_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
+	// X_CALIBRATE stays BUSY until the outcome is known, so a second calibrate request made meanwhile is refused by the BUSY guard instead of replacing the running calibration's BUSY with ALERT.
 	if (X_CALIBRATE_START_ITEM->sw.value) {
 		X_CALIBRATE_START_ITEM->sw.value = false;
 		// WHEEL_SLOT is checked again after the status read: a slot request copied during it is left to its queued handler, as one copied before this handler ran.
 		if (WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE || X_FACTORY_RESET_PROPERTY->state == INDIGO_BUSY_STATE || !astroasis_idle(device) || WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE) {
 			X_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
+			// WHEEL_SLOT is marked BUSY right after that check (no I/O in between), so a slot request made during OFWCalibrate() is refused by the BUSY guard, as one made after the calibration started.
+			indigo_property_state slot_state = WHEEL_SLOT_PROPERTY->state;
+			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 			int res = OFWCalibrate(PRIVATE_DATA->dev_id, 0);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWCalibrate(%d, 0) = %d", PRIVATE_DATA->dev_id, res);
 			if (res != AO_SUCCESS) {
+				WHEEL_SLOT_PROPERTY->state = slot_state;
 				X_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
 				PRIVATE_DATA->target_slot = 0;
 				PRIVATE_DATA->polls = OPERATION_POLLS;
-				WHEEL_SLOT_PROPERTY->state = X_CALIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
+				X_CALIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 				indigo_update_property(device, X_CALIBRATE_PROPERTY, "Calibration started");
 				indigo_execute_handler_in(device, 0.5, wheel_operation_finalizer);
 				return;
 			}
 		}
+	} else {
+		X_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_update_property(device, X_CALIBRATE_PROPERTY, NULL);
 	//- wheel.X_CALIBRATE.on_change
@@ -771,7 +777,7 @@ indigo_result indigo_wheel_astroasis(indigo_driver_action action, indigo_driver_
 #include "indigo_wheel_astroasis.h"
 
 indigo_result indigo_wheel_astroasis(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "Astroasis Oasis Wheel", __FUNCTION__, 0x0300000B, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "Astroasis Oasis Wheel", __FUNCTION__, 0x0300000C, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif
