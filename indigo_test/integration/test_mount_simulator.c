@@ -758,13 +758,16 @@ static void mount_shares_pointing_and_follows_guide_pulses(void) {
 	SERIAL_CHECK_TRUE(simulated_pointing_matches(state.ra, state.dec, dec_step / 10));
 	disconnect_serial_device(&mount_guider_simulator);
 	guider_connected = false;
-	// A parking mount does not follow guide pulses and a disconnected one is withdrawn
+	// A parking mount refuses guide pulses and does not move, so a camera guider falls back to its own model, and a
+	// disconnected one is withdrawn
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
 	for (int i = 0; i < 100 && indigo_get_simulated_mount_state(&state) && state.guidable; i++) {
 		indigo_usleep(20000);
 	}
 	SERIAL_CHECK_TRUE(indigo_get_simulated_mount_state(&state) && !state.guidable);
-	SERIAL_CHECK_TRUE(indigo_simulated_mount_guide(0.001, 0.01));
+	SERIAL_CHECK_TRUE(!indigo_simulated_mount_guide(0.001, 0.01));
+	indigo_simulated_mount_state refused;
+	SERIAL_CHECK_TRUE(indigo_get_simulated_mount_state(&refused) && refused.ra == state.ra && refused.dec == state.dec);
 	disconnect_serial_device(&mount_simulator);
 	mount_connected = false;
 	SERIAL_CHECK_TRUE(!indigo_get_simulated_mount_state(&state));
