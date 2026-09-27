@@ -904,6 +904,90 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The variable voltage the box reports is published by the poll, not only read at connect. The simulator sets it to
+// 9 V from the third status frame on, without a command from the driver.
+static void variable_power_outlet_change_reported_by_the_box_is_published(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--outlet-after", "2", "8", "9", NULL };
+	SERIAL_CHECK_TRUE(start_upb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value("X_AUX_VARIABLE_POWER_OUTLET", "OUTLET_1", 9, 0.01));
+	SERIAL_CHECK_TRUE(wait_for_property_state("X_AUX_VARIABLE_POWER_OUTLET", INDIGO_OK_STATE));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
+static char heater_command_log[PATH_MAX];
+static atomic_int heater_ok_updates, heater_ok_before_command;
+
+static bool command_logged(const char *path, const char *command) {
+	FILE *file = fopen(path, "r");
+	bool found = false;
+	if (file != NULL) {
+		char line[128];
+		while (!found && fgets(line, sizeof(line), file) != NULL) {
+			line[strcspn(line, "\r\n")] = '\0';
+			found = !strcmp(line, command);
+		}
+		fclose(file);
+	}
+	return found;
+}
+
+// The first OK after the heater request has to come after the box got the request; an OK the poll published before
+// that is suppressed when the handler publishes the same values, so only its timing shows it.
+static indigo_result check_heater_ok_updates(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->name, AUX_HEATER_OUTLET_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+		if (atomic_fetch_add(&heater_ok_updates, 1) == 0 && !command_logged(heater_command_log, "P6:127")) {
+			atomic_store(&heater_ok_before_command, 1);
+		}
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+// A heater request copied after the poll adopted a changed heater from the status frame is not published OK by that
+// poll before its handler sends it. The simulator changes heater 1 in the frame of the poll whose PC it answers 0.5 s
+// late; heater 2 is requested meanwhile, so AUX_HEATER_OUTLET may turn OK only after the box got P6.
+static void heater_request_survives_the_poll_publish(void) {
+	external_serial_simulator simulator = { 0 };
+	char slow_file[] = "/tmp/indigo-upb-slow.XXXXXX";
+	int fd = mkstemp(slow_file);
+	SERIAL_CHECK_TRUE(fd >= 0);
+	close(fd);
+	unlink(slow_file);
+	snprintf(heater_command_log, sizeof(heater_command_log), "%s.log", slow_file);
+	unlink(heater_command_log);
+	const char *arguments[] = { "--slow-file", slow_file, "5", "128", "--command-log", heater_command_log, NULL };
+	SERIAL_CHECK_TRUE(start_upb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_HEATER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE));
+	FILE *file = fopen(slow_file, "w");
+	SERIAL_CHECK_TRUE(file != NULL);
+	fclose(file);
+	// the simulator removes the file at the PC of the poll that read the changed heater, then holds the reply back
+	for (int i = 0; i < 400 && access(slow_file, F_OK) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(access(slow_file, F_OK) != 0);
+	atomic_store(&heater_ok_updates, 0);
+	atomic_store(&heater_ok_before_command, 0);
+	simulator_test_client.update_property = check_heater_ok_updates;
+	SERIAL_CHECK_TRUE(set_number(&aux, AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_2_ITEM_NAME, 50));
+	indigo_usleep(2500000);
+	printf("    AUX_HEATER_OUTLET published OK %s the box got P6:127\n", atomic_load(&heater_ok_before_command) ? "before" : "after");
+	SERIAL_CHECK_TRUE(atomic_load(&heater_ok_updates) > 0);
+	SERIAL_CHECK_EQ_INT(0, atomic_load(&heater_ok_before_command));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_2_ITEM_NAME, 50, 1));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME, 50, 1));
+cleanup:
+	simulator_test_client.update_property = simulator_client_update_property;
+	unlink(heater_command_log);
+	unlink(slow_file);
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
 static void outlet_names_relabel_the_controls(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_upb(&simulator, NULL));
@@ -1334,6 +1418,8 @@ int main(void) {
 		{ "v1_hub_failure_shows_the_box_state", v1_hub_failure_shows_the_box_state },
 		{ "v1_hub_change_reported_by_the_box_is_published", v1_hub_change_reported_by_the_box_is_published },
 		{ "variable_power_outlet_round_trips", variable_power_outlet_round_trips },
+		{ "variable_power_outlet_change_reported_by_the_box_is_published", variable_power_outlet_change_reported_by_the_box_is_published },
+		{ "heater_request_survives_the_poll_publish", heater_request_survives_the_poll_publish },
 		{ "outlet_names_relabel_the_controls", outlet_names_relabel_the_controls },
 		{ "reboot_is_momentary", reboot_is_momentary },
 		{ "saving_outlet_states_is_momentary", saving_outlet_states_is_momentary },

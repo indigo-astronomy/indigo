@@ -353,9 +353,34 @@ reproducible.
   values at their initial values until the first poll, and it still sends `PU:1`; the build prints the
   pre-existing `-Wformat-truncation` warnings for the outlet labels copied from the outlet names.
 
+## Heater publication and variable voltage in the poll (TGT-D28, 3.0.0.35, 2026-09-27)
+
+- **Defects:** (a) the poll adopted the heaters from the status frame only while AUX_HEATER_OUTLET was
+  not BUSY, but published it OK without that check after the `PC` round trip, so a heater request copied
+  in between was shown OK before its handler sent it (display only, the handler sends the right values).
+  (b) X_AUX_VARIABLE_POWER_OUTLET was read from `PS` at connect only, so a voltage changed outside the
+  driver, or by a request the box did not execute, was never shown (the aux_upb3 TGT-D03 case).
+- **Fix:** AUX_HEATER_OUTLET is published only while it is still not BUSY, like the other switches. On a
+  v2 box the poll also sends `PS` and adopts the variable voltage into the value (not the target) when
+  the property is not BUSY, publishing it the same way. The poll sends one more command every 2 s.
+- **Simulator:** `--outlet-after N OUTLET VALUE` now covers the heaters (5-7, raw 0-255) and the variable
+  voltage (8); `--slow-file PATH OUTLET VALUE` changes an outlet in the status frame read while PATH
+  exists and answers the `PC` of that poll 0.5 s late; `--command-log PATH` appends every command.
+- **Regression tests:** `variable_power_outlet_change_reported_by_the_box_is_published` (fails on
+  version 34: the voltage stayed at 12 V) and `heater_request_survives_the_poll_publish` (version 34
+  published OK before the box got `P6:127`). The poll's early OK is not visible as a second update,
+  because the handler publishes the same values and the bus suppresses the repeat; the test checks the
+  command log when the first OK arrives.
+- **Noticed, not changed (TGT-D29):** `focuser_overlapping_request_is_rejected` fails intermittently
+  with version 34 as well (2 of 3 runs; 2 of 9 with version 35): the focuser poll sets FOCUSER_POSITION and FOCUSER_STEPS OK
+  when `SI` reports no motion, also while a position request is queued and not yet sent, so the
+  following FOCUSER_STEPS request is accepted instead of refused.
+
 ## Final test summary
 
-- Simulated tests run: 48; passed: 48 (recorded run of `test_aux_upb_simulator` through
+- Simulated tests run: 50; passed: 50 on macOS arm64 with version 35, except the intermittent
+  `focuser_overlapping_request_is_rejected` (TGT-D29, also failing with version 34).
+- Earlier: 48 run, 48 passed (recorded run of `test_aux_upb_simulator` through
   `tools/run_driver_test.py`, driver version 34, Linux x64). The previous macOS arm64 runs of the 40
   earlier cases and the ASan + UBSan note above refer to driver version 30.
 - Hardware tests run: 1; passed: 1 (`upb_usb_port_changes_survive_the_poll`, Pegasus UPB v1 firmware 1.4,

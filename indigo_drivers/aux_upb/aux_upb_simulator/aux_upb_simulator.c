@@ -49,10 +49,19 @@ static bool fault_once;
 // Matches of the faulted command that are answered normally before the fault
 // applies, so a fault can be aimed at a poll rather than at the connect.
 static int fault_skip;
-// Test control: after this many status frames outlet external_outlet (1-4) takes
-// external_state without a command, the way an outlet changed outside the driver
-// (for example a late or repeated request) shows up in the status frame.
+// Test control: after this many status frames outlet external_outlet takes external_state
+// without a command, the way an outlet changed outside the driver (for example a late or
+// repeated request) shows up in the status frame. Outlets 1-4 are switches (0|1), 5-7 the
+// heaters (0-255) and 8 the variable voltage.
 static int external_after = -1, external_outlet, external_state;
+// Test control: a status frame read while slow_file exists applies outlet slow_outlet =
+// slow_state, and the PC of the same poll removes the file and answers 0.5 s late, so a
+// request can arrive after the poll read that frame and before it published the result.
+static const char *slow_file;
+static int slow_outlet, slow_state;
+static bool slow_armed;
+// Test control: every command received is appended to this file before it is answered.
+static const char *command_log;
 static serial_motion motion = { .position = 50, .target = 50 };
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
@@ -153,6 +162,13 @@ static bool inject_fault(int fd, const char *cmd) {
 }
 
 static void dispatch_command(int fd, const char *cmd) {
+	if (command_log != NULL) {
+		FILE *log = fopen(command_log, "a");
+		if (log != NULL) {
+			fprintf(log, "%s\n", cmd);
+			fclose(log);
+		}
+	}
 	if (inject_fault(fd, cmd)) {
 		return;
 	}
@@ -165,6 +181,10 @@ static void dispatch_command(int fd, const char *cmd) {
 	} else if (!strcmp(cmd, "PA")) {
 		if (external_after >= 0 && external_after-- == 0) {
 			outlets[external_outlet - 1] = external_state;
+		}
+		if (slow_file != NULL && !slow_armed && access(slow_file, F_OK) == 0) {
+			outlets[slow_outlet - 1] = slow_state;
+			slow_armed = true;
 		}
 		char response[256];
 		int used = snprintf(response, sizeof(response), "%s:%.1f:%.1f:%d:%.1f:%.0f:%.1f:%d%d%d%d:", version == 2 ? "UPB2" : "UPB", voltage, current, power, temperature, humidity, dewpoint, outlets[0], outlets[1], outlets[2], outlets[3]);
@@ -185,6 +205,11 @@ static void dispatch_command(int fd, const char *cmd) {
 		snprintf(response + used, sizeof(response) - used, "%s:%d\n", flags, automatic);
 		serial_simulator_write_all(fd, response, strlen(response));
 	} else if (!strcmp(cmd, "PC")) {
+		if (slow_armed) {
+			slow_armed = false;
+			unlink(slow_file);
+			usleep(500000);
+		}
 		sim_printf(fd, "2.1:12:46\n");
 	} else if (!strcmp(cmd, "PS")) {
 		sim_printf(fd, "PS:%d%d%d%d:%d\n", outlets[0], outlets[1], outlets[2], outlets[3], outlets[7]);
@@ -281,8 +306,17 @@ int main(int argc, char **argv) {
 		} else if (!strcmp(argv[i], "--outlet-after") && i + 3 < argc) {
 			external_after = atoi(argv[++i]);
 			external_outlet = atoi(argv[++i]);
-			external_state = atoi(argv[++i]) != 0;
-			if (external_after < 0 || external_outlet < 1 || external_outlet > 4) {
+			external_state = atoi(argv[++i]);
+			if (external_after < 0 || external_outlet < 1 || external_outlet > 8) {
+				return 1;
+			}
+		} else if (!strcmp(argv[i], "--command-log") && i + 1 < argc) {
+			command_log = argv[++i];
+		} else if (!strcmp(argv[i], "--slow-file") && i + 3 < argc) {
+			slow_file = argv[++i];
+			slow_outlet = atoi(argv[++i]);
+			slow_state = atoi(argv[++i]);
+			if (slow_outlet < 1 || slow_outlet > 8) {
 				return 1;
 			}
 		} else if (!strcmp(argv[i], "--fault-after") && i + 3 < argc) {
@@ -303,7 +337,7 @@ int main(int argc, char **argv) {
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
 		} else if (strcmp(argv[i], "--headless")) {
-			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file path] [--model upb|upb2] [--overcurrent FLAGS] [--weather T H D] [--power V A W] [--autodew] [--hub-off] [--no-probe] [--outlet-current N] [--outlet-after N OUTLET 0|1] [--fault CMD invalid|short|silent|close] [--fault-once CMD MODE] [--fault-after N CMD MODE]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file path] [--model upb|upb2] [--overcurrent FLAGS] [--weather T H D] [--power V A W] [--autodew] [--hub-off] [--no-probe] [--outlet-current N] [--outlet-after N OUTLET VALUE] [--slow-file PATH OUTLET VALUE] [--command-log PATH] [--fault CMD invalid|short|silent|close] [--fault-once CMD MODE] [--fault-after N CMD MODE]\n", argv[0]);
 			return 1;
 		}
 	}

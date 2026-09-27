@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000022
+#define DRIVER_VERSION       0x03000023
 #define DRIVER_NAME          "indigo_aux_upb"
 #define DRIVER_LABEL         "PegasusAstro Ultimate Powerbox"
 #define AUX_DEVICE_NAME      "Ultimate Powerbox"
@@ -278,6 +278,7 @@ static void aux_timer_callback(indigo_device *device) {
 	bool updateHub = false;
 	bool updateUSBPorts = false;
 	bool updateUSBPortState = false;
+	bool updateVariablePowerOutlet = false;
 	if (upb_command(device, "PA")) {
 		char *pnt = NULL, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
@@ -513,6 +514,18 @@ static void aux_timer_callback(indigo_device *device) {
 			}
 		}
 	}
+	// The variable voltage is not part of the status frame; a change made outside this driver, or by a request the
+	// box did not execute, has to show up as well. The targets stay with the requests.
+	if (PRIVATE_DATA->version == 2 && upb_command(device, "PS") && !strncmp(PRIVATE_DATA->response, "PS", 2)) {
+		char *pnt = NULL, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
+		if ((token = strtok_r(NULL, ":", &pnt)) && (token = strtok_r(NULL, ":", &pnt))) { // Power-up state, variable voltage
+			int value = atoi(token);
+			if (upb_adopt(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY) && X_AUX_VARIABLE_POWER_OUTLET_1_ITEM->number.value != value) {
+				X_AUX_VARIABLE_POWER_OUTLET_1_ITEM->number.value = value;
+				updateVariablePowerOutlet = true;
+			}
+		}
+	}
 	if (PRIVATE_DATA->version == 1) {
 		if (PRIVATE_DATA->smart_hub) {
 			for (int i = 1; i < 7; i++) {
@@ -558,8 +571,12 @@ static void aux_timer_callback(indigo_device *device) {
 	if (updatePowerOutletCurrent) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_POWER_OUTLET_CURRENT_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
-	if (updateHeaterOutlet) {
+	// A request copied after the heater check owns the state of AUX_HEATER_OUTLET, its handler publishes the result.
+	if (updateHeaterOutlet && upb_adopt(AUX_HEATER_OUTLET_PROPERTY)) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_HEATER_OUTLET_PROPERTY, INDIGO_OK_STATE, NULL);
+	}
+	if (updateVariablePowerOutlet && upb_adopt(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY)) {
+		INDIGO_UPDATE_PROPERTY_STATE(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	if (updateHeaterOutletState) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_HEATER_OUTLET_STATE_PROPERTY, INDIGO_OK_STATE, NULL);
