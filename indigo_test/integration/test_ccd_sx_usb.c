@@ -49,6 +49,8 @@ static atomic_int fast_exposure, fail_clear_at, zero_pixels;
 static atomic_int short_command, short_reply, led_on;
 static atomic_int sensor_temperature = 2855;
 static atomic_int short_cooler_reply;
+// Cooler on/off flags of the cooler commands in the order the camera received them.
+static atomic_int cooler_log[256], cooler_log_count;
 static atomic_int command_count[256], guide_state[2], bad_guide_completion;
 static atomic_bool is_open;
 static int model = 0x25, caps = 0x31;
@@ -181,6 +183,8 @@ static int sx_bulk_impl(libusb_device_handle *handle, unsigned char endpoint, un
 		} else if (last_request == 30) {
 			atomic_store(&cooler_target, word(data + 2));
 			atomic_store(&cooler_on, data[4]);
+			int entry = atomic_fetch_add(&cooler_log_count, 1);
+			if (entry < ARRAY_SIZE(cooler_log)) { atomic_store(&cooler_log[entry], data[4]); }
 		} else if (last_request == 43) {
 			atomic_store(&led_on, data[2]);
 		} else if (last_request == 6) {
@@ -300,6 +304,10 @@ static bool sx_wait(atomic_int *value, int expected) {
 static bool sx_switch(const char *property, const char *item, indigo_property_state state) {
 	return indigo_change_switch_property_1(&simulator_test_client, camera_name, property, item, true) == INDIGO_OK && wait_for_property_state(property, state);
 }
+static bool cached_switch_value(const char *property, const char *item) {
+	indigo_item *cached = find_cached_item(property, item);
+	return cached && cached->sw.value;
+}
 static bool sx_expose(double duration, indigo_property_state state) {
 	int before = atomic_load(&frames);
 	if (indigo_change_number_property_1(&simulator_test_client, camera_name, "CCD_EXPOSURE", "EXPOSURE", duration) != INDIGO_OK || !wait_for_property_state("CCD_EXPOSURE", state)) { return false; }
@@ -416,6 +424,15 @@ static void cooling_failures_and_guider_sharing(void) {
 	atomic_store(&sensor_temperature, 2630);
 	SX_CHECK(wait_for_number_item_value("CCD_TEMPERATURE", "TEMPERATURE", -10, 0.01));
 	SX_CHECK(wait_for_property_state("CCD_TEMPERATURE", INDIGO_OK_STATE));
+	atomic_store(&fail_command, 30);
+	SX_CHECK(sx_switch("CCD_COOLER", "OFF", INDIGO_ALERT_STATE));
+	// The camera still reports the cooler on, so CCD_COOLER shows ON instead of the request it did not get.
+	SX_CHECK(cached_switch_value("CCD_COOLER", "ON"));
+	atomic_store(&fail_command, 0);
+	// The next poll sends the request again.
+	SX_CHECK(sx_wait(&cooler_on, 0));
+	SX_CHECK(wait_for_property_state("CCD_COOLER", INDIGO_OK_STATE));
+	SX_CHECK(cached_switch_value("CCD_COOLER", "OFF"));
 	SX_CHECK(sx_switch("CCD_COOLER", "OFF", INDIGO_OK_STATE));
 	SX_CHECK(sx_wait(&cooler_on, 0));
 	SX_CHECK(indigo_change_switch_property_1(&simulator_test_client, guider_name, "CONNECTION", "CONNECTED", true) == INDIGO_OK);
@@ -430,6 +447,63 @@ static void cooling_failures_and_guider_sharing(void) {
 		SX_CHECK(atomic_load(&relay_mask) == 0);
 	}
 cleanup:
+	sx_end();
+}
+
+static atomic_int queue_gate_entered, queue_gate_release, queue_marks;
+
+static void sx_block_queue(indigo_device *device) {
+	atomic_store(&queue_gate_entered, 1);
+	for (int i = 0; i < 5000 && !atomic_load(&queue_gate_release); i++) { indigo_usleep(1000); }
+}
+
+static void sx_mark_queue(indigo_device *device) {
+	atomic_fetch_add(&queue_marks, 1);
+}
+
+// TGT-063: a cooler OFF sent after a temperature change is the newer request. The temperature
+// handler still sets the new setpoint, but it must not turn the queued OFF into ON before the
+// poll sends the cooler command.
+static void cooler_off_queued_behind_a_temperature_change_survives(void) {
+	model = 0x25; caps = 0x31;
+	sx_begin();
+	SX_CHECK(indigo_change_number_property_1(&simulator_test_client, camera_name, "CCD_TEMPERATURE", "TEMPERATURE", -10) == INDIGO_OK);
+	SX_CHECK(sx_wait(&cooler_target, 2630));
+	SX_CHECK(sx_wait(&cooler_on, 1));
+	// Both properties must be idle, the framework drops a request for a BUSY property.
+	atomic_store(&sensor_temperature, 2630);
+	SX_CHECK(wait_for_property_state("CCD_TEMPERATURE", INDIGO_OK_STATE));
+	SX_CHECK(wait_for_property_state("CCD_COOLER", INDIGO_OK_STATE));
+	SX_CHECK(cached_switch_value("CCD_COOLER", "ON"));
+	atomic_store(&queue_gate_entered, 0); atomic_store(&queue_gate_release, 0);
+	indigo_execute_handler(camera_device, sx_block_queue);
+	SX_CHECK(sx_wait(&queue_gate_entered, 1));
+	SX_CHECK(indigo_change_number_property_1(&simulator_test_client, camera_name, "CCD_TEMPERATURE", "TEMPERATURE", -15) == INDIGO_OK);
+	SX_CHECK(wait_for_property_state("CCD_TEMPERATURE", INDIGO_BUSY_STATE));
+	SX_CHECK(indigo_change_switch_property_1(&simulator_test_client, camera_name, "CCD_COOLER", "OFF", true) == INDIGO_OK);
+	SX_CHECK(wait_for_property_state("CCD_COOLER", INDIGO_BUSY_STATE));
+	// The gate holds the poll, so no cooler command is sent while the log restarts.
+	atomic_store(&cooler_log_count, 0);
+	int first = 0;
+	atomic_store(&queue_gate_release, 1);
+	// The marker runs after both queued handlers, the two cooler reads after it are polls that follow them.
+	atomic_store(&queue_marks, 0);
+	indigo_execute_handler(camera_device, sx_mark_queue);
+	SX_CHECK(sx_wait(&queue_marks, 1));
+	int reads = atomic_load(&cooler_reads);
+	SX_CHECK(sx_wait(&cooler_reads, reads + 2));
+	SX_CHECK(wait_for_property_state("CCD_COOLER", INDIGO_OK_STATE));
+	int last = atomic_load(&cooler_log_count);
+	SX_CHECK(last > first && last <= ARRAY_SIZE(cooler_log));
+	for (int i = first; i < last; i++) {
+		if (atomic_load(&cooler_log[i])) { fprintf(stderr, "cooler command %d after the gate switched the cooler on\n", i - first); }
+		SX_CHECK(atomic_load(&cooler_log[i]) == 0);
+	}
+	SX_CHECK(atomic_load(&cooler_on) == 0);
+	SX_CHECK(atomic_load(&cooler_target) == 2580);
+	SX_CHECK(cached_switch_value("CCD_COOLER", "OFF"));
+cleanup:
+	atomic_store(&queue_gate_release, 1);
 	sx_end();
 }
 
@@ -1032,6 +1106,7 @@ int main(int argc, char **argv) {
 		{ "Interlaced ICX453 and short USB transfers", readout_variants_and_short_transfers },
 		{ "Uncooled camera", uncooled_camera },
 		{ "Cooling failures and guider sharing", cooling_failures_and_guider_sharing },
+		{ "Cooler off queued behind a temperature change survives", cooler_off_queued_behind_a_temperature_change_survives },
 		{ "USB transfer errors and reacquisition", transfer_failures_and_recovery }
 	};
 	int result = 0, matched = 0;

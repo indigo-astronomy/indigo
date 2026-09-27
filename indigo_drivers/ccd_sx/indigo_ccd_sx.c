@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000016
+#define DRIVER_VERSION       0x03000017
 #define DRIVER_NAME          "indigo_ccd_sx"
 #define DRIVER_LABEL         "Starlight Xpress Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -183,6 +183,7 @@ typedef struct {
 	unsigned char *buffer;
 	unsigned char *odd, *even;
 	bool can_check_temperature;
+	bool cooler_on;
 	//- data
 } sx_private_data;
 
@@ -686,6 +687,7 @@ static bool sx_set_cooler(indigo_device *device, bool status, double target, dou
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %d bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
 			if (rc >=0 && transferred == 3) {
 				*current = ((setup_data[1]*256)+setup_data[0]-2730)/10.0;
+				PRIVATE_DATA->cooler_on = setup_data[2] != 0;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "cooler: %s, target: %gC, current: %gC", setup_data[2] ? "On" : "Off", target, *current);
 			}
 			if (rc >= 0 && transferred != 3) {
@@ -803,18 +805,29 @@ static void ccd_temperature_poll_handler(indigo_device *device) {
 		return;
 	}
 	if (PRIVATE_DATA->can_check_temperature) {
-		if (sx_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature)) {
+		// The poll sends the cooler command, so it sends the request kept in the targets.
+		bool cooler_on = indigo_get_switch_target(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM_NAME);
+		bool ok = sx_set_cooler(device, cooler_on, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature);
+		if (ok) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
-			if (CCD_COOLER_ON_ITEM->sw.value) {
+			if (cooler_on) {
 				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 0.5 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 			} else {
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
-			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		// A request copied during the transfer stays BUSY and is sent by the next poll.
+		if (indigo_get_switch_target(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM_NAME) == cooler_on) {
+			if (ok) {
+				indigo_apply_switch_targets(CCD_COOLER_PROPERTY);
+				CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				indigo_set_switch(CCD_COOLER_PROPERTY, PRIVATE_DATA->cooler_on ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
+				CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
 		}
 		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
@@ -1091,8 +1104,12 @@ static void ccd_temperature_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
 		PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.target;
 		CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
-		if (CCD_COOLER_OFF_ITEM->sw.value) {
+		// A setpoint turns the cooler on, but a CCD_COOLER request queued after this one is newer and decides.
+		if (CCD_COOLER_PROPERTY->state != INDIGO_BUSY_STATE && !indigo_get_switch_target(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM_NAME)) {
 			indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
+			// The poll sends the targets, so the cooler ON goes there as well.
+			CCD_COOLER_ON_ITEM->sw.target = true;
+			CCD_COOLER_OFF_ITEM->sw.target = false;
 			INDIGO_UPDATE_PROPERTY_STATE(CCD_COOLER_PROPERTY, INDIGO_BUSY_STATE, NULL);
 		}
 		INDIGO_UPDATE_PROPERTY_STATE(CCD_TEMPERATURE_PROPERTY, INDIGO_BUSY_STATE, NULL);

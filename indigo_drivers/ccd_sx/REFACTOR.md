@@ -442,3 +442,51 @@ The generator now sets `master_device` of the master device to itself. The fake 
 in `test_ccd_sx_usb.c` told the camera from the guider by `master_device` being `NULL`; it now treats a
 device as the guider only when its `master_device` is another device, as the ASI, SVB and PlayerOne
 suites already did.
+
+## Queued cooler request (TGT-063, 2026-09-27)
+
+Version 23, finding TGT-063 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+
+### Cooler flow
+
+The CCD_COOLER handler only publishes BUSY. The cooler command (`CCD_COOLER` vendor request 30 with
+the setpoint and the on/off flag, answered with the sensor temperature and the cooler state) is sent
+only by `ccd_temperature_poll_handler` (every 5 s while no readout runs), which read
+`CCD_COOLER_ON_ITEM->sw.value` and then set CCD_COOLER OK, or ALERT on a failed transfer. The
+CCD_TEMPERATURE handler stores the setpoint and, when CCD_COOLER showed OFF, switched it ON and BUSY.
+
+### Defect (reproduced)
+
+A cooler OFF sent after a temperature change is copied into CCD_COOLER on the bus thread and queued
+behind the temperature handler. That handler saw OFF and switched CCD_COOLER ON, so the next poll sent
+the cooler ON and published ON/OK: the camera kept cooling although the client asked it to stop. A
+failed cooler command was also shown with the requested state instead of the camera's.
+
+### Fix
+
+- The poll sends the request read with `indigo_get_switch_target()`. When the transfer succeeds it
+  applies the targets with `indigo_apply_switch_targets()` and publishes OK; when it fails it shows
+  the cooler state the camera last reported (`cooler_on`, byte 2 of the cooler reply) with ALERT and
+  keeps the target, so the next poll sends the request again as before. A request copied during the
+  transfer is left BUSY for the next poll.
+- The CCD_TEMPERATURE handler still turns the cooler on when the requested cooler state is OFF, now
+  writing ON into value and target, but leaves a BUSY CCD_COOLER to the poll, so the last client
+  request wins. Its BUSY check and its write have no I/O between them.
+- The order and content of the USB transfers are unchanged.
+
+### Fake USB and tests
+
+- The fake USB records the on/off flag of every cooler command in order (`cooler_log`).
+- New case `Cooler off queued behind a temperature change survives`: after a -10 C setpoint turned the
+  cooler on and the sensor reached it, a gate handler holds the device queue, a -15 C setpoint and a
+  cooler OFF are sent, the gate is released and a marker handler plus two polls follow. Version 22
+  failed 3/3 (cooler ON sent after the gate, CCD_COOLER ON); version 23 passes 3/3 (only cooler OFF
+  commands, setpoint -15 C, CCD_COOLER OFF and OK).
+- `Cooling failures and guider sharing` now also checks that a cooler OFF refused by the camera shows
+  ON with ALERT and is sent again by the next poll; it fails on version 22.
+- Unchanged version 22 suite on Linux x64: 24/24. Regeneration is reproducible.
+
+### Test totals for this change
+
+Simulated (fake USB) tests run 25, passed 25 (Linux x64, `tools/run_driver_test.py ccd_sx`).
+Hardware tests run 0, passed 0.
