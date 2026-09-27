@@ -20,6 +20,8 @@
 
 #include <indigo_drivers/aux_usbdp/indigo_aux_usbdp.h>
 
+#include <stdatomic.h>
+
 #include "serial_simulator_test_common.h"
 
 #ifndef AUX_USBDP_SIMULATOR_EXECUTABLE
@@ -290,6 +292,264 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// Driver log lines seen by d01_second_item_requests_survive_a_status_frame_in_flight.
+static atomic_bool d01_armed, d01_status_sent;
+
+static void d01_log_handler(indigo_log_levels level, const char *message) {
+	if (atomic_load(&d01_armed) && strstr(message, "<- SGETAL") != NULL) {
+		atomic_store(&d01_status_sent, true);
+		atomic_store(&d01_armed, false);
+	}
+}
+
+// TGT-D01: the poll guarded only the first item of AUX_HEATER_OUTLET, AUX_CALLIBRATION and AUX_DEW_THRESHOLD, so a
+// pending request for item 2 was overwritten with the value the controller reported and the handler sent that one.
+// The requests are sent from the driver's log line of the status command, which the controller answers 0.7 s late.
+// Each request carries item 2 only, so item 1 must keep the value the controller reported, not a stale target.
+static void d01_second_item_requests_survive_a_status_frame_in_flight(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	indigo_log_levels log_level = indigo_get_log_level();
+	const char *arguments[] = { "--model", "v2", "--slow-status", "700", "--set", "output1", "20", "--set", "cal1", "1", NULL };
+	SERIAL_CHECK_TRUE(start_usbdp(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&usbdp_case, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME, 20, 0.5));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_CALLIBRATION_PROPERTY_NAME, AUX_CALLIBRATION_SENSOR_1_ITEM_NAME, 1, 0.5));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, 2, 0.5));
+	SERIAL_CHECK_TRUE(settle(AUX_HEATER_OUTLET_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(settle(AUX_CALLIBRATION_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(settle(AUX_DEW_THRESHOLD_PROPERTY_NAME));
+	atomic_store(&d01_status_sent, false);
+	atomic_store(&d01_armed, true);
+	indigo_log_message_handler = d01_log_handler;
+	indigo_set_log_level(INDIGO_LOG_DEBUG);
+	for (int i = 0; i < 5000 && !atomic_load(&d01_status_sent); i++) {
+		indigo_usleep(1000);
+	}
+	SERIAL_CHECK_TRUE(atomic_load(&d01_status_sent));
+	SERIAL_CHECK_TRUE(set_number(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_2_ITEM_NAME, 40));
+	SERIAL_CHECK_TRUE(set_number(AUX_CALLIBRATION_PROPERTY_NAME, AUX_CALLIBRATION_SENSOR_2_ITEM_NAME, 3));
+	SERIAL_CHECK_TRUE(set_number(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_2_ITEM_NAME, 5));
+	indigo_set_log_level(log_level);
+	indigo_log_message_handler = NULL;
+	SERIAL_CHECK_TRUE(settle(AUX_HEATER_OUTLET_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(settle(AUX_CALLIBRATION_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(settle(AUX_DEW_THRESHOLD_PROPERTY_NAME));
+	// The next status frames show what the controller was actually given.
+	indigo_usleep(3500000);
+	printf("Heater #2 %g, calibration #2 %g, threshold #2 %g, heater #1 %g, calibration #1 %g\n", cached_number_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_2_ITEM_NAME), cached_number_value(AUX_CALLIBRATION_PROPERTY_NAME, AUX_CALLIBRATION_SENSOR_2_ITEM_NAME), cached_number_value(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_2_ITEM_NAME), cached_number_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME), cached_number_value(AUX_CALLIBRATION_PROPERTY_NAME, AUX_CALLIBRATION_SENSOR_1_ITEM_NAME));
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_2_ITEM_NAME) == 40);
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_CALLIBRATION_PROPERTY_NAME, AUX_CALLIBRATION_SENSOR_2_ITEM_NAME) == 3);
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_2_ITEM_NAME) == 5);
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME) == 20);
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_CALLIBRATION_PROPERTY_NAME, AUX_CALLIBRATION_SENSOR_1_ITEM_NAME) == 1);
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME) == 2);
+cleanup:
+	atomic_store(&d01_armed, false);
+	indigo_set_log_level(log_level);
+	indigo_log_message_handler = NULL;
+	if (online) {
+		stop_serial_driver(&usbdp_case);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static bool wait_for_alert_after(const char *property_name, unsigned int revision) {
+	if (wait_for_property_state_seen_after(property_name, INDIGO_ALERT_STATE, revision)) {
+		return true;
+	}
+	fprintf(stderr, "%s was never published with ALERT\n", property_name);
+	return false;
+}
+
+// TGT-053 to TGT-055, TGT-D01: a request the controller does not answer is shown in the state the controller last
+// reported, with ALERT, instead of the request; the same request is accepted once the controller answers again.
+static void request_failures_show_the_controller_state(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--model", "v2", "--fault-once", "SAUTO1", "silent", "--fault-once", "SLINK1", "silent", "--fault-once", "SAGGR3", "silent", "--fault-once", "S2O040", "silent", "--fault-once", "SCA030", "silent", "--fault-once", "STHR25", "silent", NULL };
+	SERIAL_CHECK_TRUE(start_usbdp(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&usbdp_case, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, 2, 0.5));
+	for (int attempt = 0; attempt < 2; attempt++) {
+		bool fails = attempt == 0;
+		unsigned int revision;
+		// After the failed request the property stays ALERT until the next request.
+		SERIAL_CHECK_TRUE(wait_for_property_not_busy(AUX_DEW_CONTROL_PROPERTY_NAME));
+		revision = property_state_revision(AUX_DEW_CONTROL_PROPERTY_NAME, INDIGO_ALERT_STATE);
+		SERIAL_CHECK_TRUE(set_switch(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+		if (fails) {
+			SERIAL_CHECK_TRUE(wait_for_alert_after(AUX_DEW_CONTROL_PROPERTY_NAME, revision));
+			SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, true));
+		} else {
+			SERIAL_CHECK_TRUE(settle(AUX_DEW_CONTROL_PROPERTY_NAME));
+			SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+		}
+		SERIAL_CHECK_TRUE(wait_for_property_not_busy(AUX_LINK_CH_2AND3_PROPERTY_NAME));
+		revision = property_state_revision(AUX_LINK_CH_2AND3_PROPERTY_NAME, INDIGO_ALERT_STATE);
+		SERIAL_CHECK_TRUE(set_switch(AUX_LINK_CH_2AND3_PROPERTY_NAME, AUX_LINK_CH_2AND3_LINKED_ITEM_NAME, true));
+		if (fails) {
+			SERIAL_CHECK_TRUE(wait_for_alert_after(AUX_LINK_CH_2AND3_PROPERTY_NAME, revision));
+			SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_LINK_CH_2AND3_PROPERTY_NAME, AUX_LINK_CH_2AND3_NOT_LINKED_ITEM_NAME, true));
+		} else {
+			SERIAL_CHECK_TRUE(settle(AUX_LINK_CH_2AND3_PROPERTY_NAME));
+			SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_LINK_CH_2AND3_PROPERTY_NAME, AUX_LINK_CH_2AND3_LINKED_ITEM_NAME, true));
+		}
+		SERIAL_CHECK_TRUE(wait_for_property_not_busy(AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME));
+		revision = property_state_revision(AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME, INDIGO_ALERT_STATE);
+		SERIAL_CHECK_TRUE(set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME, AUX_HEATER_AGGRESSIVITY_5_ITEM_NAME, true));
+		if (fails) {
+			SERIAL_CHECK_TRUE(wait_for_alert_after(AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME, revision));
+			SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME, AUX_HEATER_AGGRESSIVITY_1_ITEM_NAME, true));
+		} else {
+			SERIAL_CHECK_TRUE(settle(AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME));
+			SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME, AUX_HEATER_AGGRESSIVITY_5_ITEM_NAME, true));
+		}
+		SERIAL_CHECK_TRUE(wait_for_property_not_busy(AUX_HEATER_OUTLET_PROPERTY_NAME));
+		revision = property_state_revision(AUX_HEATER_OUTLET_PROPERTY_NAME, INDIGO_ALERT_STATE);
+		SERIAL_CHECK_TRUE(set_number(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_2_ITEM_NAME, 40));
+		if (fails) {
+			SERIAL_CHECK_TRUE(wait_for_alert_after(AUX_HEATER_OUTLET_PROPERTY_NAME, revision));
+			SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_2_ITEM_NAME, 0, 0.5));
+		} else {
+			SERIAL_CHECK_TRUE(settle(AUX_HEATER_OUTLET_PROPERTY_NAME));
+			SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_2_ITEM_NAME, 40, 0.5));
+		}
+		SERIAL_CHECK_TRUE(wait_for_property_not_busy(AUX_CALLIBRATION_PROPERTY_NAME));
+		revision = property_state_revision(AUX_CALLIBRATION_PROPERTY_NAME, INDIGO_ALERT_STATE);
+		SERIAL_CHECK_TRUE(set_number(AUX_CALLIBRATION_PROPERTY_NAME, AUX_CALLIBRATION_SENSOR_2_ITEM_NAME, 3));
+		if (fails) {
+			SERIAL_CHECK_TRUE(wait_for_alert_after(AUX_CALLIBRATION_PROPERTY_NAME, revision));
+			SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_CALLIBRATION_PROPERTY_NAME, AUX_CALLIBRATION_SENSOR_2_ITEM_NAME, 0, 0.5));
+		} else {
+			SERIAL_CHECK_TRUE(settle(AUX_CALLIBRATION_PROPERTY_NAME));
+			SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_CALLIBRATION_PROPERTY_NAME, AUX_CALLIBRATION_SENSOR_2_ITEM_NAME, 3, 0.5));
+		}
+		SERIAL_CHECK_TRUE(wait_for_property_not_busy(AUX_DEW_THRESHOLD_PROPERTY_NAME));
+		revision = property_state_revision(AUX_DEW_THRESHOLD_PROPERTY_NAME, INDIGO_ALERT_STATE);
+		SERIAL_CHECK_TRUE(set_number(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_2_ITEM_NAME, 5));
+		if (fails) {
+			SERIAL_CHECK_TRUE(wait_for_alert_after(AUX_DEW_THRESHOLD_PROPERTY_NAME, revision));
+			SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_2_ITEM_NAME, 2, 0.5));
+		} else {
+			SERIAL_CHECK_TRUE(settle(AUX_DEW_THRESHOLD_PROPERTY_NAME));
+			SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_2_ITEM_NAME, 5, 0.5));
+		}
+	}
+	// A poll later the controller reports what it was given.
+	indigo_usleep(2500000);
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_LINK_CH_2AND3_PROPERTY_NAME, AUX_LINK_CH_2AND3_LINKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME, AUX_HEATER_AGGRESSIVITY_5_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_2_ITEM_NAME) == 40);
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_CALLIBRATION_PROPERTY_NAME, AUX_CALLIBRATION_SENSOR_2_ITEM_NAME) == 3);
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_2_ITEM_NAME) == 5);
+cleanup:
+	if (online) {
+		stop_serial_driver(&usbdp_case);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The six writable v2 properties, the request b07_requests_copied_before_the_publication_are_published_by_their_handlers
+// sends for each of them and the driver log line of the command its handler sends for it.
+static const char * const b07_properties[] = { AUX_CALLIBRATION_PROPERTY_NAME, AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME, AUX_LINK_CH_2AND3_PROPERTY_NAME, AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_DEW_CONTROL_PROPERTY_NAME };
+static const char * const b07_commands[] = { "<- SCA400", "<- STHR62", "<- SAGGR2", "<- SLINK0", "<- S1O050", "<- SAUTO0" };
+static atomic_bool b07_armed, b07_requests_sent, b07_command_sent[6], b07_first_ok[6], b07_first_ok_after_command[6];
+
+static void b07_log_handler(indigo_log_levels level, const char *message) {
+	for (int i = 0; i < 6; i++) {
+		if (strstr(message, b07_commands[i]) != NULL) {
+			atomic_store(b07_command_sent + i, true);
+		}
+	}
+}
+
+static indigo_result b07_watch_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	indigo_result result = simulator_client_update_property(client, device, property, message);
+	if (strcmp(property->device, usbdp_case.device_name)) {
+		return result;
+	}
+	if (!strcmp(property->name, AUX_DEW_WARNING_PROPERTY_NAME) && atomic_exchange(&b07_armed, false)) {
+		// The first poll adopted the settings the controller keeps and publishes the dew warning before them. The
+		// requests are copied now, on the device queue, between the poll's writes and its publications.
+		set_number(AUX_CALLIBRATION_PROPERTY_NAME, AUX_CALLIBRATION_SENSOR_1_ITEM_NAME, 4);
+		set_number(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, 6);
+		set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME, AUX_HEATER_AGGRESSIVITY_2_ITEM_NAME, true);
+		set_switch(AUX_LINK_CH_2AND3_PROPERTY_NAME, AUX_LINK_CH_2AND3_NOT_LINKED_ITEM_NAME, true);
+		set_number(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME, 50);
+		set_switch(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, true);
+		atomic_store(&b07_requests_sent, true);
+		return result;
+	}
+	if (atomic_load(&b07_requests_sent) && property->state == INDIGO_OK_STATE) {
+		for (int i = 0; i < 6; i++) {
+			if (!strcmp(property->name, b07_properties[i]) && !atomic_exchange(b07_first_ok + i, true)) {
+				atomic_store(b07_first_ok_after_command + i, atomic_load(b07_command_sent + i));
+			}
+		}
+	}
+	return result;
+}
+
+// TGT-B07: the poll published every property it adopted a change for with OK at its end without checking BUSY again,
+// so a request copied between its writes and its publications was shown OK before its handler sent it. The controller
+// starts with settings other than the driver's defaults and a dew warning, so the first poll adopts all six writable
+// properties and publishes the dew warning before them; the requests are sent from that publication.
+static void b07_requests_copied_before_the_publication_are_published_by_their_handlers(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	indigo_log_levels log_level = indigo_get_log_level();
+	const char *arguments[] = { "--model", "v2", "--set", "dewpoint", "30", "--set", "cal1", "1", "--set", "aggressivity", "3", "--set", "linked", "1", "--set", "output1", "20", "--set", "auto", "1", NULL };
+	SERIAL_CHECK_TRUE(start_usbdp(&simulator, arguments));
+	for (int i = 0; i < 6; i++) {
+		atomic_store(b07_command_sent + i, false);
+		atomic_store(b07_first_ok + i, false);
+		atomic_store(b07_first_ok_after_command + i, false);
+	}
+	atomic_store(&b07_requests_sent, false);
+	atomic_store(&b07_armed, true);
+	indigo_log_message_handler = b07_log_handler;
+	indigo_set_log_level(INDIGO_LOG_DEBUG);
+	simulator_test_client.update_property = b07_watch_update;
+	SERIAL_CHECK_TRUE(start_serial_driver(&usbdp_case, simulator.port));
+	online = true;
+	for (int i = 0; i < 5000 && !atomic_load(&b07_requests_sent); i++) {
+		indigo_usleep(1000);
+	}
+	SERIAL_CHECK_TRUE(atomic_load(&b07_requests_sent));
+	for (int i = 0; i < 6; i++) {
+		SERIAL_CHECK_TRUE(settle(b07_properties[i]));
+	}
+	for (int i = 0; i < 6; i++) {
+		printf("%s: first OK after the request %d, published after its command was sent %d\n", b07_properties[i], atomic_load(b07_first_ok + i), atomic_load(b07_first_ok_after_command + i));
+	}
+	for (int i = 0; i < 6; i++) {
+		SERIAL_CHECK_TRUE(atomic_load(b07_first_ok + i));
+		SERIAL_CHECK_TRUE(atomic_load(b07_first_ok_after_command + i));
+	}
+	simulator_test_client.update_property = simulator_client_update_property;
+	// A poll later the controller reports the requests.
+	indigo_usleep(2500000);
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_CALLIBRATION_PROPERTY_NAME, AUX_CALLIBRATION_SENSOR_1_ITEM_NAME) == 4);
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_DEW_THRESHOLD_PROPERTY_NAME, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME) == 6);
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME, AUX_HEATER_AGGRESSIVITY_2_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_LINK_CH_2AND3_PROPERTY_NAME, AUX_LINK_CH_2AND3_NOT_LINKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(cached_number_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME) == 50);
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, true));
+cleanup:
+	atomic_store(&b07_armed, false);
+	simulator_test_client.update_property = simulator_client_update_property;
+	indigo_set_log_level(log_level);
+	indigo_log_message_handler = NULL;
+	if (online) {
+		stop_serial_driver(&usbdp_case);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 // ------------------------------------------------------------------ failures
 
 static void unknown_identity_is_refused(void) {
@@ -416,6 +676,9 @@ int main(void) {
 		{ "channel_link_round_trips", channel_link_round_trips },
 		{ "heater_aggressivity_round_trips", heater_aggressivity_round_trips },
 		{ "a_change_survives_a_status_frame_in_flight", a_change_survives_a_status_frame_in_flight },
+		{ "d01_second_item_requests_survive_a_status_frame_in_flight", d01_second_item_requests_survive_a_status_frame_in_flight },
+		{ "request_failures_show_the_controller_state", request_failures_show_the_controller_state },
+		{ "b07_requests_copied_before_the_publication_are_published_by_their_handlers", b07_requests_copied_before_the_publication_are_published_by_their_handlers },
 		{ "unknown_identity_is_refused", unknown_identity_is_refused },
 		{ "silent_identity_is_refused", silent_identity_is_refused },
 		{ "vanished_port_is_refused", vanished_port_is_refused },

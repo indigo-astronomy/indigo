@@ -61,7 +61,10 @@ static void usage(const char *name) {
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  --slow-status <ms>      Hold the status reply, so a change can land during a poll\n");
 	printf("  --fault <cmd> <mode>    Answer <cmd> with invalid|short|silent|close\n");
-	printf("  --fault-once <cmd> <mode>       The same, but only the first time\n");
+	printf("  --fault-once <cmd> <mode>       The same, but only the first time (repeatable)\n");
+	printf("  --set <name> <value>    Start with a stored setting or reading other than the default:\n");
+	printf("                          output1-3, cal1, cal2, cal_amb, threshold1, threshold2, auto,\n");
+	printf("                          linked, aggressivity, temp1, temp2, dewpoint\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -69,8 +72,14 @@ static void usage(const char *name) {
 // the driver's poll is still waiting for it and exercise that race deterministically.
 static int slow_status_ms = 0;
 // Fault injection: the named command answers with MODE instead of its reply.
-static const char *fault_command, *fault_mode;
-static bool fault_once;
+#define MAX_FAULTS 8
+static struct {
+	const char *command, *mode;
+	bool once;
+} faults[MAX_FAULTS];
+static int fault_count;
+
+static bool set_state(const char *name, const char *value);
 
 static bool parse_args(int argc, char *argv[]) {
 	for (int i = 1; i < argc; i++) {
@@ -89,17 +98,32 @@ static bool parse_args(int argc, char *argv[]) {
 			}
 			slow_status_ms = atoi(argv[i]);
 		} else if (!strcmp(argv[i], "--fault") || !strcmp(argv[i], "--fault-once")) {
-			fault_once = !strcmp(argv[i], "--fault-once");
 			if (i + 2 >= argc) {
 				fprintf(stderr, "%s requires a command and a mode\n", argv[i]);
 				return false;
 			}
-			fault_command = argv[++i];
-			fault_mode = argv[++i];
-			if (strcmp(fault_mode, "invalid") && strcmp(fault_mode, "short") && strcmp(fault_mode, "silent") && strcmp(fault_mode, "close")) {
-				fprintf(stderr, "Unknown fault mode '%s'\n", fault_mode);
+			if (fault_count == MAX_FAULTS) {
+				fprintf(stderr, "At most %d faults can be injected\n", MAX_FAULTS);
 				return false;
 			}
+			faults[fault_count].once = !strcmp(argv[i], "--fault-once");
+			faults[fault_count].command = argv[++i];
+			faults[fault_count].mode = argv[++i];
+			if (strcmp(faults[fault_count].mode, "invalid") && strcmp(faults[fault_count].mode, "short") && strcmp(faults[fault_count].mode, "silent") && strcmp(faults[fault_count].mode, "close")) {
+				fprintf(stderr, "Unknown fault mode '%s'\n", faults[fault_count].mode);
+				return false;
+			}
+			fault_count++;
+		} else if (!strcmp(argv[i], "--set")) {
+			if (i + 2 >= argc) {
+				fprintf(stderr, "--set requires a name and a value\n");
+				return false;
+			}
+			if (!set_state(argv[i + 1], argv[i + 2])) {
+				fprintf(stderr, "Unknown setting '%s'\n", argv[i + 1]);
+				return false;
+			}
+			i += 2;
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -142,6 +166,38 @@ static int auto_mode = 0, ch2_3_linked = 0, aggressivity = 1;
 
 // V1 state
 static float temp_loc = 23.5f;
+
+// The controller keeps its settings in EEPROM, so it can start with other values than the driver's defaults.
+static bool set_state(const char *name, const char *value) {
+	static const struct {
+		const char *name;
+		int *value;
+	} ints[] = {
+		{ "output1", &output_ch1 }, { "output2", &output_ch2 }, { "output3", &output_ch3 },
+		{ "cal1", &cal_ch1 }, { "cal2", &cal_ch2 }, { "cal_amb", &cal_amb },
+		{ "threshold1", &threshold_ch1 }, { "threshold2", &threshold_ch2 },
+		{ "auto", &auto_mode }, { "linked", &ch2_3_linked }, { "aggressivity", &aggressivity }
+	};
+	static const struct {
+		const char *name;
+		float *value;
+	} floats[] = {
+		{ "temp1", &temp_ch1 }, { "temp2", &temp_ch2 }, { "dewpoint", &dewpoint }
+	};
+	for (size_t i = 0; i < sizeof(ints) / sizeof(ints[0]); i++) {
+		if (!strcmp(name, ints[i].name)) {
+			*ints[i].value = atoi(value);
+			return true;
+		}
+	}
+	for (size_t i = 0; i < sizeof(floats) / sizeof(floats[0]); i++) {
+		if (!strcmp(name, floats[i].name)) {
+			*floats[i].value = (float)atof(value);
+			return true;
+		}
+	}
+	return false;
+}
 
 static void signal_handler(int sig) {
 	(void)sig;
@@ -207,21 +263,25 @@ static int sim_read_command(int fd, char *buffer, size_t length) {
 }
 
 static bool inject_fault(int fd, const char *cmd) {
-	if (fault_command == NULL || strcmp(cmd, fault_command)) {
-		return false;
+	for (int i = 0; i < fault_count; i++) {
+		if (faults[i].command == NULL || strcmp(cmd, faults[i].command)) {
+			continue;
+		}
+		const char *mode = faults[i].mode;
+		if (faults[i].once) {
+			faults[i].command = NULL;
+		}
+		if (!strcmp(mode, "invalid")) {
+			sim_printf(fd, "invalid\n");
+		} else if (!strcmp(mode, "short")) {
+			sim_printf(fd, "##1.0/2.0**\n");
+		} else if (!strcmp(mode, "close")) {
+			close(fd);
+		}
+		// "silent" answers nothing at all.
+		return true;
 	}
-	if (fault_once) {
-		fault_command = NULL;
-	}
-	if (!strcmp(fault_mode, "invalid")) {
-		sim_printf(fd, "invalid\n");
-	} else if (!strcmp(fault_mode, "short")) {
-		sim_printf(fd, "##1.0/2.0**\n");
-	} else if (!strcmp(fault_mode, "close")) {
-		close(fd);
-	}
-	// "silent" answers nothing at all.
-	return true;
+	return false;
 }
 
 static void dispatch_command(int fd, const char *cmd) {

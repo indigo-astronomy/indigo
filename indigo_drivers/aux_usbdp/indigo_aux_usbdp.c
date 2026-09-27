@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_aux_usbdp"
 #define DRIVER_LABEL         "USB Dewpoint"
 #define AUX_DEVICE_NAME      "USB Dewpoint"
@@ -150,7 +150,12 @@ typedef struct {
 	indigo_property *aux_dew_warning_property;
 	//+ data
 	int version;
-	uint8_t requested_aggressivity;
+	int outputs[3];
+	int calibration[3];
+	int thresholds[2];
+	bool automatic;
+	bool linked;
+	uint8_t aggressivity;
 	char response[128];
 	//- data
 } usbdp_private_data;
@@ -175,11 +180,25 @@ static bool usbdp_command(indigo_device *device, char *command, ...) {
 }
 
 // A change request accepted while the status frame was in flight has already copied the
-// client's values and published BUSY, so the frame must not overwrite them: the queued
-// handler would then send the stale values back to the controller. The check sits at each
-// assignment, after the reply has been read.
+// client's values and published BUSY, so the frame must not overwrite them. The check sits at each
+// assignment, after the reply has been read; a request copied after it is still sent, because the
+// handlers send the targets, which the poll never writes.
 static bool usbdp_adopt(indigo_property *property) {
 	return property->state != INDIGO_BUSY_STATE;
+}
+
+static indigo_item *usbdp_aggressivity_item(indigo_device *device, int aggressivity) {
+	switch (aggressivity) {
+		case 1:
+			return AUX_HEATER_AGGRESSIVITY_1_ITEM;
+		case 2:
+			return AUX_HEATER_AGGRESSIVITY_2_ITEM;
+		case 3:
+			return AUX_HEATER_AGGRESSIVITY_5_ITEM;
+		case 4:
+			return AUX_HEATER_AGGRESSIVITY_10_ITEM;
+	}
+	return NULL;
 }
 
 static bool usbdp_open(indigo_device *device) {
@@ -207,6 +226,22 @@ static bool usbdp_open(indigo_device *device) {
 				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v2");
 				sprintf(INFO_DEVICE_INTERFACE_ITEM->text.value, "%d", INDIGO_INTERFACE_AUX_WEATHER | INDIGO_INTERFACE_AUX_POWERBOX);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
+				// Until the first status frame a failed request shows the settings the driver shows now.
+				for (int i = 0; i < 3; i++) {
+					PRIVATE_DATA->outputs[i] = (int)AUX_HEATER_OUTLET_PROPERTY->items[i].number.value;
+					PRIVATE_DATA->calibration[i] = (int)AUX_CALLIBRATION_PROPERTY->items[i].number.value;
+				}
+				for (int i = 0; i < 2; i++) {
+					PRIVATE_DATA->thresholds[i] = (int)AUX_DEW_THRESHOLD_PROPERTY->items[i].number.value;
+				}
+				PRIVATE_DATA->automatic = AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value;
+				PRIVATE_DATA->linked = AUX_LINK_CH_2AND3_LINKED_ITEM->sw.value;
+				PRIVATE_DATA->aggressivity = 1;
+				for (int i = 1; i <= 4; i++) {
+					if (usbdp_aggressivity_item(device, i)->sw.value) {
+						PRIVATE_DATA->aggressivity = i;
+					}
+				}
 				return true;
 			}
 			indigo_uni_close(&PRIVATE_DATA->handle);
@@ -275,6 +310,19 @@ static void aux_timer_callback(indigo_device *device) {
 					AUX_TEMPERATURE_SENSOR_2_ITEM->number.value = temp_ch2;
 					updateSensors = true;
 				}
+				// The settings the controller reports are always recorded, a failed request shows them; a pending
+				// request owns the values of its property and its handler sends the targets.
+				PRIVATE_DATA->outputs[0] = output_ch1;
+				PRIVATE_DATA->outputs[1] = output_ch2;
+				PRIVATE_DATA->outputs[2] = output_ch3;
+				PRIVATE_DATA->calibration[0] = cal_ch1;
+				PRIVATE_DATA->calibration[1] = cal_ch2;
+				PRIVATE_DATA->calibration[2] = cal_amb;
+				PRIVATE_DATA->thresholds[0] = threshold_ch1;
+				PRIVATE_DATA->thresholds[1] = threshold_ch2;
+				PRIVATE_DATA->automatic = auto_mode;
+				PRIVATE_DATA->linked = ch2_3_linked;
+				PRIVATE_DATA->aggressivity = aggressivity;
 				if (usbdp_adopt(AUX_DEW_CONTROL_PROPERTY) && AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != auto_mode) {
 					if (auto_mode) {
 						indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
@@ -283,7 +331,7 @@ static void aux_timer_callback(indigo_device *device) {
 					}
 					updateAutoHeater = true;
 				}
-				if (usbdp_adopt(AUX_HEATER_OUTLET_PROPERTY) && ((int)(AUX_HEATER_OUTLET_1_ITEM->number.value) != output_ch1) ||  ((int)(AUX_HEATER_OUTLET_2_ITEM->number.value) != output_ch2) || ((int)(AUX_HEATER_OUTLET_3_ITEM->number.value) != output_ch3)) {
+				if (usbdp_adopt(AUX_HEATER_OUTLET_PROPERTY) && (((int)(AUX_HEATER_OUTLET_1_ITEM->number.value) != output_ch1) || ((int)(AUX_HEATER_OUTLET_2_ITEM->number.value) != output_ch2) || ((int)(AUX_HEATER_OUTLET_3_ITEM->number.value) != output_ch3))) {
 					AUX_HEATER_OUTLET_1_ITEM->number.value = output_ch1;
 					AUX_HEATER_OUTLET_2_ITEM->number.value = output_ch2;
 					AUX_HEATER_OUTLET_3_ITEM->number.value = output_ch3;
@@ -316,33 +364,20 @@ static void aux_timer_callback(indigo_device *device) {
 					AUX_HEATER_OUTLET_STATE_3_ITEM->light.value = channel_3_state;
 					updateHeaterOutletState = true;
 				}
-				if (usbdp_adopt(AUX_CALLIBRATION_PROPERTY) && ((int)(AUX_CALLIBRATION_SENSOR_1_ITEM->number.value) != cal_ch1) || ((int)(AUX_CALLIBRATION_SENSOR_2_ITEM->number.value) != cal_ch2) || ((int)(AUX_CALLIBRATION_SENSOR_3_ITEM->number.value) != cal_amb)) {
+				if (usbdp_adopt(AUX_CALLIBRATION_PROPERTY) && (((int)(AUX_CALLIBRATION_SENSOR_1_ITEM->number.value) != cal_ch1) || ((int)(AUX_CALLIBRATION_SENSOR_2_ITEM->number.value) != cal_ch2) || ((int)(AUX_CALLIBRATION_SENSOR_3_ITEM->number.value) != cal_amb))) {
 					AUX_CALLIBRATION_SENSOR_1_ITEM->number.value = cal_ch1;
 					AUX_CALLIBRATION_SENSOR_2_ITEM->number.value = cal_ch2;
 					AUX_CALLIBRATION_SENSOR_3_ITEM->number.value = cal_amb;
 					updateCallibration = true;
 				}
-				if (usbdp_adopt(AUX_DEW_THRESHOLD_PROPERTY) && ((int)(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value) != threshold_ch1) || ((int)(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value) != threshold_ch2)) {
+				if (usbdp_adopt(AUX_DEW_THRESHOLD_PROPERTY) && (((int)(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value) != threshold_ch1) || ((int)(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value) != threshold_ch2))) {
 					AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value = threshold_ch1;
 					AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value = threshold_ch2;
 					updateThreshold = true;
 				}
-				if (usbdp_adopt(AUX_HEATER_AGGRESSIVITY_PROPERTY) && PRIVATE_DATA->requested_aggressivity != aggressivity) {
-					switch (aggressivity) {
-					case(1):
-						indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_1_ITEM, true);
-						break;
-					case(2):
-						indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_2_ITEM, true);
-						break;
-					case(3):
-						indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_5_ITEM, true);
-						break;
-					case(4):
-						indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_10_ITEM, true);
-						break;
-					}
-					PRIVATE_DATA->requested_aggressivity = aggressivity;
+				indigo_item *aggressivity_item = usbdp_aggressivity_item(device, aggressivity);
+				if (usbdp_adopt(AUX_HEATER_AGGRESSIVITY_PROPERTY) && aggressivity_item != NULL && !aggressivity_item->sw.value) {
+					indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, aggressivity_item, true);
 					updateAggressivity = true;
 				}
 				if (usbdp_adopt(AUX_LINK_CH_2AND3_PROPERTY) && AUX_LINK_CH_2AND3_LINKED_ITEM->sw.value != ch2_3_linked) {
@@ -376,25 +411,26 @@ static void aux_timer_callback(indigo_device *device) {
 		AUX_DEW_WARNING_SENSOR_2_ITEM->light.value = dew_warning_2;
 		indigo_update_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 	}
-	if (updateCallibration) {
+	// A request copied after the checks above owns the state of its property, its handler publishes the result.
+	if (updateCallibration && usbdp_adopt(AUX_CALLIBRATION_PROPERTY)) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_CALLIBRATION_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
-	if (updateThreshold) {
+	if (updateThreshold && usbdp_adopt(AUX_DEW_THRESHOLD_PROPERTY)) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_DEW_THRESHOLD_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
-	if (updateAggressivity) {
+	if (updateAggressivity && usbdp_adopt(AUX_HEATER_AGGRESSIVITY_PROPERTY)) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_HEATER_AGGRESSIVITY_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
-	if (updateLinked) {
+	if (updateLinked && usbdp_adopt(AUX_LINK_CH_2AND3_PROPERTY)) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_LINK_CH_2AND3_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
-	if (updateHeaterOutlet) {
+	if (updateHeaterOutlet && usbdp_adopt(AUX_HEATER_OUTLET_PROPERTY)) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_HEATER_OUTLET_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	if (updateHeaterOutletState) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_HEATER_OUTLET_STATE_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
-	if (updateAutoHeater) {
+	if (updateAutoHeater && usbdp_adopt(AUX_DEW_CONTROL_PROPERTY)) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_DEW_CONTROL_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	if (updateWeather) {
@@ -519,9 +555,18 @@ static void aux_outlet_names_handler(indigo_device *device) {
 static void aux_heater_outlet_handler(indigo_device *device) {
 	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_HEATER_OUTLET.on_change
-	usbdp_command(device, UDP2_OUTPUT_CMD, 1, (int)(AUX_HEATER_OUTLET_1_ITEM->number.value));
-	usbdp_command(device, UDP2_OUTPUT_CMD, 2, (int)(AUX_HEATER_OUTLET_2_ITEM->number.value));
-	usbdp_command(device, UDP2_OUTPUT_CMD, 3, (int)(AUX_HEATER_OUTLET_3_ITEM->number.value));
+	// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+	// request. An outlet the controller did not answer for shows the power it last reported.
+	for (int i = 0; i < 3; i++) {
+		indigo_item *item = AUX_HEATER_OUTLET_PROPERTY->items + i;
+		int power = (int)item->number.target;
+		if (usbdp_command(device, UDP2_OUTPUT_CMD, i + 1, power)) {
+			item->number.value = PRIVATE_DATA->outputs[i] = power;
+		} else {
+			item->number.value = item->number.target = PRIVATE_DATA->outputs[i];
+			AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	}
 	//- aux.AUX_HEATER_OUTLET.on_change
 	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 }
@@ -529,7 +574,16 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 static void aux_dew_control_handler(indigo_device *device) {
 	AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_DEW_CONTROL.on_change
-	usbdp_command(device, UDP2_AUTO_CMD, AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? 1 : 0);
+	// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+	// request. On failure the switch shows the mode the controller last reported.
+	bool automatic = indigo_get_switch_target(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME);
+	if (usbdp_command(device, UDP2_AUTO_CMD, automatic ? 1 : 0)) {
+		PRIVATE_DATA->automatic = automatic;
+		indigo_apply_switch_targets(AUX_DEW_CONTROL_PROPERTY);
+	} else {
+		indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, PRIVATE_DATA->automatic ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
+		AUX_DEW_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- aux.AUX_DEW_CONTROL.on_change
 	indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 }
@@ -537,7 +591,18 @@ static void aux_dew_control_handler(indigo_device *device) {
 static void aux_callibration_handler(indigo_device *device) {
 	AUX_CALLIBRATION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_CALLIBRATION.on_change
-	usbdp_command(device, UDP2_CALIBRATION_CMD, (int)(AUX_CALLIBRATION_SENSOR_1_ITEM->number.value), (int)(AUX_CALLIBRATION_SENSOR_2_ITEM->number.value), (int)(AUX_CALLIBRATION_SENSOR_3_ITEM->number.value));
+	// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+	// request. On failure the offsets show what the controller last reported.
+	if (usbdp_command(device, UDP2_CALIBRATION_CMD, (int)(AUX_CALLIBRATION_SENSOR_1_ITEM->number.target), (int)(AUX_CALLIBRATION_SENSOR_2_ITEM->number.target), (int)(AUX_CALLIBRATION_SENSOR_3_ITEM->number.target))) {
+		for (int i = 0; i < 3; i++) {
+			AUX_CALLIBRATION_PROPERTY->items[i].number.value = PRIVATE_DATA->calibration[i] = (int)AUX_CALLIBRATION_PROPERTY->items[i].number.target;
+		}
+	} else {
+		for (int i = 0; i < 3; i++) {
+			AUX_CALLIBRATION_PROPERTY->items[i].number.value = AUX_CALLIBRATION_PROPERTY->items[i].number.target = PRIVATE_DATA->calibration[i];
+		}
+		AUX_CALLIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- aux.AUX_CALLIBRATION.on_change
 	indigo_update_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
 }
@@ -545,7 +610,18 @@ static void aux_callibration_handler(indigo_device *device) {
 static void aux_dew_threshold_handler(indigo_device *device) {
 	AUX_DEW_THRESHOLD_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_DEW_THRESHOLD.on_change
-	usbdp_command(device, UDP2_THRESHOLD_CMD, (int)(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value), (int)(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value));
+	// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+	// request. On failure the thresholds show what the controller last reported.
+	if (usbdp_command(device, UDP2_THRESHOLD_CMD, (int)(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.target), (int)(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.target))) {
+		for (int i = 0; i < 2; i++) {
+			AUX_DEW_THRESHOLD_PROPERTY->items[i].number.value = PRIVATE_DATA->thresholds[i] = (int)AUX_DEW_THRESHOLD_PROPERTY->items[i].number.target;
+		}
+	} else {
+		for (int i = 0; i < 2; i++) {
+			AUX_DEW_THRESHOLD_PROPERTY->items[i].number.value = AUX_DEW_THRESHOLD_PROPERTY->items[i].number.target = PRIVATE_DATA->thresholds[i];
+		}
+		AUX_DEW_THRESHOLD_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- aux.AUX_DEW_THRESHOLD.on_change
 	indigo_update_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
 }
@@ -553,7 +629,16 @@ static void aux_dew_threshold_handler(indigo_device *device) {
 static void aux_link_ch_2and3_handler(indigo_device *device) {
 	AUX_LINK_CH_2AND3_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LINK_CH_2AND3.on_change
-	usbdp_command(device, UDP2_LINK_CMD, AUX_LINK_CH_2AND3_LINKED_ITEM->sw.value ? 1 : 0);
+	// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+	// request. On failure the switch shows the link the controller last reported.
+	bool linked = indigo_get_switch_target(AUX_LINK_CH_2AND3_PROPERTY, AUX_LINK_CH_2AND3_LINKED_ITEM_NAME);
+	if (usbdp_command(device, UDP2_LINK_CMD, linked ? 1 : 0)) {
+		PRIVATE_DATA->linked = linked;
+		indigo_apply_switch_targets(AUX_LINK_CH_2AND3_PROPERTY);
+	} else {
+		indigo_set_switch(AUX_LINK_CH_2AND3_PROPERTY, PRIVATE_DATA->linked ? AUX_LINK_CH_2AND3_LINKED_ITEM : AUX_LINK_CH_2AND3_NOT_LINKED_ITEM, true);
+		AUX_LINK_CH_2AND3_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- aux.AUX_LINK_CH_2AND3.on_change
 	indigo_update_property(device, AUX_LINK_CH_2AND3_PROPERTY, NULL);
 }
@@ -561,16 +646,28 @@ static void aux_link_ch_2and3_handler(indigo_device *device) {
 static void aux_heater_aggressivity_handler(indigo_device *device) {
 	AUX_HEATER_AGGRESSIVITY_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_HEATER_AGGRESSIVITY.on_change
-	if (AUX_HEATER_AGGRESSIVITY_1_ITEM->sw.value) {
-		PRIVATE_DATA->requested_aggressivity = 1;
-	} else if (AUX_HEATER_AGGRESSIVITY_2_ITEM->sw.value) {
-		PRIVATE_DATA->requested_aggressivity = 2;
-	} else if (AUX_HEATER_AGGRESSIVITY_5_ITEM->sw.value) {
-		PRIVATE_DATA->requested_aggressivity = 3;
-	} else if (AUX_HEATER_AGGRESSIVITY_10_ITEM->sw.value) {
-		PRIVATE_DATA->requested_aggressivity = 4;
+	// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+	// request. On failure the switch shows the level the controller last reported.
+	int aggressivity = PRIVATE_DATA->aggressivity;
+	if (indigo_get_switch_target(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_1_ITEM_NAME)) {
+		aggressivity = 1;
+	} else if (indigo_get_switch_target(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_2_ITEM_NAME)) {
+		aggressivity = 2;
+	} else if (indigo_get_switch_target(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_5_ITEM_NAME)) {
+		aggressivity = 3;
+	} else if (indigo_get_switch_target(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_10_ITEM_NAME)) {
+		aggressivity = 4;
 	}
-	usbdp_command(device, UDP2_AGGRESSIVITY_CMD, PRIVATE_DATA->requested_aggressivity);
+	if (usbdp_command(device, UDP2_AGGRESSIVITY_CMD, aggressivity)) {
+		PRIVATE_DATA->aggressivity = aggressivity;
+		indigo_apply_switch_targets(AUX_HEATER_AGGRESSIVITY_PROPERTY);
+	} else {
+		indigo_item *item = usbdp_aggressivity_item(device, PRIVATE_DATA->aggressivity);
+		if (item != NULL) {
+			indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, item, true);
+		}
+		AUX_HEATER_AGGRESSIVITY_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- aux.AUX_HEATER_AGGRESSIVITY.on_change
 	indigo_update_property(device, AUX_HEATER_AGGRESSIVITY_PROPERTY, NULL);
 }
@@ -693,15 +790,45 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_OUTLET_NAMES_PROPERTY, aux_outlet_names_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_HEATER_OUTLET_PROPERTY, property)) {
+		//+ aux.AUX_HEATER_OUTLET.on_change_request
+		// The poll writes the settings the controller reports into the values only and the handler sends the
+		// targets, so the items a request does not carry must keep the reported setting in their targets as well.
+		// A BUSY property is left alone, the framework drops the request and its handler reads the targets.
+		if (AUX_HEATER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
+			for (int i = 0; i < AUX_HEATER_OUTLET_PROPERTY->count; i++) {
+				AUX_HEATER_OUTLET_PROPERTY->items[i].number.target = AUX_HEATER_OUTLET_PROPERTY->items[i].number.value;
+			}
+		}
+		//- aux.AUX_HEATER_OUTLET.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_HEATER_OUTLET_PROPERTY, aux_heater_outlet_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_DEW_CONTROL_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_DEW_CONTROL_PROPERTY, aux_dew_control_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_CALLIBRATION_PROPERTY, property)) {
+		//+ aux.AUX_CALLIBRATION.on_change_request
+		// The poll writes the settings the controller reports into the values only and the handler sends the
+		// targets, so the items a request does not carry must keep the reported setting in their targets as well.
+		// A BUSY property is left alone, the framework drops the request and its handler reads the targets.
+		if (AUX_CALLIBRATION_PROPERTY->state != INDIGO_BUSY_STATE) {
+			for (int i = 0; i < AUX_CALLIBRATION_PROPERTY->count; i++) {
+				AUX_CALLIBRATION_PROPERTY->items[i].number.target = AUX_CALLIBRATION_PROPERTY->items[i].number.value;
+			}
+		}
+		//- aux.AUX_CALLIBRATION.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_CALLIBRATION_PROPERTY, aux_callibration_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_DEW_THRESHOLD_PROPERTY, property)) {
+		//+ aux.AUX_DEW_THRESHOLD.on_change_request
+		// The poll writes the settings the controller reports into the values only and the handler sends the
+		// targets, so the items a request does not carry must keep the reported setting in their targets as well.
+		// A BUSY property is left alone, the framework drops the request and its handler reads the targets.
+		if (AUX_DEW_THRESHOLD_PROPERTY->state != INDIGO_BUSY_STATE) {
+			for (int i = 0; i < AUX_DEW_THRESHOLD_PROPERTY->count; i++) {
+				AUX_DEW_THRESHOLD_PROPERTY->items[i].number.target = AUX_DEW_THRESHOLD_PROPERTY->items[i].number.value;
+			}
+		}
+		//- aux.AUX_DEW_THRESHOLD.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_DEW_THRESHOLD_PROPERTY, aux_dew_threshold_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_LINK_CH_2AND3_PROPERTY, property)) {
