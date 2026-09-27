@@ -540,6 +540,63 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// TGT-043: an outlet the box does not answer for is shown in the state the box reported, with ALERT. The poll writes
+// only the values, so a later request for the other outlet must not send the refused request from a stale target.
+static void power_outlet_failure_shows_the_box_state(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "ppba", "--fault-once", "P1:0", "silent", NULL };
+	SERIAL_CHECK_TRUE(start_ppb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE));
+	unsigned int revision = property_state_revision(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_switch(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, true));
+	revision = property_state_revision(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(set_switch(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, true));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-044: a DSLR voltage the box does not answer is shown as the voltage the box reported, with ALERT.
+static void dslr_power_failure_shows_the_box_state(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "ppba", "--fault-once", "P2:12", "silent", NULL };
+	SERIAL_CHECK_TRUE(start_ppb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DSLR_POWER_PROPERTY_NAME, "5", true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_DSLR_POWER_PROPERTY_NAME, INDIGO_OK_STATE));
+	unsigned int revision = property_state_revision(AUX_DSLR_POWER_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_switch(AUX_DSLR_POWER_PROPERTY_NAME, "12", true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_DSLR_POWER_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DSLR_POWER_PROPERTY_NAME, "5", true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DSLR_POWER_PROPERTY_NAME, "12", false));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-045: a dew control request the box does not answer is shown as the mode the box reported, with ALERT.
+static void dew_control_failure_shows_the_box_state(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "ppb", "--fault-once", "PD:0", "silent", NULL };
+	SERIAL_CHECK_TRUE(start_ppb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_DEW_CONTROL_PROPERTY_NAME, INDIGO_OK_STATE));
+	unsigned int revision = property_state_revision(AUX_DEW_CONTROL_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_switch(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_DEW_CONTROL_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
 // Losing the port while connected must not hang the disconnect.
 static void transport_loss_is_survived(void) {
 	external_serial_simulator simulator = { 0 };
@@ -585,6 +642,9 @@ int main(void) {
 		{ "vanished_port_is_refused", vanished_port_is_refused },
 		{ "status_fault_while_polling_is_survived", status_fault_while_polling_is_survived },
 		{ "malformed_status_frame_is_ignored", malformed_status_frame_is_ignored },
+		{ "power_outlet_failure_shows_the_box_state", power_outlet_failure_shows_the_box_state },
+		{ "dslr_power_failure_shows_the_box_state", dslr_power_failure_shows_the_box_state },
+		{ "dew_control_failure_shows_the_box_state", dew_control_failure_shows_the_box_state },
 		{ "transport_loss_is_survived", transport_loss_is_survived }
 	};
 	int result = indigo_run_tests("Pocket Powerbox serial simulator integration tests", tests, ARRAY_SIZE(tests));
