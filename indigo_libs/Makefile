@@ -125,10 +125,13 @@ endif
 
 libindigocat: $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libindigocat.$(SOEXT)
 
+# Both libraries are built from the same objects in one sub-make each, so with parallel make the
+# shared library waits for the static one instead of compiling the objects again at the same time.
+# It links -lusb-1.0, which on macOS is the locally built libusb.
 $(BUILD_LIB)/libindigocat.a:
 	@$(MAKE)	-C indigocat $(BUILD_LIB)/libindigocat.a
 
-$(BUILD_LIB)/libindigocat.$(SOEXT):
+$(BUILD_LIB)/libindigocat.$(SOEXT): $(BUILD_LIB)/libindigocat.a | $(LIBUSB)
 	@$(MAKE)	-C indigocat $(BUILD_LIB)/libindigocat.$(SOEXT)
 
 #---------------------------------------------------------------------
@@ -263,8 +266,9 @@ endif
 
 libindigo_client: $(BUILD_LIB)/libindigo_client.a $(BUILD_LIB)/libindigo_client.$(SOEXT)
 
+# As with libindigocat, the shared library waits for the static one built from the same objects.
 $(BUILD_LIB)/libindigo_client.a:
 	@$(MAKE)	-C indigo_client $(BUILD_LIB)/libindigo_client.a
 
-$(BUILD_LIB)/libindigo_client.$(SOEXT):
+$(BUILD_LIB)/libindigo_client.$(SOEXT): $(BUILD_LIB)/libindigo_client.a
 	@$(MAKE)	-C indigo_client $(BUILD_LIB)/libindigo_client.$(SOEXT)
