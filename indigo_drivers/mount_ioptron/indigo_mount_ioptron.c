@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300003C
+#define DRIVER_VERSION       0x0300003D
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -1538,6 +1538,7 @@ static void guider_guide_dec_finalizer(indigo_device *device) {
 	if (PRIVATE_DATA->protocol == HC_8406) {
 		ioptron_no_reply_command(device, ":Qn#");
 	}
+	// Only the values, the target of a pulse requested while this one ends is read by its handler.
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
 }
@@ -1546,6 +1547,7 @@ static void guider_guide_ra_finalizer(indigo_device *device) {
 	if (PRIVATE_DATA->protocol == HC_8406) {
 		ioptron_no_reply_command(device, ":Qe#");
 	}
+	// Only the values, the target of a pulse requested while this one ends is read by its handler.
 	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
 }
@@ -1659,11 +1661,18 @@ static void mount_park_set_handler(indigo_device *device) {
 static void mount_park_handler(indigo_device *device) {
 	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_PARK.on_change
+	// The status poll mirrors the park state the mount reports and may overwrite the value between the copy of
+	// the request and this handler, the targets keep the request. A failure shows the park state the mount
+	// last reported.
+	indigo_apply_switch_targets(MOUNT_PARK_PROPERTY);
 	if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 		if (MOUNT_PARK_PROPERTY->count == 1) {
 			MOUNT_PARK_PARKED_ITEM->sw.value = false;
 		}
 		if (!ioptron_park(device)) {
+			if (MOUNT_PARK_PROPERTY->count == 2) {
+				indigo_set_switch(MOUNT_PARK_PROPERTY, PRIVATE_DATA->parked ? MOUNT_PARK_PARKED_ITEM : MOUNT_PARK_UNPARKED_ITEM, true);
+			}
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else if (MOUNT_PARK_PROPERTY->count == 1) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
@@ -1675,6 +1684,9 @@ static void mount_park_handler(indigo_device *device) {
 		if (ioptron_unpark(device)) {
 			MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
 		} else {
+			if (MOUNT_PARK_PROPERTY->count == 2) {
+				indigo_set_switch(MOUNT_PARK_PROPERTY, PRIVATE_DATA->parked ? MOUNT_PARK_PARKED_ITEM : MOUNT_PARK_UNPARKED_ITEM, true);
+			}
 			MOUNT_PARK_PROPERTY->state = MOUNT_STATE_PARK_ITEM->light.value = INDIGO_ALERT_STATE;
 		}
 	}
@@ -1686,9 +1698,14 @@ static void mount_park_handler(indigo_device *device) {
 static void mount_home_handler(indigo_device *device) {
 	//+ mount.MOUNT_HOME.on_change
 	MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+	// The status poll mirrors the home state the mount reports and may replace HOME with AWAY between the copy
+	// of the request and this handler, the targets keep the request. A failure shows the home state the mount
+	// last reported.
+	indigo_apply_switch_targets(MOUNT_HOME_PROPERTY);
 	if (MOUNT_HOME_ITEM->sw.value) {
 		MOUNT_HOME_ITEM->sw.value = false;
 		if (!ioptron_home(device)) {
+			indigo_set_switch(MOUNT_HOME_PROPERTY, PRIVATE_DATA->homed ? MOUNT_HOME_ITEM : MOUNT_AWAY_ITEM, true);
 			MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else if (MOUNT_AWAY_ITEM->sw.value) {
@@ -1697,6 +1714,7 @@ static void mount_home_handler(indigo_device *device) {
 	} else if (MOUNT_HOME_SEARCH_ITEM->sw.value) {
 		MOUNT_HOME_SEARCH_ITEM->sw.value = false;
 		if (!ioptron_search_home(device)) {
+			indigo_set_switch(MOUNT_HOME_PROPERTY, PRIVATE_DATA->homed ? MOUNT_HOME_ITEM : MOUNT_AWAY_ITEM, true);
 			MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
@@ -2263,6 +2281,9 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	// A new request replaces the running pulse, so the finaliser of the superseded
 	// one must not end the new pulse on the old deadline.
 	indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+	// The finalizer of the previous pulse may have zeroed the values after the request was copied, the targets keep it.
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target;
+	GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target;
 	int north = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 	int south = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 	if (north <= 0 && south <= 0) {
@@ -2282,6 +2303,9 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	// A new request replaces the running pulse, so the finaliser of the superseded
 	// one must not end the new pulse on the old deadline.
 	indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+	// The finalizer of the previous pulse may have zeroed the values after the request was copied, the targets keep it.
+	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target;
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target;
 	int west = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 	int east = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 	if (west <= 0 && east <= 0) {

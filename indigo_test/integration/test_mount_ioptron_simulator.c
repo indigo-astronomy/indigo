@@ -1307,6 +1307,13 @@ static void ioptron_option_command_failures_recover(void) {
 	SERIAL_CHECK_TRUE(inject(simulator, "SPP1", "0", 1));
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_PEC_PROPERTY_NAME, MOUNT_PEC_ENABLED_ITEM_NAME, true, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_PEC_PROPERTY_NAME, MOUNT_PEC_ENABLED_ITEM_NAME, true, INDIGO_OK_STATE));
+	// A refused park or home shows the state the mount reports, not the rejected request.
+	SERIAL_CHECK_TRUE(inject(simulator, "MP1", "0", 1));
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(inject(simulator, "MH", "0", 1));
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_HOME_PROPERTY_NAME, MOUNT_AWAY_ITEM_NAME));
 	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
 cleanup:
 	io_close(&fixture);
@@ -1810,6 +1817,99 @@ cleanup:
 	io_close(&fixture);
 }
 
+// A request copied while a finalizer runs is the race of the number targets. The I/O layer logs every command on
+// the debug level from the thread that runs the finalizer, so a request sent from the log line of that command is
+// copied exactly inside the window and models the concurrent bus thread deterministically.
+static const char *log_trigger;
+static void (*log_action)(void);
+static atomic_bool log_armed, log_fired;
+static indigo_log_levels log_level_before;
+
+static void trigger_log_handler(indigo_log_levels level, const char *message) {
+	if (atomic_load(&log_armed) && strstr(message, log_trigger) != NULL && atomic_exchange(&log_armed, false)) {
+		log_action();
+		atomic_store(&log_fired, true);
+	} else if (level == INDIGO_LOG_ERROR) {
+		fprintf(stderr, "%s\n", message);
+	}
+}
+
+static void arm_log_trigger(const char *trigger, void (*action)(void)) {
+	log_trigger = trigger;
+	log_action = action;
+	atomic_store(&log_fired, false);
+	atomic_store(&log_armed, true);
+	log_level_before = indigo_get_log_level();
+	indigo_log_message_handler = trigger_log_handler;
+	indigo_set_log_level(INDIGO_LOG_DEBUG);
+}
+
+static bool wait_for_log_trigger(void) {
+	for (int i = 0; i < 1000 && !atomic_load(&log_fired); i++) {
+		indigo_usleep(10000);
+	}
+	if (!atomic_load(&log_fired)) {
+		fprintf(stderr, "The driver did not log '%s'\n", log_trigger);
+		return false;
+	}
+	return true;
+}
+
+static void disarm_log_trigger(void) {
+	if (indigo_log_message_handler == trigger_log_handler) {
+		atomic_store(&log_armed, false);
+		indigo_set_log_level(log_level_before);
+		indigo_log_message_handler = NULL;
+	}
+}
+
+static const char *next_pulse_property, *next_pulse_item;
+
+static void request_next_pulse(void) {
+	indigo_change_number_property_1(&simulator_test_client, ioptron_guider.device_name, next_pulse_property, next_pulse_item, 300);
+}
+
+// Sends a 100 ms HC8406 pulse, requests a 300 ms pulse the other way from the log of the :Q<d># that ends the first
+// one, before its finalizer clears the values, and checks that the second pulse ran its duration.
+static bool pulse_survives_previous_finalizer(external_serial_simulator *simulator, const char *property, const char *first_item, const char *first_stop, const char *next_item, const char *next_start, const char *stop) {
+	int starts = event_count(simulator, next_start);
+	int stops = event_count(simulator, stop);
+	next_pulse_property = property;
+	next_pulse_item = next_item;
+	arm_log_trigger(first_stop, request_next_pulse);
+	if (indigo_change_number_property_1(&simulator_test_client, ioptron_guider.device_name, property, first_item, 100) != INDIGO_OK || !wait_for_log_trigger()) {
+		return false;
+	}
+	if (!wait_event(simulator, next_start, starts)) {
+		fprintf(stderr, "%s: the %s pulse requested while the %s pulse ended was dropped\n", property, next_item, first_item);
+		return false;
+	}
+	// The first pulse ends with stop number stops + 1, the second one with stops + 2.
+	if (!wait_event(simulator, stop, stops + 1)) {
+		return false;
+	}
+	disarm_log_trigger();
+	double began = 0, ended = 0;
+	scan_events(simulator, next_start, false, &began, NULL, 0);
+	scan_events(simulator, stop, false, &ended, NULL, 0);
+	printf("    %s %s pulse requested while the %s pulse ended ran %.0f ms\n", property, next_item, first_item, (ended - began) * 1000);
+	return ended - began >= .25 && ended - began < 1 && wait_for_property_state(property, INDIGO_OK_STATE);
+}
+
+// TGT-B04: GUIDER_GUIDE_RA/DEC accept a pulse while one runs. The HC8406 finalizer stops a pulse with :Q<d># and then
+// clears the values, so a pulse copied during that command was read as zero by its handler and reported OK unsent.
+static void ioptron_guider_pulse_survives_previous_finalizer(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	SERIAL_CHECK_TRUE(io_open_guider(&fixture, "8406", NULL));
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(simulator, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, "<- :Qn#", GUIDER_GUIDE_SOUTH_ITEM_NAME, "Ms", "Qn"));
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(simulator, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, "<- :Qe#", GUIDER_GUIDE_WEST_ITEM_NAME, "Mw", "Qe"));
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
+cleanup:
+	disarm_log_trigger();
+	io_close(&fixture);
+}
+
 static void ioptron_guider_transport_failure_and_recovery(void) {
 	io_fixture fixture = { 0 };
 	SERIAL_CHECK_TRUE(io_open_guider(&fixture, "0300", TRACKING_ARGS));
@@ -2162,6 +2262,7 @@ int main(int argc, char **argv) {
 		{ "ioptron_guider_commands_0300", ioptron_guider_commands_0300 },
 		{ "ioptron_guider_zero_requests_and_pulse_mechanics", ioptron_guider_zero_requests_and_pulse_mechanics },
 		{ "ioptron_guider_directions_overlap_and_timing", ioptron_guider_directions_overlap_and_timing },
+		{ "ioptron_guider_pulse_survives_previous_finalizer", ioptron_guider_pulse_survives_previous_finalizer },
 		{ "ioptron_guider_transport_failure_and_recovery", ioptron_guider_transport_failure_and_recovery },
 		{ "ioptron_guider_disconnect_cancels_pulse_and_reconnects", ioptron_guider_disconnect_cancels_pulse_and_reconnects },
 		{ "ioptron_shared_connection_orders_and_last_close", ioptron_shared_connection_orders_and_last_close },

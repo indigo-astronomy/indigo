@@ -787,3 +787,69 @@ deleted right after it (105/104 on Linux, macOS unaffected because its pseudo-te
 ENOTTY). Driver behaviour is correct; the case now sees the ALERT through the client callback, like
 `ioptron_guider_transport_failure_and_recovery`, and accepts either a mount still connected or one the
 driver disconnected, before reconnecting to a fresh simulator.
+
+## Park, home and guide pulse targets (2026-09-27, 3.0.0.61, branch `refactoring_targets`)
+
+Findings TGT-026, TGT-027 and the mount_ioptron part of TGT-B04 of
+`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, and the open question whether the `MOUNT_TRACKING` window of the
+3.0.0.59 prototype can get a permanent test. No hardware run for this change. Baseline before the change:
+the unchanged suite (3.0.0.60) passed 105/105 on Linux x64 in the recorded run of 2026-09-26 22:54.
+
+- TGT-026 `MOUNT_PARK`, TGT-027 `MOUNT_HOME`: `ioptron_update_mount_state()` checks the property for BUSY
+  and, when it is not, mirrors the park and home state the mount reports into the switch. A request copied
+  on the bus thread between that check and the write was overwritten, and the queued handler read the
+  overwritten value: a PARK request on an unparked mount became UNPARKED and the handler sent `:MP0#`
+  (unpark) instead of `:MP1#`, an UNPARK on a parked mount would have parked it, and a HOME request
+  became AWAY, so the handler reported OK without sending `:MH#`.
+- TGT-B04: `GUIDER_GUIDE_RA/DEC` accept a pulse while one runs. On HC8406 the finalizer stops the pulse with
+  `:Qn#` / `:Qe#` and then zeroes the values, so a pulse copied during that command was read as 0 by its
+  handler and reported OK without being sent. On the other protocols the finalizer has no I/O before the
+  zeroing, the same window is a few instructions wide.
+
+Fix: the `MOUNT_PARK` and `MOUNT_HOME` handlers apply the targets (`indigo_apply_switch_targets()`) before
+they decide, so they act on the request; a refused or failed park, unpark, home or home search shows the
+park or home state the mount last reported with ALERT instead of the rejected request (on the one item
+HC8406 park property the item is cleared as before). In `MOUNT_HOME` the call follows the BUSY assignment,
+so the generated handler keeps its prologue unchanged. The guide handlers restore the values from the
+number targets, which the finalizers (now commented) do not touch. The poll keeps its BUSY checks.
+
+Regression tests in `integration/test_mount_ioptron_simulator.c` (105 -> 106 cases):
+
+- `ioptron_guider_pulse_survives_previous_finalizer` (new): HC8406 guider, a 100 ms north (east) pulse;
+  the 300 ms south (west) pulse is requested from the debug log line of the finalizer's `:Qn#` (`:Qe#`),
+  on the finalizer's own thread, which models the concurrent bus thread deterministically. Against
+  3.0.0.60 it failed 4/4 for DEC and 3/3 for RA (run first with a temporary switch): no `:Ms#` / `:Mw#`
+  was sent. With 3.0.0.61 it passed 3/3 before the recorded run, both pulses ran 350 ms (300 ms plus the
+  50 ms settle delay of `ioptron_no_reply_command()` before the finalizer is scheduled).
+- `ioptron_option_command_failures_recover` (extended): a refused `:MP1#` leaves UNPARKED shown with
+  ALERT, a refused `:MH#` leaves AWAY shown with ALERT.
+
+The park and home windows, and the `MOUNT_TRACKING` window of the 3.0.0.59 prototype, cannot be hit by a
+permanent case. In `ioptron_update_mount_state()` all I/O (`ioptron_get_state()`: `:GLS#`, `:GAS#` or the
+HC8407 `:AP#`/`:AH#`/`:AT#`/`:SE?#` round trips, each followed by the 50 ms settle delay) happens before
+the three checks; between each check (`MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE`,
+`MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE`, `MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE`) and
+its `indigo_set_switch()` there are only comparisons of `PRIVATE_DATA` flags and switch values, no I/O,
+no log line and no lock. A delayed simulator reply only delays the poll before the checks, and a request
+sent from the log of the status reply is copied before the check, which then sees BUSY and leaves the
+property alone; a queue gate cannot help either, because the poll runs on the same queue as the handler.
+So the windows were reproduced with a temporary copy of the generated driver (not committed) that logs
+`TGT window tracking|park|home` right after each check, and temporary cases on protocol 3.0 sending the
+request from that line:
+
+- 3.0.0.60: PARK sent `:MP0#` and no `:MP1#` (4/4), HOME sent no `:MH#` (4/4); `MOUNT_TRACKING`
+  with the handler temporarily reading `sw.value` again, as before 3.0.0.59: OFF sent `:ST1#`, no `:ST0#`
+  (3/3).
+- 3.0.0.61: `:MP1#`, `:MH#` and, with the unchanged 3.0.0.59 handler, `:ST0#` were sent (3/3 each).
+
+This confirms the prototype's instrumented proof above with a log line instead of a sleep; the
+`MOUNT_TRACKING` window stays covered only by that evidence, not by a permanent case.
+
+MIGRATION_STATUS.md hardware-free count 108 -> 109 (105 + 1 serial cases and the 3 opt-in TCP cases).
+
+Recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py mount_ioptron` on Linux x64:
+106/106 OK (2026-09-27 02:42).
+
+### Final test summary for this change
+
+Simulated tests: **106 run, 106 passed** (recorded run). Hardware tests: **0 run, 0 passed**.
