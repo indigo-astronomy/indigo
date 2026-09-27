@@ -92,7 +92,29 @@ Finding TGT-D18 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`, on branch `refacto
 Recorded run: `TZ=Europe/Bratislava python3 tools/run_driver_test.py aux_upb3`,
 2026-09-27 14:57 3.0.0.9 linux x64 simulator 31/31 OK.
 
+## TGT-D03 poll part: the switches follow the box (3.0.0.10, 2026-09-27)
+
+- **Defect:** the poll read only `IS`, `ES`, `VR` and `PC`, which carry no outlet, USB or dew
+  control state, so AUX_POWER_OUTLET, AUX_HEATER_OUTLET, AUX_VARIABLE_POWER_OUTLET, AUX_USB_PORT
+  and AUX_DEW_CONTROL kept the state read at connect. A change made outside the driver, or a
+  request the box did not execute, was never shown.
+- **Fix:** the connect and the poll share `upb3_read_power()` (`PA`), `upb3_read_adjustable()`
+  (`AJ`), `upb3_read_usb()` (`UA`) and `upb3_read_dew()` (`PD`). Each adopts the reported state
+  only into a property that is not BUSY, checked right before the write with no I/O in between,
+  and the poll publishes a changed property only if it is still not BUSY, so a request copied
+  while a reply is read keeps its values and its handler sends it. An outlet switched by the box
+  also updates its state light unless that shows an overcurrent. The poll writes no number
+  targets; the connect still sets the voltage targets as before. A `PD` reply that does not start
+  with `PD:` is now ignored instead of selecting AUTOMATIC. The poll sends four more commands every
+  2 s.
+- **Simulator:** `--external-after N` changes outlet 2, the relay, heater 1, the buck voltage, USB
+  port 2 and the dew control from the N+1st `PA` on without a command; `--slow-file PATH` sends the
+  reply of the next command named in PATH, composed at once, 0.5 s late.
+- **Regression tests:** `switches_follow_the_box_while_polling` (fails on 3.0.0.9: outlet 2 stayed
+  on) and `usb_request_survives_poll_read` (a USB port request copied while the poll waits for the
+  late `UA` reply stays off; with the BUSY check removed it fails, the port is switched back on).
+
 ## Final test summary
 
-- Simulated tests run: 31; passed: 31.
+- Simulated tests run: 33; passed: 33.
 - Hardware tests run: 0; passed: 0. No Ultimate Powerbox v3 was available.

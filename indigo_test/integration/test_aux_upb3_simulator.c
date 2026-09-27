@@ -198,6 +198,80 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static bool wait_for_light_item_value(const char *property_name, const char *item_name, indigo_property_state expected) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *item = find_cached_item(property_name, item_name);
+		if (item != NULL && item->light.value == expected) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	indigo_item *item = find_cached_item(property_name, item_name);
+	fprintf(stderr, "Light %s.%s is %d, expected %d\n", property_name, item_name, item == NULL ? -1 : (int)item->light.value, (int)expected);
+	return false;
+}
+
+// TGT-D03: the poll follows the switches the box reports only on request. The simulator changes
+// outlet 2, the relay, heater 1, the buck voltage, USB port 2 and the dew control from the third
+// PA on (the connect sends the first, the first poll the second), without a command from the driver.
+static void switches_follow_the_box_while_polling(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--outlets-on", "--usb-on", "--external-after", "2", NULL };
+	SERIAL_CHECK_TRUE(start_upb3(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_9_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(AUX_POWER_OUTLET_STATE_PROPERTY_NAME, AUX_POWER_OUTLET_STATE_2_ITEM_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_HEATER_OUTLET_1_ITEM_NAME, 40, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value("AUX_VARIABLE_POWER_OUTLET", "OUTLET_7", 5, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_2_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_1_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, false));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
+// TGT-D03: a request copied while the poll waits for a reply that still shows the old state is not
+// overwritten by that reply. The simulator composes the poll's UA reply at once and sends it 0.5 s
+// late; USB port 2 is switched off meanwhile and has to stay off.
+static void usb_request_survives_poll_read(void) {
+	external_serial_simulator simulator = { 0 };
+	char slow_file[] = "/tmp/indigo-upb3-slow.XXXXXX";
+	int fd = mkstemp(slow_file);
+	SERIAL_CHECK_TRUE(fd >= 0);
+	close(fd);
+	unlink(slow_file);
+	const char *arguments[] = { "--usb-on", "--slow-file", slow_file, NULL };
+	SERIAL_CHECK_TRUE(start_upb3(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_2_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(settle(AUX_USB_PORT_PROPERTY_NAME));
+	FILE *file = fopen(slow_file, "w");
+	SERIAL_CHECK_TRUE(file != NULL);
+	fputs("UA\n", file);
+	fclose(file);
+	// the simulator removes the file when the poll's UA takes it, then holds the reply back
+	for (int i = 0; i < 400 && access(slow_file, F_OK) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(access(slow_file, F_OK) != 0);
+	SERIAL_CHECK_TRUE(set_switch(&aux, AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_2_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_USB_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
+	// two more polls read the port from the box, which has to have got the request
+	indigo_usleep(4500000);
+	indigo_item *port = find_cached_item(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_2_ITEM_NAME);
+	printf("    USB port 2 after the request and two polls: %s\n", port == NULL ? "missing" : port->sw.value ? "on" : "off");
+	SERIAL_CHECK_TRUE(port != NULL && !port->sw.value);
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_1_ITEM_NAME, true));
+cleanup:
+	unlink(slow_file);
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
 static void each_power_outlet_switches_on_its_own(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_upb3(&simulator, NULL));
@@ -640,6 +714,8 @@ int main(void) {
 		{ "a_box_left_off_comes_up_off", a_box_left_off_comes_up_off },
 		{ "dew_state_is_adopted_at_connect", dew_state_is_adopted_at_connect },
 		{ "dew_control_has_one_mode_when_pd_fails", dew_control_has_one_mode_when_pd_fails },
+		{ "switches_follow_the_box_while_polling", switches_follow_the_box_while_polling },
+		{ "usb_request_survives_poll_read", usb_request_survives_poll_read },
 		{ "each_power_outlet_switches_on_its_own", each_power_outlet_switches_on_its_own },
 		{ "each_usb_port_switches_on_its_own", each_usb_port_switches_on_its_own },
 		{ "heaters_hold_independent_duty_cycles", heaters_hold_independent_duty_cycles },
