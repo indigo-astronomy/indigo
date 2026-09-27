@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_dome_nexdome"
 #define DRIVER_LABEL         "NexDome"
 #define DOME_DEVICE_NAME     "NexDome"
@@ -695,12 +695,14 @@ static void dome_shutter_handler(indigo_device *device) {
 	//+ dome.DOME_SHUTTER.on_change
 	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 	// keep the framework BUSY guard closed while the device command runs
-	bool open = DOME_SHUTTER_OPENED_ITEM->sw.value;
+	// the poll may have overwritten the value after the request was copied, the target keeps the request
+	bool open = indigo_get_switch_target(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM_NAME);
 	if (!nexdome_command(device, 'D', open ? "d" : "e")) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_%s_shutter(): returned error", open ? "open" : "close");
 		nexdome_update_shutter_switches(device);
 		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
+		indigo_apply_switch_targets(DOME_SHUTTER_PROPERTY);
 		PRIVATE_DATA->shutter_active = true;
 		PRIVATE_DATA->shutter_target = open ? SHUTTER_STATE_OPEN : SHUTTER_STATE_CLOSED;
 		PRIVATE_DATA->shutter_started = indigo_monotonic_time();

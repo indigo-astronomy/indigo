@@ -444,7 +444,7 @@ $(INTEGRATION_BUILD)/dome_beaver_simulator: ../indigo_drivers/dome_beaver/dome_b
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/dome_nexdome_simulator: ../indigo_drivers/dome_nexdome/dome_nexdome_simulator/dome_nexdome_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $<
+	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/dome_nexdome3_simulator: ../indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/dome_nexdome3_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm

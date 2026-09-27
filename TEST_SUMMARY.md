@@ -134,6 +134,7 @@
 |  | 2026-09-27 03:37 | 3.0.0.9 | linux x64 | simulator | 48 / 48 | ✅ OK |
 | dome_dragonfly | 2026-09-26 22:20 | 3.0.0.10 | mac arm64 | simulator | 22 / 22 | ✅ OK |
 | dome_nexdome | 2026-09-21 15:46 | 3.0.0.12 | mac arm64 | simulator | 46 / 46 | ✅ OK |
+|  | 2026-09-27 04:14 | 3.0.0.14 | linux x64 | simulator | 46 / 46 | ✅ OK |
 | dome_nexdome3 | 2026-09-21 16:53 | 3.0.0.14 | mac arm64 | simulator | 49 / 49 | ✅ OK |
 |  | 2026-09-27 01:43 | 3.0.0.16 | linux x64 | simulator | 51 / 51 | ✅ OK |
 | dome_simulator | 2026-09-21 12:43 | 3.0.0.8 | mac arm64 | simulator | 7 / 7 | ✅ OK |

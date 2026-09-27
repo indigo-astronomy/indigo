@@ -237,3 +237,39 @@ cd indigo_test && ./build/integration/test_dome_nexdome_simulator
 
 - Simulated tests run: 46; passed: 46.
 - Hardware tests run: 0; passed: 0.
+
+## Switch target for DOME_SHUTTER (2026-09-27, 3.0.0.14, branch `refactoring_targets`)
+
+Rows TGT-033 and the dome_nexdome part of TGT-B08 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this
+change.
+
+- **Baseline on Linux x64 (3.0.0.13):** the suite did not build: the simulator rule in `indigo_test/Makefile` linked
+  without `-lm` (`undefined reference to fmod`; macOS links libm implicitly), the same defect dome_beaver, dome_baader and
+  dome_nexdome3 had; `-lm` added. The unchanged driver then passed 46/46.
+- **TGT-033 (reproduced, fixed):** `nexdome_update_shutter` checks for a queued request (DOME_SHUTTER BUSY without
+  `shutter_active` / `shutter_observed`) and then, for a changed shutter state, writes the reported position and state.
+  A request copied in between was overwritten, and the handler sent the opposite command: with the shutter opened outside
+  the driver, a CLOSE request was sent as `d` and ended OK open. **Fix:** the handler sends the request read with
+  `indigo_get_switch_target()` and applies it with `indigo_apply_switch_targets()` once the controller accepted it; a
+  failed command still shows the last reported shutter state with ALERT (NXD-08).
+- **Proof of TGT-033:** the check and the write have no I/O or log line between them (a request sent from the debug line
+  of the `u` reply is copied before the check and takes the queued path of `queued_request_survives_status_poll`), so
+  no permanent case can hit the window. A temporary instrumented copy of the generated driver (a debug line right after
+  the check) with a temporary case that opened the shutter through the simulator control and sent CLOSE from that line
+  (neither committed): on 3.0.0.13 `d` was sent, no `e`, and the shutter ended OK open, 3/3; on 3.0.0.14 `e` was sent and
+  the shutter ended OK closed, 3/3.
+- **TGT-B08 (Won't fix):** the poll deliberately shows an opening/closing the driver did not start (rain close, shutter
+  panel) as BUSY and marks it `shutter_observed`, so the next poll does not mistake it for a queued request (the
+  dome_beaver defect) and ends it with OK once the shutter reports open or closed; a disconnect resets DOME_SHUTTER to OK
+  and clears the flags. A request during such a motion is dropped by the framework guard, like one during a
+  driver-started motion (`busy_requests_rejected`), and DOME_ABORT_MOTION stops it. Evidence: `shutter_states_and_rain`
+  (rain close BUSY then OK closed) and two temporary cases (not committed): rain close with an OPEN request during it
+  (request dropped, OK closed afterwards, later OPEN/CLOSE sent and completed; 3/3 on 3.0.0.13 and 3/3 on 3.0.0.14) and a
+  reconnect during an opening (BUSY after the reconnect, OK open once reported, later CLOSE sent and completed; 2/2 on
+  3.0.0.14, poll code unchanged from 3.0.0.13). No code change for this row.
+- **Verification:** regeneration reproducible; recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py
+  dome_nexdome`: 46/46 OK on linux x64 (3.0.0.14). No permanent case added, so the `MIGRATION_STATUS.md` count stays
+  49 / 0 (46 default, 3 opt-in network).
+- Simulated tests of this change: baseline 46 run, 46 passed (3.0.0.13); temporary window case 3 run, 0 passed on 3.0.0.13
+  (expected), 3/3 on 3.0.0.14; temporary observed-motion cases 3/3 on 3.0.0.13, 5/5 on 3.0.0.14; recorded run 46/46.
+  Hardware tests: 0 run, 0 passed.
