@@ -2130,6 +2130,67 @@ cleanup:
 	driver_down();
 }
 
+// TGT-D25: an operation started between DOME_ABORT_MOTION and the first status poll after it is watched for an
+// emergency close from that poll on, like an operation started at any other time. An emergency flag raised before
+// that poll stops it with an ALERT published by that poll, and the poll's abort branch and the polls after it keep
+// the ALERT. The abort and the request are both handled right after a poll and the flag is raised before the next one.
+static bool emergency_in_first_poll_after_abort(const char *name, const char *item, double value, const char *command, const char *flags, const char *message) {
+	int polls = 0, sent = rx_count(command);
+	if (!abort_right_after_poll(&polls)) {
+		return false;
+	}
+	int emergency_polls = rx_count("d#get_eme");
+	unsigned ok = ok_of(name);
+	indigo_result result = isnan(value) ? request_switch(name, item) : request_number(name, item, value);
+	if (result != INDIGO_OK || !started_before_first_poll(command, sent, polls) || !control("eme", flags)) {
+		return false;
+	}
+	if (rx_count("d#getazim") != polls) {
+		fprintf(stderr, "The first status poll after the abort started before the emergency flag was raised\n");
+		return false;
+	}
+	double end = now() + 5;
+	while (state_of(name) != INDIGO_ALERT_STATE && now() < end) {
+		indigo_usleep(20000);
+	}
+	// the first poll after the abort ends with the next d#get_eme, the second one starts 1 s later
+	int reported = rx_count("d#get_eme") - emergency_polls;
+	printf("    %s: %s after %d status poll(s), %u OK update(s) after the request\n", name, state_name(state_of(name)), reported, ok_of(name) - ok);
+	if (state_of(name) != INDIGO_ALERT_STATE || reported != 1 || !message_seen(name, message) || !wait_polls(2, 5)) {
+		return false;
+	}
+	return state_of(name) == INDIGO_ALERT_STATE && ok_of(name) == ok && rx_count(command) == sent + 1;
+}
+
+static void shutter_and_flap_emergency_in_first_poll_after_abort(void) {
+	CHECK(start_connected());
+	// the controller closes the shutter (flap) again before the first poll, which must not end the open request OK
+	bool shutter = emergency_in_first_poll_after_abort(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, NAN, "d#opeshut", "1000", "Emergency close: rain");
+	CHECK(control("eme", "0000"));
+	CHECK(wait_polls(1, 5));
+	// the flap part needs an open shutter, both parts are evaluated
+	CHECK(change_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, INDIGO_OK_STATE, 10));
+	bool flap = emergency_in_first_poll_after_abort(DOME_FLAP_PROPERTY_NAME, DOME_FLAP_OPENED_ITEM_NAME, NAN, "d#opeflap", "0100", "Emergency close: wind");
+	CHECK(shutter);
+	CHECK(flap);
+	CHECK(switch_of(DOME_FLAP_PROPERTY_NAME, DOME_FLAP_CLOSED_ITEM_NAME));
+cleanup:
+	driver_down();
+}
+
+static void rotation_emergency_in_first_poll_after_abort(void) {
+	CHECK(start_connected());
+	bool rotation = emergency_in_first_poll_after_abort(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 270, "d#azi2700", "1000", "Emergency close: rain");
+	CHECK(rotation);
+	CHECK_EQ(INDIGO_ALERT_STATE, state_of(DOME_STEPS_PROPERTY_NAME));
+	CHECK(azimuth_value() > 90 && azimuth_value() < 270);
+	CHECK_NEAR(simulator_azimuth() / 10.0, azimuth_value(), 1e-4);
+	CHECK(control("eme", "0000"));
+	CHECK(goto_azimuth(200, INDIGO_OK_STATE, 15));
+cleanup:
+	driver_down();
+}
+
 // TGT-D21: a connect publishes DOME_PARK only by its definition, never by an update sent before the definition, and
 // the definition carries the park state read at connect. Checked unparked at 90° and, after a reconnect, parked at 0°.
 static bool park_defined_on_connect(bool parked) {
@@ -2536,6 +2597,8 @@ static const baader_case cases[] = {
 	{ "park_defined_at_connect", park_defined_at_connect, "--azimuth 900", false },
 	{ "shutter_and_flap_survive_first_poll_after_abort", shutter_and_flap_survive_first_poll_after_abort, NULL, false },
 	{ "rotation_and_park_survive_first_poll_after_abort", rotation_and_park_survive_first_poll_after_abort, "--azimuth 900", false },
+	{ "shutter_and_flap_emergency_in_first_poll_after_abort", shutter_and_flap_emergency_in_first_poll_after_abort, NULL, false },
+	{ "rotation_emergency_in_first_poll_after_abort", rotation_emergency_in_first_poll_after_abort, "--azimuth 900", false },
 	{ "reference_trace", reference_trace, "--azimuth 900", false },
 	{ "network_baader_and_tcp_urls", network_baader_and_tcp_urls, "--azimuth 900 --tcp-port 0", false, true },
 	{ "network_default_port", network_default_port, "--tcp-port 8080", false, true },

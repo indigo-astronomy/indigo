@@ -462,3 +462,52 @@ for this change.
 - Simulated tests of this change: new cases on 3.0.0.13 6 run, 0 passed (expected), plus 1 debug-log rerun of the
   rotation case (failed as expected); on 3.0.0.14 10/10; recorded run 50/50. The scratch probe run against 3.0.0.13
   (not a registered case) is not counted. Hardware tests: 0 run, 0 passed.
+
+## Emergency checks in the first poll after an abort (2026-09-27, 3.0.0.15, branch `refactoring_targets`)
+
+Row TGT-D25 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (the two items left open in the previous section). No hardware
+run for this change.
+
+- **(a) Emergency checks skipped in the first poll after an abort (reproduced, fixed):** the three emergency checks of
+  `dome_status_poll` were guarded by `!aborted`, so an operation started between an abort and the first poll after it
+  was checked only from the second poll. The effect is not only a 1 s delay. The simulator's emergency close (like the
+  controller's) closes shutter and flap, so a shutter or flap OPEN started in that window and stopped by a newly raised
+  flag was often closed again when that poll read it: the poll published it OK ("Shutter closed" / "Flap closed") and
+  cleared `shutter_active` / `flap_active`, and no later poll ever reported the emergency for the request. A rotation
+  stopped by the flag stayed BUSY one more poll and got its ALERT from the second poll.
+- **Fix:** the rotation and flap checks skip only the operation that was running at the abort (`!rotation_aborted`,
+  `!flap_aborted` instead of `!aborted`); the shutter check drops the guard, since the abort handler already ends the
+  aborted shutter operation and clears `shutter_active`. The `aborted` branch leaves an ALERT published by those checks
+  in the same poll: a local `rotation_stopped` skips the rotation part, and `shutter_alert` / `flap_alert` (cleared by
+  the abort handler and by a new request, so set there only by this poll's check) skip DOME_SHUTTER / DOME_FLAP. An
+  aborted operation still ends OK as before, also when a flag is raised at the same time. The TGT-D12/D20/D24 checks
+  are unchanged. No serial command changed.
+- **(b) Rotation request during the first poll after an aborted rotation (not reproducible, won't fix):** while the
+  aborted rotation is still active at that poll, DOME_HORIZONTAL_COORDINATES and DOME_STEPS are BUSY until the poll
+  ends it, so during the poll's serial I/O a GOTO is dropped by the framework BUSY guard and a relative move is
+  rejected by `reject_change` ("Dome is moving"). Checked with a scratch case (abort during a GOTO at 10°/s, next
+  `d#getazim` reply delayed 1.2 s, GOTO 180° and then a relative move sent into it): no `d#azi` was sent after either
+  request and no OK was published for them before the poll ended the aborted rotation. A request can be copied only
+  after the poll has published the rotation OK, between two statements without I/O; the same window exists at every
+  rotation completion (the rotation branch publishes DOME_HORIZONTAL_COORDINATES and then DOME_STEPS OK), and a BUSY
+  re-check right before the write cannot close it. Not changed.
+- **Regression tests:** both handle DOME_ABORT_MOTION and then the request right after a status poll, check that the
+  command was sent before the next `d#getazim`, raise an emergency flag through the simulator control file and check
+  that still no poll had started. The property must be ALERT with the emergency message after exactly one further
+  `d#get_eme` (the first poll), stay ALERT for two more polls and see no OK update after the request.
+  - `shutter_and_flap_emergency_in_first_poll_after_abort`: shutter OPEN from closed with rain, then (after clearing
+    the flag and opening the shutter) flap OPEN with wind. 3.0.0.14 failed 3/3 (DOME_SHUTTER and DOME_FLAP OK with
+    "Shutter closed" / "Flap closed", 2 OK updates each, never ALERT); 3.0.0.15 passed 5/5.
+  - `rotation_emergency_in_first_poll_after_abort` (`--azimuth 900`): GOTO 270° with rain; DOME_STEPS must be ALERT
+    too, the azimuth stopped between 90° and 270°, and a GOTO after clearing the flag must complete. 3.0.0.14 failed
+    3/3 (ALERT after 2 polls); 3.0.0.15 passed 5/5.
+  - With only the check change (the `aborted` branch unchanged) both cases failed: the ALERT was overwritten with OK in
+    the same poll (1 OK update each).
+- **Reference trace:** unchanged; `reference_trace` passed against the checked-in `generated_reference_trace.txt`.
+- **Verification (Linux x64):** regeneration with the unchanged generator; the only generated changes are the edited
+  blocks and the version. Recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py dome_baader`: 52/52 OK
+  (3.0.0.15). `MIGRATION_STATUS.md` count `53 / 0` -> `55 / 0` (52 default cases and 3 opt-in network cases). The
+  sanitizer target builds only on macOS (`-arch`) and was not run.
+- Simulated tests of this change: new cases on 3.0.0.14 6 run, 0 passed (expected), plus 1 debug-log rerun of the
+  shutter/flap case (failed as expected); on 3.0.0.15 10/10; check-only variant 2 run, 0 passed (expected); recorded
+  run 52/52. The scratch case for (b) (not a registered case) is not counted. Hardware tests: 0 run, 0 passed.

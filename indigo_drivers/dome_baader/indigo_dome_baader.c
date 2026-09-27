@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_dome_baader"
 #define DRIVER_LABEL         "Baader Classic Dome"
 #define DOME_DEVICE_NAME     "Baader Classic Dome"
@@ -373,12 +373,15 @@ static void dome_status_poll(indigo_device *device) {
 	// an emergency flag raised during an operation means the controller stopped it
 	int emergency = emergency_read ? baader_emergency_flags(rain, wind, timeout, powercut) : 0;
 	char emergency_message[INDIGO_VALUE_SIZE];
+	// set when the emergency check below stops a rotation in this poll: the abort branch keeps its ALERT
+	bool rotation_stopped = false;
 	/* Handle dome rotation */
 	PRIVATE_DATA->current_position = azimuth;
 	bool rotation_queued = !PRIVATE_DATA->rotation_active && (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE || DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE);
 	if (rotation_queued) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Rotation request queued");
-	} else if (PRIVATE_DATA->rotation_active && !PRIVATE_DATA->aborted && (emergency & ~PRIVATE_DATA->rotation_emergency)) {
+	} else if (PRIVATE_DATA->rotation_active && !PRIVATE_DATA->rotation_aborted && (emergency & ~PRIVATE_DATA->rotation_emergency)) {
+		// a rotation started after an abort is watched from the first poll after it, only the aborted one is not
 		baader_emergency_message(emergency & ~PRIVATE_DATA->rotation_emergency, emergency_message, sizeof(emergency_message));
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotation stopped: %s", emergency_message);
 		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
@@ -393,6 +396,7 @@ static void dome_status_poll(indigo_device *device) {
 			indigo_update_property(device, DOME_PARK_PROPERTY, emergency_message);
 		}
 		PRIVATE_DATA->rotation_active = false;
+		rotation_stopped = true;
 	} else if (PRIVATE_DATA->rotation_active) {
 		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 		if (baader_tenths(PRIVATE_DATA->target_position) != baader_tenths(PRIVATE_DATA->current_position)) {
@@ -420,7 +424,8 @@ static void dome_status_poll(indigo_device *device) {
 	/* Handle dome shutter */
 	if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE && !PRIVATE_DATA->shutter_active) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Shutter request queued");
-	} else if (PRIVATE_DATA->shutter_active && !PRIVATE_DATA->aborted && (emergency & ~PRIVATE_DATA->shutter_emergency)) {
+	} else if (PRIVATE_DATA->shutter_active && (emergency & ~PRIVATE_DATA->shutter_emergency)) {
+		// the abort handler ends the aborted shutter operation, a running one was started after it
 		baader_emergency_message(emergency & ~PRIVATE_DATA->shutter_emergency, emergency_message, sizeof(emergency_message));
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Shutter stopped: %s", emergency_message);
 		PRIVATE_DATA->shutter_position = shutter_position;
@@ -451,7 +456,8 @@ static void dome_status_poll(indigo_device *device) {
 	/* Handle dome flap */
 	if (DOME_FLAP_PROPERTY->state == INDIGO_BUSY_STATE && !PRIVATE_DATA->flap_active) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Flap request queued");
-	} else if (PRIVATE_DATA->flap_active && !PRIVATE_DATA->aborted && (emergency & ~PRIVATE_DATA->flap_emergency)) {
+	} else if (PRIVATE_DATA->flap_active && !PRIVATE_DATA->flap_aborted && (emergency & ~PRIVATE_DATA->flap_emergency)) {
+		// a flap operation started after an abort is watched from the first poll after it, only the aborted one is not
 		baader_emergency_message(emergency & ~PRIVATE_DATA->flap_emergency, emergency_message, sizeof(emergency_message));
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Flap stopped: %s", emergency_message);
 		PRIVATE_DATA->flap_state = flap_state;
@@ -485,7 +491,7 @@ static void dome_status_poll(indigo_device *device) {
 	}
 	if (PRIVATE_DATA->aborted) {
 		// only the operations running when the abort was issued end here; one started after it keeps running and is watched
-		if (!PRIVATE_DATA->rotation_active || PRIVATE_DATA->rotation_aborted) {
+		if ((!PRIVATE_DATA->rotation_active || PRIVATE_DATA->rotation_aborted) && !rotation_stopped) {
 			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 			// a BUSY rotation property without a running rotation is a request copied during this poll: leave it to its handler
 			if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->rotation_active) {
@@ -500,11 +506,13 @@ static void dome_status_poll(indigo_device *device) {
 			PRIVATE_DATA->rotation_active = false;
 		}
 		// the abort handler ended the aborted shutter operation: a BUSY shutter is a request copied during this poll or an operation started after the abort
-		if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE) {
+		// shutter_alert, cleared by the abort handler, marks an ALERT published by the emergency check of this poll: that ALERT stays
+		if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE && !PRIVATE_DATA->shutter_alert) {
 			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		}
-		if (!PRIVATE_DATA->flap_active || PRIVATE_DATA->flap_aborted) {
+		// flap_alert is set only by the emergency check of this poll (the abort handler cleared it): that ALERT stays
+		if ((!PRIVATE_DATA->flap_active || PRIVATE_DATA->flap_aborted) && !PRIVATE_DATA->flap_alert) {
 			// a BUSY flap without a running operation is a request copied during this poll: leave it to its handler
 			if (DOME_FLAP_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->flap_active) {
 				DOME_FLAP_PROPERTY->state = INDIGO_OK_STATE;
