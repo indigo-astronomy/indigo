@@ -67,7 +67,7 @@
 | ccd_sx                  | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 25 / 10 | |
 | ccd_touptek             | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 36 / 30 | |
 | ccd_uvc                 | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 20 / 1 | ⛔ libuvc is Unix only |
-| dome_baader             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 48 / 0 | |
+| dome_baader             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 51 / 0 | |
 | dome_beaver             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 51 / 0 | |
 | dome_dragonfly          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 22 / 0 | |
 | dome_nexdome            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 49 / 0 | |

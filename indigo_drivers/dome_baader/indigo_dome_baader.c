@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_dome_baader"
 #define DRIVER_LABEL         "Baader Classic Dome"
 #define DOME_DEVICE_NAME     "Baader Classic Dome"
@@ -482,11 +482,17 @@ static void dome_status_poll(indigo_device *device) {
 		}
 	}
 	if (PRIVATE_DATA->aborted) {
-		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-		DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+		PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+		// a BUSY rotation property without a running rotation is a request copied during this poll: leave it to its handler
+		if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->rotation_active) {
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
+			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+		}
+		if (DOME_STEPS_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->rotation_active) {
+			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+		}
 		// a BUSY shutter or flap without a running operation is a request copied during this poll: leave it to its handler
 		if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->shutter_active) {
 			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
@@ -541,9 +547,9 @@ static void dome_connection_handler(indigo_device *device) {
 			} else {
 				indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
 			}
+			// DOME_PARK is still undefined here; its definition after this block publishes the park state read
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->park_requested = false;
-			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 			indigo_execute_handler_in(device, BAADER_FIRST_POLL_DELAY, dome_status_poll);
 			//- dome.on_connect
 		}
@@ -730,9 +736,12 @@ static void dome_abort_motion_handler(indigo_device *device) {
 	}
 	PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 	PRIVATE_DATA->aborted = true;
-	DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+	// a BUSY shutter without a running operation is a request copied during d#stopdom: leave it to its handler
+	if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->shutter_active) {
+		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+	}
 	PRIVATE_DATA->shutter_active = false;
-	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 	DOME_ABORT_MOTION_ITEM->sw.value = false;
 	//- dome.DOME_ABORT_MOTION.on_change
 	indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);

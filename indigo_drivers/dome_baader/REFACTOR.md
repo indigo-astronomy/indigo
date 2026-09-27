@@ -352,3 +352,62 @@ for this change.
   so a shutter request copied during that round trip is shown OK before its handler runs. Both are display only.
 - Simulated tests of this change: new case on 3.0.0.11 3 run, 0 passed (expected); on 3.0.0.12 5/5; recorded run 45/45.
   Hardware tests: 0 run, 0 passed.
+
+## Rotation and shutter requests around an abort, DOME_PARK at connect (2026-09-27, 3.0.0.13, branch `refactoring_targets`)
+
+Rows TGT-D20 and TGT-D21 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (TGT-D20 is the item left open in the previous
+section). No hardware run for this change.
+
+- **TGT-D20, poll (reproduced):** the `aborted` branch of `dome_status_poll` also set DOME_HORIZONTAL_COORDINATES
+  (value = current azimuth) and DOME_STEPS OK and published them without a BUSY check. A GOTO (which also sets DOME_STEPS
+  BUSY in `on_change_request`) or a relative move copied while the first poll after an abort ran was shown OK before its
+  handler sent `d#aziNNNN`, and the BUSY guard was open until the handler set BUSY again. The handler still sent
+  `number.target` / the computed target; display only.
+- **TGT-D20, abort handler (reproduced):** after `d#stopdom` the DOME_ABORT_MOTION handler set DOME_SHUTTER OK and
+  published it without a BUSY check. The handler cancels and settles shutter requests queued before it, so a BUSY
+  shutter there without a running operation is a request copied during the `d#stopdom` round trip, whose handler is
+  queued behind the abort; it was shown OK before `d#opeshut` / `d#closhut` was sent. Display only.
+- **Fix:** the same re-check as TGT-D12, made right before each write. The `aborted` branch sets
+  DOME_HORIZONTAL_COORDINATES (with the current azimuth) and DOME_STEPS OK only when the property is not BUSY or a
+  rotation (`rotation_active`) is running; the abort handler sets DOME_SHUTTER OK only when it is not BUSY or
+  `shutter_active`. A queued request keeps its value, target and BUSY state for its handler. The cached
+  `target_position` is still reset to the current azimuth in the `aborted` branch, and `shutter_active` is still
+  cleared by the abort. An aborted rotation or shutter operation still ends OK as before. No serial command changed.
+- **TGT-D21 (reproduced, driver defect):** `on_connect` published DOME_PARK with `indigo_update_property()` before the
+  dome base class defines it (`indigo_dome_change_property()` with the connected CONNECTION, after the `on_connect`
+  block). Each connect sent clients one update of an undefined property; the definition that followed carried the
+  same values. The test client reported it correctly, it was not a harness artefact. Fix: `on_connect` sets the park
+  switch and OK state without publishing them, so the definition publishes them. The connect's protocol sequence is
+  unchanged.
+- **Regression tests:**
+  - `rotation_requests_survive_first_poll_after_abort` (`--azimuth 900`): as in `requests_survive_first_poll_after_abort`
+    (shared helper `enter_first_poll_after_abort()`: abort right after a poll, delay the next `d#getazim` reply 1.2 s),
+    a GOTO 100° and then a clockwise relative move of 10° are sent into the delayed poll. After the rotation ends,
+    exactly one OK update of DOME_HORIZONTAL_COORDINATES and of DOME_STEPS may follow the GOTO, and one of DOME_STEPS
+    the relative move, with one `d#azi1000` / `d#azi1100` and the simulator at the target. 3.0.0.12 failed 3/3
+    (2 OK updates for each); 3.0.0.13 passed 5/5.
+  - `shutter_request_survives_abort`: right after a poll, the `d#stopdom` reply is delayed 0.5 s (fault `stopdom slow`)
+    and a shutter OPEN request is sent into that delay. No OK update of DOME_SHUTTER may be seen before the handler's
+    BUSY update that follows `d#opeshut`; the shutter must then open. 3.0.0.12 failed 3/3 (1 OK update before the
+    command); 3.0.0.13 passed 5/5.
+  - `park_defined_at_connect` (`--azimuth 900`): connect unparked at 90°, disconnect, move the simulator to 0° and
+    reconnect parked. No update of an undefined property and no DOME_PARK update may be seen at either connect, and the
+    definition must carry the park state. 3.0.0.12 failed 3/3 ("DOME_PARK was updated without being defined", 1
+    update); 3.0.0.13 passed 5/5.
+- **Reference trace:** `generated_reference_trace.txt` (now 189 lines) loses the connect step's `U DOME_PARK OK
+  UNPARKED` line before `D DOME_PARK`; a capture with 3.0.0.13 differed from the checked-in trace only in that line. No
+  `S` (protocol) line changed. `original_reference_trace.txt` is the original-driver record and is unchanged.
+- **Verification (Linux x64):** regeneration with the unchanged generator reproduces the checked-in output; the only
+  generated changes are the edited blocks and the version. Recorded run `TZ=Europe/Bratislava python3
+  tools/run_driver_test.py dome_baader`: 48/48 OK (3.0.0.13); a second full run of the suite logged no update of an
+  undefined property. `MIGRATION_STATUS.md` count `48 / 0` -> `51 / 0` (48 default cases and 3 opt-in network cases).
+  The sanitizer target builds only on macOS (`-arch`) and was not run.
+- **Left open (seen while testing, not changed):** the `aborted` branch treats any operation running at the first poll
+  after an abort as the aborted one. A shutter, flap or rotation request sent between the abort and that poll (for
+  example the shutter request of `shutter_request_survives_abort`) has set `shutter_active` / `flap_active` /
+  `rotation_active` by then, so the poll publishes the property OK and clears the flag while the dome still moves.
+  Later polls publish the position with OK and the final state is right, but the operation is shown OK early and is no
+  longer watched for an emergency close. Display and emergency-detection only; seen in the `BAADER_DEBUG` log of
+  `shutter_request_survives_abort` (DOME_SHUTTER OK at the first poll after the abort, "Shutter open" 2 s later).
+- Simulated tests of this change: new cases on 3.0.0.12 9 run, 0 passed (expected); on 3.0.0.13 15/15; reference
+  trace capture 1/1; recorded run 48/48 and one further full run 48/48. Hardware tests: 0 run, 0 passed.
