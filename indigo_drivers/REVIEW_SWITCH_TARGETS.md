@@ -191,6 +191,7 @@ Text items get no target (design note section 8); the mount context target used 
 | TGT-D19 | wheel_astroasis | X_FACTORY_RESET handler (3.0.0.9) | The factory-reset handler writes the WHEEL_SLOT value and target without a BUSY check, so a slot request copied while the reset runs can be overwritten the same way as TGT-C06. Found while fixing TGT-C06, not reproduced. | Open |
 | TGT-D20 | dome_baader | `dome_status_poll` abort branch and DOME_ABORT_MOTION handler (3.0.0.12) | The abort branch of the poll also sets DOME_HORIZONTAL_COORDINATES and DOME_STEPS to OK without a BUSY check, and the abort handler sets DOME_SHUTTER to OK after `d#stopdom` without one, so a request arriving then is shown OK before its handler sends it. Display only (same kind as TGT-B05/D12). Found while fixing TGT-D12, not reproduced. | Open |
 | TGT-D21 | dome_baader | `on_connect` (3.0.0.12) | The recorded run logs "DOME_PARK was updated without being defined": `on_connect` probably publishes DOME_PARK before the generated handler defines it (same kind as TGT-D09). Found while fixing TGT-D12, not investigated. | Open |
+| TGT-D22 | aux_upb | AUX_DEW_CONTROL items (3.0.0.33) | Both items of the one-of-many AUX_DEW_CONTROL are initialised ON, as in aux_upb3 before TGT-D18; if the box's dew control mode is not read at connect the property may be defined with MANUAL and AUTOMATIC both on. Found while fixing TGT-D18, not reproduced. Low. | Open |
 
 ## E. Already fixed another way (candidates for simplification with the target)
 
