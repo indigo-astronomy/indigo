@@ -2256,9 +2256,10 @@ benchmark-ccd-asi-guide: $(INTEGRATION_BUILD)/test_ccd_asi_sdk
 # QHY variants compile against their own real SDK headers and a fake implementation.
 QHY_SDK_TEST_REPLACEMENTS = -Dindigo_monotonic_time=qhy_test_clock -Dindigo_start_usb_event_handler=qhy_test_usb_start -Dindigo_attach_device=qhy_test_attach -Dindigo_detach_device=qhy_test_detach -Dlibusb_get_device=qhy_test_usb_device -Dindigo_get_usb_path=qhy_test_usb_path -Dlibusb_hotplug_register_callback_sim=qhy_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=qhy_test_usb_deregister_poll -Dlibusb_ref_device=qhy_test_usb_ref -Dlibusb_unref_device=qhy_test_usb_unref -Dlibusb_get_device_descriptor=qhy_test_usb_descriptor -Dlibusb_get_device_list=qhy_test_usb_list -Dlibusb_free_device_list=qhy_test_usb_free_list
 QHY_TEST_CXXFLAGS = $(filter-out -std=gnu11,$(TEST_CFLAGS)) -std=gnu++11 $(QHY_TEST_FLAGS)
-QHY_LEGACY_ARCH = $(if $(filter Darwin,$(OS_DETECTED)),-arch x86_64)
-QHY_LEGACY_CXXFLAGS = $(if $(filter Darwin,$(OS_DETECTED)),$(filter-out -arch x86_64 arm64,$(QHY_TEST_CXXFLAGS)) $(QHY_LEGACY_ARCH),$(QHY_TEST_CXXFLAGS))
-QHY_LEGACY_LDFLAGS = $(if $(filter Darwin,$(OS_DETECTED)),$(filter-out -arch x86_64 arm64,$(TOUPTEK_SDK_TEST_LDFLAGS)) $(QHY_LEGACY_ARCH),$(TOUPTEK_SDK_TEST_LDFLAGS))
+# The legacy QHY SDK archive is universal since 2026-09-22 and the driver no longer carries an Intel-only guard,
+# so the legacy suite builds for the same slices as the others and runs natively on Apple Silicon.
+QHY_LEGACY_CXXFLAGS = $(QHY_TEST_CXXFLAGS)
+QHY_LEGACY_LDFLAGS = $(TOUPTEK_SDK_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/ccd_qhy_sdk_driver.o: ../indigo_drivers/ccd_qhy/indigo_ccd_qhy.cpp Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(QHY_LEGACY_CXXFLAGS) -I../indigo_drivers/ccd_qhy/bin_externals/qhyccd/include $(QHY_SDK_TEST_REPLACEMENTS) -c $< -o $@
