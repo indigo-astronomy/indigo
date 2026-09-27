@@ -801,6 +801,41 @@ cleanup:
 	driver_stop();
 }
 
+// TGT-D09: a powerbox connect publishes AUX_POWER_OUTLET and AUX_USB_PORT only by defining them, never by an update
+// sent before the definition, and the definition carries the ports the connect read. The simulator reports other
+// ports for the one D read of each connect, so the definitions must follow them; checked on connect and reconnect.
+static bool ports_defined(const char *reply, bool outlet_1, bool outlet_2, bool usb_1, bool usb_2) {
+	int undefined = updates_without_define();
+	unsigned outlets = atomic_load(&revisions[10]), usb = atomic_load(&revisions[11]);
+	if (!fault("D", reply) || !connect_serial_device(&prodigy_powerbox, NULL)) {
+		return false;
+	}
+	indigo_usleep(200000);
+	indigo_item *items[] = { find_cached_item(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME), find_cached_item(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME), find_cached_item(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_1_ITEM_NAME), find_cached_item(AUX_USB_PORT_PROPERTY_NAME, AUX_USB_PORT_2_ITEM_NAME) };
+	bool expected[] = { outlet_1, outlet_2, usb_1, usb_2 };
+	printf("    connect with '%s': updates without definition %d, port updates %u %u\n", reply, updates_without_define() - undefined, atomic_load(&revisions[10]) - outlets, atomic_load(&revisions[11]) - usb);
+	for (int i = 0; i < 4; i++) {
+		if (items[i] == NULL || items[i]->sw.value != expected[i]) {
+			fprintf(stderr, "Port item %d is not %d after connect\n", i, expected[i]);
+			return false;
+		}
+	}
+	return updates_without_define() == undefined && atomic_load(&revisions[10]) == outlets && atomic_load(&revisions[11]) == usb;
+}
+
+static void ports_defined_at_connect(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&prodigy_powerbox));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, prodigy_focuser.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, fixture.port));
+	indigo_usleep(100000);
+	SERIAL_CHECK_TRUE(ports_defined("reply=D:0:1:1:0", false, true, true, false));
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_POWER_OUTLET_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	disconnect_serial_device(&prodigy_powerbox);
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_POWER_OUTLET_PROPERTY_NAME) == NULL && find_cached_property(AUX_USB_PORT_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(ports_defined("reply=D:1:0:0:1", true, false, false, true));
+cleanup:
+	driver_stop();
+}
+
 int main(void) {
 	simulator_test_client.update_property = observe_update;
 	const prodigy_test cases[] = {
@@ -853,6 +888,7 @@ int main(void) {
 		{ "reboot_timeout", reboot_case, "reboot_timeout" },
 		{ "power_request_survives_reboot", port_request_survives_reboot, "normal" },
 		{ "usb_request_survives_reboot", port_request_survives_reboot, "normal" },
+		{ "ports_defined_at_connect", ports_defined_at_connect, "normal" },
 		{ "disconnect_motion", lifecycle, "normal" },
 		{ "disconnect_read", lifecycle, "disconnect_read" },
 		{ "init_identity", rejected_connection, "init_#_reply=OK_OTHER" },

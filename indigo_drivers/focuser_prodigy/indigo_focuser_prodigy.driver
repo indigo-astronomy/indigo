@@ -20,7 +20,7 @@ driver prodigy {
 	label = "PegasusAstro Prodigy Microfocuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2022-2026 CloudMakers, s. r. o.";
-	version = 8;
+	version = 9;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -462,7 +462,11 @@ driver prodigy {
 		on_connect {
 			connection_result = !PRIVATE_DATA->rebooting && prodigy_ports(device);
 			if (connection_result) {
-				prodigy_publish_ports(device);
+				// Both properties are still undefined here; their definition after this block publishes the ports read.
+				AUX_POWER_OUTLET_1_ITEM->sw.value = PRIVATE_DATA->outlets[0];
+				AUX_POWER_OUTLET_2_ITEM->sw.value = PRIVATE_DATA->outlets[1];
+				AUX_USB_PORT_1_ITEM->sw.value = PRIVATE_DATA->outlets[2];
+				AUX_USB_PORT_2_ITEM->sw.value = PRIVATE_DATA->outlets[3];
 			}
 		}
 		on_disconnect {

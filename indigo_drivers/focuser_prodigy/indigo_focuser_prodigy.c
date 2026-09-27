@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_focuser_prodigy"
 #define DRIVER_LABEL         "PegasusAstro Prodigy Microfocuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus Prodigy Focuser"
@@ -678,7 +678,11 @@ static void aux_connection_handler(indigo_device *device) {
 			//+ aux.on_connect
 			connection_result = !PRIVATE_DATA->rebooting && prodigy_ports(device);
 			if (connection_result) {
-				prodigy_publish_ports(device);
+				// Both properties are still undefined here; their definition after this block publishes the ports read.
+				AUX_POWER_OUTLET_1_ITEM->sw.value = PRIVATE_DATA->outlets[0];
+				AUX_POWER_OUTLET_2_ITEM->sw.value = PRIVATE_DATA->outlets[1];
+				AUX_USB_PORT_1_ITEM->sw.value = PRIVATE_DATA->outlets[2];
+				AUX_USB_PORT_2_ITEM->sw.value = PRIVATE_DATA->outlets[3];
 			}
 			//- aux.on_connect
 		}

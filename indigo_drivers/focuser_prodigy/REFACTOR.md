@@ -145,10 +145,26 @@ Findings TGT-013 and TGT-014 in `indigo_drivers/REVIEW_SWITCH_TARGETS.md`, both 
 - **Fix:** `prodigy_publish_ports()` leaves the values of a BUSY AUX_POWER_OUTLET or AUX_USB_PORT alone and does not publish it. Both handlers send the request read item by item with `indigo_get_switch_target()`, apply it with `indigo_apply_switch_targets()` when the device accepted and reports it, and otherwise show the ports the device last reported with ALERT (the command order `X`/`Y` or `U`/`J`, then `D`, is unchanged).
 - **Regression tests:** `power_request_survives_reboot` and `usb_request_survives_reboot` start a reboot, hold the shared device queue with a gate handler, send the request, let `reboot_finalizer` come due behind the gate (the simulator answers again 0.7 s after `Q`, the finalizer runs 1 s after it) and check that the first result after the request is the handler's OK with the requested values, published after the reboot's OK, that only the copy of the request published BUSY, and that `X:1` / `U:1` was sent exactly once. Against 3.0.0.7 both failed (first result OK with both items off, two BUSY publications, no `X:1` / `U:1` sent); both pass with 3.0.0.8, also in the ASan build.
 - **Verification (Linux x64):** `TZ=Europe/Bratislava python3 tools/run_driver_test.py focuser_prodigy` 57/57 OK. Regeneration reproduces the checked-in output.
-- **Observed, not changed:** the powerbox `on_connect` block publishes both port properties through `prodigy_publish_ports()` before the generated connection handler defines them, so the test client logs "updated without being defined" on every powerbox connect; this is unrelated to the target change and left as is.
+- **Observed, not changed:** the powerbox `on_connect` block publishes both port properties through `prodigy_publish_ports()` before the generated connection handler defines them, so the test client logs "updated without being defined" on every powerbox connect; this is unrelated to the target change and left as is. Fixed in 3.0.0.9 as TGT-D09, see below.
 
 ```sh
 cd indigo_test && PRODIGY_TEST_FILTER=request_survives_reboot ./build/integration/test_focuser_prodigy_simulator
 ```
 
 Final test summary: 57 simulated tests run, 57 passed; 0 hardware tests run, 0 passed.
+
+## Port properties published before their definition (TGT-D09, 3.0.0.9, 2026-09-27)
+
+Finding TGT-D09 in `indigo_drivers/REVIEW_SWITCH_TARGETS.md`, reproduced before the fix.
+
+- **Defect (reproduced):** the powerbox `on_connect` block called `prodigy_publish_ports()`, which published AUX_POWER_OUTLET and AUX_USB_PORT with `indigo_update_property()` before the generated connection handler defines them right after the block. Every powerbox connect therefore sent clients one update of each undefined property; the definition that followed carried the same values.
+- **Fix:** `on_connect` writes the ports read with `D` into the four items and no longer publishes them; the generated definition publishes them. `reboot_finalizer` still uses `prodigy_publish_ports()`, where both properties are defined. The protocol sequence of the connect (`#`, `D`) is unchanged.
+- **Regression test:** `ports_defined_at_connect` connects the powerbox while the simulator answers the connect's `D` with `D:0:1:1:0`, disconnects, and connects again with `D:1:0:0:1`. After each connect the harness must have seen no update of an undefined property and no update of either port property, and the defined items must show the reported ports. Against 3.0.0.8 it failed 3/3 (two updates without definition and one update of each port property on the first connect); with 3.0.0.9 it passed 5/5, and in the ASan build.
+- **Verification (Linux x64):** `TZ=Europe/Bratislava python3 tools/run_driver_test.py focuser_prodigy` 58/58 OK (`MIGRATION_STATUS.md` 57 / 0 -> 58 / 0). Regeneration reproduces the checked-in output.
+- **Observed, not changed:** the recorded run still logs "updated without being defined" for focuser and powerbox `CONNECTION`, `INFO`, `FOCUSER_POSITION` and `FOCUSER_STEPS`. These come from the test harness: `driver_stop()` and the cases that switch between the two devices reset the single-device property cache (`reset_simulator_context()`), so later updates of properties that are still defined are counted. They are not driver updates of undefined properties.
+
+```sh
+cd indigo_test && PRODIGY_TEST_FILTER=ports_defined_at_connect ./build/integration/test_focuser_prodigy_simulator
+```
+
+Final test summary: 58 simulated tests run, 58 passed; 0 hardware tests run, 0 passed.
