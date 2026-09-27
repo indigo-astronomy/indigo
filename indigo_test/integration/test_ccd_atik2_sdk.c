@@ -43,6 +43,8 @@ typedef struct {
 	double exposure, cooler_power, temperature, cooler_target;
 	bool cooler_on, dark, preview, wheel_stuck;
 	int left, top, width, height, bx, by;
+	atomic_int cooler_sets;
+	atomic_bool cooler_log[16];
 } mock_camera;
 
 typedef struct {
@@ -108,6 +110,16 @@ static void block_queue(indigo_device *device) {
 	enter_gate("queue");
 }
 
+static atomic_int queue_marks;
+
+static void mark_queue(indigo_device *device) {
+	atomic_fetch_add(&queue_marks, 1);
+}
+
+// Set by a case before it sends a CCD_COOLER request and cleared by the first libatik_set_cooler()
+// call after it, which is that request's handler, so CCD_COOLER publications in between can be counted.
+static atomic_int cooler_request_pending, cooler_publications_before_handler, cooler_checks_before_handler;
+
 static int camera_index_from_device(libusb_device *device) {
 	return (int *)device - usb_devices;
 }
@@ -171,6 +183,9 @@ static indigo_result observe(indigo_client *client, indigo_device *device, indig
 	}
 	if (!logical[index]) {
 		atomic_fetch_add(&updates_after_detach, 1);
+	}
+	if (index == 0 && !strcmp(property->name, "CCD_COOLER") && property->state != INDIGO_BUSY_STATE && atomic_load(&cooler_request_pending)) {
+		atomic_fetch_add(&cooler_publications_before_handler, 1);
 	}
 	pthread_mutex_lock(&observation_mutex);
 	int slot = property_index(index, property->name, true);
@@ -284,6 +299,20 @@ static bool wait_state(int index, const char *name, int expected) {
 	}
 	fprintf(stderr, "device %d property %s: expected %d, got %d\n", index, name, expected, state(index, name));
 	return false;
+}
+
+static bool switch_value(int index, const char *name, const char *item) {
+	indigo_property *property = snapshot(index, name);
+	bool result = false;
+	if (property) {
+		indigo_item *found = indigo_get_item(property, item);
+		result = found && found->sw.value;
+	}
+	indigo_release_property(property);
+	if (!result) {
+		fprintf(stderr, "device %d property %s: item %s is not ON\n", index, name, item);
+	}
+	return result;
 }
 
 static bool wait_count(atomic_int *counter, int expected) {
@@ -484,7 +513,14 @@ bool libatik_read_pixels(libatik_device_context *context, double delay, bool pre
 bool libatik_set_cooler(libatik_device_context *context, bool status, double temperature) {
 	mock_camera *camera = sdk_enter(context, __func__);
 	bool result = camera && !failed(__func__);
+	if (camera == cameras && atomic_exchange(&cooler_request_pending, 0)) {
+		atomic_store(&cooler_checks_before_handler, atomic_load(&camera->cooler_checks));
+	}
 	if (result) {
+		int call = atomic_fetch_add(&camera->cooler_sets, 1);
+		if (call < ARRAY_SIZE(camera->cooler_log)) {
+			atomic_store(&camera->cooler_log[call], status);
+		}
 		camera->cooler_on = status;
 		camera->cooler_target = temperature;
 	}
@@ -899,6 +935,8 @@ static void cooling_failures_and_exclusion(void) {
 	fail_call = "libatik_set_cooler";
 	ASSERT_TRUE(request_number(0, "CCD_TEMPERATURE", "TEMPERATURE", -5, INDIGO_ALERT_STATE));
 	ASSERT_TRUE(request_switch(0, "CCD_COOLER", "ON", INDIGO_ALERT_STATE));
+	// The camera did not start cooling, so CCD_COOLER shows OFF instead of the rejected request.
+	ASSERT_TRUE(switch_value(0, "CCD_COOLER", "OFF"));
 	fail_call = NULL;
 	int checks = cameras[0].cooler_checks;
 	ASSERT_TRUE(request_number(0, "CCD_EXPOSURE", "EXPOSURE", 2, INDIGO_BUSY_STATE));
@@ -908,6 +946,64 @@ static void cooling_failures_and_exclusion(void) {
 	cameras[0].cooler_on = false;
 	ASSERT_TRUE(request_switch(0, "CCD_COOLER", "ON", INDIGO_OK_STATE));
 	ASSERT_TRUE(cameras[0].cooler_on);
+}
+
+// TGT-064: a cooler OFF sent after a temperature change is the newer request. The temperature
+// handler still starts cooling to the new setpoint, but it must not turn the queued OFF into ON.
+static void cooler_off_queued_behind_a_temperature_change_survives(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(request_number(0, "CCD_TEMPERATURE", "TEMPERATURE", -5, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_count(&cameras[0].cooler_sets, 1));
+	ASSERT_TRUE(cameras[0].cooler_on);
+	ASSERT_TRUE(switch_value(0, "CCD_COOLER", "ON"));
+	// The camera reaches its setpoint, so the next temperature change starts from an idle property.
+	cameras[0].temperature = -5;
+	ASSERT_TRUE(wait_state(0, "CCD_TEMPERATURE", INDIGO_OK_STATE));
+	arm_gate("queue");
+	indigo_execute_handler(logical[0], block_queue);
+	ASSERT_TRUE(wait_count(&gates_entered, 1));
+	atomic_store(&cameras[0].cooler_sets, 0);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_TEMPERATURE", "TEMPERATURE", -10));
+	ASSERT_TRUE(request_switch(0, "CCD_COOLER", "OFF", INDIGO_BUSY_STATE));
+	release_gate();
+	// The marker runs after both queued handlers.
+	atomic_store(&queue_marks, 0);
+	indigo_execute_handler(logical[0], mark_queue);
+	ASSERT_TRUE(wait_count(&queue_marks, 1));
+	ASSERT_EQ_INT(2, atomic_load(&cameras[0].cooler_sets));
+	ASSERT_TRUE(atomic_load(&cameras[0].cooler_log[0]));
+	ASSERT_FALSE(atomic_load(&cameras[0].cooler_log[1]));
+	ASSERT_TRUE(fabs(cameras[0].cooler_target + 10) < .001);
+	ASSERT_FALSE(cameras[0].cooler_on);
+	ASSERT_TRUE(wait_state(0, "CCD_COOLER", INDIGO_OK_STATE));
+	ASSERT_TRUE(switch_value(0, "CCD_COOLER", "OFF"));
+	ASSERT_TRUE(connect_device(0, false));
+}
+
+// TGT-B06: the poll compares the cooler state the camera reports with CCD_COOLER. A request that is
+// still queued is not that state yet, so the poll must neither show it OK/ALERT nor end its BUSY,
+// which would let the framework accept another request before this one is sent.
+static void queued_cooler_request_is_not_published_by_the_poll(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(request_switch(0, "CCD_COOLER", "ON", INDIGO_OK_STATE));
+	ASSERT_TRUE(cameras[0].cooler_on);
+	arm_gate("queue");
+	indigo_execute_handler(logical[0], block_queue);
+	ASSERT_TRUE(wait_count(&gates_entered, 1));
+	int checks = atomic_load(&cameras[0].cooler_checks);
+	atomic_store(&cooler_publications_before_handler, 0);
+	atomic_store(&cooler_request_pending, 1);
+	ASSERT_TRUE(request_switch(0, "CCD_COOLER", "OFF", INDIGO_BUSY_STATE));
+	// The 50 ms test poll falls due behind the gate and, as a time priority task, runs ahead of the handler.
+	indigo_usleep(150000);
+	release_gate();
+	ASSERT_TRUE(wait_state(0, "CCD_COOLER", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&cooler_request_pending));
+	ASSERT_TRUE(atomic_load(&cooler_checks_before_handler) > checks);
+	ASSERT_EQ_INT(0, atomic_load(&cooler_publications_before_handler));
+	ASSERT_FALSE(cameras[0].cooler_on);
+	ASSERT_TRUE(switch_value(0, "CCD_COOLER", "OFF"));
+	ASSERT_TRUE(connect_device(0, false));
 }
 
 static void guider_operations(void) {
@@ -1134,6 +1230,7 @@ static void begin_fixture(void) {
 	attached = usb_refs = invalid_usb_unref = updates_after_detach = 0;
 	fail_register = fail_descriptor = fail_attach = fail_queue = wrong_vendor = malformed_context = malformed_image = false_wheel_set_result = 0;
 	blobs = bad_blob = sdk_after_close = sdk_active = sdk_overlap = clock_shift = sdk_on_bus = gates_entered = 0;
+	cooler_request_pending = cooler_publications_before_handler = cooler_checks_before_handler = queue_marks = 0;
 	fail_call = NULL;
 	for (int i = 0; i < CAMERAS; i++) {
 		snprintf(cameras[i].name, sizeof(cameras[i].name), "Atik2 test %d", i);
@@ -1204,6 +1301,8 @@ int main(int argc, char **argv) {
 		{ "cooling_and_polling", cooling_and_polling },
 		{ "implausible_temperature_is_not_published", implausible_temperature_is_not_published },
 		{ "cooling_failures_and_exclusion", cooling_failures_and_exclusion },
+		{ "cooler_off_queued_behind_a_temperature_change_survives", cooler_off_queued_behind_a_temperature_change_survives },
+		{ "queued_cooler_request_is_not_published_by_the_poll", queued_cooler_request_is_not_published_by_the_poll },
 		{ "guider_operations", guider_operations },
 		{ "guider_failures_and_disconnect", guider_failures_and_disconnect },
 		{ "wheel_operations", wheel_operations },

@@ -230,3 +230,55 @@ Physical hot-plug was not part of this run and no hot-plug coverage is establish
 ### Test totals for this run
 
 Simulated (fake SDK) tests run 25, passed 25. Hardware tests run 1, passed 0.
+
+## Queued cooler request (TGT-064, TGT-B06, 2026-09-27)
+
+Version 18, findings TGT-064 and TGT-B06 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch
+`refactoring_targets`). Same defect and fix as `ccd_atik` 3.0.0.49 (TGT-060).
+
+### Defects (both reproduced)
+
+- TGT-064: the CCD_TEMPERATURE handler turned CCD_COOLER ON with `indigo_set_switch()` after a
+  successful `libatik_set_cooler()`, whatever the state of CCD_COOLER. A cooler OFF sent after a
+  temperature change is copied into CCD_COOLER on the bus thread and queued behind the temperature
+  handler, which overwrote it with ON; the CCD_COOLER handler read `sw.value`, sent
+  `libatik_set_cooler(true)` and reported ON/OK, so the camera kept cooling. A rejected cooler request
+  was also shown with the requested state and ALERT instead of the state the camera kept.
+- TGT-B06: the 5 s poll set CCD_COOLER OK or ALERT from `status == CCD_COOLER_ON_ITEM->sw.value` and
+  published it. The poll runs at time priority ahead of queued change handlers, so a queued cooler
+  request was published ALERT (the camera had not been told yet) and left BUSY before its handler ran,
+  which reopened the framework's BUSY guard for a second request.
+
+### Fix
+
+- The CCD_COOLER handler sends the request read with `indigo_get_switch_target()` and applies it with
+  `indigo_apply_switch_targets()` when `libatik_set_cooler()` succeeds. On failure it shows the cooler
+  state the camera reports (`libatik_check_cooler()`) with ALERT.
+- The CCD_TEMPERATURE handler still starts cooling to the new setpoint and, with no cooler request
+  pending, still turns CCD_COOLER ON; it leaves a BUSY CCD_COOLER to its own handler, so the last
+  client request wins.
+- The poll leaves value and state of a BUSY CCD_COOLER alone and does not publish it; its temperature
+  and power readback and publication are unchanged. SDK calls are unchanged in order and arguments
+  except for the extra `libatik_check_cooler()` on the cooler failure path.
+
+### Fake SDK and tests
+
+- The fake `libatik_set_cooler()` records the on/off flag of every accepted call per camera in order
+  (reset with the camera by every fixture), and marks when the first call after a case-armed cooler
+  request is made, so CCD_COOLER publications before that request's handler can be counted.
+- `cooler_off_queued_behind_a_temperature_change_survives`: the camera reaches a first setpoint, the
+  device queue is held by a gate handler, a CCD_TEMPERATURE change and then a CCD_COOLER OFF are sent,
+  the gate is released and a marker handler waits for both. Version 17 failed 3/3 (second call
+  `libatik_set_cooler(true)`, camera still cooling); version 18 passes (ON with -10 C, then OFF,
+  CCD_COOLER OFF and OK).
+- `queued_cooler_request_is_not_published_by_the_poll`: with the cooler on, a CCD_COOLER OFF is
+  queued behind a gate handler long enough for the 50 ms test poll to fall due, so the poll runs
+  before the handler. Version 17 failed 3/3 (one ALERT publication before the handler); version 18
+  passes (no OK/ALERT publication before the handler, which still ends OFF/OK).
+- `cooling_failures_and_exclusion` now checks that a rejected ON shows OFF (the camera did not start
+  cooling); it fails on version 17, which showed ON with ALERT.
+
+### Test totals for this change
+
+Simulated (fake SDK) tests run 27, passed 27 (Linux x64, `tools/run_driver_test.py ccd_atik2`).
+Hardware tests run 0.

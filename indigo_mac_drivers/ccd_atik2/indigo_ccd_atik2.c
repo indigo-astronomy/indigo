@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000011
+#define DRIVER_VERSION       0x03000012
 #define DRIVER_NAME          "indigo_ccd_atik2"
 #define DRIVER_LABEL         "Atik (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -272,11 +272,19 @@ static void ccd_timer_callback(indigo_device *device) {
 			CCD_COOLER_POWER_ITEM->number.value = round(power);
 			CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value && fabs(CCD_TEMPERATURE_ITEM->number.value - CCD_TEMPERATURE_ITEM->number.target) > 1 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
-			CCD_COOLER_PROPERTY->state = status == CCD_COOLER_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			// A BUSY CCD_COOLER holds a request its handler has not sent yet, so it is left to that handler.
+			if (CCD_COOLER_PROPERTY->state != INDIGO_BUSY_STATE) {
+				CCD_COOLER_PROPERTY->state = status == CCD_COOLER_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			}
 		} else {
-			CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_POWER_PROPERTY->state = CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
+			CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_POWER_PROPERTY->state = INDIGO_ALERT_STATE;
+			if (CCD_COOLER_PROPERTY->state != INDIGO_BUSY_STATE) {
+				CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
 		}
-		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+		if (CCD_COOLER_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+		}
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 	}
@@ -430,7 +438,15 @@ static void ccd_abort_exposure_handler(indigo_device *device) {
 static void ccd_cooler_handler(indigo_device *device) {
 	CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ccd.CCD_COOLER.on_change
-	if (!libatik_set_cooler(PRIVATE_DATA->device_context, CCD_COOLER_ON_ITEM->sw.value, CCD_TEMPERATURE_ITEM->number.target)) {
+	// The CCD_TEMPERATURE handler may have written the switch after the request was copied, the targets keep the request.
+	if (libatik_set_cooler(PRIVATE_DATA->device_context, indigo_get_switch_target(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM_NAME), CCD_TEMPERATURE_ITEM->number.target)) {
+		indigo_apply_switch_targets(CCD_COOLER_PROPERTY);
+	} else {
+		bool status = false;
+		double power = 0, temperature = 0;
+		if (libatik_check_cooler(PRIVATE_DATA->device_context, &status, &power, &temperature)) {
+			indigo_set_switch(CCD_COOLER_PROPERTY, status ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
+		}
 		CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- ccd.CCD_COOLER.on_change
@@ -441,9 +457,12 @@ static void ccd_temperature_handler(indigo_device *device) {
 	CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ccd.CCD_TEMPERATURE.on_change
 	if (libatik_set_cooler(PRIVATE_DATA->device_context, true, CCD_TEMPERATURE_ITEM->number.target)) {
-		indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
-		CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+		// A setpoint turns the cooler on, but a CCD_COOLER request queued after this one is newer and decides.
+		if (CCD_COOLER_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
+			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+		}
 		CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
