@@ -141,7 +141,7 @@
 | wheel_mi                | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 12 / 0 | ⛔ Unix and Windows SDKs are not compatible |
 | wheel_optec             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 8 / 0 | |
 | wheel_playerone         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 12 / 0 | |
-| wheel_qhy               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 3 / 0 | |
+| wheel_qhy               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 4 / 0 | |
 | wheel_quantum           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 8 / 0 | |
 | wheel_sx                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 17 / 14 | ⏰ TODO - make hidapi for Windows |
 | wheel_trutek            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 8 / 0 | |

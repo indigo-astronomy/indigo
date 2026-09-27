@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_wheel_qhy"
 #define DRIVER_LABEL         "QHY CFW Filter Wheel"
 #define WHEEL_DEVICE_NAME    "CFW Filter Wheel"
@@ -121,6 +121,9 @@ static void wheel_connection_handler(indigo_device *device) {
 					if (qhy_command(device, "NOW", reply, 1, 1)) {
 						WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 	isdigit(reply[0]) ? reply[0] - '0' + 1 : reply[0] - 'A' + 11;
 					}
+				} else if (X_MODEL_PROPERTY->state == INDIGO_BUSY_STATE) {
+					// A model request copied while the handshake ran is left to its handler.
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed, model request pending");
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed, fallback to CFW1");
 					indigo_set_switch(X_MODEL_PROPERTY, X_MODEL_1_ITEM, true);
@@ -199,6 +202,9 @@ static void wheel_slot_handler(indigo_device *device) {
 
 static void wheel_x_model_handler(indigo_device *device) {
 	X_MODEL_PROPERTY->state = INDIGO_OK_STATE;
+	//+ wheel.X_MODEL.on_change
+	indigo_apply_switch_targets(X_MODEL_PROPERTY);
+	//- wheel.X_MODEL.on_change
 	indigo_update_property(device, X_MODEL_PROPERTY, NULL);
 }
 
