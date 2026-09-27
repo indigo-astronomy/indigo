@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_polaralign_mlastro"
 #define DRIVER_LABEL         "MLAstro RPA"
 #define POLARALIGN_DEVICE_NAME DRIVER_LABEL
@@ -127,6 +127,9 @@ typedef struct {
 	bool error;
 	bool homed;
 	bool control_lost;
+	bool az_reversed;      /* AzRD, AlRD and Back as the controller last reported or accepted them */
+	bool alt_reversed;
+	bool backlash_enabled;
 	//- data
 } mlastro_private_data;
 
@@ -265,7 +268,9 @@ static void mlastro_degrees_to_dms(double degrees, int *d, int *m, int *s, bool 
    not defined to the client yet at that point, and updating an undefined
    property is a protocol violation. A property with a change in flight
    (BUSY) is left alone: the client's new values are already copied into it
-   and the reply to this poll still carries the old setting. */
+   and the reply to this poll still carries the old setting. A request copied
+   between that check and the write of a switch is overwritten, so the
+   handlers of the switches send the targets instead of the values. */
 static bool mlastro_parse_telemetry(indigo_device *device, const char *line, bool notify) {
 	const char *lt = strchr(line, '<');
 	const char *pipe1 = strchr(line, '|');
@@ -330,12 +335,18 @@ static bool mlastro_parse_telemetry(indigo_device *device, const char *line, boo
 				} else if (!strcmp(key, "AlSD") && POLARALIGN_STEPS_PER_DEGREE_PROPERTY->state != INDIGO_BUSY_STATE) {
 					steps_changed = steps_changed || POLARALIGN_STEPS_PER_DEGREE_ALT_ITEM->number.value != v;
 					POLARALIGN_STEPS_PER_DEGREE_ALT_ITEM->number.value = v;
-				} else if (!strcmp(key, "AzRD") && POLARALIGN_DIRECTION_AZ_PROPERTY->state != INDIGO_BUSY_STATE) {
-					direction_az_changed = POLARALIGN_DIRECTION_AZ_REVERSED_ITEM->sw.value != (v != 0.0);
-					indigo_set_switch(POLARALIGN_DIRECTION_AZ_PROPERTY, v != 0.0 ? POLARALIGN_DIRECTION_AZ_REVERSED_ITEM : POLARALIGN_DIRECTION_AZ_NORMAL_ITEM, true);
-				} else if (!strcmp(key, "AlRD") && POLARALIGN_DIRECTION_ALT_PROPERTY->state != INDIGO_BUSY_STATE) {
-					direction_alt_changed = POLARALIGN_DIRECTION_ALT_REVERSED_ITEM->sw.value != (v != 0.0);
-					indigo_set_switch(POLARALIGN_DIRECTION_ALT_PROPERTY, v != 0.0 ? POLARALIGN_DIRECTION_ALT_REVERSED_ITEM : POLARALIGN_DIRECTION_ALT_NORMAL_ITEM, true);
+				} else if (!strcmp(key, "AzRD")) {
+					PRIVATE_DATA->az_reversed = v != 0.0;
+					if (POLARALIGN_DIRECTION_AZ_PROPERTY->state != INDIGO_BUSY_STATE) {
+						direction_az_changed = POLARALIGN_DIRECTION_AZ_REVERSED_ITEM->sw.value != (v != 0.0);
+						indigo_set_switch(POLARALIGN_DIRECTION_AZ_PROPERTY, v != 0.0 ? POLARALIGN_DIRECTION_AZ_REVERSED_ITEM : POLARALIGN_DIRECTION_AZ_NORMAL_ITEM, true);
+					}
+				} else if (!strcmp(key, "AlRD")) {
+					PRIVATE_DATA->alt_reversed = v != 0.0;
+					if (POLARALIGN_DIRECTION_ALT_PROPERTY->state != INDIGO_BUSY_STATE) {
+						direction_alt_changed = POLARALIGN_DIRECTION_ALT_REVERSED_ITEM->sw.value != (v != 0.0);
+						indigo_set_switch(POLARALIGN_DIRECTION_ALT_PROPERTY, v != 0.0 ? POLARALIGN_DIRECTION_ALT_REVERSED_ITEM : POLARALIGN_DIRECTION_ALT_NORMAL_ITEM, true);
+					}
 				} else if (!strcmp(key, "AzL1") && POLARALIGN_LIMITS_PROPERTY->state != INDIGO_BUSY_STATE) {
 					limits_changed = limits_changed || POLARALIGN_LIMITS_MIN_POSITION_AZ_ITEM->number.value != v * 60.0;
 					POLARALIGN_LIMITS_MIN_POSITION_AZ_ITEM->number.value = v * 60.0;
@@ -348,9 +359,12 @@ static bool mlastro_parse_telemetry(indigo_device *device, const char *line, boo
 				} else if (!strcmp(key, "AlL2") && POLARALIGN_LIMITS_PROPERTY->state != INDIGO_BUSY_STATE) {
 					limits_changed = limits_changed || POLARALIGN_LIMITS_MAX_POSITION_ALT_ITEM->number.value != v * 60.0;
 					POLARALIGN_LIMITS_MAX_POSITION_ALT_ITEM->number.value = v * 60.0;
-				} else if (!strcmp(key, "Back") && X_MLASTRO_BACKLASH_ENABLE_PROPERTY->state != INDIGO_BUSY_STATE) {
-					backlash_enable_changed = X_MLASTRO_BACKLASH_ENABLE_ENABLED_ITEM->sw.value != (v != 0.0);
-					indigo_set_switch(X_MLASTRO_BACKLASH_ENABLE_PROPERTY, v != 0.0 ? X_MLASTRO_BACKLASH_ENABLE_ENABLED_ITEM : X_MLASTRO_BACKLASH_ENABLE_DISABLED_ITEM, true);
+				} else if (!strcmp(key, "Back")) {
+					PRIVATE_DATA->backlash_enabled = v != 0.0;
+					if (X_MLASTRO_BACKLASH_ENABLE_PROPERTY->state != INDIGO_BUSY_STATE) {
+						backlash_enable_changed = X_MLASTRO_BACKLASH_ENABLE_ENABLED_ITEM->sw.value != (v != 0.0);
+						indigo_set_switch(X_MLASTRO_BACKLASH_ENABLE_PROPERTY, v != 0.0 ? X_MLASTRO_BACKLASH_ENABLE_ENABLED_ITEM : X_MLASTRO_BACKLASH_ENABLE_DISABLED_ITEM, true);
+					}
 				} else if (!strcmp(key, "AzBl") && X_MLASTRO_BACKLASH_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
 					backlash_steps_changed = backlash_steps_changed || X_MLASTRO_BACKLASH_STEPS_AZ_ITEM->number.value != v;
 					X_MLASTRO_BACKLASH_STEPS_AZ_ITEM->number.value = v;
@@ -664,7 +678,15 @@ static void polaralign_steps_per_degree_handler(indigo_device *device) {
 static void polaralign_direction_alt_handler(indigo_device *device) {
 	POLARALIGN_DIRECTION_ALT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ polaralign.POLARALIGN_DIRECTION_ALT.on_change
-	if (!mlastro_command_ok(device, "AlRD:%d", POLARALIGN_DIRECTION_ALT_REVERSED_ITEM->sw.value ? 1 : 0)) {
+	/* The poll may overwrite the value between the copy of the request and this
+	   handler, the target keeps the request. On failure the switch shows the
+	   direction the controller last reported. */
+	bool reversed = indigo_get_switch_target(POLARALIGN_DIRECTION_ALT_PROPERTY, POLARALIGN_DIRECTION_REVERSED_ITEM_NAME);
+	if (mlastro_command_ok(device, "AlRD:%d", reversed ? 1 : 0)) {
+		PRIVATE_DATA->alt_reversed = reversed;
+		indigo_apply_switch_targets(POLARALIGN_DIRECTION_ALT_PROPERTY);
+	} else {
+		indigo_set_switch(POLARALIGN_DIRECTION_ALT_PROPERTY, PRIVATE_DATA->alt_reversed ? POLARALIGN_DIRECTION_ALT_REVERSED_ITEM : POLARALIGN_DIRECTION_ALT_NORMAL_ITEM, true);
 		POLARALIGN_DIRECTION_ALT_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- polaralign.POLARALIGN_DIRECTION_ALT.on_change
@@ -674,7 +696,13 @@ static void polaralign_direction_alt_handler(indigo_device *device) {
 static void polaralign_direction_az_handler(indigo_device *device) {
 	POLARALIGN_DIRECTION_AZ_PROPERTY->state = INDIGO_OK_STATE;
 	//+ polaralign.POLARALIGN_DIRECTION_AZ.on_change
-	if (!mlastro_command_ok(device, "AzRD:%d", POLARALIGN_DIRECTION_AZ_REVERSED_ITEM->sw.value ? 1 : 0)) {
+	/* See POLARALIGN_DIRECTION_ALT. */
+	bool reversed = indigo_get_switch_target(POLARALIGN_DIRECTION_AZ_PROPERTY, POLARALIGN_DIRECTION_REVERSED_ITEM_NAME);
+	if (mlastro_command_ok(device, "AzRD:%d", reversed ? 1 : 0)) {
+		PRIVATE_DATA->az_reversed = reversed;
+		indigo_apply_switch_targets(POLARALIGN_DIRECTION_AZ_PROPERTY);
+	} else {
+		indigo_set_switch(POLARALIGN_DIRECTION_AZ_PROPERTY, PRIVATE_DATA->az_reversed ? POLARALIGN_DIRECTION_AZ_REVERSED_ITEM : POLARALIGN_DIRECTION_AZ_NORMAL_ITEM, true);
 		POLARALIGN_DIRECTION_AZ_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- polaralign.POLARALIGN_DIRECTION_AZ.on_change
@@ -734,7 +762,13 @@ static void polaralign_x_mlastro_speed_handler(indigo_device *device) {
 static void polaralign_x_mlastro_backlash_enable_handler(indigo_device *device) {
 	X_MLASTRO_BACKLASH_ENABLE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ polaralign.X_MLASTRO_BACKLASH_ENABLE.on_change
-	if (!mlastro_command_ok(device, "Back:%d", X_MLASTRO_BACKLASH_ENABLE_ENABLED_ITEM->sw.value ? 1 : 0)) {
+	/* See POLARALIGN_DIRECTION_ALT. */
+	bool enabled = indigo_get_switch_target(X_MLASTRO_BACKLASH_ENABLE_PROPERTY, X_MLASTRO_BACKLASH_ENABLE_ENABLED_ITEM_NAME);
+	if (mlastro_command_ok(device, "Back:%d", enabled ? 1 : 0)) {
+		PRIVATE_DATA->backlash_enabled = enabled;
+		indigo_apply_switch_targets(X_MLASTRO_BACKLASH_ENABLE_PROPERTY);
+	} else {
+		indigo_set_switch(X_MLASTRO_BACKLASH_ENABLE_PROPERTY, PRIVATE_DATA->backlash_enabled ? X_MLASTRO_BACKLASH_ENABLE_ENABLED_ITEM : X_MLASTRO_BACKLASH_ENABLE_DISABLED_ITEM, true);
 		X_MLASTRO_BACKLASH_ENABLE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- polaralign.X_MLASTRO_BACKLASH_ENABLE.on_change

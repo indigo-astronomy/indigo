@@ -110,3 +110,4 @@ set if they are needed sooner.
 
 2026-09-24 22:28 3.0.0.3 mac arm64 MLAstro RPA firmware 1.8.1 (TTGO ESP32) 18/14 Failed
 2026-09-24 22:46 3.0.0.4 mac arm64 simulator 29/29 OK
+2026-09-27 05:29 3.0.0.6 linux x64 simulator 29/29 OK

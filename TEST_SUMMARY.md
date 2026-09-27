@@ -248,6 +248,7 @@
 |  | 2026-09-27 00:16 | 3.0.0.22 | linux x64 | simulator | 15 / 15 | ✅ OK |
 | polaralign_mlastro | 2026-09-24 22:28 | 3.0.0.3 | mac arm64 | MLAstro RPA firmware 1.8.1 (TTGO ESP32) | 18 / 14 | ❌ Failed |
 |  | 2026-09-24 22:46 | 3.0.0.4 | mac arm64 | simulator | 29 / 29 | ✅ OK |
+|  | 2026-09-27 05:29 | 3.0.0.6 | linux x64 | simulator | 29 / 29 | ✅ OK |
 | polaralign_simulator | 2026-09-21 10:53 | 3.0.0.4 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | rotator_asi | 2026-09-21 14:41 | 3.0.0.7 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
 | rotator_falcon | 2026-09-26 19:06 | 3.0.0.10 | mac arm64 | simulator | 13 / 13 | ✅ OK |

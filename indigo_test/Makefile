@@ -606,7 +606,7 @@ $(INTEGRATION_BUILD)/aux_usbdp_simulator: ../indigo_drivers/aux_usbdp/aux_usbdp_
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/polaralign_mlastro_simulator: ../indigo_drivers/polaralign_mlastro/polaralign_mlastro_simulator/polaralign_mlastro_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/test_focuser_askar_simulator: integration/test_focuser_askar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_askar_simulator $(BUILD_DRIVERS)/indigo_focuser_askar.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_ASKAR_SIMULATOR_TEST_LDFLAGS)

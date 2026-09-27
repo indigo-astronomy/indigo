@@ -74,11 +74,23 @@ Resolved assumptions from "Not verified": `RstH:1` does not zero `AzPH`/`AlPH`; 
 
 Simulator run with 3.0.0.4: `build/integration/test_polaralign_mlastro_simulator`, 29/29 passed (mac arm64).
 
+## Switch targets in 3.0.0.6 (2026-09-27)
+
+Findings TGT-035, TGT-036 and TGT-037 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this change.
+
+`mlastro_parse_telemetry()` (idle poll every 0.5 s) checks `POLARALIGN_DIRECTION_AZ`, `POLARALIGN_DIRECTION_ALT` and `X_MLASTRO_BACKLASH_ENABLE` for BUSY and then writes the setting the controller reports with `indigo_set_switch()`. A request copied on the bus thread between that check and the write was overwritten, and the queued handler sent the reported setting read from `sw.value` (`AzRD:0` for a requested REVERSED) and published it OK: the request was lost silently. All three are one-of-many properties of two items, so `indigo_property_copy_values()` sets the target of every item and the target pattern applies.
+
+Fix: the handlers send the request read with `indigo_get_switch_target()` and apply it with `indigo_apply_switch_targets()` once the controller answers `ok`; on failure the switch shows the setting the controller last reported (kept in `az_reversed`, `alt_reversed`, `backlash_enabled`, which the poll records also while the property is BUSY and a successful handler updates) with ALERT, instead of the rejected request. The poll keeps its BUSY checks.
+
+The check and the write have no I/O and no log line between them, so no permanent case can hit the window. It was reproduced with a temporary copy of the generated driver (not committed) that logs `TGT window <key>` right after each check, and three temporary cases that send REVERSED / ENABLED from that log line on the poll's own thread: driver 3.0.0.5 sent `AzRD:0`, `AlRD:0` and `Back:0`, showed NORMAL / DISABLED with OK (3/3 lost); 3.0.0.6 sent `AzRD:1`, `AlRD:1` and `Back:1` and showed REVERSED / ENABLED with OK (3/3 applied). The failure path (controller refusal) is not reachable in the simulator for these commands and is covered by review only.
+
+Linux: the simulator did not link on Linux (`fmin` from `serial_motion.h` without `-lm`); `indigo_test/Makefile` now links it with `-lm` like the other `serial_motion.h` simulators. With that, the unchanged 3.0.0.5 suite passed 29/29 on Linux x64, and the recorded run of 3.0.0.6 through `tools/run_driver_test.py` passed 29/29 (linux x64).
+
 ## Windows
 
 Visual Studio project and filters added, registered in `indigo_windows.sln` and referenced by `indigo_server.vcxproj`; the driver is also listed in the `indigo_server.c` static driver table. No Windows machine was available, so the Windows build was not executed.
 
 ## Test summary
 
-- Simulated: 29 cases run, 29 passed (driver 3.0.0.4).
+- Simulated: 29 cases run, 29 passed (driver 3.0.0.6, linux x64; driver 3.0.0.4, mac arm64).
 - Hardware: 18 cases run, 14 passed (driver 3.0.0.3, firmware 1.8.1 on a TTGO ESP32 without motor drivers); the 4 failures are test-assumption errors, see above.
