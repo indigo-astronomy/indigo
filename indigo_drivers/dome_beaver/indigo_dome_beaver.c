@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_dome_beaver"
 #define DRIVER_LABEL         "Nexdome Beaver Dome"
 #define DOME_DEVICE_NAME     "Nexdome Beaver Dome"
@@ -477,14 +477,13 @@ static void dome_status_poll(indigo_device *device) {
 				indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
 				DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, DOME_SHUTTER_PROPERTY, PRIVATE_DATA->aborted ? "Shutter aborted" : "Shutter error");
-			} else if (shutter == BD_SHUTTER_OPENING) {
-				indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
-				DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Opening shutter...");
 			} else {
+				// a motion the driver did not start (reconnect during motion, shutter panel) is shown BUSY like its own, so the poll owns it and ends it
+				PRIVATE_DATA->shutter_active = true;
+				PRIVATE_DATA->shutter_target = shutter == BD_SHUTTER_OPENING ? BD_SHUTTER_OPEN : BD_SHUTTER_CLOSED;
 				indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
 				DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Closing shutter...");
+				indigo_update_property(device, DOME_SHUTTER_PROPERTY, shutter == BD_SHUTTER_OPENING ? "Opening shutter..." : "Closing shutter...");
 			}
 			PRIVATE_DATA->prev_shutter_status = shutter;
 		}
@@ -787,7 +786,9 @@ static void dome_home_handler(indigo_device *device) {
 		indigo_update_property(device, DOME_HOME_PROPERTY, "Dome is parked, please unpark");
 		return;
 	}
-	if (!DOME_HOME_ITEM->sw.value) {
+	// the poll may have overwritten the value after the request was copied, the target keeps the request
+	if (!indigo_get_switch_target(DOME_HOME_PROPERTY, DOME_HOME_ITEM_NAME)) {
+		indigo_apply_switch_targets(DOME_HOME_PROPERTY);
 		DOME_HOME_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		DOME_HOME_ITEM->sw.value = false;
@@ -890,7 +891,8 @@ static void dome_shutter_handler(indigo_device *device) {
 	//+ dome.DOME_SHUTTER.on_change
 	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 	// keep the framework BUSY guard closed while the device command runs
-	bool open = DOME_SHUTTER_OPENED_ITEM->sw.value;
+	// the poll may have overwritten the value after the request was copied, the target keeps the request
+	bool open = indigo_get_switch_target(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM_NAME);
 	int result = -1;
 	if (!beaver_int(device, &result, "!dome %s#", open ? "openshutter" : "closeshutter") || result != 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Shutter open/close failed");
@@ -899,6 +901,7 @@ static void dome_shutter_handler(indigo_device *device) {
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter open/close failed");
 		return;
 	}
+	indigo_apply_switch_targets(DOME_SHUTTER_PROPERTY);
 	PRIVATE_DATA->shutter_active = true;
 	PRIVATE_DATA->shutter_target = open ? BD_SHUTTER_OPEN : BD_SHUTTER_CLOSED;
 	beaver_hold_poll(device);

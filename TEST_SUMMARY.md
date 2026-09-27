@@ -131,6 +131,7 @@
 | dome_baader | 2026-09-21 15:27 | 3.0.0.9 | mac arm64 | simulator | 44 / 44 | ✅ OK |
 |  | 2026-09-27 03:04 | 3.0.0.11 | linux x64 | simulator | 44 / 44 | ✅ OK |
 | dome_beaver | 2026-09-21 15:35 | 3.0.0.7 | mac arm64 | simulator | 47 / 47 | ✅ OK |
+|  | 2026-09-27 03:37 | 3.0.0.9 | linux x64 | simulator | 48 / 48 | ✅ OK |
 | dome_dragonfly | 2026-09-26 22:20 | 3.0.0.10 | mac arm64 | simulator | 22 / 22 | ✅ OK |
 | dome_nexdome | 2026-09-21 15:46 | 3.0.0.12 | mac arm64 | simulator | 46 / 46 | ✅ OK |
 | dome_nexdome3 | 2026-09-21 16:53 | 3.0.0.14 | mac arm64 | simulator | 49 / 49 | ✅ OK |

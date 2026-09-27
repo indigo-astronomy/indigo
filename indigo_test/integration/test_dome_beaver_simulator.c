@@ -2087,6 +2087,29 @@ cleanup:
 	driver_down();
 }
 
+// TGT-B08: a shutter motion the driver did not start (here: still running after a reconnect) is shown BUSY by the
+// poll, and requests during it are dropped by the BUSY guard. The poll must end that BUSY when the motion ends
+// instead of taking it for a queued request of a client.
+static void observed_shutter_motion_completes(void) {
+	CHECK(start_connected());
+	CHECK(switch_of(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME));
+	CHECK_EQ(INDIGO_OK, request_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME));
+	CHECK(wait_rx("!dome openshutter#", 1, 5));
+	CHECK(disconnect());
+	CHECK(connect_to(simulator.port, INDIGO_OK_STATE, true));
+	CHECK_STR("!dome shutterstatus:2#", last_reply_to("!dome shutterstatus#"));
+	CHECK_EQ(INDIGO_BUSY_STATE, state_of(DOME_SHUTTER_PROPERTY_NAME));
+	CHECK(wait_state(DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, 10));
+	CHECK_STR("!dome shutterstatus:0#", last_reply_to("!dome shutterstatus#"));
+	CHECK(switch_of(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME));
+	CHECK(wait_message(DOME_SHUTTER_PROPERTY_NAME, "Shutter open"));
+	CHECK(change_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, INDIGO_OK_STATE, 10));
+	CHECK_EQ(1, rx_count("!dome closeshutter#"));
+	CHECK(switch_of(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME));
+cleanup:
+	driver_down();
+}
+
 static void busy_guard_holds_while_command_runs(void) {
 	CHECK(start_connected());
 	unsigned before = revision_of(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
@@ -2510,7 +2533,8 @@ static const beaver_case cases[] = {
 	{ "additional_instance", additional_instance, NULL, false, false },
 	{ "urgent_abort_cancels_queued_goto", urgent_abort_cancels_queued_goto, "--azimuth 90 --shutter-time 4", false, false },
 	{ "queued_request_survives_status_poll", queued_request_survives_status_poll, "--shutter open", false, false },
-	{ "reference_trace", reference_trace, "--azimuth 90", false, false },
+	{ "observed_shutter_motion_completes", observed_shutter_motion_completes, "--shutter-time 6", false, false },
+	{ "reference_trace", reference_trace, "--azimuth 90 --shutter-time 1.4 --calibration-time 2.4", false, false },
 	{ "network_nexdome_url", network_nexdome_url, "--azimuth 90 --tcp-port 0", false, true },
 	{ "network_default_port", network_default_port, "--tcp-port 8080", false, true },
 	{ "network_failures_and_transport_loss", network_failures_and_transport_loss, "--azimuth 90 --tcp-port 0", false, true },

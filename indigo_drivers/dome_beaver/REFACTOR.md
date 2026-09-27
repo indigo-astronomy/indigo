@@ -271,3 +271,51 @@ ALERT, which is what the rejection publishes anyway, so they cannot reintroduce 
 precedes `U DOME_HORIZONTAL_COORDINATES BUSY` in four places. No serial command changed.
 
 47/47 simulator scenarios pass.
+
+## Switch targets for DOME_HOME and DOME_SHUTTER (2026-09-27, 3.0.0.9, branch `refactoring_targets`)
+
+Rows TGT-031, TGT-032 and the dome_beaver part of TGT-B08 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run
+for this change.
+
+- **Baseline on Linux x64 (3.0.0.8):** the suite did not build: the simulator rule in `indigo_test/Makefile` linked
+  without `-lm` (`undefined reference to lround` / `fmod`; macOS links libm implicitly), the same defect dome_nexdome3 and
+  dome_baader had; `-lm` added. The unchanged driver then passed 46 of 47: `reference_trace` failed 3/3 with the same
+  three extra lines (a second `shutterstatus:2` poll while opening, a second `shutterstatus:3` poll while closing and a
+  third `U DOME_STEPS OK` during the rotator calibration). Root cause in the test, not the driver: the trace records how
+  many polls fall inside a timed motion, and with the 2 s shutter travel and 3 s calibration of the default simulator
+  arguments the second (third) poll after the command lands 0.1-0.15 s before the motion ends on Linux (polls every
+  ~1.03 s, the first ~0.8 s after the command) but after it on the macOS host that recorded the fixture. The
+  `reference_trace` case now runs the simulator with `--shutter-time 1.4 --calibration-time 2.4`, which puts both ends in
+  the middle between two polls on either host; the fixture is unchanged and matched 3/3 on 3.0.0.8.
+- **TGT-031 (reproduced):** the at-home refresh of `dome_status_poll` checks that DOME_HOME is not BUSY and writes the
+  at-home state in one condition. A HOME request copied between the check and the write was cleared, and the handler
+  read the cleared value, sent no `!dome gohome#` and published OK. **Fix:** the handler decides the request read with
+  `indigo_get_switch_target()`; a HOME=false request is applied with `indigo_apply_switch_targets()`.
+- **TGT-032 (reproduced):** the shutter part of the poll checks for a queued request and then, for a changed shutter
+  status, writes the reported position and state. A request copied in between was overwritten (for example CLOSE by
+  OPENED/OK "Shutter open" when the shutter was opened outside the driver), and the handler sent the opposite command.
+  **Fix:** the handler sends the request read with `indigo_get_switch_target()` and applies it with
+  `indigo_apply_switch_targets()` once the controller accepted it; a failed command still shows the last polled state
+  with ALERT (`BVR-03`).
+- **Proof of TGT-031/032:** neither window has I/O or a log line between check and write, so no permanent case can hit
+  it. A temporary instrumented copy of the generated driver (a debug line inside the home condition and after the
+  shutter check) with two temporary cases sending the request from that line (neither committed): on 3.0.0.8 the HOME
+  request sent no `gohome` and ended OK not at home, and the CLOSE request sent `openshutter` and ended OK open, 3/3
+  each; on 3.0.0.9 `gohome` / `closeshutter` were sent and the properties ended OK at home / closed, 3/3 each. The
+  pending-request paths stay covered by `BVR-15 home_request_survives_status_poll` and
+  `queued_request_survives_status_poll`.
+- **TGT-B08 (reproduced, fixed):** the poll deliberately shows a shutter motion the driver did not start as BUSY
+  ("Opening shutter..." / "Closing shutter...") and the framework guard drops requests during it; that is kept, as in
+  dome_nexdome3. But the next poll took this BUSY without a driver operation (`shutter_active` false) for a queued
+  client request and skipped DOME_SHUTTER from then on, so it stayed BUSY after the motion ended and every later shutter
+  request was dropped until an abort. Reproduced on 3.0.0.8 by reconnecting while the shutter opened: still BUSY 10 s
+  after the shutter reported open. **Fix:** the poll adopts an observed motion as the shutter operation
+  (`shutter_active`, `shutter_target` the end position), so it ends it with OK or ALERT like its own motions; an abort
+  still ends it. Regression test `observed_shutter_motion_completes` (fails on 3.0.0.8, passes on 3.0.0.9).
+- **Verification:** regeneration reproducible; recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py
+  dome_beaver`: 48/48 OK on linux x64 (3.0.0.9). `MIGRATION_STATUS.md` now counts 51 hardware-free cases (48 default,
+  3 opt-in network; the earlier 49 predated `rejected_change`).
+- Simulated tests of this change: baseline 47 run, 46 passed (3.0.0.8, `reference_trace`); `reference_trace` with the new
+  arguments 3/3 on 3.0.0.8; `observed_shutter_motion_completes` 1 run, 0 passed on 3.0.0.8 (expected), 2/2 on 3.0.0.9;
+  temporary window cases 6 run, 0 passed on 3.0.0.8 (expected), 6/6 on 3.0.0.9; recorded run 48/48. Hardware tests: 0
+  run, 0 passed.
