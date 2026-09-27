@@ -53,7 +53,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000024
+#define DRIVER_VERSION       0x03000025
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -70,7 +70,6 @@
 //+ define
 
 #define FILTER_COUNT         5
-#define GUIDER_GUIDE_SCALE   200
 #define GUIDER_MAX_STARS     400
 #define GUIDER_FOV           7
 #define GUIDER_MAX_HOTPIXELS 1500
@@ -1161,11 +1160,15 @@ static void start_focuser_move(indigo_device *device, int target) {
 #define SIDEREAL_RA_RATE     (1.00273791 / 3600.0)
 #define SIDEREAL_DEC_RATE    (15.0410686 / 3600.0)
 
+static double guider_offset_pixels(indigo_device *device, double degrees) {
+	return degrees * IMAGE_HEIGHT_ITEM->number.target / GUIDER_FOV;
+}
+
 static void guider_ra_finalizer(indigo_device *device) {
 	// a connected, guidable mount simulator is guided at the physical guide rate and the image follows its pointing
 	if (!indigo_simulated_mount_guide(PRIVATE_DATA->guide_rate * SIDEREAL_RA_RATE * (GUIDER_GUIDE_EAST_ITEM->number.value - GUIDER_GUIDE_WEST_ITEM->number.value) / 1000.0, 0)) {
-		double offset = cos(M_PI * DEC_ITEM->number.value / 180.0) * PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / GUIDER_GUIDE_SCALE;
-		IMAGE_RA_OFFSET_ITEM->number.value += offset;
+		double degrees = cos(M_PI * DEC_ITEM->number.value / 180.0) * PRIVATE_DATA->guide_rate * SIDEREAL_RA_RATE * 15 * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / 1000.0;
+		IMAGE_RA_OFFSET_ITEM->number.value += guider_offset_pixels(device, degrees);
 	}
 	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
@@ -1174,7 +1177,7 @@ static void guider_ra_finalizer(indigo_device *device) {
 
 static void guider_dec_finalizer(indigo_device *device) {
 	if (!indigo_simulated_mount_guide(0, PRIVATE_DATA->guide_rate * SIDEREAL_DEC_RATE * (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / 1000.0)) {
-		IMAGE_DEC_OFFSET_ITEM->number.value += PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / GUIDER_GUIDE_SCALE;
+		IMAGE_DEC_OFFSET_ITEM->number.value += guider_offset_pixels(device, PRIVATE_DATA->guide_rate * SIDEREAL_DEC_RATE * (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / 1000.0);
 	}
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);

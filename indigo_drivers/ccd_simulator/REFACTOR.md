@@ -202,3 +202,19 @@ Plan and result:
 Hardware testing is not applicable to this virtual-driver defect. macOS arm64 is the available validation platform; Linux and Windows are not available in this run.
 
 Final test summary for this change: simulated tests 124 run / 124 passed (24 CCD simulator + 90 Guider Agent + 10 combined-agent); hardware tests 0 run / 0 passed.
+
+## Offset model at the physical guide rate (2026-09-27)
+
+Reported: calibrating with Mount Simulator attached and then guiding without it (or the other way round) overcorrected or diverged, on either side of the pier.
+
+Root cause: since the mount simulator integration, a pulse of `CCD Guider Simulator (guider)` moves a connected mount at `GUIDER_RATE` % of sidereal, which at the guider camera's 7° / 1200 px (about 21″/px) moves the stars by about 0.36 px per second at the default 50 %. Without a mount, the offset model moved `IMAGE_RA_OFFSET` / `IMAGE_DEC_OFFSET` by `guide_rate * ms / GUIDER_GUIDE_SCALE`, 2.5 px per second, about 7 times more. A calibration made with one model therefore had the wrong guide speed for the other on both axes: every correction was about 7 times too long when the mount was removed after calibration, and about 7 times too short the other way round.
+
+Fix (version 36 to 37): the offset model converts a pulse to degrees exactly as the mount path does (`guide_rate * sidereal rate * duration`, RA scaled by cos(Dec)) and to pixels at the scale `search_stars()` projects the sky with (`IMAGE_HEIGHT / GUIDER_FOV` px per degree). `GUIDER_GUIDE_SCALE` is removed. A calibration made with the mount now serves guiding without it and the other way round. Pulses without a mount are correspondingly weaker, so the Guider Agent's default 0.2 s calibration step reports "Drift is too slow" twice and settles at 0.8 s, as it would on a real mount at this image scale.
+
+Tests:
+
+- `simulator_guider_offset_model_pulses_follow_mount_axes` expects the physical shift, about 1.07 px for a 3 s pulse at 50 %, instead of 7.5 px. On macOS arm64, a 3 s north pulse moved the star 1.07 px without a mount and 1.06 px with Mount Simulator attached.
+- `test_ccd_simulator` 24/24 and `test_agent_guider` 90/90 passed on macOS arm64.
+- Open: `test_agent_imager_guider_mount` passed 9/10. `guiding without related mount` fails because it guides with an unrelated Mount Simulator that is parked. A parked simulator does not track: it reports RA = LST - park hour angle, and the camera follows that pointing, so the field drifts west at the sidereal rate (about 0.7 px/s). The pulses fall back to the offset model, which now moves the stars at 50 % of sidereal (about 0.36 px/s), so the calibration's west leg never completes. The old offset model passed only because its 2.5 px/s pulses outran the drift. Starting calibration at a 0.8 s step did not help.
+
+Build note: `simulator_guider_camera_follows_mount_simulator_guiding` also fails when `build/lib/libindigo` predates `ac733d4b1`, because the old `indigo_simulated_mount_guide()` accepts pulses for a parked mount. Rebuild `indigo_libs` before running the suite.

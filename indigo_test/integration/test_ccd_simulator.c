@@ -1088,8 +1088,8 @@ static bool sim_offset_changes(const char *item, double before) {
 // the same axes a mount would, on either side of the pier
 static void simulator_guider_offset_model_pulses_follow_mount_axes(void) {
 	double x0, y0, x1, y1, x2, y2;
-	// 3 s at the default 50 % guide rate is 7.5 px in the offset model, RA shrinks by cos(dec)
-	double dec_shift = 0.5 * 3000 / 200, ra_shift = dec_shift * cos(FOLLOW_DEC * M_PI / 180);
+	// 3 s at the default 50 % guide rate moves the stars as far as it would turn a mount, about 1.07 px, RA by cos(dec) of it
+	double dec_shift = 0.5 * 15.0410686 / 3600.0 * 3 * FOLLOW_PX_PER_DEGREE, ra_shift = dec_shift * 1.00273791 * 15 / 15.0410686 * cos(FOLLOW_DEC * M_PI / 180);
 	SIM_CHECK(sim_follow_begin());
 	SIM_CHECK(mount_connect("CCD Guider Simulator (guider)", true));
 	indigo_usleep(200000);
