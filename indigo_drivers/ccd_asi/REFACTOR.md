@@ -648,3 +648,64 @@ generator consults the block for every removal again, and a driver that has to t
 identity guards its own block with `if (!unplug_result)`, as `ccd_qhy2` does for QHY2-001.
 
 `Matrix discovery_filter_failures_retry` injects its SDK failures into a removal whose camera is made to look gone, so only the failure keeps it attached; the step that required an identified removal to go through a failing SDK was dropped. Recorded with `tools/run_driver_test.py`: fake SDK 52/52, ZWO ASI120MC-S 28/28 (no hot-plug).
+
+## Coupled mode, pixel format and preset requests (TGT-066, 2026-09-27)
+
+Version 70, finding TGT-066 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+
+### Semantics
+
+CCD_MODE (pixel format and binning), X_PIXEL_FORMAT (also the bit depth in CCD_FRAME) and X_PRESETS
+(a gain/offset pair) are coupled views of the same camera settings. Of two requests queued together
+the later one wins: the handler of the earlier one still updates a coupled property as a side
+effect, but leaves one that is BUSY (a request sent after it, still queued) to that request's own
+handler, which then decides and publishes it.
+
+### Defect (reproduced)
+
+All handlers run on the device queue, and each rewrote the coupled properties whatever their state.
+A request copied into a coupled property on the bus thread and queued behind such a handler was
+overwritten before its own handler read it, and that handler then applied the overwritten value and
+reported OK:
+
+- CCD_GAIN then X_PRESETS: `adjust_preset_switches()` in the gain handler cleared the requested
+  preset, the preset handler found none and set nothing (gain 40 kept instead of the unity preset).
+- X_PRESETS then CCD_GAIN: `asi_set_number()` in the preset handler replaced the gain target, the
+  gain handler sent the preset gain again (0 instead of 40).
+- CCD_MODE then X_PIXEL_FORMAT, X_PIXEL_FORMAT then CCD_MODE, CCD_BIN then CCD_MODE, CCD_MODE then
+  CCD_BIN, CCD_FRAME (bit depth) then X_PIXEL_FORMAT, X_PIXEL_FORMAT then CCD_FRAME (bit depth): the
+  earlier handler rewrote the later request, which ended with the earlier one's format, binning or
+  bit depth.
+
+### Fix
+
+- The CCD_MODE and X_PIXEL_FORMAT handlers apply their request with `indigo_apply_switch_targets()`
+  before they derive the coupled properties from it, and the X_PRESETS handler reads its request
+  with `indigo_get_switch_target()`. These handlers have no device I/O that can fail, except the
+  preset's gain/offset writes, after which `adjust_preset_switches()` still shows the preset the
+  camera ends with (ALERT on failure), as before.
+- The CCD_GAIN and CCD_OFFSET handlers leave a BUSY X_PRESETS alone; the X_PRESETS handler leaves a
+  BUSY CCD_GAIN or CCD_OFFSET alone (no SDK write, no publication) and the pending request sets it.
+- The CCD_FRAME handler leaves a BUSY X_PIXEL_FORMAT or CCD_MODE alone, the CCD_BIN handler a BUSY
+  CCD_MODE, the CCD_MODE handler a BUSY X_PIXEL_FORMAT, CCD_BIN or CCD_FRAME, and the X_PIXEL_FORMAT
+  handler a BUSY CCD_FRAME or CCD_MODE. The handler that runs last derives the views from the final
+  settings, so they end consistent.
+- Rejecting a request while a coupled one is BUSY (the ccd_touptek approach) was not chosen: the
+  properties have no device operation to protect, and a refusal would fail ordinary client sequences
+  such as a mode followed by a frame change.
+
+### Tests
+
+- `Preset and gain requests queued together keep the last`: device queue held by a gate handler,
+  CCD_GAIN then X_PRESETS, released, marker handler; then X_PRESETS then CCD_GAIN. Checks the gain and
+  offset the fake SDK received and the final property values and states.
+- `Mode format bin and frame requests queued together keep the last`: the same for the six
+  mode/format/binning/bit-depth pairs, with an exposure checking the format and binning the fake SDK
+  received.
+- Each of the eight pairs, run as its own case from a fresh connection (temporary split build, not
+  committed), failed 3/3 on version 69 and passes 3/3 on version 70.
+
+### Test totals for this change
+
+Simulated (fake SDK) tests run 54, passed 54 (Linux x64, `tools/run_driver_test.py ccd_asi`).
+Hardware tests run 0.
