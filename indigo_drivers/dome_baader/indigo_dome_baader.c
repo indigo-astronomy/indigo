@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_dome_baader"
 #define DRIVER_LABEL         "Baader Classic Dome"
 #define DOME_DEVICE_NAME     "Baader Classic Dome"
@@ -85,6 +85,8 @@ typedef struct {
 	bool rain, wind, timeout, powercut;
 	bool park_requested, aborted;
 	bool rotation_active, shutter_active, flap_active;
+	// the rotation / flap operation that was running when the last abort was issued, ended by the first poll after it
+	bool rotation_aborted, flap_aborted;
 	int rotation_emergency, shutter_emergency, flap_emergency;
 	bool shutter_alert, flap_alert;
 	//- data
@@ -402,7 +404,7 @@ static void dome_status_poll(indigo_device *device) {
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-			PRIVATE_DATA->rotation_active = PRIVATE_DATA->aborted;
+			PRIVATE_DATA->rotation_active = PRIVATE_DATA->rotation_aborted;
 		}
 		if (baader_tenths(BAADER_PARK_AZIMUTH) == baader_tenths(PRIVATE_DATA->current_position) && PRIVATE_DATA->park_requested && !PRIVATE_DATA->rotation_active) {
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
@@ -482,27 +484,35 @@ static void dome_status_poll(indigo_device *device) {
 		}
 	}
 	if (PRIVATE_DATA->aborted) {
-		PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-		// a BUSY rotation property without a running rotation is a request copied during this poll: leave it to its handler
-		if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->rotation_active) {
-			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
-			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+		// only the operations running when the abort was issued end here; one started after it keeps running and is watched
+		if (!PRIVATE_DATA->rotation_active || PRIVATE_DATA->rotation_aborted) {
+			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+			// a BUSY rotation property without a running rotation is a request copied during this poll: leave it to its handler
+			if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->rotation_active) {
+				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
+				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			}
+			if (DOME_STEPS_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->rotation_active) {
+				DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+			}
+			PRIVATE_DATA->rotation_active = false;
 		}
-		if (DOME_STEPS_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->rotation_active) {
-			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-		}
-		// a BUSY shutter or flap without a running operation is a request copied during this poll: leave it to its handler
-		if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->shutter_active) {
+		// the abort handler ended the aborted shutter operation: a BUSY shutter is a request copied during this poll or an operation started after the abort
+		if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE) {
 			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		}
-		if (DOME_FLAP_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->flap_active) {
-			DOME_FLAP_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, DOME_FLAP_PROPERTY, NULL);
+		if (!PRIVATE_DATA->flap_active || PRIVATE_DATA->flap_aborted) {
+			// a BUSY flap without a running operation is a request copied during this poll: leave it to its handler
+			if (DOME_FLAP_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->flap_active) {
+				DOME_FLAP_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, DOME_FLAP_PROPERTY, NULL);
+			}
+			PRIVATE_DATA->flap_active = false;
 		}
-		PRIVATE_DATA->rotation_active = PRIVATE_DATA->shutter_active = PRIVATE_DATA->flap_active = PRIVATE_DATA->aborted = false;
+		PRIVATE_DATA->rotation_aborted = PRIVATE_DATA->flap_aborted = PRIVATE_DATA->aborted = false;
 	}
 	/* Emergency flags state */
 	if (emergency_read && (X_EMERGENCY_CLOSE_PROPERTY->state == INDIGO_IDLE_STATE || PRIVATE_DATA->rain != rain || PRIVATE_DATA->wind != wind || PRIVATE_DATA->timeout != timeout || PRIVATE_DATA->powercut != powercut)) {
@@ -541,7 +551,7 @@ static void dome_connection_handler(indigo_device *device) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(): returned error %d", rc);
 			}
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-			PRIVATE_DATA->aborted = false;
+			PRIVATE_DATA->aborted = PRIVATE_DATA->rotation_aborted = PRIVATE_DATA->flap_aborted = false;
 			if ((indigo_azimuth_distance(BAADER_PARK_AZIMUTH, PRIVATE_DATA->current_position) * 100) <= 1) {
 				indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
 			} else {
@@ -618,6 +628,7 @@ static void dome_horizontal_coordinates_handler(indigo_device *device) {
 	}
 	PRIVATE_DATA->target_position = target;
 	PRIVATE_DATA->rotation_active = true;
+	PRIVATE_DATA->rotation_aborted = false;
 	PRIVATE_DATA->rotation_emergency = baader_known_emergency(device);
 	//- dome.DOME_HORIZONTAL_COORDINATES.on_change
 	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
@@ -656,6 +667,7 @@ static void dome_steps_handler(indigo_device *device) {
 	}
 	PRIVATE_DATA->target_position = target;
 	PRIVATE_DATA->rotation_active = true;
+	PRIVATE_DATA->rotation_aborted = false;
 	PRIVATE_DATA->rotation_emergency = baader_known_emergency(device);
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
@@ -683,6 +695,7 @@ static void dome_park_handler(indigo_device *device) {
 		PRIVATE_DATA->target_position = BAADER_PARK_AZIMUTH;
 		PRIVATE_DATA->park_requested = true;
 		PRIVATE_DATA->rotation_active = true;
+		PRIVATE_DATA->rotation_aborted = false;
 		PRIVATE_DATA->rotation_emergency = baader_known_emergency(device);
 		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
@@ -736,6 +749,9 @@ static void dome_abort_motion_handler(indigo_device *device) {
 	}
 	PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 	PRIVATE_DATA->aborted = true;
+	// the first poll after the abort ends these; an operation started before that poll clears its flag
+	PRIVATE_DATA->rotation_aborted = PRIVATE_DATA->rotation_active;
+	PRIVATE_DATA->flap_aborted = PRIVATE_DATA->flap_active;
 	// a BUSY shutter without a running operation is a request copied during d#stopdom: leave it to its handler
 	if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->shutter_active) {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
@@ -787,6 +803,7 @@ static void dome_flap_handler(indigo_device *device) {
 	}
 	indigo_apply_switch_targets(DOME_FLAP_PROPERTY);
 	PRIVATE_DATA->flap_active = true;
+	PRIVATE_DATA->flap_aborted = false;
 	PRIVATE_DATA->flap_emergency = baader_known_emergency(device);
 	indigo_send_message(device, DOME_FLAP_PROPERTY, open ? "Opening flap..." : "Closing flap...");
 	//- dome.DOME_FLAP.on_change

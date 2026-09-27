@@ -411,3 +411,54 @@ section). No hardware run for this change.
   `shutter_request_survives_abort` (DOME_SHUTTER OK at the first poll after the abort, "Shutter open" 2 s later).
 - Simulated tests of this change: new cases on 3.0.0.12 9 run, 0 passed (expected); on 3.0.0.13 15/15; reference
   trace capture 1/1; recorded run 48/48 and one further full run 48/48. Hardware tests: 0 run, 0 passed.
+
+## Operations started between an abort and the next poll (2026-09-27, 3.0.0.14, branch `refactoring_targets`)
+
+Row TGT-D24 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (the item left open in the previous section). No hardware run
+for this change.
+
+- **Defect (reproduced):** the `aborted` branch of `dome_status_poll` treated every operation running at the first poll
+  after an abort as the aborted one. A shutter, flap or rotation request handled between the abort and that poll had
+  already set `shutter_active` / `flap_active` / `rotation_active`, so the poll published DOME_SHUTTER / DOME_FLAP /
+  DOME_HORIZONTAL_COORDINATES and DOME_STEPS OK and cleared the flag while the dome was still moving. Later polls
+  published the position with OK, and the operation was no longer watched for an emergency close. For a park started
+  in that window it was worse than the finding assumed: with `rotation_active` cleared and DOME_PARK BUSY, every later
+  poll took the "rotation request queued" path, so DOME_PARK stayed BUSY after the dome had reached 0° (seen with a
+  scratch copy of the new test that records early OK updates instead of stopping at the first one).
+- **Fix:** the DOME_ABORT_MOTION handler records which rotation and flap operation was running when `d#stopdom`
+  succeeded (`rotation_aborted = rotation_active`, `flap_aborted = flap_active`); each handler that starts a rotation
+  (GOTO, relative move, park) or a flap operation clears its flag. The `aborted` branch ends a rotation or flap
+  operation only when none is running or the running one is the recorded one; an operation started after the abort
+  keeps its flag, its BUSY state and (for a rotation) its `target_position`, and is watched by the following polls.
+  The shutter operation is already ended by the abort handler, so `shutter_active` in that branch always belongs to an
+  operation started after the abort, and a BUSY DOME_SHUTTER is left alone there. The rotation branch keeps a rotation
+  that reaches its target in that poll active only when it is the recorded one (`rotation_active = rotation_aborted`,
+  was `= aborted`), so a new rotation finishing in the same poll completes its park normally. The TGT-D12 / TGT-D20
+  checks (a BUSY property without a running operation is a copied request left to its handler) are unchanged, as is
+  everything that happens to an operation that was running at the abort. No serial command changed.
+- **Regression tests:** both handle DOME_ABORT_MOTION and then the request right after a status poll, check that the
+  command was sent before the next `d#getazim`, and then fail if any watched property is published OK before the
+  simulator's reply shows the operation finished (OK counts are read before the reply, so an OK sent after the
+  finishing reply is never counted early); afterwards the properties must end OK with the requested switch or azimuth.
+  - `shutter_and_flap_survive_first_poll_after_abort`: shutter OPEN (until `d#shutope`), then flap OPEN (until
+    `d#flapope`). 3.0.0.13 failed 3/3 (1 OK update of DOME_SHUTTER and of DOME_FLAP at the first poll); 3.0.0.14
+    passed 5/5.
+  - `rotation_and_park_survive_first_poll_after_abort` (`--azimuth 900`): GOTO 180° (until `d#azi1800`), then PARK
+    (until `d#azi0000`), watching DOME_HORIZONTAL_COORDINATES, DOME_STEPS and DOME_PARK; the park must end OK and
+    PARKED. 3.0.0.13 failed 3/3 (DOME_HORIZONTAL_COORDINATES OK at the first poll for both); 3.0.0.14 passed 5/5.
+- **Reference trace:** unchanged; `reference_trace` passed against the checked-in `generated_reference_trace.txt`.
+- **Verification (Linux x64):** regeneration with the unchanged generator; the only generated changes are the edited
+  blocks and the version. Recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py dome_baader`: 50/50 OK
+  (3.0.0.14). `MIGRATION_STATUS.md` count `51 / 0` -> `53 / 0` (50 default cases and 3 opt-in network cases). The
+  sanitizer target builds only on macOS (`-arch`) and was not run.
+- **Left open (source audit, not changed):**
+  - The emergency checks of the first poll after an abort still skip every operation (`!aborted`), so an operation
+    started before that poll is watched from the second poll on (1 s later). Checking it in the first poll would also
+    need the `aborted` branch to leave an ALERT published by that check alone.
+  - When the aborted rotation is still running at the first poll after the abort, a GOTO or relative move copied
+    during that poll can be published OK by the poll (the rotation branch and the `aborted` branch treat the running,
+    aborted rotation as owning the properties) before its handler sends `d#azi`. Display only, same kind as
+    TGT-D12/D20; not reproduced.
+- Simulated tests of this change: new cases on 3.0.0.13 6 run, 0 passed (expected), plus 1 debug-log rerun of the
+  rotation case (failed as expected); on 3.0.0.14 10/10; recorded run 50/50. The scratch probe run against 3.0.0.13
+  (not a registered case) is not counted. Hardware tests: 0 run, 0 passed.

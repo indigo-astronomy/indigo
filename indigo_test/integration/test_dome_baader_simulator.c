@@ -2006,6 +2006,130 @@ cleanup:
 	driver_down();
 }
 
+// TGT-D24: an operation started between DOME_ABORT_MOTION and the first status poll after it is not the aborted one.
+// That poll must leave it BUSY and watched, and its properties may show OK only after the dome has reported it
+// finished. The abort and the request are both handled right after a poll, in the 1 s before the next one starts.
+static bool abort_right_after_poll(int *polls) {
+	if (!wait_polls(1, 5)) {
+		return false;
+	}
+	*polls = rx_count("d#getazim");
+	int aborts = rx_count("d#stopdom");
+	return abort_motion(INDIGO_OK_STATE) && wait_rx("d#stopdom", aborts + 1, 2);
+}
+
+static bool started_before_first_poll(const char *command, int sent, int polls) {
+	if (!wait_rx(command, sent + 1, 2)) {
+		return false;
+	}
+	if (rx_count("d#getazim") != polls) {
+		fprintf(stderr, "The first status poll after the abort started before %s was sent\n", command);
+		return false;
+	}
+	return true;
+}
+
+// fails when one of the NULL terminated properties is published OK before finished() holds
+static bool no_ok_before(const char * const *names, const unsigned *ok, bool (*finished)(void), double timeout) {
+	double end = now() + timeout;
+	while (true) {
+		unsigned seen[4] = { 0 };
+		for (int i = 0; names[i]; i++) {
+			seen[i] = ok_of(names[i]);
+		}
+		// the counts are taken before the replies are read: an OK published after the finishing reply is never early
+		if (finished()) {
+			return true;
+		}
+		for (int i = 0; names[i]; i++) {
+			if (seen[i] != ok[i]) {
+				printf("    %s: %u OK update(s) before the dome reported the operation finished\n", names[i], seen[i] - ok[i]);
+				return false;
+			}
+		}
+		if (now() > end) {
+			fprintf(stderr, "The dome did not report the operation finished\n");
+			return false;
+		}
+		indigo_usleep(20000);
+	}
+}
+
+static bool shutter_reported_open(void) {
+	return !strcmp(last_reply_to("d#getshut"), "d#shutope");
+}
+
+static bool flap_reported_open(void) {
+	return !strcmp(last_reply_to("d#getflap"), "d#flapope");
+}
+
+static bool reported_at_180(void) {
+	return simulator_azimuth() == 1800;
+}
+
+static bool reported_at_park(void) {
+	return simulator_azimuth() == 0;
+}
+
+static bool switch_started_after_abort(const char *name, const char *item, const char *command, bool (*finished)(void)) {
+	int polls = 0, sent = rx_count(command);
+	if (!abort_right_after_poll(&polls)) {
+		return false;
+	}
+	const char *names[] = { name, NULL };
+	unsigned ok[] = { ok_of(name) };
+	if (request_switch(name, item) != INDIGO_OK || !started_before_first_poll(command, sent, polls) || !no_ok_before(names, ok, finished, 10)) {
+		return false;
+	}
+	printf("    %s: stayed BUSY until the dome reported it finished\n", name);
+	return wait_state(name, INDIGO_OK_STATE, 3) && switch_of(name, item) && rx_count(command) == sent + 1;
+}
+
+static void shutter_and_flap_survive_first_poll_after_abort(void) {
+	CHECK(start_connected());
+	// the flap part needs the open shutter the first part leaves, both parts are evaluated
+	bool shutter = switch_started_after_abort(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, "d#opeshut", shutter_reported_open);
+	bool flap = switch_started_after_abort(DOME_FLAP_PROPERTY_NAME, DOME_FLAP_OPENED_ITEM_NAME, "d#opeflap", flap_reported_open);
+	CHECK(shutter);
+	CHECK(flap);
+cleanup:
+	driver_down();
+}
+
+static bool rotation_started_after_abort(bool parking) {
+	const char *command = parking ? "d#azi0000" : "d#azi1800";
+	int polls = 0, sent = rx_count(command);
+	if (!abort_right_after_poll(&polls)) {
+		return false;
+	}
+	const char *names[] = { DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_STEPS_PROPERTY_NAME, DOME_PARK_PROPERTY_NAME, NULL };
+	unsigned ok[] = { ok_of(names[0]), ok_of(names[1]), ok_of(names[2]) };
+	indigo_result result = parking ? request_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME) : request_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 180);
+	if (result != INDIGO_OK || !started_before_first_poll(command, sent, polls) || !no_ok_before(names, ok, parking ? reported_at_park : reported_at_180, 15)) {
+		return false;
+	}
+	printf("    %s: stayed BUSY until the dome reported it finished\n", parking ? "park" : "goto 180");
+	if (!wait_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, 3) || !wait_state(DOME_STEPS_PROPERTY_NAME, INDIGO_OK_STATE, 3)) {
+		return false;
+	}
+	if (parking && (!wait_state(DOME_PARK_PROPERTY_NAME, INDIGO_OK_STATE, 3) || !switch_of(DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME))) {
+		fprintf(stderr, "DOME_PARK did not end OK and PARKED\n");
+		return false;
+	}
+	return fabs(azimuth_value() - (parking ? 0 : 180)) < 1e-4 && rx_count(command) == sent + 1;
+}
+
+static void rotation_and_park_survive_first_poll_after_abort(void) {
+	CHECK(start_connected());
+	// the park starts where the goto ended, both parts are evaluated
+	bool rotation = rotation_started_after_abort(false);
+	bool parking = rotation_started_after_abort(true);
+	CHECK(rotation);
+	CHECK(parking);
+cleanup:
+	driver_down();
+}
+
 // TGT-D21: a connect publishes DOME_PARK only by its definition, never by an update sent before the definition, and
 // the definition carries the park state read at connect. Checked unparked at 90° and, after a reconnect, parked at 0°.
 static bool park_defined_on_connect(bool parked) {
@@ -2410,6 +2534,8 @@ static const baader_case cases[] = {
 	{ "rotation_requests_survive_first_poll_after_abort", rotation_requests_survive_first_poll_after_abort, "--azimuth 900", false },
 	{ "shutter_request_survives_abort", shutter_request_survives_abort, NULL, false },
 	{ "park_defined_at_connect", park_defined_at_connect, "--azimuth 900", false },
+	{ "shutter_and_flap_survive_first_poll_after_abort", shutter_and_flap_survive_first_poll_after_abort, NULL, false },
+	{ "rotation_and_park_survive_first_poll_after_abort", rotation_and_park_survive_first_poll_after_abort, "--azimuth 900", false },
 	{ "reference_trace", reference_trace, "--azimuth 900", false },
 	{ "network_baader_and_tcp_urls", network_baader_and_tcp_urls, "--azimuth 900 --tcp-port 0", false, true },
 	{ "network_default_port", network_default_port, "--tcp-port 8080", false, true },
