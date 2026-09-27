@@ -574,9 +574,8 @@ static bool change_switch(int index, const char *name, const char *item, indigo_
 
 indigo_result touptek_test_attach(indigo_device *device) {
 	if (inventory_mode) {
-		int index = -1;
-		const char *suffix = strrchr(device->name, '#');
-		if (suffix) { index = atoi(suffix + 1) - 1000; }
+		// Only macOS names carry the serial, so the camera comes from its SDK id: the driver's private data starts with the SDK device record.
+		int index = atoi(((ToupcamDeviceV2 *)device->private_data)->id) - 1000;
 		if (index < 0 || index >= TOUPCAM_MAX) { return INDIGO_FAILED; }
 		int guider = strstr(device->name, "guider") != NULL;
 		snprintf(inventory_names[index][guider], INDIGO_NAME_SIZE, "%s", device->name);
@@ -2099,6 +2098,65 @@ cleanup:
 	stop_properties();
 }
 
+static bool wait_switch(int index, const char *name, const char *item_name, indigo_property_state state) {
+	for (int i = 0; i < 600; i++) {
+		indigo_property *copy = snapshot(index, name);
+		bool ready = false;
+		if (copy && copy->state == state) {
+			for (int j = 0; j < copy->count; j++) {
+				if (!strcmp(copy->items[j].name, item_name)) {
+					ready = copy->items[j].sw.value;
+				}
+			}
+		}
+		indigo_release_property(copy);
+		if (ready) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "device %d property %s: item %s is not ON in state %d\n", index, name, item_name, state);
+	return false;
+}
+
+// TGT-065: a cooler OFF sent after a temperature change is the newer request. The temperature handler still sets
+// the new setpoint, but it must not turn the queued OFF into ON, and a rejected request shows the camera's state.
+static void cooler_off_queued_behind_a_temperature_change_survives(void) {
+	enable_full_camera();
+	CHECK_TRUE(start_properties());
+	CHECK_TRUE(change_number(0, "CCD_TEMPERATURE", "TEMPERATURE", -5, INDIGO_BUSY_STATE));
+	// Without a pending cooler request a setpoint turns the cooler on.
+	CHECK_TRUE(wait_switch(0, "CCD_COOLER", "ON", INDIGO_OK_STATE));
+	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_TEC]), 1);
+	int tec_calls = atomic_load(&option_calls[TOUPCAM_OPTION_TEC]);
+	arm_gate(&queue_gate);
+	indigo_execute_handler(logical[0], queue_gate_handler);
+	CHECK_TRUE(wait_value(&queue_gate.entered, 1));
+	indigo_change_number_property_1(NULL, logical[0]->name, "CCD_TEMPERATURE", "TEMPERATURE", -10);
+	unsigned before = revision(0, "CCD_COOLER");
+	indigo_change_switch_property_1(NULL, logical[0]->name, "CCD_COOLER", "OFF", true);
+	CHECK_TRUE(wait_property(0, "CCD_COOLER", before, INDIGO_BUSY_STATE));
+	release_gate(&queue_gate);
+	// The marker runs after both queued handlers.
+	atomic_store(&replay_done, 0);
+	indigo_execute_handler(logical[0], replay_barrier);
+	CHECK_TRUE(wait_value(&replay_done, 1));
+	CHECK_EQ_INT(atomic_load(&target_temperature), -100);
+	CHECK_EQ_INT(atomic_load(&option_calls[TOUPCAM_OPTION_TEC]), tec_calls + 1);
+	CHECK_EQ_INT(atomic_load(&option_values[TOUPCAM_OPTION_TEC]), 0);
+	CHECK_TRUE(wait_switch(0, "CCD_COOLER", "OFF", INDIGO_OK_STATE));
+	// A rejected OFF shows the cooler the camera keeps running.
+	CHECK_TRUE(change_switch(0, "CCD_COOLER", "ON", INDIGO_OK_STATE));
+	atomic_store(&fail_option, TOUPCAM_OPTION_TEC);
+	CHECK_TRUE(change_switch(0, "CCD_COOLER", "OFF", INDIGO_ALERT_STATE));
+	atomic_store(&fail_option, -1);
+	CHECK_TRUE(wait_switch(0, "CCD_COOLER", "ON", INDIGO_ALERT_STATE));
+cleanup:
+	atomic_store(&fail_option, -1);
+	release_gate(&queue_gate);
+	restore_camera();
+}
+
 static bool poll_camera(void) {
 	indigo_timer_callback callback = atomic_load(&monitor_tasks[0]);
 	if (!callback) { return false; }
@@ -2295,7 +2353,8 @@ int main(void) {
 		{ "Driver configuration persistence", configuration_workflows },
 		{ "Configuration restore survives a refused property", configuration_restore_survives_a_refused_property },
 		{ "Configuration request survives a connection change", configuration_request_survives_connection_change },
-		{ "Cancelled change does not survive a connection change", cancelled_change_does_not_survive_connection_change }
+		{ "Cancelled change does not survive a connection change", cancelled_change_does_not_survive_connection_change },
+		{ "Cooler off queued behind a temperature change survives", cooler_off_queued_behind_a_temperature_change_survives }
 	};
 	setvbuf(stdout, NULL, _IONBF, 0);
 	int result = 0;

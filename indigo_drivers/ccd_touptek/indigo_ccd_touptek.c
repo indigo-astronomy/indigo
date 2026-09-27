@@ -38,7 +38,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION											0x03000036
+#define DRIVER_VERSION											0x03000037
 #define PRIVATE_DATA												((DRIVER_PRIVATE_DATA *)device->private_data)
 
 #define ADVANCED_GROUP											"Advanced"
@@ -1377,11 +1377,17 @@ static void ccd_abort_exposure_handler(indigo_device *device) {
 
 static void ccd_cooler_handler(indigo_device *device) {
 	HRESULT result;
-	result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TEC), CCD_COOLER_ON_ITEM->sw.value ? 1 : 0);
+	// The CCD_TEMPERATURE handler may have written the switch after the request was copied, the targets keep the request.
+	result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TEC), indigo_get_switch_target(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM_NAME) ? 1 : 0);
 	if (result >= 0) {
+		indigo_apply_switch_targets(CCD_COOLER_PROPERTY);
 		CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TEC) -> %08x", result);
 	} else {
+		int value;
+		if (SUCCEEDED(SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TEC), &value))) {
+			indigo_set_switch(CCD_COOLER_PROPERTY, value ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
+		}
 		CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Option(OPTION_TEC) -> %08x", result);
 	}
@@ -1394,16 +1400,22 @@ static void ccd_temperature_handler(indigo_device *device) {
 	if (result >= 0) {
 		CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
-		if (!CCD_COOLER_PROPERTY->hidden && CCD_COOLER_OFF_ITEM->sw.value) {
+		// A setpoint turns the cooler on, but a CCD_COOLER request queued after this one is newer and decides.
+		if (!CCD_COOLER_PROPERTY->hidden && CCD_COOLER_PROPERTY->state != INDIGO_BUSY_STATE && CCD_COOLER_OFF_ITEM->sw.value) {
 			result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TEC), 1);
-			if (result >= 0) {
-				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
-				CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
+			if (result < 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Option(OPTION_TEC, 1) -> %08x", result);
 			}
-			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+			// A request copied during the call is sent by its own handler.
+			if (CCD_COOLER_PROPERTY->state != INDIGO_BUSY_STATE) {
+				if (result >= 0) {
+					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
+					CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+			}
 		}
 	} else {
 		CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;

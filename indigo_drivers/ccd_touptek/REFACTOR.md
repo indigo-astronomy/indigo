@@ -735,3 +735,48 @@ Against the previous driver the new case fails at its first measured check (26 i
 
 Validation, fake SDK, macOS arm64/x86_64, repeated after the hard flush was restored: the ToupTek suite passes 35 of
 35, and the Altair variant 35 of 35. All ten OEM variants build without compiler warnings. Not verified on hardware.
+
+## TT-D09 — a cooler OFF queued behind a temperature change became ON (TGT-065, 2026-09-27)
+
+Finding TGT-065 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+
+Defect (reproduced): CCD_TEMPERATURE is accepted with `INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME`, and its handler
+switched the cooler on (`put_Option(OPTION_TEC, 1)`) and wrote CCD_COOLER ON/OK whenever CCD_COOLER showed OFF. A
+cooler OFF sent after a temperature change is copied into CCD_COOLER on the bus thread and queued behind the
+temperature handler, which saw the copied OFF, sent `OPTION_TEC` 1 and overwrote the request with ON; the CCD_COOLER
+handler then read `sw.value` and sent `OPTION_TEC` 1 again, reporting ON/OK, so the camera kept cooling although the
+client asked it to stop. A rejected cooler request was also shown with the requested state and ALERT instead of the
+state the camera kept.
+
+Other CCD_COOLER writers: the connection handler (`get_Option(OPTION_TEC)` on connect) runs only after
+`indigo_cancel_pending_handlers()` and the BUSY reset of TT-D06, so no cooler request can be pending there; the
+temperature poll only reads CCD_COOLER. Both are unchanged.
+
+Fix, version `0x03000036` -> `0x03000037`:
+
+- The CCD_COOLER handler sends the request read with `indigo_get_switch_target()` and applies it with
+  `indigo_apply_switch_targets()` when the SDK accepts it. On failure it shows the cooler state the camera reports
+  (`get_Option(OPTION_TEC)`) with ALERT.
+- The CCD_TEMPERATURE handler still sets the setpoint and, with no cooler request pending, still switches the cooler
+  on and shows CCD_COOLER ON; it leaves a BUSY CCD_COOLER to its own handler, so the last client request wins. A
+  request copied while its `OPTION_TEC` call runs is not overwritten either (the state is checked again after the
+  call).
+
+Regression test: `Cooler off queued behind a temperature change survives` in
+`indigo_test/integration/test_ccd_touptek_sdk.c` checks that a setpoint without a pending cooler request turns the
+cooler on, then holds the camera queue with a gate handler, sends a CCD_TEMPERATURE change and a CCD_COOLER OFF,
+releases the gate and waits for a marker handler. It requires the new setpoint, exactly one more `OPTION_TEC` call
+with 0, and CCD_COOLER OFF/OK; then a rejected OFF must show ON with ALERT. Version 54 failed 3/3 (`OPTION_TEC` 1
+sent twice, no OFF); version 55 passes 3/3. With only the failure display reverted the case fails at the final ON
+check.
+
+Test harness fix (Linux): `Multiple camera identity and capacity recovery` failed on Linux with the unchanged driver.
+The test's attach hook took the camera index from the `#<serial>` suffix of the device name, which only the macOS
+build appends; on Linux both cameras were refused (`Failed to attach Touptek Camera`). The hook now takes the index
+from the SDK id in the driver's private data, which starts with the SDK device record, so the case passes on both
+platforms.
+
+Validation, fake SDK, Linux x64: `TZ=Europe/Bratislava python3 tools/run_driver_test.py ccd_touptek` 36 of 36.
+The OEM variant suites, which include the same test source, were not run in this change. Not verified on hardware.
+
+Test totals for this change: simulated (fake SDK) tests run 36, passed 36; hardware tests run 0.
