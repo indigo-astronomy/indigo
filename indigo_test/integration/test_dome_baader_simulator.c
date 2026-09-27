@@ -127,7 +127,7 @@ typedef struct {
 
 typedef struct {
 	char name[INDIGO_NAME_SIZE];
-	unsigned revision, busy, alert, defines, deletes;
+	unsigned revision, busy, alert, ok, defines, deletes;
 	char last_trace[512];
 } observed_property;
 
@@ -508,6 +508,8 @@ static void note_state(observed_property *entry, indigo_property *property) {
 		entry->busy++;
 	} else if (property->state == INDIGO_ALERT_STATE) {
 		entry->alert++;
+	} else if (property->state == INDIGO_OK_STATE) {
+		entry->ok++;
 	}
 }
 
@@ -600,6 +602,14 @@ static unsigned busy_of(const char *name) {
 	pthread_mutex_lock(&observe_mutex);
 	observed_property *entry = observed_entry(name, false);
 	unsigned result = entry ? entry->busy : 0;
+	pthread_mutex_unlock(&observe_mutex);
+	return result;
+}
+
+static unsigned ok_of(const char *name) {
+	pthread_mutex_lock(&observe_mutex);
+	observed_property *entry = observed_entry(name, false);
+	unsigned result = entry ? entry->ok : 0;
 	pthread_mutex_unlock(&observe_mutex);
 	return result;
 }
@@ -1880,6 +1890,45 @@ cleanup:
 	driver_down();
 }
 
+// TGT-D12: a shutter or flap request copied while the first status poll after DOME_ABORT_MOTION runs must stay BUSY
+// until its handler has sent it; the poll's abort branch must not publish it OK first (which also reopens the BUSY
+// guard). The simulator holds that poll's d#getazim reply back 1.2 s and the request is sent in that window.
+static bool request_during_poll_after_abort(const char *name, const char *item, const char *command, const char *reported, const char *confirmation) {
+	// right after a poll ends the next one is 1 s away: abort and arm the delay before it starts
+	if (!wait_polls(1, 5)) {
+		return false;
+	}
+	int polls = rx_count("d#getazim"), aborts = rx_count("d#stopdom");
+	if (!abort_motion(INDIGO_OK_STATE) || !wait_rx("d#stopdom", aborts + 1, 2) || !inject_argument("getazim", "slow", 1, "1200")) {
+		return false;
+	}
+	if (rx_count("d#getazim") != polls) {
+		fprintf(stderr, "A status poll started before the delay was armed\n");
+		return false;
+	}
+	if (!wait_rx("d#getazim", polls + 1, 5)) {
+		return false;
+	}
+	unsigned ok = ok_of(name), revision = revision_of(name);
+	int sent = rx_count(command);
+	if (request_switch(name, item) != INDIGO_OK || !wait_rx(command, sent + 1, 5) || !wait_settled(name, revision, INDIGO_OK_STATE, 10)) {
+		return false;
+	}
+	printf("    %s: %u OK update(s) after the request, %d x %s\n", name, ok_of(name) - ok, rx_count(command) - sent, command);
+	return ok_of(name) - ok == 1 && rx_count(command) == sent + 1 && switch_of(name, item) && !strcmp(last_reply_to(reported), confirmation);
+}
+
+static void requests_survive_first_poll_after_abort(void) {
+	CHECK(start_connected());
+	// the flap part needs the open shutter the first part leaves, both parts are evaluated
+	bool shutter = request_during_poll_after_abort(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, "d#opeshut", "d#getshut", "d#shutope");
+	bool flap = request_during_poll_after_abort(DOME_FLAP_PROPERTY_NAME, DOME_FLAP_OPENED_ITEM_NAME, "d#opeflap", "d#getflap", "d#flapope");
+	CHECK(shutter);
+	CHECK(flap);
+cleanup:
+	driver_down();
+}
+
 // ---------------------------------------------------------------------------- network transport (opt-in, loopback TCP)
 
 static bool network_url(char *url, size_t size, const char *scheme) {
@@ -2254,6 +2303,7 @@ static const baader_case cases[] = {
 	{ "additional_instance", additional_instance, NULL, false },
 	{ "urgent_abort_cancels_queued_goto", urgent_abort_cancels_queued_goto, "--azimuth 900 --shutter-time 4", false },
 	{ "queued_requests_survive_status_poll", queued_requests_survive_status_poll, NULL, false },
+	{ "requests_survive_first_poll_after_abort", requests_survive_first_poll_after_abort, NULL, false },
 	{ "reference_trace", reference_trace, "--azimuth 900", false },
 	{ "network_baader_and_tcp_urls", network_baader_and_tcp_urls, "--azimuth 900 --tcp-port 0", false, true },
 	{ "network_default_port", network_default_port, "--tcp-port 8080", false, true },

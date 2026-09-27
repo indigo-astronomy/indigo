@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_dome_baader"
 #define DRIVER_LABEL         "Baader Classic Dome"
 #define DOME_DEVICE_NAME     "Baader Classic Dome"
@@ -487,10 +487,15 @@ static void dome_status_poll(indigo_device *device) {
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
-		DOME_FLAP_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_FLAP_PROPERTY, NULL);
+		// a BUSY shutter or flap without a running operation is a request copied during this poll: leave it to its handler
+		if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->shutter_active) {
+			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+		}
+		if (DOME_FLAP_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->flap_active) {
+			DOME_FLAP_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DOME_FLAP_PROPERTY, NULL);
+		}
 		PRIVATE_DATA->rotation_active = PRIVATE_DATA->shutter_active = PRIVATE_DATA->flap_active = PRIVATE_DATA->aborted = false;
 	}
 	/* Emergency flags state */

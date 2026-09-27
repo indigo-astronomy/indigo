@@ -318,3 +318,37 @@ Rows TGT-029 and TGT-030 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardwa
   linux x64 (3.0.0.11). No new permanent case, so the case count is unchanged.
 - Simulated tests of this change: baseline 44/44 (3.0.0.10); temporary window cases 6 run, 0 passed on 3.0.0.10
   (expected), 6/6 on 3.0.0.11, 4/4 handler-only; recorded run 44/44. Hardware tests: 0 run, 0 passed.
+
+## Shutter and flap requests during the first poll after an abort (2026-09-27, 3.0.0.12, branch `refactoring_targets`)
+
+Row TGT-D12 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (the item left open in the previous section). No hardware run
+for this change.
+
+- **Impact (reproduced):** after DOME_ABORT_MOTION the next `dome_status_poll` enters its `aborted` branch, which set
+  DOME_SHUTTER and DOME_FLAP OK and published them without looking at their state. A shutter or flap request copied on
+  the bus thread while that poll ran (its handler queued behind the poll) was shown OK with the requested switch before
+  the handler sent the command, and the framework BUSY guard was open until the handler set BUSY again. The handler
+  still sent the requested command, so the dome itself did what was asked; display only.
+- **Root cause:** the `aborted` branch is a background writer without the BUSY re-check the shutter and flap sections
+  of the same poll already have (a BUSY property without a running operation is a queued request).
+- **Fix:** the `aborted` branch sets DOME_SHUTTER (DOME_FLAP) OK and publishes it only when the property is not BUSY or
+  its own operation (`shutter_active` / `flap_active`) is running; a queued request keeps its value, target and BUSY
+  state for its handler. The check is made right before the write. An operation the abort stopped still ends OK as
+  before, and the abort handler already settles requests it cancels, so a BUSY property without a running operation
+  in that branch is always a request copied after the abort. No serial command changed.
+- **Regression test `requests_survive_first_poll_after_abort`:** right after a poll ends, DOME_ABORT_MOTION is sent,
+  the simulator's next `d#getazim` reply is delayed 1.2 s (fault `getazim slow`), and once that poll has started a
+  shutter OPEN request (then, with the shutter open, a flap OPEN request) is sent into the delay. Exactly one OK update
+  of the property may follow the request (the completion), with exactly one `d#opeshut` / `d#opeflap` and the open
+  position reported. On 3.0.0.11 it failed 3/3 (2 OK updates each for shutter and flap: the abort branch published OK
+  before the command was sent); on 3.0.0.12 it passed 5/5. The test's observer now also counts OK updates (`ok_of()`).
+- **Verification (Linux x64):** regeneration reproduces the checked-in output; the only generated changes are the edited
+  block and the version. Recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py dome_baader`: 45/45 OK
+  (3.0.0.12). The sanitizer target builds only on macOS (`-arch`) and was not run. `MIGRATION_STATUS.md` count
+  corrected from the stale `46 / 0` to `48 / 0` (45 default cases and 3 opt-in network cases).
+- **Left open (source audit, not reproduced):** the same `aborted` branch also sets DOME_HORIZONTAL_COORDINATES and
+  DOME_STEPS OK without a BUSY check (a GOTO copied during that poll is shown OK before it is sent; the handler still
+  sends `number.target`). The abort handler itself publishes DOME_SHUTTER OK after `d#stopdom` without a BUSY check,
+  so a shutter request copied during that round trip is shown OK before its handler runs. Both are display only.
+- Simulated tests of this change: new case on 3.0.0.11 3 run, 0 passed (expected); on 3.0.0.12 5/5; recorded run 45/45.
+  Hardware tests: 0 run, 0 passed.

@@ -22,7 +22,7 @@ driver baader {
 	label = "Baader Classic Dome";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
-	version = 11;
+	version = 12;
 	serial;
 	include {
 		#include <math.h>
@@ -442,10 +442,15 @@ driver baader {
 					indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 					DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-					DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
-					DOME_FLAP_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, DOME_FLAP_PROPERTY, NULL);
+					// a BUSY shutter or flap without a running operation is a request copied during this poll: leave it to its handler
+					if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->shutter_active) {
+						DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+					}
+					if (DOME_FLAP_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->flap_active) {
+						DOME_FLAP_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, DOME_FLAP_PROPERTY, NULL);
+					}
 					PRIVATE_DATA->rotation_active = PRIVATE_DATA->shutter_active = PRIVATE_DATA->flap_active = PRIVATE_DATA->aborted = false;
 				}
 				/* Emergency flags state */
