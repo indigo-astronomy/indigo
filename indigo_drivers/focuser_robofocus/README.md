@@ -24,4 +24,4 @@ indigo_server indigo_focuser_robofocus
 
 ## Testing
 
-2026-09-21 19:12 3.0.0.3 mac arm64 simulator 19/19 OK
+2026-09-27 23:26 3.0.0.4 mac arm64 simulator 19/19 OK

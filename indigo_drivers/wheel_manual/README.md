@@ -24,4 +24,4 @@ indigo_server indigo_wheel_manual
 
 ## Testing
 
-2026-09-21 10:55 3.0.0.6 mac arm64 simulator 2/2 OK
+2026-09-27 22:41 3.0.0.7 mac arm64 simulator 2/2 OK

@@ -26,4 +26,4 @@ It acquires 2D fix 10s after connect and 3D fix in 20s.
 
 ## Testing
 
-2026-09-21 17:06 3.0.0.9 mac arm64 simulator 4/4 OK
+2026-09-27 22:39 3.0.0.9 mac arm64 simulator 4/4 OK

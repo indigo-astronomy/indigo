@@ -28,4 +28,4 @@ indigo_server indigo_aux_flatmaster
 
 ## Testing
 
-2026-09-21 19:33 3.0.0.10 mac arm64 simulator 8/8 OK
+2026-09-27 20:49 3.0.0.11 mac arm64 simulator 8/8 OK

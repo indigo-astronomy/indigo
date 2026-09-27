@@ -28,4 +28,4 @@ Make sure that the ON/OFF potentiometer on the flat field generator is turned ON
 
 ## Testing
 
-2026-09-21 22:48 3.0.0.8 mac arm64 simulator 12/12 OK
+2026-09-27 20:50 3.0.0.9 mac arm64 simulator 12/12 OK

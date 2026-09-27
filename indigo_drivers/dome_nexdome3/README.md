@@ -31,5 +31,5 @@ Driver is tesed with:
 
 ## Testing
 
-2026-09-21 16:53 3.0.0.14 mac arm64 simulator 49/49 OK
 2026-09-27 01:43 3.0.0.16 linux x64 simulator 51/51 OK
+2026-09-27 22:30 3.0.0.16 mac arm64 simulator 51/51 OK

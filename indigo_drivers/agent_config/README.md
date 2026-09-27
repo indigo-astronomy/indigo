@@ -43,3 +43,4 @@ Removing configuration is achieved by witting the configuration name in **NAME**
 ## Testing
 
 2026-09-24 12:56 3.0.0.28 linux x64 simulator 56/56 OK
+2026-09-27 19:42 3.0.0.28 mac arm64 simulator 56/56 OK

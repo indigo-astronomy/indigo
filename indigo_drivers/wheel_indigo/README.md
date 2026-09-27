@@ -30,4 +30,4 @@ https://pegasusastro.com/wp-content/uploads/2022/05/IndigoFW_manual.pdf
 
 ## Testing
 
-2026-09-21 17:13 3.0.0.7 mac arm64 simulator 5/5 OK
+2026-09-27 22:40 3.0.0.8 mac arm64 simulator 5/5 OK

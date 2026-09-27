@@ -59,4 +59,4 @@ The autofocus cancellation problem was also reproduced through libgphoto2; switc
 
 ## Testing
 
-2026-09-21 14:14 3.0.0.52 mac arm64 fake SDK 128/128 OK
+2026-09-27 21:46 3.0.0.52 mac arm64 fake SDK 128/128 OK

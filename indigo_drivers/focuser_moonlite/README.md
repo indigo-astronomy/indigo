@@ -24,4 +24,4 @@ indigo_server indigo_focuser_moonlite
 
 ## Testing
 
-2026-09-21 19:15 3.0.0.12 mac arm64 simulator 39/39 OK
+2026-09-27 23:06 3.0.0.13 mac arm64 simulator 39/39 OK

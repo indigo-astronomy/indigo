@@ -27,4 +27,4 @@ This driver does not configure or control GPS Service Daemon (GPSD). It just han
 
 ## Testing
 
-2026-09-21 17:06 3.0.0.5 mac arm64 simulator 17/17 OK
+2026-09-27 22:38 3.0.0.5 mac arm64 simulator 17/17 OK

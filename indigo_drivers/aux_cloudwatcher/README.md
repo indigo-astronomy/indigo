@@ -28,5 +28,5 @@ Driver is developed and tested with:
 
 ## Testing
 
-2026-09-21 23:05 3.0.0.13 mac arm64 simulator 16/16 OK
 2026-09-27 07:28 3.0.0.15 linux x64 simulator 17/17 OK
+2026-09-27 20:47 3.0.0.15 mac arm64 simulator 17/17 OK

@@ -28,3 +28,7 @@ Use URL in form asi://192.168.4.1:4030 to connect to the mount over network.
 
 Driver is developed and tested with:
 * ZWO AM5
+
+## Testing
+
+2026-09-27 22:38 3.0.0.30 mac arm64 simulator 10/10 OK

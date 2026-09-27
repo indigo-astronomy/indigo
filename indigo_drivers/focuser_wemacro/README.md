@@ -29,4 +29,4 @@ Driver is developed and tested with the physical hardware.
 
 ## Testing
 
-2026-09-21 19:22 3.0.0.7 mac arm64 simulator 23/23 OK
+2026-09-27 23:28 3.0.0.8 mac arm64 simulator 23/23 OK

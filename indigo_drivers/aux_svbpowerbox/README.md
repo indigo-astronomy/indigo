@@ -25,5 +25,5 @@ Developped & tested with a physical device:
 * SVBONY PowerBox SV241 Pro
 ## Testing
 
-2026-09-21 19:38 3.0.0.2 mac arm64 simulator 13/13 OK
 2026-09-27 06:25 3.0.0.4 linux x64 simulator 15/15 OK
+2026-09-27 20:58 3.0.0.4 mac arm64 simulator 15/15 OK

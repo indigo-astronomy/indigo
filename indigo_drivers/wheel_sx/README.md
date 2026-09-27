@@ -31,4 +31,4 @@ Driver is developed and tested with:
 ## Testing
 
 2026-09-20 23:09 3.0.0.6 mac arm64 SX filter wheel 12/12 OK
-2026-09-21 14:18 3.0.0.6 mac arm64 fake SDK 21/21 OK
+2026-09-27 22:42 3.0.0.7 mac arm64 fake SDK 21/21 OK

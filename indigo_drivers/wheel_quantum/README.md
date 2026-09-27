@@ -25,4 +25,4 @@ Looking for device owners!!! :)
 
 ## Testing
 
-2026-09-21 17:14 3.0.0.5 mac arm64 simulator 8/8 OK
+2026-09-27 22:42 3.0.0.6 mac arm64 simulator 8/8 OK

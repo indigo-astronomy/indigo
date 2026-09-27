@@ -28,4 +28,4 @@ Tested with a physical device:
 
 ## Testing
 
-2026-09-21 23:28 3.0.0.20 mac arm64 simulator 10/10 OK
+2026-09-27 20:57 3.0.0.21 mac arm64 simulator 10/10 OK

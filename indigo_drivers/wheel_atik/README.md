@@ -26,4 +26,4 @@ Driver is developed without access to the physical hardware.
 
 ## Testing
 
-2026-09-26 19:06 3.0.0.7 mac arm64 fake SDK 21/21 OK
+2026-09-27 22:39 3.0.0.7 mac arm64 fake SDK 21/21 OK

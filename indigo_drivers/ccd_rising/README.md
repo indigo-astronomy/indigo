@@ -30,4 +30,4 @@ Untested with real device, uses generalised Touptek driver
 
 ## Testing
 
-2026-09-21 14:06 3.0.0.49 mac arm64 fake SDK 30/30 OK
+2026-09-27 21:49 3.0.0.55 mac arm64 fake SDK 36/36 OK

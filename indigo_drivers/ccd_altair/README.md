@@ -36,4 +36,4 @@ There is a known issue with SDK and reopening the camera - exposure is not possi
 ## Testing
 
 2026-09-21 20:54 3.0.0.49 mac arm64 Altair ALTAIRGP224C 28/28 OK
-2026-09-21 13:49 3.0.0.49 mac arm64 fake SDK 30/30 OK
+2026-09-27 21:24 3.0.0.55 mac arm64 fake SDK 36/36 OK

@@ -66,4 +66,4 @@ Sensor configuration:
 
 ## Testing
 
-2026-09-26 22:20 3.0.0.10 mac arm64 simulator 22/22 OK
+2026-09-27 22:18 3.0.0.10 mac arm64 simulator 22/22 OK
