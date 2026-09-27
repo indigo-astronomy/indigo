@@ -676,10 +676,14 @@ indigo_result indigo_start() {
 		memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
 		is_started = true;
 	}
-	IDLE_PROPERTY = indigo_init_light_property(NULL, "", "IDLE", NULL, NULL, INDIGO_IDLE_STATE, 0);
-	OK_PROPERTY = indigo_init_light_property(NULL, "", "OK", NULL, NULL, INDIGO_OK_STATE, 0);
-	BUSY_PROPERTY = indigo_init_light_property(NULL, "", "BUSY", NULL, NULL, INDIGO_BUSY_STATE, 0);
-	ALERT_PROPERTY = indigo_init_light_property(NULL, "", "ALERT", NULL, NULL, INDIGO_ALERT_STATE, 0);
+	// The message properties live as long as the process: indigo_stop() keeps them, because a driver may still
+	// send a message after the bus stopped, and a restart must not allocate them again
+	if (IDLE_PROPERTY == NULL) {
+		IDLE_PROPERTY = indigo_init_light_property(NULL, "", "IDLE", NULL, NULL, INDIGO_IDLE_STATE, 0);
+		OK_PROPERTY = indigo_init_light_property(NULL, "", "OK", NULL, NULL, INDIGO_OK_STATE, 0);
+		BUSY_PROPERTY = indigo_init_light_property(NULL, "", "BUSY", NULL, NULL, INDIGO_BUSY_STATE, 0);
+		ALERT_PROPERTY = indigo_init_light_property(NULL, "", "ALERT", NULL, NULL, INDIGO_ALERT_STATE, 0);
+	}
 
 	pthread_mutex_unlock(&client_mutex);
 	pthread_mutex_unlock(&device_mutex);

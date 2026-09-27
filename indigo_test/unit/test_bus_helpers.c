@@ -190,6 +190,28 @@ static void copy_values_and_targets_clamp_numbers(void) {
 	indigo_release_property(target);
 }
 
+// The IDLE, OK, BUSY and ALERT message properties are created once: every bus start used to allocate
+// them again and indigo_stop() never released them, so each restart of the bus leaked four properties
+static void message_properties_survive_bus_restarts(void) {
+	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	indigo_property *idle = IDLE_PROPERTY, *ok = OK_PROPERTY, *busy = BUSY_PROPERTY, *alert = ALERT_PROPERTY;
+	ASSERT_TRUE(idle != NULL && ok != NULL && busy != NULL && alert != NULL);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+	for (int i = 0; i < 3; i++) {
+		ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+		ASSERT_TRUE(IDLE_PROPERTY == idle && OK_PROPERTY == ok && BUSY_PROPERTY == busy && ALERT_PROPERTY == alert);
+		ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+	}
+	// still usable after the bus stopped
+	ASSERT_TRUE(IDLE_PROPERTY == idle);
+	ASSERT_STREQ("IDLE", IDLE_PROPERTY->name);
+	ASSERT_STREQ("ALERT", ALERT_PROPERTY->name);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, IDLE_PROPERTY->state);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, OK_PROPERTY->state);
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, BUSY_PROPERTY->state);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, ALERT_PROPERTY->state);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "numeric_string_helpers_parse_and_format_values", numeric_string_helpers_parse_and_format_values },
@@ -199,7 +221,8 @@ int main(void) {
 		{ "sexagesimal_caller_buffers_support_concurrent_calls", sexagesimal_caller_buffers_support_concurrent_calls },
 		{ "pixel_scale_and_local_service_helpers_are_deterministic", pixel_scale_and_local_service_helpers_are_deterministic },
 		{ "switch_helpers_find_and_update_items", switch_helpers_find_and_update_items },
-		{ "copy_values_and_targets_clamp_numbers", copy_values_and_targets_clamp_numbers }
+		{ "copy_values_and_targets_clamp_numbers", copy_values_and_targets_clamp_numbers },
+		{ "message_properties_survive_bus_restarts", message_properties_survive_bus_restarts }
 	};
 	return indigo_run_tests("bus helper unit tests", tests, (int)(sizeof(tests) / sizeof(tests[0])));
 }
