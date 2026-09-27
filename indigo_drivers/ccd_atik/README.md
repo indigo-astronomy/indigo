@@ -49,3 +49,4 @@ Standard property and custom item names are unchanged.
 2026-09-26 17:45 3.0.0.46 linux arm64 Atik Titan 1/1 OK
 2026-09-26 19:56 3.0.0.47 mac arm64 Atik Titan 1/1 OK
 2026-09-26 21:02 3.0.0.48 mac arm64 fake SDK 43/43 OK
+2026-09-27 07:55 3.0.0.49 linux x64 fake SDK 44/44 OK

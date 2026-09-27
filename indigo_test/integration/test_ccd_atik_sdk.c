@@ -41,7 +41,7 @@ typedef struct {
 	atomic_int preview, dark, slot_count, moving, malformed, short_option, ready_stuck, flushing;
 	atomic_int sensor_width, sensor_height, bx, by, left, top, width, height, preset, gain, offset, heater_power, temperature, target, relay, slot, wheel_target;
 	atomic_int opens, closes, starts, stops, dark_calls, wheel_wrap_reads, abort_readout_ms, drain_checks, temperature_in_drain;
-	atomic_int cooling_level, cooling_min, cooling_max;
+	atomic_int cooling_level, cooling_min, cooling_max, cooling_on;
 	double exposure, end, drain_end;
 	uint16_t *pixels;
 	size_t pixel_count;
@@ -104,6 +104,12 @@ static void arm_gate(const char *name) {
 
 static void block_queue(indigo_device *device) {
 	enter_gate("queue");
+}
+
+static atomic_int queue_marks;
+
+static void mark_queue(indigo_device *device) {
+	atomic_fetch_add(&queue_marks, 1);
 }
 static const char *command_names[64];
 
@@ -303,6 +309,23 @@ static bool wait_state(int index, const char *name, int expected) {
 	}
 	fprintf(stderr, "device %d property %s: expected state %d, got %d\n", index, name, expected, state(index, name));
 	return false;
+}
+
+static bool switch_value(int index, const char *name, const char *item) {
+	indigo_property *property = snapshot(index, name);
+	bool result = false;
+	if (property) {
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, item)) {
+				result = property->items[i].sw.value;
+			}
+		}
+	}
+	indigo_release_property(property);
+	if (!result) {
+		fprintf(stderr, "device %d property %s: item %s is not ON\n", index, name, item);
+	}
+	return result;
 }
 
 static bool wait_value(int index, const char *name, const char *item, double expected) {
@@ -632,7 +655,7 @@ int ArtemisTemperatureSensorInfo(ArtemisHandle h, int sensor, int *value) {
 int ArtemisCoolingInfo(ArtemisHandle h, int *flags, int *level, int *min, int *max, int *target) {
 	SDK_SCOPE;
 	mock_camera *c = camera(h);
-	*flags = c->cooler ? 3 : 0;
+	*flags = c->cooler ? 3 | (c->cooling_on ? ARTEMIS_COOLING_INFO_COOLINGON : 0) : 0;
 	*level = c->cooling_level;
 	*min = c->cooling_min;
 	*max = c->malformed == 3 ? 0 : c->cooling_max;
@@ -646,12 +669,16 @@ int ArtemisSetCooling(ArtemisHandle h, int value) {
 		return failed(__func__);
 	}
 	camera(h)->target = value;
+	camera(h)->cooling_on = true;
 	return failed(__func__);
 }
 
 int ArtemisCoolerWarmUp(ArtemisHandle h) {
 	SDK_SCOPE;
-	camera(h);
+	mock_camera *c = camera(h);
+	if (!failed(__func__)) {
+		c->cooling_on = false;
+	}
 	return failed(__func__);
 }
 
@@ -1053,8 +1080,37 @@ static void cooling_and_controls(void) {
 	ASSERT_TRUE(number(0, "CCD_TEMPERATURE", "TEMPERATURE", -5, INDIGO_ALERT_STATE));
 	fail_call = "ArtemisCoolerWarmUp";
 	ASSERT_TRUE(toggle(0, "CCD_COOLER", "OFF", INDIGO_ALERT_STATE));
+	// The camera keeps cooling, so CCD_COOLER shows ON instead of the rejected request.
+	ASSERT_TRUE(switch_value(0, "CCD_COOLER", "ON"));
 	fail_call = NULL;
 	ASSERT_TRUE(toggle(0, "CCD_COOLER", "OFF", INDIGO_OK_STATE));
+}
+
+// TGT-060: a cooler OFF sent after a temperature change is the newer request. The temperature
+// handler still starts cooling to the new setpoint, but it must not turn the queued OFF into ON.
+static void cooler_off_queued_behind_a_temperature_change_survives(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(number(0, "CCD_TEMPERATURE", "TEMPERATURE", -5, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_count(&cameras[0].target, -500));
+	ASSERT_TRUE(switch_value(0, "CCD_COOLER", "ON"));
+	int warm_ups = atomic_load(&commands[command_index("ArtemisCoolerWarmUp")]);
+	arm_gate("queue");
+	indigo_execute_handler(logical[0], block_queue);
+	ASSERT_TRUE(wait_count(&gates_entered, 1));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_TEMPERATURE", "TEMPERATURE", -10));
+	ASSERT_TRUE(set_switch(0, "CCD_COOLER", "OFF", true));
+	ASSERT_TRUE(wait_state(0, "CCD_COOLER", INDIGO_BUSY_STATE));
+	release_gate();
+	// The marker runs after both queued handlers.
+	atomic_store(&queue_marks, 0);
+	indigo_execute_handler(logical[0], mark_queue);
+	ASSERT_TRUE(wait_count(&queue_marks, 1));
+	ASSERT_EQ_INT(-1000, cameras[0].target);
+	ASSERT_EQ_INT(warm_ups + 1, atomic_load(&commands[command_index("ArtemisCoolerWarmUp")]));
+	ASSERT_EQ_INT(0, cameras[0].cooling_on);
+	ASSERT_TRUE(wait_state(0, "CCD_COOLER", INDIGO_OK_STATE));
+	ASSERT_TRUE(switch_value(0, "CCD_COOLER", "OFF"));
+	ASSERT_TRUE(connect_device(0, false));
 }
 
 // An Atik 11000 reports a cooler that is off as level 0 against a minimum operating level of 1, and
@@ -1749,6 +1805,7 @@ int main(int argc, char **argv) {
 		{ "durations_and_frame_types", durations_and_frame_types },
 		{ "cooling_and_controls", cooling_and_controls },
 		{ "idle_cooler_outside_advertised_range", idle_cooler_outside_advertised_range },
+		{ "cooler_off_queued_behind_a_temperature_change_survives", cooler_off_queued_behind_a_temperature_change_survives },
 		{ "wheel_errors", wheel_errors },
 		{ "guide_axes_and_replacement", guide_axes_and_replacement },
 		{ "abort_readout_restart", abort_readout_restart },

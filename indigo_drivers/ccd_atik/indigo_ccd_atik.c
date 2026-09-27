@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000030
+#define DRIVER_VERSION       0x03000031
 #define DRIVER_NAME          "indigo_ccd_atik"
 #define DRIVER_LABEL         "Atik Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -587,8 +587,15 @@ static void ccd_abort_exposure_handler(indigo_device *device) {
 static void ccd_cooler_handler(indigo_device *device) {
 	CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ccd.CCD_COOLER.on_change
-	int result = CCD_COOLER_ON_ITEM->sw.value ? ArtemisSetCooling(PRIVATE_DATA->handle, (int)round(CCD_TEMPERATURE_ITEM->number.target * 100)) : ArtemisCoolerWarmUp(PRIVATE_DATA->handle);
-	if (result != ARTEMIS_OK) {
+	// The CCD_TEMPERATURE handler may have written the switch after the request was copied, the targets keep the request.
+	int result = indigo_get_switch_target(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM_NAME) ? ArtemisSetCooling(PRIVATE_DATA->handle, (int)round(CCD_TEMPERATURE_ITEM->number.target * 100)) : ArtemisCoolerWarmUp(PRIVATE_DATA->handle);
+	if (result == ARTEMIS_OK) {
+		indigo_apply_switch_targets(CCD_COOLER_PROPERTY);
+	} else {
+		int flags = 0, level = 0, min = 0, max = 0, target = 0;
+		if (ArtemisCoolingInfo(PRIVATE_DATA->handle, &flags, &level, &min, &max, &target) == ARTEMIS_OK) {
+			indigo_set_switch(CCD_COOLER_PROPERTY, flags & ARTEMIS_COOLING_INFO_COOLINGON ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
+		}
 		CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- ccd.CCD_COOLER.on_change
@@ -599,9 +606,12 @@ static void ccd_temperature_handler(indigo_device *device) {
 	CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ccd.CCD_TEMPERATURE.on_change
 	if (ArtemisSetCooling(PRIVATE_DATA->handle, (int)round(CCD_TEMPERATURE_ITEM->number.target * 100)) == ARTEMIS_OK) {
-		indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
-		CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+		// A setpoint turns the cooler on, but a CCD_COOLER request queued after this one is newer and decides.
+		if (CCD_COOLER_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
+			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+		}
 		CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;

@@ -433,3 +433,48 @@ SDK object to pin, which is the expected test-build behaviour and not a driver f
 Simulated (fake SDK) tests run 43, passed 43 (Linux arm64). Hardware tests run 1, passed 1
 (Atik Titan, Linux arm64; the run was repeated once under an exclusive host lock with the same
 result).
+
+## Queued cooler request (TGT-060, 2026-09-27)
+
+Version 49, finding TGT-060 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+
+### Defect (reproduced)
+
+The CCD_TEMPERATURE handler turns CCD_COOLER ON with `indigo_set_switch()` after a successful
+`ArtemisSetCooling()`, whatever the state of CCD_COOLER. A cooler OFF sent after a temperature
+change is copied into CCD_COOLER on the bus thread and queued behind the temperature handler, which
+then overwrote it with ON; the CCD_COOLER handler read `sw.value`, sent `ArtemisSetCooling()` instead
+of `ArtemisCoolerWarmUp()` and reported ON/OK, so the camera kept cooling although the client asked
+it to stop. A rejected cooler request was also shown with the requested state and ALERT instead of
+the state the camera kept. The 5 s poll reads CCD_COOLER only to decide the CCD_TEMPERATURE state and
+never writes it, so it is unchanged.
+
+### Fix
+
+- The CCD_COOLER handler sends the request read with `indigo_get_switch_target()` (warm-up for OFF,
+  `ArtemisSetCooling()` with the temperature target for ON) and applies it with
+  `indigo_apply_switch_targets()` when the SDK accepts it. On failure it shows the cooler state the
+  camera reports (`ARTEMIS_COOLING_INFO_COOLINGON` from `ArtemisCoolingInfo()`) with ALERT.
+- The CCD_TEMPERATURE handler still starts cooling to the new setpoint and, with no cooler request
+  pending, still turns CCD_COOLER ON; it leaves a BUSY CCD_COOLER to its own handler, so the last
+  client request wins. A request copied between its check and its write is still sent from the
+  target.
+
+### Fake SDK and tests
+
+- The fake camera now reports whether it is cooling like the real SDK: `ArtemisSetCooling()` sets
+  and a successful `ArtemisCoolerWarmUp()` clears the `ARTEMIS_COOLING_INFO_COOLINGON` flag of
+  `ArtemisCoolingInfo()`.
+- New case `cooler_off_queued_behind_a_temperature_change_survives`: the device queue is held by a
+  gate handler, a CCD_TEMPERATURE change and then a CCD_COOLER OFF are sent, the gate is released
+  and a marker handler waits for both handlers. Version 48 failed 3/3 (no warm-up sent, the camera
+  still cooling); version 49 passes 3/3 (the setpoint is sent, then exactly one warm-up, CCD_COOLER
+  OFF and OK). It also checks that a temperature change without a pending cooler request turns the
+  cooler ON.
+- `cooling_and_controls` now checks that a rejected OFF shows ON (the camera keeps cooling); it fails
+  on version 48, which showed OFF with ALERT.
+
+### Test totals for this change
+
+Simulated (fake SDK) tests run 44, passed 44 (Linux x64, `tools/run_driver_test.py ccd_atik`).
+Hardware tests run 0.

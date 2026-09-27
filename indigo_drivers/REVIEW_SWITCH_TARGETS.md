@@ -122,7 +122,7 @@ P's request was copied, and P's handler then reads the rewritten value.
 
 | ID | Driver | Property | Overwritten by | P's handler reads | Note | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| TGT-060 | ccd_atik | CCD_COOLER | CCD_TEMPERATURE handler 498 sets ON | 485 | A pending cooler OFF becomes ON. | Open |
+| TGT-060 | ccd_atik | CCD_COOLER | CCD_TEMPERATURE handler 498 sets ON | 485 | A pending cooler OFF becomes ON. | Fixed (3.0.0.49, 2026-09-27): the CCD_COOLER handler sends the request read with `indigo_get_switch_target()` (`ArtemisCoolerWarmUp()` for OFF, `ArtemisSetCooling()` with the temperature target for ON), applies it with `indigo_apply_switch_targets()` and on failure shows the cooler state the camera reports (`ARTEMIS_COOLING_INFO_COOLINGON`) with ALERT, while the CCD_TEMPERATURE handler leaves a BUSY CCD_COOLER to its handler (the poll never writes CCD_COOLER); regression test `cooler_off_queued_behind_a_temperature_change_survives` (queue held by a gate handler; 3.0.0.48 sent no warm-up and kept cooling 3/3). |
 | TGT-061 | ccd_mi | CCD_COOLER | CCD_TEMPERATURE handler 499 | 475 | Same. | Open |
 | TGT-062 | ccd_qsi | CCD_COOLER | CCD_TEMPERATURE handler 622 | 613 | Same. | Open |
 | TGT-063 | ccd_sx | CCD_COOLER | CCD_TEMPERATURE handler 1017 | poll 766 | Same; the poll applies the value. | Open |
