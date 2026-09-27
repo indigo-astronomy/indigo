@@ -26,3 +26,4 @@ Tested with physical device.
 ## Testing
 
 2026-09-21 19:43 3.0.0.6 mac arm64 simulator 17/17 OK
+2026-09-27 06:53 3.0.0.8 linux x64 simulator 20/20 OK

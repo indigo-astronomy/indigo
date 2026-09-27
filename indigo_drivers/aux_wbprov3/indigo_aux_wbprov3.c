@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_aux_wbprov3"
 #define DRIVER_LABEL         "WandererBox Pro V3 Powerbox"
 #define AUX_DEVICE_NAME      "WandererBox Pro V3"
@@ -514,9 +514,20 @@ static void aux_outlet_names_handler(indigo_device *device) {
 static void aux_power_outlet_handler(indigo_device *device) {
 	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_POWER_OUTLET.on_change
-	wbprov3_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? 101 : 100);
-	wbprov3_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? 201 : 200);
-	wbprov3_command(device, AUX_POWER_OUTLET_3_ITEM->sw.value ? 211 : 210);
+	// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+	// request. The box never answers, so only a command that cannot be written fails; its outlet shows the
+	// state the box last reported.
+	static const int commands[] = { 100, 200, 210 };
+	bool *status[] = { &PRIVATE_DATA->dc3_4_status, &PRIVATE_DATA->dc8_9_status, &PRIVATE_DATA->dc10_11_status };
+	for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+		indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
+		if (wbprov3_command(device, commands[i] + (item->sw.target ? 1 : 0))) {
+			item->sw.value = *status[i] = item->sw.target;
+		} else {
+			item->sw.value = *status[i];
+			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	}
 	indigo_sleep(1);
 	//- aux.AUX_POWER_OUTLET.on_change
 	indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
@@ -534,11 +545,19 @@ static void aux_power_outlet_voltage_handler(indigo_device *device) {
 static void aux_usb_port_handler(indigo_device *device) {
 	AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_USB_PORT.on_change
-	wbprov3_command(device, AUX_USB_PORT_1_ITEM->sw.value ? 111 : 110);
-	wbprov3_command(device, AUX_USB_PORT_2_ITEM->sw.value ? 121 : 120);
-	wbprov3_command(device, AUX_USB_PORT_3_ITEM->sw.value ? 131 : 130);
-	wbprov3_command(device, AUX_USB_PORT_4_ITEM->sw.value ? 141 : 140);
-	wbprov3_command(device, AUX_USB_PORT_5_ITEM->sw.value ? 151 : 150);
+	// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+	// request. A command that cannot be written shows the state the box last reported.
+	static const int commands[] = { 110, 120, 130, 140, 150 };
+	bool *status[] = { &PRIVATE_DATA->usb31_1_status, &PRIVATE_DATA->usb31_2_status, &PRIVATE_DATA->usb31_3_status, &PRIVATE_DATA->usb20_1_3_status, &PRIVATE_DATA->usb20_4_6_status };
+	for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
+		indigo_item *item = AUX_USB_PORT_PROPERTY->items + i;
+		if (wbprov3_command(device, commands[i] + (item->sw.target ? 1 : 0))) {
+			item->sw.value = *status[i] = item->sw.target;
+		} else {
+			item->sw.value = *status[i];
+			AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	}
 	indigo_sleep(1);
 	//- aux.AUX_USB_PORT.on_change
 	indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
@@ -550,7 +569,9 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 	wbprov3_command(device, 5000 + (int)round(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
 	wbprov3_command(device, 6000 + (int)round(AUX_HEATER_OUTLET_2_ITEM->number.target * 255.0 / 100.0));
 	wbprov3_command(device, 7000 + (int)round(AUX_HEATER_OUTLET_3_ITEM->number.target * 255.0 / 100.0));
-	if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
+	// Setting the heaters by hand ends automatic dew control, but a dew control request queued after this one is
+	// newer and owns the switch while it is BUSY; its handler applies it.
+	if (AUX_DEW_CONTROL_PROPERTY->state != INDIGO_BUSY_STATE && AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
 		indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
 		indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 	}
@@ -561,6 +582,10 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 
 static void aux_dew_control_handler(indigo_device *device) {
 	AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
+	//+ aux.AUX_DEW_CONTROL.on_change
+	// The heater handler may have written the switch after the request was copied, the targets keep the request.
+	indigo_apply_switch_targets(AUX_DEW_CONTROL_PROPERTY);
+	//- aux.AUX_DEW_CONTROL.on_change
 	indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 }
 
@@ -719,12 +744,31 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_OUTLET_NAMES_PROPERTY, aux_outlet_names_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_POWER_OUTLET_PROPERTY, property)) {
+		//+ aux.AUX_POWER_OUTLET.on_change_request
+		// The poll writes the outlet states the box reports into the values only and the handler sends the targets,
+		// so the outlets a request does not carry must keep the reported state in their targets as well. A BUSY
+		// property is left alone, the framework drops the request and its handler reads the targets.
+		if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
+			for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+				AUX_POWER_OUTLET_PROPERTY->items[i].sw.target = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value;
+			}
+		}
+		//- aux.AUX_POWER_OUTLET.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_POWER_OUTLET_PROPERTY, aux_power_outlet_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_POWER_OUTLET_VOLTAGE_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_POWER_OUTLET_VOLTAGE_PROPERTY, aux_power_outlet_voltage_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_USB_PORT_PROPERTY, property)) {
+		//+ aux.AUX_USB_PORT.on_change_request
+		// The poll writes the port states the box reports into the values only and the handler sends the targets, see
+		// AUX_POWER_OUTLET. A BUSY property is left alone, the framework drops the request.
+		if (AUX_USB_PORT_PROPERTY->state != INDIGO_BUSY_STATE) {
+			for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
+				AUX_USB_PORT_PROPERTY->items[i].sw.target = AUX_USB_PORT_PROPERTY->items[i].sw.value;
+			}
+		}
+		//- aux.AUX_USB_PORT.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_USB_PORT_PROPERTY, aux_usb_port_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_HEATER_OUTLET_PROPERTY, property)) {
