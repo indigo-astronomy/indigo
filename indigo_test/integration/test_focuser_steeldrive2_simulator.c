@@ -788,6 +788,33 @@ cleanup:
 	driver_stop(&focuser);
 }
 
+// TGT-D17: a FOCUSER_POSITION request copied on the bus thread while the focuser poll waits for its SUMMARY reply must
+// still move the focuser; the poll must neither replace the requested target with the position it read nor publish
+// over the pending BUSY. The simulator holds the SUMMARY reply back 0.6 s and the request is sent in that window.
+static void position_request_survives_poll_read(void) {
+	atomic_store(&focuser_device, NULL);
+	SERIAL_CHECK_TRUE(start_focuser());
+	SERIAL_CHECK_TRUE(at_position(1000));
+	SERIAL_CHECK_TRUE(fault("SUMMARY", "slow"));
+	// The simulator removes the fault file when the next SUMMARY (the poll's) takes it, then delays its reply.
+	for (int i = 0; i < 200 && access(fault_path, F_OK) == 0; i++) {
+		indigo_usleep(5000);
+	}
+	SERIAL_CHECK_TRUE(access(fault_path, F_OK) != 0);
+	start_watch(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, NULL);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(wait_for_watch());
+	printf("    first FOCUSER_POSITION result after the request: state %d, POSITION %g, %d '$BS GO 1500'\n", atomic_load(&watch_first_state), atomic_load(&watch_first_value), request_count("$BS GO 1500"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, atomic_load(&watch_first_state));
+	SERIAL_CHECK_TRUE(atomic_load(&watch_first_value) == 1500);
+	SERIAL_CHECK_EQ_INT(1, request_count("$BS GO 1500"));
+	SERIAL_CHECK_TRUE(at_position(1500));
+cleanup:
+	atomic_store(&watch_index, -1);
+	driver_stop(&focuser);
+}
+
 typedef struct {
 	const char *name;
 	void (*run)(void);
@@ -889,6 +916,7 @@ int main(void) {
 		{ "aux_heater_request_survives_poll", aux_request_survives_poll, "normal" },
 		{ "aux_pid_request_survives_heater_change", aux_pid_request_survives_heater_change, "normal" },
 		{ "position_request_survives_poll", position_request_survives_poll, "normal" },
+		{ "position_request_survives_poll_read", position_request_survives_poll_read, "normal" },
 		{ "shared_focuser_first", shared_lifecycle, "normal" },
 		{ "shared_aux_first", shared_lifecycle, "normal" },
 		{ "reset", reset_and_reboot, "normal" },

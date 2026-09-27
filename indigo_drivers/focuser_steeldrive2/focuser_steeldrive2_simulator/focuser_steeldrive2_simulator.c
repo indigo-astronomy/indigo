@@ -230,6 +230,12 @@ static bool injected_reply(const char *key, const char *normal) {
 		send_line(normal, false, true);
 		return true;
 	}
+	if (!strcmp(action, "slow")) {
+		// A late but valid reply, within the driver's 1 s first-byte timeout.
+		usleep(600000);
+		send_line(normal, false, false);
+		return true;
+	}
 	send_line("$BS STATUS BROKEN", false, false);
 	return true;
 }

@@ -195,7 +195,7 @@
 |  | 2026-09-27 12:50 | 3.0.0.10 | linux x64 | simulator | 32 / 32 | ✅ OK |
 | focuser_robofocus | 2026-09-21 19:12 | 3.0.0.3 | mac arm64 | simulator | 19 / 19 | ✅ OK |
 | focuser_steeldrive2 | 2026-09-26 21:26 | 3.0.0.17 | mac arm64 | simulator | 50 / 50 | ✅ OK |
-|  | 2026-09-27 00:52 | 3.0.0.18 | linux x64 | simulator | 55 / 55 | ✅ OK |
+|  | 2026-09-27 13:10 | 3.0.0.19 | linux x64 | simulator | 56 / 56 | ✅ OK |
 | focuser_usbv3 | 2026-09-22 01:09 | 3.0.0.10 | mac arm64 | USB_Focus v3 | 16 / 16 | ✅ OK |
 |  | 2026-09-22 01:12 | 3.0.0.10 | mac arm64 | simulator | 27 / 27 | ✅ OK |
 | focuser_wemacro | 2026-09-21 19:22 | 3.0.0.7 | mac arm64 | simulator | 23 / 23 | ✅ OK |

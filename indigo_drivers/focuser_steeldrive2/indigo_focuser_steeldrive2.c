@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000013
 #define DRIVER_NAME          "indigo_focuser_steeldrive2"
 #define DRIVER_LABEL         "Baader Planetarium SteelDriveII Focuser"
 #define FOCUSER_DEVICE_NAME  "SteelDriveII (focuser)"
@@ -658,8 +658,13 @@ static void focuser_timer_callback(indigo_device *device) {
 	// state, its handler reads the target and publishes the result.
 	bool pending = !PRIVATE_DATA->external && (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE);
 	if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain && !pending) {
-		if (steeldrive2_summary(device)) {
-			FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+		bool read = steeldrive2_summary(device);
+		// A request can also be copied on the bus thread during the status round trip, so it is checked again after
+		// the read and the poll never writes the target.
+		pending = !PRIVATE_DATA->external && (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE);
+		if (pending) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' status read left to the pending motion request", device->name);
+		} else if (read) {
 			steeldrive2_publish_focuser(device, PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE);
 		} else {
 			PRIVATE_DATA->external = false;

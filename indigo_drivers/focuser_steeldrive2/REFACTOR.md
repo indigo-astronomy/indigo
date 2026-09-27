@@ -102,4 +102,19 @@ Findings TGT-011, TGT-012 and the focuser_steeldrive2 parts of TGT-B03 and TGT-B
 cd indigo_test && STEELDRIVE2_TEST_FILTER=request_survives ./build/integration/test_focuser_steeldrive2_simulator
 ```
 
-Final test summary: 55 simulated tests run, 55 passed; 0 hardware tests run, 0 passed.
+## Position request copied during the poll's status read (TGT-D17, 3.0.0.19, 2026-09-27)
+
+Found by reading the code while fixing the focuser_qhy part of TGT-B03 (`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, TGT-D17), reproduced on Linux x64 with the simulator.
+
+- Impact: a FOCUSER_POSITION request copied on the bus thread while the 0.5 s focuser poll waited for its `$BS SUMMARY` reply was replaced by the current position. The queued handler then read the current position as its target, sent no `$BS GO` and reported OK, so the GOTO never moved.
+- Root cause: 3.0.0.18 checked FOCUSER_POSITION / FOCUSER_STEPS for a pending request (BUSY not published by the poll itself) only before the `steeldrive2_summary()` round trip, and after it wrote `number.target` from the device and published both properties with the poll's state. The same window focuser_qhy 3.0.0.10 closed.
+- Fix: the poll checks for a pending request again after the read and then leaves value, target and state to the handler; it no longer writes `number.target` at all (`steeldrive2_publish_focuser()` writes only the value). The `external` handling is unchanged: a BUSY the poll published for a motion the driver did not start is still refreshed and ended by the poll, and no request can be copied while it is BUSY.
+- Simulator: new fault action `slow` holds a reply back 0.6 s (within the driver's 1 s first-byte timeout); `SUMMARY slow` delays the poll's status reply.
+- Regression test `position_request_survives_poll_read`: with the focuser idle at 1000 the next SUMMARY is delayed, and a GOTO to 1500 is requested as soon as the simulator takes the fault; the first FOCUSER_POSITION result after the request must be OK at 1500 with exactly one `$BS GO 1500`. On 3.0.0.18 it failed 3/3 (first result OK at 1000, no `$BS GO 1500` sent); with 3.0.0.19 it passed 5/5 and in the ASan build.
+- Verification (Linux x64): `TZ=Europe/Bratislava python3 tools/run_driver_test.py focuser_steeldrive2` 56/56 OK. Regeneration reproduces the checked-in output. No hardware test was run.
+
+```sh
+cd indigo_test && STEELDRIVE2_TEST_FILTER=poll_read ./build/integration/test_focuser_steeldrive2_simulator
+```
+
+Final test summary: 56 simulated tests run, 56 passed; 0 hardware tests run, 0 passed.
