@@ -900,6 +900,26 @@ cleanup:
 #define FOLLOW_DEC              7.407064
 // Guider camera field is GUIDER_FOV (7 degrees) over the default 1200 px image height
 #define FOLLOW_PX_PER_DEGREE    (1200.0 / 7.0)
+// The follow tests run on a rotated image: at 0 degrees the sin terms of the projection and of the offset model vanish,
+// so the two models agree whatever the sign of those terms and a model turning the wrong way passes unnoticed
+#define FOLLOW_ROTATION         36.0
+
+// Unit vector, in image pixels with y growing downwards, of the star shift a move of the mount north or west causes in
+// the catalog projection: on the east side of the pier north moves the stars down and west moves them right at 0
+// degrees, both turn with IMAGE_ROTATION_ANGLE and the west side of the pier turns them by another 180 degrees. The
+// offset model, the periodic error and both guiders have to move the stars along the same axes.
+static void follow_axis(bool north, bool pier_west, double *ux, double *uy) {
+	double angle = FOLLOW_ROTATION * M_PI / 180 + (pier_west ? M_PI : 0);
+	*ux = north ? sin(angle) : cos(angle);
+	*uy = north ? cos(angle) : -sin(angle);
+}
+
+// The shift has to be length pixels along the axis, as a vector, so a wrong direction fails as well as a wrong length
+static bool shifted_along(double dx, double dy, bool north, bool pier_west, double length, double tolerance) {
+	double ux, uy;
+	follow_axis(north, pier_west, &ux, &uy);
+	return hypot(dx - length * ux, dy - length * uy) < tolerance;
+}
 
 // Centroid of the brightest star: a window around the brightest pixel, weighted by the signal above the background
 static bool sim_star_centroid(double *cx, double *cy) {
@@ -933,11 +953,11 @@ static bool sim_star_centroid(double *cx, double *cy) {
 	return true;
 }
 
-// Stars only, no periodic error and no rotation, so a pointing change maps to the image axes
+// Stars only on an image rotated by FOLLOW_ROTATION, no periodic error
 static bool sim_follow_begin(void) {
 	sim_begin(&ccd_guider_camera_simulator);
 	atomic_store(&sim_capture, true);
-	return sim_switch("GUIDER_MODE", "STARS", INDIGO_OK_STATE) && sim_number("SIMULATION_SETUP", 2, (const char *[]){ "IMAGE_ROTATION_ANGLE", "PER_ERR_CYCLE" }, (double []){ 0, 0 }, INDIGO_OK_STATE);
+	return sim_switch("GUIDER_MODE", "STARS", INDIGO_OK_STATE) && sim_number("SIMULATION_SETUP", 2, (const char *[]){ "IMAGE_ROTATION_ANGLE", "PER_ERR_CYCLE" }, (double []){ FOLLOW_ROTATION, 0 }, INDIGO_OK_STATE);
 }
 
 static void sim_follow_end(void) {
@@ -971,7 +991,7 @@ static void simulator_guider_camera_follows_simulated_mount(void) {
 	indigo_set_simulated_mount_state(&publisher, &state);
 	SIM_CHECK(sim_expose_centroid(&x1, &y1));
 	printf("    0.5 px Dec move shifted the star by %.3f, %.3f px\n", x1 - x0, y1 - y0);
-	SIM_CHECK(fabs(fabs(y1 - y0) - 0.5) < 0.2 && fabs(x1 - x0) < 0.2);
+	SIM_CHECK(shifted_along(x1 - x0, y1 - y0, true, false, 0.5, 0.2));
 	// JNow and the west side of the pier are taken over as well
 	state.epoch = 0;
 	state.west = true;
@@ -998,7 +1018,6 @@ static void simulator_guider_offsets_follow_simulated_mount_axes(void) {
 	indigo_simulated_mount_state state = { .ra = FOLLOW_RA, .dec = FOLLOW_DEC, .epoch = 2000, .latitude = 48.5, .longitude = 17.5, .west = false };
 	double x0, y0, x1, y1, x2, y2;
 	SIM_CHECK(sim_follow_begin());
-	SIM_CHECK(sim_number("SIMULATION_SETUP", 1, (const char *[]){ "IMAGE_ROTATION_ANGLE" }, (double []){ 36 }, INDIGO_OK_STATE));
 	indigo_set_simulated_mount_state(&publisher, &state);
 	SIM_CHECK(sim_expose_centroid(&x0, &y0));
 	// 3 px of RA offset against a 3 px move of the mount to the west
@@ -1009,7 +1028,7 @@ static void simulator_guider_offsets_follow_simulated_mount_axes(void) {
 	indigo_set_simulated_mount_state(&publisher, &state);
 	SIM_CHECK(sim_expose_centroid(&x2, &y2));
 	printf("    RA offset shifted the star by %.3f, %.3f px, the mount by %.3f, %.3f px\n", x1 - x0, y1 - y0, x2 - x0, y2 - y0);
-	SIM_CHECK(fabs(hypot(x1 - x0, y1 - y0) - 3) < 0.3);
+	SIM_CHECK(shifted_along(x2 - x0, y2 - y0, false, false, 3, 0.3));
 	SIM_CHECK(hypot(x1 - x2, y1 - y2) < 0.3);
 	// 3 px of Dec offset against a 3 px move of the mount to the north
 	state.ra = FOLLOW_RA;
@@ -1021,10 +1040,77 @@ static void simulator_guider_offsets_follow_simulated_mount_axes(void) {
 	indigo_set_simulated_mount_state(&publisher, &state);
 	SIM_CHECK(sim_expose_centroid(&x2, &y2));
 	printf("    Dec offset shifted the star by %.3f, %.3f px, the mount by %.3f, %.3f px\n", x1 - x0, y1 - y0, x2 - x0, y2 - y0);
-	SIM_CHECK(fabs(hypot(x1 - x0, y1 - y0) - 3) < 0.3);
+	SIM_CHECK(shifted_along(x2 - x0, y2 - y0, true, false, 3, 0.3));
 	SIM_CHECK(hypot(x1 - x2, y1 - y2) < 0.3);
 cleanup:
 	indigo_set_simulated_mount_state(&publisher, NULL);
+	sim_follow_end();
+}
+
+// The periodic error is an RA error: it has to move the stars along the RA axis of the mount, or the guider calibrated
+// on the mount corrects it in Dec
+static void simulator_guider_periodic_error_follows_ra_axis(void) {
+	double x0, y0, x1, y1, ux, uy;
+	bool shifted = false;
+	SIM_CHECK(sim_follow_begin());
+	SIM_CHECK(sim_number("SIMULATION_SETUP", 2, (const char *[]){ "RA", "DEC" }, (double []){ FOLLOW_RA, FOLLOW_DEC }, INDIGO_OK_STATE));
+	SIM_CHECK(sim_expose_centroid(&x0, &y0));
+	SIM_CHECK(sim_number("SIMULATION_SETUP", 2, (const char *[]){ "PER_ERR_CYCLE", "PER_ERR_VAL" }, (double []){ 8, 5 }, INDIGO_OK_STATE));
+	// the error is a sine over whole seconds, wait for a frame away from its zero crossings
+	for (int i = 0; i < 20 && !shifted; i++) {
+		SIM_CHECK(sim_expose_centroid(&x1, &y1));
+		shifted = hypot(x1 - x0, y1 - y0) > 2;
+		if (!shifted) {
+			indigo_usleep(250000);
+		}
+	}
+	printf("    periodic error shifted the star by %.3f, %.3f px\n", x1 - x0, y1 - y0);
+	SIM_CHECK(shifted);
+	follow_axis(false, false, &ux, &uy);
+	// its sign follows the phase, its direction has to be the RA axis
+	SIM_CHECK(fabs((x1 - x0) * uy - (y1 - y0) * ux) < 0.3);
+cleanup:
+	sim_follow_end();
+}
+
+static bool mount_connect(const char *device_name, bool connected);
+
+static bool sim_offset_changes(const char *item, double before) {
+	for (double deadline = indigo_monotonic_time() + 6; indigo_monotonic_time() < deadline; indigo_usleep(20000)) {
+		if (cached_number_value("SIMULATION_SETUP", item) != before) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// Without a mount simulator the camera's guider moves the stars by the offset model; its pulses have to move them along
+// the same axes a mount would, on either side of the pier
+static void simulator_guider_offset_model_pulses_follow_mount_axes(void) {
+	double x0, y0, x1, y1, x2, y2;
+	// 3 s at the default 50 % guide rate is 7.5 px in the offset model, RA shrinks by cos(dec)
+	double dec_shift = 0.5 * 3000 / 200, ra_shift = dec_shift * cos(FOLLOW_DEC * M_PI / 180);
+	SIM_CHECK(sim_follow_begin());
+	SIM_CHECK(mount_connect("CCD Guider Simulator (guider)", true));
+	indigo_usleep(200000);
+	for (int pier_west = 0; pier_west <= 1; pier_west++) {
+		SIM_CHECK(sim_number("SIMULATION_SETUP", 3, (const char *[]){ "RA", "DEC", "SIDE_OF_PIER" }, (double []){ FOLLOW_RA, FOLLOW_DEC, pier_west }, INDIGO_OK_STATE));
+		SIM_CHECK(sim_expose_centroid(&x0, &y0));
+		double before = cached_number_value("SIMULATION_SETUP", "IMAGE_DEC_OFFSET");
+		SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, "CCD Guider Simulator (guider)", GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 3000) == INDIGO_OK);
+		SIM_CHECK(sim_offset_changes("IMAGE_DEC_OFFSET", before));
+		SIM_CHECK(sim_expose_centroid(&x1, &y1));
+		printf("    %s side of pier: 3 s north pulse shifted the star by %.3f, %.3f px\n", pier_west ? "west" : "east", x1 - x0, y1 - y0);
+		SIM_CHECK(shifted_along(x1 - x0, y1 - y0, true, pier_west, dec_shift, 0.3));
+		before = cached_number_value("SIMULATION_SETUP", "IMAGE_RA_OFFSET");
+		SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, "CCD Guider Simulator (guider)", GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 3000) == INDIGO_OK);
+		SIM_CHECK(sim_offset_changes("IMAGE_RA_OFFSET", before));
+		SIM_CHECK(sim_expose_centroid(&x2, &y2));
+		printf("    %s side of pier: 3 s west pulse shifted the star by %.3f, %.3f px\n", pier_west ? "west" : "east", x2 - x1, y2 - y1);
+		SIM_CHECK(shifted_along(x2 - x1, y2 - y1, false, pier_west, ra_shift, 0.3));
+	}
+cleanup:
+	mount_connect("CCD Guider Simulator (guider)", false);
 	sim_follow_end();
 }
 
@@ -1080,7 +1166,7 @@ static void simulator_guider_camera_follows_mount_simulator_guiding(void) {
 	SIM_CHECK(mount_state_changes(state.ra, state.dec, 6));
 	SIM_CHECK(sim_expose_centroid(&x1, &y1));
 	printf("    3 s north pulse shifted the star by %.3f, %.3f px, expected %.3f px\n", x1 - x0, y1 - y0, expected);
-	SIM_CHECK(fabs(fabs(y1 - y0) - expected) < 0.25 && fabs(x1 - x0) < 0.25);
+	SIM_CHECK(shifted_along(x1 - x0, y1 - y0, true, false, expected, 0.25));
 	SIM_CHECK(indigo_get_simulated_mount_state(&state));
 	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, "Mount Simulator (guider)", GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 3000) == INDIGO_OK);
 	SIM_CHECK(mount_state_changes(state.ra, state.dec, 6));
@@ -1088,7 +1174,7 @@ static void simulator_guider_camera_follows_mount_simulator_guiding(void) {
 	// the RA axis turns by the same angle, the sky moves by cos(dec) of it
 	expected *= 1.00273791 * 15 / 15.0410686 * cos(FOLLOW_DEC * M_PI / 180);
 	printf("    3 s west pulse shifted the star by %.3f, %.3f px, expected %.3f px\n", x2 - x1, y2 - y1, expected);
-	SIM_CHECK(fabs(fabs(x2 - x1) - expected) < 0.25 && fabs(y2 - y1) < 0.25);
+	SIM_CHECK(shifted_along(x2 - x1, y2 - y1, false, false, expected, 0.25));
 	// The camera's own guider moves the mount back: the star returns and the mount takes the move over
 	SIM_CHECK(mount_connect("CCD Guider Simulator (guider)", true));
 	indigo_usleep(200000);
@@ -1290,6 +1376,8 @@ int main(int argc, char **argv) {
 		{ "simulator_file_noise_formats_and_failure", simulator_file_noise_formats_and_failure },
 		{ "simulator_guider_camera_follows_simulated_mount", simulator_guider_camera_follows_simulated_mount },
 		{ "simulator_guider_offsets_follow_simulated_mount_axes", simulator_guider_offsets_follow_simulated_mount_axes },
+		{ "simulator_guider_periodic_error_follows_ra_axis", simulator_guider_periodic_error_follows_ra_axis },
+		{ "simulator_guider_offset_model_pulses_follow_mount_axes", simulator_guider_offset_model_pulses_follow_mount_axes },
 		{ "simulator_guider_camera_follows_mount_simulator_guiding", simulator_guider_camera_follows_mount_simulator_guiding },
 		{ "simulator_focuser_direction_queued_behind_a_move_keeps_the_last", simulator_focuser_direction_queued_behind_a_move_keeps_the_last },
 		{ "driver_info_reports_simulator_metadata", driver_info_reports_simulator_metadata },
