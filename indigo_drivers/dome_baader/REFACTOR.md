@@ -284,3 +284,37 @@ runs, and the remaining writes on that path only ever set ALERT.
 precedes `U DOME_HORIZONTAL_COORDINATES BUSY` in three places. No serial command changed.
 
 44/44 simulator scenarios pass.
+
+## Switch targets for DOME_SHUTTER and DOME_FLAP (2026-09-27, 3.0.0.11, branch `refactoring_targets`)
+
+Rows TGT-029 and TGT-030 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this change.
+
+- **Baseline on Linux x64:** the suite did not build: the simulator rule in `indigo_test/Makefile` linked without
+  `-lm` (`undefined reference to lround` / `floor`; macOS links libm implicitly), the same defect dome_nexdome3 had.
+  With `-lm` added, the unchanged 3.0.0.10 driver passed 44/44 (`tools/run_driver_test.py dome_baader --no-record`).
+  Regenerating the unchanged `.driver` reproduced the checked-in output.
+- **TGT-029 / TGT-030 (reproduced):** `dome_status_poll` checks DOME_SHUTTER (DOME_FLAP) for a queued request (BUSY
+  while no operation is active) and then decides whether to update it with a condition that read the state again
+  (`... || state == BUSY`). A request copied on the bus thread between the check and that condition entered the update
+  branch: the switches were set to the reported position, the property was published OK ("Shutter closed" / "Flap
+  closed") and the queued handler read the overwritten value and sent the opposite command. The check and the write
+  have no I/O or log line between them, so no permanent case can hit the window. Proof with a temporary instrumented
+  copy of the generated driver (a debug line after each check, and temporary cases sending an OPEN request from that
+  line; neither committed): on 3.0.0.10 the shutter request was sent as `d#closhut` and the flap request as
+  `d#cloflap`, both shown OK closed, 3/3 each; on 3.0.0.11 `d#opeshut` / `d#opeflap` were sent and the property ended
+  OK open, 3/3 each; with only the handler change (poll condition restored) 2/2 each.
+- **Fix:** the update branch is entered for a changed position (flap state) or a running driver operation
+  (`shutter_active` / `flap_active`, which is exactly when the property is BUSY there), not for a state read again after
+  the check, so a request copied after the check is left to its handler. Both handlers send the request read with
+  `indigo_get_switch_target()` and apply it with `indigo_apply_switch_targets()` once the dome accepted the command, so
+  a request copied just before a write the poll still makes for a position changed at the same moment is sent as
+  requested; a failed command still shows the last reported state with ALERT (`BDR-06`, `abort_and_flap_failures`).
+  The pending-request path is covered by `queued_requests_survive_status_poll`.
+- **Left open (not part of these rows, found by source audit while fixing them, not reproduced):** after DOME_ABORT_MOTION the next poll's `aborted`
+  branch sets DOME_SHUTTER and DOME_FLAP OK and publishes them without a BUSY check, so a shutter or flap request copied
+  while that poll runs is shown OK (and the framework guard reopened) before its handler runs; the handler still sends
+  the request. Display-only, same class as TGT-B05.
+- **Verification:** recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py dome_baader`: 44/44 OK on
+  linux x64 (3.0.0.11). No new permanent case, so the case count is unchanged.
+- Simulated tests of this change: baseline 44/44 (3.0.0.10); temporary window cases 6 run, 0 passed on 3.0.0.10
+  (expected), 6/6 on 3.0.0.11, 4/4 handler-only; recorded run 44/44. Hardware tests: 0 run, 0 passed.

@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_dome_baader"
 #define DRIVER_LABEL         "Baader Classic Dome"
 #define DOME_DEVICE_NAME     "Baader Classic Dome"
@@ -427,7 +427,8 @@ static void dome_status_poll(indigo_device *device) {
 		PRIVATE_DATA->shutter_alert = true;
 		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, emergency_message);
-	} else if (shutter_position != PRIVATE_DATA->shutter_position || DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
+	} else if (shutter_position != PRIVATE_DATA->shutter_position || PRIVATE_DATA->shutter_active) {
+		// the state is not read again here: a request copied after the check above belongs to its handler
 		PRIVATE_DATA->shutter_position = shutter_position;
 		baader_update_shutter_switches(device);
 		if (PRIVATE_DATA->shutter_alert) {
@@ -457,7 +458,8 @@ static void dome_status_poll(indigo_device *device) {
 		PRIVATE_DATA->flap_alert = true;
 		DOME_FLAP_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, DOME_FLAP_PROPERTY, emergency_message);
-	} else if (flap_state != PRIVATE_DATA->flap_state || DOME_FLAP_PROPERTY->state == INDIGO_BUSY_STATE) {
+	} else if (flap_state != PRIVATE_DATA->flap_state || PRIVATE_DATA->flap_active) {
+		// the state is not read again here: a request copied after the check above belongs to its handler
 		PRIVATE_DATA->flap_state = flap_state;
 		baader_update_flap_switches(device);
 		if (PRIVATE_DATA->flap_alert) {
@@ -736,7 +738,8 @@ static void dome_shutter_handler(indigo_device *device) {
 	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 	// keep the framework BUSY guard closed while the device command runs
 	PRIVATE_DATA->shutter_alert = false;
-	bool open = DOME_SHUTTER_OPENED_ITEM->sw.value;
+	// the poll may have overwritten the value after the request was copied, the target keeps the request
+	bool open = indigo_get_switch_target(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM_NAME);
 	baader_rc_t rc = open ? baader_command_ok(device, "d#opeshut") : baader_command_ok(device, "d#closhut");
 	if (rc != BD_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Shutter %s returned error %d", open ? "open" : "close", rc);
@@ -745,6 +748,7 @@ static void dome_shutter_handler(indigo_device *device) {
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, rc == BD_DOME_ERROR ? "Shutter open/close failed with DOME_ERROR. Please inspect the dome!" : "Shutter open/close failed");
 		return;
 	}
+	indigo_apply_switch_targets(DOME_SHUTTER_PROPERTY);
 	PRIVATE_DATA->shutter_active = true;
 	PRIVATE_DATA->shutter_emergency = baader_known_emergency(device);
 	indigo_send_message(device, DOME_SHUTTER_PROPERTY, open ? "Opening shutter..." : "Closing shutter...");
@@ -757,7 +761,8 @@ static void dome_flap_handler(indigo_device *device) {
 	DOME_FLAP_PROPERTY->state = INDIGO_BUSY_STATE;
 	// keep the framework BUSY guard closed while the device command runs
 	PRIVATE_DATA->flap_alert = false;
-	bool open = DOME_FLAP_OPENED_ITEM->sw.value;
+	// the poll may have overwritten the value after the request was copied, the target keeps the request
+	bool open = indigo_get_switch_target(DOME_FLAP_PROPERTY, DOME_FLAP_OPENED_ITEM_NAME);
 	baader_rc_t rc = open ? baader_command_ok(device, "d#opeflap") : baader_command_ok(device, "d#cloflap");
 	if (rc != BD_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Flap %s returned error %d", open ? "open" : "close", rc);
@@ -766,6 +771,7 @@ static void dome_flap_handler(indigo_device *device) {
 		indigo_update_property(device, DOME_FLAP_PROPERTY, rc == BD_DOME_ERROR ? "Flap open/close failed with DOME_ERROR. Please inspect the dome!" : "Flap open/close failed. Is the shutter open enough?");
 		return;
 	}
+	indigo_apply_switch_targets(DOME_FLAP_PROPERTY);
 	PRIVATE_DATA->flap_active = true;
 	PRIVATE_DATA->flap_emergency = baader_known_emergency(device);
 	indigo_send_message(device, DOME_FLAP_PROPERTY, open ? "Opening flap..." : "Closing flap...");
