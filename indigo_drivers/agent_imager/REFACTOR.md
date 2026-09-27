@@ -22,6 +22,7 @@ Status: hardware-free validation of the Imager Agent alone, of its cooperation w
 - `IMG-2` (reproduced, production): with a PRE_CAPTURE barrier the leader dithered right after its own, shorter exposure while members were still exposing (0.2 s overlap measured). Fix: before dithering, a barrier leader with a related Guider Agent waits until every member is paused on a breakpoint (`wait_for_barrier_members()`, abort and pause aware). Limitation: with a POST_CAPTURE-only barrier the dither is delayed until the members pause again. Regressions: `leader dithers with PRE_CAPTURE barrier`, `leader dithers with POST_CAPTURE and PRE_CAPTURE barrier`. A first version waited even without a related guider and blocked the barrier; the wait now happens inside `do_dither()` after the guider check.
 - Test defect (fixed): `download listing payload delete` compared 33 payload bytes against a 32 byte prefix buffer and read past it.
 - `DRIVER_VERSION` raised from `0x0300003B` to `0x0300003D`.
+- `IMG-3` (reproduced, production, 2026-09-27): a follow-up of the `IMG-1` fix. The aborted exposure batch cleared `AGENT_ABORT_PROCESS` before it moved `AGENT_START_PROCESS` out of BUSY; a barrier member whose ALERT arrived in between made `snoop_barrier_state()` see the batch still running with no abort pending, so it set `AGENT_ABORT_PROCESS` BUSY again and aborted a batch that had already ended, and nothing cleared it. Seen as the intermittent `additional instances and barrier` failure (1 of 10 runs, also in the recorded macOS run). Fix: the batch sets its final `AGENT_START_PROCESS` state before it clears the abort. Regression: `additional instances and barrier` now delivers the member's ALERT inside the leader's `AGENT_ABORT_PROCESS` OK publication and checks that the abort stays OK (5 of 5 runs failed before the fix, 10 of 10 passed after). `DRIVER_VERSION` raised to `0x0300003E`.
 
 ## Environment and limitations
 
@@ -30,5 +31,6 @@ Status: hardware-free validation of the Imager Agent alone, of its cooperation w
 
 ## Final test summary
 
-- Simulated tests: 53 run, 53 passed (39 + 8 + 6).
+- Simulated tests: 55 run, 55 passed (39 + 10 + 6) on macOS arm64 with `0x0300003E` through
+  `tools/run_driver_test.py agent_imager --no-record`. Earlier: 53 run, 53 passed (39 + 8 + 6).
 - Hardware tests: 0 run, 0 passed.

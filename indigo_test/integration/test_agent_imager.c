@@ -111,8 +111,30 @@ static indigo_result defined(indigo_client *client, indigo_device *device, indig
 	return observe(device, property, false);
 }
 
+// Armed by the barrier case: when the leader clears AGENT_ABORT_PROCESS at the end of its aborted batch, the stopped
+// member's AGENT_START_PROCESS ALERT is delivered right then, inside that publication, which is the moment a member
+// stopping in a real session can land in; the leader must not start a second abort nobody clears.
+static atomic_bool member_alert_at_abort_end;
+
+static void deliver_member_alert(void) {
+	indigo_device *member = secondary_agent_device;
+	pthread_mutex_lock(&cache_mutex);
+	observation *entry = find("Imager Agent #2", "AGENT_START_PROCESS");
+	indigo_property *alert = entry && entry->property ? indigo_copy_property(NULL, entry->property) : NULL;
+	pthread_mutex_unlock(&cache_mutex);
+	if (member != NULL && alert != NULL) {
+		alert->state = INDIGO_ALERT_STATE;
+		indigo_update_property(member, alert, NULL);
+	}
+	indigo_release_property(alert);
+}
+
 static indigo_result updated(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	return observe(device, property, true);
+	indigo_result result = observe(device, property, true);
+	if (property->state == INDIGO_OK_STATE && !strcmp(property->device, AGENT) && !strcmp(property->name, "AGENT_ABORT_PROCESS") && atomic_exchange(&member_alert_at_abort_end, false)) {
+		deliver_member_alert();
+	}
+	return result;
 }
 
 static indigo_result deleted(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
@@ -168,6 +190,14 @@ static unsigned blobs(const char *device) {
 	pthread_mutex_lock(&cache_mutex);
 	observation *entry = find(device, "CCD_IMAGE");
 	unsigned result = entry ? entry->blobs : 0;
+	pthread_mutex_unlock(&cache_mutex);
+	return result;
+}
+
+static int property_state(const char *device, const char *name) {
+	pthread_mutex_lock(&cache_mutex);
+	observation *entry = find(device, name);
+	int result = entry && entry->property ? (int)entry->property->state : -1;
 	pthread_mutex_unlock(&cache_mutex);
 	return result;
 }
@@ -840,8 +870,13 @@ static void additional_instances_and_barrier(void) {
 	ASSERT_TRUE(num(other, "AGENT_IMAGER_BATCH", "EXPOSURE", 2));
 	ASSERT_TRUE(run("EXPOSURE", INDIGO_BUSY_STATE));
 	ASSERT_TRUE(wait_state(other, "AGENT_START_PROCESS", 0, INDIGO_BUSY_STATE));
+	atomic_store(&member_alert_at_abort_end, true);
 	ASSERT_TRUE(abort_running());
+	ASSERT_FALSE(atomic_load(&member_alert_at_abort_end));
 	ASSERT_TRUE(wait_state(other, "AGENT_START_PROCESS", 0, INDIGO_ALERT_STATE));
+	// the abort is over: a second abort started by the member's ALERT would leave it BUSY for good
+	indigo_usleep(500000);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, property_state(AGENT, "AGENT_ABORT_PROCESS"));
 	ASSERT_TRUE(sw(other, "FILTER_CCD_LIST", "NONE", true, INDIGO_OK_STATE));
 	ASSERT_TRUE(sw(AGENT, "FILTER_RELATED_AGENT_LIST", other, false, INDIGO_OK_STATE));
 }

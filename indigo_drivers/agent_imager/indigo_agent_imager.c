@@ -25,7 +25,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0300003D
+#define DRIVER_VERSION 0x0300003E
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -1455,13 +1455,18 @@ static void exposure_batch_process(indigo_device *device) {
 		indigo_send_message(device, IDLE_PROPERTY, "Batch finished");
 	} else {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			// The batch leaves BUSY before the abort is cleared: a barrier member stopping in between would otherwise
+			// see this batch still running and no abort pending, and start a second abort that nobody clears.
+			if (AGENT_IMAGER_BATCH_COUNT_ITEM->number.value == -1) {
+				AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
 			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 			if (AGENT_IMAGER_BATCH_COUNT_ITEM->number.value == -1) {
-				AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_send_message(device, IDLE_PROPERTY, "Batch finished");
 			} else {
-				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_send_message(device, ALERT_PROPERTY, "Batch aborted");
 			}
 		} else {
