@@ -36,11 +36,9 @@
 extern "C" indigo_result ENTRY(indigo_driver_action, indigo_driver_info *);
 
 // Set when the driver lets the last of queued coupled CCD_MODE / X_PIXEL_FORMAT / CCD_BIN / CCD_FRAME
-// requests win: ccd_qhy since 3.0.0.40 (TGT-069). ccd_qhy2 (TGT-070) is not fixed yet; its fix removes
-// the #ifndef QHY2 condition so that both builds register the shared case.
-#ifndef QHY2
+// requests win: ccd_qhy since 3.0.0.40 (TGT-069), ccd_qhy2 since 3.0.0.44 (TGT-070), so both builds
+// register the shared case.
 #define QHY_COUPLED_REQUESTS_FIXED
-#endif
 
 static std::atomic<int> opens, closes, active, attached, blobs, after_close, bus_calls, resources;
 static std::atomic<bool> fail_mode, fail_bits;
@@ -1117,6 +1115,9 @@ static void missing_live_video_hides_streaming(void) {
 	has_live = true;
 }
 
+#ifdef INDIGO_MACOS
+// Only the macOS driver programs QHY firmware (qhy2_firmware()); on Linux the udev rules load it
+// with fxload before the SDK sees the camera, so an unprogrammed camera never reaches the driver.
 // Hardware: a macOS rig carrying a QHY5 and a QHY5L-II that both came up without firmware aborted
 // the driver inside OSXInitQHYCCDFirmware() before the call returned, in libmalloc with "BUG IN
 // CLIENT OF LIBMALLOC: not an allocated block", and the whole process went with it. One
@@ -1137,6 +1138,7 @@ static void several_unprogrammed_cameras_are_programmed_without_a_double_free(vo
 	camera_mask = 1;
 	cfw = true;
 }
+#endif
 
 // Hardware: a QHY5LII-M adds 50 to CONTROL_OFFSET on every bit depth change and ignores the write
 // the driver makes afterwards, so the readback reached 530 against the 1..512 the camera
@@ -1233,7 +1235,9 @@ int main(int argc, char **argv) {
 	#endif
 	#ifdef QHY2
 		{ "missing live video", missing_live_video_hides_streaming },
+		#ifdef INDIGO_MACOS
 		{ "unprogrammed cameras", several_unprogrammed_cameras_are_programmed_without_a_double_free },
+		#endif
 		{ "drifting control", a_control_that_drifts_out_of_its_range_does_not_end_the_acquisition },
 	#endif
 		{ "read directly exposure", read_directly_exposure_is_not_doubled } };

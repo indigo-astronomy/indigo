@@ -295,3 +295,60 @@ generator consults the block for every removal again, and a driver that has to t
 identity guards its own block with `if (!unplug_result)`, as `ccd_qhy2` does for QHY2-001.
 
 This driver's `unplug_match` carries the `if (!unplug_result)` guard again, so a removal libusb identified is confirmed without `ScanQHYCCD()` (QHY2-001). That trusts the identity the plug block recorded, which binds each USB device to the first camera not attached yet; two cameras arriving together can be bound crosswise, and unplugging one of them then detaches the other. This is the behaviour before 2026-09-22 and is accepted as the lesser defect. Recorded with `tools/run_driver_test.py`: fake SDK 41/41.
+
+## Coupled mode, pixel format, binning and frame requests (TGT-070, 2026-09-27)
+
+Version 44, finding TGT-070 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`),
+the same defect and fix as TGT-069 in `ccd_qhy` (3.0.0.40 and 3.0.0.41); the handlers are the same code
+with `qhy2_modes()` / `qhy2_update_geometry()` in place of the `qhy_` helpers.
+
+### Defects (reproduced by the regression test below)
+
+- Lost requests: the CCD_MODE handler rewrote the X_PIXEL_FORMAT values, the CCD_BIN values and targets
+  and, through `qhy2_update_geometry()`, the CCD_FRAME values and targets, and the X_PIXEL_FORMAT and
+  CCD_BIN handlers rebuilt CCD_MODE with `qhy2_modes()`, all whatever the state of the coupled property.
+  A request queued behind such a handler was overwritten before its own handler read it, and that
+  handler applied the earlier request's setting and reported OK.
+- Unpublished CCD_MODE: `qhy2_modes()` rebuilds the items with `indigo_init_switch_item()`, which sets
+  `previous_value` to the new value, so `indigo_update_property()` saw no change and clients kept seeing
+  the previous mode after an X_PIXEL_FORMAT or CCD_BIN change.
+
+### Fix
+
+- The CCD_MODE and X_PIXEL_FORMAT handlers apply their request with `indigo_apply_switch_targets()`.
+- The CCD_MODE handler leaves a BUSY X_PIXEL_FORMAT, CCD_BIN or CCD_FRAME to its own handler; the
+  X_PIXEL_FORMAT and CCD_BIN handlers leave a BUSY CCD_MODE alone and X_PIXEL_FORMAT does not publish a
+  BUSY CCD_FRAME.
+- `qhy2_select_mode()` sets value and target of the items `qhy2_modes()` built at connection time; the
+  X_PIXEL_FORMAT and CCD_BIN handlers call it instead of `qhy2_modes()`. The X_READ_MODE handler keeps
+  `qhy2_modes()` because it redefines CCD_MODE.
+- No `_finalizer` reference was added; the regenerated handlers keep the generated OK prologue and final
+  update, and only `indigo_ccd_qhy2.cpp` changed besides the `.driver`.
+
+### Regression test
+
+`queued coupled requests keep the last` in the shared `indigo_test/integration/test_ccd_qhy_sdk.cpp`
+(see `ccd_qhy/REFACTOR.md`), now registered for both builds. Proof on Linux x64, only this case
+(`build/integration/test_ccd_qhy2_sdk "queued coupled"`):
+
+- 3.0.0.43 (HEAD driver): FAIL, 5 assertions (mode then format, format then mode, bin then mode, mode
+  then bin, mode then frame), the same as `ccd_qhy` 3.0.0.39.
+- 3.0.0.44 with `qhy2_modes()` instead of `qhy2_select_mode()` (temporary, not committed): FAIL, 2
+  assertions (stale CCD_MODE after mode then format and mode then bin).
+- 3.0.0.44: PASS. The `ccd_qhy` binary still passes the case.
+
+### Test found: `unprogrammed cameras` is macOS-only
+
+The first recorded Linux run of this suite failed 39/42: `unprogrammed cameras` failed at `begin(4)`,
+also when run alone, and its early return skipped the restoration of `camera_mask` and `cfw`, so the
+two following cases failed `begin()` as well. `qhy2_firmware()` programs cameras only under
+`INDIGO_MACOS`; on Linux the udev rules load the firmware with fxload before the SDK sees the camera, so
+the fake camera stayed unprogrammed and `ScanQHYCCD()` returned 0. HEAD (3.0.0.43) fails the same three
+cases on Linux (38/41); the earlier 41/41 record was macOS. The case is now compiled and registered only
+for `INDIGO_MACOS`; no driver change.
+
+### Test summary
+
+- Simulated tests run: 41; passed: 41 (`build/integration/test_ccd_qhy2_sdk`, recorded with
+  `tools/run_driver_test.py ccd_qhy2` on Linux x64, version 3.0.0.44; macOS registers 42 cases).
+- Hardware tests run: 0; passed: 0.
