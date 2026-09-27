@@ -221,12 +221,42 @@ Linux x64 (Ubuntu 24.04, gcc 13.3), hardware-free suite only; no hardware run.
   Regeneration reproduces the checked-in output.
 
 ```sh
-cd indigo_test && INDIGO_TEST_FILTER="request survives the poll" ./build/integration/test_aux_asiair_sysfs
+cd indigo_test && INDIGO_TEST_CASE_FILTER="request survives the poll" ./build/integration/test_aux_asiair_sysfs
+```
+
+## Failed PWM writes (3.0.0.7, 2026-09-27)
+
+The aux_asiair part of TGT-D11 in `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (unrelated to D11 in
+this file), fixed the same way as aux_rpio 3.0.0.11. Linux x64 (Ubuntu 24.04, gcc 13.3),
+hardware-free suite only; no hardware run.
+
+- **TGT-D11 (reproduced):** both PWM handlers ignored the result of `asiair_apply_pwm()`, so a
+  setting the kernel rejected was reported OK with the rejected value while the channel kept its
+  old setting. **Fix:** the channel readback of the poll moved into `asiair_read_pwm()` (one read
+  of each channel per poll, the BUSY guard of 3.0.0.6 unchanged); on a failed `asiair_apply_pwm()`
+  the handler reads the channels back into value and target of its property with
+  `asiair_read_pwm()` and publishes ALERT. The generator still owns the OK prologue and the final
+  update (checked in the regenerated handlers). The connect-time `asiair_apply_pwm()` is unchanged.
+- **Regression tests:** `PWM duty write failure is reported` and `PWM frequency write failure is
+  reported` set `pwm_write_fails` in the shared `sysfs_gpio_fake.h` (the kernel rejects a period
+  or duty cycle with `EINVAL` and keeps the previous setting), request 50 % / 200 Hz on Output #1
+  and check that the first result after the request is ALERT showing the 100 the channel still
+  runs at, with the channel unchanged. Against 3.0.0.6 both failed (first result OK with the
+  rejected 50 / 200); both pass with 3.0.0.7, also in the ASan build.
+- **Test build:** the ASan rule of `test_aux_rpio_sysfs` now lists `sysfs_gpio_fake.h` as a
+  prerequisite like the other three sysfs rules; `make -n -W integration/sysfs_gpio_fake.h`
+  relinks both ASan tests.
+- **Verification:** `TZ=Europe/Bratislava python3 tools/run_driver_test.py aux_asiair`, 20/20.
+  Regeneration reproduces the checked-in output.
+
+```sh
+cd indigo_test && INDIGO_TEST_CASE_FILTER="write failure is reported" ./build/integration/test_aux_asiair_sysfs
 ```
 
 ## Final test summary
 
-- Simulated tests: 18 executed, 18 passed (Linux x64, 3.0.0.6). Earlier: 16 executed, 16 passed on
+- Simulated tests: 20 executed, 20 passed (Linux x64, 3.0.0.7). Earlier: 18 executed, 18 passed
+  (Linux x64, 3.0.0.6) and 16 executed, 16 passed on
   the Raspberry Pi 5. The pre-migration baseline against the unmodified driver was 15 executed,
   8 passed.
 - Hardware tests: 3 executed, 3 passed, on a Raspberry Pi 5 Model B Rev 1.0 with nothing connected

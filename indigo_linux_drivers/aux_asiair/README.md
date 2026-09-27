@@ -46,4 +46,4 @@ On a Raspberry Pi 5 the pwm-2chan overlay does not route any header pin to the R
 
 2026-09-20 22:35 3.0.0.4 linux arm64 fake SDK 16/16 OK
 2026-09-20 22:35 3.0.0.4 linux arm64 Raspberry Pi 5 3/3 OK
-2026-09-27 01:57 3.0.0.6 linux x64 fake SDK 18/18 OK
+2026-09-27 02:07 3.0.0.7 linux x64 fake SDK 20/20 OK

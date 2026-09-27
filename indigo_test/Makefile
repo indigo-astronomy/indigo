@@ -1763,7 +1763,7 @@ $(INTEGRATION_BUILD)/test_aux_rpio_sysfs: integration/test_aux_rpio_sysfs.c $(IN
 $(INTEGRATION_BUILD)/aux_rpio_sysfs_asan.o: ../indigo_linux_drivers/aux_rpio/indigo_aux_rpio.c ../indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.h ../indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(AUX_RPIO_SYSFS_TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -c $< -o $@
 
-$(INTEGRATION_BUILD)/test_aux_rpio_sysfs_asan: integration/test_aux_rpio_sysfs.c $(INTEGRATION_BUILD)/aux_rpio_sysfs_asan.o integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_aux_rpio_sysfs_asan: integration/test_aux_rpio_sysfs.c $(INTEGRATION_BUILD)/aux_rpio_sysfs_asan.o integration/sysfs_gpio_fake.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $< $(INTEGRATION_BUILD)/aux_rpio_sysfs_asan.o -o $@ $(TEST_LDFLAGS) -fsanitize=address,undefined
 
 .PHONY: test-aux-rpio-sysfs test-aux-rpio-sysfs-asan

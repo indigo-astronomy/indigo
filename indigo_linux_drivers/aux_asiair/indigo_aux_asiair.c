@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_aux_asiair"
 #define DRIVER_LABEL         "ZWO Power Ports ASIAIR"
 #define AUX_DEVICE_NAME      "ZWO Power Ports ASIAIR"
@@ -234,6 +234,29 @@ static bool asiair_apply_pwm(indigo_device *device) {
 	return result;
 }
 
+// Read both channels back into value and target of the selected PWM
+// properties.
+static bool asiair_read_pwm(indigo_device *device, bool frequencies, bool duties) {
+	bool result = true;
+	for (int i = 0; i < PWM_COUNT; i++) {
+		double frequency = 0;
+		double duty = 0;
+		if (rpio_sysfs_get_pwm(&PRIVATE_DATA->sysfs, i, &frequency, &duty)) {
+			indigo_item *frequency_item = AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->items + i;
+			indigo_item *duty_item = AUX_GPIO_OUTLET_DUTY_PROPERTY->items + i;
+			if (frequencies) {
+				frequency_item->number.value = frequency_item->number.target = frequency;
+			}
+			if (duties) {
+				duty_item->number.value = duty_item->number.target = duty;
+			}
+		} else {
+			result = false;
+		}
+	}
+	return result;
+}
+
 // The channels can be reprogrammed from outside the driver, so the
 // published settings are refreshed from the device. A pending request
 // owns value, target and state of its property: its handler programs
@@ -244,23 +267,7 @@ static void asiair_update_pwm(indigo_device *device) {
 	}
 	bool frequency_pending = AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state == INDIGO_BUSY_STATE;
 	bool duty_pending = AUX_GPIO_OUTLET_DUTY_PROPERTY->state == INDIGO_BUSY_STATE;
-	bool ok = true;
-	for (int i = 0; i < PWM_COUNT; i++) {
-		double frequency = 0;
-		double duty = 0;
-		if (rpio_sysfs_get_pwm(&PRIVATE_DATA->sysfs, i, &frequency, &duty)) {
-			indigo_item *frequency_item = AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->items + i;
-			indigo_item *duty_item = AUX_GPIO_OUTLET_DUTY_PROPERTY->items + i;
-			if (!frequency_pending) {
-				frequency_item->number.value = frequency_item->number.target = frequency;
-			}
-			if (!duty_pending) {
-				duty_item->number.value = duty_item->number.target = duty;
-			}
-		} else {
-			ok = false;
-		}
-	}
+	bool ok = asiair_read_pwm(device, !frequency_pending, !duty_pending);
 	if (!frequency_pending) {
 		AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
@@ -406,7 +413,12 @@ static void aux_x_aux_pwm_handler(indigo_device *device) {
 static void aux_gpio_outlet_frequencies_handler(indigo_device *device) {
 	AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_GPIO_OUTLET_FREQUENCIES.on_change
-	asiair_apply_pwm(device);
+	// A rejected setting leaves the channels as they were, so they are
+	// shown as they report themselves.
+	if (!asiair_apply_pwm(device)) {
+		asiair_read_pwm(device, true, false);
+		AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- aux.AUX_GPIO_OUTLET_FREQUENCIES.on_change
 	indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
 }
@@ -414,7 +426,12 @@ static void aux_gpio_outlet_frequencies_handler(indigo_device *device) {
 static void aux_gpio_outlet_duty_handler(indigo_device *device) {
 	AUX_GPIO_OUTLET_DUTY_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_GPIO_OUTLET_DUTY.on_change
-	asiair_apply_pwm(device);
+	// A rejected setting leaves the channels as they were, so they are
+	// shown as they report themselves.
+	if (!asiair_apply_pwm(device)) {
+		asiair_read_pwm(device, false, true);
+		AUX_GPIO_OUTLET_DUTY_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- aux.AUX_GPIO_OUTLET_DUTY.on_change
 	indigo_update_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
 }

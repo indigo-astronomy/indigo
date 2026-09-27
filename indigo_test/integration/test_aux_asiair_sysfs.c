@@ -390,6 +390,53 @@ static void pwm_frequency_request_survives_poll(void) {
 	pwm_request_survives_poll(true);
 }
 
+// TGT-D11: a frequency or duty cycle the kernel rejects must not be reported OK. The first result after the request
+// is ALERT and shows the setting the channel still runs at, not the rejected request.
+static void pwm_write_failure_is_reported(bool frequency) {
+	const char *property = frequency ? AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY_NAME : AUX_GPIO_OUTLET_DUTY_PROPERTY_NAME;
+	double requested = frequency ? 200 : 50;
+	atomic_store(&asiair_device, NULL);
+	simulator_test_client.update_property = watch_update;
+	SERIAL_CHECK_TRUE(start_driver_with_pwm(0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(property, INDIGO_OK_STATE));
+	// Output #1 runs at 100 Hz with a 100 % duty cycle.
+	SERIAL_CHECK_EQ_INT(10000000, fake_pwm_value(0, true));
+	SERIAL_CHECK_EQ_INT(10000000, fake_pwm_value(0, false));
+	pthread_mutex_lock(&fake.mutex);
+	fake.pwm_write_fails = true;
+	pthread_mutex_unlock(&fake.mutex);
+	watch_property = property;
+	watch_witness = property;
+	atomic_store(&watch_results, 0);
+	atomic_store(&watch_on, true);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ASIAIR_DEVICE_NAME, property, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, requested));
+	for (int i = 0; i < 300 && atomic_load(&watch_results) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	printf("first %s result after the rejected request: state %d, Output #1 %g, period %d, duty cycle %d\n", property, atomic_load(&watch_first_state), atomic_load(&watch_first_value), fake_pwm_value(0, true), fake_pwm_value(0, false));
+	SERIAL_CHECK_TRUE(atomic_load(&watch_results) > 0);
+	ASSERT_TRUE(fake_trace_count_of("pwm-duty-fail 0") + fake_trace_count_of("pwm-period-fail 0") > 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, atomic_load(&watch_first_state));
+	SERIAL_CHECK_TRUE(atomic_load(&watch_first_value) == 100);
+	SERIAL_CHECK_EQ_INT(10000000, fake_pwm_value(0, true));
+	SERIAL_CHECK_EQ_INT(10000000, fake_pwm_value(0, false));
+cleanup:
+	atomic_store(&watch_on, false);
+	pthread_mutex_lock(&fake.mutex);
+	fake.pwm_write_fails = false;
+	pthread_mutex_unlock(&fake.mutex);
+	stop_driver();
+	simulator_test_client.update_property = simulator_client_update_property;
+}
+
+static void pwm_duty_write_failure_is_reported(void) {
+	pwm_write_failure_is_reported(false);
+}
+
+static void pwm_frequency_write_failure_is_reported(void) {
+	pwm_write_failure_is_reported(true);
+}
+
 // D4 and D7 reproducer.
 static void rejected_export_fails_the_connection_cleanly(void) {
 	SERIAL_CHECK_TRUE(bring_up_driver(0, false));
@@ -488,6 +535,8 @@ int main(void) {
 		{ "failed PWM readback is not written back", failed_pwm_readback_is_not_written_back },
 		{ "PWM duty request survives the poll", pwm_duty_request_survives_poll },
 		{ "PWM frequency request survives the poll", pwm_frequency_request_survives_poll },
+		{ "PWM duty write failure is reported", pwm_duty_write_failure_is_reported },
+		{ "PWM frequency write failure is reported", pwm_frequency_write_failure_is_reported },
 		{ "rejected export fails the connection cleanly", rejected_export_fails_the_connection_cleanly },
 		{ "failed connect rolls back exported pins", failed_connect_rolls_back_exported_pins },
 		{ "connect does not sleep for a fixed second", connect_does_not_sleep_for_a_fixed_second },
