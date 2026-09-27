@@ -26,7 +26,7 @@ driver upb3 {
 	label = "PegasusAstro Ultimate Powerbox v3";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
-	version = 7;
+	version = 8;
 	serial {
 		pattern {
 			pid = 0x9005;
@@ -308,13 +308,9 @@ driver upb3 {
 			}
 			if (upb3_command(device, "PD")) {
 				if (!strcmp(PRIVATE_DATA->response, "PD:000")) {
-					if (AUX_DEW_CONTROL_MANUAL_ITEM->sw.value) {
-						indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
-					}
+					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
 				} else {
-					if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
-						indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
-					}
+					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
 				}
 			}
 		}

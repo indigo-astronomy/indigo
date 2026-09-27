@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_aux_upb3"
 #define DRIVER_LABEL         "PegasusAstro Ultimate Powerbox v3"
 #define AUX_DEVICE_NAME      "Ultimate Powerbox 3"
@@ -459,13 +459,9 @@ static void aux_connection_handler(indigo_device *device) {
 			}
 			if (upb3_command(device, "PD")) {
 				if (!strcmp(PRIVATE_DATA->response, "PD:000")) {
-					if (AUX_DEW_CONTROL_MANUAL_ITEM->sw.value) {
-						indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
-					}
+					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
 				} else {
-					if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
-						indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
-					}
+					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
 				}
 			}
 			//- aux.on_connect

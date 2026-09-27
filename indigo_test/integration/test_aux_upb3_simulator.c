@@ -149,6 +149,36 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// TGT-D03: both dew control items start on, so the first connect shows the mode
+// the box reports even with the inverted adoption; a later connect to a box in
+// the other mode has to show that mode, not the one the switch showed before.
+static void dew_state_is_adopted_at_connect(void) {
+	external_serial_simulator automatic = { 0 };
+	external_serial_simulator manual = { 0 };
+	const char *arguments[] = { "--autodew", NULL };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_upb3(&automatic, arguments));
+	SERIAL_CHECK_TRUE(start_upb3(&manual, NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, automatic.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, false));
+	disconnect_serial_device(&aux);
+	SERIAL_CHECK_TRUE(connect_serial_device(&aux, manual.port));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, false));
+	disconnect_serial_device(&aux);
+	SERIAL_CHECK_TRUE(connect_serial_device(&aux, automatic.port));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, false));
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&aux);
+	}
+	stop_external_serial_simulator(&manual);
+	stop_external_serial_simulator(&automatic);
+}
+
 static void each_power_outlet_switches_on_its_own(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_upb3(&simulator, NULL));
@@ -589,6 +619,7 @@ int main(void) {
 		{ "identity_and_firmware_reach_info", identity_and_firmware_reach_info },
 		{ "connect_adopts_the_outlet_state", connect_adopts_the_outlet_state },
 		{ "a_box_left_off_comes_up_off", a_box_left_off_comes_up_off },
+		{ "dew_state_is_adopted_at_connect", dew_state_is_adopted_at_connect },
 		{ "each_power_outlet_switches_on_its_own", each_power_outlet_switches_on_its_own },
 		{ "each_usb_port_switches_on_its_own", each_usb_port_switches_on_its_own },
 		{ "heaters_hold_independent_duty_cycles", heaters_hold_independent_duty_cycles },
