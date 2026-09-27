@@ -25,7 +25,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x03000017
+#define DRIVER_VERSION 0x03000018
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -289,6 +289,10 @@ typedef enum {
 	MOUNT_DOME_CONTROL_SLEW,
 	MOUNT_DOME_CONTROL_SYNC
 } control_operation;
+
+static void abort_imager_process(indigo_device *device, char *reason);
+static void abort_guider_process(indigo_device *device, char *reason);
+static void reset_star_selection(indigo_device *device, char *reason);
 
 /* Both lights report a mode and not an operation, so they are IDLE when not slaved or
    derotated, OK while slaved or derotated and ALERT on error, never BUSY.
@@ -571,6 +575,9 @@ static void close_dome_process(indigo_device *device) {
 
 static void slew_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
+	abort_imager_process(device, "slew");
+	abort_guider_process(device, "slew");
+	reset_star_selection(device, "slew");
 	bool control_dome = AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED;
 	if (control_dome) {
 		if (AGENT_DOME_FEATURES_CAN_OPEN_ITEM->sw.value && AGENT_DOME_STATE_OPEN_ITEM->light.value != INDIGO_OK_STATE) {
@@ -1327,10 +1334,12 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 					} else if (item->light.value == INDIGO_ALERT_STATE) {
 						indigo_send_message(device, ALERT_PROPERTY, "Mount slew failed");
 					} else {
-						abort_imager_process(device, "slew");
-						abort_guider_process(device, "slew");
-						reset_star_selection(device, "slew");
-							indigo_send_message(device, IDLE_PROPERTY, "Mount is slewing");
+						if (!AGENT_MOUNT_START_SLEW_ITEM->sw.value) {
+							abort_imager_process(device, "slew");
+							abort_guider_process(device, "slew");
+							reset_star_selection(device, "slew");
+						}
+						indigo_send_message(device, IDLE_PROPERTY, "Mount is slewing");
 					}
 				}
 			} else if (!strcmp(item->name, MOUNT_STATE_TRACKING_ITEM_NAME)) {
@@ -1521,9 +1530,11 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 					AGENT_MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
 					indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 				}
-				abort_imager_process(device, "slewing");
-				abort_guider_process(device, "slewing");
-				reset_star_selection(device, "slewing");
+				if (!AGENT_MOUNT_START_SLEW_ITEM->sw.value) {
+					abort_imager_process(device, "slewing");
+					abort_guider_process(device, "slewing");
+					reset_star_selection(device, "slewing");
+				}
 			}
 			AGENT_MOUNT_STATE_SLEW_ITEM->light.value = property->state == INDIGO_OK_STATE ? INDIGO_IDLE_STATE : property->state;
 		}
