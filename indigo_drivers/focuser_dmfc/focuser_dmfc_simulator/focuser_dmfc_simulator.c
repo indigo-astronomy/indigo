@@ -236,6 +236,10 @@ static void dispatch_command(int handle, const char *command) {
 			sim_printf(handle, "ERR\n");
 			return;
 		}
+		if (!strcmp(fault, "slow")) {
+			// the reply keeps the state from before the delay, so a request can arrive while the driver waits for it
+			usleep(500000);
+		}
 	}
 	if (!strcmp(command, "#")) {
 		sim_printf(handle, strcmp(options.profile, "no-handshake") ? "OK_DMFCN\n" : "ERR\n");

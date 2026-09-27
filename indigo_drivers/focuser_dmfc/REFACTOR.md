@@ -84,3 +84,18 @@ numbers. Background and the defect that motivated the refusal macro are in `indi
 
 Verification: the complete simulator suite was re-run after regeneration —
 `indigo_test/build/integration/test_focuser_dmfc_simulator`, macOS arm64, 24/24 passed on 2026-09-21 12:44.
+
+## Queued position request overwritten by the poll (3.0.0.19, 2026-09-27)
+
+- **Defect:** the poll set FOCUSER_POSITION and FOCUSER_STEPS OK whenever `I` reported no motion, also while a
+  position or steps request was copied (BUSY) but its handler had not sent `M:` / `G:` yet. The request was shown
+  OK until the handler set BUSY again, and a second motion request arriving in that window was accepted instead of
+  refused as overlapping. Seen as the intermittent `overlap_rejected` failure (FOCUSER_STEPS did not reach ALERT).
+- **Fix:** `PRIVATE_DATA->moving` records a motion the controller runs: set when `M:` or `G:` was sent, when `I` or
+  the connect status reports motion, cleared by an idle `I` and by `H`. The poll ends BUSY only for such a motion.
+- **Simulator:** the fault action `slow` answers the next matching command 0.5 s late with the state from before
+  the delay.
+- **Regression test:** `request_survives_idle_status_read` sends a position request while the poll waits for a
+  slow idle `I` reply and checks that FOCUSER_POSITION is never published OK before the abort and that a relative
+  move is refused. Version 18 failed 3 of 3 runs, version 19 passed 5 of 5; the whole suite (25 cases) and
+  `test_focuser_dmfc_motion` passed 3 of 3 runs on macOS arm64.

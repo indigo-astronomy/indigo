@@ -550,6 +550,34 @@ cleanup:
 
 // The controller is already moving when the driver connects, so the status
 // line and the polling loop, not a driver request, drive the motion properties.
+// A position request copied while the poll waits for an idle `I` reply stays BUSY: the poll ends only a motion the
+// controller runs, not one whose move the queued handler has not sent yet. Before, the poll showed the request OK and
+// a relative move that has to be refused was accepted (the intermittent overlap_rejected failure).
+static void request_survives_idle_status_read(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_position(1000));
+	SERIAL_CHECK_TRUE(fault("I", "slow"));
+	// the simulator removes the control file when the poll's I takes it, then holds its idle reply back
+	for (int i = 0; i < 300 && access(fault_path, F_OK) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(access(fault_path, F_OK) != 0);
+	unsigned int ok = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(goto_position(90000, INDIGO_BUSY_STATE));
+	// the idle reply arrives within 0.5 s, the move to 90000 takes about 90 s
+	indigo_usleep(1000000);
+	indigo_property *position = find_cached_property(FOCUSER_POSITION_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(position != NULL);
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, position->state);
+	// not even briefly: an OK between the copy and the handler is the window a second request is accepted in
+	SERIAL_CHECK_EQ_INT((int)ok, (int)property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void external_motion_observed(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
@@ -742,6 +770,7 @@ int main(void) {
 		{ "motion_progress_and_abort", motion_progress_and_abort, "normal" },
 		{ "abort_while_idle", abort_while_idle, "normal" },
 		{ "overlap_rejected", overlap_rejected, "normal" },
+		{ "request_survives_idle_status_read", request_survives_idle_status_read, "normal" },
 		{ "external_motion_observed", external_motion_observed, "external-motion" },
 		{ "disconnect_during_motion", disconnect_during_motion, "normal" },
 		{ "controller_settings", controller_settings, "normal" },

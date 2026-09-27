@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000013
 #define DRIVER_NAME          "indigo_focuser_dmfc"
 #define DRIVER_LABEL         "PegasusAstro DMFC Focuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus DMFC"
@@ -73,6 +73,9 @@ typedef struct {
 	indigo_property *x_focuser_led_property;
 	//+ data
 	char response[128];
+	// A motion the controller runs: the poll ends FOCUSER_POSITION / FOCUSER_STEPS BUSY only for it, not
+	// for a request that is copied and queued but whose handler has not sent the move yet.
+	bool moving;
 	//- data
 } dmfc_private_data;
 
@@ -146,12 +149,14 @@ static void focuser_timer_callback(indigo_device *device) {
 	}
 	if (dmfc_command(device, "I")) {
 		if (PRIVATE_DATA->response[0] == '0') {
-			if (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE) {
+			if (PRIVATE_DATA->moving) {
+				PRIVATE_DATA->moving = false;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				update = true;
 			}
 		} else {
+			PRIVATE_DATA->moving = true;
 			if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -194,7 +199,8 @@ static void focuser_connection_handler(indigo_device *device) {
 				}
 				token = strtok_r(NULL, ":", &pnt);
 				if (token) { // moving status
-					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+					PRIVATE_DATA->moving = *token == '1';
+					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 				}
 				token = strtok_r(NULL, ":", &pnt);
 				if (token) { // led status
@@ -325,6 +331,7 @@ static void focuser_steps_handler(indigo_device *device) {
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_STEPS.on_change
 	if (dmfc_command(device, "G:%d", (int)FOCUSER_STEPS_ITEM->number.target * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1))) {
+		PRIVATE_DATA->moving = true;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
@@ -349,6 +356,7 @@ static void focuser_position_handler(indigo_device *device) {
 	FOCUSER_POSITION_ITEM->number.target = position;
 	if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
 		if (dmfc_command(device, "M:%d", position)) {
+			PRIVATE_DATA->moving = true;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
@@ -373,6 +381,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, focuser_steps_handler);
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		if (dmfc_command(device, "H")) {
+			PRIVATE_DATA->moving = false;
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
