@@ -215,6 +215,7 @@ static pthread_mutex_t motion_mutex = PTHREAD_MUTEX_INITIALIZER;
 static double offset_x, offset_y;
 static _Atomic double motion_scale = 0.01;
 static _Atomic double east_motion_factor = 1;
+static _Atomic double extended_amplitude = 30000;
 static double pulse_ra, pulse_dec, maximum_pulse;
 static unsigned ra_commands, dec_commands, east_commands;
 
@@ -234,7 +235,7 @@ static void synthetic_frame(indigo_device *device) {
 			double v = 500 + (x * 17 + y * 13) % 3;
 			if (extended_image && !blank) {
 				double xx = x * bin + left - 200 - dx, yy = y * bin + top - 150 - dy;
-				v += 30000 * exp(-(xx * xx + yy * yy) / 1800);
+				v += extended_amplitude * exp(-(xx * xx + yy * yy) / 1800);
 			}
 			for (int i = 0; !blank && !extended_image && i < ARRAY_SIZE(stars); i++) {
 				double xx = x * bin + left - stars[i][0] - dx, yy = y * bin + top - stars[i][1] - dy;
@@ -747,6 +748,25 @@ static void donuts_trend(void) { guide_mode("DONUTS", "LINEAR_TREND", "LINEAR_TR
 static void centroid_resist(void) { guide_mode("CENTROID", AGENT_GUIDER_CORRECTION_MODE_PI_ITEM_NAME, "RESIST_SWITCH"); }
 
 static void selection_ppec(void) { guide_mode("SELECTION", "PPEC", AGENT_GUIDER_CORRECTION_MODE_PI_ITEM_NAME); }
+
+// Full-frame centroid reports the SNR of each guiding frame, not the one of the reference frame
+static void centroid_snr_follows_frames(void) {
+	ASSERT_TRUE(configured_guiding());
+	extended_image = true;
+	ASSERT_TRUE(sw(AGENT, "AGENT_GUIDER_DETECTION_MODE", "CENTROID", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(run("GUIDING", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_value(AGENT, "AGENT_GUIDER_STATS", "FRAME", 3, 20));
+	double reference = value(AGENT, "AGENT_GUIDER_STATS", "SNR");
+	// A quarter of the signal lowers the SNR of the full-frame centroid, a value frozen at the reference frame stays put
+	extended_amplitude = 7500;
+	double frame = value(AGENT, "AGENT_GUIDER_STATS", "FRAME");
+	ASSERT_TRUE(wait_value(AGENT, "AGENT_GUIDER_STATS", "FRAME", frame + 3, 20));
+	double dimmed = value(AGENT, "AGENT_GUIDER_STATS", "SNR");
+	printf("    SNR %.1f on the reference target, %.1f on a quarter of its signal\n", reference, dimmed);
+	ASSERT_TRUE(reference > 0);
+	ASSERT_TRUE(dimmed < 0.9 * reference);
+	ASSERT_TRUE(abort_running());
+}
 
 static void guiding_preconditions(void) {
 	ASSERT_TRUE(connect_guider());
@@ -2076,6 +2096,7 @@ static const indigo_test_case tests[] = {
 	{ "weighted hysteresis guiding", weighted_hysteresis },
 	{ "donuts linear trend guiding", donuts_trend },
 	{ "centroid resist switch guiding", centroid_resist },
+	{ "centroid SNR follows guiding frames", centroid_snr_follows_frames },
 	{ "selection PPEC guiding", selection_ppec },
 	{ "guiding preconditions", guiding_preconditions },
 	{ "busy guards and deferred PPEC reset", busy_guards },

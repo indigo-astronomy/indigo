@@ -48,3 +48,9 @@ Status: hardware-free validation complete. Production defects `DRV-124` through 
 - `dither strategies` hung in about one of ten runs (SIGALRM). A thread dump showed a test-harness deadlock: the fake camera called `indigo_cancel_timer_sync()` from `change_property` with the bus locked while its `synthetic_frame()` timer waited for the bus lock in `indigo_update_property()`. The fake camera now aborts on its device queue, as `DRIVER_DEVELOPMENT_BASICS.md` requires; the case then passed 30 of 30 repetitions.
 - Cooperation with the production Imager and Mount agents (dithering handshake, aborts while dithering, Mount Agent `ABORT_RELATED_PROCESS` on slew and park) is covered by `integration/test_agent_imager_guider_mount.c`, see `agent_imager/REFACTOR.md`.
 - Result: 88 / 88 simulated cases passed; hardware tests 0 / 0.
+
+## Guider list snoop and centroid SNR (2026-09-27)
+
+- The `FILTER_GUIDER_LIST` snoop reset the pulse states when no rotator was selected instead of when no guider was selected. The rotator list is hidden in this agent, so the reset ran on every guider list change and the outcome did not differ; the condition now reads `INDIGO_FILTER_GUIDER_SELECTED`. No regression case, because the wrong condition cannot be told apart through the bus.
+- In full-frame centroid detection, the SNR statistic of each guiding frame came from the reference frame and never changed. It now comes from the frame's own digest. Regression: `centroid SNR follows guiding frames` dims the target to a quarter and expects a lower SNR; with the old code the SNR stayed at 15156.9.
+- Version `0x03000031` to `0x03000032`. `test_agent_guider` 90/90 passed on macOS arm64; hardware tests 0 / 0.
