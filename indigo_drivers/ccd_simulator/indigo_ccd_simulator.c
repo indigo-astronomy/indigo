@@ -53,7 +53,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000024
+#define DRIVER_VERSION       0x03000025
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -1163,7 +1163,7 @@ static void start_focuser_move(indigo_device *device, int target) {
 #define SIDEREAL_DEC_RATE    (15.0410686 / 3600.0)
 
 static void guider_ra_finalizer(indigo_device *device) {
-	// a connected mount simulator is guided at the physical guide rate and the image follows its pointing
+	// a connected, guidable mount simulator is guided at the physical guide rate and the image follows its pointing
 	if (!indigo_simulated_mount_guide(PRIVATE_DATA->guide_rate * SIDEREAL_RA_RATE * (GUIDER_GUIDE_EAST_ITEM->number.value - GUIDER_GUIDE_WEST_ITEM->number.value) / 1000.0, 0)) {
 		double offset = cos(M_PI * DEC_ITEM->number.value / 180.0) * PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / GUIDER_GUIDE_SCALE;
 		IMAGE_RA_OFFSET_ITEM->number.value += offset;

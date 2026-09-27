@@ -21,8 +21,8 @@
 // Cooperation of the real Imager, Guider and Mount agents over one in-process bus, driving the
 // CCD simulator (imager camera, guider camera and its guide output) and the mount simulator.
 // Covered: the imager/guider dithering handshake during a guided batch, its cadence, abort of
-// either side while dithering, and the Mount Agent stopping imager and guider processes through
-// ABORT_RELATED_PROCESS on slew and park.
+// either side while dithering, guiding without a mount, and the Mount Agent stopping imager and
+// guider processes through ABORT_RELATED_PROCESS on slew and park.
 
 #include <math.h>
 #include <pthread.h>
@@ -65,7 +65,7 @@ static indigo_client observer;
 static char messages[262144];
 static atomic_uint imager_phases;
 static atomic_int dither_busy, dither_ok, dither_alert, dither_state = -1;
-static bool bus_started, observer_attached, ccd_started, mount_started, imager_started, guider_started, mount_agent_started;
+static bool bus_started, observer_attached, ccd_started, mount_started, direct_mount_connected, imager_started, guider_started, mount_agent_started;
 
 static observation *find_observation(const char *device, const char *name) {
 	observation *free_entry = NULL;
@@ -385,7 +385,13 @@ static bool related_abort_allowed(const char *item_name) {
 	return switch_value(MOUNT, AGENT_ABORT_RELATED_PROCESS_PROPERTY_NAME, item_name);
 }
 
-static bool setup(void) {
+typedef enum {
+	NO_MOUNT,
+	PARKED_UNRELATED_MOUNT,
+	ACTIVE_RELATED_MOUNT
+} mount_setup;
+
+static bool setup(mount_setup mount) {
 	indigo_set_log_level(getenv("INDIGO_TEST_DEBUG") ? INDIGO_LOG_DEBUG : INDIGO_LOG_ERROR);
 	REQUIRE(indigo_start() == INDIGO_OK);
 	bus_started = true;
@@ -399,27 +405,34 @@ static bool setup(void) {
 	observer_attached = true;
 	REQUIRE(indigo_ccd_simulator(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	ccd_started = true;
-	REQUIRE(indigo_mount_simulator(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
-	mount_started = true;
 	REQUIRE(indigo_agent_imager(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	imager_started = true;
 	REQUIRE(indigo_agent_guider(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	guider_started = true;
-	REQUIRE(indigo_agent_mount(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
-	mount_agent_started = true;
 	REQUIRE(select_device(IMAGER, FILTER_CCD_LIST_PROPERTY_NAME, IMAGER_CAMERA));
 	REQUIRE(select_device(GUIDER, FILTER_CCD_LIST_PROPERTY_NAME, GUIDER_CAMERA));
 	REQUIRE(select_device(GUIDER, FILTER_GUIDER_LIST_PROPERTY_NAME, GUIDER_OUTPUT));
-	REQUIRE(select_device(MOUNT, FILTER_MOUNT_LIST_PROPERTY_NAME, MOUNT_DEVICE));
 	REQUIRE(relate(IMAGER, GUIDER));
-	REQUIRE(relate(IMAGER, MOUNT));
-	REQUIRE(relate(GUIDER, MOUNT));
-	REQUIRE(relate(MOUNT, IMAGER));
-	REQUIRE(relate(MOUNT, GUIDER));
-	REQUIRE(WAIT_UNTIL(exists(MOUNT, MOUNT_PARK_PROPERTY_NAME) && exists(MOUNT_DEVICE, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME), 10));
-	REQUIRE(change_switch_and_wait(MOUNT, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE, 60));
-	REQUIRE(slew_mount(20));
-	REQUIRE(WAIT_UNTIL(fabs(number(GUIDER, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM_NAME) - 20) < 0.1, 10));
+	if (mount != NO_MOUNT) {
+		REQUIRE(indigo_mount_simulator(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
+		mount_started = true;
+	}
+	if (mount == PARKED_UNRELATED_MOUNT) {
+		REQUIRE(change_switch_and_wait(MOUNT_DEVICE, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true, INDIGO_OK_STATE, 20));
+		direct_mount_connected = true;
+	} else if (mount == ACTIVE_RELATED_MOUNT) {
+		REQUIRE(indigo_agent_mount(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
+		mount_agent_started = true;
+		REQUIRE(select_device(MOUNT, FILTER_MOUNT_LIST_PROPERTY_NAME, MOUNT_DEVICE));
+		REQUIRE(relate(IMAGER, MOUNT));
+		REQUIRE(relate(GUIDER, MOUNT));
+		REQUIRE(relate(MOUNT, IMAGER));
+		REQUIRE(relate(MOUNT, GUIDER));
+		REQUIRE(WAIT_UNTIL(exists(MOUNT, MOUNT_PARK_PROPERTY_NAME) && exists(MOUNT_DEVICE, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME), 10));
+		REQUIRE(change_switch_and_wait(MOUNT, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE, 60));
+		REQUIRE(slew_mount(20));
+		REQUIRE(WAIT_UNTIL(fabs(number(GUIDER, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM_NAME) - 20) < 0.1, 10));
+	}
 	REQUIRE(configure_dithering(1, 3, 60));
 	return true;
 }
@@ -433,6 +446,10 @@ static void cleanup(void) {
 	}
 	if (imager_started) {
 		indigo_agent_imager(INDIGO_DRIVER_SHUTDOWN, NULL);
+	}
+	if (direct_mount_connected) {
+		change_switch_and_wait(MOUNT_DEVICE, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true, INDIGO_OK_STATE, 20);
+		direct_mount_connected = false;
 	}
 	if (mount_started) {
 		indigo_mount_simulator(INDIGO_DRIVER_SHUTDOWN, NULL);
@@ -551,6 +568,18 @@ static bool start_guided_long_batch(void) {
 	return true;
 }
 
+// The CCD guider's own offset model supports calibration and guiding when no mount driver is loaded.
+static void guiding_without_mount(void) {
+	ASSERT_TRUE(start_guiding());
+	double frame = guider_frame();
+	ASSERT_TRUE(WAIT_UNTIL(guider_frame() > frame + 2, 20));
+	ASSERT_TRUE(abort_agent(GUIDER));
+}
+
+static void guiding_without_related_mount(void) {
+	guiding_without_mount();
+}
+
 // A slew requested through the Mount Agent stops both the running batch and guiding.
 static void mount_slew_aborts_imager_and_guider(void) {
 	ASSERT_TRUE(start_guided_long_batch());
@@ -602,6 +631,8 @@ static const indigo_test_case tests[] = {
 	{ "imager abort while dithering", imager_abort_while_dithering },
 	{ "guider abort while dithering releases imager", guider_abort_while_dithering_releases_imager },
 	{ "dither request without guiding does not stall batch", dither_request_without_guiding_does_not_stall_batch },
+	{ "guiding without mount", guiding_without_mount },
+	{ "guiding without related mount", guiding_without_related_mount },
 	{ "mount slew aborts imager and guider", mount_slew_aborts_imager_and_guider },
 	{ "mount park aborts imager and guider", mount_park_aborts_imager_and_guider },
 	{ "withdrawn permission keeps imager running", withdrawn_permission_keeps_imager_running }
@@ -621,7 +652,8 @@ int main(int argc, char **argv) {
 			if (!indigo_test_use_private_home()) {
 				exit(1);
 			}
-			bool ready = setup();
+			mount_setup mount = tests[i].function == guiding_without_mount ? NO_MOUNT : tests[i].function == guiding_without_related_mount ? PARKED_UNRELATED_MOUNT : ACTIVE_RELATED_MOUNT;
+			bool ready = setup(mount);
 			int status = ready ? indigo_run_tests("Imager, Guider and Mount Agent cooperation", tests + i, 1) : 1;
 			cleanup();
 			indigo_test_remove_private_home();

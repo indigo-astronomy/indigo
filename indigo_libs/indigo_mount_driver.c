@@ -1380,8 +1380,8 @@ bool indigo_get_simulated_mount_state(indigo_simulated_mount_state *state) {
 
 bool indigo_simulated_mount_guide(double ra, double dec) {
 	pthread_mutex_lock(&simulated_mount_mutex);
-	bool result = simulated_mount_owner != NULL;
-	if (result && simulated_mount_state.guidable) {
+	bool result = simulated_mount_owner != NULL && simulated_mount_state.guidable;
+	if (result) {
 		simulated_mount_ra_offset += ra;
 		simulated_mount_dec_offset += dec;
 		add_simulated_mount_offset(&simulated_mount_state, ra, dec);

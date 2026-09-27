@@ -226,3 +226,28 @@ checks, not committed, ended at 400 INWARD) and passes on version 35 (3/3). Rege
 reproducible. Linux x86_64 only; macOS and Windows were not run.
 
 Final test summary for this change: simulator suite 23 run / 23 passed; hardware 0 run / 0 passed.
+
+## Guide fallback when no usable mount is present (2026-09-27)
+
+Reported: simulated guiding stopped working without an active mount, although the guider camera has its own `SIMULATION_SETUP` pointing and offset model.
+
+Baseline: the real Guider Agent calibrated and guided when no mount driver was loaded, but failed reproducibly with `Drift is too slow` when an unrelated parked Mount Simulator was connected. The shared `indigo_simulated_mount_guide()` hook returned true whenever a mount publisher existed, even when its `guidable` flag was false. The CCD guider therefore treated the pulse as consumed and skipped its `IMAGE_RA_OFFSET` / `IMAGE_DEC_OFFSET` fallback, while the parked mount ignored the pulse.
+
+Plan and result:
+
+1. Add end-to-end Guider Agent coverage with no mount and with an unavailable, unrelated simulated mount. The no-mount baseline passed; the parked-mount baseline failed during calibration as reported.
+2. Make `indigo_simulated_mount_guide()` return true only when the published mount can accept and apply the guide pulse. A missing, parked, parking or slewing mount returns false, so the CCD guider uses its `SIMULATION_SETUP` offset model. Version 35 to 36.
+3. Regenerate the driver, build it and run the CCD simulator, Guider Agent and combined-agent regression scopes. Complete: the generated files reproduced cleanly, the driver and library built, `test_ccd_simulator` passed 24/24, `test_agent_guider` passed 90/90 and `test_agent_imager_guider_mount` passed 10/10. The focused parked-mount case fails against the baseline implementation and passes with the fix.
+
+Hardware testing is not applicable to this virtual-driver defect. macOS arm64 is the available validation platform; Linux and Windows are not available in this run.
+
+Final test summary for this change: simulated tests 124 run / 124 passed (24 CCD simulator + 90 Guider Agent + 10 combined-agent); hardware tests 0 run / 0 passed.
+
+## Merge of `refactoring` (2026-09-27, ac733d4)
+
+`refactoring` bumped the driver to version 36 for the guide fallback above, the same number this branch
+had already used when it merged the TGT-071 fix. The merged driver carries both changes and is bumped
+once more to version 37, regenerated with the unchanged generator and retested with
+`tools/run_driver_test.py ccd_simulator`.
+
+Final test summary for this change: simulator suite 25 run / 25 passed on Linux x86_64; hardware 0 run / 0 passed.
