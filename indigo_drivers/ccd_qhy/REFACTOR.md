@@ -736,6 +736,50 @@ with the rest of the legacy driver.
 `ScanQHYCCD()` of this SDK returns only the QHY5L-II on this rig; the QHY5 and the QHY-8PRO that
 `ccd_qhy2` drives are not offered by it, so neither could be tested through this driver.
 
+## Coupled mode, pixel format, binning and frame requests (TGT-069, 2026-09-27)
+
+Version 40, finding TGT-069 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`),
+the same class as TGT-066/067/068 (`ccd_asi` 3.0.0.70, `ccd_playerone` 3.0.0.32, `ccd_svb` 3.0.0.33).
+
+### Semantics
+
+CCD_MODE (bit depth and binning), X_PIXEL_FORMAT (bit depth), CCD_BIN and CCD_FRAME are coupled. Of two
+requests queued together the later one wins: the handler of the earlier one still updates a coupled
+property as a side effect, but leaves one that is BUSY (a request sent after it, still queued) to that
+request's own handler, which then decides and publishes it.
+
+### Defect (source audit, not reproduced)
+
+All four handlers run on the device queue and rewrote the coupled properties whatever their state:
+
+- The CCD_MODE handler wrote the X_PIXEL_FORMAT values, the CCD_BIN values and targets and, through
+  `qhy_update_geometry()`, the CCD_FRAME values and targets. A pixel format request queued behind it
+  was read from the rewritten `sw.value` and lost; CCD_BIN and CCD_FRAME read their request from the
+  targets (`preserve_values`), which were overwritten, so a binning or frame request was lost too.
+- The X_PIXEL_FORMAT and CCD_BIN handlers rebuilt CCD_MODE with `qhy_modes()`, whose
+  `indigo_init_switch_item()` resets values and targets, so a mode request queued behind them was lost.
+
+In each case the later handler applied the earlier request's setting and reported OK.
+
+### Fix
+
+- The CCD_MODE and X_PIXEL_FORMAT handlers apply their request with `indigo_apply_switch_targets()`
+  before they derive the coupled settings from it.
+- The CCD_MODE handler leaves a BUSY X_PIXEL_FORMAT, CCD_BIN or CCD_FRAME alone (it still sets
+  `selected_bpp` and the CCD_FRAME bit depth, which the CCD_FRAME handler overwrites from `selected_bpp`
+  anyway), and the X_PIXEL_FORMAT and CCD_BIN handlers skip `qhy_modes()` and the update of a BUSY
+  CCD_MODE; X_PIXEL_FORMAT does not publish a BUSY CCD_FRAME. The CCD_FRAME handler writes only its own
+  bit depth from `selected_bpp` and needed no change; a client bit depth in CCD_FRAME is ignored as before.
+- No `_finalizer` reference was added; the regenerated handlers keep the generated OK prologue and
+  final update.
+
+### Verification
+
+- `make -C indigo_drivers -f ../Makefile.drvs ccd_qhy/ OP=all` builds on Linux x64.
+- The existing fake-SDK suite `build/integration/test_ccd_qhy_sdk` passes 38/38 on Linux x64 (run
+  directly, not recorded). It has no case for queued coupled requests, so the fix itself is not tested;
+  no regression test was added.
+
 ## Final test summary
 
 - Simulated tests run: 38; passed: 38 (`build/integration/test_ccd_qhy_sdk`).

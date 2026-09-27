@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000027
+#define DRIVER_VERSION       0x03000028
 #define DRIVER_NAME          "indigo_ccd_qhy"
 #define DRIVER_LABEL         "QHY CCD (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -835,8 +835,11 @@ static void ccd_bin_handler(indigo_device *device) {
 		CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.target = CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = bin;
-		qhy_modes(device);
-		indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+		// A mode requested after this binning is newer and decides, so a BUSY one is left to its handler.
+		if (CCD_MODE_PROPERTY->state != INDIGO_BUSY_STATE) {
+			qhy_modes(device);
+			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+		}
 	}
 	//- ccd.CCD_BIN.on_change
 	indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
@@ -845,20 +848,38 @@ static void ccd_bin_handler(indigo_device *device) {
 static void ccd_mode_handler(indigo_device *device) {
 	CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ccd.CCD_MODE.on_change
+	// Another handler may have rewritten the values after the request was copied, the targets keep the request.
+	indigo_apply_switch_targets(CCD_MODE_PROPERTY);
+	// A pixel format, binning or frame requested after this mode is newer and decides, so a BUSY one is left to its handler.
+	bool format_pending = X_PIXEL_FORMAT_PROPERTY->state == INDIGO_BUSY_STATE;
+	bool bin_pending = CCD_BIN_PROPERTY->state == INDIGO_BUSY_STATE;
+	bool frame_pending = CCD_FRAME_PROPERTY->state == INDIGO_BUSY_STATE;
 	for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
 		if (CCD_MODE_PROPERTY->items[i].sw.value) {
 			int bpp = 0, bin = 0;
 			if (sscanf(CCD_MODE_PROPERTY->items[i].name, "RAW %d %dx", &bpp, &bin) == 2) {
 				PRIVATE_DATA->selected_bpp = bpp;
 				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = bpp;
-				CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.target = CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = bin;
-				qhy_update_geometry(device);
-				for (int j = 0; j < X_PIXEL_FORMAT_PROPERTY->count; j++) {
-					X_PIXEL_FORMAT_PROPERTY->items[j].sw.value = !strcmp(X_PIXEL_FORMAT_PROPERTY->items[j].name, bpp == 8 ? "RAW 8" : "RAW 16");
+				if (!bin_pending) {
+					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.target = CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = bin;
 				}
-				indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
-				indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
-				indigo_update_property(device, X_PIXEL_FORMAT_PROPERTY, NULL);
+				if (!frame_pending) {
+					qhy_update_geometry(device);
+				}
+				if (!format_pending) {
+					for (int j = 0; j < X_PIXEL_FORMAT_PROPERTY->count; j++) {
+						X_PIXEL_FORMAT_PROPERTY->items[j].sw.value = !strcmp(X_PIXEL_FORMAT_PROPERTY->items[j].name, bpp == 8 ? "RAW 8" : "RAW 16");
+					}
+				}
+				if (!frame_pending) {
+					indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+				}
+				if (!bin_pending) {
+					indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+				}
+				if (!format_pending) {
+					indigo_update_property(device, X_PIXEL_FORMAT_PROPERTY, NULL);
+				}
 			}
 			break;
 		}
@@ -870,15 +891,22 @@ static void ccd_mode_handler(indigo_device *device) {
 static void ccd_x_pixel_format_handler(indigo_device *device) {
 	X_PIXEL_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ccd.X_PIXEL_FORMAT.on_change
+	// Another handler may have rewritten the values after the request was copied, the targets keep the request.
+	indigo_apply_switch_targets(X_PIXEL_FORMAT_PROPERTY);
 	for (int i = 0; i < X_PIXEL_FORMAT_PROPERTY->count; i++) {
 		if (X_PIXEL_FORMAT_PROPERTY->items[i].sw.value) {
 			PRIVATE_DATA->selected_bpp = !strcmp(X_PIXEL_FORMAT_PROPERTY->items[i].name, "RAW 8") ? 8 : 16;
 			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = PRIVATE_DATA->selected_bpp;
 		}
 	}
-	qhy_modes(device);
-	indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
-	indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+	// A frame or mode requested after this format is newer and decides, so a BUSY one is left to its handler.
+	if (CCD_FRAME_PROPERTY->state != INDIGO_BUSY_STATE) {
+		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+	}
+	if (CCD_MODE_PROPERTY->state != INDIGO_BUSY_STATE) {
+		qhy_modes(device);
+		indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+	}
 	//- ccd.X_PIXEL_FORMAT.on_change
 	indigo_update_property(device, X_PIXEL_FORMAT_PROPERTY, NULL);
 }
