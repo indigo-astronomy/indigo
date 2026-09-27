@@ -10,6 +10,8 @@
 
 #define _DEFAULT_SOURCE
 #define _XOPEN_SOURCE 600
+// cfmakeraw() is not POSIX; _XOPEN_SOURCE hides it on macOS unless the Darwin extensions are enabled
+#define _DARWIN_C_SOURCE
 
 #include <ctype.h>
 #include <errno.h>
