@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_wheel_astroasis"
 #define DRIVER_LABEL         "Astroasis Oasis Wheel"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -328,7 +328,8 @@ static void wheel_x_calibrate_handler(indigo_device *device) {
 	X_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
 	if (X_CALIBRATE_START_ITEM->sw.value) {
 		X_CALIBRATE_START_ITEM->sw.value = false;
-		if (WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE || X_FACTORY_RESET_PROPERTY->state == INDIGO_BUSY_STATE || !astroasis_idle(device)) {
+		// WHEEL_SLOT is checked again after the status read: a slot request copied during it is left to its queued handler, as one copied before this handler ran.
+		if (WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE || X_FACTORY_RESET_PROPERTY->state == INDIGO_BUSY_STATE || !astroasis_idle(device) || WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE) {
 			X_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			int res = OFWCalibrate(PRIVATE_DATA->dev_id, 0);
@@ -770,7 +771,7 @@ indigo_result indigo_wheel_astroasis(indigo_driver_action action, indigo_driver_
 #include "indigo_wheel_astroasis.h"
 
 indigo_result indigo_wheel_astroasis(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "Astroasis Oasis Wheel", __FUNCTION__, 0x0300000A, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "Astroasis Oasis Wheel", __FUNCTION__, 0x0300000B, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

@@ -831,6 +831,34 @@ static void slot_request_survives_factory_reset(void) {
 	atomic_store(&hold_read, false);
 }
 
+// TGT-D23: a slot request copied while the calibrate handler reads the status is treated like one copied before the handler ran: the calibration is refused, and the request is sent and ends consistent with the wheel.
+static void slot_request_during_calibration_start(void) {
+	atomic_store(&wheels[0].position, 3);
+	ASSERT_TRUE(connect_wheel(0, true));
+	ASSERT_NEAR(3, slot_value(0), 0);
+	atomic_store(&hold_read, true);
+	ASSERT_TRUE(set_switch(0, "X_CALIBRATE", "START", true));
+	ASSERT_TRUE(wait_count(&read_entered, 1));
+	ASSERT_TRUE(set_slot(0, 4));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(0, WHEEL_SLOT_PROPERTY_NAME));
+	atomic_store(&release_read, true);
+	ASSERT_TRUE(wait_state(0, "X_CALIBRATE", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(wait_count(&wheels[0].moves, 1));
+	ASSERT_EQ_INT(0, atomic_load(&wheels[0].calibrations));
+	ASSERT_EQ_INT(4, atomic_load(&wheels[0].target));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(0, WHEEL_SLOT_PROPERTY_NAME));
+	finish_motion(4);
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_property *property = snapshot(0, WHEEL_SLOT_PROPERTY_NAME);
+	ASSERT_NEAR(4, property->items[0].number.value, 0);
+	ASSERT_NEAR(4, property->items[0].number.target, 0);
+	indigo_release_property(property);
+	ASSERT_EQ_INT(1, atomic_load(&wheels[0].moves));
+	ASSERT_EQ_INT(0, atomic_load(&wheels[0].calibrations));
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state(0, "X_CALIBRATE"));
+	atomic_store(&hold_read, false);
+}
+
 static void discovery(void) {
 	atomic_store(&enumerate_reverse, true);
 	for (int i = 1; i < 5; i++) {
@@ -1073,6 +1101,7 @@ int main(void) {
 		{ "suffix boundaries and reset readback", suffix_and_reset },
 		{ "suffix request survives a factory reset", suffix_request_survives_factory_reset },
 		{ "slot request survives a factory reset", slot_request_survives_factory_reset },
+		{ "slot request made while a calibration starts", slot_request_during_calibration_start },
 		{ "SDK discovery identity and capacity", discovery },
 		{ "disconnect cancels delayed and active work", teardown },
 		{ "probe failures, retry, filtering and replug", discovery_failures_and_replug },
