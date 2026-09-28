@@ -194,6 +194,7 @@ typedef struct {
 	indigo_spherical_point_t eq_coordinates;
 	indigo_spherical_point_t eq_start_coordinates;
 	indigo_spherical_point_t geo_coordinates;
+	double mount_epoch; // epoch of eq_coordinates and of slew targets, MOUNT_EPOCH of the related mount (0 = JNow)
 	indigo_spherical_point_t pa_reference1;
 	indigo_spherical_point_t pa_reference2;
 	indigo_spherical_point_t pa_reference3;
