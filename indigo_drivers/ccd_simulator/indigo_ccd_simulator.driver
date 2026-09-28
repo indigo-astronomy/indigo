@@ -20,7 +20,7 @@ driver simulator {
 	label = "Camera Simulator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 39;
+	version = 40;
 	multi_device_support = true;
 	include {
 		#include <math.h>
@@ -92,7 +92,7 @@ driver simulator {
 			return 4;
 		}
 
-		static int mags[] = { 760000, 305000, 122000, 49000, 20000, 7800, 3100, 1200, 500 };
+		static int mags[] = { 760000, 305000, 122000, 49000, 20000, 7800, 3100, 1200, 500, 200, 80, 32, 13 };
 		
 		// A mount simulator connected in the same process overrides the pointing set up by the client
 		static void follow_simulated_mount(indigo_device *device) {
@@ -168,7 +168,7 @@ driver simulator {
 						//printf("HIP%5d %6.4f %+7.4f %6.1f %6.1f\n", star_data->hip, star_data->ra, star_data->dec, x, y);
 						PRIVATE_DATA->star_x[PRIVATE_DATA->star_count] = x;
 						PRIVATE_DATA->star_y[PRIVATE_DATA->star_count] = y;
-						PRIVATE_DATA->star_a[PRIVATE_DATA->star_count] = mags[(int)star_data->mag];
+						PRIVATE_DATA->star_a[PRIVATE_DATA->star_count] = mags[star_data->mag < 0 ? 0 : (int)star_data->mag];
 						if (++PRIVATE_DATA->star_count == GUIDER_MAX_STARS) {
 							break;
 						}
@@ -1032,7 +1032,7 @@ driver simulator {
 			item DEC { name = "DEC"; label = "Dec"; min = -90; max = 90; step = 0; value = 38.75; }
 			item SIDE_OF_PIER { name = "SIDE_OF_PIER"; label = "Side of pier"; min = 0; max = 1; step = 0; value = 0; }
 			item EPOCH { name = "EPOCH"; label = "Epoch"; min = 0; max = 2050; step = 0; value = 2000; }
-			item MAGNITUDE_LIMIT { name = "MAGNITUDE_LIMIT"; label = "Magnitude limit"; min = -2; max = 12; step = 1; value = 8; }
+			item MAGNITUDE_LIMIT { name = "MAGNITUDE_LIMIT"; label = "Magnitude limit"; min = -2; max = 12; step = 0.5; value = 8.5; }
 			item ALT_POLAR_ERROR { name = "ALT_POLAR_ERROR"; label = "Altitude polar error"; min = -30; max = 30; step = 0; value = 0; }
 			item AZ_POLAR_ERROR { name = "AZ_POLAR_ERROR"; label = "Azimuth polar error"; min = -30; max = 30; step = 0; value = 0; }
 			item IMAGE_AGE { name = "IMAGE_AGE"; label = "Max image age (s)"; min = 0; max = 3600; step = 0; value = 0.0166667; }

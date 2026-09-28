@@ -53,7 +53,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000027
+#define DRIVER_VERSION       0x03000028
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -311,7 +311,7 @@ static int ccd_index(indigo_device *device) {
 	return 4;
 }
 
-static int mags[] = { 760000, 305000, 122000, 49000, 20000, 7800, 3100, 1200, 500 };
+static int mags[] = { 760000, 305000, 122000, 49000, 20000, 7800, 3100, 1200, 500, 200, 80, 32, 13 };
 
 // A mount simulator connected in the same process overrides the pointing set up by the client
 static void follow_simulated_mount(indigo_device *device) {
@@ -387,7 +387,7 @@ static void search_stars(indigo_device *device) {
 				//printf("HIP%5d %6.4f %+7.4f %6.1f %6.1f\n", star_data->hip, star_data->ra, star_data->dec, x, y);
 				PRIVATE_DATA->star_x[PRIVATE_DATA->star_count] = x;
 				PRIVATE_DATA->star_y[PRIVATE_DATA->star_count] = y;
-				PRIVATE_DATA->star_a[PRIVATE_DATA->star_count] = mags[(int)star_data->mag];
+				PRIVATE_DATA->star_a[PRIVATE_DATA->star_count] = mags[star_data->mag < 0 ? 0 : (int)star_data->mag];
 				if (++PRIVATE_DATA->star_count == GUIDER_MAX_STARS) {
 					break;
 				}
@@ -1525,7 +1525,7 @@ static indigo_result guider_ccd_attach(indigo_device *device) {
 		indigo_init_number_item(DEC_ITEM, DEC_ITEM_NAME, "Dec", -90, 90, 0, 38.75);
 		indigo_init_number_item(SIDE_OF_PIER_ITEM, SIDE_OF_PIER_ITEM_NAME, "Side of pier", 0, 1, 0, 0);
 		indigo_init_number_item(EPOCH_ITEM, EPOCH_ITEM_NAME, "Epoch", 0, 2050, 0, 2000);
-		indigo_init_number_item(MAGNITUDE_LIMIT_ITEM, MAGNITUDE_LIMIT_ITEM_NAME, "Magnitude limit", -2, 12, 1, 8);
+		indigo_init_number_item(MAGNITUDE_LIMIT_ITEM, MAGNITUDE_LIMIT_ITEM_NAME, "Magnitude limit", -2, 12, 0.5, 8.5);
 		indigo_init_number_item(ALT_POLAR_ERROR_ITEM, ALT_POLAR_ERROR_ITEM_NAME, "Altitude polar error", -30, 30, 0, 0);
 		indigo_init_number_item(AZ_POLAR_ERROR_ITEM, AZ_POLAR_ERROR_ITEM_NAME, "Azimuth polar error", -30, 30, 0, 0);
 		indigo_init_number_item(IMAGE_AGE_ITEM, IMAGE_AGE_ITEM_NAME, "Max image age (s)", 0, 3600, 0, 0.0166667);
