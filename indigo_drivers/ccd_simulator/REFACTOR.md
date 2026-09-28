@@ -294,3 +294,7 @@ Orientation, left unchanged by decision: the frame is rendered like a sensor rea
 With the catalogue ending at magnitude 8, as it did for these runs, index 4113 did not solve the south galactic pole (0.85 h, -27°) and some fields around RA 17.6 h, Dec +5°.
 
 Validation on macOS arm64 with the real astrometry.net solver: `test_agent_astrometry_solver`, and `test_ccd_simulator` passed. Hardware 0 run / 0 passed.
+
+## Polar error against the true pole (2026-09-28)
+
+Version 42. `search_stars()` applied `ALT_POLAR_ERROR`/`AZ_POLAR_ERROR` to the J2000 pointing, so the simulated polar axis was misaligned against the J2000 pole, 0.36° away from the true one. The Astrometry agent computes the polar error against the true pole (JNow), and its three point alignment measured the error set here 0.4-0.8' off depending on the field. With a J2000 mount the pointing is now precessed to JNow, turned by the polar error and precessed back; everything else stays J2000. The three point alignment in `test_agent_astrometry_solver` now measures it within 0.3'.

@@ -53,7 +53,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000029
+#define DRIVER_VERSION       0x0300002A
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -345,10 +345,18 @@ static void search_stars(indigo_device *device) {
 		double d2r = M_PI / 180;
 		double mount_ra = RA_ITEM->number.value; // where mount thinks it is pointing
 		double mount_dec = DEC_ITEM->number.value;
+		// the polar axis is misaligned against the true pole, so the polar error turns JNow coordinates
+		bool j2000 = EPOCH_ITEM->number.target != 0;
+		if (j2000) {
+			indigo_j2k_to_jnow(&mount_ra, &mount_dec);
+		}
 		indigo_spherical_point_t point;
 		indigo_ra_dec_to_point(mount_ra, mount_dec, lst, &point);
 		indigo_spherical_point_t point_r = indigo_apply_polar_error(&point, ALT_POLAR_ERROR_ITEM->number.target * DEG2RAD, AZ_POLAR_ERROR_ITEM->number.target * DEG2RAD);
 		indigo_point_to_ra_dec(&point_r, lst, &mount_ra, &mount_dec);
+		if (j2000) {
+			indigo_jnow_to_j2k(&mount_ra, &mount_dec);
+		}
 		mount_ra *= h2r;
 		mount_dec *= d2r;
 		double cos_mount_dec = cos(mount_dec);
