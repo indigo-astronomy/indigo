@@ -306,7 +306,8 @@ endif
 # INTEGRATION_TESTS and this list.
 OPT_IN_DRIVER_TESTS = $(INTEGRATION_BUILD)/test_aux_dragonfly_simulator \
 	$(INTEGRATION_BUILD)/test_dome_dragonfly_simulator \
-	$(INTEGRATION_BUILD)/test_rotator_lunatico_udp_simulator
+	$(INTEGRATION_BUILD)/test_rotator_lunatico_udp_simulator \
+	$(INTEGRATION_BUILD)/test_agent_astrometry_solver
 
 test-integration: check-lib $(INTEGRATION_TESTS)
 	@for test in $(INTEGRATION_TESTS); do \
@@ -2182,6 +2183,18 @@ $(INTEGRATION_BUILD)/test_agent_imager_guider_mount: integration/test_agent_imag
 .PHONY: test-agent-imager-guider-mount
 test-agent-imager-guider-mount: check-lib $(INTEGRATION_BUILD)/test_agent_imager_guider_mount
 	$(INTEGRATION_BUILD)/test_agent_imager_guider_mount
+
+# The production Astrometry agent with the real astrometry.net solver, the Imager and Mount agents
+# and the CCD and mount simulators. Opt-in: it needs solve-field and image2xy installed and
+# downloads index 4113 from data.astrometry.net.
+ASTROMETRY_SOLVER_ARCHIVES = $(BUILD_DRIVERS)/indigo_agent_astrometry.a $(BUILD_DRIVERS)/indigo_agent_imager.a $(BUILD_DRIVERS)/indigo_agent_mount.a $(BUILD_DRIVERS)/indigo_ccd_simulator.a $(BUILD_DRIVERS)/indigo_mount_simulator.a
+
+$(INTEGRATION_BUILD)/test_agent_astrometry_solver: integration/test_agent_astrometry_solver.c test_runner.h $(ASTROMETRY_SOLVER_ARCHIVES) | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(ASTROMETRY_SOLVER_ARCHIVES) $(TEST_LDFLAGS) -lindigocat
+
+.PHONY: test-agent-astrometry-solver
+test-agent-astrometry-solver: check-lib $(INTEGRATION_BUILD)/test_agent_astrometry_solver
+	$(INTEGRATION_BUILD)/test_agent_astrometry_solver
 
 # Coordination of several production Imager Agent instances (barrier, abort, leader dithering
 # through the production Guider Agent) with the CCD simulator.

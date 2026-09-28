@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x02000017
+#define DRIVER_VERSION 0x02000018
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -861,7 +861,7 @@ static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *tas
 		if (AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.value > 0) {
 			hints_index += sprintf(hints + hints_index, " --cpulimit %d", (int)AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.value);
 		}
-		if (!execute_command(device, "solve-field --overwrite --no-plots --no-remove-lines --no-verify-uniformize --sort-column FLUX --uniformize 0%s --config \"%s/astrometry.cfg\" --axy \"%s.axy\" \"%s.xy\"", hints, base_dir, base, base)) {
+		if (!execute_command(device, "solve-field --overwrite --crpix-center --no-plots --no-remove-lines --no-verify-uniformize --sort-column FLUX --uniformize 0%s --config \"%s/astrometry.cfg\" --axy \"%s.axy\" \"%s.xy\"", hints, base_dir, base, base)) {
 			message = "Execution of solve-field failed";
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}

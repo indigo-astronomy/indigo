@@ -523,6 +523,41 @@ macOS has no equivalent control. A hub with per-port power switching driven by
 `uhubctl` works on both systems, but only when the hub supports the feature;
 otherwise the cable has to be pulled by hand.
 
+## Building the Real Astrometry.net Solver
+
+`test_agent_astrometry` runs against fake `solve-field` and `image2xy` scripts.
+Exercising the agent with the real solver needs the INDIGO build of
+astrometry.net: `solve-field`, `image2xy`, `new-wcs`, `astrometry-engine` and
+`wcsinfo`, linked statically, without Python, netpbm or a system cfitsio. Build
+it from the three INDIGO repositories cloned side by side, since the
+`astrometry` Makefile expects `../astrometry.net` and `../cfitsio`:
+
+```bash
+mkdir astro && cd astro
+git clone --depth 1 https://github.com/indigo-astronomy/astrometry.git
+git clone --depth 1 https://github.com/indigo-astronomy/cfitsio.git
+git clone --depth 1 https://github.com/indigo-astronomy/astrometry.net.git
+make -C astrometry
+sudo install -m 0755 astrometry/bin/* /usr/local/bin/
+```
+
+`astrometry/clone_sources.sh` does the two clones as well, but without
+`--depth 1`. On an Apple Silicon Mac, `make` produces universal x86_64 and arm64
+binaries that depend only on `libSystem` and `libobjc` (check with `file` and
+`otool -L`). The checkouts grow to about 100 MB during the build and can be
+deleted once the binaries are installed. On Linux, the same `make` builds
+the binaries for the host architecture, and `make package` wraps them in the
+`indigo-astrometry` deb.
+
+Do not use the upstream astrometry.net release tarball instead. It needs a
+separately built cfitsio (passed through `CFITS_INC` and `CFITS_LIB`, not
+`CFITSIO_*`), links its binaries against that shared library, and is not what
+INDIGO ships with the agent.
+
+The binaries do not include index files. Let the agent download them through
+`AGENT_ASTROMETRY_INDEX_41XX` or `AGENT_ASTROMETRY_INDEX_42XX` from a private
+test home, so no user configuration or index directory is touched.
+
 ## Recording Test Runs
 
 Record driver test runs with `tools/run_driver_test.py` from the project root.

@@ -65,3 +65,19 @@ Physical hardware tests run/passed: 0 / 0.
 - `image filesystem failures` and `index remove failure and recovery` forced write failures with `chmod 0500`, which root ignores. The folder is now replaced by a regular file (ENOTDIR) and the index by a directory (unlink fails with EISDIR), which fail for every account.
 - Configuration isolation: the `-Dindigo_uni_config_folder` redirection and its separate framework object were removed; each forked case points HOME at its own directory. The suite no longer switches off strict bus locking (the switch was removed from the framework).
 - Result: 31 / 31 simulated cases passed; hardware tests 0 / 0.
+
+## Real astrometry.net solver (2026-09-28)
+
+`test_agent_astrometry_solver` (opt-in, `OPT_IN_DRIVER_TESTS`: it needs `solve-field` and `image2xy` installed, see `indigo_test/AGENTS.md`, and downloads index 4113) runs the production agent with the real solver, the related Imager Agent capturing with the CCD Guider Simulator and the Mount Agent with the Mount Simulator. 25 cases: solve only, solve and sync, solve/sync/center and precise GOTO with a pointing error made by a controller sync, iterative polar alignment (70 % of the measured error corrected per step until below 1'), and precise GOTO at 20 places over the whole sky.
+
+Version 0x18: solve-field is called with `--crpix-center`. The reported field angle belonged to the WCS reference pixel solve-field chose, not to the image centre; with the 4° field the meridian convergence made it 2.1-2.6° off at declinations -60, +55 and +80 and exactly right with the option.
+
+`indigo_correct_polar_error()` (`indigo_libs/indigo_align.c`) applied the rotations of `indigo_apply_polar_error()` with opposite angles in the same order instead of the reverse one, so the polar alignment target missed the aligned position by an error of the order of u * v: 1.2' with 48'/-66' of polar error. Every recalculation measured against that target and was off by a constant 0.7' in altitude and 1.3' in azimuth. Fixed in the library with `test_align_math` coverage; the recalculations now follow the error set on the simulator within about 0.25'.
+
+Other findings, not changed:
+- An index file already on disk is offered unselected in `AGENT_PLATESOLVER_USE_INDEX` to a fresh configuration, only a downloaded one is selected, so the first solve fails with "You must select at least one index".
+- With a fresh configuration the Mount Agent's site is 0/0 (`AGENT_SITE_DATA_SOURCE` = agent) while the Mount Simulator keeps its own, so the plate solver computed the sidereal time for longitude 0. The test sets the site on the Mount Agent.
+- The REFERENCE 1 and 2 debug lines of `indigo_platesolver.c` print the sidereal time in radians labelled hours.
+- `peer failures and Imager abort forwarding` of `test_agent_astrometry` counted 2 Imager aborts instead of 1 in 1 of 16 runs; not investigated.
+
+Validation on macOS arm64: `test_agent_astrometry` 34/34 (3 runs; 1 intermittent failure in 16 further runs, above); `test_agent_astrometry_solver` 24/25 in the last full run, the polar alignment case failed on a sparse field; after moving it to a fixed sidereal time its step 0 differed by 0.74' from the simulator and the per-step tolerance was set to 1', not rerun. Hardware 0 run / 0 passed.

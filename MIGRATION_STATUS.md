@@ -11,7 +11,7 @@
 | agent_imager            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 53 / 0 | |
 | agent_mount             | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 71 / 0 | |
 | agent_scripting         | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 60 / 0 | |
-| agent_astrometry        | 2️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Sim | 31 / 0 | |
+| agent_astrometry        | 2️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Sim | 59 / 0 | |
 | ao_sx                   | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 11 / 16 | |
 | aux_arteskyflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
 | aux_asiair              | 3️⃣ | ⛔ N/A | ✅ Yes | ✅ Yes | ✅ HW  | 20 / 3 | ⛔ RPi only |
