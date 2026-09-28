@@ -985,7 +985,9 @@ static void simulator_guider_camera_follows_simulated_mount(void) {
 	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "SIDE_OF_PIER") == 0);
 	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "EPOCH") == 2000);
 	printf("    star at %.2f, %.2f in %u x %u frame\n", x0, y0, atomic_load(&sim_width), atomic_load(&sim_height));
-	SIM_CHECK(fabs(x0 - atomic_load(&sim_width) / 2.0) < 2 && fabs(y0 - atomic_load(&sim_height) / 2.0) < 2);
+	// The pointing is the centre of the image, (size - 1) / 2 as the centre of pixel i is at i; version 39 put it
+	// half a pixel off at size / 2, which astrometry.net reported as a 7" error of the solved centre
+	SIM_CHECK(fabs(x0 - (atomic_load(&sim_width) - 1) / 2.0) < 0.3 && fabs(y0 - (atomic_load(&sim_height) - 1) / 2.0) < 0.3);
 	// Half a pixel in Dec: the star has to move by a fraction of a pixel, not by zero or a whole one
 	state.dec += 0.5 / FOLLOW_PX_PER_DEGREE;
 	indigo_set_simulated_mount_state(&publisher, &state);

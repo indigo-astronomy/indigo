@@ -284,3 +284,13 @@ Version 38 to 39.
 - Calibration time is bound by the guide rate, not by the step: the backlash and calibration legs need about 26 px, 42 s of pulses at 0.625 px/s. With the Guider Agent's `STEP0` set from 0.2 to 1.8 s, one sequencer calibration took 54 to 66 s; 0.2 and 0.4 s report "Drift is too slow" and restart, 0.6 to 1.8 s complete at once. The Dec leg reports "Drift is too fast" above about 2 s and the backlash legs need at least 0.5 s, so the sequencer tests start at 1 s.
 
 Tests: `test_ccd_simulator` 25/25, `test_agent_imager_guider_mount` `guiding without mount` and `guiding without related mount`, `test_agent_scripting_sequencer` `all public constructors`, `simulator guiding` and `simulator guiding calibration step`, and `test_agent_guider` 90/90 passed on macOS arm64.
+
+## Image centre and orientation against astrometry.net (2026-09-28)
+
+Version 41. `search_stars()` put the pointing at `size / 2`, half a pixel off the image centre, as the centre of pixel i is at i; astrometry.net reported the solved centre about 7" (0.002°) off. The centre is now `(size - 1) / 2`, the solved centre is within 0.0005° of the rendered pointing. `simulator_guider_camera_follows_simulated_mount` checks the brightest star within 0.3 px of `(size - 1) / 2`.
+
+Orientation, left unchanged by decision: the frame is rendered like a sensor readout, row 0 at the top; at `IMAGE_ROTATION_ANGLE` 0 on the east side of the pier north is up. FITS puts the first row at the bottom, so solve-field reports `IMAGE_ROTATION_ANGLE` + 180° on the east side and `IMAGE_ROTATION_ANGLE` on the west side, where the simulator turns the field by 180°.
+
+With the catalogue ending at magnitude 8, as it did for these runs, index 4113 did not solve the south galactic pole (0.85 h, -27°) and some fields around RA 17.6 h, Dec +5°.
+
+Validation on macOS arm64 with the real astrometry.net solver: `test_agent_astrometry_solver`, and `test_ccd_simulator` passed. Hardware 0 run / 0 passed.

@@ -53,7 +53,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000028
+#define DRIVER_VERSION       0x03000029
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -381,8 +381,9 @@ static void search_stars(indigo_device *device) {
 			double ccc_ss = cos_dec_dec * cos_ra_ra + sin_dec_dec;
 			double sx = cos_dec * sin_ra_ra / ccc_ss;
 			double sy = (sin_mount_dec * cos_dec * cos_ra_ra - cos_mount_dec * sin_dec) / ccc_ss;
-			double x = ppr_cos * sx + ppr_sin * sy + IMAGE_WIDTH_ITEM->number.target / 2;
-			double y = ppr_cos * sy - ppr_sin * sx + IMAGE_HEIGHT_ITEM->number.target / 2;
+			// the pointing is the centre of the image; the centre of pixel i is at i, so the image centre is at (size - 1) / 2
+			double x = ppr_cos * sx + ppr_sin * sy + (IMAGE_WIDTH_ITEM->number.target - 1) / 2;
+			double y = ppr_cos * sy - ppr_sin * sx + (IMAGE_HEIGHT_ITEM->number.target - 1) / 2;
 			if (x >= 0 && x < IMAGE_WIDTH_ITEM->number.target && y >= 0 && y < IMAGE_HEIGHT_ITEM->number.target) {
 				//printf("HIP%5d %6.4f %+7.4f %6.1f %6.1f\n", star_data->hip, star_data->ra, star_data->dec, x, y);
 				PRIVATE_DATA->star_x[PRIVATE_DATA->star_count] = x;
